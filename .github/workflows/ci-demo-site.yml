@@ -1,4 +1,4 @@
-name: CI
+name: CI-DEMO-SITE
 
 on:
   push:
@@ -27,39 +27,12 @@ jobs:
           toolchain: nightly
           override: true
           components: rustfmt
-      - name: Run cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+      - run: cargo fmt --all -- --check
+        working-directory: ./examples/demo
 
-  # clippy:
-  #   name: Run Clippy
-  #   needs: [rustfmt]
-  #   runs-on: ubuntu-latest
-
-  #   permissions:
-  #     contents: read
-
-  #   steps:
-  #     - name: Checkout the code
-  #       uses: actions/checkout@v4
-  #     - uses: actions-rs/toolchain@v1
-  #       with:
-  #         profile: ${{ env.TOOLCHAIN_PROFILE }}
-  #         toolchain: ${{ env.RUST_TOOLCHAIN }}
-  #         override: true
-  #     - name: Setup Rust cache
-  #       uses: Swatinem/rust-cache@v2
-  #     - name: Run cargo clippy
-  #       uses: actions-rs/cargo@v1
-  #       with:
-  #         command: clippy
-  #         args: --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms
-
-  test:
-    name: Run Tests
-    needs: [rustfmt] # clippy
+  clippy:
+    name: Run Clippy
+    needs: [rustfmt]
     runs-on: ubuntu-latest
 
     permissions:
@@ -75,8 +48,30 @@ jobs:
           override: true
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
-      - name: Run cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all-features --all
+      - name: Run cargo clippy
+        run: cargo clippy -- -W clippy::nursery -W clippy::pedantic -W rust-2018-idioms -W rust-2021-compatibility
+        working-directory: ./examples/demo
+
+  # test:
+  #   name: Run Tests
+  #   needs: [rustfmt] # clippy
+  #   runs-on: ubuntu-latest
+
+  #   permissions:
+  #     contents: read
+
+  #   steps:
+  #     - name: Checkout the code
+  #       uses: actions/checkout@v4
+  #     - uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: ${{ env.TOOLCHAIN_PROFILE }}
+  #         toolchain: ${{ env.RUST_TOOLCHAIN }}
+  #         override: true
+  #     - name: Setup Rust cache
+  #       uses: Swatinem/rust-cache@v2
+  #     - name: Run cargo test
+  #       uses: actions-rs/cargo@v1
+  #       with:
+  #         command: test
+  #         args: --all-features --all
