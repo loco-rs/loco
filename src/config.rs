@@ -210,6 +210,7 @@ impl Config {
                 File::with_name(&path.join(format!("{env}.yaml")).display().to_string())
                     .required(true),
             )
+            .add_source(config::Environment::with_prefix("APP").separator("_"))
             .build()?
             .try_deserialize()
     }
