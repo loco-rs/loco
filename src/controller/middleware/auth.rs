@@ -23,11 +23,7 @@
 //!     format::json(TestResponse{ pid: auth.claims.pid})
 //! }
 //! ```
-//!
 
-use crate::app::AppContext;
-use crate::auth;
-use crate::errors::Error;
 use async_trait::async_trait;
 use axum::{
     extract::{FromRef, FromRequestParts},
@@ -35,12 +31,14 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::{app::AppContext, auth, errors::Error};
+
 // Define constants for token prefix and authorization header
 const TOKEN_PREFIX: &str = "Bearer ";
 const AUTH_HEADER: &str = "authorization";
 
-// Define a struct to represent user authentication information serialized to/from JSON
-
+// Define a struct to represent user authentication information serialized
+// to/from JSON
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Auth {
     pub claims: auth::UserClaims,

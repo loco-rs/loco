@@ -1,10 +1,12 @@
 //! # Configuration Management
 //!
-//! This module defines the configuration structures and functions to manage and load configuration settings for the application.
+//! This module defines the configuration structures and functions to manage and
+//! load configuration settings for the application.
+use std::path::{Path, PathBuf};
+
 use config::{ConfigError, File};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
 use tracing::info;
 
 use crate::{environment::Environment, logger};
@@ -15,8 +17,8 @@ lazy_static! {
 
 /// Represents the main application configuration structure.
 ///
-/// This struct encapsulates various configuration settings. The configuration can be customized
-/// through YAML files for different environments.
+/// This struct encapsulates various configuration settings. The configuration
+/// can be customized through YAML files for different environments.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
     pub logger: Logger,
@@ -38,15 +40,18 @@ pub struct Logger {
 
 /// Represents the worker mode configuration.
 ///
-/// The `WorkerMode` enum specifies the worker mode, which can be one of `BackgroundQueue`, `ForegroundBlocking`, or `BackgroundAsync`.
+/// The `WorkerMode` enum specifies the worker mode, which can be one of
+/// `BackgroundQueue`, `ForegroundBlocking`, or `BackgroundAsync`.
 #[derive(Clone, Default, Serialize, Deserialize, Debug)]
 pub enum WorkerMode {
     #[default]
-    /// Workers operate asynchronously in the background, processing queued tasks.
+    /// Workers operate asynchronously in the background, processing queued
+    /// tasks.
     BackgroundQueue,
     /// Workers operate in the foreground and block until tasks are completed.
     ForegroundBlocking,
-    /// Workers operate asynchronously in the background, processing tasks with async capabilities.
+    /// Workers operate asynchronously in the background, processing tasks with
+    /// async capabilities.
     BackgroundAsync,
 }
 
@@ -54,7 +59,8 @@ pub enum WorkerMode {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Database {
-    /// The URI for connecting to the database. For example: postgres://root:12341234@localhost:5432/rr_app
+    /// The URI for connecting to the database. For example:
+    /// postgres://root:12341234@localhost:5432/rr_app
     pub uri: String,
     /// Enable SQLx statement logging
     pub enable_logging: bool,
@@ -76,7 +82,8 @@ pub struct Database {
 /// Represents the Redis configuration structure.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Redis {
-    /// The URI for connecting to the Redis server. For example: redis://127.0.0.1/
+    /// The URI for connecting to the Redis server. For example:
+    /// redis://127.0.0.1/
     pub uri: String,
     #[serde(default)]
     /// Flush redis when application loaded
@@ -97,7 +104,8 @@ pub struct Auth {
 pub struct Server {
     /// The port on which the server should listen for incoming connections.
     pub port: i32,
-    /// Middleware configurations for the server, including payload limits, logging, and error handling.
+    /// Middleware configurations for the server, including payload limits,
+    /// logging, and error handling.
     pub middlewares: Middlewares,
 }
 
@@ -113,7 +121,8 @@ pub struct Workers {
 pub struct Middlewares {
     /// Middleware that limit the payload request.
     pub limit_payload: Option<LimitPayloadMiddleware>,
-    /// Middleware that improve the tracing logger and adding trace id for each request.
+    /// Middleware that improve the tracing logger and adding trace id for each
+    /// request.
     pub logger: Option<EnableMiddleware>,
     /// catch any code panic and log the error.
     pub catch_panic: Option<EnableMiddleware>,
@@ -126,7 +135,8 @@ pub struct LimitPayloadMiddleware {
     pub body_limit: String,
 }
 
-/// Represents a generic middleware configuration that can be enabled or disabled.
+/// Represents a generic middleware configuration that can be enabled or
+/// disabled.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct EnableMiddleware {
     pub enable: bool,
@@ -164,7 +174,8 @@ impl Config {
     ///
     /// # Errors
     ///
-    /// Returns [`ConfigError`] when could not convert the give path to [`Config`] struct.
+    /// Returns [`ConfigError`] when could not convert the give path to
+    /// [`Config`] struct.
     ///
     /// # Example
     ///
@@ -180,16 +191,19 @@ impl Config {
     /// }
     pub fn new(env: &Environment) -> Result<Self, ConfigError> {
         let config = Self::from_folder(env, DEFAULT_FOLDER.as_path())?;
-        // TODO(review): Do we really want to print all config data to the logs? it might be include sensitive data such DB user password, auth secrets etc...
+        // TODO(review): Do we really want to print all config data to the logs? it
+        // might be include sensitive data such DB user password, auth secrets etc...
         info!(name: "environment_loaded", config = ?config, environment = ?env, "environment loaded");
 
         Ok(config)
     }
 
-    /// Loads configuration settings from a folder for the specified environment.
+    /// Loads configuration settings from a folder for the specified
+    /// environment.
     ///
     /// # Errors
-    /// Returns [`ConfigError`] when could not convert the give path to [`Config`] struct.
+    /// Returns [`ConfigError`] when could not convert the give path to
+    /// [`Config`] struct.
     ///
     /// # Example
     ///
