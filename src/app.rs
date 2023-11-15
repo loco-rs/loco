@@ -41,6 +41,7 @@ pub struct AppContext {
 /// requirements and use cases.
 ///
 /// # Example
+///
 /// ```rust
 /// use framework::{
 ///     app::{AppContext, Hooks},

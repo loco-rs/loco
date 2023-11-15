@@ -69,7 +69,7 @@ impl FromStr for Environment {
             "development" => Ok(Self::Development),
             "test" => Ok(Self::Test),
             _ => Err(
-                " error parsing environment: expected one of  \"production\", \"development\" or \"test\"",
+                " error parsing environment: expected one of  \"production\", \"development\", \"test\" or any environment that has config file",
             ),
         }
     }

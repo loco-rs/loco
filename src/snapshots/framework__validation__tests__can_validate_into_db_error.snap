@@ -1,0 +1,7 @@
+---
+source: src/validation.rs
+expression: data.validate().map_err(into_db_error)
+---
+Ok(
+    (),
+)

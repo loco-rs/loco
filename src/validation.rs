@@ -107,3 +107,37 @@ pub fn into_db_error(errors: ValidationErrors) -> sea_orm::DbErr {
         )),
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use insta::assert_debug_snapshot;
+    use rstest::rstest;
+    use serde::Deserialize;
+    use validator::Validate;
+
+    #[derive(Debug, Validate, Deserialize)]
+    pub struct TestValidator {
+        #[validate(length(min = 4, message = "Invalid min characters long."))]
+        pub name: String,
+    }
+
+    #[rstest]
+    #[case("test@example.com", true)]
+    #[case("invalid-email", false)]
+    fn can_validate_email(#[case] test_name: &str, #[case] expected: bool) {
+        assert_eq!(is_valid_email(test_name).is_ok(), expected);
+    }
+
+    #[rstest]
+    #[case("foo")]
+    #[case("foo-bar")]
+    fn can_validate_into_db_error(#[case] name: &str) {
+        let data = TestValidator {
+            name: name.to_string(),
+        };
+
+        assert_debug_snapshot!(data.validate().map_err(into_db_error));
+    }
+}
