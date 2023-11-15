@@ -29,7 +29,7 @@ impl AppRoutes {
     /// Create a new instance with the default routes.
     #[must_use]
     pub fn with_default_routes() -> Self {
-        AppRoutes::empty().add_route(health::routes())
+        Self::empty().add_route(health::routes())
     }
 
     /// Create an empty instance.

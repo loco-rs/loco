@@ -3,7 +3,7 @@
 //! emails with options like sender, recipient, subject, and content.
 
 use super::{Email, Result, DEFAULT_FROM_SENDER};
-use crate::config;
+use crate::{config, errors::Error};
 use lettre::{
     message::MultiPart, transport::smtp::authentication::Credentials, AsyncTransport, Message,
     Tokio1Executor, Transport,
@@ -26,11 +26,17 @@ pub struct EmailSender {
 
 impl EmailSender {
     /// Creates a new `EmailSender` using the SMTP transport method based on the provided SMTP configuration.
-    #[must_use]
-    pub fn smtp(config: &config::SmtpMailer) -> Self {
+    ///
+    /// # Errors
+    ///
+    /// when could not initialize SMTP transport
+    pub fn smtp(config: &config::SmtpMailer) -> Result<Self> {
         let mut email_builder = if config.secure {
             lettre::AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&config.host)
-                .unwrap()
+                .map_err(|error| {
+                    tracing::error!(error = error.to_string(), "error creating SMTP transport");
+                    Error::Any(format!("error initialize smtp mailer").into())
+                })?
                 .port(config.port)
         } else {
             lettre::AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&config.host)
@@ -38,15 +44,13 @@ impl EmailSender {
         };
 
         if let Some(auth) = config.auth.as_ref() {
-            email_builder = email_builder.credentials(Credentials::new(
-                auth.user.to_owned(),
-                auth.password.to_owned(),
-            ));
+            email_builder = email_builder
+                .credentials(Credentials::new(auth.user.clone(), auth.password.clone()));
         }
 
-        Self {
+        Ok(Self {
             transport: EmailTransport::Smtp(email_builder.build()),
-        }
+        })
     }
 
     /// Sends an email using the configured transport method.
@@ -73,14 +77,18 @@ impl EmailSender {
         let msg = builder
             .subject(email.subject.clone())
             .multipart(content)
-            .unwrap();
+            .map_err(|error| {
+                tracing::error!(error = error.to_string(), "error building email message");
+                Error::Any(format!("error building email message").into())
+            })?;
 
         match &self.transport {
             EmailTransport::Smtp(xp) => {
                 xp.send(msg).await?;
             }
             EmailTransport::Test(xp) => {
-                xp.send(&msg).unwrap();
+                xp.send(&msg)
+                    .map_err(|_| Error::Any(format!("sending email error").into()))?;
             }
         };
         Ok(())

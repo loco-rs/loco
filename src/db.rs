@@ -92,6 +92,7 @@ pub async fn reset<M: MigratorTrait>(db: &DatabaseConnection) -> Result<(), sea_
 /// # Errors
 ///
 /// Returns a [`AppResult`] if could not render the path content into [`Vec<serde_json::Value>`] or could not inset the vector to DB.
+#[allow(clippy::type_repetition_in_bounds)]
 pub async fn seed<A>(db: &DatabaseConnection, path: &str) -> AppResult<()>
 where
     <<A as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<A>,

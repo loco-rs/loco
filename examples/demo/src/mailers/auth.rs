@@ -12,9 +12,16 @@ use framework::{
 
 static welcome: Dir<'_> = include_dir!("src/mailers/auth/welcome");
 // #[derive(Mailer)] // -- disabled for faster build speed. it works. but lets move on for now.
+
+#[allow(clippy::module_name_repetitions)]
 pub struct AuthMailer {}
 impl Mailer for AuthMailer {}
 impl AuthMailer {
+    /// Sending welcome email the the given user
+    ///
+    /// # Errors
+    ///
+    /// When email sending is failed
     pub async fn send_welcome(ctx: &AppContext, _user_id: &str) -> Result<()> {
         Self::mail_template(
             ctx,

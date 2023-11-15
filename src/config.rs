@@ -52,6 +52,7 @@ pub enum WorkerMode {
 
 /// Represents the database configuration structure.
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Database {
     /// The URI for connecting to the database. For example: postgres://root:12341234@localhost:5432/rr_app
     pub uri: String,

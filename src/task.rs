@@ -34,10 +34,7 @@ impl Tasks {
     /// List all registered tasks with their information.
     #[must_use]
     pub fn list(&self) -> Vec<TaskInfo> {
-        self.registry
-            .iter()
-            .map(|(_, t)| t.task())
-            .collect::<Vec<_>>()
+        self.registry.values().map(|t| t.task()).collect::<Vec<_>>()
     }
 
     /// Run a registered task by name with provided variables.

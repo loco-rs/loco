@@ -9,6 +9,7 @@ pub struct LoginResponse {
 }
 
 impl LoginResponse {
+    #[must_use]
     pub fn new(user: &users::Model, token: &String) -> Self {
         Self {
             token: token.to_string(),

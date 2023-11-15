@@ -138,6 +138,9 @@ mod tests {
             name: name.to_string(),
         };
 
-        assert_debug_snapshot!(data.validate().map_err(into_db_error));
+        assert_debug_snapshot!(
+            format!("struct-[{name}]"),
+            data.validate().map_err(into_db_error)
+        );
     }
 }

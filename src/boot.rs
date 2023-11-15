@@ -106,8 +106,11 @@ pub async fn start(boot: BootResult) -> Result<()> {
     match (router, processor) {
         (Some(router), Some(processor)) => {
             tokio::spawn(async move {
-                tracing::warn!("workers online");
-                process(processor).await.expect("workers");
+                if let Err(err) = process(processor).await {
+                    tracing::error!("Error in processing: {:?}", err);
+                } else {
+                    tracing::warn!("Workers online");
+                }
             });
             serve(router, &app_context.config).await?;
         }
@@ -216,18 +219,20 @@ async fn serve(app: Router, config: &Config) -> Result<()> {
 /// # Errors
 /// When has an error to create DB connection.
 pub async fn create_context(environment: &str) -> Result<AppContext> {
-    let environment =
-        Environment::from_str(environment).unwrap_or(Environment::Any(environment.to_string()));
+    let environment = Environment::from_str(environment)
+        .unwrap_or_else(|_| Environment::Any(environment.to_string()));
     let config = environment.load()?;
     if config.logger.enable {
         logger::init(&config.logger);
     }
     let db = db::connect(&config.database).await?;
-    let mailer = config
-        .mailer
-        .as_ref()
-        .map(|cfg| create_mailer(cfg))
-        .unwrap_or_default();
+
+    let mailer = if let Some(cfg) = config.mailer.as_ref() {
+        create_mailer(cfg)?
+    } else {
+        None
+    };
+
     let redis = connect_redis(&config).await;
     Ok(AppContext {
         environment,
@@ -313,13 +318,13 @@ fn create_processor<H: Hooks>(app_context: &AppContext) -> Result<Processor> {
 }
 
 /// Initializes an [`EmailSender`] based on the mailer configuration settings ([`config::Mailer`]).
-fn create_mailer(config: &config::Mailer) -> Option<EmailSender> {
+fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
     if let Some(smtp) = config.smtp.as_ref() {
         if smtp.enable {
-            return Some(EmailSender::smtp(smtp));
+            return Ok(Some(EmailSender::smtp(smtp)?));
         }
     }
-    None
+    Ok(None)
 }
 
 /// Establishes a connection to a Redis server based on the provided configuration settings.
