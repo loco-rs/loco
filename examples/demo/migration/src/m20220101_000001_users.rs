@@ -1,6 +1,7 @@
+use std::borrow::BorrowMut;
+
 use framework::schema::*;
 use sea_orm_migration::prelude::*;
-use std::borrow::BorrowMut;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;

@@ -1,7 +1,8 @@
+use std::env;
+
 use blo::app::App;
 use framework::boot::{create_app, start, StartMode};
 use migration::Migrator;
-use std::env;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {

@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use async_trait::async_trait;
 use framework::{
     app::{AppContext, Hooks},
@@ -8,7 +10,6 @@ use framework::{
     Result,
 };
 use sea_orm::DatabaseConnection;
-use std::path::Path;
 
 use crate::{
     controllers,

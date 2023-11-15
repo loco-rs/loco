@@ -1,15 +1,15 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
+use framework::{
+    app::AppContext,
+    worker::{AppWorker, Result, Worker},
+};
 use sea_orm::EntityTrait;
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 
 use crate::models::users;
-use framework::{
-    app::AppContext,
-    worker::{AppWorker, Result, Worker},
-};
 
 pub struct DownloadWorker {
     pub ctx: AppContext,

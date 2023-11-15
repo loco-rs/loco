@@ -1,5 +1,6 @@
-use crate::models::_entities::users;
 use serde::{Deserialize, Serialize};
+
+use crate::models::_entities::users;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct LoginResponse {

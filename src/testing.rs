@@ -1,16 +1,18 @@
 //! # Test Utilities Module
 //!
-//! This module provides utility functions and constants for easy testing purposes,
-//! including cleaning up data patterns and bootstrapping the application for testing.
+//! This module provides utility functions and constants for easy testing
+//! purposes, including cleaning up data patterns and bootstrapping the
+//! application for testing.
+
+use axum_test::{TestServer, TestServerConfig};
+use lazy_static::lazy_static;
+use sea_orm::DatabaseConnection;
+use sea_orm_migration::MigratorTrait;
 
 use crate::{
     app::{AppContext, Hooks},
     boot::{self, BootResult},
 };
-use axum_test::{TestServer, TestServerConfig};
-use lazy_static::lazy_static;
-use sea_orm::DatabaseConnection;
-use sea_orm_migration::MigratorTrait;
 
 // Lazy-static constants for data cleanup patterns
 lazy_static! {
@@ -32,14 +34,17 @@ lazy_static! {
     pub static ref CLEANUP_MODEL: Vec<(&'static str, &'static str)> = vec![(r"id: \d+,", "id: ID")];
 }
 
-/// Combines cleanup filters from various categories (user model, date, and model) into one list.
-/// This is used for data cleaning and pattern replacement.
+/// Combines cleanup filters from various categories (user model, date, and
+/// model) into one list. This is used for data cleaning and pattern
+/// replacement.
 ///
 /// # Example
 ///
 /// The provided example demonstrates how to efficiently clean up a user model.
-/// This process is particularly valuable when you need to capture a snapshot of user model data that includes dynamic elements such as incrementing IDs,
-/// automatically generated PIDs, creation/update timestamps, and similar attributes.
+/// This process is particularly valuable when you need to capture a snapshot of
+/// user model data that includes dynamic elements such as incrementing IDs,
+/// automatically generated PIDs, creation/update timestamps, and similar
+/// attributes.
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
@@ -72,7 +77,8 @@ pub fn cleanup_user_model() -> Vec<(&'static str, &'static str)> {
 ///
 /// # Example
 ///
-/// The provided example demonstrates how to boot the test case with the application context.
+/// The provided example demonstrates how to boot the test case with the
+/// application context.
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
@@ -101,7 +107,8 @@ pub async fn boot_test<H: Hooks, M: MigratorTrait>() -> BootResult {
 ///
 /// # Example
 ///
-/// The provided example demonstrates how to boot the test case and run seed data.
+/// The provided example demonstrates how to boot the test case and run seed
+/// data.
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
@@ -117,7 +124,6 @@ pub async fn boot_test<H: Hooks, M: MigratorTrait>() -> BootResult {
 ///     assert!(false)
 /// }
 /// ```
-///
 pub async fn seed<H: Hooks>(db: &DatabaseConnection) -> eyre::Result<()> {
     let path = std::path::Path::new("src/fixtures");
     Ok(H::seed(db, path).await?)
@@ -127,7 +133,8 @@ pub async fn seed<H: Hooks>(db: &DatabaseConnection) -> eyre::Result<()> {
 ///
 /// # Example
 ///
-/// The provided example demonstrates how to create a test that check application HTTP endpoints
+/// The provided example demonstrates how to create a test that check
+/// application HTTP endpoints
 ///
 /// ```rust,ignore
 /// use myapp::app::App;

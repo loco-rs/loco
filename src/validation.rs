@@ -1,15 +1,15 @@
-//! This module provides utility functions for handling validation errors for structs.
-//! It useful if you want to validate model before inset to Database.
+//! This module provides utility functions for handling validation errors for
+//! structs. It useful if you want to validate model before inset to Database.
 //!
 //! # Example:
 //!
 //! In the following example you can see how you can validate a user model
 //! ```rust,ignore
-//!
+//! 
 //! use framework::{
 //!    validation,
 //!    validator::Validate,
-//!};
+//! };
 //! use sea_orm::DbErr;
 //! pub use myapp::_entities::users::ActiveModel;
 //!
@@ -27,7 +27,7 @@
 //!            name: value.name.as_ref().to_string(),
 //!        }
 //!    }
-//!}
+//! }
 //!
 //! /// Creating validator function
 //! impl ActiveModel {
@@ -35,7 +35,7 @@
 //!        let validator: ModelValidator = self.into();
 //!        validator.validate().map_err(validation::into_db_error)
 //!    }
-//!}
+//! }
 //!
 //! /// Inheritance `before_save` function and run validation function to make sure that we are inset the expected data.
 //! #[async_trait::async_trait]
@@ -50,11 +50,10 @@
 //!         }
 //!     }
 //! }
-//!
 //! ```
 use std::collections::HashMap;
-use validator::ValidationError;
-use validator::ValidationErrors;
+
+use validator::{ValidationError, ValidationErrors};
 
 use crate::model::ModelValidation;
 
@@ -111,11 +110,12 @@ pub fn into_db_error(errors: ValidationErrors) -> sea_orm::DbErr {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
     use insta::assert_debug_snapshot;
     use rstest::rstest;
     use serde::Deserialize;
     use validator::Validate;
+
+    use super::*;
 
     #[derive(Debug, Validate, Deserialize)]
     pub struct TestValidator {

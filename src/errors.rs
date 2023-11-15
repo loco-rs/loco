@@ -1,9 +1,8 @@
 //! # Application Error Handling
 
 use axum::http::StatusCode;
-use lettre::{address::AddressError, transport::smtp};
-
 use config::ConfigError;
+use lettre::{address::AddressError, transport::smtp};
 
 use crate::{controller::ErrorDetail, model::ModelError};
 

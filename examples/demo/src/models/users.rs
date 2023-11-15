@@ -1,5 +1,4 @@
 // TODO(review): base components must be re-exported
-pub use super::_entities::users::{self, ActiveModel, Entity, Model};
 use framework::{
     auth,
     model::{ModelError, ModelResult},
@@ -11,6 +10,8 @@ use sea_orm::{
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+pub use super::_entities::users::{self, ActiveModel, Entity, Model};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct LoginParams {
@@ -134,8 +135,8 @@ impl super::_entities::users::Model {
 
         let password_hash = auth::hash_password(&params.password)?;
         let user = users::ActiveModel {
-            //TODO(review): there might be a 'trick' to moves between params and partial ActiveValue values
-            // to save this rhs-lhs coding
+            //TODO(review): there might be a 'trick' to moves between params and partial
+            // ActiveValue values to save this rhs-lhs coding
             email: ActiveValue::set(params.email.to_string()),
             password: ActiveValue::set(password_hash),
             name: ActiveValue::set(params.name.to_string()),

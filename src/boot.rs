@@ -1,5 +1,6 @@
 //! # Application Bootstrapping and Logic
-//! This module contains functions and structures for bootstrapping and running your application.
+//! This module contains functions and structures for bootstrapping and running
+//! your application.
 //!
 //! # Example
 //!
@@ -50,7 +51,6 @@
 //!
 //! let boot_result = boot::create_app::<App, Migrator>(StartMode::ServerAndWorker, "development");
 //! ```
-//!
 use std::{collections::BTreeMap, str::FromStr};
 
 use axum::Router;
@@ -73,7 +73,8 @@ use crate::{
 
 /// Represents the application startup mode.
 pub enum StartMode {
-    /// Run the application as a server only. when running web server only, workers job will not handle.
+    /// Run the application as a server only. when running web server only,
+    /// workers job will not handle.
     ServerOnly,
     /// Run the application web server and the worker in the same process.
     ServerAndWorker,
@@ -91,7 +92,8 @@ pub struct BootResult {
 
 /// Runs the application based on the provided `BootResult`.
 ///
-/// This function is responsible for starting the application, including the server and/or workers.
+/// This function is responsible for starting the application, including the
+/// server and/or workers.
 ///
 /// # Errors
 ///
@@ -166,7 +168,8 @@ pub enum RunDbCommand {
     Status,
     /// Generate entity.
     Entities,
-    /// Truncate tables, by executing the implementation in [`Hooks::seed`] (without dropping).
+    /// Truncate tables, by executing the implementation in [`Hooks::seed`]
+    /// (without dropping).
     Truncate,
 }
 
@@ -174,7 +177,8 @@ pub enum RunDbCommand {
 ///
 /// # Errors
 ///
-/// Return an error when the given command fails. mostly return [`sea_orm::DbErr`]
+/// Return an error when the given command fails. mostly return
+/// [`sea_orm::DbErr`]
 pub async fn run_db<H: Hooks, M: MigratorTrait>(
     app_context: &AppContext,
     cmd: RunDbCommand,
@@ -214,7 +218,8 @@ async fn serve(app: Router, config: &Config) -> Result<()> {
     Ok(())
 }
 
-/// Initializes the application context by loading configuration and establishing connections.
+/// Initializes the application context by loading configuration and
+/// establishing connections.
 ///
 /// # Errors
 /// When has an error to create DB connection.
@@ -317,7 +322,8 @@ fn create_processor<H: Hooks>(app_context: &AppContext) -> Result<Processor> {
     Ok(p)
 }
 
-/// Initializes an [`EmailSender`] based on the mailer configuration settings ([`config::Mailer`]).
+/// Initializes an [`EmailSender`] based on the mailer configuration settings
+/// ([`config::Mailer`]).
 fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
     if let Some(smtp) = config.smtp.as_ref() {
         if smtp.enable {
@@ -327,7 +333,8 @@ fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
     Ok(None)
 }
 
-/// Establishes a connection to a Redis server based on the provided configuration settings.
+/// Establishes a connection to a Redis server based on the provided
+/// configuration settings.
 async fn connect_redis(config: &Config) -> Option<Pool<RedisConnectionManager>> {
     if let Some(redis) = &config.redis {
         let manager = RedisConnectionManager::new(redis.uri.clone()).unwrap();

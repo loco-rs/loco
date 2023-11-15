@@ -1,6 +1,7 @@
 //! # JSON Web Token (JWT) and Password Hashing
 //!
-//! This module provides functionality for working with JSON Web Tokens (JWTs) and password hashing.
+//! This module provides functionality for working with JSON Web Tokens (JWTs)
+//! and password hashing.
 
 use bcrypt::BcryptResult;
 use jsonwebtoken::{
@@ -53,7 +54,8 @@ impl JWT {
     ///
     /// # Errors
     ///
-    /// returns [`JWTResult`] error when could not generate JWT token. can be an invalid secret.
+    /// returns [`JWTResult`] error when could not generate JWT token. can be an
+    /// invalid secret.
     ///
     /// # Example
     /// ```rust
@@ -81,7 +83,8 @@ impl JWT {
     ///
     /// # Errors
     ///
-    /// returns [`JWTResult`] error when could not convert the given token to [`UserClaims`], if the `secret` is invalid or token is expired.
+    /// returns [`JWTResult`] error when could not convert the given token to
+    /// [`UserClaims`], if the `secret` is invalid or token is expired.
     ///
     /// # Example
     /// ```rust
@@ -135,9 +138,10 @@ pub fn verify_password(pass: &str, hashed_password: &str) -> BcryptResult<bool> 
 #[cfg(test)]
 mod tests {
 
-    use super::*;
     use insta::{assert_debug_snapshot, with_settings};
     use rstest::rstest;
+
+    use super::*;
 
     #[rstest]
     #[case("valid token", 60)]

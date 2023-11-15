@@ -1,6 +1,7 @@
-//! This module defines a template rendering mechanism for generating email content using Tera templates.
-//! It includes functions to read embedded template files, a `Content` struct to hold email content,
-//! and a `Template` struct to manage template rendering.
+//! This module defines a template rendering mechanism for generating email
+//! content using Tera templates. It includes functions to read embedded
+//! template files, a `Content` struct to hold email content, and a `Template`
+//! struct to manage template rendering.
 //!
 //! # Example
 //!
@@ -12,11 +13,11 @@
 //! let args = serde_json::json!({"name": "framework"});
 //! let content = Template::new("contnt").render(&args);
 //! ```
-//!
 
-use crate::{errors::Error, Result};
 use include_dir::Dir;
 use tera::{Context, Tera};
+
+use crate::{errors::Error, Result};
 
 /// The filename for the subject template file.
 const SUBJECT: &str = "subject.t";
@@ -25,7 +26,8 @@ const HTML: &str = "html.t";
 /// The filename for the plain text template file.
 const TEXT: &str = "text.t";
 
-/// Reads an embedded file from the provided directory and returns its content as a string.
+/// Reads an embedded file from the provided directory and returns its content
+/// as a string.
 fn embedded_file(dir: &Dir<'_>, name: &str) -> Result<String> {
     Ok(String::from_utf8_lossy(
         dir.get_file(name)
@@ -35,7 +37,8 @@ fn embedded_file(dir: &Dir<'_>, name: &str) -> Result<String> {
     .to_string())
 }
 
-/// A structure representing the content of an email, including subject, text, and HTML.
+/// A structure representing the content of an email, including subject, text,
+/// and HTML.
 #[derive(Clone, Debug)]
 pub struct Content {
     pub subject: String,
@@ -56,7 +59,8 @@ impl<'a> Template<'a> {
         Self { dir }
     }
 
-    /// Renders the email content based on the provided locals using the embedded templates.
+    /// Renders the email content based on the provided locals using the
+    /// embedded templates.
     pub fn render(&self, locals: &serde_json::Value) -> Result<Content> {
         let subject_t = embedded_file(self.dir, SUBJECT)?;
         let text_t = embedded_file(self.dir, TEXT)?;
@@ -78,9 +82,10 @@ impl<'a> Template<'a> {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
     use include_dir::include_dir;
     use insta::assert_debug_snapshot;
+
+    use super::*;
 
     #[test]
     fn can_render_template() {

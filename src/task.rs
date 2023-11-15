@@ -1,7 +1,7 @@
 //! # Task Management Module
 //!
-//! This module defines the task management framework used to manage and execute tasks in a web server application.
-//!
+//! This module defines the task management framework used to manage and execute
+//! tasks in a web server application.
 use std::collections::BTreeMap;
 
 use async_trait::async_trait;
@@ -41,7 +41,8 @@ impl Tasks {
     ///
     /// # Errors
     ///
-    /// Returns a [`Result`] if an task finished with error. mostly if the given task is not found or an error to run the task.s
+    /// Returns a [`Result`] if an task finished with error. mostly if the given
+    /// task is not found or an error to run the task.s
     pub async fn run(
         &self,
         app_context: &AppContext,

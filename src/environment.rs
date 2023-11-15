@@ -11,14 +11,12 @@
 //!  let environment = Environment::from_str(environment).unwrap_or(Environment::Any(environment.to_string()));
 //!  let config = environment.load().expect("failed to load environment");
 //! }
-//!
 //! ```
-//!
+use std::{path::Path, str::FromStr};
+
 use config::ConfigError;
 use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
-use std::path::Path;
-use std::str::FromStr;
 
 use super::config::Config;
 
@@ -39,7 +37,8 @@ impl Environment {
     ///
     /// # Errors
     ///
-    /// Returns a [`ConfigError`] if an error occurs during loading configuration file an parse into [`Config`] struct.
+    /// Returns a [`ConfigError`] if an error occurs during loading
+    /// configuration file an parse into [`Config`] struct.
     pub fn load(&self) -> Result<Config, ConfigError> {
         Config::new(self)
     }
@@ -48,7 +47,8 @@ impl Environment {
     ///
     /// # Errors
     ///
-    /// Returns a [`ConfigError`] if an error occurs during loading configuration file an parse into [`Config`] struct.
+    /// Returns a [`ConfigError`] if an error occurs during loading
+    /// configuration file an parse into [`Config`] struct.
     pub fn load_from_folder(&self, path: &Path) -> Result<Config, ConfigError> {
         Config::from_folder(self, path)
     }
@@ -69,7 +69,8 @@ impl FromStr for Environment {
             "development" => Ok(Self::Development),
             "test" => Ok(Self::Test),
             _ => Err(
-                " error parsing environment: expected one of  \"production\", \"development\", \"test\" or any environment that has config file",
+                " error parsing environment: expected one of  \"production\", \"development\", \
+                 \"test\" or any environment that has config file",
             ),
         }
     }

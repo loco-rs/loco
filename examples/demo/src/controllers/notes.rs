@@ -1,6 +1,5 @@
 #![allow(clippy::unused_async)]
 use axum::{extract::State, routing::get};
-
 use framework::{
     app::AppContext,
     controller::{format, Routes},
@@ -28,9 +27,9 @@ pub async fn bench_hello(_req_body: String) -> Result<String> {
 
 /// Benchmark function for database operations.
 ///
-/// This function is used to benchmark database operations by performing a simple
-/// query to retrieve a user entity by ID. It utilizes the `Entity::find_by_id` method
-/// provided by the `users` module.
+/// This function is used to benchmark database operations by performing a
+/// simple query to retrieve a user entity by ID. It utilizes the
+/// `Entity::find_by_id` method provided by the `users` module.
 ///
 /// # Errors
 ///
@@ -49,7 +48,8 @@ pub async fn echo(req_body: String) -> String {
 ///
 /// # Errors
 ///
-/// when send welcome message fails or there is an error when preform download task
+/// when send welcome message fails or there is an error when preform download
+/// task
 pub async fn hello(State(ctx): State<AppContext>) -> Result<String> {
     DownloadWorker::perform_later(
         &ctx,

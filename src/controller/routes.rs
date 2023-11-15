@@ -20,14 +20,16 @@ impl Routes {
         Self::default()
     }
 
-    /// Set a prefix for the routes. this prefix will be a prefix for all the routes.
+    /// Set a prefix for the routes. this prefix will be a prefix for all the
+    /// routes.
     ///
     /// # Example
     ///
-    /// In the following example the we are adding `status`  as a prefix to the _ping endpoint HOST/status/_ping.
+    /// In the following example the we are adding `status`  as a prefix to the
+    /// _ping endpoint HOST/status/_ping.
     ///
     /// ```rust
-    ///
+    /// 
     /// use framework::{
     ///     controller::{Routes, format},
     ///     Result,
@@ -61,7 +63,7 @@ impl Routes {
     /// This example preset how to add a get endpoint int the Router.
     ///
     /// ```rust
-    ///
+    /// 
     /// use framework::{
     ///     Result,
     ///     controller::{Routes, format},
@@ -89,14 +91,16 @@ impl Routes {
         self
     }
 
-    /// Set a prefix for the routes. this prefix will be a prefix for all the routes.
+    /// Set a prefix for the routes. this prefix will be a prefix for all the
+    /// routes.
     ///
     /// # Example
     ///
-    /// In the following example the we are adding `status`  as a prefix to the _ping endpoint HOST/status/_ping.
+    /// In the following example the we are adding `status`  as a prefix to the
+    /// _ping endpoint HOST/status/_ping.
     ///
     /// ```rust
-    ///
+    /// 
     /// use framework::{
     ///     controller::{Routes, format},
     ///     Result,

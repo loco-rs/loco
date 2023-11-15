@@ -1,13 +1,15 @@
 //! # Database Table Schema Helpers
 //!
-//! This module defines functions and helpers for creating database table schemas using the `sea-orm` and `sea-query` libraries.
+//! This module defines functions and helpers for creating database table
+//! schemas using the `sea-orm` and `sea-query` libraries.
 //!
 //! # Example
 //!
-//! The following example shows how the user migration file should be and using the schema helpers to create the Db fields.
+//! The following example shows how the user migration file should be and using
+//! the schema helpers to create the Db fields.
 //!
 //! ```rust
-//!
+//! 
 //! use framework::schema::*;
 //! use sea_orm_migration::prelude::*;
 //! use std::borrow::BorrowMut;
@@ -52,8 +54,7 @@
 //! ```
 
 use sea_orm::sea_query::{ColumnDef, Expr, IntoIden, Table, TableCreateStatement};
-use sea_orm_migration::prelude::Iden;
-use sea_orm_migration::sea_query;
+use sea_orm_migration::{prelude::Iden, sea_query};
 
 #[derive(Iden)]
 enum GeneralIds {

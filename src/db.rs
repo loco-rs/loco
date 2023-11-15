@@ -1,25 +1,27 @@
 //! # Database Operations
 //!
-//! This module defines functions and operations related to the application's database interactions.
-//!
-use crate::{app::Hooks, config};
+//! This module defines functions and operations related to the application's
+//! database interactions.
+use std::fs::File;
 
-use super::Result as AppResult;
 use duct::cmd;
 use sea_orm::{
     ActiveModelTrait, ConnectOptions, Database, DatabaseConnection, DbConn, EntityTrait,
     IntoActiveModel,
 };
 use sea_orm_migration::MigratorTrait;
-use std::fs::File;
 use tracing::info;
+
+use super::Result as AppResult;
+use crate::{app::Hooks, config};
 
 /// converge database logic
 ///
 /// # Errors
 ///
 ///  an `AppResult`, which is an alias for `Result<(), AppError>`. It may
-/// return an `AppError` variant representing different database operation failures.
+/// return an `AppError` variant representing different database operation
+/// failures.
 pub async fn converge<H: Hooks, M: MigratorTrait>(
     db: &DatabaseConnection,
     config: &config::Database,
@@ -42,11 +44,13 @@ pub async fn converge<H: Hooks, M: MigratorTrait>(
     Ok(())
 }
 
-/// Establish a connection to the database using the provided configuration settings.
+/// Establish a connection to the database using the provided configuration
+/// settings.
 ///
 /// # Errors
 ///
-/// Returns a [`sea_orm::DbErr`] if an error occurs during the database connection establishment.
+/// Returns a [`sea_orm::DbErr`] if an error occurs during the database
+/// connection establishment.
 pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr> {
     let mut opt = ConnectOptions::new(&config.uri);
     opt.max_connections(config.max_connections)
@@ -74,7 +78,8 @@ pub async fn status<M: MigratorTrait>(db: &DatabaseConnection) -> Result<(), sea
     M::status(db).await
 }
 
-/// Reset the database, dropping and recreating the schema and applying migrations.
+/// Reset the database, dropping and recreating the schema and applying
+/// migrations.
 ///
 /// # Errors
 ///
@@ -91,7 +96,8 @@ pub async fn reset<M: MigratorTrait>(db: &DatabaseConnection) -> Result<(), sea_
 ///
 /// # Errors
 ///
-/// Returns a [`AppResult`] if could not render the path content into [`Vec<serde_json::Value>`] or could not inset the vector to DB.
+/// Returns a [`AppResult`] if could not render the path content into
+/// [`Vec<serde_json::Value>`] or could not inset the vector to DB.
 #[allow(clippy::type_repetition_in_bounds)]
 pub async fn seed<A>(db: &DatabaseConnection, path: &str) -> AppResult<()>
 where

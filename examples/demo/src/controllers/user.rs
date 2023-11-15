@@ -1,12 +1,11 @@
-use crate::models::_entities::users;
-use crate::views::user::CurrentResponse;
 use axum::{extract::State, routing::get, Json};
 use framework::{
     app::AppContext,
-    controller::middleware,
-    controller::{format, Routes},
+    controller::{format, middleware, Routes},
     Result,
 };
+
+use crate::{models::_entities::users, views::user::CurrentResponse};
 
 async fn current(
     auth: middleware::auth::Auth,

@@ -1,23 +1,23 @@
-//! This module defines the email-related functionality, including the `Mailer` trait and its
-//! implementation, `Email` structure, and the `MailerWorker` for asynchronous email processing.
+//! This module defines the email-related functionality, including the `Mailer`
+//! trait and its implementation, `Email` structure, and the `MailerWorker` for
+//! asynchronous email processing.
 
 mod email_sender;
 mod template;
 
 use async_trait::async_trait;
+pub use email_sender::EmailSender;
 use include_dir::Dir;
 use serde::{Deserialize, Serialize};
 use sidekiq::Worker;
 
 use self::template::Template;
-
 use super::{app::AppContext, worker::AppWorker, Result};
-
-pub use email_sender::EmailSender;
 
 pub const DEFAULT_FROM_SENDER: &str = "System <system@example.com>";
 
-/// The arguments struct for specifying email details such as sender, recipient, reply-to, and locals.
+/// The arguments struct for specifying email details such as sender, recipient,
+/// reply-to, and locals.
 #[derive(Debug, Clone, Default)]
 pub struct Args {
     pub from: Option<String>,
@@ -51,7 +51,8 @@ pub struct MailerOpts {
     reply_to: Option<String>,
 }
 
-/// The `Mailer` trait defines methods for sending emails and processing email templates.
+/// The `Mailer` trait defines methods for sending emails and processing email
+/// templates.
 #[async_trait]
 pub trait Mailer {
     /// Returns default options for the mailer.
@@ -77,7 +78,8 @@ pub trait Mailer {
         Ok(())
     }
 
-    /// Renders and sends an email using the provided [`AppContext`], template directory, and arguments.
+    /// Renders and sends an email using the provided [`AppContext`], template
+    /// directory, and arguments.
     async fn mail_template(ctx: &AppContext, dir: &Dir<'_>, args: Args) -> Result<()> {
         let content = Template::new(dir).render(&args.locals)?;
         Self::mail(
@@ -95,7 +97,8 @@ pub trait Mailer {
     }
 }
 
-/// The [`MailerWorker`] struct represents a worker responsible for asynchronous email processing.
+/// The [`MailerWorker`] struct represents a worker responsible for asynchronous
+/// email processing.
 #[allow(clippy::module_name_repetitions)]
 pub struct MailerWorker {
     pub ctx: AppContext,
@@ -118,7 +121,8 @@ impl Worker<Email> for MailerWorker {
         sidekiq::WorkerOpts::new().queue("mailer")
     }
 
-    /// Performs the email sending operation using the provided [`AppContext`] and email details.
+    /// Performs the email sending operation using the provided [`AppContext`]
+    /// and email details.
     async fn perform(&self, email: Email) -> sidekiq::Result<()> {
         if let Some(mailer) = &self.ctx.mailer {
             Ok(mailer.mail(&email).await.map_err(Box::from)?)
