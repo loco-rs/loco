@@ -1,0 +1,19 @@
+use crate::models::_entities::users;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct LoginResponse {
+    pub token: String,
+    pub pid: String,
+    pub name: String,
+}
+
+impl LoginResponse {
+    pub fn new(user: &users::Model, token: &String) -> Self {
+        Self {
+            token: token.to_string(),
+            pid: user.pid.to_string(),
+            name: user.name.clone(),
+        }
+    }
+}

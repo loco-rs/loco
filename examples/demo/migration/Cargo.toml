@@ -1,0 +1,30 @@
+[package]
+name = "migration"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "migration"
+path = "src/lib.rs"
+
+[dependencies]
+async-std = { version = "1", features = ["attributes", "tokio1"] }
+framework = { version = "*", path = "../../../" }
+
+[dependencies.sea-orm-migration]
+version = "0.12.4"
+features = [
+  # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.
+  # View the list of supported features at https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime.
+  # e.g.
+  "runtime-tokio-rustls", # `ASYNC_RUNTIME` feature
+]
+[patch.crates-io]
+# see https://github.com/heim-rs/darwin-libproc/pull/9
+# rusty-sidekiq needs robotty/simple-process-stats which depends on darwin-libproc, which depends on
+# a too old memchr version which sqlx needs. because libproc is native and not pure rust,
+# cargo cannot resolve it. so we patch the libproc dependency.
+# since simple_process_stats use by rusty-sidekiq is minimal, its better to replace it with something
+# that has more velocity on updating dependencies.
+darwin-libproc = { git = "https://github.com/codota/darwin-libproc" }

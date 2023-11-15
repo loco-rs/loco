@@ -1,0 +1,28 @@
+---
+source: tests/requests/main.rs
+expression: res
+---
+TestResponse {
+    user_requested_path: "/auth/login",
+    full_request_url: Url {
+        scheme: "http",
+        cannot_be_a_base: false,
+        username: "",
+        password: None,
+        host: Some(
+            Domain(
+                "localhost",
+            ),
+        ),
+        port: None,
+        path: "/auth/login",
+        query: None,
+        fragment: None,
+    },
+    headers: {
+        "content-type": "application/json",
+        "content-length": "91",
+    },
+    status_code: 401,
+    response_body: b"{\"error\":\"unauthorized\",\"description\":\"You do not have permission to access this resource\"}",
+}

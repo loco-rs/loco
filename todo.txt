@@ -1,0 +1,58 @@
+
+[ ] auth implement missing flows
+ (see flows in hyperstack)
+ [ ] reset passwd flow (incl. emails)
+ [ ] verify user flows (incl. emails)
+
+[ ] auth emails:
+build a reasonably real auth emails: 
+- base url link goes back to app to the correct controller
+
+
+[ ] review error flows (controller) in register, login, something 
+doesnt sit right
+
+ 
+[ ] explore a testing rig: models  (incl db reset, setup, etc)
+ - see how its done in eladka
+   [ ] test rig
+
+   test/
+      requests/
+      models/
+         (requires database flushing/ truncate)
+      workers/
+
+   - mailer test mode
+
+[ ] cleanups, API, import surface area 
+[ ] experiment with writing docs -- does it make sense ?
+ - example first, add micro-examples for typical tasks
+ (forms, validation, etc)
+
+
+
+
+tech debt (infa)
+================
+
+[ ] take care of libproc patch in sidekiq-rs
+right now all cargo.tomls are patched to workaround sidekiq-rs stats issue (using a too old lib that 
+conflicts with sqlx). need to refactor or get rid of that.
+
+
+Eladk:
+[ ] testing snapsot saved in framework and not in the src
+[ ] Print Details when Booting the App. for example server ip environment relevant context server mode etc...
+[ ] move DB configuration into db connect ops
+[ ] Expose sea_orm to Framework: The sea_orm library is now exposed to the framework
+[ ] creating example with custom task from the app and not only from the framework  
+[ ] adding testing feature to cargo.toml?
+[ ] Maybe adding clap as a feature to cargo.toml?
+[ ] Adding tracing subscriber as a default
+[ ] Addin github CI
+
+ 
+
+
+  

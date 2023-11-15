@@ -1,0 +1,42 @@
+logger:
+  enable: true
+  level: info
+  format: compact
+  # filters:
+  #   - sea_orm_migration=error
+server:
+  port: 3000
+  middlewares:
+    limit_payload:
+      enable: true
+      body_limit: 5mb
+    logger:
+      enable: true
+    catch_panic:
+      enable: true
+workers:
+  mode: BackgroundQueue
+mailer:
+  smtp:
+    enable: true
+    host: localhost
+    port: 1025
+    secure: false
+    # auth:
+    #   user:
+    #   password:
+database:
+  uri: postgres://localhost:5432/rr_app
+  # uri: sqlite://db.sqlite?mode=rwc
+  enable_logging: false
+  min_connections: 1
+  max_connections: 1
+  auto_migrate: true
+  dangerously_truncate: true
+  dangerously_recreate: true
+redis:
+  uri: redis://127.0.0.1/
+  dangerously_flush: false
+auth:
+  secret: PqRwLF2rhHe8J22oBeHy
+  expiration: 604800

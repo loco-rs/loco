@@ -1,0 +1,56 @@
+[package]
+name = "blo"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+framework = { version = "*", path = "../../" }
+
+serde = "*"
+serde_json = "*"
+eyre = "*"
+tokio = { version = "1.33.0", features = ["full"] }
+async-trait = "0.1.74"
+tracing = "0.1.40"
+chrono = "*"
+validator = { version = "*" }
+
+# TODO(review): check if can use this crate from the framework
+sea-orm = { version = "0.12.4", features = [
+  "sqlx-postgres",
+  "runtime-tokio-rustls",
+  "macros",
+] }
+migration = { path = "migration" }
+
+
+axum = "*"
+include_dir = "*"
+uuid = { version = "*", features = ["v4"] }
+
+# cli
+tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
+
+# TODO: this is required by test-utils remove once,
+# test-utils migrated into "framework::testing"
+lazy_static = "*"
+
+# TODO: this is required by test-utils. when we should move thie test-utils into the framework and creating a feature called testing
+insta = { version = "*", features = ["redactions", "yaml", "filters"] }
+
+[patch.crates-io]
+# see https://github.com/heim-rs/darwin-libproc/pull/9
+# rusty-sidekiq needs robotty/simple-process-stats which depends on darwin-libproc, which depends on
+# a too old memchr version which sqlx needs. because libproc is native and not pure rust,
+# cargo cannot resolve it. so we patch the libproc dependency.
+# since simple_process_stats use by rusty-sidekiq is minimal, its better to replace it with something
+# that has more velocity on updating dependencies.
+darwin-libproc = { git = "https://github.com/codota/darwin-libproc" }
+
+
+[dev-dependencies]
+serial_test = "*"
+rstest = "*"

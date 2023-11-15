@@ -1,0 +1,17 @@
+---
+source: tests/requests/main.rs
+expression: saved_user
+---
+Ok(
+    Model {
+        created_at: DATE,
+        updated_at: DATE,
+        id: ID
+        pid: PID,
+        email: "test@framework.com",
+        password: "PASSWORD",
+        name: "framework",
+        reset_token: None,
+        reset_sent_at: None,
+    },
+)

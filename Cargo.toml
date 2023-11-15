@@ -1,0 +1,105 @@
+[package]
+name = "framework"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ["auth"]
+
+auth = ["dep:jsonwebtoken", "dep:bcrypt"]
+
+[dependencies]
+
+eyre = "*"
+
+# cli
+clap = { version = "4.4.7", features = ["derive"] }
+
+sea-orm = { version = "0.12.4", features = [
+  "sqlx-postgres",        # `DATABASE_DRIVER` feature
+  "sqlx-sqlite",
+  "sqlx-mysql",
+  "runtime-tokio-rustls",
+  "macros",
+] }
+tokio = { version = "1.33.0", features = ["full"] }
+# the rest
+sqlx = "*"
+
+serde = "*"
+serde_json = "*"
+serde_yaml = "*"
+serde_variant = "*"
+
+# worker fwk 
+rusty-sidekiq = { git = "https://github.com/kaplanelad/sidekiq-rs", branch = "expose-rdis-lib" }
+async-trait = "0.1.74"
+bb8 = "*"
+
+axum = "*"
+regex = "*"
+lazy_static = "*"
+# mailer
+tera = "*"
+lettre = { version = "*", default-features = false, features = [
+  "builder",
+  "hostname",
+  "smtp-transport",
+  "tokio1-rustls-tls",
+] }
+include_dir = "*"
+thiserror = "*"
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
+
+
+# cli/migrations
+duct = "*"
+
+# _meta.rs: schema discovery for truncate
+# sea-schema = { version = "*", features = ["runtime-tokio-rustls", "sqlx-all"] }
+# sqlx = { version = "0.7.2", default-features = false, features = [
+#   "mysql",
+#   "postgres",
+# ] }
+# url = "*"
+
+config = "0.13.3"
+tower-http = { version = "*", features = ["trace", "catch-panic"] }
+tower-request-id = "0.2.1"
+byte-unit = "*"
+
+jsonwebtoken = { version = "*", optional = true }
+bcrypt = { version = "*", optional = true }
+validator = { version = "*", features = ["derive"] }
+
+# these two are test deps
+axum-test = "*"
+
+[dependencies.sea-orm-migration]
+version = "0.12.4"
+features = [
+  # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.
+  # View the list of supported features at https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime.
+  # e.g.
+  "runtime-tokio-rustls", # `ASYNC_RUNTIME` feature
+  "sqlx-postgres",        # `DATABASE_DRIVER` feature
+  "sqlx-sqlite",
+  "sqlx-mysql",
+]
+
+
+[patch.crates-io]
+# see https://github.com/heim-rs/darwin-libproc/pull/9
+# rusty-sidekiq needs robotty/simple-process-stats which depends on darwin-libproc, which depends on
+# a too old memchr version which sqlx needs. because libproc is native and not pure rust,
+# cargo cannot resolve it. so we patch the libproc dependency.
+# since simple_process_stats use by rusty-sidekiq is minimal, its better to replace it with something
+# that has more velocity on updating dependencies.
+darwin-libproc = { git = "https://github.com/codota/darwin-libproc" }
+
+[dev-dependencies]
+rstest = "*"
+insta = { version = "*", features = ["redactions", "yaml", "filters"] }
