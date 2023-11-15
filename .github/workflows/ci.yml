@@ -11,7 +11,6 @@ env:
   TOOLCHAIN_PROFILE: minimal
 
 jobs:
-  #### Testing the lib
   rustfmt:
     name: Check Style
     runs-on: ubuntu-latest
@@ -28,7 +27,8 @@ jobs:
           toolchain: nightly
           override: true
           components: rustfmt
-      - uses: actions-rs/cargo@v1
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
