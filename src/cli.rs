@@ -1,10 +1,11 @@
 //! command-line interface for running various tasks and commands
-//! related to the application. It allows developers to interact with the application via the command line.
+//! related to the application. It allows developers to interact with the
+//! application via the command line.
 //!
 //! # Example
 //!
 //! ```rust,ignore
-//!
+//! 
 //! use myapp::app::App;
 //! use framework::cli;
 //! use migration::Migrator;
@@ -17,13 +18,13 @@
 
 use std::collections::BTreeMap;
 
+use clap::{Parser, Subcommand};
+use sea_orm_migration::MigratorTrait;
+
 use crate::{
     app::Hooks,
     boot::{create_app, create_context, run_db, run_task, start, RunDbCommand, StartMode},
 };
-
-use clap::{Parser, Subcommand};
-use sea_orm_migration::MigratorTrait;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -104,10 +105,11 @@ where
 
 /// # Main CLI Function
 ///
-/// The `main` function is the entry point for the command-line interface (CLI) of the application.
-/// It parses command-line arguments, interprets the specified commands, and performs corresponding actions.
-/// This function is generic over `H` and `M`, where `H` represents the application hooks and `M` represents
-/// the migrator trait for handling database migrations.
+/// The `main` function is the entry point for the command-line interface (CLI)
+/// of the application. It parses command-line arguments, interprets the
+/// specified commands, and performs corresponding actions. This function is
+/// generic over `H` and `M`, where `H` represents the application hooks and `M`
+/// represents the migrator trait for handling database migrations.
 ///
 /// # Errors
 ///

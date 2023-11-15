@@ -2,8 +2,9 @@
 //!
 //! # Example
 //!
-//! This example you can adding custom routes into your application by implementing routes trait from [`crate::app::Hooks`]
-//! and adding your endpoints to your application
+//! This example you can adding custom routes into your application by
+//! implementing routes trait from [`crate::app::Hooks`] and adding your
+//! endpoints to your application
 //!
 //! ```rust
 //! use async_trait::async_trait;
@@ -68,7 +69,8 @@ use crate::{errors::Error, Result};
 
 /// Create an unauthorized error with a specified message.
 ///
-/// This function is used to generate an `Error::Unauthorized` variant with a custom message.
+/// This function is used to generate an `Error::Unauthorized` variant with a
+/// custom message.
 ///
 /// # Errors
 ///

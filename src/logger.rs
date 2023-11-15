@@ -1,9 +1,9 @@
 //! initialization application logger.
-use crate::config;
 use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
-
 use tracing_subscriber::EnvFilter;
+
+use crate::config;
 
 // Define an enumeration for log levels
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]

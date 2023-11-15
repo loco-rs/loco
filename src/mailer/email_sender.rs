@@ -1,15 +1,17 @@
-//! This module defines an [`EmailSender`] responsible for sending emails using either the SMTP
-//! protocol. It includes an asynchronous method `mail` for sending
-//! emails with options like sender, recipient, subject, and content.
+//! This module defines an [`EmailSender`] responsible for sending emails using
+//! either the SMTP protocol. It includes an asynchronous method `mail` for
+//! sending emails with options like sender, recipient, subject, and content.
 
-use super::{Email, Result, DEFAULT_FROM_SENDER};
-use crate::{config, errors::Error};
 use lettre::{
     message::MultiPart, transport::smtp::authentication::Credentials, AsyncTransport, Message,
     Tokio1Executor, Transport,
 };
 
-/// An enumeration representing the possible transport methods for sending emails.
+use super::{Email, Result, DEFAULT_FROM_SENDER};
+use crate::{config, errors::Error};
+
+/// An enumeration representing the possible transport methods for sending
+/// emails.
 #[derive(Clone)]
 pub enum EmailTransport {
     /// SMTP (Simple Mail Transfer Protocol) transport.
@@ -18,14 +20,16 @@ pub enum EmailTransport {
     Test(lettre::transport::stub::StubTransport),
 }
 
-/// A structure representing the email sender, encapsulating the chosen transport method.
+/// A structure representing the email sender, encapsulating the chosen
+/// transport method.
 #[derive(Clone)]
 pub struct EmailSender {
     pub transport: EmailTransport,
 }
 
 impl EmailSender {
-    /// Creates a new `EmailSender` using the SMTP transport method based on the provided SMTP configuration.
+    /// Creates a new `EmailSender` using the SMTP transport method based on the
+    /// provided SMTP configuration.
     ///
     /// # Errors
     ///
@@ -98,9 +102,10 @@ impl EmailSender {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
     use insta::{assert_debug_snapshot, with_settings};
     use lettre::transport::stub::StubTransport;
+
+    use super::*;
 
     #[tokio::test]
     async fn can_send_email() {

@@ -1,10 +1,11 @@
-//! This module contains utility functions for generating HTTP responses that are commonly used
-//! in web applications. These functions simplify the process of creating responses with various
-//! data types.
+//! This module contains utility functions for generating HTTP responses that
+//! are commonly used in web applications. These functions simplify the process
+//! of creating responses with various data types.
 //!
 //! # Example:
 //!
-//! This example illustrates how to construct a JSON-formatted response using a Rust struct.
+//! This example illustrates how to construct a JSON-formatted response using a
+//! Rust struct.
 //!
 //! ```rust
 //! use framework::{controller::format, Result};
@@ -19,8 +20,9 @@
 //! }
 //! ```
 
-use crate::Result;
 use axum::Json;
+
+use crate::Result;
 
 /// Returns an empty response.
 ///
@@ -37,7 +39,8 @@ use axum::Json;
 ///
 /// # Errors
 ///
-/// Currently this function did't return any error. this is for feature functionality
+/// Currently this function did't return any error. this is for feature
+/// functionality
 pub fn empty() -> Result<()> {
     Ok(())
 }
@@ -57,7 +60,8 @@ pub fn empty() -> Result<()> {
 ///
 /// # Errors
 ///
-/// Currently this function did't return any error. this is for feature functionality
+/// Currently this function did't return any error. this is for feature
+/// functionality
 pub fn text(t: &str) -> Result<String> {
     Ok(t.to_string())
 }
@@ -66,9 +70,14 @@ pub fn text(t: &str) -> Result<String> {
 ///
 /// # Example:
 ///
-/// This example illustrates how to construct a JSON-formatted response using a Rust struct.
+/// This example illustrates how to construct a JSON-formatted response using a
+/// Rust struct.
+///
 /// ```rust
-/// use framework::{controller::format, Result};
+/// use framework::{
+///     controller::format,
+///     Result,
+/// };
 /// use axum::Json;
 ///
 /// pub struct Health {
@@ -82,7 +91,8 @@ pub fn text(t: &str) -> Result<String> {
 ///
 /// # Errors
 ///
-/// Currently this function did't return any error. this is for feature functionality
+/// Currently this function did't return any error. this is for feature
+/// functionality
 pub fn json<T>(t: T) -> Result<Json<T>> {
     Ok(Json(t))
 }

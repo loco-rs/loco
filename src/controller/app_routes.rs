@@ -1,11 +1,9 @@
-//! This module defines the [`AppRoutes`] struct that is responsible for configuring routes
-//! in an Axum application. It allows you to define route prefixes, add routes, and configure
-//! middlewares for the application.
-//!
+//! This module defines the [`AppRoutes`] struct that is responsible for
+//! configuring routes in an Axum application. It allows you to define route
+//! prefixes, add routes, and configure middlewares for the application.
 
 use std::time::Duration;
 
-use crate::{app::AppContext, Result};
 use axum::{http::Request, response::Response, Router as AXRouter};
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -13,6 +11,7 @@ use tower_http::{catch_panic::CatchPanicLayer, trace::TraceLayer};
 use tower_request_id::{RequestId, RequestIdLayer};
 
 use super::{health, routes::Routes};
+use crate::{app::AppContext, Result};
 
 lazy_static! {
     static ref NORMALIZE_URL: Regex = Regex::new(r"/+").unwrap();
@@ -53,7 +52,8 @@ impl AppRoutes {
         self.routes.as_ref()
     }
 
-    /// Set a prefix for the routes. this prefix will be a prefix for all the routes.
+    /// Set a prefix for the routes. this prefix will be a prefix for all the
+    /// routes.
     ///
     /// # Example
     ///
@@ -63,7 +63,6 @@ impl AppRoutes {
     /// use framework::controller::AppRoutes;
     ///
     /// AppRoutes::with_default_routes().prefix("api");
-    ///
     /// ```
     #[must_use]
     pub fn prefix(mut self, prefix: &str) -> Self {
@@ -87,10 +86,12 @@ impl AppRoutes {
         self
     }
 
-    /// Convert the routes to an Axum Router, and set a list of middlewares that configure in the [`config::Config`]
+    /// Convert the routes to an Axum Router, and set a list of middlewares that
+    /// configure in the [`config::Config`]
     ///
     /// # Errors
-    /// Return an [`Result`] when could not convert the router setup to [`axum::Router`].
+    /// Return an [`Result`] when could not convert the router setup to
+    /// [`axum::Router`].
     pub fn to_router(&self, ctx: AppContext) -> Result<AXRouter> {
         let mut app = AXRouter::new();
         let base_url_prefix = self.get_prefix().map_or("/", |url| url.as_str());

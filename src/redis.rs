@@ -1,10 +1,11 @@
 //! # Redis Operations
 //!
-//! This module defines functions and operations related to the application's redis interactions.
-//!
-use crate::{worker::RedisConnectionManager, Result};
+//! This module defines functions and operations related to the application's
+//! redis interactions.
 use bb8::Pool;
 use sidekiq::redis_rs::cmd;
+
+use crate::{worker::RedisConnectionManager, Result};
 
 /// converge Redis logic
 pub async fn converge(

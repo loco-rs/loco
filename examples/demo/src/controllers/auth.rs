@@ -1,11 +1,14 @@
-use crate::mailers::auth::AuthMailer;
-use crate::models::users::{self, LoginParams, RegisterParams};
-use crate::views::auth::LoginResponse;
 use axum::{extract::State, routing::post, Json};
 use framework::{
     app::AppContext,
     controller::{format, unauthorized, Routes},
     Result,
+};
+
+use crate::{
+    mailers::auth::AuthMailer,
+    models::users::{self, LoginParams, RegisterParams},
+    views::auth::LoginResponse,
 };
 
 async fn register(
