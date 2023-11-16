@@ -1,13 +1,31 @@
 #![allow(clippy::missing_const_for_fn)]
 #![allow(clippy::module_name_repetitions)]
 //! `TODO::`
-//
-//
+//!
+//!
+//! ## Starting A New Project
+//!
+//! To start a new project, you can use cargo-generate:
+//!
+//! ```
+//! cargo install cargo-generate
+//! cargo generate https://github.com/rustyrails-rs/rustyrails-demo-template
+//! ```
+//!
+//! ## Available Features
+//!
+//! To avoid compiling unused dependencies, rustyrails gates certain features.
+//!
+//! | Feature   | Default | Description                 |
+//! |-----------|---------|-----------------------------|
+//! | `auth`    | true    | Enable user authentication. |
+//! | `cli`     | true    | Expose Cli commands.        |
 use self::errors::Error;
 
 pub mod db;
 
 pub mod app;
+#[cfg(feature = "cli")]
 pub mod cli;
 
 #[cfg(feature = "auth")]

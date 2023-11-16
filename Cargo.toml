@@ -6,16 +6,17 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["auth"]
+default = ["auth", "cli"]
 
 auth = ["dep:jsonwebtoken", "dep:bcrypt"]
+cli = ["dep:clap"]
 
 [dependencies]
 
 eyre = "*"
 
 # cli
-clap = { version = "4.4.7", features = ["derive"] }
+clap = { version = "4.4.7", features = ["derive"], optional = true }
 
 sea-orm = { version = "0.12.4", features = [
   "sqlx-postgres",        # `DATABASE_DRIVER` feature
