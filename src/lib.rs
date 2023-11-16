@@ -7,7 +7,7 @@
 //!
 //! To start a new project, you can use cargo-generate:
 //!
-//! ```
+//! ```sh
 //! cargo install cargo-generate
 //! cargo generate https://github.com/rustyrails-rs/rustyrails-demo-template
 //! ```
@@ -20,6 +20,7 @@
 //! |-----------|---------|-----------------------------|
 //! | `auth`    | true    | Enable user authentication. |
 //! | `cli`     | true    | Expose Cli commands.        |
+//! | `testing  | true    | Expose Cli commands.        |
 use self::errors::Error;
 
 pub mod db;
@@ -41,6 +42,7 @@ pub mod model;
 mod redis;
 pub mod schema;
 pub mod task;
+#[cfg(feature = "testing")]
 pub mod testing;
 pub mod validation;
 pub mod worker;

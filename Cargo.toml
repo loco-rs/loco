@@ -10,6 +10,7 @@ default = ["auth", "cli"]
 
 auth = ["dep:jsonwebtoken", "dep:bcrypt"]
 cli = ["dep:clap"]
+testing = ["dep:axum-test"]
 
 [dependencies]
 
@@ -76,8 +77,8 @@ jsonwebtoken = { version = "*", optional = true }
 bcrypt = { version = "*", optional = true }
 validator = { version = "*", features = ["derive"] }
 
-# these two are test deps
-axum-test = "*"
+axum-test = { version = "13.2.0", optional = true }
+
 
 [dependencies.sea-orm-migration]
 version = "0.12.4"

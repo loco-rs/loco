@@ -54,3 +54,4 @@ darwin-libproc = { git = "https://github.com/codota/darwin-libproc" }
 [dev-dependencies]
 serial_test = "*"
 rstest = "*"
+rustyrails = { version = "*", path = "../../", features = ["testing"] }
