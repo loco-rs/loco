@@ -10,7 +10,7 @@
 //!
 //! ```rust
 //! 
-//! use framework::schema::*;
+//! use rustyrails::schema::*;
 //! use sea_orm_migration::prelude::*;
 //! use std::borrow::BorrowMut;
 //!

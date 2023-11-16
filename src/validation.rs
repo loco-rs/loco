@@ -6,7 +6,7 @@
 //! In the following example you can see how you can validate a user model
 //! ```rust,ignore
 //! 
-//! use framework::{
+//! use rustyrails::{
 //!    validation,
 //!    validator::Validate,
 //! };

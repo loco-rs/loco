@@ -24,7 +24,7 @@ pub struct UserClaims {
 ///
 /// # Example
 /// ```rust
-/// use framework::auth;
+/// use rustyrails::auth;
 ///
 /// auth::JWT::new("PqRwLF2rhHe8J22oBeHy");
 /// ```
@@ -59,7 +59,7 @@ impl JWT {
     ///
     /// # Example
     /// ```rust
-    /// use framework::auth;
+    /// use rustyrails::auth;
     ///
     /// auth::JWT::new("PqRwLF2rhHe8J22oBeHy").generate_token(&604800, "PID".to_string());
     /// ```
@@ -88,7 +88,7 @@ impl JWT {
     ///
     /// # Example
     /// ```rust
-    /// use framework::auth;
+    /// use rustyrails::auth;
     /// auth::JWT::new("PqRwLF2rhHe8J22oBeHy").validate("JWT-TOKEN");
     /// ```
     pub fn validate(&self, token: &str) -> JWTResult<TokenData<UserClaims>> {
@@ -111,7 +111,7 @@ impl JWT {
 ///
 /// # Example
 /// ```rust
-/// use framework::auth;
+/// use rustyrails::auth;
 ///
 /// auth::hash_password("password-to-hash");
 /// ```
@@ -127,7 +127,7 @@ pub fn hash_password(pass: &str) -> BcryptResult<String> {
 ///
 /// # Example
 /// ```rust
-/// use framework::auth;
+/// use rustyrails::auth;
 ///
 /// auth::verify_password("password", "hashed-password");
 /// ```

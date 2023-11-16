@@ -1,6 +1,6 @@
 use std::borrow::BorrowMut;
 
-use framework::schema::*;
+use rustyrails::schema::*;
 use sea_orm_migration::prelude::*;
 
 #[derive(DeriveMigrationName)]

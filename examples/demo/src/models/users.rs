@@ -1,5 +1,5 @@
 // TODO(review): base components must be re-exported
-use framework::{
+use rustyrails::{
     auth,
     model::{ModelError, ModelResult},
     validation,

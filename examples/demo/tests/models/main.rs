@@ -2,9 +2,9 @@ use blo::{
     app::App,
     models::users::{self, Model, RegisterParams},
 };
-use framework::{model::ModelError, testing};
 use insta::assert_debug_snapshot;
 use migration::Migrator;
+use rustyrails::{model::ModelError, testing};
 use sea_orm::{ActiveModelTrait, ActiveValue};
 use serial_test::serial;
 

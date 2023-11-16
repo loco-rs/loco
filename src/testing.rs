@@ -48,7 +48,7 @@ lazy_static! {
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
-/// use framework::testing;
+/// use rustyrails::testing;
 /// use migration::Migrator;
 ///
 /// #[tokio::test]
@@ -82,7 +82,7 @@ pub fn cleanup_user_model() -> Vec<(&'static str, &'static str)> {
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
-/// use framework::testing;
+/// use rustyrails::testing;
 /// use migration::Migrator;
 ///
 /// #[tokio::test]
@@ -112,7 +112,7 @@ pub async fn boot_test<H: Hooks, M: MigratorTrait>() -> BootResult {
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
-/// use framework::testing;
+/// use rustyrails::testing;
 /// use migration::Migrator;
 ///
 /// #[tokio::test]
@@ -138,7 +138,7 @@ pub async fn seed<H: Hooks>(db: &DatabaseConnection) -> eyre::Result<()> {
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
-/// use framework::testing;
+/// use rustyrails::testing;
 /// use migration::Migrator;
 ///
 ///     #[tokio::test]

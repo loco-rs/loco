@@ -1,5 +1,5 @@
 use axum::{extract::State, routing::post, Json};
-use framework::{
+use rustyrails::{
     app::AppContext,
     controller::{format, unauthorized, Routes},
     Result,

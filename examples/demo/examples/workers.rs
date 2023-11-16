@@ -1,8 +1,8 @@
 use std::env;
 
 use blo::app::App;
-use framework::boot::{create_app, start, StartMode};
 use migration::Migrator;
+use rustyrails::boot::{create_app, start, StartMode};
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {

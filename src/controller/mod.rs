@@ -8,7 +8,7 @@
 //!
 //! ```rust
 //! use async_trait::async_trait;
-//! use framework::{
+//! use rustyrails::{
 //!    app::{AppContext, Hooks},
 //!    controller::AppRoutes,
 //!    worker::Processor,
@@ -80,7 +80,7 @@ use crate::{errors::Error, Result};
 ///
 /// ```rust
 /// use axum::Json;
-/// use framework::{
+/// use rustyrails::{
 ///     Result,
 ///     controller::{format, unauthorized}
 /// };

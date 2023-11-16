@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 
-framework = { version = "*", path = "../../" }
+rustyrails = { version = "*", path = "../../" }
 
 serde = "*"
 serde_json = "*"
@@ -35,7 +35,7 @@ uuid = { version = "*", features = ["v4"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 
 # TODO: this is required by test-utils remove once,
-# test-utils migrated into "framework::testing"
+# test-utils migrated into "rustyrails::testing"
 lazy_static = "*"
 
 # TODO: this is required by test-utils. when we should move thie test-utils into the framework and creating a feature called testing

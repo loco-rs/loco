@@ -30,7 +30,7 @@ impl Routes {
     ///
     /// ```rust
     /// 
-    /// use framework::{
+    /// use rustyrails::{
     ///     controller::{Routes, format},
     ///     Result,
     /// };
@@ -64,7 +64,7 @@ impl Routes {
     ///
     /// ```rust
     /// 
-    /// use framework::{
+    /// use rustyrails::{
     ///     Result,
     ///     controller::{Routes, format},
     /// };
@@ -101,7 +101,7 @@ impl Routes {
     ///
     /// ```rust
     /// 
-    /// use framework::{
+    /// use rustyrails::{
     ///     controller::{Routes, format},
     ///     Result,
     /// };

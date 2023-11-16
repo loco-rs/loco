@@ -8,7 +8,7 @@
 //! Rust struct.
 //!
 //! ```rust
-//! use framework::{controller::format, Result};
+//! use rustyrails::{controller::format, Result};
 //! use axum::Json;
 //!
 //! pub struct Health {
@@ -30,7 +30,7 @@ use crate::Result;
 ///
 /// This example illustrates how to return an empty response.
 /// ```rust
-/// use framework::{controller::format, Result};
+/// use rustyrails::{controller::format, Result};
 ///
 /// async fn endpoint() -> Result<()> {
 ///    format::empty()
@@ -51,7 +51,7 @@ pub fn empty() -> Result<()> {
 ///
 /// This example illustrates how to return an text response.
 /// ```rust
-/// use framework::{controller::format, Result};
+/// use rustyrails::{controller::format, Result};
 ///
 /// async fn endpoint() -> Result<String> {
 ///    format::text("MESSAGE-RESPONSE")
@@ -74,7 +74,7 @@ pub fn text(t: &str) -> Result<String> {
 /// Rust struct.
 ///
 /// ```rust
-/// use framework::{
+/// use rustyrails::{
 ///     controller::format,
 ///     Result,
 /// };

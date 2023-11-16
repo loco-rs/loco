@@ -7,7 +7,7 @@
 //! ```rust,ignore
 //! 
 //! use myapp::app::App;
-//! use framework::cli;
+//! use rustyrails::cli;
 //! use migration::Migrator;
 //!
 //! #[tokio::main]
@@ -119,7 +119,7 @@ where
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
-/// use framework::cli;
+/// use rustyrails::cli;
 /// use migration::Migrator;
 ///
 /// #[tokio::main]

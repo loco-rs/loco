@@ -60,7 +60,7 @@ impl AppRoutes {
     /// In the following example you are adding api as a prefix for all routes
     ///
     /// ```rust
-    /// use framework::controller::AppRoutes;
+    /// use rustyrails::controller::AppRoutes;
     ///
     /// AppRoutes::with_default_routes().prefix("api");
     /// ```

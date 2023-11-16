@@ -3,7 +3,7 @@
 //! # Example:
 //!
 //! ```
-//! use framework::{
+//! use rustyrails::{
 //!     controller::{middleware, format},
 //!     app::AppContext,
 //!     Result,

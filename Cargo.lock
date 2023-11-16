@@ -996,45 +996,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "framework"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "axum",
- "axum-test",
- "bb8",
- "bcrypt",
- "byte-unit",
- "clap",
- "config",
- "duct",
- "eyre",
- "include_dir",
- "insta",
- "jsonwebtoken",
- "lazy_static",
- "lettre",
- "regex",
- "rstest",
- "rusty-sidekiq",
- "sea-orm",
- "sea-orm-migration",
- "serde",
- "serde_json",
- "serde_variant",
- "serde_yaml",
- "sqlx",
- "tera",
- "thiserror",
- "tokio",
- "tower-http",
- "tower-request-id",
- "tracing",
- "tracing-subscriber",
- "validator",
-]
-
-[[package]]
 name = "funty"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2593,6 +2554,45 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "rustyrails"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "axum-test",
+ "bb8",
+ "bcrypt",
+ "byte-unit",
+ "clap",
+ "config",
+ "duct",
+ "eyre",
+ "include_dir",
+ "insta",
+ "jsonwebtoken",
+ "lazy_static",
+ "lettre",
+ "regex",
+ "rstest",
+ "rusty-sidekiq",
+ "sea-orm",
+ "sea-orm-migration",
+ "serde",
+ "serde_json",
+ "serde_variant",
+ "serde_yaml",
+ "sqlx",
+ "tera",
+ "thiserror",
+ "tokio",
+ "tower-http",
+ "tower-request-id",
+ "tracing",
+ "tracing-subscriber",
+ "validator",
 ]
 
 [[package]]

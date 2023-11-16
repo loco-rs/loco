@@ -47,7 +47,7 @@ pub struct AppContext {
 /// # Example
 ///
 /// ```rust
-/// use framework::{
+/// use rustyrails::{
 ///     app::{AppContext, Hooks},
 ///     controller::AppRoutes,
 ///     db::{self, truncate_table},

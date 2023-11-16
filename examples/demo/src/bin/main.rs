@@ -1,6 +1,6 @@
 use blo::app::App;
-use framework::cli;
 use migration::Migrator;
+use rustyrails::cli;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {

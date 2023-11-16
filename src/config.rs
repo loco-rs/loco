@@ -180,7 +180,7 @@ impl Config {
     /// # Example
     ///
     /// ```rust
-    /// use framework::{
+    /// use rustyrails::{
     ///     config::Config,
     ///     environment::Environment,
     /// };
@@ -208,7 +208,7 @@ impl Config {
     /// # Example
     ///
     /// ```rust
-    /// use framework::{
+    /// use rustyrails::{
     ///     config::Config,
     ///     environment::Environment,
     /// };

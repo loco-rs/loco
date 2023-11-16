@@ -1,6 +1,6 @@
 #![allow(clippy::unused_async)]
 use axum::{extract::State, routing::get};
-use framework::{
+use rustyrails::{
     app::AppContext,
     controller::{format, Routes},
     errors::Error,

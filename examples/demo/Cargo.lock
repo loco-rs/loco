@@ -499,12 +499,12 @@ dependencies = [
  "axum",
  "chrono",
  "eyre",
- "framework",
  "include_dir",
  "insta",
  "lazy_static",
  "migration",
  "rstest",
+ "rustyrails",
  "sea-orm",
  "serde",
  "serde_json",
@@ -1184,43 +1184,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a62bc1cf6f830c2ec14a513a9fb124d0a213a629668a4186f329db21fe045652"
 dependencies = [
  "percent-encoding",
-]
-
-[[package]]
-name = "framework"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "axum",
- "axum-test",
- "bb8",
- "bcrypt",
- "byte-unit",
- "clap",
- "config",
- "duct",
- "eyre",
- "include_dir",
- "jsonwebtoken",
- "lazy_static",
- "lettre",
- "regex",
- "rusty-sidekiq",
- "sea-orm",
- "sea-orm-migration",
- "serde",
- "serde_json",
- "serde_variant",
- "serde_yaml",
- "sqlx",
- "tera",
- "thiserror",
- "tokio",
- "tower-http",
- "tower-request-id",
- "tracing",
- "tracing-subscriber",
- "validator",
 ]
 
 [[package]]
@@ -1953,7 +1916,7 @@ name = "migration"
 version = "0.1.0"
 dependencies = [
  "async-std",
- "framework",
+ "rustyrails",
  "sea-orm-migration",
 ]
 
@@ -2903,6 +2866,43 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "rustyrails"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "axum-test",
+ "bb8",
+ "bcrypt",
+ "byte-unit",
+ "clap",
+ "config",
+ "duct",
+ "eyre",
+ "include_dir",
+ "jsonwebtoken",
+ "lazy_static",
+ "lettre",
+ "regex",
+ "rusty-sidekiq",
+ "sea-orm",
+ "sea-orm-migration",
+ "serde",
+ "serde_json",
+ "serde_variant",
+ "serde_yaml",
+ "sqlx",
+ "tera",
+ "thiserror",
+ "tokio",
+ "tower-http",
+ "tower-request-id",
+ "tracing",
+ "tracing-subscriber",
+ "validator",
 ]
 
 [[package]]

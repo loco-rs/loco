@@ -1,12 +1,12 @@
 // auth mailer
 #![allow(non_upper_case_globals)]
 
-use framework::{
+use include_dir::{include_dir, Dir};
+use rustyrails::{
     app::AppContext,
     mailer::{Args, Mailer},
     Result,
 };
-use include_dir::{include_dir, Dir};
 use serde_json::json;
 
 static welcome: Dir<'_> = include_dir!("src/mailers/auth/welcome");
