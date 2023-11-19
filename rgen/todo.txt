@@ -1,0 +1,8 @@
+- injections only template (no 'to')
+- struct to hold trait impls
+- then call generate
+- test mode traits
+- generate -> generate_string(template)
+- generate_many([template])
+- generate_files([])
+- release as a lib

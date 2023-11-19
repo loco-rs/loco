@@ -1,0 +1,7 @@
+this is a mod file
+and this is another line
+
+// doc comment
+pub class Foobar {
+  blah
+}
