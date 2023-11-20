@@ -94,86 +94,97 @@ pub enum Error {
 }
 type Result<T> = std::result::Result<T, Error>;
 
-pub fn generate(
-    fs: &Box<dyn FsDriver>,
-    printer: &Box<dyn Printer>,
-    input: &str,
-    vars: &serde_json::Value,
-) -> Result<()> {
-    let mut tera = Tera::default();
-    tera_filters::register_all(&mut tera);
-    let rendered = tera.render_str(input, &Context::from_serialize(vars.clone())?)?;
-    let matter = Matter::<YAML>::new();
-    let parsed = matter.parse(&rendered);
-    let fmatter: FrontMatter = parsed
-        .data
-        .ok_or_else(|| Error::Message("cannot find frontmatter".to_string()))?
-        .deserialize()?;
-    let path_to = Path::new(&fmatter.to);
+pub struct Rgen {
+    fs: Box<dyn FsDriver>,
+    printer: Box<dyn Printer>,
+}
 
-    // write main file
-    fs.write_file(path_to, &parsed.content)?;
-    if fs.exists(path_to) {
-        printer.overwrite_file(path_to);
-    } else {
-        printer.add_file(path_to);
-    }
-
-    // handle injects
-    if let Some(injections) = fmatter.injections {
-        for injection in &injections {
-            let injection_to = Path::new(&injection.into);
-            if !fs.exists(injection_to) {
-                return Err(Error::Message(format!(
-                    "cannot inject into {}: file does not exist",
-                    injection.into,
-                )));
-            }
-
-            let file_content = fs.read_file(injection_to)?;
-            let content = &injection.content;
-
-            if let Some(skip_if) = &injection.skip_if {
-                if skip_if.is_match(&file_content) {
-                    continue;
-                }
-            }
-
-            let new_content = if injection.prepend {
-                format!("{content}\n{file_content}")
-            } else if injection.append {
-                format!("{file_content}\n{content}")
-            } else if let Some(before) = &injection.before {
-                let mut lines = file_content.lines().collect::<Vec<_>>();
-                let pos = lines.iter().position(|ln| before.is_match(ln));
-                if let Some(pos) = pos {
-                    lines.insert(pos, content);
-                }
-                lines.join("\n")
-            } else if let Some(after) = &injection.after {
-                let mut lines = file_content.lines().collect::<Vec<_>>();
-                let pos = lines.iter().position(|ln| after.is_match(ln));
-                if let Some(pos) = pos {
-                    lines.insert(pos + 1, content);
-                }
-                lines.join("\n")
-            } else {
-                println!("warning: no injection made");
-                file_content.clone()
-            };
-
-            fs.write_file(injection_to, &new_content)?;
-            printer.injected(injection_to);
+impl Default for Rgen {
+    fn default() -> Self {
+        Self {
+            fs: Box::new(RealFsDriver {}),
+            printer: Box::new(ConsolePrinter {}),
         }
     }
-    //text: Tera::one_off(text, &Context::from_serialize(args.clone())?,
-    // true)?, render entire file
-    // parse frontmatter
-    // deserialize frontmatter into struct
-    // operate on struct and fs
-    // 1. check templating (tera)
-    // 2. test frontmatter (graymatter)
-    // 3. build trait for fs
-    // 4. write out logic
-    Ok(())
+}
+
+impl Rgen {
+    pub fn generate(&self, input: &str, vars: &serde_json::Value) -> Result<()> {
+        let mut tera = Tera::default();
+        tera_filters::register_all(&mut tera);
+        let rendered = tera.render_str(input, &Context::from_serialize(vars.clone())?)?;
+        let matter = Matter::<YAML>::new();
+        let parsed = matter.parse(&rendered);
+        let fmatter: FrontMatter = parsed
+            .data
+            .ok_or_else(|| Error::Message("cannot find frontmatter".to_string()))?
+            .deserialize()?;
+        let path_to = Path::new(&fmatter.to);
+
+        // write main file
+        self.fs.write_file(path_to, &parsed.content)?;
+        if self.fs.exists(path_to) {
+            self.printer.overwrite_file(path_to);
+        } else {
+            self.printer.add_file(path_to);
+        }
+
+        // handle injects
+        if let Some(injections) = fmatter.injections {
+            for injection in &injections {
+                let injection_to = Path::new(&injection.into);
+                if !self.fs.exists(injection_to) {
+                    return Err(Error::Message(format!(
+                        "cannot inject into {}: file does not exist",
+                        injection.into,
+                    )));
+                }
+
+                let file_content = self.fs.read_file(injection_to)?;
+                let content = &injection.content;
+
+                if let Some(skip_if) = &injection.skip_if {
+                    if skip_if.is_match(&file_content) {
+                        continue;
+                    }
+                }
+
+                let new_content = if injection.prepend {
+                    format!("{content}\n{file_content}")
+                } else if injection.append {
+                    format!("{file_content}\n{content}")
+                } else if let Some(before) = &injection.before {
+                    let mut lines = file_content.lines().collect::<Vec<_>>();
+                    let pos = lines.iter().position(|ln| before.is_match(ln));
+                    if let Some(pos) = pos {
+                        lines.insert(pos, content);
+                    }
+                    lines.join("\n")
+                } else if let Some(after) = &injection.after {
+                    let mut lines = file_content.lines().collect::<Vec<_>>();
+                    let pos = lines.iter().position(|ln| after.is_match(ln));
+                    if let Some(pos) = pos {
+                        lines.insert(pos + 1, content);
+                    }
+                    lines.join("\n")
+                } else {
+                    println!("warning: no injection made");
+                    file_content.clone()
+                };
+
+                self.fs.write_file(injection_to, &new_content)?;
+                self.printer.injected(injection_to);
+            }
+        }
+        //text: Tera::one_off(text, &Context::from_serialize(args.clone())?,
+        // true)?, render entire file
+        // parse frontmatter
+        // deserialize frontmatter into struct
+        // operate on struct and fs
+        // 1. check templating (tera)
+        // 2. test frontmatter (graymatter)
+        // 3. build trait for fs
+        // 4. write out logic
+        Ok(())
+    }
 }

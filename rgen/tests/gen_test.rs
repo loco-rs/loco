@@ -1,7 +1,7 @@
 use std::fs;
 
 use fs_extra::{self, dir::CopyOptions};
-use rgen::{generate, ConsolePrinter, FsDriver, Printer, RealFsDriver};
+use rgen::{ConsolePrinter, FsDriver, Printer, RealFsDriver, Rgen};
 use serde_json::json;
 
 #[test]
@@ -9,8 +9,6 @@ fn test_generate() {
     let FROM = "tests/fixtures/test1/app";
     let GENERATED = "tests/fixtures/test1/generated";
 
-    let fs = Box::new(RealFsDriver {}) as Box<dyn FsDriver>;
-    let printer = Box::new(ConsolePrinter {}) as Box<dyn Printer>;
     let vars = json!({"name": "post"});
     fs_extra::dir::remove(GENERATED).unwrap();
     fs_extra::dir::copy(
@@ -22,10 +20,9 @@ fn test_generate() {
         },
     )
     .unwrap();
+    let rgen = Rgen::default();
 
-    generate(
-        &fs,
-        &printer,
+    rgen.generate(
         &fs::read_to_string("tests/fixtures/test1/template.t").unwrap(),
         &vars,
     )
@@ -38,8 +35,6 @@ fn test_realistic() {
     let FROM = "tests/fixtures/realistic/app";
     let GENERATED = "tests/fixtures/realistic/generated";
 
-    let fs = Box::new(RealFsDriver {}) as Box<dyn FsDriver>;
-    let printer = Box::new(ConsolePrinter {}) as Box<dyn Printer>;
     let vars = json!({"name": "email_stats"});
     fs_extra::dir::remove(GENERATED).unwrap();
     fs_extra::dir::copy(
@@ -51,17 +46,14 @@ fn test_realistic() {
         },
     )
     .unwrap();
+    let rgen = Rgen::default();
 
-    generate(
-        &fs,
-        &printer,
+    rgen.generate(
         &fs::read_to_string("tests/fixtures/realistic/controller.t").unwrap(),
         &vars,
     )
     .unwrap();
-    generate(
-        &fs,
-        &printer,
+    rgen.generate(
         &fs::read_to_string("tests/fixtures/realistic/task.t").unwrap(),
         &vars,
     )
