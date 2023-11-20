@@ -95,8 +95,8 @@ pub enum Error {
 type Result<T> = std::result::Result<T, Error>;
 
 pub fn generate(
-    fs: Box<dyn FsDriver>,
-    printer: Box<dyn Printer>,
+    fs: &Box<dyn FsDriver>,
+    printer: &Box<dyn Printer>,
     input: &str,
     vars: &serde_json::Value,
 ) -> Result<()> {
