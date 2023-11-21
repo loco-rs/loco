@@ -1,7 +1,6 @@
 {% set file_name = name |  snake_case -%}
 {% set module_name = file_name | pascal_case -%}
 to: "src/tasks/{{file_name}}.rs"
-skip_glob: "src/tasks/{{file_name}}.rs"
 skip_exists: true
 message: "A Task `{{module_name}}` was added successfully. Run with `cargo run task {{name}}`."
 injections:
