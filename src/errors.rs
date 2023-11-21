@@ -27,6 +27,9 @@ pub enum Error {
     Smtp(#[from] smtp::Error),
 
     #[error(transparent)]
+    Cargo(#[from] cargo_metadata::Error),
+
+    #[error(transparent)]
     IO(#[from] std::io::Error),
 
     #[error(transparent)]

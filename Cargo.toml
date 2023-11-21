@@ -81,6 +81,7 @@ axum-test = { version = "13.2.0", optional = true }
 
 # gen 
 rrgen = "0.5.0"
+cargo_metadata = "*"
 chrono = "*"
 
 [dependencies.sea-orm-migration]
