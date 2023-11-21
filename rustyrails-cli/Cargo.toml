@@ -5,6 +5,11 @@
 name = "rustyrails-cli"
 version = "0.1.0"
 edition = "2021"
+description = "Rustyrails cli website generator"
+license = "Apache-2.0"
+homepage = "https://docs.rs/rustyrails-cli"
+documentation = "https://docs.rs/rustyrails-cli"
+authors = ["Dotan Nahum <dotan@rng0.io>", "Elad Kaplan <kaplan.elad@gmail.com>"]
 
 [lib]
 name = "rustyrails_cli"
