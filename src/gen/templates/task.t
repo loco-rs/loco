@@ -1,15 +1,16 @@
 {% set file_name = name |  snake_case -%}
-{% set struct_name = file_name | pascal_case -%}
+{% set module_name = file_name | pascal_case -%}
 to: "src/tasks/{{file_name}}.rs"
 skip_glob: "src/tasks/{{file_name}}.rs"
-message: "?????????????????."
+skip_exists: true
+message: "A Task `{{module_name}}` was added successfully. Run with `cargo run task {{name}}`."
 injections:
 - into: "src/tasks/mod.rs"
   append: true
   content: "pub mod {{ file_name }};"
 - into: src/app.rs
   after: "fn register_tasks"
-  content: "        tasks.register(tasks::{{file_name}}::{{struct_name}});"
+  content: "        tasks.register(tasks::{{file_name}}::{{module_name}});"
 ---
 use std::collections::BTreeMap;
 
@@ -20,9 +21,9 @@ use rustyrails::{
     Result,
 };
 
-pub struct {{struct_name}};
+pub struct {{module_name}};
 #[async_trait]
-impl Task for {{struct_name}} {
+impl Task for {{module_name}} {
     fn task(&self) -> TaskInfo {
         TaskInfo {
             name: "{{name}}".to_string(),
@@ -30,7 +31,7 @@ impl Task for {{struct_name}} {
         }
     }
     async fn run(&self, app_context: &AppContext, vars: &BTreeMap<String, String>) -> Result<()> {
-        println!("Task {{struct_name}} generated");
+        println!("Task {{module_name}} generated");
         Ok(())
     }
 }
