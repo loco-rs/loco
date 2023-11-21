@@ -36,6 +36,7 @@ pub mod config;
 pub mod controller;
 pub mod environment;
 pub mod errors;
+mod gen;
 mod logger;
 pub mod mailer;
 pub mod model;

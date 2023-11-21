@@ -33,6 +33,9 @@ pub enum Error {
     DB(#[from] sea_orm::DbErr),
 
     #[error(transparent)]
+    RRgen(#[from] rrgen::Error),
+
+    #[error(transparent)]
     ParseAddress(#[from] AddressError),
 
     #[error(transparent)]

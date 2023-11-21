@@ -36,7 +36,7 @@ serde_yaml = "*"
 serde_variant = "*"
 
 # worker fwk 
-rusty-sidekiq = { git = "https://github.com/kaplanelad/sidekiq-rs", branch = "expose-rdis-lib" }
+rusty-sidekiq = { git = "https://github.com/film42/sidekiq-rs" }
 async-trait = "0.1.74"
 bb8 = "*"
 
@@ -79,6 +79,9 @@ validator = { version = "*", features = ["derive"] }
 
 axum-test = { version = "13.2.0", optional = true }
 
+# gen 
+rrgen = "0.4.0"
+chrono = "*"
 
 [dependencies.sea-orm-migration]
 version = "0.12.4"

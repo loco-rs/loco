@@ -3,7 +3,10 @@ source: tests/requests/main.rs
 expression: res
 ---
 TestResponse {
-    user_requested_path: "/auth/login",
+    request_format: RequestPathFormatter {
+        method: POST,
+        user_requested_path: "/auth/login",
+    },
     full_request_url: Url {
         scheme: "http",
         cannot_be_a_base: false,

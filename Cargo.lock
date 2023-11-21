@@ -746,6 +746,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cruet"
+version = "0.13.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "113a9e83d8f614be76de8df1f25bf9d0ea6e85ea573710a3d3f3abe1438ae49c"
+dependencies = [
+ "once_cell",
+ "regex",
+]
+
+[[package]]
 name = "crypto-common"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1000,6 +1010,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a62bc1cf6f830c2ec14a513a9fb124d0a213a629668a4186f329db21fe045652"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "fs-err"
+version = "2.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb5fd9bcbe8b1087cbd395b51498c01bc997cef73e778a80b77a811af5e2d29f"
+dependencies = [
+ "autocfg",
 ]
 
 [[package]]
@@ -2408,6 +2427,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "rrgen"
+version = "0.3.0"
+dependencies = [
+ "cruet",
+ "fs-err",
+ "glob",
+ "heck",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_regex",
+ "serde_yaml",
+ "tera",
+ "thiserror",
+]
+
+[[package]]
 name = "rsa"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2549,8 +2585,8 @@ checksum = "7ffc183a10b4478d04cbbbfc96d0873219d962dd5accaff2ffbd4ceb7df837f4"
 
 [[package]]
 name = "rusty-sidekiq"
-version = "0.7.4"
-source = "git+https://github.com/kaplanelad/sidekiq-rs?branch=expose-rdis-lib#ce39fa183a86b695092320b1047c9f064ccb5735"
+version = "0.8.1"
+source = "git+https://github.com/film42/sidekiq-rs#033be3210fa2f68e00f4c88e9bf5f5d0e66bc35f"
 dependencies = [
  "async-trait",
  "bb8",
@@ -2583,6 +2619,7 @@ dependencies = [
  "bb8",
  "bcrypt",
  "byte-unit",
+ "chrono",
  "clap",
  "config",
  "duct",
@@ -2593,6 +2630,7 @@ dependencies = [
  "lazy_static",
  "lettre",
  "regex",
+ "rrgen",
  "rstest",
  "rusty-sidekiq",
  "sea-orm",
@@ -2852,6 +2890,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4beec8bce849d58d06238cb50db2e1c417cfeafa4c63f692b15c82b7c80f8335"
 dependencies = [
  "itoa",
+ "serde",
+]
+
+[[package]]
+name = "serde_regex"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8136f1a4ea815d7eac4101cfd0b16dc0cb5e1fe1b8609dfd728058656b7badf"
+dependencies = [
+ "regex",
  "serde",
 ]
 

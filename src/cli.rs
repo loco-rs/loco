@@ -24,6 +24,7 @@ use sea_orm_migration::MigratorTrait;
 use crate::{
     app::Hooks,
     boot::{create_app, create_context, run_db, run_task, start, RunDbCommand, StartMode},
+    gen::{self, Component},
 };
 
 #[derive(Parser)]
@@ -62,7 +63,53 @@ enum Commands {
         #[clap(value_parser = parse_key_val::<String,String>)]
         params: Vec<(String, String)>,
     },
+    Generate {
+        /// What to generate
+        #[command(subcommand)]
+        component: ComponentArg,
+    },
 }
+
+#[derive(Subcommand)]
+enum ComponentArg {
+    Model {
+        /// Name of the thing to generate
+        name: String,
+
+        /// Model fields, eg. title=string hits=integer (unimplemented)
+        #[clap(value_parser = parse_key_val::<String,String>)]
+        fields: Vec<(String, String)>,
+    },
+    Controller {
+        /// Name of the thing to generate
+        name: String,
+    },
+    Task {
+        /// Name of the thing to generate
+        name: String,
+    },
+    Worker {
+        /// Name of the thing to generate
+        name: String,
+    },
+    Mailer {
+        /// Name of the thing to generate
+        name: String,
+    },
+}
+
+impl From<ComponentArg> for Component {
+    fn from(value: ComponentArg) -> Self {
+        match value {
+            ComponentArg::Model { name, fields } => Self::Model { name, fields },
+            ComponentArg::Controller { name } => Self::Controller { name },
+            ComponentArg::Task { name } => Self::Task { name },
+            ComponentArg::Worker { name } => Self::Worker { name },
+            ComponentArg::Mailer { name } => Self::Mailer { name },
+        }
+    }
+}
+
 #[derive(Subcommand)]
 enum DbCommands {
     /// Migrate schema (up)
@@ -156,6 +203,9 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             }
             let app_context = create_context(&cli.environment).await?;
             run_task::<H>(&app_context, name.as_ref(), &hash).await?;
+        }
+        Commands::Generate { component } => {
+            gen::generate(component.into())?;
         }
     }
     Ok(())
