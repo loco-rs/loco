@@ -1,0 +1,25 @@
+[workspace]
+#
+
+[package]
+name = "rustyrails-cli"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "rustyrails_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "rustyrails-cli"
+path = "src/bin/main.rs"
+required-features = []
+
+[dependencies]
+clap = { version = "4.4.7", features = ["derive"] }
+cargo-generate = { version = "0.18.5", default-features = false }
+eyre = "*"
+rand = "0.8.5"
+
+[dev-dependencies]
+trycmd = "0.14.19"
