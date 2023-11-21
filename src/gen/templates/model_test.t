@@ -1,6 +1,7 @@
 {% set plural_snake = name | plural | snake_case -%}
 {% set model = name | plural | pascal_case -%}
 to: "tests/models/{{plural_snake}}.rs"
+message: "A test for model `{{model}}` was added. Run with `cargo test`."
 skip_exists: true
 injections:
 - into: "tests/models/mod.rs"

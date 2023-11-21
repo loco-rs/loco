@@ -1,5 +1,5 @@
 use chrono::Utc;
-use rrgen::RRgen;
+use rrgen::{GenResult, RRgen};
 use serde_json::json;
 
 use crate::Result;
@@ -43,16 +43,30 @@ pub enum Component {
         name: String,
     },
 }
+fn collect_messages(results: Vec<GenResult>) -> String {
+    let mut messages = String::new();
+    for res in results {
+        if let rrgen::GenResult::Generated {
+            message: Some(message),
+        } = res
+        {
+            messages.push_str(&format!("* {message}\n"));
+        }
+    }
+    messages
+}
 pub fn generate(component: Component) -> Result<()> {
     let rrgen = RRgen::default();
-    let pkg_name = env!("CARGO_PKG_NAME");
+    let pkg_name: &str = env!("CARGO_PKG_NAME");
     let ts = Utc::now();
 
     match component {
         Component::Model { name, fields: _ } => {
             let vars = json!({"name": name, "ts": ts, "pkg_name": pkg_name});
-            rrgen.generate(MODEL_T, &vars)?;
-            rrgen.generate(MODEL_TEST_T, &vars)?;
+            let res1 = rrgen.generate(MODEL_T, &vars)?;
+            let res2 = rrgen.generate(MODEL_TEST_T, &vars)?;
+            let message = collect_messages(vec![res1, res2]);
+            println!("\n---\n{message}---\n");
         }
         Component::Controller { name } => {
             let vars = json!({"name": name});
