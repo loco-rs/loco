@@ -7,7 +7,7 @@ RustyRails-CLI is a command-line tool designed to simplify the process of genera
 To install RustyRails CLI, use the following command in your terminal:
 
 ```sh
-cargo install rustyrails-cli
+cargo install rustyrails
 ```
 
 ## Usage
@@ -17,17 +17,17 @@ cargo install rustyrails-cli
 This command generates website in your current working directory
 
 ```sh
-rustyrails-cli new
+rustyrails new
 ```
 
 To generate the website in a different directory run the following command
 
 ```sh
-rustyrails-cli new /my-work/websites/
+rustyrails new /my-work/websites/
 ```
 
 The change the default folder name use `--folder-name` flag
 
 ```sh
-rustyrails-cli new --folder-name rustyrails-demo
+rustyrails new --folder-name rustyrails-demo
 ```

@@ -1,5 +1,5 @@
 ```console
-$ rustyrails-cli new --lib-name test
+$ rustyrails new --lib-name test
 
 💥 Rustyrails generated successfully in path: [CWD]/rustyrails-site
 
