@@ -2928,7 +2928,8 @@ checksum = "7ffc183a10b4478d04cbbbfc96d0873219d962dd5accaff2ffbd4ceb7df837f4"
 [[package]]
 name = "rusty-sidekiq"
 version = "0.8.1"
-source = "git+https://github.com/film42/sidekiq-rs#033be3210fa2f68e00f4c88e9bf5f5d0e66bc35f"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41da6bac897708d794b0d9f8838db7ccb68a84521db58e1e1ed541b5956ec0e3"
 dependencies = [
  "async-trait",
  "bb8",
