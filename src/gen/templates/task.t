@@ -29,7 +29,7 @@ impl Task for {{module_name}} {
             detail: "Task generator".to_string(),
         }
     }
-    async fn run(&self, app_context: &AppContext, vars: &BTreeMap<String, String>) -> Result<()> {
+    async fn run(&self, _app_context: &AppContext, _vars: &BTreeMap<String, String>) -> Result<()> {
         println!("Task {{module_name}} generated");
         Ok(())
     }
