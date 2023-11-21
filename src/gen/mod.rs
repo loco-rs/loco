@@ -1,8 +1,9 @@
+use cargo_metadata::{MetadataCommand, Package};
 use chrono::Utc;
 use rrgen::{GenResult, RRgen};
 use serde_json::json;
 
-use crate::Result;
+use crate::{errors::Error, Result};
 const CONTROLLER_T: &str = include_str!("templates/controller.t");
 const CONTROLLER_TEST_T: &str = include_str!("templates/request_test.t");
 
@@ -57,7 +58,16 @@ fn collect_messages(results: Vec<GenResult>) -> String {
 }
 pub fn generate(component: Component) -> Result<()> {
     let rrgen = RRgen::default();
-    let pkg_name: &str = env!("CARGO_PKG_NAME");
+
+    let path = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
+    let meta = MetadataCommand::new()
+        .manifest_path("./Cargo.toml")
+        .current_dir(&path)
+        .exec()?;
+    let root: &Package = meta
+        .root_package()
+        .ok_or_else(|| Error::Message("cannot find root package in Cargo.toml".to_string()))?;
+    let pkg_name: &str = &root.name;
     let ts = Utc::now();
 
     match component {

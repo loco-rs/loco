@@ -7,7 +7,7 @@ RustyRails-CLI is a command-line tool designed to simplify the process of genera
 To install RustyRails CLI, use the following command in your terminal:
 
 ```sh
-cargo install rustyrails
+cargo install rustyrails-cli
 ```
 
 ## Usage
