@@ -3,7 +3,7 @@
 
 [package]
 name = "rustyrails-cli"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Rustyrails cli website generator"
 license = "Apache-2.0"
@@ -16,7 +16,7 @@ name = "rustyrails_cli"
 path = "src/lib.rs"
 
 [[bin]]
-name = "rustyrails-cli"
+name = "rustyrails"
 path = "src/bin/main.rs"
 required-features = []
 

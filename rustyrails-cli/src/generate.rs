@@ -3,7 +3,8 @@ use std::{fs, path::PathBuf};
 use cargo_generate::{generate, GenerateArgs, TemplatePath, Vcs};
 
 /// Generator github template
-const RUSTYRAILS_DEMO_TEMPLATE: &str = "https://github.com/rustyrails-rs/rustyrails-demo-template";
+const RUSTYRAILS_DEMO_TEMPLATE: &str =
+    "https://github.com/rustyrails-rs/rustyrails-starter-template";
 
 /// A generator form the git repo
 ///
