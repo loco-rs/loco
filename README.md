@@ -13,7 +13,7 @@
 To start a new project, you can use cargo-generate:
 
 ```
-$ cargo install rustyrails
+$ cargo install rustyrails-cli
 $ rustyrails new
 ```
 
