@@ -14,7 +14,7 @@ use sea_orm::DatabaseConnection;
 use crate::{
     controllers,
     models::_entities::{notes, users},
-    tasks::user_report::UserReport,
+    tasks,
     workers::downloader::DownloadWorker,
 };
 
@@ -33,7 +33,7 @@ impl Hooks for App {
     }
 
     fn register_tasks(tasks: &mut Tasks) {
-        tasks.register(UserReport);
+        tasks.register(tasks::user_report::UserReport);
     }
 
     async fn truncate(db: &DatabaseConnection) -> Result<()> {
