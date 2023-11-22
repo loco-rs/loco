@@ -20,6 +20,7 @@ validator = { version = "*" }
 
 # TODO(review): check if can use this crate from the framework
 sea-orm = { version = "0.12.4", features = [
+  "sqlx-sqlite",
   "sqlx-postgres",
   "runtime-tokio-rustls",
   "macros",
@@ -38,8 +39,6 @@ tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 # test-utils migrated into "rustyrails::testing"
 lazy_static = "*"
 
-# TODO: this is required by test-utils. when we should move thie test-utils into the framework and creating a feature called testing
-insta = { version = "*", features = ["redactions", "yaml", "filters"] }
 
 [patch.crates-io]
 # see https://github.com/heim-rs/darwin-libproc/pull/9
@@ -61,3 +60,5 @@ serial_test = "*"
 rstest = "*"
 rustyrails = { version = "*", path = "../../", features = ["testing"] }
 trycmd = "0.14.19"
+# TODO: this is required by test-utils. when we should move thie test-utils into the framework and creating a feature called testing
+insta = { version = "*", features = ["redactions", "yaml", "filters"] }
