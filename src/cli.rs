@@ -235,6 +235,10 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
 #[cfg(not(feature = "with-db"))]
 pub async fn main<H: Hooks>() -> eyre::Result<()> {
     let cli = Cli::parse();
+    let environment = cli
+        .environment
+        .or_else(resolve_from_env)
+        .unwrap_or_else(|| "development".to_string());
     match cli.command {
         Commands::Start {
             worker,
@@ -248,7 +252,7 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
                 StartMode::ServerOnly
             };
 
-            let boot_result = create_app::<H>(start_mode, &cli.environment).await?;
+            let boot_result = create_app::<H>(start_mode, &environment).await?;
             start(boot_result).await?;
         }
         Commands::Task { name, params } => {
@@ -256,7 +260,7 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
             for (k, v) in params {
                 hash.insert(k, v);
             }
-            let app_context = create_context(&cli.environment).await?;
+            let app_context = create_context(&environment).await?;
             run_task::<H>(&app_context, name.as_ref(), &hash).await?;
         }
         Commands::Generate { component } => {

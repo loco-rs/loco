@@ -20,6 +20,7 @@ use serde_variant::to_variant_name;
 use super::config::Config;
 use crate::Result;
 
+#[must_use]
 pub fn resolve_from_env() -> Option<String> {
     std::env::var("RR_ENV")
         .or_else(|_| std::env::var("RAILS_ENV"))

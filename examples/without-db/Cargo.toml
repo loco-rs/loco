@@ -16,7 +16,6 @@ eyre = "*"
 tokio = { version = "1.33.0", features = ["full"] }
 async-trait = "0.1.74"
 tracing = "0.1.40"
-chrono = "*"
 validator = { version = "*" }
 
 axum = "*"
