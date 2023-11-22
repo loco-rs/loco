@@ -7,9 +7,9 @@ edition = "2021"
 
 [dependencies]
 
-rustyrails = { version = "*", path = "../../" }
-migration = { path = "migration" }
-
+rustyrails = { version = "*", path = "../../", default-features = false, features = [
+    "cli",
+] }
 serde = "*"
 serde_json = "*"
 eyre = "*"
@@ -18,11 +18,6 @@ async-trait = "0.1.74"
 tracing = "0.1.40"
 chrono = "*"
 validator = { version = "*" }
-sea-orm = { version = "0.12.4", features = [
-  "sqlx-postgres",
-  "runtime-tokio-rustls",
-  "macros",
-] }
 
 axum = "*"
 include_dir = "*"
@@ -47,6 +42,9 @@ required-features = []
 [dev-dependencies]
 serial_test = "*"
 rstest = "*"
-rustyrails = { version = "*", path = "../../", features = ["testing"] }
+rustyrails = { version = "*", path = "../../", default-features = false, features = [
+    "testing",
+    "cli",
+] }
 trycmd = "0.14.19"
 insta = { version = "*", features = ["redactions", "yaml", "filters"] }

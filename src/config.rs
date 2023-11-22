@@ -23,6 +23,7 @@ lazy_static! {
 pub struct Config {
     pub logger: Logger,
     pub server: Server,
+    #[cfg(feature = "with-db")]
     pub database: Database,
     pub redis: Option<Redis>,
     pub auth: Auth,

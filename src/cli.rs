@@ -19,11 +19,14 @@
 use std::collections::BTreeMap;
 
 use clap::{Parser, Subcommand};
+#[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
 
+#[cfg(feature = "with-db")]
+use crate::boot::run_db;
 use crate::{
     app::Hooks,
-    boot::{create_app, create_context, run_db, run_task, start, RunDbCommand, StartMode},
+    boot::{create_app, create_context, run_task, start, RunDbCommand, StartMode},
     gen::{self, Component},
 };
 
@@ -50,6 +53,7 @@ enum Commands {
         #[arg(short, long, action)]
         server_and_worker: bool,
     },
+    #[cfg(feature = "with-db")]
     /// Perform DB operations
     Db {
         #[command(subcommand)]
@@ -74,6 +78,7 @@ enum Commands {
 
 #[derive(Subcommand)]
 enum ComponentArg {
+    #[cfg(feature = "with-db")]
     /// Generates a new model file for defining the data structure of your
     /// application, and test file logic.
     Model {
@@ -109,6 +114,7 @@ enum ComponentArg {
 impl From<ComponentArg> for Component {
     fn from(value: ComponentArg) -> Self {
         match value {
+            #[cfg(feature = "with-db")]
             ComponentArg::Model { name, fields } => Self::Model { name, fields },
             ComponentArg::Controller { name } => Self::Controller { name },
             ComponentArg::Task { name } => Self::Task { name },
@@ -182,6 +188,7 @@ where
 ///     cli::main::<App, Migrator>().await
 /// }
 /// ```
+#[cfg(feature = "with-db")]
 pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
     let cli = Cli::parse();
     match cli.command {
@@ -200,9 +207,44 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             let boot_result = create_app::<H, M>(start_mode, &cli.environment).await?;
             start(boot_result).await?;
         }
+        #[cfg(feature = "with-db")]
         Commands::Db { command } => {
             let app_context = create_context(&cli.environment).await?;
             run_db::<H, M>(&app_context, command.into()).await?;
+        }
+        Commands::Task { name, params } => {
+            let mut hash = BTreeMap::new();
+            for (k, v) in params {
+                hash.insert(k, v);
+            }
+            let app_context = create_context(&cli.environment).await?;
+            run_task::<H>(&app_context, name.as_ref(), &hash).await?;
+        }
+        Commands::Generate { component } => {
+            gen::generate(component.into())?;
+        }
+    }
+    Ok(())
+}
+
+#[cfg(not(feature = "with-db"))]
+pub async fn main<H: Hooks>() -> eyre::Result<()> {
+    let cli = Cli::parse();
+    match cli.command {
+        Commands::Start {
+            worker,
+            server_and_worker,
+        } => {
+            let start_mode = if worker {
+                StartMode::WorkerOnly
+            } else if server_and_worker {
+                StartMode::ServerAndWorker
+            } else {
+                StartMode::ServerOnly
+            };
+
+            let boot_result = create_app::<H>(start_mode, &cli.environment).await?;
+            start(boot_result).await?;
         }
         Commands::Task { name, params } => {
             let mut hash = BTreeMap::new();

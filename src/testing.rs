@@ -6,7 +6,9 @@
 
 use axum_test::{TestServer, TestServerConfig};
 use lazy_static::lazy_static;
+#[cfg(feature = "with-db")]
 use sea_orm::DatabaseConnection;
+#[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
 
 use crate::{
@@ -76,6 +78,7 @@ pub fn cleanup_user_model() -> Vec<(&'static str, &'static str)> {
     combined_filters
 }
 
+#[cfg(feature = "with-db")]
 /// Bootstraps test application with test environment hard coded.
 ///
 /// # Example
@@ -102,6 +105,14 @@ pub async fn boot_test<H: Hooks, M: MigratorTrait>() -> BootResult {
         .unwrap()
 }
 
+#[cfg(not(feature = "with-db"))]
+pub async fn boot_test<H: Hooks>() -> BootResult {
+    boot::create_app::<H>(boot::StartMode::ServerOnly, "test")
+        .await
+        .unwrap()
+}
+
+#[cfg(feature = "with-db")]
 /// Seeds data into the database.
 ///
 ///
@@ -132,6 +143,7 @@ pub async fn seed<H: Hooks>(db: &DatabaseConnection) -> eyre::Result<()> {
     Ok(H::seed(db, path).await?)
 }
 
+#[cfg(feature = "with-db")]
 /// Initiates a test request with a provided callback.
 ///
 /// # Example
@@ -165,6 +177,23 @@ where
     Fut: std::future::Future<Output = ()>,
 {
     let boot = boot_test::<H, M>().await;
+
+    let config = TestServerConfig::builder()
+        .default_content_type("application/json")
+        .build();
+
+    let server = TestServer::new_with_config(boot.router.unwrap(), config).unwrap();
+
+    callback(server, boot.app_context.clone()).await;
+}
+
+#[cfg(not(feature = "with-db"))]
+pub async fn request<H: Hooks, F, Fut>(callback: F)
+where
+    F: FnOnce(TestServer, AppContext) -> Fut,
+    Fut: std::future::Future<Output = ()>,
+{
+    let boot = boot_test::<H>().await;
 
     let config = TestServerConfig::builder()
         .default_content_type("application/json")

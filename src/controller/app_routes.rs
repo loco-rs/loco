@@ -10,7 +10,7 @@ use regex::Regex;
 use tower_http::{catch_panic::CatchPanicLayer, trace::TraceLayer};
 use tower_request_id::{RequestId, RequestIdLayer};
 
-use super::{health, routes::Routes};
+use super::routes::Routes;
 use crate::{app::AppContext, Result};
 
 lazy_static! {
@@ -28,7 +28,11 @@ impl AppRoutes {
     /// Create a new instance with the default routes.
     #[must_use]
     pub fn with_default_routes() -> Self {
-        Self::empty().add_route(health::routes())
+        let routes = Self::empty().add_route(super::ping::routes());
+        #[cfg(feature = "with-db")]
+        let routes = routes.add_route(super::health::routes());
+
+        routes
     }
 
     /// Create an empty instance.

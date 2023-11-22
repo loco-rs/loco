@@ -7,6 +7,7 @@
 //! endpoints to your application
 //!
 //! ```rust
+//! # #[cfg(feature = "with-db")] {
 //! use async_trait::async_trait;
 //! use rustyrails::{
 //!    app::{AppContext, Hooks},
@@ -48,12 +49,15 @@
 //!         Ok(())
 //!     }
 //! }
+//! }
 //! ```
 
 mod app_routes;
 pub mod format;
+#[cfg(feature = "with-db")]
 mod health;
 pub mod middleware;
+mod ping;
 mod routes;
 
 pub use app_routes::AppRoutes;

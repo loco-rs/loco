@@ -2675,7 +2675,6 @@ dependencies = [
  "serde_json",
  "serde_variant",
  "serde_yaml",
- "sqlx",
  "tera",
  "thiserror",
  "tokio",

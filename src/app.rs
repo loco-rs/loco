@@ -1,11 +1,14 @@
 //! This module contains the core components and traits for building a web
 //! server application.
-
+#[cfg(feature = "with-db")]
 use std::path::Path;
 
 use async_trait::async_trait;
+#[cfg(feature = "with-db")]
 use sea_orm::DatabaseConnection;
 
+#[cfg(feature = "with-db")]
+use crate::Result;
 use crate::{
     config::Config,
     controller::AppRoutes,
@@ -13,7 +16,6 @@ use crate::{
     mailer::EmailSender,
     task::Tasks,
     worker::{Pool, Processor, RedisConnectionManager},
-    Result,
 };
 
 /// Represents the application context for a web server.
@@ -27,7 +29,8 @@ use crate::{
 pub struct AppContext {
     /// The environment in which the application is running.
     pub environment: Environment,
-    /// A database connection used by the application.
+    #[cfg(feature = "with-db")]
+    /// A database connection used by the application.    
     pub db: DatabaseConnection,
     /// An optional connection pool for Redis, for worker tasks
     pub redis: Option<Pool<RedisConnectionManager>>,
@@ -47,6 +50,7 @@ pub struct AppContext {
 /// # Example
 ///
 /// ```rust
+/// # #[cfg(feature = "with-db")] {
 /// use rustyrails::{
 ///     app::{AppContext, Hooks},
 ///     controller::AppRoutes,
@@ -87,6 +91,7 @@ pub struct AppContext {
 ///         Ok(())
 ///     }
 /// }
+/// }
 /// ```
 #[async_trait]
 pub trait Hooks {
@@ -97,12 +102,14 @@ pub trait Hooks {
     fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext);
     /// Registers custom tasks with the provided [`Tasks`] object.
     fn register_tasks(tasks: &mut Tasks);
+    #[cfg(feature = "with-db")]
     /// Truncates the database as required. Users should implement this
     /// function. The truncate controlled from the [`crate::config::Database`]
     /// by changing dangerously_truncate to true (default false).
     /// Truncate can be useful when you want to truncate the database before any
-    /// test.
+    /// test.        
     async fn truncate(db: &DatabaseConnection) -> Result<()>;
-    /// Seeds the database with initial data.
+    #[cfg(feature = "with-db")]
+    /// Seeds the database with initial data.    
     async fn seed(db: &DatabaseConnection, path: &Path) -> Result<()>;
 }

@@ -23,7 +23,12 @@
 //! | `testing  | true    | Expose Cli commands.        |
 use self::errors::Error;
 
+#[cfg(feature = "with-db")]
 pub mod db;
+#[cfg(feature = "with-db")]
+pub mod model;
+#[cfg(feature = "with-db")]
+pub mod schema;
 
 pub mod app;
 #[cfg(feature = "cli")]
@@ -39,9 +44,7 @@ pub mod errors;
 mod gen;
 mod logger;
 pub mod mailer;
-pub mod model;
 mod redis;
-pub mod schema;
 pub mod task;
 #[cfg(feature = "testing")]
 pub mod testing;

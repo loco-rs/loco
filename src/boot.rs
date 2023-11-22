@@ -7,6 +7,7 @@
 //! This example hows manually bootstrapping the webserver.
 //!
 //! ```rust
+//! # #[cfg(feature = "with-db")] {
 //! use async_trait::async_trait;
 //! use rustyrails::{
 //!     app::{AppContext, Hooks},
@@ -50,17 +51,20 @@
 //! }
 //!
 //! let boot_result = boot::create_app::<App, Migrator>(StartMode::ServerAndWorker, "development");
+//! }
 //! ```
 use std::{collections::BTreeMap, str::FromStr};
 
 use axum::Router;
+#[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
 use tracing::trace;
 
+#[cfg(feature = "with-db")]
+use crate::db;
 use crate::{
     app::{AppContext, Hooks},
     config::{self, Config},
-    db,
     environment::Environment,
     errors::Error,
     logger,
@@ -173,6 +177,7 @@ pub enum RunDbCommand {
     Truncate,
 }
 
+#[cfg(feature = "with-db")]
 /// Handles database commands.
 ///
 /// # Errors
@@ -230,6 +235,7 @@ pub async fn create_context(environment: &str) -> Result<AppContext> {
     if config.logger.enable {
         logger::init(&config.logger);
     }
+    #[cfg(feature = "with-db")]
     let db = db::connect(&config.database).await?;
 
     let mailer = if let Some(cfg) = config.mailer.as_ref() {
@@ -241,6 +247,7 @@ pub async fn create_context(environment: &str) -> Result<AppContext> {
     let redis = connect_redis(&config).await;
     Ok(AppContext {
         environment,
+        #[cfg(feature = "with-db")]
         db,
         redis,
         config,
@@ -248,6 +255,7 @@ pub async fn create_context(environment: &str) -> Result<AppContext> {
     })
 }
 
+#[cfg(feature = "with-db")]
 /// Creates an application based on the specified mode and environment.
 ///
 /// # Errors
@@ -264,6 +272,25 @@ pub async fn create_app<H: Hooks, M: MigratorTrait>(
         redis::converge(pool, &app_context.config.redis).await?;
     }
 
+    run_app::<H>(&mode, app_context)
+}
+
+#[cfg(not(feature = "with-db"))]
+pub async fn create_app<H: Hooks>(mode: StartMode, environment: &str) -> Result<BootResult> {
+    let app_context = create_context(environment).await?;
+
+    if let Some(pool) = &app_context.redis {
+        redis::converge(pool, &app_context.config.redis).await?;
+    }
+
+    run_app::<H>(&mode, app_context)
+}
+
+/// Run the application with the  given mode
+/// # Errors
+///
+/// When could not create the application
+pub fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Result<BootResult> {
     match mode {
         StartMode::ServerOnly => {
             let app = H::routes().to_router(app_context.clone())?;
@@ -292,7 +319,6 @@ pub async fn create_app<H: Hooks, M: MigratorTrait>(
         }
     }
 }
-
 /// Creates and configures a [`Processor`] for handling worker tasks.
 fn create_processor<H: Hooks>(app_context: &AppContext) -> Result<Processor> {
     let queues = worker::get_queues(&app_context.config.workers.queues);
