@@ -21,10 +21,16 @@ path = "src/bin/main.rs"
 required-features = []
 
 [dependencies]
+serde = "1.0.193"
+serde_derive = "1.0.193"
 clap = { version = "4.4.7", features = ["derive"] }
 cargo-generate = { version = "0.18.5", default-features = false }
 eyre = "0.6.9"
 rand = "0.8.5"
+dialoguer = "~0.11"
+serde_variant = "0.1.2"
+strum = { version = "0.25", features = ["derive"] }
+
 
 [dev-dependencies]
 trycmd = "0.14.19"
