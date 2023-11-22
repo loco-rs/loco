@@ -24,6 +24,7 @@ use sea_orm_migration::MigratorTrait;
 use crate::{
     app::Hooks,
     boot::{create_app, create_context, run_db, run_task, start, RunDbCommand, StartMode},
+    environment::resolve_from_env,
     gen::{self, Component},
 };
 
@@ -35,8 +36,8 @@ struct Cli {
     command: Commands,
 
     /// Specify the environment
-    #[arg(short, long, global = true, default_value = "development")]
-    environment: String,
+    #[arg(short, long, global = true)]
+    environment: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -184,6 +185,10 @@ where
 /// ```
 pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
     let cli = Cli::parse();
+    let environment = cli
+        .environment
+        .or_else(resolve_from_env)
+        .unwrap_or_else(|| "development".to_string());
     match cli.command {
         Commands::Start {
             worker,
@@ -197,11 +202,11 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
                 StartMode::ServerOnly
             };
 
-            let boot_result = create_app::<H, M>(start_mode, &cli.environment).await?;
+            let boot_result = create_app::<H, M>(start_mode, &environment).await?;
             start(boot_result).await?;
         }
         Commands::Db { command } => {
-            let app_context = create_context(&cli.environment).await?;
+            let app_context = create_context(&environment).await?;
             run_db::<H, M>(&app_context, command.into()).await?;
         }
         Commands::Task { name, params } => {
@@ -209,7 +214,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             for (k, v) in params {
                 hash.insert(k, v);
             }
-            let app_context = create_context(&cli.environment).await?;
+            let app_context = create_context(&environment).await?;
             run_task::<H>(&app_context, name.as_ref(), &hash).await?;
         }
         Commands::Generate { component } => {

@@ -24,6 +24,9 @@ pub enum Error {
     YAML(#[from] serde_yaml::Error),
 
     #[error(transparent)]
+    EnvVar(#[from] std::env::VarError),
+
+    #[error(transparent)]
     Smtp(#[from] smtp::Error),
 
     #[error(transparent)]
