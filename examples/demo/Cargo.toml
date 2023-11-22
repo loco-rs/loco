@@ -51,7 +51,13 @@ insta = { version = "*", features = ["redactions", "yaml", "filters"] }
 darwin-libproc = { git = "https://github.com/codota/darwin-libproc" }
 
 
+[[bin]]
+name = "demo"
+path = "src/bin/main.rs"
+required-features = []
+
 [dev-dependencies]
 serial_test = "*"
 rstest = "*"
 rustyrails = { version = "*", path = "../../", features = ["testing"] }
+trycmd = "0.14.19"
