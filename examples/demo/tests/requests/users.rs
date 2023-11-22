@@ -28,7 +28,7 @@ async fn can_register() {
             "password": "12341234"
         });
 
-        let response = request.post("/auth/register").json(&payload).await;
+        let _response = request.post("/auth/register").json(&payload).await;
         let saved_user = users::Model::find_by_email(&ctx.db, email).await;
 
         with_settings!({

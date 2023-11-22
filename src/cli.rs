@@ -63,6 +63,8 @@ enum Commands {
         #[clap(value_parser = parse_key_val::<String,String>)]
         params: Vec<(String, String)>,
     },
+    /// code generation creates a set of files and code templates based on a
+    /// predefined set of rules.
     Generate {
         /// What to generate
         #[command(subcommand)]
@@ -72,6 +74,8 @@ enum Commands {
 
 #[derive(Subcommand)]
 enum ComponentArg {
+    /// Generates a new model file for defining the data structure of your
+    /// application, and test file logic.
     Model {
         /// Name of the thing to generate
         name: String,
@@ -80,18 +84,22 @@ enum ComponentArg {
         #[clap(value_parser = parse_key_val::<String,String>)]
         fields: Vec<(String, String)>,
     },
+    /// Generate a new controller with the given controller name, and test file.
     Controller {
         /// Name of the thing to generate
         name: String,
     },
+    /// Generate a Task based on the given name
     Task {
         /// Name of the thing to generate
         name: String,
     },
+    /// Generate worker
     Worker {
         /// Name of the thing to generate
         name: String,
     },
+    /// Generate mailer
     Mailer {
         /// Name of the thing to generate
         name: String,
