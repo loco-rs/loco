@@ -27,7 +27,6 @@ clap = { version = "4.4.7", features = ["derive"], optional = true }
 sea-orm = { version = "0.12.4", features = [
   "sqlx-postgres",        # `DATABASE_DRIVER` feature
   "sqlx-sqlite",
-  "sqlx-mysql",
   "runtime-tokio-rustls",
   "macros",
 ], optional = true }
@@ -92,7 +91,6 @@ features = [
   "runtime-tokio-rustls", # `ASYNC_RUNTIME` feature
   "sqlx-postgres",        # `DATABASE_DRIVER` feature
   "sqlx-sqlite",
-  "sqlx-mysql",
 ]
 
 

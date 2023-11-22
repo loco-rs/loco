@@ -19,6 +19,7 @@ tracing = "0.1.40"
 chrono = "*"
 validator = { version = "*" }
 sea-orm = { version = "0.12.4", features = [
+  "sqlx-sqlite",
   "sqlx-postgres",
   "runtime-tokio-rustls",
   "macros",
