@@ -1,0 +1,107 @@
+{% macro docs_navigation(page, current_section) %}
+<div class="docs-navigation d-flex justify-content-between">
+  {# Find lighter navigation. There are three types: #}
+  {# 1. directly find the lighter if exists, #}
+  {# 2. find the last page in the previous sibling section, and #}
+  {# 3. find the last page in the parent section. #}
+  {% if page.lighter %}
+  <a href="{{ page.lighter.permalink }}">
+    <div class="card my-1">
+      <div class="card-body py-2">
+        &larr; {{ page.lighter.title }}
+      </div>
+    </div>
+  </a>
+  {% elif not page.extra.top %}
+    {% set index = get_section(path=page.ancestors | reverse | first) %}
+    {% set parent = get_section(path=index.ancestors | reverse | first)%}
+    {% set first_subsection = get_section(path=parent.subsections | first) %}
+    {% if index == first_subsection %}
+      {% if parent.pages %}
+        {% set last_page = parent.pages | last %}
+        <a href="{{ last_page.permalink }}">
+          <div class="card my-1">
+            <div class="card-body py-2">
+              &larr; {{ last_page.title }}
+            </div>
+          </div>
+        </a>
+      {% endif %}
+    {% else %}
+      {% for s in parent.subsections | reverse %}
+        {% set subsection = get_section(path=s) %}
+        {% if subsection.permalink == index.permalink %}
+          {% set_global found_current = true %}
+        {% else %}
+          {% if found_current %}
+            {% if subsection.pages %}
+              {% set last_page = subsection.pages | last %}
+              <a href="{{ last_page.permalink }}">
+                <div class="card my-1">
+                  <div class="card-body py-2">
+                    &larr; {{ last_page.title }}
+                  </div>
+                </div>
+              </a>
+            {% endif %}
+            {# no break #}
+            {% set_global found_current = false %}
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  {% endif %}
+
+  {# Find heavier navigation. There are also three types: #}
+  {# 1. directly find the heavier if exists, #}
+  {# 2. find the first page in the subsection, and #}
+  {# 3. find the first page in the next sibling section. #}
+  {% if page.heavier %}
+    <a class="ms-auto" href="{{ page.heavier.permalink }}">
+      <div class="card my-1">
+        <div class="card-body py-2">
+          {{ page.heavier.title }} &rarr;
+        </div>
+      </div>
+    </a>
+  {% elif page.extra.top %}
+    {% set index_path = current_section ~ "/_index.md" | trim_start_matches(pat="/") %}
+    {% set index = get_section(path=index_path) %}
+    {% set first_subsection = get_section(path=index.subsections | first) %}
+    {% if first_subsection.pages %}
+      {% set first_page = first_subsection.pages | first %}
+      <a class="ms-auto" href="{{ first_page.permalink }}">
+        <div class="card my-1">
+          <div class="card-body py-2">
+            {{ first_page.title }} &rarr;
+          </div>
+        </div>
+      </a>
+    {% endif %}
+  {% else %}
+    {% set index = get_section(path=page.ancestors | reverse | first) %}
+    {% set parent = get_section(path=index.ancestors | reverse | first)%}
+    {% for s in parent.subsections %}
+      {% set subsection = get_section(path=s) %}
+      {% if subsection.permalink == index.permalink %}
+        {% set_global found_current = true %}
+      {% else %}
+        {% if found_current %}
+          {% if subsection.pages %}
+          {% set first_page = subsection.pages | first %}
+          <a class="ms-auto" href="{{ first_page.permalink }}">
+            <div class="card my-1">
+              <div class="card-body py-2">
+                {{ first_page.title }} &rarr;
+              </div>
+            </div>
+          </a>
+          {% endif %}
+          {# no break #}
+          {% set_global found_current = false %}
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+</div>
+{% endmacro %}

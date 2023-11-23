@@ -1,0 +1,49 @@
+{% extends "section.html" %}
+
+{% block body %}
+  {% set page_class = "docs list" %}
+{% endblock body %}
+
+{% block header %}
+  {# This value is matched by the config.extra.menu.main~section #}
+  {% set current_section = "docs" %}
+  {{ macros_header::header(current_section=current_section)}}
+{% endblock header %}
+
+{% block content %}
+<div class="wrap container" role="document">
+  <div class="content">
+    <div class="row justify-content-center">
+      <div class="col-md-12 col-lg-10 col-xxl-8">
+        <article>
+          <h1 class="text-center">{{ section.title }}</h1>
+          <div class="text-center">{{ section.content | safe }}</div>
+          <div class="card-list">
+            {% set index_path = current_path ~ "_index.md" | trim_start_matches(pat="/") %}
+            {% set index = get_section(path=index_path) %}
+            {% for page in index.pages %}
+              <div class="card my-3">
+                <div class="card-body">
+                  <a class="stretched-link" href="{{ page.permalink }}">{{ page.title }} &rarr;</a>
+                </div>
+              </div>
+            {% endfor %}
+            {% for s in index.subsections %}
+              {% set subsection = get_section(path=s) %}
+              {% if subsection.pages %}
+                {% for page in subsection.pages %}
+                <div class="card my-3">
+                  <div class="card-body">
+                    <a class="stretched-link" href="{{ page.permalink }}">{{ page.title }} &rarr;</a>
+                  </div>
+                </div>
+                {% endfor %}                                    
+              {% endif %}
+            {% endfor %}
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}

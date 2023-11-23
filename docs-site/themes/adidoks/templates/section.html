@@ -1,0 +1,50 @@
+{# Default section.html template #}
+
+{% extends "base.html" %}
+
+{% block seo %}
+  {{ super() }}
+  {% set title_addition = "" %}
+  
+  {% if section.title and config.title %}
+    {% set title = section.title %}
+    {% set title_addition = title_separator ~ config.title %}
+  {% elif section.title %}
+    {% set title = section.title %}
+  {% else %}
+    {% set title = config.title %}
+  {% endif %}
+  
+  {% if section.description %}
+    {% set description = section.description %}
+  {% else %}
+    {% set description = config.description %}
+  {% endif %}
+  
+  {{ macros_head::seo(title=title, title_addition=title_addition, description=description) }}
+{% endblock seo %}
+
+{% block body %}
+  {% if section.extra.class %}
+    {% set page_class = section.extra.class %}
+  {% else %}
+    {% set page_class = "page list" %}
+  {% endif %}
+{% endblock body %}
+
+{% block content %}
+<div class="wrap container" role="document">
+  <div class="content">
+    <div class="row justify-content-center">
+      <div class="col-md-12 col-lg-10 col-xxl-8">
+        <article>
+          <div class="page-header">
+            <h1>{{ section.title }}</h1>
+          </div>
+          {{ section.content | safe }}
+        </article>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}

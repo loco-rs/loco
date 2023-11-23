@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block seo %}
+  {{ super() }} 
+  {% set title = "404 Page not found" %}
+  
+  {% if config.title %}
+    {% set title_addition = title_separator ~ config.title %}
+  {% else %}
+    {% set title_addition = "" %}
+  {% endif %}
+  
+  {% set description = config.description %}
+  
+  {{ macros_head::seo(title=title, title_addition=title_addition, description=description, is_404=true) }}
+{% endblock seo %}
+
+{% block content %}
+<div class="wrap container" role="document">
+  <div class="content">
+    <section class="section container-fluid mt-n3 pb-3">
+      <div class="row justify-content-center">
+        <div class="row justify-content-center">
+					<div class="col-md-12 col-lg-10 col-xxl-8">
+						<article>
+							<h1 class="text-center">Page not found :(</h1>
+							<p class="text-center">The page you are looking for doesn't exist or has been moved.</p>
+						</article>
+					</div>
+				</div>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock content %}

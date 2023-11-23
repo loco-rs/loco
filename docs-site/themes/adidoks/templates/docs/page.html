@@ -1,0 +1,31 @@
+{% extends "page.html" %}
+
+{% block body %}
+  {% set page_class = "docs single" %}
+{% endblock body %}
+
+{% block header %}
+  {# This value is matched by the config.extra.menu.main~url #}
+  {% set current_section = "docs" %}
+  {{ macros_header::header(current_section=current_section)}}
+{% endblock header %}
+
+{% block content %}
+<div class="wrap container" role="document">
+  <div class="content">
+    <div class="row flex-xl-nowrap">
+	  {{ macros_sidebar::docs_sidebar(current_section=current_section) }}
+	  {{ macros_toc::docs_toc(page=page) }}
+      <main class="docs-content col-lg-11 col-xl-9">
+        <h1>{{ page.title }}</h1>
+        {% if page.extra.lead %}<p class="lead">{{ page.extra.lead | safe }}</p>{% endif %}
+        {{ page.content | safe }}
+        {% if config.extra.edit_page %}
+          {{ macros_edit_page::docs_edit_page(current_path=current_path) }}
+        {% endif %}
+        {{ macros_navigation::docs_navigation(page=page, current_section=current_section) }}
+      </main>
+    </div>
+  </div>
+</div>
+{% endblock content %}

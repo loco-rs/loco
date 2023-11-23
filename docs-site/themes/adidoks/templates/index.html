@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block seo %}
+  {{ super() }}
+
+  {% if config.title %}
+    {% set title = config.title %}
+  {% else %}
+    {% set title = "" %}
+  {% endif %}
+  
+  {% if config.extra.title_addition and title %}
+    {% set title_addition = title_separator ~ config.extra.title_addition %}
+  {% elif config.extra.title_addition %}
+    {% set title_addition = config.extra.title_addition %}
+  {% else %}
+    {% set title_addition = "" %}
+  {% endif %}
+  
+  {% set description = config.description %}
+  
+  {{ macros_head::seo(title=title, title_addition=title_addition, description=description, is_home=true) }}
+{% endblock seo %}
+
+{% block content %}
+<div class="wrap container" role="document">
+  <div class="content">
+    <section class="section container-fluid mt-n3 pb-3">
+      <div class="row justify-content-center">
+        <div class="col-lg-12 text-center">
+          <img width="250" src="/images/logo.png" />
+          <h1 class="mt-0">{{ section.title | default(value="Modern Documentation Theme") }}</h1>
+        </div>
+        <div class="col-lg-9 col-xl-8 text-center">
+          <p class="lead">{{ section.extra.lead | default(value="Please start setting config.toml and adding your content.") | safe }}</p>
+          <a class="btn btn-primary btn-lg px-4 mb-2" href="{{ get_url(path=section.extra.url | default(value="/")) | safe }}" role="button">{{ section.extra.url_button | default(value="Get started") }}</a>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<section class="section section-sm">
+  <div class="container">
+    <div class="row justify-content-center text-center">
+      {% if section.extra.list %}
+        {% for val in section.extra.list %}
+        <div class="col-lg-5">
+          <h2 class="h4">{{ val.title }}</h2>
+          <p>{{ val.content | safe }}</p>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="col-lg-5">
+          <h2 class="h4">Security aware</h2>
+          <p>Get A+ scores on <a href="https://observatory.mozilla.org/analyze/doks.netlify.app">Mozilla Observatory</a> out of the box. Easily change the default Security Headers to suit your needs.</p>
+        </div>      
+        <div class="col-lg-5">
+          <h2 class="h4">Fast by default ⚡️</h2>
+          <p>Get 100 scores on <a href="https://googlechrome.github.io/lighthouse/viewer/?gist=7731347bb8ce999eff7428a8e763b637">Google Lighthouse</a> by default. Doks removes unused css, prefetches links, and lazy loads images.</p>
+        </div>
+        <div class="col-lg-5">
+          <h2 class="h4">SEO-ready</h2>
+          <p>Use sensible defaults for structured data, open graph, and Twitter cards. Or easily change the SEO settings to your liking.</p>
+        </div>
+        <div class="col-lg-5">
+          <h2 class="h4">Full text search</h2>
+          <p>Search your Doks site with FlexSearch. Easily customize index settings and search options to your liking.</p>
+        </div>
+        <div class="col-lg-5">
+          <h2 class="h4">Page layouts</h2>
+          <p>Build pages with a landing page, blog, or documentation layout. Add custom sections and components to suit your needs.</p>
+        </div>
+        <div class="col-lg-5">
+          <h2 class="h4">Dark mode</h2>
+          <p>Switch to a low-light UI with the click of a button. Change colors with variables to match your branding.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<section class="section section-sm container-fluid">
+  <div class="row justify-content-center text-center">
+    <div class="col-lg-9"></div>
+  </div>
+</section>
+{% endblock content %}

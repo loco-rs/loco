@@ -1,0 +1,263 @@
+{% macro resource() %}
+{% endmacro %}
+
+
+{% macro stylesheet() %}
+<link rel="stylesheet" href="{{ get_url(path="main.css") | safe }}">
+{% endmacro %}
+
+
+{% macro favicons() %}
+  <meta name="theme-color" content="{{ config.extra.theme_color | default(value="#fff") }}">
+  {% set apple_image =  resize_image(path="images/logo.png", width=180, height=180)  %}
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ apple_image.url | safe }}">
+  {% set icon32 =  resize_image(path="images/logo.png", width=32, height=32)  %}
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ icon32.url | safe }}">
+  {% set icon16 =  resize_image(path="images/logo.png", width=16, height=16)  %}
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ icon16.url | safe }}">
+  {% if not config.extra.is_netlify %}
+    <link rel="manifest" href="{{ get_url(path="site.webmanifest") | safe }}" crossorigin>
+  {% endif %}
+{% endmacro %}
+
+
+{# type:          website or article, generally setting article for blog articles #}
+{# page_images:   using for the blog single template page #}
+{# page_section:  the blog single template page have to pass the parameter #}
+{# is_404:        using for the 404.html template #}
+{% macro seo(
+  title="",
+  title_addition="",
+  description="",
+  type="website",
+  is_home=false,
+  is_404=false,
+  is_page=false,
+  page_images="",
+  page_section="",
+  created_time="2021-05-01T08:08:00+08:00",
+  updated_time="2021-05-01T08:08:08+08:00"
+  )
+%}
+
+{% if is_404 %}
+  <meta name="robots" content="noindex, follow">
+{% else %}
+  <meta name="robots" content="index, follow">
+  <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+  <meta name="bingbot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+{% endif %}
+{% if current_url %}
+	{% set page_url = current_url %}
+{% else %}
+	{% set page_url = get_url(path="404.html") %}
+{% endif %}
+{% if current_path %}
+	{% set page_path = current_path %}
+{% else %}
+	{% set page_path = "/404.html" %}
+{% endif %}
+<title>{{ title ~ title_addition }}</title>
+<meta name="description" content="{{ description }}">
+<link rel="canonical" href="{{ page_url | safe }}">
+
+{% if config.extra.open.enable %}
+  <meta name="twitter:card" content="summary_large_image">
+  {% if page.extra.images %}
+    {% for image in page.extra.images %}
+      <meta property="twitter:image" content="{{ get_url(path=image) | safe }}">
+    {% endfor %}
+  {% elif section.extra.images %}
+    {% for image in section.extra.images %}
+      <meta property="twitter:image" content="{{ get_url(path=image) | safe }}">
+    {% endfor %}
+  {% elif config.extra.open.image %}
+    <meta name="twitter:image" content="{{ config.base_url | safe }}/{{ config.extra.open.image }}">
+  {% endif %}
+  <meta name="twitter:title" content="{{ title }}">
+  <meta name="twitter:description" content="{{ description }}">
+  <meta name="twitter:site" content="@{{ config.extra.open.twitter_site }}">
+  <meta name="twitter:creator" content="@{{ config.extra.open.twitter_creator }}">
+  
+  <meta property="og:title" content="{{ title }}">
+  <meta property="og:description" content="{{ description }}">
+  <meta property="og:type" content="{{ type }}">
+  <meta property="og:url" content="{{ page_url | safe }}">
+
+  {% if page.extra.images %}
+    {% for image in page.extra.images %}
+      <meta property="og:image" content="{{ get_url(path=image) | safe }}">
+    {% endfor %}
+  {% elif section.extra.images %}
+    {% for image in section.extra.images %}
+      <meta property="og:image" content="{{ get_url(path=image) | safe }}">
+    {% endfor %}
+  {% elif config.extra.open.image %}
+    <meta property="og:image" content="{{ config.base_url | safe }}/{{ config.extra.open.image }}">
+  {% endif %}
+
+  <meta property="og:updated_time" content="{{ updated_time }}">
+  <meta property="og:site_name" content="{{ title }}">
+
+  {% if config.extra.open.audio %}
+    <meta property="og:audio" content="{{ config.extra.open.audio }}">
+  {% endif %}
+
+  {% if config.extra.open.locale %}
+    <meta property="og:locale" content="{{ config.extra.open.locale }}">
+  {% endif %}
+
+  {% if config.extra.open.videos %}
+    {% for video in config.extra.open.videos %}
+      <meta property="og:video" content="{{ get_url(path=video) }}">
+    {% endfor %}
+  {% endif %}
+  <meta property="og:locale" content="{{ config.extra.open.og_locale }}">
+{% endif %}
+
+{% if is_home and config.extra.schema %}
+  {% if config.extra.schema.type == "Organization" %}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "url": "{{ page_path | safe }}",
+      "name": "{{ title }}",
+      "logo": "{{ page_path | safe }}{{ config.extra.schema.logo }}",
+      "sameAs": [
+        {% if config.extra.schema.twitter %}"{{ config.extra.schema.twitter | safe }}",{% endif %}
+        {% if config.extra.schema.linked_in %}"{{ config.extra.schema.linked_in | safe }}",{% endif %}
+        {% if config.extra.schema.github %}"{{ config.extra.schema.github | safe }}"{% endif %}
+      ]
+    }
+    </script>
+  {% endif %}
+  {% if config.extra.schema.type == "Person" %}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      "url": "{{ page_path | safe }}",
+      "name": "{{ title }}",
+      "sameAs": [
+        {% if config.extra.schema.twitter %}"{{ config.extra.schema.twitter | safe }}",{% endif %}
+        {% if config.extra.schema.linked_in %}"{{ config.extra.schema.linked_in | safe }}",{% endif %}
+        {% if config.extra.schema.github %}"{{ config.extra.schema.github | safe }}"{% endif %}
+      ]
+    }
+    </script>
+  {% endif %}
+  {% if config.extra.schema.site_links_search_box %}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "url": "{{ page_path | safe }}",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "{{ page_path | safe }}?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+  {% endif %}
+{% endif %}
+
+{% if is_page and config.extra.schema.section %}
+  {% if config.extra.schema.section == page_section %}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "{{ page_path | safe }}"
+      },
+      "headline": "{{ title }}",
+      "image": {{ page_images }},
+      "datePublished": "{{ created_time }}",
+      "dateModified": "{{ updated_time }}",
+      "author": {
+        "@type": "{{ config.extra.schema.type }}",
+        "name": "{{ title }}"
+      },
+      "publisher": {
+        "@type": "{{ config.extra.schema.type }}",
+        "name": "{{ title }}",
+        {% if config.extra.schema.type == "Organization" %}
+        "logo": {
+          "@type": "ImageObject",
+          "url": "{{ get_url(path=config.extra.schema.logo) | replace(from=config.base_url, to="") | safe }}"
+        }
+        {% endif %}
+      },
+      "description": "{{ description }}"
+    }
+    </script>
+  {% endif %}
+{% endif %}
+
+{% set url_prefix = get_url(path="/") | split(pat="://") | first %}
+{% set url_main = get_url(path="/") | split(pat="://") | last %}
+{% set url_item = url_prefix ~ "://" ~ url_main ~ "/" %}
+<script type="application/ld+json">
+  {
+    "@context": "http://schema.org",
+    "@type": "BreadcrumbList",
+    {% if page_path == "/" %}
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Home",
+      "item": "{{ url_item | safe }}"
+    },
+    {% else %}
+      {% set paths = page_path | trim_start_matches(pat="/") | trim_end_matches(pat="/") | split(pat="/") %}
+      {% for val in paths %}
+        {% set name_array = val | split(pat="-") %}
+        {% set_global str = "" %}
+        {% for val in name_array %}
+        {% set cap_val = val | capitalize %}
+        {% set_global str = str ~ cap_val ~ " " %}
+        {% endfor %}
+        {% set name = str | trim_end_matches(pat=" ") | title %}
+        {% if not index %}
+          {
+            "@type": "ListItem",
+            "position":  1 ,
+            "name": "Home",
+            "item": "{{ url_item | safe }}"
+          },
+          {% set_global index = 2 %}
+          {% set_global url_item = url_item ~ val ~ "/" %}
+          {
+            "@type": "ListItem",
+            "position":  {{ index }} ,
+            "name": "{{ name }}",
+            "item": "{{ url_item | safe }}"
+          },
+        {% else %}
+          {% set_global index = index + 1 %}
+          {% set_global url_item = url_item ~ val ~ "/" %}
+          {
+            "@type": "ListItem",
+            "position":  {{ index }} ,
+            "name": "{{ name }}",
+            "item": "{{ url_item | safe }}"
+          },
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  }
+</script>
+
+{% if config.extra.ganalytics %}
+<script async src="https://www.googletagmanager.com/gtag/js?id={{config.extra.ganalytics}}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', '{{config.extra.ganalytics}}');
+</script>
+{% endif %}
+{% endmacro %}
