@@ -65,14 +65,6 @@ Options:
 
 ```console 
 $ demo task
-? 1
-Error: Connection Error: error returned from database: password authentication failed for user "root"
-
-Caused by:
-    error returned from database: password authentication failed for user "root"
-
-Location:
-    /Users/eladkaplan/private/git/github/rustyrails-rs/rustyrails/src/cli.rs:227:31
+user_report		[output a user report]
 
 ```
-
