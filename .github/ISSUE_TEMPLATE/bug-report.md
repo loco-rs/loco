@@ -2,7 +2,7 @@
 name: Bug Report
 about: Report behavior that deviates from specification or expectation
 title: ""
-labels: assessment
+labels: "assessment"
 assignees: ""
 ---
 
