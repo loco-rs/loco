@@ -1,7 +1,7 @@
 ```console
 $ demo 
 ? 2
-Work in progress
+The 1-Person Framework for rust
 
 Usage: demo [OPTIONS] <COMMAND>
 
@@ -65,7 +65,14 @@ Options:
 
 ```console 
 $ demo task
-user_report		[output a user report]
+? 1
+Error: Connection Error: error returned from database: password authentication failed for user "root"
+
+Caused by:
+    error returned from database: password authentication failed for user "root"
+
+Location:
+    /Users/eladkaplan/private/git/github/rustyrails-rs/rustyrails/src/cli.rs:227:31
 
 ```
 
