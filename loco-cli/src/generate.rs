@@ -15,9 +15,9 @@ use crate::template::Starter;
 ///
 /// ```rust
 /// use std::path::PathBuf;
-/// use rustyrails_cli::template::Starter;
+/// use loco_cli::template::Starter;
 /// let path = PathBuf::from(".");
-/// rustyrails_cli::generate::demo_site(&Starter::Saas,&path, "demo-website", None);
+/// loco_cli::generate::demo_site(&Starter::Saas,&path, "demo-website", None);
 /// ```
 pub fn demo_site(
     starter_template: &Starter,

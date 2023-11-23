@@ -8,8 +8,7 @@ $ loco new
 < follow the guide >
 ```
 
-
-Now `cd` into your app, set up a convenience `loco` alias and try out the various commands:
+Now `cd` into your app, set up a convenience `rr` alias and try out the various commands:
 
 ```
 $ cd myapp
@@ -34,6 +33,7 @@ $ cargo test
 ```
 
 ## Starting your app
+
 To run you app, run:
 
 ```
@@ -56,6 +56,7 @@ workers:
 
 And now, you can run the actual process in various ways:
 
-* `loco start --worker` - run only a worker and process background jobs. This is great for scale. Run one service app with `rr start`, and then run many process based workers with `loco start --worker` distributed on any machine you want.
-* `loco start --server-and-worker` - will run both a service and a background worker processor in the same unix process. It uses Tokio for executing background jobs. This is great for those cases when you want to run on a single server without too much of an expense or have constrained resources.
+
+- `rr start --worker` - run only a worker and process background jobs. This is great for scale. Run one service app with `rr start`, and then run many process based workers with `rr start --worker` distributed on any machine you want.
+- `rr start --server-and-worker` - will run both a service and a background worker processor in the same unix process. It uses Tokio for executing background jobs. This is great for those cases when you want to run on a single server without too much of an expense or have constrained resources.
 

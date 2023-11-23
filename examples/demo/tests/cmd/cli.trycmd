@@ -1,7 +1,7 @@
 ```console
 $ demo 
 ? 2
-Work in progress
+The 1-Person Framework for rust
 
 Usage: demo [OPTIONS] <COMMAND>
 
@@ -68,4 +68,3 @@ $ demo task
 user_report		[output a user report]
 
 ```
-

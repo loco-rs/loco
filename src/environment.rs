@@ -5,7 +5,7 @@
 //!
 //! ```rust
 //! use std::str::FromStr;
-//! use rustyrails::environment::Environment;
+//! use loco_rs::environment::Environment;
 //!
 //! pub fn load(environment: &str) {
 //!  let environment = Environment::from_str(environment).unwrap_or(Environment::Any(environment.to_string()));

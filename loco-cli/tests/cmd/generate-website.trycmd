@@ -1,0 +1,6 @@
+```console
+$ loco new --lib-name test --template saas
+
+💥 Loco website generated successfully in path: [CWD]/loco-site
+
+```

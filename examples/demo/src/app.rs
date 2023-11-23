@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use async_trait::async_trait;
-use rustyrails::{
+use loco_rs::{
     app::{AppContext, Hooks},
     controller::AppRoutes,
     db::{self, truncate_table},

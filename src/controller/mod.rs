@@ -9,7 +9,7 @@
 //! ```rust
 //! # #[cfg(feature = "with-db")] {
 //! use async_trait::async_trait;
-//! use rustyrails::{
+//! use loco_rs::{
 //!    app::{AppContext, Hooks},
 //!    controller::AppRoutes,
 //!    worker::Processor,
@@ -84,7 +84,7 @@ use crate::{errors::Error, Result};
 ///
 /// ```rust
 /// use axum::Json;
-/// use rustyrails::{
+/// use loco_rs::{
 ///     Result,
 ///     controller::{format, unauthorized}
 /// };

@@ -10,7 +10,7 @@ injections:
 ---
 use {{pkg_name}}::app::App;
 use migration::Migrator;
-use rustyrails::testing;
+use loco_rs::testing;
 use serial_test::serial;
 
 macro_rules! configure_insta {

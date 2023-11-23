@@ -1,6 +1,6 @@
 use blo::app::App;
 use insta::assert_debug_snapshot;
-use rustyrails::testing;
+use loco_rs::testing;
 use serial_test::serial;
 
 // TODO: see how to dedup / extract this to app-local test utils
@@ -19,7 +19,7 @@ async fn can_get_index() {
     testing::request::<App, _, _>(|request, _ctx| async move {
         let response = request.get("/").await;
 
-        assert_eq!(response.text(), "Rustyrails");
+        assert_eq!(response.text(), "Loco");
         assert_eq!(response.status_code(), 200);
     })
     .await;
@@ -33,7 +33,7 @@ async fn can_print_echo() {
     testing::request::<App, _, _>(|request, _ctx| async move {
         let response = request
             .post("/echo")
-            .json(&serde_json::json!({"site": "Rustyrails"}))
+            .json(&serde_json::json!({"site": "Loco"}))
             .await;
 
         assert_debug_snapshot!((response.status_code(), response.text()));

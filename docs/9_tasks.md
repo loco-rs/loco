@@ -1,13 +1,13 @@
 # Tasks
 
-Think of _tasks_ as ad-hoc scripts only written in Rust instead of shell scripts, and having the full power of the entire `rustyrails` framework including access to database, models, mailers, and more.
+Think of _tasks_ as ad-hoc scripts only written in Rust instead of shell scripts, and having the full power of the entire `loco` framework including access to database, models, mailers, and more.
 
 You can use tasks to:
 
-* Run a maintenance job on a database
-* Ad hoc data fixing
-* A periodic job, that you need to plug a cron entry for, such as sending a birthday email to users
-* Produce and email reports
+- Run a maintenance job on a database
+- Ad hoc data fixing
+- A periodic job, that you need to plug a cron entry for, such as sending a birthday email to users
+- Produce and email reports
 
 And more.
 

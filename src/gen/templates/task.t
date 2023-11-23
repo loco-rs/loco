@@ -14,7 +14,7 @@ injections:
 use std::collections::BTreeMap;
 
 use async_trait::async_trait;
-use rustyrails::{
+use loco_rs::{
     app::AppContext,
     task::{Task, TaskInfo},
     Result,

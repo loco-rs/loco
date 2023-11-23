@@ -10,7 +10,7 @@ injections:
 ---
 use blo::app::App;
 use migration::Migrator;
-use rustyrails::testing;
+use loco_rs::testing;
 use serial_test::serial;
 
 #[tokio::test]

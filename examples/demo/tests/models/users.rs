@@ -3,8 +3,8 @@ use blo::{
     models::users::{self, Model, RegisterParams},
 };
 use insta::assert_debug_snapshot;
+use loco_rs::{model::ModelError, testing};
 use migration::Migrator;
-use rustyrails::{model::ModelError, testing};
 use sea_orm::{ActiveModelTrait, ActiveValue};
 use serial_test::serial;
 

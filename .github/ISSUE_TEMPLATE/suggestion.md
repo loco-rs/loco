@@ -23,4 +23,4 @@ Provide a straightforward and brief explanation of your anticipated outcome.
 
 **Additional Context**
 
-Include additional details about the issue in this section. For instance, share insights into how you discovered the bug or any hypotheses you may have regarding what might be causing the problem with RustyRails.
+Include additional details about the issue in this section. For instance, share insights into how you discovered the bug or any hypotheses you may have regarding what might be causing the problem with Loco.

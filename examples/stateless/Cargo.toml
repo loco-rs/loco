@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 
-rustyrails = { version = "*", path = "../../", default-features = false, features = [
+loco-rs = { version = "*", path = "../../", default-features = false, features = [
     "cli",
 ] }
 serde = "*"
@@ -41,7 +41,7 @@ required-features = []
 [dev-dependencies]
 serial_test = "*"
 rstest = "*"
-rustyrails = { version = "*", path = "../../", default-features = false, features = [
+loco-rs = { version = "*", path = "../../", default-features = false, features = [
     "testing",
     "cli",
 ] }

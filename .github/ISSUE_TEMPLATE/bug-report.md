@@ -22,4 +22,4 @@ A clear and concise description of what you expected to happen.
 
 **Additional Context**
 
-Include additional context about the issue in this section. For instance, share insights into the bug's discovery process or any hypotInclude additional context about the issue in this section. For instance, share insights into the bug's discovery process or any hypotheses you may have regarding the root cause or specific aspects where RustyRails may be malfunctioning.
+Include additional context about the issue in this section. For instance, share insights into the bug's discovery process or any hypotInclude additional context about the issue in this section. For instance, share insights into the bug's discovery process or any hypotheses you may have regarding the root cause or specific aspects where Loco may be malfunctioning.

@@ -7,7 +7,7 @@
 //! ```rust,ignore
 //! 
 //! use myapp::app::App;
-//! use rustyrails::cli;
+//! use loco_rs::cli;
 //! use migration::Migrator;
 //!
 //! #[tokio::main]
@@ -183,7 +183,7 @@ where
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
-/// use rustyrails::cli;
+/// use loco_rs::cli;
 /// use migration::Migrator;
 ///
 /// #[tokio::main]

@@ -2,7 +2,6 @@
 
 `loco` integrates with a full blown background job processing framework: `sidekiq-rs`. You can enqueue jobs in a similar ergonomics as Rails' _ActiveJob_, and have a similar scalable processing model to perform these background jobs.
 
-
 ## Using workers
 
 To use a worker, we mainly think about adding a job to the queue, so you `use` the worker and perform later:
@@ -43,7 +42,6 @@ impl Worker<DownloadWorkerArgs> for DownloadWorker {
 
 And register it in `app.rs`:
 
-
 ```rust
 #[async_trait]
 impl Hooks for App {
@@ -51,7 +49,6 @@ impl Hooks for App {
     fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {
         p.register(DownloadWorker::build(ctx));
     }
-// ..    
+// ..
 }
 ```
-

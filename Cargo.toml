@@ -1,11 +1,11 @@
 [package]
-name = "rustyrails"
+name = "loco-rs"
 version = "0.1.0"
 edition = "2021"
-description = "Work in progress"
+description = "The 1-Person Framework for rust"
 license = "Apache-2.0"
-homepage = "https://docs.rs/rustyrails"
-documentation = "https://docs.rs/rustyrails"
+homepage = "https://docs.rs/loco-rs"
+documentation = "https://docs.rs/loco-rs"
 authors = ["Dotan Nahum <dotan@rng0.io>", "Elad Kaplan <kaplan.elad@gmail.com>"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -40,7 +40,7 @@ serde_yaml = "0.9.27"
 serde_variant = "0.1.2"
 
 # worker fwk 
-rusty-sidekiq = { version = "0.8.1" }
+rusty-sidekiq = { version = "0.8.2" }
 async-trait = "0.1.74"
 bb8 = "0.8.1"
 
