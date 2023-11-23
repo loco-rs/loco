@@ -1,8 +1,9 @@
 ---
-name: Bug Report
-about: Report behavior that deviates from specification or expectation
+name: Suggestion
+about: Suggest a change or improvement to existing functionality
+
 title: ""
-labels: "assessment"
+labels: assessment
 assignees: ""
 ---
 
