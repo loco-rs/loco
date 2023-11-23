@@ -27,7 +27,7 @@ content = 'Empower the 1-person team. Service, data, emails, background jobs, ta
 
 [[extra.list]]
 title = "🔮 Rails is great"
-content = 'Hyperstack follows Rails. There, I said it. Rails concepts are carefully adapted to modern Node development.'
+content = 'Loco follows Rails. There, I said it. Rails concepts are carefully adapted to modern Node development.'
 
 [[extra.list]]
 title = "🏅 Deliver with confidence"
@@ -35,7 +35,7 @@ content = "Unapologetically optimized for the solo developer. Complexity and hea
 
 [[extra.list]]
 title = "⚡️ Scale when needed"
-content = "Split, reconfigure, or use only parts of Hyperstack when you need to. Build and grow without pain."
+content = "Split, reconfigure, or use only parts of Loco when you need to. Build and grow without pain."
 
 [[extra.list]]
 title = "🚀️ Build incrementally"

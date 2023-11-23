@@ -21,8 +21,9 @@ h6,
 .h4,
 .h5,
 .h6 {
+  font-family: 'Raleway';
   margin: 2rem 0 1rem;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
 }
 
 @include media-breakpoint-up(md) {
