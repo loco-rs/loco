@@ -55,20 +55,20 @@ impl super::_entities::users::ActiveModel {
 To add a new model _you have to use a migration_.
 
 ```
-$ rr generate model posts
+$ loco generate model posts
 ```
 
 Creates a migration in the root of your project in `migration/`.
 You can now apply it:
 
 ```
-$ rr db migrate
+$ loco db migrate
 ```
 
 And generate back entities (Rust code) from it:
 
 ```
-$ rr db entities
+$ loco db entities
 ```
 
 ## Configuration
