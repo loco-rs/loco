@@ -7,8 +7,10 @@ use strum::{EnumIter, EnumString, IntoEnumIterator};
 
 #[derive(clap::ValueEnum, Clone, Serialize, Deserialize, Debug, EnumIter, EnumString)]
 pub enum Starter {
+    #[serde(rename = "Saas")]
     #[strum(serialize = "Saas")]
     Saas,
+    #[serde(rename = "Stateless (not db)")]
     #[strum(serialize = "Stateless (not db)")]
     Stateless,
 }
