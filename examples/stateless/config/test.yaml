@@ -23,9 +23,6 @@ mailer:
     # auth:
     #   user:
     #   password:
-redis:
-  uri: redis://127.0.0.1/
-  dangerously_flush: true
 auth:
   secret: PqRwLF2rhHe8J22oBeHy
   expiration: 604800

@@ -7,10 +7,8 @@ use strum::{EnumIter, EnumString, IntoEnumIterator};
 
 #[derive(clap::ValueEnum, Clone, Serialize, Deserialize, Debug, EnumIter, EnumString)]
 pub enum Starter {
-    #[serde(rename = "Saas")]
     #[strum(serialize = "Saas")]
     Saas,
-    #[serde(rename = "Stateless (not db)")]
     #[strum(serialize = "Stateless (not db)")]
     Stateless,
 }
@@ -51,8 +49,7 @@ impl Starter {
                 "https://github.com/rustyrails-rs/rustyrails-starter-template".to_string()
             }
             Self::Stateless => {
-                "https://github.com/rustyrails-rs/rustyrails-starter-without-db-template"
-                    .to_string()
+                "https://github.com/rustyrails-rs/rustyrails-starter-stateless-template".to_string()
             }
         }
     }

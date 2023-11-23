@@ -31,6 +31,8 @@ use crate::{
     gen::{self, Component},
 };
 
+const DEFAULT_ENVIRONMENT: &str = "development";
+
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
@@ -39,7 +41,7 @@ struct Cli {
     command: Commands,
 
     /// Specify the environment
-    #[arg(short, long, global = true)]
+    #[arg(short, long, global = true, help = &format!("Specify the environment [default: {}]", DEFAULT_ENVIRONMENT))]
     environment: Option<String>,
 }
 
@@ -195,7 +197,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
     let environment = cli
         .environment
         .or_else(resolve_from_env)
-        .unwrap_or_else(|| "development".to_string());
+        .unwrap_or_else(|| DEFAULT_ENVIRONMENT.to_string());
     match cli.command {
         Commands::Start {
             worker,
@@ -238,7 +240,7 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
     let environment = cli
         .environment
         .or_else(resolve_from_env)
-        .unwrap_or_else(|| "development".to_string());
+        .unwrap_or_else(|| DEFAULT_ENVIRONMENT.to_string());
     match cli.command {
         Commands::Start {
             worker,
