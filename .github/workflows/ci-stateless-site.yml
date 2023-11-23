@@ -1,4 +1,4 @@
-name: CI-WITHOUT_DB
+name: CI-STATELESS-SITE
 
 on:
   push:

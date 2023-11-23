@@ -45,11 +45,9 @@ impl Starter {
     #[must_use]
     pub fn git_url(&self) -> String {
         match self {
-            Self::Saas => {
-                "https://github.com/rustyrails-rs/rustyrails-starter-template".to_string()
-            }
+            Self::Saas => "https://github.com/rustyrails-rs/saas-starter-template".to_string(),
             Self::Stateless => {
-                "https://github.com/rustyrails-rs/rustyrails-starter-stateless-template".to_string()
+                "https://github.com/rustyrails-rs/stateless-starter-template".to_string()
             }
         }
     }

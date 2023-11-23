@@ -16,11 +16,12 @@
 //!
 //! To avoid compiling unused dependencies, rustyrails gates certain features.
 //!
-//! | Feature   | Default | Description                 |
-//! |-----------|---------|-----------------------------|
-//! | `auth`    | true    | Enable user authentication. |
-//! | `cli`     | true    | Expose Cli commands.        |
-//! | `testing  | true    | Expose Cli commands.        |
+//! | Feature    | Default | Description                 |
+//! |------------|---------|-----------------------------|
+//! | `auth`     | true    | Enable user authentication. |
+//! | `cli`      | true    | Expose Cli commands.        |
+//! | `testing   | false   | Test Utilities Module.      |
+//! | `with-db`  | true    | with-db.                    |
 use self::errors::Error;
 
 #[cfg(feature = "with-db")]
