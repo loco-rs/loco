@@ -1,7 +1,9 @@
 ---
 name: "Feature Request"
 about: Suggest a new feature
+title: ""
 labels: "enhancement"
+assignees: ""
 ---
 
 ## Feature Request
