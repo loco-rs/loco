@@ -3,7 +3,7 @@
 
 [package]
 name = "rustyrails-cli"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 description = "Rustyrails cli website generator"
 license = "Apache-2.0"
