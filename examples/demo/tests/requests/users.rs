@@ -1,8 +1,8 @@
 use axum::http::{HeaderName, HeaderValue};
 use blo::{app::App, models::users, views::auth::LoginResponse};
 use insta::{assert_debug_snapshot, with_settings};
+use loco_rs::testing;
 use migration::Migrator;
-use rustyrails::testing;
 use serial_test::serial;
 
 // TODO: see how to dedup / extract this to app-local test utils

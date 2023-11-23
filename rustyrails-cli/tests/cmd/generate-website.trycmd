@@ -1,6 +1,0 @@
-```console
-$ rustyrails new --lib-name test --template saas
-
-💥 Rustyrails generated successfully in path: [CWD]/rustyrails-site
-
-```

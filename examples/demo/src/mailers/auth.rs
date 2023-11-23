@@ -2,7 +2,7 @@
 #![allow(non_upper_case_globals)]
 
 use include_dir::{include_dir, Dir};
-use rustyrails::{
+use loco_rs::{
     app::AppContext,
     mailer::{Args, Mailer},
     Result,

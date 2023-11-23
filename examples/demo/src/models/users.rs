@@ -1,5 +1,5 @@
 // TODO(review): base components must be re-exported
-use rustyrails::{
+use loco_rs::{
     auth,
     model::{ModelError, ModelResult},
     validation,

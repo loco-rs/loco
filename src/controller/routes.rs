@@ -30,7 +30,7 @@ impl Routes {
     ///
     /// ```rust
     /// 
-    /// use rustyrails::{
+    /// use loco_rs::{
     ///     controller::{Routes, format},
     ///     Result,
     /// };
@@ -64,7 +64,7 @@ impl Routes {
     ///
     /// ```rust
     /// 
-    /// use rustyrails::{
+    /// use loco_rs::{
     ///     Result,
     ///     controller::{Routes, format},
     /// };
@@ -101,7 +101,7 @@ impl Routes {
     ///
     /// ```rust
     /// 
-    /// use rustyrails::{
+    /// use loco_rs::{
     ///     controller::{Routes, format},
     ///     Result,
     /// };

@@ -1,7 +1,6 @@
 # Mailers
 
-A mailer will deliver emails in the background using the existing `rustyrails` background worker infrastructure. It will all be seamless for you.
-
+A mailer will deliver emails in the background using the existing `loco` background worker infrastructure. It will all be seamless for you.
 
 ## Using mailers
 
@@ -66,5 +65,3 @@ src/
         text.t
     auth.rs         <-- mailer definition
 ```
-
-

@@ -1,4 +1,4 @@
-name: RUSTYRAILS-CLI
+name: LOCO-CLI
 
 on:
   push:
@@ -28,7 +28,7 @@ jobs:
           override: true
           components: rustfmt
       - run: cargo fmt --all -- --check
-        working-directory: ./rustyrails-cli
+        working-directory: ./loco-cli
 
   clippy:
     name: Run Clippy
@@ -50,7 +50,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Run cargo clippy
         run: cargo clippy -- -W clippy::nursery -W clippy::pedantic -W rust-2018-idioms -W rust-2021-compatibility
-        working-directory: ./rustyrails-cli
+        working-directory: ./loco-cli
 
   test:
     name: Run Tests
@@ -72,4 +72,4 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Run cargo test
         run: cargo test --all-features --all
-        working-directory: ./rustyrails-cli
+        working-directory: ./loco-cli

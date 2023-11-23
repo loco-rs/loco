@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, env};
 
 use blo::app::App;
-use rustyrails::boot::{create_context, run_task};
+use loco_rs::boot::{create_context, run_task};
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {

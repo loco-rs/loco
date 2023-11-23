@@ -181,7 +181,7 @@ impl Config {
     /// # Example
     ///
     /// ```rust
-    /// use rustyrails::{
+    /// use loco_rs::{
     ///     config::Config,
     ///     environment::Environment,
     /// };
@@ -209,7 +209,7 @@ impl Config {
     /// # Example
     ///
     /// ```rust
-    /// use rustyrails::{
+    /// use loco_rs::{
     ///     config::Config,
     ///     environment::Environment,
     /// };

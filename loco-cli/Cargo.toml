@@ -2,21 +2,21 @@
 #
 
 [package]
-name = "rustyrails-cli"
-version = "0.2.2"
+name = "loco-cli"
+version = "0.1.0"
 edition = "2021"
-description = "Rustyrails cli website generator"
+description = "loco cli website generator"
 license = "Apache-2.0"
-homepage = "https://docs.rs/rustyrails-cli"
-documentation = "https://docs.rs/rustyrails-cli"
+homepage = "https://docs.rs/loco-cli"
+documentation = "https://docs.rs/loco-cli"
 authors = ["Dotan Nahum <dotan@rng0.io>", "Elad Kaplan <kaplan.elad@gmail.com>"]
 
 [lib]
-name = "rustyrails_cli"
+name = "loco_cli"
 path = "src/lib.rs"
 
 [[bin]]
-name = "rustyrails"
+name = "loco"
 path = "src/bin/main.rs"
 required-features = []
 

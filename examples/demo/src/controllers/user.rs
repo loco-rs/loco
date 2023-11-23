@@ -1,5 +1,5 @@
 use axum::{extract::State, routing::get, Json};
-use rustyrails::{
+use loco_rs::{
     app::AppContext,
     controller::{format, middleware, Routes},
     Result,

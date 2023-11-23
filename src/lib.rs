@@ -9,12 +9,12 @@
 //!
 //! ```sh
 //! cargo install cargo-generate
-//! cargo generate https://github.com/rustyrails-rs/rustyrails-demo-template
+//! cargo generate https://github.com/loco-rs/loco-demo-template
 //! ```
 //!
 //! ## Available Features
 //!
-//! To avoid compiling unused dependencies, rustyrails gates certain features.
+//! To avoid compiling unused dependencies, loco gates certain features.
 //!
 //! | Feature    | Default | Description                 |
 //! |------------|---------|-----------------------------|

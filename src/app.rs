@@ -51,7 +51,7 @@ pub struct AppContext {
 ///
 /// ```rust
 /// # #[cfg(feature = "with-db")] {
-/// use rustyrails::{
+/// use loco_rs::{
 ///     app::{AppContext, Hooks},
 ///     controller::AppRoutes,
 ///     db::{self, truncate_table},

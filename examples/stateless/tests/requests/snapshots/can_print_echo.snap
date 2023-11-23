@@ -4,5 +4,5 @@ expression: "(response.status_code(), response.text())"
 ---
 (
     200,
-    "{\"site\":\"Rustyrails\"}",
+    "{\"site\":\"Loco\"}",
 )

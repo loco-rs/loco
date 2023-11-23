@@ -1,4 +1,4 @@
-# Rusty Rails
+# Loco
 
 ## Project Status
 
@@ -13,8 +13,8 @@
 To start a new project, you can use cargo-generate:
 
 ```
-$ cargo install rustyrails-cli
-$ rustyrails new
+$ cargo install loco-cli
+$ loco new
 ```
 
 ## Getting Started

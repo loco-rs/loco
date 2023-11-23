@@ -16,7 +16,7 @@ use axum::{
     extract::State,
     routing::{get, post},
 };
-use rustyrails::{
+use loco_rs::{
     app::AppContext,
     controller::{format, Routes},
     Result,

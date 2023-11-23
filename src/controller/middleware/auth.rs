@@ -3,7 +3,7 @@
 //! # Example:
 //!
 //! ```
-//! use rustyrails::{
+//! use loco_rs::{
 //!     controller::{middleware, format},
 //!     app::AppContext,
 //!     Result,

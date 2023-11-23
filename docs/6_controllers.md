@@ -8,7 +8,7 @@ First add a controller in `controllers/users.rs`
 
 ```rust
 use axum::{extract::State, routing::get, Json};
-use rustyrails::{
+use loco_rs::{
     app::AppContext,
     controller::{format, middleware, Routes},
     Result,
@@ -46,5 +46,3 @@ impl Hooks for App {
             .add_route(controllers::user::routes()) // <--- add this
     }
 ```
-
-

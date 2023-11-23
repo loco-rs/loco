@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use rustyrails::{
+use loco_rs::{
     app::AppContext,
     worker::{AppWorker, Result, Worker},
 };

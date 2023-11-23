@@ -1,0 +1,6 @@
+```console
+$ loco new --lib-name test --template saas
+? 1
+⛔   Target directory already exists, aborting!
+
+```

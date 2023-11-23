@@ -1,31 +1,28 @@
 # Models
 
-Models in `rustyrails` mean entity classes that allow for easy database querying and writes, but also migrations and seeding.
-
+Models in `loco` mean entity classes that allow for easy database querying and writes, but also migrations and seeding.
 
 ## Fat models, slim controllers
 
-`rustyrails` models **are designed after active record**. This means they're a central point in your universe, and every logic or operation your app has should be there.
+`loco` models **are designed after active record**. This means they're a central point in your universe, and every logic or operation your app has should be there.
 
 It means that `User::create` creates a user **but also** `user.buy(product)` will buy a product.
 
 If you agree with that direction you'll get these for free:
 
-* **Time-effective testing**, because testing your model tests most if not all of your logic and moving parts.
-* Ability to run complete app workflows **from _tasks_, or from workers and other places**.
-* Effectively **compose features** and use cases by combining models, and nothing else.
-* Essentially, **models become your app** and controllers are just one way to expose your app to the world.
+- **Time-effective testing**, because testing your model tests most if not all of your logic and moving parts.
+- Ability to run complete app workflows **from _tasks_, or from workers and other places**.
+- Effectively **compose features** and use cases by combining models, and nothing else.
+- Essentially, **models become your app** and controllers are just one way to expose your app to the world.
 
 We use [`SeaORM`](https://www.sea-ql.org/SeaORM/) as the main ORM behind our ActiveRecord abstraction.
 
-* _Why not Diesel?_ - although Diesel has better performance, its macros, and general approach felt incompatible with what we were trying to do
-* _Why not sqlx_ - SeaORM uses sqlx under the hood, so the plumbing is there for you to use `sqlx` raw if you wish.
-
+- _Why not Diesel?_ - although Diesel has better performance, its macros, and general approach felt incompatible with what we were trying to do
+- _Why not sqlx_ - SeaORM uses sqlx under the hood, so the plumbing is there for you to use `sqlx` raw if you wish.
 
 ## Example model
 
-The life of a `rustyrails` model starts with a _migration_, then an _entity_ Rust code is generated for you automatically from the database structure:
-
+The life of a `loco` model starts with a _migration_, then an _entity_ Rust code is generated for you automatically from the database structure:
 
 ```
 src/
@@ -74,11 +71,9 @@ And generate back entities (Rust code) from it:
 $ rr db entities
 ```
 
-
 ## Configuration
 
 Model configuration that's available to you is exciting because it controls all aspects of development, testing, and production, with a ton of goodies, coming from production experience.
-
 
 ```yaml
 # .. other sections ..
@@ -97,7 +92,6 @@ database:
 By combining these flags, you can create different expriences to help you be more productive.
 
 You can truncate before an app starts -- which is useful for running tests, or you can recreate the entire DB when the app starts -- which is useful for integration tests or setting up a new environment. In production, you want these turned off (hence the "dangerously" part).
-
 
 ## Testing
 
