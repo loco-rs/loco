@@ -31,7 +31,7 @@ enum Commands {
         #[arg(short, long)]
         template: Option<Starter>,
 
-        #[arg(hide = true)]
+        #[arg(hide = true, short, long)]
         branch: Option<String>,
     },
 }
