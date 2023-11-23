@@ -10,11 +10,12 @@ authors = ["Dotan Nahum <dotan@rng0.io>", "Elad Kaplan <kaplan.elad@gmail.com>"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["auth", "cli"]
+default = ["auth", "cli", "with-db"]
 
 auth = ["dep:jsonwebtoken", "dep:bcrypt"]
 cli = ["dep:clap"]
 testing = ["dep:axum-test"]
+with-db = ["dep:sea-orm", "dep:sea-orm-migration"]
 
 [dependencies]
 
@@ -28,10 +29,10 @@ sea-orm = { version = "0.12.4", features = [
   "sqlx-sqlite",
   "runtime-tokio-rustls",
   "macros",
-] }
+], optional = true }
+
 tokio = { version = "1.33.0", features = ["full"] }
 # the rest
-sqlx = "0.7.2"
 
 serde = "1.0.193"
 serde_json = "1.0.108"
@@ -63,14 +64,6 @@ tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 # cli/migrations
 duct = "0.13.6"
 
-# _meta.rs: schema discovery for truncate
-# sea-schema = { version = "*", features = ["runtime-tokio-rustls", "sqlx-all"] }
-# sqlx = { version = "0.7.2", default-features = false, features = [
-#   "mysql",
-#   "postgres",
-# ] }
-# url = "*"
-
 config = "0.13.3"
 tower-http = { version = "0.4.4", features = ["trace", "catch-panic"] }
 tower-request-id = "0.2.1"
@@ -89,6 +82,7 @@ cargo_metadata = "0.18.1"
 
 
 [dependencies.sea-orm-migration]
+optional = true
 version = "0.12.4"
 features = [
   # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.

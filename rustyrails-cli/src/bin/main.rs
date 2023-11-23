@@ -2,7 +2,7 @@ use std::{path::PathBuf, process::exit};
 
 use clap::{Parser, Subcommand};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
-
+use rustyrails_cli::{template::Starter, CmdExit};
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
@@ -26,6 +26,10 @@ enum Commands {
         /// Rust lib name in Cargo.toml.
         #[arg(short, long)]
         lib_name: Option<String>,
+
+        /// Rust lib name in Cargo.toml.
+        #[arg(short, long)]
+        template: Option<Starter>,
     },
 }
 
@@ -37,7 +41,11 @@ fn main() {
             path,
             folder_name,
             lib_name,
+            template,
         } => {
+            let selected_template =
+                template.unwrap_or_else(|| Starter::prompt_selection().unwrap());
+
             let random_string: String = thread_rng()
                 .sample_iter(&Alphanumeric)
                 .take(20)
@@ -48,18 +56,17 @@ fn main() {
             if let Some(lib_name) = lib_name {
                 define.push(format!("lib_name={lib_name}"));
             }
-            match rustyrails_cli::generate::demo_site(&path, &folder_name, Some(define)) {
-                Ok(path) => rustyrails_cli::CmdExit {
-                    code: 0,
-                    message: Some(format!(
-                        "\n💥 Rustyrails generated successfully in path: {}",
-                        path.display()
-                    )),
-                },
-                Err(err) => rustyrails_cli::CmdExit {
-                    code: 0,
-                    message: Some(format!("{err}")),
-                },
+            match rustyrails_cli::generate::demo_site(
+                &selected_template,
+                &path,
+                &folder_name,
+                Some(define),
+            ) {
+                Ok(path) => CmdExit::ok_with_message(&format!(
+                    "\n💥 Rustyrails generated successfully in path: {}",
+                    path.display()
+                )),
+                Err(err) => CmdExit::error_with_message(&format!("{err}")),
             }
         }
     };

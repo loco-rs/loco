@@ -33,14 +33,7 @@ async fn health(State(ctx): State<AppContext>) -> Result<Json<Health>> {
     format::json(Health { ok: is_ok })
 }
 
-/// Check application ping endpoint
-async fn ping() -> Result<Json<Health>> {
-    format::json(Health { ok: true })
-}
-
 /// Defines and returns the health-related routes.
 pub fn routes() -> Routes {
-    Routes::new()
-        .add("/_health", get(health))
-        .add("/_ping", get(ping))
+    Routes::new().add("/_health", get(health))
 }

@@ -1,0 +1,49 @@
+[package]
+name = "blo"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+rustyrails = { version = "*", path = "../../", default-features = false, features = [
+    "cli",
+] }
+serde = "*"
+serde_json = "*"
+eyre = "*"
+tokio = { version = "1.33.0", features = ["full"] }
+async-trait = "0.1.74"
+tracing = "0.1.40"
+validator = { version = "*" }
+
+axum = "*"
+include_dir = "*"
+uuid = { version = "*", features = ["v4"] }
+tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
+
+[patch.crates-io]
+# see https://github.com/heim-rs/darwin-libproc/pull/9
+# rusty-sidekiq needs robotty/simple-process-stats which depends on darwin-libproc, which depends on
+# a too old memchr version which sqlx needs. because libproc is native and not pure rust,
+# cargo cannot resolve it. so we patch the libproc dependency.
+# since simple_process_stats use by rusty-sidekiq is minimal, its better to replace it with something
+# that has more velocity on updating dependencies.
+darwin-libproc = { git = "https://github.com/codota/darwin-libproc" }
+
+
+[[bin]]
+name = "demo"
+path = "src/bin/main.rs"
+required-features = []
+
+[dev-dependencies]
+serial_test = "*"
+rstest = "*"
+rustyrails = { version = "*", path = "../../", default-features = false, features = [
+    "testing",
+    "cli",
+] }
+trycmd = "0.14.19"
+insta = { version = "*", features = ["redactions", "yaml", "filters"] }

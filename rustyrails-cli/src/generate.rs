@@ -2,9 +2,7 @@ use std::{fs, path::PathBuf};
 
 use cargo_generate::{generate, GenerateArgs, TemplatePath, Vcs};
 
-/// Generator github template
-const RUSTYRAILS_DEMO_TEMPLATE: &str =
-    "https://github.com/rustyrails-rs/rustyrails-starter-template";
+use crate::template::Starter;
 
 /// A generator form the git repo
 ///
@@ -17,10 +15,12 @@ const RUSTYRAILS_DEMO_TEMPLATE: &str =
 ///
 /// ```rust
 /// use std::path::PathBuf;
+/// use rustyrails_cli::template::Starter;
 /// let path = PathBuf::from(".");
-/// rustyrails_cli::generate::demo_site(&path, "demo-website", None);
+/// rustyrails_cli::generate::demo_site(&Starter::Saas,&path, "demo-website", None);
 /// ```
 pub fn demo_site(
+    starter_template: &Starter,
     path: &PathBuf,
     folder_name: &str,
     define: Option<Vec<String>>,
@@ -32,7 +32,7 @@ pub fn demo_site(
         name: Some(folder_name.to_string()),
         vcs: Some(Vcs::Git),
         template_path: TemplatePath {
-            git: Some(RUSTYRAILS_DEMO_TEMPLATE.to_string()),
+            git: Some(starter_template.git_url()),
             ..TemplatePath::default()
         },
         define,

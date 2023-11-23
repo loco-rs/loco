@@ -1,14 +1,12 @@
-use cargo_metadata::{MetadataCommand, Package};
-use chrono::Utc;
-use rrgen::{GenResult, RRgen};
+use rrgen::RRgen;
 use serde_json::json;
 
-use crate::{errors::Error, Result};
+#[cfg(feature = "with-db")]
+mod model;
+use crate::Result;
+
 const CONTROLLER_T: &str = include_str!("templates/controller.t");
 const CONTROLLER_TEST_T: &str = include_str!("templates/request_test.t");
-
-const MODEL_T: &str = include_str!("templates/model.t");
-const MODEL_TEST_T: &str = include_str!("templates/model_test.t");
 
 const MAILER_T: &str = include_str!("templates/mailer.t");
 const MAILER_SUB_T: &str = include_str!("templates/mailer_sub.t");
@@ -20,6 +18,7 @@ const TASK_T: &str = include_str!("templates/task.t");
 const WORKER_T: &str = include_str!("templates/worker.t");
 
 pub enum Component {
+    #[cfg(feature = "with-db")]
     Model {
         /// Name of the thing to generate
         name: String,
@@ -44,39 +43,14 @@ pub enum Component {
         name: String,
     },
 }
-fn collect_messages(results: Vec<GenResult>) -> String {
-    let mut messages = String::new();
-    for res in results {
-        if let rrgen::GenResult::Generated {
-            message: Some(message),
-        } = res
-        {
-            messages.push_str(&format!("* {message}\n"));
-        }
-    }
-    messages
-}
+
 pub fn generate(component: Component) -> Result<()> {
     let rrgen = RRgen::default();
 
-    let path = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
-    let meta = MetadataCommand::new()
-        .manifest_path("./Cargo.toml")
-        .current_dir(&path)
-        .exec()?;
-    let root: &Package = meta
-        .root_package()
-        .ok_or_else(|| Error::Message("cannot find root package in Cargo.toml".to_string()))?;
-    let pkg_name: &str = &root.name;
-    let ts = Utc::now();
-
     match component {
+        #[cfg(feature = "with-db")]
         Component::Model { name, fields: _ } => {
-            let vars = json!({"name": name, "ts": ts, "pkg_name": pkg_name});
-            let res1 = rrgen.generate(MODEL_T, &vars)?;
-            let res2 = rrgen.generate(MODEL_TEST_T, &vars)?;
-            let message = collect_messages(vec![res1, res2]);
-            println!("\n---\n{message}---\n");
+            model::generate(&rrgen, &name)?;
         }
         Component::Controller { name } => {
             let vars = json!({"name": name});

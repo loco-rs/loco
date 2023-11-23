@@ -53,9 +53,15 @@
 //! ```
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
 use validator::{ValidationError, ValidationErrors};
 
-use crate::model::ModelValidation;
+#[derive(Debug, Deserialize, Serialize)]
+#[allow(clippy::module_name_repetitions)]
+pub struct ModelValidation {
+    pub code: String,
+    pub message: Option<String>,
+}
 
 /// Validate the given email
 ///
@@ -71,7 +77,8 @@ pub fn is_valid_email(email: &str) -> Result<(), ValidationError> {
 }
 
 /// Convert `ValidationErrors` into a `HashMap` of field errors.
-fn into_errors(errors: ValidationErrors) -> HashMap<String, Vec<ModelValidation>> {
+#[must_use]
+pub fn into_errors(errors: ValidationErrors) -> HashMap<String, Vec<ModelValidation>> {
     errors
         .field_errors()
         .iter()
@@ -89,13 +96,17 @@ fn into_errors(errors: ValidationErrors) -> HashMap<String, Vec<ModelValidation>
 }
 
 /// Convert `ValidationErrors` into a JSON `Value`.
-fn into_json_errors(
+///
+/// # Errors
+/// when could not convert errors hashmap into a serde value
+pub fn into_json_errors(
     errors: ValidationErrors,
 ) -> Result<serde_json::Value, serde_json::error::Error> {
     let error_data = into_errors(errors);
     serde_json::to_value(error_data)
 }
 
+#[cfg(feature = "with-db")]
 /// Convert `ValidationErrors` into a `DbErr` for database handling.
 #[must_use]
 pub fn into_db_error(errors: ValidationErrors) -> sea_orm::DbErr {
@@ -130,6 +141,7 @@ mod tests {
         assert_eq!(is_valid_email(test_name).is_ok(), expected);
     }
 
+    #[cfg(feature = "with-db")]
     #[rstest]
     #[case("foo")]
     #[case("foo-bar")]

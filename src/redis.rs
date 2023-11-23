@@ -26,6 +26,7 @@ pub async fn converge(
     Ok(())
 }
 
+#[cfg(feature = "with-db")]
 /// Run Redis ping command
 pub async fn ping(pool: &Pool<RedisConnectionManager>) -> Result<()> {
     let mut conn = pool.get().await?;

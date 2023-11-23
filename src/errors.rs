@@ -4,7 +4,7 @@ use axum::http::StatusCode;
 use config::ConfigError;
 use lettre::{address::AddressError, transport::smtp};
 
-use crate::{controller::ErrorDetail, model::ModelError};
+use crate::controller::ErrorDetail;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -35,6 +35,7 @@ pub enum Error {
     #[error(transparent)]
     IO(#[from] std::io::Error),
 
+    #[cfg(feature = "with-db")]
     #[error(transparent)]
     DB(#[from] sea_orm::DbErr),
 
@@ -57,9 +58,10 @@ pub enum Error {
     #[error("")]
     CustomError(StatusCode, ErrorDetail),
 
+    #[cfg(feature = "with-db")]
     // Model
     #[error(transparent)]
-    Model(#[from] ModelError),
+    Model(#[from] crate::model::ModelError),
 
     // TODO(review):. maybe change to to box instead expose all sidekiq errors
     #[error(transparent)]

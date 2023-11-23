@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 
 rustyrails = { version = "*", path = "../../" }
+migration = { path = "migration" }
 
 serde = "*"
 serde_json = "*"
@@ -17,28 +18,17 @@ async-trait = "0.1.74"
 tracing = "0.1.40"
 chrono = "*"
 validator = { version = "*" }
-
-# TODO(review): check if can use this crate from the framework
 sea-orm = { version = "0.12.4", features = [
   "sqlx-sqlite",
   "sqlx-postgres",
   "runtime-tokio-rustls",
   "macros",
 ] }
-migration = { path = "migration" }
-
 
 axum = "*"
 include_dir = "*"
 uuid = { version = "*", features = ["v4"] }
-
-# cli
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
-
-# TODO: this is required by test-utils remove once,
-# test-utils migrated into "rustyrails::testing"
-lazy_static = "*"
-
 
 [patch.crates-io]
 # see https://github.com/heim-rs/darwin-libproc/pull/9
@@ -60,5 +50,4 @@ serial_test = "*"
 rstest = "*"
 rustyrails = { version = "*", path = "../../", features = ["testing"] }
 trycmd = "0.14.19"
-# TODO: this is required by test-utils. when we should move thie test-utils into the framework and creating a feature called testing
 insta = { version = "*", features = ["redactions", "yaml", "filters"] }

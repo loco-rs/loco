@@ -16,14 +16,20 @@
 //!
 //! To avoid compiling unused dependencies, rustyrails gates certain features.
 //!
-//! | Feature   | Default | Description                 |
-//! |-----------|---------|-----------------------------|
-//! | `auth`    | true    | Enable user authentication. |
-//! | `cli`     | true    | Expose Cli commands.        |
-//! | `testing  | true    | Expose Cli commands.        |
+//! | Feature    | Default | Description                 |
+//! |------------|---------|-----------------------------|
+//! | `auth`     | true    | Enable user authentication. |
+//! | `cli`      | true    | Expose Cli commands.        |
+//! | `testing   | false   | Test Utilities Module.      |
+//! | `with-db`  | true    | with-db.                    |
 use self::errors::Error;
 
+#[cfg(feature = "with-db")]
 pub mod db;
+#[cfg(feature = "with-db")]
+pub mod model;
+#[cfg(feature = "with-db")]
+pub mod schema;
 
 pub mod app;
 #[cfg(feature = "cli")]
@@ -39,9 +45,7 @@ pub mod errors;
 mod gen;
 mod logger;
 pub mod mailer;
-pub mod model;
 mod redis;
-pub mod schema;
 pub mod task;
 #[cfg(feature = "testing")]
 pub mod testing;
