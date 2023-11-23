@@ -1,1 +1,4 @@
 target/
+
+# Local Netlify folder
+.netlify

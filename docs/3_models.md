@@ -1,11 +1,11 @@
 # Models
 
-Models in `rustyrails` mean entity classes that allow for easy database querying and writes, but also migrations and seeding.
+Models in `loco` mean entity classes that allow for easy database querying and writes, but also migrations and seeding.
 
 
 ## Fat models, slim controllers
 
-`rustyrails` models **are designed after active record**. This means they're a central point in your universe, and every logic or operation your app has should be there.
+`loco` models **are designed after active record**. This means they're a central point in your universe, and every logic or operation your app has should be there.
 
 It means that `User::create` creates a user **but also** `user.buy(product)` will buy a product.
 
@@ -24,7 +24,7 @@ We use [`SeaORM`](https://www.sea-ql.org/SeaORM/) as the main ORM behind our Act
 
 ## Example model
 
-The life of a `rustyrails` model starts with a _migration_, then an _entity_ Rust code is generated for you automatically from the database structure:
+The life of a `loco` model starts with a _migration_, then an _entity_ Rust code is generated for you automatically from the database structure:
 
 
 ```
@@ -58,20 +58,20 @@ impl super::_entities::users::ActiveModel {
 To add a new model _you have to use a migration_.
 
 ```
-$ rr generate model posts
+$ loco generate model posts
 ```
 
 Creates a migration in the root of your project in `migration/`.
 You can now apply it:
 
 ```
-$ rr db migrate
+$ loco db migrate
 ```
 
 And generate back entities (Rust code) from it:
 
 ```
-$ rr db entities
+$ loco db entities
 ```
 
 
