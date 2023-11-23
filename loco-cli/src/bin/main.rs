@@ -30,6 +30,9 @@ enum Commands {
         /// Rust lib name in Cargo.toml.
         #[arg(short, long)]
         template: Option<Starter>,
+
+        #[arg(hide = true)]
+        branch: Option<String>,
     },
 }
 
@@ -42,6 +45,7 @@ fn main() {
             folder_name,
             lib_name,
             template,
+            branch,
         } => {
             let selected_template =
                 template.unwrap_or_else(|| Starter::prompt_selection().unwrap());
@@ -61,6 +65,7 @@ fn main() {
                 &path,
                 &folder_name,
                 Some(define),
+                branch,
             ) {
                 Ok(path) => CmdExit::ok_with_message(&format!(
                     "\n💥 Loco website generated successfully in path: {}",

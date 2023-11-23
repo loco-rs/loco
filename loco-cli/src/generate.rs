@@ -17,13 +17,14 @@ use crate::template::Starter;
 /// use std::path::PathBuf;
 /// use loco_cli::template::Starter;
 /// let path = PathBuf::from(".");
-/// loco_cli::generate::demo_site(&Starter::Saas,&path, "demo-website", None);
+/// loco_cli::generate::demo_site(&Starter::Saas,&path, "demo-website", None, None);
 /// ```
 pub fn demo_site(
     starter_template: &Starter,
     path: &PathBuf,
     folder_name: &str,
     define: Option<Vec<String>>,
+    branch: Option<String>,
 ) -> eyre::Result<PathBuf> {
     let define = define.unwrap_or_default();
 
@@ -32,6 +33,7 @@ pub fn demo_site(
         name: Some(folder_name.to_string()),
         vcs: Some(Vcs::Git),
         template_path: TemplatePath {
+            branch,
             git: Some(starter_template.git_url()),
             ..TemplatePath::default()
         },
