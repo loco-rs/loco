@@ -2078,6 +2078,7 @@ dependencies = [
  "bcrypt",
  "byte-unit",
  "cargo_metadata",
+ "cfg-if",
  "chrono",
  "clap",
  "config",

@@ -2,7 +2,7 @@
 //!
 //! This module defines functions and operations related to the application's
 //! database interactions.
-use std::fs::File;
+use std::{fs::File, path::Path};
 
 use duct::cmd;
 use sea_orm::{
@@ -149,4 +149,8 @@ where
 {
     T::delete_many().exec(db).await?;
     Ok(())
+}
+
+pub async fn run_app_seed<H: Hooks>(db: &DatabaseConnection, path: &Path) -> AppResult<()> {
+    Ok(H::seed(db, path).await?)
 }

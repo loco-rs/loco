@@ -1,10 +1,10 @@
 +++
-title = "Building Apps"
-description = "Find out how to contribute to AdiDoks."
+title = "The App"
+description = ""
 date = 2025-05-01T18:00:00+00:00
 updated = 2021-05-01T18:00:00+00:00
 template = "docs/section.html"
 sort_by = "weight"
-weight = 4
+weight = 2
 draft = false
 +++
