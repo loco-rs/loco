@@ -1,3 +1,6 @@
+#![allow(clippy::missing_errors_doc)]
+
+use std::process::exit;
 pub mod generate;
 pub mod template;
 
@@ -21,5 +24,13 @@ impl CmdExit {
             code: 0,
             message: Some(message.to_string()),
         }
+    }
+
+    pub fn exit(&self) {
+        if let Some(message) = &self.message {
+            eprintln!("{message}");
+        };
+
+        exit(self.code);
     }
 }

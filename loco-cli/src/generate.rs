@@ -2,39 +2,26 @@ use std::{fs, path::PathBuf};
 
 use cargo_generate::{generate, GenerateArgs, TemplatePath, Vcs};
 
-use crate::template::Starter;
-
 /// A generator form the git repo
 ///
 /// # Errors
-/// 1. when `folder_name` does not exist or A non-final component in path is not
-///    a directory
-/// 2. When has an error generating the git repository
-///
-/// # Examples
-///
-/// ```rust
-/// use std::path::PathBuf;
-/// use loco_cli::template::Starter;
-/// let path = PathBuf::from(".");
-/// loco_cli::generate::demo_site(&Starter::Saas,&path, "demo-website", None, None);
-/// ```
-pub fn demo_site(
-    starter_template: &Starter,
+/// Returns error when cannot generate
+pub fn new_project(
+    starter_url: &String,
     path: &PathBuf,
-    folder_name: &str,
-    define: Option<Vec<String>>,
-    branch: Option<String>,
+    app: &str,
+    random_string: &str,
 ) -> eyre::Result<PathBuf> {
-    let define = define.unwrap_or_default();
+    let mut define = vec![format!("auth_secret={random_string}")];
+    define.push(format!("lib_name={app}"));
 
     let args = GenerateArgs {
         destination: Some(fs::canonicalize(path)?),
-        name: Some(folder_name.to_string()),
+        name: Some(app.to_string()),
         vcs: Some(Vcs::Git),
         template_path: TemplatePath {
-            branch,
-            git: Some(starter_template.git_url()),
+            branch: None,
+            git: Some(starter_url.to_string()),
             ..TemplatePath::default()
         },
         define,

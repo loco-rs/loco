@@ -1,6 +1,12 @@
 ```console
-$ loco new --lib-name test --template saas
+$ loco new --help
+Create a new Loco website
 
-💥 Loco website generated successfully in path: [CWD]/loco-site
+Usage: loco new [OPTIONS]
+
+Options:
+  -p, --path <PATH>  Local path to generate into [default: .]
+  -h, --help         Print help
+  -V, --version      Print version
 
 ```
