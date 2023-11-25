@@ -1,3 +1,2 @@
-**/*.sass linguist-detectable=false
-**/*.html linguist-detectable=false
-
+* linguist-vendored
+*.rs linguist-vendored=false
