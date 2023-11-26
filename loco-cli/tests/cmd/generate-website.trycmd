@@ -10,3 +10,18 @@ Options:
   -V, --version      Print version
 
 ```
+
+```console
+$ LOCO_FOLDER_NAME=saas_template LOCO_TEMPLATE=saas loco new 
+? 1
+⛔   Target directory already exists, aborting!
+
+```
+
+```console
+$ LOCO_FOLDER_NAME=stateless_template LOCO_TEMPLATE=stateless loco new 
+
+🚂 Loco app generated successfully in:
+[CWD]/stateless-template
+
+```
