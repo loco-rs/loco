@@ -46,7 +46,7 @@ impl Routes {
     /// async fn ping() -> Result<Json<Health>> {
     ///     format::json(Health { ok: true })
     /// }
-    /// Routes::at("status").add("/_ping", get(ping));
+    /// Routes::at("status").add("/_ping", get(ping), loco_rs::HttpMethod::GET);
     ///    
     /// ````
     #[must_use]
@@ -80,7 +80,7 @@ impl Routes {
     /// async fn ping() -> Result<Json<Health>> {
     ///     format::json(Health { ok: true })
     /// }
-    /// Routes::new().add("/_ping", get(ping));
+    /// Routes::new().add("/_ping", get(ping), loco_rs::HttpMethod::GET);
     ///    
     /// ````
     #[must_use]
@@ -123,7 +123,7 @@ impl Routes {
     /// async fn ping() -> Result<Json<Health>> {
     ///     format::json(Health { ok: true })
     /// }
-    /// Routes::new().prefix("status").add("/_ping", get(ping));
+    /// Routes::new().prefix("status").add("/_ping", get(ping), loco_rs::HttpMethod::GET);
     ///    
     /// ````
     #[must_use]
