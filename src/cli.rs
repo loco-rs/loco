@@ -66,7 +66,7 @@ enum Commands {
     Task {
         /// Task name (identifier)
         name: Option<String>,
-        /// Task params (e.g. <my_task> foo=bar baz=qux)
+        /// Task params (e.g. <my_task> foo:bar baz:qux)
         #[clap(value_parser = parse_key_val::<String,String>)]
         params: Vec<(String, String)>,
     },
@@ -88,7 +88,7 @@ enum ComponentArg {
         /// Name of the thing to generate
         name: String,
 
-        /// Model fields, eg. title=string hits=integer (unimplemented)
+        /// Model fields, eg. title:string hits:integer (unimplemented)
         #[clap(value_parser = parse_key_val::<String,String>)]
         fields: Vec<(String, String)>,
     },
@@ -162,8 +162,8 @@ where
     U::Err: std::error::Error + Send + Sync + 'static,
 {
     let pos = s
-        .find('=')
-        .ok_or_else(|| format!("invalid KEY=value: no `=` found in `{s}`"))?;
+        .find(':')
+        .ok_or_else(|| format!("invalid KEY=value: no `:` found in `{s}`"))?;
     Ok((s[..pos].parse()?, s[pos + 1..].parse()?))
 }
 

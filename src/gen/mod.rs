@@ -1,4 +1,4 @@
-use rrgen::RRgen;
+use rrgen::{GenResult, RRgen};
 use serde_json::json;
 
 #[cfg(feature = "with-db")]
@@ -49,8 +49,8 @@ pub fn generate(component: Component) -> Result<()> {
 
     match component {
         #[cfg(feature = "with-db")]
-        Component::Model { name, fields: _ } => {
-            model::generate(&rrgen, &name)?;
+        Component::Model { name, fields } => {
+            model::generate(&rrgen, &name, &fields)?;
         }
         Component::Controller { name } => {
             let vars = json!({"name": name});
@@ -74,4 +74,17 @@ pub fn generate(component: Component) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn collect_messages(results: Vec<GenResult>) -> String {
+    let mut messages = String::new();
+    for res in results {
+        if let rrgen::GenResult::Generated {
+            message: Some(message),
+        } = res
+        {
+            messages.push_str(&format!("* {message}\n"));
+        }
+    }
+    messages
 }

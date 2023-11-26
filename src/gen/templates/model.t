@@ -29,8 +29,19 @@ impl MigrationTrait for Migration {
                 table_auto({{model}}::Table)
                     .col(pk_auto({{model}}::Id).borrow_mut())
                     .col(uuid({{model}}::Pid).borrow_mut())
-                    .col(string_null({{model}}::Title).borrow_mut())
-                    .col(string_null({{model}}::Content).borrow_mut())
+                    {% for column in columns -%}
+                    .col({{column.1}}({{model}}::{{column.0 | pascal_case}}).borrow_mut())
+                    {% endfor -%}
+                    {% for ref in references -%}
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk-{{plural_snake}}-{{ref.0 | plural}}")
+                            .from({{model}}::Table, {{model}}::{{ref.1 | pascal_case}})
+                            .to({{ref.0 | plural | pascal_case}}::Table, {{ref.0 | plural | pascal_case}}::Id)
+                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_update(ForeignKeyAction::Cascade),
+                    )
+                    {% endfor -%}
                     .to_owned(),
             )
             .await
@@ -48,6 +59,17 @@ enum {{model}} {
     Table,
     Id,
     Pid,
-    Title,
-    Content,
+    {% for column in columns -%}
+    {{column.0 | pascal_case}},
+    {% endfor %}
 }
+
+
+{% for ref in references -%}
+#[derive(DeriveIden)]
+enum {{ref.0 | plural | pascal_case}} {
+    Table,
+    Id,
+}
+{% endfor -%}
+

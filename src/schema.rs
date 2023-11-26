@@ -162,10 +162,34 @@ where
     ColumnDef::new(name).string().clone()
 }
 
+/// Create a nullable text column definition.
+pub fn text<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).text().clone()
+}
+
 /// Create a non-nullable string column definition.
 pub fn string<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
     string_null(name).not_null().clone()
+}
+
+/// Create a nullable boolean column definition.
+pub fn bool_null<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).boolean().clone()
+}
+
+/// Create a non-nullable boolean column definition.
+pub fn bool<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    bool_null(name).not_null().clone()
 }
