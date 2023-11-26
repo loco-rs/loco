@@ -13,8 +13,9 @@ Options:
 
 ```console
 $ LOCO_FOLDER_NAME=saas_template LOCO_TEMPLATE=saas loco new 
-? 1
-⛔   Target directory already exists, aborting!
+
+🚂 Loco app generated successfully in:
+[CWD]/saas-template
 
 ```
 
