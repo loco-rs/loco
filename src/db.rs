@@ -13,7 +13,10 @@ use sea_orm_migration::MigratorTrait;
 use tracing::info;
 
 use super::Result as AppResult;
-use crate::{app::Hooks, config};
+use crate::{
+    app::{AppContext, Hooks},
+    config,
+};
 
 /// converge database logic
 ///
@@ -125,13 +128,17 @@ where
 /// # Errors
 ///
 /// Returns a [`AppResult`] if an error occurs during generate model entity.
-pub fn entities<M: MigratorTrait>(_db: &DatabaseConnection) -> AppResult<String> {
+pub fn entities<M: MigratorTrait>(ctx: &AppContext) -> AppResult<String> {
     let out = cmd!(
         "sea-orm-cli",
         "generate",
         "entity",
+        "--with-serde",
+        "both",
         "--output-dir",
         "src/models/_entities",
+        "--database-url",
+        &ctx.config.database.uri
     )
     .stderr_to_stdout()
     .run()?;

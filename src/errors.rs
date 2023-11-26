@@ -52,6 +52,10 @@ pub enum Error {
     #[error("{0}")]
     Unauthorized(String),
 
+    // API
+    #[error("not found")]
+    NotFound,
+
     #[error("{0}")]
     BadRequest(String),
 
