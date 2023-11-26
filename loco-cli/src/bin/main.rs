@@ -1,8 +1,8 @@
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 use clap::{Parser, Subcommand};
 use loco_cli::{
-    template::{prompt_app, prompt_selection},
+    template::{get_template_url_by_name, prompt_app, prompt_selection, validate_app_name},
     CmdExit,
 };
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
@@ -29,8 +29,18 @@ fn main() -> eyre::Result<()> {
 
     let res = match cli.command {
         Commands::New { path } => {
-            let app = prompt_app()?;
-            let starter_url = prompt_selection()?;
+            let app = match env::var("LOCO_FOLDER_NAME") {
+                Ok(app_name) => {
+                    validate_app_name(app_name.as_str())?;
+                    app_name
+                }
+                Err(_) => prompt_app()?,
+            };
+
+            let starter_url = match env::var("LOCO_TEMPLATE") {
+                Ok(template) => get_template_url_by_name(template.as_str())?,
+                Err(_) => prompt_selection()?,
+            };
             let random_string: String = thread_rng()
                 .sample_iter(&Alphanumeric)
                 .take(20)

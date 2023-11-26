@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf};
+use std::{env, fs, path::PathBuf};
 
 use cargo_generate::{generate, GenerateArgs, TemplatePath, Vcs};
 
@@ -20,7 +20,7 @@ pub fn new_project(
         name: Some(app.to_string()),
         vcs: Some(Vcs::Git),
         template_path: TemplatePath {
-            branch: None,
+            branch: env::var("LOCO_BRANCH").map(Some).unwrap_or_default(),
             git: Some(starter_url.to_string()),
             ..TemplatePath::default()
         },
