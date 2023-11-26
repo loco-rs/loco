@@ -204,7 +204,7 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
         }
         RunDbCommand::Entities => {
             tracing::warn!("entities:");
-            tracing::warn!("{}", db::entities::<M>(&app_context.db)?);
+            tracing::warn!("{}", db::entities::<M>(&app_context)?);
         }
         RunDbCommand::Truncate => {
             tracing::warn!("truncate:");
