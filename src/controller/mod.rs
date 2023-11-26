@@ -60,7 +60,7 @@ pub mod middleware;
 mod ping;
 mod routes;
 
-pub use app_routes::AppRoutes;
+pub use app_routes::{AppRoutes, ListRoutes};
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},

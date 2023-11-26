@@ -65,6 +65,7 @@ use crate::db;
 use crate::{
     app::{AppContext, Hooks},
     config::{self, Config},
+    controller::ListRoutes,
     environment::Environment,
     errors::Error,
     logger,
@@ -346,6 +347,11 @@ fn create_processor<H: Hooks>(app_context: &AppContext) -> Result<Processor> {
 
     trace!("done registering workers and queues");
     Ok(p)
+}
+
+#[must_use]
+pub fn list_endpoints<H: Hooks>() -> Vec<ListRoutes> {
+    H::routes().collect()
 }
 
 /// Initializes an [`EmailSender`] based on the mailer configuration settings

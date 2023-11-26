@@ -16,5 +16,7 @@ async fn current(
 }
 
 pub fn routes() -> Routes {
-    Routes::new().prefix("user").add("/current", get(current))
+    Routes::new()
+        .prefix("user")
+        .add("/current", get(current), loco_rs::HttpMethod::GET)
 }

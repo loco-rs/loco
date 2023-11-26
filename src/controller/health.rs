@@ -35,5 +35,5 @@ async fn health(State(ctx): State<AppContext>) -> Result<Json<Health>> {
 
 /// Defines and returns the health-related routes.
 pub fn routes() -> Routes {
-    Routes::new().add("/_health", get(health))
+    Routes::new().add("/_health", get(health), axum::http::Method::GET)
 }

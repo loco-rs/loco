@@ -21,5 +21,5 @@ async fn ping() -> Result<Json<Health>> {
 
 /// Defines and returns the health-related routes.
 pub fn routes() -> Routes {
-    Routes::new().add("/_ping", get(ping))
+    Routes::new().add("/_ping", get(ping), axum::http::Method::GET)
 }

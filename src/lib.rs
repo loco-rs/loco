@@ -51,6 +51,7 @@ pub mod task;
 pub mod testing;
 pub mod validation;
 pub mod worker;
+pub use axum::http::Method as HttpMethod;
 pub use validator;
 
 /// Application results options list

@@ -11,6 +11,7 @@ pub struct Routes {
 pub struct Handler {
     pub uri: String,
     pub method: axum::routing::MethodRouter<AppContext>,
+    pub action: axum::http::Method,
 }
 
 impl Routes {
@@ -83,10 +84,16 @@ impl Routes {
     ///    
     /// ````
     #[must_use]
-    pub fn add(mut self, uri: &str, method: axum::routing::MethodRouter<AppContext>) -> Self {
+    pub fn add(
+        mut self,
+        uri: &str,
+        method: axum::routing::MethodRouter<AppContext>,
+        action: axum::http::Method,
+    ) -> Self {
         self.handlers.push(Handler {
             uri: uri.to_owned(),
             method,
+            action,
         });
         self
     }

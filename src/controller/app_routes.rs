@@ -24,6 +24,12 @@ pub struct AppRoutes {
     routes: Vec<Routes>,
 }
 
+pub struct ListRoutes {
+    pub uri: String,
+    pub action: axum::http::Method,
+    pub method: axum::routing::MethodRouter<AppContext>,
+}
+
 impl AppRoutes {
     /// Create a new instance with the default routes.
     #[must_use]
@@ -42,6 +48,31 @@ impl AppRoutes {
             prefix: None,
             routes: vec![],
         }
+    }
+
+    #[must_use]
+    pub fn collect(&self) -> Vec<ListRoutes> {
+        let base_url_prefix = self.get_prefix().map_or("/", |url| url.as_str());
+
+        self.get_routes()
+            .iter()
+            .flat_map(|router| {
+                let mut uri_parts = vec![base_url_prefix];
+                if let Some(prefix) = router.prefix.as_ref() {
+                    uri_parts.push(prefix);
+                }
+                router.handlers.iter().map(move |controller| {
+                    let uri = format!("{}{}", uri_parts.join("/"), &controller.uri);
+                    let uri = NORMALIZE_URL.replace_all(&uri, "/");
+
+                    ListRoutes {
+                        uri: uri.to_string(),
+                        action: controller.action.clone(),
+                        method: controller.method.clone(),
+                    }
+                })
+            })
+            .collect()
     }
 
     /// Get the prefix of the routes.
@@ -98,26 +129,11 @@ impl AppRoutes {
     /// [`axum::Router`].
     pub fn to_router(&self, ctx: AppContext) -> Result<AXRouter> {
         let mut app = AXRouter::new();
-        let base_url_prefix = self.get_prefix().map_or("/", |url| url.as_str());
 
-        for router in self.get_routes() {
-            let mut uri_parts = vec![base_url_prefix];
+        for router in self.collect() {
+            tracing::info!("[{}] {}", router.action, &router.uri);
 
-            if let Some(prefix) = router.prefix.as_ref() {
-                uri_parts.push(prefix);
-            }
-
-            for controller in &router.handlers {
-                let uri = format!("{}{}", uri_parts.join("/"), &controller.uri);
-
-                let method = controller.method.clone();
-
-                let uri = NORMALIZE_URL.replace_all(&uri, "/");
-
-                tracing::info!("{}", &uri);
-
-                app = app.route(&uri, method);
-            }
+            app = app.route(&router.uri, router.method);
         }
 
         if let Some(catch_panic) = &ctx.config.server.middlewares.catch_panic {

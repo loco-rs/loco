@@ -6,10 +6,11 @@ The 1-Person Framework for rust
 Usage: demo [OPTIONS] <COMMAND>
 
 Commands:
-  start     Start an app
-  task      Run a custom task
-  generate  code generation creates a set of files and code templates based on a predefined set of rules
-  help      Print this message or the help of the given subcommand(s)
+  start       Start an app
+  controller  Describe all application endpoints
+  task        Run a custom task
+  generate    code generation creates a set of files and code templates based on a predefined set of rules
+  help        Print this message or the help of the given subcommand(s)
 
 Options:
   -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
@@ -45,3 +46,11 @@ example		[output a example task]
 
 ```
 
+
+```console
+$ demo controller
+[GET] /
+[GET] /_ping
+[POST] /echo
+
+```
