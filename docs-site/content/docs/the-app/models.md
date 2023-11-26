@@ -69,10 +69,42 @@ impl super::_entities::users::ActiveModel {
 To add a new model _you have to use a migration_.
 
 ```
+$ loco generate model posts title:string! content:text user:references
+```
+
+For schema data types, you can use the following mapping to understand the schema:
+
+```rust
+("text", "text"),
+("string", "string_null"),
+("string!", "string"),
+("string^", "string_uniq"),
+("int", "integer_null"),
+("int!", "integer"),
+("int^", "integer_uniq"),
+("bool", "bool_null"),
+("bool!", "bool"),
+("ts", "timestamp_null"),
+("ts!", "timestamp"),
+("uuid", "uuid"),
+```
+
+
+Using `user:references` uses the special `references` type, which will create a relationship between a `post` and a `user`, adding a `user_id` reference field to the `posts` table.
+
+You can generate an empty model:
+
+```
 $ loco generate model posts
 ```
 
-Creates a migration in the root of your project in `migration/`.
+Or a data model, without any references:
+
+```
+$ loco generate model posts title:string! content:text
+```
+
+This creates a migration in the root of your project in `migration/`.
 You can now apply it:
 
 ```
