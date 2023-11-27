@@ -67,20 +67,6 @@ impl super::_entities::users::Model {
     ///
     /// # Errors
     ///
-    /// This function will return an error if .
-    pub async fn notes(
-        &self,
-        db: &DatabaseConnection,
-    ) -> Result<Vec<super::_entities::notes::Model>, DbErr> {
-        self.find_related(super::_entities::prelude::Notes)
-            .all(db)
-            .await
-    }
-
-    /// .
-    ///
-    /// # Errors
-    ///
     /// .
     pub async fn find_by_email(db: &DatabaseConnection, email: &str) -> ModelResult<Self> {
         let user = users::Entity::find()

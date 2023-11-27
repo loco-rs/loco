@@ -61,7 +61,10 @@ pub fn init(config: &config::Logger) {
         })
         .expect("logger initialization failed");
 
-    let builder = tracing_subscriber::FmtSubscriber::builder().with_env_filter(filter);
+    let builder = tracing_subscriber::FmtSubscriber::builder()
+        .with_env_filter(filter)
+        .with_line_number(true)
+        .with_file(true);
 
     match config.format {
         Format::Compact => builder.compact().init(),

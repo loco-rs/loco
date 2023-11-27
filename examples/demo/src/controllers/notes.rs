@@ -1,80 +1,80 @@
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
-use axum::{extract::State, routing::get};
+use axum::{
+    extract::{Path, State},
+    routing::{delete, get, post},
+    Json,
+};
 use loco_rs::{
     app::AppContext,
     controller::{format, Routes},
     errors::Error,
-    worker::AppWorker,
     Result,
 };
-use sea_orm::EntityTrait;
+use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, ModelTrait, Set};
+use serde::{Deserialize, Serialize};
 
-// user imports
-use crate::{
-    mailers::auth::AuthMailer,
-    models::_entities::users,
-    workers::downloader::{DownloadWorker, DownloadWorkerArgs},
-};
+use crate::models::_entities::notes::{ActiveModel, Entity, Model};
 
-/// Benchmark function for a simple hello-world endpoint.
-///
-/// # Errors
-///
-/// Errors related to formatting the response.
-pub async fn bench_hello(_req_body: String) -> Result<String> {
-    format::text("hello")
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Params {
+    pub title: Option<String>,
+    pub content: Option<String>,
 }
 
-/// Benchmark function for database operations.
-///
-/// This function is used to benchmark database operations by performing a
-/// simple query to retrieve a user entity by ID. It utilizes the
-/// `Entity::find_by_id` method provided by the `users` module.
-///
-/// # Errors
-///
-/// When db query fails
-pub async fn bench_db(State(ctx): State<AppContext>) -> Result<()> {
-    let _ = users::Entity::find_by_id(1).one(&ctx.db).await?;
+impl Params {
+    fn update(&self, item: &mut ActiveModel) {
+        item.title = Set(self.title.clone());
+        item.content = Set(self.content.clone());
+    }
+}
+
+async fn load_item(ctx: &AppContext, id: i32) -> Result<Model> {
+    let item = Entity::find_by_id(id).one(&ctx.db).await?;
+    item.ok_or_else(|| Error::NotFound)
+}
+
+pub async fn list(State(ctx): State<AppContext>) -> Result<Json<Vec<Model>>> {
+    format::json(Entity::find().all(&ctx.db).await?)
+}
+
+pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Json<Model>> {
+    let mut item = ActiveModel {
+        ..Default::default()
+    };
+    params.update(&mut item);
+    let item = item.insert(&ctx.db).await?;
+    format::json(item)
+}
+
+pub async fn update(
+    Path(id): Path<i32>,
+    State(ctx): State<AppContext>,
+    Json(params): Json<Params>,
+) -> Result<Json<Model>> {
+    let item = load_item(&ctx, id).await?;
+    let mut item = item.into_active_model();
+    params.update(&mut item);
+    let item = item.update(&ctx.db).await?;
+    format::json(item)
+}
+
+pub async fn remove(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<()> {
+    load_item(&ctx, id).await?.delete(&ctx.db).await?;
     format::empty()
 }
 
-/// return echo message
-pub async fn echo(req_body: String) -> String {
-    req_body
-}
-
-/// A simple endpoint for demonstrating asynchronous tasks in a web application.
-///
-/// # Errors
-///
-/// when send welcome message fails or there is an error when preform download
-/// task
-pub async fn hello(State(ctx): State<AppContext>) -> Result<String> {
-    DownloadWorker::perform_later(
-        &ctx,
-        DownloadWorkerArgs {
-            user_guid: "foo".to_string(),
-        },
-    )
-    .await
-    .map_err(|e| {
-        tracing::error!(
-            error = e.to_string(),
-            "could not perform the download worker"
-        );
-        Error::Any("could not perform the download worker ".into())
-    })?;
-
-    AuthMailer::send_welcome(&ctx, "foobar").await?;
-
-    format::text("hello")
+pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Json<Model>> {
+    format::json(load_item(&ctx, id).await?)
 }
 
 pub fn routes() -> Routes {
     Routes::new()
-        .add("/", get(hello))
-        .add("/echo", get(echo))
-        .add("/bench_db", get(bench_db))
-        .add("/bench_hello", get(bench_hello))
+        .prefix("notes")
+        .add("/", get(list))
+        .add("/", post(add))
+        .add("/:id", get(get_one))
+        .add("/:id", delete(remove))
+        .add("/:id", post(update))
 }

@@ -39,9 +39,8 @@ impl Worker<DownloadWorkerArgs> for DownloadWorker {
             .all(&self.ctx.db)
             .await
             .map_err(Box::from)?;
-        for post in &all {
-            let notes = post.notes(&self.ctx.db).await;
-            println!("post: {} {:?}", post.id, notes);
+        for user in &all {
+            println!("user: {}", user.id);
         }
         println!("================================================");
         Ok(())
