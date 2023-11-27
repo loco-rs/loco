@@ -86,7 +86,7 @@ pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Resu
 
 pub fn routes() -> Routes {
     Routes::new()
-        .prefix("{{module_name}}")
+        .prefix("{{file_name | plural}}")
         .add("/", get(list))
         .add("/", post(add))
         .add("/:id", get(get_one))
