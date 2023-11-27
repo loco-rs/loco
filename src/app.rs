@@ -92,7 +92,6 @@ pub struct AppContext {
 ///         Ok(())
 ///     }
 /// }
-/// }
 /// ```
 #[async_trait]
 pub trait Hooks {
