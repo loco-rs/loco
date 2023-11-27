@@ -280,6 +280,6 @@ fn show_list_endpoints<H: Hooks>() {
     let mut routes = list_endpoints::<H>();
     routes.sort_by(|a, b| a.uri.cmp(&b.uri));
     for router in routes {
-        println!("[{}] {}", router.action, router.uri);
+        println!("{}", router.to_string());
     }
 }

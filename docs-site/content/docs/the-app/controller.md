@@ -51,8 +51,8 @@ Controllers define Loco routes capabilities. In the example below, a controller 
 ```rust
 use axum::routing::{get, post};
 Routes::new()
-    .add("/", get(hello), loco_rs::HttpMethod::GET)
-    .add("/echo", post(echo), loco_rs::HttpMethod::POST)
+    .add("/", get(hello))
+    .add("/echo", post(echo))
 ```
 
 You can also define a `prefix` for all routes in a controller using the `prefix` function.

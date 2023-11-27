@@ -34,6 +34,6 @@ pub async fn hello(State(_ctx): State<AppContext>) -> Result<String> {
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("{{ name | snake_case }}")
-        .add("/", get(hello), loco_rs::HttpMethod::GET)
-        .add("/echo", post(echo), loco_rs::HttpMethod::POST)
+        .add("/", get(hello))
+        .add("/echo", post(echo))
 }

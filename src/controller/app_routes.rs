@@ -26,8 +26,21 @@ pub struct AppRoutes {
 
 pub struct ListRoutes {
     pub uri: String,
-    pub action: axum::http::Method,
+    pub actions: Vec<axum::http::Method>,
     pub method: axum::routing::MethodRouter<AppContext>,
+}
+
+impl ToString for ListRoutes {
+    fn to_string(&self) -> String {
+        let actions_str = self
+            .actions
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(",");
+        // Define your custom logic here to format the struct as a string
+        format!("[{}] {}", actions_str, self.uri)
+    }
 }
 
 impl AppRoutes {
@@ -67,7 +80,7 @@ impl AppRoutes {
 
                     ListRoutes {
                         uri: uri.to_string(),
-                        action: controller.action.clone(),
+                        actions: controller.actions.clone(),
                         method: controller.method.clone(),
                     }
                 })
@@ -131,7 +144,7 @@ impl AppRoutes {
         let mut app = AXRouter::new();
 
         for router in self.collect() {
-            tracing::info!("[{}] {}", router.action, &router.uri);
+            tracing::info!("{}", router.to_string());
 
             app = app.route(&router.uri, router.method);
         }

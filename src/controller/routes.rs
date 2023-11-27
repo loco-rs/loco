@@ -1,5 +1,5 @@
+use super::describe;
 use crate::app::AppContext;
-
 #[derive(Clone, Default)]
 pub struct Routes {
     pub prefix: Option<String>,
@@ -11,7 +11,7 @@ pub struct Routes {
 pub struct Handler {
     pub uri: String,
     pub method: axum::routing::MethodRouter<AppContext>,
-    pub action: axum::http::Method,
+    pub actions: Vec<axum::http::Method>,
 }
 
 impl Routes {
@@ -46,7 +46,7 @@ impl Routes {
     /// async fn ping() -> Result<Json<Health>> {
     ///     format::json(Health { ok: true })
     /// }
-    /// Routes::at("status").add("/_ping", get(ping), loco_rs::HttpMethod::GET);
+    /// Routes::at("status").add("/_ping", get(ping));
     ///    
     /// ````
     #[must_use]
@@ -80,20 +80,16 @@ impl Routes {
     /// async fn ping() -> Result<Json<Health>> {
     ///     format::json(Health { ok: true })
     /// }
-    /// Routes::new().add("/_ping", get(ping), loco_rs::HttpMethod::GET);
+    /// Routes::new().add("/_ping", get(ping));
     ///    
     /// ````
     #[must_use]
-    pub fn add(
-        mut self,
-        uri: &str,
-        method: axum::routing::MethodRouter<AppContext>,
-        action: axum::http::Method,
-    ) -> Self {
+    pub fn add(mut self, uri: &str, method: axum::routing::MethodRouter<AppContext>) -> Self {
+        describe::method_action(&method);
         self.handlers.push(Handler {
             uri: uri.to_owned(),
+            actions: describe::method_action(&method),
             method,
-            action,
         });
         self
     }
@@ -123,7 +119,7 @@ impl Routes {
     /// async fn ping() -> Result<Json<Health>> {
     ///     format::json(Health { ok: true })
     /// }
-    /// Routes::new().prefix("status").add("/_ping", get(ping), loco_rs::HttpMethod::GET);
+    /// Routes::new().prefix("status").add("/_ping", get(ping));
     ///    
     /// ````
     #[must_use]

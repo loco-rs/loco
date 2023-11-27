@@ -53,6 +53,7 @@
 //! ```
 
 mod app_routes;
+mod describe;
 pub mod format;
 #[cfg(feature = "with-db")]
 mod health;

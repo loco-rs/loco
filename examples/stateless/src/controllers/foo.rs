@@ -17,7 +17,5 @@ pub async fn echo(req_body: String) -> String {
 }
 
 pub fn routes() -> Routes {
-    Routes::new()
-        .add("/", get(index), loco_rs::HttpMethod::GET)
-        .add("/echo", post(echo), loco_rs::HttpMethod::POST)
+    Routes::new().add("/", get(index)).add("/echo", post(echo))
 }

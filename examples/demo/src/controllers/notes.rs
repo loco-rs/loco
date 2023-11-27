@@ -73,8 +73,8 @@ pub async fn hello(State(ctx): State<AppContext>) -> Result<String> {
 
 pub fn routes() -> Routes {
     Routes::new()
-        .add("/", get(hello), loco_rs::HttpMethod::GET)
-        .add("/echo", get(echo), loco_rs::HttpMethod::GET)
-        .add("/bench_db", get(bench_db), loco_rs::HttpMethod::GET)
-        .add("/bench_hello", get(bench_hello), loco_rs::HttpMethod::GET)
+        .add("/", get(hello))
+        .add("/echo", get(echo))
+        .add("/bench_db", get(bench_db))
+        .add("/bench_hello", get(bench_hello))
 }

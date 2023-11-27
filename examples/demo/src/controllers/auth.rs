@@ -57,6 +57,6 @@ async fn login(
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("auth")
-        .add("/register", post(register), loco_rs::HttpMethod::POST)
-        .add("/login", post(login), loco_rs::HttpMethod::POST)
+        .add("/register", post(register))
+        .add("/login", post(login))
 }
