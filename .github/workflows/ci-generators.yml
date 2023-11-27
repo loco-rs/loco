@@ -54,6 +54,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Run generators
         run: |
+          cargo install sea-orm-cli
           cargo run -- generate scaffold car name:string year:int && cargo build
           cargo run -- generate model post title:string content:text && cargo build
           cargo run -- generate controller post && cargo build
