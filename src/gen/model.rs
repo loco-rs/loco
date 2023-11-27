@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, env::current_dir};
 
 use cargo_metadata::{MetadataCommand, Package};
 use chrono::Utc;
@@ -67,11 +67,14 @@ pub fn generate(rrgen: &RRgen, name: &str, fields: &[(String, String)]) -> Resul
     let res1 = rrgen.generate(MODEL_T, &vars)?;
     let res2 = rrgen.generate(MODEL_TEST_T, &vars)?;
 
+    let cwd = current_dir()?;
     let _ = cmd!("cargo", "run", "--", "db", "migrate",)
         .stderr_to_stdout()
+        .dir(cwd.as_path())
         .run()?;
     let _ = cmd!("cargo", "run", "--", "db", "entities",)
         .stderr_to_stdout()
+        .dir(cwd.as_path())
         .run()?;
 
     let messages = collect_messages(vec![res1, res2]);

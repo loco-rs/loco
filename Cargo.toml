@@ -47,6 +47,7 @@ bb8 = "0.8.1"
 axum = "0.6.20"
 regex = "1.10.2"
 lazy_static = "1.4.0"
+fs-err = "2.11.0"
 # mailer
 tera = "1.19.1"
 lettre = { version = "0.11.1", default-features = false, features = [

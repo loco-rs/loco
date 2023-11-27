@@ -1685,6 +1685,7 @@ dependencies = [
  "config",
  "duct",
  "eyre",
+ "fs-err",
  "include_dir",
  "insta",
  "jsonwebtoken",

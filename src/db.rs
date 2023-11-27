@@ -2,12 +2,10 @@
 //!
 //! This module defines functions and operations related to the application's
 //! database interactions.
-use std::{
-    fs::{self, File},
-    path::Path,
-};
+use std::{fs::File, path::Path};
 
 use duct::cmd;
+use fs_err as fs;
 use rrgen::Error;
 use sea_orm::{
     ActiveModelTrait, ConnectOptions, Database, DatabaseConnection, DbConn, EntityTrait,
