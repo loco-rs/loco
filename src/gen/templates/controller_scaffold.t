@@ -28,7 +28,7 @@ use loco_rs::{
 use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, ModelTrait, Set};
 use serde::{Deserialize, Serialize};
 
-use crate::models::_entities::{{module_name}}::{ActiveModel, Entity, Model};
+use crate::models::_entities::{{file_name | plural}}::{ActiveModel, Entity, Model};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Params {

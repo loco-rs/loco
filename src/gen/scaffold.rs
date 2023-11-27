@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use cargo_metadata::{MetadataCommand, Package};
-use chrono::Utc;
 use lazy_static::lazy_static;
 use rrgen::RRgen;
 use serde_json::json;
@@ -17,9 +15,9 @@ lazy_static! {
         ("string", "Option<String>"),
         ("string!", "Option<String>"),
         ("string^", "Option<String>"),
-        ("int", "Option<int32>"),
-        ("int!", "Option<int32>"),
-        ("int^", "Option<int32>"),
+        ("int", "Option<i32>"),
+        ("int!", "Option<i32>"),
+        ("int^", "Option<i32>"),
         ("bool", "Option<boolean>"),
         ("bool!", "Option<boolean>"),
         ("ts", "Option<DateTime>"),
@@ -50,5 +48,5 @@ pub fn generate(rrgen: &RRgen, name: &str, fields: &[(String, String)]) -> Resul
     let res2 = rrgen.generate(CONTROLLER_TEST_T, &vars)?;
     let messages = collect_messages(vec![res1, res2]);
 
-    Ok(format!("{model_messages}\n{messages}"))
+    Ok(format!("{model_messages}{messages}"))
 }

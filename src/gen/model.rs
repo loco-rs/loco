@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use cargo_metadata::{MetadataCommand, Package};
 use chrono::Utc;
+use duct::cmd;
 use lazy_static::lazy_static;
 use rrgen::RRgen;
 use serde_json::json;
@@ -65,6 +66,14 @@ pub fn generate(rrgen: &RRgen, name: &str, fields: &[(String, String)]) -> Resul
     let vars = json!({"name": name, "ts": ts, "pkg_name": pkg_name, "columns": columns, "references": references});
     let res1 = rrgen.generate(MODEL_T, &vars)?;
     let res2 = rrgen.generate(MODEL_TEST_T, &vars)?;
+
+    let _ = cmd!("cargo", "run", "--", "db", "migrate",)
+        .stderr_to_stdout()
+        .run()?;
+    let _ = cmd!("cargo", "run", "--", "db", "entities",)
+        .stderr_to_stdout()
+        .run()?;
+
     let messages = collect_messages(vec![res1, res2]);
     Ok(messages)
 }

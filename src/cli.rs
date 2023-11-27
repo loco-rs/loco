@@ -90,7 +90,17 @@ enum ComponentArg {
         /// Name of the thing to generate
         name: String,
 
-        /// Model fields, eg. title:string hits:integer (unimplemented)
+        /// Model fields, eg. title:string hits:integer
+        #[clap(value_parser = parse_key_val::<String,String>)]
+        fields: Vec<(String, String)>,
+    },
+    #[cfg(feature = "with-db")]
+    /// Generates a CRUD scaffold, model and controller
+    Scaffold {
+        /// Name of the thing to generate
+        name: String,
+
+        /// Model fields, eg. title:string hits:integer
         #[clap(value_parser = parse_key_val::<String,String>)]
         fields: Vec<(String, String)>,
     },
@@ -121,6 +131,8 @@ impl From<ComponentArg> for Component {
         match value {
             #[cfg(feature = "with-db")]
             ComponentArg::Model { name, fields } => Self::Model { name, fields },
+            #[cfg(feature = "with-db")]
+            ComponentArg::Scaffold { name, fields } => Self::Scaffold { name, fields },
             ComponentArg::Controller { name } => Self::Controller { name },
             ComponentArg::Task { name } => Self::Task { name },
             ComponentArg::Worker { name } => Self::Worker { name },
@@ -231,7 +243,8 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             run_task::<H>(&app_context, name.as_ref(), &hash).await?;
         }
         Commands::Generate { component } => {
-            gen::generate(component.into())?;
+            let app_context = create_context(&environment).await?;
+            gen::generate(component.into());
         }
     }
     Ok(())
