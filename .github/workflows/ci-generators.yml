@@ -1,4 +1,4 @@
-name: CI-DEMO-SITE
+name: CI-GENERATORS
 
 on:
   push:
