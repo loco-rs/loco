@@ -29,7 +29,7 @@ lazy_static! {
     ]);
 }
 
-pub fn generate(rrgen: &RRgen, name: &str, fields: &[(String, String)]) -> Result<()> {
+pub fn generate(rrgen: &RRgen, name: &str, fields: &[(String, String)]) -> Result<String> {
     let path = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
     let meta = MetadataCommand::new()
         .manifest_path("./Cargo.toml")
@@ -65,6 +65,6 @@ pub fn generate(rrgen: &RRgen, name: &str, fields: &[(String, String)]) -> Resul
     let vars = json!({"name": name, "ts": ts, "pkg_name": pkg_name, "columns": columns, "references": references});
     let res1 = rrgen.generate(MODEL_T, &vars)?;
     let res2 = rrgen.generate(MODEL_TEST_T, &vars)?;
-    collect_messages(vec![res1, res2]);
-    Ok(())
+    let messages = collect_messages(vec![res1, res2]);
+    Ok(messages)
 }

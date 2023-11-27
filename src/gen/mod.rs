@@ -3,6 +3,9 @@ use serde_json::json;
 
 #[cfg(feature = "with-db")]
 mod model;
+#[cfg(feature = "with-db")]
+mod scaffold;
+
 use crate::Result;
 
 const CONTROLLER_T: &str = include_str!("templates/controller.t");
@@ -23,7 +26,15 @@ pub enum Component {
         /// Name of the thing to generate
         name: String,
 
-        /// Model fields, eg. title=string hits=integer (unimplemented)
+        /// Model fields, eg. title:string hits:int
+        fields: Vec<(String, String)>,
+    },
+    #[cfg(feature = "with-db")]
+    Scaffold {
+        /// Name of the thing to generate
+        name: String,
+
+        /// Model and params fields, eg. title:string hits:int
         fields: Vec<(String, String)>,
     },
     Controller {
@@ -50,7 +61,11 @@ pub fn generate(component: Component) -> Result<()> {
     match component {
         #[cfg(feature = "with-db")]
         Component::Model { name, fields } => {
-            model::generate(&rrgen, &name, &fields)?;
+            println!("{}", model::generate(&rrgen, &name, &fields)?);
+        }
+        #[cfg(feature = "with-db")]
+        Component::Scaffold { name, fields } => {
+            println!("{}", scaffold::generate(&rrgen, &name, &fields)?);
         }
         Component::Controller { name } => {
             let vars = json!({"name": name});
