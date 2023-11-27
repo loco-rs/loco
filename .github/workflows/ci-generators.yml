@@ -13,7 +13,6 @@ env:
 jobs:
   test:
     name: Run Tests
-    needs: [rustfmt, clippy]
     runs-on: ubuntu-latest
 
     permissions:
