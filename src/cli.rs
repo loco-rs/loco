@@ -243,8 +243,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             run_task::<H>(&app_context, name.as_ref(), &hash).await?;
         }
         Commands::Generate { component } => {
-            let app_context = create_context(&environment).await?;
-            gen::generate(component.into());
+            gen::generate(component.into())?;
         }
     }
     Ok(())

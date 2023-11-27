@@ -5,9 +5,7 @@ use loco_rs::{
     validation,
     validator::Validate,
 };
-use sea_orm::{
-    entity::prelude::*, ActiveValue, DatabaseConnection, DbErr, ModelTrait, TransactionTrait,
-};
+use sea_orm::{entity::prelude::*, ActiveValue, DatabaseConnection, DbErr, TransactionTrait};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
