@@ -86,7 +86,7 @@ async fn can_handle_invalid_login() {
         });
 
         _ = request.post("/auth/register").json(&payload).await;
-        let res = request
+        let response = request
             .post("/auth/login")
             .json(&serde_json::json!({
                 "email": email,
@@ -94,7 +94,7 @@ async fn can_handle_invalid_login() {
             }))
             .await;
 
-        assert_debug_snapshot!(res);
+        assert_debug_snapshot!((response.status_code(), response.text()));
     })
     .await;
 }

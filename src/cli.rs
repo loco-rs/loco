@@ -26,7 +26,7 @@ use sea_orm_migration::MigratorTrait;
 use crate::boot::run_db;
 use crate::{
     app::Hooks,
-    boot::{create_app, create_context, run_task, start, RunDbCommand, StartMode},
+    boot::{create_app, create_context, list_endpoints, run_task, start, RunDbCommand, StartMode},
     environment::resolve_from_env,
     gen::{self, Component},
 };
@@ -62,6 +62,8 @@ enum Commands {
         #[command(subcommand)]
         command: DbCommands,
     },
+    /// Describe all application endpoints
+    Controller {},
     /// Run a custom task
     Task {
         /// Task name (identifier)
@@ -219,6 +221,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             let app_context = create_context(&environment).await?;
             run_db::<H, M>(&app_context, command.into()).await?;
         }
+        Commands::Controller {} => show_list_endpoints::<H>(),
         Commands::Task { name, params } => {
             let mut hash = BTreeMap::new();
             for (k, v) in params {
@@ -257,6 +260,7 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
             let boot_result = create_app::<H>(start_mode, &environment).await?;
             start(boot_result).await?;
         }
+        Commands::Controller {} => show_list_endpoints::<H>(),
         Commands::Task { name, params } => {
             let mut hash = BTreeMap::new();
             for (k, v) in params {
@@ -270,4 +274,12 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
         }
     }
     Ok(())
+}
+
+fn show_list_endpoints<H: Hooks>() {
+    let mut routes = list_endpoints::<H>();
+    routes.sort_by(|a, b| a.uri.cmp(&b.uri));
+    for router in routes {
+        println!("{}", router.to_string());
+    }
 }

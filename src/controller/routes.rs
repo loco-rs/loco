@@ -1,5 +1,5 @@
+use super::describe;
 use crate::app::AppContext;
-
 #[derive(Clone, Default)]
 pub struct Routes {
     pub prefix: Option<String>,
@@ -11,6 +11,7 @@ pub struct Routes {
 pub struct Handler {
     pub uri: String,
     pub method: axum::routing::MethodRouter<AppContext>,
+    pub actions: Vec<axum::http::Method>,
 }
 
 impl Routes {
@@ -84,8 +85,10 @@ impl Routes {
     /// ````
     #[must_use]
     pub fn add(mut self, uri: &str, method: axum::routing::MethodRouter<AppContext>) -> Self {
+        describe::method_action(&method);
         self.handlers.push(Handler {
             uri: uri.to_owned(),
+            actions: describe::method_action(&method),
             method,
         });
         self
