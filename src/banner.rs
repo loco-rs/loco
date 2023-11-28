@@ -25,30 +25,34 @@ pub fn print_banner(boot_result: &BootResult) {
     println!("{BANNER}");
     let config = &ctx.config;
 
-    let mut database = Vec::new();
-    if config.database.enable_logging {
-        database.push("logging".green());
-    }
-    if config.database.auto_migrate {
-        database.push("automigrate".yellow());
-    }
-    if config.database.dangerously_recreate {
-        database.push("recreate".bright_red());
-    }
-    if config.database.dangerously_truncate {
-        database.push("truncate".bright_red());
-    }
-
     println!("environment: {}", ctx.environment.to_string().green());
-    if !database.is_empty() {
-        println!(
-            "   database: {}",
-            database
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-                .join(", ")
-        );
+
+    #[cfg(feature = "with-db")]
+    {
+        let mut database = Vec::new();
+        if config.database.enable_logging {
+            database.push("logging".green());
+        }
+        if config.database.auto_migrate {
+            database.push("automigrate".yellow());
+        }
+        if config.database.dangerously_recreate {
+            database.push("recreate".bright_red());
+        }
+        if config.database.dangerously_truncate {
+            database.push("truncate".bright_red());
+        }
+
+        if !database.is_empty() {
+            println!(
+                "   database: {}",
+                database
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+        }
     }
     if config.logger.enable {
         println!("     logger: {}", config.logger.level.to_string().green());
