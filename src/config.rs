@@ -36,7 +36,7 @@ pub struct Logger {
     pub enable: bool,
     pub level: logger::LogLevel,
     pub format: logger::Format,
-    pub filters: Option<Vec<String>>,
+    pub override_filter: Option<String>,
 }
 
 /// Represents the worker mode configuration.
