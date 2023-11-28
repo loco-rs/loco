@@ -207,7 +207,7 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
         }
         RunDbCommand::Entities => {
             tracing::warn!("entities:");
-            tracing::warn!("{}", db::entities::<M>(&app_context)?);
+            tracing::warn!("{}", db::entities::<M>(app_context)?);
         }
         RunDbCommand::Truncate => {
             tracing::warn!("truncate:");
@@ -220,10 +220,11 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
 /// Starts the server using the provided [`Router`] and [`Config`].
 async fn serve(app: Router, config: &Config) -> Result<()> {
     println!("start on port {}", config.server.port);
-    axum::Server::bind(&format!("0.0.0.0:{}", config.server.port).parse().unwrap())
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    let listener =
+        tokio::net::TcpListener::bind(&format!("0.0.0.0:{}", config.server.port)).await?;
+
+    axum::serve(listener, app).await?;
+
     Ok(())
 }
 
