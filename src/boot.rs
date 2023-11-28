@@ -64,7 +64,7 @@ use tracing::trace;
 use crate::db;
 use crate::{
     app::{AppContext, Hooks},
-    banner::BANNER,
+    banner::print_banner,
     config::{self, Config},
     controller::ListRoutes,
     environment::Environment,
@@ -105,21 +105,19 @@ pub struct BootResult {
 ///
 /// When could not initialize the application.
 pub async fn start(boot: BootResult) -> Result<()> {
+    print_banner(&boot);
+
     let BootResult {
         router,
         processor,
         app_context,
     } = boot;
-    println!("{BANNER}");
 
-    tracing::warn!("starting in {}", app_context.environment);
     match (router, processor) {
         (Some(router), Some(processor)) => {
             tokio::spawn(async move {
                 if let Err(err) = process(processor).await {
                     tracing::error!("Error in processing: {:?}", err);
-                } else {
-                    tracing::warn!("Workers online");
                 }
             });
             serve(router, &app_context.config).await?;
@@ -128,7 +126,6 @@ pub async fn start(boot: BootResult) -> Result<()> {
             serve(router, &app_context.config).await?;
         }
         (None, Some(processor)) => {
-            tracing::warn!("workers online");
             process(processor).await?;
         }
         _ => {}
@@ -219,7 +216,6 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
 
 /// Starts the server using the provided [`Router`] and [`Config`].
 async fn serve(app: Router, config: &Config) -> Result<()> {
-    println!("start on port {}", config.server.port);
     let listener =
         tokio::net::TcpListener::bind(&format!("0.0.0.0:{}", config.server.port)).await?;
 

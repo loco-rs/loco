@@ -104,7 +104,7 @@ site_links_search_box = false
 [[extra.menu.main]]
 name = "Docs"
 section = "docs"
-url = "/docs/getting-started/cli/"
+url = "/docs/getting-started/tour/"
 weight = 10
 
 [[extra.menu.main]]

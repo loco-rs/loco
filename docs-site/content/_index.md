@@ -5,14 +5,14 @@ title = "Loco"
 # The homepage contents
 [extra]
 lead = 'The <em>one-person framework</em> for Rust for side-projects and startups'
-url = "/docs/getting-started/cli/"
+url = "/docs/getting-started/tour/"
 url_button = "Get started"
 
 # Menu items
 [[extra.menu.main]]
 name = "Docs"
 section = "docs"
-url = "/docs/getting-started/cli/"
+url = "/docs/getting-started/tour/"
 weight = 10
 
 [[extra.menu.main]]

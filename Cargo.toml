@@ -23,6 +23,8 @@ eyre = "0.6.9"
 
 # cli
 clap = { version = "4.4.7", features = ["derive"], optional = true }
+colored = "2"
+
 
 sea-orm = { version = "0.12.4", features = [
   "sqlx-postgres",        # `DATABASE_DRIVER` feature

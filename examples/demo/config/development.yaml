@@ -33,7 +33,7 @@ database:
   min_connections: 1
   max_connections: 1
   auto_migrate: true
-  dangerously_truncate: false
+  dangerously_truncate: true
   dangerously_recreate: false
 redis:
   uri: redis://127.0.0.1/

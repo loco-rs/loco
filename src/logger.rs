@@ -47,6 +47,18 @@ impl std::fmt::Display for LogLevel {
         to_variant_name(self).expect("only enum supported").fmt(f)
     }
 }
+/*
+when debug +
+  loco_rs
+  sea_orm_migration
+
+* aliasing target?
+* why isn't 'TRACE' appearing? on RUST_LOG=trace
+* config filters is poweruser: use '*' as the default thing see if works
+  will show sqlx as well
+* document RUST_LOG
+
+ */
 
 // Function to initialize the logger based on the provided configuration
 pub fn init(config: &config::Logger) {
