@@ -1,4 +1,5 @@
 // TODO(review): base components must be re-exported
+use chrono::offset::Local;
 use loco_rs::{
     auth,
     model::{ModelError, ModelResult},
@@ -61,11 +62,11 @@ impl ActiveModelBehavior for super::_entities::users::ActiveModel {
 }
 
 impl super::_entities::users::Model {
-    /// .
+    /// finds a user by the provided email
     ///
     /// # Errors
     ///
-    /// .
+    /// When could not find user by the given token or DB query error
     pub async fn find_by_email(db: &DatabaseConnection, email: &str) -> ModelResult<Self> {
         let user = users::Entity::find()
             .filter(users::Column::Email.eq(email))
@@ -74,11 +75,40 @@ impl super::_entities::users::Model {
         user.ok_or_else(|| ModelError::EntityNotFound)
     }
 
-    /// .
+    /// finds a user by the provided verification token
     ///
     /// # Errors
     ///
-    /// .
+    /// When could not find user by the given token or DB query error
+    pub async fn find_by_verification_token(
+        db: &DatabaseConnection,
+        token: &str,
+    ) -> ModelResult<Self> {
+        let user = users::Entity::find()
+            .filter(users::Column::EmailVerificationToken.eq(token))
+            .one(db)
+            .await?;
+        user.ok_or_else(|| ModelError::EntityNotFound)
+    }
+
+    /// /// finds a user by the provided reset token
+    ///
+    /// # Errors
+    ///
+    /// When could not find user by the given token or DB query error
+    pub async fn find_by_reset_token(db: &DatabaseConnection, token: &str) -> ModelResult<Self> {
+        let user = users::Entity::find()
+            .filter(users::Column::ResetToken.eq(token))
+            .one(db)
+            .await?;
+        user.ok_or_else(|| ModelError::EntityNotFound)
+    }
+
+    /// finds a user by the provided pid
+    ///
+    /// # Errors
+    ///
+    /// When could not find user  or DB query error
     pub async fn find_by_pid(db: &DatabaseConnection, pid: &str) -> ModelResult<Self> {
         let parse_uuid = Uuid::parse_str(pid).map_err(|e| ModelError::Message(e.to_string()))?;
         let user = users::Entity::find()
@@ -88,20 +118,21 @@ impl super::_entities::users::Model {
         user.ok_or_else(|| ModelError::EntityNotFound)
     }
 
-    /// .
+    /// Verifies whether the provided plain password matches the hashed password
     ///
     /// # Errors
     ///
-    /// .
+    /// when could not verify password
     pub fn verify_password(&self, password: &str) -> ModelResult<bool> {
         Ok(auth::verify_password(password, &self.password)?)
     }
 
-    /// .
+    /// Asynchronously creates a user with a password and saves it to the
+    /// database.
     ///
     /// # Errors
     ///
-    /// .
+    /// When could not save the user into the DB
     pub async fn create_with_password(
         db: &DatabaseConnection,
         params: &RegisterParams,
@@ -134,24 +165,91 @@ impl super::_entities::users::Model {
         Ok(user)
     }
 
-    /// .
+    /// Creates a JWT
     ///
     /// # Errors
     ///
-    /// .
+    /// when could not convert user claims to jwt token
     pub fn generate_jwt(&self, secret: &str, expiration: &u64) -> ModelResult<String> {
         Ok(auth::JWT::new(secret).generate_token(expiration, self.pid.to_string())?)
     }
 }
 
 impl super::_entities::users::ActiveModel {
-    /// .
+    /// Validate user schema
     ///
     /// # Errors
     ///
-    /// .
+    /// when the active model is not valid
     pub fn validate(&self) -> Result<(), DbErr> {
         let validator: ModelValidator = self.into();
         validator.validate().map_err(validation::into_db_error)
+    }
+
+    /// Sets the email verification information for the user and
+    /// updates it in the database.
+    ///
+    /// This method is used to record the timestamp when the email verification
+    /// was sent and generate a unique verification token for the user.
+    ///
+    /// # Errors
+    ///
+    /// when has DB query error
+    pub async fn set_email_verification_sent(
+        mut self,
+        db: &DatabaseConnection,
+    ) -> ModelResult<Model> {
+        self.email_verification_sent_at = ActiveValue::set(Some(Local::now().naive_local()));
+        self.email_verification_token = ActiveValue::Set(Some(Uuid::new_v4().to_string()));
+        Ok(self.update(db).await?)
+    }
+
+    /// Sets the information for a reset password request,
+    /// generates a unique reset password token, and updates it in the
+    /// database.
+    ///
+    /// This method records the timestamp when the reset password token is sent
+    /// and generates a unique token for the user.
+    ///
+    /// # Arguments
+    ///
+    /// # Errors
+    ///
+    /// when has DB query error
+    pub async fn set_forgot_password_sent(mut self, db: &DatabaseConnection) -> ModelResult<Model> {
+        self.reset_sent_at = ActiveValue::set(Some(Local::now().naive_local()));
+        self.reset_token = ActiveValue::Set(Some(Uuid::new_v4().to_string()));
+        Ok(self.update(db).await?)
+    }
+
+    /// Records the verification time when a user verifies their
+    /// email and updates it in the database.
+    ///
+    /// This method sets the timestamp when the user successfully verifies their
+    /// email.
+    ///
+    /// # Errors
+    ///
+    /// when has DB query error
+    pub async fn verified(mut self, db: &DatabaseConnection) -> ModelResult<Model> {
+        self.email_verified_at = ActiveValue::set(Some(Local::now().naive_local()));
+        Ok(self.update(db).await?)
+    }
+
+    /// Resets the current user password with a new password and
+    /// updates it in the database.
+    ///
+    /// This method hashes the provided password and sets it as the new password
+    /// for the user.    
+    /// # Errors
+    ///
+    /// when has DB query error or could not hashed the given password
+    pub async fn reset_password(
+        mut self,
+        db: &DatabaseConnection,
+        password: &str,
+    ) -> ModelResult<Model> {
+        self.password = ActiveValue::set(auth::hash_password(password)?);
+        Ok(self.update(db).await?)
     }
 }

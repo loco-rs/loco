@@ -105,6 +105,8 @@ pub struct Auth {
 pub struct Server {
     /// The port on which the server should listen for incoming connections.
     pub port: i32,
+    /// The webserver host
+    pub host: String,
     /// Middleware configurations for the server, including payload limits,
     /// logging, and error handling.
     pub middlewares: Middlewares,
@@ -170,6 +172,11 @@ pub struct MailerAuth {
     pub password: String,
 }
 
+impl Server {
+    pub fn full_url(&self) -> String {
+        format!("{}:{}", self.host, self.port)
+    }
+}
 impl Config {
     /// Creates a new configuration instance based on the specified environment.
     ///

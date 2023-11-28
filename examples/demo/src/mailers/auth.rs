@@ -9,7 +9,10 @@ use loco_rs::{
 };
 use serde_json::json;
 
+use crate::models::users;
+
 static welcome: Dir<'_> = include_dir!("src/mailers/auth/welcome");
+static forgot: Dir<'_> = include_dir!("src/mailers/auth/forgot");
 // #[derive(Mailer)] // -- disabled for faster build speed. it works. but lets
 // move on for now.
 
@@ -22,19 +25,46 @@ impl AuthMailer {
     /// # Errors
     ///
     /// When email sending is failed
-    pub async fn send_welcome(ctx: &AppContext, _user_id: &str) -> Result<()> {
+    pub async fn send_welcome(ctx: &AppContext, user: &users::Model) -> Result<()> {
         Self::mail_template(
             ctx,
             &welcome,
             Args {
-                to: "foo@example.com".to_string(),
+                to: user.email.to_string(),
                 locals: json!({
-                  "name": "joe"
+                  "name": user.name,
+                  "verifyToken": user.email_verification_token,
+                  "domain": ctx.config.server.full_url()
                 }),
                 ..Default::default()
             },
         )
         .await?;
+
+        Ok(())
+    }
+
+    /// Sending forgot password email
+    ///
+    /// # Errors
+    ///
+    /// When email sending is failed
+    pub async fn forgot_password(ctx: &AppContext, user: &users::Model) -> Result<()> {
+        Self::mail_template(
+            ctx,
+            &forgot,
+            Args {
+                to: user.email.to_string(),
+                locals: json!({
+                  "name": user.name,
+                  "resetToken": user.reset_token,
+                  "domain": ctx.config.server.full_url()
+                }),
+                ..Default::default()
+            },
+        )
+        .await?;
+
         Ok(())
     }
 }

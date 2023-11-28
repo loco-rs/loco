@@ -51,6 +51,7 @@ Usage: demo generate [OPTIONS] <COMMAND>
 
 Commands:
   model       Generates a new model file for defining the data structure of your application, and test file logic
+  scaffold    Generates a CRUD scaffold, model and controller
   controller  Generate a new controller with the given controller name, and test file
   task        Generate a Task based on the given name
   worker      Generate worker
@@ -72,14 +73,18 @@ user_report		[output a user report]
 
 ```console
 $ demo controller
-[GET] /
 [GET] /_health
 [GET] /_ping
+[POST] /auth/forgot
 [POST] /auth/login
 [POST] /auth/register
-[GET] /bench_db
-[GET] /bench_hello
-[GET] /echo
+[POST] /auth/reset
+[POST] /auth/verify
+[GET] /notes/
+[POST] /notes/
+[GET] /notes/:id
+[DELETE] /notes/:id
+[POST] /notes/:id
 [GET] /user/current
 
 ```

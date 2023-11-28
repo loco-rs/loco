@@ -1,8 +1,0 @@
----
-source: tests/requests/users.rs
-expression: "(response.status_code(), response.text())"
----
-(
-    404,
-    "{\"error\":\"not_found\",\"description\":\"Resource was not found\"}",
-)
