@@ -49,6 +49,8 @@ mod redis;
 pub mod task;
 #[cfg(feature = "testing")]
 pub mod testing;
+#[cfg(feature = "testing")]
+pub use axum_test::TestServer;
 pub mod validation;
 pub mod worker;
 pub use validator;

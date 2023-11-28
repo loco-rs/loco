@@ -1,1 +1,1 @@
-Welcome <%= name %>
+Welcome {{name}}

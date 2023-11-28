@@ -4,6 +4,7 @@ logger:
   format: compact
 server:
   port: 3000
+  host: http://localhost
   middlewares:
     limit_payload:
       enable: true

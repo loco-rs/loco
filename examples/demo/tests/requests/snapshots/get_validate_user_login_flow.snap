@@ -1,5 +1,0 @@
----
-source: tests/requests/main.rs
-expression: current_user_request.text()
----
-"{\"pid\":\"PID\",\"name\":\"framework\",\"email\":\"test@framework.com\"}"

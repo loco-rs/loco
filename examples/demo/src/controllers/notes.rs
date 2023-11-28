@@ -66,8 +66,6 @@ pub async fn hello(State(ctx): State<AppContext>) -> Result<String> {
         Error::Any("could not perform the download worker ".into())
     })?;
 
-    AuthMailer::send_welcome(&ctx, "foobar").await?;
-
     format::text("hello")
 }
 

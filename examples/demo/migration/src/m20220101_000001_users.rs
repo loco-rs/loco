@@ -17,6 +17,9 @@ impl MigrationTrait for Migration {
             .col(string(Users::Name).borrow_mut())
             .col(string_null(Users::ResetToken).borrow_mut())
             .col(timestamp_null(Users::ResetSentAt).borrow_mut())
+            .col(string_null(Users::EmailVerificationToken).borrow_mut())
+            .col(timestamp_null(Users::EmailVerificationSentAt).borrow_mut())
+            .col(timestamp_null(Users::EmailVerifiedAt).borrow_mut())
             .to_owned();
         manager.create_table(table).await?;
         Ok(())
@@ -40,4 +43,7 @@ pub enum Users {
     Password,
     ResetToken,
     ResetSentAt,
+    EmailVerificationToken,
+    EmailVerificationSentAt,
+    EmailVerifiedAt,
 }
