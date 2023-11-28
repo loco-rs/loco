@@ -5,6 +5,8 @@
 use std::{fs::File, path::Path};
 
 use duct::cmd;
+use fs_err as fs;
+use rrgen::Error;
 use sea_orm::{
     ActiveModelTrait, ConnectOptions, Database, DatabaseConnection, DbConn, EntityTrait,
     IntoActiveModel,
@@ -142,7 +144,74 @@ pub fn entities<M: MigratorTrait>(ctx: &AppContext) -> AppResult<String> {
     )
     .stderr_to_stdout()
     .run()?;
+    fix_entities()?;
+
     Ok(String::from_utf8_lossy(&out.stdout).to_string())
+}
+
+// see https://github.com/SeaQL/sea-orm/pull/1947
+// also we are generating an extension module from the get go
+fn fix_entities() -> AppResult<()> {
+    let dir = fs::read_dir("src/models/_entities")?
+        .flatten()
+        .filter(|ent| {
+            ent.path().is_file() && ent.file_name() != "mod.rs" && ent.file_name() != "prelude.rs"
+        })
+        .map(|ent| ent.path())
+        .collect::<Vec<_>>();
+
+    // remove activemodel impl from all generated entities, and make note to
+    // generate a new extension for those who had it
+    let activemodel_exp = "impl ActiveModelBehavior for ActiveModel {}";
+    let mut cleaned_entities = Vec::new();
+    for file in &dir {
+        let content = fs::read_to_string(file)?;
+        if content.contains(activemodel_exp) {
+            let content = content
+                .lines()
+                .filter(|line| !line.contains(activemodel_exp))
+                .collect::<Vec<_>>()
+                .join("\n");
+            fs::write(file, content)?;
+            cleaned_entities.push(file);
+        }
+    }
+
+    // generate an empty extension with impl activemodel behavior
+    let mut models_mod = fs::read_to_string("src/models/mod.rs")?;
+    for entity_file in cleaned_entities {
+        let new_file = Path::new("src/models").join(
+            entity_file
+                .file_name()
+                .ok_or_else(|| Error::Message("cannot extract file name".to_string()))?,
+        );
+        if !new_file.exists() {
+            let module = new_file
+                .file_stem()
+                .ok_or_else(|| Error::Message("cannot extract file stem".to_string()))?
+                .to_str()
+                .ok_or_else(|| Error::Message("cannot extract file stem".to_string()))?;
+            fs::write(
+                &new_file,
+                format!(
+                    r"use sea_orm::entity::prelude::*;
+use super::_entities::{module}::ActiveModel;
+
+impl ActiveModelBehavior for ActiveModel {{
+    // extend activemodel below (keep comment for generators)
+}}
+"
+                ),
+            )?;
+            if !models_mod.contains(&format!("mod {module}")) {
+                models_mod.push_str(&format!("pub mod {module};\n"));
+            }
+        }
+    }
+
+    fs::write("src/models/mod.rs", models_mod)?;
+
+    Ok(())
 }
 
 /// Truncate a table in the database, effectively deleting all rows.

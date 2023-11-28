@@ -24,6 +24,8 @@
 //! | `with-db`  | true    | with-db.                    |
 use self::errors::Error;
 
+mod banner;
+
 #[cfg(feature = "with-db")]
 pub mod db;
 #[cfg(feature = "with-db")]

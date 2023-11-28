@@ -1,3 +1,29 @@
+scratchpad:
+- create 'cars' which has relation to user in 'demo' app.
+- remove default activebehavior for entities:
+  example: posts.rs
+   - glob over _entities, remove activemodel behavior if exists
+   
+   ** if models/posts.rs existed, don't generate **
+   - generate new file, with empty activemodel behavior : models/posts.rs
+   - add models/posts.rs to mod.rs
+   - add  PostParams, and update_from_params
+   impl PostParams {
+      fn update(&self, item: &mut ActiveModel) {
+         item.title = Set(self.title.clone());
+         item.content = Set(self.content.clone());
+      }
+   }
+
+
+
+
+
+
+
+
+
+
 
 [ ] auth implement missing flows
  (see flows in hyperstack)

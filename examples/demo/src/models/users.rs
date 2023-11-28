@@ -6,9 +6,7 @@ use loco_rs::{
     validation,
     validator::Validate,
 };
-use sea_orm::{
-    entity::prelude::*, ActiveValue, DatabaseConnection, DbErr, ModelTrait, TransactionTrait,
-};
+use sea_orm::{entity::prelude::*, ActiveValue, DatabaseConnection, DbErr, TransactionTrait};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -64,25 +62,6 @@ impl ActiveModelBehavior for super::_entities::users::ActiveModel {
 }
 
 impl super::_entities::users::Model {
-    /// Returns list of user notes
-    ///
-    /// # Errors
-    ///
-    /// Return an error when could not complete the DB query
-    pub async fn notes(
-        &self,
-        db: &DatabaseConnection,
-    ) -> Result<Vec<super::_entities::notes::Model>, DbErr> {
-        self.find_related(super::_entities::prelude::Notes)
-            .all(db)
-            .await
-    }
-
-    /// Finding user by email
-    ///
-    /// # Errors
-    ///
-    /// When could not find the user or DB query error
     pub async fn find_by_email(db: &DatabaseConnection, email: &str) -> ModelResult<Self> {
         let user = users::Entity::find()
             .filter(users::Column::Email.eq(email))

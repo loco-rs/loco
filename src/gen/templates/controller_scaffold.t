@@ -1,3 +1,16 @@
+{% set file_name = name |  snake_case -%}
+{% set module_name = file_name | pascal_case -%}
+to: src/controllers/{{ file_name }}.rs
+skip_exists: true
+message: "Controller `{{module_name}}` was added successfully."
+injections:
+- into: src/controllers/mod.rs
+  append: true
+  content: "pub mod {{ file_name }};"
+- into: src/app.rs
+  after: "AppRoutes::"
+  content: "            .add_route(controllers::{{ file_name }}::routes())"
+---
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
@@ -15,18 +28,20 @@ use loco_rs::{
 use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, ModelTrait, Set};
 use serde::{Deserialize, Serialize};
 
-use crate::models::_entities::notes::{ActiveModel, Entity, Model};
+use crate::models::_entities::{{file_name | plural}}::{ActiveModel, Entity, Model};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Params {
-    pub title: Option<String>,
-    pub content: Option<String>,
+    {% for column in columns -%}
+    pub {{column.0}}: {{column.1}},
+    {% endfor -%}
 }
 
 impl Params {
     fn update(&self, item: &mut ActiveModel) {
-        item.title = Set(self.title.clone());
-        item.content = Set(self.content.clone());
+      {% for column in columns -%}
+      item.{{column.0}} = Set(self.{{column.0}}.clone());
+      {% endfor -%}
     }
 }
 
@@ -71,7 +86,7 @@ pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Resu
 
 pub fn routes() -> Routes {
     Routes::new()
-        .prefix("notes")
+        .prefix("{{file_name | plural}}")
         .add("/", get(list))
         .add("/", post(add))
         .add("/:id", get(get_one))

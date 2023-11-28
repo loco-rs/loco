@@ -28,7 +28,6 @@ impl MigrationTrait for Migration {
             .create_table(
                 table_auto({{model}}::Table)
                     .col(pk_auto({{model}}::Id).borrow_mut())
-                    .col(uuid({{model}}::Pid).borrow_mut())
                     {% for column in columns -%}
                     .col({{column.1}}({{model}}::{{column.0 | pascal_case}}).borrow_mut())
                     {% endfor -%}
@@ -58,7 +57,6 @@ impl MigrationTrait for Migration {
 enum {{model}} {
     Table,
     Id,
-    Pid,
     {% for column in columns -%}
     {{column.0 | pascal_case}},
     {% endfor %}

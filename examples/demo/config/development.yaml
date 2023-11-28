@@ -1,6 +1,6 @@
 logger:
   enable: true
-  level: info
+  level: debug
   format: compact
   # filters:
   #   - sea_orm_migration=error
@@ -33,8 +33,8 @@ database:
   min_connections: 1
   max_connections: 1
   auto_migrate: true
-  dangerously_truncate: true
-  dangerously_recreate: true
+  dangerously_truncate: false
+  dangerously_recreate: false
 redis:
   uri: redis://127.0.0.1/
   dangerously_flush: false

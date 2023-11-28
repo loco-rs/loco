@@ -40,13 +40,14 @@ serde_yaml = "0.9.27"
 serde_variant = "0.1.2"
 
 # worker fwk 
-rusty-sidekiq = { version = "0.8.2" }
+rusty-sidekiq = { version = "0.8.2", default-features = false }
 async-trait = "0.1.74"
 bb8 = "0.8.1"
 
 axum = "0.6.20"
 regex = "1.10.2"
 lazy_static = "1.4.0"
+fs-err = "2.11.0"
 # mailer
 tera = "1.19.1"
 lettre = { version = "0.11.1", default-features = false, features = [
@@ -95,15 +96,6 @@ features = [
   "sqlx-sqlite",
 ]
 
-
-[patch.crates-io]
-# see https://github.com/heim-rs/darwin-libproc/pull/9
-# rusty-sidekiq needs robotty/simple-process-stats which depends on darwin-libproc, which depends on
-# a too old memchr version which sqlx needs. because libproc is native and not pure rust,
-# cargo cannot resolve it. so we patch the libproc dependency.
-# since simple_process_stats use by rusty-sidekiq is minimal, its better to replace it with something
-# that has more velocity on updating dependencies.
-darwin-libproc = { git = "https://github.com/codota/darwin-libproc" }
 
 [dev-dependencies]
 rstest = "0.18.2"

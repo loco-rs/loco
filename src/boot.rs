@@ -64,6 +64,7 @@ use tracing::trace;
 use crate::db;
 use crate::{
     app::{AppContext, Hooks},
+    banner::BANNER,
     config::{self, Config},
     controller::ListRoutes,
     environment::Environment,
@@ -109,6 +110,8 @@ pub async fn start(boot: BootResult) -> Result<()> {
         processor,
         app_context,
     } = boot;
+    println!("{BANNER}");
+
     tracing::warn!("starting in {}", app_context.environment);
     match (router, processor) {
         (Some(router), Some(processor)) => {

@@ -138,13 +138,10 @@ impl IntoResponse for Error {
     /// Convert an `Error` into an HTTP response.
     fn into_response(self) -> Response {
         let (code, res) = match self {
-            Self::Unauthorized(err) => {
-                tracing::warn!(err);
-                (
-                    StatusCode::NOT_FOUND,
-                    ErrorDetail::new("not_found", "Resource was not found"),
-                )
-            }
+            Self::NotFound => (
+                StatusCode::NOT_FOUND,
+                ErrorDetail::new("not_found", "Resource was not found"),
+            ),
             Self::Unauthorized(err) => {
                 tracing::warn!(err);
                 (

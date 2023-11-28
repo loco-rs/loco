@@ -3,8 +3,6 @@ use std::borrow::BorrowMut;
 use loco_rs::schema::*;
 use sea_orm_migration::prelude::*;
 
-use crate::m20220101_000001_users::Users;
-
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 
@@ -15,18 +13,8 @@ impl MigrationTrait for Migration {
             .create_table(
                 table_auto(Notes::Table)
                     .col(pk_auto(Notes::Id).borrow_mut())
-                    .col(uuid(Notes::Pid).borrow_mut())
                     .col(string_null(Notes::Title).borrow_mut())
                     .col(string_null(Notes::Content).borrow_mut())
-                    .col(integer(Notes::OwnerId).borrow_mut())
-                    .foreign_key(
-                        ForeignKey::create()
-                            .name("fk-notes-users")
-                            .from(Notes::Table, Notes::OwnerId)
-                            .to(Users::Table, Users::Id)
-                            .on_delete(ForeignKeyAction::Cascade)
-                            .on_update(ForeignKeyAction::Cascade),
-                    )
                     .to_owned(),
             )
             .await
@@ -43,8 +31,6 @@ impl MigrationTrait for Migration {
 enum Notes {
     Table,
     Id,
-    Pid,
     Title,
     Content,
-    OwnerId,
 }
