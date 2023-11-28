@@ -2,13 +2,10 @@
 //! configuring routes in an Axum application. It allows you to define route
 //! prefixes, add routes, and configure middlewares for the application.
 
-use std::time::Duration;
-
-use axum::{http::Request, response::Response, Router as AXRouter};
+use axum::{http::Request, Router as AXRouter};
 use lazy_static::lazy_static;
 use regex::Regex;
 use tower_http::{catch_panic::CatchPanicLayer, trace::TraceLayer};
-use tower_request_id::{RequestId, RequestIdLayer};
 
 use super::routes::Routes;
 use crate::{app::AppContext, Result};
@@ -172,34 +169,19 @@ impl AppRoutes {
 
         if let Some(logger) = &ctx.config.server.middlewares.logger {
             if logger.enable {
-                app = app
-                    .layer(
-                        TraceLayer::new_for_http()
-                            .make_span_with(|request: &Request<_>| {
-                                let request_id = request
-                                    .extensions()
-                                    .get::<RequestId>()
-                                    .map_or_else(|| "unknown".into(), ToString::to_string);
-                                tracing::error_span!(
-                                    "request",
-                                    id = %request_id,
-                                    method = %request.method(),
-                                    uri = %request.uri(),
-                                )
-                            })
-                            .on_response(
-                                |response: &Response<_>,
-                                 latency: Duration,
-                                 _span: &tracing::Span| {
-                                    tracing::info!(
-                                        latency = format!("{latency:?}"),
-                                        status = format!("{:?}", response.status()),
-                                        "finished processing request",
-                                    );
-                                },
-                            ),
-                    )
-                    .layer(RequestIdLayer);
+                app = app.layer(TraceLayer::new_for_http().make_span_with(
+                    |request: &Request<_>| {
+                        let request_id = uuid::Uuid::new_v4();
+                        tracing::error_span!(
+                            "request",
+                            method = tracing::field::display(request.method()),
+                            uri = tracing::field::display(request.uri()),
+                            version = tracing::field::debug(request.version()),
+                            request_id = tracing::field::display(request_id),
+                        )
+                    },
+                ));
+
                 tracing::info!("[Middleware] Adding log trace id",);
             }
         }
