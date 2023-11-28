@@ -6,6 +6,7 @@ logger:
   #   - sea_orm_migration=error
 server:
   port: 3000
+  host: http://localhost
   middlewares:
     limit_payload:
       enable: true

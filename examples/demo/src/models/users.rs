@@ -62,6 +62,11 @@ impl ActiveModelBehavior for super::_entities::users::ActiveModel {
 }
 
 impl super::_entities::users::Model {
+    /// finds a user by the provided email
+    ///
+    /// # Errors
+    ///
+    /// When could not find user by the given token or DB query error
     pub async fn find_by_email(db: &DatabaseConnection, email: &str) -> ModelResult<Self> {
         let user = users::Entity::find()
             .filter(users::Column::Email.eq(email))
@@ -70,7 +75,7 @@ impl super::_entities::users::Model {
         user.ok_or_else(|| ModelError::EntityNotFound)
     }
 
-    /// Finding user by verification token
+    /// finds a user by the provided verification token
     ///
     /// # Errors
     ///
@@ -86,7 +91,7 @@ impl super::_entities::users::Model {
         user.ok_or_else(|| ModelError::EntityNotFound)
     }
 
-    /// Finding user by reset token
+    /// /// finds a user by the provided reset token
     ///
     /// # Errors
     ///
@@ -99,7 +104,7 @@ impl super::_entities::users::Model {
         user.ok_or_else(|| ModelError::EntityNotFound)
     }
 
-    /// Finding user by pid
+    /// finds a user by the provided pid
     ///
     /// # Errors
     ///
@@ -113,8 +118,7 @@ impl super::_entities::users::Model {
         user.ok_or_else(|| ModelError::EntityNotFound)
     }
 
-    /// Check if the given plain password is equal to hashed password that store
-    /// in DB
+    /// Verifies whether the provided plain password matches the hashed password
     ///
     /// # Errors
     ///
@@ -123,7 +127,8 @@ impl super::_entities::users::Model {
         Ok(auth::verify_password(password, &self.password)?)
     }
 
-    /// Creates a user with password
+    /// Asynchronously creates a user with a password and saves it to the
+    /// database.
     ///
     /// # Errors
     ///
@@ -181,7 +186,11 @@ impl super::_entities::users::ActiveModel {
         validator.validate().map_err(validation::into_db_error)
     }
 
-    /// Save verification token
+    /// Sets the email verification information for the user and
+    /// updates it in the database.
+    ///
+    /// This method is used to record the timestamp when the email verification
+    /// was sent and generate a unique verification token for the user.
     ///
     /// # Errors
     ///
@@ -195,7 +204,14 @@ impl super::_entities::users::ActiveModel {
         Ok(self.update(db).await?)
     }
 
-    /// Save reset password token
+    /// Sets the information for a reset password request,
+    /// generates a unique reset password token, and updates it in the
+    /// database.
+    ///
+    /// This method records the timestamp when the reset password token is sent
+    /// and generates a unique token for the user.
+    ///
+    /// # Arguments
     ///
     /// # Errors
     ///
@@ -206,7 +222,11 @@ impl super::_entities::users::ActiveModel {
         Ok(self.update(db).await?)
     }
 
-    /// Save verify time when user verify his email
+    /// Records the verification time when a user verifies their
+    /// email and updates it in the database.
+    ///
+    /// This method sets the timestamp when the user successfully verifies their
+    /// email.
     ///
     /// # Errors
     ///
@@ -216,8 +236,11 @@ impl super::_entities::users::ActiveModel {
         Ok(self.update(db).await?)
     }
 
-    /// Reset current password with new password
+    /// Resets the current user password with a new password and
+    /// updates it in the database.
     ///
+    /// This method hashes the provided password and sets it as the new password
+    /// for the user.    
     /// # Errors
     ///
     /// when has DB query error or could not hashed the given password
