@@ -146,13 +146,13 @@ curl --location '127.0.0.1:3000/auth/reset' \
 This endpoint is protected by auth middleware.
 
 ```sh
-curl --location '127.0.0.1:3000/foo/echo' \
---header 'Content-Type: text/plain' \
---header 'Authorization: Bearer TOKEN' \
---data-raw '{
-    "email": "user@loco.rs",
-    "password": "new-password"
-}'
+curl --location --request GET '127.0.0.1:3000/user/current' \
+     --header 'Content-Type: application/json' \
+     --header 'Authorization: Bearer TOKEN' \
+     --data-raw '{
+         "email": "user@loco.rs",
+         "password": "new-password"
+     }'
 ```
 
 ## Creating an Authenticated Endpoint
