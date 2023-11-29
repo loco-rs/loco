@@ -1,12 +1,6 @@
 use std::collections::BTreeMap;
 
-use async_trait::async_trait;
-use loco_rs::{
-    app::AppContext,
-    task::{Task, TaskInfo},
-    Result,
-};
-use sea_orm::EntityTrait;
+use loco_rs::prelude::*;
 
 use crate::models::_entities::users;
 

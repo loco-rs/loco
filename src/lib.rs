@@ -25,6 +25,7 @@
 use self::errors::Error;
 
 mod banner;
+pub mod prelude;
 
 #[cfg(feature = "with-db")]
 pub mod db;

@@ -1,12 +1,7 @@
 // auth mailer
 #![allow(non_upper_case_globals)]
 
-use include_dir::{include_dir, Dir};
-use loco_rs::{
-    app::AppContext,
-    mailer::{Args, Mailer},
-    Result,
-};
+use loco_rs::prelude::*;
 use serde_json::json;
 
 use crate::models::users;
@@ -29,7 +24,7 @@ impl AuthMailer {
         Self::mail_template(
             ctx,
             &welcome,
-            Args {
+            mailer::Args {
                 to: user.email.to_string(),
                 locals: json!({
                   "name": user.name,
@@ -53,7 +48,7 @@ impl AuthMailer {
         Self::mail_template(
             ctx,
             &forgot,
-            Args {
+            mailer::Args {
                 to: user.email.to_string(),
                 locals: json!({
                   "name": user.name,

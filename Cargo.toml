@@ -19,7 +19,7 @@ with-db = ["dep:sea-orm", "dep:sea-orm-migration"]
 
 [dependencies]
 
-eyre = "0.6.9"
+eyre = "0.6"
 
 # cli
 clap = { version = "4.4.7", features = ["derive"], optional = true }
@@ -36,9 +36,9 @@ sea-orm = { version = "0.12.4", features = [
 tokio = { version = "1.33.0", features = ["full"] }
 # the rest
 
-serde = "1.0.193"
-serde_json = "1.0.108"
-serde_yaml = "0.9.27"
+serde = "1"
+serde_json = "1"
+serde_yaml = "0.9"
 serde_variant = "0.1.2"
 
 # worker fwk 
@@ -47,7 +47,7 @@ async-trait = "0.1.74"
 bb8 = "0.8.1"
 
 axum = "0.7.1"
-regex = "1.10.2"
+regex = "1"
 lazy_static = "1.4.0"
 fs-err = "2.11.0"
 # mailer
@@ -59,7 +59,7 @@ lettre = { version = "0.11.1", default-features = false, features = [
   "tokio1-rustls-tls",
 ] }
 include_dir = "0.7.3"
-thiserror = "1.0.50"
+thiserror = "1"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 
@@ -82,9 +82,9 @@ rrgen = "0.5.0"
 chrono = "0.4.31"
 cargo_metadata = "0.18.1"
 
-cfg-if = "1.0.0"
+cfg-if = "1"
 
-uuid = { version = "*", features = ["v4"] }
+uuid = { version = "1.6", features = ["v4"] }
 
 
 [dependencies.sea-orm-migration]
