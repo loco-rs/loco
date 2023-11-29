@@ -12,7 +12,7 @@ async fn main() -> eyre::Result<()> {
 
     let args = env::args().collect::<Vec<_>>();
     let cmd = args.get(1);
-    let app_context = create_context(&environment).await?;
+    let app_context = create_context::<App>(&environment).await?;
     run_task::<App>(&app_context, cmd, &BTreeMap::new()).await?;
 
     Ok(())
