@@ -34,7 +34,7 @@
 //! #[async_trait]
 //! impl Hooks for App {
 //!
-//!     fn app_name() -> &'static str {
+//!    fn app_name() -> &'static str {
 //!        env!("CARGO_CRATE_NAME")
 //!    }
 //!
@@ -283,7 +283,7 @@ pub async fn create_app<H: Hooks, M: MigratorTrait>(
 
 #[cfg(not(feature = "with-db"))]
 pub async fn create_app<H: Hooks>(mode: StartMode, environment: &str) -> Result<BootResult> {
-    let app_context = create_context(environment).await?;
+    let app_context = create_context::<H>(environment).await?;
 
     if let Some(pool) = &app_context.redis {
         redis::converge(pool, &app_context.config.redis).await?;
