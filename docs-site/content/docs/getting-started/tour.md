@@ -30,17 +30,14 @@ $ loco new
 myapp
 ```
 
-Now `cd` into your app and set up a convenience `lc`:
+> To configure a database , please run a local postgres database with `loco:loco` and a db named `loco_app`: 
+`docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=loco_app -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine`
+
+Now `cd` into your `myapp` and start your app:
 
 ```
 $ cd myapp
-$ alias lc='cargo run --'
-```
-
-That's it, start your app:
-
-```
-$ lc start
+$ cargo loco run
 Finished dev [unoptimized + debuginfo] target(s) in 21.63s
     Running `target/debug/myapp start`
 
@@ -73,7 +70,7 @@ started on port 3000
 We have a base SaaS app with user authentication generated for us. Let's make it a blog by adding a `post` and a full CRUD API using `scaffold`:
 
 ```sh
-$ lc scaffold post title:string content:text
+$ cargo loco generate scaffold post title:string content:text
 
   :
   :
@@ -93,7 +90,7 @@ Your database have been migrated and model, entities, and a full CRUD controller
 Start your app:
 
 ```sh
-$ lc start
+$ cargo loco start
 ```
 
 Next, try adding a `post` with `curl`:
@@ -114,6 +111,11 @@ For those counting -- the 3 commands for creating a blog were:
 
 1. `cargo install loco-cli`
 2. `loco new`
-3. `lc scaffold post title:string content:text`
+3. `cargo loco generate scaffold post title:string content:text`
 
 Done! enjoy your ride with `loco` 🚂
+
+## Checking Out SaaS Authentication
+
+Your generated app contains a fully working authentication suite, based on JWTs.
+
