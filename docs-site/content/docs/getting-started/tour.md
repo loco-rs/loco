@@ -37,7 +37,7 @@ Now `cd` into your `myapp` and start your app:
 
 ```
 $ cd myapp
-$ cargo loco run
+$ cargo loco start
 Finished dev [unoptimized + debuginfo] target(s) in 21.63s
     Running `target/debug/myapp start`
 
