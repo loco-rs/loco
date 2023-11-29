@@ -80,8 +80,8 @@ $ demo controller
 [POST] /auth/register
 [POST] /auth/reset
 [POST] /auth/verify
-[GET] /notes/
-[POST] /notes/
+[GET] /notes
+[POST] /notes
 [GET] /notes/:id
 [DELETE] /notes/:id
 [POST] /notes/:id
