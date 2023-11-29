@@ -1,4 +1,4 @@
-use axum::http;
+use axum::{http, routing::MethodRouter};
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -8,12 +8,12 @@ lazy_static! {
     static ref DESCRIBE_METHOD_ACTION: Regex = Regex::new(r"\b(\w+):\s*BoxedHandler\b").unwrap();
 }
 
-/// Extract the allow list method actions from MethodRouter.
+/// Extract the allow list method actions from [`MethodRouter`].
 ///
 /// Currently axum not exposed the action type of the router. for hold extra
 /// information about routers we need to convert the `method` to string and
 /// capture the details
-pub fn method_action(method: &axum::routing::MethodRouter<AppContext>) -> Vec<http::Method> {
+pub fn method_action(method: &MethodRouter<AppContext>) -> Vec<http::Method> {
     let method_str = format!("{method:?}");
 
     DESCRIBE_METHOD_ACTION

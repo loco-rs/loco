@@ -227,6 +227,11 @@ where
     Ok(())
 }
 
+/// Execute seed from the given path
+///
+/// # Errors
+///
+/// when seed process is fails
 pub async fn run_app_seed<H: Hooks>(db: &DatabaseConnection, path: &Path) -> AppResult<()> {
-    Ok(H::seed(db, path).await?)
+    H::seed(db, path).await
 }

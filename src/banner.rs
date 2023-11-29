@@ -83,6 +83,6 @@ pub fn print_banner(boot_result: &BootResult) {
         );
     }
 
-    print!("\n");
+    println!();
     println!("{}", servingline.join("\n"));
 }

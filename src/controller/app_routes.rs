@@ -8,7 +8,7 @@ use regex::Regex;
 use tower_http::{catch_panic::CatchPanicLayer, trace::TraceLayer};
 
 use super::routes::Routes;
-use crate::{app::AppContext, Result};
+use crate::{app::AppContext, config, Result};
 
 lazy_static! {
     static ref NORMALIZE_URL: Regex = Regex::new(r"/+").unwrap();
@@ -146,6 +146,7 @@ impl AppRoutes {
     /// # Errors
     /// Return an [`Result`] when could not convert the router setup to
     /// [`axum::Router`].
+    #[allow(clippy::cognitive_complexity)]
     pub fn to_router(&self, ctx: AppContext) -> Result<AXRouter> {
         let mut app = AXRouter::new();
 
@@ -157,43 +158,58 @@ impl AppRoutes {
 
         if let Some(catch_panic) = &ctx.config.server.middlewares.catch_panic {
             if catch_panic.enable {
-                // TODO:: handle better response
-                app = app.layer(CatchPanicLayer::new());
+                app = Self::add_catch_panic(app);
             }
         }
 
         if let Some(limit) = &ctx.config.server.middlewares.limit_payload {
             if limit.enable {
-                app = app.layer(axum::extract::DefaultBodyLimit::max(
-                    byte_unit::Byte::from_str(&limit.body_limit)
-                        .map_err(Box::from)?
-                        .get_bytes() as usize,
-                ));
-                tracing::info!(
-                    data = &limit.body_limit,
-                    "[Middleware] Adding limit payload",
-                );
+                app = Self::add_limit_payload_middleware(app, limit)?;
             }
         }
 
         if let Some(logger) = &ctx.config.server.middlewares.logger {
             if logger.enable {
-                app = app.layer(TraceLayer::new_for_http().make_span_with(
-                    |request: &Request<_>| {
-                        let request_id = uuid::Uuid::new_v4();
-                        tracing::error_span!(
-                            "request",
-                            method = tracing::field::display(request.method()),
-                            uri = tracing::field::display(request.uri()),
-                            version = tracing::field::debug(request.version()),
-                            request_id = tracing::field::display(request_id),
-                        )
-                    },
-                ));
-
-                tracing::info!("[Middleware] Adding log trace id",);
+                app = Self::add_logger_middleware(app);
             }
         }
         Ok(app.with_state(ctx))
+    }
+
+    fn add_catch_panic(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
+        app.layer(CatchPanicLayer::new())
+    }
+    fn add_limit_payload_middleware(
+        app: AXRouter<AppContext>,
+        limit: &config::LimitPayloadMiddleware,
+    ) -> Result<AXRouter<AppContext>> {
+        let app = app.layer(axum::extract::DefaultBodyLimit::max(
+            byte_unit::Byte::from_str(&limit.body_limit)
+                .map_err(Box::from)?
+                .get_bytes() as usize,
+        ));
+        tracing::info!(
+            data = &limit.body_limit,
+            "[Middleware] Adding limit payload",
+        );
+
+        Ok(app)
+    }
+    fn add_logger_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
+        let app = app.layer(
+            TraceLayer::new_for_http().make_span_with(|request: &Request<_>| {
+                let request_id = uuid::Uuid::new_v4();
+                tracing::error_span!(
+                    "request",
+                    method = tracing::field::display(request.method()),
+                    uri = tracing::field::display(request.uri()),
+                    version = tracing::field::debug(request.version()),
+                    request_id = tracing::field::display(request_id),
+                )
+            }),
+        );
+
+        tracing::info!("[Middleware] Adding log trace id",);
+        app
     }
 }
