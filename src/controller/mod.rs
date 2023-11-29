@@ -32,6 +32,11 @@
 //!
 //! #[async_trait]
 //! impl Hooks for App {
+//!
+//!    fn app_name() -> &'static str {
+//!        env!("CARGO_CRATE_NAME")
+//!    }
+//!
 //!     fn routes() -> AppRoutes {
 //!         AppRoutes::with_default_routes()
 //!             // .add_route(controllers::notes::routes())

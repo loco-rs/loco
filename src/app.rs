@@ -67,6 +67,11 @@ pub struct AppContext {
 /// pub struct App;
 /// #[async_trait]
 /// impl Hooks for App {
+///
+///    fn app_name() -> &'static str {
+///        env!("CARGO_CRATE_NAME")
+///    }
+///
 ///     fn routes() -> AppRoutes {
 ///         AppRoutes::with_default_routes()
 ///             // .add_route(controllers::notes::routes())
@@ -96,6 +101,15 @@ pub struct AppContext {
 /// ```
 #[async_trait]
 pub trait Hooks {
+    /// Defines the crate name
+    ///
+    /// Example
+    /// ```rust
+    /// fn app_name() -> &'static str {
+    ///     env!("CARGO_CRATE_NAME")
+    /// }
+    /// ```
+    fn app_name() -> &'static str;
     /// Defines the application's routing configuration.
     fn routes() -> AppRoutes;
     /// Connects custom workers to the application using the provided

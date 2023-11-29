@@ -70,8 +70,12 @@ where
     }
 }
 
-// Function to extract a token from the authorization header
-fn extract_token_from_header(headers: &HeaderMap) -> eyre::Result<String> {
+/// Function to extract a token from the authorization header
+///
+/// # Errors
+///
+/// When token is not valid or out found
+pub fn extract_token_from_header(headers: &HeaderMap) -> eyre::Result<String> {
     Ok(headers
         .get(AUTH_HEADER)
         .ok_or_else(|| eyre::eyre!("header {} token not found", AUTH_HEADER))?

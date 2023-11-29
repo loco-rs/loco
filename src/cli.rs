@@ -230,7 +230,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
         }
         #[cfg(feature = "with-db")]
         Commands::Db { command } => {
-            let app_context = create_context(&environment).await?;
+            let app_context = create_context::<H>(&environment).await?;
             run_db::<H, M>(&app_context, command.into()).await?;
         }
         Commands::Controller {} => show_list_endpoints::<H>(),
@@ -239,7 +239,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             for (k, v) in params {
                 hash.insert(k, v);
             }
-            let app_context = create_context(&environment).await?;
+            let app_context = create_context::<H>(&environment).await?;
             run_task::<H>(&app_context, name.as_ref(), &hash).await?;
         }
         Commands::Generate { component } => {
@@ -278,7 +278,7 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
             for (k, v) in params {
                 hash.insert(k, v);
             }
-            let app_context = create_context(&environment).await?;
+            let app_context = create_context::<H>(&environment).await?;
             run_task::<H>(&app_context, name.as_ref(), &hash).await?;
         }
         Commands::Generate { component } => {

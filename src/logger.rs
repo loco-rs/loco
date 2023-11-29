@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
 use tracing_subscriber::EnvFilter;
 
-use crate::config;
+use crate::{app::Hooks, config};
 
 // Define an enumeration for log levels
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
@@ -48,7 +48,7 @@ impl std::fmt::Display for LogLevel {
     }
 }
 // Function to initialize the logger based on the provided configuration
-const MODULE_WHITELIST: &[&str] = &["loco_rs", "sea_orm_migration"];
+const MODULE_WHITELIST: &[&str] = &["blo", "loco_rs", "sea_orm_migration"];
 ///
 /// Tracing filtering rules:
 /// 1. if RUST_LOG, use that filter
@@ -65,7 +65,7 @@ const MODULE_WHITELIST: &[&str] = &["loco_rs", "sea_orm_migration"];
 ///    use via PR)
 /// 3. regardless of (1) and (2) operators in production, or elsewhere can
 ///    always use RUST_LOG to quickly diagnose a service
-pub fn init(config: &config::Logger) {
+pub fn init<H: Hooks>(config: &config::Logger) {
     let filter = EnvFilter::try_from_default_env()
         .or_else(|_| {
             // user wanted a specific filter, don't care about our internal whitelist
@@ -76,6 +76,11 @@ pub fn init(config: &config::Logger) {
                         MODULE_WHITELIST
                             .iter()
                             .map(|m| format!("{}={}", m, config.level))
+                            .chain(std::iter::once(format!(
+                                "{}={}",
+                                H::app_name(),
+                                config.level
+                            )))
                             .collect::<Vec<_>>()
                             .join(","),
                     )
