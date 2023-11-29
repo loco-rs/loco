@@ -14,18 +14,7 @@ injections:
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
-use axum::{
-    extract::{Path, State},
-    routing::{delete, get, post},
-    Json,
-};
-use loco_rs::{
-    app::AppContext,
-    controller::{format, Routes},
-    errors::Error,
-    Result,
-};
-use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, ModelTrait, Set};
+use loco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::models::_entities::{{file_name | plural}}::{ActiveModel, Entity, Model};

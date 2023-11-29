@@ -13,12 +13,7 @@ injections:
 ---
 use std::collections::BTreeMap;
 
-use async_trait::async_trait;
-use loco_rs::{
-    app::AppContext,
-    task::{Task, TaskInfo},
-    Result,
-};
+use loco_rs::prelude::*;
 
 pub struct {{module_name}};
 #[async_trait]

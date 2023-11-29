@@ -12,15 +12,7 @@ injections:
   content: "            .add_route(controllers::{{ file_name }}::routes())"
 ---
 #![allow(clippy::unused_async)]
-use axum::{
-    extract::State,
-    routing::{get, post},
-};
-use loco_rs::{
-    app::AppContext,
-    controller::{format, Routes},
-    Result,
-};
+use loco_rs::prelude::*;
 
 pub async fn echo(req_body: String) -> String {
     req_body
