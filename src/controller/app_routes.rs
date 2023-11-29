@@ -74,10 +74,15 @@ impl AppRoutes {
                 router.handlers.iter().map(move |controller| {
                     let uri = format!("{}{}", uri_parts.join("/"), &controller.uri);
                     let binding = NORMALIZE_URL.replace_all(&uri, "/");
-                    let uri = NORMALIZE_URL
-                        .replace_all(&uri, "/")
-                        .strip_suffix('/')
-                        .map_or_else(|| binding.to_string(), std::string::ToString::to_string);
+
+                    let uri = if binding.len() > 1 {
+                        NORMALIZE_URL
+                            .replace_all(&uri, "/")
+                            .strip_suffix('/')
+                            .map_or_else(|| binding.to_string(), std::string::ToString::to_string)
+                    } else {
+                        binding.to_string()
+                    };
 
                     ListRoutes {
                         uri,
