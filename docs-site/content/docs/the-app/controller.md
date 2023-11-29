@@ -97,3 +97,27 @@ impl Hooks for App {
 }
 
 ```
+
+## Displaying Registered Controllers
+
+To view a list of all your registered controllers, execute the following command:
+
+```sh
+$ rr controller
+
+[GET] /_health
+[GET] /_ping
+[POST] /auth/forgot
+[POST] /auth/login
+[POST] /auth/register
+[POST] /auth/reset
+[POST] /auth/verify
+[GET] /notes/
+[POST] /notes/
+[GET] /notes/:id
+[DELETE] /notes/:id
+[POST] /notes/:id
+[GET] /user/current
+```
+
+This command will provide you with a comprehensive overview of the controllers currently registered in your system.
