@@ -30,7 +30,7 @@ Each task is designed to parse command-line arguments into flags, utilizing the 
 Generate the task:
 
 ```sh
-$ rr generate task [OPTIONS] <TASK_NAME>
+$ cargo loco generate task [OPTIONS] <TASK_NAME>
 ```
 
 ## Running a Task
@@ -38,7 +38,7 @@ $ rr generate task [OPTIONS] <TASK_NAME>
 Execute the task you created in the previous step using the following command:
 
 ```sh
-$ rr task <TASK_NAME>
+$ cargo loco task <TASK_NAME>
 ```
 
 ## Listing All Tasks
@@ -46,7 +46,7 @@ $ rr task <TASK_NAME>
 To view a list of all tasks that have been executed, use the following command:
 
 ```sh
-$ rr task
+$ cargo loco task
 ```
 
 ## Creating a Task manually

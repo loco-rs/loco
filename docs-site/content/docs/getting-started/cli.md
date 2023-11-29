@@ -24,17 +24,16 @@ Now `cd` into your app, set up a convenience `rr` alias and try out the various 
 
 ```
 $ cd myapp
-$ alias rr='cargo run --'
-$ rr --help
+$ cargo loco --help
 ```
 
 You can now drive your development through the CLI:
 
 ```
-$ rr generate model posts
-$ rr generate controller posts
-$ rr db migrate
-$ rr start
+$ cargo loco generate model posts
+$ cargo loco generate controller posts
+$ cargo loco db migrate
+$ cargo loco start
 ```
 
 And running tests or working with Rust is just as you already know:
@@ -49,7 +48,7 @@ $ cargo test
 To run you app, run:
 
 ```
-$ rr start
+$ cargo loco start
 ```
 
 ## Background workers

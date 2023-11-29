@@ -27,7 +27,7 @@ Create your app using the [loco-cli](/docs/getting-started/tour.md) and select t
 To explore the out-of-the-box auth controllers, run the following command:
 
 ```sh
-$ rr controller
+$ cargo loco controller
  .
  .
  .

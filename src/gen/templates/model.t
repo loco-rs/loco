@@ -4,7 +4,7 @@
 {% set model = name | plural | pascal_case -%}
 to: "migration/src/{{module_name}}.rs"
 skip_glob: "migration/src/*_{{plural_snake}}.rs"
-message: "Migration for `{{name}}` added! You can now apply it with `$ rr db migrate`."
+message: "Migration for `{{name}}` added! You can now apply it with `$ cargo loco db migrate`."
 injections:
 - into: "migration/src/lib.rs"
   before_last: "\\]"

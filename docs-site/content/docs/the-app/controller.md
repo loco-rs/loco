@@ -64,7 +64,7 @@ Provides a convenient code generator to simplify the creation of a starter contr
 Generate a controller:
 
 ```sh
-$ rr generate controller [OPTIONS] <CONTROLLER_NAME>
+$ cargo loco generate controller [OPTIONS] <CONTROLLER_NAME>
 ```
 
 After generating the controller, navigate to the created file in `src/controllers` to view the controller endpoints. You can also check the testing (in folder tests/requests) documentation for testing this controller.
@@ -103,7 +103,7 @@ impl Hooks for App {
 To view a list of all your registered controllers, execute the following command:
 
 ```sh
-$ rr controller
+$ cargo loco controller
 
 [GET] /_health
 [GET] /_ping

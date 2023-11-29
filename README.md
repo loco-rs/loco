@@ -19,26 +19,21 @@ $ loco new
 
 ## Getting Started
 
-Set up an alias for convenience:
-
-```
-alias rr='cargo run --'
-```
 
 ```
 cd examples/demo
 ```
 
-1. create a database (through your postres admin app):
+1. create a database (through your postgres admin app):
 
-`rr_app`
+`loco_app`
 
 2. migrate + generate entities:
 
 ```
-$ rr db status
-$ rr db migrate
-$ rr db entities
+$ cargo loco db status
+$ cargo loco db migrate
+$ cargo loco db entities
 ```
 
 3. run:
@@ -46,13 +41,13 @@ $ rr db entities
 = terminal 1 =
 
 ```
-$ rr start
+$ cargo loco start
 ```
 
 = terminal 2 =
 
 ```
-$ rr workers
+$ cargo loco workers
 ```
 
 ## Principles

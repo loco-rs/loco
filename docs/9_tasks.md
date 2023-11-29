@@ -50,10 +50,10 @@ impl Hooks for App {
 
 ## Using tasks
 
-To use a task run it with `rr`:
+To use a task run it with `cargo loco task`:
 
 ```
-$ rr task
+$ cargo loco task
 (prints a list)
-$ rr task user_report
+$ cargo loco task user_report
 ```
