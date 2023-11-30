@@ -82,9 +82,9 @@ pub fn cleanup_user_model() -> Vec<(&'static str, &'static str)> {
 #[cfg(feature = "with-db")]
 /// Bootstraps test application with test environment hard coded.
 ///
-/// # Errors 
+/// # Errors
 /// when could not bootstrap the test environment
-/// 
+///
 /// # Example
 ///
 /// The provided example demonstrates how to boot the test case with the
@@ -147,10 +147,11 @@ pub async fn seed<H: Hooks>(db: &DatabaseConnection) -> eyre::Result<()> {
 #[cfg(feature = "with-db")]
 /// Initiates a test request with a provided callback.
 ///
-/// 
+///
 /// # Panics
-/// When could not initialize the test request.this errors can be when could not initialize the test app 
-/// 
+/// When could not initialize the test request.this errors can be when could not
+/// initialize the test app
+///
 /// # Example
 ///
 /// The provided example demonstrates how to create a test that check
