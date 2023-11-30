@@ -183,7 +183,9 @@ impl super::_entities::users::ActiveModel {
     /// when the active model is not valid
     pub fn validate(&self) -> Result<(), DbErr> {
         let validator: ModelValidator = self.into();
-        validator.validate().map_err(validation::into_db_error)
+        validator
+            .validate()
+            .map_err(|e| validation::into_db_error(&e))
     }
 
     /// Sets the email verification information for the user and

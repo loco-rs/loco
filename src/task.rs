@@ -17,7 +17,7 @@ pub struct TaskInfo {
 
 /// A trait defining the behavior of a task.
 #[async_trait]
-pub trait Task {
+pub trait Task: Send + Sync {
     /// Get information about the task.
     fn task(&self) -> TaskInfo;
     /// Execute the task with the provided application context and variables.

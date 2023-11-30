@@ -107,6 +107,11 @@ pub fn unauthorized<T>(msg: &str) -> Result<T> {
     Err(Error::Unauthorized(msg.to_string()))
 }
 
+/// return not found status code
+///
+/// # Errors
+/// Currently this function did't return any error. this is for feature
+/// functionality
 pub fn not_found<T>() -> Result<T> {
     Err(Error::NotFound)
 }

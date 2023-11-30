@@ -78,7 +78,7 @@ pub fn is_valid_email(email: &str) -> Result<(), ValidationError> {
 
 /// Convert `ValidationErrors` into a `HashMap` of field errors.
 #[must_use]
-pub fn into_errors(errors: ValidationErrors) -> HashMap<String, Vec<ModelValidation>> {
+pub fn into_errors(errors: &ValidationErrors) -> HashMap<String, Vec<ModelValidation>> {
     errors
         .field_errors()
         .iter()
@@ -100,7 +100,7 @@ pub fn into_errors(errors: ValidationErrors) -> HashMap<String, Vec<ModelValidat
 /// # Errors
 /// when could not convert errors hashmap into a serde value
 pub fn into_json_errors(
-    errors: ValidationErrors,
+    errors: &ValidationErrors,
 ) -> Result<serde_json::Value, serde_json::error::Error> {
     let error_data = into_errors(errors);
     serde_json::to_value(error_data)
@@ -109,7 +109,7 @@ pub fn into_json_errors(
 #[cfg(feature = "with-db")]
 /// Convert `ValidationErrors` into a `DbErr` for database handling.
 #[must_use]
-pub fn into_db_error(errors: ValidationErrors) -> sea_orm::DbErr {
+pub fn into_db_error(errors: &ValidationErrors) -> sea_orm::DbErr {
     match into_json_errors(errors) {
         Ok(errors_json) => sea_orm::DbErr::Custom(errors_json.to_string()),
         Err(err) => sea_orm::DbErr::Custom(format!(

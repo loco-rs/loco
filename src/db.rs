@@ -108,7 +108,8 @@ pub async fn seed<A>(db: &DatabaseConnection, path: &str) -> AppResult<()>
 where
     <<A as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<A>,
     for<'de> <<A as ActiveModelTrait>::Entity as EntityTrait>::Model: serde::de::Deserialize<'de>,
-    A: sea_orm::ActiveModelTrait,
+    A: sea_orm::ActiveModelTrait + Send + Sync,
+    sea_orm::Insert<A>: Send + Sync, // Add this Send bound
 {
     let loader: Vec<serde_json::Value> = serde_yaml::from_reader(File::open(path)?)?;
 
