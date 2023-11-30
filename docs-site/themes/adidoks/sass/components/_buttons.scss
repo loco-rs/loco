@@ -1,0 +1,91 @@
+.navbar .btn-link {
+  color: $navbar-light-color;
+  padding: 0.4375rem 0;
+}
+
+#mode {
+  margin-right: 1.25rem;
+}
+
+.btn-link:focus {
+  outline: 0;
+  box-shadow: none;
+}
+
+#navigation {
+  margin-left: 1.25rem;
+}
+
+@include media-breakpoint-up(md) {
+  #mode {
+    margin-right: 0.5rem;
+  }
+
+  .navbar .btn-link {
+    padding: 0.5625em 0.25rem 0.5rem 0.125rem;
+  }
+}
+
+.navbar .btn-link:hover {
+  color: $navbar-light-hover-color;
+}
+
+.navbar .btn-link:active {
+  color: $navbar-light-active-color;
+}
+
+body .toggle-dark {
+  display: block;
+}
+
+body .toggle-light {
+  display: none;
+}
+
+body.dark .toggle-light {
+  display: block;
+}
+
+body.dark .toggle-dark {
+  display: none;
+}
+
+.btn-clipboard {
+  display: none;
+}
+
+@include media-breakpoint-up(md) {
+  .doks-clipboard {
+    position: relative;
+    float: right;
+  }
+
+  .btn-clipboard {
+    position: absolute;
+    top: 1rem;
+    right: 0.25rem;
+    z-index: 10;
+    display: block;
+    padding: 0.25rem 0.5rem;
+    font-size: $font-size-sm;
+  }
+}
+
+.copy-status::after {
+  content: "Copy";
+  display: block;
+  color: $body-color;
+}
+
+.copy-status:hover::after {
+  content: "Copy";
+  display: block;
+  color: $pink-500;
+}
+
+.copy-status:focus::after,
+.copy-status:active::after {
+  content: "Copied";
+  display: block;
+  color: $pink-500;
+}

@@ -1,0 +1,26 @@
+{% macro footer() %}
+<footer class="footer text-muted">
+	<div class="container">
+		<div class="row">
+			<div class="col-lg-8 order-last order-lg-first">
+				<ul class="list-inline">
+					{% if config.extra.footer.info %}
+						<li class="list-inline-item">{{ config.extra.footer.info | default(value="Powered by AdiDoks") | safe }}</li>
+					{% else %}
+						<li class="list-inline-item">Powered by <a href="https://www.netlify.com/">Netlify</a>, <a href="https://www.getzola.org/">Zola</a>, and <a href="https://github.com/aaranxu/adidoks">AdiDoks</a></li>
+					{% endif %}
+				</ul>
+			</div>
+			<div class="col-lg-8 order-first order-lg-last text-lg-end">
+				<ul class="list-inline">
+					{% if config.extra.footer.nav %}
+						{% for val in config.extra.footer.nav %}
+							<li class="list-inline-item"><a href="{{ get_url(path=val.url, trailing_slash=true) | safe }}">{{ val.name }}</a></li>
+						{% endfor %}
+					{% endif %}
+				</ul>
+			</div>
+		</div>
+	</div>
+</footer>
+{% endmacro %}

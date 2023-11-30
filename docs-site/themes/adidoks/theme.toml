@@ -1,0 +1,17 @@
+name = "adidoks"
+description = "AdiDoks is a Zola theme helping you build modern documentation."
+license = "MIT"
+homepage = "https://github.com/aaranxu/adidoks"
+min_version = "0.15.0"
+demo = "https://adidoks.netlify.app/"
+
+[extra]
+
+[author]
+name = "Aaran Xu"
+homepage = "https://github.com/aaranxu"
+
+[original]
+author =  "h-enk"
+homepage = "https://getdoks.org/"
+repo = "https://github.com/h-enk/doks"

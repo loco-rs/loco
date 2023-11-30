@@ -1,0 +1,62 @@
+/*
+
+Doks — based on Ascetic by (c) Ivan Sagalaev <Maniac@SoftwareManiacs.Org>
+
+*/
+
+.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 0.5em;
+  background: $beige;
+  color: $body-color;
+}
+
+.hljs-string,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-section,
+.hljs-addition,
+.hljs-attribute,
+.hljs-link {
+  color: $pink-500;
+}
+
+.hljs-comment,
+.hljs-quote,
+.hljs-meta,
+.hljs-deletion {
+  color: #888;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-section,
+.hljs-name,
+.hljs-type,
+.hljs-strong {
+  font-weight: bold;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+body.dark .hljs {
+  background: $body-overlay-dark;
+  color: $body-color-dark;
+}
+
+body.dark .hljs-string,
+body.dark .hljs-variable,
+body.dark .hljs-template-variable,
+body.dark .hljs-symbol,
+body.dark .hljs-bullet,
+body.dark .hljs-section,
+body.dark .hljs-addition,
+body.dark .hljs-attribute,
+body.dark .hljs-link {
+  color: $blue-300;
+}

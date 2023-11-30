@@ -1,0 +1,143 @@
+# The URL the site will be built for
+base_url = "https://adidoks.netlify.com"
+title = "AdiDoks"
+description = "AdiDoks is a Zola theme helping you build modern documentation websites, which is a port of the Hugo theme Doks for Zola."
+
+# The site theme to use.
+theme = "adidoks"
+
+# The default language; used in feeds and search index
+# Note: the search index doesn't support Chinese/Japanese/Korean Languages
+default_language = "en"
+
+# Whether to automatically compile all Sass files in the sass directory
+compile_sass = true
+
+# Whether to generate a feed file for the site
+generate_feed = true
+
+# When set to "true", the generated HTML files are minified.
+minify_html = false
+
+# The taxonomies to be rendered for the site and their configuration.
+taxonomies = [
+  {name = "authors"}, # Basic definition: no feed or pagination
+]
+
+# Whether to build a search index to be used later on by a JavaScript library
+# When set to "true", a search index is built from the pages and section
+# content for `default_language`.
+build_search_index = true
+
+[search]
+# Whether to include the title of the page/section in the index
+include_title = true
+# Whether to include the description of the page/section in the index
+include_description = false
+# Whether to include the rendered content of the page/section in the index
+include_content = true
+
+[markdown]
+# Whether to do syntax highlighting.
+# Theme can be customised by setting the `highlight_theme`
+# variable to a theme supported by Zola
+highlight_code = true
+
+[extra]
+# Put all your custom variables here
+author = "Aaran Xu"
+github = "https://github.com/aaranxu"
+twitter = "https://twitter.com/aaranxu"
+email = "aaranxu@outlook.com"
+
+# If running on netlify.app site, set to true
+is_netlify = true
+
+# Set HTML file language
+language_code = "en-US"
+
+# Set theme-color meta tag for Chrome browser
+theme_color = "#fff"
+
+# More about site's title
+title_separator = "|"  # set as |, -, _, etc
+title_addition = "Modern Documentation Theme"
+
+
+# Set date format in blog publish metadata
+timeformat = "%B %e, %Y" # e.g. June 14, 2021
+timezone = "America/New_York"
+
+# Edit page on reposity or not
+edit_page = false
+docs_repo = "https://github.com/aaranxu/adidoks"
+repo_branch = "main"
+
+## Math settings
+# options: true, false. Enable math support globally,
+# default: false. You can always enable math on a per page.
+math = false
+library = "katex"  # options: "katex", "mathjax". default is "katex".
+
+## Open Graph + Twitter Cards
+[extra.open]
+enable = true
+# this image will be used as fallback if a page has no image of its own
+image = "doks.png"
+twitter_site = "aaranxu"
+twitter_creator = "aaranxu"
+facebook_author = "ichunyun"
+facebook_publisher = "ichunyun"
+og_locale = "en_US"
+
+## JSON-LD
+[extra.schema]
+type = "Organization"
+logo = "logo-doks.png"
+twitter = "https://twitter.com/aaranxu"
+linked_in = ""
+github = "https://github.com/aaranxu"
+section = "blog" # see config.extra.main~url
+## Sitelinks Search Box
+site_links_search_box = false
+
+
+# Menu items
+[[extra.menu.main]]
+name = "Docs"
+section = "docs"
+url = "/docs/getting-started/introduction/"
+weight = 10
+
+[[extra.menu.main]]
+name = "Blog"
+section = "blog"
+url = "/blog/"
+weight = 20
+
+[[extra.menu.social]]
+name = "Twitter"
+pre = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-twitter"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path></svg>'
+url = "https://twitter.com/aaranxu"
+weight = 10
+
+[[extra.menu.social]]
+name = "GitHub"
+pre = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-github"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>'
+url = "https://github.com/aaranxu/adidoks"
+post = "v0.1.0"
+weight = 20
+
+# Footer contents
+[extra.footer]
+info = 'Powered by <a href="https://www.netlify.com/">Netlify</a>, <a href="https://www.getzola.org/">Zola</a>, and <a href="https://github.com/aaranxu/adidoks">AdiDoks</a>'
+
+[[extra.footer.nav]]
+name = "Privacy"
+url = "/privacy-policy/"
+weight = 10
+
+[[extra.footer.nav]]
+name = "Code of Conduct"
+url = "/docs/contributing/code-of-conduct/"
+weight = 20

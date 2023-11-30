@@ -1,0 +1,57 @@
+{# Default page.html template #}
+
+{% extends "base.html" %}
+
+{% block seo %}
+  {{ super() }}
+  {% set title_addition = "" %}
+  {% if page.title and config.title %}
+    {% set title = page.title %}
+    {% set title_addition = title_separator ~ config.title %}
+  {% elif page.title %}
+    {% set title = page.title %}
+  {% else %}
+    {% set title = config.title %}
+  {% endif %}
+  
+  {% if page.description %}
+    {% set description = page.description %}
+  {% else %}
+    {% set description = config.description %}
+  {% endif %}
+  {% set created_time = page.date %}
+  {% set updated_time = page.updated %}
+  {% if current_section %}
+    {% set page_section = current_section %}
+  {% else %}
+    {% set page_section = "" %}
+  {% endif %}
+  
+  {{ macros_head::seo(title=title, title_addition=title_addition, description=description, type="article", is_page=true, created_time=created_time, updated_time=updated_time, page_section=page_section) }}
+{% endblock seo %}
+  
+{% block body %}
+  {% if section.extra.class %}
+    {% set page_class = page.extra.class %}
+  {% else %}
+    {% set page_class = "page single" %}
+  {% endif %}
+{% endblock body %}
+
+{% block content %}
+<div class="wrap container" role="document">
+  <div class="content">
+    <div class="row justify-content-center">
+      <div class="col-md-12 col-lg-10 col-xxl-8">
+        <article>
+          <div class="page-header">
+            <h1>{{ page.title }}</h1>
+          </div>
+          {% if page.extra.lead %}<p class="lead">{{ page.extra.lead }}</p>{% endif %}
+          {{ page.content | safe }}
+        </article>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}

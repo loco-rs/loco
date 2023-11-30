@@ -1,0 +1,63 @@
+.alert {
+  font-family: $font-family-monospace;
+  font-size: $font-size-sm;
+}
+
+.alert-icon {
+  margin-right: 0.75rem;
+}
+
+.docs .alert {
+  margin: 2rem -1.5rem;
+}
+
+.alert .alert-link {
+  text-decoration: underline;
+}
+
+.alert-dark {
+  color: $white;
+  background-color: $black;
+}
+
+.alert-dark .alert-link {
+  color: $white;
+}
+
+.alert-light {
+  color: $black;
+}
+
+.alert-warning {
+  background: $beige;
+  color: $black;
+}
+
+/*
+.alert-light {
+  color: #215888;
+  background: linear-gradient(-45deg, rgb(212, 245, 255), rgb(234, 250, 255), rgb(234, 250, 255), #d3f6ef);
+}
+
+.alert-light .alert-link {
+  color: #215888;
+}
+*/
+
+.alert-white {
+  background-color: rgba(255, 255, 255, 0.95);
+}
+
+.alert-primary {
+  color: $white;
+  background-color: $primary;
+}
+
+.alert-primary .alert-link {
+  color: $white;
+}
+
+.alert .alert-link:hover,
+.alert .alert-link:focus {
+  text-decoration: none;
+}
