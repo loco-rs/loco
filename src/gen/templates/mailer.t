@@ -24,7 +24,7 @@ impl {{struct_name}} {
             ctx,
             &welcome,
             mailer::Args {
-                to,
+                to: to.to_string(),
                 locals: json!({
                   "message": msg,
                   "domain": ctx.config.server.full_url()

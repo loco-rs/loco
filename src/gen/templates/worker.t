@@ -9,9 +9,11 @@ injections:
   content: "pub mod {{ module_name}};"
 - into: src/app.rs
   after: "fn connect_workers"
-  content: "        p.register({{struct_name}}::build(ctx);"
+  content: "        p.register(crate::workers::{{module_name}}::{{struct_name}}::build(ctx));"
 ---
+use serde::{Deserialize, Serialize};
 use loco_rs::prelude::*;
+
 pub struct {{struct_name}} {
     pub ctx: AppContext,
 }
