@@ -33,6 +33,11 @@
 //!
 //! #[async_trait]
 //! impl Hooks for App {
+//!
+//!    fn app_name() -> &'static str {
+//!        env!("CARGO_CRATE_NAME")
+//!    }
+//!
 //!     fn routes() -> AppRoutes {
 //!         AppRoutes::with_default_routes()
 //!     }
@@ -229,12 +234,12 @@ async fn serve(app: Router, config: &Config) -> Result<()> {
 ///
 /// # Errors
 /// When has an error to create DB connection.
-pub async fn create_context(environment: &str) -> Result<AppContext> {
+pub async fn create_context<H: Hooks>(environment: &str) -> Result<AppContext> {
     let environment = Environment::from_str(environment)
         .unwrap_or_else(|_| Environment::Any(environment.to_string()));
     let config = environment.load()?;
     if config.logger.enable {
-        logger::init(&config.logger);
+        logger::init::<H>(&config.logger);
     }
     #[cfg(feature = "with-db")]
     let db = db::connect(&config.database).await?;
@@ -266,7 +271,7 @@ pub async fn create_app<H: Hooks, M: MigratorTrait>(
     mode: StartMode,
     environment: &str,
 ) -> Result<BootResult> {
-    let app_context = create_context(environment).await?;
+    let app_context = create_context::<H>(environment).await?;
     db::converge::<H, M>(&app_context.db, &app_context.config.database).await?;
 
     if let Some(pool) = &app_context.redis {
@@ -278,7 +283,7 @@ pub async fn create_app<H: Hooks, M: MigratorTrait>(
 
 #[cfg(not(feature = "with-db"))]
 pub async fn create_app<H: Hooks>(mode: StartMode, environment: &str) -> Result<BootResult> {
-    let app_context = create_context(environment).await?;
+    let app_context = create_context::<H>(environment).await?;
 
     if let Some(pool) = &app_context.redis {
         redis::converge(pool, &app_context.config.redis).await?;

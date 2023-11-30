@@ -173,6 +173,7 @@ pub struct MailerAuth {
 }
 
 impl Server {
+    #[must_use]
     pub fn full_url(&self) -> String {
         format!("{}:{}", self.host, self.port)
     }

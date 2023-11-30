@@ -76,3 +76,17 @@ jobs:
         env:
           APP_REDIS_URI: redis://localhost:${{job.services.redis.ports[6379]}}
           APP_DATABASE_URI: postgres://postgress:postgress@localhost:5432/postgress_test
+
+      - name: worker
+        run: cargo run -- generate worker report_worker && cargo build
+        working-directory: ./examples/demo
+        env:
+          APP_REDIS_URI: redis://localhost:${{job.services.redis.ports[6379]}}
+          APP_DATABASE_URI: postgres://postgress:postgress@localhost:5432/postgress_test
+
+      - name: mailer
+        run: cargo run -- generate mailer birthday_mailer && cargo build
+        working-directory: ./examples/demo
+        env:
+          APP_REDIS_URI: redis://localhost:${{job.services.redis.ports[6379]}}
+          APP_DATABASE_URI: postgres://postgress:postgress@localhost:5432/postgress_test

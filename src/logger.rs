@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
 use tracing_subscriber::EnvFilter;
 
-use crate::config;
+use crate::{app::Hooks, config};
 
 // Define an enumeration for log levels
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
@@ -48,10 +48,10 @@ impl std::fmt::Display for LogLevel {
     }
 }
 // Function to initialize the logger based on the provided configuration
-const MODULE_WHITELIST: &[&str] = &["loco_rs", "sea_orm_migration"];
+const MODULE_WHITELIST: &[&str] = &["loco_rs", "sea_orm_migration", "tower_http"];
 ///
 /// Tracing filtering rules:
-/// 1. if RUST_LOG, use that filter
+/// 1. if `RUST_LOG`, use that filter
 /// 2. if we have a config, and in it `override_filter` use that filter (ignore
 ///    all else)
 /// 3. take `MODULE_WHITELIST` and filter only events from these modules, use
@@ -64,8 +64,8 @@ const MODULE_WHITELIST: &[&str] = &["loco_rs", "sea_orm_migration"];
 ///    permentantly, or make up their own whitelist filtering (or suggest it to
 ///    use via PR)
 /// 3. regardless of (1) and (2) operators in production, or elsewhere can
-///    always use RUST_LOG to quickly diagnose a service
-pub fn init(config: &config::Logger) {
+///    always use `RUST_LOG` to quickly diagnose a service
+pub fn init<H: Hooks>(config: &config::Logger) {
     let filter = EnvFilter::try_from_default_env()
         .or_else(|_| {
             // user wanted a specific filter, don't care about our internal whitelist
@@ -76,6 +76,11 @@ pub fn init(config: &config::Logger) {
                         MODULE_WHITELIST
                             .iter()
                             .map(|m| format!("{}={}", m, config.level))
+                            .chain(std::iter::once(format!(
+                                "{}={}",
+                                H::app_name(),
+                                config.level
+                            )))
                             .collect::<Vec<_>>()
                             .join(","),
                     )
