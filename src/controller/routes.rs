@@ -30,7 +30,7 @@ impl Routes {
     /// _ping endpoint HOST/status/_ping.
     ///
     /// ```rust
-    /// 
+    ///
     /// use loco_rs::{
     ///     controller::{Routes, format},
     ///     Result,
@@ -64,7 +64,7 @@ impl Routes {
     /// This example preset how to add a get endpoint int the Router.
     ///
     /// ```rust
-    /// 
+    ///
     /// use loco_rs::{
     ///     Result,
     ///     controller::{Routes, format},
@@ -103,7 +103,7 @@ impl Routes {
     /// _ping endpoint HOST/status/_ping.
     ///
     /// ```rust
-    /// 
+    ///
     /// use loco_rs::{
     ///     controller::{Routes, format},
     ///     Result,

@@ -64,7 +64,9 @@ where
                 claims: claims.claims,
             }),
             Err(_err) => {
-                return Err(Error::Unauthorized(format!("[Auth] token is not valid.")));
+                return Err(Error::Unauthorized(
+                    "[Auth] token is not valid.".to_string(),
+                ));
             }
         }
     }

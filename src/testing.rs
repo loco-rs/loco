@@ -25,7 +25,7 @@ lazy_static! {
             r"([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})",
             "PID"
         ),
-        (r#"password: (.*{60}),"#, "password: \"PASSWORD\","),
+        (r"password: (.*{60}),", "password: \"PASSWORD\","),
         (r"([A-Za-z0-9-_]*\.[A-Za-z0-9-_]*\.[A-Za-z0-9-_]*)","TOKEN")
     ];
 

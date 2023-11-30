@@ -39,7 +39,7 @@ impl EmailSender {
             lettre::AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&config.host)
                 .map_err(|error| {
                     tracing::error!(error = error.to_string(), "error creating SMTP transport");
-                    Error::Any(format!("error initialize smtp mailer").into())
+                    Error::Any("error initialize smtp mailer".to_string().into())
                 })?
                 .port(config.port)
         } else {
@@ -83,7 +83,7 @@ impl EmailSender {
             .multipart(content)
             .map_err(|error| {
                 tracing::error!(error = error.to_string(), "error building email message");
-                Error::Any(format!("error building email message").into())
+                Error::Any("error building email message".to_string().into())
             })?;
 
         match &self.transport {
@@ -92,7 +92,7 @@ impl EmailSender {
             }
             EmailTransport::Test(xp) => {
                 xp.send(&msg)
-                    .map_err(|_| Error::Any(format!("sending email error").into()))?;
+                    .map_err(|_| Error::Any("sending email error".to_string().into()))?;
             }
         };
         Ok(())
@@ -115,12 +115,12 @@ mod tests {
             transport: EmailTransport::Test(stub.clone()),
         };
 
-        let html = r#"
+        let html = r"
 ;<html>
     <body>
         Test Message
     </body>
-</html>"#;
+</html>";
 
         let data = Email {
             from: Some("test@framework.com".to_string()),
