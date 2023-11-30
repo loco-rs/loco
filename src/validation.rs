@@ -152,7 +152,7 @@ mod tests {
 
         assert_debug_snapshot!(
             format!("struct-[{name}]"),
-            data.validate().map_err(into_db_error)
+            data.validate().map_err(|e| into_db_error(&e))
         );
     }
 }

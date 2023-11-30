@@ -14,6 +14,7 @@ use sea_orm_migration::MigratorTrait;
 use crate::{
     app::{AppContext, Hooks},
     boot::{self, BootResult},
+    Result,
 };
 
 // Lazy-static constants for data cleanup patterns
@@ -81,6 +82,9 @@ pub fn cleanup_user_model() -> Vec<(&'static str, &'static str)> {
 #[cfg(feature = "with-db")]
 /// Bootstraps test application with test environment hard coded.
 ///
+/// # Errors 
+/// when could not bootstrap the test environment
+/// 
 /// # Example
 ///
 /// The provided example demonstrates how to boot the test case with the
@@ -99,17 +103,13 @@ pub fn cleanup_user_model() -> Vec<(&'static str, &'static str)> {
 ///     assert!(false)
 /// }
 /// ```
-pub async fn boot_test<H: Hooks, M: MigratorTrait>() -> BootResult {
-    boot::create_app::<H, M>(boot::StartMode::ServerOnly, "test")
-        .await
-        .unwrap()
+pub async fn boot_test<H: Hooks, M: MigratorTrait>() -> Result<BootResult> {
+    boot::create_app::<H, M>(boot::StartMode::ServerOnly, "test").await
 }
 
 #[cfg(not(feature = "with-db"))]
-pub async fn boot_test<H: Hooks>() -> BootResult {
-    boot::create_app::<H>(boot::StartMode::ServerOnly, "test")
-        .await
-        .unwrap()
+pub async fn boot_test<H: Hooks>() -> Result<BootResult> {
+    boot::create_app::<H>(boot::StartMode::ServerOnly, "test").await
 }
 
 #[cfg(feature = "with-db")]
@@ -143,9 +143,14 @@ pub async fn seed<H: Hooks>(db: &DatabaseConnection) -> eyre::Result<()> {
     Ok(H::seed(db, path).await?)
 }
 
+#[allow(clippy::future_not_send)]
 #[cfg(feature = "with-db")]
 /// Initiates a test request with a provided callback.
 ///
+/// 
+/// # Panics
+/// When could not initialize the test request.this errors can be when could not initialize the test app 
+/// 
 /// # Example
 ///
 /// The provided example demonstrates how to create a test that check
@@ -176,7 +181,7 @@ where
     F: FnOnce(TestServer, AppContext) -> Fut,
     Fut: std::future::Future<Output = ()>,
 {
-    let boot = boot_test::<H, M>().await;
+    let boot = boot_test::<H, M>().await.unwrap();
 
     let config = TestServerConfig::builder()
         .default_content_type("application/json")
@@ -188,12 +193,13 @@ where
 }
 
 #[cfg(not(feature = "with-db"))]
+#[allow(clippy::future_not_send)]
 pub async fn request<H: Hooks, F, Fut>(callback: F)
 where
     F: FnOnce(TestServer, AppContext) -> Fut,
     Fut: std::future::Future<Output = ()>,
 {
-    let boot = boot_test::<H>().await;
+    let boot = boot_test::<H>().await.unwrap();
 
     let config = TestServerConfig::builder()
         .default_content_type("application/json")
