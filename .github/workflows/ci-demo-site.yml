@@ -24,7 +24,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: ${{ env.TOOLCHAIN_PROFILE }}
-          toolchain: nightly
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
           override: true
           components: rustfmt
       - run: cargo fmt --all -- --check
