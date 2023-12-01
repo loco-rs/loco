@@ -124,7 +124,7 @@ jobs:
       - name: Run cargo clippy
         run: |
           cargo build --release
-          LOGO_APP_NAME=saas_starter LOCO_TEMPLATE=saas LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco --path ${{ env.TEMP_DIR}}
-          cd  ${{ env.TEMP_DIR}}/saas_starter
+          LOGO_APP_NAME=saas_starter LOCO_TEMPLATE=saas LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new --path ${{ env.TEMP_DIR}}
+          cd ${{ env.TEMP_DIR}}/saas_starter
           cargo build --release
         working-directory: ./loco-cli
