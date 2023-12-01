@@ -1,0 +1,30 @@
+logger:
+  enable: false
+  level: info
+  format: compact
+  # override_filter: trace
+server:
+  port: 3000
+  host: http://localhost
+  middlewares:
+    limit_payload:
+      enable: true
+      body_limit: 5mb
+    logger:
+      enable: true
+    catch_panic:
+      enable: true
+workers:
+  mode: ForegroundBlocking
+mailer:
+  smtp:
+    enable: true
+    host: localhost
+    port: 1025
+    secure: false
+    # auth:
+    #   user:
+    #   password:
+auth:
+  secret: PqRwLF2rhHe8J22oBeHy
+  expiration: 604800

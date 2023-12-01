@@ -11,6 +11,9 @@ homepage = "https://docs.rs/loco-cli"
 documentation = "https://docs.rs/loco-cli"
 authors = ["Dotan Nahum <dotan@rng0.io>", "Elad Kaplan <kaplan.elad@gmail.com>"]
 
+[profile.release]
+strip = true
+
 [lib]
 name = "loco_cli"
 path = "src/lib.rs"
@@ -22,12 +25,19 @@ required-features = []
 
 [dependencies]
 clap = { version = "4.4.7", features = ["derive"] }
-cargo-generate = { version = "0.18.5", default-features = false }
-eyre = "0.6.9"
-rand = "0.8.5"
-dialoguer = "~0.11"
-regex = "1.10.2"
-
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "*"
+serde_regex = "1.1.0"
+eyre = { version = "0.6.9" }
+rand = { version = "0.8.5" }
+requestty = "0.5.0"
+regex = { version = "1.10.2" }
+git2 = { version = "0.18.1", default-features = true }
+ignore = "0.4.21"
+fs_extra = "1.3.0"
+lazy_static = "1.4.0"
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 
 [dev-dependencies]
 trycmd = "0.14.19"

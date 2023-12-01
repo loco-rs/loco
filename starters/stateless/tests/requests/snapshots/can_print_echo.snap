@@ -1,0 +1,8 @@
+---
+source: tests/requests/foo.rs
+expression: "(response.status_code(), response.text())"
+---
+(
+    200,
+    "{\"site\":\"Loco\"}",
+)

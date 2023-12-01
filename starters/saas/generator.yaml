@@ -1,0 +1,21 @@
+---
+description: Saas app (with DB and user auth)
+file_patterns:
+  - rs
+  - toml
+  - yaml
+rules:
+  - pattern: loco-rs = \{ path = +.(.*/)+.
+    kind: loco-rs = { git = "https://github.com/loco-rs/loco.git"
+    file_patterns:
+      - toml
+  - pattern: loco_starter_template
+    kind: LibName
+    file_patterns:
+      - rs
+      - toml
+  - pattern: PqRwLF2rhHe8J22oBeHy
+    kind: Secret
+    file_patterns:
+      - test.yaml
+      - development.yaml
