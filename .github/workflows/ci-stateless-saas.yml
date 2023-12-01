@@ -1,4 +1,4 @@
-name: STARTER-SAAS
+name: STARTER-STATELESS
 
 on:
   push:
@@ -59,31 +59,6 @@ jobs:
 
     permissions:
       contents: read
-
-    services:
-      redis:
-        image: redis
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - "6379:6379"
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_DB: postgress_test
-          POSTGRES_USER: postgress
-          POSTGRES_PASSWORD: postgress
-        ports:
-          - "5432:5432"
-        # Set health checks to wait until postgres has started
-        options: --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4
@@ -97,6 +72,3 @@ jobs:
       - name: Run cargo test
         run: cargo test --all-features --all
         working-directory: ./starters/stateless
-        env:
-          APP_REDIS_URI: redis://localhost:${{job.services.redis.ports[6379]}}
-          APP_DATABASE_URI: postgres://postgress:postgress@localhost:5432/postgress_test
