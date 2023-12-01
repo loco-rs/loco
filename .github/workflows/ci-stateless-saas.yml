@@ -96,7 +96,7 @@ jobs:
       - name: Run cargo clippy
         run: |
           cargo build --release
-          LOGO_APP_NAME=stateless_starter LOCO_TEMPLATE=stateless LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new --path ${{ env.TEMP_DIR}}
+          LOGO_APP_NAME=stateless_starter LOCO_TEMPLATE=stateless LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new --path ${{ runner.temp }}
           cd ${{ env.TEMP_DIR}}/stateless_starter
           cargo build --release
         working-directory: ./loco-cli
