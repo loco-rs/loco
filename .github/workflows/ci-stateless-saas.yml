@@ -93,10 +93,13 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Inject slug/short variables
         uses: rlespinasse/github-slug-action@v3.x
-      - name: Run cargo clippy
+      - name: Generate template
         run: |
           cargo build --release
           LOGO_APP_NAME=stateless_starter LOCO_TEMPLATE=stateless LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new --path ${{ runner.temp }}
           cd ${{ runner.temp }}/stateless_starter
+          echo "Building generate template..."
           cargo build --release
+          echo "Run cargo test on generated template..."
+          cargo run test
         working-directory: ./loco-cli
