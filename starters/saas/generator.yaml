@@ -6,7 +6,7 @@ file_patterns:
   - yaml
   - trycmd
 rules:
-  - pattern: loco-s = \{ path = +.(.*/)+.
+  - pattern: loco-rs = \{ path = +.(.*/)+.
     kind: loco-rs = { git = "https://github.com/loco-rs/loco.git"
     file_patterns:
       - toml
