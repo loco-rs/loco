@@ -1,4 +1,4 @@
-name: CI-STARTER-SAAS
+name: STARTER-SAAS
 
 on:
   push:

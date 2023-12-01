@@ -1,4 +1,4 @@
-name: CI-STARTER-SAAS
+name: STARTER-SAAS
 
 on:
   push:
@@ -100,3 +100,23 @@ jobs:
         env:
           APP_REDIS_URI: redis://localhost:${{job.services.redis.ports[6379]}}
           APP_DATABASE_URI: postgres://postgress:postgress@localhost:5432/postgress_test
+
+  generate_template:
+    - name: Checkout the code
+      uses: actions/checkout@v4
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: ${{ env.TOOLCHAIN_PROFILE }}
+        toolchain: ${{ env.RUST_TOOLCHAIN }}
+        override: true
+    - name: Setup Rust cache
+      uses: Swatinem/rust-cache@v2
+    - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v3.x
+    - name: Run cargo clippy
+      run: |
+        cargo build --release
+        LOGO_APP_NAME=saas_starter LOCO_TEMPLATE=saas LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco --path ${{ env.TEMP_DIR}}
+        cd  ${{ env.TEMP_DIR}}/saas_starter
+        cargo build --release
+      working-directory: ./loco-cli
