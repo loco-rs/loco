@@ -3,6 +3,7 @@ description: Stateless service (minimal, no db)
 file_patterns:
   - rs
   - toml
+  - trycmd
 rules:
   - pattern: loco-rs = \{ path = +.(../../)+.
     kind: loco-rs = { git = "https://github.com/loco-rs/loco.git"
@@ -13,3 +14,4 @@ rules:
     file_patterns:
       - rs
       - toml
+      - trycmd

@@ -1,9 +1,9 @@
 ```console
-$ demo 
+$ loco_starter_template 
 ? 2
 The 1-Person Framework for rust
 
-Usage: demo [OPTIONS] <COMMAND>
+Usage: loco_starter_template [OPTIONS] <COMMAND>
 
 Commands:
   start       Start an app
@@ -21,11 +21,11 @@ Options:
 ```
 
 ```console 
-$ demo db
+$ loco_starter_template db
 ? 2
 Perform DB operations
 
-Usage: demo db [OPTIONS] <COMMAND>
+Usage: loco_starter_template db [OPTIONS] <COMMAND>
 
 Commands:
   migrate   Migrate schema (up)
@@ -43,11 +43,11 @@ Options:
 ```
 
 ```console
-$ demo generate
+$ loco_starter_template generate
 ? 2
 code generation creates a set of files and code templates based on a predefined set of rules
 
-Usage: demo generate [OPTIONS] <COMMAND>
+Usage: loco_starter_template generate [OPTIONS] <COMMAND>
 
 Commands:
   model       Generates a new model file for defining the data structure of your application, and test file logic
@@ -66,13 +66,13 @@ Options:
 ```
 
 ```console 
-$ demo task
+$ loco_starter_template task
 user_report		[output a user report]
 
 ```
 
 ```console
-$ demo controller
+$ loco_starter_template controller
 [GET] /_health
 [GET] /_ping
 [POST] /auth/forgot

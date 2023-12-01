@@ -4,6 +4,7 @@ file_patterns:
   - rs
   - toml
   - yaml
+  - trycmd
 rules:
   - pattern: loco-rs = \{ path = +.(.*/)+.
     kind: loco-rs = { git = "https://github.com/loco-rs/loco.git"
@@ -14,6 +15,7 @@ rules:
     file_patterns:
       - rs
       - toml
+      - trycmd
   - pattern: PqRwLF2rhHe8J22oBeHy
     kind: Secret
     file_patterns:

@@ -1,9 +1,9 @@
 ```console
-$ demo 
+$ loco_starter_template 
 ? 2
 The 1-Person Framework for rust
 
-Usage: demo [OPTIONS] <COMMAND>
+Usage: loco_starter_template [OPTIONS] <COMMAND>
 
 Commands:
   start       Start an app
@@ -20,11 +20,11 @@ Options:
 ```
 
 ```console
-$ demo generate
+$ loco_starter_template generate
 ? 2
 code generation creates a set of files and code templates based on a predefined set of rules
 
-Usage: demo generate [OPTIONS] <COMMAND>
+Usage: loco_starter_template generate [OPTIONS] <COMMAND>
 
 Commands:
   controller  Generate a new controller with the given controller name, and test file
@@ -41,14 +41,14 @@ Options:
 ```
 
 ```console 
-$ demo task
+$ loco_starter_template task
 example		[output a example task]
 
 ```
 
 
 ```console
-$ demo controller
+$ loco_starter_template controller
 [GET] /
 [GET] /_ping
 [POST] /echo

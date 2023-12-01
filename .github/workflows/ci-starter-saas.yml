@@ -1,4 +1,4 @@
-name: CI-DEMO-SITE
+name: CI-STARTER-SAAS
 
 on:
   push:
@@ -28,7 +28,7 @@ jobs:
           override: true
           components: rustfmt
       - run: cargo fmt --all -- --check
-        working-directory: ./examples/demo
+        working-directory: ./starters/saas
 
   clippy:
     name: Run Clippy
@@ -50,7 +50,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Run cargo clippy
         run: cargo clippy -- -W clippy::nursery -W clippy::pedantic -W rust-2018-idioms -W rust-2021-compatibility
-        working-directory: ./examples/demo
+        working-directory: ./starters/saas
 
   test:
     name: Run Tests
@@ -96,7 +96,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Run cargo test
         run: cargo test --all-features --all
-        working-directory: ./examples/demo
+        working-directory: ./starters/saas
         env:
           APP_REDIS_URI: redis://localhost:${{job.services.redis.ports[6379]}}
           APP_DATABASE_URI: postgres://postgress:postgress@localhost:5432/postgress_test

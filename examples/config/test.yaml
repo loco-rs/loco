@@ -1,8 +1,7 @@
 logger:
-  enable: true
-  level: debug
+  enable: false
+  level: info
   format: compact
-  # override_filter: trace
 server:
   port: 3000
   host: http://localhost
@@ -15,7 +14,7 @@ server:
     catch_panic:
       enable: true
 workers:
-  mode: BackgroundQueue
+  mode: ForegroundBlocking
 mailer:
   smtp:
     enable: true
@@ -26,8 +25,7 @@ mailer:
     #   user:
     #   password:
 database:
-  uri: postgres://localhost:5432/rr_app
-  # uri: sqlite://db.sqlite?mode=rwc
+  uri: postgres://loco:loco@localhost:5432/loco_app
   enable_logging: false
   min_connections: 1
   max_connections: 1
@@ -36,7 +34,7 @@ database:
   dangerously_recreate: false
 redis:
   uri: redis://127.0.0.1/
-  dangerously_flush: false
+  dangerously_flush: true
 auth:
   secret: PqRwLF2rhHe8J22oBeHy
   expiration: 604800
