@@ -120,7 +120,7 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
       - name: Inject slug/short variables
-          uses: rlespinasse/github-slug-action@v3.x
+        uses: rlespinasse/github-slug-action@v3.x
       - name: Run cargo clippy
         run: |
           cargo build --release
