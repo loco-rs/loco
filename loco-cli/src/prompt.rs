@@ -16,14 +16,7 @@ lazy_static! {
 ///
 /// # Errors
 /// when could not prompt the question to the user or enter value is empty
-///
-/// # Example
-///
-/// ```rust
-/// use loco_cli::prompt;
-///
-/// let app = prompt::app_name()?;
-/// ```
+
 pub fn app_name() -> eyre::Result<String> {
     if let Ok(app_name) = env::var("LOGO_APP_NAME") {
         validate_app_name(app_name.as_str()).map_err(|e| eyre::eyre!(e))?;
@@ -52,23 +45,7 @@ pub fn app_name() -> eyre::Result<String> {
 /// # Errors
 /// when could not prompt the question to the user or enter value is empty
 ///
-/// # Example
-///
-/// ```rust
-/// use loco_cli::prompt;
-/// use loco_cli::generate::Template;
-/// use std::collections::BTreeMap;
-///
-/// let templates = BTreeMap::from([(
-///        "".to_string(),
-///        Template {
-///            description: "template description".to_string(),
-///            on_files: None,
-///            rules: None,
-///        },
-///    )]);
-/// let (folder, template) = prompt::template_selection(&templates)?;
-/// ```
+
 pub fn template_selection(
     templates: &BTreeMap<String, generate::Template>,
 ) -> eyre::Result<(String, generate::Template)> {
