@@ -101,5 +101,5 @@ jobs:
           echo "Building generate template..."
           cargo build --release
           echo "Run cargo test on generated template..."
-          cargo run test
+          cargo test
         working-directory: ./loco-cli
