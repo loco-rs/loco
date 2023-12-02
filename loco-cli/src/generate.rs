@@ -121,7 +121,6 @@ pub fn collect_templates(path: &std::path::PathBuf) -> eyre::Result<BTreeMap<Str
                     continue;
                 }
 
-                tracing::debug!(path = generator_file_path.display().to_string(), "bla bla");
                 let rdr = match std::fs::File::open(&generator_file_path) {
                     Ok(rdr) => rdr,
                     Err(e) => {
@@ -229,5 +228,42 @@ impl Template {
             }
         }
         false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use insta::assert_debug_snapshot;
+    use tree_fs;
+
+    #[test]
+    fn can_collect_templates() {
+        let yaml_content = r"
+        files:
+        - path: template-a/generator.yaml
+          content: |
+            description: template_a
+            file_patterns: 
+              - rs
+              - toml
+            rules:
+              - pattern: test
+                kind: LibName
+                file_patterns:
+                  - rs
+        - path: template-b/generator.yaml
+          content: |
+            description: template_b
+            file_patterns: []
+        - path: template-c/generator.yaml
+          content: |
+            invalid-yaml
+        ";
+
+        let tree_res = tree_fs::from_yaml_str(yaml_content).unwrap();
+
+        assert_debug_snapshot!(collect_templates(&tree_res));
     }
 }

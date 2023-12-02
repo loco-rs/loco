@@ -1,0 +1,45 @@
+---
+source: src/generate.rs
+expression: collect_templates(&tree_res)
+---
+Ok(
+    {
+        "template-a": Template {
+            description: "template_a",
+            file_patterns: Some(
+                [
+                    Regex(
+                        "rs",
+                    ),
+                    Regex(
+                        "toml",
+                    ),
+                ],
+            ),
+            rules: Some(
+                [
+                    TemplateRule {
+                        pattern: Regex(
+                            "test",
+                        ),
+                        kind: LibName,
+                        file_patterns: Some(
+                            [
+                                Regex(
+                                    "rs",
+                                ),
+                            ],
+                        ),
+                    },
+                ],
+            ),
+        },
+        "template-b": Template {
+            description: "template_b",
+            file_patterns: Some(
+                [],
+            ),
+            rules: None,
+        },
+    },
+)
