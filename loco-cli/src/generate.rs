@@ -217,16 +217,18 @@ impl Template {
 
     /// Determines whether the template rules should be applied to the given file path based on a list of regex patterns.
     fn should_run_file(path: &std::path::Path, patterns: Option<&Vec<Regex>>) -> bool {
-        let Some(patterns) = patterns else {
-            return true;
-        };
         if path.is_file() {
+            let Some(patterns) = patterns else {
+                return true;
+            };
+
             for pattern in patterns {
                 if pattern.is_match(&path.display().to_string()) {
                     return true;
                 }
             }
         }
+
         false
     }
 }
@@ -265,5 +267,99 @@ mod tests {
         let tree_res = tree_fs::from_yaml_str(yaml_content).unwrap();
 
         assert_debug_snapshot!(collect_templates(&tree_res));
+    }
+
+    #[allow(clippy::trivial_regex)]
+    #[test]
+    fn can_generate() {
+        let yaml_content = r#"
+        files:
+        - path: Cargo.toml
+          content: | 
+            name = "loco_starter"
+        - path: test.yaml
+          content: | 
+            secret = MY_SECRET
+        "#;
+        let tree_res = tree_fs::from_yaml_str(yaml_content).unwrap();
+
+        let template = Template {
+            description: "test template".to_string(),
+            file_patterns: None,
+            rules: Some(vec![
+                TemplateRule {
+                    pattern: Regex::new("loco.*").unwrap(),
+                    kind: TemplateRuleKind::LibName,
+                    file_patterns: None,
+                },
+                TemplateRule {
+                    pattern: Regex::new("MY_SECRET").unwrap(),
+                    kind: TemplateRuleKind::Secret,
+                    file_patterns: None,
+                },
+            ]),
+        };
+
+        let args = ArgsPlaceholder {
+            lib_name: "lib_name_changed".to_string(),
+            secret: "secret-generated".to_string(),
+        };
+        template.generate(&tree_res, &args);
+
+        assert_eq!(
+            fs::read_to_string(tree_res.join("Cargo.toml")).unwrap(),
+            "name = \"lib_name_changed\n"
+        );
+        assert_eq!(
+            fs::read_to_string(tree_res.join("test.yaml")).unwrap(),
+            "secret = secret-generated\n"
+        );
+    }
+
+    #[allow(clippy::trivial_regex)]
+    #[test]
+    fn can_generate_skip_files() {
+        let yaml_content = r#"
+        files:
+        - path: Cargo.toml
+          content: | 
+            name = "loco_starter"
+        - path: test.yaml
+          content: | 
+            secret = MY_SECRET
+        "#;
+        let tree_res = tree_fs::from_yaml_str(yaml_content).unwrap();
+
+        let template = Template {
+            description: "test template".to_string(),
+            file_patterns: Some(vec![Regex::new("^Cargo.toml").unwrap()]),
+            rules: Some(vec![
+                TemplateRule {
+                    pattern: Regex::new("loco.*").unwrap(),
+                    kind: TemplateRuleKind::LibName,
+                    file_patterns: None,
+                },
+                TemplateRule {
+                    pattern: Regex::new("MY_SECRET").unwrap(),
+                    kind: TemplateRuleKind::Secret,
+                    file_patterns: Some(vec![Regex::new("^*.json").unwrap()]),
+                },
+            ]),
+        };
+
+        let args = ArgsPlaceholder {
+            lib_name: "lib_name_changed".to_string(),
+            secret: "secret-generated".to_string(),
+        };
+        template.generate(&tree_res, &args);
+
+        assert_eq!(
+            fs::read_to_string(tree_res.join("Cargo.toml")).unwrap(),
+            "name = \"loco_starter\"\n"
+        );
+        assert_eq!(
+            fs::read_to_string(tree_res.join("test.yaml")).unwrap(),
+            "secret = MY_SECRET\n"
+        );
     }
 }
