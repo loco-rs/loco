@@ -4,6 +4,7 @@ use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::env;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::PathBuf;
@@ -18,6 +19,7 @@ pub struct Template {
     pub description: String,
     /// List of rules for placeholder replacement in the generator.
     pub rules: Option<Vec<TemplateRule>>,
+    pub skip_in_ci: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -213,6 +215,10 @@ impl Template {
             if Self::should_run_file(file, rule.file_patterns.as_ref())
                 && rule.pattern.is_match(&content)
             {
+                if self.skip_in_ci.unwrap_or(false) && env::var("LOCO_CI_MODE").is_ok() {
+                    continue;
+                }
+
                 content = rule
                     .pattern
                     .replace_all(&content, rule.kind.get_val(args))
@@ -302,6 +308,7 @@ mod tests {
 
         let template = Template {
             description: "test template".to_string(),
+            skip_in_ci: None,
             rules: Some(vec![
                 TemplateRule {
                     pattern: Regex::new("loco.*").unwrap(),
@@ -349,6 +356,7 @@ mod tests {
 
         let template = Template {
             description: "test template".to_string(),
+            skip_in_ci: None,
             rules: Some(vec![
                 TemplateRule {
                     pattern: Regex::new("skip_lib.*").unwrap(),

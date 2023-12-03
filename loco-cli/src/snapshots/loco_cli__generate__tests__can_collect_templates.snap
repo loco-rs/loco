@@ -23,10 +23,12 @@ Ok(
                     },
                 ],
             ),
+            skip_in_ci: None,
         },
         "template-b": Template {
             description: "template_b",
             rules: None,
+            skip_in_ci: None,
         },
     },
 )

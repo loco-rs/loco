@@ -2,6 +2,7 @@
 description: Saas app (with DB and user auth)
 rules:
   - pattern: loco-rs = \{ path = +.(.*/)+.
+    skip_in_ci: true
     kind: loco-rs = { git = "https://github.com/loco-rs/loco.git"
     file_patterns:
       - toml
