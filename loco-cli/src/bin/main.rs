@@ -1,6 +1,5 @@
 use clap::{Parser, Subcommand};
 use loco_cli::{generate, git, prompt, CmdExit};
-use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use std::path::PathBuf;
 
 use tracing_subscriber::EnvFilter;
@@ -33,15 +32,8 @@ fn main() -> eyre::Result<()> {
         Commands::New { path } => {
             let app = prompt::app_name()?;
 
-            let random_string: String = thread_rng()
-                .sample_iter(&Alphanumeric)
-                .take(20)
-                .map(char::from)
-                .collect();
-
             let args = generate::ArgsPlaceholder {
                 lib_name: app.to_string(),
-                secret: random_string,
             };
 
             tracing::debug!(args = format!("{:?}", args), "generate template args");

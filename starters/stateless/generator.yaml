@@ -10,7 +10,7 @@ rules:
     file_patterns:
       - Cargo.toml
   - pattern: loco_starter_template
-    kind: LibName
+    kind: JwtToken
     file_patterns:
       - rs
       - toml

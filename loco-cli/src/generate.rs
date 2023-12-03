@@ -1,5 +1,6 @@
 use ignore::WalkBuilder;
 use ignore::WalkState;
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -26,14 +27,13 @@ pub struct Template {
 /// Represents internal placeholders to be replaced.
 pub struct ArgsPlaceholder {
     pub lib_name: String,
-    pub secret: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
 /// Enum representing different kinds of template rules.
 pub enum TemplateRuleKind {
     LibName,
-    Secret,
+    JwtToken,
     Any(String),
 }
 
@@ -48,7 +48,7 @@ impl<'de> Deserialize<'de> for TemplateRuleKind {
         match &value {
             serde_yaml::Value::String(s) => match s.as_str() {
                 "LibName" => Ok(Self::LibName),
-                "Secret" => Ok(Self::Secret),
+                "JwtToken" => Ok(Self::JwtToken),
                 _ => Ok(Self::Any(s.clone())),
             },
             _ => Err(serde::de::Error::custom("Invalid TemplateRuleKind value")),
@@ -62,7 +62,11 @@ impl TemplateRuleKind {
     pub fn get_val(&self, args: &ArgsPlaceholder) -> String {
         match self {
             Self::LibName => args.lib_name.to_string(),
-            Self::Secret => args.secret.to_string(),
+            Self::JwtToken => thread_rng()
+                .sample_iter(&Alphanumeric)
+                .take(20)
+                .map(char::from)
+                .collect(),
             Self::Any(s) => s.to_string(),
         }
     }
@@ -237,7 +241,7 @@ impl Template {
 mod tests {
 
     use super::*;
-    use insta::assert_debug_snapshot;
+    use insta::{assert_debug_snapshot, with_settings};
     use tree_fs;
 
     #[test]
@@ -294,7 +298,7 @@ mod tests {
                 },
                 TemplateRule {
                     pattern: Regex::new("MY_SECRET").unwrap(),
-                    kind: TemplateRuleKind::Secret,
+                    kind: TemplateRuleKind::JwtToken,
                     file_patterns: None,
                 },
             ]),
@@ -302,18 +306,19 @@ mod tests {
 
         let args = ArgsPlaceholder {
             lib_name: "lib_name_changed".to_string(),
-            secret: "secret-generated".to_string(),
         };
         template.generate(&tree_res, &args);
 
-        assert_eq!(
-            fs::read_to_string(tree_res.join("Cargo.toml")).unwrap(),
-            "name = \"lib_name_changed\n"
-        );
-        assert_eq!(
-            fs::read_to_string(tree_res.join("test.yaml")).unwrap(),
-            "secret = secret-generated\n"
-        );
+        assert_debug_snapshot!(fs::read_to_string(tree_res.join("Cargo.toml")));
+
+        with_settings!({
+            filters => vec![
+            (r"([A-Za-z0-9]){20}", "RAND_SECRET"),
+            ]
+        }, {
+            assert_debug_snapshot!(fs::read_to_string(tree_res.join("test.yaml")));
+
+        });
     }
 
     #[allow(clippy::trivial_regex)]
@@ -323,10 +328,10 @@ mod tests {
         files:
         - path: Cargo.toml
           content: | 
-            name = "loco_starter"
+            name = "skip_lib_name_changes"
         - path: test.yaml
           content: | 
-            secret = MY_SECRET
+            secret = skip_jwt_token
         "#;
         let tree_res = tree_fs::from_yaml_str(yaml_content).unwrap();
 
@@ -335,13 +340,13 @@ mod tests {
             file_patterns: Some(vec![Regex::new("^Cargo.toml").unwrap()]),
             rules: Some(vec![
                 TemplateRule {
-                    pattern: Regex::new("loco.*").unwrap(),
+                    pattern: Regex::new("skip_lib.*").unwrap(),
                     kind: TemplateRuleKind::LibName,
                     file_patterns: None,
                 },
                 TemplateRule {
-                    pattern: Regex::new("MY_SECRET").unwrap(),
-                    kind: TemplateRuleKind::Secret,
+                    pattern: Regex::new("skip_jwt_token").unwrap(),
+                    kind: TemplateRuleKind::JwtToken,
                     file_patterns: Some(vec![Regex::new("^*.json").unwrap()]),
                 },
             ]),
@@ -349,17 +354,10 @@ mod tests {
 
         let args = ArgsPlaceholder {
             lib_name: "lib_name_changed".to_string(),
-            secret: "secret-generated".to_string(),
         };
         template.generate(&tree_res, &args);
 
-        assert_eq!(
-            fs::read_to_string(tree_res.join("Cargo.toml")).unwrap(),
-            "name = \"loco_starter\"\n"
-        );
-        assert_eq!(
-            fs::read_to_string(tree_res.join("test.yaml")).unwrap(),
-            "secret = MY_SECRET\n"
-        );
+        assert_debug_snapshot!(fs::read_to_string(tree_res.join("Cargo.toml")));
+        assert_debug_snapshot!(fs::read_to_string(tree_res.join("test.yaml")));
     }
 }

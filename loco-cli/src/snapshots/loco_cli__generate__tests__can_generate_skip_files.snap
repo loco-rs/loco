@@ -1,0 +1,7 @@
+---
+source: src/generate.rs
+expression: "fs::read_to_string(tree_res.join(\"Cargo.toml\"))"
+---
+Ok(
+    "name = \"skip_lib_name_changes\"\n",
+)
