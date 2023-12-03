@@ -19,7 +19,6 @@ pub struct Template {
     pub description: String,
     /// List of rules for placeholder replacement in the generator.
     pub rules: Option<Vec<TemplateRule>>,
-    pub skip_in_ci: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -82,6 +81,7 @@ pub struct TemplateRule {
     #[serde(with = "serde_regex", skip_serializing)]
     /// List of template generator rule for replacement
     pub file_patterns: Option<Vec<Regex>>,
+    pub skip_in_ci: Option<bool>,
 }
 
 /// Collects template configurations from files named [`GENERATOR_FILE_NAME`] within the root level
@@ -215,7 +215,7 @@ impl Template {
             if Self::should_run_file(file, rule.file_patterns.as_ref())
                 && rule.pattern.is_match(&content)
             {
-                if self.skip_in_ci.unwrap_or(false) && env::var("LOCO_CI_MODE").is_ok() {
+                if rule.skip_in_ci.unwrap_or(false) && env::var("LOCO_CI_MODE").is_ok() {
                     continue;
                 }
 
@@ -308,17 +308,18 @@ mod tests {
 
         let template = Template {
             description: "test template".to_string(),
-            skip_in_ci: None,
             rules: Some(vec![
                 TemplateRule {
                     pattern: Regex::new("loco.*").unwrap(),
                     kind: TemplateRuleKind::LibName,
                     file_patterns: None,
+                    skip_in_ci: None,
                 },
                 TemplateRule {
                     pattern: Regex::new("MY_SECRET").unwrap(),
                     kind: TemplateRuleKind::JwtToken,
                     file_patterns: None,
+                    skip_in_ci: None,
                 },
             ]),
         };
@@ -356,17 +357,18 @@ mod tests {
 
         let template = Template {
             description: "test template".to_string(),
-            skip_in_ci: None,
             rules: Some(vec![
                 TemplateRule {
                     pattern: Regex::new("skip_lib.*").unwrap(),
                     kind: TemplateRuleKind::LibName,
                     file_patterns: None,
+                    skip_in_ci: None,
                 },
                 TemplateRule {
                     pattern: Regex::new("skip_jwt_token").unwrap(),
                     kind: TemplateRuleKind::JwtToken,
                     file_patterns: Some(vec![Regex::new("^*.json").unwrap()]),
+                    skip_in_ci: None,
                 },
             ]),
         };
