@@ -69,6 +69,10 @@ pub struct Database {
     pub min_connections: u32,
     /// Maximum number of connections for a pool
     pub max_connections: u32,
+    /// Set the timeout duration when acquiring a connection
+    pub connect_timeout: u64,
+    /// Set the idle duration before closing a connection
+    pub idle_timeout: u64,
     #[serde(default)]
     /// Run migration up when application loaded
     pub auto_migrate: bool,
@@ -129,6 +133,15 @@ pub struct Middlewares {
     pub logger: Option<EnableMiddleware>,
     /// catch any code panic and log the error.
     pub catch_panic: Option<EnableMiddleware>,
+    /// Setting a global timeout for the requests
+    pub timeout_request: Option<TimeoutRequestMiddleware>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TimeoutRequestMiddleware {
+    pub enable: bool,
+    // Timeout request in milliseconds
+    pub timeout: u64,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

@@ -5,7 +5,8 @@
 use axum::{http::Request, Router as AXRouter};
 use lazy_static::lazy_static;
 use regex::Regex;
-use tower_http::{catch_panic::CatchPanicLayer, trace::TraceLayer};
+use std::time::Duration;
+use tower_http::{catch_panic::CatchPanicLayer, timeout::TimeoutLayer, trace::TraceLayer};
 
 use super::routes::Routes;
 use crate::{app::AppContext, config, Result};
@@ -173,6 +174,16 @@ impl AppRoutes {
                 app = Self::add_logger_middleware(app);
             }
         }
+        if let Some(logger) = &ctx.config.server.middlewares.logger {
+            if logger.enable {
+                app = Self::add_logger_middleware(app);
+            }
+        }
+        if let Some(timeout_request) = &ctx.config.server.middlewares.timeout_request {
+            if timeout_request.enable {
+                app = Self::add_timeout_middleware(app, timeout_request);
+            }
+        }
         Ok(app.with_state(ctx))
     }
 
@@ -210,6 +221,15 @@ impl AppRoutes {
         );
 
         tracing::info!("[Middleware] Adding log trace id",);
+        app
+    }
+    fn add_timeout_middleware(
+        app: AXRouter<AppContext>,
+        config: &config::TimeoutRequestMiddleware,
+    ) -> AXRouter<AppContext> {
+        let app = app.layer(TimeoutLayer::new(Duration::from_millis(config.timeout)));
+
+        tracing::info!("[Middleware] Adding timeout layer");
         app
     }
 }
