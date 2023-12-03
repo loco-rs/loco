@@ -17,7 +17,7 @@ server:
       enable: true
       timeout: 5000
 workers:
-  mode: ForegroundBlockingc
+  mode: ForegroundBlocking
 mailer:
   smtp:
     enable: true
