@@ -1,3 +1,5 @@
+[workspace]
+
 [package]
 name = "loco_starter_template"
 version = "0.1.0"
