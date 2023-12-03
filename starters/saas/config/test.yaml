@@ -14,6 +14,9 @@ server:
       enable: true
     catch_panic:
       enable: true
+    timeout_request:
+      enable: true
+      timeout: 5000
 workers:
   mode: ForegroundBlocking
 mailer:
@@ -28,6 +31,8 @@ mailer:
 database:
   uri: postgres://loco:loco@localhost:5432/loco_app
   enable_logging: false
+  connect_timeout: 500
+  idle_timeout: 1000
   min_connections: 1
   max_connections: 1
   auto_migrate: true
