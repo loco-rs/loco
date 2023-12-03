@@ -38,7 +38,7 @@ pub mod app;
 #[cfg(feature = "cli")]
 pub mod cli;
 
-#[cfg(feature = "auth")]
+#[cfg(feature = "auth_jwt")]
 pub mod auth;
 pub mod boot;
 pub mod config;

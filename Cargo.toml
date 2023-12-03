@@ -12,9 +12,9 @@ repository = "https://github.com/loco-rs/loco"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["auth", "cli", "with-db"]
+default = ["auth_jwt", "cli", "with-db"]
 
-auth = ["dep:jsonwebtoken", "dep:bcrypt"]
+auth_jwt = ["dep:jsonwebtoken", "dep:bcrypt"]
 cli = ["dep:clap"]
 testing = ["dep:axum-test"]
 with-db = ["dep:sea-orm", "dep:sea-orm-migration"]
