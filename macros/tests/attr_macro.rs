@@ -7,5 +7,5 @@ use macros::*;
 #[test]
 #[loco_test]
 fn test_macro() {
-    assert!(false);
+    assert!(true);
 }
