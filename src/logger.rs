@@ -48,7 +48,7 @@ impl std::fmt::Display for LogLevel {
     }
 }
 // Function to initialize the logger based on the provided configuration
-const MODULE_WHITELIST: &[&str] = &["loco_rs", "sea_orm_migration", "tower_http"];
+const MODULE_WHITELIST: &[&str] = &["loco_rs", "sea_orm_migration", "tower_http", "sqlx::query"];
 ///
 /// Tracing filtering rules:
 /// 1. if `RUST_LOG`, use that filter
@@ -61,7 +61,7 @@ const MODULE_WHITELIST: &[&str] = &["loco_rs", "sea_orm_migration", "tower_http"
 /// 1. mostly, people will set the level and will trust *us* to decide which
 ///    modules to stream events from
 /// 2. people who will disagree with us, will set the `override_filter`
-///    permentantly, or make up their own whitelist filtering (or suggest it to
+///    permanently, or make up their own whitelist filtering (or suggest it to
 ///    use via PR)
 /// 3. regardless of (1) and (2) operators in production, or elsewhere can
 ///    always use `RUST_LOG` to quickly diagnose a service

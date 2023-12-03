@@ -4,6 +4,7 @@ use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::env;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::PathBuf;
@@ -80,6 +81,7 @@ pub struct TemplateRule {
     #[serde(with = "serde_regex", skip_serializing)]
     /// List of template generator rule for replacement
     pub file_patterns: Option<Vec<Regex>>,
+    pub skip_in_ci: Option<bool>,
 }
 
 /// Collects template configurations from files named [`GENERATOR_FILE_NAME`] within the root level
@@ -213,6 +215,10 @@ impl Template {
             if Self::should_run_file(file, rule.file_patterns.as_ref())
                 && rule.pattern.is_match(&content)
             {
+                if rule.skip_in_ci.unwrap_or(false) && env::var("LOCO_CI_MODE").is_ok() {
+                    continue;
+                }
+
                 content = rule
                     .pattern
                     .replace_all(&content, rule.kind.get_val(args))
@@ -307,11 +313,13 @@ mod tests {
                     pattern: Regex::new("loco.*").unwrap(),
                     kind: TemplateRuleKind::LibName,
                     file_patterns: None,
+                    skip_in_ci: None,
                 },
                 TemplateRule {
                     pattern: Regex::new("MY_SECRET").unwrap(),
                     kind: TemplateRuleKind::JwtToken,
                     file_patterns: None,
+                    skip_in_ci: None,
                 },
             ]),
         };
@@ -354,11 +362,13 @@ mod tests {
                     pattern: Regex::new("skip_lib.*").unwrap(),
                     kind: TemplateRuleKind::LibName,
                     file_patterns: None,
+                    skip_in_ci: None,
                 },
                 TemplateRule {
                     pattern: Regex::new("skip_jwt_token").unwrap(),
                     kind: TemplateRuleKind::JwtToken,
                     file_patterns: Some(vec![Regex::new("^*.json").unwrap()]),
+                    skip_in_ci: None,
                 },
             ]),
         };

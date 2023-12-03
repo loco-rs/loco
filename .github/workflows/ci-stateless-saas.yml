@@ -96,8 +96,8 @@ jobs:
       - name: Generate template
         run: |
           cargo build --release
-          LOCO_APP_NAME=stateless_starter LOCO_TEMPLATE=stateless LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new --path ${{ runner.temp }}
-          cd ${{ runner.temp }}/stateless_starter
+          LOCO_CI_MODE=true LOCO_APP_NAME=stateless_starter LOCO_TEMPLATE=stateless LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new
+          cd stateless_starter
           echo "Building generate template..."
           cargo build --release
           echo "Run cargo test on generated template..."

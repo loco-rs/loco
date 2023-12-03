@@ -1,5 +1,4 @@
 [workspace]
-#
 
 [package]
 name = "loco-cli"

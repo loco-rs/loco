@@ -9,7 +9,7 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
-use crate::{environment::Environment, logger};
+use crate::{environment::Environment, logger, Error, Result as AppResult};
 
 lazy_static! {
     static ref DEFAULT_FOLDER: PathBuf = PathBuf::from("config");
@@ -26,7 +26,7 @@ pub struct Config {
     #[cfg(feature = "with-db")]
     pub database: Database,
     pub redis: Option<Redis>,
-    pub auth: Auth,
+    pub auth: Option<Auth>,
     pub workers: Workers,
     pub mailer: Option<Mailer>,
 }
@@ -98,6 +98,13 @@ pub struct Redis {
 /// Represents the user authentication configuration structure.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Auth {
+    /// JWT authentication
+    pub jwt: Option<JWT>,
+}
+
+/// Represents JWT configuration structure.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct JWT {
     /// The secret key For JWT token
     pub secret: String,
     /// The expiration time for authentication tokens.
@@ -249,5 +256,19 @@ impl Config {
             .add_source(config::Environment::with_prefix("APP").separator("_"))
             .build()?
             .try_deserialize()
+    }
+
+    /// Get a reference to the JWT configuration.
+    ///
+    /// # Errors
+    /// return an error when jwt token not configured
+    pub fn get_jwt_config(&self) -> AppResult<&JWT> {
+        self.auth
+            .as_ref()
+            .and_then(|auth| auth.jwt.as_ref())
+            .map_or_else(
+                || Err(Error::Any("sending email error".to_string().into())),
+                Ok,
+            )
     }
 }

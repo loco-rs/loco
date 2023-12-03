@@ -148,8 +148,8 @@ jobs:
       - name: Generate template
         run: |
           cargo build --release
-          LOCO_APP_NAME=saas_starter LOCO_TEMPLATE=saas LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new --path ${{ runner.temp }}
-          cd ${{ runner.temp }}/saas_starter
+          LOCO_CI_MODE=true LOCO_APP_NAME=saas_starter LOCO_TEMPLATE=saas LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new
+          cd saas_starter
           echo "Building generate template..."
           cargo build --release
           echo "Run cargo test on generated template..."
