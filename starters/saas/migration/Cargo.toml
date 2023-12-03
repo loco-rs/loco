@@ -20,11 +20,3 @@ features = [
   # e.g.
   "runtime-tokio-rustls", # `ASYNC_RUNTIME` feature
 ]
-[patch.crates-io]
-# see https://github.com/heim-rs/darwin-libproc/pull/9
-# rusty-sidekiq needs robotty/simple-process-stats which depends on darwin-libproc, which depends on
-# a too old memchr version which sqlx needs. because libproc is native and not pure rust,
-# cargo cannot resolve it. so we patch the libproc dependency.
-# since simple_process_stats use by rusty-sidekiq is minimal, its better to replace it with something
-# that has more velocity on updating dependencies.
-darwin-libproc = { git = "https://github.com/codota/darwin-libproc" }
