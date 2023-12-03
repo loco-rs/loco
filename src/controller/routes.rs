@@ -30,7 +30,6 @@ impl Routes {
     /// _ping endpoint HOST/status/_ping.
     ///
     /// ```rust
-    ///
     /// use loco_rs::{
     ///     controller::{Routes, format},
     ///     Result,
@@ -64,7 +63,6 @@ impl Routes {
     /// This example preset how to add a get endpoint int the Router.
     ///
     /// ```rust
-    ///
     /// use loco_rs::{
     ///     Result,
     ///     controller::{Routes, format},
@@ -81,7 +79,6 @@ impl Routes {
     ///     format::json(Health { ok: true })
     /// }
     /// Routes::new().add("/_ping", get(ping));
-    ///    
     /// ````
     #[must_use]
     pub fn add(mut self, uri: &str, method: axum::routing::MethodRouter<AppContext>) -> Self {
@@ -103,7 +100,6 @@ impl Routes {
     /// _ping endpoint HOST/status/_ping.
     ///
     /// ```rust
-    ///
     /// use loco_rs::{
     ///     controller::{Routes, format},
     ///     Result,
@@ -120,7 +116,6 @@ impl Routes {
     ///     format::json(Health { ok: true })
     /// }
     /// Routes::new().prefix("status").add("/_ping", get(ping));
-    ///    
     /// ````
     #[must_use]
     pub fn prefix(mut self, uri: &str) -> Self {

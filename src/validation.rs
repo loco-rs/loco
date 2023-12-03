@@ -5,7 +5,6 @@
 //!
 //! In the following example you can see how you can validate a user model
 //! ```rust,ignore
-//!
 //! use loco_rs::{
 //!    validation,
 //!    validator::Validate,
