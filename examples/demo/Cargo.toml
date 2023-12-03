@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 
-loco-rs = { version = "*", path = "../" }
+loco-rs = { version = "*", path = "../../" }
 migration = { path = "migration" }
 
 serde = { version = "1", features = ["derive"] }
