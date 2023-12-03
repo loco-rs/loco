@@ -16,9 +16,6 @@ const GENERATOR_FILE_NAME: &str = "generator.yaml";
 pub struct Template {
     /// Description of the template.
     pub description: String,
-    #[serde(with = "serde_regex", skip_serializing)]
-    /// List of file patterns that the generator will process.
-    pub file_patterns: Option<Vec<Regex>>,
     /// List of rules for placeholder replacement in the generator.
     pub rules: Option<Vec<TemplateRule>>,
 }
@@ -159,13 +156,16 @@ impl Template {
     /// further files in the current subtree.
     pub fn generate(&self, from: &PathBuf, args: &ArgsPlaceholder) {
         let walker = WalkBuilder::new(from).build_parallel();
+
+        let collect_file_patterns = self.get_all_file_patterns();
         walker.run(|| {
+            let collect_file_patterns = collect_file_patterns.clone();
             Box::new(move |result| {
                 if let Ok(entry) = result {
                     let path = entry.path();
 
                     if !path.starts_with(from.join("target"))
-                        && Self::should_run_file(path, self.file_patterns.as_ref())
+                        && Self::should_run_file(path, Some(&collect_file_patterns))
                     {
                         if let Err(e) = self.apply_rules(path, args) {
                             tracing::info!(
@@ -184,6 +184,16 @@ impl Template {
         if let Err(err) = fs::remove_file(from.join(GENERATOR_FILE_NAME)) {
             tracing::debug!(error = err.to_string(), "could not delete generator file");
         }
+    }
+
+    fn get_all_file_patterns(&self) -> Vec<Regex> {
+        self.rules.as_ref().map_or_else(Vec::new, |rules| {
+            rules
+                .iter()
+                .flat_map(|rule| rule.file_patterns.as_deref().unwrap_or_default())
+                .cloned()
+                .collect()
+        })
     }
 
     /// Applies the specified rules to the content of a file, updating the file in-place with the modified content.
@@ -225,6 +235,9 @@ impl Template {
             let Some(patterns) = patterns else {
                 return true;
             };
+            if patterns.is_empty() {
+                return true;
+            }
 
             for pattern in patterns {
                 if pattern.is_match(&path.display().to_string()) {
@@ -289,7 +302,6 @@ mod tests {
 
         let template = Template {
             description: "test template".to_string(),
-            file_patterns: None,
             rules: Some(vec![
                 TemplateRule {
                     pattern: Regex::new("loco.*").unwrap(),
@@ -337,7 +349,6 @@ mod tests {
 
         let template = Template {
             description: "test template".to_string(),
-            file_patterns: Some(vec![Regex::new("^Cargo.toml").unwrap()]),
             rules: Some(vec![
                 TemplateRule {
                     pattern: Regex::new("skip_lib.*").unwrap(),

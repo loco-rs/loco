@@ -16,7 +16,6 @@ lazy_static! {
 ///
 /// # Errors
 /// when could not prompt the question to the user or enter value is empty
-
 pub fn app_name() -> eyre::Result<String> {
     if let Ok(app_name) = env::var("LOGO_APP_NAME") {
         validate_app_name(app_name.as_str()).map_err(|e| eyre::eyre!(e))?;
@@ -45,7 +44,6 @@ pub fn app_name() -> eyre::Result<String> {
 /// # Errors
 /// when could not prompt the question to the user or enter value is empty
 ///
-
 pub fn template_selection(
     templates: &BTreeMap<String, generate::Template>,
 ) -> eyre::Result<(String, generate::Template)> {

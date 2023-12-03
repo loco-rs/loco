@@ -6,16 +6,6 @@ Ok(
     {
         "template-a": Template {
             description: "template_a",
-            file_patterns: Some(
-                [
-                    Regex(
-                        "rs",
-                    ),
-                    Regex(
-                        "toml",
-                    ),
-                ],
-            ),
             rules: Some(
                 [
                     TemplateRule {
@@ -36,9 +26,6 @@ Ok(
         },
         "template-b": Template {
             description: "template_b",
-            file_patterns: Some(
-                [],
-            ),
             rules: None,
         },
     },
