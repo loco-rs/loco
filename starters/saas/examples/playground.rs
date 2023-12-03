@@ -1,7 +1,7 @@
-use blo::app::App;
 use eyre::Context;
 #[allow(unused_imports)]
-use loco_starter_template::{cli::playground, prelude::*};
+use loco_rs::{cli::playground, prelude::*};
+use loco_starter_template::app::App;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
