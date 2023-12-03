@@ -1,8 +1,7 @@
-#![allow(clippy::missing_errors_doc)]
-
 use std::process::exit;
 pub mod generate;
-pub mod template;
+pub mod git;
+pub mod prompt;
 
 #[derive(Debug)]
 pub struct CmdExit {
@@ -15,7 +14,7 @@ impl CmdExit {
     pub fn error_with_message(message: &str) -> Self {
         Self {
             code: 1,
-            message: Some(message.to_string()),
+            message: Some(format!("🙀 {message}")),
         }
     }
     #[must_use]

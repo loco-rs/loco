@@ -1,0 +1,42 @@
+logger:
+  enable: true
+  level: debug
+  format: compact
+  # override_filter: trace
+server:
+  port: 3000
+  host: http://localhost
+  middlewares:
+    limit_payload:
+      enable: true
+      body_limit: 5mb
+    logger:
+      enable: true
+    catch_panic:
+      enable: true
+workers:
+  mode: BackgroundQueue
+mailer:
+  smtp:
+    enable: true
+    host: localhost
+    port: 1025
+    secure: false
+    # auth:
+    #   user:
+    #   password:
+database:
+  uri: postgres://loco:loco@localhost:5432/loco_app
+  # uri: sqlite://db.sqlite?mode=rwc
+  enable_logging: false
+  min_connections: 1
+  max_connections: 1
+  auto_migrate: true
+  dangerously_truncate: false
+  dangerously_recreate: false
+redis:
+  uri: redis://127.0.0.1/
+  dangerously_flush: false
+auth:
+  secret: PqRwLF2rhHe8J22oBeHy
+  expiration: 604800

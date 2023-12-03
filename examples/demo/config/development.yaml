@@ -26,7 +26,7 @@ mailer:
     #   user:
     #   password:
 database:
-  uri: postgres://localhost:5432/rr_app
+  uri: postgres://loco:loco@localhost:5432/loco_app
   # uri: sqlite://db.sqlite?mode=rwc
   enable_logging: false
   min_connections: 1

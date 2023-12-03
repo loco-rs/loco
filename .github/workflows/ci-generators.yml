@@ -1,4 +1,4 @@
-name: CI-GENERATORS
+name: GENERATORS
 
 on:
   push:
