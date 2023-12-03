@@ -14,6 +14,8 @@ pub fn debug_path() -> Option<PathBuf> {
     env::var("LOCO_DEBUG_PATH").ok().map(PathBuf::from)
 }
 
+const DEFAULT_BRANCH: &str = "master";
+
 /// Define the starter template in Loco repository
 const STARTER_TEMPLATE_FOLDER: &str = "starters";
 
@@ -101,7 +103,16 @@ fn clone_repo() -> Result<PathBuf, git2::Error> {
 
     let temp_clone_dir = env::temp_dir().join(random_string);
 
-    let from_branch = env::var("LOCO_BRANCH").unwrap_or_else(|_| "master".to_owned());
+    let from_branch = env::var("LOCO_BRANCH").map_or_else(
+        |_| DEFAULT_BRANCH.to_owned(),
+        |b| {
+            if b.is_empty() {
+                DEFAULT_BRANCH.to_string()
+            } else {
+                b
+            }
+        },
+    );
 
     tracing::debug!(
         branch = from_branch,
