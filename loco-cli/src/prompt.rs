@@ -10,14 +10,14 @@ lazy_static! {
 
 /// Prompts the user to enter a valid application name for use with the Loco app generator.
 ///
-/// If the `LOGO_APP_NAME` environment variable is set, the function attempts to use the specified
+/// If the `LOCO_APP_NAME` environment variable is set, the function attempts to use the specified
 /// app name directly. If the environment variable is not set or the specified app name is invalid, the
 /// function prompts the user to enter a valid app name interactively.
 ///
 /// # Errors
 /// when could not prompt the question to the user or enter value is empty
 pub fn app_name() -> eyre::Result<String> {
-    if let Ok(app_name) = env::var("LOGO_APP_NAME") {
+    if let Ok(app_name) = env::var("LOCO_APP_NAME") {
         validate_app_name(app_name.as_str()).map_err(|e| eyre::eyre!(e))?;
         Ok(app_name)
     } else {
