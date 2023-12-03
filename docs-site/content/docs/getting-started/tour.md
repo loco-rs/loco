@@ -1,5 +1,5 @@
 +++
-title = "A Tour with Loco"
+title = "A Quick Tour with Loco"
 date = 2021-05-01T08:00:00+00:00
 updated = 2021-05-01T08:00:00+00:00
 draft = false
@@ -13,6 +13,7 @@ top = false
 +++
 
 Let's create a blog on `loco` in 3 commands. First install `loco-cli`:
+
 
 
 ```sh
@@ -30,8 +31,10 @@ $ loco new
 myapp
 ```
 
-> To configure a database , please run a local postgres database with `loco:loco` and a db named `loco_app`: 
-`docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=loco_app -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine`
+<div class="infobox">
+To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>loco_app</code>: 
+<code>docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=loco_app -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine</code>
+</div>
 
 Now `cd` into your `myapp` and start your app:
 

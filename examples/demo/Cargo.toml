@@ -1,3 +1,6 @@
+[workspace]
+# this empty pragma excludes this project from workspaces
+
 [package]
 name = "blo"
 version = "0.1.0"

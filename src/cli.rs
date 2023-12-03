@@ -5,7 +5,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//!
+//! 
 //! use myapp::app::App;
 //! use loco_rs::cli;
 //! use migration::Migrator;
@@ -25,13 +25,22 @@ use sea_orm_migration::MigratorTrait;
 #[cfg(feature = "with-db")]
 use crate::boot::run_db;
 use crate::{
-    app::Hooks,
+    app::{AppContext, Hooks},
     boot::{create_app, create_context, list_endpoints, run_task, start, RunDbCommand, StartMode},
     environment::resolve_from_env,
     gen::{self, Component},
+    Result,
 };
 
 const DEFAULT_ENVIRONMENT: &str = "development";
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+#[command(propagate_version = true)]
+struct Playground {
+    /// Specify the environment
+    #[arg(short, long, global = true, help = &format!("Specify the environment [default: {}]", DEFAULT_ENVIRONMENT))]
+    environment: Option<String>,
+}
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -63,7 +72,7 @@ enum Commands {
         command: DbCommands,
     },
     /// Describe all application endpoints
-    Controller {},
+    Routes {},
     /// Run a custom task
     Task {
         /// Task name (identifier)
@@ -168,7 +177,9 @@ impl From<DbCommands> for RunDbCommand {
 }
 
 /// Parse a single key-value pair
-fn parse_key_val<T, U>(s: &str) -> Result<(T, U), Box<dyn std::error::Error + Send + Sync>>
+fn parse_key_val<T, U>(
+    s: &str,
+) -> std::result::Result<(T, U), Box<dyn std::error::Error + Send + Sync>>
 where
     T: std::str::FromStr,
     T::Err: std::error::Error + Send + Sync + 'static,
@@ -179,6 +190,17 @@ where
         .find(':')
         .ok_or_else(|| format!("invalid KEY=value: no `:` found in `{s}`"))?;
     Ok((s[..pos].parse()?, s[pos + 1..].parse()?))
+}
+
+#[cfg(feature = "with-db")]
+pub async fn playground<H: Hooks>() -> Result<AppContext> {
+    let cli = Playground::parse();
+    let environment = cli
+        .environment
+        .or_else(resolve_from_env)
+        .unwrap_or_else(|| DEFAULT_ENVIRONMENT.to_string());
+    let app_context = create_context::<H>(&environment).await?;
+    Ok(app_context)
 }
 
 /// # Main CLI Function
@@ -233,7 +255,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             let app_context = create_context::<H>(&environment).await?;
             run_db::<H, M>(&app_context, command.into()).await?;
         }
-        Commands::Controller {} => show_list_endpoints::<H>(),
+        Commands::Routes {} => show_list_endpoints::<H>(),
         Commands::Task { name, params } => {
             let mut hash = BTreeMap::new();
             for (k, v) in params {
@@ -272,7 +294,7 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
             let boot_result = create_app::<H>(start_mode, &environment).await?;
             start(boot_result).await?;
         }
-        Commands::Controller {} => show_list_endpoints::<H>(),
+        Commands::Routes {} => show_list_endpoints::<H>(),
         Commands::Task { name, params } => {
             let mut hash = BTreeMap::new();
             for (k, v) in params {

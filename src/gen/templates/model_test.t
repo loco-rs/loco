@@ -26,7 +26,7 @@ macro_rules! configure_insta {
 async fn test_model() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App, Migrator>().await;
+    let boot = testing::boot_test::<App, Migrator>().await.unwrap();
     testing::seed::<App>(&boot.app_context.db).await.unwrap();
 
     // query your model, e.g.:
