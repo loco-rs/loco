@@ -17,7 +17,7 @@
 //!     pub pid: String,
 //! }
 //! async fn current(
-//!     auth: middleware::auth::Auth,
+//!     auth: middleware::auth::JWT,
 //!     State(ctx): State<AppContext>,
 //! ) -> Result<Json<TestResponse>> {
 //!     format::json(TestResponse{ pid: auth.claims.pid})
