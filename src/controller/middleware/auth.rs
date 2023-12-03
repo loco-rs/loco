@@ -59,7 +59,9 @@ where
 
         let state: AppContext = AppContext::from_ref(state);
 
-        match auth::JWT::new(&state.config.auth.secret).validate(&token) {
+        let jwt_secret = state.config.get_jwt_config()?;
+
+        match auth::JWT::new(&jwt_secret.secret).validate(&token) {
             Ok(claims) => Ok(Self {
                 claims: claims.claims,
             }),

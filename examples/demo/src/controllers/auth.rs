@@ -127,8 +127,10 @@ async fn login(
         return unauthorized("unauthorized!");
     }
 
+    let jwt_secret = ctx.config.get_jwt_config()?;
+
     let token = user
-        .generate_jwt(&ctx.config.auth.secret, &ctx.config.auth.expiration)
+        .generate_jwt(&jwt_secret.secret, &jwt_secret.expiration)
         .or_else(|_| unauthorized("unauthorized!"))?;
 
     format::json(LoginResponse::new(&user, &token))
