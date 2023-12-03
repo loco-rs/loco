@@ -192,6 +192,11 @@ where
 }
 
 #[cfg(feature = "with-db")]
+/// run playgroup code
+///
+/// # Errors
+///
+/// When could not create app context
 pub async fn playground<H: Hooks>() -> Result<AppContext> {
     let cli = Playground::parse();
     let environment = cli
