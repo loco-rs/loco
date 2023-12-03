@@ -18,7 +18,7 @@
 //!
 //! | Feature    | Default | Description                 |
 //! |------------|---------|-----------------------------|
-//! | `auth`     | true    | Enable user authentication. |
+//! | `auth_jwt`     | true    | Enable user authentication. |
 //! | `cli`      | true    | Expose Cli commands.        |
 //! | `testing   | false   | Test Utilities Module.      |
 //! | `with-db`  | true    | with-db.                    |
@@ -38,7 +38,7 @@ pub mod app;
 #[cfg(feature = "cli")]
 pub mod cli;
 
-#[cfg(feature = "auth")]
+#[cfg(feature = "auth_jwt")]
 pub mod auth;
 pub mod boot;
 pub mod config;

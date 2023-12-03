@@ -8,7 +8,7 @@ pub use include_dir::{include_dir, Dir};
 #[cfg(feature = "with-db")]
 pub use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, ModelTrait, Set};
 
-#[cfg(any(feature = "auth", feature = "with-db"))]
+#[cfg(any(feature = "auth_jwt", feature = "with-db"))]
 pub use crate::controller::middleware::auth;
 pub use crate::{
     app::AppContext,

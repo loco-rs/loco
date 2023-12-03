@@ -17,7 +17,7 @@
 //!     pub pid: String,
 //! }
 //! async fn current(
-//!     auth: middleware::auth::Auth,
+//!     auth: middleware::auth::JWT,
 //!     State(ctx): State<AppContext>,
 //! ) -> Result<Json<TestResponse>> {
 //!     format::json(TestResponse{ pid: auth.claims.pid})
@@ -40,13 +40,13 @@ const AUTH_HEADER: &str = "authorization";
 // Define a struct to represent user authentication information serialized
 // to/from JSON
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Auth {
+pub struct JWT {
     pub claims: auth::UserClaims,
 }
 
 // Implement the FromRequestParts trait for the Auth struct
 #[async_trait]
-impl<S> FromRequestParts<S> for Auth
+impl<S> FromRequestParts<S> for JWT
 where
     AppContext: FromRef<S>,
     S: Send + Sync,
