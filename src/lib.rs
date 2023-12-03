@@ -18,7 +18,7 @@
 //!
 //! | Feature    | Default | Description                 |
 //! |------------|---------|-----------------------------|
-//! | `auth`     | true    | Enable user authentication. |
+//! | `auth_jwt`     | true    | Enable user authentication. |
 //! | `cli`      | true    | Expose Cli commands.        |
 //! | `testing   | false   | Test Utilities Module.      |
 //! | `with-db`  | true    | with-db.                    |
