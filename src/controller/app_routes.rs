@@ -2,14 +2,17 @@
 //! configuring routes in an Axum application. It allows you to define route
 //! prefixes, add routes, and configure middlewares for the application.
 
+use super::routes::Routes;
+use crate::environment::Environment;
+use crate::{app::AppContext, config, Result};
 use axum::{http::Request, Router as AXRouter};
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::time::Duration;
-use tower_http::{catch_panic::CatchPanicLayer, timeout::TimeoutLayer, trace::TraceLayer};
-
-use super::routes::Routes;
-use crate::{app::AppContext, config, Result};
+use tower_http::{
+    add_extension::AddExtensionLayer, catch_panic::CatchPanicLayer, timeout::TimeoutLayer,
+    trace::TraceLayer,
+};
 
 lazy_static! {
     static ref NORMALIZE_URL: Regex = Regex::new(r"/+").unwrap();
@@ -171,14 +174,10 @@ impl AppRoutes {
 
         if let Some(logger) = &ctx.config.server.middlewares.logger {
             if logger.enable {
-                app = Self::add_logger_middleware(app);
+                app = Self::add_logger_middleware(app, &ctx.environment);
             }
         }
-        if let Some(logger) = &ctx.config.server.middlewares.logger {
-            if logger.enable {
-                app = Self::add_logger_middleware(app);
-            }
-        }
+
         if let Some(timeout_request) = &ctx.config.server.middlewares.timeout_request {
             if timeout_request.enable {
                 app = Self::add_timeout_middleware(app, timeout_request);
@@ -206,19 +205,37 @@ impl AppRoutes {
 
         Ok(app)
     }
-    fn add_logger_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
-        let app = app.layer(
-            TraceLayer::new_for_http().make_span_with(|request: &Request<_>| {
-                let request_id = uuid::Uuid::new_v4();
-                tracing::error_span!(
-                    "request",
-                    method = tracing::field::display(request.method()),
-                    uri = tracing::field::display(request.uri()),
-                    version = tracing::field::debug(request.version()),
-                    request_id = tracing::field::display(request_id),
-                )
-            }),
-        );
+    fn add_logger_middleware(
+        app: AXRouter<AppContext>,
+        environment: &Environment,
+    ) -> AXRouter<AppContext> {
+        let app = app
+            .layer(
+                TraceLayer::new_for_http().make_span_with(|request: &Request<_>| {
+                    let request_id = uuid::Uuid::new_v4();
+                    let user_agent = request
+                        .headers()
+                        .get(axum::http::header::USER_AGENT)
+                        .map_or("", |h| h.to_str().unwrap_or(""));
+
+                    let env: String = request
+                        .extensions()
+                        .get::<Environment>()
+                        .map(std::string::ToString::to_string)
+                        .unwrap_or_default();
+
+                    tracing::error_span!(
+                        "http-request",
+                        "http.method" = tracing::field::display(request.method()),
+                        "http.uri" = tracing::field::display(request.uri()),
+                        "http.version" = tracing::field::debug(request.version()),
+                        "http.user_agent" = tracing::field::display(user_agent),
+                        "environment" = tracing::field::display(env),
+                        request_id = tracing::field::display(request_id),
+                    )
+                }),
+            )
+            .layer(AddExtensionLayer::new(environment.clone()));
 
         tracing::info!("[Middleware] Adding log trace id",);
         app
