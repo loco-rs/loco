@@ -27,7 +27,7 @@ content = 'Empower the 1-person team. Service, data, emails, background jobs, ta
 
 [[extra.list]]
 title = "🔮 Rails is great"
-content = 'Loco follows Rails. There, I said it. Rails concepts are carefully adapted to modern Node development.'
+content = 'Loco follows Rails. There, I said it. Rails concepts are carefully adapted to modern Rust development.'
 
 [[extra.list]]
 title = "🏅 Deliver with confidence"

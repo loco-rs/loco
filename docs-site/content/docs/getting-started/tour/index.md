@@ -78,6 +78,11 @@ controller/app_routes.rs:203: [Middleware] Adding log trace id
 started on port 3000
 ```
 
+<div class="infobox">
+You don't have to run things through `cargo` but in development it's highly recommended. If you build `--release`, your binary contains everything including your code and `cargo` or Rust is not needed.
+</div>
+
+
 ## Adding a CRUD API
 
 We have a base SaaS app with user authentication generated for us. Let's make it a blog by adding a `post` and a full CRUD API using `scaffold`:

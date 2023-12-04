@@ -22,6 +22,10 @@ $ cargo-watch -x check  -s 'cargo loco start'
 ```
 </details>
 
+<details>
+<summary>Do I have to have `cargo` to run tasks or other things?</summary>
+You don't have to run things through `cargo` but in development it's highly recommended. If you build `--release`, your binary contains everything including your code and `cargo` or Rust is not needed.
+</details>
 
 <details>
 <summary>How can I add custom middleware?</summary>
