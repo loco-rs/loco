@@ -1,7 +1,7 @@
 ```console
 $ loco_starter_template 
 ? 2
-The 1-Person Framework for rust
+The one-person framework for Rust
 
 Usage: loco_starter_template [OPTIONS] <COMMAND>
 

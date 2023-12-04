@@ -1,7 +1,7 @@
 ```console
 $ demo 
 ? 2
-The 1-Person Framework for rust
+The one-person framework for Rust
 
 Usage: demo [OPTIONS] <COMMAND>
 
