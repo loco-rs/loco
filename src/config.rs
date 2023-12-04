@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use config::{ConfigError, File};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::{environment::Environment, logger, Error, Result as AppResult};
 
@@ -248,14 +248,25 @@ impl Config {
     ///     Config::from_folder(environment, &PathBuf::from("config")).expect("configuration loading")
     /// }
     pub fn from_folder(env: &Environment, path: &Path) -> Result<Self, ConfigError> {
-        config::Config::builder()
-            .add_source(
-                File::with_name(&path.join(format!("{env}.yaml")).display().to_string())
-                    .required(true),
-            )
-            .add_source(config::Environment::with_prefix("APP").separator("_"))
-            .build()?
-            .try_deserialize()
+        let builder = config::Config::builder();
+
+        // "regular" config/[env].yaml resolution
+        let builder = builder.add_source(
+            File::with_name(&path.join(format!("{env}.yaml")).display().to_string()).required(true),
+        );
+
+        // local.yaml overrides
+        let local = path.join("local.yaml");
+        let builder = if local.exists() {
+            warn!(path = ?local, "local configuration found, will override anything else to support local development which is not pushed to source control. to avoid this behavior remove this file");
+            builder.add_source(File::with_name(&local.display().to_string()))
+        } else {
+            builder
+        };
+
+        // final ENV vars overrides
+        let builder = builder.add_source(config::Environment::with_prefix("APP").separator("_"));
+        builder.build()?.try_deserialize()
     }
 
     /// Get a reference to the JWT configuration.
