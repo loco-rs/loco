@@ -14,20 +14,30 @@ top = false
 +++
 
 <details>
-<summary>How can i add custom middleware?</summary>
+<summary>How can I automatically reload code?</summary>
+Try [cargo watch](https://crates.io/crates/cargo-watch):
+
+```
+$ cargo-watch -x check  -s 'cargo loco start'
+```
+</details>
+
+
+<details>
+<summary>How can I add custom middleware?</summary>
 TBD
 </details>
 
 <br/>
 
 <details>
-<summary>Can i inject custom state/configuration</summary>
+<summary>Can I inject custom state/configuration</summary>
 TBD
 </details>
 
 <br/>
 
 <details>
-<summary>How can i disable application logger</summary>
+<summary>How can I disable application logger</summary>
 TBD
 </details>

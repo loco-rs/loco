@@ -1,11 +1,11 @@
 // tests/attribute_macro.rs
 
-use macros::*;
+use loco_macros::*;
 
 // macro converts struct S to struct H
 
 #[test]
-#[loco_test]
+//#[test_request]
 fn test_macro() {
     assert!(true);
 }

@@ -561,6 +561,7 @@ dependencies = [
  "eyre",
  "include_dir",
  "insta",
+ "loco-macros",
  "loco-rs",
  "migration",
  "rstest",
@@ -2101,6 +2102,14 @@ checksum = "3c168f8615b12bc01f9c17e2eb0cc07dcae1940121185446edc3744920e8ef45"
 dependencies = [
  "autocfg",
  "scopeguard",
+]
+
+[[package]]
+name = "loco-macros"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn 2.0.39",
 ]
 
 [[package]]
