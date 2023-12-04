@@ -361,6 +361,10 @@ pub fn list_endpoints<H: Hooks>() -> Vec<ListRoutes> {
 /// Initializes an [`EmailSender`] based on the mailer configuration settings
 /// ([`config::Mailer`]).
 fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
+    #[cfg(feature = "testing")]
+    if config.stub {
+        return Ok(Some(EmailSender::stub()));
+    }
     if let Some(smtp) = config.smtp.as_ref() {
         if smtp.enable {
             return Ok(Some(EmailSender::smtp(smtp)?));

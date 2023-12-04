@@ -27,6 +27,13 @@ pub struct EmailSender {
     pub transport: EmailTransport,
 }
 
+#[cfg(feature = "testing")]
+#[derive(Default, Debug)]
+pub struct Deliveries {
+    pub count: usize,
+    pub messages: Vec<String>,
+}
+
 impl EmailSender {
     /// Creates a new `EmailSender` using the SMTP transport method based on the
     /// provided SMTP configuration.
@@ -55,6 +62,31 @@ impl EmailSender {
         Ok(Self {
             transport: EmailTransport::Smtp(email_builder.build()),
         })
+    }
+
+    #[cfg(feature = "testing")]
+    #[must_use]
+    pub fn stub() -> Self {
+        Self {
+            transport: EmailTransport::Test(lettre::transport::stub::StubTransport::new_ok()),
+        }
+    }
+
+    #[cfg(feature = "testing")]
+    #[must_use]
+    pub fn deliveries(&self) -> Deliveries {
+        if let EmailTransport::Test(stub) = &self.transport {
+            return Deliveries {
+                count: stub.messages().len(),
+                messages: stub
+                    .messages()
+                    .iter()
+                    .map(|(_, content)| content.to_string())
+                    .collect(),
+            };
+        }
+
+        Deliveries::default()
     }
 
     /// Sends an email using the configured transport method.
