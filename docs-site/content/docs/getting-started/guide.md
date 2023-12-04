@@ -399,9 +399,8 @@ src/models/
 
 ### Using `playground` to interact with the database
 
-Your `src/bin/`  folder contains two files:
+Your `examples/`  folder contains:
 
-* `main.rs` - your default entry point (you don't need to worry about this too much).
 * `playground.rs` - a place to try out and experiment with your models and app logic.
 
 Let's fetch data using your models, using `playground.rs`:

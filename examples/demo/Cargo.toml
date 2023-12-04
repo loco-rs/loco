@@ -33,6 +33,7 @@ include_dir = "0.7"
 uuid = { version = "1.6.0", features = ["v4"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 
+
 [[bin]]
 name = "demo"
 path = "src/bin/main.rs"
@@ -44,3 +45,4 @@ rstest = "0.18.2"
 loco-rs = { version = "*", path = "../../", features = ["testing"] }
 trycmd = "0.14.19"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
+loco-macros = { path = "../../macros" }
