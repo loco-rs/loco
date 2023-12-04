@@ -3,7 +3,7 @@ workspace = { members = ["macros"], exclude = ["starters"] }
 name = "loco-rs"
 version = "0.1.0"
 edition = "2021"
-description = "The 1-Person Framework for rust"
+description = "The one-person framework for Rust"
 license = "Apache-2.0"
 homepage = "https://loco.rs/"
 documentation = "https://docs.rs/loco-rs"
