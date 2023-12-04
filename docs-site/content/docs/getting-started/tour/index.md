@@ -12,6 +12,10 @@ toc = true
 top = false
 +++
 
+<img style="width:100%; max-width:640px" src="tour.png"/>
+<br/>
+<br/>
+<br/>
 Let's create a blog on `loco` in 3 commands. First install `loco-cli`:
 
 
