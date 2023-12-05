@@ -1,6 +1,6 @@
 use chrono::offset::Local;
 use loco_rs::{
-    auth,
+    auth, hash,
     model::{ModelError, ModelResult},
     validation,
     validator::Validate,
@@ -109,7 +109,7 @@ impl super::_entities::users::Model {
     ///
     /// When could not find user  or DB query error
     pub async fn find_by_pid(db: &DatabaseConnection, pid: &str) -> ModelResult<Self> {
-        let parse_uuid = Uuid::parse_str(pid).map_err(|e| ModelError::Message(e.to_string()))?;
+        let parse_uuid = Uuid::parse_str(pid).map_err(|e| ModelError::Any(e.into()))?;
         let user = users::Entity::find()
             .filter(users::Column::Pid.eq(parse_uuid))
             .one(db)
@@ -122,8 +122,8 @@ impl super::_entities::users::Model {
     /// # Errors
     ///
     /// when could not verify password
-    pub fn verify_password(&self, password: &str) -> ModelResult<bool> {
-        Ok(auth::verify_password(password, &self.password)?)
+    pub fn verify_password(&self, password: &str) -> bool {
+        hash::verify_password(password, &self.password)
     }
 
     /// Asynchronously creates a user with a password and saves it to the
@@ -144,10 +144,11 @@ impl super::_entities::users::Model {
             .await?
             .is_some()
         {
-            return Err(ModelError::EntityExists {});
+            return Err(ModelError::EntityAlreadyExists {});
         }
 
-        let password_hash = auth::hash_password(&params.password)?;
+        let password_hash =
+            hash::hash_password(&params.password).map_err(|e| ModelError::Any(e.into()))?;
         let user = users::ActiveModel {
             email: ActiveValue::set(params.email.to_string()),
             password: ActiveValue::set(password_hash),
@@ -168,7 +169,7 @@ impl super::_entities::users::Model {
     ///
     /// when could not convert user claims to jwt token
     pub fn generate_jwt(&self, secret: &str, expiration: &u64) -> ModelResult<String> {
-        Ok(auth::JWT::new(secret).generate_token(expiration, self.pid.to_string())?)
+        Ok(auth::jwt::JWT::new(secret).generate_token(expiration, self.pid.to_string())?)
     }
 }
 
@@ -248,7 +249,8 @@ impl super::_entities::users::ActiveModel {
         db: &DatabaseConnection,
         password: &str,
     ) -> ModelResult<Model> {
-        self.password = ActiveValue::set(auth::hash_password(password)?);
+        self.password =
+            ActiveValue::set(hash::hash_password(password).map_err(|e| ModelError::Any(e.into()))?);
         Ok(self.update(db).await?)
     }
 }

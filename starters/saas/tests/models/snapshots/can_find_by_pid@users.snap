@@ -9,7 +9,7 @@ Ok(
         id: 1,
         pid: 11111111-1111-1111-1111-111111111111,
         email: "user1@example.com",
-        password: "$2b$12$gf4o2FShIahg/GY6YkK2wOcs8w4.lu444wP6BL3FyjX0GsxnEV6ZW",
+        password: "$argon2id$v=19$m=19456,t=2,p=1$ETQBx4rTgNAZhSaeYZKOZg$eYTdH26CRT6nUJtacLDEboP0li6xUwUF/q5nSlQ8uuc",
         name: "user1",
         reset_token: None,
         reset_sent_at: None,

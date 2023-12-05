@@ -206,7 +206,7 @@ async fn can_reset_password() {
         .await
         .unwrap();
 
-    assert!(user.verify_password("12341234").unwrap());
+    assert!(user.verify_password("12341234"));
 
     assert!(user
         .clone()
@@ -220,6 +220,5 @@ async fn can_reset_password() {
             .await
             .unwrap()
             .verify_password("new-password")
-            .unwrap()
     );
 }

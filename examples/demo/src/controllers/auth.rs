@@ -121,7 +121,7 @@ async fn login(
 ) -> Result<Json<LoginResponse>> {
     let user = users::Model::find_by_email(&ctx.db, &params.email).await?;
 
-    let valid = user.verify_password(&params.password)?;
+    let valid = user.verify_password(&params.password);
 
     if !valid {
         return unauthorized("unauthorized!");

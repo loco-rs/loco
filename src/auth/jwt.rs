@@ -3,7 +3,6 @@
 //! This module provides functionality for working with JSON Web Tokens (JWTs)
 //! and password hashing.
 
-use bcrypt::BcryptResult;
 use jsonwebtoken::{
     decode, encode, errors::Result as JWTResult, get_current_timestamp, Algorithm, DecodingKey,
     EncodingKey, Header, TokenData, Validation,
@@ -101,38 +100,6 @@ impl JWT {
             &validate,
         )
     }
-}
-
-/// Hashes a plain text password and returns the hashed result.
-///
-/// # Errors
-///
-/// Return [`BcryptResult`] when could not hash the given password.
-///
-/// # Example
-/// ```rust
-/// use loco_rs::auth;
-///
-/// auth::hash_password("password-to-hash");
-/// ```
-pub fn hash_password(pass: &str) -> BcryptResult<String> {
-    bcrypt::hash(pass.as_bytes(), bcrypt::DEFAULT_COST)
-}
-
-/// Verifies a plain text password against a hashed password.
-///
-/// # Errors
-///
-/// Return [`BcryptResult`] when could verify the given data.
-///
-/// # Example
-/// ```rust
-/// use loco_rs::auth;
-///
-/// auth::verify_password("password", "hashed-password");
-/// ```
-pub fn verify_password(pass: &str, hashed_password: &str) -> BcryptResult<bool> {
-    bcrypt::verify(pass.as_bytes(), hashed_password)
 }
 
 #[cfg(test)]

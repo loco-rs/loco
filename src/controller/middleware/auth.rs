@@ -41,7 +41,7 @@ const AUTH_HEADER: &str = "authorization";
 // to/from JSON
 #[derive(Debug, Deserialize, Serialize)]
 pub struct JWT {
-    pub claims: auth::UserClaims,
+    pub claims: auth::jwt::UserClaims,
 }
 
 // Implement the FromRequestParts trait for the Auth struct
@@ -61,7 +61,7 @@ where
 
         let jwt_secret = state.config.get_jwt_config()?;
 
-        match auth::JWT::new(&jwt_secret.secret).validate(&token) {
+        match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
             Ok(claims) => Ok(Self {
                 claims: claims.claims,
             }),
