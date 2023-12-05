@@ -27,7 +27,7 @@ jobs:
       - run: |
           cargo build
         working-directory: ./saas
-  saas-template:
+  stateless-template:
     name: Create stateless starter template
     runs-on: ubuntu-latest
 
