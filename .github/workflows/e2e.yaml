@@ -1,0 +1,29 @@
+name: e2e
+
+on:
+  pull_request:
+
+  # schedule:
+  #   - cron: 0 * * * *
+
+jobs:
+  saas-template:
+    name: Create saas starter template
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+      - run: |
+          cargo install loco-cli
+          LOCO_APP_NAME=saas LOCO_TEMPLATE=saas loco new
+      - run: |
+          cargo build
+        working-directory: ./saas
