@@ -67,6 +67,7 @@ Options:
 
 ```console 
 $ demo task
+seed_data		[Task for seeding data]
 user_report		[output a user report]
 
 ```

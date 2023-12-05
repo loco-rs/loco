@@ -1,6 +1,6 @@
 use std::{collections::HashMap, env::current_dir};
 
-use cargo_metadata::{MetadataCommand, Package};
+use crate::app::Hooks;
 use chrono::Utc;
 use duct::cmd;
 use lazy_static::lazy_static;
@@ -30,17 +30,12 @@ lazy_static! {
     ]);
 }
 
-pub fn generate(rrgen: &RRgen, name: &str, fields: &[(String, String)]) -> Result<String> {
-    let path = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
-    let meta = MetadataCommand::new()
-        .manifest_path("./Cargo.toml")
-        .current_dir(&path)
-        .exec()?;
-    let root: &Package = meta
-        .root_package()
-        .ok_or_else(|| Error::Message("cannot find root package in Cargo.toml".to_string()))?;
-    let pkg_name: &str = &root.name;
-
+pub fn generate<H: Hooks>(
+    rrgen: &RRgen,
+    name: &str,
+    fields: &[(String, String)],
+) -> Result<String> {
+    let pkg_name: &str = H::app_name();
     let ts = Utc::now();
 
     let mut columns = Vec::new();

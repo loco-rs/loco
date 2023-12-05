@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::app::Hooks;
 use lazy_static::lazy_static;
 use rrgen::RRgen;
 use serde_json::json;
@@ -26,8 +27,12 @@ lazy_static! {
     ]);
 }
 
-pub fn generate(rrgen: &RRgen, name: &str, fields: &[(String, String)]) -> Result<String> {
-    let model_messages = model::generate(rrgen, name, fields)?;
+pub fn generate<H: Hooks>(
+    rrgen: &RRgen,
+    name: &str,
+    fields: &[(String, String)],
+) -> Result<String> {
+    let model_messages = model::generate::<H>(rrgen, name, fields)?;
 
     let mut columns = Vec::new();
     for (fname, ftype) in fields {

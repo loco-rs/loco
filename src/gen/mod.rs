@@ -6,7 +6,7 @@ mod model;
 #[cfg(feature = "with-db")]
 mod scaffold;
 
-use crate::Result;
+use crate::{app::Hooks, Result};
 
 const CONTROLLER_T: &str = include_str!("templates/controller.t");
 const CONTROLLER_TEST_T: &str = include_str!("templates/request_test.t");
@@ -17,6 +17,7 @@ const MAILER_TEXT_T: &str = include_str!("templates/mailer_text.t");
 const MAILER_HTML_T: &str = include_str!("templates/mailer_html.t");
 
 const TASK_T: &str = include_str!("templates/task.t");
+const TASK_TEST_T: &str = include_str!("templates/task_test.t");
 
 const WORKER_T: &str = include_str!("templates/worker.t");
 
@@ -55,17 +56,17 @@ pub enum Component {
     },
 }
 
-pub fn generate(component: Component) -> Result<()> {
+pub fn generate<H: Hooks>(component: Component) -> Result<()> {
     let rrgen = RRgen::default();
 
     match component {
         #[cfg(feature = "with-db")]
         Component::Model { name, fields } => {
-            println!("{}", model::generate(&rrgen, &name, &fields)?);
+            println!("{}", model::generate::<H>(&rrgen, &name, &fields)?);
         }
         #[cfg(feature = "with-db")]
         Component::Scaffold { name, fields } => {
-            println!("{}", scaffold::generate(&rrgen, &name, &fields)?);
+            println!("{}", scaffold::generate::<H>(&rrgen, &name, &fields)?);
         }
         Component::Controller { name } => {
             let vars = json!({"name": name});
@@ -73,8 +74,10 @@ pub fn generate(component: Component) -> Result<()> {
             rrgen.generate(CONTROLLER_TEST_T, &vars)?;
         }
         Component::Task { name } => {
-            let vars = json!({"name": name});
+            let vars = json!({"name": name, "pkg_name": H::app_name()});
+
             rrgen.generate(TASK_T, &vars)?;
+            rrgen.generate(TASK_TEST_T, &vars)?;
         }
         Component::Worker { name } => {
             let vars = json!({"name": name});

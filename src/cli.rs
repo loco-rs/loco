@@ -269,7 +269,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             run_task::<H>(&app_context, name.as_ref(), &hash).await?;
         }
         Commands::Generate { component } => {
-            gen::generate(component.into())?;
+            gen::generate::<H>(component.into())?;
         }
     }
     Ok(())
@@ -308,7 +308,7 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
             run_task::<H>(&app_context, name.as_ref(), &hash).await?;
         }
         Commands::Generate { component } => {
-            gen::generate(component.into())?;
+            gen::generate::<H>(component.into())?;
         }
     }
     Ok(())
