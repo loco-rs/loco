@@ -1,10 +1,8 @@
 name: e2e
 
 on:
-  pull_request:
-
-  # schedule:
-  #   - cron: 0 * * * *
+  schedule:
+    - cron: 0 * * * * # every hour
 
 jobs:
   saas-template:
