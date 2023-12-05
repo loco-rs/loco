@@ -29,7 +29,7 @@ We think Rails is so great, that this guide is strongly inspired from the <a hre
 
 ## What is Loco?
 
-Loco is a Web or API framework for Rust. It's also a productivity suite for develolpers: it contains everything you need while building a hobby or your next startup. It's also strongly inspired by Rails.
+Loco is a Web or API framework for Rust. It's also a productivity suite for developers: it contains everything you need while building a hobby or your next startup. It's also strongly inspired by Rails.
 
 * **You have a variant of the MVC model**, which removes the paradox of option. You deal with building your app, not making academic decisions for what abstractions to use.
 * **Fat models, slim controllers**. Models should contain most of your logic and business implementation, controllers should just be a lightweight router that understands HTTP and moves parameters around.
