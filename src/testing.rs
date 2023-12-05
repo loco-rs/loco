@@ -38,6 +38,12 @@ lazy_static! {
 
     /// Constants for cleaning up generals model data, replacing IDs with placeholders.
     pub static ref CLEANUP_MODEL: Vec<(&'static str, &'static str)> = vec![(r"id: \d+,", "id: ID")];
+    pub static ref CLEANUP_MAIL: Vec<(&'static str, &'static str)> = vec![
+            (r"[0-9A-Za-z]+{40}", "IDENTIFIER"),
+            (r"\w+, \d{1,2} \w+ \d{4} \d{2}:\d{2}:\d{2} [+-]\d{4}", "DATE"),
+            (r"([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})","RANDOM_ID"),
+            (r"([0-9a-fA-F]{8}-[0-9a-fA-F]{4})-[0-9a-fA-F].*.-[0-9a-fA-F]{12}", "RANDOM_ID")
+        ];
 }
 
 /// Combines cleanup filters from various categories (user model, date, and
@@ -76,6 +82,14 @@ pub fn cleanup_user_model() -> Vec<(&'static str, &'static str)> {
     let mut combined_filters = CLEANUP_USER_MODEL.to_vec();
     combined_filters.extend(CLEANUP_DATE.iter().copied());
     combined_filters.extend(CLEANUP_MODEL.iter().copied());
+    combined_filters
+}
+
+/// Combines cleanup filters from emails  that can be dynamic
+#[must_use]
+pub fn cleanup_email() -> Vec<(&'static str, &'static str)> {
+    let mut combined_filters = CLEANUP_MAIL.to_vec();
+    combined_filters.extend(CLEANUP_DATE.iter().copied());
     combined_filters
 }
 

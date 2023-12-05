@@ -169,6 +169,10 @@ pub struct EnableMiddleware {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Mailer {
     pub smtp: Option<SmtpMailer>,
+
+    #[cfg(feature = "testing")]
+    #[serde(default)]
+    pub stub: bool,
 }
 
 /// Represents the SMTP mailer configuration structure.

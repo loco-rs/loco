@@ -64,6 +64,7 @@ mailer:
     # auth:
     #   user:
     #   password:
+  stub: true
 
 # Database Configuration
 database:

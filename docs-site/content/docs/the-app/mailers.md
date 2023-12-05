@@ -79,3 +79,7 @@ src/
         text.t
     auth.rs         <-- mailer definition
 ```
+
+## Testing a mailer
+
+For testing mailers integrated into your application, `Loco` offers a straightforward implementation. Refer to the documentation [here](@/docs/testing/mailers.md) for detailed information.
