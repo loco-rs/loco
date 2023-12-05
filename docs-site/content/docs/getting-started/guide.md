@@ -16,6 +16,8 @@ top = false
 
 Loco is a Rust API and web framework for full stack product builders.
 
+The name `Loco` comes from **loco**motive, as a tribute to Rails, and `loco` is easier to type than `locomotive` :-). Also, in some languages it means "crazy" but that was not the original intention (or, is it crazy to build a Rails on Rust? only time will tell!).
+
 You need to be familiar with Rust to a moderate level. You need to know how to build, test, and run Rust projects, have used some popular libraries such as `clap`, `regex`, `tokio`, `axum` or other web framework, nothing too fancy. There are no crazy lifetime twisters or complex / too magical, macros in Loco that you need to know how they work.
 
 Loco is strongly inspired by Rails. If you know Rails _and_ Rust, you'll feel at home. If you only know Rails and new to Rust, you'll find Loco refreshing. We do not assume you know Rails.
@@ -27,7 +29,7 @@ We think Rails is so great, that this guide is strongly inspired from the <a hre
 
 ## What is Loco?
 
-Loco is a Web or API framework for Rust. It's also a productivity suite for develolpers: it contains everything you need while building a hobby or your next startup. It's also strongly inspired by Rails.
+Loco is a Web or API framework for Rust. It's also a productivity suite for developers: it contains everything you need while building a hobby or your next startup. It's also strongly inspired by Rails.
 
 * **You have a variant of the MVC model**, which removes the paradox of option. You deal with building your app, not making academic decisions for what abstractions to use.
 * **Fat models, slim controllers**. Models should contain most of your logic and business implementation, controllers should just be a lightweight router that understands HTTP and moves parameters around.
@@ -201,7 +203,7 @@ Loco has powerful generators, which will make you 10x productive and drive your 
 
 If you'd like to be entertained for a moment, let's "learn the hard way" and add a new controller manually as well.
 
-Add a file called `home.rs`, and `pub use` it in `mod.rs`:
+Add a file called `home.rs`, and `pub mod home;` it in `mod.rs`:
 
 ```
 src/
@@ -209,7 +211,7 @@ src/
     auth.rs
     home.rs      <--- add this file
     users.rs
-    mod.rs       <--- 'pub use' the module here
+    mod.rs       <--- 'pub mod home;' the module here
 ```
 
 Next, set up a _hello_ route, this is the contents of `home.rs`:
