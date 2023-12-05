@@ -16,12 +16,13 @@ top = false
 <br/>
 <br/>
 <br/>
-Let's create a blog on `loco` in 3 commands. First install `loco-cli`:
+Let's create a blog on `loco` in 4 commands. First install `loco-cli` and `sea-orm-cli`:
 
 
 
 ```sh
 $ cargo install loco-cli
+$ cargo install sea-orm-cli
 ```
 
 Now you can create your new app (choose "Saas app").
@@ -125,11 +126,12 @@ You can list your posts:
 $ curl localhost:3000/posts
 ```
 
-For those counting -- the 3 commands for creating a blog were:
+For those counting -- the commands for creating a blog were:
 
 1. `cargo install loco-cli`
-2. `loco new`
-3. `cargo loco generate scaffold post title:string content:text`
+2. `cargo install sea-orm-cli`
+3. `loco new`
+4. `cargo loco generate scaffold post title:string content:text`
 
 Done! enjoy your ride with `loco` 🚂
 

@@ -27,6 +27,20 @@ $ cargo-watch -x check  -s 'cargo loco start'
 You don't have to run things through `cargo` but in development it's highly recommended. If you build `--release`, your binary contains everything including your code and `cargo` or Rust is not needed.
 </details>
 
+<br/>
+
+<details>
+<summary>Is this production ready?</summary>
+
+Loco is still in its beginning, but its roots are not. It's almost a rewrite of `Hyperstackjs.io`, and Hyperstack is based on an internal Rails-like framework which is production ready.
+
+Most of Loco is glue code around Axum, SeaORM, and other stable frameworks, so you can consider that.
+
+At this stage, at version 0.1.x, we would recommend to _adopt and report issues_ if they arise.
+
+</details>
+
+<br/>
 <details>
 <summary>How can I add custom middleware?</summary>
 TBD

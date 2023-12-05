@@ -16,6 +16,8 @@ top = false
 
 Loco is a Rust API and web framework for full stack product builders.
 
+The name `Loco` comes from **loco**motive, as a tribute to Rails, and `loco` is easier to type than `locomotive` :-). Also, in some languages it means "crazy" but that was not the original intention (or, is it crazy to build a Rails on Rust? only time will tell!).
+
 You need to be familiar with Rust to a moderate level. You need to know how to build, test, and run Rust projects, have used some popular libraries such as `clap`, `regex`, `tokio`, `axum` or other web framework, nothing too fancy. There are no crazy lifetime twisters or complex / too magical, macros in Loco that you need to know how they work.
 
 Loco is strongly inspired by Rails. If you know Rails _and_ Rust, you'll feel at home. If you only know Rails and new to Rust, you'll find Loco refreshing. We do not assume you know Rails.
