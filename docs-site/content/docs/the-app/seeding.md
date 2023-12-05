@@ -26,8 +26,8 @@ Navigate to `src/fixtures` and create a new seed file. For instance:
 
 ```
 src/
-  config/
-    user.yaml
+  fixtures/
+    users.yaml
 ```
 
 In this yaml file, enlist a set of database records for insertion. Each record should encompass the mandatory database fields, based on your database constraints. Optional values are at your discretion. Suppose you have a database DDL like this:
