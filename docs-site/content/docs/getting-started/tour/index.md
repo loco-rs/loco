@@ -12,12 +12,17 @@ toc = true
 top = false
 +++
 
-Let's create a blog on `loco` in 3 commands. First install `loco-cli`:
+<img style="width:100%; max-width:640px" src="tour.png"/>
+<br/>
+<br/>
+<br/>
+Let's create a blog on `loco` in 4 commands. First install `loco-cli` and `sea-orm-cli`:
 
 
 
 ```sh
 $ cargo install loco-cli
+$ cargo install sea-orm-cli
 ```
 
 Now you can create your new app (choose "Saas app").
@@ -74,6 +79,11 @@ controller/app_routes.rs:203: [Middleware] Adding log trace id
 started on port 3000
 ```
 
+<div class="infobox">
+You don't have to run things through `cargo` but in development it's highly recommended. If you build `--release`, your binary contains everything including your code and `cargo` or Rust is not needed.
+</div>
+
+
 ## Adding a CRUD API
 
 We have a base SaaS app with user authentication generated for us. Let's make it a blog by adding a `post` and a full CRUD API using `scaffold`:
@@ -116,11 +126,12 @@ You can list your posts:
 $ curl localhost:3000/posts
 ```
 
-For those counting -- the 3 commands for creating a blog were:
+For those counting -- the commands for creating a blog were:
 
 1. `cargo install loco-cli`
-2. `loco new`
-3. `cargo loco generate scaffold post title:string content:text`
+2. `cargo install sea-orm-cli`
+3. `loco new`
+4. `cargo loco generate scaffold post title:string content:text`
 
 Done! enjoy your ride with `loco` 🚂
 

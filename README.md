@@ -1,7 +1,7 @@
 # Welcome to Loco!
 
 <center>
-<img width="640" src="media/image.png"/>
+<img width="640" src="https://github.com/loco-rs/loco/raw/master/media/image.png"/>
 </center>
 <br/>
 <center>
