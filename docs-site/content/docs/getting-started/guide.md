@@ -203,7 +203,7 @@ Loco has powerful generators, which will make you 10x productive and drive your 
 
 If you'd like to be entertained for a moment, let's "learn the hard way" and add a new controller manually as well.
 
-Add a file called `home.rs`, and `pub use` it in `mod.rs`:
+Add a file called `home.rs`, and `pub mod home;` it in `mod.rs`:
 
 ```
 src/
@@ -211,7 +211,7 @@ src/
     auth.rs
     home.rs      <--- add this file
     users.rs
-    mod.rs       <--- 'pub use' the module here
+    mod.rs       <--- 'pub mod home;' the module here
 ```
 
 Next, set up a _hello_ route, this is the contents of `home.rs`:
