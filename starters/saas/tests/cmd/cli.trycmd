@@ -67,7 +67,7 @@ Options:
 
 ```console 
 $ loco_starter_template task
-seed_data		[Task for seeding data.]
+seed_data		[Task for seeding data]
 
 ```
 

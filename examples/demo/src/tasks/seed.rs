@@ -25,7 +25,7 @@ impl Task for SeedData {
     fn task(&self) -> TaskInfo {
         TaskInfo {
             name: "seed_data".to_string(),
-            detail: "Task for seeding data.".to_string(),
+            detail: "Task for seeding data".to_string(),
         }
     }
     async fn run(&self, app_context: &AppContext, vars: &BTreeMap<String, String>) -> Result<()> {
