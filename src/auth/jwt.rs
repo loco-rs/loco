@@ -25,7 +25,7 @@ pub struct UserClaims {
 /// ```rust
 /// use loco_rs::auth;
 ///
-/// auth::JWT::new("PqRwLF2rhHe8J22oBeHy");
+/// auth::jwt::JWT::new("PqRwLF2rhHe8J22oBeHy");
 /// ```
 pub struct JWT {
     secret: String,
@@ -60,7 +60,7 @@ impl JWT {
     /// ```rust
     /// use loco_rs::auth;
     ///
-    /// auth::JWT::new("PqRwLF2rhHe8J22oBeHy").generate_token(&604800, "PID".to_string());
+    /// auth::jwt::JWT::new("PqRwLF2rhHe8J22oBeHy").generate_token(&604800, "PID".to_string());
     /// ```
     pub fn generate_token(&self, expiration: &u64, pid: String) -> JWTResult<String> {
         #[allow(clippy::cast_possible_truncation)]
@@ -88,7 +88,7 @@ impl JWT {
     /// # Example
     /// ```rust
     /// use loco_rs::auth;
-    /// auth::JWT::new("PqRwLF2rhHe8J22oBeHy").validate("JWT-TOKEN");
+    /// auth::jwt::JWT::new("PqRwLF2rhHe8J22oBeHy").validate("JWT-TOKEN");
     /// ```
     pub fn validate(&self, token: &str) -> JWTResult<TokenData<UserClaims>> {
         let mut validate = Validation::new(self.algorithm);
