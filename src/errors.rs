@@ -48,6 +48,9 @@ pub enum Error {
     #[error(transparent)]
     Config(#[from] ConfigError),
 
+    #[error("{0}")]
+    Hash(String),
+
     // API
     #[error("{0}")]
     Unauthorized(String),

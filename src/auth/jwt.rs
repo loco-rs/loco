@@ -3,7 +3,6 @@
 //! This module provides functionality for working with JSON Web Tokens (JWTs)
 //! and password hashing.
 
-use bcrypt::BcryptResult;
 use jsonwebtoken::{
     decode, encode, errors::Result as JWTResult, get_current_timestamp, Algorithm, DecodingKey,
     EncodingKey, Header, TokenData, Validation,
@@ -26,7 +25,7 @@ pub struct UserClaims {
 /// ```rust
 /// use loco_rs::auth;
 ///
-/// auth::JWT::new("PqRwLF2rhHe8J22oBeHy");
+/// auth::jwt::JWT::new("PqRwLF2rhHe8J22oBeHy");
 /// ```
 pub struct JWT {
     secret: String,
@@ -61,7 +60,7 @@ impl JWT {
     /// ```rust
     /// use loco_rs::auth;
     ///
-    /// auth::JWT::new("PqRwLF2rhHe8J22oBeHy").generate_token(&604800, "PID".to_string());
+    /// auth::jwt::JWT::new("PqRwLF2rhHe8J22oBeHy").generate_token(&604800, "PID".to_string());
     /// ```
     pub fn generate_token(&self, expiration: &u64, pid: String) -> JWTResult<String> {
         #[allow(clippy::cast_possible_truncation)]
@@ -89,7 +88,7 @@ impl JWT {
     /// # Example
     /// ```rust
     /// use loco_rs::auth;
-    /// auth::JWT::new("PqRwLF2rhHe8J22oBeHy").validate("JWT-TOKEN");
+    /// auth::jwt::JWT::new("PqRwLF2rhHe8J22oBeHy").validate("JWT-TOKEN");
     /// ```
     pub fn validate(&self, token: &str) -> JWTResult<TokenData<UserClaims>> {
         let mut validate = Validation::new(self.algorithm);
@@ -101,38 +100,6 @@ impl JWT {
             &validate,
         )
     }
-}
-
-/// Hashes a plain text password and returns the hashed result.
-///
-/// # Errors
-///
-/// Return [`BcryptResult`] when could not hash the given password.
-///
-/// # Example
-/// ```rust
-/// use loco_rs::auth;
-///
-/// auth::hash_password("password-to-hash");
-/// ```
-pub fn hash_password(pass: &str) -> BcryptResult<String> {
-    bcrypt::hash(pass.as_bytes(), bcrypt::DEFAULT_COST)
-}
-
-/// Verifies a plain text password against a hashed password.
-///
-/// # Errors
-///
-/// Return [`BcryptResult`] when could verify the given data.
-///
-/// # Example
-/// ```rust
-/// use loco_rs::auth;
-///
-/// auth::verify_password("password", "hashed-password");
-/// ```
-pub fn verify_password(pass: &str, hashed_password: &str) -> BcryptResult<bool> {
-    bcrypt::verify(pass.as_bytes(), hashed_password)
 }
 
 #[cfg(test)]

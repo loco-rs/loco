@@ -18,7 +18,7 @@
 //!
 //! | Feature    | Default | Description                 |
 //! |------------|---------|-----------------------------|
-//! | `auth_jwt`     | true    | Enable user authentication. |
+//! | `auth_jwt` | true    | Enable user authentication. |
 //! | `cli`      | true    | Expose Cli commands.        |
 //! | `testing   | false   | Test Utilities Module.      |
 //! | `with-db`  | true    | with-db.                    |
@@ -38,7 +38,6 @@ pub mod app;
 #[cfg(feature = "cli")]
 pub mod cli;
 
-#[cfg(feature = "auth_jwt")]
 pub mod auth;
 pub mod boot;
 pub mod config;
@@ -46,6 +45,7 @@ pub mod controller;
 pub mod environment;
 pub mod errors;
 mod gen;
+pub mod hash;
 mod logger;
 pub mod mailer;
 mod redis;
