@@ -121,6 +121,7 @@ fn clone_repo() -> Result<PathBuf, git2::Error> {
     );
     let mut opt = git2::FetchOptions::new();
     opt.depth(1);
+
     git2::build::RepoBuilder::new()
         .branch(&from_branch)
         .fetch_options(opt)
