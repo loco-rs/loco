@@ -1,0 +1,47 @@
+name: e2e
+
+on:
+  schedule:
+    - cron: 0 * * * * # every hour
+
+jobs:
+  saas-template:
+    name: Create saas starter template
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+      - run: |
+          cargo install loco-cli
+          LOCO_APP_NAME=saas LOCO_TEMPLATE=saas loco new
+      - run: |
+          cargo build
+        working-directory: ./saas
+  stateless-template:
+    name: Create stateless starter template
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+      - run: |
+          cargo install loco-cli
+          LOCO_APP_NAME=stateless LOCO_TEMPLATE=stateless loco new
+      - run: |
+          cargo build
+        working-directory: ./stateless
