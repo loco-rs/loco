@@ -95,6 +95,9 @@ jobs:
         uses: rlespinasse/github-slug-action@v3.x
       - name: Generate template
         run: |
+          echo "===================="
+          echo ${{ env.GITHUB_REPOSITORY_SLUG_URL }}
+          echo "===================="
           cargo build --release
           LOCO_CI_MODE=true LOCO_APP_NAME=stateless_starter LOCO_TEMPLATE=stateless LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new
           cd stateless_starter
