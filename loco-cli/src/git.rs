@@ -117,11 +117,6 @@ fn clone_repo() -> Result<PathBuf, git2::Error> {
         },
     );
 
-    tracing::debug!(
-        branch = from_branch,
-        clone_folder = temp_clone_dir.display().to_string(),
-        "cloning loco"
-    );
     let mut opt = git2::FetchOptions::new();
     opt.depth(1);
 
@@ -131,7 +126,13 @@ fn clone_repo() -> Result<PathBuf, git2::Error> {
     #[cfg(not(feature = "github_ci"))]
     let repo_url = BASE_REPO_URL.to_string();
 
-    tracing::debug!(repo_url, "cloning repo url");
+    tracing::debug!(
+        repo_url,
+        branch = from_branch,
+        clone_folder = temp_clone_dir.display().to_string(),
+        "cloning loco"
+    );
+
     git2::build::RepoBuilder::new()
         .branch(&from_branch)
         .fetch_options(opt)
