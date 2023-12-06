@@ -22,6 +22,15 @@ name = "loco"
 path = "src/bin/main.rs"
 required-features = []
 
+[features]
+default = []
+
+# Enable this feature exclusively for GitHub Actions.
+# The purpose behind this feature is to run tests against the fork repository url when users fork our project and open a pull request, validating the starters projects.
+# When a user forks and opens a pull request from their branch, we must reference the opener's repository, not the local repository.
+# Enabling this feature makes the `LOCO_CURRENT_REPOSITORY` environment variable mandatory.
+github_ci = []
+
 [dependencies]
 clap = { version = "4.4.7", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
