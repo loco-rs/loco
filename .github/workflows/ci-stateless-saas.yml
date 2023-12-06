@@ -96,10 +96,28 @@ jobs:
       - name: Generate template
         run: |
           echo "===================="
-          echo ${{ env.GITHUB_REPOSITORY_SLUG_URL }}
+          echo "Partial variables"
+          echo "   repository owner    : ${{ env.GITHUB_REPOSITORY_OWNER_PART }}"
+          echo "   repository name     : ${{ env.GITHUB_REPOSITORY_NAME_PART }}"
+          echo "Slug variables"
+          echo "   repository          : ${{ env.GITHUB_REPOSITORY_SLUG }}"
+          echo "   repository owner    : ${{ env.GITHUB_REPOSITORY_OWNER_PART_SLUG }}"
+          echo "   repository name     : ${{ env.GITHUB_REPOSITORY_NAME_PART_SLUG }}"
+          echo "   ref                 : ${{ env.GITHUB_REF_SLUG }}"
+          echo "   head ref            : ${{ env.GITHUB_HEAD_REF_SLUG }}"
+          echo "   base ref            : ${{ env.GITHUB_BASE_REF_SLUG }}"
+          echo "   event ref           : ${{ env.GITHUB_EVENT_REF_SLUG }}"
+          echo "Slug URL variables"
+          echo "   repository          : ${{ env.GITHUB_REPOSITORY_SLUG_URL }}"
+          echo "   repository owner    : ${{ env.GITHUB_REPOSITORY_OWNER_PART_SLUG_URL }}"
+          echo "   repository name     : ${{ env.GITHUB_REPOSITORY_NAME_PART_SLUG_URL }}"
+          echo "   ref                 : ${{ env.GITHUB_REF_SLUG_URL }}"
+          echo "   head ref            : ${{ env.GITHUB_HEAD_REF_SLUG_URL }}"
+          echo "   base ref            : ${{ env.GITHUB_BASE_REF_SLUG_URL }}"
+          echo "   event ref           : ${{ env.GITHUB_EVENT_REF_SLUG_URL }}"
           echo "===================="
           cargo build --release
-          LOCO_CI_MODE=true LOCO_APP_NAME=stateless_starter LOCO_TEMPLATE=stateless LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new
+          CURRENT_REPOSITORY=${{ env.GITHUB_REPOSITORY_SLUG_URL }} LOCO_CI_MODE=true LOCO_APP_NAME=stateless_starter LOCO_TEMPLATE=stateless LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new
           cd stateless_starter
           echo "Building generate template..."
           cargo build --release
