@@ -30,6 +30,7 @@ default = []
 # The purpose behind this feature is to run tests against the fork repository url when users fork our project and open a pull request, validating the starters projects.
 # When a user forks and opens a pull request from their branch, we must reference the opener's repository, not the local repository.
 # Enabling this feature makes the `LOCO_CURRENT_REPOSITORY` environment variable mandatory.
+# This is a feature becouse when releaseing a version we don't want the ability to change the source cloning starters
 github_ci = []
 
 [dependencies]

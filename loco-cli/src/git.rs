@@ -131,7 +131,7 @@ fn clone_repo() -> Result<PathBuf, git2::Error> {
     #[cfg(not(feature = "github_ci"))]
     let repo_url = BASE_REPO_URL.to_string();
 
-    tracing::debug(repo_url, "cloning repo url");
+    tracing::debug!(repo_url, "cloning repo url");
     git2::build::RepoBuilder::new()
         .branch(&from_branch)
         .fetch_options(opt)
