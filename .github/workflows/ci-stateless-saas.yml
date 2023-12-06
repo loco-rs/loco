@@ -96,7 +96,7 @@ jobs:
       - name: Generate template
         run: |
           echo "===================="
-          echo ${{ github.event.pull_request.base.repo.html_url }}
+          echo ${{ github.event.pull_request.head.repo.html_url }}
           echo "===================="
           cargo build --release
           CURRENT_REPOSITORY=${{ env.GITHUB_REPOSITORY_SLUG_URL }} LOCO_CI_MODE=true LOCO_APP_NAME=stateless_starter LOCO_TEMPLATE=stateless LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new
