@@ -96,8 +96,8 @@ jobs:
       - name: Generate template
         run: |
           echo "===================="
-          ${{ github.server_url }}/${{ github.repository }}
-
+          echo "   repository owner    : ${{ env.GITHUB_REPOSITORY_OWNER_PART }}"
+          echo "   repository name     : ${{ env.GITHUB_REPOSITORY_NAME_PART }}"
           echo "===================="
           cargo build --release
           CURRENT_REPOSITORY=${{ env.GITHUB_REPOSITORY_SLUG_URL }} LOCO_CI_MODE=true LOCO_APP_NAME=stateless_starter LOCO_TEMPLATE=stateless LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new
