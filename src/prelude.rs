@@ -17,5 +17,6 @@ pub use crate::{
     mailer,
     mailer::Mailer,
     task::{Task, TaskInfo},
-    worker::{self, AppWorker}, Result,
+    worker::{self, AppWorker},
+    Result,
 };
