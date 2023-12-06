@@ -147,8 +147,8 @@ jobs:
         uses: rlespinasse/github-slug-action@v3.x
       - name: Generate template
         run: |
-          cargo build --release
-          LOCO_CI_MODE=true LOCO_APP_NAME=saas_starter LOCO_TEMPLATE=saas LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new
+          cargo build --release --features github_ci
+          RUST_LOG=debug LOCO_CURRENT_REPOSITORY=${{ github.event.pull_request.head.repo.html_url }} LOCO_CI_MODE=true LOCO_APP_NAME=saas_starter LOCO_TEMPLATE=saas LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new
           cd saas_starter
           echo "Building generate template..."
           cargo build --release
