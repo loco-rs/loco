@@ -86,11 +86,6 @@ The response includes a JWT token for authentication, user ID, name, and verific
 }
 ```
 
-- **token** - which is a JWT token which allow to create a requests to auth endpoints. in the [config](@/docs/getting-started/config.md) you can change the default `token expiration` and make sure that `secret` is different between the environments.
-- **pid** - generated id when creating a new user.
-- **name** - the user name.
-- **is_verified** - Is a flag if the user verify his account or not.
-
 - **Token**: A JWT token enabling requests to authentication endpoints. Refer to the [configuration documentation](@/docs/getting-started/config.md) to customize the default token expiration and ensure that the secret differs between environments.
 - **pid** - A unique identifier generated when creating a new user.
 - **Name** - The user's name associated with the account.
