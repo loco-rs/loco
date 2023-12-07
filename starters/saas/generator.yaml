@@ -13,7 +13,7 @@ rules:
       - toml
       - trycmd
   - pattern: PqRwLF2rhHe8J22oBeHy
-    kind: JwtToken
+    kind: a
     file_patterns:
       - test.yaml
       - development.yaml
