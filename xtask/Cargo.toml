@@ -1,0 +1,15 @@
+[workspace]
+
+[package]
+name = "xtask"
+version = "0.2.0"
+edition = "2021"
+authors = ["Dotan Nahum <dotan@rng0.io>", "Elad Kaplan <kaplan.elad@gmail.com>"]
+
+
+[dependencies]
+clap = { version = "4.4.7", features = ["derive"] }
+eyre = "0.6"
+duct = "0.13.6"
+
+[dev-dependencies]
