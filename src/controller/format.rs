@@ -106,7 +106,7 @@ pub fn json<T>(t: T) -> Result<Json<T>> {
 ///     controller::format,
 ///     Result,
 /// };
-/// use axum::Html;
+/// use axum::response::Html;
 ///
 /// async fn endpoint() -> Result<Html<String>> {
 ///    format::html("hello, world")
