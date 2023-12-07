@@ -20,7 +20,7 @@
 //! }
 //! ```
 
-use axum::Json;
+use axum::{response::Html, Json};
 
 use crate::Result;
 
@@ -95,4 +95,28 @@ pub fn text(t: &str) -> Result<String> {
 /// functionality
 pub fn json<T>(t: T) -> Result<Json<T>> {
     Ok(Json(t))
+}
+
+/// Returns an HTML response
+///
+/// # Example:
+///
+/// ```rust
+/// use loco_rs::{
+///     controller::format,
+///     Result,
+/// };
+/// use axum::Html;
+///
+/// async fn endpoint() -> Result<Html<String>> {
+///    format::html("hello, world")
+/// }
+/// ```
+///
+/// # Errors
+///
+/// Currently this function did't return any error. this is for feature
+/// functionality
+pub fn html(content: &str) -> Result<Html<String>> {
+    Ok(Html(content.to_string()))
 }
