@@ -14,6 +14,9 @@ pub fn debug_path() -> Option<PathBuf> {
     env::var("LOCO_DEBUG_PATH").ok().map(PathBuf::from)
 }
 
+#[cfg(not(feature = "github_ci"))]
+const BASE_REPO_URL: &str = "https://github.com/loco-rs/loco";
+
 const DEFAULT_BRANCH: &str = "master";
 
 /// Define the starter template in Loco repository
@@ -114,17 +117,26 @@ fn clone_repo() -> Result<PathBuf, git2::Error> {
         },
     );
 
+    let mut opt = git2::FetchOptions::new();
+    opt.depth(1);
+
+    // read more information in Cargo.toml
+    #[cfg(feature = "github_ci")]
+    let repo_url = env::var("LOCO_CURRENT_REPOSITORY").expect("LOCO_CURRENT_REPOSITORY not set");
+    #[cfg(not(feature = "github_ci"))]
+    let repo_url = BASE_REPO_URL.to_string();
+
     tracing::debug!(
+        repo_url,
         branch = from_branch,
         clone_folder = temp_clone_dir.display().to_string(),
         "cloning loco"
     );
-    let mut opt = git2::FetchOptions::new();
-    opt.depth(1);
+
     git2::build::RepoBuilder::new()
         .branch(&from_branch)
         .fetch_options(opt)
-        .clone("https://github.com/loco-rs/loco", &temp_clone_dir)?;
+        .clone(&repo_url, &temp_clone_dir)?;
 
     Ok(temp_clone_dir)
 }
