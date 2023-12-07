@@ -14,8 +14,8 @@ struct Cli {
 enum Commands {
     /// Run test on all Loco resources
     Test {},
-    /// Prepare for a new release version
-    PrepareRelease {
+    /// Bump loco version in all dependencies places
+    BumpVersion {
         #[arg(name = "VERSION")]
         v: String,
     },
@@ -30,7 +30,7 @@ fn main() -> eyre::Result<()> {
             let res = ci::all_resources(project_dir.as_path());
             println!("{res:#?}");
         }
-        Commands::PreRelease { v } => {
+        Commands::BumpVersion { v } => {
             println!("TBD {v}");
         }
     }
