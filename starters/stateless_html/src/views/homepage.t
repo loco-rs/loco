@@ -56,7 +56,7 @@
 </head>
 
 <body>  
-    Welcome to Logo website 
+    Welcome to Loco website 
     <br/>
     <nav>
         <a href="https://loco.rs" target="_blank">
