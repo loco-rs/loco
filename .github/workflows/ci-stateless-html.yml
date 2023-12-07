@@ -1,4 +1,4 @@
-name: STARTER-STATELESS
+name: STARTER-STATELESS-HTML
 
 on:
   push:
