@@ -20,6 +20,7 @@ const TASK_T: &str = include_str!("templates/task.t");
 const TASK_TEST_T: &str = include_str!("templates/task_test.t");
 
 const WORKER_T: &str = include_str!("templates/worker.t");
+const WORKER_TEST_T: &str = include_str!("templates/worker_test.t");
 
 pub enum Component {
     #[cfg(feature = "with-db")]
@@ -80,8 +81,10 @@ pub fn generate<H: Hooks>(component: Component) -> Result<()> {
             rrgen.generate(TASK_TEST_T, &vars)?;
         }
         Component::Worker { name } => {
-            let vars = json!({"name": name});
+            let vars = json!({"name": name, "pkg_name": H::app_name()});
+
             rrgen.generate(WORKER_T, &vars)?;
+            rrgen.generate(WORKER_TEST_T, &vars)?;
         }
         Component::Mailer { name } => {
             let vars = json!({"name": name});

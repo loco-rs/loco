@@ -66,3 +66,17 @@ impl Hooks for App {
 // ..
 }
 ```
+
+## Generate a Worker
+
+To automatically add a worker using `loco generate`, execute the following command:
+
+```sh
+cargo loco generate worker report_worker
+```
+
+The worker generator creates a worker file associated with your app and generates a test template file, enabling you to verify your worker.
+
+### Testing a Worker
+
+For comprehensive testing of integrated background jobs, please refer to the detailed documentation [here](@/docs/testing/worker.md)

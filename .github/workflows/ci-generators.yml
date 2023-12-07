@@ -78,7 +78,7 @@ jobs:
           APP_DATABASE_URI: postgres://postgress:postgress@localhost:5432/postgress_test
 
       - name: worker
-        run: cargo run -- generate worker report_worker && cargo build
+        run: cargo run -- generate worker report_worker && cargo build && cargo test workers::report_worker::test_run_report_worker_worker
         working-directory: ./examples/demo
         env:
           APP_REDIS_URI: redis://localhost:${{job.services.redis.ports[6379]}}
