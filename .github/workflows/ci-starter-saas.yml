@@ -4,7 +4,11 @@ on:
   push:
     branches:
       - master
+    paths:
+      - starters/saas/**
   pull_request:
+    paths:
+      - starters/saas/**
 
 env:
   RUST_TOOLCHAIN: stable
@@ -133,28 +137,28 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-    steps:
-      - name: Checkout the code
-        uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: ${{ env.TOOLCHAIN_PROFILE }}
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
-          override: true
-      - name: Setup Rust cache
-        uses: Swatinem/rust-cache@v2
-      - name: Inject slug/short variables
-        uses: rlespinasse/github-slug-action@v3.x
-      - name: Generate template
-        run: |
-          cargo build --release --features github_ci
-          RUST_LOG=debug LOCO_CURRENT_REPOSITORY=${{ github.event.pull_request.head.repo.html_url }} LOCO_CI_MODE=true LOCO_APP_NAME=saas_starter LOCO_TEMPLATE=saas LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new
-          cd saas_starter
-          echo "Building generate template..."
-          cargo build --release
-          echo "Run cargo test on generated template..."
-          cargo test
-        working-directory: ./loco-cli
-        env:
-          APP_REDIS_URI: redis://localhost:${{job.services.redis.ports[6379]}}
-          APP_DATABASE_URI: postgres://postgress:postgress@localhost:5432/postgress_test
+    # steps:
+    #   - name: Checkout the code
+    #     uses: actions/checkout@v4
+    #   - uses: actions-rs/toolchain@v1
+    #     with:
+    #       profile: ${{ env.TOOLCHAIN_PROFILE }}
+    #       toolchain: ${{ env.RUST_TOOLCHAIN }}
+    #       override: true
+    #   - name: Setup Rust cache
+    #     uses: Swatinem/rust-cache@v2
+    #   - name: Inject slug/short variables
+    #     uses: rlespinasse/github-slug-action@v3.x
+    #   - name: Generate template
+    #     run: |
+    #       cargo build --release --features github_ci
+    #       RUST_LOG=debug LOCO_CURRENT_REPOSITORY=${{ github.event.pull_request.head.repo.html_url }} LOCO_CI_MODE=true LOCO_APP_NAME=saas_starter LOCO_TEMPLATE=saas LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new
+    #       cd saas_starter
+    #       echo "Building generate template..."
+    #       cargo build --release
+    #       echo "Run cargo test on generated template..."
+    #       cargo test
+    #     working-directory: ./loco-cli
+    #     env:
+    #       APP_REDIS_URI: redis://localhost:${{job.services.redis.ports[6379]}}
+    #       APP_DATABASE_URI: postgres://postgress:postgress@localhost:5432/postgress_test

@@ -1,11 +1,6 @@
 ---
 description: Stateless service (minimal, no db)
 rules:
-  - pattern: loco-rs = \{ path = +.(../../)+.
-    skip_in_ci: true
-    kind: loco-rs = { version = "*"
-    file_patterns:
-      - Cargo.toml
   - pattern: loco_starter_template
     kind: LibName
     file_patterns:

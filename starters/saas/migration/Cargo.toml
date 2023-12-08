@@ -10,7 +10,7 @@ path = "src/lib.rs"
 
 [dependencies]
 async-std = { version = "1", features = ["attributes", "tokio1"] }
-loco-rs = { path = "../../../" }
+loco-rs = { version = "0.1.5" }
 
 [dependencies.sea-orm-migration]
 version = "0.12.4"

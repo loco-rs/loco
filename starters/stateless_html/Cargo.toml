@@ -9,7 +9,7 @@ edition = "2021"
 
 [dependencies]
 
-loco-rs = { path = "../../", default-features = false, features = ["cli"] }
+loco-rs = { version = "0.1.5", default-features = false, features = ["cli"] }
 serde = "*"
 serde_json = "*"
 eyre = "*"
@@ -32,7 +32,7 @@ required-features = []
 [dev-dependencies]
 serial_test = "*"
 rstest = "*"
-loco-rs = { path = "../../", default-features = false, features = [
+loco-rs = { version = "0.1.5", default-features = false, features = [
     "testing",
     "cli",
 ] }

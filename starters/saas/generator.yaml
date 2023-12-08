@@ -1,11 +1,6 @@
 ---
 description: Saas app (with DB and user auth)
 rules:
-  - pattern: loco-rs = \{ path = +.(.*/)+.
-    skip_in_ci: true
-    kind: loco-rs = { version = "*"
-    file_patterns:
-      - toml
   - pattern: loco_starter_template
     kind: LibName
     file_patterns:
