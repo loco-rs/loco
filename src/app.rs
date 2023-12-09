@@ -4,7 +4,6 @@ cfg_if::cfg_if! {
     if #[cfg(feature = "with-db")] {
         use std::path::Path;
         use sea_orm::DatabaseConnection;
-        use crate::Result;
     } else {}
 }
 
@@ -17,6 +16,7 @@ use crate::{
     mailer::EmailSender,
     task::Tasks,
     worker::{Pool, Processor, RedisConnectionManager},
+    Result,
 };
 
 /// Represents the application context for a web server.
@@ -110,6 +110,11 @@ pub trait Hooks {
     /// }
     /// ```
     fn app_name() -> &'static str;
+
+    async fn before_run(_app_context: &AppContext) -> Result<()> {
+        Ok(())
+    }
+
     /// Defines the application's routing configuration.
     fn routes() -> AppRoutes;
     /// Connects custom workers to the application using the provided

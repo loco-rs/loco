@@ -2,6 +2,10 @@
 
 ## vNext
 
+* Added: `Hooks::before_run` with a default blank implementation. You can now code some custom loading of resources or other things before the app runs
+* Added: an LLM inference example, text generation in Rust, using an API (`examples/inference`)
+
+
 ## 0.1.5
 
 * Added: `format:html` [https://github.com/loco-rs/loco/issues/74](https://github.com/loco-rs/loco/issues/74)

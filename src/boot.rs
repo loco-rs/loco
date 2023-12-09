@@ -278,6 +278,8 @@ pub async fn create_app<H: Hooks, M: MigratorTrait>(
         redis::converge(pool, &app_context.config.redis).await?;
     }
 
+    H::before_run(&app_context).await?;
+
     run_app::<H>(&mode, app_context)
 }
 
@@ -288,6 +290,8 @@ pub async fn create_app<H: Hooks>(mode: StartMode, environment: &str) -> Result<
     if let Some(pool) = &app_context.redis {
         redis::converge(pool, &app_context.config.redis).await?;
     }
+
+    H::before_run(&app_context).await?;
 
     run_app::<H>(&mode, app_context)
 }

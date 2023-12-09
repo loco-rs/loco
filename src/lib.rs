@@ -22,7 +22,7 @@
 //! | `cli`      | true    | Expose Cli commands.        |
 //! | `testing   | false   | Test Utilities Module.      |
 //! | `with-db`  | true    | with-db.                    |
-use self::errors::Error;
+pub use self::errors::Error;
 
 mod banner;
 pub mod prelude;
