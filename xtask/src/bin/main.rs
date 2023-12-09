@@ -1,5 +1,5 @@
 use cargo_metadata::{semver::Version, MetadataCommand, Package};
-use clap::{Parser, Subcommand};
+use clap::{ArgAction::SetFalse, Parser, Subcommand};
 use std::env;
 
 #[derive(Parser)]
@@ -18,6 +18,8 @@ enum Commands {
     BumpVersion {
         #[arg(name = "VERSION")]
         new_version: Version,
+        #[arg(short, long, action = SetFalse)]
+        exclude_starters: bool,
     },
 }
 
@@ -31,7 +33,10 @@ fn main() -> eyre::Result<()> {
             xtask::out::ci_results(&res);
             xtask::CmdExit::ok()
         }
-        Commands::BumpVersion { new_version } => {
+        Commands::BumpVersion {
+            new_version,
+            exclude_starters,
+        } => {
             let meta = MetadataCommand::new()
                 .manifest_path("./Cargo.toml")
                 .current_dir(&project_dir)
@@ -42,7 +47,12 @@ fn main() -> eyre::Result<()> {
                 "upgrading loco version from {} to {}",
                 root.version, new_version,
             ))? {
-                xtask::bump_version::bump(project_dir.as_path(), &new_version)?;
+                xtask::bump_version::BumpVersion {
+                    base_dir: project_dir,
+                    version: new_version,
+                    bump_starters: exclude_starters,
+                }
+                .run()?;
             }
             xtask::CmdExit::ok()
         }
