@@ -1,4 +1,8 @@
-# Welcome to Loco :train:
+# LLM Inference example
+
+This example showcases using `rust-bert` for LLM inference in realtime with an API.
+
+------
 
 Loco is a web and API framework running on Rust.
 
