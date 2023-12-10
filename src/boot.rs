@@ -109,7 +109,7 @@ pub struct BootResult {
 /// # Errors
 ///
 /// When could not initialize the application.
-pub async fn start<H: Hooks>(boot: BootResult) -> Result<()> {
+pub async fn start(boot: BootResult) -> Result<()> {
     print_banner(&boot);
 
     let BootResult {
@@ -125,10 +125,10 @@ pub async fn start<H: Hooks>(boot: BootResult) -> Result<()> {
                     tracing::error!("Error in processing: {:?}", err);
                 }
             });
-            serve::<H>(router, &app_context).await?;
+            serve(router, &app_context.config).await?;
         }
         (Some(router), None) => {
-            serve::<H>(router, &app_context).await?;
+            serve(router, &app_context.config).await?;
         }
         (None, Some(processor)) => {
             process(processor).await?;
@@ -220,12 +220,11 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
 }
 
 /// Starts the server using the provided [`Router`] and [`Config`].
-async fn serve<H: Hooks>(app: Router, ctx: &AppContext) -> Result<()> {
-    let router = H::after_router(app, ctx)?;
+async fn serve(app: Router, config: &Config) -> Result<()> {
     let listener =
-        tokio::net::TcpListener::bind(&format!("0.0.0.0:{}", ctx.config.server.port)).await?;
+        tokio::net::TcpListener::bind(&format!("0.0.0.0:{}", config.server.port)).await?;
 
-    axum::serve(listener, router).await?;
+    axum::serve(listener, app).await?;
 
     Ok(())
 }
@@ -305,19 +304,20 @@ pub fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Result<Bo
     match mode {
         StartMode::ServerOnly => {
             let app = H::routes().to_router(app_context.clone())?;
-
+            let router = H::after_router(app, &app_context)?;
             Ok(BootResult {
                 app_context,
-                router: Some(app),
+                router: Some(router),
                 processor: None,
             })
         }
         StartMode::ServerAndWorker => {
             let processor = create_processor::<H>(&app_context)?;
             let app = H::routes().to_router(app_context.clone())?;
+            let router = H::after_router(app, &app_context)?;
             Ok(BootResult {
                 app_context,
-                router: Some(app),
+                router: Some(router),
                 processor: Some(processor),
             })
         }
