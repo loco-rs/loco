@@ -1,6 +1,6 @@
 to: "dockerfile"
 skip_exists: true
-message: "Docker file generated successfully."
+message: "Dockerfile generated successfully."
 ---
 FROM rust:1.74-slim
 

@@ -23,6 +23,7 @@ const WORKER_T: &str = include_str!("templates/worker.t");
 const WORKER_TEST_T: &str = include_str!("templates/worker_test.t");
 
 const DEPLOYMENT_DOCKER_T: &str = include_str!("templates/deployment_docker.t");
+const DEPLOYMENT_DOCKER_IGNORE_T: &str = include_str!("templates/deployment_docker_ignore.t");
 
 const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[("Docker", DeploymentKind::Docker)];
 
@@ -124,6 +125,7 @@ pub fn generate<H: Hooks>(component: Component) -> Result<()> {
             match deployment_kind {
                 DeploymentKind::Docker => {
                     rrgen.generate(DEPLOYMENT_DOCKER_T, &vars)?;
+                    rrgen.generate(DEPLOYMENT_DOCKER_IGNORE_T, &vars)?;
                 }
             }
         }
