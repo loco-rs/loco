@@ -132,6 +132,8 @@ enum ComponentArg {
         /// Name of the thing to generate
         name: String,
     },
+    /// Generate a deployment infrastructure
+    Deployment {},
 }
 
 impl From<ComponentArg> for Component {
@@ -145,6 +147,7 @@ impl From<ComponentArg> for Component {
             ComponentArg::Task { name } => Self::Task { name },
             ComponentArg::Worker { name } => Self::Worker { name },
             ComponentArg::Mailer { name } => Self::Mailer { name },
+            ComponentArg::Deployment {} => Self::Deployment {},
         }
     }
 }
