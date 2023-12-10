@@ -85,6 +85,7 @@ impl Error {
     pub fn msg(err: impl std::error::Error + Send + Sync + 'static) -> Self {
         Self::Message(err.to_string()) //.bt()
     }
+    #[must_use]
     pub fn string(s: &str) -> Self {
         Self::Message(s.to_string())
     }
