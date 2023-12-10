@@ -30,15 +30,14 @@ We took special care that **all of your work** is embbedded in a **single** bina
 
 There are a few configuration sections that are important to review and set accordingly when deploying to production:
 
-* Logger:
+- Logger:
 
 ```yaml
 logger:
-    level: <your production log level>
+  level: <your production log level>
 ```
 
-
-* Server:
+- Server:
 
 ```yaml
 server:
@@ -48,7 +47,7 @@ server:
   host: http://localhost
 ```
 
-* Database:
+- Database:
 
 ```yaml
 database:
@@ -56,7 +55,7 @@ database:
   uri: postgres://loco:loco@localhost:5432/loco_app
 ```
 
-* Mailer:
+- Mailer:
 
 ```yaml
 mailer:
@@ -68,7 +67,7 @@ mailer:
     host: localhost
 ```
 
-* Redis:
+- Redis:
 
 ```
 redis:
@@ -76,7 +75,7 @@ redis:
   uri: redis://127.0.0.1/
 ```
 
-* JWT secret:
+- JWT secret:
 
 ```yaml
 auth:
@@ -84,4 +83,20 @@ auth:
   jwt:
     # Secret key for token generation and verification
     secret: ...
+```
+
+## Generate
+
+Loco offers a deployment template enabling the creation of a deployment infrastructure.
+
+Presently, we exclusively support Docker deployment, but stay tuned for future updates! 🙂
+
+```sh
+cargo loco generate deployment
+? ❯ Choose your deployment ›
+❯ Docker
+..
+✔ ❯ Choose your deployment · Docker
+skipped (exists): "dockerfile"
+added: ".dockerignore"
 ```
