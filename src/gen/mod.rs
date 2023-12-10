@@ -35,7 +35,7 @@ impl FromStr for DeploymentKind {
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "docker" => Ok(DeploymentKind::Docker),
+            "docker" => Ok(Self::Docker),
             _ => Err(()),
         }
     }
