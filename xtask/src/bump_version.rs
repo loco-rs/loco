@@ -46,7 +46,6 @@ impl BumpVersion {
 
             println!("Testing starters CI");
 
-            println!("Testing starters CI");
             let starter_projects: Vec<ci::RunResults> =
                 ci::inner_folders(&self.base_dir.join(utils::FOLDER_STARTERS))?;
 
