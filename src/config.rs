@@ -142,6 +142,17 @@ pub struct Middlewares {
     pub catch_panic: Option<EnableMiddleware>,
     /// Setting a global timeout for the requests
     pub timeout_request: Option<TimeoutRequestMiddleware>,
+    // Setting cors configuration
+    pub cors: Option<CorsMiddleware>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct CorsMiddleware {
+    pub enable: bool,
+    pub allow_origins: Option<Vec<String>>,
+    pub allow_headers: Option<Vec<String>>,
+    pub allow_methods: Option<Vec<String>>,
+    pub max_age: Option<u64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
