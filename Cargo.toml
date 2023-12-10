@@ -35,7 +35,7 @@ sea-orm = { version = "0.12.4", features = [
   "macros",
 ], optional = true }
 
-tokio = { version = "1.33.0", features = ["full"] }
+tokio = { version = "1.33.0", default-features = false }
 # the rest
 
 serde = "1"
