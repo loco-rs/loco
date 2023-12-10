@@ -2,29 +2,29 @@
 
 The Loco xtask serves as a loco development helper, streamlining various tasks on the library, such as running all tests with a single command and preparing for a new release and maybe more.
 
-_Current Progress:_
-The xtask is an under development with the following goals:
+## Bump version
 
-- Implement all githbu actions CI functions
+To release a new Loco version, execute the following command:
 
-  - allow to run xtask test all which run all our github action ci locally.
-  - Migrate all yaml ci code to trigger xtask
+```rust
+cargo run bump-version VERSION
+```
 
-    ```
-    ...
-       steps:
-      - name: Checkout the code
-        uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: ${{ env.TOOLCHAIN_PROFILE }}
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
-          override: true
-          components: rustfmt
-      - run: cargo run test --folder [.|/examples/demo|starters/saas|...] action fmt|clippy|test|all
-        working-directory: ./xtask
-    ...
+The `bump-version` command performs the following steps:
 
-    ```
+- Updates the Loco library in [cargo.toml](../Cargo.toml)
+- Replaces all starters with ../../loco-rs to enable CI testing for the targeted release version
+  - If the CI process fails, the operation is halted
+- Locks all starters to the specified Loco version
 
-- Release version: still under investigation
+### Release Steps
+
+- Create new branch `git checkout -b bump-version-[VERSION]`
+- run the following script for update all relevant resources
+  ```sh
+  cd xtask
+  cargo run bump-version VERSION
+  ```
+- push the branch and wait for CI will pass
+- publish the new crate
+- merge to to main

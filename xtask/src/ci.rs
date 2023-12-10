@@ -1,12 +1,9 @@
+use crate::errors::Result;
+use crate::utils;
 use duct::cmd;
-use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Output;
-
-const FOLDER_EXAMPLES: &str = "examples";
-const FOLDER_STARTERS: &str = "starters";
-const FOLDER_LOCO_CLI: &str = "loco-cli";
 
 const FMT_TEST: [&str; 3] = ["test", "--all-features", "--all"];
 const FMT_ARGS: [&str; 4] = ["fmt", "--all", "--", "--check"];
@@ -29,35 +26,50 @@ pub struct RunResults {
     pub test: bool,
 }
 
+impl RunResults {
+    #[must_use]
+    pub fn is_valid(&self) -> bool {
+        self.fmt && self.clippy && self.test
+    }
+}
+
 /// Run CI on all Loco resources (lib, cli, starters, examples, etc.).
-pub fn all_resources(base_dir: &Path) -> Vec<RunResults> {
+///
+/// # Errors
+/// when could not run ci on the given resource
+///
+pub fn all_resources(base_dir: &Path) -> Result<Vec<RunResults>> {
     let mut result = vec![];
     result.push(run(base_dir).expect("loco lib mast be tested"));
-    result.extend(inner_folders(base_dir, FOLDER_EXAMPLES));
-    result.extend(inner_folders(base_dir, FOLDER_STARTERS));
-    result.extend(inner_folders(base_dir, FOLDER_LOCO_CLI));
+    result.extend(inner_folders(&base_dir.join(utils::FOLDER_EXAMPLES))?);
+    result.extend(inner_folders(&base_dir.join(utils::FOLDER_STARTERS))?);
+    result.extend(inner_folders(&base_dir.join(utils::FOLDER_LOCO_CLI))?);
 
-    result
+    Ok(result)
 }
 
 /// Run CI on inner folders.
 ///
 /// For example, run CI on all examples/starters folders dynamically by selecting the first root folder and running CI one level down.
-pub fn inner_folders(base_dir: &Path, folder: &str) -> Vec<RunResults> {
-    let paths = fs::read_dir(base_dir.join(folder)).unwrap();
+///
+/// # Errors
+/// when could not get cargo folders
+pub fn inner_folders(root_folder: &Path) -> Result<Vec<RunResults>> {
+    let cargo_projects = utils::get_cargo_folders(root_folder)?;
     let mut results = vec![];
 
-    for path in paths {
-        if let Some(res) = run(&path.unwrap().path()) {
+    for project in cargo_projects {
+        if let Some(res) = run(&project) {
             results.push(res);
         }
     }
-    results
+    Ok(results)
 }
 
 /// Run the entire CI flow on the given folder path.
 ///
 /// Returns `None` if it is not a Rust folder.
+#[must_use]
 pub fn run(dir: &Path) -> Option<RunResults> {
     if dir.join("Cargo.toml").exists() {
         Some(RunResults {
@@ -72,31 +84,31 @@ pub fn run(dir: &Path) -> Option<RunResults> {
 }
 
 /// Run cargo test on the given directory.
-fn cargo_test(dir: &Path) -> Result<Output, std::io::Error> {
+fn cargo_test(dir: &Path) -> Result<Output> {
     println!(
         "Running `cargo {}` in folder {}",
         FMT_TEST.join(" "),
         dir.display()
     );
-    cmd("cargo", FMT_TEST.as_slice()).dir(dir).run()
+    Ok(cmd("cargo", FMT_TEST.as_slice()).dir(dir).run()?)
 }
 
 /// Run cargo fmt on the given directory.
-fn cargo_fmt(dir: &Path) -> Result<Output, std::io::Error> {
+fn cargo_fmt(dir: &Path) -> Result<Output> {
     println!(
         "Running `cargo {}` in folder {}",
         FMT_ARGS.join(" "),
         dir.display()
     );
-    cmd("cargo", FMT_ARGS.as_slice()).dir(dir).run()
+    Ok(cmd("cargo", FMT_ARGS.as_slice()).dir(dir).run()?)
 }
 
 /// Run cargo clippy on the given directory.
-fn cargo_clippy(dir: &Path) -> Result<Output, std::io::Error> {
+fn cargo_clippy(dir: &Path) -> Result<Output> {
     println!(
         "Running `cargo {}` in folder {}",
         FMT_CLIPPY.join(" "),
         dir.display()
     );
-    cmd("cargo", FMT_CLIPPY.as_slice()).dir(dir).run()
+    Ok(cmd("cargo", FMT_CLIPPY.as_slice()).dir(dir).run()?)
 }
