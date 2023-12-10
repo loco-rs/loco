@@ -5,12 +5,12 @@
 use super::routes::Routes;
 use crate::environment::Environment;
 use crate::{app::AppContext, config, Result};
-use axum::{http::Request, Router as AXRouter};
+use axum::{http, Router as AXRouter};
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::time::Duration;
 use tower_http::{
-    add_extension::AddExtensionLayer, catch_panic::CatchPanicLayer, timeout::TimeoutLayer,
+    add_extension::AddExtensionLayer, catch_panic::CatchPanicLayer, cors, timeout::TimeoutLayer,
     trace::TraceLayer,
 };
 
@@ -183,12 +183,61 @@ impl AppRoutes {
                 app = Self::add_timeout_middleware(app, timeout_request);
             }
         }
-        Ok(app.with_state(ctx))
+
+        if let Some(cors) = &ctx.config.server.middlewares.cors {
+            if cors.enable {
+                app = Self::add_cors_middleware(app, cors)?;
+            }
+        }
+
+        let router = app.with_state(ctx);
+        Ok(router)
+    }
+
+    fn add_cors_middleware(
+        app: AXRouter<AppContext>,
+        config: &config::CorsMiddleware,
+    ) -> Result<AXRouter<AppContext>> {
+        let mut cors: cors::CorsLayer = cors::CorsLayer::permissive();
+
+        if let Some(allow_origins) = &config.allow_origins {
+            let mut list = vec![];
+            for origins in allow_origins {
+                list.push(origins.parse()?);
+            }
+            cors = cors.allow_origin(list);
+        }
+
+        if let Some(allow_headers) = &config.allow_headers {
+            let mut headers = vec![];
+            for header in allow_headers {
+                headers.push(header.parse()?);
+            }
+            cors = cors.allow_headers(headers);
+        }
+
+        if let Some(allow_methods) = &config.allow_methods {
+            let mut methods = vec![];
+            for method in allow_methods {
+                methods.push(method.parse()?);
+            }
+            cors = cors.allow_methods(methods);
+        }
+
+        if let Some(max_age) = config.max_age {
+            cors = cors.max_age(Duration::from_secs(max_age));
+        }
+
+        let app = app.layer(cors);
+        tracing::info!("[Middleware] Adding cors");
+
+        Ok(app)
     }
 
     fn add_catch_panic(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
         app.layer(CatchPanicLayer::new())
     }
+
     fn add_limit_payload_middleware(
         app: AXRouter<AppContext>,
         limit: &config::LimitPayloadMiddleware,
@@ -211,7 +260,7 @@ impl AppRoutes {
     ) -> AXRouter<AppContext> {
         let app = app
             .layer(
-                TraceLayer::new_for_http().make_span_with(|request: &Request<_>| {
+                TraceLayer::new_for_http().make_span_with(|request: &http::Request<_>| {
                     let request_id = uuid::Uuid::new_v4();
                     let user_agent = request
                         .headers()

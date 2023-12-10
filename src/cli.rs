@@ -252,7 +252,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             };
 
             let boot_result = create_app::<H, M>(start_mode, &environment).await?;
-            start(boot_result).await?;
+            start::<H>(boot_result).await?;
         }
         #[cfg(feature = "with-db")]
         Commands::Db { command } => {

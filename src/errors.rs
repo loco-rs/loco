@@ -1,6 +1,10 @@
 //! # Application Error Handling
 
-use axum::http::StatusCode;
+use axum::http::{
+    header::{InvalidHeaderName, InvalidHeaderValue},
+    method::InvalidMethod,
+    StatusCode,
+};
 use config::ConfigError;
 use lettre::{address::AddressError, transport::smtp};
 
@@ -61,6 +65,15 @@ pub enum Error {
 
     #[error("")]
     CustomError(StatusCode, ErrorDetail),
+
+    #[error(transparent)]
+    InvalidHeaderValue(#[from] InvalidHeaderValue),
+
+    #[error(transparent)]
+    InvalidHeaderName(#[from] InvalidHeaderName),
+
+    #[error(transparent)]
+    InvalidMethod(#[from] InvalidMethod),
 
     #[cfg(feature = "with-db")]
     // Model
