@@ -32,7 +32,7 @@ fn main() -> eyre::Result<()> {
     let res = match cli.command {
         Commands::Test {} => {
             let res = xtask::ci::all_resources(project_dir.as_path())?;
-            xtask::out::print_ci_results(&res);
+            println!("{}", xtask::out::print_ci_results(&res));
             xtask::CmdExit::ok()
         }
         Commands::BumpVersion {
