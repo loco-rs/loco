@@ -95,8 +95,8 @@ jobs:
         run: cargo run -- generate task mytask && cargo build && cargo test tasks::mytask::test_can_run_mytask
         working-directory: ./examples/demo
         env:
-          APP_REDIS_URI: redis://localhost:${{job.services.redis.ports[6379]}}
-          APP_DATABASE_URI: postgres://postgress:postgress@localhost:5432/postgress_test
+          REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
+          DATABASE_URL: postgres://postgress:postgress@localhost:5432/postgress_test
 
       - name: docker deployment
         run: cargo run -- generate deployment
@@ -105,4 +105,3 @@ jobs:
           LOCO_DEPLOYMENT_KIND: docker
           REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
           DATABASE_URL: postgres://postgress:postgress@localhost:5432/postgress_test
-
