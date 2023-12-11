@@ -278,7 +278,6 @@ impl Config {
 
         let content = fs::read_to_string(selected_path)?;
         let rendered = crate::tera::render_string(&content, &json!({}))?;
-        println!("{rendered}");
 
         Ok(serde_yaml::from_str(&rendered)?)
     }

@@ -51,7 +51,7 @@ Loco is compatible with Axum middlewares. Simply implement `FromRequestParts` in
 
 <details>
 <summary>Injecting Custom State or Layers in Loco?</summary>
-Yes, you can achieve this by implementing `Hooks::after_router`. This hook receive Axum routers that Loco has already built, allowing you to seamlessly add any available Axum functions that suit your needs.
+Yes, you can achieve this by implementing `Hooks::after_routes`. This hook receive Axum routers that Loco has already built, allowing you to seamlessly add any available Axum functions that suit your needs.
 </details>
 
 <br/>

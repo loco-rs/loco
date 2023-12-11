@@ -6,7 +6,8 @@ cfg_if::cfg_if! {
         use sea_orm::DatabaseConnection;
     } else {}
 }
-use axum::Router as AXRouter;
+use async_trait::async_trait;
+use axum::Router as AxumRouter;
 
 use crate::{
     config::Config,
@@ -17,7 +18,6 @@ use crate::{
     worker::{Pool, Processor, RedisConnectionManager},
     Result,
 };
-use async_trait::async_trait;
 
 /// Represents the application context for a web server.
 ///
@@ -111,16 +111,19 @@ pub trait Hooks {
     /// ```
     fn app_name() -> &'static str;
 
-    /// Invoke this function after the Loco routers have been constructed. This function enables you to configure custom Axum logics, such as layers, that are compatible with Axum.
+    /// Invoke this function after the Loco routers have been constructed. This
+    /// function enables you to configure custom Axum logics, such as layers,
+    /// that are compatible with Axum.
     ///
     /// # Errors
     /// Axum router error
-    fn after_router(router: AXRouter, _ctx: &AppContext) -> Result<AXRouter> {
+    fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
         Ok(router)
     }
 
     /// Calling the function before run the app
-    /// You can now code some custom loading of resources or other things before the app runs
+    /// You can now code some custom loading of resources or other things before
+    /// the app runs
     async fn before_run(_app_context: &AppContext) -> Result<()> {
         Ok(())
     }
