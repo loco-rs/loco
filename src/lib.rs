@@ -33,6 +33,7 @@ pub mod db;
 pub mod model;
 #[cfg(feature = "with-db")]
 pub mod schema;
+mod tera;
 
 pub mod app;
 #[cfg(feature = "cli")]

@@ -4,12 +4,13 @@
 //! load configuration settings for the application.
 use std::path::{Path, PathBuf};
 
-use config::{ConfigError, File};
+use fs_err as fs;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use tracing::{info, warn};
+use serde_json::json;
+use tracing::info;
 
-use crate::{environment::Environment, logger, Error, Result as AppResult};
+use crate::{environment::Environment, logger, Error, Result};
 
 lazy_static! {
     static ref DEFAULT_FOLDER: PathBuf = PathBuf::from("config");
@@ -181,7 +182,6 @@ pub struct EnableMiddleware {
 pub struct Mailer {
     pub smtp: Option<SmtpMailer>,
 
-    #[cfg(feature = "testing")]
     #[serde(default)]
     pub stub: bool,
 }
@@ -233,7 +233,7 @@ impl Config {
     /// async fn load(environment: &Environment) -> Config {
     ///     Config::new(environment).expect("configuration loading")
     /// }
-    pub fn new(env: &Environment) -> Result<Self, ConfigError> {
+    pub fn new(env: &Environment) -> Result<Self> {
         let config = Self::from_folder(env, DEFAULT_FOLDER.as_path())?;
         // TODO(review): Do we really want to print all config data to the logs? it
         // might be include sensitive data such DB user password, auth secrets etc...
@@ -262,33 +262,32 @@ impl Config {
     /// async fn load(environment: &Environment) -> Config{
     ///     Config::from_folder(environment, &PathBuf::from("config")).expect("configuration loading")
     /// }
-    pub fn from_folder(env: &Environment, path: &Path) -> Result<Self, ConfigError> {
-        let builder = config::Config::builder();
+    pub fn from_folder(env: &Environment, path: &Path) -> Result<Self> {
+        // by order of precedence
+        let files = vec![
+            path.join(format!("{env}.local.yaml")),
+            path.join(format!("{env}.yaml")),
+        ];
 
-        // "regular" config/[env].yaml resolution
-        let builder = builder.add_source(
-            File::with_name(&path.join(format!("{env}.yaml")).display().to_string()).required(true),
-        );
+        let selected_path = files
+            .iter()
+            .find(|p| p.exists())
+            .ok_or_else(|| Error::Message("no configuration file found".to_string()))?;
 
-        // local.yaml overrides
-        let local = path.join("local.yaml");
-        let builder = if local.exists() {
-            warn!(path = ?local, "local configuration found, will override anything else to support local development which is not pushed to source control. to avoid this behavior remove this file");
-            builder.add_source(File::with_name(&local.display().to_string()))
-        } else {
-            builder
-        };
+        info!(selected_path =? selected_path, "loading environment from");
 
-        // final ENV vars overrides
-        let builder = builder.add_source(config::Environment::with_prefix("APP").separator("_"));
-        builder.build()?.try_deserialize()
+        let content = fs::read_to_string(selected_path)?;
+        let rendered = crate::tera::render_string(&content, &json!({}))?;
+        println!("{rendered}");
+
+        Ok(serde_yaml::from_str(&rendered)?)
     }
 
     /// Get a reference to the JWT configuration.
     ///
     /// # Errors
     /// return an error when jwt token not configured
-    pub fn get_jwt_config(&self) -> AppResult<&JWT> {
+    pub fn get_jwt_config(&self) -> Result<&JWT> {
         self.auth
             .as_ref()
             .and_then(|auth| auth.jwt.as_ref())

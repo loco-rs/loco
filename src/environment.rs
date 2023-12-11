@@ -22,7 +22,7 @@ use crate::Result;
 
 #[must_use]
 pub fn resolve_from_env() -> Option<String> {
-    std::env::var("RR_ENV")
+    std::env::var("LOCO_ENV")
         .or_else(|_| std::env::var("RAILS_ENV"))
         .or_else(|_| std::env::var("NODE_ENV"))
         .ok()
@@ -48,7 +48,7 @@ impl Environment {
     /// Returns a [`ConfigError`] if an error occurs during loading
     /// configuration file an parse into [`Config`] struct.
     pub fn load(&self) -> Result<Config> {
-        Ok(Config::new(self)?)
+        Config::new(self)
     }
 
     /// Load environment variables from the given config path
@@ -58,7 +58,7 @@ impl Environment {
     /// Returns a [`ConfigError`] if an error occurs during loading
     /// configuration file an parse into [`Config`] struct.
     pub fn load_from_folder(&self, path: &Path) -> Result<Config> {
-        Ok(Config::from_folder(self, path)?)
+        Config::from_folder(self, path)
     }
 }
 

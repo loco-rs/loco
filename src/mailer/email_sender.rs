@@ -64,7 +64,6 @@ impl EmailSender {
         })
     }
 
-    #[cfg(feature = "testing")]
     #[must_use]
     pub fn stub() -> Self {
         Self {

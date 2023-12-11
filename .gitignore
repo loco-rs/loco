@@ -4,6 +4,7 @@ todo.txt
 # local dev
 
 **/config/local.yaml
+**/config/*.local.yaml
 
 # Local Netlify folder
 .netlify

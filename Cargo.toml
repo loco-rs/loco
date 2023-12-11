@@ -69,7 +69,6 @@ tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 # cli/migrations
 duct = "0.13.6"
 
-config = "0.13.3"
 tower-http = { version = "0.5.0", features = [
   "trace",
   "catch-panic",

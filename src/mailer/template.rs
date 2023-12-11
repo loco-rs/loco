@@ -15,9 +15,8 @@
 //! ```
 
 use include_dir::Dir;
-use tera::{Context, Tera};
 
-use crate::{errors::Error, Result};
+use crate::{errors::Error, tera, Result};
 
 /// The filename for the subject template file.
 const SUBJECT: &str = "subject.t";
@@ -67,10 +66,9 @@ impl<'a> Template<'a> {
         let html_t = embedded_file(self.dir, HTML)?;
 
         // TODO(consider): check+consider offloading to tokio async this work
-        let context = Context::from_serialize(locals)?;
-        let text = Tera::one_off(&text_t, &context, true)?;
-        let html = Tera::one_off(&html_t, &context, true)?;
-        let subject = Tera::one_off(&subject_t, &context, true)?;
+        let text = tera::render_string(&text_t, locals)?;
+        let html = tera::render_string(&html_t, locals)?;
+        let subject = tera::render_string(&subject_t, locals)?;
         Ok(Content {
             subject,
             text,
