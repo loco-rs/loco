@@ -2,7 +2,7 @@
 
 ## vNext
 
-NEW FEATURES
+## v0.1.6
 
 * refactor: local settings are now `<env>.local.yaml` and available for all environments, for example you can add a local `test.local.yaml` and `development.local.yaml`
 * refactor: removed `config-rs` and now doing config loading by ourselves.
