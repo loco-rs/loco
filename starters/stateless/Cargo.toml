@@ -35,5 +35,4 @@ loco-rs = { version = "0.1.5", default-features = false, features = [
     "testing",
     "cli",
 ] }
-trycmd = "0.14.19"
 insta = { version = "*", features = ["redactions", "yaml", "filters"] }
