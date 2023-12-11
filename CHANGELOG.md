@@ -11,6 +11,7 @@ NEW FEATURES
 
 DOCS:
 * Remove duplicated docs in auth section
+* FAQ docs: [https://github.com/loco-rs/loco/pull/116](https://github.com/loco-rs/loco/pull/116)
 
 ENHANCEMENTS:
 * Remove unused libs: [https://github.com/loco-rs/loco/pull/106](https://github.com/loco-rs/loco/pull/106)
