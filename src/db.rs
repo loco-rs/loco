@@ -2,7 +2,7 @@
 //!
 //! This module defines functions and operations related to the application's
 //! database interactions.
-use std::{fs::File, path::Path};
+use std::{fs::File, path::Path, time::Duration};
 
 use duct::cmd;
 use fs_err as fs;
@@ -19,7 +19,6 @@ use crate::{
     app::{AppContext, Hooks},
     config,
 };
-use std::time::Duration;
 
 /// converge database logic
 ///

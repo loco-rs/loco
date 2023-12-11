@@ -1,12 +1,14 @@
-use crate::errors::Result;
-use crate::utils;
+use std::{
+    path::{Path, PathBuf},
+    process::Output,
+};
+
 use duct::cmd;
-use std::path::Path;
-use std::path::PathBuf;
-use std::process::Output;
+
+use crate::{errors::Result, utils};
 
 const FMT_TEST: [&str; 3] = ["test", "--all-features", "--all"];
-const FMT_ARGS: [&str; 4] = ["fmt", "--all", "--", "--check"];
+const FMT_ARGS: [&str; 2] = ["fmt", "--all"];
 const FMT_CLIPPY: [&str; 8] = [
     "clippy",
     "--",
@@ -37,24 +39,24 @@ impl RunResults {
 ///
 /// # Errors
 /// when could not run ci on the given resource
-///
 pub fn all_resources(base_dir: &Path) -> Result<Vec<RunResults>> {
     let mut result = vec![];
     result.push(run(base_dir).expect("loco lib mast be tested"));
-    result.extend(inner_folders(&base_dir.join(utils::FOLDER_EXAMPLES))?);
-    result.extend(inner_folders(&base_dir.join(utils::FOLDER_STARTERS))?);
-    result.extend(inner_folders(&base_dir.join(utils::FOLDER_LOCO_CLI))?);
+    result.extend(run_all_in_folder(&base_dir.join(utils::FOLDER_EXAMPLES))?);
+    result.extend(run_all_in_folder(&base_dir.join(utils::FOLDER_STARTERS))?);
+    result.extend(run_all_in_folder(&base_dir.join(utils::FOLDER_LOCO_CLI))?);
 
     Ok(result)
 }
 
 /// Run CI on inner folders.
 ///
-/// For example, run CI on all examples/starters folders dynamically by selecting the first root folder and running CI one level down.
+/// For example, run CI on all examples/starters folders dynamically by
+/// selecting the first root folder and running CI one level down.
 ///
 /// # Errors
 /// when could not get cargo folders
-pub fn inner_folders(root_folder: &Path) -> Result<Vec<RunResults>> {
+pub fn run_all_in_folder(root_folder: &Path) -> Result<Vec<RunResults>> {
     let cargo_projects = utils::get_cargo_folders(root_folder)?;
     let mut results = vec![];
 

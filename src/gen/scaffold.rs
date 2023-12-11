@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
-use crate::app::Hooks;
 use lazy_static::lazy_static;
 use rrgen::RRgen;
 use serde_json::json;
+
+use crate::app::Hooks;
 
 const CONTROLLER_SCAFFOLD_T: &str = include_str!("templates/controller_scaffold.t");
 

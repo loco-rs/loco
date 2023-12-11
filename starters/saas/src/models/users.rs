@@ -122,6 +122,7 @@ impl super::_entities::users::Model {
     /// # Errors
     ///
     /// when could not verify password
+    #[must_use]
     pub fn verify_password(&self, password: &str) -> bool {
         hash::verify_password(password, &self.password)
     }

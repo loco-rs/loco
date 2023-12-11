@@ -1,4 +1,5 @@
-//! This task implements data seeding functionality for initializing new development/demo environments.
+//! This task implements data seeding functionality for initializing new
+//! development/demo environments.
 //!
 //! # Example
 //!
@@ -7,16 +8,17 @@
 //! cargo run task
 //! ```
 //!
-//! To override existing data and reset the data structure, use the following command with the `refresh:true` argument:
+//! To override existing data and reset the data structure, use the following
+//! command with the `refresh:true` argument:
 //! ```sh
 //! cargo run task seed_data refresh:true
 //! ```
 use std::collections::BTreeMap;
 
-use crate::app::App;
-use loco_rs::db;
-use loco_rs::prelude::*;
+use loco_rs::{db, prelude::*};
 use migration::Migrator;
+
+use crate::app::App;
 
 #[allow(clippy::module_name_repetitions)]
 pub struct SeedData;
@@ -28,11 +30,9 @@ impl Task for SeedData {
             detail: "Task for seeding data".to_string(),
         }
     }
+
     async fn run(&self, app_context: &AppContext, vars: &BTreeMap<String, String>) -> Result<()> {
-        let refresh = vars
-            .get("refresh")
-            .map(|refresh| refresh == "true")
-            .unwrap_or(false);
+        let refresh = vars.get("refresh").is_some_and(|refresh| refresh == "true");
 
         if refresh {
             db::reset::<Migrator>(&app_context.db).await?;

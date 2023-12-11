@@ -1,5 +1,7 @@
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 pub const FOLDER_EXAMPLES: &str = "examples";
 pub const FOLDER_STARTERS: &str = "starters";

@@ -2,17 +2,18 @@
 //! configuring routes in an Axum application. It allows you to define route
 //! prefixes, add routes, and configure middlewares for the application.
 
-use super::routes::Routes;
-use crate::environment::Environment;
-use crate::{app::AppContext, config, Result};
+use std::time::Duration;
+
 use axum::{http, Router as AXRouter};
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::time::Duration;
 use tower_http::{
     add_extension::AddExtensionLayer, catch_panic::CatchPanicLayer, cors, timeout::TimeoutLayer,
     trace::TraceLayer,
 };
+
+use super::routes::Routes;
+use crate::{app::AppContext, config, environment::Environment, Result};
 
 lazy_static! {
     static ref NORMALIZE_URL: Regex = Regex::new(r"/+").unwrap();

@@ -1,14 +1,16 @@
-use crate::{Error, Result};
 use argon2::{
     password_hash::SaltString, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier,
     Version,
 };
 
+use crate::{Error, Result};
+
 /// Hashes a plain text password and returns the hashed result.
 ///
 /// # Errors
 ///
-/// Return [`argon2::password_hash::Result`] when could not hash the given password.
+/// Return [`argon2::password_hash::Result`] when could not hash the given
+/// password.
 ///
 /// # Example
 /// ```rust

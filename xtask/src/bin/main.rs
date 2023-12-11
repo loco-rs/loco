@@ -1,6 +1,7 @@
+use std::env;
+
 use cargo_metadata::{semver::Version, MetadataCommand, Package};
 use clap::{ArgAction::SetFalse, Parser, Subcommand};
-use std::env;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -25,12 +26,13 @@ enum Commands {
 
 fn main() -> eyre::Result<()> {
     let cli = Cli::parse();
-    let project_dir = env::current_dir()?.join("..");
+    let project_dir = env::current_dir()?;
+    println!("running in: {project_dir:?}");
 
     let res = match cli.command {
         Commands::Test {} => {
             let res = xtask::ci::all_resources(project_dir.as_path())?;
-            xtask::out::ci_results(&res);
+            xtask::out::print_ci_results(&res);
             xtask::CmdExit::ok()
         }
         Commands::BumpVersion {

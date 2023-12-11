@@ -1,14 +1,19 @@
+use std::{
+    fs,
+    io::{Read, Write},
+    path::{Path, PathBuf},
+};
+
+use cargo_metadata::semver::Version;
+use colored::Colorize;
+use lazy_static::lazy_static;
+use regex::Regex;
+
 use crate::{
     ci,
     errors::{Error, Result},
     out, utils,
 };
-use cargo_metadata::semver::Version;
-use lazy_static::lazy_static;
-use regex::Regex;
-use std::io::{Read, Write};
-use std::path::Path;
-use std::{fs, path::PathBuf};
 
 lazy_static! {
     /// Regular expression for replacing the version in the root package's Cargo.toml file.
@@ -35,11 +40,15 @@ impl BumpVersion {
     /// # Errors
     /// Returns an error when it could not update one of the resources.
     pub fn run(&self) -> Result<()> {
-        self.root_package()?;
+        self.bump_loco_framework()?;
         println!("Bump Loco lib updated successfully");
 
+        // change starters from fixed (v0.1.x) to local ("../../") in order
+        // to test all starters against what is going to be released
+        // when finished successfully, you're allowed to bump all starters to the new
+        // version
         if self.bump_starters {
-            self.update_starters(
+            self.modify_starters_loco_version(
                 "loco-rs = { path = \"../../\"",
                 Some("loco-rs = { path = \"../../../\""),
             )?;
@@ -47,10 +56,10 @@ impl BumpVersion {
             println!("Testing starters CI");
 
             let starter_projects: Vec<ci::RunResults> =
-                ci::inner_folders(&self.base_dir.join(utils::FOLDER_STARTERS))?;
+                ci::run_all_in_folder(&self.base_dir.join(utils::FOLDER_STARTERS))?;
 
             println!("Starters CI results:");
-            println!("{}", out::ci_results(&starter_projects));
+            println!("{}", out::print_ci_results(&starter_projects));
             for starter in &starter_projects {
                 if !starter.is_valid() {
                     return Err(Error::Message(format!(
@@ -60,21 +69,23 @@ impl BumpVersion {
                 }
             }
 
-            self.update_starters(
+            self.modify_starters_loco_version(
                 &format!("loco-rs = {{ version = \"{}\"", self.version),
                 None,
             )?;
-            println!("Bump loco starters finished successfully");
+            println!("{}", "Bump loco starters finished successfully".green());
         }
 
         Ok(())
     }
 
-    /// Bump the version of the loco library in the root package's Cargo.toml file.
+    /// Bump the version of the loco library in the root package's Cargo.toml
+    /// file.
     ///
     /// # Errors
-    /// Returns an error when it could not parse the loco Cargo.toml file or has an error updating the file.
-    fn root_package(&self) -> Result<()> {
+    /// Returns an error when it could not parse the loco Cargo.toml file or has
+    /// an error updating the file.
+    fn bump_loco_framework(&self) -> Result<()> {
         let mut content = String::new();
 
         let cargo_toml_file = self.base_dir.join("Cargo.toml");
@@ -97,11 +108,13 @@ impl BumpVersion {
         Ok(())
     }
 
-    /// Update the dependencies of loco-rs in all starter projects to the given version.
+    /// Update the dependencies of loco-rs in all starter projects to the given
+    /// version.
     ///
     /// # Errors
-    /// Returns an error when it could not parse a loco Cargo.toml file or has an error updating the file.
-    pub fn update_starters(
+    /// Returns an error when it could not parse a loco Cargo.toml file or has
+    /// an error updating the file.
+    pub fn modify_starters_loco_version(
         &self,
         replace_with: &str,
         replace_migrator: Option<&str>,

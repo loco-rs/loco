@@ -5,8 +5,9 @@ use serde_json::json;
 mod model;
 #[cfg(feature = "with-db")]
 mod scaffold;
-use crate::{app::Hooks, errors, Result};
 use std::str::FromStr;
+
+use crate::{app::Hooks, errors, Result};
 
 const CONTROLLER_T: &str = include_str!("templates/controller.t");
 const CONTROLLER_TEST_T: &str = include_str!("templates/request_test.t");

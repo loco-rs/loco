@@ -1,11 +1,12 @@
 use std::{collections::HashMap, env::current_dir};
 
-use crate::app::Hooks;
 use chrono::Utc;
 use duct::cmd;
 use lazy_static::lazy_static;
 use rrgen::RRgen;
 use serde_json::json;
+
+use crate::app::Hooks;
 
 const MODEL_T: &str = include_str!("templates/model.t");
 const MODEL_TEST_T: &str = include_str!("templates/model_test.t");
