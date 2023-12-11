@@ -1,4 +1,4 @@
-name: LOCO-CLI
+name: loco-cli
 
 on:
   push:

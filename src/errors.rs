@@ -5,7 +5,6 @@ use axum::http::{
     method::InvalidMethod,
     StatusCode,
 };
-use config::ConfigError;
 use lettre::{address::AddressError, transport::smtp};
 
 use crate::controller::ErrorDetail;
@@ -45,9 +44,6 @@ pub enum Error {
 
     #[error(transparent)]
     ParseAddress(#[from] AddressError),
-
-    #[error(transparent)]
-    Config(#[from] ConfigError),
 
     #[error("{0}")]
     Hash(String),

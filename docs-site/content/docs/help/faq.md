@@ -20,8 +20,9 @@ Try [cargo watch](https://crates.io/crates/cargo-watch):
 ```
 $ cargo-watch -x check  -s 'cargo loco start'
 ```
-</details>
 
+</details>
+<br/>
 <details>
 <summary>Do I have to have `cargo` to run tasks or other things?</summary>
 You don't have to run things through `cargo` but in development it's highly recommended. If you build `--release`, your binary contains everything including your code and `cargo` or Rust is not needed.
@@ -42,20 +43,15 @@ At this stage, at version 0.1.x, we would recommend to _adopt and report issues_
 
 <br/>
 <details>
-<summary>How can I add custom middleware?</summary>
-TBD
+<summary>Adding Custom Middleware in Loco</summary>
+Loco is compatible with Axum middlewares. Simply implement `FromRequestParts` in your custom struct and integrate it within your controller.
 </details>
 
 <br/>
 
 <details>
-<summary>Can I inject custom state/configuration</summary>
-TBD
+<summary>Injecting Custom State or Layers in Loco?</summary>
+Yes, you can achieve this by implementing `Hooks::after_routes`. This hook receive Axum routers that Loco has already built, allowing you to seamlessly add any available Axum functions that suit your needs.
 </details>
 
 <br/>
-
-<details>
-<summary>How can I disable application logger</summary>
-TBD
-</details>

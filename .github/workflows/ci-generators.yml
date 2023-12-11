@@ -1,4 +1,4 @@
-name: GENERATORS
+name: loco-generate
 
 on:
   push:
@@ -60,36 +60,36 @@ jobs:
         run: cargo run -- generate scaffold car name:string year:int && cargo build
         working-directory: ./examples/demo
         env:
-          APP_REDIS_URI: redis://localhost:${{job.services.redis.ports[6379]}}
-          APP_DATABASE_URI: postgres://postgress:postgress@localhost:5432/postgress_test
+          REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
+          DATABASE_URL: postgres://postgress:postgress@localhost:5432/postgress_test
 
       - name: model
         run: cargo run -- generate model post title:string content:text && cargo build
         working-directory: ./examples/demo
         env:
-          APP_REDIS_URI: redis://localhost:${{job.services.redis.ports[6379]}}
-          APP_DATABASE_URI: postgres://postgress:postgress@localhost:5432/postgress_test
+          REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
+          DATABASE_URL: postgres://postgress:postgress@localhost:5432/postgress_test
 
       - name: controller
         run: cargo run -- generate controller post && cargo build
         working-directory: ./examples/demo
         env:
-          APP_REDIS_URI: redis://localhost:${{job.services.redis.ports[6379]}}
-          APP_DATABASE_URI: postgres://postgress:postgress@localhost:5432/postgress_test
+          REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
+          DATABASE_URL: postgres://postgress:postgress@localhost:5432/postgress_test
 
       - name: worker
         run: cargo run -- generate worker report_worker && cargo build && cargo test workers::report_worker::test_run_report_worker_worker
         working-directory: ./examples/demo
         env:
-          APP_REDIS_URI: redis://localhost:${{job.services.redis.ports[6379]}}
-          APP_DATABASE_URI: postgres://postgress:postgress@localhost:5432/postgress_test
+          REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
+          DATABASE_URL: postgres://postgress:postgress@localhost:5432/postgress_test
 
       - name: mailer
         run: cargo run -- generate mailer birthday_mailer && cargo build
         working-directory: ./examples/demo
         env:
-          APP_REDIS_URI: redis://localhost:${{job.services.redis.ports[6379]}}
-          APP_DATABASE_URI: postgres://postgress:postgress@localhost:5432/postgress_test
+          REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
+          DATABASE_URL: postgres://postgress:postgress@localhost:5432/postgress_test
 
       - name: task
         run: cargo run -- generate task mytask && cargo build && cargo test tasks::mytask::test_can_run_mytask
@@ -103,5 +103,6 @@ jobs:
         working-directory: ./examples/demo
         env:
           LOCO_DEPLOYMENT_KIND: docker
-          APP_REDIS_URI: redis://localhost:${{job.services.redis.ports[6379]}}
-          APP_DATABASE_URI: postgres://postgress:postgress@localhost:5432/postgress_test
+          REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
+          DATABASE_URL: postgres://postgress:postgress@localhost:5432/postgress_test
+
