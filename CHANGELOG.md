@@ -32,6 +32,7 @@ DOCS:
 
 ENHANCEMENTS:
 * Remove unused libs: [https://github.com/loco-rs/loco/pull/106](https://github.com/loco-rs/loco/pull/106)
+* turn off default features in tokio [https://github.com/loco-rs/loco/pull/118](https://github.com/loco-rs/loco/pull/118)
 
 ## 0.1.5
 
