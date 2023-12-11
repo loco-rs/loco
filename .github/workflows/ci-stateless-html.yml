@@ -1,4 +1,4 @@
-name: STARTER-STATELESS-HTML
+name: starters/stateless-html
 
 on:
   push:

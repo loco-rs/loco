@@ -1,4 +1,4 @@
-name: STARTER-SAAS
+name: starters/saas
 
 on:
   push:

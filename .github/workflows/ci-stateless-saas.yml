@@ -1,4 +1,4 @@
-name: STARTER-STATELESS
+name: starters/stateless
 
 on:
   push:

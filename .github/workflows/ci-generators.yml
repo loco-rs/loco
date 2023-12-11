@@ -1,4 +1,4 @@
-name: GENERATORS
+name: loco-generate
 
 on:
   push:
