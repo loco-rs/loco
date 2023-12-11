@@ -102,8 +102,8 @@ jobs:
         run: cargo test --all-features --all
         working-directory: ./starters/saas
         env:
-          APP_REDIS_URI: redis://localhost:${{job.services.redis.ports[6379]}}
-          APP_DATABASE_URI: postgres://postgress:postgress@localhost:5432/postgress_test
+          REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
+          DATABASE_URL: postgres://postgress:postgress@localhost:5432/postgress_test
 
   # generate_template:
   #   name: Generate Template
