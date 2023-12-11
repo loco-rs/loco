@@ -1,10 +1,9 @@
-use blo::app::App;
-use loco_rs::testing;
+use std::collections::BTreeMap;
 
-use loco_rs::boot::run_task;
+use blo::app::App;
+use loco_rs::{boot::run_task, testing};
 use migration::Migrator;
 use serial_test::serial;
-use std::collections::BTreeMap;
 
 #[tokio::test]
 #[serial]

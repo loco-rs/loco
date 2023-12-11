@@ -22,7 +22,7 @@ config/
 
 An environment is picked up automatically based on:
 
-- A command line flag: `rr start --environment production`, if not given, fallback to
+- A command line flag: `cargo loco start --environment production`, if not given, fallback to
 - `LOCO_ENV` or `RAILS_ENV` or `NODE_ENV`
 
 When nothing is given, the default value is `development`.
@@ -38,7 +38,7 @@ It is possible to inject values into a configuration file. In this example, we g
 # every configuration file is a valid Tera template
 server:
   # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
-  port: {{ get_env(name="NODE_PORT", default=3000) }}
+  port:  {{/* get_env(name="NODE_PORT", default=3000) */}}
   # The UI hostname or IP address that mailers will point to.
   host: http://localhost
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
@@ -59,3 +59,7 @@ config/
 ```
 
 To run the application using the 'qa' environment, execute the following command:
+
+```
+$ LOCO_ENV=qa cargo loco start
+```
