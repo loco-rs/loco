@@ -89,14 +89,30 @@ auth:
 
 Loco offers a deployment template enabling the creation of a deployment infrastructure.
 
-Presently, we exclusively support Docker deployment, but stay tuned for future updates! 🙂
-
 ```sh
 cargo loco generate deployment
 ? ❯ Choose your deployment ›
 ❯ Docker
+❯ Shuttle
 ..
 ✔ ❯ Choose your deployment · Docker
 skipped (exists): "dockerfile"
 added: ".dockerignore"
 ```
+
+Deployment Options:
+
+1. Docker:
+
+- Generates a Dockerfile ready for building and deploying.
+- Creates a .dockerignore file.
+
+2. Shuttle:
+
+- Generates a shuttle main function.
+- Adds `shuttle-runtime` and `shuttle-axum` as dependencies.
+- Adds a bin entrypoint for the deployment.
+
+Choose the option that best fits your deployment needs. Happy deploying!
+
+If you have a preference for deploying on a different cloud, feel free to open a pull request. Your contributions are more than welcome!

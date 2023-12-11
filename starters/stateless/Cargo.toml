@@ -24,7 +24,7 @@ uuid = { version = "*", features = ["v4"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 
 [[bin]]
-name = "loco_starter_template"
+name = "loco_starter_template-cli"
 path = "src/bin/main.rs"
 required-features = []
 

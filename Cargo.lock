@@ -2567,9 +2567,9 @@ dependencies = [
 
 [[package]]
 name = "rrgen"
-version = "0.5.2"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5da8d2780fb6862c57c934655103bce0448045a57902dc957de154abfe56951f"
+checksum = "e40013551787f9f535e7dbc8dafc164591d941aeae48881a385d8b0393dd45f6"
 dependencies = [
  "cruet",
  "fs-err",
