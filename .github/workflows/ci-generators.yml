@@ -97,3 +97,11 @@ jobs:
         env:
           REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
           DATABASE_URL: postgres://postgress:postgress@localhost:5432/postgress_test
+
+      - name: docker deployment
+        run: cargo run -- generate deployment
+        working-directory: ./examples/demo
+        env:
+          LOCO_DEPLOYMENT_KIND: docker
+          REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
+          DATABASE_URL: postgres://postgress:postgress@localhost:5432/postgress_test
