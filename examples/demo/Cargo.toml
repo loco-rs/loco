@@ -35,7 +35,7 @@ tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 
 
 [[bin]]
-name = "demo"
+name = "blo-cli"
 path = "src/bin/main.rs"
 required-features = []
 

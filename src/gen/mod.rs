@@ -23,14 +23,24 @@ const TASK_TEST_T: &str = include_str!("templates/task_test.t");
 const WORKER_T: &str = include_str!("templates/worker.t");
 const WORKER_TEST_T: &str = include_str!("templates/worker_test.t");
 
+// Deployment templates
 const DEPLOYMENT_DOCKER_T: &str = include_str!("templates/deployment_docker.t");
 const DEPLOYMENT_DOCKER_IGNORE_T: &str = include_str!("templates/deployment_docker_ignore.t");
+const DEPLOYMENT_SHUTTLE_T: &str = include_str!("templates/deployment_shuttle.t");
+const DEPLOYMENT_SHUTTLE_CONFIG_T: &str = include_str!("templates/deployment_shuttle_config.t");
 
-const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[("Docker", DeploymentKind::Docker)];
+const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.35.0";
+const DEPLOYMENT_SHUTTLE_AXUM_VERSION: &str = "0.35.0";
+
+const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
+    ("Docker", DeploymentKind::Docker),
+    ("Shuttle", DeploymentKind::Shuttle),
+];
 
 #[derive(Debug, Clone)]
 pub enum DeploymentKind {
     Docker,
+    Shuttle,
 }
 impl FromStr for DeploymentKind {
     type Err = ();
@@ -38,6 +48,7 @@ impl FromStr for DeploymentKind {
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "docker" => Ok(Self::Docker),
+            "shuttle" => Ok(Self::Shuttle),
             _ => Err(()),
         }
     }
@@ -92,7 +103,7 @@ pub fn generate<H: Hooks>(component: Component) -> Result<()> {
             println!("{}", scaffold::generate::<H>(&rrgen, &name, &fields)?);
         }
         Component::Controller { name } => {
-            let vars = json!({"name": name});
+            let vars = json!({ "name": name });
             rrgen.generate(CONTROLLER_T, &vars)?;
             rrgen.generate(CONTROLLER_TEST_T, &vars)?;
         }
@@ -109,7 +120,7 @@ pub fn generate<H: Hooks>(component: Component) -> Result<()> {
             rrgen.generate(WORKER_TEST_T, &vars)?;
         }
         Component::Mailer { name } => {
-            let vars = json!({"name": name});
+            let vars = json!({ "name": name });
             rrgen.generate(MAILER_T, &vars)?;
             rrgen.generate(MAILER_SUB_T, &vars)?;
             rrgen.generate(MAILER_TEXT_T, &vars)?;
@@ -122,11 +133,17 @@ pub fn generate<H: Hooks>(component: Component) -> Result<()> {
                 })?,
                 Err(_err) => prompt_deployment_selection().map_err(Box::from)?,
             };
-            let vars = json!({ "pkg_name": H::app_name()});
+
             match deployment_kind {
                 DeploymentKind::Docker => {
+                    let vars = json!({ "pkg_name": H::app_name() });
                     rrgen.generate(DEPLOYMENT_DOCKER_T, &vars)?;
                     rrgen.generate(DEPLOYMENT_DOCKER_IGNORE_T, &vars)?;
+                }
+                DeploymentKind::Shuttle => {
+                    let vars = json!({ "pkg_name": H::app_name(), "shuttle_runtime_version": DEPLOYMENT_SHUTTLE_RUNTIME_VERSION, "shuttle_axum_version": DEPLOYMENT_SHUTTLE_AXUM_VERSION });
+                    rrgen.generate(DEPLOYMENT_SHUTTLE_T, &vars)?;
+                    rrgen.generate(DEPLOYMENT_SHUTTLE_CONFIG_T, &vars)?;
                 }
             }
         }
