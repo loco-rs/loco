@@ -8,7 +8,7 @@ injections:
   append: true
   content: "pub mod {{ file_name }};"
 ---
-use blo::app::App;
+use {{pkg_name}}::app::App;
 use migration::Migrator;
 use loco_rs::testing;
 use serial_test::serial;

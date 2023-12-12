@@ -49,7 +49,7 @@ pub fn generate<H: Hooks>(
         }
     }
 
-    let vars = json!({"name": name, "columns": columns});
+    let vars = json!({"name": name, "columns": columns, "pkg_name": H::app_name()});
     let res1 = rrgen.generate(CONTROLLER_SCAFFOLD_T, &vars)?;
     let res2 = rrgen.generate(CONTROLLER_TEST_T, &vars)?;
     let messages = collect_messages(vec![res1, res2]);
