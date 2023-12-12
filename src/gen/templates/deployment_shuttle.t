@@ -16,10 +16,10 @@ injections:
     path = "src/bin/shuttle.rs"
 - into: Cargo.toml
   after: \[dependencies\]
-  content: "shuttle-runtime = { version = \"0.35.0\", default-features = false }"
+  content: "shuttle-runtime = { version = \"{{shuttle_runtime_version}}\", default-features = false }"
 - into: Cargo.toml
   after: \[dependencies\]
-  content: "shuttle-axum = { version = \"0.35.0\", default-features = false, features = [\"axum-0-7\",] }"
+  content: "shuttle-axum = { version = \"{{shuttle_axum_version}}\", default-features = false, features = [\"axum-0-7\",] }"
 ---
 use loco_rs::boot::{create_app, StartMode};
 use loco_rs::environment::resolve_from_env;
