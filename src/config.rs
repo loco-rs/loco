@@ -143,8 +143,24 @@ pub struct Middlewares {
     pub catch_panic: Option<EnableMiddleware>,
     /// Setting a global timeout for the requests
     pub timeout_request: Option<TimeoutRequestMiddleware>,
-    // Setting cors configuration
+    /// Setting cors configuration
     pub cors: Option<CorsMiddleware>,
+    /// Serving static assets
+    #[serde(rename = "static")]
+    pub static_assets: Option<StaticAssetsMiddleware>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct StaticAssetsMiddleware {
+    pub enable: bool,
+    pub must_exist: bool,
+    pub folder: Option<FolderAssetsMiddleware>,
+    pub fallback: Option<String>,
+}
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct FolderAssetsMiddleware {
+    pub uri: String,
+    pub path: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
