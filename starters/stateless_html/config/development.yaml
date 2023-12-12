@@ -55,9 +55,11 @@ server:
       # max_age: 3600
     # static:
     #   enable: true
+    #   # ensure that both the folder.path and fallback file path are existence.
+    #   must_exist: true
     #   folder: 
     #     uri: "/assets"
-    #     path: "frontend/dist"
+    #     path: "frontend/dist"        
     #   fallback: "frontend/dist/index.html" 
 
 # Worker Configuration

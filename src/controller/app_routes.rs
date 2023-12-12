@@ -7,6 +7,7 @@ use std::time::Duration;
 use axum::{http, Router as AXRouter};
 use lazy_static::lazy_static;
 use regex::Regex;
+use std::path::PathBuf;
 use tower_http::{
     add_extension::AddExtensionLayer,
     catch_panic::CatchPanicLayer,
@@ -17,7 +18,7 @@ use tower_http::{
 };
 
 use super::routes::Routes;
-use crate::{app::AppContext, config, environment::Environment, Result};
+use crate::{app::AppContext, config, environment::Environment, errors, Result};
 
 lazy_static! {
     static ref NORMALIZE_URL: Regex = Regex::new(r"/+").unwrap();
@@ -197,7 +198,7 @@ impl AppRoutes {
 
         if let Some(static_assets) = &ctx.config.server.middlewares.static_assets {
             if static_assets.enable {
-                app = Self::add_static_asset_middleware(app, static_assets);
+                app = Self::add_static_asset_middleware(app, static_assets)?;
             }
         }
 
@@ -208,18 +209,31 @@ impl AppRoutes {
     fn add_static_asset_middleware(
         app: AXRouter<AppContext>,
         config: &config::StaticAssetsMiddleware,
-    ) -> AXRouter<AppContext> {
+    ) -> Result<AXRouter<AppContext>> {
         let app = if let Some(folder) = &config.folder {
+            if config.must_exist && !PathBuf::from(&folder.path).exists() {
+                return Err(errors::Error::Message(format!(
+                    "The folder path {} in static middleware are not found",
+                    folder.path
+                )));
+            }
             tracing::info!(
-                "[Middleware:static] serve folder path: {} uri: {}",
+                "[Middleware:static] serve folder path: `{}` uri: `{}`",
                 folder.uri,
                 folder.path
             );
+
             app.nest_service(&folder.uri, ServeDir::new(&folder.path))
         } else {
             app
         };
         let app = if let Some(fallback) = &config.fallback {
+            if config.must_exist && !PathBuf::from(&fallback).exists() {
+                return Err(errors::Error::Message(format!(
+                    "The fallback path `{fallback}` in static middleware are not found"
+                )));
+            }
+
             tracing::info!("[Middleware:static] serve fallback file {}", fallback);
             app.fallback_service(ServeFile::new(fallback))
         } else {
@@ -228,7 +242,7 @@ impl AppRoutes {
 
         tracing::info!("[Middleware] Adding static");
 
-        app
+        Ok(app)
     }
     fn add_cors_middleware(
         app: AXRouter<AppContext>,

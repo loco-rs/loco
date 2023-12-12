@@ -53,12 +53,14 @@ server:
       #   - POST
       # Set the value of the [`Access-Control-Max-Age`][mdn] header in seconds
       # max_age: 3600
-  # static:
+    # static:
     #   enable: true
+    #   # ensure that both the folder.path and fallback file path are existence.
+    #   must_exist: true
     #   folder: 
     #     uri: "/assets"
-    #     path: "frontend/dist"
-    #   fallback: "frontend/dist/index.html"
+    #     path: "frontend/dist"        
+    #   fallback: "frontend/dist/index.html" 
 
 # Worker Configuration
 workers:

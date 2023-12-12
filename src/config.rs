@@ -153,6 +153,7 @@ pub struct Middlewares {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct StaticAssetsMiddleware {
     pub enable: bool,
+    pub must_exist: bool,
     pub folder: Option<FolderAssetsMiddleware>,
     pub fallback: Option<String>,
 }
