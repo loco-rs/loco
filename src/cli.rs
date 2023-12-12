@@ -26,10 +26,11 @@ use crate::boot::run_db;
 use crate::{
     app::{AppContext, Hooks},
     boot::{create_app, create_context, list_endpoints, run_task, start, RunDbCommand, StartMode},
-    environment::resolve_from_env,
+    environment::{resolve_from_env, Environment},
     gen::{self, Component},
     Result,
 };
+use std::str::FromStr;
 
 const DEFAULT_ENVIRONMENT: &str = "development";
 #[derive(Parser)]
@@ -272,7 +273,10 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             run_task::<H>(&app_context, name.as_ref(), &hash).await?;
         }
         Commands::Generate { component } => {
-            gen::generate::<H>(component.into())?;
+            let environment = Environment::from_str(&environment)
+                .unwrap_or_else(|_| Environment::Any(environment.to_string()))
+                .load()?;
+            gen::generate::<H>(component.into(), &environment)?;
         }
     }
     Ok(())
@@ -311,7 +315,10 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
             run_task::<H>(&app_context, name.as_ref(), &hash).await?;
         }
         Commands::Generate { component } => {
-            gen::generate::<H>(component.into())?;
+            let environment = Environment::from_str(&environment)
+                .unwrap_or_else(|_| Environment::Any(environment.to_string()))
+                .load()?;
+            gen::generate::<H>(component.into(), &environment)?;
         }
     }
     Ok(())
