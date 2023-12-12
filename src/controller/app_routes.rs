@@ -8,7 +8,11 @@ use axum::{http, Router as AXRouter};
 use lazy_static::lazy_static;
 use regex::Regex;
 use tower_http::{
-    add_extension::AddExtensionLayer, catch_panic::CatchPanicLayer, cors, timeout::TimeoutLayer,
+    add_extension::AddExtensionLayer,
+    catch_panic::CatchPanicLayer,
+    cors,
+    services::{ServeDir, ServeFile},
+    timeout::TimeoutLayer,
     trace::TraceLayer,
 };
 
@@ -191,10 +195,41 @@ impl AppRoutes {
             }
         }
 
+        if let Some(static_assets) = &ctx.config.server.middlewares.static_assets {
+            if static_assets.enable {
+                app = Self::add_static_asset_middleware(app, static_assets);
+            }
+        }
+
         let router = app.with_state(ctx);
         Ok(router)
     }
 
+    fn add_static_asset_middleware(
+        app: AXRouter<AppContext>,
+        config: &config::StaticAssetsMiddleware,
+    ) -> AXRouter<AppContext> {
+        let app = if let Some(folder) = &config.folder {
+            tracing::info!(
+                "[Middleware:static] serve folder path: {} uri: {}",
+                folder.uri,
+                folder.path
+            );
+            app.nest_service(&folder.uri, ServeDir::new(&folder.path))
+        } else {
+            app
+        };
+        let app = if let Some(fallback) = &config.fallback {
+            tracing::info!("[Middleware:static] serve fallback file {}", fallback);
+            app.fallback_service(ServeFile::new(fallback))
+        } else {
+            app
+        };
+
+        tracing::info!("[Middleware] Adding static");
+
+        app
+    }
     fn add_cors_middleware(
         app: AXRouter<AppContext>,
         config: &config::CorsMiddleware,
