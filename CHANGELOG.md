@@ -4,6 +4,17 @@
 
 * Adding compilation mode in the banner [https://github.com/loco-rs/loco/pull/127](https://github.com/loco-rs/loco/pull/127)
 * Support shuttle deployment generator [https://github.com/loco-rs/loco/pull/124](https://github.com/loco-rs/loco/pull/124)
+* Adding a static asset middleware which allows to serve static folder/data. Enable this section in config. [https://github.com/loco-rs/loco/pull/134](https://github.com/loco-rs/loco/pull/134)
+  ```yaml
+   static:
+      enable: true
+      # ensure that both the folder.path and fallback file path are existence.
+      must_exist: true
+      folder: 
+        uri: "/assets"
+        path: "frontend/dist"        
+      fallback: "frontend/dist/index.html" 
+  ```
 
 ## v0.1.6
 
