@@ -16,6 +16,7 @@
       fallback: "frontend/dist/index.html" 
   ```
 * fix: `loco generate reqeust` test template. [https://github.com/loco-rs/loco/pull/133](https://github.com/loco-rs/loco/pull/133)
+* Improve docker deployment generator. [https://github.com/loco-rs/loco/pull/131](https://github.com/loco-rs/loco/pull/131)
 
 ## v0.1.6
 
