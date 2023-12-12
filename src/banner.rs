@@ -59,6 +59,12 @@ pub fn print_banner(boot_result: &BootResult) {
     } else {
         println!("     logger: {}", "disabled".bright_red());
     }
+    if cfg!(debug_assertions) {
+        println!("compilation: {}", "debug".bright_red());
+    } else {
+        println!("compilation: {}", "release".green());
+    }
+
     let mut modes = Vec::new();
     let mut servingline = Vec::new();
     if boot_result.router.is_some() {
