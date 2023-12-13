@@ -378,9 +378,11 @@ fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
     Ok(None)
 }
 
+#[allow(clippy::missing_panics_doc)]
 /// Establishes a connection to a Redis server based on the provided
 /// configuration settings.
-async fn connect_redis(config: &Config) -> Option<Pool<RedisConnectionManager>> {
+// TODO: Refactor to eliminate unwrapping and instead return an appropriate error type.
+pub async fn connect_redis(config: &Config) -> Option<Pool<RedisConnectionManager>> {
     if let Some(redis) = &config.redis {
         let manager = RedisConnectionManager::new(redis.uri.clone()).unwrap();
         let redis = Pool::builder().build(manager).await.unwrap();

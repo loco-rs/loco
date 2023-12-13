@@ -23,6 +23,9 @@ use sea_orm_migration::MigratorTrait;
 
 #[cfg(feature = "with-db")]
 use crate::boot::run_db;
+#[cfg(feature = "with-db")]
+use crate::doctor;
+
 use crate::{
     app::{AppContext, Hooks},
     boot::{create_app, create_context, list_endpoints, run_task, start, RunDbCommand, StartMode},
@@ -88,6 +91,8 @@ enum Commands {
         #[command(subcommand)]
         component: ComponentArg,
     },
+    // Validate and diagnose configurations.
+    Doctor {},
 }
 
 #[derive(Subcommand)]
@@ -277,6 +282,15 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
                 .unwrap_or_else(|_| Environment::Any(environment.to_string()))
                 .load()?;
             gen::generate::<H>(component.into(), &environment)?;
+        }
+        Commands::Doctor {} => {
+            let environment = Environment::from_str(&environment)
+                .unwrap_or_else(|_| Environment::Any(environment.to_string()))
+                .load()?;
+
+            for (_, check) in doctor::run_all(&environment).await {
+                println!("{check}");
+            }
         }
     }
     Ok(())

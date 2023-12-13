@@ -28,6 +28,9 @@ mod banner;
 pub mod prelude;
 
 #[cfg(feature = "with-db")]
+pub mod doctor;
+
+#[cfg(feature = "with-db")]
 pub mod db;
 #[cfg(feature = "with-db")]
 pub mod model;
