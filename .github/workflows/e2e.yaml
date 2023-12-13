@@ -1,8 +1,13 @@
 name: e2e
 
+# on:
+#   schedule:
+#     - cron: 0 * * * * # every hour
 on:
-  schedule:
-    - cron: 0 * * * * # every hour
+  push:
+    branches:
+      - master
+  pull_request:
 
 jobs:
   saas-template:
@@ -41,7 +46,7 @@ jobs:
           override: true
       - run: |
           cargo install loco-cli
-          LOCO_APP_NAME=stateless LOCO_TEMPLATE=stateless loco new
+          RUST_LOG=* LOCO_APP_NAME=stateless LOCO_TEMPLATE=stateless loco new
       - run: |
           cargo build
         working-directory: ./stateless
