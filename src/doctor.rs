@@ -81,7 +81,7 @@ pub async fn run_all(config: &Config) -> BTreeMap<Resource, Check> {
 }
 
 /// Checks the database connection.
-async fn check_db(config: &Database) -> Check {
+pub async fn check_db(config: &Database) -> Check {
     match db::connect(config).await {
         Ok(conn) => match conn.ping().await {
             Ok(()) => Check {
@@ -104,7 +104,7 @@ async fn check_db(config: &Database) -> Check {
 }
 
 /// Checks the Redis connection.
-async fn check_redis(config: &Config) -> Check {
+pub async fn check_redis(config: &Config) -> Check {
     if let Some(conn) = boot::connect_redis(config).await {
         match redis::ping(&conn).await {
             Ok(()) => Check {
@@ -128,7 +128,8 @@ async fn check_redis(config: &Config) -> Check {
 }
 
 /// Checks the presence and version of `SeaORM` CLI.
-fn check_seaorm_cli() -> Check {
+#[must_use]
+pub fn check_seaorm_cli() -> Check {
     match Command::new("sea-orm-cli").arg("--version").output() {
         Ok(_) => Check {
             status: CheckStatus::Ok,
