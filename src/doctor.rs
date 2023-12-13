@@ -25,7 +25,7 @@ pub enum Resource {
 }
 
 /// Represents the status of a resource check.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CheckStatus {
     Ok,
     NotOk,
@@ -41,6 +41,13 @@ pub struct Check {
     pub message: String,
     /// Additional information or instructions related to the check.
     pub description: Option<String>,
+}
+
+impl Check {
+    #[must_use]
+    pub fn valid(&self) -> bool {
+        self.status != CheckStatus::NotOk
+    }
 }
 
 impl std::fmt::Display for Check {
