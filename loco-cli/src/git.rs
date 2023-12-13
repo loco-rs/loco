@@ -15,7 +15,7 @@ pub fn debug_path() -> Option<PathBuf> {
     env::var("LOCO_DEBUG_PATH").ok().map(PathBuf::from)
 }
 
-const BASE_REPO_URL: &str = "git@github.com:loco-rs/loco.git";
+const BASE_REPO_URL: &str = "https://github.com/loco-rs/loco.git";
 
 /// Define the starter template in Loco repository
 const STARTER_TEMPLATE_FOLDER: &str = "starters";
