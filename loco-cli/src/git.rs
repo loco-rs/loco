@@ -5,6 +5,7 @@ use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use std::env;
 use std::path::Path;
 use std::path::PathBuf;
+use std::process::Command;
 
 /// getting logo debug path for working locally.
 ///
@@ -14,9 +15,7 @@ pub fn debug_path() -> Option<PathBuf> {
     env::var("LOCO_DEBUG_PATH").ok().map(PathBuf::from)
 }
 
-const BASE_REPO_URL: &str = "https://github.com/loco-rs/loco";
-
-const DEFAULT_BRANCH: &str = "master";
+const BASE_REPO_URL: &str = "git@github.com:loco-rs/loco.git";
 
 /// Define the starter template in Loco repository
 const STARTER_TEMPLATE_FOLDER: &str = "starters";
@@ -96,7 +95,7 @@ pub fn clone_template(
     Ok(copy_template_to)
 }
 
-fn clone_repo() -> Result<PathBuf, git2::Error> {
+fn clone_repo() -> eyre::Result<PathBuf> {
     let random_string: String = thread_rng()
         .sample_iter(&Alphanumeric)
         .take(20)
@@ -105,45 +104,38 @@ fn clone_repo() -> Result<PathBuf, git2::Error> {
 
     let temp_clone_dir = env::temp_dir().join(random_string);
 
-    let from_branch = env::var("LOCO_BRANCH").map_or_else(
-        |_| DEFAULT_BRANCH.to_owned(),
-        |b| {
-            if b.is_empty() {
-                DEFAULT_BRANCH.to_string()
-            } else {
-                b
-            }
-        },
-    );
-
-    let mut opt = git2::FetchOptions::new();
-    opt.depth(1);
-
-    // read more information in Cargo.toml
-    #[cfg(feature = "github_ci")]
-    let repo_url = {
-        let repo_url =
-            env::var("LOCO_CURRENT_REPOSITORY").expect("LOCO_CURRENT_REPOSITORY not set");
-        if repo_url.is_empty() {
-            BASE_REPO_URL.to_string()
-        } else {
-            repo_url
-        }
-    };
-    #[cfg(not(feature = "github_ci"))]
-    let repo_url = BASE_REPO_URL.to_string();
-
     tracing::debug!(
-        repo_url,
-        branch = from_branch,
+        repo_url = BASE_REPO_URL,
         clone_folder = temp_clone_dir.display().to_string(),
         "cloning loco"
     );
 
-    git2::build::RepoBuilder::new()
-        .branch(&from_branch)
-        .fetch_options(opt)
-        .clone(&repo_url, &temp_clone_dir)?;
+    // We prioritize cloning the Loco project directly from the Git binary if it is installed,
+    // to avoid potential conflicts with custom local Git settings, such as 'insteadOf'.
+    // If Git is not installed, an alternative approach is attempting to clone the repository using the 'git2' library.
+    if git_exists() {
+        let args = vec!["clone", "--depth=1", BASE_REPO_URL];
+        Command::new("git")
+            .args(&args)
+            .arg(&temp_clone_dir)
+            .output()?;
+    } else {
+        let mut opt = git2::FetchOptions::new();
+        opt.depth(1);
+        git2::build::RepoBuilder::new()
+            .fetch_options(opt)
+            .clone(BASE_REPO_URL, &temp_clone_dir)?;
+    }
 
     Ok(temp_clone_dir)
+}
+
+fn git_exists() -> bool {
+    match Command::new("git").arg("--version").output() {
+        Ok(p) => p.status.success(),
+        Err(err) => {
+            tracing::debug!(error = err.to_string(), "git not found");
+            false
+        }
+    }
 }
