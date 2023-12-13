@@ -7,7 +7,7 @@ mod model;
 mod scaffold;
 use std::str::FromStr;
 
-use crate::{app::Hooks, errors, Result};
+use crate::{app::Hooks, config::Config, errors, Result};
 
 const CONTROLLER_T: &str = include_str!("templates/controller.t");
 const CONTROLLER_TEST_T: &str = include_str!("templates/request_test.t");
@@ -90,7 +90,7 @@ pub enum Component {
     Deployment {},
 }
 
-pub fn generate<H: Hooks>(component: Component) -> Result<()> {
+pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
     let rrgen = RRgen::default();
 
     match component {
@@ -136,7 +136,22 @@ pub fn generate<H: Hooks>(component: Component) -> Result<()> {
 
             match deployment_kind {
                 DeploymentKind::Docker => {
-                    let vars = json!({ "pkg_name": H::app_name() });
+                    let copy_asset_folder = &config
+                        .server
+                        .middlewares
+                        .static_assets
+                        .as_ref()
+                        .and_then(|s| s.folder.as_ref())
+                        .map(|f| f.path.to_string());
+
+                    let fallback_file = &config
+                        .server
+                        .middlewares
+                        .static_assets
+                        .as_ref()
+                        .and_then(|s| s.fallback.as_ref().map(ToString::to_string));
+
+                    let vars = json!({ "pkg_name": H::app_name(), "copy_asset_folder": copy_asset_folder, "fallback_file": fallback_file });
                     rrgen.generate(DEPLOYMENT_DOCKER_T, &vars)?;
                     rrgen.generate(DEPLOYMENT_DOCKER_IGNORE_T, &vars)?;
                 }
