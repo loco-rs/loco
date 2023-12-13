@@ -44,6 +44,45 @@ impl Hooks for App {
 
 You can add a prefix URL to all your routes by providing the prefix to the AppRouter instance.
 
+
+#### Adding extra state
+
+Your app context and state is held in `AppContext` and is what Loco provides and sets up for you. There are cases where you'd want to load custom data,
+logic, or entities when the app starts and be available to use in all controllers.
+
+You could do that by using Axum's `Extension`. Here's an example for loading an LLM model, which is a time consuming task, and then providing it to a controller endpoint, where its already loaded, and fresh for use.
+
+First, add a lifecycle hook in `src/app.rs`:
+
+```rust
+    // in src/app.rs, in your Hooks trait impl override the `after_routes` hook:
+
+    fn after_routes(router: axum::Router, _ctx: &AppContext) -> Result<axum::Router> {
+        // cache should reside at: ~/.cache/huggingface/hub
+        println!("loading model");
+        let model = Llama::builder()
+            .with_source(LlamaSource::llama_7b_code())
+            .build()
+            .unwrap();
+        println!("model ready");
+        let st = Arc::new(RwLock::new(model));
+
+        Ok(router.layer(Extension(st)))
+    }
+```
+
+Next, consume this state extension anywhere you like. Here's an example controller endpoint:
+
+
+```rust
+async fn candle_llm(Extension(m): Extension<Arc<RwLock<Llama>>>) -> impl IntoResponse {
+    // use `m` from your state extension
+    let prompt = "write binary search";
+    ...
+}
+```
+
+
 ### Routes in Controllers
 
 Controllers define Loco routes capabilities. In the example below, a controller creates one GET endpoint and one POST endpoint:
