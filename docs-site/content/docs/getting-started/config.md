@@ -63,3 +63,50 @@ To run the application using the 'qa' environment, execute the following command
 ```
 $ LOCO_ENV=qa cargo loco start
 ```
+
+## Settings
+
+The configuration files contain knobs to set up your Loco app. You can also have your custom settings, with the `settings:` section.
+
+
+```yaml
+# in config/development.yaml
+# add the `settings:` section
+settings:
+  allow_list:
+    - google.com
+    - apple.com
+
+logger:
+  # ...
+```
+
+These setting will appear in `ctx.config.settings` as `serde_json::Value`. You can create your strongly typed settings by adding a struct:
+
+```rust
+// put this in src/common/settings.rs
+#[derive(Serialize, Deserialize, Default, Debug)]
+pub struct Settings {
+    pub allow_list: Option<Vec<String>>,
+}
+
+impl Settings {
+    pub fn from_json(value: &serde_json::Value) -> Result<Self> {
+        Ok(serde_json::from_value(value.clone())?)
+    }
+}
+```
+
+Then, you can access settings from anywhere like this:
+
+
+```rust
+// in controllers, workers, tasks, or elsewhere,
+// as long as you have access to AppContext (here: `ctx`)
+
+if let Some(settings) = &ctx.config.settings {
+    let settings = common::settings::Settings::from_json(settings)?;
+    println!("allow list: {:?}", settings.allow_list);
+}
+```
+

@@ -30,6 +30,9 @@ pub struct Config {
     pub auth: Option<Auth>,
     pub workers: Workers,
     pub mailer: Option<Mailer>,
+
+    #[serde(default)]
+    pub settings: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

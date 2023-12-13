@@ -4,7 +4,10 @@
 use loco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::models::_entities::notes::{ActiveModel, Entity, Model};
+use crate::{
+    common,
+    models::_entities::notes::{ActiveModel, Entity, Model},
+};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Params {
@@ -25,6 +28,10 @@ async fn load_item(ctx: &AppContext, id: i32) -> Result<Model> {
 }
 
 pub async fn list(State(ctx): State<AppContext>) -> Result<Json<Vec<Model>>> {
+    if let Some(settings) = &ctx.config.settings {
+        let settings = common::settings::Settings::from_json(settings)?;
+        println!("allow list: {:?}", settings.allow_list);
+    }
     format::json(Entity::find().all(&ctx.db).await?)
 }
 
