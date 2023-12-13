@@ -14,7 +14,7 @@ const DB_CONNECTION_FAILED: &str = "DB connection: fails";
 const DB_CONNECTION_SUCCESS: &str = "DB connection: success";
 const REDIS_CONNECTION_SUCCESS: &str = "Redis connection: success";
 const REDIS_CONNECTION_FAILED: &str = "Redis connection: failed";
-const REDIS_CONNECTION_NOT_CONFIGURE: &str = "redis not configure";
+const REDIS_CONNECTION_NOT_CONFIGURE: &str = "Redis not configure";
 
 /// Represents different resources that can be checked.
 #[derive(PartialOrd, PartialEq, Eq, Ord)]
@@ -25,7 +25,7 @@ pub enum Resource {
 }
 
 /// Represents the status of a resource check.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum CheckStatus {
     Ok,
     NotOk,
@@ -55,7 +55,7 @@ impl std::fmt::Display for Check {
         let icon = match self.status {
             CheckStatus::Ok => "✅",
             CheckStatus::NotOk => "❌",
-            CheckStatus::NotConfigure => "⚠️",
+            CheckStatus::NotConfigure => "⚠️ ",
         };
 
         write!(
