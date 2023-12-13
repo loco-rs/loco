@@ -1,3 +1,44 @@
+## Errors
+
+Errors are done with `thiserror`. We adopt a minimalistic approach to errors.
+
+* We try to have _one error kind_ for the entirety of Loco.
+* Errors that cannot be handled, are _informative_ and so can be opaque (we don't offer deep matching on those)
+* Errors that can be handled and reasoned upon should be able to be matched and extract good knowledge from
+* To users, error should _not be cryptic_, and should indicate how to fix issues as much as possible, or point to the issue precisely
+
+
+### Auto conversions
+
+When possible use `from` conversions.
+
+```rust
+    #[error(transparent)]
+    JSON(#[from] serde_json::Error),
+```
+
+When complicated, implement a `From` trait yourself. This is done to _centralize_ errors into one place and not litter needless `map_err` code which holds error conversion logic (an exception is Context, see below).
+
+
+### Context
+
+When you know a user might need context, resort to manually shaping the error with extra information. First, define the error:
+
+```rust
+    #[error("cannot parse `{1}`: {0}")]
+    YAMLFile(#[source] serde_yaml::Error, String),
+```
+
+Then, shape it:
+
+```rust
+  serde_yaml::from_str(&rendered)
+      .map_err(|err| Error::YAMLFile(err, selected_path.to_string_lossy().to_string()))
+```
+
+In this example, the information about where `rendered` came from was long lost at the `serde_yaml::from_str` callsite. Which is why errors were cryptic indicating bad YAML format, but not where it comes from (which file).
+
+In this case, we duplicate the YAML error type, leave one of those for auto conversions with `from`, where we don't have a file, and create a new specialized error type with the file information: `YAMLFile`.
 
 ## Publishing a new version
 

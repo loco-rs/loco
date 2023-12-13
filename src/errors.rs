@@ -23,6 +23,9 @@ pub enum Error {
     #[error(transparent)]
     JSON(#[from] serde_json::Error),
 
+    #[error("cannot parse `{1}`: {0}")]
+    YAMLFile(#[source] serde_yaml::Error, String),
+
     #[error(transparent)]
     YAML(#[from] serde_yaml::Error),
 

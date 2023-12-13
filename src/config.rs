@@ -298,7 +298,8 @@ impl Config {
         let content = fs::read_to_string(selected_path)?;
         let rendered = crate::tera::render_string(&content, &json!({}))?;
 
-        Ok(serde_yaml::from_str(&rendered)?)
+        serde_yaml::from_str(&rendered)
+            .map_err(|err| Error::YAMLFile(err, selected_path.to_string_lossy().to_string()))
     }
 
     /// Get a reference to the JWT configuration.
