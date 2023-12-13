@@ -93,7 +93,7 @@ enum Commands {
         #[command(subcommand)]
         component: ComponentArg,
     },
-    // Validate and diagnose configurations.
+    /// Validate and diagnose configurations.
     Doctor {},
 }
 
