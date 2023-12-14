@@ -387,6 +387,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
+name = "automod"
+version = "1.0.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68673286cdaa9dda02f8de746d0423158256a7a87b9e53d21ca99efc61d5ac18"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.39",
+]
+
+[[package]]
 name = "axum"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -558,6 +569,7 @@ name = "blo"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "automod",
  "axum",
  "chrono",
  "eyre",

@@ -1,8 +1,16 @@
 pub mod app;
 pub mod common;
-pub mod controllers;
-pub mod mailers;
+pub mod controllers {
+    automod::dir!(pub "src/controllers");
+}
+pub mod mailers {
+    automod::dir!(pub "src/mailers");
+}
 pub mod models;
-pub mod tasks;
+pub mod tasks {
+    automod::dir!(pub "src/tasks");
+}
 pub mod views;
-pub mod workers;
+pub mod workers {
+    automod::dir!(pub "src/workers");
+}
