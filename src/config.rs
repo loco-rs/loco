@@ -28,6 +28,7 @@ pub struct Config {
     pub database: Database,
     pub redis: Option<Redis>,
     pub auth: Option<Auth>,
+    #[serde(default)]
     pub workers: Workers,
     pub mailer: Option<Mailer>,
 
@@ -128,7 +129,7 @@ pub struct Server {
 }
 
 /// Represents the workers configuration structure.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct Workers {
     pub mode: WorkerMode,
     pub queues: Option<Vec<String>>,

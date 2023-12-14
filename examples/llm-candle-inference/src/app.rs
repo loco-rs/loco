@@ -12,7 +12,7 @@ use loco_rs::{
 };
 use tokio::sync::RwLock;
 
-use crate::{controllers, tasks};
+use crate::controllers;
 
 pub struct App;
 #[async_trait]
@@ -42,7 +42,5 @@ impl Hooks for App {
 
     fn connect_workers<'a>(_p: &'a mut Processor, _ctx: &'a AppContext) {}
 
-    fn register_tasks(tasks: &mut Tasks) {
-        tasks.register(tasks::example::ExpReport);
-    }
+    fn register_tasks(tasks: &mut Tasks) {}
 }

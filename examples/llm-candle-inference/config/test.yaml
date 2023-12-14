@@ -40,27 +40,3 @@ server:
       enable: true
       # Duration time in milliseconds.
       timeout: 5000
-
-# Worker Configuration
-workers:
-  # specifies the worker mode. Options:
-  #   - BackgroundQueue - Workers operate asynchronously in the background, processing queued.
-  #   - ForegroundBlocking - Workers operate in the foreground and block until tasks are completed.
-  #   - BackgroundAsync - Workers operate asynchronously in the background, processing tasks with async capabilities.
-  mode: ForegroundBlocking
-
-# Mailer Configuration.
-mailer:
-  # SMTP mailer configuration.
-  smtp:
-    # Enable/Disable smtp mailer.
-    enable: true
-    # SMTP server host. e.x localhost, smtp.gmail.com
-    host: localhost
-    # SMTP server port
-    port: 1025
-    # Use secure connection (SSL/TLS).
-    secure: false
-    # auth:
-    #   user:
-    #   password:
