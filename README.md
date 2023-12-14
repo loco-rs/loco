@@ -10,11 +10,12 @@
 <br/>
 <br/>
 
-Loco is a Rust API and web framework for full stack product builders.
-
-You need to be familiar with Rust to a moderate level. You need to know how to build, test, and run Rust projects, have used some popular libraries such as clap, regex, tokio, axum or other web framework, nothing too fancy. There are no crazy lifetime twisters or complex / too magical, macros in Loco that you need to know how they work.
+Loco is "Rust on Rails".
 
 Loco is strongly inspired by Rails. If you know Rails and Rust, you'll feel at home. If you only know Rails and new to Rust, you'll find Loco refreshing. We do not assume you know Rails.
+
+
+To work with Loco, you need to know Rust to a beginner-moderate level. There are no crazy lifetime twisters and most of the development will be linear: request handling, workers, tasks, etc.
 
 ## Quick Start
 
@@ -79,8 +80,18 @@ started on port 3000
 
 ## Project Status
 
-- [x] `STAGE 1`: **wide but shallow**. Build a lot of components that make up a Rails-like framework, but only invest 60% in what they should be.
-- [x] `STAGE 2`: **operable demo**. Build tooling - CLI, testing, and a demo app to showcase the framework
-- [x] `STAGE 3`: **tooling polish**. Make day to day _development_ operations easy, such as adding models, controllers, logic and tests (by code generation, macros, or helpers)
-- [ ] `STAGE 4`: **indepth development**. Make the 60% go to 80% of functionality where needed. Things like documentation (website?), missing API, supporting various deployment scenarios (on docker, other platforms), feature flags to cut down functionality
-- [ ] `STAGE 5`: **go wide and expand**. Focus on building various kinds of demo apps
+Loco is feature complete, but features are still being added rapidly.
+
+### What can you build?
+
+* Stateless APIs
+* Complete SaaS products with user authentication
+* Purpose-built services such as ML inference endpoints
+* Full stack projects with separate frontend project integrated with Loco
+* Hobby projects full-stack with backend and HTML frontend
+
+
+### What's being done now?
+
+* View [issues](https://github.com/loco-rs/loco/issues) for what we plan next and what we work on (you're welcome to submit PRs!)
+* View [CHANGELOG](https://github.com/loco-rs/loco/blob/master/CHANGELOG.md) for what we already added
