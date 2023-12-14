@@ -17,12 +17,17 @@
 
 use std::collections::BTreeMap;
 
-use clap::{Parser, Subcommand};
-#[cfg(feature = "with-db")]
-use sea_orm_migration::MigratorTrait;
+cfg_if::cfg_if! {
+    if #[cfg(feature = "with-db")] {
+        use sea_orm_migration::MigratorTrait;
+        use crate::doctor;
+        use crate::boot::run_db;
+        use std::process::exit;
+    } else {}
+}
 
-#[cfg(feature = "with-db")]
-use crate::boot::run_db;
+use clap::{Parser, Subcommand};
+
 use crate::{
     app::{AppContext, Hooks},
     boot::{create_app, create_context, list_endpoints, run_task, start, RunDbCommand, StartMode},
@@ -88,6 +93,8 @@ enum Commands {
         #[command(subcommand)]
         component: ComponentArg,
     },
+    /// Validate and diagnose configurations.
+    Doctor {},
 }
 
 #[derive(Subcommand)]
@@ -277,6 +284,21 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
                 .unwrap_or_else(|_| Environment::Any(environment.to_string()))
                 .load()?;
             gen::generate::<H>(component.into(), &environment)?;
+        }
+        Commands::Doctor {} => {
+            let environment = Environment::from_str(&environment)
+                .unwrap_or_else(|_| Environment::Any(environment.to_string()))
+                .load()?;
+            let mut should_exit = false;
+            for (_, check) in doctor::run_all(&environment).await {
+                if !should_exit && !check.valid() {
+                    should_exit = true;
+                }
+                println!("{check}");
+            }
+            if should_exit {
+                exit(1);
+            }
         }
     }
     Ok(())

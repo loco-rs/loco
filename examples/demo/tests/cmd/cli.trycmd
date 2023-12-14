@@ -1,9 +1,9 @@
 ```console
-$ demo 
+$ blo-cli 
 ? 2
 The one-person framework for Rust
 
-Usage: demo [OPTIONS] <COMMAND>
+Usage: blo-cli [OPTIONS] <COMMAND>
 
 Commands:
   start     Start an app
@@ -11,6 +11,7 @@ Commands:
   routes    Describe all application endpoints
   task      Run a custom task
   generate  code generation creates a set of files and code templates based on a predefined set of rules
+  doctor    Validate and diagnose configurations
   help      Print this message or the help of the given subcommand(s)
 
 Options:
@@ -21,11 +22,11 @@ Options:
 ```
 
 ```console 
-$ demo db
+$ blo-cli db
 ? 2
 Perform DB operations
 
-Usage: demo db [OPTIONS] <COMMAND>
+Usage: blo-cli db [OPTIONS] <COMMAND>
 
 Commands:
   migrate   Migrate schema (up)
@@ -43,11 +44,11 @@ Options:
 ```
 
 ```console
-$ demo generate
+$ blo-cli generate
 ? 2
 code generation creates a set of files and code templates based on a predefined set of rules
 
-Usage: demo generate [OPTIONS] <COMMAND>
+Usage: blo-cli generate [OPTIONS] <COMMAND>
 
 Commands:
   model       Generates a new model file for defining the data structure of your application, and test file logic
@@ -67,14 +68,14 @@ Options:
 ```
 
 ```console 
-$ demo task
+$ blo-cli task
 seed_data		[Task for seeding data]
 user_report		[output a user report]
 
 ```
 
 ```console
-$ demo routes
+$ blo-cli routes
 [GET] /_health
 [GET] /_ping
 [POST] /auth/forgot
