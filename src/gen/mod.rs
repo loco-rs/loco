@@ -103,7 +103,7 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
             println!("{}", scaffold::generate::<H>(&rrgen, &name, &fields)?);
         }
         Component::Controller { name } => {
-            let vars = json!({ "name": name, "pkg_name": H::app_name()});
+            let vars = json!({ "name": name });
             rrgen.generate(CONTROLLER_T, &vars)?;
             rrgen.generate(CONTROLLER_TEST_T, &vars)?;
         }
