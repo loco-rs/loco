@@ -2,6 +2,7 @@ workspace = { members = ["macros", "xtask"], exclude = ["starters"] }
 [package]
 name = "loco-rs"
 version = "0.1.6"
+rust-version = "1.70"
 edition = "2021"
 description = "The one-person framework for Rust"
 license = "Apache-2.0"
