@@ -93,6 +93,7 @@ enum Commands {
         #[command(subcommand)]
         component: ComponentArg,
     },
+    #[cfg(feature = "with-db")]
     /// Validate and diagnose configurations.
     Doctor {},
 }
