@@ -117,6 +117,15 @@ $ pnpm dev
 
 ### Serving Static Assets in Loco
 
+First, move all our rest api endpoint under `/api` prefix. for doing it go to `src/app.rs`. in `routes` hooks function add `.prefix("/api")` to the default routes. 
+```rust
+fn routes() -> AppRoutes {
+    AppRoutes::with_default_routes()
+        .prefix("/api")
+        .add_route(controllers::notes::routes())
+}
+```
+
 Build the frontend for production:
 
 ```sh
