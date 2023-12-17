@@ -141,15 +141,14 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
                         .middlewares
                         .static_assets
                         .as_ref()
-                        .and_then(|s| s.folder.as_ref())
-                        .map(|f| f.path.to_string());
+                        .map(|s| s.folder.path.clone());
 
                     let fallback_file = &config
                         .server
                         .middlewares
                         .static_assets
                         .as_ref()
-                        .and_then(|s| s.fallback.as_ref().map(ToString::to_string));
+                        .map(|s| s.fallback.clone());
 
                     let vars = json!({ "pkg_name": H::app_name(), "copy_asset_folder": copy_asset_folder, "fallback_file": fallback_file });
                     rrgen.generate(DEPLOYMENT_DOCKER_T, &vars)?;

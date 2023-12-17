@@ -210,39 +210,21 @@ impl AppRoutes {
         app: AXRouter<AppContext>,
         config: &config::StaticAssetsMiddleware,
     ) -> Result<AXRouter<AppContext>> {
-        let app = if let Some(folder) = &config.folder {
-            if config.must_exist && !PathBuf::from(&folder.path).exists() {
-                return Err(errors::Error::Message(format!(
-                    "The folder path {} in static middleware are not found",
-                    folder.path
-                )));
-            }
-            tracing::info!(
-                "[Middleware:static] serve folder path: `{}` uri: `{}`",
-                folder.uri,
-                folder.path
-            );
-
-            app.nest_service(&folder.uri, ServeDir::new(&folder.path))
-        } else {
-            app
-        };
-        let app = if let Some(fallback) = &config.fallback {
-            if config.must_exist && !PathBuf::from(&fallback).exists() {
-                return Err(errors::Error::Message(format!(
-                    "The fallback path `{fallback}` in static middleware are not found"
-                )));
-            }
-
-            tracing::info!("[Middleware:static] serve fallback file {}", fallback);
-            app.fallback_service(ServeFile::new(fallback))
-        } else {
-            app
-        };
+        if config.must_exist
+            && (!PathBuf::from(&config.folder.path).exists()
+                || !PathBuf::from(&config.fallback).exists())
+        {
+            return Err(errors::Error::Message(format!(
+                "one of the static path are not found, Folder `{}` fallback: `{}`",
+                config.folder.path, config.fallback,
+            )));
+        }
 
         tracing::info!("[Middleware] Adding static");
-
-        Ok(app)
+        Ok(app.nest_service(
+            &config.folder.uri,
+            ServeDir::new(&config.folder.path).not_found_service(ServeFile::new(&config.fallback)),
+        ))
     }
     fn add_cors_middleware(
         app: AXRouter<AppContext>,
