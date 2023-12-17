@@ -36,9 +36,11 @@ pub struct Config {
     pub settings: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct Logger {
     pub enable: bool,
+    #[serde(default)]
+    pub pretty_backtrace: bool,
     pub level: logger::LogLevel,
     pub format: logger::Format,
     pub override_filter: Option<String>,

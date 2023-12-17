@@ -26,6 +26,8 @@ cfg_if::cfg_if! {
     } else {}
 }
 
+use std::str::FromStr;
+
 use clap::{Parser, Subcommand};
 
 use crate::{
@@ -35,7 +37,6 @@ use crate::{
     gen::{self, Component},
     Result,
 };
-use std::str::FromStr;
 
 const DEFAULT_ENVIRONMENT: &str = "development";
 #[derive(Parser)]

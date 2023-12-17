@@ -482,6 +482,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "backtrace_printer"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09e8b56ee42b299b3163acd9311704c0e5d4c6abe9135c027f4f60bfb42fc010"
+dependencies = [
+ "btparse",
+ "colored",
+ "regex",
+ "thiserror",
+]
+
+[[package]]
 name = "base64"
 version = "0.21.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -637,6 +649,12 @@ dependencies = [
  "memchr",
  "serde",
 ]
+
+[[package]]
+name = "btparse"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca8fb3f04d0ef6cb7d39262d6c2bad0eec0c00071083ceddeb8bbcf693ff28a6"
 
 [[package]]
 name = "bumpalo"
@@ -2088,6 +2106,7 @@ dependencies = [
  "async-trait",
  "axum",
  "axum-test",
+ "backtrace_printer",
  "bb8",
  "byte-unit",
  "cargo_metadata",

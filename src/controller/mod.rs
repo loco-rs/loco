@@ -58,6 +58,7 @@
 //! ```
 
 mod app_routes;
+mod backtrace;
 mod describe;
 pub mod format;
 #[cfg(feature = "with-db")]
@@ -72,6 +73,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use colored::Colorize;
 pub use routes::Routes;
 use serde::Serialize;
 
@@ -163,8 +165,17 @@ impl IntoResponse for Error {
                 )
             }
             Self::CustomError(status_code, data) => (status_code, data),
+            Self::WithBacktrace { inner, backtrace } => {
+                tracing::error!("{}", format!("{:?}", inner));
+                println!("\n{}", inner.to_string().red().underline());
+                backtrace::print_backtrace(&backtrace).unwrap();
+                (
+                    StatusCode::BAD_REQUEST,
+                    ErrorDetail::with_reason("Bad Request"),
+                )
+            }
             err => {
-                tracing::warn!("{}", format!("{:?}", err));
+                tracing::error!("{}", format!("{:?}", err));
                 (
                     StatusCode::BAD_REQUEST,
                     ErrorDetail::with_reason("Bad Request"),

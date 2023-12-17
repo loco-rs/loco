@@ -63,7 +63,7 @@ use std::{collections::BTreeMap, str::FromStr};
 use axum::Router;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
-use tracing::trace;
+use tracing::{trace, warn};
 
 #[cfg(feature = "with-db")]
 use crate::db;
@@ -241,6 +241,13 @@ pub async fn create_context<H: Hooks>(environment: &str) -> Result<AppContext> {
     if config.logger.enable {
         logger::init::<H>(&config.logger);
     }
+    if config.logger.pretty_backtrace {
+        std::env::set_var("RUST_BACKTRACE", "1");
+        warn!(
+            "pretty backtraces are enabled (this is great for development but has a runtime cost \
+             for production. disable with `logger.pretty_backtrace` in your config yaml)"
+        );
+    }
     #[cfg(feature = "with-db")]
     let db = db::connect(&config.database).await?;
 
@@ -381,7 +388,8 @@ fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
 #[allow(clippy::missing_panics_doc)]
 /// Establishes a connection to a Redis server based on the provided
 /// configuration settings.
-// TODO: Refactor to eliminate unwrapping and instead return an appropriate error type.
+// TODO: Refactor to eliminate unwrapping and instead return an appropriate
+// error type.
 pub async fn connect_redis(config: &Config) -> Option<Pool<RedisConnectionManager>> {
     if let Some(redis) = &config.redis {
         let manager = RedisConnectionManager::new(redis.uri.clone()).unwrap();

@@ -9,8 +9,29 @@ use lettre::{address::AddressError, transport::smtp};
 
 use crate::controller::ErrorDetail;
 
+/*
+backtrace principles:
+- use a plan warapper variant with no 'from' conversion
+- hand-code "From" conversion and force capture there with 'bt', which
+  will wrap and create backtrace only if RUST_BACKTRACE=1.
+costs:
+- when RUST_BACKTRACE is not set, we don't pay for the capture and we dont pay for printing.
+
+ */
+impl From<serde_json::Error> for Error {
+    fn from(val: serde_json::Error) -> Self {
+        Self::JSON(val).bt()
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+    #[error("{inner}\n{backtrace}")]
+    WithBacktrace {
+        inner: Box<Self>,
+        backtrace: Box<std::backtrace::Backtrace>,
+    },
+
     #[error("{0}")]
     Message(String),
 
@@ -21,7 +42,7 @@ pub enum Error {
     Tera(#[from] tera::Error),
 
     #[error(transparent)]
-    JSON(#[from] serde_json::Error),
+    JSON(serde_json::Error),
 
     #[error("cannot parse `{1}`: {0}")]
     YAMLFile(#[source] serde_yaml::Error, String),
@@ -87,6 +108,9 @@ pub enum Error {
 
     #[error(transparent)]
     Any(#[from] Box<dyn std::error::Error + Send + Sync>),
+
+    #[error(transparent)]
+    Anyhow(#[from] eyre::Report),
 }
 
 impl Error {
@@ -101,8 +125,7 @@ impl Error {
     pub fn string(s: &str) -> Self {
         Self::Message(s.to_string())
     }
-    /*
-    TODO: work on this when time allows
+    #[must_use]
     pub fn bt(self) -> Self {
         let backtrace = std::backtrace::Backtrace::capture();
         match backtrace.status() {
@@ -114,5 +137,4 @@ impl Error {
             },
         }
     }
-    */
 }

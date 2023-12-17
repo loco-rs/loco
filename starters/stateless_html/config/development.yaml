@@ -4,6 +4,8 @@
 logger:
   # Enable or disable logging.
   enable: true
+  # Enable pretty backtrace (sets RUST_BACKTRACE=1)
+  pretty_backtrace: true
   # Log level, options: trace, debug, info, warn or error.
   level: debug
   # Define the logging format. options: compact, pretty or Json
@@ -57,10 +59,10 @@ server:
     #   enable: true
     #   # ensure that both the folder.path and fallback file path are existence.
     #   must_exist: true
-    #   folder: 
+    #   folder:
     #     uri: "/assets"
-    #     path: "frontend/dist"        
-    #   fallback: "frontend/dist/index.html" 
+    #     path: "frontend/dist"
+    #   fallback: "frontend/dist/index.html"
 
 # Worker Configuration
 workers:
