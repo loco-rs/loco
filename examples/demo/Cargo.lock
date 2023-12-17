@@ -483,11 +483,11 @@ dependencies = [
 
 [[package]]
 name = "backtrace_printer"
-version = "1.2.0"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09e8b56ee42b299b3163acd9311704c0e5d4c6abe9135c027f4f60bfb42fc010"
+checksum = "e8d28de81c708c843640982b66573df0f0168d87e42854b563971f326745aab7"
 dependencies = [
- "btparse",
+ "btparse-stable",
  "colored",
  "regex",
  "thiserror",
@@ -651,10 +651,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "btparse"
-version = "0.1.1"
+name = "btparse-stable"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca8fb3f04d0ef6cb7d39262d6c2bad0eec0c00071083ceddeb8bbcf693ff28a6"
+checksum = "0d75b8252ed252f881d1dc4482ae3c3854df6ee8183c1906bac50ff358f4f89f"
 
 [[package]]
 name = "bumpalo"
