@@ -68,7 +68,7 @@ Options:
 ```
 
 ```console 
-$ blo-cli task
+$ LOCO_ENV=test blo-cli task
 seed_data		[Task for seeding data]
 user_report		[output a user report]
 
