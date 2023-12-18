@@ -71,7 +71,7 @@ jobs:
           DATABASE_URL: postgres://postgress:postgress@localhost:5432/postgress_test
 
       - name: controller
-        run: cargo run -- generate controller post && cargo build
+        run: cargo run -- generate controller post && cargo build && cargo test requests::post
         working-directory: ./examples/demo
         env:
           REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
