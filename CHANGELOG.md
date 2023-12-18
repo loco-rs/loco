@@ -2,6 +2,7 @@
 
 ## vNext
 
+* Adding .devcontainer to starter projects [https://github.com/loco-rs/loco/issues/170](https://github.com/loco-rs/loco/issues/170)
 * **Braking changes**: Adding `Hooks::boot` application. Migration steps:
     ```rust
     // Load boot::{create_app, BootResult, StartMode} from loco_rs lib
