@@ -2,6 +2,23 @@
 
 ## vNext
 
+* **Braking changes**: Adding `Hooks::boot` application. Migration steps:
+    ```rust
+    // Load boot::{create_app, BootResult, StartMode} from loco_rs lib
+    // Load migration: use migration::Migrator; Only when using DB
+    // Adding boot hook with the following code
+    impl Hooks for App {
+      ...
+      async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
+        // With DB:
+        create_app::<Self, Migrator>(mode, environment).await
+        // Without DB:
+        create_app::<Self>(mode, environment).await
+      }
+      ...
+    }
+    ```
+  
 
 ## v0.1.7
 * Added pretty backtraces [https://github.com/loco-rs/loco/issues/41](https://github.com/loco-rs/loco/issues/41)
