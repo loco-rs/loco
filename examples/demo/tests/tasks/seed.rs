@@ -2,13 +2,12 @@ use std::collections::BTreeMap;
 
 use blo::app::App;
 use loco_rs::{boot::run_task, testing};
-use migration::Migrator;
 use serial_test::serial;
 
 #[tokio::test]
 #[serial]
 async fn test_can_seed_data() {
-    let boot = testing::boot_test::<App, Migrator>().await.unwrap();
+    let boot = testing::boot_test::<App>().await.unwrap();
 
     let vars = BTreeMap::new();
 

@@ -2,62 +2,6 @@
 //! This module contains functions and structures for bootstrapping and running
 //! your application.
 //!
-//! # Example
-//!
-//! This example hows manually bootstrapping the webserver.
-//!
-//! ```rust
-//! # #[cfg(feature = "with-db")] {
-//! use async_trait::async_trait;
-//! use loco_rs::{
-//!     app::{AppContext, Hooks},
-//!     controller::AppRoutes,
-//!     boot::{self, StartMode},
-//!     worker::Processor,
-//!     task::Tasks,
-//!     Result,
-//! };
-//! use sea_orm::DatabaseConnection;
-//! use std::path::Path;
-//!
-//! /// this code block should be taken from the sea_orm migration model.
-//! pub use sea_orm_migration::prelude::*;
-//! pub struct Migrator;
-//! pub struct App;
-//! #[async_trait::async_trait]
-//! impl MigratorTrait for Migrator {
-//!     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
-//!         vec![]
-//!     }
-//! }
-//!
-//! #[async_trait]
-//! impl Hooks for App {
-//!
-//!    fn app_name() -> &'static str {
-//!        env!("CARGO_CRATE_NAME")
-//!    }
-//!
-//!     fn routes() -> AppRoutes {
-//!         AppRoutes::with_default_routes()
-//!     }
-//!
-//!     fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {}
-//!
-//!     fn register_tasks(tasks: &mut Tasks) {}
-//!
-//!     async fn truncate(db: &DatabaseConnection) -> Result<()> {
-//!         Ok(())
-//!     }
-//!
-//!     async fn seed(db: &DatabaseConnection, base: &Path) -> Result<()> {
-//!         Ok(())
-//!     }
-//! }
-//!
-//! let boot_result = boot::create_app::<App, Migrator>(StartMode::ServerAndWorker, "development");
-//! }
-//! ```
 use std::{collections::BTreeMap, str::FromStr};
 
 use axum::Router;

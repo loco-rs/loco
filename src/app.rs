@@ -10,6 +10,7 @@ use async_trait::async_trait;
 use axum::Router as AxumRouter;
 
 use crate::{
+    boot::{BootResult, StartMode},
     config::Config,
     controller::AppRoutes,
     environment::Environment,
@@ -48,56 +49,6 @@ pub struct AppContext {
 /// the application's routing, worker connections, task registration, and
 /// database actions according to their specific requirements and use cases.
 ///
-/// # Example
-///
-/// ```rust
-/// # #[cfg(feature = "with-db")] {
-/// use loco_rs::{
-///     app::{AppContext, Hooks},
-///     controller::AppRoutes,
-///     db::{self, truncate_table},
-///     task::Tasks,
-///     worker::{AppWorker, Processor},
-///     Result,
-/// };
-/// use sea_orm::DatabaseConnection;
-/// use std::path::Path;
-/// use async_trait::async_trait;
-///
-/// pub struct App;
-/// #[async_trait]
-/// impl Hooks for App {
-///
-///    fn app_name() -> &'static str {
-///        env!("CARGO_CRATE_NAME")
-///    }
-///
-///     fn routes() -> AppRoutes {
-///         AppRoutes::with_default_routes()
-///             // .add_route(controllers::notes::routes())
-///             // .add_route(controllers::auth::routes())
-///     }
-///
-///     fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {
-///         // p.register(DownloadWorker::build(ctx));
-///     }
-///
-///     fn register_tasks(tasks: &mut Tasks) {
-///         // tasks.register(UserReport);
-///     }
-///
-///     async fn truncate(db: &DatabaseConnection) -> Result<()> {
-///         // truncate_table(db, users::Entity).await?;
-///         // truncate_table(db, notes::Entity).await?;
-///         Ok(())
-///     }
-///
-///     async fn seed(db: &DatabaseConnection, base: &Path) -> Result<()> {
-///         // db::seed::<users::ActiveModel>(db, &base.join("users.yaml").display().to_string()).await?;
-///         Ok(())
-///     }
-/// }
-/// }
 /// ```
 #[async_trait]
 pub trait Hooks {
@@ -110,6 +61,34 @@ pub trait Hooks {
     /// }
     /// ```
     fn app_name() -> &'static str;
+
+    /// Initializes and boots the application based on the specified mode and environment.
+    ///
+    /// The boot initialization process may vary depending on whether a DB migrator is used or not.
+    ///
+    /// # Examples
+    ///
+    /// With DB:
+    /// ```rust,ignore
+    ///
+    /// async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
+    ///     create_app::<Self, Migrator>(mode, environment).await
+    /// }
+    ///
+    /// ````
+    ///
+    /// Without DB:
+    /// ```rust,ignore
+    /// async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
+    ///     create_app::<Self>(mode, environment).await
+    /// }
+    ///
+    /// ````
+    ///
+    ///
+    /// # Errors
+    /// Could not boot the application
+    async fn boot(mode: StartMode, environment: &str) -> Result<BootResult>;
 
     /// Invoke this function after the Loco routers have been constructed. This
     /// function enables you to configure custom Axum logics, such as layers,

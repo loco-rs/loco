@@ -1,7 +1,6 @@
 use blo::{app::App, models::_entities::notes::Entity};
 use insta::{assert_debug_snapshot, with_settings};
 use loco_rs::testing;
-use migration::Migrator;
 use sea_orm::entity::prelude::*;
 use serial_test::serial;
 
@@ -21,7 +20,7 @@ macro_rules! configure_insta {
 async fn can_get_notes() {
     configure_insta!();
 
-    testing::request::<App, Migrator, _, _>(|request, ctx| async move {
+    testing::request::<App, _, _>(|request, ctx| async move {
         testing::seed::<App>(&ctx.db).await.unwrap();
 
         let notes = request.get("notes").await;
@@ -46,7 +45,7 @@ async fn can_get_notes() {
 async fn can_add_note() {
     configure_insta!();
 
-    testing::request::<App, Migrator, _, _>(|request, _ctx| async move {
+    testing::request::<App, _, _>(|request, _ctx| async move {
         let payload = serde_json::json!({
             "title": "loco",
             "content": "loco note test",
@@ -74,7 +73,7 @@ async fn can_add_note() {
 async fn can_get_note() {
     configure_insta!();
 
-    testing::request::<App, Migrator, _, _>(|request, ctx| async move {
+    testing::request::<App, _, _>(|request, ctx| async move {
         testing::seed::<App>(&ctx.db).await.unwrap();
 
         let add_note_request = request.get("notes/1").await;
@@ -99,7 +98,7 @@ async fn can_get_note() {
 async fn can_delete_note() {
     configure_insta!();
 
-    testing::request::<App, Migrator, _, _>(|request, ctx| async move {
+    testing::request::<App, _, _>(|request, ctx| async move {
         testing::seed::<App>(&ctx.db).await.unwrap();
 
         let count_before_delete = Entity::find().all(&ctx.db).await.unwrap().len();
