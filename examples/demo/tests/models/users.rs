@@ -4,7 +4,6 @@ use blo::{
 };
 use insta::assert_debug_snapshot;
 use loco_rs::{model::ModelError, testing};
-use migration::Migrator;
 use sea_orm::{ActiveModelTrait, ActiveValue, IntoActiveModel};
 use serial_test::serial;
 
@@ -22,7 +21,7 @@ macro_rules! configure_insta {
 async fn test_can_validate_model() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App, Migrator>().await.unwrap();
+    let boot = testing::boot_test::<App>().await.unwrap();
 
     let res = users::ActiveModel {
         name: ActiveValue::set("1".to_string()),
@@ -40,7 +39,7 @@ async fn test_can_validate_model() {
 async fn can_create_with_password() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App, Migrator>().await.unwrap();
+    let boot = testing::boot_test::<App>().await.unwrap();
 
     let params = RegisterParams {
         email: "test@framework.com".to_string(),
@@ -61,7 +60,7 @@ async fn can_create_with_password() {
 async fn handle_create_with_password_with_duplicate() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App, Migrator>().await.unwrap();
+    let boot = testing::boot_test::<App>().await.unwrap();
     testing::seed::<App>(&boot.app_context.db).await.unwrap();
 
     let new_user: Result<Model, ModelError> = Model::create_with_password(
@@ -81,7 +80,7 @@ async fn handle_create_with_password_with_duplicate() {
 async fn can_find_by_email() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App, Migrator>().await.unwrap();
+    let boot = testing::boot_test::<App>().await.unwrap();
     testing::seed::<App>(&boot.app_context.db).await.unwrap();
 
     let existing_user = Model::find_by_email(&boot.app_context.db, "user1@example.com").await;
@@ -97,7 +96,7 @@ async fn can_find_by_email() {
 async fn can_find_by_pid() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App, Migrator>().await.unwrap();
+    let boot = testing::boot_test::<App>().await.unwrap();
     testing::seed::<App>(&boot.app_context.db).await.unwrap();
 
     let existing_user =
@@ -114,7 +113,7 @@ async fn can_find_by_pid() {
 async fn can_verification_token() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App, Migrator>().await.unwrap();
+    let boot = testing::boot_test::<App>().await.unwrap();
     testing::seed::<App>(&boot.app_context.db).await.unwrap();
 
     let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
@@ -143,7 +142,7 @@ async fn can_verification_token() {
 async fn can_set_forgot_password_sent() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App, Migrator>().await.unwrap();
+    let boot = testing::boot_test::<App>().await.unwrap();
     testing::seed::<App>(&boot.app_context.db).await.unwrap();
 
     let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
@@ -172,7 +171,7 @@ async fn can_set_forgot_password_sent() {
 async fn can_verified() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App, Migrator>().await.unwrap();
+    let boot = testing::boot_test::<App>().await.unwrap();
     testing::seed::<App>(&boot.app_context.db).await.unwrap();
 
     let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
@@ -199,7 +198,7 @@ async fn can_verified() {
 async fn can_reset_password() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App, Migrator>().await.unwrap();
+    let boot = testing::boot_test::<App>().await.unwrap();
     testing::seed::<App>(&boot.app_context.db).await.unwrap();
 
     let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")

@@ -11,6 +11,7 @@
 //! use async_trait::async_trait;
 //! use loco_rs::{
 //!    app::{AppContext, Hooks},
+//!    boot::{create_app, BootResult, StartMode},
 //!    controller::AppRoutes,
 //!    worker::Processor,
 //!    task::Tasks,
@@ -40,6 +41,10 @@
 //!     fn routes() -> AppRoutes {
 //!         AppRoutes::with_default_routes()
 //!             // .add_route(controllers::notes::routes())
+//!     }
+//!     
+//!     async fn boot(mode: StartMode, environment: &str) -> Result<BootResult>{
+//!          create_app::<Self, Migrator>(mode, environment).await
 //!     }
 //!
 //!     fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {}

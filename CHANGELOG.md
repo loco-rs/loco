@@ -5,9 +5,26 @@
 * Added: `loco generate migration` for adding ad-hoc migrations
 * Added: added support in model generator for many-to-many link table generation via `loco generate model --link`
 * Docs: added Migration section, added relations documentation 1:M, M:M
-
+* Adding .devcontainer to starter projects [https://github.com/loco-rs/loco/issues/170](https://github.com/loco-rs/loco/issues/170)
+* **Braking changes**: Adding `Hooks::boot` application. Migration steps:
+    ```rust
+    // Load boot::{create_app, BootResult, StartMode} from loco_rs lib
+    // Load migration: use migration::Migrator; Only when using DB
+    // Adding boot hook with the following code
+    impl Hooks for App {
+      ...
+      async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
+        // With DB:
+        create_app::<Self, Migrator>(mode, environment).await
+        // Without DB:
+        create_app::<Self>(mode, environment).await
+      }
+      ...
+    }
+    ```
+  
 ## v0.1.7
-* Added pretty backtraces [https://github.com/loco-rs/loco/issues/41](https://github.com/loco-rs/loco/issues/410)
+* Added pretty backtraces [https://github.com/loco-rs/loco/issues/41](https://github.com/loco-rs/loco/issues/41)
 * adding tests for note requests [https://github.com/loco-rs/loco/pull/156](https://github.com/loco-rs/loco/pull/156)
 * Define the min rust version the loco can run [https://github.com/loco-rs/loco/pull/164](https://github.com/loco-rs/loco/pull/164)
 * Added `cargo loco doctor` cli command for validate and diagnose configurations. [https://github.com/loco-rs/loco/pull/145](https://github.com/loco-rs/loco/pull/145)

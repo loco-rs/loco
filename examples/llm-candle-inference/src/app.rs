@@ -1,18 +1,19 @@
 use std::sync::Arc;
 
+use crate::controllers;
 use async_trait::async_trait;
 use axum::Extension;
 use kalosm::language::{Llama, LlamaSource};
 use loco_rs::{
     app::{AppContext, Hooks},
+    boot::{create_app, BootResult, StartMode},
     controller::AppRoutes,
     task::Tasks,
     worker::Processor,
     Result,
 };
+use migration::Migrator;
 use tokio::sync::RwLock;
-
-use crate::controllers;
 
 pub struct App;
 #[async_trait]
@@ -20,6 +21,11 @@ impl Hooks for App {
     fn app_name() -> &'static str {
         env!("CARGO_CRATE_NAME")
     }
+
+    async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
+        create_app::<Self, Migrator>(mode, environment).await
+    }
+
     async fn before_run(_ctx: &AppContext) -> Result<()> {
         // force static load now
         Ok(())

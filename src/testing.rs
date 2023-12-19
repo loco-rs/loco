@@ -8,8 +8,6 @@ use axum_test::{TestServer, TestServerConfig};
 use lazy_static::lazy_static;
 #[cfg(feature = "with-db")]
 use sea_orm::DatabaseConnection;
-#[cfg(feature = "with-db")]
-use sea_orm_migration::MigratorTrait;
 
 use crate::{
     app::{AppContext, Hooks},
@@ -118,13 +116,8 @@ pub fn cleanup_email() -> Vec<(&'static str, &'static str)> {
 ///     assert!(false)
 /// }
 /// ```
-pub async fn boot_test<H: Hooks, M: MigratorTrait>() -> Result<BootResult> {
-    boot::create_app::<H, M>(boot::StartMode::ServerOnly, "test").await
-}
-
-#[cfg(not(feature = "with-db"))]
 pub async fn boot_test<H: Hooks>() -> Result<BootResult> {
-    boot::create_app::<H>(boot::StartMode::ServerOnly, "test").await
+    H::boot(boot::StartMode::ServerOnly, "test").await
 }
 
 #[cfg(feature = "with-db")]
@@ -175,12 +168,11 @@ pub async fn seed<H: Hooks>(db: &DatabaseConnection) -> eyre::Result<()> {
 /// ```rust,ignore
 /// use myapp::app::App;
 /// use loco_rs::testing;
-/// use migration::Migrator;
 ///
 ///     #[tokio::test]
 /// #[serial]
 /// async fn can_register() {
-///     testing::request::<App, Migrator, _, _>(|request, ctx| async move {
+///     testing::request::<App, _, _>(|request, ctx| async move {
 ///         let response = request.post("/auth/register").json(&serde_json::json!({})).await;
 ///
 ///         with_settings!({
@@ -192,23 +184,6 @@ pub async fn seed<H: Hooks>(db: &DatabaseConnection) -> eyre::Result<()> {
 ///     .await;
 /// }
 /// ```
-pub async fn request<H: Hooks, M: MigratorTrait, F, Fut>(callback: F)
-where
-    F: FnOnce(TestServer, AppContext) -> Fut,
-    Fut: std::future::Future<Output = ()>,
-{
-    let boot = boot_test::<H, M>().await.unwrap();
-
-    let config = TestServerConfig::builder()
-        .default_content_type("application/json")
-        .build();
-
-    let server = TestServer::new_with_config(boot.router.unwrap(), config).unwrap();
-
-    callback(server, boot.app_context.clone()).await;
-}
-
-#[cfg(not(feature = "with-db"))]
 #[allow(clippy::future_not_send)]
 pub async fn request<H: Hooks, F, Fut>(callback: F)
 where
