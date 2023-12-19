@@ -1,3 +1,4 @@
+use chrono::Utc;
 use rrgen::{GenResult, RRgen};
 use serde_json::json;
 
@@ -16,6 +17,8 @@ const MAILER_T: &str = include_str!("templates/mailer.t");
 const MAILER_SUB_T: &str = include_str!("templates/mailer_sub.t");
 const MAILER_TEXT_T: &str = include_str!("templates/mailer_text.t");
 const MAILER_HTML_T: &str = include_str!("templates/mailer_html.t");
+
+const MIGRATION_T: &str = include_str!("templates/migration.t");
 
 const TASK_T: &str = include_str!("templates/task.t");
 const TASK_TEST_T: &str = include_str!("templates/task_test.t");
@@ -60,8 +63,16 @@ pub enum Component {
         /// Name of the thing to generate
         name: String,
 
+        /// Is it a link table? use this for generating many-to-many relations
+        link: bool,
+
         /// Model fields, eg. title:string hits:int
         fields: Vec<(String, String)>,
+    },
+    #[cfg(feature = "with-db")]
+    Migration {
+        /// Name of the migration file
+        name: String,
     },
     #[cfg(feature = "with-db")]
     Scaffold {
@@ -95,8 +106,8 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
 
     match component {
         #[cfg(feature = "with-db")]
-        Component::Model { name, fields } => {
-            println!("{}", model::generate::<H>(&rrgen, &name, &fields)?);
+        Component::Model { name, link, fields } => {
+            println!("{}", model::generate::<H>(&rrgen, &name, link, &fields)?);
         }
         #[cfg(feature = "with-db")]
         Component::Scaffold { name, fields } => {
@@ -160,6 +171,11 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
                     rrgen.generate(DEPLOYMENT_SHUTTLE_CONFIG_T, &vars)?;
                 }
             }
+        }
+        Component::Migration { name } => {
+            let ts = Utc::now();
+            let vars = json!({ "name": name, "ts": ts, "pkg_name": H::app_name()});
+            rrgen.generate(MIGRATION_T, &vars)?;
         }
     }
     Ok(())

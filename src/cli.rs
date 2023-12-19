@@ -108,9 +108,19 @@ enum ComponentArg {
         /// Name of the thing to generate
         name: String,
 
-        /// Model fields, eg. title:string hits:integer
+        /// Is it a link table? Use this in many-to-many relations
+        #[arg(short, long, action)]
+        link: bool,
+
+        /// Model fields, eg. title:string hits:int
         #[clap(value_parser = parse_key_val::<String,String>)]
         fields: Vec<(String, String)>,
+    },
+    #[cfg(feature = "with-db")]
+    /// Generates a new migration file
+    Migration {
+        /// Name of the migration to generate
+        name: String,
     },
     #[cfg(feature = "with-db")]
     /// Generates a CRUD scaffold, model and controller
@@ -118,7 +128,7 @@ enum ComponentArg {
         /// Name of the thing to generate
         name: String,
 
-        /// Model fields, eg. title:string hits:integer
+        /// Model fields, eg. title:string hits:int
         #[clap(value_parser = parse_key_val::<String,String>)]
         fields: Vec<(String, String)>,
     },
@@ -150,7 +160,9 @@ impl From<ComponentArg> for Component {
     fn from(value: ComponentArg) -> Self {
         match value {
             #[cfg(feature = "with-db")]
-            ComponentArg::Model { name, fields } => Self::Model { name, fields },
+            ComponentArg::Model { name, link, fields } => Self::Model { name, link, fields },
+            #[cfg(feature = "with-db")]
+            ComponentArg::Migration { name } => Self::Migration { name },
             #[cfg(feature = "with-db")]
             ComponentArg::Scaffold { name, fields } => Self::Scaffold { name, fields },
             ComponentArg::Controller { name } => Self::Controller { name },
