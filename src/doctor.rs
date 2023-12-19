@@ -1,10 +1,10 @@
+use std::{collections::BTreeMap, process::Command};
+
 use crate::{
     boot,
     config::{Config, Database},
     db, redis,
 };
-use std::collections::BTreeMap;
-use std::process::Command;
 
 const SEAORM_INSTALLED: &str = "SeaORM CLI is installed";
 const SEAORM_NOT_INSTALLED: &str = "SeaORM CLI was not found";

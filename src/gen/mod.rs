@@ -113,6 +113,12 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
         Component::Scaffold { name, fields } => {
             println!("{}", scaffold::generate::<H>(&rrgen, &name, &fields)?);
         }
+        #[cfg(feature = "with-db")]
+        Component::Migration { name } => {
+            let ts = Utc::now();
+            let vars = json!({ "name": name, "ts": ts, "pkg_name": H::app_name()});
+            rrgen.generate(MIGRATION_T, &vars)?;
+        }
         Component::Controller { name } => {
             let vars = json!({ "name": name, "pkg_name": H::app_name()});
             rrgen.generate(CONTROLLER_T, &vars)?;
@@ -171,11 +177,6 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
                     rrgen.generate(DEPLOYMENT_SHUTTLE_CONFIG_T, &vars)?;
                 }
             }
-        }
-        Component::Migration { name } => {
-            let ts = Utc::now();
-            let vars = json!({ "name": name, "ts": ts, "pkg_name": H::app_name()});
-            rrgen.generate(MIGRATION_T, &vars)?;
         }
     }
     Ok(())

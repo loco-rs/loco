@@ -2,6 +2,9 @@
 
 ## vNext
 
+* Added: `loco generate migration` for adding ad-hoc migrations
+* Added: added support in model generator for many-to-many link table generation via `loco generate model --link`
+* Docs: added Migration section, added relations documentation 1:M, M:M
 
 ## v0.1.7
 * Added pretty backtraces [https://github.com/loco-rs/loco/issues/41](https://github.com/loco-rs/loco/issues/410)
