@@ -7,6 +7,7 @@ use std::{path::PathBuf, time::Duration};
 use axum::{http, Router as AXRouter};
 use lazy_static::lazy_static;
 use regex::Regex;
+use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::{
     add_extension::AddExtensionLayer,
     catch_panic::CatchPanicLayer,
@@ -21,6 +22,8 @@ use crate::{app::AppContext, config, environment::Environment, errors, Result};
 
 lazy_static! {
     static ref NORMALIZE_URL: Regex = Regex::new(r"/+").unwrap();
+    static ref DEFAULT_IDENT_HEADER_VALUE: http::header::HeaderValue =
+        http::header::HeaderValue::from_static("Loco");
 }
 
 /// Represents the routes of the application.
@@ -164,6 +167,8 @@ impl AppRoutes {
 
             app = app.route(&router.uri, router.method);
         }
+
+        app = Self::add_server_header(app, &ctx.config.server);
 
         if let Some(catch_panic) = &ctx.config.server.middlewares.catch_panic {
             if catch_panic.enable {
@@ -320,6 +325,7 @@ impl AppRoutes {
         tracing::info!("[Middleware] Adding log trace id",);
         app
     }
+
     fn add_timeout_middleware(
         app: AXRouter<AppContext>,
         config: &config::TimeoutRequestMiddleware,
@@ -328,5 +334,33 @@ impl AppRoutes {
 
         tracing::info!("[Middleware] Adding timeout layer");
         app
+    }
+
+    fn add_server_header(
+        app: AXRouter<AppContext>,
+        config: &config::Server,
+    ) -> AXRouter<AppContext> {
+        let ident_value =
+            config
+                .ident
+                .as_ref()
+                .map_or(DEFAULT_IDENT_HEADER_VALUE.clone(), |ident| {
+                    match http::header::HeaderValue::from_str(ident) {
+                        Ok(val) => val,
+                        Err(e) => {
+                            tracing::info!(
+                                error = format!("{}", e),
+                                val = ident,
+                                "could not set custom ident header"
+                            );
+                            DEFAULT_IDENT_HEADER_VALUE.clone()
+                        }
+                    }
+                });
+
+        app.layer(SetResponseHeaderLayer::overriding(
+            http::header::SERVER,
+            ident_value,
+        ))
     }
 }
