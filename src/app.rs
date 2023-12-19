@@ -52,6 +52,11 @@ pub struct AppContext {
 /// ```
 #[async_trait]
 pub trait Hooks {
+    /// Defines the composite app version
+    #[must_use]
+    fn app_version() -> String {
+        "dev".to_string()
+    }
     /// Defines the crate name
     ///
     /// Example
@@ -62,19 +67,19 @@ pub trait Hooks {
     /// ```
     fn app_name() -> &'static str;
 
-    /// Initializes and boots the application based on the specified mode and environment.
+    /// Initializes and boots the application based on the specified mode and
+    /// environment.
     ///
-    /// The boot initialization process may vary depending on whether a DB migrator is used or not.
+    /// The boot initialization process may vary depending on whether a DB
+    /// migrator is used or not.
     ///
     /// # Examples
     ///
     /// With DB:
     /// ```rust,ignore
-    ///
     /// async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
     ///     create_app::<Self, Migrator>(mode, environment).await
     /// }
-    ///
     /// ````
     ///
     /// Without DB:
@@ -82,7 +87,6 @@ pub trait Hooks {
     /// async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
     ///     create_app::<Self>(mode, environment).await
     /// }
-    ///
     /// ````
     ///
     ///

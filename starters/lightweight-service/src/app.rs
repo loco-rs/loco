@@ -1,4 +1,3 @@
-use crate::controllers;
 use async_trait::async_trait;
 use loco_rs::{
     app::{AppContext, Hooks},
@@ -6,6 +5,8 @@ use loco_rs::{
     task::Tasks,
     worker::Processor,
 };
+
+use crate::controllers;
 
 pub struct App;
 #[async_trait]

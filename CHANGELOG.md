@@ -2,6 +2,24 @@
 
 ## vNext
 
+* Added: `loco version` for getting an operable version string containing logical crate version and git SHA if available: `0.3.0 (<git sha>)`
+
+To migrate to this behavior from earlier versions, it requires adding the following to your `app.rs` app hooks:
+
+```rust
+    fn app_version() -> String {
+        format!(
+            "{} ({})",
+            env!("CARGO_PKG_VERSION"),
+            option_env!("BUILD_SHA")
+                .or(option_env!("GITHUB_SHA"))
+                .unwrap_or("dev")
+        )
+    }
+```
+
+Reminder: `loco --version` will give you the current Loco framework which your app was built against and `loco version` gives you your app version.
+ 
 * Added: `loco generate migration` for adding ad-hoc migrations
 * Added: added support in model generator for many-to-many link table generation via `loco generate model --link`
 * Docs: added Migration section, added relations documentation 1:M, M:M

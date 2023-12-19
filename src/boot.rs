@@ -1,7 +1,6 @@
 //! # Application Bootstrapping and Logic
 //! This module contains functions and structures for bootstrapping and running
 //! your application.
-//!
 use std::{collections::BTreeMap, str::FromStr};
 
 use axum::Router;
