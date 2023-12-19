@@ -62,9 +62,11 @@ Now you can create your new app (choose "Saas app" for built-in authentication).
 
 ```sh
 $ loco new
-❯ App name? [myapp]:
-❯ Saas app (with DB and user auth)
-  Stateless service (minimal, no db)
+✔ ❯ App name? · myapp
+? ❯ What would you like to build? ›
+❯ lightweight-service (minimal, only controllers and views)
+  Rest API (with DB and user auth)
+  Saas app (with DB and user auth)
 🚂 Loco app generated successfully in:
 myapp
 ```

@@ -64,28 +64,29 @@ jobs:
     permissions:
       contents: read
 
-    redis:
-      image: redis
-      options: >-
-        --health-cmd "redis-cli ping"
-        --health-interval 10s
-        --health-timeout 5s
-        --health-retries 5
-      ports:
-        - "6379:6379"
-    postgres:
-      image: postgres
-      env:
-        POSTGRES_DB: postgress_test
-        POSTGRES_USER: postgress
-        POSTGRES_PASSWORD: postgress
-      ports:
-        - "5432:5432"
-      # Set health checks to wait until postgres has started
-      options: --health-cmd pg_isready
-        --health-interval 10s
-        --health-timeout 5s
-        --health-retries 5
+    services:
+      redis:
+        image: redis
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - "6379:6379"
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_DB: postgress_test
+          POSTGRES_USER: postgress
+          POSTGRES_PASSWORD: postgress
+        ports:
+          - "5432:5432"
+        # Set health checks to wait until postgres has started
+        options: --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout the code

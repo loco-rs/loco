@@ -18,6 +18,17 @@ Simplify your project setup with Loco's predefined boilerplates, designed to mak
 cargo install loco-cli
 ```
 
+Create a starter:
+
+```sh
+loco new
+✔ ❯ App name? · myapp
+? ❯ What would you like to build? ›
+❯ lightweight-service (minimal, only controllers and views)
+  Rest API (with DB and user auth)
+  Saas app (with DB and user auth)
+```
+
 ## Available Starters
 
 #### Saas Starter
