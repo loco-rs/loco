@@ -4,9 +4,7 @@ This example showcases using `candle`, through a higher level library called [ka
 
 Looking at inference in Rust, `candle` is probably where we all want to be. Note that `kalosm` GREATLY simplifies text generation with candle, so give it a deep look.
 
-
 ## Points of interest
-
 
 ### This example implements streaming with Axum
 
@@ -18,9 +16,7 @@ cargo run --release -- start
 
 It may download a large model file, and will take some more time to prepare and load it to memory.
 
-
 Next, try your first inference request and wait for the tokens to start streaming:
-
 
 ```sh
 $ curl -vvv --no-buffer localhost:3000/candle-llm
@@ -30,9 +26,8 @@ $ curl -vvv --no-buffer localhost:3000/candle-llm
 
 This is done by using Axum `Extension` state, in the `after_routes` lifecycle hook:
 
-
 ```rust
-    fn after_routes(router: axum::Router, _ctx: &AppContext) -> Result<axum::Router> {
+    async fn after_routes(router: axum::Router, _ctx: &AppContext) -> Result<axum::Router> {
         // cache should reside at: ~/.cache/huggingface/hub
         println!("loading model");
         let model = Llama::builder()
@@ -46,7 +41,6 @@ This is done by using Axum `Extension` state, in the `after_routes` lifecycle ho
     }
 ```
 
-
 You can add any state with `router.layer(Extension(<..>))`, then consume it in your controller:
 
 ```rust
@@ -56,12 +50,11 @@ async fn candle_llm(Extension(m): Extension<Arc<RwLock<Llama>>>) -> impl IntoRes
     ...
 ```
 
-------
+---
 
 Loco is a web and API framework running on Rust.
 
-This is the **Stateless starter** which comes with no database or state dependencies. 
-
+This is the **Stateless starter** which comes with no database or state dependencies.
 
 ## Quick Start
 

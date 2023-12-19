@@ -96,7 +96,7 @@ pub trait Hooks {
     ///
     /// # Errors
     /// Axum router error
-    fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+    async fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
         Ok(router)
     }
 
