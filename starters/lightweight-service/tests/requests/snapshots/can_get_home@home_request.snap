@@ -1,0 +1,8 @@
+---
+source: tests/requests/home.rs
+expression: "(notes.status_code(), notes.text())"
+---
+(
+    200,
+    "{\"app_name\":\"loco\"}",
+)

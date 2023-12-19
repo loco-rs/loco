@@ -1,0 +1,35 @@
+[workspace]
+
+[package]
+name = "loco_starter_template"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+loco-rs = { version = "0.1.7", default-features = false, features = ["cli"] }
+serde = "*"
+serde_json = "*"
+eyre = "*"
+tokio = { version = "1.33.0", default-features = false }
+async-trait = "0.1.74"
+
+axum = "0.7.1"
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
+
+[[bin]]
+name = "loco_starter_template-cli"
+path = "src/bin/main.rs"
+required-features = []
+
+[dev-dependencies]
+serial_test = "*"
+rstest = "*"
+loco-rs = { version = "0.1.7", default-features = false, features = [
+  "testing",
+  "cli",
+] }
+insta = { version = "*", features = ["redactions", "yaml", "filters"] }
