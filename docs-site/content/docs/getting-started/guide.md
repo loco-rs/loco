@@ -26,17 +26,15 @@ Loco is strongly inspired by Rails. If you know Rails _and_ Rust, you'll feel at
 We think Rails is so great, that this guide is strongly inspired from the <a href="https://guides.rubyonrails.org/getting_started.html">Rails guide, too</a>
 </div>
 
-
 ## What is Loco?
 
 Loco is a Web or API framework for Rust. It's also a productivity suite for developers: it contains everything you need while building a hobby or your next startup. It's also strongly inspired by Rails.
 
-* **You have a variant of the MVC model**, which removes the paradox of option. You deal with building your app, not making academic decisions for what abstractions to use.
-* **Fat models, slim controllers**. Models should contain most of your logic and business implementation, controllers should just be a lightweight router that understands HTTP and moves parameters around.
-* **Command line driven** to keep your momentum and flow. Generate stuff over copying and pasting or coding from scratch.
-* **Every task is "infrastructure-ready"**, just plug in your code and wire it in: controllers, models, views, tasks, background jobs, mailers, and more.
-* **Convention over configuration**: decisions are already done for you -- the folder structure matter, configuration shape and values matter, and the way an app is wired matter to how an app operates and for you do be the most effective. 
-
+- **You have a variant of the MVC model**, which removes the paradox of option. You deal with building your app, not making academic decisions for what abstractions to use.
+- **Fat models, slim controllers**. Models should contain most of your logic and business implementation, controllers should just be a lightweight router that understands HTTP and moves parameters around.
+- **Command line driven** to keep your momentum and flow. Generate stuff over copying and pasting or coding from scratch.
+- **Every task is "infrastructure-ready"**, just plug in your code and wire it in: controllers, models, views, tasks, background jobs, mailers, and more.
+- **Convention over configuration**: decisions are already done for you -- the folder structure matter, configuration shape and values matter, and the way an app is wired matter to how an app operates and for you do be the most effective.
 
 ## Creating a New Loco App
 
@@ -50,15 +48,13 @@ $ cargo install loco-cli
 
 Make sure you also have locally installed or running (via Docker or otherwise):
 
-* Postgres
-* Redis
-
+- Postgres
+- Redis
 
 <div class="infobox">
 To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>loco_app</code>: 
 <code>docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=loco_app -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine</code>
 </div>
-
 
 ### Creating a new Loco app
 
@@ -66,9 +62,11 @@ Now you can create your new app (choose "Saas app" for built-in authentication).
 
 ```sh
 $ loco new
-❯ App name? [myapp]:
-❯ Saas app (with DB and user auth)
-  Stateless service (minimal, no db)
+✔ ❯ App name? · myapp
+? ❯ What would you like to build? ›
+❯ lightweight-service (minimal, only controllers and views)
+  Rest API (with DB and user auth)
+  Saas app (with DB and user auth)
 🚂 Loco app generated successfully in:
 myapp
 ```
@@ -97,9 +95,6 @@ Here's a rundown of what Loco creates for you by default:
 | `tests/`       | Your app-wide tests: models, requests, etc.                                                                                                                       |
 | `config/`      | A stage-based configuration folder: development, test, production                                                                                                 |
 |                |                                                                                                                                                                   |
-
-
-
 
 ## Hello, Loco!
 
@@ -132,7 +127,7 @@ listening on port 3000
 And now, let's see that it's alive:
 
 ```sh
-$ curl localhost:3000/_ping
+$ curl localhost:3000/api/_ping
 {"ok":true}%
 ```
 
@@ -141,7 +136,7 @@ The built in `_ping` route will tell your load balancer everything is up.
 Let's see that all services that are required are up:
 
 ```sh
-$ curl localhost:3000/_health
+$ curl localhost:3000/api/_health
 {"ok":true}
 ```
 
@@ -194,12 +189,11 @@ $ cargo loco start
 Now, let's test it out:
 
 ```sh
-$ curl localhost:3000/guide
+$ curl localhost:3000/api/guide
 hello
 ```
 
-
-Loco has powerful generators, which will make you 10x productive and drive your momentum when building apps. 
+Loco has powerful generators, which will make you 10x productive and drive your momentum when building apps.
 
 If you'd like to be entertained for a moment, let's "learn the hard way" and add a new controller manually as well.
 
@@ -294,7 +288,6 @@ $
 
 **MVC is still a very strong principle and architecture to follow for simplifying projects**, and this is what Loco follows too.
 
-
 Although web services and APIs don't have a concept of a _view_ because they do not generate HTML or UI responses, **we claim _stable_, _safe_ services and APIs indeed has a notion of a view** -- and that is the serialized data, its shape, its compatibility and its version.
 
 ```
@@ -314,7 +307,6 @@ src/
     users.rs
     mod.rs
 ```
-
 
 **This is an important _cognitive_ principle**. And the principle claims that you can only create safe, compatible API responses if you treat those as a separate, independently goverened _thing_ -- hence the 'V' in MVC, in Loco.
 
@@ -373,14 +365,14 @@ impl MigrationTrait for Migration {
     }
 }
 ```
+
 You can recreate a complete database **by applying migrations in-series onto a fresh database schema** -- this is done automatically by Loco's migrator (which is derived from SeaORM).
 
 When generating a new model, Loco will:
 
-* Generate a new "up" database migration
-* Apply the migration
-* Reflect the entities from database structure and generate back your `_entities` code
-
+- Generate a new "up" database migration
+- Apply the migration
+- Reflect the entities from database structure and generate back your `_entities` code
 
 You will find your new model as an entity, synchronized from your database structure in `models/_entities/`:
 
@@ -398,12 +390,11 @@ src/models/
 └── users.rs
 ```
 
-
 ### Using `playground` to interact with the database
 
-Your `examples/`  folder contains:
+Your `examples/` folder contains:
 
-* `playground.rs` - a place to try out and experiment with your models and app logic.
+- `playground.rs` - a place to try out and experiment with your models and app logic.
 
 Let's fetch data using your models, using `playground.rs`:
 
@@ -510,7 +501,7 @@ $ cargo loco start
 And make a request:
 
 ```sh
-$ curl localhost:3000/articles
+$ curl localhost:3000/api/articles
 [{"created_at":"...","updated_at":"...","id":1,"title":"how to build apps in 3 steps","content":"use Loco: https://loco.rs"}]
 ```
 
@@ -519,7 +510,6 @@ $ curl localhost:3000/articles
 Next we'll see how to get a single article, delete, and edit a single article. Getting an article by ID is done using the `Path` extractor from `axum`.
 
 Replace the contents of `articles.rs` with this:
-
 
 ```rust
 // this is src/controllers/articles.rs
@@ -595,11 +585,11 @@ pub fn routes() -> Routes {
 
 A few items to note:
 
-* `Params` is a strongly typed required params data holder, and is similar in concept to Rails' _strongparams_, just safer.
-* `Path(id): Path<i32>` extracts the `:id` component from a URL.
-* Order of extractors is important and follows `axum`'s documentation (parameters, state, body).
-* It's always better to create a `load_item` helper function and use it in all singular-item routes.
-* While `use loco_rs::prelude::*` brings in anything you need to build a controller, you should note to import `crate::models::_entities::articles::{ActiveModel, Entity, Model}` as well as `Serialize, Deserialize` for params.
+- `Params` is a strongly typed required params data holder, and is similar in concept to Rails' _strongparams_, just safer.
+- `Path(id): Path<i32>` extracts the `:id` component from a URL.
+- Order of extractors is important and follows `axum`'s documentation (parameters, state, body).
+- It's always better to create a `load_item` helper function and use it in all singular-item routes.
+- While `use loco_rs::prelude::*` brings in anything you need to build a controller, you should note to import `crate::models::_entities::articles::{ActiveModel, Entity, Model}` as well as `Serialize, Deserialize` for params.
 
 You can now test that it works, start the app:
 
@@ -613,14 +603,14 @@ Add a new article:
 $ curl -X POST -H "Content-Type: application/json" -d '{
   "title": "Your Title",
   "content": "Your Content xxx"
-}' localhost:3000/articles
+}' localhost:3000/api/articles
 {"created_at":"...","updated_at":"...","id":2,"title":"Your Title","content":"Your Content xxx"}
 ```
 
 Get a list:
 
 ```sh
-$ curl localhost:3000/articles
+$ curl localhost:3000/api/articles
 [{"created_at":"...","updated_at":"...","id":1,"title":"how to build apps in 3 steps","content":"use Loco: https://loco.rs"},{"created_at":"...","updated_at":"...","id":2,"title":"Your Title","content":"Your Content xxx"}
 ```
 
@@ -629,7 +619,6 @@ $ curl localhost:3000/articles
 Let's add another model, this time: `Comment`. We want to create a relation - a comment belongs to a post, and each post can have multiple comments.
 
 Instead of coding the model and controller by hand, we're going to create a **comment scaffold** which will generate a fully working CRUD API comments. We're also going to use the special `references` type:
-
 
 ```sh
 $ cargo loco generate scaffold comment content:text article:references
@@ -699,7 +688,6 @@ pub fn routes() -> Routes {
 }
 ```
 
-
 And implement the relation fetching:
 
 ```rust
@@ -729,14 +717,14 @@ Now let's add a comment to Article `1`:
 $ curl -X POST -H "Content-Type: application/json" -d '{
   "content": "this rocks",
   "article_id": 1
-}' localhost:3000/comments
+}' localhost:3000/api/comments
 {"created_at":"...","updated_at":"...","id":4,"content":"this rocks","article_id":1}
 ```
 
 And, fetch the relation:
 
 ```sh
-$ curl localhost:3000/articles/1/comments
+$ curl localhost:3000/api/articles/1/comments
 [{"created_at":"...","updated_at":"...","id":4,"content":"this rocks","article_id":1}]
 ```
 
@@ -748,10 +736,10 @@ Real world apps require handling real world situations. Say some of your users o
 
 You can:
 
-* Connect to your production database, issue ad-hoc SQL queries. Or use some kind of DB tool. _This is unsafe, insecure, prone to errors, and cannot be automated_.
-* Export your data to something like Redshift, or Google, and issue a query there. _This is a waste of resource, insecure, cannot be tested properly, and slow_.
-* Build an admin. _This is time-consuming, and waste_.
-* **Or build an adhoc task in Rust, which is quick to write, type safe, guarded by the compiler, fast, environment-aware, testable, and secure.**
+- Connect to your production database, issue ad-hoc SQL queries. Or use some kind of DB tool. _This is unsafe, insecure, prone to errors, and cannot be automated_.
+- Export your data to something like Redshift, or Google, and issue a query there. _This is a waste of resource, insecure, cannot be tested properly, and slow_.
+- Build an admin. _This is time-consuming, and waste_.
+- **Or build an adhoc task in Rust, which is quick to write, type safe, guarded by the compiler, fast, environment-aware, testable, and secure.**
 
 This is where `cargo loco task` comes in.
 
@@ -775,8 +763,8 @@ impl Task for UserReport {
         }
     }
 
-    // variables through the CLI: 
-    // `$ cargo loco task name:foobar count:2` 
+    // variables through the CLI:
+    // `$ cargo loco task name:foobar count:2`
     // will appear as {"name":"foobar", "count":2} in `vars`
     async fn run(&self, app_context: &AppContext, vars: &BTreeMap<String, String>) -> Result<()> {
         let users = users::Entity::find().all(&app_context.db).await?;
@@ -823,7 +811,6 @@ pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> R
 
 To require authentication, we need to modify the function signature in this way:
 
-
 ```rust
 async fn add(
     auth: auth::JWT,
@@ -832,7 +819,7 @@ async fn add(
   // we only want to make sure it exists
   let _current_user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
 
-  // next, update 
+  // next, update
   // homework/bonus: make a comment _actually_ belong to user (user_id)
   let mut item = ActiveModel {
       ..Default::default()
@@ -842,8 +829,3 @@ async fn add(
   format::json(item)
 }
 ```
-
-
-
-
-

@@ -1,0 +1,109 @@
+name: starters/lightweight-service
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - starters/lightweight-service/**
+  pull_request:
+    paths:
+      - starters/lightweight-service/**
+
+env:
+  RUST_TOOLCHAIN: stable
+  TOOLCHAIN_PROFILE: minimal
+
+jobs:
+  rustfmt:
+    name: Check Style
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: ${{ env.TOOLCHAIN_PROFILE }}
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          override: true
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+        working-directory: ./starters/lightweight-service
+
+  clippy:
+    name: Run Clippy
+    needs: [rustfmt]
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: ${{ env.TOOLCHAIN_PROFILE }}
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          override: true
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+      - name: Run cargo clippy
+        run: cargo clippy -- -W clippy::nursery -W clippy::pedantic -W rust-2018-idioms -W rust-2021-compatibility
+        working-directory: ./starters/lightweight-service
+
+  test:
+    name: Run Tests
+    needs: [rustfmt, clippy]
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: ${{ env.TOOLCHAIN_PROFILE }}
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          override: true
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+      - name: Run cargo test
+        run: cargo test --all-features --all
+        working-directory: ./starters/lightweight-service
+
+  # generate_template:
+  #   name: Generate Template
+  #   needs: [test]
+  #   runs-on: ubuntu-latest
+
+  #   permissions:
+  #     contents: read
+
+  #   steps:
+  #     - name: Checkout the code
+  #       uses: actions/checkout@v4
+  #     - uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: ${{ env.TOOLCHAIN_PROFILE }}
+  #         toolchain: ${{ env.RUST_TOOLCHAIN }}
+  #         override: true
+  #     - name: Setup Rust cache
+  #       uses: Swatinem/rust-cache@v2
+  #     - name: Inject slug/short variables
+  #       uses: rlespinasse/github-slug-action@v3.x
+  #     - name: Generate template
+  #       run: |
+  #         cargo build --release --features github_ci
+  #         RUST_LOG=debug  LOCO_CURRENT_REPOSITORY=${{ github.event.pull_request.head.repo.html_url }} LOCO_CI_MODE=true LOCO_APP_NAME=stateless_html_starter LOCO_TEMPLATE=stateless_html LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new
+  #         cd stateless_html_starter
+  #         echo "Building generate template..."
+  #         cargo build --release
+  #         echo "Run cargo test on generated template..."
+  #         cargo test
+  #       working-directory: ./loco-cli

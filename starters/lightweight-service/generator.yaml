@@ -1,0 +1,9 @@
+---
+description: lightweight-service (minimal, only controllers and views)
+rules:
+  - pattern: loco_starter_template
+    kind: LibName
+    file_patterns:
+      - rs
+      - toml
+      - trycmd

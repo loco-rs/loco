@@ -18,8 +18,6 @@ top = false
 <br/>
 Let's create a blog on `loco` in 4 commands. First install `loco-cli` and `sea-orm-cli`:
 
-
-
 ```sh
 $ cargo install loco-cli
 $ cargo install sea-orm-cli
@@ -39,7 +37,6 @@ myapp
 <div class="infobox">
 To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>loco_app</code>.
 </div>
-
 
 You can use Docker to run a Postgres instance:
 
@@ -83,7 +80,6 @@ started on port 3000
 You don't have to run things through `cargo` but in development it's highly recommended. If you build `--release`, your binary contains everything including your code and `cargo` or Rust is not needed.
 </div>
 
-
 ## Adding a CRUD API
 
 We have a base SaaS app with user authentication generated for us. Let's make it a blog by adding a `post` and a full CRUD API using `scaffold`:
@@ -118,12 +114,13 @@ Next, try adding a `post` with `curl`:
 $ curl -X POST -H "Content-Type: application/json" -d '{
   "title": "Your Title",
   "content": "Your Content xxx"
-}' localhost:3000/posts
+}' localhost:3000/api/posts
 ```
+
 You can list your posts:
 
 ```sh
-$ curl localhost:3000/posts
+$ curl localhost:3000/api/posts
 ```
 
 For those counting -- the commands for creating a blog were:
@@ -143,7 +140,6 @@ Your generated app contains a fully working authentication suite, based on JWTs.
 
 The `/auth/register` endpoint creates a new user in the database with an `email_verification_token` for account verification. A welcome email is sent to the user with a verification link.
 
-
 ```sh
 $ curl --location '127.0.0.1:3000/auth/register' \
      --header 'Content-Type: application/json' \
@@ -159,7 +155,6 @@ For security reasons, if the user is already registered, no new user is created,
 ### Login
 
 After registering a new user, use the following request to log in:
-
 
 ```sh
 $ curl --location '127.0.0.1:3000/auth/login' \
@@ -194,6 +189,5 @@ $ curl --location --request GET '127.0.0.1:3000/user/current' \
          "password": "new-password"
      }'
 ```
-
 
 Check out the source code for `controllers/auth.rs` to see how to use the authentication middleware in your own controllers.
