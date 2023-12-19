@@ -97,6 +97,8 @@ enum Commands {
     #[cfg(feature = "with-db")]
     /// Validate and diagnose configurations.
     Doctor {},
+    /// Display the app version
+    Version {},
 }
 
 #[derive(Subcommand)]
@@ -313,6 +315,9 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             if should_exit {
                 exit(1);
             }
+        }
+        Commands::Version {} => {
+            println!("{}", H::app_version(),);
         }
     }
     Ok(())
