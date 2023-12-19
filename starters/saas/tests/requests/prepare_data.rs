@@ -18,7 +18,10 @@ pub async fn init_user_login(request: &TestServer, ctx: &AppContext) -> LoggedIn
     });
 
     //Creating a new user
-    request.post("/auth/register").json(&register_payload).await;
+    request
+        .post("/api/auth/register")
+        .json(&register_payload)
+        .await;
     let user = users::Model::find_by_email(&ctx.db, USER_EMAIL)
         .await
         .unwrap();
@@ -27,10 +30,10 @@ pub async fn init_user_login(request: &TestServer, ctx: &AppContext) -> LoggedIn
         "token": user.email_verification_token,
     });
 
-    request.post("/auth/verify").json(&verify_payload).await;
+    request.post("/api/auth/verify").json(&verify_payload).await;
 
     let response = request
-        .post("/auth/login")
+        .post("/api/auth/login")
         .json(&serde_json::json!({
             "email": USER_EMAIL,
             "password": USER_PASSWORD
