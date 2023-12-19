@@ -70,3 +70,16 @@ And now, you can run the actual process in various ways:
 - `rr start --worker` - run only a worker and process background jobs. This is great for scale. Run one service app with `rr start`, and then run many process based workers with `rr start --worker` distributed on any machine you want.
 
 * `rr start --server-and-worker` - will run both a service and a background worker processor in the same unix process. It uses Tokio for executing background jobs. This is great for those cases when you want to run on a single server without too much of an expense or have constrained resources.
+
+## Getting your app version
+
+Because your app is compiled, and then copied to production, Loco gives you two important operability pieces of information:
+
+* Which version is this app, and which GIT SHA was it built from? `loco version`
+* Which Loco version was this app compiled against? `loco --version`
+
+Both version strings are parsable and stable so you can use it in integration scripts, monitoring tools and so on.
+
+You can shape your own custom app versioning scheme by overriding the `app_version` hook in your `src/app.rs` file.
+
+
