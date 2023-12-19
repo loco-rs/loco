@@ -1,14 +1,14 @@
-name: starters/stateless-html
+name: starters/lightweight-service
 
 on:
   push:
     branches:
       - master
     paths:
-      - starters/stateless_html/**
+      - starters/lightweight-service/**
   pull_request:
     paths:
-      - starters/stateless_html/**
+      - starters/lightweight-service/**
 
 env:
   RUST_TOOLCHAIN: stable
@@ -32,7 +32,7 @@ jobs:
           override: true
           components: rustfmt
       - run: cargo fmt --all -- --check
-        working-directory: ./starters/stateless_html
+        working-directory: ./starters/lightweight-service
 
   clippy:
     name: Run Clippy
@@ -54,7 +54,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Run cargo clippy
         run: cargo clippy -- -W clippy::nursery -W clippy::pedantic -W rust-2018-idioms -W rust-2021-compatibility
-        working-directory: ./starters/stateless_html
+        working-directory: ./starters/lightweight-service
 
   test:
     name: Run Tests
@@ -75,7 +75,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Run cargo test
         run: cargo test --all-features --all
-        working-directory: ./starters/stateless_html
+        working-directory: ./starters/lightweight-service
 
   # generate_template:
   #   name: Generate Template
