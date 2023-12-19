@@ -673,6 +673,22 @@ pub fn routes() -> Routes {
 }
 ```
 
+Also adjust the Params & update functions in `src/controllers/comments.rs`, by updating the scaffolded code marked with `<- add this`
+
+```rust
+pub struct Params {
+    pub content: Option<String>,
+    pub article_id: i32, // <- add this
+}
+
+impl Params {
+    fn update(&self, item: &mut comments::ActiveModel) {
+        item.content = Set(self.content.clone());
+        item.article_id = Set(self.article_id.clone()); // <- add this
+    }
+}
+```
+
 Now we need to fetch a relation in `src/controllers/articles.rs`. Add the following route:
 
 ```rust
