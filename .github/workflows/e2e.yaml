@@ -25,7 +25,8 @@ jobs:
       - run: |
           cargo build
         working-directory: ./saas
-  stateless-template:
+
+  rest-api:
     name: Create stateless starter template
     runs-on: ubuntu-latest
 
@@ -41,7 +42,28 @@ jobs:
           override: true
       - run: |
           cargo install loco-cli
-          LOCO_APP_NAME=stateless LOCO_TEMPLATE=stateless loco new
+          LOCO_APP_NAME=restapi LOCO_TEMPLATE=rest-api loco new
       - run: |
           cargo build
-        working-directory: ./stateless
+        working-directory: ./rest-api
+
+  lightweight-service:
+    name: Create stateless starter template
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+      - run: |
+          cargo install loco-cli
+          LOCO_APP_NAME=lightweight LOCO_TEMPLATE=lightweight-service loco new
+      - run: |
+          cargo build
+        working-directory: ./lightweight-service
