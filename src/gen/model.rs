@@ -34,6 +34,7 @@ lazy_static! {
 pub fn generate<H: Hooks>(
     rrgen: &RRgen,
     name: &str,
+    is_link: bool,
     fields: &[(String, String)],
 ) -> Result<String> {
     let pkg_name: &str = H::app_name();
@@ -59,7 +60,7 @@ pub fn generate<H: Hooks>(
         }
     }
 
-    let vars = json!({"name": name, "ts": ts, "pkg_name": pkg_name, "columns": columns, "references": references});
+    let vars = json!({"name": name, "ts": ts, "pkg_name": pkg_name, "is_link": is_link, "columns": columns, "references": references});
     let res1 = rrgen.generate(MODEL_T, &vars)?;
     let res2 = rrgen.generate(MODEL_TEST_T, &vars)?;
 

@@ -27,7 +27,19 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 table_auto({{model}}::Table)
+                    {% if is_link -%}
+                    .primary_key(
+                        Index::create()
+                            .name("idx-refs-pk")
+                            .table({{model}}::Table)
+                            {% for ref in references -%}
+                            .col({{model}}::{{ref.1 | pascal_case}})
+                            {% endfor -%}
+                            .borrow_mut(),
+                    )
+                    {% else -%}
                     .col(pk_auto({{model}}::Id).borrow_mut())
+                    {% endif -%}
                     {% for column in columns -%}
                     .col({{column.1}}({{model}}::{{column.0 | pascal_case}}).borrow_mut())
                     {% endfor -%}
@@ -56,7 +68,9 @@ impl MigrationTrait for Migration {
 #[derive(DeriveIden)]
 enum {{model}} {
     Table,
+    {% if is_link == false -%}
     Id,
+    {% endif -%}
     {% for column in columns -%}
     {{column.0 | pascal_case}},
     {% endfor %}

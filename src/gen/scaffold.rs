@@ -33,7 +33,8 @@ pub fn generate<H: Hooks>(
     name: &str,
     fields: &[(String, String)],
 ) -> Result<String> {
-    let model_messages = model::generate::<H>(rrgen, name, fields)?;
+    // scaffold is never a link table
+    let model_messages = model::generate::<H>(rrgen, name, false, fields)?;
 
     let mut columns = Vec::new();
     for (fname, ftype) in fields {

@@ -2,12 +2,11 @@
 //! configuring routes in an Axum application. It allows you to define route
 //! prefixes, add routes, and configure middlewares for the application.
 
-use std::time::Duration;
+use std::{path::PathBuf, time::Duration};
 
 use axum::{http, Router as AXRouter};
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::path::PathBuf;
 use tower_http::{
     add_extension::AddExtensionLayer,
     catch_panic::CatchPanicLayer,

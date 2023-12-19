@@ -52,6 +52,7 @@ Usage: blo-cli generate [OPTIONS] <COMMAND>
 
 Commands:
   model       Generates a new model file for defining the data structure of your application, and test file logic
+  migration   Generates a new migration file
   scaffold    Generates a CRUD scaffold, model and controller
   controller  Generate a new controller with the given controller name, and test file
   task        Generate a Task based on the given name
