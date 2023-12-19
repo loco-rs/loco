@@ -24,7 +24,7 @@ async fn can_get_notes() {
     testing::request::<App, Migrator, _, _>(|request, ctx| async move {
         testing::seed::<App>(&ctx.db).await.unwrap();
 
-        let notes = request.get("notes").await;
+        let notes = request.get("/api/notes").await;
 
         with_settings!({
             filters => {
@@ -52,7 +52,7 @@ async fn can_add_note() {
             "content": "loco note test",
         });
 
-        let add_note_request = request.post("notes").json(&payload).await;
+        let add_note_request = request.post("/api/notes").json(&payload).await;
 
         with_settings!({
             filters => {
@@ -77,7 +77,7 @@ async fn can_get_note() {
     testing::request::<App, Migrator, _, _>(|request, ctx| async move {
         testing::seed::<App>(&ctx.db).await.unwrap();
 
-        let add_note_request = request.get("notes/1").await;
+        let add_note_request = request.get("/api/notes/1").await;
 
         with_settings!({
             filters => {
@@ -103,7 +103,7 @@ async fn can_delete_note() {
         testing::seed::<App>(&ctx.db).await.unwrap();
 
         let count_before_delete = Entity::find().all(&ctx.db).await.unwrap().len();
-        let delete_note_request = request.delete("notes/1").await;
+        let delete_note_request = request.delete("/api/notes/1").await;
 
         with_settings!({
             filters => {
