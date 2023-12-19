@@ -1,14 +1,14 @@
-name: starters/stateless
+name: starters/rest-api
 
 on:
   push:
     branches:
       - master
     paths:
-      - starters/stateless/**
+      - starters/rest-api/**
   pull_request:
     paths:
-      - starters/stateless/**
+      - starters/rest-api/**
 
 env:
   RUST_TOOLCHAIN: stable
@@ -32,7 +32,7 @@ jobs:
           override: true
           components: rustfmt
       - run: cargo fmt --all -- --check
-        working-directory: ./starters/stateless
+        working-directory: ./starters/rest-api
 
   clippy:
     name: Run Clippy
@@ -54,7 +54,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Run cargo clippy
         run: cargo clippy -- -W clippy::nursery -W clippy::pedantic -W rust-2018-idioms -W rust-2021-compatibility
-        working-directory: ./starters/stateless
+        working-directory: ./starters/rest-api
 
   test:
     name: Run Tests
@@ -75,7 +75,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Run cargo test
         run: cargo test --all-features --all
-        working-directory: ./starters/stateless
+        working-directory: ./starters/rest-api
 
   # generate_template:
   #   name: Generate Template
