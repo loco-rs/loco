@@ -15,15 +15,15 @@ lazy_static! {
     static ref PARAMS_MAPPING: HashMap<&'static str, &'static str> = HashMap::from([
         ("text", "Option<String>"),
         ("string", "Option<String>"),
-        ("string!", "Option<String>"),
-        ("string^", "Option<String>"),
+        ("string!", "String"),
+        ("string^", "String"),
         ("int", "Option<i32>"),
-        ("int!", "Option<i32>"),
+        ("int!", "i32"),
         ("int^", "Option<i32>"),
         ("bool", "Option<bool>"),
-        ("bool!", "Option<bool>"),
+        ("bool!", "bool"),
         ("ts", "Option<DateTime>"),
-        ("ts!", "Option<DateTime>"),
+        ("ts!", "DateTime"),
         ("uuid", "Option<Uuid>"),
     ]);
 }
