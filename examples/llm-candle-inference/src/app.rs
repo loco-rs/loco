@@ -12,7 +12,6 @@ use loco_rs::{
     worker::Processor,
     Result,
 };
-use migration::Migrator;
 use tokio::sync::RwLock;
 
 pub struct App;
@@ -23,7 +22,7 @@ impl Hooks for App {
     }
 
     async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
-        create_app::<Self, Migrator>(mode, environment).await
+        create_app::<Self>(mode, environment).await
     }
 
     async fn before_run(_ctx: &AppContext) -> Result<()> {
@@ -31,7 +30,7 @@ impl Hooks for App {
         Ok(())
     }
 
-    fn after_routes(router: axum::Router, _ctx: &AppContext) -> Result<axum::Router> {
+    async fn after_routes(router: axum::Router, _ctx: &AppContext) -> Result<axum::Router> {
         // cache should reside at: ~/.cache/huggingface/hub
         println!("loading model");
         let model = Llama::builder()

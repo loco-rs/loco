@@ -231,7 +231,7 @@ pub async fn create_app<H: Hooks, M: MigratorTrait>(
 
     H::before_run(&app_context).await?;
 
-    run_app::<H>(&mode, app_context)
+    run_app::<H>(&mode, app_context).await
 }
 
 #[cfg(not(feature = "with-db"))]
@@ -244,18 +244,18 @@ pub async fn create_app<H: Hooks>(mode: StartMode, environment: &str) -> Result<
 
     H::before_run(&app_context).await?;
 
-    run_app::<H>(&mode, app_context)
+    run_app::<H>(&mode, app_context).await
 }
 
 /// Run the application with the  given mode
 /// # Errors
 ///
 /// When could not create the application
-pub fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Result<BootResult> {
+pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Result<BootResult> {
     match mode {
         StartMode::ServerOnly => {
             let app = H::routes().to_router(app_context.clone())?;
-            let router = H::after_routes(app, &app_context)?;
+            let router = H::after_routes(app, &app_context).await?;
             Ok(BootResult {
                 app_context,
                 router: Some(router),
@@ -265,7 +265,7 @@ pub fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Result<Bo
         StartMode::ServerAndWorker => {
             let processor = create_processor::<H>(&app_context)?;
             let app = H::routes().to_router(app_context.clone())?;
-            let router = H::after_routes(app, &app_context)?;
+            let router = H::after_routes(app, &app_context).await?;
             Ok(BootResult {
                 app_context,
                 router: Some(router),
