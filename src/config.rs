@@ -125,6 +125,8 @@ pub struct Server {
     pub port: i32,
     /// The webserver host
     pub host: String,
+    /// Identify via the `Server` header
+    pub ident: Option<String>,
     /// Middleware configurations for the server, including payload limits,
     /// logging, and error handling.
     pub middlewares: Middlewares,
