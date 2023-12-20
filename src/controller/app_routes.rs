@@ -22,8 +22,10 @@ use crate::{app::AppContext, config, environment::Environment, errors, Result};
 
 lazy_static! {
     static ref NORMALIZE_URL: Regex = Regex::new(r"/+").unwrap();
+    static ref DEFAULT_IDENT_HEADER_NAME: http::header::HeaderName =
+        http::header::HeaderName::from_static("x-powered-by");
     static ref DEFAULT_IDENT_HEADER_VALUE: http::header::HeaderValue =
-        http::header::HeaderValue::from_static("Loco");
+        http::header::HeaderValue::from_static("loco.rs");
 }
 
 /// Represents the routes of the application.
@@ -168,7 +170,7 @@ impl AppRoutes {
             app = app.route(&router.uri, router.method);
         }
 
-        app = Self::add_server_header(app, &ctx.config.server);
+        app = Self::add_powered_by_header(app, &ctx.config.server);
 
         if let Some(catch_panic) = &ctx.config.server.middlewares.catch_panic {
             if catch_panic.enable {
@@ -336,31 +338,38 @@ impl AppRoutes {
         app
     }
 
-    fn add_server_header(
+    fn add_powered_by_header(
         app: AXRouter<AppContext>,
         config: &config::Server,
     ) -> AXRouter<AppContext> {
-        let ident_value =
-            config
-                .ident
-                .as_ref()
-                .map_or(DEFAULT_IDENT_HEADER_VALUE.clone(), |ident| {
+        let ident_value = config.ident.as_ref().map_or_else(
+            || Some(DEFAULT_IDENT_HEADER_VALUE.clone()),
+            |ident| {
+                if ident.is_empty() {
+                    None
+                } else {
                     match http::header::HeaderValue::from_str(ident) {
-                        Ok(val) => val,
+                        Ok(val) => Some(val),
                         Err(e) => {
                             tracing::info!(
                                 error = format!("{}", e),
                                 val = ident,
                                 "could not set custom ident header"
                             );
-                            DEFAULT_IDENT_HEADER_VALUE.clone()
+                            Some(DEFAULT_IDENT_HEADER_VALUE.clone())
                         }
                     }
-                });
+                }
+            },
+        );
 
-        app.layer(SetResponseHeaderLayer::overriding(
-            http::header::SERVER,
-            ident_value,
-        ))
+        if let Some(value) = ident_value {
+            app.layer(SetResponseHeaderLayer::overriding(
+                DEFAULT_IDENT_HEADER_NAME.clone(),
+                value,
+            ))
+        } else {
+            app
+        }
     }
 }
