@@ -45,7 +45,7 @@ jobs:
           LOCO_APP_NAME=restapi LOCO_TEMPLATE=rest-api loco new
       - run: |
           cargo build
-        working-directory: ./rest-api
+        working-directory: ./restapi
 
   lightweight-service:
     name: Create stateless starter template
@@ -66,4 +66,4 @@ jobs:
           LOCO_APP_NAME=lightweight LOCO_TEMPLATE=lightweight-service loco new
       - run: |
           cargo build
-        working-directory: ./lightweight-service
+        working-directory: ./lightweight
