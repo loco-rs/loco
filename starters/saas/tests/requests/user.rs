@@ -1,7 +1,6 @@
 use insta::{assert_debug_snapshot, with_settings};
 use loco_rs::testing;
 use loco_starter_template::app::App;
-use migration::Migrator;
 use serial_test::serial;
 
 use super::prepare_data;
@@ -22,7 +21,7 @@ macro_rules! configure_insta {
 async fn can_get_current_user() {
     configure_insta!();
 
-    testing::request::<App, Migrator, _, _>(|request, ctx| async move {
+    testing::request::<App, _, _>(|request, ctx| async move {
         let user = prepare_data::init_user_login(&request, &ctx).await;
 
         let (auth_key, auth_value) = prepare_data::auth_header(&user.token);

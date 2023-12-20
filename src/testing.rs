@@ -92,7 +92,6 @@ pub fn cleanup_email() -> Vec<(&'static str, &'static str)> {
     combined_filters
 }
 
-#[cfg(feature = "with-db")]
 /// Bootstraps test application with test environment hard coded.
 ///
 /// # Errors
@@ -152,7 +151,6 @@ pub async fn seed<H: Hooks>(db: &DatabaseConnection) -> eyre::Result<()> {
 }
 
 #[allow(clippy::future_not_send)]
-#[cfg(feature = "with-db")]
 /// Initiates a test request with a provided callback.
 ///
 ///

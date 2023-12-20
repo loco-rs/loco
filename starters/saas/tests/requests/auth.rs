@@ -1,7 +1,6 @@
 use insta::{assert_debug_snapshot, with_settings};
 use loco_rs::testing;
 use loco_starter_template::{app::App, models::users};
-use migration::Migrator;
 use rstest::rstest;
 use serial_test::serial;
 
@@ -23,7 +22,7 @@ macro_rules! configure_insta {
 async fn can_register() {
     configure_insta!();
 
-    testing::request::<App, Migrator, _, _>(|request, ctx| async move {
+    testing::request::<App, _, _>(|request, ctx| async move {
         let email = "test@loco.com";
         let payload = serde_json::json!({
             "name": "loco",
@@ -57,7 +56,7 @@ async fn can_register() {
 async fn can_login_with_verify(#[case] test_name: &str, #[case] password: &str) {
     configure_insta!();
 
-    testing::request::<App, Migrator, _, _>(|request, ctx| async move {
+    testing::request::<App, _, _>(|request, ctx| async move {
         let email = "test@loco.com";
         let register_payload = serde_json::json!({
             "name": "loco",
@@ -107,7 +106,7 @@ async fn can_login_with_verify(#[case] test_name: &str, #[case] password: &str) 
 async fn can_login_without_verify() {
     configure_insta!();
 
-    testing::request::<App, Migrator, _, _>(|request, _ctx| async move {
+    testing::request::<App, _, _>(|request, _ctx| async move {
         let email = "test@loco.com";
         let password = "12341234";
         let register_payload = serde_json::json!({
@@ -145,7 +144,7 @@ async fn can_login_without_verify() {
 async fn can_reset_password() {
     configure_insta!();
 
-    testing::request::<App, Migrator, _, _>(|request, ctx| async move {
+    testing::request::<App, _, _>(|request, ctx| async move {
         let login_data = prepare_data::init_user_login(&request, &ctx).await;
 
         let forgot_payload = serde_json::json!({
