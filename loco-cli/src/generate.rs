@@ -176,7 +176,6 @@ impl Template {
                         path = path.display().to_string(),
                         "could not run rules placeholder replacement on the file"
                     );
-                    break;
                 }
             }
         }
