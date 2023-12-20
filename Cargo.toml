@@ -1,7 +1,7 @@
 workspace = { members = ["macros", "xtask"], exclude = ["starters"] }
 [package]
 name = "loco-rs"
-version = "0.1.7"
+version = "0.1.8"
 rust-version = "1.70"
 edition = "2021"
 description = "The one-person framework for Rust"

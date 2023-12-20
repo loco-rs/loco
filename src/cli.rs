@@ -361,6 +361,9 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
                 .load()?;
             gen::generate::<H>(component.into(), &environment)?;
         }
+        Commands::Version {} => {
+            println!("{}", H::app_version(),);
+        }
     }
     Ok(())
 }
