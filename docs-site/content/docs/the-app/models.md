@@ -69,7 +69,7 @@ impl super::_entities::users::ActiveModel {
 To add a new model _you have to use a migration_.
 
 ```
-$ loco generate model posts title:string! content:text user:references
+$ cargo loco generate model posts title:string! content:text user:references
 ```
 
 For schema data types, you can use the following mapping to understand the schema:
@@ -95,13 +95,13 @@ Using `user:references` uses the special `references` type, which will create a 
 You can generate an empty model:
 
 ```
-$ loco generate model posts
+$ cargo loco generate model posts
 ```
 
 Or a data model, without any references:
 
 ```
-$ loco generate model posts title:string! content:text
+$ cargo loco generate model posts title:string! content:text
 ```
 
 This creates a migration in the root of your project in `migration/`.

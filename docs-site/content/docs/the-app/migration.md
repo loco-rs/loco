@@ -59,7 +59,7 @@ $ cargo loco generate migration add_users_email
 Prefer going through the new model generator:
 
 ```
-$ loco generate model notes title:string
+$ cargo loco generate model notes title:string
 ```
 
 See more in [Models](@/docs/the-app/models.md)
@@ -70,7 +70,7 @@ For changing tables, adding columns, altering tables or applying data fixes, we 
 
 
 ```
-$ loco generate migration <name of migration>
+$ cargo loco generate migration <name of migration>
 ```
 
 
