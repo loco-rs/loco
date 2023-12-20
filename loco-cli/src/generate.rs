@@ -1,13 +1,14 @@
+use std::{
+    collections::BTreeMap,
+    env, fs,
+    io::{Read, Write},
+    path::PathBuf,
+};
+
 use ignore::WalkBuilder;
-use ignore::WalkState;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::env;
-use std::fs;
-use std::io::{Read, Write};
-use std::path::PathBuf;
 
 // Name of generator template that should be existing in each starter folder
 const GENERATOR_FILE_NAME: &str = "generator.yaml";
@@ -84,11 +85,12 @@ pub struct TemplateRule {
     pub skip_in_ci: Option<bool>,
 }
 
-/// Collects template configurations from files named [`GENERATOR_FILE_NAME`] within the root level
-/// directories in the provided path. This function gracefully handles any issues related to the
-/// existence or format of the generator files, allowing the code to skip problematic starter templates
-/// without returning an error. This approach is designed to avoid negatively impacting users due to
-/// faulty template configurations.
+/// Collects template configurations from files named [`GENERATOR_FILE_NAME`]
+/// within the root level directories in the provided path. This function
+/// gracefully handles any issues related to the existence or format of the
+/// generator files, allowing the code to skip problematic starter templates
+/// without returning an error. This approach is designed to avoid negatively
+/// impacting users due to faulty template configurations.
 ///
 /// # Errors
 /// The code should returns an error only when could get folder collections.
@@ -147,41 +149,37 @@ pub fn collect_templates(path: &std::path::PathBuf) -> eyre::Result<BTreeMap<Str
 }
 
 impl Template {
-    /// Generates files based on the given template by recursively applying template rules to files
-    /// within the specified path.
+    /// Generates files based on the given template by recursively applying
+    /// template rules to files within the specified path.
     ///
     /// # Description
-    /// This method utilizes a parallel file walker to traverse the directory structure starting from
-    /// the specified root path (`from`). For each file encountered, it checks whether the template
-    /// rules should be applied based on file patterns. If the rules are applicable and an error occurs
-    /// during the application, the error is logged, and the walker is instructed to quit processing
-    /// further files in the current subtree.
+    /// This method utilizes a parallel file walker to traverse the directory
+    /// structure starting from the specified root path (`from`). For each
+    /// file encountered, it checks whether the template rules should be
+    /// applied based on file patterns. If the rules are applicable and an error
+    /// occurs during the application, the error is logged, and the walker
+    /// is instructed to quit processing further files in the current
+    /// subtree.
     pub fn generate(&self, from: &PathBuf, args: &ArgsPlaceholder) {
-        let walker = WalkBuilder::new(from).build_parallel();
+        let walker = WalkBuilder::new(from).build();
 
         let collect_file_patterns = self.get_all_file_patterns();
-        walker.run(|| {
-            let collect_file_patterns = collect_file_patterns.clone();
-            Box::new(move |result| {
-                if let Ok(entry) = result {
-                    let path = entry.path();
+        for entry in walker.flatten() {
+            let path = entry.path();
 
-                    if !path.starts_with(from.join("target"))
-                        && Self::should_run_file(path, Some(&collect_file_patterns))
-                    {
-                        if let Err(e) = self.apply_rules(path, args) {
-                            tracing::info!(
-                                error = e.to_string(),
-                                path = path.display().to_string(),
-                                "could not run rules placeholder replacement on the file"
-                            );
-                            return WalkState::Quit;
-                        }
-                    }
+            if !path.starts_with(from.join("target"))
+                && Self::should_run_file(path, Some(&collect_file_patterns))
+            {
+                if let Err(e) = self.apply_rules(path, args) {
+                    tracing::info!(
+                        error = e.to_string(),
+                        path = path.display().to_string(),
+                        "could not run rules placeholder replacement on the file"
+                    );
+                    break;
                 }
-                WalkState::Continue
-            })
-        });
+            }
+        }
 
         if let Err(err) = fs::remove_file(from.join(GENERATOR_FILE_NAME)) {
             tracing::debug!(error = err.to_string(), "could not delete generator file");
@@ -198,14 +196,16 @@ impl Template {
         })
     }
 
-    /// Applies the specified rules to the content of a file, updating the file in-place with the modified content.
+    /// Applies the specified rules to the content of a file, updating the file
+    /// in-place with the modified content.
     ///
     /// # Description
-    /// This method reads the content of the file specified by `file`, applies each rule from the template
-    /// to the content, and saves the modified content back to the same file. The rules are only applied if
-    /// the file passes the filtering conditions based on file patterns associated with each rule. If any rule
-    /// results in modifications to the content, the file is updated; otherwise, it remains unchanged.
-    ///
+    /// This method reads the content of the file specified by `file`, applies
+    /// each rule from the template to the content, and saves the modified
+    /// content back to the same file. The rules are only applied if
+    /// the file passes the filtering conditions based on file patterns
+    /// associated with each rule. If any rule results in modifications to
+    /// the content, the file is updated; otherwise, it remains unchanged.
     fn apply_rules(&self, file: &std::path::Path, args: &ArgsPlaceholder) -> std::io::Result<()> {
         let mut content = String::new();
         fs::File::open(file)?.read_to_string(&mut content)?;
@@ -235,7 +235,8 @@ impl Template {
         Ok(())
     }
 
-    /// Determines whether the template rules should be applied to the given file path based on a list of regex patterns.
+    /// Determines whether the template rules should be applied to the given
+    /// file path based on a list of regex patterns.
     fn should_run_file(path: &std::path::Path, patterns: Option<&Vec<Regex>>) -> bool {
         if path.is_file() {
             let Some(patterns) = patterns else {
@@ -259,9 +260,10 @@ impl Template {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
     use insta::{assert_debug_snapshot, with_settings};
     use tree_fs;
+
+    use super::*;
 
     #[test]
     fn can_collect_templates() {
