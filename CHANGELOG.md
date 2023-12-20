@@ -2,6 +2,8 @@
 
 ## vNext
 
+## v0.1.8
+
 * Added: `loco version` for getting an operable version string containing logical crate version and git SHA if available: `0.3.0 (<git sha>)`
 
 To migrate to this behavior from earlier versions, it requires adding the following to your `app.rs` app hooks:
