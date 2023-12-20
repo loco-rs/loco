@@ -1,3 +1,6 @@
+[![Current Crates.io Version](https://img.shields.io/crates/v/loco-rs.svg)](https://crates.io/crates/loco-rs)
+[![Discord channel](https://img.shields.io/badge/discord-Join-us)](https://discord.gg/Npcwuvq6)
+
 # Welcome to Loco!
 
 <center>
@@ -14,11 +17,9 @@ Loco is "Rust on Rails".
 
 Loco is strongly inspired by Rails. If you know Rails and Rust, you'll feel at home. If you only know Rails and new to Rust, you'll find Loco refreshing. We do not assume you know Rails.
 
-
 To work with Loco, you need to know Rust to a beginner-moderate level. There are no crazy lifetime twisters and most of the development will be linear: request handling, workers, tasks, etc.
 
 ## Quick Start
-
 
 ```sh
 $ cargo install loco-cli
@@ -38,7 +39,6 @@ myapp
 <div class="infobox">
 To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>loco_app</code>.
 </div>
-
 
 You can use Docker to run a Postgres instance:
 
@@ -84,14 +84,13 @@ Loco is feature complete, but features are still being added rapidly.
 
 ### What can you build?
 
-* Stateless APIs
-* Complete SaaS products with user authentication
-* Purpose-built services such as ML inference endpoints
-* Full stack projects with separate frontend project integrated with Loco
-* Hobby projects full-stack with backend and HTML frontend
-
+- Stateless APIs
+- Complete SaaS products with user authentication
+- Purpose-built services such as ML inference endpoints
+- Full stack projects with separate frontend project integrated with Loco
+- Hobby projects full-stack with backend and HTML frontend
 
 ### What's being done now?
 
-* View [issues](https://github.com/loco-rs/loco/issues) for what we plan next and what we work on (you're welcome to submit PRs!)
-* View [CHANGELOG](https://github.com/loco-rs/loco/blob/master/CHANGELOG.md) for what we already added
+- View [issues](https://github.com/loco-rs/loco/issues) for what we plan next and what we work on (you're welcome to submit PRs!)
+- View [CHANGELOG](https://github.com/loco-rs/loco/blob/master/CHANGELOG.md) for what we already added
