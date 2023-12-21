@@ -91,4 +91,8 @@ async fn is_user_exists() {
 }
 ```
 
+### Logger
+To prevent concurrent logging, the logger is disabled when the `testing` feature is active. If you need to record logs, you have the option to create your own logger subscriber
+
+
 This documentation provides an in-depth guide on leveraging Loco's testing helpers, covering database cleanup, data cleanup for snapshot testing, and seeding data for tests.
