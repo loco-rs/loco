@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 use rrgen::RRgen;
 use serde_json::json;
 
-use crate::app::Hooks;
+use crate::{app::Hooks, gen};
 
 const CONTROLLER_SCAFFOLD_T: &str = include_str!("templates/controller_scaffold.t");
 
@@ -38,6 +38,9 @@ pub fn generate<H: Hooks>(
 
     let mut columns = Vec::new();
     for (fname, ftype) in fields {
+        if gen::model::SKIP_FIELDS.contains(&fname.as_str()) {
+            continue;
+        }
         if ftype != "references" {
             let schema_type = PARAMS_MAPPING.get(ftype.as_str()).ok_or_else(|| {
                 Error::Message(format!(
