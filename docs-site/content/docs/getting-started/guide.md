@@ -52,8 +52,7 @@ Make sure you also have locally installed or running (via Docker or otherwise):
 - Redis
 
 <div class="infobox">
-To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>loco_app</code>: 
-<code>docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=loco_app -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine</code>
+<code>loco new</code> uses SQLite by default. In production you should replace this with a more scalable database system, like Postgres.
 </div>
 
 ### Creating a new Loco app
