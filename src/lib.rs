@@ -8,8 +8,13 @@
 //! To start a new project, you can use cargo-generate:
 //!
 //! ```sh
-//! cargo install cargo-generate
-//! cargo generate https://github.com/loco-rs/loco-demo-template
+//! cargo install loco-cli
+//! ❯ loco new
+//! ✔ ❯ App name? · myapp
+//! ? ❯ What would you like to build? ›
+//! ❯ lightweight-service (minimal, only controllers and views)
+//!   Rest API (with DB and user auth)
+//!   Saas app (with DB and user auth)
 //! ```
 //!
 //! ## Available Features
