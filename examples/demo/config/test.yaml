@@ -40,6 +40,8 @@ server:
       enable: true
       # Duration time in milliseconds.
       timeout: 5000
+    compression:
+      enable: true
     cors:
       enable: true
       # Set the value of the [`Access-Control-Allow-Origin`][mdn] header
@@ -82,7 +84,7 @@ mailer:
 # Database Configuration
 database:
   # Database connection URI
-  uri: {{get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app")}} 
+  uri: {{get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app")}}
   # When enabled, the sql query will be logged.
   enable_logging: false
   # Set the timeout duration when acquiring a connection.

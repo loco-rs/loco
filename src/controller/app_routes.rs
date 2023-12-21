@@ -179,6 +179,12 @@ impl AppRoutes {
             }
         }
 
+        if let Some(cors) = &ctx.config.server.middlewares.compression {
+            if cors.enable {
+                app = Self::add_compression_middleware(app);
+            }
+        }
+
         if let Some(limit) = &ctx.config.server.middlewares.limit_payload {
             if limit.enable {
                 app = Self::add_limit_payload_middleware(app, limit)?;
@@ -200,12 +206,6 @@ impl AppRoutes {
         if let Some(cors) = &ctx.config.server.middlewares.cors {
             if cors.enable {
                 app = Self::add_cors_middleware(app, cors)?;
-            }
-        }
-
-        if let Some(cors) = &ctx.config.server.middlewares.compression {
-            if cors.enable {
-                app = Self::add_compression_middleware(app);
             }
         }
 
