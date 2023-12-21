@@ -1,6 +1,8 @@
 # local dev
 todo.txt
 
+.idea
+
 **/config/local.yaml
 **/config/*.local.yaml
 

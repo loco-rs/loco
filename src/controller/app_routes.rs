@@ -11,6 +11,7 @@ use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::{
     add_extension::AddExtensionLayer,
     catch_panic::CatchPanicLayer,
+    compression::CompressionLayer,
     cors,
     services::{ServeDir, ServeFile},
     timeout::TimeoutLayer,
@@ -202,6 +203,12 @@ impl AppRoutes {
             }
         }
 
+        if let Some(cors) = &ctx.config.server.middlewares.compression {
+            if cors.enable {
+                app = Self::add_compression_middleware(app);
+            }
+        }
+
         if let Some(static_assets) = &ctx.config.server.middlewares.static_assets {
             if static_assets.enable {
                 app = Self::add_static_asset_middleware(app, static_assets)?;
@@ -232,6 +239,13 @@ impl AppRoutes {
             ServeDir::new(&config.folder.path).not_found_service(ServeFile::new(&config.fallback)),
         ))
     }
+
+    fn add_compression_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
+        let app = app.layer(CompressionLayer::new());
+        tracing::info!("[Middleware] Adding compression layer");
+        app
+    }
+
     fn add_cors_middleware(
         app: AXRouter<AppContext>,
         config: &config::CorsMiddleware,
