@@ -47,8 +47,11 @@ impl std::fmt::Display for LogLevel {
         to_variant_name(self).expect("only enum supported").fmt(f)
     }
 }
+#[allow(dead_code)]
 // Function to initialize the logger based on the provided configuration
 const MODULE_WHITELIST: &[&str] = &["loco_rs", "sea_orm_migration", "tower_http", "sqlx::query"];
+
+#[allow(dead_code)]
 ///
 /// Tracing filtering rules:
 /// 1. if `RUST_LOG`, use that filter
