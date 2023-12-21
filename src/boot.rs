@@ -10,6 +10,10 @@ use tracing::{trace, warn};
 
 #[cfg(feature = "with-db")]
 use crate::db;
+
+#[cfg(not(feature = "testing"))]
+use crate::logger;
+
 use crate::{
     app::{AppContext, Hooks},
     banner::print_banner,
@@ -17,7 +21,6 @@ use crate::{
     controller::ListRoutes,
     environment::Environment,
     errors::Error,
-    logger,
     mailer::{EmailSender, MailerWorker},
     redis,
     task::Tasks,
