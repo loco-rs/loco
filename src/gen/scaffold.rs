@@ -38,7 +38,7 @@ pub fn generate<H: Hooks>(
 
     let mut columns = Vec::new();
     for (fname, ftype) in fields {
-        if gen::model::SKIP_FIELDS.contains(&fname.as_str()) {
+        if gen::model::IGNORE_FIELDS.contains(&fname.as_str()) {
             continue;
         }
         if ftype != "references" {
