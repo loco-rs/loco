@@ -179,8 +179,8 @@ impl AppRoutes {
             }
         }
 
-        if let Some(cors) = &ctx.config.server.middlewares.compression {
-            if cors.enable {
+        if let Some(compression) = &ctx.config.server.middlewares.compression {
+            if compression.enable {
                 app = Self::add_compression_middleware(app);
             }
         }
