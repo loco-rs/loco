@@ -181,6 +181,8 @@ pub async fn create_context<H: Hooks>(environment: &str) -> Result<AppContext> {
     let environment = Environment::from_str(environment)
         .unwrap_or_else(|_| Environment::Any(environment.to_string()));
     let config = environment.load()?;
+
+    #[cfg(not(feature = "testing"))]
     if config.logger.enable {
         logger::init::<H>(&config.logger);
     }
