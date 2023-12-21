@@ -4,6 +4,7 @@
 //! database interactions.
 use std::{fs::File, path::Path, time::Duration};
 
+use crate::doctor;
 use duct::cmd;
 use fs_err as fs;
 use rrgen::Error;
@@ -18,6 +19,7 @@ use super::Result as AppResult;
 use crate::{
     app::{AppContext, Hooks},
     config,
+    errors::Error as LocoError,
 };
 
 /// converge database logic
@@ -134,6 +136,15 @@ where
 ///
 /// Returns a [`AppResult`] if an error occurs during generate model entity.
 pub fn entities<M: MigratorTrait>(ctx: &AppContext) -> AppResult<String> {
+    if !doctor::check_seaorm_cli().valid() {
+        println!("111");
+        return Err(LocoError::Message(
+            r"SeaORM CLI is not installed.
+    To install SeaORM CLI, use the following command: `cargo install sea-orm-cli`
+`"
+            .to_string(),
+        ));
+    }
     let out = cmd!(
         "sea-orm-cli",
         "generate",
