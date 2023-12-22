@@ -137,7 +137,6 @@ where
 /// Returns a [`AppResult`] if an error occurs during generate model entity.
 pub fn entities<M: MigratorTrait>(ctx: &AppContext) -> AppResult<String> {
     if !doctor::check_seaorm_cli().valid() {
-        println!("111");
         return Err(LocoError::Message(
             r"SeaORM CLI is not installed.
     To install SeaORM CLI, use the following command: `cargo install sea-orm-cli`
