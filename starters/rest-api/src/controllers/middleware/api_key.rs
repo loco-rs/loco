@@ -35,7 +35,9 @@ where
         let state: AppContext = AppContext::from_ref(state);
 
         // Retrieve user information based on the API key from the database.
-        let user = users::Model::find_by_api_key(&state.db, &api_key).await?;
+        let user = users::Model::find_by_api_key(&state.db, &api_key)
+            .await
+            .map_err(|e| Error::Unauthorized(e.to_string()))?;
 
         Ok(Self { user })
     }
