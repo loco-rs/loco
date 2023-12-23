@@ -83,7 +83,7 @@ Here's a rundown of what Loco creates for you by default:
 | File/Folder    | Purpose                                                                                                                                                           |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/`         | Contains controllers, models, views, tasks and more                                                                                                               |
-| `app.rs`       | Main component registeration point. Wire the important bits here.                                                                                                 |
+| `app.rs`       | Main component registration point. Wire the important bits here.                                                                                                 |
 | `lib.rs`       | Various rust-specific exports of your components.                                                                                                                 |
 | `bin/`         | Has your `main.rs` file, you don't need to worry about it                                                                                                         |
 | `controllers/` | Contains controllers, all controllers are exported via `mod.rs`                                                                                                   |
