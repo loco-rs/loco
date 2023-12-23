@@ -13,8 +13,8 @@ You need:
 
 Check out your development [configuration](config/development.yaml).
 
-> To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>[insert app]_development.</code>:
-> <code>docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=loco_app -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine</code>
+> To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>[app name]_development.</code>:
+> <code>docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=[app name]_development -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine</code>
 
 Now start your app:
 
