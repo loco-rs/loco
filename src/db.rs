@@ -2,17 +2,18 @@
 //!
 //! This module defines functions and operations related to the application's
 //! database interactions.
-use std::{fs::File, path::Path, time::Duration};
 
 use crate::doctor;
 use duct::cmd;
 use fs_err as fs;
+
 use rrgen::Error;
 use sea_orm::{
-    ActiveModelTrait, ConnectOptions, Database, DatabaseConnection, DbConn, EntityTrait,
-    IntoActiveModel,
+    ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseConnection, DbConn,
+    EntityTrait, IntoActiveModel,
 };
 use sea_orm_migration::MigratorTrait;
+use std::{fs::File, path::Path, time::Duration};
 use tracing::info;
 
 use super::Result as AppResult;
@@ -67,6 +68,21 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
         .sqlx_logging(config.enable_logging);
 
     Database::connect(opt).await
+}
+
+/// Create a new  database.
+/// The db connection should't include the destination of your db that we need to create.
+/// For example in postgres if
+///
+/// # Errors
+///
+/// Returns a [`sea_orm::DbErr`] if an error occurs during run migration up.
+pub async fn create(db: &DatabaseConnection, db_name: &str) -> Result<(), sea_orm::DbErr> {
+    match db.get_database_backend() {
+        sea_orm::DatabaseBackend::MySql => create_mysql_database(db_name, db).await,
+        sea_orm::DatabaseBackend::Postgres => create_postgres_database(db_name, db).await,
+        sea_orm::DatabaseBackend::Sqlite => Ok(()),
+    }
 }
 
 /// Apply migrations to the database using the provided migrator.
@@ -247,4 +263,47 @@ where
 /// when seed process is fails
 pub async fn run_app_seed<H: Hooks>(db: &DatabaseConnection, path: &Path) -> AppResult<()> {
     H::seed(db, path).await
+}
+
+/// Create a Postgres table from the given table name.
+///
+/// To create the table with `LOCO_MYSQL_TABLE_OPTIONS`
+async fn create_postgres_database(
+    table_name: &str,
+    db: &DatabaseConnection,
+) -> Result<(), sea_orm::DbErr> {
+    let with_options = std::env::var("LOCO_MYSQL_TABLE_OPTIONS")
+        .map_or_else(|_| "ENCODING='UTF8'".to_string(), |options| options);
+
+    let query = format!("CREATE DATABASE {table_name} WITH {with_options}");
+    tracing::info!(query, "creating mysql table");
+
+    db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Postgres,
+        query,
+    ))
+    .await?;
+    Ok(())
+}
+
+/// Create a mysql table from the given table name.
+///
+/// To create the table with `LOCO_MYSQL_TABLE_OPTIONS`
+async fn create_mysql_database(
+    table_name: &str,
+    db: &DatabaseConnection,
+) -> Result<(), sea_orm::DbErr> {
+    let with_options = std::env::var("LOCO_MYSQL_TABLE_OPTIONS").map_or_else(
+        |_| "DEFAULT CHARACTER SET `utf8mb4`".to_string(),
+        |options| options,
+    );
+
+    let query = format!("CREATE DATABASE {table_name} {with_options}");
+    tracing::info!(query, "creating mysql table");
+    db.execute(sea_orm::Statement::from_string(
+        sea_orm::DatabaseBackend::Postgres,
+        query,
+    ))
+    .await?;
+    Ok(())
 }

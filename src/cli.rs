@@ -178,6 +178,8 @@ impl From<ComponentArg> for Component {
 
 #[derive(Subcommand)]
 enum DbCommands {
+    /// Create schema
+    Create,
     /// Migrate schema (up)
     Migrate,
     /// Drop all tables, then reapply all migrations
@@ -193,6 +195,7 @@ enum DbCommands {
 impl From<DbCommands> for RunDbCommand {
     fn from(value: DbCommands) -> Self {
         match value {
+            DbCommands::Create => Self::Create,
             DbCommands::Migrate => Self::Migrate,
             DbCommands::Reset => Self::Reset,
             DbCommands::Status => Self::Status,
@@ -283,6 +286,10 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
         }
         #[cfg(feature = "with-db")]
         Commands::Db { command } => {
+            // When command is `create`, currently se can't call create_context. create context is calling the connect db function
+            // that fails because the database in not exists.
+            // In postgres we need to change the database name to `postgres`
+            // In mysql we need to remove the database name
             let app_context = create_context::<H>(&environment).await?;
             run_db::<H, M>(&app_context, command.into()).await?;
         }
