@@ -44,8 +44,8 @@ In this case, we duplicate the YAML error type, leave one of those for auto conv
 
 **Test your changes**
 
+* [ ] Ensure you have the necessary local resources, such as `DB`/`Redis`, by executing the command `cargo loco doctor  --environment test`. In case you don't have them, refer to the relevant documentation section for guidance.
 * [ ] run `cargo test` on the root to test Loco itself
-* [ ] Ensure you have the necessary local resources, such as `DB`/`Redis`, by executing the command `cargo loco doctor`. In case you don't have them, refer to the relevant documentation section for guidance.
 * [ ] cd `examples/demo` and run `cargo test` to test our "driver app" which exercises the framework in various ways
 * [ ] push your changes to Github to get the CI running and testing in various additional configurations that you don't have
 * [ ] CI should pass. Take note that all `starters-*` CI are using a **fixed version** of Loco and are not seeing your changes yet
