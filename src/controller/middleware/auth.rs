@@ -31,7 +31,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{app::AppContext, auth, errors::Error};
+use crate::{app::AppContext, auth, errors::Error, model::Authenticable};
 
 // Define constants for token prefix and authorization header
 const TOKEN_PREFIX: &str = "Bearer ";
@@ -87,4 +87,44 @@ pub fn extract_token_from_header(headers: &HeaderMap) -> eyre::Result<String> {
         .strip_prefix(TOKEN_PREFIX)
         .ok_or_else(|| eyre::eyre!("error strip {} value", AUTH_HEADER))?
         .to_string())
+}
+
+// ---------------------------------------
+//
+// API Token Auth / Extractor
+//
+// ---------------------------------------
+#[derive(Debug, Deserialize, Serialize)]
+// Represents the data structure for the API token.
+pub struct ApiToken<T: Authenticable> {
+    pub user: T,
+}
+
+#[async_trait]
+// Implementing the `FromRequestParts` trait for `ApiToken` to enable extracting
+// it from the request.
+impl<S, T> FromRequestParts<S> for ApiToken<T>
+where
+    AppContext: FromRef<S>,
+    S: Send + Sync,
+    T: Authenticable,
+{
+    type Rejection = Error;
+
+    // Extracts `ApiToken` from the request parts.
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
+        // Extract API key from the request header.
+        let api_key = extract_token_from_header(&parts.headers)
+            .map_err(|e| Error::Unauthorized(e.to_string()))?;
+
+        // Convert the state reference to the application context.
+        let state: AppContext = AppContext::from_ref(state);
+
+        // Retrieve user information based on the API key from the database.
+        let user = T::find_by_api_key(&state.db, &api_key)
+            .await
+            .map_err(|e| Error::Unauthorized(e.to_string()))?;
+
+        Ok(Self { user })
+    }
 }

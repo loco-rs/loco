@@ -1,6 +1,6 @@
-use crate::controllers::middleware::api_key::ApiToken;
-use crate::{models::_entities::users, views::user::CurrentResponse};
 use loco_rs::prelude::*;
+
+use crate::{models::_entities::users, views::user::CurrentResponse};
 
 async fn current(auth: auth::JWT, State(ctx): State<AppContext>) -> Result<Json<CurrentResponse>> {
     let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
@@ -8,7 +8,7 @@ async fn current(auth: auth::JWT, State(ctx): State<AppContext>) -> Result<Json<
 }
 
 async fn current_by_api_key(
-    auth: ApiToken,
+    auth: auth::ApiToken<users::Model>,
     State(_ctx): State<AppContext>,
 ) -> Result<Json<CurrentResponse>> {
     format::json(CurrentResponse::new(&auth.user))
