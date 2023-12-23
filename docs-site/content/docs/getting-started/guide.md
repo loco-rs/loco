@@ -46,16 +46,6 @@ You can follow this guide for a step-by-step "bottom up" learning, or you can ju
 $ cargo install loco-cli
 ```
 
-Make sure you also have locally installed or running (via Docker or otherwise):
-
-- Postgres
-- Redis
-
-<div class="infobox">
-To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>loco_app</code>: 
-<code>docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=loco_app -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine</code>
-</div>
-
 ### Creating a new Loco app
 
 Now you can create your new app (choose "Saas app" for built-in authentication).
@@ -76,6 +66,17 @@ You can now switch to to `myapp`:
 ```sh
 $ cd myapp
 ```
+
+Make sure you also have locally installed or running (via Docker or otherwise) in case you selected starter with DB dependencies:
+
+- Postgres (your database will be named `myapp_development`)
+- Redis
+
+<div class="infobox">
+To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>myapp_development</code>: 
+<code>docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=myapp_development -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine</code>
+</div>
+
 
 Here's a rundown of what Loco creates for you by default:
 
