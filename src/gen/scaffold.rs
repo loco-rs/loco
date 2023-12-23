@@ -39,6 +39,10 @@ pub fn generate<H: Hooks>(
     let mut columns = Vec::new();
     for (fname, ftype) in fields {
         if gen::model::IGNORE_FIELDS.contains(&fname.as_str()) {
+            tracing::warn!(
+                field = fname,
+                "note that a redundant field was specified, it is already generated automatically"
+            );
             continue;
         }
         if ftype != "references" {
