@@ -40,6 +40,49 @@ const AUTH_HEADER: &str = "authorization";
 // Define a struct to represent user authentication information serialized
 // to/from JSON
 #[derive(Debug, Deserialize, Serialize)]
+pub struct JWTWithUser<T: Authenticable> {
+    pub claims: auth::jwt::UserClaims,
+    pub user: T,
+}
+
+// Implement the FromRequestParts trait for the Auth struct
+#[async_trait]
+impl<S, T> FromRequestParts<S> for JWTWithUser<T>
+where
+    AppContext: FromRef<S>,
+    S: Send + Sync,
+    T: Authenticable,
+{
+    type Rejection = Error;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
+        let token = extract_token_from_header(&parts.headers)
+            .map_err(|e| Error::Unauthorized(e.to_string()))?;
+
+        let state: AppContext = AppContext::from_ref(state);
+
+        let jwt_secret = state.config.get_jwt_config()?;
+
+        match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
+            Ok(claims) => {
+                let user = T::find_by_claims_key(&state.db, &claims.claims.pid)
+                    .await
+                    .map_err(|_| Error::Unauthorized("token is not valid".to_string()))?;
+                Ok(Self {
+                    claims: claims.claims,
+                    user,
+                })
+            }
+            Err(_err) => {
+                return Err(Error::Unauthorized("token is not valid".to_string()));
+            }
+        }
+    }
+}
+
+// Define a struct to represent user authentication information serialized
+// to/from JSON
+#[derive(Debug, Deserialize, Serialize)]
 pub struct JWT {
     pub claims: auth::jwt::UserClaims,
 }
@@ -66,9 +109,7 @@ where
                 claims: claims.claims,
             }),
             Err(_err) => {
-                return Err(Error::Unauthorized(
-                    "[Auth] token is not valid.".to_string(),
-                ));
+                return Err(Error::Unauthorized("token is not valid".to_string()));
             }
         }
     }

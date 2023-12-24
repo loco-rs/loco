@@ -71,7 +71,12 @@ impl Authenticable for super::_entities::users::Model {
             .await?;
         user.ok_or_else(|| ModelError::EntityNotFound)
     }
+
+    async fn find_by_claims_key(db: &DatabaseConnection, claims_key: &str) -> ModelResult<Self> {
+        super::_entities::users::Model::find_by_pid(db, claims_key).await
+    }
 }
+
 impl super::_entities::users::Model {
     /// finds a user by the provided email
     ///

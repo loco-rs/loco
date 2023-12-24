@@ -2,6 +2,46 @@
 
 ## vNext
 
+#### Authentication: Added API Token Authentication!
+
+Now when you generate a `saas starter` or `rest api` starter you will get additional authentication methods for free:
+
+* Added: authentication added -- **api authentication** where each user has an API token in the schema, and you can authenticate with `Bearer` against that user.
+* Added: authentication added -- `JWTWithUser` extractor, which is a convenience for resolving the authenticated JWT claims into a current user from database
+
+**migrating an existing codebase**
+
+Add the following to your generated `src/models/user.rs`:
+
+```rust
+#[async_trait]
+impl Authenticable for super::_entities::users::Model {
+    async fn find_by_api_key(db: &DatabaseConnection, api_key: &str) -> ModelResult<Self> {
+        let user = users::Entity::find()
+            .filter(users::Column::ApiKey.eq(api_key))
+            .one(db)
+            .await?;
+        user.ok_or_else(|| ModelError::EntityNotFound)
+    }
+
+    async fn find_by_claims_key(db: &DatabaseConnection, claims_key: &str) -> ModelResult<Self> {
+        super::_entities::users::Model::find_by_pid(db, claims_key).await
+    }
+}
+```
+
+Update imports in this file to include `model::Authenticable`:
+
+```rust
+use loco_rs::{
+    auth, hash,
+    model::{Authenticable, ModelError, ModelResult},
+    validation,
+    validator::Validate,
+};
+```
+
+
 ## v0.1.8
 
 * Added: `loco version` for getting an operable version string containing logical crate version and git SHA if available: `0.3.0 (<git sha>)`
