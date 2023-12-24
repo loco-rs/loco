@@ -7,13 +7,13 @@ use std::{path::PathBuf, time::Duration};
 use axum::{http, Router as AXRouter};
 use lazy_static::lazy_static;
 use regex::Regex;
-use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::{
     add_extension::AddExtensionLayer,
     catch_panic::CatchPanicLayer,
     compression::CompressionLayer,
     cors,
     services::{ServeDir, ServeFile},
+    set_header::SetResponseHeaderLayer,
     timeout::TimeoutLayer,
     trace::TraceLayer,
 };
@@ -253,6 +253,10 @@ impl AppRoutes {
         let mut cors: cors::CorsLayer = cors::CorsLayer::permissive();
 
         if let Some(allow_origins) = &config.allow_origins {
+            // testing CORS, assuming https://example.com in the allow list:
+            // $ curl -v --request OPTIONS 'localhost:3000/api/_ping' -H 'Origin: https://example.com' -H 'Access-Control-Request-Method: GET'
+            // look for '< access-control-allow-origin: https://example.com' in response.
+            // if it doesn't appear (test with a bogus domain), it is not allowed.
             let mut list = vec![];
             for origins in allow_origins {
                 list.push(origins.parse()?);

@@ -37,14 +37,15 @@ myapp
 ```
 
 <div class="infobox">
-To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>loco_app</code>.
+To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>[insert app]_development.</code>.
 </div>
 
-You can use Docker to run a Postgres instance:
+When generating a starter, the database name incorporates your application name and the environment. For instance, if you include `myapp`, the database name in the `test.yaml`configuration will be `myapp_test`, and in the `development.yaml` configuration, it will be `myapp_development`.
 
 ```
-$ docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=loco_app -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine
+$ docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=myapp_development -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine
 ```
+
 
 Now `cd` into your `myapp` and start your app:
 

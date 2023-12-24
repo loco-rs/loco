@@ -1,7 +1,9 @@
 # local dev
 todo.txt
 
+# IDE config files
 .idea
+.vscode
 
 **/config/local.yaml
 **/config/*.local.yaml

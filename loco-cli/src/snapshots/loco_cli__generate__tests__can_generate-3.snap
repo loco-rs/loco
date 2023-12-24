@@ -1,0 +1,7 @@
+---
+source: src/generate.rs
+expression: "fs::read_to_string(tree_res.join(\"any.yaml\"))"
+---
+Ok(
+    "database:\n    uri: {{ get_env(name=\"DATABASE_URL\", default=\"postgres://lib_name_changed\n",
+)
