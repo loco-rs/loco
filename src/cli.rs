@@ -35,7 +35,7 @@ use crate::{
     boot::{create_app, create_context, list_endpoints, run_task, start, RunDbCommand, StartMode},
     environment::{resolve_from_env, Environment},
     gen::{self, Component},
-    Result,
+    logger, Result,
 };
 
 const DEFAULT_ENVIRONMENT: &str = "development";
@@ -299,6 +299,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             let environment = Environment::from_str(&environment)
                 .unwrap_or_else(|_| Environment::Any(environment.to_string()))
                 .load()?;
+            logger::init::<H>(&environment.logger);
             gen::generate::<H>(component.into(), &environment)?;
         }
         Commands::Doctor {} => {
@@ -359,6 +360,7 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
             let environment = Environment::from_str(&environment)
                 .unwrap_or_else(|_| Environment::Any(environment.to_string()))
                 .load()?;
+            logger::init::<H>(&environment.logger);
             gen::generate::<H>(component.into(), &environment)?;
         }
         Commands::Version {} => {
