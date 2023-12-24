@@ -2,6 +2,8 @@
 //!
 //! Useful when using `sea_orm` and want to propagate errors
 
+use async_trait::async_trait;
+use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -35,3 +37,9 @@ pub enum ModelError {
 
 #[allow(clippy::module_name_repetitions)]
 pub type ModelResult<T, E = ModelError> = std::result::Result<T, E>;
+
+#[async_trait]
+pub trait Authenticable: Clone {
+    async fn find_by_api_key(db: &DatabaseConnection, api_key: &str) -> ModelResult<Self>;
+    async fn find_by_claims_key(db: &DatabaseConnection, claims_key: &str) -> ModelResult<Self>;
+}

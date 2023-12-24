@@ -91,5 +91,6 @@ $ blo-cli routes
 [DELETE] /notes/:id
 [POST] /notes/:id
 [GET] /user/current
+[GET] /user/current_api_key
 
 ```

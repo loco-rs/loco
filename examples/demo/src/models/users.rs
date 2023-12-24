@@ -1,7 +1,8 @@
+use async_trait::async_trait;
 use chrono::offset::Local;
 use loco_rs::{
     auth, hash,
-    model::{ModelError, ModelResult},
+    model::{Authenticable, ModelError, ModelResult},
     validation,
     validator::Validate,
 };
@@ -52,11 +53,27 @@ impl ActiveModelBehavior for super::_entities::users::ActiveModel {
             if insert {
                 let mut this = self;
                 this.pid = ActiveValue::Set(Uuid::new_v4());
+                this.api_key = ActiveValue::Set(format!("lo-{}", Uuid::new_v4()));
                 Ok(this)
             } else {
                 Ok(self)
             }
         }
+    }
+}
+
+#[async_trait]
+impl Authenticable for super::_entities::users::Model {
+    async fn find_by_api_key(db: &DatabaseConnection, api_key: &str) -> ModelResult<Self> {
+        let user = users::Entity::find()
+            .filter(users::Column::ApiKey.eq(api_key))
+            .one(db)
+            .await?;
+        user.ok_or_else(|| ModelError::EntityNotFound)
+    }
+
+    async fn find_by_claims_key(db: &DatabaseConnection, claims_key: &str) -> ModelResult<Self> {
+        super::_entities::users::Model::find_by_pid(db, claims_key).await
     }
 }
 
@@ -112,6 +129,19 @@ impl super::_entities::users::Model {
         let parse_uuid = Uuid::parse_str(pid).map_err(|e| ModelError::Any(e.into()))?;
         let user = users::Entity::find()
             .filter(users::Column::Pid.eq(parse_uuid))
+            .one(db)
+            .await?;
+        user.ok_or_else(|| ModelError::EntityNotFound)
+    }
+
+    /// finds a user by the provided api key
+    ///
+    /// # Errors
+    ///
+    /// When could not find user by the given token or DB query error
+    pub async fn find_by_api_key(db: &DatabaseConnection, api_key: &str) -> ModelResult<Self> {
+        let user = users::Entity::find()
+            .filter(users::Column::ApiKey.eq(api_key))
             .one(db)
             .await?;
         user.ok_or_else(|| ModelError::EntityNotFound)

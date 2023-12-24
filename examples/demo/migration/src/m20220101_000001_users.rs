@@ -14,6 +14,7 @@ impl MigrationTrait for Migration {
             .col(uuid(Users::Pid).borrow_mut())
             .col(string_uniq(Users::Email).borrow_mut())
             .col(string(Users::Password).borrow_mut())
+            .col(string(Users::ApiKey).borrow_mut().unique_key())
             .col(string(Users::Name).borrow_mut())
             .col(string_null(Users::ResetToken).borrow_mut())
             .col(timestamp_null(Users::ResetSentAt).borrow_mut())
@@ -41,6 +42,7 @@ pub enum Users {
     Email,
     Name,
     Password,
+    ApiKey,
     ResetToken,
     ResetSentAt,
     EmailVerificationToken,
