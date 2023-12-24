@@ -13,6 +13,8 @@ use serde::{Deserialize, Serialize};
 // Name of generator template that should be existing in each starter folder
 const GENERATOR_FILE_NAME: &str = "generator.yaml";
 
+const LIB_NAME_PLACEHOLDER: &str = "{{LibName}}";
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 /// Represents the configuration of a template generator.
 pub struct Template {
@@ -34,6 +36,14 @@ pub enum TemplateRuleKind {
     LibName,
     JwtToken,
     Any(String),
+}
+
+impl ArgsPlaceholder {
+    /// replace strings placeholder with cli arguments.
+    /// For example, replace any string that contains {{LibName}} with the given lib name.
+    pub fn replace_placeholders(&self, content: &str) -> String {
+        content.replace(LIB_NAME_PLACEHOLDER, &self.lib_name)
+    }
 }
 
 /// Deserialize [`TemplateRuleKind`] for supporting any string replacements
@@ -218,10 +228,13 @@ impl Template {
                     continue;
                 }
 
-                content = rule
-                    .pattern
-                    .replace_all(&content, rule.kind.get_val(args))
-                    .to_string();
+                let replace = match rule.kind {
+                    TemplateRuleKind::LibName | TemplateRuleKind::JwtToken => {
+                        rule.kind.get_val(args)
+                    }
+                    TemplateRuleKind::Any(_) => args.replace_placeholders(&rule.kind.get_val(args)),
+                };
+                content = rule.pattern.replace_all(&content, replace).to_string();
                 is_changed = true;
             }
         }
@@ -304,6 +317,10 @@ mod tests {
         - path: test.yaml
           content: | 
             secret = MY_SECRET
+        - path: any.yaml
+          content: | 
+            database:
+                uri: {{ get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app") }}
         "#;
         let tree_res = tree_fs::from_yaml_str(yaml_content).unwrap();
 
@@ -319,6 +336,14 @@ mod tests {
                 TemplateRule {
                     pattern: Regex::new("MY_SECRET").unwrap(),
                     kind: TemplateRuleKind::JwtToken,
+                    file_patterns: None,
+                    skip_in_ci: None,
+                },
+                TemplateRule {
+                    pattern: Regex::new("postgres://loco:loco@localhost:5432/loco_app").unwrap(),
+                    kind: TemplateRuleKind::Any(
+                        "postgres://loco:loco@localhost:5432/{{LibName}}_test".to_string(),
+                    ),
                     file_patterns: None,
                     skip_in_ci: None,
                 },
@@ -338,6 +363,7 @@ mod tests {
             ]
         }, {
             assert_debug_snapshot!(fs::read_to_string(tree_res.join("test.yaml")));
+            assert_debug_snapshot!(fs::read_to_string(tree_res.join("any.yaml")));
 
         });
     }

@@ -2,8 +2,14 @@
 
 ## vNext
 
+* Validate if seaorm CLI is installed before running `cargo loco db entities` and show a better error to the user. [https://github.com/loco-rs/loco/pull/212](https://github.com/loco-rs/loco/pull/212)
+* Adding to `saas and `rest-api` starters a redis and DB in GitHub action workflow to allow users work with github action out of the box. [https://github.com/loco-rs/loco/pull/215](https://github.com/loco-rs/loco/pull/215)
+* Adding the app name and the environment to the DB name when creating a new starter. [https://github.com/loco-rs/loco/pull/216](https://github.com/loco-rs/loco/pull/216)
+* Fix generator when users adding a `created_at` or `update_at` fields. [https://github.com/loco-rs/loco/pull/214](https://github.com/loco-rs/loco/pull/214)
+
 #### Authentication: Added API Token Authentication!
 
+* See [https://github.com/loco-rs/loco/pull/217](https://github.com/loco-rs/loco/pull/217)
 Now when you generate a `saas starter` or `rest api` starter you will get additional authentication methods for free:
 
 * Added: authentication added -- **api authentication** where each user has an API token in the schema, and you can authenticate with `Bearer` against that user.
@@ -41,7 +47,7 @@ use loco_rs::{
 };
 ```
 
-
+  
 ## v0.1.8
 
 * Added: `loco version` for getting an operable version string containing logical crate version and git SHA if available: `0.3.0 (<git sha>)`

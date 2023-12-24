@@ -35,13 +35,15 @@ myapp
 ```
 
 <div class="infobox">
-To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>loco_app</code>.
+To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named is the [insert app]_development.
 </div>
 
 You can use Docker to run a Postgres instance:
 
+When generating a starter, the database name incorporates your application name and the environment. For instance, if you include `myapp`, the database name in the `test.yaml`configuration will be `myapp_test`, and in the `development.yaml` configuration, it will be `myapp_development`.
+
 ```
-$ docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=loco_app -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine
+$ docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=myapp_development -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine
 ```
 
 Now `cd` into your `myapp` and start your app:
@@ -100,7 +102,7 @@ injected: "tests/requests/mod.rs"
 * Tests for controller `post` was added successfully. Run `cargo test`.
 ```
 
-Your database have been migrated and model, entities, and a full CRUD controller have been generated automatically.
+Your database have been migrated and model, entities, and a full CRUD controller h  ave been generated automatically.
 
 Start your app:
 
@@ -138,10 +140,10 @@ Your generated app contains a fully working authentication suite, based on JWTs.
 
 ### Registering a New User
 
-The `/auth/register` endpoint creates a new user in the database with an `email_verification_token` for account verification. A welcome email is sent to the user with a verification link.
+The `/api/auth/register` endpoint creates a new user in the database with an `email_verification_token` for account verification. A welcome email is sent to the user with a verification link.
 
 ```sh
-$ curl --location '127.0.0.1:3000/auth/register' \
+$ curl --location '127.0.0.1:3000/api/auth/register' \
      --header 'Content-Type: application/json' \
      --data-raw '{
          "name": "Loco user",
@@ -157,7 +159,7 @@ For security reasons, if the user is already registered, no new user is created,
 After registering a new user, use the following request to log in:
 
 ```sh
-$ curl --location '127.0.0.1:3000/auth/login' \
+$ curl --location '127.0.0.1:3000/api/auth/login' \
      --header 'Content-Type: application/json' \
      --data-raw '{
          "email": "user@loco.rs",
@@ -181,13 +183,9 @@ The response includes a JWT token for authentication, user ID, name, and verific
 This endpoint is protected by auth middleware.
 
 ```sh
-$ curl --location --request GET '127.0.0.1:3000/user/current' \
+$ curl --location --request GET '127.0.0.1:3000/api/user/current' \
      --header 'Content-Type: application/json' \
      --header 'Authorization: Bearer TOKEN' \
-     --data-raw '{
-         "email": "user@loco.rs",
-         "password": "new-password"
-     }'
 ```
 
 Check out the source code for `controllers/auth.rs` to see how to use the authentication middleware in your own controllers.
