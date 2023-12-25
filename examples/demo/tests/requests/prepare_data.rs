@@ -52,3 +52,12 @@ pub fn auth_header(token: &str) -> (HeaderName, HeaderValue) {
 
     (HeaderName::from_static("authorization"), auth_header_value)
 }
+
+pub fn compression_header() -> (HeaderName, HeaderValue) {
+    let compression_header_value = HeaderValue::from_static("gzip");
+
+    (
+        HeaderName::from_static("accept-encoding"),
+        compression_header_value,
+    )
+}

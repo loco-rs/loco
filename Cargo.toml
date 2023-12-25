@@ -32,7 +32,7 @@ colored = "2"
 
 
 sea-orm = { version = "0.12.4", features = [
-  "sqlx-postgres",        # `DATABASE_DRIVER` feature
+  "sqlx-postgres", # `DATABASE_DRIVER` feature
   "sqlx-sqlite",
   "runtime-tokio-rustls",
   "macros",
@@ -80,6 +80,7 @@ tower-http = { version = "0.5.0", features = [
   "cors",
   "fs",
   "set-header",
+  "compression-full",
 ] }
 byte-unit = "4.0.19"
 
@@ -110,7 +111,7 @@ features = [
   # View the list of supported features at https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime.
   # e.g.
   "runtime-tokio-rustls", # `ASYNC_RUNTIME` feature
-  "sqlx-postgres",        # `DATABASE_DRIVER` feature
+  "sqlx-postgres", # `DATABASE_DRIVER` feature
   "sqlx-sqlite",
 ]
 

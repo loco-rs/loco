@@ -142,6 +142,8 @@ pub struct Workers {
 /// Represents the middleware configuration structure.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Middlewares {
+    /// Middleware that enable compression for the response.
+    pub compression: Option<EnableMiddleware>,
     /// Middleware that limit the payload request.
     pub limit_payload: Option<LimitPayloadMiddleware>,
     /// Middleware that improve the tracing logger and adding trace id for each

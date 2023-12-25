@@ -47,6 +47,9 @@ server:
       enable: true
       # Duration time in milliseconds.
       timeout: 5000
+    compression:
+      # Enable/Disable the middleware.
+      enable: true
     cors:
       enable: true
       # Set the value of the [`Access-Control-Allow-Origin`][mdn] header

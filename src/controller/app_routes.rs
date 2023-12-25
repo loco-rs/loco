@@ -10,6 +10,7 @@ use regex::Regex;
 use tower_http::{
     add_extension::AddExtensionLayer,
     catch_panic::CatchPanicLayer,
+    compression::CompressionLayer,
     cors,
     services::{ServeDir, ServeFile},
     set_header::SetResponseHeaderLayer,
@@ -178,6 +179,12 @@ impl AppRoutes {
             }
         }
 
+        if let Some(compression) = &ctx.config.server.middlewares.compression {
+            if compression.enable {
+                app = Self::add_compression_middleware(app);
+            }
+        }
+
         if let Some(limit) = &ctx.config.server.middlewares.limit_payload {
             if limit.enable {
                 app = Self::add_limit_payload_middleware(app, limit)?;
@@ -232,6 +239,13 @@ impl AppRoutes {
             ServeDir::new(&config.folder.path).not_found_service(ServeFile::new(&config.fallback)),
         ))
     }
+
+    fn add_compression_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
+        let app = app.layer(CompressionLayer::new());
+        tracing::info!("[Middleware] Adding compression layer");
+        app
+    }
+
     fn add_cors_middleware(
         app: AXRouter<AppContext>,
         config: &config::CorsMiddleware,
