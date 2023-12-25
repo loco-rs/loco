@@ -102,7 +102,7 @@ injected: "tests/requests/mod.rs"
 * Tests for controller `post` was added successfully. Run `cargo test`.
 ```
 
-Your database have been migrated and model, entities, and a full CRUD controller h  ave been generated automatically.
+Your database have been migrated and model, entities, and a full CRUD controller have been generated automatically.
 
 Start your app:
 
