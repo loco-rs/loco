@@ -21,7 +21,8 @@ cfg_if::cfg_if! {
     if #[cfg(feature = "with-db")] {
         use sea_orm_migration::MigratorTrait;
         use crate::doctor;
-        use crate::boot::run_db;
+        use crate::boot::{run_db};
+        use crate::db;
         use std::process::exit;
     } else {}
 }
@@ -195,12 +196,14 @@ enum DbCommands {
 impl From<DbCommands> for RunDbCommand {
     fn from(value: DbCommands) -> Self {
         match value {
-            DbCommands::Create => Self::Create,
             DbCommands::Migrate => Self::Migrate,
             DbCommands::Reset => Self::Reset,
             DbCommands::Status => Self::Status,
             DbCommands::Entities => Self::Entities,
             DbCommands::Truncate => Self::Truncate,
+            DbCommands::Create => {
+                unreachable!("Create db should't handled in the global db commands")
+            }
         }
     }
 }
@@ -286,12 +289,14 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
         }
         #[cfg(feature = "with-db")]
         Commands::Db { command } => {
-            // When command is `create`, currently se can't call create_context. create context is calling the connect db function
-            // that fails because the database in not exists.
-            // In postgres we need to change the database name to `postgres`
-            // In mysql we need to remove the database name
-            let app_context = create_context::<H>(&environment).await?;
-            run_db::<H, M>(&app_context, command.into()).await?;
+            if matches!(command, DbCommands::Create) {
+                let environment = Environment::from_str(environment.as_str())
+                    .unwrap_or_else(|_| Environment::Any(environment.to_string()));
+                let _ = db::create(&environment.load()?.database.uri).await;
+            } else {
+                let app_context = create_context::<H>(&environment).await?;
+                run_db::<H, M>(&app_context, command.into()).await?;
+            }
         }
         Commands::Routes {} => show_list_endpoints::<H>(),
         Commands::Task { name, params } => {

@@ -23,6 +23,18 @@ use crate::{
     errors::Error as LocoError,
 };
 
+use lazy_static::lazy_static;
+use regex::Regex;
+
+lazy_static! {
+    // Getting the table name from the environment configuration.
+    // For example:
+    // postgres://loco:loco@localhost:5432/loco_app
+    // mysql://loco:loco@localhost:3306/loco_app
+    // the results will be loco_app
+    pub static ref EXTRACT_DB_NAME: Regex = Regex::new(r"/([^/]+)$").unwrap();
+}
+
 /// converge database logic
 ///
 /// # Errors
@@ -70,19 +82,28 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
     Database::connect(opt).await
 }
 
-/// Create a new  database.
-/// The db connection should't include the destination of your db that we need to create.
-/// For example in postgres if
+///  Create a new database. This functionality is currently exclusive to Postgre databases.
 ///
 /// # Errors
 ///
 /// Returns a [`sea_orm::DbErr`] if an error occurs during run migration up.
-pub async fn create(db: &DatabaseConnection, db_name: &str) -> Result<(), sea_orm::DbErr> {
-    match db.get_database_backend() {
-        sea_orm::DatabaseBackend::MySql => create_mysql_database(db_name, db).await,
-        sea_orm::DatabaseBackend::Postgres => create_postgres_database(db_name, db).await,
-        sea_orm::DatabaseBackend::Sqlite => Ok(()),
+pub async fn create(db_uri: &str) -> AppResult<()> {
+    if !db_uri.starts_with("postgres://") {
+        return Err(LocoError::Message(
+            "Only Postgres databases are supported for table creation".to_string(),
+        ));
     }
+    let db_name = EXTRACT_DB_NAME
+        .captures(db_uri)
+        .and_then(|cap| cap.get(1).map(|db| db.as_str()))
+        .ok_or(Error::Message(
+            "The specified table name was not found in the given Postgre database URI".to_string(),
+        ))?;
+
+    let conn = EXTRACT_DB_NAME.replace(db_uri, "/postgres").to_string();
+    let db = Database::connect(conn).await?;
+
+    Ok(create_postgres_database(db_name, &db).await?)
 }
 
 /// Apply migrations to the database using the provided migrator.
@@ -278,28 +299,6 @@ async fn create_postgres_database(
     let query = format!("CREATE DATABASE {table_name} WITH {with_options}");
     tracing::info!(query, "creating mysql table");
 
-    db.execute(sea_orm::Statement::from_string(
-        sea_orm::DatabaseBackend::Postgres,
-        query,
-    ))
-    .await?;
-    Ok(())
-}
-
-/// Create a mysql table from the given table name.
-///
-/// To create the table with `LOCO_MYSQL_TABLE_OPTIONS`
-async fn create_mysql_database(
-    table_name: &str,
-    db: &DatabaseConnection,
-) -> Result<(), sea_orm::DbErr> {
-    let with_options = std::env::var("LOCO_MYSQL_TABLE_OPTIONS").map_or_else(
-        |_| "DEFAULT CHARACTER SET `utf8mb4`".to_string(),
-        |options| options,
-    );
-
-    let query = format!("CREATE DATABASE {table_name} {with_options}");
-    tracing::info!(query, "creating mysql table");
     db.execute(sea_orm::Statement::from_string(
         sea_orm::DatabaseBackend::Postgres,
         query,

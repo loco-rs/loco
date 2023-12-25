@@ -24,17 +24,6 @@ use crate::{
     worker::{self, AppWorker, Pool, Processor, RedisConnectionManager, DEFAULT_QUEUES},
     Result,
 };
-use lazy_static::lazy_static;
-use regex::Regex;
-
-lazy_static! {
-    // Getting the table name from the environment configuration.
-    // For example:
-    // postgres://loco:loco@localhost:5432/loco_app
-    // mysql://loco:loco@localhost:3306/loco_app
-    // the results will be loco_app
-    static ref EXTRACT_DB_NAME: Regex = Regex::new(r"/([^/]+)$").unwrap();
-}
 
 /// Represents the application startup mode.
 pub enum StartMode {
@@ -124,8 +113,6 @@ pub async fn run_task<H: Hooks>(
 /// Represents commands for handling database-related operations.
 #[derive(Debug)]
 pub enum RunDbCommand {
-    /// Create schema.
-    Create,
     /// Apply pending migrations.
     Migrate,
     /// Drop all tables, then reapply all migrations.
@@ -151,16 +138,6 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
     cmd: RunDbCommand,
 ) -> Result<()> {
     match cmd {
-        RunDbCommand::Create => {
-            let db_name = EXTRACT_DB_NAME
-                .captures(&app_context.config.database.uri)
-                .and_then(|cap| cap.get(1).map(|db| db.as_str()))
-                .ok_or(Error::Message(
-                    "table name not found in given DB uri".to_string(),
-                ))?;
-
-            db::create(&app_context.db, db_name).await?;
-        }
         RunDbCommand::Migrate => {
             tracing::warn!("migrate:");
             let _ = db::migrate::<M>(&app_context.db).await;
