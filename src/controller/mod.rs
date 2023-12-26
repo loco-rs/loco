@@ -71,6 +71,7 @@ mod health;
 pub mod middleware;
 mod ping;
 mod routes;
+pub mod views;
 
 pub use app_routes::{AppRoutes, ListRoutes};
 use axum::{

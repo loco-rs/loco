@@ -1,18 +1,29 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
-use loco_rs::prelude::*;
-use serde::{Deserialize, Serialize};
-
+use crate::views::notes::ListResponse;
 use crate::{
     common,
-    models::_entities::notes::{ActiveModel, Entity, Model},
+    models::_entities::notes::{ActiveModel, Column, Entity, Model},
 };
+use axum::extract::Query;
+use loco_rs::{concern::pagination, controller::views::pagination::Pager, prelude::*};
+use sea_orm::ColumnTrait;
+use sea_orm::Condition;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Params {
     pub title: Option<String>,
     pub content: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ListQueryParams {
+    pub title: Option<String>,
+    pub content: Option<String>,
+    #[serde(flatten)]
+    pub pagination: pagination::PaginationFilter,
 }
 
 impl Params {
@@ -27,12 +38,26 @@ async fn load_item(ctx: &AppContext, id: i32) -> Result<Model> {
     item.ok_or_else(|| Error::NotFound)
 }
 
-pub async fn list(State(ctx): State<AppContext>) -> Result<Json<Vec<Model>>> {
+pub async fn list(
+    State(ctx): State<AppContext>,
+    Query(params): Query<ListQueryParams>,
+) -> Result<Json<Pager<Vec<ListResponse>>>> {
+    let notes_query = Entity::find();
+
+    let notes: Pager<Vec<ListResponse>> =
+        pagination::view::<ListResponse, crate::models::_entities::notes::Entity>(
+            &ctx.db,
+            notes_query,
+            Some(params.into_query()),
+            &params.pagination,
+        )
+        .await?;
+
     if let Some(settings) = &ctx.config.settings {
         let settings = common::settings::Settings::from_json(settings)?;
         println!("allow list: {:?}", settings.allow_list);
     }
-    format::json(Entity::find().all(&ctx.db).await?)
+    format::json(notes)
 }
 
 pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Json<Model>> {
@@ -63,6 +88,20 @@ pub async fn remove(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Resul
 
 pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Json<Model>> {
     format::json(load_item(&ctx, id).await?)
+}
+
+impl ListQueryParams {
+    pub fn into_query(&self) -> Condition {
+        let mut condition = Condition::all();
+        if let Some(title) = &self.title {
+            condition = condition.add(Column::Title.like(title));
+        }
+        if let Some(content) = &self.content {
+            condition = condition.add(Column::Content.like(content));
+        }
+
+        condition
+    }
 }
 
 pub fn routes() -> Routes {
