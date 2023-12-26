@@ -3,7 +3,9 @@ use axum::http::HeaderValue;
 use blo::{app::App, models::_entities::notes::Entity};
 use insta::{assert_debug_snapshot, with_settings};
 use loco_rs::testing;
+use rstest::rstest;
 use sea_orm::entity::prelude::*;
+use serde_json;
 use serial_test::serial;
 
 // TODO: see how to dedup / extract this to app-local test utils
@@ -17,15 +19,21 @@ macro_rules! configure_insta {
     };
 }
 
+#[rstest]
+#[case("get_notes", serde_json::json!({}))]
+#[case("get_notes_with_page_size", serde_json::json!({"page_size":"1"}))]
+#[case("get_notes_withnext_page", serde_json::json!({"page":"2"}))]
+#[case("get_notes_with_size_and_page", serde_json::json!({"page":"2", "page_size": "5"}))]
+#[case("get_notes_with_filters", serde_json::json!({"page":"1", "page_size": "2", "title": "%note%"}))]
 #[tokio::test]
 #[serial]
-async fn can_get_notes() {
+async fn can_get_notes(#[case] test_name: &str, #[case] params: serde_json::Value) {
     configure_insta!();
 
     testing::request::<App, _, _>(|request, ctx| async move {
         testing::seed::<App>(&ctx.db).await.unwrap();
 
-        let notes = request.get("notes").await;
+        let notes = request.get("notes").add_query_params(params).await;
 
         with_settings!({
             filters => {
@@ -35,7 +43,7 @@ async fn can_get_notes() {
             }
         }, {
             assert_debug_snapshot!(
-            (notes.status_code(), notes.text())
+            test_name, (notes.status_code(), notes.text())
         );
         });
     })
