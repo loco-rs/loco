@@ -30,6 +30,7 @@ Perform DB operations
 Usage: blo-cli db [OPTIONS] <COMMAND>
 
 Commands:
+  create    Create schema
   migrate   Migrate schema (up)
   reset     Drop all tables, then reapply all migrations
   status    Migration status

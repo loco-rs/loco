@@ -21,7 +21,8 @@ cfg_if::cfg_if! {
     if #[cfg(feature = "with-db")] {
         use sea_orm_migration::MigratorTrait;
         use crate::doctor;
-        use crate::boot::run_db;
+        use crate::boot::{run_db};
+        use crate::db;
         use std::process::exit;
     } else {}
 }
@@ -178,6 +179,8 @@ impl From<ComponentArg> for Component {
 
 #[derive(Subcommand)]
 enum DbCommands {
+    /// Create schema
+    Create,
     /// Migrate schema (up)
     Migrate,
     /// Drop all tables, then reapply all migrations
@@ -198,6 +201,9 @@ impl From<DbCommands> for RunDbCommand {
             DbCommands::Status => Self::Status,
             DbCommands::Entities => Self::Entities,
             DbCommands::Truncate => Self::Truncate,
+            DbCommands::Create => {
+                unreachable!("Create db should't handled in the global db commands")
+            }
         }
     }
 }
@@ -283,8 +289,14 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
         }
         #[cfg(feature = "with-db")]
         Commands::Db { command } => {
-            let app_context = create_context::<H>(&environment).await?;
-            run_db::<H, M>(&app_context, command.into()).await?;
+            if matches!(command, DbCommands::Create) {
+                let environment = Environment::from_str(environment.as_str())
+                    .unwrap_or_else(|_| Environment::Any(environment.to_string()));
+                let _ = db::create(&environment.load()?.database.uri).await;
+            } else {
+                let app_context = create_context::<H>(&environment).await?;
+                run_db::<H, M>(&app_context, command.into()).await?;
+            }
         }
         Commands::Routes {} => show_list_endpoints::<H>(),
         Commands::Task { name, params } => {
