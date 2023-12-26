@@ -32,7 +32,7 @@ pub struct PaginationFilter {
     pub page: u64,
 }
 
-/// Parse the parameters to u64 following a bug in `serde_urlencoded` https://github.com/nox/serde_urlencoded/issues/33.
+/// Parse the parameters to u64 following a bug in `serde_urlencoded`
 fn deserialize_pagination_filter<'de, D>(deserializer: D) -> Result<u64, D::Error>
 where
     D: serde::Deserializer<'de>,
