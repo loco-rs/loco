@@ -37,7 +37,7 @@ The Saas starter is perfect for projects requiring both a frontend website and a
 
 **Frontend**
 
-- Built on React and Vit (easy to replace with your preferred framework).
+- Built on React and Vite (easy to replace with your preferred framework).
 - Static middleware that point on your frontend build and includes a fallback index.
 
 **Rest API**
