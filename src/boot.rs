@@ -104,7 +104,7 @@ pub async fn run_task<H: Hooks>(
     } else {
         let list = tasks.list();
         for item in &list {
-            println!("{}\t\t[{}]", item.name, item.detail);
+            println!("{:<30}[{}]", item.name, item.detail);
         }
     }
     Ok(())
