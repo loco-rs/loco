@@ -71,8 +71,9 @@ Options:
 
 ```console 
 $ LOCO_ENV=test blo-cli task
-seed_data		[Task for seeding data]
-user_report		[output a user report]
+foo                           [test misaligned cli prints]
+seed_data                     [Task for seeding data]
+user_report                   [output a user report]
 
 ```
 
