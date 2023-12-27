@@ -157,7 +157,7 @@ $ cargo loco start
 Install `react-router-dom`, `react-query` and `axios`
 
 ```sh
-$ pnpm install react-query axios
+$ pnpm install react-router-dom react-query axios
 ```
 
 1. Copy [main.jsx](https://github.com/loco-rs/todo-list-example/blob/main/frontend/src/main.jsx) to frontend/src/main.jsx.
