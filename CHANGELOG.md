@@ -8,6 +8,23 @@
 * Adding to `saas and `rest-api` starters a redis and DB in GitHub action workflow to allow users work with github action out of the box. [https://github.com/loco-rs/loco/pull/215](https://github.com/loco-rs/loco/pull/215)
 * Adding the app name and the environment to the DB name when creating a new starter. [https://github.com/loco-rs/loco/pull/216](https://github.com/loco-rs/loco/pull/216)
 * Fix generator when users adding a `created_at` or `update_at` fields. [https://github.com/loco-rs/loco/pull/214](https://github.com/loco-rs/loco/pull/214)
+* Add: `format::render` which allows a builder-like formatting, including setting etag and ad-hoc headers
+* Add: Etag middleware, enabled by default in starter projects. Once you set an Etag it will check for cache headers and return `304` if needed. To enable etag in your existing project:
+
+```yaml
+#...
+  middlewares:
+    etag:
+      enable: true
+```
+
+usage:
+```rust
+  format::render()
+      .etag("foobar")?
+      .json(Entity::find().all(&ctx.db).await?)
+```
+
 
 #### Authentication: Added API Token Authentication!
 

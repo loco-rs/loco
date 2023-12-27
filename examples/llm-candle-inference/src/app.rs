@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use crate::controllers;
 use async_trait::async_trait;
 use axum::Extension;
 use kalosm::language::{Llama, LlamaSource};
@@ -13,6 +12,8 @@ use loco_rs::{
     Result,
 };
 use tokio::sync::RwLock;
+
+use crate::controllers;
 
 pub struct App;
 #[async_trait]

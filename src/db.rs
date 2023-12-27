@@ -3,28 +3,26 @@
 //! This module defines functions and operations related to the application's
 //! database interactions.
 
-use crate::doctor;
+use std::{fs::File, path::Path, time::Duration};
+
 use duct::cmd;
 use fs_err as fs;
-
+use lazy_static::lazy_static;
+use regex::Regex;
 use rrgen::Error;
 use sea_orm::{
     ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseConnection, DbConn,
     EntityTrait, IntoActiveModel,
 };
 use sea_orm_migration::MigratorTrait;
-use std::{fs::File, path::Path, time::Duration};
 use tracing::info;
 
 use super::Result as AppResult;
 use crate::{
     app::{AppContext, Hooks},
-    config,
+    config, doctor,
     errors::Error as LocoError,
 };
-
-use lazy_static::lazy_static;
-use regex::Regex;
 
 lazy_static! {
     // Getting the table name from the environment configuration.
@@ -82,7 +80,8 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
     Database::connect(opt).await
 }
 
-///  Create a new database. This functionality is currently exclusive to Postgre databases.
+///  Create a new database. This functionality is currently exclusive to Postgre
+/// databases.
 ///
 /// # Errors
 ///

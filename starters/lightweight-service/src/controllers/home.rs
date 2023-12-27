@@ -1,5 +1,6 @@
-use crate::views::home::HomeResponse;
 use loco_rs::prelude::*;
+
+use crate::views::home::HomeResponse;
 
 async fn current() -> Result<Json<HomeResponse>> {
     format::json(HomeResponse::new("loco"))
