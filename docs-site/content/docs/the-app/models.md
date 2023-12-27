@@ -108,13 +108,13 @@ This creates a migration in the root of your project in `migration/`.
 You can now apply it:
 
 ```
-$ loco db migrate
+$ cargo loco db migrate
 ```
 
 And generate back entities (Rust code) from it:
 
 ```
-$ loco db entities
+$ cargo loco db entities
 ```
 
 ## Configuration
