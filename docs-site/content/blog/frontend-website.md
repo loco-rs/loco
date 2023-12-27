@@ -199,7 +199,7 @@ Build the container:
 $ docker build . -t loco-todo-list
 ```
 
-Not run the container:
+Now run the container:
 
 ```sh
 $ docker run -e LOCO_ENV=production -p 3000:3000 loco-todo-list start
