@@ -4,6 +4,7 @@ pub use axum::{
     routing::{delete, get, post, put},
     Json,
 };
+pub use chrono::NaiveDateTime as DateTime;
 pub use include_dir::{include_dir, Dir};
 #[cfg(feature = "with-db")]
 pub use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, ModelTrait, Set};
@@ -20,5 +21,3 @@ pub use crate::{
     worker::{self, AppWorker},
     Result,
 };
-
-pub use chrono::NaiveDateTime as DateTime;
