@@ -39,6 +39,9 @@ pub enum Error {
     TaskNotFound(String),
 
     #[error(transparent)]
+    Axum(#[from] axum::http::Error),
+
+    #[error(transparent)]
     Tera(#[from] tera::Error),
 
     #[error(transparent)]

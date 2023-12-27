@@ -93,6 +93,27 @@ Routes::new()
 
 You can also define a `prefix` for all routes in a controller using the `prefix` function.
 
+## Sending Responses
+
+Response senders are in the `format` module. Here are a few ways to send responses from your routes:
+
+```rust
+
+// keep a best practice of returning a `Result<impl IntoResponse>` to be able to swap return types transparently
+pub async fn list(...) -> Result<impl IntoResponse> // ..
+
+// use `json`, `html` or `text` for simple responses
+format::json(item)
+
+
+// use `render` for a builder interface for more involved responses. you can still terminate with
+// `json`, `html`, or `text`
+format::render()
+    .etag("foobar")?
+    .json(Entity::find().all(&ctx.db).await?)
+```
+
+
 ## Creating a Controller with the CLI Generator
 
 Provides a convenient code generator to simplify the creation of a starter controller connected to your project. Additionally, a [test](@/docs/testing/controller.md) file is generated, enabling easy testing of your controller.

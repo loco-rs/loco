@@ -1,13 +1,11 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
+use axum::response::IntoResponse;
 use loco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    common,
-    models::_entities::notes::{ActiveModel, Entity, Model},
-};
+use crate::models::_entities::notes::{ActiveModel, Entity, Model};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Params {
@@ -27,12 +25,10 @@ async fn load_item(ctx: &AppContext, id: i32) -> Result<Model> {
     item.ok_or_else(|| Error::NotFound)
 }
 
-pub async fn list(State(ctx): State<AppContext>) -> Result<Json<Vec<Model>>> {
-    if let Some(settings) = &ctx.config.settings {
-        let settings = common::settings::Settings::from_json(settings)?;
-        println!("allow list: {:?}", settings.allow_list);
-    }
-    format::json(Entity::find().all(&ctx.db).await?)
+pub async fn list(State(ctx): State<AppContext>) -> Result<impl IntoResponse> {
+    format::render()
+        .etag("foobar")?
+        .json(Entity::find().all(&ctx.db).await?)
 }
 
 pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Json<Model>> {

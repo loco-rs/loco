@@ -20,7 +20,15 @@
 //! }
 //! ```
 
-use axum::{response::Html, Json};
+use axum::{
+    body::Body,
+    http::{response::Builder, HeaderName, HeaderValue},
+    response::{Html, Response},
+    Json,
+};
+use bytes::{BufMut, BytesMut};
+use hyper::{header, StatusCode};
+use serde::Serialize;
 
 use crate::Result;
 
@@ -119,4 +127,134 @@ pub fn json<T>(t: T) -> Result<Json<T>> {
 /// functionality
 pub fn html(content: &str) -> Result<Html<String>> {
     Ok(Html(content.to_string()))
+}
+
+pub struct RenderBuilder {
+    response: Builder,
+}
+
+impl RenderBuilder {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            response: Builder::new().status(200),
+        }
+    }
+
+    /// Get an Axum response builder (escape hatch, leaving this builder)
+    #[must_use]
+    pub fn response(self) -> Builder {
+        self.response
+    }
+
+    /// Add a status code
+    #[must_use]
+    pub fn status<T>(self, status: T) -> Self
+    where
+        StatusCode: TryFrom<T>,
+        <StatusCode as TryFrom<T>>::Error: Into<axum::http::Error>,
+    {
+        Self {
+            response: self.response.status(status),
+        }
+    }
+
+    /// Add a single header
+    #[must_use]
+    pub fn header<K, V>(self, key: K, value: V) -> Self
+    where
+        HeaderName: TryFrom<K>,
+        <HeaderName as TryFrom<K>>::Error: Into<axum::http::Error>,
+        HeaderValue: TryFrom<V>,
+        <HeaderValue as TryFrom<V>>::Error: Into<axum::http::Error>,
+    {
+        Self {
+            response: self.response.header(key, value),
+        }
+    }
+
+    /// Add an etag
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if provided etag value is illegal
+    /// (not visible ASCII)
+    pub fn etag(self, etag: &str) -> Result<Self> {
+        Ok(Self {
+            response: self
+                .response
+                .header(header::ETAG, HeaderValue::from_str(etag)?),
+        })
+    }
+
+    /// Finalize and return a text response
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if IO fails
+    pub fn text(self, content: &str) -> Result<Response> {
+        Ok(self
+            .response
+            .header(
+                header::CONTENT_TYPE,
+                HeaderValue::from_static(mime::TEXT_PLAIN_UTF_8.as_ref()),
+            )
+            .body(Body::from(content.to_string()))?)
+    }
+
+    /// Finalize and return an empty response
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if IO fails
+    pub fn empty(self) -> Result<Response> {
+        Ok(self.response.body(Body::empty())?)
+    }
+
+    /// Finalize and return a HTML response
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if IO fails
+    pub fn html(self, content: &str) -> Result<Response> {
+        Ok(self
+            .response
+            .header(
+                header::CONTENT_TYPE,
+                HeaderValue::from_static(mime::TEXT_HTML_UTF_8.as_ref()),
+            )
+            .body(Body::from(content.to_string()))?)
+    }
+
+    /// Finalize and return a JSON response
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if IO fails
+    pub fn json<T>(self, item: T) -> Result<Response>
+    where
+        T: Serialize,
+    {
+        let mut buf = BytesMut::with_capacity(128).writer();
+        serde_json::to_writer(&mut buf, &item)?;
+        let body = Body::from(buf.into_inner().freeze());
+        Ok(self
+            .response
+            .header(
+                header::CONTENT_TYPE,
+                HeaderValue::from_static(mime::APPLICATION_JSON.as_ref()),
+            )
+            .body(body)?)
+    }
+}
+
+impl Default for RenderBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[must_use]
+pub fn render() -> RenderBuilder {
+    RenderBuilder::new()
 }

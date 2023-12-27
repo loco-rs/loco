@@ -19,7 +19,10 @@ use tower_http::{
 };
 
 use super::routes::Routes;
-use crate::{app::AppContext, config, environment::Environment, errors, Result};
+use crate::{
+    app::AppContext, config, controller::middleware::etag::EtagLayer, environment::Environment,
+    errors, Result,
+};
 
 lazy_static! {
     static ref NORMALIZE_URL: Regex = Regex::new(r"/+").unwrap();
@@ -215,6 +218,12 @@ impl AppRoutes {
             }
         }
 
+        if let Some(etag) = &ctx.config.server.middlewares.etag {
+            if etag.enable {
+                app = Self::add_etag_middleware(app);
+            }
+        }
+
         let router = app.with_state(ctx);
         Ok(router)
     }
@@ -243,6 +252,12 @@ impl AppRoutes {
     fn add_compression_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
         let app = app.layer(CompressionLayer::new());
         tracing::info!("[Middleware] Adding compression layer");
+        app
+    }
+
+    fn add_etag_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
+        let app = app.layer(EtagLayer::new());
+        tracing::info!("[Middleware] Adding etag layer");
         app
     }
 
