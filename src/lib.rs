@@ -49,6 +49,7 @@ pub mod cli;
 
 pub mod auth;
 pub mod boot;
+pub mod concern;
 pub mod config;
 pub mod controller;
 pub mod environment;

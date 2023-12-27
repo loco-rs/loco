@@ -1,0 +1,8 @@
+---
+source: tests/requests/notes.rs
+expression: "(notes.status_code(), notes.text())"
+---
+(
+    200,
+    "{\"results\":[{\"title\":\"Loco  11\",\"content\":\"content 11\"}],\"pagination\":{\"page\":2,\"page_size\":10,\"total_pages\":2}}",
+)
