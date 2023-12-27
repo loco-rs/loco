@@ -32,7 +32,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <li><a href="https://loco.rs?ref=starter" target="_blank">Our Documentation</a></li>
         <li><a href="https://github.com/loco-rs/loco?ref=starter" target="_blank">GitHub</a></li>
         <li><a href="https://github.com/loco-rs/loco/issues?ref=starter" target="_blank">Found a bug?</a></li>
-        <li><a href="https://github.com/loco-rs/loco/discussions?ref=starter" target="_blank">Needs help?</a></li>
+        <li><a href="https://github.com/loco-rs/loco/discussions?ref=starter" target="_blank">Need help?</a></li>
       </ul>
     </footer>
 
