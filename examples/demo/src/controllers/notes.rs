@@ -1,17 +1,16 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
-use axum::response::IntoResponse;
-use crate::views::notes::ListResponse;
+use axum::{extract::Query, response::IntoResponse};
+use loco_rs::{concern::pagination, controller::views::pagination::Pager, prelude::*};
+use sea_orm::{ColumnTrait, Condition};
+use serde::{Deserialize, Serialize};
+
 use crate::{
     common,
     models::_entities::notes::{ActiveModel, Column, Entity, Model},
+    views::notes::ListResponse,
 };
-use axum::extract::Query;
-use loco_rs::{concern::pagination, controller::views::pagination::Pager, prelude::*};
-use sea_orm::ColumnTrait;
-use sea_orm::Condition;
-use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Params {
@@ -58,9 +57,8 @@ pub async fn list(
         let settings = common::settings::Settings::from_json(settings)?;
         println!("allow list: {:?}", settings.allow_list);
     }
-    format::render()
-        .etag("foobar")?
-        .json(notes)
+
+    format::render().etag("foobar")?.json(notes)
 }
 
 pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Json<Model>> {
