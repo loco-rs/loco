@@ -15,7 +15,7 @@ authors = ["Team Loco"]
 
 This guide provides a comprehensive walkthrough on using `Loco` to build a Todo list application with a REST API and a React frontend. The steps outlined cover everything from project creation to deployment.
 
-Explore the example repository[here](https://github.com/loco-rs/todo-list-example)
+Explore the example repository [here](https://github.com/loco-rs/todo-list-example)
 
 The key steps include:
 
