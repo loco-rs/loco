@@ -31,6 +31,7 @@ const DEPLOYMENT_DOCKER_T: &str = include_str!("templates/deployment_docker.t");
 const DEPLOYMENT_DOCKER_IGNORE_T: &str = include_str!("templates/deployment_docker_ignore.t");
 const DEPLOYMENT_SHUTTLE_T: &str = include_str!("templates/deployment_shuttle.t");
 const DEPLOYMENT_SHUTTLE_CONFIG_T: &str = include_str!("templates/deployment_shuttle_config.t");
+const DEPLOYMENT_NGINX_T: &str = include_str!("templates/deployment_nginx.t");
 
 const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.35.0";
 const DEPLOYMENT_SHUTTLE_AXUM_VERSION: &str = "0.35.0";
@@ -38,12 +39,14 @@ const DEPLOYMENT_SHUTTLE_AXUM_VERSION: &str = "0.35.0";
 const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
     ("Docker", DeploymentKind::Docker),
     ("Shuttle", DeploymentKind::Shuttle),
+    ("Nginx", DeploymentKind::Nginx),
 ];
 
 #[derive(Debug, Clone)]
 pub enum DeploymentKind {
     Docker,
     Shuttle,
+    Nginx,
 }
 impl FromStr for DeploymentKind {
     type Err = ();
@@ -175,6 +178,15 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
                     let vars = json!({ "pkg_name": H::app_name(), "shuttle_runtime_version": DEPLOYMENT_SHUTTLE_RUNTIME_VERSION, "shuttle_axum_version": DEPLOYMENT_SHUTTLE_AXUM_VERSION });
                     rrgen.generate(DEPLOYMENT_SHUTTLE_T, &vars)?;
                     rrgen.generate(DEPLOYMENT_SHUTTLE_CONFIG_T, &vars)?;
+                }
+                DeploymentKind::Nginx => {
+                    let host = &config
+                        .server
+                        .host
+                        .replace("http://", "")
+                        .replace("https://", "");
+                    let vars = json!({ "pkg_name": H::app_name(), "domain": &host, "port":  &config.server.port });
+                    rrgen.generate(DEPLOYMENT_NGINX_T, &vars)?;
                 }
             }
         }
