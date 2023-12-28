@@ -75,8 +75,8 @@ And now, you can run the actual process in various ways:
 
 Because your app is compiled, and then copied to production, Loco gives you two important operability pieces of information:
 
-* Which version is this app, and which GIT SHA was it built from? `loco version`
-* Which Loco version was this app compiled against? `loco --version`
+* Which version is this app, and which GIT SHA was it built from? `cargo loco version`
+* Which Loco version was this app compiled against? `cargo loco --version`
 
 Both version strings are parsable and stable so you can use it in integration scripts, monitoring tools and so on.
 
