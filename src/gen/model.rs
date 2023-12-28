@@ -77,11 +77,11 @@ pub fn generate<H: Hooks>(
     let res2 = rrgen.generate(MODEL_TEST_T, &vars)?;
 
     let cwd = current_dir()?;
-    let _ = cmd!("cargo", "run", "--", "db", "migrate",)
+    let _ = cmd!("cargo", "loco", "db", "migrate",)
         .stderr_to_stdout()
         .dir(cwd.as_path())
         .run()?;
-    let _ = cmd!("cargo", "run", "--", "db", "entities",)
+    let _ = cmd!("cargo", "loco", "db", "entities",)
         .stderr_to_stdout()
         .dir(cwd.as_path())
         .run()?;
