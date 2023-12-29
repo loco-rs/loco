@@ -13,6 +13,8 @@ edition = "2021"
 loco-rs = { version = "*", path = "../../" }
 migration = { path = "migration" }
 
+automod = "*"
+
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 eyre = "0.6"
