@@ -1,5 +1,5 @@
 [![Current Crates.io Version](https://img.shields.io/crates/v/loco-rs.svg)](https://crates.io/crates/loco-rs)
-[![Discord channel](https://img.shields.io/badge/discord-Join-us)](https://discord.gg/Npcwuvq6)
+[![Discord channel](https://img.shields.io/badge/discord-Join-us)](https://discord.gg/fTvyBzwKS8)
 
 # Welcome to Loco!
 
