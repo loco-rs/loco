@@ -1,12 +1,17 @@
 use clap::{Parser, Subcommand};
 use loco_cli::{generate, git, prompt, CmdExit};
 use std::path::PathBuf;
+use tracing::level_filters::LevelFilter;
 
 use tracing_subscriber::EnvFilter;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
 struct Cli {
+    #[arg(global = true, short, long, action = clap::ArgAction::Count)]
+    /// Verbosity level
+    verbose: u8,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -25,7 +30,18 @@ fn main() -> eyre::Result<()> {
     let cli = Cli::parse();
 
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env())
+        .with_env_filter(
+            EnvFilter::builder()
+                .with_default_directive(match cli.verbose {
+                    // The default one for `from_default_env`
+                    0 => LevelFilter::ERROR.into(),
+                    1 => LevelFilter::WARN.into(),
+                    2 => LevelFilter::INFO.into(),
+                    3 => LevelFilter::DEBUG.into(),
+                    _ => LevelFilter::TRACE.into(),
+                })
+                .from_env_lossy(),
+        )
         .init();
 
     let res = match cli.command {
