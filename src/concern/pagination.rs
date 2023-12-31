@@ -1,10 +1,12 @@
-// use sea_orm::{prelude::*, DatabaseConnection, EntityTrait, PaginatorTrait, Select, SelectorTrait};
+// use sea_orm::{prelude::*, DatabaseConnection, EntityTrait, PaginatorTrait,
+// Select, SelectorTrait};
+use sea_orm::{prelude::*, Condition, DatabaseConnection, EntityTrait, QueryFilter};
+use serde::Deserialize;
+
 use crate::{
     controller::views::pagination::{Pager, PagerMeta, PaginationResponseTrait},
     Result as LocoResult,
 };
-use sea_orm::{prelude::*, Condition, DatabaseConnection, EntityTrait, QueryFilter};
-use serde::Deserialize;
 
 /// Set the default pagination page size
 const fn default_page_size() -> u64 {
@@ -49,8 +51,9 @@ pub struct PaginatedResponse<T> {
     pub total_pages: u64,
 }
 
-/// Paginates a database query for a given entity, applying optional filters and pagination settings.
-/// After paginate the db rows result sends to `PaginationResponseTrait` for prepare json response.
+/// Paginates a database query for a given entity, applying optional filters and
+/// pagination settings. After paginate the db rows result sends to
+/// `PaginationResponseTrait` for prepare json response.
 ///
 /// # Errors
 /// when could not fetch the entity query
@@ -79,7 +82,8 @@ where
     Ok(res)
 }
 
-/// Paginates a database query for a given entity, applying optional filters and pagination settings.
+/// Paginates a database query for a given entity, applying optional filters and
+/// pagination settings.
 ///
 /// # Errors
 /// when could not fetch the entity query
