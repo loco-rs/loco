@@ -165,7 +165,7 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
 /// Starts the server using the provided [`Router`] and [`Config`].
 async fn serve(app: Router, config: &Config) -> Result<()> {
     let listener =
-        tokio::net::TcpListener::bind(&format!("0.0.0.0:{}", config.server.port)).await?;
+        tokio::net::TcpListener::bind(&format!("[::]:{}", config.server.port)).await?;
 
     axum::serve(listener, app).await?;
 
