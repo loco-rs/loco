@@ -89,7 +89,7 @@ rand = { version = "0.8.5", features = ["std"] }
 jsonwebtoken = { version = "9.1.0", optional = true }
 bcrypt = { version = "0.15.0", optional = true }
 validator = { version = "0.16.1", features = ["derive"] }
-futures-util = "*"
+futures-util = "0.3"
 tower = "0.4"
 hyper = "1"
 mime = "0.3"

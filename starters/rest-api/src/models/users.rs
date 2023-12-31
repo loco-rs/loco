@@ -1,7 +1,8 @@
+use async_trait::async_trait;
 use chrono::offset::Local;
 use loco_rs::{
     auth, hash,
-    model::{ModelError, ModelResult},
+    model::{Authenticable, ModelError, ModelResult},
     validation,
     validator::Validate,
 };
@@ -58,6 +59,21 @@ impl ActiveModelBehavior for super::_entities::users::ActiveModel {
                 Ok(self)
             }
         }
+    }
+}
+
+#[async_trait]
+impl Authenticable for super::_entities::users::Model {
+    async fn find_by_api_key(db: &DatabaseConnection, api_key: &str) -> ModelResult<Self> {
+        let user = users::Entity::find()
+            .filter(users::Column::ApiKey.eq(api_key))
+            .one(db)
+            .await?;
+        user.ok_or_else(|| ModelError::EntityNotFound)
+    }
+
+    async fn find_by_claims_key(db: &DatabaseConnection, claims_key: &str) -> ModelResult<Self> {
+        super::_entities::users::Model::find_by_pid(db, claims_key).await
     }
 }
 
