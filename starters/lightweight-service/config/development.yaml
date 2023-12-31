@@ -37,6 +37,6 @@ server:
     # Timeout for incoming requests middleware. requests that take more time from the configuration will cute and 408 status code will returned.
     timeout_request:
       # Enable/Disable the middleware.
-      enable: true
+      enable: false
       # Duration time in milliseconds.
       timeout: 5000
