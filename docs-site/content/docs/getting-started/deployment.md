@@ -94,6 +94,8 @@ cargo loco generate deployment
 ? ❯ Choose your deployment ›
 ❯ Docker
 ❯ Shuttle
+❯ Nginx
+
 ..
 ✔ ❯ Choose your deployment · Docker
 skipped (exists): "dockerfile"
@@ -112,6 +114,10 @@ Deployment Options:
 - Generates a shuttle main function.
 - Adds `shuttle-runtime` and `shuttle-axum` as dependencies.
 - Adds a bin entrypoint for the deployment.
+
+3. Nginx:
+
+- Generates a nginx configuration file for reverse proxying.
 
 Choose the option that best fits your deployment needs. Happy deploying!
 
