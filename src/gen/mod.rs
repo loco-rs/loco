@@ -1,6 +1,7 @@
 use chrono::Utc;
 use rrgen::{GenResult, RRgen};
 use serde_json::json;
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
 #[cfg(feature = "with-db")]
 mod model;
@@ -99,6 +100,7 @@ pub enum Component {
         name: String,
     },
     Deployment {},
+    JwtSecret {}
 }
 
 pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
@@ -177,6 +179,14 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
                     rrgen.generate(DEPLOYMENT_SHUTTLE_CONFIG_T, &vars)?;
                 }
             }
+        }
+        Component::JwtSecret {} => {  
+            let new_secret: String = thread_rng()
+                .sample_iter(&Alphanumeric)
+                .take(20)
+                .map(char::from)
+                .collect();
+            println!("New JWT secret: {}", new_secret);
         }
     }
     Ok(())

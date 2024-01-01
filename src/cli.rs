@@ -156,6 +156,8 @@ enum ComponentArg {
     },
     /// Generate a deployment infrastructure
     Deployment {},
+    /// Generate a new JWT secret
+    JwtSecret {}
 }
 
 impl From<ComponentArg> for Component {
@@ -172,6 +174,7 @@ impl From<ComponentArg> for Component {
             ComponentArg::Worker { name } => Self::Worker { name },
             ComponentArg::Mailer { name } => Self::Mailer { name },
             ComponentArg::Deployment {} => Self::Deployment {},
+            ComponentArg::JwtSecret {} => Self::JwtSecret {  }
         }
     }
 }
