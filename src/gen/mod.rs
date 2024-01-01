@@ -186,7 +186,7 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
                 .take(20)
                 .map(char::from)
                 .collect();
-            println!("New JWT secret: {}", new_secret);
+            println!("{}", new_secret);
         }
     }
     Ok(())
