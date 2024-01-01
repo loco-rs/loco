@@ -461,7 +461,7 @@ async fn main() -> eyre::Result<()> {
     let ctx = playground::<App>().await.context("playground")?;
 
     // add this:
-    let active_model: articles::ActiveModel = ActiveModel {
+    let active_model: articles::ActiveModel = articles::ActiveModel {
         title: Set(Some("how to build apps in 3 steps".to_string())),
         content: Set(Some("use Loco: https://loco.rs".to_string())),
         ..Default::default()
