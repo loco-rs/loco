@@ -129,7 +129,7 @@ And now, let's see that it's alive:
 
 ```sh
 $ curl localhost:3000/api/_ping
-{"ok":true}%
+{"ok":true}
 ```
 
 The built in `_ping` route will tell your load balancer everything is up.
@@ -285,7 +285,7 @@ $
 
 ## MVC and You
 
-**Traditional MVC (model-view-controller) comes desktop UI programming paradigms**. However, it quickly made it into web services as well, the golden era of MVC was around the early 2010's, and since then many more different parasigms and architectures emerged.
+**Traditional MVC (model-view-controller) comes desktop UI programming paradigms**. However, it quickly made it into web services as well, the golden era of MVC was around the early 2010's, and since then many more different paradigms and architectures emerged.
 
 **MVC is still a very strong principle and architecture to follow for simplifying projects**, and this is what Loco follows too.
 
