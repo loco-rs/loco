@@ -73,9 +73,27 @@ Make sure you also have locally installed or running (via Docker or otherwise) i
 - Redis
 
 <div class="infobox">
-To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>myapp_development</code>: 
-<code>docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=myapp_development -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine</code>
+To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>myapp_development</code>.
 </div>
+
+
+This docker command start up postgresql database server.
+```sh
+docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=myapp_development -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine
+```
+This docker command start up redis server:
+```
+docker run -p 6379:6379 -d redis redis-server:
+```
+Use doctor command to check the needed resources:
+```
+$ cargo loco doctor
+    Finished dev [unoptimized + debuginfo] target(s) in 0.32s
+     Running `target/debug/myapp-cli doctor`
+✅ SeaORM CLI is installed
+✅ DB connection: success
+✅ Redis connection: success
+```
 
 
 Here's a rundown of what Loco creates for you by default:
