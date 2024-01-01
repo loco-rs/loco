@@ -83,7 +83,7 @@ docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=myapp_developmen
 ```
 This docker command start up redis server:
 ```
-docker run -p 6379:6379 -d redis redis-server:
+docker run -p 6379:6379 -d redis redis-server
 ```
 Use doctor command to check the needed resources:
 ```
