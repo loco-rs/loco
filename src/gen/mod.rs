@@ -1,7 +1,7 @@
 use chrono::Utc;
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use rrgen::{GenResult, RRgen};
 use serde_json::json;
-use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
 #[cfg(feature = "with-db")]
 mod model;
@@ -102,8 +102,8 @@ pub enum Component {
     Deployment {},
     Secret {
         /// Optional length of the Secret to generate
-        length: Option<String>
-    }
+        length: Option<String>,
+    },
 }
 
 pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
@@ -183,7 +183,7 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
                 }
             }
         }
-        Component::Secret { length } => {  
+        Component::Secret { length } => {
             let length = length.unwrap_or_default().parse::<usize>().unwrap_or(20);
             let new_secret: String = thread_rng()
                 .sample_iter(&Alphanumeric)
