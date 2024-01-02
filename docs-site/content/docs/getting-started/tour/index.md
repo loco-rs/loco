@@ -187,7 +187,7 @@ This endpoint is protected by auth middleware.
 ```sh
 $ curl --location --request GET '127.0.0.1:3000/api/user/current' \
      --header 'Content-Type: application/json' \
-     --header 'Authorization: Bearer TOKEN' \
+     --header 'Authorization: Bearer TOKEN'
 ```
 
 Check out the source code for `controllers/auth.rs` to see how to use the authentication middleware in your own controllers.
