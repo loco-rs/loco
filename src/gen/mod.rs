@@ -100,7 +100,10 @@ pub enum Component {
         name: String,
     },
     Deployment {},
-    JwtSecret {}
+    Secret {
+        /// Optional length of the Secret to generate
+        length: Option<String>
+    }
 }
 
 pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
@@ -180,10 +183,11 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
                 }
             }
         }
-        Component::JwtSecret {} => {  
+        Component::Secret { length } => {  
+            let length = length.unwrap_or_default().parse::<usize>().unwrap_or(20);
             let new_secret: String = thread_rng()
                 .sample_iter(&Alphanumeric)
-                .take(20)
+                .take(length)
                 .map(char::from)
                 .collect();
             println!("{}", new_secret);

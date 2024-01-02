@@ -156,8 +156,11 @@ enum ComponentArg {
     },
     /// Generate a deployment infrastructure
     Deployment {},
-    /// Generate a new JWT secret
-    JwtSecret {}
+    /// Generate a new secret (for JWT Auth, for example)
+    Secret {
+        #[clap(default_value=Some("20"))]
+        length: Option<String>
+    }
 }
 
 impl From<ComponentArg> for Component {
@@ -174,7 +177,7 @@ impl From<ComponentArg> for Component {
             ComponentArg::Worker { name } => Self::Worker { name },
             ComponentArg::Mailer { name } => Self::Mailer { name },
             ComponentArg::Deployment {} => Self::Deployment {},
-            ComponentArg::JwtSecret {} => Self::JwtSecret {  }
+            ComponentArg::Secret {length} => Self::Secret { length }
         }
     }
 }
