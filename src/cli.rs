@@ -298,7 +298,10 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
                 run_db::<H, M>(&app_context, command.into()).await?;
             }
         }
-        Commands::Routes {} => show_list_endpoints::<H>(),
+        Commands::Routes {} => {
+            let app_context = create_context::<H>(&environment).await?;
+            show_list_endpoints::<H>(&app_context);
+        }
         Commands::Task { name, params } => {
             let mut hash = BTreeMap::new();
             for (k, v) in params {
@@ -359,7 +362,10 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
             let boot_result = create_app::<H>(start_mode, &environment).await?;
             start(boot_result).await?;
         }
-        Commands::Routes {} => show_list_endpoints::<H>(),
+        Commands::Routes {} => {
+            let app_context = create_context::<H>(&environment).await?;
+            show_list_endpoints::<H>(&app_context)
+        }
         Commands::Task { name, params } => {
             let mut hash = BTreeMap::new();
             for (k, v) in params {
@@ -382,8 +388,8 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
     Ok(())
 }
 
-fn show_list_endpoints<H: Hooks>() {
-    let mut routes = list_endpoints::<H>();
+fn show_list_endpoints<H: Hooks>(ctx: &AppContext) {
+    let mut routes = list_endpoints::<H>(ctx);
     routes.sort_by(|a, b| a.uri.cmp(&b.uri));
     for router in routes {
         println!("{}", router.to_string());

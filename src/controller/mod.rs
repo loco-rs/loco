@@ -38,7 +38,7 @@
 //!        env!("CARGO_CRATE_NAME")
 //!    }
 //!
-//!     fn routes() -> AppRoutes {
+//!     fn routes(ctx: &AppContext) -> AppRoutes {
 //!         AppRoutes::with_default_routes()
 //!             // .add_route(controllers::notes::routes())
 //!     }
