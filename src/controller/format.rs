@@ -26,6 +26,7 @@ use axum::{
     response::{Html, Response},
     Json,
 };
+use axum_extra::extract::cookie::Cookie;
 use bytes::{BufMut, BytesMut};
 use hyper::{header, StatusCode};
 use serde::Serialize;
@@ -185,6 +186,19 @@ impl RenderBuilder {
                 .response
                 .header(header::ETAG, HeaderValue::from_str(etag)?),
         })
+    }
+
+    /// Add a collection of cookies to the response
+    ///
+    /// # Errors
+    /// Returns error if cookie values are illegal
+    pub fn cookies(self, cookies: &[Cookie<'_>]) -> Result<Self> {
+        let mut res = self.response;
+        for cookie in cookies {
+            let header_value = cookie.encoded().to_string().parse::<HeaderValue>()?;
+            res = res.header(header::SET_COOKIE, header_value);
+        }
+        Ok(Self { response: res })
     }
 
     /// Finalize and return a text response
