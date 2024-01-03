@@ -80,6 +80,7 @@ user_report                   [output a user report]
 
 ```console
 $ blo-cli routes
+[2m2024-01-03T21:21:33.139440Z[0m [33m WARN[0m [2mloco_rs::boot[0m[2m:[0m pretty backtraces are enabled (this is great for development but has a runtime cost for production. disable with `logger.pretty_backtrace` in your config yaml)
 [GET] /_health
 [GET] /_ping
 [POST] /auth/forgot
