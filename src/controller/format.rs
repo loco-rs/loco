@@ -189,7 +189,10 @@ impl RenderBuilder {
     }
 
     /// Add a collection of cookies to the response
-    pub fn cookies(self, cookies: &[Cookie]) -> Result<Self> {
+    ///
+    /// # Errors
+    /// Returns error if cookie values are illegal
+    pub fn cookies(self, cookies: &[Cookie<'_>]) -> Result<Self> {
         let mut res = self.response;
         for cookie in cookies {
             let header_value = cookie.encoded().to_string().parse::<HeaderValue>()?;
