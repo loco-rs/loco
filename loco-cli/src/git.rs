@@ -120,11 +120,15 @@ fn clone_repo() -> eyre::Result<PathBuf> {
             .arg(&temp_clone_dir)
             .output()?;
     } else {
-        let mut opt = git2::FetchOptions::new();
-        opt.depth(1);
-        git2::build::RepoBuilder::new()
-            .fetch_options(opt)
-            .clone(BASE_REPO_URL, &temp_clone_dir)?;
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "git2")] {
+                clone_repo_with_git2(&temp_clone_dir)?;
+            } else if #[cfg(feature = "gix")] {
+                clone_repo_with_gix(&temp_clone_dir)?;
+            } else {
+                eyre::bail!("git command is not found. Either install it, or enable git2 or gix feature for this CLI.");
+            }
+        }
     }
 
     Ok(temp_clone_dir)
@@ -138,4 +142,24 @@ fn git_exists() -> bool {
             false
         }
     }
+}
+
+#[cfg(feature = "git2")]
+fn clone_repo_with_git2(temp_clone_dir: &Path) -> eyre::Result<()> {
+    let mut fetch_options = git2::FetchOptions::new();
+    fetch_options.depth(1);
+    git2::build::RepoBuilder::new()
+        .fetch_options(fetch_options)
+        .clone(BASE_REPO_URL, temp_clone_dir)?;
+    Ok(())
+}
+
+#[cfg(feature = "gix")]
+fn clone_repo_with_gix(temp_clone_dir: &Path) -> eyre::Result<()> {
+    let mut prepare_clone = gix::prepare_clone(BASE_REPO_URL, temp_clone_dir)?;
+    let (mut prepare_checkout, _outcome) = prepare_clone
+        .fetch_then_checkout(gix::progress::Discard, &gix::interrupt::IS_INTERRUPTED)?;
+    let (_repo, _outcome) =
+        prepare_checkout.main_worktree(gix::progress::Discard, &gix::interrupt::IS_INTERRUPTED)?;
+    Ok(())
 }
