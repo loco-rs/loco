@@ -1,5 +1,20 @@
 # Changelog
 
+## vNext
+
+* Added: setting cookies:
+
+```rust
+format::render()
+    .cookies(&[
+        cookie::Cookie::new("foo", "bar"),
+        cookie::Cookie::new("baz", "qux"),
+    ])?
+    .etag("foobar")?
+    .json(notes)
+```
+
+
 ## v0.1.9
 
 * Adding [pagination](https://loco.rs/docs/the-app/pagination/) on Models. [https://github.com/loco-rs/loco/pull/238](https://github.com/loco-rs/loco/pull/238)

@@ -58,7 +58,13 @@ pub async fn list(
         println!("allow list: {:?}", settings.allow_list);
     }
 
-    format::render().etag("foobar")?.json(notes)
+    format::render()
+        .cookies(&[
+            cookie::Cookie::new("foo", "bar"),
+            cookie::Cookie::new("baz", "qux"),
+        ])?
+        .etag("foobar")?
+        .json(notes)
 }
 
 pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Json<Model>> {
