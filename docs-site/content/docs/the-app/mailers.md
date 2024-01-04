@@ -79,11 +79,19 @@ mailer:
 ```
 
 ### Default Email Address
-Other than the SMTP configuration, you can also configure the default email address that will be used as the sender for all emails. This can be done by setting changing the `DEFAULT_FROM_SENDER` constant variable in the `src/mailer/mod.rs` file.
+Other than the SMTP configuration, you also need to configure the default email address that will be used as the sender for all emails. This email is most like the email you register with your email provider. This can be done by setting changing the `DEFAULT_FROM_SENDER` constant variable in the `src/mailer/mod.rs` file.
 
+Original value:
 ```rust
 /// Default email address that will be used as the sender for all emails.
 pub const DEFAULT_FROM_SENDER: &str = "System <system@example.com>";
+```
+
+After changing with sendgrid example:
+```rust
+/// Default email address that will be used as the sender for all emails.
+/// The email address must be registered with your email provider.
+pub const DEFAULT_FROM_SENDER: &str = "My App <myapp@example.com>";
 ```
 
 ## Adding a mailer
