@@ -38,7 +38,7 @@ async fn register(
 This will enqueue a mail delivery job. The action is instant because the delivery will be performed later in the background.
 
 ## Mailer Configuration
-Configuration for mailers is done in the `config/[stage].toml` file. The default configuration is:
+Configuration for mailers is done in the `config/[stage].toml` file. Here is the default configuration: 
 
 ```toml
 # Mailer Configuration.
@@ -58,7 +58,7 @@ mailer:
     #   password:
 ```
 
-Mailer is done by sending emails to a SMTP server. An example configuration for using sendgrid (choosing the SMTP relay option) is:
+Mailer is done by sending emails to a SMTP server. An example configuration for using sendgrid (choosing the SMTP relay option):
 
 ```toml
 # Mailer Configuration.
@@ -79,7 +79,7 @@ mailer:
 ```
 
 ### Default Email Address
-Other than the SMTP configuration, you also need to configure the default email address that will be used as the sender for all emails. This email is most like the email you register with your email provider. This can be done by setting changing the `DEFAULT_FROM_SENDER` constant variable in the `src/mailer/mod.rs` file.
+In addition to the SMTP configuration, you also need to configure the default email address that will be used as the sender for all emails. This email is most likely the email you registered with your email provider. You can set this by changing the `DEFAULT_FROM_SENDER` constant variable in the `src/mailer/mod.rs` file.
 
 Original value:
 ```rust
@@ -138,14 +138,14 @@ src/
 ```
 
 ### Running a mailer
-The mailer is a background worker, so you need to run the worker to process the jobs. The default startup command `cargo loco start` does not run the worker, so you need to run it separately:
+The mailer operates as a background worker, which means you need to run the worker separately to process the jobs. The default startup command `cargo loco start` does not initiate the worker, so you need to run it separately:
 
-Running the worker:
+To run the worker, use the following command:
 ```bash
 cargo loco start --worker
 ```
 
-Running both the web server and the worker:
+To run both the server and the worker simultaneously, use the following command:
 ```bash
 cargo loco start --server-and-worker
 ```
