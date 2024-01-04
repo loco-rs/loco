@@ -37,6 +37,55 @@ async fn register(
 
 This will enqueue a mail delivery job. The action is instant because the delivery will be performed later in the background.
 
+## Mailer Configuration
+Configuration for mailers is done in the `config/[stage].toml` file. The default configuration is:
+
+```toml
+# Mailer Configuration.
+mailer:
+  # SMTP mailer configuration.
+  smtp:
+    # Enable/Disable smtp mailer.
+    enable: true
+    # SMTP server host. e.x localhost, smtp.gmail.com
+    host: {{ get_env(name="MAILER_HOST", default="localhost") }}
+    # SMTP server port
+    port: 1025
+    # Use secure connection (SSL/TLS).
+    secure: false
+    # auth:
+    #   user:
+    #   password:
+```
+
+Mailer is done by sending emails to a SMTP server. An example configuration for using sendgrid (choosing the SMTP relay option) is:
+
+```toml
+# Mailer Configuration.
+mailer:
+  # SMTP mailer configuration.
+  smtp:
+    # Enable/Disable smtp mailer.
+    enable: true
+    # SMTP server host. e.x localhost, smtp.gmail.com
+    host: {{ get_env(name="MAILER_HOST", default="smtp.sendgrid.net") }}
+    # SMTP server port
+    port: 465
+    # Use secure connection (SSL/TLS).
+    secure: true
+    auth:
+      user: "apikey"
+      password: "your-sendgrid-api-key"
+```
+
+### Default Email Address
+Other than the SMTP configuration, you can also configure the default email address that will be used as the sender for all emails. This can be done by setting changing the `DEFAULT_FROM_SENDER` constant variable in the `src/mailer/mod.rs` file.
+
+```rust
+/// Default email address that will be used as the sender for all emails.
+pub const DEFAULT_FROM_SENDER: &str = "System <system@example.com>";
+```
+
 ## Adding a mailer
 
 Now, you need to define your mailer, in `mailers/auth.rs`, add:
@@ -78,6 +127,19 @@ src/
         html.t
         text.t
     auth.rs         <-- mailer definition
+```
+
+### Running a mailer
+The mailer is a background worker, so you need to run the worker to process the jobs. The default startup command `cargo loco start` does not run the worker, so you need to run it separately:
+
+Running the worker:
+```bash
+cargo loco start --worker
+```
+
+Running both the web server and the worker:
+```bash
+cargo loco start --server-and-worker
 ```
 
 ## Testing a mailer
