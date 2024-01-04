@@ -112,7 +112,7 @@ pub trait Hooks {
     }
 
     /// Defines the application's routing configuration.
-    fn routes() -> AppRoutes;
+    fn routes(_ctx: &AppContext) -> AppRoutes;
 
     /// Connects custom workers to the application using the provided
     /// [`Processor`] and [`AppContext`].

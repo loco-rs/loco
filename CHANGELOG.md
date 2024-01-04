@@ -2,6 +2,15 @@
 
 ## vNext
 
+* Added: **Braking changes** Supply `AppContext` to `routes` Hook. Migration steps:
+   ```rust
+    // Add app context to routes function
+    impl Hooks for App {
+      ...
+      fn routes(_ctx: &AppContext) -> AppRoutes;
+      ...
+    }
+    ```
 * Added: setting cookies:
 
 ```rust

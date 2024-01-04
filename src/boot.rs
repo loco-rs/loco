@@ -252,7 +252,7 @@ pub async fn create_app<H: Hooks>(mode: StartMode, environment: &str) -> Result<
 pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Result<BootResult> {
     match mode {
         StartMode::ServerOnly => {
-            let app = H::routes().to_router(app_context.clone())?;
+            let app = H::routes(&app_context).to_router(app_context.clone())?;
             let router = H::after_routes(app, &app_context).await?;
             Ok(BootResult {
                 app_context,
@@ -262,7 +262,7 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
         }
         StartMode::ServerAndWorker => {
             let processor = create_processor::<H>(&app_context)?;
-            let app = H::routes().to_router(app_context.clone())?;
+            let app = H::routes(&app_context).to_router(app_context.clone())?;
             let router = H::after_routes(app, &app_context).await?;
             Ok(BootResult {
                 app_context,
@@ -309,8 +309,8 @@ fn create_processor<H: Hooks>(app_context: &AppContext) -> Result<Processor> {
 }
 
 #[must_use]
-pub fn list_endpoints<H: Hooks>() -> Vec<ListRoutes> {
-    H::routes().collect()
+pub fn list_endpoints<H: Hooks>(ctx: &AppContext) -> Vec<ListRoutes> {
+    H::routes(ctx).collect()
 }
 
 /// Initializes an [`EmailSender`] based on the mailer configuration settings

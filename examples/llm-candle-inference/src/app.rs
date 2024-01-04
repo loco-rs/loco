@@ -42,7 +42,7 @@ impl Hooks for App {
         let st = Arc::new(RwLock::new(model));
         Ok(router.layer(Extension(st)))
     }
-    fn routes() -> AppRoutes {
+    fn routes(ctx: &AppContext) -> AppRoutes {
         AppRoutes::with_default_routes().add_route(controllers::home::routes())
     }
 
