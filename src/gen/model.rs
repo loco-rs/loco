@@ -28,6 +28,8 @@ lazy_static! {
         ("int", "integer_null"),
         ("int!", "integer"),
         ("int^", "integer_uniq"),
+        ("float", "float_null"),
+        ("float!", "float"),
         ("bool", "bool_null"),
         ("bool!", "bool"),
         ("ts", "timestamp_null"),
