@@ -190,7 +190,7 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
                 .take(length)
                 .map(char::from)
                 .collect();
-            println!("{}", new_secret);
+            println!("{new_secret}");
         }
     }
     Ok(())
