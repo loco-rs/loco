@@ -34,6 +34,8 @@ lazy_static! {
         ("bool!", "bool"),
         ("ts", "timestamp_null"),
         ("ts!", "timestamp"),
+        ("date", "date_null"),
+        ("date!", "date"),
         ("uuid", "uuid"),
     ]);
 }

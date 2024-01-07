@@ -121,6 +121,22 @@ where
     ColumnDef::new(name).date_time().not_null().clone()
 }
 
+/// Create a non-nullable date column definition.
+pub fn date<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).date().not_null().clone()
+}
+
+/// Create a nullable date column definition.
+pub fn date_null<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).date().clone()
+}
+
 /// Create a non-nullable integer column definition.
 pub fn integer<T>(name: T) -> ColumnDef
 where
