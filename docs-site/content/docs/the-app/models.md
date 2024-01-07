@@ -2,7 +2,7 @@
 title = "Models"
 description = ""
 date = 2021-05-01T18:10:00+00:00
-updated = 2021-05-01T18:10:00+00:00
+updated = 2024-01-05T18:10:00+00:00
 draft = false
 weight = 11
 sort_by = "weight"
@@ -82,6 +82,8 @@ For schema data types, you can use the following mapping to understand the schem
 ("int", "integer_null"),
 ("int!", "integer"),
 ("int^", "integer_uniq"),
+("float", "float_null"),
+("float!", "float"),
 ("bool", "bool_null"),
 ("bool!", "bool"),
 ("ts", "timestamp_null"),

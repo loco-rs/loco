@@ -145,6 +145,22 @@ where
     ColumnDef::new(name).integer().unique_key().clone()
 }
 
+/// Create a non-nullable float column definition.
+pub fn float<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).float().not_null().clone()
+}
+
+/// Create a nullable float column definition.
+pub fn float_null<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).float().clone()
+}
+
 /// Create a unique string column definition.
 pub fn string_uniq<T>(name: T) -> ColumnDef
 where
