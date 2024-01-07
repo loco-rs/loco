@@ -24,7 +24,7 @@ Then it would look like this:
 
 ```rust
 async fn current(
-    auth: middleware::auth::Auth,
+    auth: middleware::auth::JWT,
     State(ctx): State<AppContext>,
 ) -> Result<Json<CurrentResponse>> {
     let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
