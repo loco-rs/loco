@@ -121,6 +121,25 @@ where
     ColumnDef::new(name).date_time().not_null().clone()
 }
 
+/// Create a nullable timestamptz column definition.
+pub fn timestamptz_null<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).timestamp_with_time_zone().clone()
+}
+
+/// Create a non-nullable timestamptz column definition.
+pub fn timestamptz<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name)
+        .timestamp_with_time_zone()
+        .not_null()
+        .clone()
+}
+
 /// Create a non-nullable date column definition.
 pub fn date<T>(name: T) -> ColumnDef
 where
