@@ -2,7 +2,7 @@
 title = "Models"
 description = ""
 date = 2021-05-01T18:10:00+00:00
-updated = 2024-01-07T18:10:00+00:00
+updated = 2024-01-07T11:10:00+00:00
 draft = false
 weight = 11
 sort_by = "weight"
@@ -91,6 +91,10 @@ For schema data types, you can use the following mapping to understand the schem
 ("date", "date_null"),
 ("date!", "date"),
 ("uuid", "uuid"),
+("json", "json_null"),
+("json!", "json"),
+("jsonb", "jsonb_null"),
+("jsonb!", "jsonb"),
 ```
 
 
