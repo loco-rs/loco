@@ -265,6 +265,38 @@ where
     ColumnDef::new(name).double().clone()
 }
 
+/// Create a non-nullable decimal column definition.
+pub fn decimal<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).decimal().not_null().clone()
+}
+
+/// Create a nullable decimal column definition.
+pub fn decimal_null<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).decimal().clone()
+}
+
+/// Create a non-nullable decimal length column definition with custom precision and scale.
+pub fn decimal_len<T>(name: T, precision: u32, scale: u32) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).decimal_len(precision, scale).not_null().clone()
+}
+
+/// Create a nullable decimal length column definition with custom precision and scale.
+pub fn decimal_len_null<T>(name: T, precision: u32, scale: u32) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).decimal_len(precision, scale).clone()
+}
+
 /// Create a unique string column definition.
 pub fn string_uniq<T>(name: T) -> ColumnDef
 where
