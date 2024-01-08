@@ -21,11 +21,12 @@ pub const IGNORE_FIELDS: &[&str] = &["created_at", "updated_at", "create_at", "u
 
 lazy_static! {
     static ref TYPEMAP: HashMap<&'static str, &'static str> = HashMap::from([
-        ("text!", "text_null"),
-        ("text", "text"),
+        ("uuid", "uuid"),
         ("string", "string_null"),
         ("string!", "string"),
         ("string^", "string_uniq"),
+        ("text", "text_null"),
+        ("text!", "text"),
         ("tiny_integer", "tiny_integer_null"),
         ("tiny_integer!", "tiny_integer"),
         ("tiny_integer^", "tiny_integer_uniq"),
@@ -48,11 +49,10 @@ lazy_static! {
         ("decimal_len!", "decimal_len"),
         ("bool", "bool_null"),
         ("bool!", "bool"),
-        ("ts", "timestamp_null"),
-        ("ts!", "timestamp"),
         ("date", "date_null"),
         ("date!", "date"),
-        ("uuid", "uuid"),
+        ("ts", "timestamp_null"),
+        ("ts!", "timestamp"),
     ]);
 }
 
