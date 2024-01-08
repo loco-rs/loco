@@ -93,6 +93,10 @@ For schema data types, you can use the following mapping to understand the schem
 ("date", "date_null"),
 ("date!", "date"),
 ("uuid", "uuid"),
+("json", "json_null"),
+("json!", "json"),
+("jsonb", "jsonb_null"),
+("jsonb!", "jsonb"),
 ```
 
 

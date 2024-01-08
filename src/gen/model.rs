@@ -39,6 +39,10 @@ lazy_static! {
         ("date", "date_null"),
         ("date!", "date"),
         ("uuid", "uuid"),
+        ("json", "json_null"),
+        ("json!", "json"),
+        ("jsonb", "jsonb_null"),
+        ("jsonb!", "jsonb"),
     ]);
 }
 

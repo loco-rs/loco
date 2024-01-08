@@ -243,3 +243,35 @@ where
 {
     bool_null(name).not_null().clone()
 }
+
+/// Create a non-nullable json column definition.
+pub fn json<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).json().not_null().clone()
+}
+
+/// Create a nullable json column definition.
+pub fn json_null<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).json().clone()
+}
+
+/// Create a non-nullable json binary column definition.
+pub fn jsonb<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).json_binary().not_null().clone()
+}
+
+/// Create a nullable json binary column definition.
+pub fn jsonb_null<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).json_binary().not_null().clone()
+}
