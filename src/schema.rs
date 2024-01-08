@@ -297,14 +297,6 @@ where
     ColumnDef::new(name).decimal_len(precision, scale).clone()
 }
 
-/// Create a unique string column definition.
-pub fn string_uniq<T>(name: T) -> ColumnDef
-where
-    T: IntoIden,
-{
-    string(name).unique_key().clone()
-}
-
 /// Create a nullable string column definition.
 pub fn string_null<T>(name: T) -> ColumnDef
 where
@@ -313,20 +305,36 @@ where
     ColumnDef::new(name).string().clone()
 }
 
-/// Create a nullable text column definition.
-pub fn text<T>(name: T) -> ColumnDef
-where
-    T: IntoIden,
-{
-    ColumnDef::new(name).text().clone()
-}
-
 /// Create a non-nullable string column definition.
 pub fn string<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
     string_null(name).not_null().clone()
+}
+
+/// Create a unique string column definition.
+pub fn string_uniq<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    string(name).unique_key().clone()
+}
+
+/// Create a nullable text column definition.
+pub fn text_null<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).text().clone()
+}
+
+/// Create a nullable text column definition.
+pub fn text<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).text().clone()
 }
 
 /// Create a nullable boolean column definition.
