@@ -1,23 +1,17 @@
+
+![Loco.rs](https://github.com/loco-rs/loco/assets/83390/992d215a-3cd3-42ee-a1c7-de9fd25a5bac)
 [![Current Crates.io Version](https://img.shields.io/crates/v/loco-rs.svg)](https://crates.io/crates/loco-rs)
 [![Discord channel](https://img.shields.io/badge/discord-Join-us)](https://discord.gg/fTvyBzwKS8)
 
 # Welcome to Loco!
 
-<center>
-<img width="640" src="https://github.com/loco-rs/loco/raw/master/media/image.png"/>
-</center>
-<br/>
-<center>
-<a href="https://loco.rs">loco.rs</a>
-</center>
-<br/>
-<br/>
+<a href="https://loco.rs">https://loco.rs</a>
+
 
 Loco is "Rust on Rails".
 
 Loco is strongly inspired by Rails. If you know Rails and Rust, you'll feel at home. If you only know Rails and new to Rust, you'll find Loco refreshing. We do not assume you know Rails.
 
-To work with Loco, you need to know Rust to a beginner-moderate level. There are no crazy lifetime twisters and most of the development will be linear: request handling, workers, tasks, etc.
 
 ## Quick Start
 
@@ -36,11 +30,7 @@ $ loco new
 myapp
 ```
 
-<div class="infobox">
-To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>[insert app]_development.</code>.
-</div>
-
-When generating a starter, the database name incorporates your application name and the environment. For instance, if you include `myapp`, the database name in the `test.yaml`configuration will be `myapp_test`, and in the `development.yaml` configuration, it will be `myapp_development`.
+To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>[insert app]_development</code>.
 
 ```
 $ docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=myapp_development -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine
@@ -95,3 +85,10 @@ Loco is feature complete, but features are still being added rapidly.
 
 - View [issues](https://github.com/loco-rs/loco/issues) for what we plan next and what we work on (you're welcome to submit PRs!)
 - View [CHANGELOG](https://github.com/loco-rs/loco/blob/master/CHANGELOG.md) for what we already added
+
+## Powered by Loco
+
+* [SpectralOps](https://spectralops.io) - various services powered by Loco framework
+
+[open an issue to add yourself here](https://github.com/loco-rs/loco/issues)
+
