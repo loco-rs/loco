@@ -209,6 +209,30 @@ where
     ColumnDef::new(name).integer().unique_key().clone()
 }
 
+/// Create a non-nullable big integer column definition.
+pub fn big_integer<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).big_integer().not_null().clone()
+}
+
+/// Create a nullable big integer column definition.
+pub fn big_integer_null<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).big_integer().clone()
+}
+
+/// Create a unique big integer column definition.
+pub fn big_integer_uniq<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).big_integer().unique_key().clone()
+}
+
 /// Create a non-nullable float column definition.
 pub fn float<T>(name: T) -> ColumnDef
 where
