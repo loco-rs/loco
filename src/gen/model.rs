@@ -49,6 +49,8 @@ lazy_static! {
         ("decimal_len!", "decimal_len"),
         ("bool", "bool_null"),
         ("bool!", "bool"),
+        ("tstz", "timestamptz_null"),
+        ("tstz!", "timestamptz"),
         ("date", "date_null"),
         ("date!", "date"),
         ("ts", "timestamp_null"),
