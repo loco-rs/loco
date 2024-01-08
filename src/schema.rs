@@ -137,6 +137,30 @@ where
     ColumnDef::new(name).date().clone()
 }
 
+/// Create a non-nullable tiny integer column definition.
+pub fn tiny_integer<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).tiny_integer().not_null().clone()
+}
+
+/// Create a nullable tiny integer column definition.
+pub fn tiny_integer_null<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).tiny_integer().clone()
+}
+
+/// Create a unique tiny integer column definition.
+pub fn tiny_integer_uniq<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).tiny_integer().unique_key().clone()
+}
+
 /// Create a non-nullable integer column definition.
 pub fn integer<T>(name: T) -> ColumnDef
 where
