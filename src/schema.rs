@@ -161,6 +161,30 @@ where
     ColumnDef::new(name).tiny_integer().unique_key().clone()
 }
 
+/// Create a non-nullable small integer column definition.
+pub fn small_integer<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).small_integer().not_null().clone()
+}
+
+/// Create a nullable small integer column definition.
+pub fn small_integer_null<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).small_integer().clone()
+}
+
+/// Create a unique small integer column definition.
+pub fn small_integer_uniq<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).small_integer().unique_key().clone()
+}
+
 /// Create a non-nullable integer column definition.
 pub fn integer<T>(name: T) -> ColumnDef
 where
