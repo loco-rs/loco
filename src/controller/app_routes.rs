@@ -4,7 +4,7 @@
 
 use std::{path::PathBuf, time::Duration};
 
-use axum::{http, Router as AXRouter};
+use axum::{http, response::IntoResponse, Router as AXRouter};
 use lazy_static::lazy_static;
 use regex::Regex;
 use tower_http::{
@@ -306,7 +306,7 @@ impl AppRoutes {
     }
 
     fn add_catch_panic(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
-        app.layer(CatchPanicLayer::new())
+        app.layer(CatchPanicLayer::custom(handle_panic))
     }
 
     fn add_limit_payload_middleware(
@@ -405,4 +405,17 @@ impl AppRoutes {
             app
         }
     }
+}
+
+/// Handler function for the [`CatchPanicLayer`] middleware.
+#[allow(clippy::needless_pass_by_value)]
+fn handle_panic(err: Box<dyn std::any::Any + Send + 'static>) -> axum::response::Response {
+    let err = err.downcast_ref::<String>().map_or_else(
+        || err.downcast_ref::<&str>().map_or("no error details", |s| s),
+        |s| s.as_str(),
+    );
+
+    tracing::error!(err = err, "server get panic");
+
+    errors::Error::InternalServerError.into_response()
 }

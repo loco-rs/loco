@@ -160,6 +160,10 @@ impl IntoResponse for Error {
                 StatusCode::NOT_FOUND,
                 ErrorDetail::new("not_found", "Resource was not found"),
             ),
+            Self::InternalServerError => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorDetail::new("internal_server_error", "Internal Server Error"),
+            ),
             Self::Unauthorized(err) => {
                 tracing::warn!(err);
                 (
