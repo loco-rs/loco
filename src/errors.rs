@@ -89,6 +89,9 @@ pub enum Error {
     #[error("")]
     CustomError(StatusCode, ErrorDetail),
 
+    #[error("internal server error")]
+    InternalServerError,
+
     #[error(transparent)]
     InvalidHeaderValue(#[from] InvalidHeaderValue),
 
