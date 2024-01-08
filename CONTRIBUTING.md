@@ -48,8 +48,6 @@ And then format your code by running:
 cargo +nightly fmt
 ```
 
-
-
 ## Testing
 
 Just clone the project and run `cargo test`.
@@ -65,6 +63,11 @@ In case of cli changes we snapshot the binary commands. in case of changes run t
 ```sh
 TRYCMD=overwrite cargo test
 ```
+
+## Running Docs website
+The documentation website based on [zola](https://www.getzola.org/), and you can see the docs [here](./docs-site/).
+then cd to `docs-site` and run `zola serve`
+
 
 ## Open A Pull Request
 
