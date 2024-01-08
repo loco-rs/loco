@@ -39,6 +39,8 @@ lazy_static! {
         ("big_integer^", "big_integer_uniq"),
         ("float", "float_null"),
         ("float!", "float"),
+        ("double", "double_null"),
+        ("double!", "double"),     
         ("bool", "bool_null"),
         ("bool!", "bool"),
         ("ts", "timestamp_null"),

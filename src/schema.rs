@@ -249,6 +249,22 @@ where
     ColumnDef::new(name).float().clone()
 }
 
+/// Create a non-nullable double column definition.
+pub fn double<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).double().not_null().clone()
+}
+
+/// Create a nullable double column definition.
+pub fn double_null<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).double().clone()
+}
+
 /// Create a unique string column definition.
 pub fn string_uniq<T>(name: T) -> ColumnDef
 where
