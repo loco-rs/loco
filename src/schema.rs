@@ -302,7 +302,10 @@ pub fn decimal_len<T>(name: T, precision: u32, scale: u32) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).decimal_len(precision, scale).not_null().clone()
+    ColumnDef::new(name)
+        .decimal_len(precision, scale)
+        .not_null()
+        .clone()
 }
 
 /// Create a nullable boolean column definition.
