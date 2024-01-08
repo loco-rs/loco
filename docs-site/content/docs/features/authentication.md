@@ -152,7 +152,8 @@ curl --location --request GET '127.0.0.1:3000/user/current' \
 
 ## Creating an Authenticated Endpoint
 
-To establish an authenticated endpoint, import `controller::middleware` from the `loco_rs` library and incorporate the auth middleware into the function endpoint parameters.
+Auth middleware provides two ways to establish an authenticated endpoint: `JWT` and `ApiToken`.
+import `controller::middleware` from the `loco_rs` library and incorporate the auth middleware into the function endpoint parameters.
 
 Consider the following example in Rust:
 
@@ -163,13 +164,32 @@ use loco_rs::{
     controller::middleware,
     Result,
 };
+use crate::models::_entities::users;
 
+/**
+ * Authorization header should have token which is generated email and password login function.
+ * 
+ * HTTP Headers:
+ * Authorization: Bearer TOKEN
+ */
 async fn current(
-    auth: middleware::auth::Auth,
+    auth: middleware::auth::JWT,
     State(ctx): State<AppContext>,
 ) -> Result<Json<CurrentResponse>> {
     let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
-    /// Some response
+    format::json(CurrentResponse::new(&user))
 }
 
+/**
+ * Authorization header should have api_key which is stored in users table.
+ * 
+ * HTTP Headers:
+ * Authorization: Bearer api_key
+ */
+async fn current_by_api_key(
+    auth: middleware::auth::ApiToken<users::Model>,
+    State(ctx): State<AppContext>,
+) -> Result<Json<CurrentResponse>> {
+    format::json(CurrentResponse::new(&auth.user))
+}
 ```
