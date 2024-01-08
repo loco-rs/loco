@@ -107,6 +107,10 @@ For schema data types, you can use the following mapping to understand the schem
 ("date!", "date"),
 ("ts", "timestamp_null"),
 ("ts!", "timestamp"),
+("json", "json_null"),
+("json!", "json"),
+("jsonb", "jsonb_null"),
+("jsonb!", "jsonb"),
 ```
 
 

@@ -53,6 +53,10 @@ lazy_static! {
         ("date!", "date"),
         ("ts", "timestamp_null"),
         ("ts!", "timestamp"),
+        ("json", "json_null"),
+        ("json!", "json"),
+        ("jsonb", "jsonb_null"),
+        ("jsonb!", "jsonb"),
     ]);
 }
 
