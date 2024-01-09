@@ -14,13 +14,15 @@ toc = true
 top = false
 +++
 
+## User Password Authentication
+
 `Loco` simplifies the user authentication process, allowing you to set up a new website quickly. This feature not only saves time but also provides the flexibility to focus on crafting the core logic of your application.
 
-## Authentication Configuration
+### Authentication Configuration
 
 The `auth` feature comes as a default with the library. If desired, you can turn it off and handle authentication manually.
 
-## Getting Started with a Saas App
+### Getting Started with a Saas App
 
 Create your app using the [loco-cli](/docs/getting-started/tour.md) and select the `Saas app` option.
 
@@ -42,7 +44,7 @@ $ cargo loco routes
  .
 ```
 
-## Registering a New User
+### Registering a New User
 
 The `/auth/register` endpoint creates a new user in the database with an `email_verification_token` for account verification. A welcome email is sent to the user with a verification link.
 
@@ -60,7 +62,7 @@ curl --location '127.0.0.1:3000/auth/register' \
 
 For security reasons, if the user is already registered, no new user is created, and a 200 status is returned without exposing user email details.
 
-## Login
+### Login
 
 After registering a new user, use the following request to log in:
 
@@ -91,7 +93,7 @@ The response includes a JWT token for authentication, user ID, name, and verific
 - **Name** - The user's name associated with the account.
 - **Is Verified** - A flag indicating whether the user has verified their account.
 
-## Account Verification
+### Account Verification
 
 Upon user registration, an email with a verification link is sent. Visiting this link updates the `email_verified_at` field in the database, changing the `is_verified` flag in the login response to true.
 
@@ -105,13 +107,13 @@ curl --location '127.0.0.1:3000/auth/verify' \
      }'
 ```
 
-## Reset Password Flow
+### Reset Password Flow
 
-### Forgot Password
+#### Forgot Password
 
 The `forgot` endpoint requires only the user's email in the payload. An email is sent with a reset password link, and a `reset_token` is set in the database.
 
-#### Example Curl request:
+##### Example Curl request:
 
 ```sh
 curl --location '127.0.0.1:3000/auth/forgot' \
@@ -121,11 +123,11 @@ curl --location '127.0.0.1:3000/auth/forgot' \
      }'
 ```
 
-### Reset Password
+#### Reset Password
 
 To reset the password, send the token generated in the `forgot` endpoint along with the new password.
 
-#### Example Curl request:
+##### Example Curl request:
 
 ```sh
 curl --location '127.0.0.1:3000/auth/reset' \
@@ -136,7 +138,7 @@ curl --location '127.0.0.1:3000/auth/reset' \
      }'
 ```
 
-## Get current user
+### Get current user
 
 This endpoint is protected by auth middleware.
 
@@ -150,7 +152,7 @@ curl --location --request GET '127.0.0.1:3000/user/current' \
      }'
 ```
 
-## Creating an Authenticated Endpoint
+### Creating an Authenticated Endpoint
 
 To establish an authenticated endpoint, import `controller::middleware` from the `loco_rs` library and incorporate the auth middleware into the function endpoint parameters.
 
