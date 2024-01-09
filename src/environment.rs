@@ -20,12 +20,19 @@ use serde_variant::to_variant_name;
 use super::config::Config;
 use crate::Result;
 
+const DEFAULT_ENVIRONMENT: &str = "development";
+
+impl From<String> for Environment {
+    fn from(env: String) -> Self {
+        Self::from_str(&env).unwrap_or(Self::Any(env))
+    }
+}
 #[must_use]
-pub fn resolve_from_env() -> Option<String> {
+pub fn resolve_from_env() -> String {
     std::env::var("LOCO_ENV")
         .or_else(|_| std::env::var("RAILS_ENV"))
         .or_else(|_| std::env::var("NODE_ENV"))
-        .ok()
+        .unwrap_or_else(|_| DEFAULT_ENVIRONMENT.to_string())
 }
 
 /// Application environment
