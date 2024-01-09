@@ -2,7 +2,11 @@
 
 ## vNext
 
-* Added: **Braking changes** Supply `AppContext` to `routes` Hook. Migration steps:
+* Add: return JSON schema in panic HTTP layer. [https://github.com/loco-rs/loco/pull/336](https://github.com/loco-rs/loco/pull/336)
+* Add: JSON field support in model generation. [https://github.com/loco-rs/loco/pull/327](https://github.com/loco-rs/loco/pull/327) [https://github.com/loco-rs/loco/pull/332](https://github.com/loco-rs/loco/pull/332)
+* Add: float support in model generation. [https://github.com/loco-rs/loco/pull/317](https://github.com/loco-rs/loco/pull/317) 
+* Fix: conflicting idx definition on M:M migration. [https://github.com/loco-rs/loco/issues/311](https://github.com/loco-rs/loco/issues/311)
+* Add: **Braking changes** Supply `AppContext` to `routes` Hook. Migration steps:
    ```rust
     // Add app context to routes function
     impl Hooks for App {
