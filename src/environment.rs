@@ -20,7 +20,7 @@ use serde_variant::to_variant_name;
 use super::config::Config;
 use crate::Result;
 
-const DEFAULT_ENVIRONMENT: &str = "development";
+pub const DEFAULT_ENVIRONMENT: &str = "development";
 
 impl From<String> for Environment {
     fn from(env: String) -> Self {

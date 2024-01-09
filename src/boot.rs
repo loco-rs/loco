@@ -228,7 +228,10 @@ pub async fn create_app<H: Hooks, M: MigratorTrait>(
 }
 
 #[cfg(not(feature = "with-db"))]
-pub async fn create_app<H: Hooks>(mode: StartMode, environment: &str) -> Result<BootResult> {
+pub async fn create_app<H: Hooks>(
+    mode: StartMode,
+    environment: &Environment,
+) -> Result<BootResult> {
     let app_context = create_context::<H>(environment).await?;
 
     if let Some(pool) = &app_context.redis {

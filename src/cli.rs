@@ -32,12 +32,10 @@ use clap::{Parser, Subcommand};
 use crate::{
     app::{AppContext, Hooks},
     boot::{create_app, create_context, list_endpoints, run_task, start, RunDbCommand, StartMode},
-    environment::{resolve_from_env, Environment},
+    environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     gen::{self, Component},
     logger, Result,
 };
-
-const DEFAULT_ENVIRONMENT: &str = "development";
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
