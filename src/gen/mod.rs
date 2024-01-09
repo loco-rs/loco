@@ -161,6 +161,7 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
                         .middlewares
                         .static_assets
                         .as_ref()
+                        .and_then(|c| c.as_ref())
                         .map(|s| s.folder.path.clone());
 
                     let fallback_file = &config
@@ -168,6 +169,7 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
                         .middlewares
                         .static_assets
                         .as_ref()
+                        .and_then(|c| c.as_ref())
                         .map(|s| s.fallback.clone());
 
                     let vars = json!({ "pkg_name": H::app_name(), "copy_asset_folder": copy_asset_folder, "fallback_file": fallback_file });

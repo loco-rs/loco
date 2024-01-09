@@ -54,8 +54,8 @@ pub fn print_banner(boot_result: &BootResult) {
             );
         }
     }
-    if config.logger.enable {
-        println!("     logger: {}", config.logger.level.to_string().green());
+    if let Some(logger) = config.logger.as_ref() {
+        println!("     logger: {}", logger.level.to_string().green());
     } else {
         println!("     logger: {}", "disabled".bright_red());
     }

@@ -264,9 +264,8 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
     let config = environment.load()?;
-
-    if !H::init_logger(&config, &environment)? {
-        logger::init::<H>(&config.logger);
+    if let Some(l) = config.logger.as_ref() {
+        logger::init::<H>(l);
     }
 
     match cli.command {

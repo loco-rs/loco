@@ -21,7 +21,7 @@ use crate::{
     redis,
     task::Tasks,
     worker::{self, AppWorker, Pool, Processor, RedisConnectionManager, DEFAULT_QUEUES},
-    Result,
+    Result, logger,
 };
 
 /// Represents the application startup mode.
@@ -179,12 +179,16 @@ async fn serve(app: Router, config: &Config) -> Result<()> {
 pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppContext> {
     let config = environment.load()?;
 
-    if config.logger.pretty_backtrace {
-        std::env::set_var("RUST_BACKTRACE", "1");
-        warn!(
-            "pretty backtraces are enabled (this is great for development but has a runtime cost \
-             for production. disable with `logger.pretty_backtrace` in your config yaml)"
-        );
+    if let Some(l) = config.logger.as_ref() {
+        logger::init::<H>(l);
+
+        if l.pretty_backtrace {
+            std::env::set_var("RUST_BACKTRACE", "1");
+            warn!(
+                "pretty backtraces are enabled (this is great for development but has a runtime cost \
+                for production. disable with `logger.pretty_backtrace` in your config yaml)"
+            );
+        }
     }
     #[cfg(feature = "with-db")]
     let db = db::connect(&config.database).await?;
@@ -327,10 +331,8 @@ fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
     if config.stub {
         return Ok(Some(EmailSender::stub()));
     }
-    if let Some(smtp) = config.smtp.as_ref() {
-        if smtp.enable {
-            return Ok(Some(EmailSender::smtp(smtp)?));
-        }
+    if let Some(smtp) = config.smtp.as_ref().and_then(|s| s.as_ref()) {
+        return Ok(Some(EmailSender::smtp(smtp)?));
     }
     Ok(None)
 }

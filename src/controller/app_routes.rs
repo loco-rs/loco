@@ -190,58 +190,72 @@ impl AppRoutes {
         app = Self::add_powered_by_header(app, &ctx.config.server);
 
         if let Some(catch_panic) = &ctx.config.server.middlewares.catch_panic {
-            if catch_panic.enable {
+            if catch_panic.is_enabled() {
                 app = Self::add_catch_panic(app);
             }
         }
 
         if let Some(compression) = &ctx.config.server.middlewares.compression {
-            if compression.enable {
+            if compression.is_enabled() {
                 app = Self::add_compression_middleware(app);
             }
         }
 
-        if let Some(limit) = &ctx.config.server.middlewares.limit_payload {
-            if limit.enable {
-                app = Self::add_limit_payload_middleware(app, limit)?;
-            }
+        if let Some(limit) = ctx
+            .config
+            .server
+            .middlewares
+            .limit_payload
+            .clone()
+            .and_then(|l| l.into_inner())
+        {
+            app = Self::add_limit_payload_middleware(app, &limit)?;
         }
 
         if let Some(logger) = &ctx.config.server.middlewares.logger {
-            if logger.enable {
+            if logger.is_enabled() {
                 app = Self::add_logger_middleware(app, &ctx.environment);
             }
         }
 
-        if let Some(timeout_request) = &ctx.config.server.middlewares.timeout_request {
-            if timeout_request.enable {
-                app = Self::add_timeout_middleware(app, timeout_request);
-            }
+        if let Some(timeout_request) = ctx
+            .config
+            .server
+            .middlewares
+            .timeout_request
+            .clone()
+            .and_then(|t| t.into_inner())
+        {
+            app = Self::add_timeout_middleware(app, &timeout_request);
         }
 
-        let cors = ctx
+        if let Some(cors) = ctx
             .config
             .server
             .middlewares
             .cors
-            .as_ref()
-            .filter(|cors| cors.enable)
-            .map(Self::get_cors_middleware)
-            .transpose()?;
-
-        if let Some(cors) = &cors {
+            .clone()
+            .and_then(|c| c.into_inner())
+            .map(|c| Self::get_cors_middleware(&c))
+            .transpose()?
+        {
             app = app.layer(cors.clone());
             tracing::info!("[Middleware] Adding cors");
         }
 
-        if let Some(static_assets) = &ctx.config.server.middlewares.static_assets {
-            if static_assets.enable {
-                app = Self::add_static_asset_middleware(app, static_assets)?;
-            }
+        if let Some(static_assets) = ctx
+            .config
+            .server
+            .middlewares
+            .static_assets
+            .clone()
+            .and_then(|e| e.into_inner())
+        {
+            app = Self::add_static_asset_middleware(app, &static_assets)?;
         }
 
         if let Some(etag) = &ctx.config.server.middlewares.etag {
-            if etag.enable {
+            if etag.is_enabled() {
                 app = Self::add_etag_middleware(app);
             }
         }
