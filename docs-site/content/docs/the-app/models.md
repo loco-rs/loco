@@ -72,6 +72,13 @@ To add a new model _you have to use a migration_.
 $ cargo loco generate model posts title:string! content:text user:references
 ```
 
+When a model is added via migration, the following default fields are provided:
+
+- `created_at` (ts!): This is a timestamp indicating when your model was created.
+- `updated_at` (ts!): This is a timestamp indicating when your model was updated.
+
+These fields are ignored if you provide them in your migration command. In addition, `create_at` and `update_at` fields are also ignored if provided.
+
 For schema data types, you can use the following mapping to understand the schema:
 
 ```rust
