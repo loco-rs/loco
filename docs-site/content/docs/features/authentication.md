@@ -175,3 +175,89 @@ async fn current(
 }
 
 ```
+
+## API Authentication
+
+### Creating new app
+
+For this time, let create your rest app using the [loco-cli](/docs/getting-started/tour) and select the `Rest app` option.
+To create new app, run the following command and follow the instructions:
+
+```sh
+$ loco new
+```
+
+To explore the out-of-the-box auth controllers, run the following command:
+
+```sh
+$ cargo loco routes
+ .
+ .
+ .
+[POST] /api/auth/forgot
+[POST] /api/auth/login
+[POST] /api/auth/register
+[POST] /api/auth/reset
+[POST] /api/auth/verify
+[GET] /api/user/current
+ .
+ .
+ .
+```
+
+### Registering new user
+
+The `/api/auth/register` endpoint creates a new user in the database with an `api_key` for request authentication. `api_key` will be used for authentication in the future requests.
+
+#### Example Curl Request:
+
+```sh
+curl --location '127.0.0.1:3000/api/auth/register' \
+     --header 'Content-Type: application/json' \
+     --data-raw '{
+         "name": "Loco user",
+         "email": "user@loco.rs",
+         "password": "12341234"
+     }'
+```
+
+After registering a new user, make sure you see the `api_key` in the database for the new user.
+
+### Creating an Authenticated Endpoint with API Authentication
+
+To set up an API-authenticated endpoint, import `controller::middleware` from the loco_rs library and include the auth middleware in the function endpoint parameters using `middleware::auth::ApiToken`.
+
+Consider the following example in Rust:
+
+```rust
+use loco_rs::prelude::*;
+use loco_rs::controller::middleware;
+use crate::{models::_entities::users, views::user::CurrentResponse};
+
+async fn current_by_api_key(
+    auth: middleware::auth::ApiToken<users::Model>,
+    State(_ctx): State<AppContext>,
+) -> Result<Json<CurrentResponse>> {
+    format::json(CurrentResponse::new(&auth.user))
+}
+
+pub fn routes() -> Routes {
+    Routes::new()
+        .prefix("user")
+        .add("/current-api", get(current_by_api_key))
+}
+```
+
+### Requesting an API Authenticated Endpoint
+
+To request an authenticated endpoint, you need to pass the `API_KEY` in the `Authorization` header.
+
+#### Example Curl Request:
+
+```sh
+curl --location '127.0.0.1:3000/api/user/current-api' \
+     --header 'Content-Type: application/json' \
+     --header 'Authorization: Bearer API_KEY'
+```
+
+If the `API_KEY` is valid, you will get the response with the user details.
