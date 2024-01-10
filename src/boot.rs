@@ -1,7 +1,7 @@
 //! # Application Bootstrapping and Logic
 //! This module contains functions and structures for bootstrapping and running
 //! your application.
-use std::{collections::BTreeMap, str::FromStr};
+use std::collections::BTreeMap;
 
 use axum::Router;
 #[cfg(feature = "with-db")]
@@ -17,7 +17,6 @@ use crate::{
     controller::ListRoutes,
     environment::Environment,
     errors::Error,
-    logger,
     mailer::{EmailSender, MailerWorker},
     redis,
     task::Tasks,
@@ -176,13 +175,9 @@ async fn serve(app: Router, config: &Config) -> Result<()> {
 ///
 /// # Errors
 /// When has an error to create DB connection.
-pub async fn create_context<H: Hooks>(environment: &str) -> Result<AppContext> {
-    let environment = Environment::from_str(environment)
-        .unwrap_or_else(|_| Environment::Any(environment.to_string()));
+pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppContext> {
     let config = environment.load()?;
-    if config.logger.enable {
-        logger::init::<H>(&config.logger);
-    }
+
     if config.logger.pretty_backtrace {
         std::env::set_var("RUST_BACKTRACE", "1");
         warn!(
@@ -201,7 +196,7 @@ pub async fn create_context<H: Hooks>(environment: &str) -> Result<AppContext> {
 
     let redis = connect_redis(&config).await;
     Ok(AppContext {
-        environment,
+        environment: environment.clone(),
         #[cfg(feature = "with-db")]
         db,
         redis,
@@ -218,7 +213,7 @@ pub async fn create_context<H: Hooks>(environment: &str) -> Result<AppContext> {
 /// When could not create the application
 pub async fn create_app<H: Hooks, M: MigratorTrait>(
     mode: StartMode,
-    environment: &str,
+    environment: &Environment,
 ) -> Result<BootResult> {
     let app_context = create_context::<H>(environment).await?;
     db::converge::<H, M>(&app_context.db, &app_context.config.database).await?;
@@ -233,7 +228,10 @@ pub async fn create_app<H: Hooks, M: MigratorTrait>(
 }
 
 #[cfg(not(feature = "with-db"))]
-pub async fn create_app<H: Hooks>(mode: StartMode, environment: &str) -> Result<BootResult> {
+pub async fn create_app<H: Hooks>(
+    mode: StartMode,
+    environment: &Environment,
+) -> Result<BootResult> {
     let app_context = create_context::<H>(environment).await?;
 
     if let Some(pool) = &app_context.redis {

@@ -15,6 +15,7 @@
 //!    controller::AppRoutes,
 //!    worker::Processor,
 //!    task::Tasks,
+//!    environment::Environment,
 //!    Result,
 //! };
 //! use sea_orm::DatabaseConnection;
@@ -43,7 +44,7 @@
 //!             // .add_route(controllers::notes::routes())
 //!     }
 //!     
-//!     async fn boot(mode: StartMode, environment: &str) -> Result<BootResult>{
+//!     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult>{
 //!          create_app::<Self, Migrator>(mode, environment).await
 //!     }
 //!

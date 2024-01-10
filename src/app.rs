@@ -92,7 +92,7 @@ pub trait Hooks {
     ///
     /// # Errors
     /// Could not boot the application
-    async fn boot(mode: StartMode, environment: &str) -> Result<BootResult>;
+    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult>;
 
     /// Invoke this function after the Loco routers have been constructed. This
     /// function enables you to configure custom Axum logics, such as layers,

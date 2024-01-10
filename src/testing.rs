@@ -12,6 +12,7 @@ use sea_orm::DatabaseConnection;
 use crate::{
     app::{AppContext, Hooks},
     boot::{self, BootResult},
+    environment::Environment,
     Result,
 };
 
@@ -116,7 +117,7 @@ pub fn cleanup_email() -> Vec<(&'static str, &'static str)> {
 /// }
 /// ```
 pub async fn boot_test<H: Hooks>() -> Result<BootResult> {
-    H::boot(boot::StartMode::ServerOnly, "test").await
+    H::boot(boot::StartMode::ServerOnly, &Environment::Test).await
 }
 
 #[cfg(feature = "with-db")]
