@@ -27,11 +27,11 @@ impl Hooks for App {
         )
     }
 
-    async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
+    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
         create_app::<Self>(mode, environment).await
     }
 
-    fn routes() -> AppRoutes {
+    fn routes(_ctx: &loco_rs::prelude::AppContext) -> AppRoutes {
         AppRoutes::empty()
             .prefix("/api")
             .add_route(controllers::home::routes())

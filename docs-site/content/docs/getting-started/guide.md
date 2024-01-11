@@ -260,7 +260,7 @@ Add the following in `routes()`:
 #[async_trait]
 impl Hooks for App {
     ..
-    fn routes() -> AppRoutes {
+    fn routes(_ctx: &loco_rs::prelude::AppContext) -> AppRoutes {
         AppRoutes::with_default_routes()
             .add_route(controllers::guide::routes())
             .add_route(controllers::notes::routes())
