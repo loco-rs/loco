@@ -29,6 +29,11 @@ format::render()
     .json(notes)
 ```
 * Rename "Saas App" to "React Frontend", to accomodate future frontend alternatives
+* Started "HTMX Frontend" version of the app
+* Created a "magic" build script to accomodate local development of frontends, for framework developers
+* Finished work updating some of the breaking changes
+* If using sqlite, the database file will be created if it does not already exist
+* Added environmental variables to allow customization of where to get the "starter" files.
 
 ## v0.1.9
 
