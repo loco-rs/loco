@@ -63,8 +63,8 @@ server:
       must_exist: true
       folder:
         uri: "/"
-        path: "frontend/dist"
-      fallback: "frontend/dist/index.html"
+        path: "frontend/"
+      fallback: "frontend/index.html"
 
 # Worker Configuration
 workers:
