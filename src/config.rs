@@ -263,10 +263,6 @@ impl Config {
     /// }
     pub fn new(env: &Environment) -> Result<Self> {
         let config = Self::from_folder(env, DEFAULT_FOLDER.as_path())?;
-        // TODO(review): Do we really want to print all config data to the logs? it
-        // might be include sensitive data such DB user password, auth secrets etc...
-        info!(name: "environment_loaded", config = ?config, environment = ?env, "environment loaded");
-
         Ok(config)
     }
 

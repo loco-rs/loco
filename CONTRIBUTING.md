@@ -61,7 +61,7 @@ cargo instal test --review
 
 In case of cli changes we snapshot the binary commands. in case of changes run the following command yo update the CLI snapshot
 ```sh
-TRYCMD=overwrite cargo test
+LOCO_CI_MODE=true TRYCMD=overwrite cargo test
 ```
 
 ## Running Docs website

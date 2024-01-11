@@ -4,14 +4,11 @@
 //!
 //! ```
 //! use loco_rs::{
-//!     controller::{middleware, format},
+//!     controller::{middleware, format, Json},
 //!     app::AppContext,
 //!     Result,
 //! };
-//! use axum::{
-//!     Json,
-//!     extract::State
-//! };
+//! use axum::extract::State;
 //!
 //! pub struct TestResponse {
 //!     pub pid: String,

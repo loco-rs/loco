@@ -2,7 +2,6 @@ pub use async_trait::async_trait;
 pub use axum::{
     extract::{Form, Path, State},
     routing::{delete, get, post, put},
-    Json,
 };
 pub use axum_extra::extract::cookie;
 pub use chrono::NaiveDateTime as DateTime;
@@ -14,7 +13,7 @@ pub use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, ModelTrait, Se
 pub use crate::controller::middleware::auth;
 pub use crate::{
     app::{AppContext, Initializer},
-    controller::{format, not_found, unauthorized, Routes},
+    controller::{format, not_found, unauthorized, Json, Routes},
     errors::Error,
     mailer,
     mailer::Mailer,
