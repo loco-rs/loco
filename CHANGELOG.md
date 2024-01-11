@@ -8,7 +8,7 @@
 * Add: JSON field support in model generation. [https://github.com/loco-rs/loco/pull/327](https://github.com/loco-rs/loco/pull/327) [https://github.com/loco-rs/loco/pull/332](https://github.com/loco-rs/loco/pull/332)
 * Add: float support in model generation. [https://github.com/loco-rs/loco/pull/317](https://github.com/loco-rs/loco/pull/317) 
 * Fix: conflicting idx definition on M:M migration. [https://github.com/loco-rs/loco/issues/311](https://github.com/loco-rs/loco/issues/311)
-* Add: **Braking changes** Supply `AppContext` to `routes` Hook. Migration steps:
+* Add: **Breaking changes** Supply `AppContext` to `routes` Hook. Migration steps:
    ```rust
     // Add app context to routes function
     impl Hooks for App {
@@ -130,14 +130,14 @@ Reminder: `loco --version` will give you the current Loco framework which your a
 * Added: added support in model generator for many-to-many link table generation via `loco generate model --link`
 * Docs: added Migration section, added relations documentation 1:M, M:M
 * Adding .devcontainer to starter projects [https://github.com/loco-rs/loco/issues/170](https://github.com/loco-rs/loco/issues/170)
-* **Braking changes**: Adding `Hooks::boot` application. Migration steps:
+* **Breaking changes**: Adding `Hooks::boot` application. Migration steps:
     ```rust
     // Load boot::{create_app, BootResult, StartMode} from loco_rs lib
     // Load migration: use migration::Migrator; Only when using DB
     // Adding boot hook with the following code
     impl Hooks for App {
       ...
-      async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
+      async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
         // With DB:
         create_app::<Self, Migrator>(mode, environment).await
         // Without DB:

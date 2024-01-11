@@ -77,14 +77,14 @@ pub trait Hooks {
     ///
     /// With DB:
     /// ```rust,ignore
-    /// async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
+    /// async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
     ///     create_app::<Self, Migrator>(mode, environment).await
     /// }
     /// ````
     ///
     /// Without DB:
     /// ```rust,ignore
-    /// async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
+    /// async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
     ///     create_app::<Self>(mode, environment).await
     /// }
     /// ````

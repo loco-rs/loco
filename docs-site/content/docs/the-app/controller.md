@@ -31,7 +31,7 @@ In the example below, multiple controllers are added to your app within the `App
 pub struct App;
 #[async_trait]
 impl Hooks for App {
-    fn routes() -> AppRoutes {
+    fn routes(_ctx: &loco_rs::prelude::AppContext) -> AppRoutes {
         AppRoutes::with_default_routes()
             .add_route(controllers::foo::routes())
             .add_route(controllers::bar::routes())
@@ -146,7 +146,7 @@ In your App hook implementation (e.g., App struct), add your controller's `Route
 pub struct App;
 #[async_trait]
 impl Hooks for App {
-    fn routes() -> AppRoutes {
+    fn routes(_ctx: &loco_rs::prelude::AppContext) -> AppRoutes {
         AppRoutes::with_default_routes().prefix("prefix")
             .add_route(controllers::example::routes())
     }
