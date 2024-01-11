@@ -76,7 +76,21 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
         .connect_timeout(Duration::from_millis(config.connect_timeout))
         .idle_timeout(Duration::from_millis(config.idle_timeout))
         .sqlx_logging(config.enable_logging);
-
+    
+    if sea_orm::DbBackend::Sqlite.is_prefix_of(&config.uri) {
+        // Check if the database file exists, if not, create it.
+        if !Path::new(&config.uri[9..]).exists() {
+            tracing::info!("No SQLite data base file exists, creating it.");
+            match File::create(&config.uri[9..]) {
+                Ok(_) => (),
+                Err(e) => {
+                    return Err(sea_orm::DbErr::Exec(
+                        sea_orm::RuntimeErr::Internal("Failed to create sqlite database file".into()),
+                    ))
+                }
+            }
+        }
+    }
     Database::connect(opt).await
 }
 
