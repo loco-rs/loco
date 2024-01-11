@@ -12,10 +12,10 @@ Options:
 ```
 
 ```console
-$ LOCO_FOLDER_NAME=saas_template LOCO_TEMPLATE=saas loco new 
+$ LOCO_FOLDER_NAME=react_template LOCO_TEMPLATE=react loco new 
 
 🚂 Loco app generated successfully in:
-[CWD]/saas-template
+[CWD]/react-template
 
 ```
 

@@ -5,8 +5,8 @@ on:
     - cron: 0 * * * * # every hour
 
 jobs:
-  saas-template:
-    name: Create saas starter template
+  react-template:
+    name: Create react starter template
     runs-on: ubuntu-latest
 
     permissions:
@@ -21,10 +21,10 @@ jobs:
           override: true
       - run: |
           cargo install loco-cli
-          LOCO_APP_NAME=saas LOCO_TEMPLATE=saas loco new
+          LOCO_APP_NAME=react LOCO_TEMPLATE=react loco new
       - run: |
           cargo build
-        working-directory: ./saas
+        working-directory: ./react
 
   rest-api:
     name: Create stateless starter template

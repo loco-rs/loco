@@ -13,7 +13,7 @@ authors = ["Team Loco"]
 
 To build a Rust app with [Axum session](https://crates.io/crates/axum_session), the first step is to choose your server. In this case, we'll use [loco](https://loco.rs) :)
 
-Start by creating a new project and selecting the `Saas app` template:
+Start by creating a new project and selecting the `React Frontend` template:
 
 ```sh
 $ cargo install loco-cli
@@ -22,7 +22,7 @@ $ loco new
 ? ❯ What would you like to build? ›
   lightweight-service (minimal, only controllers and views)
   Rest API (with DB and user auth)
-❯ Saas app (with DB and user auth)
+❯ React Frontend (with DB and user auth)
 ```
 
 ## Creating Session Memory Store Only

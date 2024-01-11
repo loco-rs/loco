@@ -48,7 +48,7 @@ $ cargo install loco-cli
 
 ### Creating a new Loco app
 
-Now you can create your new app (choose "Saas app" for built-in authentication).
+Now you can create your new app (choose "React Frontend" for built-in authentication).
 
 ```sh
 $ loco new
@@ -56,7 +56,7 @@ $ loco new
 ? ❯ What would you like to build? ›
 ❯ lightweight-service (minimal, only controllers and views)
   Rest API (with DB and user auth)
-  Saas app (with DB and user auth)
+  React Frontend (with DB and user auth)
 🚂 Loco app generated successfully in:
 myapp
 ```
@@ -812,7 +812,7 @@ Remember: this is environmental, so you write the task once, and then execute in
 
 ## Authentication: authenticating your requests
 
-If you chose the `SaaS App` starter, you should have a fully configured authentication module baked into the app.
+If you chose the `React Frontend` starter, you should have a fully configured authentication module baked into the app.
 Let's see how to require authentication when **adding comments**.
 
 Go back to `src/controllers/comments.rs` and take a look at the `add` function:

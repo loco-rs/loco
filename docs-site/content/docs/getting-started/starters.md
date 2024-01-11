@@ -26,14 +26,14 @@ loco new
 ? ❯ What would you like to build? ›
 ❯ lightweight-service (minimal, only controllers and views)
   Rest API (with DB and user auth)
-  Saas app (with DB and user auth)
+  React Frontend (with DB and user auth)
 ```
 
 ## Available Starters
 
-#### Saas Starter
+#### React Frontend Starter
 
-The Saas starter is perfect for projects requiring both a frontend website and a REST API. It comes equipped with:
+The React Frontend starter is perfect for projects requiring both a frontend website and a REST API. It comes equipped with:
 
 **Frontend**
 

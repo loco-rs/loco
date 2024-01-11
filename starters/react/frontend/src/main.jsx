@@ -24,7 +24,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       </div>
     </header>
     <div className="logo">
-      <h1>Loco: SaaS application</h1>
+      <h1>Loco: React Frontend</h1>
       <img src="https://loco.rs/images/logo.png" className="logo" alt="Loco logo" />
     </div>
     <footer>

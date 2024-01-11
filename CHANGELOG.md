@@ -28,7 +28,7 @@ format::render()
     .etag("foobar")?
     .json(notes)
 ```
-
+* Rename "Saas App" to "React Frontend", to accomodate future frontend alternatives
 
 ## v0.1.9
 

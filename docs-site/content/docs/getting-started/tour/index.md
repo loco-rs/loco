@@ -23,12 +23,12 @@ $ cargo install loco-cli
 $ cargo install sea-orm-cli
 ```
 
-Now you can create your new app (choose "Saas app").
+Now you can create your new app (choose "React Frontend").
 
 ```sh
 $ loco new
 ❯ App name? [myapp]:
-❯ Saas app (with DB and user auth)
+❯ React Frontend (with DB and user auth)
   Stateless service (minimal, no db)
 🚂 Loco app generated successfully in:
 myapp
@@ -46,7 +46,7 @@ When generating a starter, the database name incorporates your application name 
 $ docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=myapp_development -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine
 ```
 
-A more advanced set of `docker-compose.yml` and `Dockerfiles` that include Redis and the `mailtutan` mailer are available for [each starter on GitHub](https://github.com/loco-rs/loco/blob/master/starters/saas/.devcontainer/docker-compose.yml).
+A more advanced set of `docker-compose.yml` and `Dockerfiles` that include Redis and the `mailtutan` mailer are available for [each starter on GitHub](https://github.com/loco-rs/loco/blob/master/starters/react/.devcontainer/docker-compose.yml).
 
 Now `cd` into your `myapp` and start your app:
 
@@ -86,7 +86,7 @@ You don't have to run things through `cargo` but in development it's highly reco
 
 ## Adding a CRUD API
 
-We have a base SaaS app with user authentication generated for us. Let's make it a blog by adding a `post` and a full CRUD API using `scaffold`:
+We have a base React Frontend with user authentication generated for us. Let's make it a blog by adding a `post` and a full CRUD API using `scaffold`:
 
 ```sh
 $ cargo loco generate scaffold post title:string content:text
@@ -136,7 +136,7 @@ For those counting -- the commands for creating a blog were:
 
 Done! enjoy your ride with `loco` 🚂
 
-## Checking Out SaaS Authentication
+## Checking Out SaaS/React Authentication
 
 Your generated app contains a fully working authentication suite, based on JWTs.
 

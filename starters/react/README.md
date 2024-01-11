@@ -2,7 +2,7 @@
 
 Loco is a web and API framework running on Rust.
 
-This is the **SaaS starter** which includes a `User` model and authentication based on JWT.
+This is the **React starter** which includes a `User` model and authentication based on JWT.
 
 
 ## Quick Start

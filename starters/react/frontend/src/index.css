@@ -89,12 +89,11 @@ footer ul {
 footer ul li {
   display: inline-flex;
   align-items: center;
-  margin: 0 5px;
+  padding: 0 5px;
   list-style: none;
 }
 
 footer ul li:not(:last-child) {
   border-right: 1px solid #ccc;
-  padding-right: 5px;
   height: 15px;
 }

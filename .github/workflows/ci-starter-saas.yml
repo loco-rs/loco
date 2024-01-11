@@ -1,14 +1,14 @@
-name: starters/saas
+name: starters/react
 
 on:
   push:
     branches:
       - master
     paths:
-      - starters/saas/**
+      - starters/react/**
   pull_request:
     paths:
-      - starters/saas/**
+      - starters/react/**
 
 env:
   RUST_TOOLCHAIN: stable
@@ -32,7 +32,7 @@ jobs:
           override: true
           components: rustfmt
       - run: cargo fmt --all -- --check
-        working-directory: ./starters/saas
+        working-directory: ./starters/react
 
   clippy:
     name: Run Clippy
@@ -54,7 +54,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Run cargo clippy
         run: cargo clippy -- -W clippy::nursery -W clippy::pedantic -W rust-2018-idioms -W rust-2021-compatibility
-        working-directory: ./starters/saas
+        working-directory: ./starters/react
 
   test:
     name: Run Tests
@@ -100,7 +100,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Run cargo test
         run: cargo test --all-features --all
-        working-directory: ./starters/saas
+        working-directory: ./starters/react
         env:
           REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
           DATABASE_URL: postgres://postgress:postgress@localhost:5432/postgress_test
@@ -152,8 +152,8 @@ jobs:
   #   - name: Generate template
   #     run: |
   #       cargo build --release --features github_ci
-  #       RUST_LOG=debug LOCO_CURRENT_REPOSITORY=${{ github.event.pull_request.head.repo.html_url }} LOCO_CI_MODE=true LOCO_APP_NAME=saas_starter LOCO_TEMPLATE=saas LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new
-  #       cd saas_starter
+  #       RUST_LOG=debug LOCO_CURRENT_REPOSITORY=${{ github.event.pull_request.head.repo.html_url }} LOCO_CI_MODE=true LOCO_APP_NAME=react_starter LOCO_TEMPLATE=react LOCO_BRANCH=${{ env.GITHUB_HEAD_REF_SLUG }} ./target/release/loco new
+  #       cd react_starter
   #       echo "Building generate template..."
   #       cargo build --release
   #       echo "Run cargo test on generated template..."

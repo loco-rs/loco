@@ -1,8 +1,8 @@
-# Saas Frontend
+# React Frontend
 
 # Development
 
-To get started with the development of the SaaS frontend, follow these steps:
+To get started with the development of the React frontend, follow these steps:
 
 ### 1. Install Packages
 

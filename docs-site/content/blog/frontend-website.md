@@ -19,27 +19,27 @@ Explore the example repository [here](https://github.com/loco-rs/todo-list-examp
 
 The key steps include:
 
-- Creating a Loco project with the Saas starter
+- Creating a Loco project with the React starter
 - Setting up a Vite frontend with React
 - Configuring Loco to serve frontend static assets
 - Implementing the Notes model/controller in the REST API
 - Reloading the server and frontend during development
 - Deploying the website to production
 
-## Selecting Saas Starter
+## Selecting React Starter
 
-To begin, run the following command to create a new Loco app using the Saas starter:
+To begin, run the following command to create a new Loco app using the React starter:
 
 ```sh
 & loco new
 ✔ ❯ App name? · todolist
-✔ ❯ What would you like to build? · Saas app (with DB and user auth)
+✔ ❯ What would you like to build? · React Frontend (with DB and user auth)
 
 🚂 Loco app generated successfully in:
 /tmp/todolist
 ```
 
-Follow the prompts to specify the app name (e.g., todolist) and choose the Saas app option.
+Follow the prompts to specify the app name (e.g., todolist) and choose the React Frontend option.
 
 After generating the app, ensure you have the necessary resources by running:
 

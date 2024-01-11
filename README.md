@@ -19,12 +19,12 @@ Loco is strongly inspired by Rails. If you know Rails and Rust, you'll feel at h
 $ cargo install loco-cli
 ```
 
-Now you can create your new app (choose "Saas app").
+Now you can create your new app (choose "React Frontend").
 
 ```sh
 $ loco new
 ❯ App name? [myapp]:
-❯ Saas app (with DB and user auth)
+❯ React Frontend (with DB and user auth)
   Stateless service (minimal, no db)
 🚂 Loco app generated successfully in:
 myapp
