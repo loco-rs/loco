@@ -16,6 +16,7 @@ pub fn debug_path() -> Option<PathBuf> {
 }
 
 const BASE_REPO_URL: &str = "https://github.com/loco-rs/loco.git";
+const BRANCH_NAME: &str = "master"; // Branches are currently only supported with "git" natively installed
 
 /// Define the starter template in Loco repository
 const STARTER_TEMPLATE_FOLDER: &str = "starters";
@@ -114,7 +115,8 @@ fn clone_repo() -> eyre::Result<PathBuf> {
     // to avoid potential conflicts with custom local Git settings, such as 'insteadOf'.
     // If Git is not installed, an alternative approach is attempting to clone the repository using the 'git2' library.
     if git_exists() {
-        let args = vec!["clone", "--depth=1", BASE_REPO_URL];
+        // let args = vec!["clone", "--depth=1", BASE_REPO_URL];
+        let args = vec!["clone", "--depth=1", "-b", BRANCH_NAME, BASE_REPO_URL];
         Command::new("git")
             .args(&args)
             .arg(&temp_clone_dir)

@@ -107,7 +107,7 @@ pub struct TemplateRule {
 pub fn collect_templates(path: &std::path::PathBuf) -> eyre::Result<BTreeMap<String, Template>> {
     tracing::debug!(
         path = path.display().to_string(),
-        "collecting starters template"
+        "collecting starter templates"
     );
 
     let entries = fs::read_dir(path)?;
