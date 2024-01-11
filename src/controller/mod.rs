@@ -78,7 +78,6 @@ pub use app_routes::{AppRoutes, ListRoutes};
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
 use colored::Colorize;
 pub use routes::Routes;
@@ -98,10 +97,9 @@ use crate::{errors::Error, Result};
 /// # Example
 ///
 /// ```rust
-/// use axum::Json;
 /// use loco_rs::{
 ///     Result,
-///     controller::{format, unauthorized}
+///     controller::{format, Json, unauthorized}
 /// };
 ///
 /// async fn login() -> Result<Json<()>> {
@@ -150,6 +148,17 @@ impl ErrorDetail {
             error: Some(error.to_string()),
             description: None,
         }
+    }
+}
+
+use axum::extract::FromRequest;
+#[derive(Debug, FromRequest)]
+#[from_request(via(axum::Json), rejection(Error))]
+pub struct Json<T>(pub T);
+
+impl<T: Serialize> IntoResponse for Json<T> {
+    fn into_response(self) -> axum::response::Response {
+        axum::Json(self.0).into_response()
     }
 }
 

@@ -2,11 +2,11 @@
 //! reporting. These routes are commonly used to monitor the health of the
 //! application and its dependencies.
 
-use axum::{extract::State, routing::get, Json};
+use axum::{extract::State, routing::get};
 use serde::Serialize;
 
 use super::{format, routes::Routes};
-use crate::{app::AppContext, redis, Result};
+use crate::{app::AppContext, controller::Json, redis, Result};
 
 /// Represents the health status of the application.
 #[derive(Serialize)]
