@@ -8,8 +8,7 @@
 //! Rust struct.
 //!
 //! ```rust
-//! use loco_rs::{controller::format, Result};
-//! use axum::Json;
+//! use loco_rs::{controller::{Json, format}, Result};
 //!
 //! pub struct Health {
 //!     pub ok: bool,
@@ -20,18 +19,16 @@
 //! }
 //! ```
 
+use crate::{controller::Json, Result};
 use axum::{
     body::Body,
     http::{response::Builder, HeaderName, HeaderValue},
     response::{Html, Response},
-    Json,
 };
 use axum_extra::extract::cookie::Cookie;
 use bytes::{BufMut, BytesMut};
 use hyper::{header, StatusCode};
 use serde::Serialize;
-
-use crate::Result;
 
 /// Returns an empty response.
 ///
@@ -84,10 +81,9 @@ pub fn text(t: &str) -> Result<String> {
 ///
 /// ```rust
 /// use loco_rs::{
-///     controller::format,
+///     controller::{Json, format},
 ///     Result,
 /// };
-/// use axum::Json;
 ///
 /// pub struct Health {
 ///     pub ok: bool,
