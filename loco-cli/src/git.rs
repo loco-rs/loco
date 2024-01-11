@@ -104,9 +104,12 @@ fn clone_repo() -> eyre::Result<PathBuf> {
         .collect();
 
     let temp_clone_dir = env::temp_dir().join(random_string);
+    
+    let repo_url = env::var("STARTER_REPO_URL").unwrap_or_else(|_| BASE_REPO_URL.to_string());
+    let repo_brach = env::var("STARTER_REPO_BRANCH").unwrap_or_else(|_| BRANCH_NAME.to_string());
 
     tracing::debug!(
-        repo_url = BASE_REPO_URL,
+        repo_url = repo_url,
         clone_folder = temp_clone_dir.display().to_string(),
         "cloning loco"
     );
@@ -115,8 +118,7 @@ fn clone_repo() -> eyre::Result<PathBuf> {
     // to avoid potential conflicts with custom local Git settings, such as 'insteadOf'.
     // If Git is not installed, an alternative approach is attempting to clone the repository using the 'git2' library.
     if git_exists() {
-        // let args = vec!["clone", "--depth=1", BASE_REPO_URL];
-        let args = vec!["clone", "--depth=1", "-b", BRANCH_NAME, BASE_REPO_URL];
+        let args = vec!["clone", "--depth=1", "-b", &repo_brach, &repo_url];
         Command::new("git")
             .args(&args)
             .arg(&temp_clone_dir)

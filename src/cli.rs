@@ -267,6 +267,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
     if config.logger.enable {
         logger::init::<H>(&config.logger);
     }
+    tracing::warn!("Starting app...");
     match cli.command {
         Commands::Start {
             worker,

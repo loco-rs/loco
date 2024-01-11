@@ -4,7 +4,6 @@ Thank you for taking the time to read this.
 
 The first way to show support is to star our repos :).
 
-
 Loco is a community driven project. We welcome you to participate, contribute and together build a productivity-first web and api framework in Rust.
 
 ## Code of Conduct
