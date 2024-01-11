@@ -104,6 +104,13 @@ pub trait Hooks {
         Ok(router)
     }
 
+    /// Provide a list of initializers
+    /// An initializer can be used to seamlessly add functionality to your app
+    /// or to initialize some aspects of it.
+    async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
+        Ok(vec![])
+    }
+
     /// Calling the function before run the app
     /// You can now code some custom loading of resources or other things before
     /// the app runs
@@ -132,4 +139,26 @@ pub trait Hooks {
     /// Seeds the database with initial data.    
     #[cfg(feature = "with-db")]
     async fn seed(db: &DatabaseConnection, path: &Path) -> Result<()>;
+}
+
+/// An initializer.
+/// Initializers should be kept in `src/initializers/`
+#[async_trait]
+pub trait Initializer: Sync + Send {
+    /// The initializer name or identifier
+    fn name(&self) -> String;
+
+    /// Occurs after the app's `before_run`.
+    /// Use this to for one-time initializations, load caches, perform web
+    /// hooks, etc.
+    async fn before_run(&self, _app_context: &AppContext) -> Result<()> {
+        Ok(())
+    }
+
+    /// Occurs after the app's `after_routes`.
+    /// Use this to compose additional functionality and wire it into an Axum
+    /// Router
+    async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+        Ok(router)
+    }
 }

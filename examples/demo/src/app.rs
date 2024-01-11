@@ -1,8 +1,9 @@
 use std::path::Path;
 
 use async_trait::async_trait;
+use axum::Router as AxumRouter;
 use loco_rs::{
-    app::{AppContext, Hooks},
+    app::{AppContext, Hooks, Initializer},
     boot::{create_app, BootResult, StartMode},
     controller::AppRoutes,
     db::{self, truncate_table},
@@ -14,7 +15,8 @@ use migration::Migrator;
 use sea_orm::DatabaseConnection;
 
 use crate::{
-    controllers,
+    controllers::{self, auth::routes},
+    initializers::{self, axum_session::AxumSessionInitializer},
     models::_entities::{notes, users},
     tasks,
     workers::downloader::DownloadWorker,
@@ -37,10 +39,17 @@ impl Hooks for App {
         env!("CARGO_CRATE_NAME")
     }
 
+    async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
+        Ok(vec![Box::new(
+            initializers::axum_session::AxumSessionInitializer,
+        )])
+    }
+
     fn routes(_ctx: &AppContext) -> AppRoutes {
         AppRoutes::with_default_routes()
             .add_route(controllers::notes::routes())
             .add_route(controllers::auth::routes())
+            .add_route(controllers::mysession::routes())
             .add_route(controllers::user::routes())
     }
 
