@@ -11,7 +11,7 @@ use axum::Router as AxumRouter;
 
 use crate::{
     boot::{BootResult, StartMode},
-    config::Config,
+    config::{self, Config},
     controller::AppRoutes,
     environment::Environment,
     mailer::EmailSender,
@@ -93,6 +93,17 @@ pub trait Hooks {
     /// # Errors
     /// Could not boot the application
     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult>;
+
+    /// Override and return `Ok(true)` to provide an alternative logging and
+    /// tracing stack of your own.
+    /// When returning `Ok(true)`, Loco will *not* initialize its own logger,
+    /// so you should set up a complete tracing and logging stack.
+    ///
+    /// # Errors
+    /// If fails returns an error
+    fn init_logger(_config: &config::Config, _env: &Environment) -> Result<bool> {
+        Ok(false)
+    }
 
     /// Invoke this function after the Loco routers have been constructed. This
     /// function enables you to configure custom Axum logics, such as layers,
