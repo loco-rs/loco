@@ -119,7 +119,7 @@ $ pnpm dev
 
 First, move all our rest api endpoint under `/api` prefix. for doing it go to `src/app.rs`. in `routes` hooks function add `.prefix("/api")` to the default routes. 
 ```rust
-fn routes(_ctx: &loco_rs::prelude::AppContext) -> AppRoutes {
+fn routes(_ctx: &AppContext) -> AppRoutes {
     AppRoutes::with_default_routes()
         .prefix("/api")
         .add_route(controllers::notes::routes())

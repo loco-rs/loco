@@ -38,11 +38,13 @@ impl Hooks for App {
         )
     }
 
-    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
+    // TODO: On version upgrade, change to &Environment
+    async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
         create_app::<Self, Migrator>(mode, environment).await
     }
 
-    fn routes(_ctx: &loco_rs::prelude::AppContext) -> AppRoutes {
+    // TODO: On version upgrade, add: _ctx: &AppContext
+    fn routes() -> AppRoutes {
         AppRoutes::with_default_routes()
             .prefix("/api")
             .add_route(controllers::notes::routes())

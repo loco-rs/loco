@@ -14,9 +14,8 @@
 //!    boot::{create_app, BootResult, StartMode},
 //!    controller::AppRoutes,
 //!    environment::Environment,
-//!    worker::Processor,
 //!    task::Tasks,
-//!    environment::Environment,
+//!    worker::Processor,
 //!    Result,
 //! };
 //! use sea_orm::DatabaseConnection;

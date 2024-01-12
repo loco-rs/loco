@@ -28,10 +28,12 @@ impl Hooks for App {
         )
     }
 
-    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
+    // TODO: On version upgrade, change to &Environment
+    async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
         create_app::<Self>(mode, environment).await
     }
 
+    // TODO: On version upgrade, add: _ctx: &AppContext
     fn routes() -> AppRoutes {
         AppRoutes::empty()
             .prefix("/api")

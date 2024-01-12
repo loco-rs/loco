@@ -70,7 +70,6 @@ pub async fn start(boot: BootResult) -> Result<()> {
             serve(router, &app_context.config).await?;
         }
         (Some(router), None) => {
-            println!("Config: {:?}", app_context.config);
             serve(router, &app_context.config).await?;
         }
         (None, Some(processor)) => {

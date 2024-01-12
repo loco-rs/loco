@@ -28,6 +28,13 @@ format::render()
     .etag("foobar")?
     .json(notes)
 ```
+* **Breaking changes**: The `Hooks::boot` now takes an &Environment. Migration steps:
+    ```rust
+    impl Hooks for App {
+      ...
+      async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
+    }
+    ```
 
 
 ## v0.1.9
@@ -137,7 +144,7 @@ Reminder: `loco --version` will give you the current Loco framework which your a
     // Adding boot hook with the following code
     impl Hooks for App {
       ...
-      async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
+      async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
         // With DB:
         create_app::<Self, Migrator>(mode, environment).await
         // Without DB:
