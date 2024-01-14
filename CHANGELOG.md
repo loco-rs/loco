@@ -10,15 +10,29 @@
 * Add: JSON field support in model generation. [https://github.com/loco-rs/loco/pull/327](https://github.com/loco-rs/loco/pull/327) [https://github.com/loco-rs/loco/pull/332](https://github.com/loco-rs/loco/pull/332)
 * Add: float support in model generation. [https://github.com/loco-rs/loco/pull/317](https://github.com/loco-rs/loco/pull/317) 
 * Fix: conflicting idx definition on M:M migration. [https://github.com/loco-rs/loco/issues/311](https://github.com/loco-rs/loco/issues/311)
-* Add: **Braking changes** Supply `AppContext` to `routes` Hook. Migration steps:
-   ```rust
-    // Add app context to routes function
-    impl Hooks for App {
-      ...
-      fn routes(_ctx: &AppContext) -> AppRoutes;
-      ...
+* Add: **Braking changes** Supply `AppContext` to `routes` Hook. Migration steps, in `src/app.rs`:
+
+```rust
+// src/app.rs: add app context to routes function
+impl Hooks for App {
+  ...
+  fn routes(_ctx: &AppContext) -> AppRoutes;
+  ...
+}
+```
+
+* Add: **Breaking changes** change parameter type from `&str` to `&Environment` in `src/app.rs`
+
+```rust
+// src/app.rs: change parameter type for `environment` from `&str` to `&Environment`
+impl Hooks for App {
+    ...
+    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
+        create_app::<Self>(mode, environment).await
     }
-    ```
+    ...
+```
+
 * Added: setting cookies:
 
 ```rust

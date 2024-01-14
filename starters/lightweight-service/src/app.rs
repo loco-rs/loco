@@ -3,6 +3,7 @@ use loco_rs::{
     app::{AppContext, Hooks},
     boot::{create_app, BootResult, StartMode},
     controller::AppRoutes,
+    environment::Environment,
     task::Tasks,
     worker::Processor,
     Result,
@@ -27,11 +28,11 @@ impl Hooks for App {
         )
     }
 
-    async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
+    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
         create_app::<Self>(mode, environment).await
     }
 
-    fn routes() -> AppRoutes {
+    fn routes(_ctx: &AppContext) -> AppRoutes {
         AppRoutes::empty()
             .prefix("/api")
             .add_route(controllers::home::routes())

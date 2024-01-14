@@ -19,7 +19,6 @@
 //! }
 //! ```
 
-use crate::{controller::Json, Result};
 use axum::{
     body::Body,
     http::{response::Builder, HeaderName, HeaderValue},
@@ -29,6 +28,8 @@ use axum_extra::extract::cookie::Cookie;
 use bytes::{BufMut, BytesMut};
 use hyper::{header, StatusCode};
 use serde::Serialize;
+
+use crate::{controller::Json, Result};
 
 /// Returns an empty response.
 ///
