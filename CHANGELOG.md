@@ -2,6 +2,8 @@
 
 ## vNext
 
+* Add: Loco now has Initializers (see the docs). Initializers help you integrate infra into your app in a seamless way, as well as share pieces of set up code between your projects
+* Add: added an `init_logger` hook in `src/app.rs` for those who want to take ownership of their logging and tracing stack.
 * Add: Return a JSON scheam when payload json could not serialized to struct. [https://github.com/loco-rs/loco/pull/343](https://github.com/loco-rs/loco/pull/343)
 * Init logger in cli.rs. [https://github.com/loco-rs/loco/pull/338](https://github.com/loco-rs/loco/pull/338)
 * Add: return JSON schema in panic HTTP layer. [https://github.com/loco-rs/loco/pull/336](https://github.com/loco-rs/loco/pull/336)
