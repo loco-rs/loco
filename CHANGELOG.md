@@ -5,7 +5,7 @@
 ## v0.2.0
 
 
-* Add: Loco now has Initializers (see the docs). Initializers help you integrate infra into your app in a seamless way, as well as share pieces of set up code between your projects
+* Add: Loco now has Initializers ([see the docs](https://loco.rs/docs/the-app/initializers/)). Initializers help you integrate infra into your app in a seamless way, as well as share pieces of set up code between your projects
 * Add: added an `init_logger` hook in `src/app.rs` for those who want to take ownership of their logging and tracing stack.
 * Add: Return a JSON scheam when payload json could not serialized to struct. [https://github.com/loco-rs/loco/pull/343](https://github.com/loco-rs/loco/pull/343)
 * Init logger in cli.rs. [https://github.com/loco-rs/loco/pull/338](https://github.com/loco-rs/loco/pull/338)
@@ -13,7 +13,7 @@
 * Add: JSON field support in model generation. [https://github.com/loco-rs/loco/pull/327](https://github.com/loco-rs/loco/pull/327) [https://github.com/loco-rs/loco/pull/332](https://github.com/loco-rs/loco/pull/332)
 * Add: float support in model generation. [https://github.com/loco-rs/loco/pull/317](https://github.com/loco-rs/loco/pull/317) 
 * Fix: conflicting idx definition on M:M migration. [https://github.com/loco-rs/loco/issues/311](https://github.com/loco-rs/loco/issues/311)
-* Add: **Braking changes** Supply `AppContext` to `routes` Hook. Migration steps, in `src/app.rs`:
+* Add: **Breaking changes** Supply `AppContext` to `routes` Hook. Migration steps, in `src/app.rs`:
 
 ```rust
 // src/app.rs: add app context to routes function
