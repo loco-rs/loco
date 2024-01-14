@@ -834,6 +834,7 @@ To require authentication, we need to modify the function signature in this way:
 async fn add(
     auth: auth::JWT,
     State(ctx): State<AppContext>,
+    Json(params): Json<Params>,
 ) -> Result<Json<CurrentResponse>> {
   // we only want to make sure it exists
   let _current_user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
