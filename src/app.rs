@@ -11,7 +11,7 @@ use axum::Router as AxumRouter;
 
 use crate::{
     boot::{BootResult, StartMode},
-    config::Config,
+    config::{self, Config},
     controller::AppRoutes,
     environment::Environment,
     mailer::EmailSender,
@@ -94,6 +94,17 @@ pub trait Hooks {
     /// Could not boot the application
     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult>;
 
+    /// Override and return `Ok(true)` to provide an alternative logging and
+    /// tracing stack of your own.
+    /// When returning `Ok(true)`, Loco will *not* initialize its own logger,
+    /// so you should set up a complete tracing and logging stack.
+    ///
+    /// # Errors
+    /// If fails returns an error
+    fn init_logger(_config: &config::Config, _env: &Environment) -> Result<bool> {
+        Ok(false)
+    }
+
     /// Invoke this function after the Loco routers have been constructed. This
     /// function enables you to configure custom Axum logics, such as layers,
     /// that are compatible with Axum.
@@ -102,6 +113,13 @@ pub trait Hooks {
     /// Axum router error
     async fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
         Ok(router)
+    }
+
+    /// Provide a list of initializers
+    /// An initializer can be used to seamlessly add functionality to your app
+    /// or to initialize some aspects of it.
+    async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
+        Ok(vec![])
     }
 
     /// Calling the function before run the app
@@ -132,4 +150,26 @@ pub trait Hooks {
     /// Seeds the database with initial data.    
     #[cfg(feature = "with-db")]
     async fn seed(db: &DatabaseConnection, path: &Path) -> Result<()>;
+}
+
+/// An initializer.
+/// Initializers should be kept in `src/initializers/`
+#[async_trait]
+pub trait Initializer: Sync + Send {
+    /// The initializer name or identifier
+    fn name(&self) -> String;
+
+    /// Occurs after the app's `before_run`.
+    /// Use this to for one-time initializations, load caches, perform web
+    /// hooks, etc.
+    async fn before_run(&self, _app_context: &AppContext) -> Result<()> {
+        Ok(())
+    }
+
+    /// Occurs after the app's `after_routes`.
+    /// Use this to compose additional functionality and wire it into an Axum
+    /// Router
+    async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+        Ok(router)
+    }
 }

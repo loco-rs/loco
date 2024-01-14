@@ -12,7 +12,7 @@ pub use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, ModelTrait, Se
 #[cfg(any(feature = "auth_jwt", feature = "with-db"))]
 pub use crate::controller::middleware::auth;
 pub use crate::{
-    app::AppContext,
+    app::{AppContext, Initializer},
     controller::{format, not_found, unauthorized, Json, Routes},
     errors::Error,
     mailer,

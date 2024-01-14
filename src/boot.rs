@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use axum::Router;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
-use tracing::{trace, warn};
+use tracing::{info, trace, warn};
 
 #[cfg(feature = "with-db")]
 use crate::db;
@@ -222,8 +222,6 @@ pub async fn create_app<H: Hooks, M: MigratorTrait>(
         redis::converge(pool, &app_context.config.redis).await?;
     }
 
-    H::before_run(&app_context).await?;
-
     run_app::<H>(&mode, app_context).await
 }
 
@@ -238,8 +236,6 @@ pub async fn create_app<H: Hooks>(
         redis::converge(pool, &app_context.config.redis).await?;
     }
 
-    H::before_run(&app_context).await?;
-
     run_app::<H>(&mode, app_context).await
 }
 
@@ -248,10 +244,20 @@ pub async fn create_app<H: Hooks>(
 ///
 /// When could not create the application
 pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Result<BootResult> {
+    H::before_run(&app_context).await?;
+    let initializers = H::initializers(&app_context).await?;
+    info!(initializers = ?initializers.iter().map(|init| init.name()).collect::<Vec<_>>().join(","), "initializers loaded");
+    for initializer in &initializers {
+        initializer.before_run(&app_context).await?;
+    }
     match mode {
         StartMode::ServerOnly => {
             let app = H::routes(&app_context).to_router(app_context.clone())?;
-            let router = H::after_routes(app, &app_context).await?;
+            let mut router = H::after_routes(app, &app_context).await?;
+            for initializer in &initializers {
+                router = initializer.after_routes(router, &app_context).await?;
+            }
+
             Ok(BootResult {
                 app_context,
                 router: Some(router),
@@ -261,7 +267,10 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
         StartMode::ServerAndWorker => {
             let processor = create_processor::<H>(&app_context)?;
             let app = H::routes(&app_context).to_router(app_context.clone())?;
-            let router = H::after_routes(app, &app_context).await?;
+            let mut router = H::after_routes(app, &app_context).await?;
+            for initializer in &initializers {
+                router = initializer.after_routes(router, &app_context).await?;
+            }
             Ok(BootResult {
                 app_context,
                 router: Some(router),

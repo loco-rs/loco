@@ -308,7 +308,8 @@ where
     ColumnDef::new(name).decimal().not_null().clone()
 }
 
-/// Create a nullable decimal length column definition with custom precision and scale.
+/// Create a nullable decimal length column definition with custom precision and
+/// scale.
 pub fn decimal_len_null<T>(name: T, precision: u32, scale: u32) -> ColumnDef
 where
     T: IntoIden,
@@ -316,7 +317,8 @@ where
     ColumnDef::new(name).decimal_len(precision, scale).clone()
 }
 
-/// Create a non-nullable decimal length column definition with custom precision and scale.
+/// Create a non-nullable decimal length column definition with custom precision
+/// and scale.
 pub fn decimal_len<T>(name: T, precision: u32, scale: u32) -> ColumnDef
 where
     T: IntoIden,
