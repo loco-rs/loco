@@ -2,13 +2,6 @@
 //!
 //! This module defines the configuration structures and functions to manage and
 //! load configuration settings for the application.
-//!
-//! Full configuration examples:
-//!
-//! ### Development, REST API
-//! ```yaml
-#![doc = include_str!("../starters/rest-api/config/development.yaml")]
-//! ```
 use std::path::{Path, PathBuf};
 
 use fs_err as fs;
