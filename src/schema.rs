@@ -406,5 +406,5 @@ pub fn jsonb_null<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).json_binary().not_null().clone()
+    ColumnDef::new(name).json_binary().clone()
 }
