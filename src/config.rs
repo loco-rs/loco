@@ -27,7 +27,6 @@ lazy_static! {
 ///
 /// This struct encapsulates various configuration settings. The configuration
 /// can be customized through YAML files for different environments.
-
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
     pub logger: Logger,
