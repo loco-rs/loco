@@ -48,8 +48,6 @@ pub struct AppContext {
 /// Users of the web server application should implement this trait to customize
 /// the application's routing, worker connections, task registration, and
 /// database actions according to their specific requirements and use cases.
-///
-/// ```
 #[async_trait]
 pub trait Hooks {
     /// Defines the composite app version

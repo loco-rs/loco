@@ -52,7 +52,7 @@ impl Environment {
     ///
     /// # Errors
     ///
-    /// Returns a [`ConfigError`] if an error occurs during loading
+    /// Returns error if an error occurs during loading
     /// configuration file an parse into [`Config`] struct.
     pub fn load(&self) -> Result<Config> {
         Config::new(self)
@@ -62,7 +62,7 @@ impl Environment {
     ///
     /// # Errors
     ///
-    /// Returns a [`ConfigError`] if an error occurs during loading
+    /// Returns error if an error occurs during loading
     /// configuration file an parse into [`Config`] struct.
     pub fn load_from_folder(&self, path: &Path) -> Result<Config> {
         Config::from_folder(self, path)
