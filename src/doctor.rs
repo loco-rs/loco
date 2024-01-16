@@ -82,6 +82,12 @@ pub async fn run_all(config: &Config) -> BTreeMap<Resource, Check> {
 
 /// Checks the database connection.
 pub async fn check_db(config: &Database) -> Check {
+    // TODO: this somehow needs to also check table permissions for the given user
+    // db:status(conn) does this, by attempting to check migration status, we get a
+    // side effect of checking permission access.
+    // so we can add this call right here after connecting. however at the moment
+    // it does not fit the `Check` interface, because we want to fail and return a
+    // Result.
     match db::connect(config).await {
         Ok(conn) => match conn.ping().await {
             Ok(()) => Check {

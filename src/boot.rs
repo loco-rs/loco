@@ -139,18 +139,27 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
     match cmd {
         RunDbCommand::Migrate => {
             tracing::warn!("migrate:");
-            let _ = db::migrate::<M>(&app_context.db).await;
+            db::migrate::<M>(&app_context.db).await?;
         }
         RunDbCommand::Reset => {
             tracing::warn!("reset:");
-            let _ = db::reset::<M>(&app_context.db).await;
+            db::reset::<M>(&app_context.db).await?;
         }
         RunDbCommand::Status => {
             tracing::warn!("status:");
-            let _ = db::status::<M>(&app_context.db).await;
+            db::status::<M>(&app_context.db).await?;
         }
         RunDbCommand::Entities => {
             tracing::warn!("entities:");
+
+            // this is only to make sure we have the correct permissions on the DB for the
+            // user, and fail if we dont.  because SeaORM is blind to wrong
+            // permissions and does the wrong thing
+            // note: from all DB operations here, `entities` is the only one that uses
+            // SeaORM, and SeaORM does not check table permissions and fails silently (which
+            // is the problem)
+            db::status::<M>(&app_context.db).await?;
+
             tracing::warn!("{}", db::entities::<M>(app_context)?);
         }
         RunDbCommand::Truncate => {

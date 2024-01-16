@@ -288,7 +288,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
         #[cfg(feature = "with-db")]
         Commands::Db { command } => {
             if matches!(command, DbCommands::Create) {
-                let _ = db::create(&environment.load()?.database.uri).await;
+                db::create(&environment.load()?.database.uri).await?;
             } else {
                 let app_context = create_context::<H>(&environment).await?;
                 run_db::<H, M>(&app_context, command.into()).await?;
