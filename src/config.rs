@@ -2,6 +2,26 @@
 //!
 //! This module defines the configuration structures and functions to manage and
 //! load configuration settings for the application.
+
+/***
+=============
+CONTRIBUTORS:
+=============
+
+Here's a check list when adding configuration values:
+
+* Add the new configuration piece
+* Document each field with the appropriate rustdoc comment
+* Go to `starters/`, evaluate which starter needs a configuration update, and update as needed.
+  apply a YAML comment above the new field or section with explanation and possible values.
+
+Notes:
+* Configuration is feature-dependent: with and without database
+* Configuration is "stage" dependent: development, test, production
+* We typically provide best practice values for development and test, but by-design we do not provide default values for production
+
+***/
+
 use std::path::{Path, PathBuf};
 
 use fs_err as fs;
