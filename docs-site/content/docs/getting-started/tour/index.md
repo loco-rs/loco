@@ -16,7 +16,7 @@ top = false
 <br/>
 <br/>
 <br/>
-Let's create a backend on `loco` in 4 commands. First install `loco-cli` and `sea-orm-cli`:
+Let's create a blog backend on `loco` in 4 commands. First install `loco-cli` and `sea-orm-cli`:
 
 ```sh
 $ cargo install loco-cli
