@@ -192,7 +192,12 @@ pub fn entities<M: MigratorTrait>(ctx: &AppContext) -> AppResult<String> {
         &ctx.config.database.uri
     )
     .stderr_to_stdout()
-    .run()?;
+    .run()
+    .map_err(|err| {
+        LocoError::Message(format!(
+            "failed to generate entity using sea-orm-cli binary. error details: `{err}`",
+        ))
+    })?;
     fix_entities()?;
 
     Ok(String::from_utf8_lossy(&out.stdout).to_string())
