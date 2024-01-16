@@ -54,9 +54,9 @@ Now you can create your new app (choose "Saas app" for built-in authentication).
 $ loco new
 ✔ ❯ App name? · myapp
 ? ❯ What would you like to build? ›
-❯ lightweight-service (minimal, only controllers and views)
+  lightweight-service (minimal, only controllers and views)
   Rest API (with DB and user auth)
-  Saas app (with DB and user auth)
+❯ Saas app (with DB and user auth)
 🚂 Loco app generated successfully in:
 myapp
 ```
