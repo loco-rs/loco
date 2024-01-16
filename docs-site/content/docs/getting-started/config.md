@@ -116,3 +116,5 @@ Other than the commented fields in the `logger:` section on your YAML file, here
 
 * `logger.pretty_backtrace` - will display colorful backtrace without noise for great development experience. Note that this forcefully sets `RUST_BACKTRACE=1` into the process' env, which enables a (costly) backtrace capture on specific errors. Enable this in development, disable it in production. When needed in production, use `RUST_BACKTRACE=1` ad-hoc in the command line to show it.
 
+
+For all available configuration options [click here](https://docs.rs/loco-rs/latest/loco_rs/config/struct.Config.html)

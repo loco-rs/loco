@@ -47,8 +47,8 @@ pub struct Email {
 #[derive(Default)]
 #[allow(clippy::module_name_repetitions)]
 pub struct MailerOpts {
-    from: String,
-    reply_to: Option<String>,
+    pub from: String,
+    pub reply_to: Option<String>,
 }
 
 /// The `Mailer` trait defines methods for sending emails and processing email

@@ -52,6 +52,17 @@ pub struct Config {
     pub workers: Workers,
     pub mailer: Option<Mailer>,
 
+    /// Custom app settings
+    ///
+    /// Example:
+    /// ```yaml
+    /// settings:
+    ///   allow_list:
+    ///     - google.com
+    ///     - apple.com
+    /// ```
+    /// And then optionally deserialize it to your own `Settings` type by
+    /// accessing `ctx.config.settings`.
     #[serde(default)]
     pub settings: Option<serde_json::Value>,
 }
