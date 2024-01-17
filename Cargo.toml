@@ -46,7 +46,7 @@ serde = "1"
 serde_json = "1"
 serde_yaml = "0.9"
 serde_variant = "0.1.2"
-serde_enabled = { git = "https://github.com/felipesere/serde_enabled.git" }
+serde_enabled = "0.1.0"
 
 # worker fwk 
 rusty-sidekiq = { version = "0.8.2", default-features = false }
