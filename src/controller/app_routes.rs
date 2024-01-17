@@ -247,8 +247,8 @@ impl AppRoutes {
             ServeDir::new(&config.folder.path).not_found_service(ServeFile::new(&config.fallback));
         Ok(app.nest_service(
             &config.folder.uri,
-            if config.compress {
-                tracing::info!("[Middleware] Enable static assets compression");
+            if config.precompress {
+                tracing::info!("[Middleware] Enable precompressed static assets");
                 serve_dir.precompressed_gzip()
             } else {
                 serve_dir

@@ -323,7 +323,7 @@ pub struct StaticAssetsMiddleware {
     /// (single page app) where routes are virtual.
     pub fallback: String,
     /// Enable `precompressed_gzip`, will serve the .gz file if it exists
-    pub compress: bool,
+    pub precompress: bool,
 }
 
 /// Asset folder config.
