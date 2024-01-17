@@ -334,7 +334,6 @@ pub struct FolderAssetsMiddleware {
 /// CORS middleware configuration
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CorsMiddleware {
-    pub enable: bool,
     /// Allow origins
     pub allow_origins: Option<Vec<String>>,
     /// Allow headers
