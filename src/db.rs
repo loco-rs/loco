@@ -217,7 +217,7 @@ pub async fn entities<M: MigratorTrait>(ctx: &AppContext) -> AppResult<String> {
     .stderr_to_stdout()
     .run()
     .map_err(|err| {
-        LocoError::Message(format!(
+        Error::Message(format!(
             "failed to generate entity using sea-orm-cli binary. error details: `{err}`",
         ))
     })?;
