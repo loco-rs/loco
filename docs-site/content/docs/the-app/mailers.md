@@ -37,9 +37,74 @@ async fn register(
 
 This will enqueue a mail delivery job. The action is instant because the delivery will be performed later in the background.
 
+## Mailer Configuration
+
+Configuration for mailers is done in the `config/[stage].toml` file. Here is the default configuration: 
+
+```toml
+# Mailer Configuration.
+mailer:
+  # SMTP mailer configuration.
+  smtp:
+    # Enable/Disable smtp mailer.
+    enable: true
+    # SMTP server host. e.x localhost, smtp.gmail.com
+    host: {{ get_env(name="MAILER_HOST", default="localhost") }}
+    # SMTP server port
+    port: 1025
+    # Use secure connection (SSL/TLS).
+    secure: false
+    # auth:
+    #   user:
+    #   password:
+```
+
+Mailer is done by sending emails to a SMTP server. An example configuration for using sendgrid (choosing the SMTP relay option):
+
+```toml
+# Mailer Configuration.
+mailer:
+  # SMTP mailer configuration.
+  smtp:
+    # Enable/Disable smtp mailer.
+    enable: true
+    # SMTP server host. e.x localhost, smtp.gmail.com
+    host: {{ get_env(name="MAILER_HOST", default="smtp.sendgrid.net") }}
+    # SMTP server port
+    port: 465
+    # Use secure connection (SSL/TLS).
+    secure: true
+    auth:
+      user: "apikey"
+      password: "your-sendgrid-api-key"
+```
+
+### Default Email Address
+
+Other than specifying email addresses for every email sending task, you can override a default email address per-mailer.
+
+First, override the `opts` function in the `Mailer` trait, in this example for an `AuthMailer`:
+
+```rust
+impl Mailer for AuthMailer {
+    fn opts() -> MailerOpts {
+        MailerOpts {
+            from: // set your from email,
+            ..Default::default()
+        }
+    }
+}
+```
+
 ## Adding a mailer
 
-Now, you need to define your mailer, in `mailers/auth.rs`, add:
+You can generate a mailer:
+
+```sh
+cargo loco generate mailer <mailer name>
+```
+
+Or, you can define it manually if you like to see how things work. In `mailers/auth.rs`, add:
 
 ```rust
 static welcome: Dir<'_> = include_dir!("src/mailers/auth/welcome");
@@ -78,6 +143,19 @@ src/
         html.t
         text.t
     auth.rs         <-- mailer definition
+```
+
+### Running a mailer
+The mailer operates as a background worker, which means you need to run the worker separately to process the jobs. The default startup command `cargo loco start` does not initiate the worker, so you need to run it separately:
+
+To run the worker, use the following command:
+```bash
+cargo loco start --worker
+```
+
+To run both the server and the worker simultaneously, use the following command:
+```bash
+cargo loco start --server-and-worker
 ```
 
 ## Testing a mailer
