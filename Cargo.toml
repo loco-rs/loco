@@ -109,6 +109,8 @@ cfg-if = "1"
 
 uuid = { version = "1.6", features = ["v4"] }
 requestty = "0.5.0"
+fluent-templates = { version = "0.8.0", features = ["tera"] }
+unic-langid = "0.9.4"
 
 socketioxide = { version = "0.10.0", features = ["state"], optional = true }
 

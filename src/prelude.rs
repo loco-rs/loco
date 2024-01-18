@@ -15,7 +15,7 @@ pub use crate::{
     app::{AppContext, Initializer},
     controller::{format, not_found, unauthorized, Json, Routes},
     errors::Error,
-    mailer,
+    fluent, mailer,
     mailer::Mailer,
     task::{Task, TaskInfo},
     worker::{self, AppWorker},

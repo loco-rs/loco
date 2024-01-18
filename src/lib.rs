@@ -52,6 +52,7 @@ pub mod config;
 pub mod controller;
 pub mod environment;
 pub mod errors;
+pub mod fluent;
 mod gen;
 pub mod hash;
 mod logger;
