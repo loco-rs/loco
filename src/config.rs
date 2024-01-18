@@ -532,6 +532,7 @@ mod tests {
                     uri: "/"
                     path: "frontend/dist"
                   fallback: "frontend/dist/index.html"
+                  precompressed: false
 
             workers:
               mode: BackgroundQueue

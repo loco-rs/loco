@@ -189,75 +189,61 @@ impl AppRoutes {
 
         app = Self::add_powered_by_header(app, &ctx.config.server);
 
-        if let Some(catch_panic) = &ctx.config.server.middlewares.catch_panic {
-            if catch_panic.is_enabled() {
-                app = Self::add_catch_panic(app);
-            }
+        let middlewares = &ctx.config.server.middlewares;
+
+        if middlewares
+            .catch_panic
+            .as_ref()
+            .is_some_and(|cp| cp.is_enabled())
+        {
+            app = Self::add_catch_panic(app);
         }
 
-        if let Some(compression) = &ctx.config.server.middlewares.compression {
-            if compression.is_enabled() {
-                app = Self::add_compression_middleware(app);
-            }
+        if middlewares
+            .compression
+            .as_ref()
+            .is_some_and(|c| c.is_enabled())
+        {
+            app = Self::add_compression_middleware(app);
         }
 
-        if let Some(limit) = ctx
-            .config
-            .server
-            .middlewares
+        if let Some(limit) = middlewares
             .limit_payload
-            .clone()
-            .and_then(|l| l.into_inner())
+            .as_ref()
+            .and_then(|limit_payload| limit_payload.as_ref())
         {
-            app = Self::add_limit_payload_middleware(app, &limit)?;
+            app = Self::add_limit_payload_middleware(app, limit)?;
         }
 
-        if let Some(logger) = &ctx.config.server.middlewares.logger {
-            if logger.is_enabled() {
-                app = Self::add_logger_middleware(app, &ctx.environment);
-            }
+        if middlewares.logger.as_ref().is_some_and(|l| l.is_enabled()) {
+            app = Self::add_logger_middleware(app, &ctx.environment);
         }
 
-        if let Some(timeout_request) = ctx
-            .config
-            .server
-            .middlewares
+        if let Some(timeout_request) = middlewares
             .timeout_request
-            .clone()
-            .and_then(|t| t.into_inner())
+            .as_ref()
+            .and_then(|t| t.as_ref())
         {
-            app = Self::add_timeout_middleware(app, &timeout_request);
+            app = Self::add_timeout_middleware(app, timeout_request);
         }
 
-        if let Some(cors) = ctx
-            .config
-            .server
-            .middlewares
+        if let Some(cors) = middlewares
             .cors
-            .clone()
-            .and_then(|c| c.into_inner())
-            .map(|c| Self::get_cors_middleware(&c))
+            .as_ref()
+            .and_then(|c| c.as_ref())
+            .map(Self::get_cors_middleware)
             .transpose()?
         {
             app = app.layer(cors.clone());
             tracing::info!("[Middleware] Adding cors");
         }
 
-        if let Some(static_assets) = ctx
-            .config
-            .server
-            .middlewares
-            .static_assets
-            .clone()
-            .and_then(|e| e.into_inner())
-        {
-            app = Self::add_static_asset_middleware(app, &static_assets)?;
+        if let Some(static_assets) = middlewares.static_assets.as_ref().and_then(|e| e.as_ref()) {
+            app = Self::add_static_asset_middleware(app, static_assets)?;
         }
 
-        if let Some(etag) = &ctx.config.server.middlewares.etag {
-            if etag.is_enabled() {
-                app = Self::add_etag_middleware(app);
-            }
+        if middlewares.etag.as_ref().is_some_and(|e| e.is_enabled()) {
+            app = Self::add_etag_middleware(app);
         }
 
         #[cfg(feature = "channels")]
