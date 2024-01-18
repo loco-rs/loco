@@ -38,6 +38,7 @@ async fn register(
 This will enqueue a mail delivery job. The action is instant because the delivery will be performed later in the background.
 
 ## Mailer Configuration
+
 Configuration for mailers is done in the `config/[stage].toml` file. Here is the default configuration: 
 
 ```toml
@@ -79,24 +80,31 @@ mailer:
 ```
 
 ### Default Email Address
-In addition to the SMTP configuration, you also need to configure the default email address that will be used as the sender for all emails. This email is most likely the email you registered with your email provider. You can set this by changing the `DEFAULT_FROM_SENDER` constant variable in the `src/mailer/mod.rs` file.
 
-Original value:
-```rust
-/// Default email address that will be used as the sender for all emails.
-pub const DEFAULT_FROM_SENDER: &str = "System <system@example.com>";
-```
+Other than specifying email addresses for every email sending task, you can override a default email address per-mailer.
 
-After changing with sendgrid example:
+First, override the `opts` function in the `Mailer` trait, in this example for an `AuthMailer`:
+
 ```rust
-/// Default email address that will be used as the sender for all emails.
-/// The email address must be registered with your email provider.
-pub const DEFAULT_FROM_SENDER: &str = "My App <myapp@example.com>";
+impl Mailer for AuthMailer {
+    fn opts() -> MailerOpts {
+        MailerOpts {
+            from: // set your from email,
+            ..Default::default()
+        }
+    }
+}
 ```
 
 ## Adding a mailer
 
-Now, you need to define your mailer, in `mailers/auth.rs`, add:
+You can generate a mailer:
+
+```sh
+cargo loco generate mailer <mailer name>
+```
+
+Or, you can define it manually if you like to see how things work. In `mailers/auth.rs`, add:
 
 ```rust
 static welcome: Dir<'_> = include_dir!("src/mailers/auth/welcome");
