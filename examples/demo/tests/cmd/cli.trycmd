@@ -125,3 +125,40 @@ $ blo-cli doctor
 ✅ Redis connection: success
 
 ```
+
+```console 
+$ blo-cli db entities
+[[..][0m [32m INFO[0m [2mloco_rs::config[0m[2m:[0m loading environment from [3mselected_path[0m[2m=[0m"config/[..].yaml"
+[[..][0m [33m WARN[0m [2mloco_rs::boot[0m[2m:[0m pretty backtraces are enabled (this is great for development but has a runtime cost for production. disable with `logger.pretty_backtrace` in your config yaml)
+[[..][0m [33m WARN[0m [2mloco_rs::boot[0m[2m:[0m entities:
+Connecting to Postgres ...
+Discovering schema ...
+... discovered.
+Generating notes.rs
+    > Column `created_at`: DateTime, not_null
+    > Column `updated_at`: DateTime, not_null
+    > Column `id`: i32, auto_increment, not_null
+    > Column `title`: Option<String>
+    > Column `content`: Option<String>
+Generating users.rs
+    > Column `created_at`: DateTime, not_null
+    > Column `updated_at`: DateTime, not_null
+    > Column `id`: i32, auto_increment, not_null
+    > Column `pid`: Uuid, not_null, unique
+    > Column `email`: String, not_null, unique
+    > Column `password`: String, not_null
+    > Column `api_key`: String, not_null, unique
+    > Column `name`: String, not_null
+    > Column `reset_token`: Option<String>
+    > Column `reset_sent_at`: Option<DateTime>
+    > Column `email_verification_token`: Option<String>
+    > Column `email_verification_sent_at`: Option<DateTime>
+    > Column `email_verified_at`: Option<DateTime>
+Writing src/models/_entities/notes.rs
+Writing src/models/_entities/users.rs
+Writing src/models/_entities/mod.rs
+Writing src/models/_entities/prelude.rs
+... Done.
+[[..][0m [33m WARN[0m [2mloco_rs::boot[0m[2m:[0m 
+
+```
