@@ -17,11 +17,12 @@ use crate::{
     controller::ListRoutes,
     environment::Environment,
     errors::Error,
+    logger,
     mailer::{EmailSender, MailerWorker},
     redis,
     task::Tasks,
     worker::{self, AppWorker, Pool, Processor, RedisConnectionManager, DEFAULT_QUEUES},
-    Result, logger,
+    Result,
 };
 
 /// Represents the application startup mode.
