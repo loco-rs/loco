@@ -485,7 +485,7 @@ impl Config {
 mod tests {
     use serde::{Deserialize, Serialize};
 
-    use super::Enable;
+    use super::{Config, Enable};
 
     #[derive(Deserialize, Serialize, Debug, Eq, PartialEq)]
     struct FancyAssets {
@@ -496,6 +496,111 @@ mod tests {
     #[derive(Deserialize, Serialize, Debug)]
     struct WithFancyAssets {
         assets: Enable<FancyAssets>,
+    }
+
+    #[test]
+    fn default_configuration() {
+        let raw = indoc::indoc! {r#"
+            logger:
+              enable: true
+              pretty_backtrace: true
+              level: debug
+              format: compact
+
+            server:
+              port: 3000
+              host: http://localhost
+              middlewares:
+                etag:
+                  enable: true
+                limit_payload:
+                  enable: true
+                  body_limit: 5mb
+                logger:
+                  enable: true
+                catch_panic:
+                  enable: true
+                timeout_request:
+                  enable: true
+                  timeout: 5000
+                cors:
+                  enable: true
+                static:
+                  enable: true
+                  must_exist: true
+                  folder:
+                    uri: "/"
+                    path: "frontend/dist"
+                  fallback: "frontend/dist/index.html"
+
+            workers:
+              mode: BackgroundQueue
+
+            mailer:
+              smtp:
+                enable: true
+                host: "localhost"
+                port: 1025
+                secure: false
+
+            database:
+              uri: postgres://loco:loco@localhost:5432/loco_app
+              enable_logging: false
+              connect_timeout: 500
+              idle_timeout: 500
+              min_connections: 1
+              max_connections: 1
+              auto_migrate: true
+              dangerously_truncate: false
+              dangerously_recreate: false
+
+            redis:
+              uri: redis://127.0.0.1
+              dangerously_flush: false
+
+            auth:
+              jwt:
+                secret: PqRwLF2rhHe8J22oBeHy
+                expiration: 604800 # 7 days
+            "# };
+
+        let config: Config = serde_yaml::from_str(raw).unwrap();
+
+        assert!(config.logger.is_enabled());
+        let middlewares = &config.server.middlewares;
+
+        assert!(middlewares
+            .cors
+            .as_ref()
+            .is_some_and(|cors| cors.is_enabled()));
+        assert!(middlewares
+            .etag
+            .as_ref()
+            .is_some_and(|etag| etag.is_enabled()));
+        assert!(middlewares
+            .limit_payload
+            .as_ref()
+            .is_some_and(|limit_payload| limit_payload.is_enabled()));
+
+        assert!(middlewares
+            .catch_panic
+            .as_ref()
+            .is_some_and(|catch_panic| catch_panic.is_enabled()));
+
+        assert!(middlewares
+            .timeout_request
+            .as_ref()
+            .is_some_and(|timeout_request| timeout_request.is_enabled()));
+
+        assert!(middlewares
+            .static_assets
+            .as_ref()
+            .is_some_and(|static_assets| static_assets.is_enabled()));
+
+        assert!(config
+            .mailer
+            .as_ref()
+            .is_some_and(|mailer| mailer.smtp.as_ref().is_some_and(|smtp| smtp.is_enabled())));
     }
 
     #[test]
