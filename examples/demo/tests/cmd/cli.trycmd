@@ -107,23 +107,7 @@ $ blo-cli doctor
 ```
 
 ```console 
-$ LOCO_ENV=teste2e blo-cli db reset
-[[..][0m [32m INFO[0m [2mloco_rs::config[0m[2m:[0m loading environment from [3mselected_path[0m[2m=[0m"config/[..].yaml"
-[[..][0m [33m WARN[0m [2mloco_rs::boot[0m[2m:[0m reset:
-[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Dropping table 'seaql_migrations'
-[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Table 'seaql_migrations' has been dropped
-[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Dropping table 'users'
-[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Table 'users' has been dropped
-[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Dropping table 'notes'
-[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Table 'notes' has been dropped
-[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Dropping all types
-[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Applying all pending migrations
-[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Applying migration 'm20220101_000001_users'
-[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Migration 'm20220101_000001_users' has been applied
-[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Applying migration 'm20231103_114510_notes'
-[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Migration 'm20231103_114510_notes' has been applied
-[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Applying all pending migrations
-[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m No pending migrations
+$ LOCO_ENV=test blo-cli db reset
 
 ```
 
