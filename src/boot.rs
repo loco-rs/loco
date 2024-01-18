@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use axum::Router;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
+use serde_enabled::Enable;
 use tracing::{info, trace, warn};
 
 #[cfg(feature = "with-db")]
@@ -180,17 +181,21 @@ async fn serve(app: Router, config: &Config) -> Result<()> {
 pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppContext> {
     let config = environment.load()?;
 
-    if let Some(l) = config.logger.as_ref() {
-        logger::init::<H>(l);
+    let logger = match config.logger.clone() {
+        Enable::On(logger) => logger,
+        Enable::Off => config::Logger::default(),
+    };
 
-        if l.pretty_backtrace {
-            std::env::set_var("RUST_BACKTRACE", "1");
-            warn!(
-                "pretty backtraces are enabled (this is great for development but has a runtime cost \
-                for production. disable with `logger.pretty_backtrace` in your config yaml)"
-            );
-        }
+    logger::init::<H>(&logger);
+
+    if logger.pretty_backtrace {
+        std::env::set_var("RUST_BACKTRACE", "1");
+        warn!(
+            "pretty backtraces are enabled (this is great for development but has a runtime cost \
+            for production. disable with `logger.pretty_backtrace` in your config yaml)"
+        );
     }
+
     #[cfg(feature = "with-db")]
     let db = db::connect(&config.database).await?;
 
