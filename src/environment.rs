@@ -71,7 +71,10 @@ impl Environment {
 
 impl std::fmt::Display for Environment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        to_variant_name(self).expect("only enum supported").fmt(f)
+        match self {
+            Self::Any(s) => s.fmt(f),
+            _ => to_variant_name(self).expect("only enum supported").fmt(f),
+        }
     }
 }
 
