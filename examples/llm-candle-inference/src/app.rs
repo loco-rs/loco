@@ -7,6 +7,7 @@ use loco_rs::{
     app::{AppContext, Hooks},
     boot::{create_app, BootResult, StartMode},
     controller::AppRoutes,
+    environment::Environment,
     task::Tasks,
     worker::Processor,
     Result,
@@ -22,7 +23,7 @@ impl Hooks for App {
         env!("CARGO_CRATE_NAME")
     }
 
-    async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
+    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
         create_app::<Self>(mode, environment).await
     }
 
@@ -42,7 +43,7 @@ impl Hooks for App {
         let st = Arc::new(RwLock::new(model));
         Ok(router.layer(Extension(st)))
     }
-    fn routes() -> AppRoutes {
+    fn routes(ctx: &AppContext) -> AppRoutes {
         AppRoutes::with_default_routes().add_route(controllers::home::routes())
     }
 

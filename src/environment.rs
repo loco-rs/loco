@@ -20,12 +20,19 @@ use serde_variant::to_variant_name;
 use super::config::Config;
 use crate::Result;
 
+pub const DEFAULT_ENVIRONMENT: &str = "development";
+
+impl From<String> for Environment {
+    fn from(env: String) -> Self {
+        Self::from_str(&env).unwrap_or(Self::Any(env))
+    }
+}
 #[must_use]
-pub fn resolve_from_env() -> Option<String> {
+pub fn resolve_from_env() -> String {
     std::env::var("LOCO_ENV")
         .or_else(|_| std::env::var("RAILS_ENV"))
         .or_else(|_| std::env::var("NODE_ENV"))
-        .ok()
+        .unwrap_or_else(|_| DEFAULT_ENVIRONMENT.to_string())
 }
 
 /// Application environment
@@ -45,7 +52,7 @@ impl Environment {
     ///
     /// # Errors
     ///
-    /// Returns a [`ConfigError`] if an error occurs during loading
+    /// Returns error if an error occurs during loading
     /// configuration file an parse into [`Config`] struct.
     pub fn load(&self) -> Result<Config> {
         Config::new(self)
@@ -55,7 +62,7 @@ impl Environment {
     ///
     /// # Errors
     ///
-    /// Returns a [`ConfigError`] if an error occurs during loading
+    /// Returns error if an error occurs during loading
     /// configuration file an parse into [`Config`] struct.
     pub fn load_from_folder(&self, path: &Path) -> Result<Config> {
         Config::from_folder(self, path)

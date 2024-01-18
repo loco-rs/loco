@@ -40,6 +40,12 @@ In this example, the information about where `rendered` came from was long lost 
 
 In this case, we duplicate the YAML error type, leave one of those for auto conversions with `from`, where we don't have a file, and create a new specialized error type with the file information: `YAMLFile`.
 
+## The `CONTRIBUTORS` comment
+
+Some files contain a special `CONTRIBUTORS` comment. This comment should
+contain context, special notes for that module, and a checklist if needed, so please make sure to follow it.
+
+
 ## Publishing a new version
 
 **Test your changes**

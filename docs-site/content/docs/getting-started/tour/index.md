@@ -16,7 +16,7 @@ top = false
 <br/>
 <br/>
 <br/>
-Let's create a blog on `loco` in 4 commands. First install `loco-cli` and `sea-orm-cli`:
+Let's create a blog backend on `loco` in 4 commands. First install `loco-cli` and `sea-orm-cli`:
 
 ```sh
 $ cargo install loco-cli
@@ -27,9 +27,11 @@ Now you can create your new app (choose "Saas app").
 
 ```sh
 $ loco new
-❯ App name? [myapp]:
+✔ ❯ App name? · myapp
+? ❯ What would you like to build? ›
+  lightweight-service (minimal, only controllers and views)
+  Rest API (with DB and user auth)
 ❯ Saas app (with DB and user auth)
-  Stateless service (minimal, no db)
 🚂 Loco app generated successfully in:
 myapp
 ```
@@ -86,7 +88,7 @@ You don't have to run things through `cargo` but in development it's highly reco
 
 ## Adding a CRUD API
 
-We have a base SaaS app with user authentication generated for us. Let's make it a blog by adding a `post` and a full CRUD API using `scaffold`:
+We have a base SaaS app with user authentication generated for us. Let's make it a blog backend by adding a `post` and a full CRUD API using `scaffold`:
 
 ```sh
 $ cargo loco generate scaffold post title:string content:text
@@ -127,7 +129,7 @@ You can list your posts:
 $ curl localhost:3000/api/posts
 ```
 
-For those counting -- the commands for creating a blog were:
+For those counting -- the commands for creating a blog backend were:
 
 1. `cargo install loco-cli`
 2. `cargo install sea-orm-cli`
@@ -139,6 +141,22 @@ Done! enjoy your ride with `loco` 🚂
 ## Checking Out SaaS Authentication
 
 Your generated app contains a fully working authentication suite, based on JWTs.
+
+To authenticate, you will need a running redis server. 
+
+This docker command starts up a redis server:
+```
+docker run -p 6379:6379 -d redis redis-server
+```
+Use doctor command to check the needed resources:
+```
+$ cargo loco doctor
+    Finished dev [unoptimized + debuginfo] target(s) in 0.32s
+     Running `target/debug/myapp-cli doctor`
+✅ SeaORM CLI is installed
+✅ DB connection: success
+✅ Redis connection: success
+```
 
 ### Registering a New User
 

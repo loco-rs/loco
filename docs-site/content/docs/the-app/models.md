@@ -2,7 +2,7 @@
 title = "Models"
 description = ""
 date = 2021-05-01T18:10:00+00:00
-updated = 2021-05-01T18:10:00+00:00
+updated = 2024-01-07T21:10:00+00:00
 draft = false
 weight = 11
 sort_by = "weight"
@@ -72,21 +72,54 @@ To add a new model _you have to use a migration_.
 $ cargo loco generate model posts title:string! content:text user:references
 ```
 
+When a model is added via migration, the following default fields are provided:
+
+- `created_at` (ts!): This is a timestamp indicating when your model was created.
+- `updated_at` (ts!): This is a timestamp indicating when your model was updated.
+
+These fields are ignored if you provide them in your migration command. In addition, `create_at` and `update_at` fields are also ignored if provided.
+
 For schema data types, you can use the following mapping to understand the schema:
 
 ```rust
-("text", "text"),
+("uuid", "uuid"),
 ("string", "string_null"),
 ("string!", "string"),
 ("string^", "string_uniq"),
+("text", "text_null"),
+("text!", "text"),
+("tiny_integer", "tiny_integer_null"),
+("tiny_integer!", "tiny_integer"),
+("tiny_integer^", "tiny_integer_uniq"),
+("small_integer", "small_integer_null"),
+("small_integer!", "small_integer"),
+("small_integer^", "small_integer_uniq"),
 ("int", "integer_null"),
 ("int!", "integer"),
 ("int^", "integer_uniq"),
+("big_integer", "big_integer_null"),
+("big_integer!", "big_integer"),
+("big_integer^", "big_integer_uniq"),
+("float", "float_null"),
+("float!", "float"),
+("double", "double_null"),
+("double!", "double"),
+("decimal", "decimal_null"),
+("decimal!", "decimal"),
+("decimal_len", "decimal_len_null"),
+("decimal_len!", "decimal_len"),
 ("bool", "bool_null"),
 ("bool!", "bool"),
+("tstz", "timestamptz_null"),
+("tstz!", "timestamptz"),
+("date", "date_null"),
+("date!", "date"),
 ("ts", "timestamp_null"),
 ("ts!", "timestamp"),
-("uuid", "uuid"),
+("json", "json_null"),
+("json!", "json"),
+("jsonb", "jsonb_null"),
+("jsonb!", "jsonb"),
 ```
 
 

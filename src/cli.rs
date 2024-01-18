@@ -27,19 +27,15 @@ cfg_if::cfg_if! {
     } else {}
 }
 
-use std::str::FromStr;
-
 use clap::{Parser, Subcommand};
 
 use crate::{
     app::{AppContext, Hooks},
     boot::{create_app, create_context, list_endpoints, run_task, start, RunDbCommand, StartMode},
-    environment::{resolve_from_env, Environment},
+    environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     gen::{self, Component},
     logger, Result,
 };
-
-const DEFAULT_ENVIRONMENT: &str = "development";
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
@@ -232,10 +228,8 @@ where
 /// When could not create app context
 pub async fn playground<H: Hooks>() -> Result<AppContext> {
     let cli = Playground::parse();
-    let environment = cli
-        .environment
-        .or_else(resolve_from_env)
-        .unwrap_or_else(|| DEFAULT_ENVIRONMENT.to_string());
+    let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
+
     let app_context = create_context::<H>(&environment).await?;
     Ok(app_context)
 }
@@ -267,10 +261,14 @@ pub async fn playground<H: Hooks>() -> Result<AppContext> {
 #[cfg(feature = "with-db")]
 pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
     let cli = Cli::parse();
-    let environment = cli
-        .environment
-        .or_else(resolve_from_env)
-        .unwrap_or_else(|| DEFAULT_ENVIRONMENT.to_string());
+    let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
+
+    let config = environment.load()?;
+
+    if !H::init_logger(&config, &environment)? {
+        logger::init::<H>(&config.logger);
+    }
+
     match cli.command {
         Commands::Start {
             worker,
@@ -290,15 +288,16 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
         #[cfg(feature = "with-db")]
         Commands::Db { command } => {
             if matches!(command, DbCommands::Create) {
-                let environment = Environment::from_str(environment.as_str())
-                    .unwrap_or_else(|_| Environment::Any(environment.to_string()));
-                let _ = db::create(&environment.load()?.database.uri).await;
+                db::create(&environment.load()?.database.uri).await?;
             } else {
                 let app_context = create_context::<H>(&environment).await?;
                 run_db::<H, M>(&app_context, command.into()).await?;
             }
         }
-        Commands::Routes {} => show_list_endpoints::<H>(),
+        Commands::Routes {} => {
+            let app_context = create_context::<H>(&environment).await?;
+            show_list_endpoints::<H>(&app_context);
+        }
         Commands::Task { name, params } => {
             let mut hash = BTreeMap::new();
             for (k, v) in params {
@@ -308,18 +307,11 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             run_task::<H>(&app_context, name.as_ref(), &hash).await?;
         }
         Commands::Generate { component } => {
-            let environment = Environment::from_str(&environment)
-                .unwrap_or_else(|_| Environment::Any(environment.to_string()))
-                .load()?;
-            logger::init::<H>(&environment.logger);
-            gen::generate::<H>(component.into(), &environment)?;
+            gen::generate::<H>(component.into(), &config)?;
         }
         Commands::Doctor {} => {
-            let environment = Environment::from_str(&environment)
-                .unwrap_or_else(|_| Environment::Any(environment.to_string()))
-                .load()?;
             let mut should_exit = false;
-            for (_, check) in doctor::run_all(&environment).await {
+            for (_, check) in doctor::run_all(&config).await {
                 if !should_exit && !check.valid() {
                     should_exit = true;
                 }
@@ -339,10 +331,14 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
 #[cfg(not(feature = "with-db"))]
 pub async fn main<H: Hooks>() -> eyre::Result<()> {
     let cli = Cli::parse();
-    let environment = cli
-        .environment
-        .or_else(resolve_from_env)
-        .unwrap_or_else(|| DEFAULT_ENVIRONMENT.to_string());
+    let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
+
+    let config = environment.load()?;
+
+    if !H::init_logger(&config, &environment)? {
+        logger::init::<H>(&config.logger);
+    }
+
     match cli.command {
         Commands::Start {
             worker,
@@ -359,7 +355,10 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
             let boot_result = create_app::<H>(start_mode, &environment).await?;
             start(boot_result).await?;
         }
-        Commands::Routes {} => show_list_endpoints::<H>(),
+        Commands::Routes {} => {
+            let app_context = create_context::<H>(&environment).await?;
+            show_list_endpoints::<H>(&app_context)
+        }
         Commands::Task { name, params } => {
             let mut hash = BTreeMap::new();
             for (k, v) in params {
@@ -369,11 +368,7 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
             run_task::<H>(&app_context, name.as_ref(), &hash).await?;
         }
         Commands::Generate { component } => {
-            let environment = Environment::from_str(&environment)
-                .unwrap_or_else(|_| Environment::Any(environment.to_string()))
-                .load()?;
-            logger::init::<H>(&environment.logger);
-            gen::generate::<H>(component.into(), &environment)?;
+            gen::generate::<H>(component.into(), &config)?;
         }
         Commands::Version {} => {
             println!("{}", H::app_version(),);
@@ -382,8 +377,8 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
     Ok(())
 }
 
-fn show_list_endpoints<H: Hooks>() {
-    let mut routes = list_endpoints::<H>();
+fn show_list_endpoints<H: Hooks>(ctx: &AppContext) {
+    let mut routes = list_endpoints::<H>(ctx);
     routes.sort_by(|a, b| a.uri.cmp(&b.uri));
     for router in routes {
         println!("{}", router.to_string());

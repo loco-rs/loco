@@ -79,7 +79,7 @@ user_report                   [output a user report]
 ```
 
 ```console
-$ blo-cli routes
+$ blo-cli routes --environment test
 [GET] /_health
 [GET] /_ping
 [POST] /auth/forgot
@@ -87,6 +87,7 @@ $ blo-cli routes
 [POST] /auth/register
 [POST] /auth/reset
 [POST] /auth/verify
+[GET] /mysession
 [GET] /notes
 [POST] /notes
 [GET] /notes/:id

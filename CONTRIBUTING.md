@@ -13,11 +13,11 @@ This project is follows [Code of Conduct](CODE_OF_CONDUCT.md). By participating,
 
 ## I have a question
 
-If you have a question to ask, feel free to open an issue. There are no dumb questions.
+If you have a question to ask, feel free to open an new [discussion](https://github.com/loco-rs/loco/discussions). There are no dumb questions.
 
 ## I need a feature
 
-Feature requests from anyone is definitely welcomed! You can open an issue. When you can, illustrate a feature with code, simulated console output, and "make believe" console interactions, so we know what you want and what you expect.
+Feature requests from anyone is definitely welcomed! You can open an [issue](https://github.com/loco-rs/loco/issues/new/choose). When you can, illustrate a feature with code, simulated console output, and "make believe" console interactions, so we know what you want and what you expect.
 
 ## I want to support
 
@@ -30,20 +30,60 @@ We are always looking for long-term contributors. If you want to commit longer-t
 * From time to time we will make issues clear for newcomers with `mentoring` and `good-first-issue`
 * If no issue exist, just open an issue and ask how to help
 
-## I want to setup my machine for development and testing
+### Using an example app to test
 
-You would need:
+Our testing grounds is [examples/demo](examples/demo/) which is pointing to the latest local `loco` framework. You can use it to test out an actual app, using a locally modified `loco`.
 
-* Rust
-* Postgres
-* `sea-orm-cli` (see [SeaORM](https://www.sea-ql.org/SeaORM/))
 
-### Testing
+## Code style
+
+We use `rustfmt`/`cargo fmt`. A few code style options are set in the [.rustfmt.toml](.rustfmt.toml) file, and some of them are not stable yet and require a nightly version of rustfmt.
+
+If you're using rustup, the nightly version of rustfmt can be installed by doing the following:
+```sh
+rustup component add rustfmt --toolchain nightly
+```
+And then format your code by running:
+```sh
+cargo +nightly fmt
+```
+
+## Testing
 
 Just clone the project and run `cargo test`.
 You can see how we test in [.github/workflows](.github/workflows/)
 
-### Using an example app to test
+#### Snapshots
+To update/create a snapshots we are using [insta](https://github.com/mitsuhiko/insta). all you need to do is install insta and run the following command:
+```
+cargo instal test --review
+```
 
-Our testing grounds is [examples/demo](examples/demo/) which is pointing to the latest local `loco` framework. You can use it to test out an actual app, using a locally modified `loco`.
+In case of cli changes we snapshot the binary commands. in case of changes run the following command yo update the CLI snapshot
+```sh
+LOCO_CI_MODE=true TRYCMD=overwrite cargo test
+```
+
+## Running Docs website
+The documentation website based on [zola](https://www.getzola.org/), and you can see the docs [here](./docs-site/).
+then cd to `docs-site` and run `zola serve`
+
+
+## Open A Pull Request
+
+The most recommended and straightforward method to contribute changes to the project involves forking it on GitHub and subsequently initiating a pull request to propose the integration of your modifications into our repository.
+
+Changes a starters project are not recommended. read more [here](./starters/README.md) 
+
+### In Your Pull Request Description, Include:
+- References to any bugs fixed by the change
+- Informative notes for the reviewer, aiding their comprehension of the necessity for the change or providing insights on how to conduct a more effective review.
+- A clear explanation of how you tested your changes.
+
+### Your PR must also:
+- be based on the master branch
+- adhere to the code [style](#code-style)
+- Successfully passes the [test suite](#testing)
+
+
 

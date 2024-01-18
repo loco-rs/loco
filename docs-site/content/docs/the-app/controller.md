@@ -190,7 +190,7 @@ To enable response compression, based on `accept-encoding` request header, simpl
 ```yaml
 #...
   middlewares:
-    etag:
+    compression:
       enable: true
 ```
 

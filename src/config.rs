@@ -2,6 +2,26 @@
 //!
 //! This module defines the configuration structures and functions to manage and
 //! load configuration settings for the application.
+
+/***
+=============
+CONTRIBUTORS:
+=============
+
+Here's a check list when adding configuration values:
+
+* Add the new configuration piece
+* Document each field with the appropriate rustdoc comment
+* Go to `starters/`, evaluate which starter needs a configuration update, and update as needed.
+  apply a YAML comment above the new field or section with explanation and possible values.
+
+Notes:
+* Configuration is feature-dependent: with and without database
+* Configuration is "stage" dependent: development, test, production
+* We typically provide best practice values for development and test, but by-design we do not provide default values for production
+
+***/
+
 use std::path::{Path, PathBuf};
 
 use fs_err as fs;
@@ -16,7 +36,7 @@ lazy_static! {
     static ref DEFAULT_FOLDER: PathBuf = PathBuf::from("config");
 }
 
-/// Represents the main application configuration structure.
+/// Main application configuration structure.
 ///
 /// This struct encapsulates various configuration settings. The configuration
 /// can be customized through YAML files for different environments.
@@ -32,93 +52,192 @@ pub struct Config {
     pub workers: Workers,
     pub mailer: Option<Mailer>,
 
+    /// Custom app settings
+    ///
+    /// Example:
+    /// ```yaml
+    /// settings:
+    ///   allow_list:
+    ///     - google.com
+    ///     - apple.com
+    /// ```
+    /// And then optionally deserialize it to your own `Settings` type by
+    /// accessing `ctx.config.settings`.
     #[serde(default)]
     pub settings: Option<serde_json::Value>,
 }
 
+/// Logger configuration
+///
+/// The Loco logging stack is built on `tracing`, using a carefuly
+/// crafted stack of filters and subscribers. We filter out noise,
+/// apply a log level across your app, and sort out back traces for
+/// a great developer experience.
+///
+/// Example (development):
+/// ```yaml
+/// # config/development.yaml
+/// logger:
+///   enable: true
+///   pretty_backtrace: true
+///   level: debug
+///   format: compact
+/// ```
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct Logger {
     pub enable: bool,
+
+    /// Enable nice display of backtraces, in development this should be on.
+    /// Turn it off in performance sensitive production deployments.
     #[serde(default)]
     pub pretty_backtrace: bool,
+
+    /// Set the logger level.
+    ///
+    /// * options: `trace` | `debug` | `info` | `warn` | `error`
     pub level: logger::LogLevel,
+
+    /// Set the logger format.
+    ///
+    /// * options: `compact` | `pretty` | `json`
     pub format: logger::Format,
+
+    /// Override our custom tracing filter.
+    ///
+    /// Set this to your own filter if you want to see traces from internal
+    /// libraries. See more [here](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives)
     pub override_filter: Option<String>,
 }
 
-/// Represents the worker mode configuration.
+/// Database configuration
 ///
-/// The `WorkerMode` enum specifies the worker mode, which can be one of
-/// `BackgroundQueue`, `ForegroundBlocking`, or `BackgroundAsync`.
-#[derive(Clone, Default, Serialize, Deserialize, Debug)]
-pub enum WorkerMode {
-    #[default]
-    /// Workers operate asynchronously in the background, processing queued
-    /// tasks.
-    BackgroundQueue,
-    /// Workers operate in the foreground and block until tasks are completed.
-    ForegroundBlocking,
-    /// Workers operate asynchronously in the background, processing tasks with
-    /// async capabilities.
-    BackgroundAsync,
-}
-
-/// Represents the database configuration structure.
+/// Configures the [SeaORM](https://www.sea-ql.org/SeaORM/) connection and pool, as well as Loco's additional DB
+/// management utils such as `auto_migrate`, `truncate` and `recreate`.
+///
+/// Example (development):
+/// ```yaml
+/// # config/development.yaml
+/// database:
+///   uri: {{ get_env(name="DATABASE_URL", default="...") }}
+///   enable_logging: true
+///   connect_timeout: 500
+///   idle_timeout: 500
+///   min_connections: 1
+///   max_connections: 1
+///   auto_migrate: true
+///   dangerously_truncate: false
+///   dangerously_recreate: false
+/// ```
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Database {
     /// The URI for connecting to the database. For example:
-    /// postgres://root:12341234@localhost:5432/rr_app
+    /// * Postgres: `postgres://root:12341234@localhost:5432/myapp_development`
+    /// * Sqlite: `sqlite://db.sqlite?mode=rwc`
     pub uri: String,
+
     /// Enable SQLx statement logging
     pub enable_logging: bool,
+
     /// Minimum number of connections for a pool
     pub min_connections: u32,
+
     /// Maximum number of connections for a pool
     pub max_connections: u32,
+
     /// Set the timeout duration when acquiring a connection
     pub connect_timeout: u64,
+
     /// Set the idle duration before closing a connection
     pub idle_timeout: u64,
+
+    /// Run migration up when application loads. It is recommended to turn it on
+    /// in development. In production keep it off, and explicitly migrate your
+    /// database every time you need.
     #[serde(default)]
-    /// Run migration up when application loaded
     pub auto_migrate: bool,
+
+    /// Truncate database when application loads. It will delete data from your
+    /// tables. Commonly used in `test`.
     #[serde(default)]
-    /// Truncate database when application loaded
     pub dangerously_truncate: bool,
+
+    /// Recreate schema when application loads. Use it when you want to reset
+    /// your database *and* structure (drop), this also deletes all of the data.
+    /// Useful when you're just sketching out your project and trying out
+    /// various things in development.
     #[serde(default)]
-    /// Recreating schema
     pub dangerously_recreate: bool,
 }
 
-/// Represents the Redis configuration structure.
+/// Redis Configuration
+///
+/// Example (development):
+/// ```yaml
+/// # config/development.yaml
+/// redis:
+///   uri: redis://127.0.0.1/
+///   dangerously_flush: false
+/// ```
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Redis {
     /// The URI for connecting to the Redis server. For example:
     /// redis://127.0.0.1/
     pub uri: String,
     #[serde(default)]
-    /// Flush redis when application loaded
+    /// Flush redis when application loaded. Useful for `test`.
     pub dangerously_flush: bool,
 }
 
-/// Represents the user authentication configuration structure.
+/// User authentication configuration.
+///
+/// Example (development):
+/// ```yaml
+/// # config/development.yaml
+/// auth:
+///   jwt:
+///     secret: <your secret>
+///     expiration: 604800 # 7 days
+/// ```
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Auth {
-    /// JWT authentication
+    /// JWT authentication config
     pub jwt: Option<JWT>,
 }
 
-/// Represents JWT configuration structure.
+/// JWT configuration structure.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct JWT {
     /// The secret key For JWT token
     pub secret: String,
-    /// The expiration time for authentication tokens.
+    /// The expiration time for authentication tokens
     pub expiration: u64,
 }
 
-/// Represents the server configuration structure.
+/// Server configuration structure.
+///
+/// Example (development):
+/// ```yaml
+/// # config/development.yaml
+/// server:
+///   port: {{ get_env(name="NODE_PORT", default=3000) }}
+///   host: http://localhost
+///   middlewares:
+///     limit_payload:
+///       enable: true
+///       body_limit: 5mb
+///     logger:
+///       enable: true
+///     catch_panic:
+///       enable: true
+///     timeout_request:
+///       enable: true
+///       timeout: 5000
+///     compression:
+///       enable: true
+///     cors:
+///       enable: true
+/// ```
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Server {
     /// The port on which the server should listen for incoming connections.
@@ -132,14 +251,44 @@ pub struct Server {
     pub middlewares: Middlewares,
 }
 
-/// Represents the workers configuration structure.
+impl Server {
+    #[must_use]
+    pub fn full_url(&self) -> String {
+        format!("{}:{}", self.host, self.port)
+    }
+}
+/// Background worker configuration
+/// Example (development):
+/// ```yaml
+/// # config/development.yaml
+/// workers:
+///   mode: BackgroundQueue
+/// ```
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct Workers {
+    /// Toggle between different worker modes
     pub mode: WorkerMode,
+    /// Custom queue names declaration. Required if you set up a dedicated
+    /// worker against a dedicated queue.
     pub queues: Option<Vec<String>>,
 }
 
-/// Represents the middleware configuration structure.
+/// Worker mode configuration
+#[derive(Clone, Default, Serialize, Deserialize, Debug)]
+pub enum WorkerMode {
+    /// Workers operate asynchronously in the background, processing queued
+    /// tasks. **Requires a Redis connection**.
+    #[default]
+    BackgroundQueue,
+    /// Workers operate in the foreground in the same process and block until
+    /// tasks are completed.
+    ForegroundBlocking,
+    /// Workers operate asynchronously in the background, processing tasks with
+    /// async capabilities in the same process.
+    BackgroundAsync,
+}
+
+/// Server middleware configuration structure.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Middlewares {
     /// Middleware that enable compression for the response.
@@ -162,28 +311,43 @@ pub struct Middlewares {
     pub static_assets: Option<StaticAssetsMiddleware>,
 }
 
+/// Static asset middleware configuration
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct StaticAssetsMiddleware {
     pub enable: bool,
+    /// Check that assets must exist on disk
     pub must_exist: bool,
+    /// Assets location
     pub folder: FolderAssetsMiddleware,
+    /// Fallback page for a case when no asset exists (404). Useful for SPA
+    /// (single page app) where routes are virtual.
     pub fallback: String,
 }
+
+/// Asset folder config.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct FolderAssetsMiddleware {
+    /// Uri for the assets
     pub uri: String,
+    /// Path for the assets
     pub path: String,
 }
 
+/// CORS middleware configuration
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CorsMiddleware {
     pub enable: bool,
+    /// Allow origins
     pub allow_origins: Option<Vec<String>>,
+    /// Allow headers
     pub allow_headers: Option<Vec<String>>,
+    /// Allow methods
     pub allow_methods: Option<Vec<String>>,
+    /// Max age
     pub max_age: Option<u64>,
 }
 
+/// Timeout middleware configuration
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TimeoutRequestMiddleware {
     pub enable: bool,
@@ -191,6 +355,7 @@ pub struct TimeoutRequestMiddleware {
     pub timeout: u64,
 }
 
+/// Limit payload size middleware configuration
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LimitPayloadMiddleware {
     pub enable: bool,
@@ -198,14 +363,25 @@ pub struct LimitPayloadMiddleware {
     pub body_limit: String,
 }
 
-/// Represents a generic middleware configuration that can be enabled or
+/// A generic middleware configuration that can be enabled or
 /// disabled.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct EnableMiddleware {
     pub enable: bool,
 }
 
-/// Represents the mailer configuration structure.
+/// Mailer configuration
+///
+/// Example (development), to capture mails with something like [mailcrab](https://github.com/tweedegolf/mailcrab):
+/// ```yaml
+/// # config/development.yaml
+/// mailer:
+///   smtp:
+///     enable: true
+///     host: localhost
+///     port: 1025
+///     secure: false
+/// ```
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Mailer {
     pub smtp: Option<SmtpMailer>,
@@ -214,7 +390,7 @@ pub struct Mailer {
     pub stub: bool,
 }
 
-/// Represents the SMTP mailer configuration structure.
+/// SMTP mailer configuration structure.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SmtpMailer {
     pub enable: bool,
@@ -228,25 +404,21 @@ pub struct SmtpMailer {
     pub auth: Option<MailerAuth>,
 }
 
-/// Represents the authentication details for the mailer.
+/// Authentication details for the mailer
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MailerAuth {
+    /// User
     pub user: String,
+    /// Password
     pub password: String,
 }
 
-impl Server {
-    #[must_use]
-    pub fn full_url(&self) -> String {
-        format!("{}:{}", self.host, self.port)
-    }
-}
 impl Config {
     /// Creates a new configuration instance based on the specified environment.
     ///
     /// # Errors
     ///
-    /// Returns [`ConfigError`] when could not convert the give path to
+    /// Returns error when could not convert the give path to
     /// [`Config`] struct.
     ///
     /// # Example
@@ -263,10 +435,6 @@ impl Config {
     /// }
     pub fn new(env: &Environment) -> Result<Self> {
         let config = Self::from_folder(env, DEFAULT_FOLDER.as_path())?;
-        // TODO(review): Do we really want to print all config data to the logs? it
-        // might be include sensitive data such DB user password, auth secrets etc...
-        info!(name: "environment_loaded", config = ?config, environment = ?env, "environment loaded");
-
         Ok(config)
     }
 
@@ -274,7 +442,7 @@ impl Config {
     /// environment.
     ///
     /// # Errors
-    /// Returns [`ConfigError`] when could not convert the give path to
+    /// Returns error when could not convert the give path to
     /// [`Config`] struct.
     ///
     /// # Example

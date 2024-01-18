@@ -1,9 +1,12 @@
 //! # Application Error Handling
 
-use axum::http::{
-    header::{InvalidHeaderName, InvalidHeaderValue},
-    method::InvalidMethod,
-    StatusCode,
+use axum::{
+    extract::rejection::JsonRejection,
+    http::{
+        header::{InvalidHeaderName, InvalidHeaderValue},
+        method::InvalidMethod,
+        StatusCode,
+    },
 };
 use lettre::{address::AddressError, transport::smtp};
 
@@ -47,6 +50,9 @@ pub enum Error {
     #[error(transparent)]
     JSON(serde_json::Error),
 
+    #[error(transparent)]
+    JsonRejection(#[from] JsonRejection),
+
     #[error("cannot parse `{1}`: {0}")]
     YAMLFile(#[source] serde_yaml::Error, String),
 
@@ -88,6 +94,9 @@ pub enum Error {
 
     #[error("")]
     CustomError(StatusCode, ErrorDetail),
+
+    #[error("internal server error")]
+    InternalServerError,
 
     #[error(transparent)]
     InvalidHeaderValue(#[from] InvalidHeaderValue),

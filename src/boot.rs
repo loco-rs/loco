@@ -1,12 +1,12 @@
 //! # Application Bootstrapping and Logic
 //! This module contains functions and structures for bootstrapping and running
 //! your application.
-use std::{collections::BTreeMap, str::FromStr};
+use std::collections::BTreeMap;
 
 use axum::Router;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
-use tracing::{trace, warn};
+use tracing::{info, trace, warn};
 
 #[cfg(feature = "with-db")]
 use crate::db;
@@ -17,7 +17,6 @@ use crate::{
     controller::ListRoutes,
     environment::Environment,
     errors::Error,
-    logger,
     mailer::{EmailSender, MailerWorker},
     redis,
     task::Tasks,
@@ -140,19 +139,20 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
     match cmd {
         RunDbCommand::Migrate => {
             tracing::warn!("migrate:");
-            let _ = db::migrate::<M>(&app_context.db).await;
+            db::migrate::<M>(&app_context.db).await?;
         }
         RunDbCommand::Reset => {
             tracing::warn!("reset:");
-            let _ = db::reset::<M>(&app_context.db).await;
+            db::reset::<M>(&app_context.db).await?;
         }
         RunDbCommand::Status => {
             tracing::warn!("status:");
-            let _ = db::status::<M>(&app_context.db).await;
+            db::status::<M>(&app_context.db).await?;
         }
         RunDbCommand::Entities => {
             tracing::warn!("entities:");
-            tracing::warn!("{}", db::entities::<M>(app_context)?);
+
+            tracing::warn!("{}", db::entities::<M>(app_context).await?);
         }
         RunDbCommand::Truncate => {
             tracing::warn!("truncate:");
@@ -176,13 +176,9 @@ async fn serve(app: Router, config: &Config) -> Result<()> {
 ///
 /// # Errors
 /// When has an error to create DB connection.
-pub async fn create_context<H: Hooks>(environment: &str) -> Result<AppContext> {
-    let environment = Environment::from_str(environment)
-        .unwrap_or_else(|_| Environment::Any(environment.to_string()));
+pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppContext> {
     let config = environment.load()?;
-    if config.logger.enable {
-        logger::init::<H>(&config.logger);
-    }
+
     if config.logger.pretty_backtrace {
         std::env::set_var("RUST_BACKTRACE", "1");
         warn!(
@@ -201,7 +197,7 @@ pub async fn create_context<H: Hooks>(environment: &str) -> Result<AppContext> {
 
     let redis = connect_redis(&config).await;
     Ok(AppContext {
-        environment,
+        environment: environment.clone(),
         #[cfg(feature = "with-db")]
         db,
         redis,
@@ -218,7 +214,7 @@ pub async fn create_context<H: Hooks>(environment: &str) -> Result<AppContext> {
 /// When could not create the application
 pub async fn create_app<H: Hooks, M: MigratorTrait>(
     mode: StartMode,
-    environment: &str,
+    environment: &Environment,
 ) -> Result<BootResult> {
     let app_context = create_context::<H>(environment).await?;
     db::converge::<H, M>(&app_context.db, &app_context.config.database).await?;
@@ -227,20 +223,19 @@ pub async fn create_app<H: Hooks, M: MigratorTrait>(
         redis::converge(pool, &app_context.config.redis).await?;
     }
 
-    H::before_run(&app_context).await?;
-
     run_app::<H>(&mode, app_context).await
 }
 
 #[cfg(not(feature = "with-db"))]
-pub async fn create_app<H: Hooks>(mode: StartMode, environment: &str) -> Result<BootResult> {
+pub async fn create_app<H: Hooks>(
+    mode: StartMode,
+    environment: &Environment,
+) -> Result<BootResult> {
     let app_context = create_context::<H>(environment).await?;
 
     if let Some(pool) = &app_context.redis {
         redis::converge(pool, &app_context.config.redis).await?;
     }
-
-    H::before_run(&app_context).await?;
 
     run_app::<H>(&mode, app_context).await
 }
@@ -250,10 +245,20 @@ pub async fn create_app<H: Hooks>(mode: StartMode, environment: &str) -> Result<
 ///
 /// When could not create the application
 pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Result<BootResult> {
+    H::before_run(&app_context).await?;
+    let initializers = H::initializers(&app_context).await?;
+    info!(initializers = ?initializers.iter().map(|init| init.name()).collect::<Vec<_>>().join(","), "initializers loaded");
+    for initializer in &initializers {
+        initializer.before_run(&app_context).await?;
+    }
     match mode {
         StartMode::ServerOnly => {
-            let app = H::routes().to_router(app_context.clone())?;
-            let router = H::after_routes(app, &app_context).await?;
+            let app = H::routes(&app_context).to_router(app_context.clone())?;
+            let mut router = H::after_routes(app, &app_context).await?;
+            for initializer in &initializers {
+                router = initializer.after_routes(router, &app_context).await?;
+            }
+
             Ok(BootResult {
                 app_context,
                 router: Some(router),
@@ -262,8 +267,11 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
         }
         StartMode::ServerAndWorker => {
             let processor = create_processor::<H>(&app_context)?;
-            let app = H::routes().to_router(app_context.clone())?;
-            let router = H::after_routes(app, &app_context).await?;
+            let app = H::routes(&app_context).to_router(app_context.clone())?;
+            let mut router = H::after_routes(app, &app_context).await?;
+            for initializer in &initializers {
+                router = initializer.after_routes(router, &app_context).await?;
+            }
             Ok(BootResult {
                 app_context,
                 router: Some(router),
@@ -309,8 +317,8 @@ fn create_processor<H: Hooks>(app_context: &AppContext) -> Result<Processor> {
 }
 
 #[must_use]
-pub fn list_endpoints<H: Hooks>() -> Vec<ListRoutes> {
-    H::routes().collect()
+pub fn list_endpoints<H: Hooks>(ctx: &AppContext) -> Vec<ListRoutes> {
+    H::routes(ctx).collect()
 }
 
 /// Initializes an [`EmailSender`] based on the mailer configuration settings

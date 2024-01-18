@@ -30,7 +30,7 @@ impl MigrationTrait for Migration {
                     {% if is_link -%}
                     .primary_key(
                         Index::create()
-                            .name("idx-refs-pk")
+                            .name("idx-{{plural_snake}}-refs-pk")
                             .table({{model}}::Table)
                             {% for ref in references -%}
                             .col({{model}}::{{ref.1 | pascal_case}})

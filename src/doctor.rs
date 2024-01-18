@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, process::Command};
 use crate::{
     boot,
     config::{Config, Database},
-    db, redis,
+    db, redis, Error, Result,
 };
 
 const SEAORM_INSTALLED: &str = "SeaORM CLI is installed";
@@ -48,6 +48,22 @@ impl Check {
     pub fn valid(&self) -> bool {
         self.status != CheckStatus::NotOk
     }
+    /// Convert to a Result type
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if Check fails
+    pub fn to_result(&self) -> Result<()> {
+        if self.valid() {
+            Ok(())
+        } else {
+            Err(Error::Message(format!(
+                "{} {}",
+                self.message,
+                self.description.clone().unwrap_or_default()
+            )))
+        }
+    }
 }
 
 impl std::fmt::Display for Check {
@@ -84,10 +100,17 @@ pub async fn run_all(config: &Config) -> BTreeMap<Resource, Check> {
 pub async fn check_db(config: &Database) -> Check {
     match db::connect(config).await {
         Ok(conn) => match conn.ping().await {
-            Ok(()) => Check {
-                status: CheckStatus::Ok,
-                message: DB_CONNECTION_SUCCESS.to_string(),
-                description: None,
+            Ok(()) => match db::verify_access(&conn).await {
+                Ok(()) => Check {
+                    status: CheckStatus::Ok,
+                    message: DB_CONNECTION_SUCCESS.to_string(),
+                    description: None,
+                },
+                Err(err) => Check {
+                    status: CheckStatus::NotOk,
+                    message: DB_CONNECTION_FAILED.to_string(),
+                    description: Some(err.to_string()),
+                },
             },
             Err(err) => Check {
                 status: CheckStatus::NotOk,

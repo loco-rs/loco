@@ -6,13 +6,12 @@ use lazy_static::lazy_static;
 use rrgen::RRgen;
 use serde_json::json;
 
-use crate::app::Hooks;
+use crate::{app::Hooks, errors::Error, Result};
 
 const MODEL_T: &str = include_str!("templates/model.t");
 const MODEL_TEST_T: &str = include_str!("templates/model_test.t");
 
 use super::collect_messages;
-use crate::{errors::Error, Result};
 
 /// skipping some fields from the generated models.
 /// For example, the `created_at` and `updated_at` fields are automatically
@@ -21,18 +20,44 @@ pub const IGNORE_FIELDS: &[&str] = &["created_at", "updated_at", "create_at", "u
 
 lazy_static! {
     static ref TYPEMAP: HashMap<&'static str, &'static str> = HashMap::from([
-        ("text", "text"),
+        ("uuid", "uuid"),
         ("string", "string_null"),
         ("string!", "string"),
         ("string^", "string_uniq"),
+        ("text", "text_null"),
+        ("text!", "text"),
+        ("tiny_integer", "tiny_integer_null"),
+        ("tiny_integer!", "tiny_integer"),
+        ("tiny_integer^", "tiny_integer_uniq"),
+        ("small_integer", "small_integer_null"),
+        ("small_integer!", "small_integer"),
+        ("small_integer^", "small_integer_uniq"),
         ("int", "integer_null"),
         ("int!", "integer"),
         ("int^", "integer_uniq"),
+        ("big_integer", "big_integer_null"),
+        ("big_integer!", "big_integer"),
+        ("big_integer^", "big_integer_uniq"),
+        ("float", "float_null"),
+        ("float!", "float"),
+        ("double", "double_null"),
+        ("double!", "double"),
+        ("decimal", "decimal_null"),
+        ("decimal!", "decimal"),
+        ("decimal_len", "decimal_len_null"),
+        ("decimal_len!", "decimal_len"),
         ("bool", "bool_null"),
         ("bool!", "bool"),
+        ("tstz", "timestamptz_null"),
+        ("tstz!", "timestamptz"),
+        ("date", "date_null"),
+        ("date!", "date"),
         ("ts", "timestamp_null"),
         ("ts!", "timestamp"),
-        ("uuid", "uuid"),
+        ("json", "json_null"),
+        ("json!", "json"),
+        ("jsonb", "jsonb_null"),
+        ("jsonb!", "jsonb"),
     ]);
 }
 
@@ -80,11 +105,21 @@ pub fn generate<H: Hooks>(
     let _ = cmd!("cargo", "loco", "db", "migrate",)
         .stderr_to_stdout()
         .dir(cwd.as_path())
-        .run()?;
+        .run()
+        .map_err(|err| {
+            Error::Message(format!(
+                "failed to run loco db migration. error details: `{err}`",
+            ))
+        })?;
     let _ = cmd!("cargo", "loco", "db", "entities",)
         .stderr_to_stdout()
         .dir(cwd.as_path())
-        .run()?;
+        .run()
+        .map_err(|err| {
+            Error::Message(format!(
+                "failed to run loco db entities. error details: `{err}`",
+            ))
+        })?;
 
     let messages = collect_messages(vec![res1, res2]);
     Ok(messages)

@@ -1,8 +1,5 @@
 #![allow(clippy::missing_const_for_fn)]
 #![allow(clippy::module_name_repetitions)]
-//! `TODO::`
-//!
-//!
 //! ## Starting A New Project
 //!
 //! To start a new project, you can use cargo-generate:

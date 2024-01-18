@@ -1,7 +1,8 @@
-use crate::models::_entities::notes;
 use loco_rs::controller::views::pagination::PaginationResponseTrait;
 use sea_orm::EntityTrait;
 use serde::{Deserialize, Serialize};
+
+use crate::models::_entities::notes;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ListResponse {

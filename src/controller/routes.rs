@@ -31,10 +31,10 @@ impl Routes {
     ///
     /// ```rust
     /// use loco_rs::{
-    ///     controller::{Routes, format},
+    ///     controller::{Routes, format, Json},
     ///     Result,
     /// };
-    /// use axum::{routing::get, Json};
+    /// use axum::routing::get;
     /// use serde::Serialize;;
     ///
     /// #[derive(Serialize)]
@@ -65,9 +65,9 @@ impl Routes {
     /// ```rust
     /// use loco_rs::{
     ///     Result,
-    ///     controller::{Routes, format},
+    ///     controller::{Routes, format, Json},
     /// };
-    /// use axum::{routing::get, Json};
+    /// use axum::routing::get;
     /// use serde::Serialize;
     ///
     /// #[derive(Serialize)]
@@ -101,10 +101,10 @@ impl Routes {
     ///
     /// ```rust
     /// use loco_rs::{
-    ///     controller::{Routes, format},
+    ///     controller::{Routes, format, Json},
     ///     Result,
     /// };
-    /// use axum::{routing::get, Json};
+    /// use axum::routing::get;
     /// use serde::Serialize;
     ///
     /// #[derive(Serialize)]
