@@ -97,3 +97,31 @@ $ blo-cli routes --environment test
 [GET] /user/current_api_key
 
 ```
+
+```console 
+$ blo-cli db status
+[[..][0m [32m INFO[0m [2mloco_rs::config[0m[2m:[0m loading environment from [3mselected_path[0m[2m=[0m"config/[..].yaml"
+[[..][0m [33m WARN[0m [2mloco_rs::boot[0m[2m:[0m pretty backtraces are enabled (this is great for development but has a runtime cost for production. disable with `logger.pretty_backtrace` in your config yaml)
+[[..][0m [33m WARN[0m [2mloco_rs::boot[0m[2m:[0m status:
+[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Checking migration status
+[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Migration 'm20220101_000001_users'... Applied
+[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Migration 'm20231103_114510_notes'... Applied
+
+```
+```console 
+$ blo-cli db migrate
+[[..][0m [32m INFO[0m [2mloco_rs::config[0m[2m:[0m loading environment from [3mselected_path[0m[2m=[0m"config/[..].yaml"
+[[..][0m [33m WARN[0m [2mloco_rs::boot[0m[2m:[0m pretty backtraces are enabled (this is great for development but has a runtime cost for production. disable with `logger.pretty_backtrace` in your config yaml)
+[[..][0m [33m WARN[0m [2mloco_rs::boot[0m[2m:[0m migrate:
+[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Applying all pending migrations
+[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m No pending migrations
+
+```
+
+```console 
+$ blo-cli doctor
+✅ SeaORM CLI is installed
+✅ DB connection: success
+✅ Redis connection: success
+
+```
