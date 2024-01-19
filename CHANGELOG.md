@@ -2,6 +2,8 @@
 
 ## vNext
 
+* Add: support for [pre compressed assets](https://github.com/loco-rs/loco/pull/370/files).
+
 ## v0.2.0
 
 
