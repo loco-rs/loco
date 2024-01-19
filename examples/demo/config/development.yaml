@@ -53,7 +53,7 @@ server:
     static_assets:
       enable: true
       must_exist: true
-      compress: true
+      precompressed: true
       folder:
         path: assets
       fallback: index.html
