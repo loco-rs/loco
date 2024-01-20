@@ -65,6 +65,8 @@
 
 mod app_routes;
 mod backtrace;
+#[cfg(feature = "channels")]
+pub mod channels;
 mod describe;
 pub mod format;
 #[cfg(feature = "with-db")]
