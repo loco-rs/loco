@@ -51,6 +51,7 @@ pub struct Config {
     #[serde(default)]
     pub workers: Workers,
     pub mailer: Option<Mailer>,
+    pub tera: Option<Tera>,
 
     /// Custom app settings
     ///
@@ -413,6 +414,38 @@ pub struct MailerAuth {
     pub user: String,
     /// Password
     pub password: String,
+}
+
+/// Tera Configuration
+///
+/// Example (development), to capture mails with something like [mailcrab](https://github.com/tweedegolf/mailcrab):
+/// ```yaml
+/// # config/development.yaml
+/// tera:
+///   template_dir:
+///     enable: true
+///     dir: ./tera_templates
+///   fluent:
+///     enable: true
+///     locales_dir: ./locales
+/// ```
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Tera {
+    pub template_dir: Option<TeraTemplateDir>,
+    pub fluent: Option<FluentDir>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TeraTemplateDir {
+    pub enable: bool,
+    pub dir: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct FluentDir {
+    pub enable: bool,
+    pub locales_dir: String,
+    pub shared_resources: Option<String>,
 }
 
 impl Config {
