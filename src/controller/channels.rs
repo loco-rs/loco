@@ -12,12 +12,12 @@ pub struct AppChannels {
     pub register: SocketIo,
 }
 
-/// Implementation of the Into trait for converting a SocketIoBuilder into
-/// AppChannels.
-impl Into<AppChannels> for SocketIoBuilder {
-    fn into(self) -> AppChannels {
-        let (layer, io) = self.build_layer();
-        AppChannels {
+/// Implementation of the Into trait for converting a `SocketIoBuilder` into
+/// `AppChannels`.
+impl From<SocketIoBuilder> for AppChannels {
+    fn from(val: SocketIoBuilder) -> Self {
+        let (layer, io) = val.build_layer();
+        Self {
             layer,
             register: io,
         }
@@ -25,15 +25,16 @@ impl Into<AppChannels> for SocketIoBuilder {
 }
 
 impl AppChannels {
-    /// Creates a new SocketIoBuilder using builder
+    /// Creates a new `SocketIoBuilder` using builder
+    #[must_use]
     pub fn builder() -> SocketIoBuilder {
         SocketIo::builder()
     }
 }
 
-/// Implementation of the Default trait for AppChannels.
+/// Implementation of the Default trait for `AppChannels`.
 impl Default for AppChannels {
-    /// Creates a default instance of AppChannels with default values for the
+    /// Creates a default instance of `AppChannels` with default values for the
     /// layer and socket IO.
     fn default() -> Self {
         let (layer, io) = SocketIo::new_layer();
