@@ -240,6 +240,9 @@ pub struct JWT {
 /// ```
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Server {
+    /// The address on which the server should listen on for incoming
+    /// connections.
+    pub binding: Option<String>,
     /// The port on which the server should listen for incoming connections.
     pub port: i32,
     /// The webserver host
@@ -255,6 +258,15 @@ impl Server {
     #[must_use]
     pub fn full_url(&self) -> String {
         format!("{}:{}", self.host, self.port)
+    }
+
+    pub fn add_binding_addr(&mut self, addr: &str) {
+        self.binding = Some(addr.to_string());
+    }
+
+    #[must_use]
+    pub fn get_binding(&self) -> String {
+        self.binding.clone().unwrap_or_else(|| "[::]".to_string())
     }
 }
 /// Background worker configuration

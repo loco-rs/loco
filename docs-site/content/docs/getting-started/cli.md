@@ -51,6 +51,18 @@ To run you app, run:
 $ cargo loco start
 ```
 
+### Specifying the Listen Address
+
+In the Loco framework, you have the option to specify the server address on which your application will listen. By default, the server listens on `"[::]"`, which is a loopback address supporting both IPv4 and IPv6. 
+
+If you prefer to specify a different listen address, such as `"127.0.0.1"`, you can use the `--binding` flag (or `-b` for short) in your command after the `start` argument. For example:
+
+```bash
+$ cargo loco start --binding=127.0.0.1
+```
+
+Please note that the bind address configuration only pertains to the listen address, excluding the port number. The port should be configured separately in your `config.yaml` file. This approach is reminiscent of how Ruby on Rails handles server binding.
+
 ## Background workers
 
 Based on your configuration (in `config/`), your workers will know how to operate:

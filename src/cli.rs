@@ -67,6 +67,9 @@ enum Commands {
         /// start same-process server and worker
         #[arg(short, long, action)]
         server_and_worker: bool,
+        /// optionally add a server bind address
+        #[arg(short, long, action)]
+        binding: Option<String>,
     },
     #[cfg(feature = "with-db")]
     /// Perform DB operations
@@ -273,6 +276,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
         Commands::Start {
             worker,
             server_and_worker,
+            binding,
         } => {
             let start_mode = if worker {
                 StartMode::WorkerOnly
@@ -282,7 +286,11 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
                 StartMode::ServerOnly
             };
 
-            let boot_result = create_app::<H, M>(start_mode, &environment).await?;
+            let b = binding.unwrap_or_else(|| "[::]".to_string());
+
+            let mut boot_result = create_app::<H, M>(start_mode, &environment).await?;
+            // inject the new binding address to config
+            boot_result.app_context.config.server.add_binding_addr(&b);
             start(boot_result).await?;
         }
         #[cfg(feature = "with-db")]

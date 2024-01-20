@@ -70,7 +70,8 @@ pub fn print_banner(boot_result: &BootResult) {
     if boot_result.router.is_some() {
         modes.push("server".green());
         servingline.push(format!(
-            "listening on port {}",
+            "listening on {}:{}",
+            config.server.get_binding().green(),
             config.server.port.to_string().green()
         ));
     }
