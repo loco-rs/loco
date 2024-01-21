@@ -2,10 +2,10 @@
 
 ## vNext
 
+* Add: support for [pre compressed assets](https://github.com/loco-rs/loco/pull/370/files).
 * Added: Support socket channeld, see working example [here](https://github.com/loco-rs/chat-rooms). [https://github.com/loco-rs/loco/pull/380](https://github.com/loco-rs/loco/pull/380)
 * refactor: optimize checkign permissions on postgres. [9416c](https://github.com/loco-rs/loco/commit/9416c5db85a27e3d30471374effec3fe88bf80a2)
 * Added: E2E db. [https://github.com/loco-rs/loco/pull/371](https://github.com/loco-rs/loco/pull/371)
-
 
 ## v0.2.2
 * fix: public fields in maileropts. [e51b7e](https://github.com/loco-rs/loco/commit/e51b7e64e7667c519451ac8a8bea574b2c5d4403)

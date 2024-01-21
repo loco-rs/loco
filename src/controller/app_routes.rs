@@ -280,9 +280,16 @@ impl AppRoutes {
         }
 
         tracing::info!("[Middleware] Adding static");
+        let serve_dir =
+            ServeDir::new(&config.folder.path).not_found_service(ServeFile::new(&config.fallback));
         Ok(app.nest_service(
             &config.folder.uri,
-            ServeDir::new(&config.folder.path).not_found_service(ServeFile::new(&config.fallback)),
+            if config.precompressed {
+                tracing::info!("[Middleware] Enable precompressed static assets");
+                serve_dir.precompressed_gzip()
+            } else {
+                serve_dir
+            },
         ))
     }
 
