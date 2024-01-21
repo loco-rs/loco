@@ -2,6 +2,8 @@
 
 ## vNext
 
+* Added: Support socket channeld, see working example [here](https://github.com/loco-rs/chat-rooms). [https://github.com/loco-rs/loco/pull/380](https://github.com/loco-rs/loco/pull/380)
+
 ## v0.2.0
 
 
