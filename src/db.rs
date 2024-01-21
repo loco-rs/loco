@@ -9,10 +9,9 @@ use duct::cmd;
 use fs_err as fs;
 use lazy_static::lazy_static;
 use regex::Regex;
-use rrgen::Error;
 use sea_orm::{
-    ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseConnection, DbConn,
-    EntityTrait, IntoActiveModel,
+    ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
+    DatabaseConnection, DbConn, EntityTrait, IntoActiveModel, Statement,
 };
 use sea_orm_migration::MigratorTrait;
 use tracing::info;
@@ -21,7 +20,7 @@ use super::Result as AppResult;
 use crate::{
     app::{AppContext, Hooks},
     config, doctor,
-    errors::Error as LocoError,
+    errors::Error,
 };
 
 lazy_static! {
@@ -33,6 +32,33 @@ lazy_static! {
     pub static ref EXTRACT_DB_NAME: Regex = Regex::new(r"/([^/]+)$").unwrap();
 }
 
+/// Verifies a user has access to data within its database
+///
+/// # Errors
+///
+/// This function will return an error if IO fails
+pub async fn verify_access(db: &DatabaseConnection) -> AppResult<()> {
+    match db {
+        DatabaseConnection::SqlxPostgresPoolConnection(_) => {
+            let res = db
+                .query_all(Statement::from_string(
+                    DatabaseBackend::Postgres,
+                    "SELECT * FROM pg_catalog.pg_tables WHERE tableowner = current_user;",
+                ))
+                .await?;
+            if res.is_empty() {
+                return Err(Error::string(
+                    "current user has no access to tables in the database",
+                ));
+            }
+        }
+        DatabaseConnection::SqlxSqlitePoolConnection(_) => {}
+        DatabaseConnection::Disconnected => {
+            return Err(Error::string("connection to database has been closed"));
+        }
+    }
+    Ok(())
+}
 /// converge database logic
 ///
 /// # Errors
@@ -88,16 +114,18 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
 /// Returns a [`sea_orm::DbErr`] if an error occurs during run migration up.
 pub async fn create(db_uri: &str) -> AppResult<()> {
     if !db_uri.starts_with("postgres://") {
-        return Err(LocoError::Message(
-            "Only Postgres databases are supported for table creation".to_string(),
+        return Err(Error::string(
+            "Only Postgres databases are supported for table creation",
         ));
     }
     let db_name = EXTRACT_DB_NAME
         .captures(db_uri)
         .and_then(|cap| cap.get(1).map(|db| db.as_str()))
-        .ok_or(Error::Message(
-            "The specified table name was not found in the given Postgre database URI".to_string(),
-        ))?;
+        .ok_or_else(|| {
+            Error::string(
+                "The specified table name was not found in the given Postgre database URI",
+            )
+        })?;
 
     let conn = EXTRACT_DB_NAME.replace(db_uri, "/postgres").to_string();
     let db = Database::connect(conn).await?;
@@ -171,15 +199,10 @@ where
 /// # Errors
 ///
 /// Returns a [`AppResult`] if an error occurs during generate model entity.
-pub fn entities<M: MigratorTrait>(ctx: &AppContext) -> AppResult<String> {
-    if !doctor::check_seaorm_cli().valid() {
-        return Err(LocoError::Message(
-            r"SeaORM CLI is not installed.
-    To install SeaORM CLI, use the following command: `cargo install sea-orm-cli`
-`"
-            .to_string(),
-        ));
-    }
+pub async fn entities<M: MigratorTrait>(ctx: &AppContext) -> AppResult<String> {
+    doctor::check_seaorm_cli().to_result()?;
+    doctor::check_db(&ctx.config.database).await.to_result()?;
+
     let out = cmd!(
         "sea-orm-cli",
         "generate",
@@ -192,7 +215,12 @@ pub fn entities<M: MigratorTrait>(ctx: &AppContext) -> AppResult<String> {
         &ctx.config.database.uri
     )
     .stderr_to_stdout()
-    .run()?;
+    .run()
+    .map_err(|err| {
+        Error::Message(format!(
+            "failed to generate entity using sea-orm-cli binary. error details: `{err}`",
+        ))
+    })?;
     fix_entities()?;
 
     Ok(String::from_utf8_lossy(&out.stdout).to_string())
@@ -232,14 +260,14 @@ fn fix_entities() -> AppResult<()> {
         let new_file = Path::new("src/models").join(
             entity_file
                 .file_name()
-                .ok_or_else(|| Error::Message("cannot extract file name".to_string()))?,
+                .ok_or_else(|| Error::string("cannot extract file name"))?,
         );
         if !new_file.exists() {
             let module = new_file
                 .file_stem()
-                .ok_or_else(|| Error::Message("cannot extract file stem".to_string()))?
+                .ok_or_else(|| Error::string("cannot extract file stem"))?
                 .to_str()
-                .ok_or_else(|| Error::Message("cannot extract file stem".to_string()))?;
+                .ok_or_else(|| Error::string("cannot extract file stem"))?;
             fs::write(
                 &new_file,
                 format!(
@@ -287,16 +315,16 @@ pub async fn run_app_seed<H: Hooks>(db: &DatabaseConnection, path: &Path) -> App
 
 /// Create a Postgres table from the given table name.
 ///
-/// To create the table with `LOCO_MYSQL_TABLE_OPTIONS`
+/// To create the table with `LOCO_POSTGRES_TABLE_OPTIONS`
 async fn create_postgres_database(
     table_name: &str,
     db: &DatabaseConnection,
 ) -> Result<(), sea_orm::DbErr> {
-    let with_options = std::env::var("LOCO_MYSQL_TABLE_OPTIONS")
+    let with_options = std::env::var("LOCO_POSTGRES_TABLE_OPTIONS")
         .map_or_else(|_| "ENCODING='UTF8'".to_string(), |options| options);
 
     let query = format!("CREATE DATABASE {table_name} WITH {with_options}");
-    tracing::info!(query, "creating mysql table");
+    tracing::info!(query, "creating postgres table");
 
     db.execute(sea_orm::Statement::from_string(
         sea_orm::DatabaseBackend::Postgres,

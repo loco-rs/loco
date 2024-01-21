@@ -54,9 +54,9 @@ Now you can create your new app (choose "Saas app" for built-in authentication).
 $ loco new
 ✔ ❯ App name? · myapp
 ? ❯ What would you like to build? ›
-❯ lightweight-service (minimal, only controllers and views)
+  lightweight-service (minimal, only controllers and views)
   Rest API (with DB and user auth)
-  Saas app (with DB and user auth)
+❯ Saas app (with DB and user auth)
 🚂 Loco app generated successfully in:
 myapp
 ```
@@ -113,7 +113,7 @@ Here's a rundown of what Loco creates for you by default:
 | `tasks/`       | Contains your day to day business-oriented tasks such as sending emails, producing business reports, db maintenance, etc.                                         |
 | `tests/`       | Your app-wide tests: models, requests, etc.                                                                                                                       |
 | `config/`      | A stage-based configuration folder: development, test, production                                                                                                 |
-|                |                                                                                                                                                                   |
+| `channels/`    | Contains all channels routes.                                                                                                                                     |
 
 ## Hello, Loco!
 
@@ -418,15 +418,16 @@ Your `examples/` folder contains:
 Let's fetch data using your models, using `playground.rs`:
 
 ```rust
-// located in src/bin/playground.rs
+// located in examples/playground.rs
 // use this file to experiment with stuff
 use eyre::Context;
 use loco_rs::{cli::playground, prelude::*};
-use locoapp::{app::App, models::_entities::articles};
+// to refer to articles::ActiveModel, your imports should look like this:
+use myapp::{app::App, models::_entities::articles};
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    let ctx = playground::<App>().await.context("playground")?;
+    let ctx = playground::<App>().await.context("playground")?; // <- remove '_'
 
     // add this:
     let res = articles::Entity::find().all(&ctx.db).await.unwrap();
@@ -690,7 +691,7 @@ pub struct Params {
 }
 
 impl Params {
-    fn update(&self, item: &mut comments::ActiveModel) {
+    fn update(&self, item: &mut ActiveModel) {
         item.content = Set(self.content.clone());
         item.article_id = Set(self.article_id.clone()); // <- add this
     }
@@ -712,7 +713,7 @@ And implement the relation fetching:
 ```rust
 // to refer to comments::Entity, your imports should look like this:
 use crate::models::_entities::{
-    articles::{self, ActiveModel, Entity, Model},
+    articles::{ActiveModel, Entity, Model},
     comments,
 };
 
@@ -837,7 +838,7 @@ async fn add(
     Json(params): Json<Params>,
 ) -> Result<Json<CurrentResponse>> {
   // we only want to make sure it exists
-  let _current_user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
+  let _current_user = crate::models::users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
 
   // next, update
   // homework/bonus: make a comment _actually_ belong to user (user_id)

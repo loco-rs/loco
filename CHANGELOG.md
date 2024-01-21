@@ -4,8 +4,15 @@
 
 * Add: support for [pre compressed assets](https://github.com/loco-rs/loco/pull/370/files).
 
-## v0.2.0
+## v0.2.2
+* fix: public fields in maileropts. [e51b7e](https://github.com/loco-rs/loco/commit/e51b7e64e7667c519451ac8a8bea574b2c5d4403)
+* fix: handle missing db permissions. [e51b7e](https://github.com/loco-rs/loco/commit/e51b7e64e7667c519451ac8a8bea574b2c5d4403)
 
+## v0.2.1
+* enable compression for CompressionLayer, not etag. [https://github.com/loco-rs/loco/pull/356](https://github.com/loco-rs/loco/pull/356)
+* Fix nullable jsonb column schema definition. [https://github.com/loco-rs/loco/pull/357](https://github.com/loco-rs/loco/pull/357)
+
+## v0.2.0
 
 * Add: Loco now has Initializers ([see the docs](https://loco.rs/docs/the-app/initializers/)). Initializers help you integrate infra into your app in a seamless way, as well as share pieces of set up code between your projects
 * Add: added an `init_logger` hook in `src/app.rs` for those who want to take ownership of their logging and tracing stack.

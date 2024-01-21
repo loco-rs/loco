@@ -6,13 +6,12 @@ use lazy_static::lazy_static;
 use rrgen::RRgen;
 use serde_json::json;
 
-use crate::app::Hooks;
+use crate::{app::Hooks, errors::Error, Result};
 
 const MODEL_T: &str = include_str!("templates/model.t");
 const MODEL_TEST_T: &str = include_str!("templates/model_test.t");
 
 use super::collect_messages;
-use crate::{errors::Error, Result};
 
 /// skipping some fields from the generated models.
 /// For example, the `created_at` and `updated_at` fields are automatically
@@ -106,11 +105,21 @@ pub fn generate<H: Hooks>(
     let _ = cmd!("cargo", "loco", "db", "migrate",)
         .stderr_to_stdout()
         .dir(cwd.as_path())
-        .run()?;
+        .run()
+        .map_err(|err| {
+            Error::Message(format!(
+                "failed to run loco db migration. error details: `{err}`",
+            ))
+        })?;
     let _ = cmd!("cargo", "loco", "db", "entities",)
         .stderr_to_stdout()
         .dir(cwd.as_path())
-        .run()?;
+        .run()
+        .map_err(|err| {
+            Error::Message(format!(
+                "failed to run loco db entities. error details: `{err}`",
+            ))
+        })?;
 
     let messages = collect_messages(vec![res1, res2]);
     Ok(messages)

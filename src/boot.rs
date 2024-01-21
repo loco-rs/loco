@@ -152,15 +152,7 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
         RunDbCommand::Entities => {
             tracing::warn!("entities:");
 
-            // this is only to make sure we have the correct permissions on the DB for the
-            // user, and fail if we dont.  because SeaORM is blind to wrong
-            // permissions and does the wrong thing
-            // note: from all DB operations here, `entities` is the only one that uses
-            // SeaORM, and SeaORM does not check table permissions and fails silently (which
-            // is the problem)
-            db::status::<M>(&app_context.db).await?;
-
-            tracing::warn!("{}", db::entities::<M>(app_context)?);
+            tracing::warn!("{}", db::entities::<M>(app_context).await?);
         }
         RunDbCommand::Truncate => {
             tracing::warn!("truncate:");
