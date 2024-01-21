@@ -24,6 +24,7 @@
 //! | `cli`      | true    | Expose Cli commands.        |
 //! | `testing   | false   | Test Utilities Module.      |
 //! | `with-db`  | true    | with-db.                    |
+//! | `channels` | false   | Enable socket channels.     |
 pub use self::errors::Error;
 
 mod banner;
@@ -63,6 +64,8 @@ pub mod testing;
 pub use axum_test::TestServer;
 pub mod validation;
 pub mod worker;
+#[cfg(feature = "channels")]
+pub use socketioxide;
 pub use validator;
 
 /// Application results options list

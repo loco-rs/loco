@@ -12,7 +12,7 @@
 //! use loco_rs::{
 //!    app::{AppContext, Hooks},
 //!    boot::{create_app, BootResult, StartMode},
-//!    controller::AppRoutes,
+//!    controller::{channels::AppChannels, AppRoutes},
 //!    worker::Processor,
 //!    task::Tasks,
 //!    environment::Environment,
@@ -47,6 +47,14 @@
 //!     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult>{
 //!          create_app::<Self, Migrator>(mode, environment).await
 //!     }
+//!     
+//!    /// Only when `channels` feature is enabled
+//!    fn register_channels(_ctx: &AppContext) -> AppChannels {
+//!        let channels = AppChannels::default();
+//!        //channels.register.ns("/", channels::application::on_connect);
+//!        channels
+//!    }
+//!
 //!
 //!     fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {}
 //!
@@ -65,6 +73,8 @@
 
 mod app_routes;
 mod backtrace;
+#[cfg(feature = "channels")]
+pub mod channels;
 mod describe;
 pub mod format;
 #[cfg(feature = "with-db")]

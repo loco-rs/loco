@@ -5,10 +5,13 @@ cfg_if::cfg_if! {
         use std::path::Path;
         use sea_orm::DatabaseConnection;
     } else {}
+
 }
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
 
+#[cfg(feature = "channels")]
+use crate::controller::channels::AppChannels;
 use crate::{
     boot::{BootResult, StartMode},
     config::{self, Config},
@@ -129,6 +132,10 @@ pub trait Hooks {
 
     /// Defines the application's routing configuration.
     fn routes(_ctx: &AppContext) -> AppRoutes;
+
+    #[cfg(feature = "channels")]
+    /// Register channels endpoints to the application routers
+    fn register_channels(_ctx: &AppContext) -> AppChannels;
 
     /// Connects custom workers to the application using the provided
     /// [`Processor`] and [`AppContext`].
