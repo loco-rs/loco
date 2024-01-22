@@ -1,4 +1,4 @@
-use crate::config::Config;
+use crate::{config::Config, errors::Error};
 use axum::{async_trait, extract::FromRequestParts, http::request::Parts, Extension};
 use fluent_templates::{ArcLoader, FluentLoader};
 use std::sync::Arc;
@@ -41,7 +41,7 @@ where
 
 // Function that loads the templates and locales directory into the TeraLayer
 // to be added to the router as a layer
-pub async fn load_locales(cfg: Config) -> TeraLayer {
+pub async fn load_locales(cfg: Config) -> Result<TeraLayer, Error> {
     let tera_dir = cfg.tera.clone().unwrap().template_dir.unwrap().dir;
     let mut tera = tera::Tera::new(&tera_dir).unwrap();
     let ctx = tera::Context::default();
@@ -62,10 +62,10 @@ pub async fn load_locales(cfg: Config) -> TeraLayer {
         .unwrap();
     tera.register_function("fluent", FluentLoader::new(arc));
 
-    TeraLayer {
+    Ok(TeraLayer {
         tera,
         default_context: ctx,
-    }
+    })
 }
 
 // TODO remove, test function to see if this compiles when adding it as an extenstion
@@ -95,7 +95,7 @@ mod tests {
         .expect("configuration loading");
         println!("{:?}", cfg);
 
-        let mut locales = load_locales(cfg.clone()).await;
+        let mut locales = load_locales(cfg.clone()).await.unwrap();
         serde_json::json!({"lang": "zh-CN"});
         locales.default_context.insert("lang", &"de-DE");
         println!("{:?}", locales.default_context);
