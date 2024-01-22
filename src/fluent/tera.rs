@@ -1,14 +1,46 @@
 use crate::config::Config;
-use axum::{routing::get, Extension, Router};
+use axum::{async_trait, extract::FromRequestParts, http::request::Parts, Extension};
 use fluent_templates::{ArcLoader, FluentLoader};
 use std::sync::Arc;
 
-// Some shared state used throughout our application
+// Tera Layer, which includes the `tera` field with
+// - directory of templates
+// - `fluent` function added
+// - fluent directory of locales
+// and the `default_context` which can be extended with local info per request
+#[derive(Clone, Debug)]
 pub struct TeraLayer {
     pub tera: tera::Tera,
     pub default_context: tera::Context,
 }
 
+// Extractor for TeraLayer which checks the request for the `Accept-Language` header
+// and sets that in the context
+#[async_trait]
+impl<S> FromRequestParts<S> for TeraLayer
+where
+    S: Send + Sync,
+{
+    type Rejection = std::convert::Infallible;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let Extension(tl): Extension<TeraLayer> = Extension::from_request_parts(parts, state)
+            .await
+            .expect("TeraLayer missing. Is the TeraLayer installed?");
+        let locale = parts
+            .headers
+            .get("Accept-Language")
+            .unwrap()
+            .to_str()
+            .unwrap();
+        tl.default_context.clone().insert("locale", &locale);
+
+        Ok(tl)
+    }
+}
+
+// Function that loads the templates and locales directory into the TeraLayer
+// to be added to the router as a layer
 pub async fn load_locales(cfg: Config) -> TeraLayer {
     let tera_dir = cfg.tera.clone().unwrap().template_dir.unwrap().dir;
     let mut tera = tera::Tera::new(&tera_dir).unwrap();
@@ -36,6 +68,7 @@ pub async fn load_locales(cfg: Config) -> TeraLayer {
     }
 }
 
+// TODO remove, test function to see if this compiles when adding it as an extenstion
 async fn after_routes(cfg: Config, router: axum::Router) -> Result<axum::Router, ()> {
     println!("loading locales");
     let st = load_locales(cfg).await;
@@ -43,6 +76,9 @@ async fn after_routes(cfg: Config, router: axum::Router) -> Result<axum::Router,
     Ok(router.layer(Extension(Arc::new(st))))
 }
 
+// Tests for TeraLayer
+// reading from configs, a test folder with templates and locales
+// and printing some templates
 #[cfg(test)]
 mod tests {
 
@@ -60,11 +96,17 @@ mod tests {
         println!("{:?}", cfg);
 
         let mut locales = load_locales(cfg.clone()).await;
+        serde_json::json!({"lang": "zh-CN"});
+        locales.default_context.insert("lang", &"de-DE");
+        println!("{:?}", locales.default_context);
         let string = locales
             .tera
-            .render_str("hello world", &locales.default_context)
+            .render_str(
+                r#"{{ fluent(key="hello-world",lang=lang) }}"#,
+                &locales.default_context,
+            )
             .unwrap();
-        assert_eq!(string, "hello world");
+        assert_eq!(string, "Hallo Welt!");
 
         let mut context = tera::Context::new();
         context.insert("message", &"hello");
