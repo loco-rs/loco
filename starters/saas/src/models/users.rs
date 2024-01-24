@@ -48,16 +48,14 @@ impl ActiveModelBehavior for super::_entities::users::ActiveModel {
     where
         C: ConnectionTrait,
     {
-        {
-            self.validate()?;
-            if insert {
-                let mut this = self;
-                this.pid = ActiveValue::Set(Uuid::new_v4());
-                this.api_key = ActiveValue::Set(format!("lo-{}", Uuid::new_v4()));
-                Ok(this)
-            } else {
-                Ok(self)
-            }
+        self.validate()?;
+        if insert {
+            let mut this = self;
+            this.pid = ActiveValue::Set(Uuid::new_v4());
+            this.api_key = ActiveValue::Set(format!("lo-{}", Uuid::new_v4()));
+            Ok(this)
+        } else {
+            Ok(self)
         }
     }
 }
