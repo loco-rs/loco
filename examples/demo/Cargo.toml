@@ -35,6 +35,9 @@ include_dir = "0.7"
 uuid = { version = "1.6.0", features = ["v4"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 
+fluent-templates = { version = "0.8.0", features = ["tera"] }
+unic-langid = "0.9.4"
+tera = "1.19.1"
 
 [[bin]]
 name = "blo-cli"
