@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use axum::{
     async_trait, extract::FromRequestParts, http::request::Parts, Extension, Router as AxumRouter,
 };
@@ -6,7 +8,48 @@ use loco_rs::{
     app::{AppContext, Initializer},
     prelude::*,
 };
+use serde::Serialize;
 
+pub trait TemplateEngine {
+    fn render<S: Serialize>(&self, key: &str, data: S) -> Result<String>;
+}
+
+// if we ever want to support render.template(engine, key, data), `engine` needs
+// to be a trait
+impl TemplateEngine for Engine<TeraView> {
+    fn render<S: Serialize>(&self, key: &str, data: S) -> Result<String> {
+        Ok(self
+            .inner
+            .tera
+            .render(key, &tera::Context::from_serialize(data)?)?)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Engine<E> {
+    pub inner: Arc<E>,
+}
+impl<E> Engine<E> {
+    /// Creates a new [`Engine`] that wraps the given engine
+    pub fn new(engine: E) -> Self {
+        let inner = Arc::new(engine);
+        Self { inner }
+    }
+}
+
+impl<E> Clone for Engine<E> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+        }
+    }
+}
+
+impl<E> From<E> for Engine<E> {
+    fn from(inner: E) -> Self {
+        Self::new(inner)
+    }
+}
 #[derive(Clone, Debug)]
 pub struct TeraView {
     pub tera: tera::Tera,
@@ -14,9 +57,10 @@ pub struct TeraView {
 }
 
 #[async_trait]
-impl<S> FromRequestParts<S> for TeraView
+impl<S, E> FromRequestParts<S> for Engine<E>
 where
     S: Send + Sync,
+    E: Send + Sync + 'static,
 {
     type Rejection = std::convert::Infallible;
 
@@ -24,7 +68,7 @@ where
         parts: &mut Parts,
         state: &S,
     ) -> std::result::Result<Self, Self::Rejection> {
-        let Extension(tl): Extension<TeraView> = Extension::from_request_parts(parts, state)
+        let Extension(tl): Extension<Engine<E>> = Extension::from_request_parts(parts, state)
             .await
             .expect("TeraLayer missing. Is the TeraLayer installed?");
         /*
@@ -68,8 +112,9 @@ pub async fn load_locales() -> Result<TeraView> {
 async fn impl_after_routes(router: axum::Router) -> Result<axum::Router> {
     println!("loading locales");
     let tera_view = load_locales().await.unwrap();
+    let eng = Engine::from(tera_view);
     println!("locales ready");
-    Ok(router.layer(Extension(tera_view)))
+    Ok(router.layer(Extension(eng)))
 }
 
 pub struct ViewTemplatesInitializer;

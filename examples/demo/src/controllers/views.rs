@@ -1,15 +1,11 @@
 #![allow(clippy::unused_async)]
 use axum::response::IntoResponse;
 use loco_rs::prelude::*;
-use tera::Context;
 
-use crate::initializers::view_templates::TeraView;
+use crate::initializers::view_templates::{Engine, TemplateEngine, TeraView};
 
-pub async fn render_home(tera: TeraView) -> Result<impl IntoResponse> {
-    let res = tera
-        .tera
-        .render("home/hello.html", &Context::new())
-        .expect("templ");
+pub async fn render_home(tera: Engine<TeraView>) -> Result<impl IntoResponse> {
+    let res = tera.render("home/hello.html", ()).expect("templ");
     format::html(&res)
 }
 
