@@ -13,6 +13,7 @@ draft = false
 # Note: We use quoted keys here.
 [extra.author_pages]
 "team-loco" = "authors/team-loco.md"
+"limpidcrypto" = "authors/limpidcrypto.md"
 +++
 
 The authors of the blog articles.
