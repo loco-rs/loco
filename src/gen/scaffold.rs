@@ -25,6 +25,10 @@ lazy_static! {
         ("ts", "Option<DateTime>"),
         ("ts!", "DateTime"),
         ("uuid", "Option<Uuid>"),
+        ("json", "Option<serde_json::Value>"),
+        ("json!", "serde_json::Value"),
+        ("jsonb", "Option<serde_json::Value>"),
+        ("jsonb!", "serde_json::Value"),
     ]);
 }
 
