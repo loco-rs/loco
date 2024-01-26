@@ -7,7 +7,6 @@ use loco_rs::{
     controller::AppRoutes,
     db::{self, truncate_table},
     environment::Environment,
-    config::ConfigOverrides,
     task::Tasks,
     worker::{AppWorker, Processor},
     Result,
@@ -40,8 +39,7 @@ impl Hooks for App {
     }
 
     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
-        let config_override = ConfigOverrides::default();
-        create_app::<Self, Migrator>(mode, environment, &config_override).await
+        create_app::<Self, Migrator>(mode, environment).await
     }
 
     fn routes(_ctx: &AppContext) -> AppRoutes {
