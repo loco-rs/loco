@@ -18,6 +18,8 @@ use tower_http::{
     trace::TraceLayer,
 };
 
+#[cfg(feature = "channels")]
+use super::channels::AppChannels;
 use super::routes::Routes;
 use crate::{
     app::AppContext, config, controller::middleware::etag::EtagLayer, environment::Environment,
@@ -37,6 +39,8 @@ lazy_static! {
 pub struct AppRoutes {
     prefix: Option<String>,
     routes: Vec<Routes>,
+    #[cfg(feature = "channels")]
+    channels: Option<AppChannels>,
 }
 
 pub struct ListRoutes {
@@ -75,6 +79,8 @@ impl AppRoutes {
         Self {
             prefix: None,
             routes: vec![],
+            #[cfg(feature = "channels")]
+            channels: None,
         }
     }
 
@@ -158,6 +164,13 @@ impl AppRoutes {
         self
     }
 
+    #[cfg(feature = "channels")]
+    #[must_use]
+    pub fn add_app_channels(mut self, channels: AppChannels) -> Self {
+        self.channels = Some(channels);
+        self
+    }
+
     /// Convert the routes to an Axum Router, and set a list of middlewares that
     /// configure in the [`config::Config`]
     ///
@@ -206,10 +219,19 @@ impl AppRoutes {
             }
         }
 
-        if let Some(cors) = &ctx.config.server.middlewares.cors {
-            if cors.enable {
-                app = Self::add_cors_middleware(app, cors)?;
-            }
+        let cors = ctx
+            .config
+            .server
+            .middlewares
+            .cors
+            .as_ref()
+            .filter(|cors| cors.enable)
+            .map(Self::get_cors_middleware)
+            .transpose()?;
+
+        if let Some(cors) = &cors {
+            app = app.layer(cors.clone());
+            tracing::info!("[Middleware] Adding cors");
         }
 
         if let Some(static_assets) = &ctx.config.server.middlewares.static_assets {
@@ -222,6 +244,21 @@ impl AppRoutes {
             if etag.enable {
                 app = Self::add_etag_middleware(app);
             }
+        }
+
+        #[cfg(feature = "channels")]
+        if let Some(channels) = self.channels.as_ref() {
+            tracing::info!("[Middleware] Adding channels");
+            let channel_layer_app = tower::ServiceBuilder::new().layer(channels.layer.clone());
+            if let Some(cors) = cors {
+                channel_layer_app.layer(cors);
+            }
+
+            app = app.layer(
+                tower::ServiceBuilder::new()
+                    .layer(tower_http::cors::CorsLayer::permissive())
+                    .layer(channels.layer.clone()),
+            );
         }
 
         let router = app.with_state(ctx);
@@ -243,9 +280,16 @@ impl AppRoutes {
         }
 
         tracing::info!("[Middleware] Adding static");
+        let serve_dir =
+            ServeDir::new(&config.folder.path).not_found_service(ServeFile::new(&config.fallback));
         Ok(app.nest_service(
             &config.folder.uri,
-            ServeDir::new(&config.folder.path).not_found_service(ServeFile::new(&config.fallback)),
+            if config.precompressed {
+                tracing::info!("[Middleware] Enable precompressed static assets");
+                serve_dir.precompressed_gzip()
+            } else {
+                serve_dir
+            },
         ))
     }
 
@@ -261,10 +305,7 @@ impl AppRoutes {
         app
     }
 
-    fn add_cors_middleware(
-        app: AXRouter<AppContext>,
-        config: &config::CorsMiddleware,
-    ) -> Result<AXRouter<AppContext>> {
+    fn get_cors_middleware(config: &config::CorsMiddleware) -> Result<cors::CorsLayer> {
         let mut cors: cors::CorsLayer = cors::CorsLayer::permissive();
 
         if let Some(allow_origins) = &config.allow_origins {
@@ -299,10 +340,7 @@ impl AppRoutes {
             cors = cors.max_age(Duration::from_secs(max_age));
         }
 
-        let app = app.layer(cors);
-        tracing::info!("[Middleware] Adding cors");
-
-        Ok(app)
+        Ok(cors)
     }
 
     fn add_catch_panic(app: AXRouter<AppContext>) -> AXRouter<AppContext> {

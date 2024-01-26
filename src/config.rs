@@ -335,6 +335,9 @@ pub struct StaticAssetsMiddleware {
     /// Fallback page for a case when no asset exists (404). Useful for SPA
     /// (single page app) where routes are virtual.
     pub fallback: String,
+    /// Enable `precompressed_gzip`
+    #[serde(default = "bool::default")]
+    pub precompressed: bool,
 }
 
 /// Asset folder config.

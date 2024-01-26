@@ -40,6 +40,13 @@ server:
       enable: true
       # Duration time in milliseconds.
       timeout: 5000
+    static_assets:
+      enable: true
+      must_exist: true
+      precompressed: true
+      folder:
+        path: assets
+      fallback: index.html
     compression:
       enable: true
     cors:

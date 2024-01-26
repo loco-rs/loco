@@ -13,7 +13,7 @@
 //!    app::{AppContext, Hooks},
 //!    boot::{create_app, BootResult, StartMode},
 //!    config::ConfigOverrides,
-//!    controller::AppRoutes,
+//!    controller::{channels::AppChannels, AppRoutes},
 //!    worker::Processor,
 //!    task::Tasks,
 //!    environment::Environment,
@@ -49,6 +49,14 @@
 //!         let config_override = ConfigOverrides::default();
 //!          create_app::<Self, Migrator>(mode, environment, &config_override).await
 //!     }
+//!     
+//!    /// Only when `channels` feature is enabled
+//!    fn register_channels(_ctx: &AppContext) -> AppChannels {
+//!        let channels = AppChannels::default();
+//!        //channels.register.ns("/", channels::application::on_connect);
+//!        channels
+//!    }
+//!
 //!
 //!     fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {}
 //!
@@ -67,6 +75,8 @@
 
 mod app_routes;
 mod backtrace;
+#[cfg(feature = "channels")]
+pub mod channels;
 mod describe;
 pub mod format;
 #[cfg(feature = "with-db")]

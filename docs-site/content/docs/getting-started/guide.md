@@ -113,7 +113,7 @@ Here's a rundown of what Loco creates for you by default:
 | `tasks/`       | Contains your day to day business-oriented tasks such as sending emails, producing business reports, db maintenance, etc.                                         |
 | `tests/`       | Your app-wide tests: models, requests, etc.                                                                                                                       |
 | `config/`      | A stage-based configuration folder: development, test, production                                                                                                 |
-|                |                                                                                                                                                                   |
+| `channels/`    | Contains all channels routes.                                                                                                                                     |
 
 ## Hello, Loco!
 
