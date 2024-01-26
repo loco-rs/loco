@@ -32,6 +32,7 @@ use clap::{Parser, Subcommand};
 use crate::{
     app::{AppContext, Hooks},
     boot::{create_app, create_context, list_endpoints, run_task, start, RunDbCommand, StartMode},
+    config::ConfigOverrides,
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     gen::{self, Component},
     logger, Result,
@@ -232,8 +233,9 @@ where
 pub async fn playground<H: Hooks>() -> Result<AppContext> {
     let cli = Playground::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
+    let config_overrides = ConfigOverrides::default();
 
-    let app_context = create_context::<H>(&environment).await?;
+    let app_context = create_context::<H>(&environment, &config_overrides).await?;
     Ok(app_context)
 }
 
@@ -266,31 +268,42 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
     let cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
-    let config = environment.load()?;
+    let mut config_overrides = ConfigOverrides::default();
+    let start_mode;
+
+    if let Commands::Start {
+        worker,
+        server_and_worker,
+        binding,
+    } = &cli.command
+    {
+        // Set the start mode based on the command flags
+        start_mode = if *worker {
+            StartMode::WorkerOnly
+        } else if *server_and_worker {
+            StartMode::ServerAndWorker
+        } else {
+            StartMode::ServerOnly
+        };
+
+        // Set binding override if provided.
+        if let Some(bind_addr) = binding {
+            config_overrides.binding = Some(bind_addr.clone());
+        }
+    } else {
+        start_mode = StartMode::ServerOnly;
+    }
+
+    let config = environment.load()?.with_overrides(&config_overrides);
 
     if !H::init_logger(&config, &environment)? {
         logger::init::<H>(&config.logger);
     }
 
     match cli.command {
-        Commands::Start {
-            worker,
-            server_and_worker,
-            binding,
-        } => {
-            let start_mode = if worker {
-                StartMode::WorkerOnly
-            } else if server_and_worker {
-                StartMode::ServerAndWorker
-            } else {
-                StartMode::ServerOnly
-            };
-
-            let b = binding.unwrap_or_else(|| "[::]".to_string());
-
-            let mut boot_result = create_app::<H, M>(start_mode, &environment).await?;
-            // inject the new binding address to config
-            boot_result.app_context.config.server.add_binding_addr(&b);
+        Commands::Start { .. } => {
+            let boot_result =
+                create_app::<H, M>(start_mode, &environment, &config_overrides).await?;
             start(boot_result).await?;
         }
         #[cfg(feature = "with-db")]
@@ -298,12 +311,12 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             if matches!(command, DbCommands::Create) {
                 db::create(&environment.load()?.database.uri).await?;
             } else {
-                let app_context = create_context::<H>(&environment).await?;
+                let app_context = create_context::<H>(&environment, &config_overrides).await?;
                 run_db::<H, M>(&app_context, command.into()).await?;
             }
         }
         Commands::Routes {} => {
-            let app_context = create_context::<H>(&environment).await?;
+            let app_context = create_context::<H>(&environment, &config_overrides).await?;
             show_list_endpoints::<H>(&app_context);
         }
         Commands::Task { name, params } => {
@@ -311,7 +324,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             for (k, v) in params {
                 hash.insert(k, v);
             }
-            let app_context = create_context::<H>(&environment).await?;
+            let app_context = create_context::<H>(&environment, &config_overrides).await?;
             run_task::<H>(&app_context, name.as_ref(), &hash).await?;
         }
         Commands::Generate { component } => {
@@ -341,30 +354,45 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
     let cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
-    let config = environment.load()?;
+    let mut config_overrides = ConfigOverrides::default();
+    let start_mode;
+
+    if let Commands::Start {
+        worker,
+        server_and_worker,
+        binding,
+    } = &cli.command
+    {
+        // Set the start mode based on the command flags
+        start_mode = if *worker {
+            StartMode::WorkerOnly
+        } else if *server_and_worker {
+            StartMode::ServerAndWorker
+        } else {
+            StartMode::ServerOnly
+        };
+
+        // Set binding override if provided.
+        if let Some(bind_addr) = binding {
+            config_overrides.binding = Some(bind_addr.clone());
+        }
+    } else {
+        start_mode = StartMode::ServerOnly;
+    }
+
+    let config = environment.load()?.with_overrides(&config_overrides);
 
     if !H::init_logger(&config, &environment)? {
         logger::init::<H>(&config.logger);
     }
 
     match cli.command {
-        Commands::Start {
-            worker,
-            server_and_worker,
-        } => {
-            let start_mode = if worker {
-                StartMode::WorkerOnly
-            } else if server_and_worker {
-                StartMode::ServerAndWorker
-            } else {
-                StartMode::ServerOnly
-            };
-
-            let boot_result = create_app::<H>(start_mode, &environment).await?;
+        Commands::Start { .. } => {
+            let boot_result = create_app::<H>(start_mode, &environment, &config_overrides).await?;
             start(boot_result).await?;
         }
         Commands::Routes {} => {
-            let app_context = create_context::<H>(&environment).await?;
+            let app_context = create_context::<H>(&environment, &config_overrides).await?;
             show_list_endpoints::<H>(&app_context)
         }
         Commands::Task { name, params } => {
@@ -372,7 +400,7 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
             for (k, v) in params {
                 hash.insert(k, v);
             }
-            let app_context = create_context::<H>(&environment).await?;
+            let app_context = create_context::<H>(&environment, &config_overrides).await?;
             run_task::<H>(&app_context, name.as_ref(), &hash).await?;
         }
         Commands::Generate { component } => {

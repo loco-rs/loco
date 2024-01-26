@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use loco_rs::{
     app::{AppContext, Hooks},
     boot::{create_app, BootResult, StartMode},
+    config::ConfigOverrides,
     controller::AppRoutes,
     db::{self, truncate_table},
     environment::Environment,
@@ -39,7 +40,8 @@ impl Hooks for App {
     }
 
     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
-        create_app::<Self, Migrator>(mode, environment).await
+        let config_override = ConfigOverrides::default();
+        create_app::<Self, Migrator>(mode, environment, &config_override).await
     }
 
     fn routes(_ctx: &AppContext) -> AppRoutes {

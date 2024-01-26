@@ -13,7 +13,7 @@ use crate::db;
 use crate::{
     app::{AppContext, Hooks},
     banner::print_banner,
-    config::{self, Config},
+    config::{self, Config, ConfigOverrides},
     controller::ListRoutes,
     environment::Environment,
     errors::Error,
@@ -181,8 +181,11 @@ async fn serve(app: Router, config: &Config) -> Result<()> {
 ///
 /// # Errors
 /// When has an error to create DB connection.
-pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppContext> {
-    let config = environment.load()?;
+pub async fn create_context<H: Hooks>(
+    environment: &Environment,
+    config_overrides: &ConfigOverrides,
+) -> Result<AppContext> {
+    let config = environment.load()?.with_overrides(config_overrides);
 
     if config.logger.pretty_backtrace {
         std::env::set_var("RUST_BACKTRACE", "1");
@@ -220,8 +223,9 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
 pub async fn create_app<H: Hooks, M: MigratorTrait>(
     mode: StartMode,
     environment: &Environment,
+    config_overrides: &ConfigOverrides,
 ) -> Result<BootResult> {
-    let app_context = create_context::<H>(environment).await?;
+    let app_context = create_context::<H>(environment, config_overrides).await?;
     db::converge::<H, M>(&app_context.db, &app_context.config.database).await?;
 
     if let Some(pool) = &app_context.redis {
@@ -235,8 +239,9 @@ pub async fn create_app<H: Hooks, M: MigratorTrait>(
 pub async fn create_app<H: Hooks>(
     mode: StartMode,
     environment: &Environment,
+    config_overrides: &ConfigOverrides,
 ) -> Result<BootResult> {
-    let app_context = create_context::<H>(environment).await?;
+    let app_context = create_context::<H>(environment, &config_overrides).await?;
 
     if let Some(pool) = &app_context.redis {
         redis::converge(pool, &app_context.config.redis).await?;

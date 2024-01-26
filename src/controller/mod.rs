@@ -12,6 +12,7 @@
 //! use loco_rs::{
 //!    app::{AppContext, Hooks},
 //!    boot::{create_app, BootResult, StartMode},
+//!    config::ConfigOverrides,
 //!    controller::AppRoutes,
 //!    worker::Processor,
 //!    task::Tasks,
@@ -45,7 +46,8 @@
 //!     }
 //!     
 //!     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult>{
-//!          create_app::<Self, Migrator>(mode, environment).await
+//!         let config_override = ConfigOverrides::default();
+//!          create_app::<Self, Migrator>(mode, environment, &config_override).await
 //!     }
 //!
 //!     fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {}

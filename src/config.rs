@@ -242,7 +242,8 @@ pub struct JWT {
 pub struct Server {
     /// The address on which the server should listen on for incoming
     /// connections.
-    pub binding: Option<String>,
+    #[serde(default = "default_binding")]
+    pub binding: String,
     /// The port on which the server should listen for incoming connections.
     pub port: i32,
     /// The webserver host
@@ -254,19 +255,19 @@ pub struct Server {
     pub middlewares: Middlewares,
 }
 
+fn default_binding() -> String {
+    "[::]".to_string()
+}
+
 impl Server {
     #[must_use]
     pub fn full_url(&self) -> String {
         format!("{}:{}", self.host, self.port)
     }
 
-    pub fn add_binding_addr(&mut self, addr: &str) {
-        self.binding = Some(addr.to_string());
-    }
-
     #[must_use]
     pub fn get_binding(&self) -> String {
-        self.binding.clone().unwrap_or_else(|| "[::]".to_string())
+        self.binding.clone()
     }
 }
 /// Background worker configuration
@@ -504,4 +505,23 @@ impl Config {
                 Ok,
             )
     }
+
+    /// Override loaded configurations
+    ///
+    /// # Returns a modified configurations
+    #[must_use]
+    pub fn with_overrides(self, overrides: &ConfigOverrides) -> Self {
+        let mut this = self;
+        if let Some(binding) = &overrides.binding {
+            this.server.binding = binding.clone();
+        }
+
+        this
+    }
+}
+
+/// Configuration overrides
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct ConfigOverrides {
+    pub binding: Option<String>,
 }

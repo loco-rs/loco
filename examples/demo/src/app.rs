@@ -5,6 +5,7 @@ use axum::Router as AxumRouter;
 use loco_rs::{
     app::{AppContext, Hooks, Initializer},
     boot::{create_app, BootResult, StartMode},
+    config::ConfigOverrides,
     controller::AppRoutes,
     db::{self, truncate_table},
     environment::Environment,
@@ -55,7 +56,8 @@ impl Hooks for App {
     }
 
     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
-        create_app::<Self, Migrator>(mode, environment).await
+        let config_override = ConfigOverrides::default();
+        create_app::<Self, Migrator>(mode, environment, &config_override).await
     }
 
     fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {

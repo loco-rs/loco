@@ -8,6 +8,7 @@ use loco_rs::{
     boot::{create_app, BootResult, StartMode},
     controller::AppRoutes,
     environment::Environment,
+    config::ConfigOverrides,
     task::Tasks,
     worker::Processor,
     Result,
@@ -24,7 +25,8 @@ impl Hooks for App {
     }
 
     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
-        create_app::<Self>(mode, environment).await
+        let config_overrides = ConfigOverrides::default();
+        create_app::<Self>(mode, environment, &config_overrides).await
     }
 
     async fn before_run(_ctx: &AppContext) -> Result<()> {
