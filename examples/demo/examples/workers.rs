@@ -14,7 +14,7 @@ async fn main() -> eyre::Result<()> {
     let boot_result = create_app::<App, Migrator>(StartMode::WorkerOnly, &environment).await?;
     let serve_config = ServeConfig {
         port: boot_result.app_context.config.server.port,
-        binding:boot_result.app_context.config.server.binding.to_string(),
+        binding: boot_result.app_context.config.server.binding.to_string(),
     };
     start(boot_result, serve_config).await?;
     Ok(())
