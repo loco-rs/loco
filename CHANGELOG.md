@@ -1,6 +1,8 @@
 # Changelog
 
 ## vNext
+* Add json to scaffold gen. [https://github.com/loco-rs/loco/pull/396](https://github.com/loco-rs/loco/pull/396)
+* Add --binding(-b) and --port(-b) to `cargo loco start`.[https://github.com/loco-rs/loco/pull/402](https://github.com/loco-rs/loco/pull/402)
 
 ## 0.2.3
 
