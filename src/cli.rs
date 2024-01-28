@@ -361,6 +361,8 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
         Commands::Start {
             worker,
             server_and_worker,
+            binding,
+            port,
         } => {
             let start_mode = if worker {
                 StartMode::WorkerOnly
@@ -371,7 +373,14 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
             };
 
             let boot_result = create_app::<H>(start_mode, &environment).await?;
-            start(boot_result).await?;
+            let serve_config = ServeConfig {
+                port: port.map_or(boot_result.app_context.config.server.port, |p| p),
+                binding: binding.map_or(
+                    boot_result.app_context.config.server.binding.to_string(),
+                    |b| b,
+                ),
+            };
+            start(boot_result, serve_config).await?;
         }
         Commands::Routes {} => {
             let app_context = create_context::<H>(&environment).await?;
