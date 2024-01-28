@@ -65,7 +65,7 @@ pub async fn start(boot: BootResult, server_config: ServeConfig) -> Result<()> {
     let BootResult {
         router,
         processor,
-        app_context,
+        app_context: _,
     } = boot;
 
     match (router, processor) {
