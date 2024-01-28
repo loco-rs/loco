@@ -32,6 +32,8 @@ use tracing::info;
 
 use crate::{environment::Environment, logger, Error, Result};
 
+const DEFAULT_SERVER_BINDING: &str = "[::]";
+
 lazy_static! {
     static ref DEFAULT_FOLDER: PathBuf = PathBuf::from("config");
 }
@@ -240,6 +242,10 @@ pub struct JWT {
 /// ```
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Server {
+    /// The address on which the server should listen on for incoming
+    /// connections.
+    #[serde(default = "default_binding")]
+    pub binding: String,
     /// The port on which the server should listen for incoming connections.
     pub port: i32,
     /// The webserver host
@@ -249,6 +255,10 @@ pub struct Server {
     /// Middleware configurations for the server, including payload limits,
     /// logging, and error handling.
     pub middlewares: Middlewares,
+}
+
+fn default_binding() -> String {
+    DEFAULT_SERVER_BINDING.to_string()
 }
 
 impl Server {
