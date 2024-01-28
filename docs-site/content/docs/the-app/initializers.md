@@ -37,6 +37,7 @@ You can achieve this reuse easily, if you code the integration as an _initialize
 
 ```rust
 // place this in `src/initializers/axum_session.rs`
+#[async_trait]
 impl Initializer for AxumSessionInitializer {
     fn name(&self) -> String {
         "axum-session".to_string()
