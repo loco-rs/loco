@@ -50,7 +50,7 @@ impl Hooks for App {
             .add_route(controllers::notes::routes())
             .add_route(controllers::auth::routes())
             .add_route(controllers::mysession::routes())
-            .add_route(controllers::views::routes())
+            .add_route(controllers::dashboard::routes())
             .add_route(controllers::user::routes())
     }
 

@@ -6,13 +6,10 @@ use axum::{
 use fluent_templates::{ArcLoader, FluentLoader};
 use loco_rs::{
     app::{AppContext, Initializer},
+    controller::views::TemplateEngine,
     prelude::*,
 };
 use serde::Serialize;
-
-pub trait TemplateEngine {
-    fn render<S: Serialize>(&self, key: &str, data: S) -> Result<String>;
-}
 
 // if we ever want to support render.template(engine, key, data), `engine` needs
 // to be a trait
