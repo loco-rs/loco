@@ -12,7 +12,7 @@ use crate::{
 /// # Errors
 ///
 /// This function will return an error if render fails
-pub async fn render_home(t: Engine<TeraView>) -> Result<impl IntoResponse> {
+pub async fn render_home(Engine(t): Engine<TeraView>) -> Result<impl IntoResponse> {
     views::dashboard::home(t)
 }
 
