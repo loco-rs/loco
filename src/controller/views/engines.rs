@@ -1,5 +1,4 @@
 use serde::Serialize;
-use tracing::info;
 
 use crate::{controller::views::ViewRenderer, Result};
 
@@ -29,8 +28,7 @@ impl TeraView {
 
 impl ViewRenderer for TeraView {
     fn render<S: Serialize>(&self, key: &str, data: S) -> Result<String> {
-        Ok(self
-            .tera
-            .render(key, &tera::Context::from_serialize(data)?)?)
+        let context = tera::Context::from_serialize(data)?;
+        Ok(self.tera.render(key, &context)?)
     }
 }
