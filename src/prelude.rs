@@ -16,7 +16,7 @@ pub use crate::{
     app::{AppContext, Initializer},
     controller::{
         format, not_found, unauthorized,
-        views::{ViewEngine, ViewRenderer},
+        views::{engines::TeraView, ViewEngine, ViewRenderer},
         Json, Routes,
     },
     errors::Error,

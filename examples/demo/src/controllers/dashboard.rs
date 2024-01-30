@@ -1,14 +1,14 @@
 #![allow(clippy::unused_async)]
 use loco_rs::prelude::*;
 
-use crate::{initializers::view_engines::Tera, views};
+use crate::views;
 
 /// Renders the dashboard home page
 ///
 /// # Errors
 ///
 /// This function will return an error if render fails
-pub async fn render_home(ViewEngine(v): ViewEngine<Tera>) -> Result<impl IntoResponse> {
+pub async fn render_home(ViewEngine(v): ViewEngine<TeraView>) -> Result<impl IntoResponse> {
     views::dashboard::home(v)
 }
 
