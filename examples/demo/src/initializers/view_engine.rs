@@ -13,6 +13,7 @@ const I18N_SHARED: &str = "assets/i18n/shared.ftl";
 /*
 finalizing tasks
 [ ] extract this initializer as standard in saas starter, add to app hooks
+    also add new deps: fluent, and unic-id
 [ ] add assets folder structure to saas starter
 [ ] document this view engine, incl. i18n and folder locations
 [ ] document how to build a custom view engine
