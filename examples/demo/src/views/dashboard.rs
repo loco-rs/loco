@@ -1,8 +1,5 @@
-#![allow(clippy::unused_async)]
-use axum::response::IntoResponse;
-use loco_rs::{controller::views::TemplateEngine, prelude::*};
+use loco_rs::prelude::*;
 
-pub fn home(t: impl TemplateEngine) -> Result<impl IntoResponse> {
-    let res = t.render("home/hello.html", ()).expect("templ");
-    format::render().html(&res)
+pub fn home(v: impl ViewRenderer) -> Result<impl IntoResponse> {
+    format::render().view(&v, "home/hello.html", ())
 }

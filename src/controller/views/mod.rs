@@ -6,8 +6,8 @@ use crate::Result;
 #[cfg(feature = "with-db")]
 pub mod pagination;
 
-pub trait TemplateEngine {
-    /// Render a template located by `key`
+pub trait ViewRenderer {
+    /// Render a view template located by `key`
     ///
     /// # Errors
     ///
@@ -16,23 +16,23 @@ pub trait TemplateEngine {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Engine<E>(pub E);
+pub struct ViewEngine<E>(pub E);
 
-impl<E> Engine<E> {
+impl<E> ViewEngine<E> {
     /// Creates a new [`Engine`] that wraps the given engine
     pub fn new(engine: E) -> Self {
         Self(engine)
     }
 }
 
-impl<E> From<E> for Engine<E> {
+impl<E> From<E> for ViewEngine<E> {
     fn from(inner: E) -> Self {
         Self::new(inner)
     }
 }
 
 #[async_trait]
-impl<S, E> FromRequestParts<S> for Engine<E>
+impl<S, E> FromRequestParts<S> for ViewEngine<E>
 where
     S: Send + Sync,
     E: Clone + Send + Sync + 'static,

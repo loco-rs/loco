@@ -29,7 +29,7 @@ use bytes::{BufMut, BytesMut};
 use hyper::{header, StatusCode};
 use serde::Serialize;
 
-use super::views::TemplateEngine;
+use super::views::ViewRenderer;
 use crate::{controller::Json, Result};
 
 /// Returns an empty response.
@@ -133,12 +133,12 @@ pub fn html(content: &str) -> Result<Html<String>> {
 /// # Errors
 ///
 /// This function will return an error if rendering fails
-pub fn template<T, S>(t: &T, key: &str, data: S) -> Result<Html<String>>
+pub fn view<V, S>(v: &V, key: &str, data: S) -> Result<Html<String>>
 where
-    T: TemplateEngine,
+    V: ViewRenderer,
     S: Serialize,
 {
-    let res = t.render(key, data)?;
+    let res = v.render(key, data)?;
     html(&res)
 }
 
@@ -242,12 +242,12 @@ impl RenderBuilder {
     /// # Errors
     ///
     /// This function will return an error if rendering fails
-    pub fn template<T, S>(self, t: &T, key: &str, data: S) -> Result<Response>
+    pub fn view<V, S>(self, v: &V, key: &str, data: S) -> Result<Response>
     where
-        T: TemplateEngine,
+        V: ViewRenderer,
         S: Serialize,
     {
-        let content = t.render(key, data)?;
+        let content = v.render(key, data)?;
         self.html(&content)
     }
 
