@@ -39,6 +39,7 @@ The Saas starter is perfect for projects requiring both a frontend website and a
 
 - Built on React and Vite (easy to replace with your preferred framework).
 - Static middleware that point on your frontend build and includes a fallback index.
+- The Tera view engine configured for server side view templates, including i18n configuration. Templates and i18n assets live in `assets/`
 
 **Rest API**
 
