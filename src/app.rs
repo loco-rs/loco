@@ -22,6 +22,7 @@ use crate::{
     worker::{Pool, Processor, RedisConnectionManager},
     Result,
 };
+use crate::storage::Storage;
 
 /// Represents the application context for a web server.
 ///
@@ -43,6 +44,8 @@ pub struct AppContext {
     pub config: Config,
     /// An optional email sender component that can be used to send email.
     pub mailer: Option<EmailSender>,
+    // /// An optional file storage component that can be used to store files.
+    // pub storage: Option<Storage>,
 }
 
 /// A trait that defines hooks for customizing and extending the behavior of a

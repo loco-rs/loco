@@ -21,6 +21,9 @@ testing = ["dep:axum-test"]
 with-db = ["dep:sea-orm", "dep:sea-orm-migration"]
 channels = ["dep:socketioxide"]
 
+store-aws = ["object_store/aws"]
+store-gcp = ["object_store/gcp"]
+store-azure = ["object_store/azure"]
 
 [dependencies]
 
@@ -69,6 +72,9 @@ include_dir = "0.7.3"
 thiserror = "1"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
+
+# file upload
+object_store = { version = "0.9.0" , features = ["aws","azure","gcp"] }
 
 
 # cli/migrations

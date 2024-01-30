@@ -53,6 +53,7 @@ pub struct Config {
     #[serde(default)]
     pub workers: Workers,
     pub mailer: Option<Mailer>,
+    pub storage: Option<Storage>,
 
     /// Custom app settings
     ///
@@ -267,6 +268,7 @@ impl Server {
         format!("{}:{}", self.host, self.port)
     }
 }
+
 /// Background worker configuration
 /// Example (development):
 /// ```yaml
@@ -425,6 +427,58 @@ pub struct MailerAuth {
     /// Password
     pub password: String,
 }
+
+/// Storage configuration
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Storage {
+    pub local: Option<StorageLocal>,
+    pub amazon_s3: Option<StorageAmazonS3>,
+    pub google_cloud_storage: Option<StorageGoogleCloudStorage>,
+    pub azure_blob_storage: Option<StorageAzureBlobStorage>,
+}
+
+/// Storage configuration for Local
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct StorageLocal {
+    pub path: String,
+}
+
+
+/// Storage configuration for Amazon S3
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct StorageAmazonS3 {
+    /// Bucket name
+    pub bucket_name: String,
+    /// Region of the bucket
+    pub default_region: String,
+    /// Access key id
+    pub access_key_id: String,
+    /// Secret access key
+    pub secret_access_key: String,
+}
+
+/// Storage configuration for Google Cloud Storage
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct StorageGoogleCloudStorage {
+    /// Bucket name
+    pub bucket_name: String,
+    /// Service account
+    pub service_account: String,
+    /// Service account key
+    pub service_account_key: String,
+}
+
+/// Storage configuration for Azure Blob Storage
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct StorageAzureBlobStorage {
+    /// Container name
+    pub container_name: String,
+    /// Account name
+    pub account_name: String,
+    /// Account key
+    pub account_key: String,
+}
+
 
 impl Config {
     /// Creates a new configuration instance based on the specified environment.
