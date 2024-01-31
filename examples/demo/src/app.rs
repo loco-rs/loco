@@ -1,10 +1,12 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
 use loco_rs::{
+    active_storage,
     app::{AppContext, Hooks, Initializer},
     boot::{create_app, BootResult, StartMode},
+    config::Config,
     controller::AppRoutes,
     db::{self, truncate_table},
     environment::Environment,
@@ -52,6 +54,7 @@ impl Hooks for App {
             .add_route(controllers::auth::routes())
             .add_route(controllers::mysession::routes())
             .add_route(controllers::user::routes())
+            .add_route(controllers::upload::routes())
     }
 
     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
@@ -66,6 +69,19 @@ impl Hooks for App {
         tasks.register(tasks::user_report::UserReport);
         tasks.register(tasks::seed::SeedData);
         tasks.register(tasks::foo::Foo);
+    }
+
+    async fn storage(
+        _config: &Config,
+        _environment: &Environment,
+    ) -> Result<Option<active_storage::multi_store::MultiStore>> {
+        let config = active_storage::drivers::disk::Config {
+            location: PathBuf::from("temp"),
+        };
+
+        Ok(Some(active_storage::multi_store::MultiStore::new(
+            active_storage::StoreConfig::Disk(config).build().await?,
+        )))
     }
 
     async fn truncate(db: &DatabaseConnection) -> Result<()> {

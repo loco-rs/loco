@@ -211,6 +211,7 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
         #[cfg(feature = "with-db")]
         db,
         redis,
+        storage: H::storage(&config, &environment).await?,
         config,
         mailer,
     })

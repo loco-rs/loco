@@ -28,7 +28,7 @@ sea-orm = { version = "0.12.4", features = [
   "macros",
 ] }
 
-axum = "0.7.1"
+axum = { version = "0.7.1", features = ["multipart"] }
 axum_session = { version = "0.10.1", default-features = false }
 
 include_dir = "0.7"

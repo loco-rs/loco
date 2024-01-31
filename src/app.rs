@@ -7,6 +7,7 @@ cfg_if::cfg_if! {
     } else {}
 
 }
+use active_storage::multi_store::MultiStore;
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
 
@@ -43,6 +44,8 @@ pub struct AppContext {
     pub config: Config,
     /// An optional email sender component that can be used to send email.
     pub mailer: Option<EmailSender>,
+    // Storage configuration
+    pub storage: Option<MultiStore>,
 }
 
 /// A trait that defines hooks for customizing and extending the behavior of a
@@ -143,6 +146,14 @@ pub trait Hooks {
 
     /// Registers custom tasks with the provided [`Tasks`] object.
     fn register_tasks(tasks: &mut Tasks);
+
+    ///
+    async fn storage(
+        _config: &config::Config,
+        _environment: &Environment,
+    ) -> Result<Option<MultiStore>> {
+        Ok(None)
+    }
 
     /// Truncates the database as required. Users should implement this
     /// function. The truncate controlled from the [`crate::config::Database`]
