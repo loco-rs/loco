@@ -455,6 +455,8 @@ pub struct StorageAmazonS3 {
     pub access_key_id: String,
     /// Secret access key
     pub secret_access_key: String,
+    /// Path of the file
+    pub path: String,
 }
 
 /// Storage configuration for Google Cloud Storage
@@ -466,6 +468,8 @@ pub struct StorageGoogleCloudStorage {
     pub service_account: String,
     /// Service account key
     pub service_account_key: String,
+    /// Path of the file
+    pub path: String,
 }
 
 /// Storage configuration for Azure Blob Storage
@@ -477,6 +481,8 @@ pub struct StorageAzureBlobStorage {
     pub account_name: String,
     /// Account key
     pub account_key: String,
+    /// Path of the file
+    pub path: String,
 }
 
 
