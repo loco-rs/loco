@@ -93,6 +93,7 @@ $ blo-cli routes --environment test
 [GET] /notes/:id
 [DELETE] /notes/:id
 [POST] /notes/:id
+[POST] /upload/file
 [GET] /user/current
 [GET] /user/current_api_key
 
