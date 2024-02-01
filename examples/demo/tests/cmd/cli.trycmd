@@ -87,6 +87,8 @@ $ blo-cli routes --environment test
 [POST] /auth/register
 [POST] /auth/reset
 [POST] /auth/verify
+[GET] /dashboard/hello
+[GET] /dashboard/home
 [GET] /mysession
 [GET] /notes
 [POST] /notes
