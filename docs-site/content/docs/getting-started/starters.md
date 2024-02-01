@@ -33,13 +33,13 @@ loco new
 
 #### Saas Starter
 
-The Saas starter is perfect for projects requiring both a frontend website and a REST API. It comes equipped with:
+The Saas starter is an all-included set up for projects requiring both a UI and a REST API. For the UI this starter supports a client-side app or classic server-side templates (or a combination).
 
-**Frontend**
+**UI**
 
-- Built on React and Vite (easy to replace with your preferred framework).
-- Static middleware that point on your frontend build and includes a fallback index.
-- The Tera view engine configured for server side view templates, including i18n configuration. Templates and i18n assets live in `assets/`
+- Frontend starter built on React and Vite (easy to replace with your preferred framework).
+- Static middleware that point on your frontend build and includes a fallback index. Alternatively you can configure it for static assets for server-side templates.
+- The Tera view engine configured for server-side templates, including i18n configuration. Templates and i18n assets live in `assets/`.
 
 **Rest API**
 

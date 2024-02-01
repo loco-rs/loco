@@ -28,13 +28,15 @@ This is similar in spirit to Rails' `jbuilder` views which are JSON, and regular
 </div>
 
 ## JSON views
+As an example we have an endpoint that handles user login.  When the user is valid we can pass the `user` model into the `LoginResponse` view (which is a JSON view) to return the response.
 
-For an examples, we have an endpoint that handling user login request. in this case we creating an [controller](@/docs/the-app/controller.md) the defined the user payload and parsing in into the model for check if the user request is valid.
-When the user is valid we can pass the `user` model into the `auth` view which take the user and parsing the relavant detatils that we want to return in the request.
+There are 3 steps:
 
-Upon confirming the validity of the user, we pass the user model to the auth view. The auth view then takes the user and processes the relevant details that we intend to include in the response. This division of responsibilities allows for a clear and structured flow in handling user login requests within the application.
+1. Parse, accept the request
+2. Create domain objects: models
+3. Hand off the domain model to a view object which **shapes** the final response
 
-The following Rust code represents a controller responsible for handling user login requests
+The following Rust code represents a controller responsible for handling user login requests, which handes off _shaping_ of the response to `LoginResponse`.
 
 ```rust
 use crate::{views::auth::LoginResponse};
@@ -42,16 +44,15 @@ async fn login(
     State(ctx): State<AppContext>,
     Json(params): Json<LoginParams>,
 ) -> Result<Json<LoginResponse>> {
-
     // Fetching the user model with the requested parameters
     // let user = users::Model::find_by_email(&ctx.db, &params.email).await?;
 
-    // Formatting the JSON response ussing LoginResponse view
+    // Formatting the JSON response using LoginResponse view
     format::json(LoginResponse::new(&user, &token))
 }
 ```
 
-The Rust code below represents a view responsible for generating a structured response for user login. It uses the LoginResponse structure, and this is the response which returns to the user
+On the other hand, `LoginResponse` is a response shaping view, which is powered by `serde`:
 
 ```rust
 use serde::{Deserialize, Serialize};
@@ -80,24 +81,39 @@ impl LoginResponse {
 
 ## Template views
 
-Loco has a _view engine infrastructure_ built in. It means that you can take any kind of a template engine like Tera and Liquid, implement a `TemplateEngine` trait and use those in your controllers.
+When you want to return HTML to the user, you use server-side templates. This is similar to how Ruby's `erb` works, or Node's `ejs`, or PHP for that matter.
 
-We provide a built in `TeraView` engine which requires no coding, it's ready use. To use this engine you need to verify that you have a `ViewEngineInitializer` in `initializers/view_engine.rs` which is also specified in your `app.rs`. If you used the SaaS Starter, this should already be configured for you.
+For server-side templates rendering we provide the built in `TeraView` engine which is based on the popular [Tera](http://keats.github.io/tera/) template engine.
 
 <div class="infobox">
-<b>NOTE: The SaaS starter includes a fully configured Tera view engine</b>, which includes an i18n library and asset loading, which is also wired into your app hooks
+To use this engine you need to verify that you have a <code>ViewEngineInitializer</code> in <code>initializers/view_engine.rs</code> which is also specified in your <code>app.rs</code>. If you used the SaaS Starter, this should already be configured for you.
 </div>
 
-### Customizing the view engine
+The Tera view engine takes resources from the new `assets/` folder. Here is an example structure:
 
-Out of the box, the Tera view engine comes with the following configured:
+```
+assets/
+├── i18n
+│   ├── de-DE
+│   │   └── main.ftl
+│   ├── en-US
+│   │   └── main.ftl
+│   └── shared.ftl
+├── static
+│   ├── 404.html
+│   └── image.png
+└── views
+    └── home
+        └── hello.html
+config/
+:
+src/
+├── controllers/
+├── models/
+:
+└── views/
+```
 
-* Template loading and location: `assets/**/*.html`
-* Internationalization (i18n) configured into the Tera view engine, you get the translation function: `t(..)` to use in your templates
-
-If you want to change any configuration detail for the `i18n` library, you can go and edit `src/initializers/view_engine.rs`.
-
-You can also add custom Tera functions in the same initializer.
 
 ### Creating a new view
 
@@ -108,9 +124,9 @@ First, create a template. In this case we add a Tera template, in `assets/views/
 find this tera template at <code>assets/views/home/hello.html</code>: 
 <br/>
 <br/>
-{{ t(key="hello-world", lang="en-US") }}, 
+{{ /* t(key="hello-world", lang="en-US") */ }}, 
 <br/>
-{{ t(key="hello-world", lang="de-DE") }}
+{{ /* t(key="hello-world", lang="de-DE") */ }}
 
 </body></html>
 ```
@@ -148,7 +164,47 @@ pub async fn render_home(ViewEngine(v): ViewEngine<TeraView>) -> Result<impl Int
 * `views::dashboard::home` is an opaque call, it hides the details of how a view works, or how the bytes find their way into a browser, which is a _Good Thing_
 * Should you ever want to swap a view engine, the encapsulation here works like magic. You can change the extractor type: `ViewEngine<Foobar>` and everything works, because `v` is eventually just a `ViewRenderer` trait
 
-## Using your own view engine
+### Static assets
+
+If you want to serve static assets and reference those in your view templates, you can use the _Static Middleware_, configure it this way:
+
+
+```yaml
+static:
+  enable: true
+  must_exist: true
+  precompressed: false
+  folder:
+    uri: "/static"
+    path: "assets/static"
+  fallback: "assets/static/404.html"
+```
+
+In your templates you can refer to static resources in this way:
+
+```html
+<img src="/static/image.png"/>
+```
+
+
+### Customizing the Tera view engine
+
+The Tera view engine comes with the following configuration:
+
+* Template loading and location: `assets/**/*.html`
+* Internationalization (i18n) configured into the Tera view engine, you get the translation function: `t(..)` to use in your templates
+
+If you want to change any configuration detail for the `i18n` library, you can go and edit `src/initializers/view_engine.rs`.
+
+By editing the initializer you can:
+
+* Add custom Tera functions
+* Remove the `i18n` library
+* Change configuration for Tera or the `i18n` library
+* Provide a new or custom, Tera (maybe a different version) instance
+
+
+### Using your own view engine
 
 If you do not like Tera as a view engine, or want to use Handlebars, or others you can create your own custom view engine very easily.
 
