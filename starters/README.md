@@ -6,7 +6,7 @@ Loco starters provide a straightforward way to initiate a Loco project, minimizi
 
 The [loco-cli](../loco-cli/README.md) dynamically searches for all available starter projects in the starters root path during runtime. It then prompts the user to choose from the available starters.
 
-Starters **must be work**, as users often start with these projects, and it's crucial to provide a positive first impression :).
+Starters **must work**, as users often start with these projects, and it's crucial to provide a positive first impression :).
 
 When releasing a new version of the Loco library, we utilize xtask utilities, which automatically update the Loco version and the starters, locking them to the updated version.
 
