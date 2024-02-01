@@ -37,8 +37,10 @@ pub fn generate<H: Hooks>(
     name: &str,
     fields: &[(String, String)],
 ) -> Result<String> {
-    // scaffold is never a link table
-    let model_messages = model::generate::<H>(rrgen, name, false, fields)?;
+    // - scaffold is never a link table
+    // - never run with migration_only, because the controllers will refer to the
+    //   models. the models only arrive after migration and entities sync.
+    let model_messages = model::generate::<H>(rrgen, name, false, false, fields)?;
 
     let mut columns = Vec::new();
     for (fname, ftype) in fields {

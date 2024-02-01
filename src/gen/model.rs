@@ -65,6 +65,7 @@ pub fn generate<H: Hooks>(
     rrgen: &RRgen,
     name: &str,
     is_link: bool,
+    migration_only: bool,
     fields: &[(String, String)],
 ) -> Result<String> {
     let pkg_name: &str = H::app_name();
@@ -101,25 +102,27 @@ pub fn generate<H: Hooks>(
     let res1 = rrgen.generate(MODEL_T, &vars)?;
     let res2 = rrgen.generate(MODEL_TEST_T, &vars)?;
 
-    let cwd = current_dir()?;
-    let _ = cmd!("cargo", "loco", "db", "migrate",)
-        .stderr_to_stdout()
-        .dir(cwd.as_path())
-        .run()
-        .map_err(|err| {
-            Error::Message(format!(
-                "failed to run loco db migration. error details: `{err}`",
-            ))
-        })?;
-    let _ = cmd!("cargo", "loco", "db", "entities",)
-        .stderr_to_stdout()
-        .dir(cwd.as_path())
-        .run()
-        .map_err(|err| {
-            Error::Message(format!(
-                "failed to run loco db entities. error details: `{err}`",
-            ))
-        })?;
+    if !migration_only {
+        let cwd = current_dir()?;
+        let _ = cmd!("cargo", "loco", "db", "migrate",)
+            .stderr_to_stdout()
+            .dir(cwd.as_path())
+            .run()
+            .map_err(|err| {
+                Error::Message(format!(
+                    "failed to run loco db migration. error details: `{err}`",
+                ))
+            })?;
+        let _ = cmd!("cargo", "loco", "db", "entities",)
+            .stderr_to_stdout()
+            .dir(cwd.as_path())
+            .run()
+            .map_err(|err| {
+                Error::Message(format!(
+                    "failed to run loco db entities. error details: `{err}`",
+                ))
+            })?;
+    }
 
     let messages = collect_messages(vec![res1, res2]);
     Ok(messages)

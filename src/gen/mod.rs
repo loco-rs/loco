@@ -71,6 +71,9 @@ pub enum Component {
 
         /// Model fields, eg. title:string hits:int
         fields: Vec<(String, String)>,
+
+        /// Generate migration code and stop, don't run the migration
+        migration_only: bool,
     },
     #[cfg(feature = "with-db")]
     Migration {
@@ -109,8 +112,16 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
 
     match component {
         #[cfg(feature = "with-db")]
-        Component::Model { name, link, fields } => {
-            println!("{}", model::generate::<H>(&rrgen, &name, link, &fields)?);
+        Component::Model {
+            name,
+            link,
+            fields,
+            migration_only,
+        } => {
+            println!(
+                "{}",
+                model::generate::<H>(&rrgen, &name, link, migration_only, &fields)?
+            );
         }
         #[cfg(feature = "with-db")]
         Component::Scaffold { name, fields } => {
