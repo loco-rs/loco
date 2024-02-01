@@ -131,6 +131,12 @@ You can generate an empty model:
 $ cargo loco generate model posts
 ```
 
+You can generate an empty model **migration only** which means migrations will not run automatically:
+
+```
+$ cargo loco generate model --migration-only posts
+```
+
 Or a data model, without any references:
 
 ```
