@@ -56,7 +56,7 @@ You can see how we test in [.github/workflows](.github/workflows/)
 #### Snapshots
 To update/create a snapshots we are using [insta](https://github.com/mitsuhiko/insta). all you need to do is install insta and run the following command:
 ```
-cargo instal test --review
+cargo install test --review
 ```
 
 In case of cli changes we snapshot the binary commands. in case of changes run the following command yo update the CLI snapshot
