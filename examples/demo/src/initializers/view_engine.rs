@@ -10,22 +10,11 @@ use tracing::info;
 const I18N_DIR: &str = "assets/i18n";
 const I18N_SHARED: &str = "assets/i18n/shared.ftl";
 
-/*
-finalizing tasks
-[ ] extract this initializer as standard in saas starter, add to app hooks
-    also add new deps: fluent, and unic-id
-[ ] add assets folder structure to saas starter
-[ ] document this view engine, incl. i18n and folder locations
-[ ] document how to build a custom view engine
-[?] view generator, needs to be tera specific, what about using this generator in
-    starters that have no views?
- */
-
 pub struct ViewEngineInitializer;
 #[async_trait]
 impl Initializer for ViewEngineInitializer {
     fn name(&self) -> String {
-        "view-engines".to_string()
+        "view-engine".to_string()
     }
 
     async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {

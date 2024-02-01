@@ -1,4 +1,8 @@
-workspace = { members = ["macros", "xtask"], exclude = ["starters"] }
+[workspace]
+members = ["macros", "xtask"]
+exclude = ["starters"]
+
+
 [package]
 name = "loco-rs"
 version = "0.2.2"
