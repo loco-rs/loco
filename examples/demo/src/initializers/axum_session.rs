@@ -1,8 +1,7 @@
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
-use loco_rs::{controller::AppRoutes, prelude::*};
+use loco_rs::prelude::*;
 
-use crate::controllers::mysession;
 pub struct AxumSessionInitializer;
 
 #[async_trait]

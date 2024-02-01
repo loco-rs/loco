@@ -1,6 +1,7 @@
 pub use async_trait::async_trait;
 pub use axum::{
     extract::{Form, Path, State},
+    response::IntoResponse,
     routing::{delete, get, post, put},
 };
 pub use axum_extra::extract::cookie;
@@ -13,7 +14,11 @@ pub use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, ModelTrait, Se
 pub use crate::controller::middleware::auth;
 pub use crate::{
     app::{AppContext, Initializer},
-    controller::{format, not_found, unauthorized, Json, Routes},
+    controller::{
+        format, not_found, unauthorized,
+        views::{engines::TeraView, ViewEngine, ViewRenderer},
+        Json, Routes,
+    },
     errors::Error,
     mailer,
     mailer::Mailer,

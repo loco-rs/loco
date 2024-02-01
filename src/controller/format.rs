@@ -29,6 +29,7 @@ use bytes::{BufMut, BytesMut};
 use hyper::{header, StatusCode};
 use serde::Serialize;
 
+use super::views::ViewRenderer;
 use crate::{controller::Json, Result};
 
 /// Returns an empty response.
@@ -127,6 +128,20 @@ pub fn html(content: &str) -> Result<Html<String>> {
     Ok(Html(content.to_string()))
 }
 
+/// Render template located by `key`
+///
+/// # Errors
+///
+/// This function will return an error if rendering fails
+pub fn view<V, S>(v: &V, key: &str, data: S) -> Result<Html<String>>
+where
+    V: ViewRenderer,
+    S: Serialize,
+{
+    let res = v.render(key, data)?;
+    html(&res)
+}
+
 pub struct RenderBuilder {
     response: Builder,
 }
@@ -220,6 +235,20 @@ impl RenderBuilder {
     /// This function will return an error if IO fails
     pub fn empty(self) -> Result<Response> {
         Ok(self.response.body(Body::empty())?)
+    }
+
+    /// Render template located by `key`
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if rendering fails
+    pub fn view<V, S>(self, v: &V, key: &str, data: S) -> Result<Response>
+    where
+        V: ViewRenderer,
+        S: Serialize,
+    {
+        let content = v.render(key, data)?;
+        self.html(&content)
     }
 
     /// Finalize and return a HTML response
