@@ -52,6 +52,7 @@ pub async fn verify_access(db: &DatabaseConnection) -> AppResult<()> {
                 ));
             }
         }
+        DatabaseConnection::SqlxMySqlPoolConnection(_) => {}
         DatabaseConnection::SqlxSqlitePoolConnection(_) => {}
         DatabaseConnection::Disconnected => {
             return Err(Error::string("connection to database has been closed"));
