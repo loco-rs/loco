@@ -105,6 +105,22 @@ where
     ColumnDef::new(name).unique_key().uuid().not_null().clone()
 }
 
+/// Create a UUID type column definition.
+pub fn uuid_col<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).uuid().not_null().clone()
+}
+
+/// Create a nullable UUID type column definition.
+pub fn uuid_col_null<T>(name: T) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name).uuid().clone()
+}
+
 /// Create a nullable string column definition.
 pub fn string_null<T>(name: T) -> ColumnDef
 where
