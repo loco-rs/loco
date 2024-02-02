@@ -77,6 +77,20 @@ cargo loco generate worker report_worker
 
 The worker generator creates a worker file associated with your app and generates a test template file, enabling you to verify your worker.
 
+## Configuring Workers
+
+In your `config/<environment>.yaml` you can specify the worker mode. BackgroundAsync will process in a non-blocking manner, while ForegroundBlocking will process in a blocking manner.
+
+```yaml
+# Worker Configuration
+workers:
+  # specifies the worker mode. Options:
+  #   - BackgroundQueue - Workers operate asynchronously in the background, processing queued.
+  #   - ForegroundBlocking - Workers operate in the foreground and block until tasks are completed.
+  #   - BackgroundAsync - Workers operate asynchronously in the background, processing tasks with async capabilities.
+  mode: BackgroundQueue
+```
+
 ### Testing a Worker
 
 For comprehensive testing of integrated background jobs, please refer to the detailed documentation [here](@/docs/testing/worker.md)
