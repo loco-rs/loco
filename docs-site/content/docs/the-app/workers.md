@@ -79,7 +79,9 @@ The worker generator creates a worker file associated with your app and generate
 
 ## Configuring Workers
 
-In your `config/<environment>.yaml` you can specify the worker mode. BackgroundAsync will process in a non-blocking manner, while ForegroundBlocking will process in a blocking manner.
+In your `config/<environment>.yaml` you can specify the worker mode. BackgroundAsync and BackgroundQueue will process jobs in a non-blocking manner, while ForegroundBlocking will process jobs in a blocking manner.
+
+The main difference between BackgroundAsync and BackgroundQueue is that the latter will use Redis to store the jobs, while the former does not require Redis and will use async within the same process.
 
 ```yaml
 # Worker Configuration
