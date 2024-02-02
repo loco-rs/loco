@@ -66,7 +66,7 @@ pub fn table_auto<T>(name: T) -> TableCreateStatement
 where
     T: IntoIden + 'static,
 {
-    timestamps(Table::create().table(name).if_not_exists().clone())
+    timestamps(Table::create().table(name).if_not_exists().take())
 }
 
 /// Create a primary key column with auto-increment feature.
@@ -79,7 +79,7 @@ where
         .not_null()
         .auto_increment()
         .primary_key()
-        .clone()
+        .take()
 }
 
 /// Add timestamp columns (`CreatedAt` and `UpdatedAt`) to an existing table.
@@ -90,11 +90,11 @@ pub fn timestamps(t: TableCreateStatement) -> TableCreateStatement {
         ColumnDef::new(GeneralIds::CreatedAt)
             .date_time()
             .not_null()
-            .clone()
+            .take()
             .default(Expr::current_timestamp()),
     )
     .col(timestamp(GeneralIds::UpdatedAt).default(Expr::current_timestamp()));
-    t.clone()
+    t.take()
 }
 
 /// Create a UUID column definition with a unique constraint.
@@ -102,7 +102,7 @@ pub fn uuid<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).unique_key().uuid().not_null().clone()
+    ColumnDef::new(name).unique_key().uuid().not_null().take()
 }
 
 /// Create a UUID type column definition.
@@ -110,7 +110,7 @@ pub fn uuid_col<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).uuid().not_null().clone()
+    ColumnDef::new(name).uuid().not_null().take()
 }
 
 /// Create a nullable UUID type column definition.
@@ -118,7 +118,7 @@ pub fn uuid_col_null<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).uuid().clone()
+    ColumnDef::new(name).uuid().take()
 }
 
 /// Create a nullable string column definition.
@@ -126,7 +126,7 @@ pub fn string_null<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).string().clone()
+    ColumnDef::new(name).string().take()
 }
 
 /// Create a nullable timestamptz column definition.
@@ -134,7 +134,7 @@ pub fn timestamptz_null<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).timestamp_with_time_zone().clone()
+    ColumnDef::new(name).timestamp_with_time_zone().take()
 }
 
 /// Create a non-nullable timestamptz column definition.
@@ -145,7 +145,7 @@ where
     ColumnDef::new(name)
         .timestamp_with_time_zone()
         .not_null()
-        .clone()
+        .take()
 }
 
 /// Create a non-nullable string column definition.
@@ -153,7 +153,7 @@ pub fn string<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    string_null(name).not_null().clone()
+    string_null(name).not_null().take()
 }
 
 /// Create a unique string column definition.
@@ -161,7 +161,7 @@ pub fn string_uniq<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    string(name).unique_key().clone()
+    string(name).unique_key().take()
 }
 
 /// Create a nullable text column definition.
@@ -169,7 +169,7 @@ pub fn text_null<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).text().clone()
+    ColumnDef::new(name).text().take()
 }
 
 /// Create a nullable text column definition.
@@ -177,7 +177,7 @@ pub fn text<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).text().clone()
+    ColumnDef::new(name).text().take()
 }
 
 /// Create a nullable tiny integer column definition.
@@ -185,7 +185,7 @@ pub fn tiny_integer_null<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).tiny_integer().clone()
+    ColumnDef::new(name).tiny_integer().take()
 }
 
 /// Create a non-nullable tiny integer column definition.
@@ -193,7 +193,7 @@ pub fn tiny_integer<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).tiny_integer().not_null().clone()
+    ColumnDef::new(name).tiny_integer().not_null().take()
 }
 
 /// Create a unique tiny integer column definition.
@@ -201,7 +201,7 @@ pub fn tiny_integer_uniq<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).tiny_integer().unique_key().clone()
+    ColumnDef::new(name).tiny_integer().unique_key().take()
 }
 
 /// Create a nullable small integer column definition.
@@ -209,7 +209,7 @@ pub fn small_integer_null<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).small_integer().clone()
+    ColumnDef::new(name).small_integer().take()
 }
 
 /// Create a non-nullable small integer column definition.
@@ -217,7 +217,7 @@ pub fn small_integer<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).small_integer().not_null().clone()
+    ColumnDef::new(name).small_integer().not_null().take()
 }
 
 /// Create a unique small integer column definition.
@@ -225,7 +225,7 @@ pub fn small_integer_uniq<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).small_integer().unique_key().clone()
+    ColumnDef::new(name).small_integer().unique_key().take()
 }
 
 /// Create a nullable integer column definition.
@@ -233,7 +233,7 @@ pub fn integer_null<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).integer().clone()
+    ColumnDef::new(name).integer().take()
 }
 
 /// Create a non-nullable integer column definition.
@@ -241,7 +241,7 @@ pub fn integer<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).integer().not_null().clone()
+    ColumnDef::new(name).integer().not_null().take()
 }
 
 /// Create a unique integer column definition.
@@ -249,7 +249,7 @@ pub fn integer_uniq<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).integer().unique_key().clone()
+    ColumnDef::new(name).integer().unique_key().take()
 }
 
 /// Create a nullable big integer column definition.
@@ -257,7 +257,7 @@ pub fn big_integer_null<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).big_integer().clone()
+    ColumnDef::new(name).big_integer().take()
 }
 
 /// Create a non-nullable big integer column definition.
@@ -265,7 +265,7 @@ pub fn big_integer<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).big_integer().not_null().clone()
+    ColumnDef::new(name).big_integer().not_null().take()
 }
 
 /// Create a unique big integer column definition.
@@ -273,7 +273,7 @@ pub fn big_integer_uniq<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).big_integer().unique_key().clone()
+    ColumnDef::new(name).big_integer().unique_key().take()
 }
 
 /// Create a nullable float column definition.
@@ -281,7 +281,7 @@ pub fn float_null<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).float().clone()
+    ColumnDef::new(name).float().take()
 }
 
 /// Create a non-nullable float column definition.
@@ -289,7 +289,7 @@ pub fn float<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).float().not_null().clone()
+    ColumnDef::new(name).float().not_null().take()
 }
 
 /// Create a nullable double column definition.
@@ -297,7 +297,7 @@ pub fn double_null<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).double().clone()
+    ColumnDef::new(name).double().take()
 }
 
 /// Create a non-nullable double column definition.
@@ -305,7 +305,7 @@ pub fn double<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).double().not_null().clone()
+    ColumnDef::new(name).double().not_null().take()
 }
 
 /// Create a nullable decimal column definition.
@@ -313,7 +313,7 @@ pub fn decimal_null<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).decimal().clone()
+    ColumnDef::new(name).decimal().take()
 }
 
 /// Create a non-nullable decimal column definition.
@@ -321,7 +321,7 @@ pub fn decimal<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).decimal().not_null().clone()
+    ColumnDef::new(name).decimal().not_null().take()
 }
 
 /// Create a nullable decimal length column definition with custom precision and
@@ -330,7 +330,7 @@ pub fn decimal_len_null<T>(name: T, precision: u32, scale: u32) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).decimal_len(precision, scale).clone()
+    ColumnDef::new(name).decimal_len(precision, scale).take()
 }
 
 /// Create a non-nullable decimal length column definition with custom precision
@@ -342,7 +342,7 @@ where
     ColumnDef::new(name)
         .decimal_len(precision, scale)
         .not_null()
-        .clone()
+        .take()
 }
 
 /// Create a nullable boolean column definition.
@@ -350,7 +350,7 @@ pub fn bool_null<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).boolean().clone()
+    ColumnDef::new(name).boolean().take()
 }
 
 /// Create a non-nullable boolean column definition.
@@ -358,7 +358,7 @@ pub fn bool<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).boolean().not_null().clone()
+    ColumnDef::new(name).boolean().not_null().take()
 }
 
 /// Create a nullable date column definition.
@@ -366,7 +366,7 @@ pub fn date_null<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).date().clone()
+    ColumnDef::new(name).date().take()
 }
 
 /// Create a non-nullable date column definition.
@@ -374,7 +374,7 @@ pub fn date<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).date().not_null().clone()
+    ColumnDef::new(name).date().not_null().take()
 }
 
 /// Create a nullable timestamp column definition.
@@ -382,7 +382,7 @@ pub fn timestamp_null<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).date_time().clone()
+    ColumnDef::new(name).date_time().take()
 }
 
 /// Create a non-nullable timestamp column definition.
@@ -390,7 +390,7 @@ pub fn timestamp<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).date_time().not_null().clone()
+    ColumnDef::new(name).date_time().not_null().take()
 }
 
 /// Create a non-nullable json column definition.
@@ -398,7 +398,7 @@ pub fn json<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).json().not_null().clone()
+    ColumnDef::new(name).json().not_null().take()
 }
 
 /// Create a nullable json column definition.
@@ -406,7 +406,7 @@ pub fn json_null<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).json().clone()
+    ColumnDef::new(name).json().take()
 }
 
 /// Create a non-nullable json binary column definition.
@@ -414,7 +414,7 @@ pub fn jsonb<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).json_binary().not_null().clone()
+    ColumnDef::new(name).json_binary().not_null().take()
 }
 
 /// Create a nullable json binary column definition.
@@ -422,5 +422,5 @@ pub fn jsonb_null<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).json_binary().clone()
+    ColumnDef::new(name).json_binary().take()
 }
