@@ -91,7 +91,7 @@ You don't have to run things through `cargo` but in development it's highly reco
 We have a base SaaS app with user authentication generated for us. Let's make it a blog backend by adding a `post` and a full CRUD API using `scaffold`:
 
 ```sh
-$ cargo loco generate scaffold post title:string content:text
+$ cargo loco generate scaffold post title:string content:string
 
   :
   :
@@ -134,7 +134,7 @@ For those counting -- the commands for creating a blog backend were:
 1. `cargo install loco-cli`
 2. `cargo install sea-orm-cli`
 3. `loco new`
-4. `cargo loco generate scaffold post title:string content:text`
+4. `cargo loco generate scaffold post title:string content:string`
 
 Done! enjoy your ride with `loco` 🚂
 
