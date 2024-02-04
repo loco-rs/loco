@@ -1,6 +1,5 @@
 //! # Application Error Handling
 
-use active_storage::errors::DriverError;
 use axum::{
     extract::rejection::JsonRejection,
     http::{
@@ -123,7 +122,7 @@ pub enum Error {
     Any(#[from] Box<dyn std::error::Error + Send + Sync>),
 
     #[error(transparent)]
-    Storage(#[from] DriverError),
+    Storage(#[from] crate::storage::error::StorageError),
 
     #[error(transparent)]
     Anyhow(#[from] eyre::Report),

@@ -62,9 +62,9 @@ pub mod task;
 pub mod testing;
 #[cfg(feature = "testing")]
 pub use axum_test::TestServer;
+pub mod storage;
 pub mod validation;
 pub mod worker;
-pub use active_storage;
 #[cfg(feature = "channels")]
 pub use socketioxide;
 pub use validator;

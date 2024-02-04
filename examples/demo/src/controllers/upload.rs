@@ -15,15 +15,15 @@ async fn upload_file(State(ctx): State<AppContext>, mut multipart: Multipart) ->
             _ => return Err(Error::BadRequest("file name not found".into())),
         };
 
-        let bytes = field.bytes().await.map_err(|err| {
+        let content = field.bytes().await.map_err(|err| {
             tracing::error!(error = ?err,"could not readd bytes");
             Error::BadRequest("could not readd bytes".into())
         })?;
+
         ctx.storage
             .as_ref()
             .unwrap()
-            .primary
-            .write(PathBuf::from("users").join(file_name).as_path(), bytes)
+            .upload(PathBuf::from("images").join(file_name).as_path(), &content)
             .await?;
     }
 

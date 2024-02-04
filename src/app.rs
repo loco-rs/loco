@@ -7,7 +7,7 @@ cfg_if::cfg_if! {
     } else {}
 
 }
-use active_storage::multi_store::MultiStore;
+use crate::storage::Storage;
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
 
@@ -45,7 +45,7 @@ pub struct AppContext {
     /// An optional email sender component that can be used to send email.
     pub mailer: Option<EmailSender>,
     // Storage configuration
-    pub storage: Option<MultiStore>,
+    pub storage: Option<Storage>,
 }
 
 /// A trait that defines hooks for customizing and extending the behavior of a
@@ -151,7 +151,7 @@ pub trait Hooks {
     async fn storage(
         _config: &config::Config,
         _environment: &Environment,
-    ) -> Result<Option<MultiStore>> {
+    ) -> Result<Option<Storage>> {
         Ok(None)
     }
 

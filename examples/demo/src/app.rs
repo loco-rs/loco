@@ -3,13 +3,13 @@ use std::path::{Path, PathBuf};
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
 use loco_rs::{
-    active_storage,
     app::{AppContext, Hooks, Initializer},
     boot::{create_app, BootResult, StartMode},
     config::Config,
     controller::AppRoutes,
     db::{self, truncate_table},
     environment::Environment,
+    storage,
     task::Tasks,
     worker::{AppWorker, Processor},
     Result,
@@ -74,14 +74,14 @@ impl Hooks for App {
     async fn storage(
         _config: &Config,
         _environment: &Environment,
-    ) -> Result<Option<active_storage::multi_store::MultiStore>> {
-        let config = active_storage::drivers::disk::Config {
-            location: PathBuf::from("temp"),
-        };
+    ) -> Result<Option<storage::Storage>> {
+        let local_driver: Box<dyn object_store::ObjectStore> = Box::new(
+            object_store::local::LocalFileSystem::new_with_prefix("temp").map_err(Box::from)?,
+        )
+            as Box<dyn object_store::ObjectStore>;
 
-        Ok(Some(active_storage::multi_store::MultiStore::new(
-            active_storage::StoreConfig::Disk(config).build().await?,
-        )))
+        let storage = storage::Kind::Single(storage::driver::new(local_driver.into())).build();
+        return Ok(Some(storage));
     }
 
     async fn truncate(db: &DatabaseConnection) -> Result<()> {
