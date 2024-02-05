@@ -13,7 +13,7 @@ use axum::Router as AxumRouter;
 #[cfg(feature = "channels")]
 use crate::controller::channels::AppChannels;
 use crate::{
-    boot::{BootResult, StartMode},
+    boot::{BootResult, ServeParams, StartMode},
     config::{self, Config},
     controller::AppRoutes,
     environment::Environment,
@@ -94,6 +94,23 @@ pub trait Hooks {
     /// # Errors
     /// Could not boot the application
     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult>;
+
+    /// Start serving the Axum web application on the specified address and
+    /// port.
+    ///
+    /// # Returns
+    /// A Result indicating success () or an error if the server fails to start.
+    async fn serve(app: AxumRouter, server_config: ServeParams) -> Result<()> {
+        let listener = tokio::net::TcpListener::bind(&format!(
+            "{}:{}",
+            server_config.binding, server_config.port
+        ))
+        .await?;
+
+        axum::serve(listener, app).await?;
+
+        Ok(())
+    }
 
     /// Override and return `Ok(true)` to provide an alternative logging and
     /// tracing stack of your own.

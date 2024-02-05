@@ -315,7 +315,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
                     |b| b,
                 ),
             };
-            start(boot_result, serve_params).await?;
+            start::<H>(boot_result, serve_params).await?;
         }
         #[cfg(feature = "with-db")]
         Commands::Db { command } => {
@@ -394,7 +394,7 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
                     |b| b,
                 ),
             };
-            start(boot_result, serve_params).await?;
+            start::<H>(boot_result, serve_params).await?;
         }
         Commands::Routes {} => {
             let app_context = create_context::<H>(&environment).await?;
