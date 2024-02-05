@@ -1,4 +1,3 @@
-use axum::http::HeaderValue;
 use blo::{app::App, models::_entities::notes::Entity};
 use insta::{assert_debug_snapshot, with_settings};
 use loco_rs::testing;
@@ -6,8 +5,6 @@ use rstest::rstest;
 use sea_orm::entity::prelude::*;
 use serde_json;
 use serial_test::serial;
-
-use super::prepare_data;
 
 // TODO: see how to dedup / extract this to app-local test utils
 // not to framework, because that would require a runtime dep on insta
