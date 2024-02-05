@@ -1,5 +1,3 @@
-use std::{env, str::FromStr};
-
 use blo::app::App;
 use loco_rs::{
     boot::{create_app, start, ServeParams, StartMode},

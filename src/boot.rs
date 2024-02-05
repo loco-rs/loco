@@ -45,9 +45,11 @@ pub struct BootResult {
 
 /// Configuration structure for serving an application.
 pub struct ServeParams {
-    /// The port number on which the server will listen for incoming connections.
+    /// The port number on which the server will listen for incoming
+    /// connections.
     pub port: i32,
-    /// The network address to which the server will bind. It specifies the interface to listen on.
+    /// The network address to which the server will bind. It specifies the
+    /// interface to listen on.
     pub binding: String,
 }
 

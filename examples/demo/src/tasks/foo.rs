@@ -11,7 +11,7 @@ impl Task for Foo {
             detail: "test misaligned cli prints".to_string(),
         }
     }
-    async fn run(&self, app_context: &AppContext, vars: &BTreeMap<String, String>) -> Result<()> {
+    async fn run(&self, _app_context: &AppContext, _vars: &BTreeMap<String, String>) -> Result<()> {
         Ok(())
     }
 }
