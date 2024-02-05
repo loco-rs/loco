@@ -37,7 +37,7 @@ lazy_static! {
 /// # Errors
 ///
 /// This function will return an error if IO fails
-/// #[allow(clippy::match_wildcard_for_single_variants)]
+#[allow(clippy::match_wildcard_for_single_variants)]
 pub async fn verify_access(db: &DatabaseConnection) -> AppResult<()> {
     match db {
         DatabaseConnection::SqlxPostgresPoolConnection(_) => {
