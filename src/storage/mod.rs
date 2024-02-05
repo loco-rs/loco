@@ -5,88 +5,116 @@ use bytes::Bytes;
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 
-/// Enum representing different storage configurations.
-pub enum Kind {
-    Single(driver::Store),
-    Mirror(driver::Store, Vec<driver::Store>, MirrorPolicy),
-    Multi(driver::Store, HashMap<String, driver::Store>, MirrorPolicy),
-}
+// /// Enum representing different storage configurations.
+// pub enum Kind {
+//     Single(driver::Store),
+//     Mirror(driver::Store, Vec<driver::Store>, MirrorPolicy),
+//     Multi(driver::Store, HashMap<String, driver::Store>, MirrorPolicy),
+// }
 
 /// Implementation for the store initializer options.
-impl Kind {
-    /// Builds a `Storage` instance based on the specified configuration.
-    #[must_use]
-    pub fn build(&self) -> Storage {
-        match self {
-            Self::Single(primary) => Storage::with_single(primary),
-            Self::Mirror(primary, stores, policy) => Storage::with_mirror(primary, stores, policy),
-            Self::Multi(primary, stores, policy) => Storage::with_multi(primary, stores, policy),
-        }
-    }
+// impl Kind {
+//     /// Builds a `Storage` instance based on the specified configuration.
+//     #[must_use]
+//     pub fn build(&self) -> Storage {
+//         match self {
+//             Self::Single(primary) => Storage::with_single(primary),
+//             Self::Mirror(primary, stores, policy) => Storage::with_mirror(primary, stores, policy),
+//             Self::Multi(primary, stores, policy) => Storage::with_multi(primary, stores, policy),
+//         }
+//     }
+// }
+
+#[derive(Clone)]
+pub enum StoragePolicy {
+    Single(driver::Store),
+    PrimaryMirror(driver::Store, BTreeMap<String, driver::Store>),
+    MultiPrimary(BTreeMap<String, driver::Store>)
 }
 
-/// Enum representing mirror policies for the `Storage`.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum MirrorPolicy {
+pub enum UploadBehavior {
     ContinueOnFailure,
     StopOnFailure,
-
-    None,
+    None
 }
+
+pub enum DownloadBehavior {
+    Fallback,
+    None
+}
+
+pub enum DeleteBehavior {
+    ContinueOnFailure,
+    StopOnFailure,
+    None
+}
+
+pub enum RenameBehavior {
+    ContinueOnFailure,
+    StopOnFailure,
+    None
+}
+
+pub enum CopyBehavior {
+    ContinueOnFailure,
+    StopOnFailure,
+    None
+}
+
 
 /// Struct representing a storage configuration.
 #[derive(Clone)]
 pub struct Storage {
-    primary: driver::Store,
-    mirror_policy: MirrorPolicy,
-    stores: HashMap<String, driver::Store>,
+    // primary: driver::Store,
+    // mirror_policy: MirrorPolicy,
+    stores: BTreeMap<String, driver::Store>,
 }
 
 /// Implementation for the `Storage` struct.
 impl Storage {
     /// Creates a `Storage` instance with a single primary store.
     #[must_use]
-    pub fn with_single(primary: &driver::Store) -> Self {
+    pub fn with_single(primary: driver::Store) -> Self {
         Self {
-            primary: primary.clone(),
-            mirror_policy: MirrorPolicy::None,
-            stores: HashMap::new(),
+            // primary: primary.clone(),
+            // mirror_policy: MirrorPolicy::None,
+            // stores: HashMap::new(),
         }
     }
 
-    /// Creates a `Storage` instance with a primary store and a list of mirror stores.
-    #[must_use]
-    pub fn with_mirror(
-        primary: &driver::Store,
-        stores: &[driver::Store],
-        policy: &MirrorPolicy,
-    ) -> Self {
-        let hashmap = stores
-            .iter()
-            .enumerate()
-            .map(|(index, value)| (format!("{}", index + 1), value.clone()))
-            .collect();
+    // /// Creates a `Storage` instance with a primary store and a list of mirror stores.
+    // #[must_use]
+    // pub fn with_mirror(
+    //     primary: &driver::Store,
+    //     stores: &[driver::Store],
+    //     policy: &MirrorPolicy,
+    // ) -> Self {
+    //     let hashmap = stores
+    //         .iter()
+    //         .enumerate()
+    //         .map(|(index, value)| (format!("{}", index + 1), value.clone()))
+    //         .collect();
 
-        Self {
-            primary: primary.clone(),
-            mirror_policy: policy.clone(),
-            stores: hashmap,
-        }
-    }
+    //     Self {
+    //         primary: primary.clone(),
+    //         mirror_policy: policy.clone(),
+    //         stores: hashmap,
+    //     }
+    // }
 
-    /// Creates a `Storage` instance with a primary store and a map of named mirror stores.
-    #[must_use]
-    pub fn with_multi(
-        primary: &driver::Store,
-        stores: &HashMap<String, driver::Store>,
-        policy: &MirrorPolicy,
-    ) -> Self {
-        Self {
-            primary: primary.clone(),
-            mirror_policy: policy.clone(),
-            stores: stores.clone(),
-        }
-    }
+    // /// Creates a `Storage` instance with a primary store and a map of named mirror stores.
+    // #[must_use]
+    // pub fn with_multi(
+    //     primary: &driver::Store,
+    //     stores: &HashMap<String, driver::Store>,
+    //     policy: &MirrorPolicy,
+    // ) -> Self {
+    //     Self {
+    //         primary: primary.clone(),
+    //         mirror_policy: policy.clone(),
+    //         stores: stores.clone(),
+    //     }
+    // }
 
     /// Uploads content to the specified path in the storage.
     ///
@@ -99,24 +127,25 @@ impl Storage {
         content: &Bytes,
     ) -> error::StorageResult<object_store::PutResult> {
         let res = self.primary.upload(path, content).await?;
-        let mut error_stores = BTreeMap::new();
+        // let mut error_stores = BTreeMap::new();
 
-        match self.mirror_policy {
-            MirrorPolicy::ContinueOnFailure | MirrorPolicy::StopOnFailure => {
-                for (store_name, store) in &self.stores {
-                    if let Err(error) = store.upload(path, content).await {
-                        if !self.handle_error_policy(store_name, &error, &mut error_stores) {
-                            return Err(error::StorageError::Mirror(BTreeMap::from([(
-                                (*store_name).to_string(),
-                                format!("{error}"),
-                            )])));
-                        }
-                    }
-                }
-                Ok(res)
-            }
-            MirrorPolicy::None => Ok(res),
-        }
+        // match self.mirror_policy {
+        //     MirrorPolicy::ContinueOnFailure | MirrorPolicy::StopOnFailure => {
+        //         for (store_name, store) in &self.stores {
+        //             if let Err(error) = store.upload(path, content).await {
+        //                 if !self.handle_error_policy(store_name, &error, &mut error_stores) {
+        //                     return Err(error::StorageError::Mirror(BTreeMap::from([(
+        //                         (*store_name).to_string(),
+        //                         format!("{error}"),
+        //                     )])));
+        //                 }
+        //             }
+        //         }
+        //         Ok(res)
+        //     }
+        //     MirrorPolicy::None => Ok(res),
+        // }
+        Ok(res)
     }
 
     /// Downloads content from the specified path in the storage.
@@ -164,24 +193,25 @@ impl Storage {
     /// Returns a `StorageResult` indicating the success of the deletion operation.
     pub async fn delete(&self, path: &Path) -> error::StorageResult<()> {
         self.primary.delete(path).await?;
-        let mut error_stores = BTreeMap::new();
+        // let mut error_stores = BTreeMap::new();
 
-        match self.mirror_policy {
-            MirrorPolicy::ContinueOnFailure | MirrorPolicy::StopOnFailure => {
-                for (store_name, store) in &self.stores {
-                    if let Err(error) = store.delete(path).await {
-                        if !self.handle_error_policy(store_name, &error, &mut error_stores) {
-                            return Err(error::StorageError::Mirror(BTreeMap::from([(
-                                (*store_name).to_string(),
-                                format!("{error}"),
-                            )])));
-                        }
-                    }
-                }
-                Ok(())
-            }
-            MirrorPolicy::None => Ok(()),
-        }
+        Ok(())
+        // match self.mirror_policy {
+        //     MirrorPolicy::ContinueOnFailure | MirrorPolicy::StopOnFailure => {
+        //         for (store_name, store) in &self.stores {
+        //             if let Err(error) = store.delete(path).await {
+        //                 if !self.handle_error_policy(store_name, &error, &mut error_stores) {
+        //                     return Err(error::StorageError::Mirror(BTreeMap::from([(
+        //                         (*store_name).to_string(),
+        //                         format!("{error}"),
+        //                     )])));
+        //                 }
+        //             }
+        //         }
+        //         Ok(())
+        //     }
+        //     MirrorPolicy::None => Ok(()),
+        // }
     }
 
     /// Renames or moves content from one path to another in the storage.
@@ -191,24 +221,25 @@ impl Storage {
     /// Returns a `StorageResult` indicating the success of the rename/move operation.
     pub async fn rename(&self, from: &Path, to: &Path) -> error::StorageResult<()> {
         self.primary.rename(from, to).await?;
-        let mut error_stores = BTreeMap::new();
+        // let mut error_stores = BTreeMap::new();
 
-        match self.mirror_policy {
-            MirrorPolicy::ContinueOnFailure | MirrorPolicy::StopOnFailure => {
-                for (store_name, store) in &self.stores {
-                    if let Err(error) = store.rename(from, to).await {
-                        if !self.handle_error_policy(store_name, &error, &mut error_stores) {
-                            return Err(error::StorageError::Mirror(BTreeMap::from([(
-                                (*store_name).to_string(),
-                                format!("{error}"),
-                            )])));
-                        }
-                    }
-                }
-                Ok(())
-            }
-            MirrorPolicy::None => Ok(()),
-        }
+        // match self.mirror_policy {
+        //     MirrorPolicy::ContinueOnFailure | MirrorPolicy::StopOnFailure => {
+        //         for (store_name, store) in &self.stores {
+        //             if let Err(error) = store.rename(from, to).await {
+        //                 if !self.handle_error_policy(store_name, &error, &mut error_stores) {
+        //                     return Err(error::StorageError::Mirror(BTreeMap::from([(
+        //                         (*store_name).to_string(),
+        //                         format!("{error}"),
+        //                     )])));
+        //                 }
+        //             }
+        //         }
+        //         Ok(())
+        //     }
+        //     MirrorPolicy::None => Ok(()),
+        // }
+        Ok(())
     }
 
     /// Copies content from one path to another in the storage.
@@ -218,24 +249,25 @@ impl Storage {
     /// Returns a `StorageResult` indicating the success of the copy operation.
     pub async fn copy(&self, from: &Path, to: &Path) -> error::StorageResult<()> {
         self.primary.copy(from, to).await?;
-        let mut error_stores = BTreeMap::new();
+        // let mut error_stores = BTreeMap::new();
 
-        match self.mirror_policy {
-            MirrorPolicy::ContinueOnFailure | MirrorPolicy::StopOnFailure => {
-                for (store_name, store) in &self.stores {
-                    if let Err(error) = store.copy(from, to).await {
-                        if !self.handle_error_policy(store_name, &error, &mut error_stores) {
-                            return Err(error::StorageError::Mirror(BTreeMap::from([(
-                                (*store_name).to_string(),
-                                format!("{error}"),
-                            )])));
-                        }
-                    }
-                }
-                Ok(())
-            }
-            MirrorPolicy::None => Ok(()),
-        }
+        // match self.mirror_policy {
+        //     MirrorPolicy::ContinueOnFailure | MirrorPolicy::StopOnFailure => {
+        //         for (store_name, store) in &self.stores {
+        //             if let Err(error) = store.copy(from, to).await {
+        //                 if !self.handle_error_policy(store_name, &error, &mut error_stores) {
+        //                     return Err(error::StorageError::Mirror(BTreeMap::from([(
+        //                         (*store_name).to_string(),
+        //                         format!("{error}"),
+        //                     )])));
+        //                 }
+        //             }
+        //         }
+        //         Ok(())
+        //     }
+        //     MirrorPolicy::None => Ok(()),
+        // }
+        Ok(())
     }
 
     /// Retrieves a reference to the mirror store with the specified name.
@@ -253,21 +285,21 @@ impl Storage {
     /// # Returns
     ///
     /// Returns a boolean indicating whether to continue processing or stop based on the error policy.
-    fn handle_error_policy(
-        &self,
-        store_name: &str,
-        error: &error::StoreError,
-        error_stores: &mut BTreeMap<String, String>,
-    ) -> bool {
-        match self.mirror_policy {
-            MirrorPolicy::ContinueOnFailure => {
-                error_stores.insert((*store_name).to_string(), format!("{error}"));
-                true
-            }
-            MirrorPolicy::StopOnFailure => false,
-            MirrorPolicy::None => true,
-        }
-    }
+    // fn handle_error_policy(
+    //     &self,
+    //     store_name: &str,
+    //     error: &error::StoreError,
+    //     error_stores: &mut BTreeMap<String, String>,
+    // ) -> bool {
+    //     match self.mirror_policy {
+    //         MirrorPolicy::ContinueOnFailure => {
+    //             error_stores.insert((*store_name).to_string(), format!("{error}"));
+    //             true
+    //         }
+    //         MirrorPolicy::StopOnFailure => false,
+    //         MirrorPolicy::None => true,
+    //     }
+    // }
 }
 
 #[cfg(test)]
