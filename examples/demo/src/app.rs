@@ -40,10 +40,13 @@ impl Hooks for App {
 
     async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
         Ok(vec![
+            #[cfg(not(test))]
+            {
+                Box::new(initializers::axum_prometheus::AxumPrometheusInitializer)
+            },
             Box::new(initializers::axum_session::AxumSessionInitializer),
             Box::new(initializers::view_engine::ViewEngineInitializer),
             Box::new(initializers::hello_view_engine::HelloViewEngineInitializer),
-            Box::new(initializers::axum_prometheus::AxumPrometheusInitializer),
         ])
     }
 

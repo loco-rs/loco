@@ -4,6 +4,7 @@ use loco_rs::prelude::*;
 
 pub struct AxumPrometheusInitializer;
 
+#[cfg(not(test))]
 #[async_trait]
 impl Initializer for AxumPrometheusInitializer {
     fn name(&self) -> String {
