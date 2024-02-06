@@ -5,6 +5,7 @@ pub use sea_orm_migration::prelude::*;
 mod m20220101_000001_users;
 mod m20231103_114510_notes;
 
+mod m20240206_075134_sessions;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -13,6 +14,7 @@ impl MigratorTrait for Migrator {
         vec![
             Box::new(m20220101_000001_users::Migration),
             Box::new(m20231103_114510_notes::Migration),
+            Box::new(m20240206_075134_sessions::Migration),
         ]
     }
 }

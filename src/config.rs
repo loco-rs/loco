@@ -53,6 +53,7 @@ pub struct Config {
     #[serde(default)]
     pub workers: Workers,
     pub mailer: Option<Mailer>,
+    pub oauth2: Option<Oauth2>,
 
     /// Custom app settings
     ///
@@ -205,6 +206,56 @@ pub struct Redis {
 pub struct Auth {
     /// JWT authentication config
     pub jwt: Option<JWT>,
+}
+
+/// Oauth2 Authentication configuration
+///
+/// Example (development):
+/// ```yaml
+/// # config/development.yaml
+/// oauth2:
+///   provider:
+///    # your provider configuration example: Google, Facebook, etc
+///      google:
+///       client_id: <your client id> # From your oauth provider
+///       client_secret: <your client secret> # From your oauth provider
+///       redirect_uri: <your redirect uri> # Which uri to redirect after user authenticated by oauth provider
+/// ```
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Oauth2 {
+    /// Oauth Provider configuration
+    pub provider: Provider,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Provider {
+    google: Option<GoogleProvider>,
+    facebook: Option<FacebookProvider>,
+    microsoft: Option<MicrosoftProvider>,
+}
+
+/// Google Oauth2 provider configuration
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct GoogleProvider {
+    pub client_id: String,
+    pub client_secret: String,
+    pub redirect_uri: String,
+}
+
+/// Facebook Oauth2 provider configuration
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct FacebookProvider {
+    pub client_id: String,
+    pub client_secret: String,
+    pub redirect_uri: String,
+}
+
+/// Microsoft Oauth2 provider configuration
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MicrosoftProvider {
+    pub client_id: String,
+    pub client_secret: String,
+    pub redirect_uri: String,
 }
 
 /// JWT configuration structure.

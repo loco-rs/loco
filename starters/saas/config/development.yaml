@@ -128,3 +128,31 @@ auth:
     # Token expiration time in seconds
     expiration: 604800 # 7 days
 
+# Oauth2 Configuration
+oauth2:
+  # Oauth2 providers
+  providers:
+    # Google Oauth2 provider
+    google:
+      # Client ID
+      client_id: ""
+      # Client Secret
+      client_secret: ""
+      # Redirect URL
+      redirect_url: ""
+    # Facebook Oauth2 provider
+    facebook:
+      # Client ID
+      client_id: ""
+      # Client Secret
+      client_secret: ""
+      # Redirect URL
+      redirect_url: ""
+    microsoft:
+      # Client ID
+      client_id: ""
+      # Client Secret
+      client_secret: ""
+      # Redirect URL
+      redirect_url: ""
+

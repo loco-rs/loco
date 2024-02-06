@@ -350,3 +350,5 @@ pub async fn connect_redis(config: &Config) -> Option<Pool<RedisConnectionManage
         None
     }
 }
+
+/// Initializes an [`Oauth2`] based on the oauth2 configuration settings
