@@ -12,9 +12,9 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 table_auto(Notes::Table)
-                    .col(pk_auto(Notes::Id).borrow_mut())
-                    .col(string_null(Notes::Title).borrow_mut())
-                    .col(string_null(Notes::Content).borrow_mut())
+                    .col(pk_auto(Notes::Id))
+                    .col(string_null(Notes::Title))
+                    .col(string_null(Notes::Content))
                     .to_owned(),
             )
             .await
