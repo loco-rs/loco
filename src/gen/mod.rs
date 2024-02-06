@@ -33,8 +33,7 @@ const DEPLOYMENT_SHUTTLE_T: &str = include_str!("templates/deployment_shuttle.t"
 const DEPLOYMENT_SHUTTLE_CONFIG_T: &str = include_str!("templates/deployment_shuttle_config.t");
 const DEPLOYMENT_NGINX_T: &str = include_str!("templates/deployment_nginx.t");
 
-const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.35.0";
-const DEPLOYMENT_SHUTTLE_AXUM_VERSION: &str = "0.35.0";
+const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.38.0";
 
 const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
     ("Docker", DeploymentKind::Docker),
@@ -181,12 +180,20 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
                         .as_ref()
                         .map(|s| s.fallback.clone());
 
-                    let vars = json!({ "pkg_name": H::app_name(), "copy_asset_folder": copy_asset_folder, "fallback_file": fallback_file });
+                    let vars = json!({
+                        "pkg_name": H::app_name(),
+                        "copy_asset_folder": copy_asset_folder,
+                        "fallback_file": fallback_file
+                    });
                     rrgen.generate(DEPLOYMENT_DOCKER_T, &vars)?;
                     rrgen.generate(DEPLOYMENT_DOCKER_IGNORE_T, &vars)?;
                 }
                 DeploymentKind::Shuttle => {
-                    let vars = json!({ "pkg_name": H::app_name(), "shuttle_runtime_version": DEPLOYMENT_SHUTTLE_RUNTIME_VERSION, "shuttle_axum_version": DEPLOYMENT_SHUTTLE_AXUM_VERSION });
+                    let vars = json!({
+                        "pkg_name": H::app_name(),
+                        "shuttle_runtime_version": DEPLOYMENT_SHUTTLE_RUNTIME_VERSION,
+                        "with_db": cfg!(feature = "with-db")
+                    });
                     rrgen.generate(DEPLOYMENT_SHUTTLE_T, &vars)?;
                     rrgen.generate(DEPLOYMENT_SHUTTLE_CONFIG_T, &vars)?;
                 }
@@ -196,7 +203,11 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
                         .host
                         .replace("http://", "")
                         .replace("https://", "");
-                    let vars = json!({ "pkg_name": H::app_name(), "domain": &host, "port":  &config.server.port });
+                    let vars = json!({
+                        "pkg_name": H::app_name(),
+                        "domain": &host,
+                        "port": &config.server.port
+                    });
                     rrgen.generate(DEPLOYMENT_NGINX_T, &vars)?;
                 }
             }
