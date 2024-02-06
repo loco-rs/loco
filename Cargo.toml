@@ -36,7 +36,7 @@ clap = { version = "4.4.7", features = ["derive"], optional = true }
 colored = "2"
 
 
-sea-orm = { version = "0.12.4", features = [
+sea-orm = { version = "1.0.0-rc.1", features = [
   "sqlx-postgres",        # `DATABASE_DRIVER` feature
   "sqlx-sqlite",
   "runtime-tokio-rustls",
@@ -119,7 +119,7 @@ socketioxide = { version = "0.10.0", features = ["state"], optional = true }
 
 [dependencies.sea-orm-migration]
 optional = true
-version = "0.12.4"
+version = "1.0.0-rc.1"
 features = [
   # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.
   # View the list of supported features at https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime.
