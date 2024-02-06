@@ -1,7 +1,4 @@
-use std::borrow::BorrowMut;
-
-use loco_rs::schema::*;
-use sea_orm_migration::prelude::*;
+use sea_orm_migration::{prelude::*, schema::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;

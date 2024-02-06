@@ -9,9 +9,7 @@
 //! the schema helpers to create the Db fields.
 //!
 //! ```rust
-//! use loco_rs::schema::*;
-//! use sea_orm_migration::prelude::*;
-//! use std::borrow::BorrowMut;
+//! use sea_orm_migration::{prelude::*, schema::*};
 //!
 //! #[derive(DeriveMigrationName)]
 //! pub struct Migration;
