@@ -150,6 +150,9 @@ let storage = Storage::new(
 In case you have a specific strategy, you can easily create it by implementing the StorageStrategyTrait and implementing all store functionality.
 
 ## Usage In Controller
+
+Follow this example, make sure you enable `multipart` feature in axum crate.
+
 ```rust
 async fn upload_file(
     State(ctx): State<AppContext>,
