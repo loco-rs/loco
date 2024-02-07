@@ -128,8 +128,7 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
         }
         #[cfg(feature = "with-db")]
         Component::Migration { name } => {
-            let ts = Utc::now();
-            let vars = json!({ "name": name, "ts": ts, "pkg_name": H::app_name()});
+            let vars = json!({ "name": name, "ts": Utc::now(), "pkg_name": H::app_name()});
             rrgen.generate(MIGRATION_T, &vars)?;
         }
         Component::Controller { name } => {
@@ -139,13 +138,11 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
         }
         Component::Task { name } => {
             let vars = json!({"name": name, "pkg_name": H::app_name()});
-
             rrgen.generate(TASK_T, &vars)?;
             rrgen.generate(TASK_TEST_T, &vars)?;
         }
         Component::Worker { name } => {
             let vars = json!({"name": name, "pkg_name": H::app_name()});
-
             rrgen.generate(WORKER_T, &vars)?;
             rrgen.generate(WORKER_TEST_T, &vars)?;
         }
