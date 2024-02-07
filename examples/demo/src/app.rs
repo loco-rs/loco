@@ -14,7 +14,6 @@ use loco_rs::{
     Result,
 };
 use migration::Migrator;
-use object_store::{local::LocalFileSystem, memory::InMemory};
 use sea_orm::DatabaseConnection;
 
 use crate::{
@@ -68,15 +67,9 @@ impl Hooks for App {
         environment: &Environment,
     ) -> Result<Option<storage::Storage>> {
         let store = if environment == &Environment::Test {
-            storage::driver::new(
-                (Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into(),
-            )
+            storage::drivers::mem::new()
         } else {
-            storage::driver::new(
-                (Box::new(LocalFileSystem::new_with_prefix("storage-uploads").map_err(Box::from)?)
-                    as Box<dyn object_store::ObjectStore>)
-                    .into(),
-            )
+            storage::drivers::local::new_with_prefix("storage-uploads").map_err(Box::from)?
         };
 
         let storage = Storage::single(store);

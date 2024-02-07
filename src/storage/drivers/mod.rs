@@ -1,6 +1,14 @@
 use std::{path::Path, sync::Arc};
 
 use bytes::Bytes;
+#[cfg(feature = "storage_aws_s3")]
+pub mod aws;
+#[cfg(feature = "storage_azure")]
+pub mod azure;
+#[cfg(feature = "storage_gcp")]
+pub mod gcp;
+pub mod local;
+pub mod mem;
 pub use object_store;
 use object_store::ObjectStore;
 
@@ -11,9 +19,11 @@ pub struct Store {
     driver: Arc<dyn object_store::ObjectStore>,
 }
 
-/// Constructor for creating a new `Store` instance.
-pub fn new(driver: Arc<dyn ObjectStore>) -> Store {
-    Store { driver }
+impl Store {
+    /// Constructor for creating a new `Store` instance.
+    pub fn new(driver: Arc<dyn ObjectStore>) -> Self {
+        Self { driver }
+    }
 }
 
 impl Store {

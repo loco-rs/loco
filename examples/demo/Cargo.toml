@@ -38,7 +38,6 @@ tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 fluent-templates = { version = "0.8.0", features = ["tera"] }
 unic-langid = "0.9.4"
 tera = "1.19.1"
-object_store = { version = "0.9.0" }
 
 [[bin]]
 name = "blo-cli"

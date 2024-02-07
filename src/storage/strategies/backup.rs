@@ -232,26 +232,18 @@ impl FailureMode {
 #[cfg(test)]
 mod tests {
 
-    use core::time::Duration;
     use std::{collections::BTreeMap, path::PathBuf};
 
-    use object_store::{aws::AmazonS3Builder, memory::InMemory, BackoffConfig, RetryConfig};
-
     use super::*;
-    use crate::storage::{driver, Storage};
+    use crate::storage::{drivers, Storage};
 
     // Upload
 
     #[tokio::test]
     async fn upload_should_pass_when_backup_all_policy() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_2 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_3 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::mem::new();
+        let store_3 = drivers::mem::new();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -280,26 +272,9 @@ mod tests {
 
     #[tokio::test]
     async fn upload_should_fail_when_primary_fail() {
-        let store_1 = driver::new(
-            (Box::new(
-                AmazonS3Builder::new()
-                    .with_bucket_name("loco-test")
-                    .with_retry(RetryConfig {
-                        backoff: BackoffConfig::default(),
-                        max_retries: 0,
-                        retry_timeout: Duration::from_secs(0),
-                    })
-                    .build()
-                    .unwrap(),
-            ) as Box<dyn object_store::ObjectStore>)
-                .into(),
-        );
-
-        let store_2 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_3 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store_1 = drivers::aws::with_failure();
+        let store_2 = drivers::mem::new();
+        let store_3 = drivers::mem::new();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -328,26 +303,9 @@ mod tests {
 
     #[tokio::test]
     async fn upload_should_pass_when_allow_backup_failure_policy() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_2 = driver::new(
-            (Box::new(
-                AmazonS3Builder::new()
-                    .with_bucket_name("loco-test")
-                    .with_retry(RetryConfig {
-                        backoff: BackoffConfig::default(),
-                        max_retries: 0,
-                        retry_timeout: Duration::from_secs(0),
-                    })
-                    .build()
-                    .unwrap(),
-            ) as Box<dyn object_store::ObjectStore>)
-                .into(),
-        );
-
-        let store_3 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::aws::with_failure();
+        let store_3 = drivers::mem::new();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -376,26 +334,9 @@ mod tests {
 
     #[tokio::test]
     async fn upload_should_pass_when_at_least_one_failure_policy() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_2 = driver::new(
-            (Box::new(
-                AmazonS3Builder::new()
-                    .with_bucket_name("loco-test")
-                    .with_retry(RetryConfig {
-                        backoff: BackoffConfig::default(),
-                        max_retries: 0,
-                        retry_timeout: Duration::from_secs(0),
-                    })
-                    .build()
-                    .unwrap(),
-            ) as Box<dyn object_store::ObjectStore>)
-                .into(),
-        );
-
-        let store_3 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::aws::with_failure();
+        let store_3 = drivers::mem::new();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -424,38 +365,9 @@ mod tests {
 
     #[tokio::test]
     async fn upload_should_fail_when_at_least_one_failure_policy() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_2 = driver::new(
-            (Box::new(
-                AmazonS3Builder::new()
-                    .with_bucket_name("loco-test")
-                    .with_retry(RetryConfig {
-                        backoff: BackoffConfig::default(),
-                        max_retries: 0,
-                        retry_timeout: Duration::from_secs(0),
-                    })
-                    .build()
-                    .unwrap(),
-            ) as Box<dyn object_store::ObjectStore>)
-                .into(),
-        );
-
-        let store_3 = driver::new(
-            (Box::new(
-                AmazonS3Builder::new()
-                    .with_bucket_name("loco-test")
-                    .with_retry(RetryConfig {
-                        backoff: BackoffConfig::default(),
-                        max_retries: 0,
-                        retry_timeout: Duration::from_secs(0),
-                    })
-                    .build()
-                    .unwrap(),
-            ) as Box<dyn object_store::ObjectStore>)
-                .into(),
-        );
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::aws::with_failure();
+        let store_3 = drivers::aws::with_failure();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -484,26 +396,9 @@ mod tests {
 
     #[tokio::test]
     async fn upload_should_pass_count_fail_policy_should_pass() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_2 = driver::new(
-            (Box::new(
-                AmazonS3Builder::new()
-                    .with_bucket_name("loco-test")
-                    .with_retry(RetryConfig {
-                        backoff: BackoffConfig::default(),
-                        max_retries: 0,
-                        retry_timeout: Duration::from_secs(0),
-                    })
-                    .build()
-                    .unwrap(),
-            ) as Box<dyn object_store::ObjectStore>)
-                .into(),
-        );
-
-        let store_3 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::aws::with_failure();
+        let store_3 = drivers::mem::new();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -532,38 +427,9 @@ mod tests {
 
     #[tokio::test]
     async fn upload_should_fail_when_count_fail_should_fail() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_2 = driver::new(
-            (Box::new(
-                AmazonS3Builder::new()
-                    .with_bucket_name("loco-test")
-                    .with_retry(RetryConfig {
-                        backoff: BackoffConfig::default(),
-                        max_retries: 0,
-                        retry_timeout: Duration::from_secs(0),
-                    })
-                    .build()
-                    .unwrap(),
-            ) as Box<dyn object_store::ObjectStore>)
-                .into(),
-        );
-
-        let store_3 = driver::new(
-            (Box::new(
-                AmazonS3Builder::new()
-                    .with_bucket_name("loco-test")
-                    .with_retry(RetryConfig {
-                        backoff: BackoffConfig::default(),
-                        max_retries: 0,
-                        retry_timeout: Duration::from_secs(0),
-                    })
-                    .build()
-                    .unwrap(),
-            ) as Box<dyn object_store::ObjectStore>)
-                .into(),
-        );
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::aws::with_failure();
+        let store_3 = drivers::aws::with_failure();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -594,8 +460,7 @@ mod tests {
 
     #[tokio::test]
     async fn can_download() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store_1 = drivers::mem::new();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -626,14 +491,9 @@ mod tests {
 
     #[tokio::test]
     async fn delete_should_pass_when_backup_all_policy() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_2 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_3 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::mem::new();
+        let store_3 = drivers::mem::new();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -665,14 +525,9 @@ mod tests {
     // rename
     #[tokio::test]
     async fn rename_should_pass_when_backup_all_policy() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_2 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_3 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::mem::new();
+        let store_3 = drivers::mem::new();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -718,14 +573,9 @@ mod tests {
 
     #[tokio::test]
     async fn rename_should_pass_when_allow_backup_failure_policy() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_2 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_3 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::mem::new();
+        let store_3 = drivers::mem::new();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -773,14 +623,9 @@ mod tests {
 
     #[tokio::test]
     async fn rename_should_pass_when_at_least_one_failure_policy() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_2 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_3 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::mem::new();
+        let store_3 = drivers::mem::new();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -828,14 +673,9 @@ mod tests {
 
     #[tokio::test]
     async fn rename_should_fail_when_at_least_one_failure_policy() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_2 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_3 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::mem::new();
+        let store_3 = drivers::mem::new();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -884,14 +724,9 @@ mod tests {
 
     #[tokio::test]
     async fn rename_should_pass_when_count_fail_policy() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_2 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_3 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::mem::new();
+        let store_3 = drivers::mem::new();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -939,14 +774,9 @@ mod tests {
 
     #[tokio::test]
     async fn rename_should_fail_when_count_fail_policy() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_2 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_3 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::mem::new();
+        let store_3 = drivers::mem::new();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -997,14 +827,9 @@ mod tests {
 
     #[tokio::test]
     async fn copy_should_pass_when_backup_all_policy() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_2 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_3 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::mem::new();
+        let store_3 = drivers::mem::new();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -1050,14 +875,9 @@ mod tests {
 
     #[tokio::test]
     async fn copy_should_pass_when_allow_backup_failure_policy() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_2 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_3 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::mem::new();
+        let store_3 = drivers::mem::new();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -1105,14 +925,9 @@ mod tests {
 
     #[tokio::test]
     async fn copy_should_pass_when_at_least_one_failure_policy() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_2 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_3 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::mem::new();
+        let store_3 = drivers::mem::new();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -1160,14 +975,9 @@ mod tests {
 
     #[tokio::test]
     async fn copy_should_fail_when_at_least_one_failure_policy() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_2 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_3 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::mem::new();
+        let store_3 = drivers::mem::new();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -1216,14 +1026,9 @@ mod tests {
 
     #[tokio::test]
     async fn copy_should_pass_when_count_fail_policy() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_2 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_3 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::mem::new();
+        let store_3 = drivers::mem::new();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",
@@ -1271,14 +1076,9 @@ mod tests {
 
     #[tokio::test]
     async fn copy_should_fail_when_count_fail_policy() {
-        let store_1 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_2 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
-
-        let store_3 =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::mem::new();
+        let store_3 = drivers::mem::new();
 
         let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
             "store_1",

@@ -719,7 +719,6 @@ dependencies = [
  "loco-macros",
  "loco-rs",
  "migration",
- "object_store",
  "rstest",
  "sea-orm",
  "serde",

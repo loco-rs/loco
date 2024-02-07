@@ -11,7 +11,7 @@
 //! operations. Strategies implement the [`strategies::StorageStrategyTrait`].
 //! The selected strategy can be dynamically changed at runtime.
 mod contents;
-pub mod driver;
+pub mod drivers;
 pub mod error;
 pub mod strategies;
 use std::{collections::BTreeMap, path::Path, sync::Arc};
@@ -22,7 +22,7 @@ use self::error::StorageResult;
 
 #[derive(Clone)]
 pub struct Storage {
-    pub stores: BTreeMap<String, driver::Store>,
+    pub stores: BTreeMap<String, drivers::Store>,
     pub strategy: Arc<dyn strategies::StorageStrategyTrait>,
 }
 
@@ -30,7 +30,7 @@ impl Storage {
     /// Creates a new storage instance with a single store and the default
     /// strategy.
     #[must_use]
-    pub fn single(store: driver::Store) -> Self {
+    pub fn single(store: drivers::Store) -> Self {
         let default_key = "store";
         Self {
             strategy: Arc::new(strategies::single::SingleStrategy::new(default_key)),
@@ -41,7 +41,7 @@ impl Storage {
     /// Creates a new storage instance with the provided stores and strategy.
     #[must_use]
     pub fn new(
-        stores: BTreeMap<String, driver::Store>,
+        stores: BTreeMap<String, drivers::Store>,
         strategy: Arc<dyn strategies::StorageStrategyTrait>,
     ) -> Self {
         Self { stores, strategy }
@@ -215,7 +215,7 @@ impl Storage {
 
     /// Returns a reference to the store with the specified name if exists.
     #[must_use]
-    pub fn as_store(&self, name: &str) -> Option<&driver::Store> {
+    pub fn as_store(&self, name: &str) -> Option<&drivers::Store> {
         self.stores.get(name)
     }
 
@@ -224,7 +224,7 @@ impl Storage {
     /// # Errors
     ///
     /// Return an error if the given store name not exists
-    pub fn as_store_err(&self, name: &str) -> StorageResult<&driver::Store> {
+    pub fn as_store_err(&self, name: &str) -> StorageResult<&drivers::Store> {
         self.as_store(name)
             .ok_or(error::StorageError::StoreNotFound(name.to_string()))
     }

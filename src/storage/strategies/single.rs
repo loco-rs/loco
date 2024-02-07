@@ -96,15 +96,12 @@ mod tests {
 
     use std::{collections::BTreeMap, path::PathBuf};
 
-    use object_store::memory::InMemory;
-
     use super::*;
-    use crate::storage::{driver, Storage};
+    use crate::storage::{drivers, Storage};
 
     #[tokio::test]
     async fn can_upload() {
-        let store =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store = drivers::mem::new();
 
         let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategyTrait>;
 
@@ -123,8 +120,7 @@ mod tests {
 
     #[tokio::test]
     async fn can_download() {
-        let store =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store = drivers::mem::new();
 
         let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategyTrait>;
 
@@ -144,8 +140,7 @@ mod tests {
 
     #[tokio::test]
     async fn can_delete() {
-        let store =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store = drivers::mem::new();
 
         let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategyTrait>;
 
@@ -168,8 +163,7 @@ mod tests {
 
     #[tokio::test]
     async fn can_rename_file_path() {
-        let store =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store = drivers::mem::new();
 
         let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategyTrait>;
 
@@ -200,8 +194,7 @@ mod tests {
 
     #[tokio::test]
     async fn can_copy_file_path() {
-        let store =
-            driver::new((Box::new(InMemory::new()) as Box<dyn object_store::ObjectStore>).into());
+        let store = drivers::mem::new();
 
         let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategyTrait>;
 
