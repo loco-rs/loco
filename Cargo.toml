@@ -2,7 +2,6 @@
 members = ["macros", "xtask"]
 exclude = ["starters"]
 
-
 [package]
 name = "loco-rs"
 version = "0.2.3"
@@ -24,12 +23,10 @@ testing = ["dep:axum-test"]
 with-db = ["dep:sea-orm", "dep:sea-orm-migration"]
 channels = ["dep:socketioxide"]
 # Storage features
-all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp", "storage_http"]
+all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
 storage_aws_s3 = ["object_store/aws"]
 storage_azure = ["object_store/azure"]
 storage_gcp = ["object_store/gcp"]
-storage_http = ["object_store/http"]
-
 
 [dependencies]
 
