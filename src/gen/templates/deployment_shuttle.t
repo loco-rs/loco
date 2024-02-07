@@ -16,19 +16,30 @@ injections:
     path = "src/bin/shuttle.rs"
 - into: Cargo.toml
   after: \[dependencies\]
-  content: "shuttle-runtime = { version = \"{{shuttle_runtime_version}}\", default-features = false }"
-- into: Cargo.toml
-  after: \[dependencies\]
-  content: "shuttle-axum = { version = \"{{shuttle_axum_version}}\", default-features = false, features = [\"axum-0-7\",] }"
+  content: |
+    shuttle-axum = "{{shuttle_runtime_version}}"
+    shuttle-metadata = "{{shuttle_runtime_version}}"
+    shuttle-runtime = { version = "{{shuttle_runtime_version}}", default-features = false }
+    {% if with_db -%}
+    shuttle-shared-db = { version = "{{shuttle_runtime_version}}", features = ["postgres"] }
+    {%- endif %}
 ---
 use loco_rs::boot::{create_app, StartMode};
-use loco_rs::environment::resolve_from_env;
+use loco_rs::environment::Environment;
 use {{pkg_name}}::app::App;
+{% if with_db %}use migration::Migrator;{% endif %}
 
 #[shuttle_runtime::main]
-async fn main() -> shuttle_axum::ShuttleAxum {
-    let environment = resolve_from_env().unwrap_or_else(|| "development".to_string());
-    let boot_result = create_app::<App>(StartMode::ServerOnly, &environment)
+async fn main(
+  {% if with_db %}#[shuttle_shared_db::Postgres] conn_str: String,{% endif %}
+  #[shuttle_metadata::ShuttleMetadata] meta: shuttle_metadata::Metadata,
+) -> shuttle_axum::ShuttleAxum {
+    {% if with_db %}std::env::set_var("DATABASE_URL", conn_str);{% endif %}
+    let environment = match meta.env {
+        shuttle_metadata::Environment::Local => Environment::Development,
+        shuttle_metadata::Environment::Deployment => Environment::Production,
+    };
+    let boot_result = create_app::<App{% if with_db %}, Migrator{% endif %}>(StartMode::ServerOnly, &environment)
         .await
         .unwrap();
 
