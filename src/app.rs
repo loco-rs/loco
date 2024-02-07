@@ -18,6 +18,7 @@ use crate::{
     controller::AppRoutes,
     environment::Environment,
     mailer::EmailSender,
+    oauth2::OAuth2Client,
     task::Tasks,
     worker::{Pool, Processor, RedisConnectionManager},
     Result,
@@ -43,6 +44,8 @@ pub struct AppContext {
     pub config: Config,
     /// An optional email sender component that can be used to send email.
     pub mailer: Option<EmailSender>,
+    /// An optional oauth2 client
+    pub oauth2: Option<OAuth2Client>,
 }
 
 /// A trait that defines hooks for customizing and extending the behavior of a

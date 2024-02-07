@@ -73,7 +73,8 @@ include_dir = "0.7.3"
 thiserror = "1"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
-oauth2 = "4"
+oauth2 = { version = "4" ,optional = true }
+reqwest = "0.11"
 
 # cli/migrations
 duct = "0.13.6"

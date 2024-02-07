@@ -136,23 +136,11 @@ oauth2:
     google:
       # Client ID
       client_id: ""
-      # Client Secret
+      # Client Secret - Optional
       client_secret: ""
+      # Auth Url
+      auth_url: ""
+      # Token Url - Optional
+      token_url: ""
       # Redirect URL
       redirect_url: ""
-    # Facebook Oauth2 provider
-    facebook:
-      # Client ID
-      client_id: ""
-      # Client Secret
-      client_secret: ""
-      # Redirect URL
-      redirect_url: ""
-    microsoft:
-      # Client ID
-      client_id: ""
-      # Client Secret
-      client_secret: ""
-      # Redirect URL
-      redirect_url: ""
-

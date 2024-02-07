@@ -238,7 +238,9 @@ pub struct Provider {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GoogleProvider {
     pub client_id: String,
-    pub client_secret: String,
+    pub client_secret: Option<String>,
+    pub auth_url: String,
+    pub token_url: Option<String>,
     pub redirect_uri: String,
 }
 
