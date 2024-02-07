@@ -119,6 +119,9 @@ pub enum Error {
     Redis(#[from] sidekiq::redis_rs::RedisError),
 
     #[error(transparent)]
+    Storage(#[from] crate::storage::error::StorageError),
+
+    #[error(transparent)]
     Any(#[from] Box<dyn std::error::Error + Send + Sync>),
 
     #[error(transparent)]

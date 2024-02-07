@@ -62,6 +62,7 @@ pub mod task;
 pub mod testing;
 #[cfg(feature = "testing")]
 pub use axum_test::TestServer;
+pub mod storage;
 pub mod validation;
 pub mod worker;
 #[cfg(feature = "channels")]

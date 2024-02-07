@@ -28,7 +28,7 @@ sea-orm = { version = "0.12.4", features = [
   "macros",
 ] }
 
-axum = "0.7.1"
+axum = { version = "0.7.1", features = ["multipart"] }
 axum_session = { version = "0.10.1", default-features = false }
 
 include_dir = "0.7"
@@ -38,6 +38,7 @@ tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 fluent-templates = { version = "0.8.0", features = ["tera"] }
 unic-langid = "0.9.4"
 tera = "1.19.1"
+object_store = { version = "0.9.0" }
 
 [[bin]]
 name = "blo-cli"
@@ -51,3 +52,4 @@ loco-rs = { version = "*", path = "../../", features = ["testing"] }
 trycmd = "0.14.19"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
 loco-macros = { path = "../../macros" }
+axum-test = { version = "14.3.0" }

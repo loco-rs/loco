@@ -18,6 +18,7 @@ use crate::{
     controller::AppRoutes,
     environment::Environment,
     mailer::EmailSender,
+    storage::Storage,
     task::Tasks,
     worker::{Pool, Processor, RedisConnectionManager},
     Result,
@@ -43,6 +44,8 @@ pub struct AppContext {
     pub config: Config,
     /// An optional email sender component that can be used to send email.
     pub mailer: Option<EmailSender>,
+    // Ab optional storage instance for the application
+    pub storage: Option<Storage>,
 }
 
 /// A trait that defines hooks for customizing and extending the behavior of a
@@ -149,6 +152,14 @@ pub trait Hooks {
 
     /// Defines the application's routing configuration.
     fn routes(_ctx: &AppContext) -> AppRoutes;
+
+    /// Defines the storage configuration for the application
+    async fn storage(
+        _config: &config::Config,
+        _environment: &Environment,
+    ) -> Result<Option<Storage>> {
+        Ok(None)
+    }
 
     #[cfg(feature = "channels")]
     /// Register channels endpoints to the application routers
