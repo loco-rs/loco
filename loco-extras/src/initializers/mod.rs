@@ -22,7 +22,7 @@
 //! Once the `loco_extras` crate is included, proceed to the `initializers` hook
 //! function and add your initializations. Here's an example:
 //!
-//! ```rust
+//! ```rust,ignore
 //! impl Hooks for App {
 //!     .
 //!     .
