@@ -12,6 +12,7 @@ template = "docs/page.html"
 lead = ""
 toc = true
 top = false
+flair =[]
 +++
 
 To simplify the testing process, `Loco` provides helpful functions that make writing tests more convenient. Ensure you enable the testing feature in your `Cargo.toml`:

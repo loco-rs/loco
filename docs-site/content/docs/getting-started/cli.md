@@ -10,7 +10,9 @@ template = "docs/page.html"
 [extra]
 toc = true
 top = false
+flair =[]
 +++
+
 
 Create your starter app:
 

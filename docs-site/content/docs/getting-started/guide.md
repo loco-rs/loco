@@ -10,6 +10,7 @@ template = "docs/page.html"
 [extra]
 toc = true
 top = false
+flair =[]
 +++
 
 ## Guide Assumptions

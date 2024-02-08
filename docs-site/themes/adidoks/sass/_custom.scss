@@ -13,10 +13,27 @@
 }
 
 label { 
-  background: $gray-600;
-  color: $white;
+  color: $gray-600;
   border-radius: 0.2em;
-  padding: 0.2em 0.4em;
+  padding: 0.1em 0.5em;
   font-size: 0.9em;
   margin: 0 0.1em;
+  border: 1px solid;
+  border-color: $gray-600;
+}
+
+label.sidebar {
+  background-color: $gray-300;
+  color: $gray-700;
+  border: none;
+}
+
+body.dark label.sidebar {
+  background-color: $gray-800;
+  color: $gray-600;
+  border: none;
+}
+
+.flairbar {
+  margin-bottom: 1em;
 }

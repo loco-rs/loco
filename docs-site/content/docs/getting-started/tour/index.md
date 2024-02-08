@@ -10,6 +10,7 @@ template = "docs/page.html"
 [extra]
 toc = true
 top = false
+flair =[]
 +++
 
 <img style="width:100%; max-width:640px" src="tour.png"/>

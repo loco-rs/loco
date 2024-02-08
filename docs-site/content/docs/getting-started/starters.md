@@ -10,6 +10,7 @@ template = "docs/page.html"
 [extra]
 toc = true
 top = false
+flair =[]
 +++
 
 Simplify your project setup with Loco's predefined boilerplates, designed to make your development journey smoother. To get started, install our CLI and choose the template that suits your needs.

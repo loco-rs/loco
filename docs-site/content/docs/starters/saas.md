@@ -1,5 +1,5 @@
 +++
-title = "SaaS <label>Auth</label> <label>DB</label> <label>JS</label> <label>SSR</label>"
+title = "SaaS"
 date = 2021-12-19T08:00:00+00:00
 updated = 2021-12-19T08:00:00+00:00
 draft = false
@@ -10,6 +10,7 @@ template = "docs/page.html"
 [extra]
 toc = true
 top = false
+flair = ['Auth', 'DB', 'JS', 'SSR']
 +++
 
 The Saas starter is an all-included set up for projects requiring both a UI and a REST API. For the UI this starter supports a client-side app or classic server-side templates (or a combination).
