@@ -1,9 +1,9 @@
 +++
-title = "Starters"
+title = "SaaS"
 date = 2021-12-19T08:00:00+00:00
 updated = 2021-12-19T08:00:00+00:00
 draft = false
-weight = 3
+weight = 1
 sort_by = "weight"
 template = "docs/page.html"
 
@@ -11,27 +11,6 @@ template = "docs/page.html"
 toc = true
 top = false
 +++
-
-Simplify your project setup with Loco's predefined boilerplates, designed to make your development journey smoother. To get started, install our CLI and choose the template that suits your needs.
-
-```sh
-cargo install loco-cli
-```
-
-Create a starter:
-
-```sh
-loco new
-✔ ❯ App name? · myapp
-? ❯ What would you like to build? ›
-❯ lightweight-service (minimal, only controllers and views)
-  Rest API (with DB and user auth)
-  Saas app (with DB and user auth)
-```
-
-## Available Starters
-
-#### Saas Starter
 
 The Saas starter is an all-included set up for projects requiring both a UI and a REST API. For the UI this starter supports a client-side app or classic server-side templates (or a combination).
 
@@ -49,12 +28,31 @@ The Saas starter is an all-included set up for projects requiring both a UI and 
 - Forgot password API flow.
 - Mailer that sends welcome emails and handles forgot password requests.
 
-#### Rest API Starter
+## Configuring assets for serverside templates
 
-Choose the Rest API starter if you only need a REST API without a frontend. If you change your mind later and decide to serve a frontend, simply enable the `static` middleware and point the configuration to your `frontend` distribution folder.
+The SaaS starter comes preconfigured for frontend client-side assets. If you want to use server-side template rendering which includes assets such as pictures and styles, you can configure the asset middleware for it:
 
-#### Lightweight Service Starter
+In your `config/development.yaml`, uncomment the server-side config, and comment the client-side config.
 
-Focused on controllers and views (response schema), the Lightweight Service starter is minimalistic. If you require a REST API service without a database, frontend, workers, or other features that Loco provides, this is the ideal choice for you!
-
-
+```yaml
+    # server-side static assets config
+    # for use with the view_engine in initializers/view_engine.rs
+    #
+    static:
+      enable: true
+      must_exist: true
+      precompressed: false
+      folder:
+        uri: "/static"
+        path: "assets/static"
+      fallback: "assets/static/404.html"
+    # client side app static config
+    # static:
+    #   enable: true
+    #   must_exist: true
+    #   precompressed: false
+    #   folder:
+    #     uri: "/"
+    #     path: "frontend/dist"
+    #   fallback: "frontend/dist/index.html"
+```
