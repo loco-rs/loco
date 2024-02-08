@@ -240,7 +240,7 @@ impl MirrorStrategy {
             .await?
             .bytes()
             .await
-            .map_err(|e| StorageError::Store(e))
+            .map_err(StorageError::Store)
     }
 }
 

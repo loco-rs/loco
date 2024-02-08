@@ -99,7 +99,7 @@ impl StorageStrategy for BackupStrategy {
             .await?
             .bytes()
             .await
-            .map_err(|e| StorageError::Store(e))?)
+            .map_err(StorageError::Store)?)
     }
 
     /// Deletes content from the primary and, if configured, secondary storage
