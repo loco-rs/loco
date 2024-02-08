@@ -12,7 +12,7 @@ pub mod mem;
 pub use object_store;
 use object_store::ObjectStore;
 
-use super::error::StoreResult;
+use super::error::StorageResult;
 
 #[derive(Clone)]
 pub struct Store {
@@ -32,12 +32,12 @@ impl Store {
     ///
     /// # Errors
     ///
-    /// Returns a `StoreResult` with the result of the upload operation.
+    /// Returns a `StorageResult` with the result of the upload operation.
     pub async fn upload(
         &self,
         path: &Path,
         content: &Bytes,
-    ) -> StoreResult<object_store::PutResult> {
+    ) -> StorageResult<object_store::PutResult> {
         let path = object_store::path::Path::from(path.display().to_string());
         Ok(self.driver.put(&path, content.clone()).await?)
     }
@@ -46,8 +46,8 @@ impl Store {
     ///
     /// # Errors
     ///
-    /// Returns a `StoreResult` with the result of the retrieval operation.
-    pub async fn get(&self, path: &Path) -> StoreResult<object_store::GetResult> {
+    /// Returns a `StorageResult` with the result of the retrieval operation.
+    pub async fn get(&self, path: &Path) -> StorageResult<object_store::GetResult> {
         let path = object_store::path::Path::from(path.display().to_string());
         Ok(self.driver.get(&path).await?)
     }
@@ -56,9 +56,9 @@ impl Store {
     ///
     /// # Errors
     ///
-    /// Returns a `StoreResult` indicating the success of the deletion
+    /// Returns a `StorageResult` indicating the success of the deletion
     /// operation.
-    pub async fn delete(&self, path: &Path) -> StoreResult<()> {
+    pub async fn delete(&self, path: &Path) -> StorageResult<()> {
         let path = object_store::path::Path::from(path.display().to_string());
         Ok(self.driver.delete(&path).await?)
     }
@@ -68,9 +68,9 @@ impl Store {
     ///
     /// # Errors
     ///
-    /// Returns a `StoreResult` indicating the success of the rename/move
+    /// Returns a `StorageResult` indicating the success of the rename/move
     /// operation.
-    pub async fn rename(&self, from: &Path, to: &Path) -> StoreResult<()> {
+    pub async fn rename(&self, from: &Path, to: &Path) -> StorageResult<()> {
         let from = object_store::path::Path::from(from.display().to_string());
         let to = object_store::path::Path::from(to.display().to_string());
         Ok(self.driver.rename(&from, &to).await?)
@@ -80,8 +80,8 @@ impl Store {
     ///
     /// # Errors
     ///
-    /// Returns a `StoreResult` indicating the success of the copy operation.
-    pub async fn copy(&self, from: &Path, to: &Path) -> StoreResult<()> {
+    /// Returns a `StorageResult` indicating the success of the copy operation.
+    pub async fn copy(&self, from: &Path, to: &Path) -> StorageResult<()> {
         let from = object_store::path::Path::from(from.display().to_string());
         let to = object_store::path::Path::from(to.display().to_string());
         Ok(self.driver.copy(&from, &to).await?)
@@ -91,9 +91,9 @@ impl Store {
     ///
     /// # Errors
     ///
-    /// Returns a `StoreResult` with a boolean indicating the existence of the
+    /// Returns a `StorageResult` with a boolean indicating the existence of the
     /// content.
-    pub async fn exists(&self, path: &Path) -> StoreResult<bool> {
+    pub async fn exists(&self, path: &Path) -> StorageResult<bool> {
         let path = object_store::path::Path::from(path.display().to_string());
         Ok(self.driver.get(&path).await.is_ok())
     }

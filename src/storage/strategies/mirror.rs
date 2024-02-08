@@ -1,6 +1,6 @@
 //! # `MirrorStrategy` Implementation for Storage Strategies
 //!
-//! This module provides an implementation of the [`StorageStrategyTrait`] for
+//! This module provides an implementation of the [`StorageStrategy`] for
 //! the [`MirrorStrategy`]. The [`MirrorStrategy`] is designed to mirror storage
 //! operations.
 //!
@@ -25,8 +25,8 @@ use std::{collections::BTreeMap, path::Path};
 use bytes::Bytes;
 
 use crate::storage::{
-    error::{StorageError, StorageResult, StoreError},
-    strategies::StorageStrategyTrait,
+    error::{StorageError, StorageResult},
+    strategies::StorageStrategy,
     Storage,
 };
 
@@ -50,14 +50,14 @@ pub struct MirrorStrategy {
     pub failure_mode: FailureMode,
 }
 
-/// Implementation of the [`StorageStrategyTrait`] for the [`MirrorStrategy`].
+/// Implementation of the [`StorageStrategy`] for the [`MirrorStrategy`].
 ///
 /// The [`MirrorStrategy`] is designed to mirror operations (upload, download,
 /// delete, rename, copy) across multiple storage backends, with optional
 /// secondary storage support and customizable failure modes.
 #[async_trait::async_trait]
 #[async_trait::async_trait]
-impl StorageStrategyTrait for MirrorStrategy {
+impl StorageStrategy for MirrorStrategy {
     /// Uploads content to the primary and, if configured, secondary storage
     /// mirror.
     ///
@@ -240,7 +240,7 @@ impl MirrorStrategy {
             .await?
             .bytes()
             .await
-            .map_err(|e| StorageError::Storage(StoreError::Storage(e)))
+            .map_err(|e| StorageError::Store(e))
     }
 }
 
@@ -272,7 +272,7 @@ mod tests {
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::MirrorAll,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -303,7 +303,7 @@ mod tests {
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::MirrorAll,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -334,7 +334,7 @@ mod tests {
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::AllowMirrorFailure,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -365,7 +365,7 @@ mod tests {
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::MirrorAll,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -403,7 +403,7 @@ mod tests {
                 "store_3".to_string(),
             ]),
             FailureMode::MirrorAll,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -440,7 +440,7 @@ mod tests {
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::MirrorAll,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -484,11 +484,11 @@ mod tests {
         let store_2 = drivers::mem::new();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(MirrorStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(MirrorStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::MirrorAll,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -526,11 +526,11 @@ mod tests {
         let store_2 = drivers::mem::new();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(MirrorStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(MirrorStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::AllowMirrorFailure,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -578,7 +578,7 @@ mod tests {
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::MirrorAll,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -622,11 +622,11 @@ mod tests {
         let store_2 = drivers::mem::new();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(MirrorStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(MirrorStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::MirrorAll,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -664,11 +664,11 @@ mod tests {
         let store_2 = drivers::mem::new();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(MirrorStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(MirrorStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::AllowMirrorFailure,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
