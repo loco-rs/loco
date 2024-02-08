@@ -1,6 +1,6 @@
 [package]
 name = "loco-extras"
-version = "0.1.0"
+version = "0.1.1"
 description = "Common loco components"
 license.workspace = true
 edition.workspace = true
@@ -12,23 +12,17 @@ path = "src/lib.rs"
 [dependencies]
 async-trait = { workspace = true }
 axum = { workspace = true }
+# initializer
+axum-prometheus = { version = "0.6.1", optional = true }
 
 [dependencies.loco-rs]
 path = "../"
 version = "0.3.0"
 default-features = true
 
-# initializer
-# axum-prometheus = { version = "0.6.1", optional = true }
-
-# initializer
-[dependencies.axum-prometheus]
-version = "0.6.1"
-default-features = false
-optional = true
 
 [features]
 default = []
 full = ["initializer-prometheus"]
 
-initializer-prometheus = ["axum-prometheus"]
+initializer-prometheus = ["dep:axum-prometheus"]

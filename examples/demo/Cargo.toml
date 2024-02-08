@@ -11,6 +11,7 @@ edition = "2021"
 [dependencies]
 
 loco-rs = { version = "*", path = "../../" }
+loco-extras = { version = "*", path = "../../loco-extras", features = ["full"] }
 migration = { path = "migration" }
 
 serde = { version = "1", features = ["derive"] }

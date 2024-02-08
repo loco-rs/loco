@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use async_trait::async_trait;
+use loco_extras;
 use loco_rs::{
     app::{AppContext, Hooks, Initializer},
     boot::{create_app, BootResult, StartMode},
@@ -40,12 +41,20 @@ impl Hooks for App {
         env!("CARGO_CRATE_NAME")
     }
 
-    async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
-        Ok(vec![
+    async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
+        let mut initializers: Vec<Box<dyn Initializer>> = vec![
             Box::new(initializers::axum_session::AxumSessionInitializer),
             Box::new(initializers::view_engine::ViewEngineInitializer),
             Box::new(initializers::hello_view_engine::HelloViewEngineInitializer),
-        ])
+        ];
+
+        if ctx.environment != Environment::Test {
+            initializers.push(Box::new(
+                loco_extras::initializers::prometheus::AxumPrometheusInitializer,
+            ));
+        }
+
+        Ok(initializers)
     }
 
     fn routes(_ctx: &AppContext) -> AppRoutes {
