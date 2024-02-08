@@ -11,3 +11,12 @@
   color:rgb(4, 52, 22);
   text-decoration: underline;
 }
+
+label { 
+  background: $gray-600;
+  color: $white;
+  border-radius: 0.2em;
+  padding: 0.2em 0.4em;
+  font-size: 0.9em;
+  margin: 0 0.1em;
+}

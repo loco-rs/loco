@@ -39,7 +39,7 @@
       <div class="col-md-12 col-lg-10 col-xxl-8">
         <article>
           <div class="page-header">
-            <h1>{{ section.title }}</h1>
+            <h1>{{ section.title | safe }}</h1>
           </div>
           {{ section.content | safe }}
         </article>
