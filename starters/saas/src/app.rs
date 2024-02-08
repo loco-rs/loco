@@ -15,7 +15,7 @@ use migration::Migrator;
 use sea_orm::DatabaseConnection;
 
 use crate::{
-    controllers,
+    controllers, initializers,
     models::_entities::{notes, users},
     tasks,
     workers::downloader::DownloadWorker,
