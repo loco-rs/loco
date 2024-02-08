@@ -8,7 +8,7 @@
 //!
 //! The [`Storage`] struct is designed to work with different storage
 //! strategies. A storage strategy defines the behavior of the storage
-//! operations. Strategies implement the [`strategies::StorageStrategyTrait`].
+//! operations. Strategies implement the [`strategies::StorageStrategy`].
 //! The selected strategy can be dynamically changed at runtime.
 mod contents;
 pub mod drivers;
@@ -23,7 +23,7 @@ use self::error::StorageResult;
 #[derive(Clone)]
 pub struct Storage {
     pub stores: BTreeMap<String, drivers::Store>,
-    pub strategy: Arc<dyn strategies::StorageStrategyTrait>,
+    pub strategy: Arc<dyn strategies::StorageStrategy>,
 }
 
 impl Storage {
@@ -42,7 +42,7 @@ impl Storage {
     #[must_use]
     pub fn new(
         stores: BTreeMap<String, drivers::Store>,
-        strategy: Arc<dyn strategies::StorageStrategyTrait>,
+        strategy: Arc<dyn strategies::StorageStrategy>,
     ) -> Self {
         Self { stores, strategy }
     }
@@ -74,7 +74,7 @@ impl Storage {
         &self,
         path: &Path,
         content: &Bytes,
-        strategy: &Arc<dyn strategies::StorageStrategyTrait>,
+        strategy: &Arc<dyn strategies::StorageStrategy>,
     ) -> error::StorageResult<()> {
         strategy.upload(self, path, content).await
     }
@@ -107,16 +107,14 @@ impl Storage {
     pub async fn download_with_policy<T: TryFrom<contents::Contents>>(
         &self,
         path: &Path,
-        strategy: &Arc<dyn strategies::StorageStrategyTrait>,
+        strategy: &Arc<dyn strategies::StorageStrategy>,
     ) -> error::StorageResult<T> {
         let res = strategy.download(self, path).await?;
         contents::Contents::from(res).try_into().map_or_else(
             |_| {
-                Err(error::StorageError::Storage(
-                    error::StoreError::UnableToReadBytes {
-                        path: path.to_path_buf(),
-                    },
-                ))
+                Err(error::StorageError::UnableToReadBytes {
+                    path: path.to_path_buf(),
+                })
             },
             |content| Ok(content),
         )
@@ -147,7 +145,7 @@ impl Storage {
     pub async fn delete_with_policy(
         &self,
         path: &Path,
-        strategy: &Arc<dyn strategies::StorageStrategyTrait>,
+        strategy: &Arc<dyn strategies::StorageStrategy>,
     ) -> error::StorageResult<()> {
         strategy.delete(self, path).await
     }
@@ -178,7 +176,7 @@ impl Storage {
         &self,
         from: &Path,
         to: &Path,
-        strategy: &Arc<dyn strategies::StorageStrategyTrait>,
+        strategy: &Arc<dyn strategies::StorageStrategy>,
     ) -> error::StorageResult<()> {
         strategy.rename(self, from, to).await
     }
@@ -208,7 +206,7 @@ impl Storage {
         &self,
         from: &Path,
         to: &Path,
-        strategy: &Arc<dyn strategies::StorageStrategyTrait>,
+        strategy: &Arc<dyn strategies::StorageStrategy>,
     ) -> error::StorageResult<()> {
         strategy.copy(self, from, to).await
     }

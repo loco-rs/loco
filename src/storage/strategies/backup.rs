@@ -1,6 +1,6 @@
 //! # `BackupStrategy` Implementation for Storage Strategies
 //!
-//! This module provides an implementation of the [`StorageStrategyTrait`] for
+//! This module provides an implementation of the [`StorageStrategy`] for
 //! the [`BackupStrategy`]. The [`BackupStrategy`] is designed to mirror storage
 //! operations.
 //!
@@ -26,8 +26,8 @@ use std::{collections::BTreeMap, path::Path};
 use bytes::Bytes;
 
 use crate::storage::{
-    error::{StorageError, StorageResult, StoreError},
-    strategies::StorageStrategyTrait,
+    error::{StorageError, StorageResult},
+    strategies::StorageStrategy,
     Storage,
 };
 
@@ -55,7 +55,7 @@ pub struct BackupStrategy {
 }
 
 #[async_trait::async_trait]
-impl StorageStrategyTrait for BackupStrategy {
+impl StorageStrategy for BackupStrategy {
     /// Uploads content to the primary and, if configured, secondary storage
     /// backends.
     // # Errors
@@ -99,7 +99,7 @@ impl StorageStrategyTrait for BackupStrategy {
             .await?
             .bytes()
             .await
-            .map_err(|e| StorageError::Storage(StoreError::Storage(e)))?)
+            .map_err(StorageError::Store)?)
     }
 
     /// Deletes content from the primary and, if configured, secondary storage
@@ -245,11 +245,11 @@ mod tests {
         let store_2 = drivers::mem::new();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::BackupAll,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -276,11 +276,11 @@ mod tests {
         let store_2 = drivers::mem::new();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::BackupAll,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -307,11 +307,11 @@ mod tests {
         let store_2 = drivers::aws::with_failure();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::AllowBackupFailure,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -338,11 +338,11 @@ mod tests {
         let store_2 = drivers::aws::with_failure();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::AtLeastOneFailure,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -369,11 +369,11 @@ mod tests {
         let store_2 = drivers::aws::with_failure();
         let store_3 = drivers::aws::with_failure();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::CountFailure(2),
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -400,11 +400,11 @@ mod tests {
         let store_2 = drivers::aws::with_failure();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::CountFailure(2),
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -431,11 +431,11 @@ mod tests {
         let store_2 = drivers::aws::with_failure();
         let store_3 = drivers::aws::with_failure();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::CountFailure(2),
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -462,11 +462,11 @@ mod tests {
     async fn can_download() {
         let store_1 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::BackupAll,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([("store_1".to_string(), store_1.clone())]),
@@ -495,11 +495,11 @@ mod tests {
         let store_2 = drivers::mem::new();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::AllowBackupFailure,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -529,11 +529,11 @@ mod tests {
         let store_2 = drivers::mem::new();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::BackupAll,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -577,11 +577,11 @@ mod tests {
         let store_2 = drivers::mem::new();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::AllowBackupFailure,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -627,11 +627,11 @@ mod tests {
         let store_2 = drivers::mem::new();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::AtLeastOneFailure,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -677,11 +677,11 @@ mod tests {
         let store_2 = drivers::mem::new();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::AtLeastOneFailure,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -728,11 +728,11 @@ mod tests {
         let store_2 = drivers::mem::new();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::CountFailure(2),
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -778,11 +778,11 @@ mod tests {
         let store_2 = drivers::mem::new();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::CountFailure(2),
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -831,11 +831,11 @@ mod tests {
         let store_2 = drivers::mem::new();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::BackupAll,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -879,11 +879,11 @@ mod tests {
         let store_2 = drivers::mem::new();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::AllowBackupFailure,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -929,11 +929,11 @@ mod tests {
         let store_2 = drivers::mem::new();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::AtLeastOneFailure,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -979,11 +979,11 @@ mod tests {
         let store_2 = drivers::mem::new();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::AtLeastOneFailure,
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -1030,11 +1030,11 @@ mod tests {
         let store_2 = drivers::mem::new();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::CountFailure(2),
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([
@@ -1080,11 +1080,11 @@ mod tests {
         let store_2 = drivers::mem::new();
         let store_3 = drivers::mem::new();
 
-        let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+        let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
             "store_1",
             Some(vec!["store_2".to_string(), "store_3".to_string()]),
             FailureMode::CountFailure(2),
-        )) as Box<dyn StorageStrategyTrait>;
+        )) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([

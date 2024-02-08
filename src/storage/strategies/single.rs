@@ -1,16 +1,12 @@
 //! # Single Storage Strategy Implementation
 //!
-//! This module provides an implementation of the [`StorageStrategyTrait`] for a
+//! This module provides an implementation of the [`StorageStrategy`] for a
 //! single storage strategy.
 use std::path::Path;
 
 use bytes::Bytes;
 
-use crate::storage::{
-    error::{StorageError, StorageResult, StoreError},
-    strategies::StorageStrategyTrait,
-    Storage,
-};
+use crate::storage::{error::StorageResult, strategies::StorageStrategy, Storage};
 
 /// Represents a single storage strategy.
 #[derive(Clone)]
@@ -29,9 +25,9 @@ impl SingleStrategy {
     }
 }
 
-/// Implementation of `StorageStrategyTrait` for a single storage strategy.
+/// Implementation of `StorageStrategy` for a single storage strategy.
 #[async_trait::async_trait]
-impl StorageStrategyTrait for SingleStrategy {
+impl StorageStrategy for SingleStrategy {
     /// Uploads content to the primary storage.
     ///
     /// # Errors
@@ -52,12 +48,7 @@ impl StorageStrategyTrait for SingleStrategy {
     /// Returns a [`StorageResult`] indicating of the operation status.
     async fn download(&self, storage: &Storage, path: &Path) -> StorageResult<Bytes> {
         let store = storage.as_store_err(&self.primary)?;
-        Ok(store
-            .get(path)
-            .await?
-            .bytes()
-            .await
-            .map_err(|e| StorageError::Storage(StoreError::Storage(e)))?)
+        Ok(store.get(path).await?.bytes().await?)
     }
 
     /// Deletes the given path
@@ -103,7 +94,7 @@ mod tests {
     async fn can_upload() {
         let store = drivers::mem::new();
 
-        let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategyTrait>;
+        let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([("default".to_string(), store.clone())]),
@@ -122,7 +113,7 @@ mod tests {
     async fn can_download() {
         let store = drivers::mem::new();
 
-        let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategyTrait>;
+        let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([("default".to_string(), store.clone())]),
@@ -142,7 +133,7 @@ mod tests {
     async fn can_delete() {
         let store = drivers::mem::new();
 
-        let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategyTrait>;
+        let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([("default".to_string(), store.clone())]),
@@ -165,7 +156,7 @@ mod tests {
     async fn can_rename_file_path() {
         let store = drivers::mem::new();
 
-        let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategyTrait>;
+        let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([("default".to_string(), store.clone())]),
@@ -196,7 +187,7 @@ mod tests {
     async fn can_copy_file_path() {
         let store = drivers::mem::new();
 
-        let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategyTrait>;
+        let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategy>;
 
         let storage = Storage::new(
             BTreeMap::from([("default".to_string(), store.clone())]),

@@ -100,7 +100,7 @@ let strategy = Box::new(MirrorStrategy::new(
     "store_1",
     Some(vec!["store_2".to_string(), "store_3".to_string()]),
     FailureMode::MirrorAll,
-)) as Box<dyn StorageStrategyTrait>;
+)) as Box<dyn StorageStrategy>;
 
 // Create the storage with the store mapping and the strategy.
  let storage = Storage::new(
@@ -129,11 +129,11 @@ Example:
 ```rust
 
 // Define the backup strategy by setting the primary store and secondary stores by names.
-let strategy: Box<dyn StorageStrategyTrait> = Box::new(BackupStrategy::new(
+let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
     "store_1",
     Some(vec!["store_2".to_string(), "store_3".to_string()]),
     FailureMode::AllowBackupFailure,
-)) as Box<dyn StorageStrategyTrait>;
+)) as Box<dyn StorageStrategy>;
 
 let storage = Storage::new(
     BTreeMap::from([
@@ -147,7 +147,7 @@ let storage = Storage::new(
 
 ## Create Your Own Strategy
 
-In case you have a specific strategy, you can easily create it by implementing the StorageStrategyTrait and implementing all store functionality.
+In case you have a specific strategy, you can easily create it by implementing the StorageStrategy and implementing all store functionality.
 
 ## Usage In Controller
 
