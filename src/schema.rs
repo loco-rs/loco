@@ -9,9 +9,7 @@
 //! the schema helpers to create the Db fields.
 //!
 //! ```rust
-//! use loco_rs::schema::*;
-//! use sea_orm_migration::prelude::*;
-//! use std::borrow::BorrowMut;
+//! use sea_orm_migration::{prelude::*, schema::*};
 //!
 //! #[derive(DeriveMigrationName)]
 //! pub struct Migration;
@@ -20,13 +18,13 @@
 //! impl MigrationTrait for Migration {
 //!     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
 //!         let table = table_auto(Users::Table)
-//!             .col(pk_auto(Users::Id).borrow_mut())
-//!             .col(uuid(Users::Pid).borrow_mut())
-//!             .col(string_uniq(Users::Email).borrow_mut())
-//!             .col(string(Users::Password).borrow_mut())
-//!             .col(string(Users::Name).borrow_mut())
-//!             .col(string_null(Users::ResetToken).borrow_mut())
-//!             .col(timestamp_null(Users::ResetSentAt).borrow_mut())
+//!             .col(pk_auto(Users::Id))
+//!             .col(uuid(Users::Pid))
+//!             .col(string_uniq(Users::Email))
+//!             .col(string(Users::Password))
+//!             .col(string(Users::Name))
+//!             .col(string_null(Users::ResetToken))
+//!             .col(timestamp_null(Users::ResetSentAt))
 //!             .to_owned();
 //!         manager.create_table(table).await?;
 //!         Ok(())

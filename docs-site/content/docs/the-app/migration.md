@@ -83,7 +83,7 @@ Adding a column:
     .alter_table(
         Table::alter()
             .table(Movies::Table)
-            .add_column_if_not_exists(integer(Movies::Rating).borrow_mut())
+            .add_column_if_not_exists(integer(Movies::Rating))
             .to_owned(),
     )
     .await
