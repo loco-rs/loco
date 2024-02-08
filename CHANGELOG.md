@@ -2,7 +2,7 @@
 
 ## vNext
 
-## 0.3.0
+## 0.3.1
 
 * Implemented file upload support with versatile strategies. [https://github.com/loco-rs/loco/pull/423](https://github.com/loco-rs/loco/pull/423)
 * Create a `loco_extra` crate to share common basic implementations. [https://github.com/loco-rs/loco/pull/425](https://github.com/loco-rs/loco/pull/425)
