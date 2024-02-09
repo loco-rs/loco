@@ -10,6 +10,7 @@ impl HomeResponse {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(clippy::module_name_repetitions)]
 pub struct HomeResponse {
     pub app_name: String,
 }
