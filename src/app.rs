@@ -156,6 +156,13 @@ pub trait Hooks {
     /// Defines the application's routing configuration.
     fn routes(_ctx: &AppContext) -> AppRoutes;
 
+    /// Defines the storage configuration for the application
+    async fn storage(
+        _config: &config::Config,
+        _environment: &Environment,
+    ) -> Result<Option<Storage>> {
+        Ok(None)
+    }
     #[cfg(feature = "channels")]
     /// Register channels endpoints to the application routers
     fn register_channels(_ctx: &AppContext) -> AppChannels;
