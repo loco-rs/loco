@@ -75,7 +75,7 @@ impl Storage {
     /// This method returns an error if the upload operation fails or if there
     /// is an issue with the strategy configuration.
     pub async fn upload(&self, path: &Path, content: &Bytes) -> StorageResult<()> {
-        self.upload_with_strategy(path, content, &self.strategy)
+        self.upload_with_strategy(path, content, &*self.strategy)
             .await
     }
 
@@ -93,7 +93,7 @@ impl Storage {
         &self,
         path: &Path,
         content: &Bytes,
-        strategy: &Box<dyn strategies::StorageStrategy>,
+        strategy: &dyn strategies::StorageStrategy,
     ) -> StorageResult<()> {
         strategy.upload(self, path, content).await
     }
@@ -107,7 +107,7 @@ impl Storage {
     /// This method returns an error if the download operation fails or if there
     /// is an issue with the strategy configuration.
     pub async fn download<T: TryFrom<contents::Contents>>(&self, path: &Path) -> StorageResult<T> {
-        self.download_with_policy(path, &self.strategy).await
+        self.download_with_policy(path, &*self.strategy).await
     }
 
     /// Downloads content from the storage at the specified path using a
@@ -123,7 +123,7 @@ impl Storage {
     pub async fn download_with_policy<T: TryFrom<contents::Contents>>(
         &self,
         path: &Path,
-        strategy: &Box<dyn strategies::StorageStrategy>,
+        strategy: &dyn strategies::StorageStrategy,
     ) -> StorageResult<T> {
         let res = strategy.download(self, path).await?;
         contents::Contents::from(res).try_into().map_or_else(
@@ -145,7 +145,7 @@ impl Storage {
     /// This method returns an error if the delete operation fails or if there
     /// is an issue with the strategy configuration.
     pub async fn delete(&self, path: &Path) -> StorageResult<()> {
-        self.delete_with_policy(path, &self.strategy).await
+        self.delete_with_policy(path, &*self.strategy).await
     }
 
     /// Deletes content from the storage at the specified path using a specific
@@ -161,7 +161,7 @@ impl Storage {
     pub async fn delete_with_policy(
         &self,
         path: &Path,
-        strategy: &Box<dyn strategies::StorageStrategy>,
+        strategy: &dyn strategies::StorageStrategy,
     ) -> StorageResult<()> {
         strategy.delete(self, path).await
     }
@@ -175,7 +175,7 @@ impl Storage {
     /// This method returns an error if the rename operation fails or if there
     /// is an issue with the strategy configuration.
     pub async fn rename(&self, from: &Path, to: &Path) -> StorageResult<()> {
-        self.rename_with_policy(from, to, &self.strategy).await
+        self.rename_with_policy(from, to, &*self.strategy).await
     }
 
     /// Renames content from one path to another in the storage using a specific
@@ -192,7 +192,7 @@ impl Storage {
         &self,
         from: &Path,
         to: &Path,
-        strategy: &Box<dyn strategies::StorageStrategy>,
+        strategy: &dyn strategies::StorageStrategy,
     ) -> StorageResult<()> {
         strategy.rename(self, from, to).await
     }
@@ -206,7 +206,7 @@ impl Storage {
     /// This method returns an error if the copy operation fails or if there is
     /// an issue with the strategy configuration.
     pub async fn copy(&self, from: &Path, to: &Path) -> StorageResult<()> {
-        self.copy_with_policy(from, to, &self.strategy).await
+        self.copy_with_policy(from, to, &*self.strategy).await
     }
 
     /// Copies content from one path to another in the storage using a specific
@@ -222,15 +222,15 @@ impl Storage {
         &self,
         from: &Path,
         to: &Path,
-        strategy: &Box<dyn strategies::StorageStrategy>,
+        strategy: &dyn strategies::StorageStrategy,
     ) -> StorageResult<()> {
         strategy.copy(self, from, to).await
     }
 
     /// Returns a reference to the store with the specified name if exists.
     #[must_use]
-    pub fn as_store(&self, name: &str) -> Option<&Box<dyn StoreDriver>> {
-        self.stores.get(name)
+    pub fn as_store(&self, name: &str) -> Option<&dyn StoreDriver> {
+        self.stores.get(name).map(|s| &**s)
     }
 
     /// Returns a reference to the store with the specified name.
@@ -239,7 +239,7 @@ impl Storage {
     ///
     /// Return an error if the given store name not exists
     // REVIEW(nd): not sure bout the name 'as_store_err' -- it returns result
-    pub fn as_store_err(&self, name: &str) -> StorageResult<&Box<dyn StoreDriver>> {
+    pub fn as_store_err(&self, name: &str) -> StorageResult<&dyn StoreDriver> {
         self.as_store(name)
             .ok_or(StorageError::StoreNotFound(name.to_string()))
     }
