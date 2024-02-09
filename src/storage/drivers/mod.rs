@@ -14,7 +14,7 @@ pub mod object_store_adapter;
 
 use super::StorageResult;
 pub struct UploadResponse {
-    pub object_uri: Option<String>,
+    pub e_tag: Option<String>,
     pub version: Option<String>,
 }
 

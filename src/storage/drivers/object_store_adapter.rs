@@ -31,7 +31,7 @@ impl StoreDriver for ObjectStoreAdapter {
         let path = object_store::path::Path::from(path.display().to_string());
         let res = self.object_store_impl.put(&path, content.clone()).await?;
         Ok(UploadResponse {
-            object_uri: res.e_tag,
+            e_tag: res.e_tag,
             version: res.version,
         })
     }
