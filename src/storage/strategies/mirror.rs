@@ -24,11 +24,7 @@ use std::{collections::BTreeMap, path::Path};
 
 use bytes::Bytes;
 
-use crate::storage::{
-    error::{StorageError, StorageResult},
-    strategies::StorageStrategy,
-    Storage,
-};
+use crate::storage::{strategies::StorageStrategy, Storage, StorageError, StorageResult};
 
 /// Enum representing the failure mode for the [`MirrorStrategy`].
 #[derive(Clone)]
@@ -293,6 +289,7 @@ mod tests {
         assert!(store_3.exists(path.as_path()).await.unwrap());
     }
 
+    #[cfg(feature = "storage_aws_s3")]
     #[tokio::test]
     async fn upload_should_fail_with_mirror_all_policy() {
         let store_1 = drivers::aws::with_failure();
@@ -324,6 +321,7 @@ mod tests {
         assert!(!store_3.exists(path.as_path()).await.unwrap());
     }
 
+    #[cfg(feature = "storage_aws_s3")]
     #[tokio::test]
     async fn upload_should_fail_when_allow_mirror_failure_policy() {
         let store_1 = drivers::mem::new();

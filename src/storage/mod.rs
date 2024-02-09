@@ -12,13 +12,32 @@
 //! The selected strategy can be dynamically changed at runtime.
 mod contents;
 pub mod drivers;
-pub mod error;
 pub mod strategies;
-use std::{collections::BTreeMap, path::Path, sync::Arc};
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use bytes::Bytes;
 
-use self::error::StorageResult;
+#[derive(thiserror::Error, Debug)]
+#[allow(clippy::module_name_repetitions)]
+pub enum StorageError {
+    #[error("store not found by the given key: {0}")]
+    StoreNotFound(String),
+
+    #[error(transparent)]
+    Store(#[from] object_store::Error),
+
+    #[error("Unable to read data from file {}", path.display().to_string())]
+    UnableToReadBytes { path: PathBuf },
+
+    #[error("secondaries errors")]
+    Multi(BTreeMap<String, String>),
+}
+
+pub type StorageResult<T> = std::result::Result<T, StorageError>;
 
 #[derive(Clone)]
 pub struct Storage {
@@ -55,7 +74,7 @@ impl Storage {
     ///
     /// This method returns an error if the upload operation fails or if there
     /// is an issue with the strategy configuration.
-    pub async fn upload(&self, path: &Path, content: &Bytes) -> error::StorageResult<()> {
+    pub async fn upload(&self, path: &Path, content: &Bytes) -> StorageResult<()> {
         self.upload_with_strategy(path, content, &self.strategy)
             .await
     }
@@ -75,7 +94,7 @@ impl Storage {
         path: &Path,
         content: &Bytes,
         strategy: &Arc<dyn strategies::StorageStrategy>,
-    ) -> error::StorageResult<()> {
+    ) -> StorageResult<()> {
         strategy.upload(self, path, content).await
     }
 
@@ -87,10 +106,7 @@ impl Storage {
     ///
     /// This method returns an error if the download operation fails or if there
     /// is an issue with the strategy configuration.
-    pub async fn download<T: TryFrom<contents::Contents>>(
-        &self,
-        path: &Path,
-    ) -> error::StorageResult<T> {
+    pub async fn download<T: TryFrom<contents::Contents>>(&self, path: &Path) -> StorageResult<T> {
         self.download_with_policy(path, &self.strategy).await
     }
 
@@ -108,11 +124,11 @@ impl Storage {
         &self,
         path: &Path,
         strategy: &Arc<dyn strategies::StorageStrategy>,
-    ) -> error::StorageResult<T> {
+    ) -> StorageResult<T> {
         let res = strategy.download(self, path).await?;
         contents::Contents::from(res).try_into().map_or_else(
             |_| {
-                Err(error::StorageError::UnableToReadBytes {
+                Err(StorageError::UnableToReadBytes {
                     path: path.to_path_buf(),
                 })
             },
@@ -128,7 +144,7 @@ impl Storage {
     ///
     /// This method returns an error if the delete operation fails or if there
     /// is an issue with the strategy configuration.
-    pub async fn delete(&self, path: &Path) -> error::StorageResult<()> {
+    pub async fn delete(&self, path: &Path) -> StorageResult<()> {
         self.delete_with_policy(path, &self.strategy).await
     }
 
@@ -146,7 +162,7 @@ impl Storage {
         &self,
         path: &Path,
         strategy: &Arc<dyn strategies::StorageStrategy>,
-    ) -> error::StorageResult<()> {
+    ) -> StorageResult<()> {
         strategy.delete(self, path).await
     }
 
@@ -158,7 +174,7 @@ impl Storage {
     ///
     /// This method returns an error if the rename operation fails or if there
     /// is an issue with the strategy configuration.
-    pub async fn rename(&self, from: &Path, to: &Path) -> error::StorageResult<()> {
+    pub async fn rename(&self, from: &Path, to: &Path) -> StorageResult<()> {
         self.rename_with_policy(from, to, &self.strategy).await
     }
 
@@ -177,7 +193,7 @@ impl Storage {
         from: &Path,
         to: &Path,
         strategy: &Arc<dyn strategies::StorageStrategy>,
-    ) -> error::StorageResult<()> {
+    ) -> StorageResult<()> {
         strategy.rename(self, from, to).await
     }
 
@@ -189,7 +205,7 @@ impl Storage {
     ///
     /// This method returns an error if the copy operation fails or if there is
     /// an issue with the strategy configuration.
-    pub async fn copy(&self, from: &Path, to: &Path) -> error::StorageResult<()> {
+    pub async fn copy(&self, from: &Path, to: &Path) -> StorageResult<()> {
         self.copy_with_policy(from, to, &self.strategy).await
     }
 
@@ -207,7 +223,7 @@ impl Storage {
         from: &Path,
         to: &Path,
         strategy: &Arc<dyn strategies::StorageStrategy>,
-    ) -> error::StorageResult<()> {
+    ) -> StorageResult<()> {
         strategy.copy(self, from, to).await
     }
 
@@ -224,6 +240,6 @@ impl Storage {
     /// Return an error if the given store name not exists
     pub fn as_store_err(&self, name: &str) -> StorageResult<&drivers::Store> {
         self.as_store(name)
-            .ok_or(error::StorageError::StoreNotFound(name.to_string()))
+            .ok_or(StorageError::StoreNotFound(name.to_string()))
     }
 }

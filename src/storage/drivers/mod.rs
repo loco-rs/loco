@@ -12,7 +12,7 @@ pub mod mem;
 pub use object_store;
 use object_store::ObjectStore;
 
-use super::error::StorageResult;
+use super::StorageResult;
 
 #[derive(Clone)]
 pub struct Store {

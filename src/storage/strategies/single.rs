@@ -6,7 +6,7 @@ use std::path::Path;
 
 use bytes::Bytes;
 
-use crate::storage::{error::StorageResult, strategies::StorageStrategy, Storage};
+use crate::storage::{strategies::StorageStrategy, Storage, StorageResult};
 
 /// Represents a single storage strategy.
 #[derive(Clone)]

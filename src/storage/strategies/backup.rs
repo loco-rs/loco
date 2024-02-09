@@ -25,11 +25,7 @@ use std::{collections::BTreeMap, path::Path};
 
 use bytes::Bytes;
 
-use crate::storage::{
-    error::{StorageError, StorageResult},
-    strategies::StorageStrategy,
-    Storage,
-};
+use crate::storage::{strategies::StorageStrategy, Storage, StorageError, StorageResult};
 
 /// Enum representing the failure mode for the [`BackupStrategy`].
 #[derive(Clone)]
@@ -270,6 +266,7 @@ mod tests {
         assert!(store_3.exists(path.as_path()).await.unwrap());
     }
 
+    #[cfg(feature = "storage_aws_s3")]
     #[tokio::test]
     async fn upload_should_fail_when_primary_fail() {
         let store_1 = drivers::aws::with_failure();
@@ -301,6 +298,7 @@ mod tests {
         assert!(!store_3.exists(path.as_path()).await.unwrap());
     }
 
+    #[cfg(feature = "storage_aws_s3")]
     #[tokio::test]
     async fn upload_should_pass_when_allow_backup_failure_policy() {
         let store_1 = drivers::mem::new();
@@ -332,6 +330,7 @@ mod tests {
         assert!(store_3.exists(path.as_path()).await.unwrap());
     }
 
+    #[cfg(feature = "storage_aws_s3")]
     #[tokio::test]
     async fn upload_should_pass_when_at_least_one_failure_policy() {
         let store_1 = drivers::mem::new();
@@ -363,6 +362,7 @@ mod tests {
         assert!(store_3.exists(path.as_path()).await.unwrap());
     }
 
+    #[cfg(feature = "storage_aws_s3")]
     #[tokio::test]
     async fn upload_should_fail_when_at_least_one_failure_policy() {
         let store_1 = drivers::mem::new();
@@ -394,6 +394,7 @@ mod tests {
         assert!(!store_3.exists(path.as_path()).await.unwrap());
     }
 
+    #[cfg(feature = "storage_aws_s3")]
     #[tokio::test]
     async fn upload_should_pass_count_fail_policy_should_pass() {
         let store_1 = drivers::mem::new();
@@ -425,6 +426,7 @@ mod tests {
         assert!(store_3.exists(path.as_path()).await.unwrap());
     }
 
+    #[cfg(feature = "storage_aws_s3")]
     #[tokio::test]
     async fn upload_should_fail_when_count_fail_should_fail() {
         let store_1 = drivers::mem::new();
