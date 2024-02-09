@@ -96,11 +96,9 @@ mod tests {
 
         let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategy>;
 
-        let storage = Storage::new(
-            BTreeMap::from([("default".to_string(), store.clone())]),
-            strategy.into(),
-        );
+        let storage = Storage::new(BTreeMap::from([("default".to_string(), store)]), strategy);
 
+        let store = storage.as_store("default").unwrap();
         let path = PathBuf::from("users").join("data").join("1.txt");
         let file_content = Bytes::from("file content");
 
@@ -115,14 +113,12 @@ mod tests {
 
         let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategy>;
 
-        let storage = Storage::new(
-            BTreeMap::from([("default".to_string(), store.clone())]),
-            strategy.into(),
-        );
+        let storage = Storage::new(BTreeMap::from([("default".to_string(), store)]), strategy);
 
         let path = PathBuf::from("users").join("data").join("1.txt");
         let file_content = Bytes::from("file content");
 
+        let store = storage.as_store("default").unwrap();
         assert!(store.upload(path.as_path(), &file_content).await.is_ok());
 
         let download_file: String = storage.download(path.as_path()).await.unwrap();
@@ -135,11 +131,9 @@ mod tests {
 
         let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategy>;
 
-        let storage = Storage::new(
-            BTreeMap::from([("default".to_string(), store.clone())]),
-            strategy.into(),
-        );
+        let storage = Storage::new(BTreeMap::from([("default".to_string(), store)]), strategy);
 
+        let store = storage.as_store("default").unwrap();
         let path = PathBuf::from("users").join("data").join("1.txt");
         let file_content = Bytes::from("file content");
 
@@ -158,11 +152,9 @@ mod tests {
 
         let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategy>;
 
-        let storage = Storage::new(
-            BTreeMap::from([("default".to_string(), store.clone())]),
-            strategy.into(),
-        );
+        let storage = Storage::new(BTreeMap::from([("default".to_string(), store)]), strategy);
 
+        let store = storage.as_store("default").unwrap();
         let orig_path = PathBuf::from("users").join("data").join("1.txt");
         let file_content = Bytes::from("file content");
 
@@ -189,11 +181,9 @@ mod tests {
 
         let strategy = Box::new(SingleStrategy::new("default")) as Box<dyn StorageStrategy>;
 
-        let storage = Storage::new(
-            BTreeMap::from([("default".to_string(), store.clone())]),
-            strategy.into(),
-        );
+        let storage = Storage::new(BTreeMap::from([("default".to_string(), store)]), strategy);
 
+        let store = storage.as_store("default").unwrap();
         let orig_path = PathBuf::from("users").join("data").join("1.txt");
         let file_content = Bytes::from("file content");
 

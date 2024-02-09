@@ -1,5 +1,6 @@
-use std::{path::Path, sync::Arc};
+use std::path::Path;
 
+use async_trait::async_trait;
 use bytes::Bytes;
 #[cfg(feature = "storage_aws_s3")]
 pub mod aws;
@@ -9,48 +10,34 @@ pub mod azure;
 pub mod gcp;
 pub mod local;
 pub mod mem;
-pub use object_store;
-use object_store::ObjectStore;
+pub mod object_store_adapter;
 
 use super::StorageResult;
-
-#[derive(Clone)]
-pub struct Store {
-    driver: Arc<dyn object_store::ObjectStore>,
+pub struct UploadResponse {
+    pub object_uri: Option<String>,
+    pub version: Option<String>,
 }
 
-impl Store {
-    /// Constructor for creating a new `Store` instance.
-    pub fn new(driver: Arc<dyn ObjectStore>) -> Self {
-        Self { driver }
-    }
-}
+// TODO: need to properly abstract the object_store type in order to not
+// strongly depend on it
+pub type GetResponse = object_store::GetResult;
 
-impl Store {
+#[async_trait]
+pub trait StoreDriver: Sync + Send {
     /// Uploads the content represented by `Bytes` to the specified path in the
     /// object store.
     ///
     /// # Errors
     ///
     /// Returns a `StorageResult` with the result of the upload operation.
-    pub async fn upload(
-        &self,
-        path: &Path,
-        content: &Bytes,
-    ) -> StorageResult<object_store::PutResult> {
-        let path = object_store::path::Path::from(path.display().to_string());
-        Ok(self.driver.put(&path, content.clone()).await?)
-    }
+    async fn upload(&self, path: &Path, content: &Bytes) -> StorageResult<UploadResponse>;
 
     /// Retrieves the content from the specified path in the object store.
     ///
     /// # Errors
     ///
     /// Returns a `StorageResult` with the result of the retrieval operation.
-    pub async fn get(&self, path: &Path) -> StorageResult<object_store::GetResult> {
-        let path = object_store::path::Path::from(path.display().to_string());
-        Ok(self.driver.get(&path).await?)
-    }
+    async fn get(&self, path: &Path) -> StorageResult<GetResponse>;
 
     /// Deletes the content at the specified path in the object store.
     ///
@@ -58,10 +45,7 @@ impl Store {
     ///
     /// Returns a `StorageResult` indicating the success of the deletion
     /// operation.
-    pub async fn delete(&self, path: &Path) -> StorageResult<()> {
-        let path = object_store::path::Path::from(path.display().to_string());
-        Ok(self.driver.delete(&path).await?)
-    }
+    async fn delete(&self, path: &Path) -> StorageResult<()>;
 
     /// Renames or moves the content from one path to another in the object
     /// store.
@@ -70,22 +54,14 @@ impl Store {
     ///
     /// Returns a `StorageResult` indicating the success of the rename/move
     /// operation.
-    pub async fn rename(&self, from: &Path, to: &Path) -> StorageResult<()> {
-        let from = object_store::path::Path::from(from.display().to_string());
-        let to = object_store::path::Path::from(to.display().to_string());
-        Ok(self.driver.rename(&from, &to).await?)
-    }
+    async fn rename(&self, from: &Path, to: &Path) -> StorageResult<()>;
 
     /// Copies the content from one path to another in the object store.
     ///
     /// # Errors
     ///
     /// Returns a `StorageResult` indicating the success of the copy operation.
-    pub async fn copy(&self, from: &Path, to: &Path) -> StorageResult<()> {
-        let from = object_store::path::Path::from(from.display().to_string());
-        let to = object_store::path::Path::from(to.display().to_string());
-        Ok(self.driver.copy(&from, &to).await?)
-    }
+    async fn copy(&self, from: &Path, to: &Path) -> StorageResult<()>;
 
     /// Checks if the content exists at the specified path in the object store.
     ///
@@ -93,8 +69,5 @@ impl Store {
     ///
     /// Returns a `StorageResult` with a boolean indicating the existence of the
     /// content.
-    pub async fn exists(&self, path: &Path) -> StorageResult<bool> {
-        let path = object_store::path::Path::from(path.display().to_string());
-        Ok(self.driver.get(&path).await.is_ok())
-    }
+    async fn exists(&self, path: &Path) -> StorageResult<bool>;
 }

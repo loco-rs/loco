@@ -1,6 +1,6 @@
-use object_store::{gcp::GoogleCloudStorageBuilder, ObjectStore};
+use object_store::gcp::GoogleCloudStorageBuilder;
 
-use super::Store;
+use super::{object_store_adapter::ObjectStoreAdapter, StoreDriver};
 use crate::Result;
 
 /// Create new GCP storage.
@@ -8,7 +8,11 @@ use crate::Result;
 /// # Errors
 ///
 /// When could not initialize the client instance
-pub fn new(bucket_name: &str, service_account_key: &str, service_account: &str) -> Result<Store> {
+pub fn new(
+    bucket_name: &str,
+    service_account_key: &str,
+    service_account: &str,
+) -> Result<Box<dyn StoreDriver>> {
     let gcs = GoogleCloudStorageBuilder::new()
         .with_bucket_name(bucket_name)
         .with_service_account_key(service_account_key)
@@ -16,5 +20,5 @@ pub fn new(bucket_name: &str, service_account_key: &str, service_account: &str) 
         .build()
         .map_err(Box::from)?;
 
-    Ok(Store::new((Box::new(gcs) as Box<dyn ObjectStore>).into()))
+    Ok(Box::new(ObjectStoreAdapter::new(Box::new(gcs))))
 }

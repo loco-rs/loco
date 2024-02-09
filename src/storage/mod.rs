@@ -16,10 +16,11 @@ pub mod strategies;
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 use bytes::Bytes;
+
+use self::drivers::StoreDriver;
 
 #[derive(thiserror::Error, Debug)]
 #[allow(clippy::module_name_repetitions)]
@@ -39,20 +40,19 @@ pub enum StorageError {
 
 pub type StorageResult<T> = std::result::Result<T, StorageError>;
 
-#[derive(Clone)]
 pub struct Storage {
-    pub stores: BTreeMap<String, drivers::Store>,
-    pub strategy: Arc<dyn strategies::StorageStrategy>,
+    pub stores: BTreeMap<String, Box<dyn StoreDriver>>,
+    pub strategy: Box<dyn strategies::StorageStrategy>,
 }
 
 impl Storage {
     /// Creates a new storage instance with a single store and the default
     /// strategy.
     #[must_use]
-    pub fn single(store: drivers::Store) -> Self {
+    pub fn single(store: Box<dyn StoreDriver>) -> Self {
         let default_key = "store";
         Self {
-            strategy: Arc::new(strategies::single::SingleStrategy::new(default_key)),
+            strategy: Box::new(strategies::single::SingleStrategy::new(default_key)),
             stores: BTreeMap::from([(default_key.to_string(), store)]),
         }
     }
@@ -60,8 +60,8 @@ impl Storage {
     /// Creates a new storage instance with the provided stores and strategy.
     #[must_use]
     pub fn new(
-        stores: BTreeMap<String, drivers::Store>,
-        strategy: Arc<dyn strategies::StorageStrategy>,
+        stores: BTreeMap<String, Box<dyn StoreDriver>>,
+        strategy: Box<dyn strategies::StorageStrategy>,
     ) -> Self {
         Self { stores, strategy }
     }
@@ -93,7 +93,7 @@ impl Storage {
         &self,
         path: &Path,
         content: &Bytes,
-        strategy: &Arc<dyn strategies::StorageStrategy>,
+        strategy: &Box<dyn strategies::StorageStrategy>,
     ) -> StorageResult<()> {
         strategy.upload(self, path, content).await
     }
@@ -123,7 +123,7 @@ impl Storage {
     pub async fn download_with_policy<T: TryFrom<contents::Contents>>(
         &self,
         path: &Path,
-        strategy: &Arc<dyn strategies::StorageStrategy>,
+        strategy: &Box<dyn strategies::StorageStrategy>,
     ) -> StorageResult<T> {
         let res = strategy.download(self, path).await?;
         contents::Contents::from(res).try_into().map_or_else(
@@ -161,7 +161,7 @@ impl Storage {
     pub async fn delete_with_policy(
         &self,
         path: &Path,
-        strategy: &Arc<dyn strategies::StorageStrategy>,
+        strategy: &Box<dyn strategies::StorageStrategy>,
     ) -> StorageResult<()> {
         strategy.delete(self, path).await
     }
@@ -192,7 +192,7 @@ impl Storage {
         &self,
         from: &Path,
         to: &Path,
-        strategy: &Arc<dyn strategies::StorageStrategy>,
+        strategy: &Box<dyn strategies::StorageStrategy>,
     ) -> StorageResult<()> {
         strategy.rename(self, from, to).await
     }
@@ -222,14 +222,14 @@ impl Storage {
         &self,
         from: &Path,
         to: &Path,
-        strategy: &Arc<dyn strategies::StorageStrategy>,
+        strategy: &Box<dyn strategies::StorageStrategy>,
     ) -> StorageResult<()> {
         strategy.copy(self, from, to).await
     }
 
     /// Returns a reference to the store with the specified name if exists.
     #[must_use]
-    pub fn as_store(&self, name: &str) -> Option<&drivers::Store> {
+    pub fn as_store(&self, name: &str) -> Option<&Box<dyn StoreDriver>> {
         self.stores.get(name)
     }
 
@@ -238,7 +238,8 @@ impl Storage {
     /// # Errors
     ///
     /// Return an error if the given store name not exists
-    pub fn as_store_err(&self, name: &str) -> StorageResult<&drivers::Store> {
+    // REVIEW(nd): not sure bout the name 'as_store_err' -- it returns result
+    pub fn as_store_err(&self, name: &str) -> StorageResult<&Box<dyn StoreDriver>> {
         self.as_store(name)
             .ok_or(StorageError::StoreNotFound(name.to_string()))
     }
