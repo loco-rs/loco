@@ -14,8 +14,8 @@ pub fn new() -> Box<dyn StoreDriver> {
 /// # Errors
 ///
 /// Returns an error if the path does not exist
-pub fn new_with_prefix(prefix: impl AsRef<std::path::Path>) -> Result<ObjectStoreAdapter> {
-    Ok(ObjectStoreAdapter::new(Box::new(
+pub fn new_with_prefix(prefix: impl AsRef<std::path::Path>) -> Result<Box<dyn StoreDriver>> {
+    Ok(Box::new(ObjectStoreAdapter::new(Box::new(
         LocalFileSystem::new_with_prefix(prefix).map_err(Box::from)?,
-    )))
+    ))))
 }
