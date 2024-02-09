@@ -20,6 +20,8 @@ pub enum OAuth2ClientError {
     BasicTokenError(#[from] BasicTokenError),
     #[error("CSRF token error")]
     CsrfTokenError,
+    #[error("Profile error")]
+    ProfileError(reqwest::Error),
 }
 type BasicTokenError = RequestTokenError<
     oauth2::reqwest::Error<reqwest::Error>,
