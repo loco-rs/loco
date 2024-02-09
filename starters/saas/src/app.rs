@@ -2,7 +2,7 @@ use std::path::Path;
 
 use async_trait::async_trait;
 use loco_rs::{
-    app::{AppContext, Hooks},
+    app::{AppContext, Hooks, Initializer},
     boot::{create_app, BootResult, StartMode},
     controller::AppRoutes,
     db::{self, truncate_table},
@@ -15,7 +15,7 @@ use migration::Migrator;
 use sea_orm::DatabaseConnection;
 
 use crate::{
-    controllers,
+    controllers, initializers,
     models::_entities::{notes, users},
     tasks,
     workers::downloader::DownloadWorker,
@@ -40,6 +40,12 @@ impl Hooks for App {
 
     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
         create_app::<Self, Migrator>(mode, environment).await
+    }
+
+    async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
+        Ok(vec![Box::new(
+            initializers::view_engine::ViewEngineInitializer,
+        )])
     }
 
     fn routes(_ctx: &AppContext) -> AppRoutes {

@@ -1,12 +1,15 @@
 use std::path::Path;
 
 use async_trait::async_trait;
+use loco_extras;
 use loco_rs::{
     app::{AppContext, Hooks, Initializer},
     boot::{create_app, BootResult, StartMode},
+    config::Config,
     controller::AppRoutes,
     db::{self, truncate_table},
     environment::Environment,
+    storage::{self, Storage},
     task::Tasks,
     worker::{AppWorker, Processor},
     Result,
@@ -38,12 +41,20 @@ impl Hooks for App {
         env!("CARGO_CRATE_NAME")
     }
 
-    async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
-        Ok(vec![
+    async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
+        let mut initializers: Vec<Box<dyn Initializer>> = vec![
             Box::new(initializers::axum_session::AxumSessionInitializer),
             Box::new(initializers::view_engine::ViewEngineInitializer),
             Box::new(initializers::hello_view_engine::HelloViewEngineInitializer),
-        ])
+        ];
+
+        if ctx.environment != Environment::Test {
+            initializers.push(Box::new(
+                loco_extras::initializers::prometheus::AxumPrometheusInitializer,
+            ));
+        }
+
+        Ok(initializers)
     }
 
     fn routes(_ctx: &AppContext) -> AppRoutes {
@@ -53,10 +64,25 @@ impl Hooks for App {
             .add_route(controllers::mysession::routes())
             .add_route(controllers::dashboard::routes())
             .add_route(controllers::user::routes())
+            .add_route(controllers::upload::routes())
     }
 
     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
         create_app::<Self, Migrator>(mode, environment).await
+    }
+
+    async fn storage(
+        _config: &Config,
+        environment: &Environment,
+    ) -> Result<Option<storage::Storage>> {
+        let store = if environment == &Environment::Test {
+            storage::drivers::mem::new()
+        } else {
+            storage::drivers::local::new_with_prefix("storage-uploads").map_err(Box::from)?
+        };
+
+        let storage = Storage::single(store);
+        return Ok(Some(storage));
     }
 
     fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {

@@ -13,10 +13,7 @@ injections:
   before: "pub struct Migrator"
   content: "mod {{module_name}};"
 ---
-use std::borrow::BorrowMut;
-
-use loco_rs::schema::*;
-use sea_orm_migration::prelude::*;
+use sea_orm_migration::{prelude::*, schema::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -35,13 +32,13 @@ impl MigrationTrait for Migration {
                             {% for ref in references -%}
                             .col({{model}}::{{ref.1 | pascal_case}})
                             {% endfor -%}
-                            .borrow_mut(),
+                            ,
                     )
                     {% else -%}
-                    .col(pk_auto({{model}}::Id).borrow_mut())
+                    .col(pk_auto({{model}}::Id))
                     {% endif -%}
                     {% for column in columns -%}
-                    .col({{column.1}}({{model}}::{{column.0 | pascal_case}}).borrow_mut())
+                    .col({{column.1}}({{model}}::{{column.0 | pascal_case}}))
                     {% endfor -%}
                     {% for ref in references -%}
                     .foreign_key(

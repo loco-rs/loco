@@ -10,6 +10,7 @@ template = "docs/page.html"
 [extra]
 toc = true
 top = false
+flair =[]
 +++
 
 ## Guide Assumptions
@@ -369,9 +370,9 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 table_auto(Articles::Table)
-                    .col(pk_auto(Articles::Id).borrow_mut())
-                    .col(string_null(Articles::Title).borrow_mut())
-                    .col(text(Articles::Content).borrow_mut())
+                    .col(pk_auto(Articles::Id))
+                    .col(string_null(Articles::Title))
+                    .col(text(Articles::Content))
                     .to_owned(),
             )
             .await
@@ -649,7 +650,7 @@ If you peek into the new migration, you'll discover a new database relation in t
 ```rust
       ..
       ..
-  .col(integer(Comments::ArticleId).borrow_mut())
+  .col(integer(Comments::ArticleId))
   .foreign_key(
       ForeignKey::create()
           .name("fk-comments-articles")

@@ -12,6 +12,7 @@ template = "docs/page.html"
 lead = ""
 toc = true
 top = false
+flair =[]
 +++
 
 Models in `loco` mean entity classes that allow for easy database querying and writes, but also migrations and seeding.

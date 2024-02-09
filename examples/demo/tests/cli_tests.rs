@@ -1,5 +1,3 @@
-use std::env;
-
 #[test]
 fn cli_tests() {
     let t = trycmd::TestCases::new();

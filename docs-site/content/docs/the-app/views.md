@@ -12,6 +12,7 @@ template = "docs/page.html"
 lead = ""
 toc = true
 top = false
+flair =[]
 +++
 
 In `Loco`, the processing of web requests is divided between a controller, model and view.

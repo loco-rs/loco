@@ -12,10 +12,7 @@ injections:
   before: "pub struct Migrator"
   content: "mod {{module_name}};"
 ---
-use std::borrow::BorrowMut;
-
-use loco_rs::schema::*;
-use sea_orm_migration::prelude::*;
+use sea_orm_migration::{prelude::*, schema::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -37,7 +34,7 @@ impl MigrationTrait for Migration {
             .alter_table(
                 Table::alter()
                     .table(Movies::Table)
-                    .add_column_if_not_exists(integer(Movies::Rating).borrow_mut())
+                    .add_column_if_not_exists(integer(Movies::Rating))
                     .to_owned(),
             )
             .await

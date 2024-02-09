@@ -19,6 +19,7 @@ use crate::{
     environment::Environment,
     mailer::EmailSender,
     oauth2_storage::OAuth2ClientStore,
+    storage::Storage,
     task::Tasks,
     worker::{Pool, Processor, RedisConnectionManager},
     Result,
@@ -44,6 +45,8 @@ pub struct AppContext {
     pub config: Config,
     /// An optional email sender component that can be used to send email.
     pub mailer: Option<EmailSender>,
+    // Ab optional storage instance for the application
+    pub storage: Option<Storage>,
     // /// An optional oauth2 client
     // pub oauth2: Option<OAuth2ClientStore>,
 }

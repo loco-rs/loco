@@ -12,6 +12,7 @@ template = "docs/page.html"
 lead = ""
 toc = true
 top = false
+flair =[]
 +++
 
 A mailer will deliver emails in the background using the existing `loco` background worker infrastructure. It will all be seamless for you.

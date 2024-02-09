@@ -10,10 +10,10 @@ path = "src/lib.rs"
 
 [dependencies]
 async-std = { version = "1", features = ["attributes", "tokio1"] }
-loco-rs = { version = "0.2.3" }
+loco-rs = { version = "0.3.1" }
 
 [dependencies.sea-orm-migration]
-version = "0.12.4"
+version = "1.0.0-rc.1"
 features = [
   # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.
   # View the list of supported features at https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime.

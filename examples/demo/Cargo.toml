@@ -11,6 +11,7 @@ edition = "2021"
 [dependencies]
 
 loco-rs = { version = "*", path = "../../" }
+loco-extras = { version = "*", path = "../../loco-extras", features = ["full"] }
 migration = { path = "migration" }
 
 serde = { version = "1", features = ["derive"] }
@@ -21,14 +22,14 @@ async-trait = "0.1.74"
 tracing = "0.1.40"
 chrono = "0.4"
 validator = { version = "0.16" }
-sea-orm = { version = "0.12.4", features = [
+sea-orm = { version = "1.0.0-rc.1", features = [
   "sqlx-sqlite",
   "sqlx-postgres",
   "runtime-tokio-rustls",
   "macros",
 ] }
 
-axum = "0.7.1"
+axum = { version = "0.7.1", features = ["multipart"] }
 axum_session = { version = "0.10.1", default-features = false }
 
 include_dir = "0.7"
@@ -51,3 +52,4 @@ loco-rs = { version = "*", path = "../../", features = ["testing"] }
 trycmd = "0.14.19"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
 loco-macros = { path = "../../macros" }
+axum-test = { version = "14.3.0" }
