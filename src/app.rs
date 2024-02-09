@@ -18,7 +18,7 @@ use crate::{
     controller::AppRoutes,
     environment::Environment,
     mailer::EmailSender,
-    oauth2_storage::OAuth2ClientStore,
+    oauth2_store::OAuth2ClientStore,
     storage::Storage,
     task::Tasks,
     worker::{Pool, Processor, RedisConnectionManager},
