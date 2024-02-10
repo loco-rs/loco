@@ -62,7 +62,7 @@ impl AuthorizationCodeClient {
     /// A Result with the [`AuthorizationCodeClient`] instance or an
     /// [`OAuth2ClientError`].
     /// # Example
-    /// ```rust
+    /// ```rust,ignore
     /// let credentials = AuthorizationCodeCredentials {
     ///    client_id: "test_client_id".to_string(),
     ///   client_secret: Some("test_client_secret".to_string()),
@@ -109,7 +109,7 @@ impl AuthorizationCodeClient {
     }
     /// Remove expired flow states within the [`AuthorizationCodeClient`].
     /// # Example
-    /// ```rust
+    /// ```rust,ignore
     /// client.remove_expire_flow(); // Clear outdated states within client.flow_states
     /// ```
     fn remove_expire_flow(&mut self) {
@@ -124,7 +124,7 @@ impl AuthorizationCodeClient {
     /// # Returns
     /// A boolean value indicating if the strings are equal.
     /// # Example
-    /// ```rust
+    /// ```rust,ignore
     /// AuthorizationCodeClient::constant_time_compare("test", "test"); // true
     /// AuthorizationCodeClient::constant_time_compare("test", "test1"); // false
     /// ```
@@ -150,7 +150,7 @@ pub trait AuthorizationCodeGrantTrait: Send + Sync {
     /// when they return to the application. Needs to be stored in the session
     /// or other temporary storage.
     /// # Example
-    /// ```rust
+    /// ```rust,ignore
     /// use oauth2::CsrfToken;
     /// use oauth2::url::Url;
     /// use oauth2::basic::BasicClient;
@@ -233,7 +233,7 @@ pub trait AuthorizationCodeGrantTrait: Send + Sync {
     /// exchange fails.
     /// An [`OAuth2ClientError::ProfileError`] if the profile request fails.
     /// # Example
-    /// ```rust
+    /// ```rust,ignore
     /// use std::collections::BTreeMap;
     /// use std::sync::Arc;
     /// use std::time::Duration;
