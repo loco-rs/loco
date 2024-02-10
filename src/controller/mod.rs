@@ -19,7 +19,7 @@
 //! };
 //!
 //! #[cfg(feature = "channels")]
-//! use loco_rs::controller::channels::{AppChannels, AppRoutes};
+//! use loco_rs::controller::channels::AppChannels;
 //! use loco_rs::controller::AppRoutes;
 //! use sea_orm::DatabaseConnection;
 //! use std::path::Path;
