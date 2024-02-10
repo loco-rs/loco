@@ -151,3 +151,5 @@ features = [
 rstest = "0.18.2"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
 wiremock="0.5.22"
+#base64 = "0.21.7"
+serde_urlencoded = "0.7.1"
