@@ -250,9 +250,6 @@ impl AppRoutes {
         if let Some(channels) = self.channels.as_ref() {
             tracing::info!("[Middleware] Adding channels");
             let channel_layer_app = tower::ServiceBuilder::new().layer(channels.layer.clone());
-            if let Some(cors) = cors {
-                channel_layer_app.layer(cors);
-            }
 
             app = app.layer(
                 tower::ServiceBuilder::new()
