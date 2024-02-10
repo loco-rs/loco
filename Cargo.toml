@@ -150,4 +150,4 @@ features = [
 [dev-dependencies]
 rstest = "0.18.2"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
-mockito = "1.2.0"
+wiremock="0.5.22"

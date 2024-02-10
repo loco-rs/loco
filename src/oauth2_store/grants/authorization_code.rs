@@ -147,7 +147,8 @@ pub trait AuthorizationCodeGrantTrait: Send + Sync {
             .get(client.profile_url.clone())
             .bearer_auth(token.access_token().secret().to_owned())
             .send()
-            .await.map_err(|e|OAuth2ClientError::ProfileError(e))?;
+            .await
+            .map_err(|e| OAuth2ClientError::ProfileError(e))?;
         Ok((token, profile))
     }
 }
@@ -162,6 +163,11 @@ impl AuthorizationCodeGrantTrait for AuthorizationCodeClient {
 mod tests {
     use oauth2::url::form_urlencoded;
     use serde::{Deserialize, Serialize};
+    use tracing_subscriber::fmt::format;
+    use wiremock::{
+        matchers::{method, path},
+        Mock, MockServer, ResponseTemplate,
+    };
 
     use super::*;
 
@@ -173,19 +179,40 @@ mod tests {
         redirect_url: String,
         profile_url: String,
         scope: String,
-        exchange_mock_body: String,
-        profile_mock_body: String,
-        mock_server: mockito::ServerGuard,
+        exchange_mock_body: ExchangeMockBody,
+        profile_mock_body: UserProfile,
+        mock_server: MockServer,
+    }
+    #[derive(Deserialize, Serialize, Clone, Debug)]
+    struct ExchangeMockBody {
+        access_token: String,
+        token_type: String,
+        expires_in: u64,
+        refresh_token: String,
+    }
+
+    #[derive(Deserialize, Serialize, Clone, Debug)]
+    struct UserProfile {
+        email: String,
     }
 
     impl Settings {
-        fn new() -> Self {
+        async fn new() -> Self {
             // Request a new server from the pool
-            let server = mockito::Server::new();
+            let server = MockServer::start().await;
 
             // Use one of these addresses to configure your client
-            let host = server.host_with_port();
-            let url = server.url();
+            let url = server.uri();
+
+            let user_profile = UserProfile {
+                email: "test_email".to_string(),
+            };
+            let exchange_mock_body = ExchangeMockBody {
+                access_token: "test_access_token".to_string(),
+                token_type: "bearer".to_string(),
+                expires_in: 3600,
+                refresh_token: "test_refresh_token".to_string(),
+            };
             let user_profile = UserProfile {
                 email: "test_email".to_string(),
             };
@@ -197,9 +224,8 @@ mod tests {
                 redirect_url: format!("{}/redirect_url", url),
                 profile_url: format!("{}/profile_url", url),
                 scope: format!("{}/scope_1", url),
-                exchange_mock_body: r#"{"access_token":"test_access_token","token_type":"bearer","expires_in":3600,"refresh_token":"test_refresh_token"}"#
-                    .to_string(),
-                profile_mock_body: r#"{"email":"test_email"}"#.to_string(),
+                exchange_mock_body,
+                profile_mock_body: user_profile,
                 mock_server: server,
             }
         }
@@ -222,8 +248,8 @@ mod tests {
         }
     }
 
-    fn create_client() -> OAuth2ClientResult<(AuthorizationCodeClient, Settings)> {
-        let settings = Settings::new();
+    async fn create_client() -> OAuth2ClientResult<(AuthorizationCodeClient, Settings)> {
+        let settings = Settings::new().await;
         let credentials = AuthorizationCodeCredentials {
             client_id: settings.client_id.to_string(),
             client_secret: Some(settings.client_id.to_string()),
@@ -253,7 +279,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_authorization_url() -> Result<(), TestError> {
-        let (mut client, settings) = create_client()?;
+        let (mut client, settings) = create_client().await?;
         let (url, csrf_token) = client.get_authorization_url();
         let base_url_with_path = get_base_url_with_path(&url);
         // compare between the auth_url with the base url
@@ -300,28 +326,25 @@ mod tests {
         Ok(())
     }
 
-    #[derive(Deserialize, Serialize, Clone, Debug)]
-    pub struct UserProfile {
-        email: String,
-    }
-
     #[tokio::test]
     async fn exchange_code() -> Result<(), TestError> {
-        let (mut client, mut settings) = create_client()?;
-        // Create a mock for the token exchange
-        let exchange_mock = settings
-            .mock_server
-            .mock("POST", "/token_url")
-            .with_status(200)
-            .with_body(settings.exchange_mock_body)
-            .create();
-        // Create a mock for getting profile
-        let profile_mock = settings
-            .mock_server
-            .mock("GET", "/profile_url")
-            .with_status(200)
-            .with_body(settings.profile_mock_body)
-            .create();
+        let (mut client, settings) = create_client().await?;
+
+        // Create a mock for the token exchange - https://www.oauth.com/oauth2-servers/access-tokens/authorization-code-request/
+        Mock::given(method("POST"))
+            .and(path("/token_url"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(settings.exchange_mock_body))
+            .expect(1)
+            .mount(&settings.mock_server)
+            .await;
+        // Create a mock for getting profile - https://www.oauth.com/oauth2-servers/access-tokens/access-token-response/
+
+        Mock::given(method("GET"))
+            .and(path("/profile_url"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(settings.profile_mock_body))
+            .expect(1)
+            .mount(&settings.mock_server)
+            .await;
         let (url, csrf_token) = client.get_authorization_url();
         let code = "test_code".to_string();
         let state = csrf_token.secret().to_string();
@@ -336,8 +359,6 @@ mod tests {
             .await
             .map_err(|_| TestError::ProfileError)?;
         assert_eq!(profile.email, "test_email");
-        exchange_mock.assert();
-        profile_mock.assert();
         Ok(())
     }
 }
