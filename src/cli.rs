@@ -31,7 +31,10 @@ use clap::{Parser, Subcommand};
 
 use crate::{
     app::{AppContext, Hooks},
-    boot::{create_app, create_context, list_endpoints, run_task, start, RunDbCommand, StartMode},
+    boot::{
+        create_app, create_context, list_endpoints, run_task, start, RunDbCommand, ServeParams,
+        StartMode,
+    },
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     gen::{self, Component},
     logger, Result,
@@ -67,6 +70,12 @@ enum Commands {
         /// start same-process server and worker
         #[arg(short, long, action)]
         server_and_worker: bool,
+        /// server bind address
+        #[arg(short, long, action)]
+        binding: Option<String>,
+        /// server port address
+        #[arg(short, long, action)]
+        port: Option<i32>,
     },
     #[cfg(feature = "with-db")]
     /// Perform DB operations
@@ -110,6 +119,10 @@ enum ComponentArg {
         /// Is it a link table? Use this in many-to-many relations
         #[arg(short, long, action)]
         link: bool,
+
+        /// Generate migration code only. Don't run the migration automatically.
+        #[arg(short, long, action)]
+        migration_only: bool,
 
         /// Model fields, eg. title:string hits:int
         #[clap(value_parser = parse_key_val::<String,String>)]
@@ -159,7 +172,17 @@ impl From<ComponentArg> for Component {
     fn from(value: ComponentArg) -> Self {
         match value {
             #[cfg(feature = "with-db")]
-            ComponentArg::Model { name, link, fields } => Self::Model { name, link, fields },
+            ComponentArg::Model {
+                name,
+                link,
+                migration_only,
+                fields,
+            } => Self::Model {
+                name,
+                link,
+                migration_only,
+                fields,
+            },
             #[cfg(feature = "with-db")]
             ComponentArg::Migration { name } => Self::Migration { name },
             #[cfg(feature = "with-db")]
@@ -272,6 +295,8 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
         Commands::Start {
             worker,
             server_and_worker,
+            binding,
+            port,
         } => {
             let start_mode = if worker {
                 StartMode::WorkerOnly
@@ -282,7 +307,14 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             };
 
             let boot_result = create_app::<H, M>(start_mode, &environment).await?;
-            start(boot_result).await?;
+            let serve_params = ServeParams {
+                port: port.map_or(boot_result.app_context.config.server.port, |p| p),
+                binding: binding.map_or(
+                    boot_result.app_context.config.server.binding.to_string(),
+                    |b| b,
+                ),
+            };
+            start::<H>(boot_result, serve_params).await?;
         }
         #[cfg(feature = "with-db")]
         Commands::Db { command } => {
@@ -342,6 +374,8 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
         Commands::Start {
             worker,
             server_and_worker,
+            binding,
+            port,
         } => {
             let start_mode = if worker {
                 StartMode::WorkerOnly
@@ -352,7 +386,14 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
             };
 
             let boot_result = create_app::<H>(start_mode, &environment).await?;
-            start(boot_result).await?;
+            let serve_params = ServeParams {
+                port: port.map_or(boot_result.app_context.config.server.port, |p| p),
+                binding: binding.map_or(
+                    boot_result.app_context.config.server.binding.to_string(),
+                    |b| b,
+                ),
+            };
+            start::<H>(boot_result, serve_params).await?;
         }
         Commands::Routes {} => {
             let app_context = create_context::<H>(&environment).await?;

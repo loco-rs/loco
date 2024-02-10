@@ -12,6 +12,7 @@ template = "docs/page.html"
 lead = ""
 toc = true
 top = false
+flair =[]
 +++
 
 Testing models can be intricate, especially when reading and inserting data simultaneously during tests. This complexity arises from dynamic fields such as `id` or `created_at`, which can introduce inconsistencies into our tests.

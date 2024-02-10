@@ -12,6 +12,7 @@ template = "docs/page.html"
 lead = ""
 toc = true
 top = false
+flair =[]
 +++
 
 A mailer will deliver emails in the background using the existing `loco` background worker infrastructure. It will all be seamless for you.
@@ -41,7 +42,7 @@ This will enqueue a mail delivery job. The action is instant because the deliver
 
 Configuration for mailers is done in the `config/[stage].toml` file. Here is the default configuration: 
 
-```toml
+```yaml
 # Mailer Configuration.
 mailer:
   # SMTP mailer configuration.
@@ -49,7 +50,7 @@ mailer:
     # Enable/Disable smtp mailer.
     enable: true
     # SMTP server host. e.x localhost, smtp.gmail.com
-    host: {{ get_env(name="MAILER_HOST", default="localhost") }}
+    host: {{/* get_env(name="MAILER_HOST", default="localhost") */}}
     # SMTP server port
     port: 1025
     # Use secure connection (SSL/TLS).
@@ -61,7 +62,7 @@ mailer:
 
 Mailer is done by sending emails to a SMTP server. An example configuration for using sendgrid (choosing the SMTP relay option):
 
-```toml
+```yaml
 # Mailer Configuration.
 mailer:
   # SMTP mailer configuration.
@@ -69,7 +70,7 @@ mailer:
     # Enable/Disable smtp mailer.
     enable: true
     # SMTP server host. e.x localhost, smtp.gmail.com
-    host: {{ get_env(name="MAILER_HOST", default="smtp.sendgrid.net") }}
+    host: {{/* get_env(name="MAILER_HOST", default="smtp.sendgrid.net") */}}
     # SMTP server port
     port: 465
     # Use secure connection (SSL/TLS).

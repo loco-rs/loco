@@ -33,8 +33,7 @@ const DEPLOYMENT_SHUTTLE_T: &str = include_str!("templates/deployment_shuttle.t"
 const DEPLOYMENT_SHUTTLE_CONFIG_T: &str = include_str!("templates/deployment_shuttle_config.t");
 const DEPLOYMENT_NGINX_T: &str = include_str!("templates/deployment_nginx.t");
 
-const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.35.0";
-const DEPLOYMENT_SHUTTLE_AXUM_VERSION: &str = "0.35.0";
+const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.38.0";
 
 const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
     ("Docker", DeploymentKind::Docker),
@@ -71,6 +70,9 @@ pub enum Component {
 
         /// Model fields, eg. title:string hits:int
         fields: Vec<(String, String)>,
+
+        /// Generate migration code and stop, don't run the migration
+        migration_only: bool,
     },
     #[cfg(feature = "with-db")]
     Migration {
@@ -109,8 +111,16 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
 
     match component {
         #[cfg(feature = "with-db")]
-        Component::Model { name, link, fields } => {
-            println!("{}", model::generate::<H>(&rrgen, &name, link, &fields)?);
+        Component::Model {
+            name,
+            link,
+            fields,
+            migration_only,
+        } => {
+            println!(
+                "{}",
+                model::generate::<H>(&rrgen, &name, link, migration_only, &fields)?
+            );
         }
         #[cfg(feature = "with-db")]
         Component::Scaffold { name, fields } => {
@@ -118,8 +128,7 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
         }
         #[cfg(feature = "with-db")]
         Component::Migration { name } => {
-            let ts = Utc::now();
-            let vars = json!({ "name": name, "ts": ts, "pkg_name": H::app_name()});
+            let vars = json!({ "name": name, "ts": Utc::now(), "pkg_name": H::app_name()});
             rrgen.generate(MIGRATION_T, &vars)?;
         }
         Component::Controller { name } => {
@@ -129,13 +138,11 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
         }
         Component::Task { name } => {
             let vars = json!({"name": name, "pkg_name": H::app_name()});
-
             rrgen.generate(TASK_T, &vars)?;
             rrgen.generate(TASK_TEST_T, &vars)?;
         }
         Component::Worker { name } => {
             let vars = json!({"name": name, "pkg_name": H::app_name()});
-
             rrgen.generate(WORKER_T, &vars)?;
             rrgen.generate(WORKER_TEST_T, &vars)?;
         }
@@ -172,12 +179,20 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
                         .and_then(|c| c.as_ref())
                         .map(|s| s.fallback.clone());
 
-                    let vars = json!({ "pkg_name": H::app_name(), "copy_asset_folder": copy_asset_folder, "fallback_file": fallback_file });
+                    let vars = json!({
+                        "pkg_name": H::app_name(),
+                        "copy_asset_folder": copy_asset_folder,
+                        "fallback_file": fallback_file
+                    });
                     rrgen.generate(DEPLOYMENT_DOCKER_T, &vars)?;
                     rrgen.generate(DEPLOYMENT_DOCKER_IGNORE_T, &vars)?;
                 }
                 DeploymentKind::Shuttle => {
-                    let vars = json!({ "pkg_name": H::app_name(), "shuttle_runtime_version": DEPLOYMENT_SHUTTLE_RUNTIME_VERSION, "shuttle_axum_version": DEPLOYMENT_SHUTTLE_AXUM_VERSION });
+                    let vars = json!({
+                        "pkg_name": H::app_name(),
+                        "shuttle_runtime_version": DEPLOYMENT_SHUTTLE_RUNTIME_VERSION,
+                        "with_db": cfg!(feature = "with-db")
+                    });
                     rrgen.generate(DEPLOYMENT_SHUTTLE_T, &vars)?;
                     rrgen.generate(DEPLOYMENT_SHUTTLE_CONFIG_T, &vars)?;
                 }
@@ -187,7 +202,11 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
                         .host
                         .replace("http://", "")
                         .replace("https://", "");
-                    let vars = json!({ "pkg_name": H::app_name(), "domain": &host, "port":  &config.server.port });
+                    let vars = json!({
+                        "pkg_name": H::app_name(),
+                        "domain": &host,
+                        "port": &config.server.port
+                    });
                     rrgen.generate(DEPLOYMENT_NGINX_T, &vars)?;
                 }
             }

@@ -21,12 +21,16 @@ use super::config::Config;
 use crate::Result;
 
 pub const DEFAULT_ENVIRONMENT: &str = "development";
+pub const LOCO_ENV: &str = "LOCO_ENV";
+pub const RAILS_ENV: &str = "RAILS_ENV";
+pub const NODE_ENV: &str = "NODE_ENV";
 
 impl From<String> for Environment {
     fn from(env: String) -> Self {
         Self::from_str(&env).unwrap_or(Self::Any(env))
     }
 }
+
 #[must_use]
 pub fn resolve_from_env() -> String {
     std::env::var("LOCO_ENV")
@@ -86,10 +90,49 @@ impl FromStr for Environment {
             "production" => Ok(Self::Production),
             "development" => Ok(Self::Development),
             "test" => Ok(Self::Test),
-            _ => Err(
-                " error parsing environment: expected one of  \"production\", \"development\", \
-                 \"test\" or any environment that has config file",
-            ),
+            s => Ok(Self::Any(s.to_string())),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::env;
+
+    use super::*;
+    #[test]
+    fn test_resolve_env() {
+        let original = env::var("LOCO_ENV");
+
+        env::remove_var(LOCO_ENV);
+        env::remove_var(RAILS_ENV);
+        env::remove_var(NODE_ENV);
+        assert_eq!(resolve_from_env(), "development");
+        env::set_var("LOCO_ENV", "custom");
+        assert_eq!(resolve_from_env(), "custom");
+
+        if let Ok(v) = original {
+            env::set_var(LOCO_ENV, v);
+        }
+    }
+
+    #[test]
+    fn test_display() {
+        assert_eq!("production", Environment::Production.to_string());
+        assert_eq!("custom", Environment::Any("custom".to_string()).to_string());
+    }
+
+    #[test]
+    fn test_into() {
+        let e: Environment = "production".to_string().into();
+        assert_eq!(e, Environment::Production);
+        let e: Environment = "custom".to_string().into();
+        assert_eq!(e, Environment::Any("custom".to_string()));
+    }
+
+    #[test]
+    fn test_from_folder() {
+        let config = Environment::Development.load_from_folder(Path::new("examples/demo/config"));
+        assert!(config.is_ok());
     }
 }

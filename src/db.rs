@@ -37,6 +37,7 @@ lazy_static! {
 /// # Errors
 ///
 /// This function will return an error if IO fails
+#[allow(clippy::match_wildcard_for_single_variants)]
 pub async fn verify_access(db: &DatabaseConnection) -> AppResult<()> {
     match db {
         DatabaseConnection::SqlxPostgresPoolConnection(_) => {
@@ -52,10 +53,10 @@ pub async fn verify_access(db: &DatabaseConnection) -> AppResult<()> {
                 ));
             }
         }
-        DatabaseConnection::SqlxSqlitePoolConnection(_) => {}
         DatabaseConnection::Disconnected => {
             return Err(Error::string("connection to database has been closed"));
         }
+        _ => {}
     }
     Ok(())
 }

@@ -58,9 +58,24 @@ server:
       #   - POST
       # Set the value of the [`Access-Control-Max-Age`][mdn] header in seconds
       # max_age: 3600
+
+    # server-side static assets config
+    # for use with the view_engine in initializers/view_engine.rs
+    #
+    # static:
+    #   enable: true
+    #   must_exist: true
+    #   precompressed: false
+    #   folder:
+    #     uri: "/static"
+    #     path: "assets/static"
+    #   fallback: "assets/static/404.html"
+
+    # client side app static config
     static:
       enable: true
       must_exist: true
+      precompressed: false
       folder:
         uri: "/"
         path: "frontend/dist"

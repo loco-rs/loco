@@ -12,6 +12,7 @@ template = "docs/page.html"
 lead = ""
 toc = true
 top = false
+flair =[]
 +++
 
 Tasks in `Loco` serve as ad-hoc functionalities to handle specific aspects of your application. Whether you need to fix data, send emails, delete a user, or update a customer order, creating a dedicated task for each scenario provides a flexible and efficient solution. While tasks require manual execution, the investment is worthwhile for several reasons:

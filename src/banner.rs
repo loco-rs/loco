@@ -1,6 +1,6 @@
 use colored::Colorize;
 
-use crate::boot::BootResult;
+use crate::boot::{BootResult, ServeParams};
 
 pub const BANNER: &str = r"
                       ▄     ▀                     
@@ -20,7 +20,7 @@ pub const BANNER: &str = r"
                 https://loco.rs
 ";
 
-pub fn print_banner(boot_result: &BootResult) {
+pub fn print_banner(boot_result: &BootResult, server_config: &ServeParams) {
     let ctx = &boot_result.app_context;
     println!("{BANNER}");
     let config = &ctx.config;
@@ -70,8 +70,9 @@ pub fn print_banner(boot_result: &BootResult) {
     if boot_result.router.is_some() {
         modes.push("server".green());
         servingline.push(format!(
-            "listening on port {}",
-            config.server.port.to_string().green()
+            "listening on {}:{}",
+            server_config.binding.to_string().green(),
+            server_config.port.to_string().green()
         ));
     }
     if boot_result.processor.is_some() {

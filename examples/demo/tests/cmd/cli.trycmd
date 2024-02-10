@@ -87,12 +87,15 @@ $ blo-cli routes --environment test
 [POST] /auth/register
 [POST] /auth/reset
 [POST] /auth/verify
+[GET] /dashboard/hello
+[GET] /dashboard/home
 [GET] /mysession
 [GET] /notes
 [POST] /notes
 [GET] /notes/:id
 [DELETE] /notes/:id
 [POST] /notes/:id
+[POST] /upload/file
 [GET] /user/current
 [GET] /user/current_api_key
 

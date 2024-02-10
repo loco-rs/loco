@@ -13,11 +13,12 @@ use axum::Router as AxumRouter;
 #[cfg(feature = "channels")]
 use crate::controller::channels::AppChannels;
 use crate::{
-    boot::{BootResult, StartMode},
+    boot::{BootResult, ServeParams, StartMode},
     config::{self, Config},
     controller::AppRoutes,
     environment::Environment,
     mailer::EmailSender,
+    storage::Storage,
     task::Tasks,
     worker::{Pool, Processor, RedisConnectionManager},
     Result,
@@ -43,6 +44,8 @@ pub struct AppContext {
     pub config: Config,
     /// An optional email sender component that can be used to send email.
     pub mailer: Option<EmailSender>,
+    // Ab optional storage instance for the application
+    pub storage: Option<Storage>,
 }
 
 /// A trait that defines hooks for customizing and extending the behavior of a
@@ -95,6 +98,23 @@ pub trait Hooks {
     /// Could not boot the application
     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult>;
 
+    /// Start serving the Axum web application on the specified address and
+    /// port.
+    ///
+    /// # Returns
+    /// A Result indicating success () or an error if the server fails to start.
+    async fn serve(app: AxumRouter, server_config: ServeParams) -> Result<()> {
+        let listener = tokio::net::TcpListener::bind(&format!(
+            "{}:{}",
+            server_config.binding, server_config.port
+        ))
+        .await?;
+
+        axum::serve(listener, app).await?;
+
+        Ok(())
+    }
+
     /// Override and return `Ok(true)` to provide an alternative logging and
     /// tracing stack of your own.
     /// When returning `Ok(true)`, Loco will *not* initialize its own logger,
@@ -132,6 +152,14 @@ pub trait Hooks {
 
     /// Defines the application's routing configuration.
     fn routes(_ctx: &AppContext) -> AppRoutes;
+
+    /// Defines the storage configuration for the application
+    async fn storage(
+        _config: &config::Config,
+        _environment: &Environment,
+    ) -> Result<Option<Storage>> {
+        Ok(None)
+    }
 
     #[cfg(feature = "channels")]
     /// Register channels endpoints to the application routers

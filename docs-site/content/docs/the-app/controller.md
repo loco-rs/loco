@@ -12,6 +12,7 @@ template = "docs/page.html"
 lead = ""
 toc = true
 top = false
+flair =[]
 +++
 
 `Loco` is a framework that wraps around [axum](https://crates.io/crates/axum), offering a straightforward approach to manage routes, middlewares, authentication, and more right out of the box. At any point, you can leverage the powerful axum Router and extend it with your custom middlewares and routes.
@@ -196,5 +197,20 @@ To enable response compression, based on `accept-encoding` request header, simpl
 
 Doing so will compress each response and set `content-encoding` response header accordingly.
 
+
+## Prcompressed assets
+
+`Loco` leverages [ServeDir::precompressed_gzip](https://docs.rs/tower-http/latest/tower_http/services/struct.ServeDir.html#method.precompressed_gzip) to enable a `one click` solution of serving pre compressed assets.
+
+If a static assets exists on the disk as a `.gz` file, `Loco` will serve it instead of compressing it on the fly.
+
+```yaml
+#...
+middlewares:
+  ...
+  static_assets:
+    ...
+    precompressed: true
+```
 
 ### (More middleware docs TBD)

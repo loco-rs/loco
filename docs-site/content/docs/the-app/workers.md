@@ -12,6 +12,7 @@ template = "docs/page.html"
 lead = ""
 toc = true
 top = false
+flair =[]
 +++
 
 `loco` integrates with a full blown background job processing framework: `sidekiq-rs`. You can enqueue jobs in a similar ergonomics as Rails' _ActiveJob_, and have a similar scalable processing model to perform these background jobs.
@@ -76,6 +77,22 @@ cargo loco generate worker report_worker
 ```
 
 The worker generator creates a worker file associated with your app and generates a test template file, enabling you to verify your worker.
+
+## Configuring Workers
+
+In your `config/<environment>.yaml` you can specify the worker mode. BackgroundAsync and BackgroundQueue will process jobs in a non-blocking manner, while ForegroundBlocking will process jobs in a blocking manner.
+
+The main difference between BackgroundAsync and BackgroundQueue is that the latter will use Redis to store the jobs, while the former does not require Redis and will use async within the same process.
+
+```yaml
+# Worker Configuration
+workers:
+  # specifies the worker mode. Options:
+  #   - BackgroundQueue - Workers operate asynchronously in the background, processing queued.
+  #   - ForegroundBlocking - Workers operate in the foreground and block until tasks are completed.
+  #   - BackgroundAsync - Workers operate asynchronously in the background, processing tasks with async capabilities.
+  mode: BackgroundQueue
+```
 
 ### Testing a Worker
 

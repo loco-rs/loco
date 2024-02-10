@@ -12,6 +12,7 @@ template = "docs/page.html"
 lead = ""
 toc = true
 top = false
+flair =[]
 +++
 
 Initializers are a way to encapsulate a piece of infrastructure "wiring" that you need to do in your app. You put initializers in `src/initializers/`.
@@ -37,6 +38,7 @@ You can achieve this reuse easily, if you code the integration as an _initialize
 
 ```rust
 // place this in `src/initializers/axum_session.rs`
+#[async_trait]
 impl Initializer for AxumSessionInitializer {
     fn name(&self) -> String {
         "axum-session".to_string()

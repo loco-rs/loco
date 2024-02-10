@@ -10,6 +10,7 @@ template = "docs/page.html"
 [extra]
 toc = true
 top = false
+flair =[]
 +++
 
 Simplify your project setup with Loco's predefined boilerplates, designed to make your development journey smoother. To get started, install our CLI and choose the template that suits your needs.
@@ -33,12 +34,13 @@ loco new
 
 #### Saas Starter
 
-The Saas starter is perfect for projects requiring both a frontend website and a REST API. It comes equipped with:
+The Saas starter is an all-included set up for projects requiring both a UI and a REST API. For the UI this starter supports a client-side app or classic server-side templates (or a combination).
 
-**Frontend**
+**UI**
 
-- Built on React and Vite (easy to replace with your preferred framework).
-- Static middleware that point on your frontend build and includes a fallback index.
+- Frontend starter built on React and Vite (easy to replace with your preferred framework).
+- Static middleware that point on your frontend build and includes a fallback index. Alternatively you can configure it for static assets for server-side templates.
+- The Tera view engine configured for server-side templates, including i18n configuration. Templates and i18n assets live in `assets/`.
 
 **Rest API**
 
@@ -55,3 +57,5 @@ Choose the Rest API starter if you only need a REST API without a frontend. If y
 #### Lightweight Service Starter
 
 Focused on controllers and views (response schema), the Lightweight Service starter is minimalistic. If you require a REST API service without a database, frontend, workers, or other features that Loco provides, this is the ideal choice for you!
+
+

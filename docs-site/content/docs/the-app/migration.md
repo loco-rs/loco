@@ -12,6 +12,7 @@ template = "docs/page.html"
 lead = ""
 toc = true
 top = false
+flair =[]
 +++
 
 Loco is a migration-first framework, similar to Rails. Which means that when you want to add models, data fields, or model oriented changes - you start with a migration that describes it, and then you apply the migration to get back generated entities in `model/_entities`.
@@ -83,7 +84,7 @@ Adding a column:
     .alter_table(
         Table::alter()
             .table(Movies::Table)
-            .add_column_if_not_exists(integer(Movies::Rating).borrow_mut())
+            .add_column_if_not_exists(integer(Movies::Rating))
             .to_owned(),
     )
     .await

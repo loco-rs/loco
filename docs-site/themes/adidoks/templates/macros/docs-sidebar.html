@@ -7,7 +7,9 @@
 					<h3>{{ index.title }}</h3>
 					<ul class="list-unstyled">
 					{% for page in index.pages %}                           
-							<li><a class="docs-link{% if current_url == page.permalink %} active{% endif %}" href="{{ page.permalink | safe }}">{{ page.title }}</a></li>
+							<li><a class="docs-link{% if current_url == page.permalink %} active{% endif %}" href="{{ page.permalink | safe }}">{{ page.title }} 
+		
+							</a></li>
 					{% endfor %}
 					</ul>
 			{% endif %}
@@ -15,10 +17,21 @@
 					{% for s in index.subsections %}
 					{% set subsection = get_section(path=s) %}
 					{% if subsection.pages %}
-							<h3>{{ subsection.title }}</h3>
+							<h3>{{ subsection.title }}
+
+
+							</h3>
 							<ul class="list-unstyled">
 							{% for page in subsection.pages %}                           
-									<li><a class="docs-link{% if current_url == page.permalink %} active{% endif %}" href="{{ page.permalink | safe }}">{{ page.title }}</a></li>
+									<li><a class="docs-link{% if current_url == page.permalink %} active{% endif %}" href="{{ page.permalink | safe }}">{{ page.title }}
+									{% if page.extra.flair %}
+										{% for flair in page.extra.flair %}
+											<label class="sidebar">{{ flair | safe }}</label>
+										{% endfor %}								
+									{% endif %}
+								</a>
+
+									</li>
 							{% endfor %}
 					</ul>
 					{% endif %}

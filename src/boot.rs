@@ -45,6 +45,16 @@ pub struct BootResult {
     pub processor: Option<Processor>,
 }
 
+/// Configuration structure for serving an application.
+pub struct ServeParams {
+    /// The port number on which the server will listen for incoming
+    /// connections.
+    pub port: i32,
+    /// The network address to which the server will bind. It specifies the
+    /// interface to listen on.
+    pub binding: String,
+}
+
 /// Runs the application based on the provided `BootResult`.
 ///
 /// This function is responsible for starting the application, including the
@@ -53,13 +63,13 @@ pub struct BootResult {
 /// # Errors
 ///
 /// When could not initialize the application.
-pub async fn start(boot: BootResult) -> Result<()> {
-    print_banner(&boot);
+pub async fn start<H: Hooks>(boot: BootResult, server_config: ServeParams) -> Result<()> {
+    print_banner(&boot, &server_config);
 
     let BootResult {
         router,
         processor,
-        app_context,
+        app_context: _,
     } = boot;
 
     match (router, processor) {
@@ -69,10 +79,10 @@ pub async fn start(boot: BootResult) -> Result<()> {
                     tracing::error!("Error in processing: {:?}", err);
                 }
             });
-            serve(router, &app_context.config).await?;
+            H::serve(router, server_config).await?;
         }
         (Some(router), None) => {
-            serve(router, &app_context.config).await?;
+            H::serve(router, server_config).await?;
         }
         (None, Some(processor)) => {
             process(processor).await?;
@@ -164,15 +174,6 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
     Ok(())
 }
 
-/// Starts the server using the provided [`Router`] and [`Config`].
-async fn serve(app: Router, config: &Config) -> Result<()> {
-    let listener = tokio::net::TcpListener::bind(&format!("[::]:{}", config.server.port)).await?;
-
-    axum::serve(listener, app).await?;
-
-    Ok(())
-}
-
 /// Initializes the application context by loading configuration and
 /// establishing connections.
 ///
@@ -211,6 +212,7 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
         #[cfg(feature = "with-db")]
         db,
         redis,
+        storage: H::storage(&config, environment).await?,
         config,
         mailer,
     })

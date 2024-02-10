@@ -9,6 +9,8 @@ template = "docs/page.html"
 
 [extra]
 top = false
+toc = true
+flair =[]
 +++
 
 Configuration in `loco` lives in `config/` and by default sets up 3 different environments:
