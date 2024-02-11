@@ -30,6 +30,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::info;
 
+#[cfg(feature = "oauth2")]
+use crate::oauth2_store::grants::authorization_code::{
+    AuthorizationCodeCredentials, AuthorizationCodeUrlConfig,
+};
 use crate::{environment::Environment, logger, Error, Result};
 
 const DEFAULT_SERVER_BINDING: &str = "[::]";
@@ -214,50 +218,32 @@ pub struct Auth {
 /// ```yaml
 /// # config/development.yaml
 /// oauth2:
-///   provider:
-///    # your provider configuration example: Google, Facebook, etc
-///      google:
-///       client_id: <your client id> # From your oauth provider
-///       client_secret: <your client secret> # From your oauth provider
-///       redirect_uri: <your redirect uri> # Which uri to redirect after user authenticated by oauth provider
+///  authorization_code: # Authorization code grant type
+///   - provider_name: google # Identifier for the OAuth2 provider. Replace 'google' with your provider's name if different.
+///     client:
+///       client_id: <your client id> # Replace with your OAuth2 client ID.
+///       client_secret: <your client secret> # Replace with your OAuth2 client secret.
+///     url_config:
+///      auth_url: https://accounts.google.com/o/oauth2/auth # authorization endpoint from the provider
+///      token_url: https://www.googleapis.com/oauth2/v3/token # token endpoint from the provider for exchanging the authorization code for an access token
+///      redirect_uri: http://localhost:3000/api/auth/google_callback # server callback endpoint for the provider
+///      profile_url: https://openidconnect.googleapis.com/v1/userinfo # user profile endpoint from the provider for getting user data
+///      scopes:
+///       - https://www.googleapis.com/auth/userinfo.email # Scopes for requesting access to user data
+///     timeout_seconds: 600 # Optional, default 600 seconds
 /// ```
+#[cfg(feature = "oauth2")]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Oauth2 {
-    /// Oauth Provider configuration
-    pub provider: Provider,
+    pub authorization_code: Vec<AuthorizationCodeConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Provider {
-    google: Option<GoogleProvider>,
-    facebook: Option<FacebookProvider>,
-    microsoft: Option<MicrosoftProvider>,
-}
-
-/// Google Oauth2 provider configuration
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct GoogleProvider {
-    pub client_id: String,
-    pub client_secret: Option<String>,
-    pub auth_url: String,
-    pub token_url: Option<String>,
-    pub redirect_uri: String,
-}
-
-/// Facebook Oauth2 provider configuration
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct FacebookProvider {
-    pub client_id: String,
-    pub client_secret: String,
-    pub redirect_uri: String,
-}
-
-/// Microsoft Oauth2 provider configuration
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct MicrosoftProvider {
-    pub client_id: String,
-    pub client_secret: String,
-    pub redirect_uri: String,
+pub struct AuthorizationCodeConfig {
+    pub provider_name: String,
+    pub client: AuthorizationCodeCredentials,
+    pub url_config: AuthorizationCodeUrlConfig,
+    pub timeout_seconds: Option<u64>,
 }
 
 /// JWT configuration structure.
@@ -320,6 +306,7 @@ impl Server {
         format!("{}:{}", self.host, self.port)
     }
 }
+
 /// Background worker configuration
 /// Example (development):
 /// ```yaml

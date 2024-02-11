@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 
 use crate::oauth2_store::oauth2_grant::OAuth2ClientGrantEnum;
 
-// #[cfg(feature = "oauth2")]
 pub mod error;
 pub mod grants;
 pub mod oauth2_grant;

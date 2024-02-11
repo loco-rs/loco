@@ -9,12 +9,14 @@ use oauth2::{
     PkceCodeVerifier, RedirectUrl, Scope, TokenResponse, TokenUrl,
 };
 use reqwest::Response;
+use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
 
 use crate::oauth2_store::error::{OAuth2ClientError, OAuth2ClientResult};
 
 /// A credentials struct that holds the OAuth2 client credentials. - For
 /// [`AuthorizationCodeClient`]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AuthorizationCodeCredentials {
     pub client_id: String,
     pub client_secret: Option<String>,
@@ -22,9 +24,10 @@ pub struct AuthorizationCodeCredentials {
 
 /// A url config struct that holds the OAuth2 client related URLs. - For
 /// [`AuthorizationCodeClient`]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AuthorizationCodeUrlConfig {
     pub auth_url: String,
-    pub token_url: Option<String>,
+    pub token_url: String,
     pub redirect_url: String,
     pub profile_url: String,
     pub scopes: Vec<String>,
@@ -84,10 +87,7 @@ impl AuthorizationCodeClient {
         let client_id = ClientId::new(credentials.client_id);
         let client_secret = credentials.client_secret.map(ClientSecret::new);
         let auth_url = AuthUrl::new(config.auth_url)?;
-        let token_url = match config.token_url {
-            Some(token_url) => Some(TokenUrl::new(token_url)?),
-            None => None,
-        };
+        let token_url = Some(TokenUrl::new(config.token_url)?);
         let redirect_url = RedirectUrl::new(config.redirect_url)?;
         let oauth2 = BasicClient::new(client_id, client_secret, auth_url, token_url)
             .set_redirect_uri(redirect_url);
@@ -427,7 +427,7 @@ mod tests {
         };
         let config = AuthorizationCodeUrlConfig {
             auth_url: settings.auth_url.to_string(),
-            token_url: Some(settings.token_url.to_string()),
+            token_url: settings.token_url.to_string(),
             redirect_url: settings.redirect_url.to_string(),
             profile_url: settings.profile_url.to_string(),
             scopes: vec![settings.scope.to_string()],

@@ -14,13 +14,14 @@ use axum::Router as AxumRouter;
 
 #[cfg(feature = "channels")]
 use crate::controller::channels::AppChannels;
+#[cfg(feature = "oauth2")]
+use crate::oauth2_store::OAuth2ClientStore;
 use crate::{
     boot::{BootResult, ServeParams, StartMode},
     config::{self, Config},
     controller::AppRoutes,
     environment::Environment,
     mailer::EmailSender,
-    oauth2_store::OAuth2ClientStore,
     storage::Storage,
     task::Tasks,
     worker::{Pool, Processor, RedisConnectionManager},
@@ -49,8 +50,9 @@ pub struct AppContext {
     pub mailer: Option<EmailSender>,
     // Ab optional storage instance for the application
     pub storage: Option<Arc<Storage>>,
-    // /// An optional oauth2 client
-    // pub oauth2: Option<OAuth2ClientStore>,
+    // An optional oauth2 client
+    #[cfg(feature = "oauth2")]
+    pub oauth2: Option<Arc<OAuth2ClientStore>>,
 }
 
 /// A trait that defines hooks for customizing and extending the behavior of a
@@ -163,6 +165,14 @@ pub trait Hooks {
         _config: &config::Config,
         _environment: &Environment,
     ) -> Result<Option<Storage>> {
+        Ok(None)
+    }
+    /// Defines the OAuth2 configuration for the application
+    #[cfg(feature = "oauth2")]
+    async fn oauth2(
+        _config: &config::Config,
+        _environment: &Environment,
+    ) -> Result<Option<OAuth2ClientStore>> {
         Ok(None)
     }
     #[cfg(feature = "channels")]

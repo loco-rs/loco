@@ -33,6 +33,8 @@ all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
 storage_aws_s3 = ["object_store/aws"]
 storage_azure = ["object_store/azure"]
 storage_gcp = ["object_store/gcp"]
+# Oauth2
+oauth2 = ["dep:oauth2", "dep:reqwest", "dep:subtle"]
 
 [dependencies]
 
@@ -83,9 +85,9 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 
 # OAuth2
-oauth2 = { version = "4"  }
-reqwest = "0.11"
-subtle="2.5"
+oauth2 = { version = "4" , optional = true }
+reqwest = { version = "0.11", optional = true }
+subtle= { version = "2.5", optional = true }
 # cli/migrations
 duct = "0.13.6"
 
