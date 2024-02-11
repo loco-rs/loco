@@ -251,14 +251,18 @@ impl AppRoutes {
             tracing::info!("[Middleware] Adding channels");
             let channel_layer_app = tower::ServiceBuilder::new().layer(channels.layer.clone());
             if let Some(cors) = cors {
-                channel_layer_app.layer(cors);
+                app = app.layer(
+                    tower::ServiceBuilder::new()
+                        .layer(cors)
+                        .layer(channel_layer_app),
+                );
+            } else {
+                app = app.layer(
+                    tower::ServiceBuilder::new()
+                        .layer(tower_http::cors::CorsLayer::permissive())
+                        .layer(channel_layer_app),
+                );
             }
-
-            app = app.layer(
-                tower::ServiceBuilder::new()
-                    .layer(tower_http::cors::CorsLayer::permissive())
-                    .layer(channels.layer.clone()),
-            );
         }
 
         let router = app.with_state(ctx);
@@ -453,7 +457,7 @@ fn handle_panic(err: Box<dyn std::any::Any + Send + 'static>) -> axum::response:
         |s| s.as_str(),
     );
 
-    tracing::error!(err = err, "server get panic");
+    tracing::error!(err.msg = err, "server_panic");
 
     errors::Error::InternalServerError.into_response()
 }

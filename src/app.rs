@@ -7,6 +7,8 @@ cfg_if::cfg_if! {
     } else {}
 
 }
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
 
@@ -46,7 +48,7 @@ pub struct AppContext {
     /// An optional email sender component that can be used to send email.
     pub mailer: Option<EmailSender>,
     // Ab optional storage instance for the application
-    pub storage: Option<Storage>,
+    pub storage: Option<Arc<Storage>>,
     // /// An optional oauth2 client
     // pub oauth2: Option<OAuth2ClientStore>,
 }

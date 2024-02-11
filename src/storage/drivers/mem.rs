@@ -1,9 +1,9 @@
-use object_store::{memory::InMemory, ObjectStore};
+use object_store::memory::InMemory;
 
-use super::Store;
+use super::{object_store_adapter::ObjectStoreAdapter, StoreDriver};
 
 /// Create new in-memory storage.
 #[must_use]
-pub fn new() -> Store {
-    Store::new((Box::new(InMemory::new()) as Box<dyn ObjectStore>).into())
+pub fn new() -> Box<dyn StoreDriver> {
+    Box::new(ObjectStoreAdapter::new(Box::new(InMemory::new())))
 }

@@ -44,10 +44,10 @@ This hook returns a Storage instance that holds all storage configurations, cove
 ## Glossary
 |          |   |
 | -        | - |
-| `driver` | Trait implementation for diverse storage operations.  |
-| `Storage`| Abstraction implementation for managing one or more storage operations. |
-| `Strategy`| Trait implementing various strategies for operations, such as mirror or backup. |
-| `FailureMode`| Implemented within each strategy, determining how to handle operations in case of failures. |
+| `StorageDriver` | Trait implementation something that does storage  |
+| `Storage`| Abstraction implementation for managing one or more storage drivers. |
+| `Strategy`| Trait implementing various strategies for Storage, such as mirror or backup. |
+| `FailureMode`| Implemented within each Strategy, determining how to handle operations in case of failures. |
 
 ### Initialize Storage
 
@@ -85,7 +85,7 @@ let aws_2 = drivers::aws::new("users-mirror");
 #### Mirror Strategy:
 You can keep multiple services in sync by defining a mirror service. A mirror service **replicates** uploads, deletes, rename and copy across two or more subordinate services. The download behavior redundantly retrieves data, meaning if the file retrieval fails from the primary, the first file found in the secondaries is returned.
 
-#### Behiver
+#### Behaviour
 
 After creating the three store instances, we need to create the mirror strategy instance and define the failure mode. The mirror strategy expects the primary store and a list of secondary stores, along with failure mode options:
 - `MirrorAll`: All secondary storages must succeed. If one fails, the operation continues to the rest but returns an error.
@@ -106,9 +106,9 @@ let strategy = Box::new(MirrorStrategy::new(
 // Create the storage with the store mapping and the strategy.
  let storage = Storage::new(
     BTreeMap::from([
-        ("store_1".to_string(), aws_1.clone()),
-        ("store_2".to_string(), azure.clone()),
-        ("store_3".to_string(), aws_2.clone()),
+        ("store_1".to_string(), aws_1),
+        ("store_2".to_string(), azure),
+        ("store_3".to_string(), aws_2),
     ]),
     strategy.into(),
 );
@@ -138,9 +138,9 @@ let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
 
 let storage = Storage::new(
     BTreeMap::from([
-        ("store_1".to_string(), store_1.clone()),
-        ("store_2".to_string(), store_2.clone()),
-        ("store_3".to_string(), store_3.clone()),
+        ("store_1".to_string(), store_1),
+        ("store_2".to_string(), store_2),
+        ("store_3".to_string(), store_3),
     ]),
     strategy.into(),
 );
