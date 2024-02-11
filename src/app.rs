@@ -168,7 +168,6 @@ pub trait Hooks {
         Ok(None)
     }
     /// Defines the OAuth2 configuration for the application
-    #[cfg(feature = "oauth2")]
     async fn oauth2(
         _config: &config::Config,
         _environment: &Environment,

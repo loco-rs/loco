@@ -1,3 +1,1 @@
 mod users;
-
-mod sessions;

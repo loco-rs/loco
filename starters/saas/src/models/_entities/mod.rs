@@ -3,5 +3,4 @@
 pub mod prelude;
 
 pub mod notes;
-pub mod sessions;
 pub mod users;

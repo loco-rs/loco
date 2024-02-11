@@ -142,19 +142,3 @@ auth:
     # Token expiration time in seconds
     expiration: 604800 # 7 days
 
-# Oauth2 Configuration
-oauth2:
-  # Oauth2 providers
-  providers:
-    # Google Oauth2 provider
-    google:
-      # Client ID
-      client_id: ""
-      # Client Secret - Optional
-      client_secret: ""
-      # Auth Url
-      auth_url: ""
-      # Token Url - Optional
-      token_url: ""
-      # Redirect URL
-      redirect_url: ""

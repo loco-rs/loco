@@ -79,6 +79,7 @@ impl AuthorizationCodeClient {
     /// };
     /// let client = AuthorizationCodeClient::new(credentials, config, None)?;
     /// ```
+    #[must_use]
     pub fn new(
         credentials: AuthorizationCodeCredentials,
         config: AuthorizationCodeUrlConfig,
@@ -185,6 +186,7 @@ pub trait AuthorizationCodeGrantTrait: Send + Sync {
     ///     Ok(auth_url)
     /// }
     /// ```
+    #[must_use]
     fn get_authorization_url(&mut self) -> (Url, CsrfToken) {
         let client = self.get_authorization_code_client();
         // Clear outdated flow states
@@ -294,6 +296,7 @@ pub trait AuthorizationCodeGrantTrait: Send + Sync {
     ///      Ok((jar, Redirect::to("/protected")))
     /// }
     ///     
+    #[must_use]
     async fn verify_code_from_callback(
         &mut self,
         code: String,
