@@ -152,16 +152,4 @@ impl Error {
             },
         }
     }
-    #[must_use]
-    pub fn sources(&self) -> String {
-        use std::{error::Error as _, fmt::Write as _};
-
-        let mut chain = String::new();
-        let mut source = self.source();
-        while let Some(s) = source {
-            let _ = writeln!(chain, "- {s}");
-            source = s.source();
-        }
-        chain
-    }
 }
