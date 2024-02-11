@@ -1,6 +1,6 @@
-use object_store::{azure::MicrosoftAzureBuilder, ObjectStore};
+use object_store::azure::MicrosoftAzureBuilder;
 
-use super::Store;
+use super::{object_store_adapter::ObjectStoreAdapter, StoreDriver};
 use crate::Result;
 
 /// Create new Azure storage.
@@ -8,7 +8,11 @@ use crate::Result;
 /// # Errors
 ///
 /// When could not initialize the client instance
-pub fn new(container_name: &str, account_name: &str, access_key: &str) -> Result<Store> {
+pub fn new(
+    container_name: &str,
+    account_name: &str,
+    access_key: &str,
+) -> Result<Box<dyn StoreDriver>> {
     let azure = MicrosoftAzureBuilder::new()
         .with_container_name(container_name)
         .with_account(account_name)
@@ -16,5 +20,5 @@ pub fn new(container_name: &str, account_name: &str, access_key: &str) -> Result
         .build()
         .map_err(Box::from)?;
 
-    Ok(Store::new((Box::new(azure) as Box<dyn ObjectStore>).into()))
+    Ok(Box::new(ObjectStoreAdapter::new(Box::new(azure))))
 }

@@ -6,7 +6,7 @@ use std::path::Path;
 
 use bytes::Bytes;
 
-use crate::storage::{error::StorageResult, Storage};
+use crate::storage::{Storage, StorageResult};
 
 #[async_trait::async_trait]
 pub trait StorageStrategy: Sync + Send {

@@ -473,7 +473,7 @@ impl Config {
     /// }
     pub fn from_folder(env: &Environment, path: &Path) -> Result<Self> {
         // by order of precedence
-        let files = vec![
+        let files = [
             path.join(format!("{env}.local.yaml")),
             path.join(format!("{env}.yaml")),
         ];
