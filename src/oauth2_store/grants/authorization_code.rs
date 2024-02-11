@@ -84,10 +84,9 @@ impl AuthorizationCodeClient {
         let client_id = ClientId::new(credentials.client_id);
         let client_secret = credentials.client_secret.map(ClientSecret::new);
         let auth_url = AuthUrl::new(config.auth_url)?;
-        let token_url = if let Some(token_url) = config.token_url {
-            Some(TokenUrl::new(token_url)?)
-        } else {
-            None
+        let token_url = match config.token_url {
+            Some(token_url) => Some(TokenUrl::new(token_url)?),
+            None => None,
         };
         let redirect_url = RedirectUrl::new(config.redirect_url)?;
         let oauth2 = BasicClient::new(client_id, client_secret, auth_url, token_url)
@@ -96,7 +95,7 @@ impl AuthorizationCodeClient {
         let scopes = config
             .scopes
             .iter()
-            .map(|scope| Scope::new(scope.to_string()))
+            .map(|scope| Scope::new(scope.to_owned()))
             .collect();
         Ok(Self {
             oauth2,
@@ -205,10 +204,9 @@ pub trait AuthorizationCodeGrantTrait: Send + Sync {
             .set_pkce_challenge(pkce_challenge)
             .url();
         // Store the CSRF token, PKCE Verifier and the time it was created.
-        let csrf_secret = csrf_token.secret().clone();
         client
             .flow_states
-            .insert(csrf_secret.clone(), (pkce_verifier, Instant::now()));
+            .insert(csrf_token.secret().clone(), (pkce_verifier, Instant::now()));
         (auth_url, csrf_token)
     }
     /// Verify code from the provider callback request after returns from the
@@ -329,7 +327,7 @@ pub trait AuthorizationCodeGrantTrait: Send + Sync {
             .bearer_auth(token.access_token().secret().to_owned())
             .send()
             .await
-            .map_err(|e| OAuth2ClientError::ProfileError(e))?;
+            .map_err(OAuth2ClientError::ProfileError)?;
         Ok((token, profile))
     }
 }
