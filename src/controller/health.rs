@@ -20,13 +20,13 @@ async fn health(State(ctx): State<AppContext>) -> Result<Json<Health>> {
     let mut is_ok = match ctx.db.ping().await {
         Ok(()) => true,
         Err(error) => {
-            tracing::error!("Database ping error: {:?}", error);
+            tracing::error!(err.msg = %error, err.detail = ?error, "health_db_ping_error");
             false
         }
     };
     if let Some(pool) = ctx.redis {
         if let Err(error) = redis::ping(&pool).await {
-            tracing::error!("Redis ping error: {:?}", error);
+            tracing::error!(err.msg = %error, err.detail = ?error, "health_redis_ping_error");
             is_ok = false;
         }
     }

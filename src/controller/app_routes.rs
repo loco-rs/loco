@@ -453,7 +453,7 @@ fn handle_panic(err: Box<dyn std::any::Any + Send + 'static>) -> axum::response:
         |s| s.as_str(),
     );
 
-    tracing::error!(err = err, "server get panic");
+    tracing::error!(err.msg = err, "server_panic");
 
     errors::Error::InternalServerError.into_response()
 }
