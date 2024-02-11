@@ -54,11 +54,11 @@ pub fn print_banner(boot_result: &BootResult, server_config: &ServeParams) {
             );
         }
     }
-    if let Some(logger) = config.logger.as_ref() {
-        println!("     logger: {}", logger.level.to_string().green());
-    } else {
-        println!("     logger: {}", "disabled".bright_red());
-    }
+    let log_level = config
+        .logger
+        .as_ref()
+        .map_or_else(|| "disabled".bright_red(), |l| l.level.to_string().green());
+    println!("     logger: {log_level}");
     if cfg!(debug_assertions) {
         println!("compilation: {}", "debug".bright_red());
     } else {

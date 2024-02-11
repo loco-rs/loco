@@ -7,6 +7,7 @@ use std::{path::PathBuf, time::Duration};
 use axum::{http, response::IntoResponse, Router as AXRouter};
 use lazy_static::lazy_static;
 use regex::Regex;
+use serde_enabled::Enable;
 use tower_http::{
     add_extension::AddExtensionLayer,
     catch_panic::CatchPanicLayer,
@@ -194,7 +195,7 @@ impl AppRoutes {
         if middlewares
             .catch_panic
             .as_ref()
-            .is_some_and(|cp| cp.is_enabled())
+            .is_some_and(Enable::is_enabled)
         {
             app = Self::add_catch_panic(app);
         }
@@ -202,7 +203,7 @@ impl AppRoutes {
         if middlewares
             .compression
             .as_ref()
-            .is_some_and(|c| c.is_enabled())
+            .is_some_and(Enable::is_enabled)
         {
             app = Self::add_compression_middleware(app);
         }
@@ -215,7 +216,7 @@ impl AppRoutes {
             app = Self::add_limit_payload_middleware(app, limit)?;
         }
 
-        if middlewares.logger.as_ref().is_some_and(|l| l.is_enabled()) {
+        if middlewares.logger.as_ref().is_some_and(Enable::is_enabled) {
             app = Self::add_logger_middleware(app, &ctx.environment);
         }
 
@@ -234,7 +235,7 @@ impl AppRoutes {
             .map(Self::get_cors_middleware)
             .transpose()?
         {
-            app = app.layer(cors.clone());
+            app = app.layer(cors);
             tracing::info!("[Middleware] Adding cors");
         }
 
@@ -242,14 +243,13 @@ impl AppRoutes {
             app = Self::add_static_asset_middleware(app, static_assets)?;
         }
 
-        if middlewares.etag.as_ref().is_some_and(|e| e.is_enabled()) {
+        if middlewares.etag.as_ref().is_some_and(Enable::is_enabled) {
             app = Self::add_etag_middleware(app);
         }
 
         #[cfg(feature = "channels")]
         if let Some(channels) = self.channels.as_ref() {
             tracing::info!("[Middleware] Adding channels");
-            let channel_layer_app = tower::ServiceBuilder::new().layer(channels.layer.clone());
 
             app = app.layer(
                 tower::ServiceBuilder::new()

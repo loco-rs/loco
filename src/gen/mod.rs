@@ -163,21 +163,13 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
 
             match deployment_kind {
                 DeploymentKind::Docker => {
-                    let copy_asset_folder = &config
-                        .server
-                        .middlewares
-                        .static_assets
-                        .as_ref()
-                        .and_then(|c| c.as_ref())
-                        .map(|s| s.folder.path.clone());
+                    let static_assets = &config.server.middlewares.static_assets;
 
-                    let fallback_file = &config
-                        .server
-                        .middlewares
-                        .static_assets
+                    let (copy_asset_folder, fallback_file) = static_assets
                         .as_ref()
-                        .and_then(|c| c.as_ref())
-                        .map(|s| s.fallback.clone());
+                        .and_then(|s| s.as_ref())
+                        .map(|s| (Some(s.folder.path.clone()), Some(s.fallback.clone())))
+                        .unwrap_or_default();
 
                     let vars = json!({
                         "pkg_name": H::app_name(),
