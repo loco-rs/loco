@@ -25,11 +25,7 @@ use std::{collections::BTreeMap, path::Path};
 
 use bytes::Bytes;
 
-use crate::storage::{
-    error::{StorageError, StorageResult},
-    strategies::StorageStrategy,
-    Storage,
-};
+use crate::storage::{strategies::StorageStrategy, Storage, StorageError, StorageResult};
 
 /// Enum representing the failure mode for the [`BackupStrategy`].
 #[derive(Clone)]
@@ -253,12 +249,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let path = PathBuf::from("users").join("data").join("1.txt");
         let file_content = Bytes::from("file content");
@@ -270,6 +269,7 @@ mod tests {
         assert!(store_3.exists(path.as_path()).await.unwrap());
     }
 
+    #[cfg(feature = "storage_aws_s3")]
     #[tokio::test]
     async fn upload_should_fail_when_primary_fail() {
         let store_1 = drivers::aws::with_failure();
@@ -284,12 +284,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let path = PathBuf::from("users").join("data").join("1.txt");
         let file_content = Bytes::from("file content");
@@ -301,6 +304,7 @@ mod tests {
         assert!(!store_3.exists(path.as_path()).await.unwrap());
     }
 
+    #[cfg(feature = "storage_aws_s3")]
     #[tokio::test]
     async fn upload_should_pass_when_allow_backup_failure_policy() {
         let store_1 = drivers::mem::new();
@@ -315,12 +319,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let path = PathBuf::from("users").join("data").join("1.txt");
         let file_content = Bytes::from("file content");
@@ -332,6 +339,7 @@ mod tests {
         assert!(store_3.exists(path.as_path()).await.unwrap());
     }
 
+    #[cfg(feature = "storage_aws_s3")]
     #[tokio::test]
     async fn upload_should_pass_when_at_least_one_failure_policy() {
         let store_1 = drivers::mem::new();
@@ -346,12 +354,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let path = PathBuf::from("users").join("data").join("1.txt");
         let file_content = Bytes::from("file content");
@@ -363,6 +374,7 @@ mod tests {
         assert!(store_3.exists(path.as_path()).await.unwrap());
     }
 
+    #[cfg(feature = "storage_aws_s3")]
     #[tokio::test]
     async fn upload_should_fail_when_at_least_one_failure_policy() {
         let store_1 = drivers::mem::new();
@@ -377,12 +389,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let path = PathBuf::from("users").join("data").join("1.txt");
         let file_content = Bytes::from("file content");
@@ -394,6 +409,7 @@ mod tests {
         assert!(!store_3.exists(path.as_path()).await.unwrap());
     }
 
+    #[cfg(feature = "storage_aws_s3")]
     #[tokio::test]
     async fn upload_should_pass_count_fail_policy_should_pass() {
         let store_1 = drivers::mem::new();
@@ -408,12 +424,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let path = PathBuf::from("users").join("data").join("1.txt");
         let file_content = Bytes::from("file content");
@@ -425,6 +444,7 @@ mod tests {
         assert!(store_3.exists(path.as_path()).await.unwrap());
     }
 
+    #[cfg(feature = "storage_aws_s3")]
     #[tokio::test]
     async fn upload_should_fail_when_count_fail_should_fail() {
         let store_1 = drivers::mem::new();
@@ -439,12 +459,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let path = PathBuf::from("users").join("data").join("1.txt");
         let file_content = Bytes::from("file content");
@@ -468,10 +491,8 @@ mod tests {
             FailureMode::BackupAll,
         )) as Box<dyn StorageStrategy>;
 
-        let storage = Storage::new(
-            BTreeMap::from([("store_1".to_string(), store_1.clone())]),
-            strategy.into(),
-        );
+        let storage = Storage::new(BTreeMap::from([("store_1".to_string(), store_1)]), strategy);
+        let store_1 = storage.as_store("store_1").unwrap();
 
         let path = PathBuf::from("users").join("data").join("1.txt");
         let file_content = Bytes::from("file content");
@@ -503,12 +524,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let path = PathBuf::from("users").join("data").join("1.txt");
         let file_content = Bytes::from("file content");
@@ -537,12 +561,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let orig_path = PathBuf::from("users").join("data").join("1.txt");
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
@@ -585,12 +612,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let orig_path = PathBuf::from("users").join("data").join("1.txt");
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
@@ -635,12 +665,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let orig_path = PathBuf::from("users").join("data").join("1.txt");
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
@@ -685,12 +718,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let orig_path = PathBuf::from("users").join("data").join("1.txt");
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
@@ -736,12 +772,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let orig_path = PathBuf::from("users").join("data").join("1.txt");
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
@@ -786,12 +825,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let orig_path = PathBuf::from("users").join("data").join("1.txt");
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
@@ -839,12 +881,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let orig_path = PathBuf::from("users").join("data").join("1.txt");
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
@@ -887,12 +932,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let orig_path = PathBuf::from("users").join("data").join("1.txt");
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
@@ -937,12 +985,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let orig_path = PathBuf::from("users").join("data").join("1.txt");
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
@@ -987,12 +1038,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let orig_path = PathBuf::from("users").join("data").join("1.txt");
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
@@ -1038,12 +1092,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let orig_path = PathBuf::from("users").join("data").join("1.txt");
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
@@ -1088,12 +1145,15 @@ mod tests {
 
         let storage = Storage::new(
             BTreeMap::from([
-                ("store_1".to_string(), store_1.clone()),
-                ("store_2".to_string(), store_2.clone()),
-                ("store_3".to_string(), store_3.clone()),
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+                ("store_3".to_string(), store_3),
             ]),
-            strategy.into(),
+            strategy,
         );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+        let store_3 = storage.as_store("store_3").unwrap();
 
         let orig_path = PathBuf::from("users").join("data").join("1.txt");
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");

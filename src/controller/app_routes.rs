@@ -228,13 +228,14 @@ impl AppRoutes {
             app = Self::add_timeout_middleware(app, timeout_request);
         }
 
-        if let Some(cors) = middlewares
+        let cors = middlewares
             .cors
             .as_ref()
             .and_then(|c| c.as_ref())
             .map(Self::get_cors_middleware)
-            .transpose()?
-        {
+            .transpose()?;
+
+        if let Some(cors) = cors.clone() {
             app = app.layer(cors);
             tracing::info!("[Middleware] Adding cors");
         }
@@ -250,12 +251,20 @@ impl AppRoutes {
         #[cfg(feature = "channels")]
         if let Some(channels) = self.channels.as_ref() {
             tracing::info!("[Middleware] Adding channels");
-
-            app = app.layer(
-                tower::ServiceBuilder::new()
-                    .layer(tower_http::cors::CorsLayer::permissive())
-                    .layer(channels.layer.clone()),
-            );
+            let channel_layer_app = tower::ServiceBuilder::new().layer(channels.layer.clone());
+            if let Some(cors) = cors {
+                app = app.layer(
+                    tower::ServiceBuilder::new()
+                        .layer(cors)
+                        .layer(channel_layer_app),
+                );
+            } else {
+                app = app.layer(
+                    tower::ServiceBuilder::new()
+                        .layer(tower_http::cors::CorsLayer::permissive())
+                        .layer(channel_layer_app),
+                );
+            }
         }
 
         let router = app.with_state(ctx);
@@ -450,7 +459,7 @@ fn handle_panic(err: Box<dyn std::any::Any + Send + 'static>) -> axum::response:
         |s| s.as_str(),
     );
 
-    tracing::error!(err = err, "server get panic");
+    tracing::error!(err.msg = err, "server_panic");
 
     errors::Error::InternalServerError.into_response()
 }

@@ -4,12 +4,12 @@ use std::sync::Arc;
 
 use object_store::{
     aws::{AmazonS3Builder, AwsCredential},
-    ObjectStore, StaticCredentialProvider,
+    StaticCredentialProvider,
 };
 #[cfg(test)]
 use object_store::{BackoffConfig, RetryConfig};
 
-use super::Store;
+use super::{object_store_adapter::ObjectStoreAdapter, StoreDriver};
 use crate::Result;
 
 /// A set of AWS security credentials
@@ -26,14 +26,14 @@ pub struct Credential {
 /// # Errors
 ///
 /// When could not initialize the client instance
-pub fn new(bucket_name: &str, region: &str) -> Result<Store> {
+pub fn new(bucket_name: &str, region: &str) -> Result<Box<dyn StoreDriver>> {
     let s3 = AmazonS3Builder::new()
         .with_bucket_name(bucket_name)
         .with_region(region)
         .build()
         .map_err(Box::from)?;
 
-    Ok(Store::new((Box::new(s3) as Box<dyn ObjectStore>).into()))
+    Ok(Box::new(ObjectStoreAdapter::new(Box::new(s3))))
 }
 
 /// Create new AWS s3 storage with bucket, region and credentials.
@@ -41,7 +41,11 @@ pub fn new(bucket_name: &str, region: &str) -> Result<Store> {
 /// # Errors
 ///
 /// When could not initialize the client instance
-pub fn with_credentials(bucket_name: &str, region: &str, credentials: Credential) -> Result<Store> {
+pub fn with_credentials(
+    bucket_name: &str,
+    region: &str,
+    credentials: Credential,
+) -> Result<Box<dyn StoreDriver>> {
     let s3 = AmazonS3Builder::new()
         .with_bucket_name(bucket_name)
         .with_region(region)
@@ -52,12 +56,17 @@ pub fn with_credentials(bucket_name: &str, region: &str, credentials: Credential
         })))
         .build()
         .map_err(Box::from)?;
-
-    Ok(Store::new((Box::new(s3) as Box<dyn ObjectStore>).into()))
+    Ok(Box::new(ObjectStoreAdapter::new(Box::new(s3))))
 }
 
+/// Build store with failure
+///
+/// # Panics
+///
+/// Panics if cannot build store
 #[cfg(test)]
-pub fn with_failure() -> Store {
+#[must_use]
+pub fn with_failure() -> Box<dyn StoreDriver> {
     let s3 = AmazonS3Builder::new()
         .with_bucket_name("loco-test")
         .with_retry(RetryConfig {
@@ -68,5 +77,5 @@ pub fn with_failure() -> Store {
         .build()
         .unwrap();
 
-    Store::new((Box::new(s3) as Box<dyn ObjectStore>).into())
+    Box::new(ObjectStoreAdapter::new(Box::new(s3)))
 }

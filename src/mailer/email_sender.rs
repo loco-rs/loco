@@ -45,7 +45,7 @@ impl EmailSender {
         let mut email_builder = if config.secure {
             lettre::AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&config.host)
                 .map_err(|error| {
-                    tracing::error!(error = error.to_string(), "error creating SMTP transport");
+                    tracing::error!(err.msg = %error, err.detail = ?error, "smtp_init_error");
                     Error::Any("error initialize smtp mailer".to_string().into())
                 })?
                 .port(config.port)
@@ -113,7 +113,7 @@ impl EmailSender {
             .subject(email.subject.clone())
             .multipart(content)
             .map_err(|error| {
-                tracing::error!(error = error.to_string(), "error building email message");
+                tracing::error!(err.msg = %error, err.detail = ?error, "email_building_error");
                 Error::Any("error building email message".to_string().into())
             })?;
 
