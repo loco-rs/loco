@@ -121,6 +121,10 @@ pub enum Error {
     #[error(transparent)]
     Storage(#[from] crate::storage::StorageError),
 
+    #[cfg(feature = "oauth2")]
+    #[error(transparent)]
+    OAuth2(#[from] crate::oauth2_store::error::OAuth2ClientError),
+
     #[error(transparent)]
     Any(#[from] Box<dyn std::error::Error + Send + Sync>),
 

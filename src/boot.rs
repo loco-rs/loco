@@ -203,6 +203,7 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
         db,
         redis,
         storage: H::storage(&config, environment).await?.map(Arc::new),
+        #[cfg(feature = "oauth2")]
         oauth2: H::oauth2(&config, environment).await?.map(Arc::new),
         config,
         mailer,

@@ -63,7 +63,7 @@ pub mod testing;
 #[cfg(feature = "testing")]
 pub use axum_test::TestServer;
 #[cfg(feature = "oauth2")]
-mod oauth2_store;
+pub mod oauth2_store;
 pub mod storage;
 pub mod validation;
 pub mod worker;

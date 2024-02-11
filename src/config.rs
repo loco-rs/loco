@@ -57,6 +57,7 @@ pub struct Config {
     #[serde(default)]
     pub workers: Workers,
     pub mailer: Option<Mailer>,
+    #[cfg(feature = "oauth2")]
     pub oauth2: Option<Oauth2>,
 
     /// Custom app settings
@@ -238,6 +239,7 @@ pub struct Oauth2 {
     pub authorization_code: Vec<AuthorizationCodeConfig>,
 }
 
+#[cfg(feature = "oauth2")]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AuthorizationCodeConfig {
     pub provider_name: String,

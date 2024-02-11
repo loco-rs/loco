@@ -10,7 +10,7 @@ edition = "2021"
 
 [dependencies]
 
-loco-rs = { version = "*", path = "../../" }
+loco-rs = { version = "*", path = "../../" ,features = ["oauth2",]}
 loco-extras = { version = "*", path = "../../loco-extras", features = ["full"] }
 migration = { path = "migration" }
 
