@@ -38,7 +38,11 @@ where
                 if let Some(redis) = &ctx.redis {
                     Self::perform_async(redis, args).await.unwrap();
                 } else {
-                    error!("worker mode requested but no redis connection supplied, skipping job");
+                    error!(
+                        error.msg =
+                            "worker mode requested but no redis connection supplied, skipping job",
+                        "worker_error"
+                    );
                 }
             }
             WorkerMode::ForegroundBlocking => {

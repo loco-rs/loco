@@ -175,7 +175,27 @@ impl<T: Serialize> IntoResponse for Json<T> {
 impl IntoResponse for Error {
     /// Convert an `Error` into an HTTP response.
     fn into_response(self) -> Response {
-        let (code, res) = match self {
+        match &self {
+            Self::WithBacktrace {
+                inner,
+                backtrace: _,
+            } => {
+                tracing::error!(
+                error.msg = %inner,
+                error.details = ?inner,
+                "controller_error"
+                );
+            }
+            err => {
+                tracing::error!(
+                error.msg = %err,
+                error.details = ?err,
+                "controller_error"
+                );
+            }
+        }
+
+        let public_facing_error = match self {
             Self::NotFound => (
                 StatusCode::NOT_FOUND,
                 ErrorDetail::new("not_found", "Resource was not found"),
@@ -196,7 +216,6 @@ impl IntoResponse for Error {
             }
             Self::CustomError(status_code, data) => (status_code, data),
             Self::WithBacktrace { inner, backtrace } => {
-                tracing::error!("{}", format!("{:?}", inner));
                 println!("\n{}", inner.to_string().red().underline());
                 backtrace::print_backtrace(&backtrace).unwrap();
                 (
@@ -204,15 +223,12 @@ impl IntoResponse for Error {
                     ErrorDetail::with_reason("Bad Request"),
                 )
             }
-            err => {
-                tracing::error!("{}", format!("{:?}", err));
-                (
-                    StatusCode::BAD_REQUEST,
-                    ErrorDetail::with_reason("Bad Request"),
-                )
-            }
+            _ => (
+                StatusCode::BAD_REQUEST,
+                ErrorDetail::with_reason("Bad Request"),
+            ),
         };
 
-        (code, Json(res)).into_response()
+        (public_facing_error.0, Json(public_facing_error.1)).into_response()
     }
 }
