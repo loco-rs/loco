@@ -183,7 +183,6 @@ impl IntoResponse for Error {
                 tracing::error!(
                 error.msg = %inner,
                 error.details = ?inner,
-                error.chain = inner.sources(),
                 "controller_error"
                 );
             }
@@ -191,7 +190,6 @@ impl IntoResponse for Error {
                 tracing::error!(
                 error.msg = %err,
                 error.details = ?err,
-                error.chain = err.sources(),
                 "controller_error"
                 );
             }
