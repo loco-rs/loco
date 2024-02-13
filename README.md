@@ -92,3 +92,11 @@ Loco is feature complete, but features are still being added rapidly.
 
 [open an issue to add yourself here](https://github.com/loco-rs/loco/issues)
 
+
+## Contributors ✨
+
+Thanks goes to these wonderful people:
+
+<a href="https://github.com/loco-rs/loco/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=loco-rs/loco" />
+</a>
