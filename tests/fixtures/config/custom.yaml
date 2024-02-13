@@ -1,0 +1,52 @@
+
+
+logger:
+  enable: true
+  level: debug
+  format: compact
+
+server:
+  port: 3000
+  host: http://localhost
+  middlewares:
+    limit_payload:
+      enable: true
+      body_limit: 5mb
+    logger:
+      enable: true
+    catch_panic:
+      enable: true
+    timeout_request:
+      enable: true
+      timeout: 5000
+
+workers:
+  mode: ForegroundBlocking
+
+mailer:
+  smtp:
+    enable: true
+    host: localhost
+    port: 1025
+    secure: false
+  stub: true
+
+database:
+  uri: {{get_env(name="DATABASE_URL", default="postgres://localhost:5432/loco_app")}} 
+  enable_logging: false
+  connect_timeout: 500
+  idle_timeout: 500
+  min_connections: 1
+  max_connections: 1
+  auto_migrate: true
+  dangerously_truncate: true
+  dangerously_recreate: true
+
+redis:
+  uri: {{get_env(name="APP_REDIS_URI", default="redis://127.0.0.1")}}
+  dangerously_flush: false
+
+auth:
+  jwt:
+    secret: PqRwLF2rhHe8J22oBeHy
+    expiration: 604800 

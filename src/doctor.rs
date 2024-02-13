@@ -17,7 +17,7 @@ const REDIS_CONNECTION_FAILED: &str = "Redis connection: failed";
 const REDIS_CONNECTION_NOT_CONFIGURE: &str = "Redis not configure";
 
 /// Represents different resources that can be checked.
-#[derive(PartialOrd, PartialEq, Eq, Ord)]
+#[derive(Debug, PartialOrd, PartialEq, Eq, Ord)]
 pub enum Resource {
     SeaOrmCLI,
     Database,
@@ -164,5 +164,115 @@ pub fn check_seaorm_cli() -> Check {
             message: SEAORM_NOT_INSTALLED.to_string(),
             description: Some(SEAORM_NOT_FIX.to_string()),
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::env;
+
+    use dockertest_server::{
+        servers::database::{
+            postgres::{PostgresServer, PostgresServerConfig},
+            redis::{RedisServer, RedisServerConfig},
+        },
+        Test,
+    };
+    use insta::assert_debug_snapshot;
+    use serial_test::serial;
+
+    use super::*;
+    use crate::environment::Environment;
+
+    #[test]
+    #[serial]
+    fn doctor_all_resources_should_pass() {
+        let mut test = Test::new();
+
+        let config = RedisServerConfig::builder().port(5555).build().unwrap();
+        test.register(config);
+
+        let config = PostgresServerConfig::builder()
+            .password("1234".to_string())
+            .port(5551)
+            .build()
+            .unwrap();
+        test.register(config);
+
+        test.run(|instance| async move {
+            let redis: RedisServer = instance.server();
+            let postgres: PostgresServer = instance.server();
+
+            let mut config = Environment::Test.load().unwrap();
+            config.database.uri = postgres.external_auth_url();
+            config.redis.as_mut().unwrap().uri = redis.external_url();
+
+            assert_debug_snapshot!(run_all(&config).await);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn db_should_fail() {
+        let mut test = Test::new();
+
+        let config = RedisServerConfig::builder().port(5555).build().unwrap();
+        test.register(config);
+
+        test.run(|instance| async move {
+            let redis: RedisServer = instance.server();
+
+            let mut config = Environment::Test.load().unwrap();
+            config.database.uri = "postgres://invalid:invalid@localhost:5431/loco_app".to_string();
+            config.redis.as_mut().unwrap().uri = redis.external_url();
+
+            assert_debug_snapshot!(run_all(&config).await);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn redis_should_fail() {
+        let mut test = Test::new();
+
+        let config = PostgresServerConfig::builder()
+            .password("1234".to_string())
+            .port(5551)
+            .build()
+            .unwrap();
+        test.register(config);
+
+        test.run(|instance| async move {
+            let postgres: PostgresServer = instance.server();
+
+            let mut config = Environment::Test.load().unwrap();
+            config.database.uri = postgres.external_auth_url();
+            config.redis.as_mut().unwrap().uri = "redis://127.1.1.1".to_string();
+
+            assert_debug_snapshot!(run_all(&config).await);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn redis_not_configured() {
+        let mut test = Test::new();
+
+        let config = PostgresServerConfig::builder()
+            .password("1234".to_string())
+            .port(5551)
+            .build()
+            .unwrap();
+        test.register(config);
+
+        test.run(|instance| async move {
+            let postgres: PostgresServer = instance.server();
+
+            let mut config = Environment::Test.load().unwrap();
+            config.database.uri = postgres.external_auth_url();
+            config.redis = None;
+
+            assert_debug_snapshot!(run_all(&config).await);
+        });
     }
 }

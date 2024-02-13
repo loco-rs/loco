@@ -34,8 +34,14 @@ use crate::{environment::Environment, logger, Error, Result};
 
 const DEFAULT_SERVER_BINDING: &str = "[::]";
 
+#[cfg(not(test))]
 lazy_static! {
     static ref DEFAULT_FOLDER: PathBuf = PathBuf::from("config");
+}
+
+#[cfg(test)]
+lazy_static! {
+    static ref DEFAULT_FOLDER: PathBuf = PathBuf::from("tests").join("fixtures").join("config");
 }
 
 /// Main application configuration structure.
@@ -471,11 +477,11 @@ impl Config {
     /// async fn load(environment: &Environment) -> Config{
     ///     Config::from_folder(environment, &PathBuf::from("config")).expect("configuration loading")
     /// }
-    pub fn from_folder(env: &Environment, path: &Path) -> Result<Self> {
+    pub fn from_folder<P: AsRef<Path>>(env: &Environment, path: P) -> Result<Self> {
         // by order of precedence
         let files = [
-            path.join(format!("{env}.local.yaml")),
-            path.join(format!("{env}.yaml")),
+            path.as_ref().join(format!("{env}.local.yaml")),
+            path.as_ref().join(format!("{env}.yaml")),
         ];
 
         let selected_path = files

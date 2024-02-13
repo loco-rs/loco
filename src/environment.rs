@@ -68,7 +68,7 @@ impl Environment {
     ///
     /// Returns error if an error occurs during loading
     /// configuration file an parse into [`Config`] struct.
-    pub fn load_from_folder(&self, path: &Path) -> Result<Config> {
+    pub fn load_from_folder<P: AsRef<Path>>(&self, path: P) -> Result<Config> {
         Config::from_folder(self, path)
     }
 }
@@ -98,6 +98,8 @@ impl FromStr for Environment {
 #[cfg(test)]
 mod tests {
     use std::env;
+
+    use rstest::rstest;
 
     use super::*;
     #[test]
@@ -132,7 +134,27 @@ mod tests {
 
     #[test]
     fn test_from_folder() {
-        let config = Environment::Development.load_from_folder(Path::new("examples/demo/config"));
+        let config = Environment::Development.load();
         assert!(config.is_ok());
+    }
+
+    #[test]
+    fn test_config_local_override() {
+        let config = Environment::Development.load().unwrap();
+        let binding = config.settings.unwrap();
+        assert_eq!(
+            binding.get("from").unwrap().as_str(),
+            Some("development.local.yaml")
+        );
+    }
+
+    #[rstest]
+    #[case(Environment::Development)]
+    #[case(Environment::Production)]
+    #[case(Environment::Test)]
+    #[case(Environment::Any("custom".to_string()))]
+    #[test]
+    fn can_load_config(#[case] env: Environment) {
+        assert!(env.load().is_ok());
     }
 }
