@@ -221,7 +221,7 @@ pub struct Auth {
 /// oauth2:
 ///  authorization_code: # Authorization code grant type
 ///   - provider_name: google # Identifier for the OAuth2 provider. Replace 'google' with your provider's name if different.
-///     client:
+///     client_credentials:
 ///       client_id: <your client id> # Replace with your OAuth2 client ID.
 ///       client_secret: <your client secret> # Replace with your OAuth2 client secret.
 ///     url_config:
@@ -243,7 +243,7 @@ pub struct Oauth2 {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AuthorizationCodeConfig {
     pub provider_name: String,
-    pub client: AuthorizationCodeCredentials,
+    pub client_credentials: AuthorizationCodeCredentials,
     pub url_config: AuthorizationCodeUrlConfig,
     pub timeout_seconds: Option<u64>,
 }
