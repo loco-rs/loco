@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{collections::BTreeMap, path::Path, sync::Arc};
 
 use async_trait::async_trait;
 use loco_extras;
@@ -9,6 +9,7 @@ use loco_rs::{
     controller::AppRoutes,
     db::{self, truncate_table},
     environment::Environment,
+    oauth2_store::{oauth2_grant::OAuth2ClientGrantEnum, OAuth2ClientStore},
     storage::{self, Storage},
     task::Tasks,
     worker::{AppWorker, Processor},
@@ -16,6 +17,7 @@ use loco_rs::{
 };
 use migration::Migrator;
 use sea_orm::DatabaseConnection;
+use tokio::sync::Mutex;
 
 use crate::{
     controllers, initializers,
@@ -65,6 +67,7 @@ impl Hooks for App {
             .add_route(controllers::dashboard::routes())
             .add_route(controllers::user::routes())
             .add_route(controllers::upload::routes())
+            .add_route(controllers::oauth2::routes())
     }
 
     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
@@ -83,6 +86,35 @@ impl Hooks for App {
 
         let storage = Storage::single(store);
         return Ok(Some(storage));
+    }
+
+    async fn oauth2(
+        config: &Config,
+        environment: &Environment,
+    ) -> Result<Option<OAuth2ClientStore>> {
+        if environment != &Environment::Test && environment != &Environment::Development {
+            return Ok(None);
+        }
+        let oauth2_config = config
+            .oauth2
+            .clone()
+            .ok_or(loco_rs::Error::string("Missing configuration for oauth2"))?;
+        let authorization_code_grants = oauth2_config.authorization_code;
+        let mut clients = BTreeMap::new();
+        for grant in authorization_code_grants {
+            let client =
+                loco_rs::oauth2_store::grants::authorization_code::AuthorizationCodeClient::new(
+                    grant.client_credentials,
+                    grant.url_config,
+                    None,
+                )?;
+            clients.insert(
+                grant.provider_name,
+                OAuth2ClientGrantEnum::AuthorizationCode(Arc::new(Mutex::new(client))),
+            );
+        }
+        let store = OAuth2ClientStore::new(clients);
+        Ok(Some(store))
     }
 
     fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {

@@ -5,6 +5,7 @@ use crate::oauth2_store::oauth2_grant::OAuth2ClientGrantEnum;
 pub mod error;
 pub mod grants;
 pub mod oauth2_grant;
+pub use oauth2::*;
 
 #[derive(Clone)]
 pub struct OAuth2ClientStore {

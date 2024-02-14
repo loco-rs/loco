@@ -4,6 +4,8 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use axum::Router;
+#[cfg(feature = "oauth2")]
+use axum_extra::extract::cookie::Key;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
 use tracing::{info, trace, warn};
@@ -207,6 +209,8 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
         oauth2: H::oauth2(&config, environment).await?.map(Arc::new),
         config,
         mailer,
+        #[cfg(feature = "oauth2")]
+        key: Key::generate(),
     })
 }
 
