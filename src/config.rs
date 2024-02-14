@@ -227,7 +227,7 @@ pub struct Auth {
 ///     url_config:
 ///      auth_url: https://accounts.google.com/o/oauth2/auth # authorization endpoint from the provider
 ///      token_url: https://www.googleapis.com/oauth2/v3/token # token endpoint from the provider for exchanging the authorization code for an access token
-///      redirect_uri: http://localhost:3000/api/auth/google_callback # server callback endpoint for the provider
+///      redirect_url: http://localhost:3000/api/auth/google_callback # server callback endpoint for the provider
 ///      profile_url: https://openidconnect.googleapis.com/v1/userinfo # user profile endpoint from the provider for getting user data
 ///      scopes:
 ///       - https://www.googleapis.com/auth/userinfo.email # Scopes for requesting access to user data
