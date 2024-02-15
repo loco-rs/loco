@@ -11,7 +11,7 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub session_id: String,
-    pub expires_at: DateTimeWithTimeZone,
+    pub expires_at: DateTime,
     pub user_id: i32,
 }
 
