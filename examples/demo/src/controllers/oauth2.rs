@@ -10,6 +10,8 @@ use loco_rs::{
 };
 use serde::Deserialize;
 
+use crate::models::{users, users::OAuthUserProfile};
+
 pub async fn authorization_url(
     State(ctx): State<AppContext>,
     session: Session<SessionNullPool>,
@@ -47,11 +49,6 @@ pub struct AuthRequest {
     state: String,
 }
 
-#[derive(Deserialize, Clone, Debug)]
-pub struct UserProfile {
-    email: String,
-}
-
 async fn google_callback(
     State(ctx): State<AppContext>,
     session: Session<SessionNullPool>,
@@ -85,12 +82,19 @@ async fn google_callback(
         .await
         .map_err(|e| Error::BadRequest(e.to_string()))?;
     // Get the user profile
-    let profile = profile.json::<UserProfile>().await.unwrap();
-    jar = set_token_with_cookie(token, jar);
+    let profile = profile.json::<OAuthUserProfile>().await.unwrap();
+    users::Model::create_with_oauth(&ctx.db, &profile)
+        .await
+        .map_err(|_e| Error::InternalServerError)?;
+
+    let jar = set_token_with_short_live_cookie(token, jar);
     Ok((jar, Redirect::to("/protected")))
 }
 
-fn set_token_with_cookie(token: BasicTokenResponse, jar: PrivateCookieJar) -> PrivateCookieJar {
+fn set_token_with_short_live_cookie(
+    token: BasicTokenResponse,
+    jar: PrivateCookieJar,
+) -> PrivateCookieJar {
     // Set the cookie
     let secs: i64 = token.expires_in().unwrap().as_secs().try_into().unwrap();
     // Create the cookie with the session id, domain, path, and secure flag from
@@ -100,18 +104,24 @@ fn set_token_with_cookie(token: BasicTokenResponse, jar: PrivateCookieJar) -> Pr
         token.access_token().secret().to_owned(),
     ))
     .domain("localhost")
-    .path("/")
-    // only for testing purposes, toggle this to true in production
-    .secure(false)
+    .path("/protected")
+    .secure(true)
     .http_only(true)
     .max_age(time::Duration::seconds(secs));
     jar.add(cookie)
 }
+
+// async fn protected(
+//     _session: Session<SessionNullPool>,
+//     _token: TokenResponse,
+// ) -> Result<impl IntoResponse> {
+//     Ok("You are protected!")
+// }
 
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("oauth2")
         .add("/", get(authorization_url))
         .add("/google/callback", get(google_callback))
-    // .add('/protected', get(protected))
+    // .add("/protected", get(protected))
 }

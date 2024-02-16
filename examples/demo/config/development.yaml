@@ -146,4 +146,5 @@ oauth2:
      profile_url: https://openidconnect.googleapis.com/v1/userinfo # user profile endpoint from the provider for getting user data
      scopes:
       - https://www.googleapis.com/auth/userinfo.email # Scopes for requesting access to user data
+      - https://www.googleapis.com/auth/userinfo.profile # Scopes for requesting access to user data
     timeout_seconds: 600 # Optional, default 600 seconds

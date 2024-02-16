@@ -25,6 +25,18 @@ pub struct RegisterParams {
     pub name: String,
 }
 
+#[derive(Deserialize, Clone, Debug)]
+pub struct OAuthUserProfile {
+    pub email: String,
+    pub name: String,
+    pub sub: String,
+    pub given_name: String,
+    pub family_name: String,
+    pub picture: String,
+    pub email_verified: bool,
+    pub locale: String,
+}
+
 #[derive(Debug, Validate, Deserialize)]
 pub struct ModelValidator {
     #[validate(length(min = 2, message = "Name must be at least 2 characters long."))]
@@ -179,6 +191,41 @@ impl super::_entities::users::Model {
             email: ActiveValue::set(params.email.to_string()),
             password: ActiveValue::set(password_hash),
             name: ActiveValue::set(params.name.to_string()),
+            ..Default::default()
+        }
+        .insert(&txn)
+        .await?;
+
+        txn.commit().await?;
+
+        Ok(user)
+    }
+
+    /// Asynchronously creates user with OAuth data and saves it to the
+    /// database.
+    ///
+    /// # Errors
+    ///
+    /// When could not save the user into the DB
+    pub async fn create_with_oauth(
+        db: &DatabaseConnection,
+        profile: &OAuthUserProfile,
+    ) -> ModelResult<Self> {
+        let txn = db.begin().await?;
+
+        if users::Entity::find()
+            .filter(users::Column::Email.eq(&profile.email))
+            .one(&txn)
+            .await?
+            .is_some()
+        {
+            return Err(ModelError::EntityAlreadyExists {});
+        }
+
+        let user = users::ActiveModel {
+            email: ActiveValue::set(profile.email.to_string()),
+            name: ActiveValue::set(profile.name.to_string()),
+            email_verified_at: ActiveValue::set(Some(Local::now().naive_local())),
             ..Default::default()
         }
         .insert(&txn)
