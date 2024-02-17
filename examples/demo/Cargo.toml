@@ -41,6 +41,7 @@ unic-langid = "0.9.4"
 tera = "1.19.1"
 axum-extra = { version = "0.9.2", features = ["cookie-private"] }
 time="0.3.34"
+url = "2.5.0"
 
 
 [[bin]]

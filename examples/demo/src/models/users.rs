@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub use super::_entities::users::{self, ActiveModel, Entity, Model};
+use crate::models::_entities::sessions;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct LoginParams {
@@ -132,6 +133,30 @@ impl super::_entities::users::Model {
         user.ok_or_else(|| ModelError::EntityNotFound)
     }
 
+    /// find a user by the session id
+    ///
+    /// # Errors
+    ///
+    /// When could not find user by the given session id or DB query error
+    pub async fn find_by_session_id(
+        db: &DatabaseConnection,
+        session_id: &str,
+    ) -> ModelResult<Self> {
+        // find the session by the session id
+        let session = sessions::Entity::find()
+            .filter(super::_entities::sessions::Column::SessionId.eq(session_id))
+            .one(db)
+            .await
+            .unwrap()
+            .ok_or_else(|| ModelError::EntityNotFound)?;
+        // if the session is found, find the user by the user id
+        let user = users::Entity::find()
+            .filter(users::Column::Id.eq(session.user_id))
+            .one(db)
+            .await?;
+        user.ok_or_else(|| ModelError::EntityNotFound)
+    }
+
     /// finds a user by the provided pid
     ///
     /// # Errors
@@ -212,24 +237,32 @@ impl super::_entities::users::Model {
         profile: &OAuthUserProfile,
     ) -> ModelResult<Self> {
         let txn = db.begin().await?;
-
         if users::Entity::find()
             .filter(users::Column::Email.eq(&profile.email))
             .one(&txn)
             .await?
             .is_some()
         {
+            tracing::info!("User already exists");
             return Err(ModelError::EntityAlreadyExists {});
         }
-
+        // We use the sub field as the user fake password since sub is unique
+        let password_hash =
+            hash::hash_password(&profile.sub).map_err(|e| ModelError::Any(e.into()))?;
+        // Insert the user into the database
         let user = users::ActiveModel {
             email: ActiveValue::set(profile.email.to_string()),
             name: ActiveValue::set(profile.name.to_string()),
             email_verified_at: ActiveValue::set(Some(Local::now().naive_local())),
+            password: ActiveValue::set(password_hash),
             ..Default::default()
         }
         .insert(&txn)
-        .await?;
+        .await
+        .map_err(|e| {
+            tracing::error!("Error while trying to create user: {e}");
+            return ModelError::Any(e.into());
+        })?;
 
         txn.commit().await?;
 
