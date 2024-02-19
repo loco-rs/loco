@@ -232,38 +232,38 @@ impl super::_entities::users::Model {
     /// # Errors
     ///
     /// When could not save the user into the DB
-    pub async fn create_with_oauth(
+    pub async fn upsert_with_oauth(
         db: &DatabaseConnection,
         profile: &OAuthUserProfile,
     ) -> ModelResult<Self> {
         let txn = db.begin().await?;
-        if users::Entity::find()
+        let user = match users::Entity::find()
             .filter(users::Column::Email.eq(&profile.email))
             .one(&txn)
             .await?
-            .is_some()
         {
-            tracing::info!("User already exists");
-            return Err(ModelError::EntityAlreadyExists {});
-        }
-        // We use the sub field as the user fake password since sub is unique
-        let password_hash =
-            hash::hash_password(&profile.sub).map_err(|e| ModelError::Any(e.into()))?;
-        // Insert the user into the database
-        let user = users::ActiveModel {
-            email: ActiveValue::set(profile.email.to_string()),
-            name: ActiveValue::set(profile.name.to_string()),
-            email_verified_at: ActiveValue::set(Some(Local::now().naive_local())),
-            password: ActiveValue::set(password_hash),
-            ..Default::default()
-        }
-        .insert(&txn)
-        .await
-        .map_err(|e| {
-            tracing::error!("Error while trying to create user: {e}");
-            return ModelError::Any(e.into());
-        })?;
-
+            None => {
+                // We use the sub field as the user fake password since sub is unique
+                let password_hash =
+                    hash::hash_password(&profile.sub).map_err(|e| ModelError::Any(e.into()))?;
+                // Create the user into the database
+                users::ActiveModel {
+                    email: ActiveValue::set(profile.email.to_string()),
+                    name: ActiveValue::set(profile.name.to_string()),
+                    email_verified_at: ActiveValue::set(Some(Local::now().naive_local())),
+                    password: ActiveValue::set(password_hash),
+                    ..Default::default()
+                }
+                .insert(&txn)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Error while trying to create user: {e}");
+                    ModelError::Any(e.into())
+                })?
+            }
+            // Do nothing if user exists
+            Some(user) => user,
+        };
         txn.commit().await?;
 
         Ok(user)

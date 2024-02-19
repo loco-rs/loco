@@ -1,6 +1,9 @@
 #![allow(clippy::unused_async)]
 
-use axum::{extract::Query, response::Redirect};
+use axum::{
+    extract::Query,
+    response::{Html, Redirect},
+};
 use axum_extra::extract::PrivateCookieJar;
 use axum_session::{Session, SessionNullPool};
 use loco_rs::{oauth2_store::oauth2_grant::OAuth2ClientGrantEnum, prelude::*};
@@ -14,7 +17,7 @@ use crate::{
 pub async fn authorization_url(
     State(ctx): State<AppContext>,
     session: Session<SessionNullPool>,
-) -> Result<String> {
+) -> Result<Html<String>> {
     let oauth_store = ctx.oauth2.as_ref().unwrap();
 
     let client = oauth_store.get("google").unwrap();
@@ -31,14 +34,14 @@ pub async fn authorization_url(
 
     session.set("CSRF_TOKEN", saved_csrf_token);
 
-    Ok(format!(
+    Ok(Html::from(format!(
         "<p>Welcome!</p>
     <a href=\"{auth_url}\">
     Click here to sign into Google!
      </a>
         ",
         auth_url = auth_url,
-    ))
+    )))
 }
 
 #[derive(Debug, Deserialize)]
@@ -88,13 +91,13 @@ async fn google_callback(
         .map_err(|e| Error::BadRequest(e.to_string()))?;
     // Get the user profile
     let profile = profile.json::<OAuthUserProfile>().await.unwrap();
-    let user = users::Model::create_with_oauth(&ctx.db, &profile)
+    let user = users::Model::upsert_with_oauth(&ctx.db, &profile)
         .await
         .map_err(|_e| {
             tracing::error!("Error creating user");
             Error::InternalServerError
         })?;
-    sessions::Model::create_session(&ctx.db, &token, &user)
+    sessions::Model::upsert_with_oauth(&ctx.db, &token, &user)
         .await
         .map_err(|_e| {
             tracing::error!("Error creating session");
