@@ -95,6 +95,9 @@ $ blo-cli routes --environment test
 [GET] /notes/:id
 [DELETE] /notes/:id
 [POST] /notes/:id
+[GET] /oauth2
+[GET] /oauth2/google/callback
+[GET] /oauth2/protected
 [POST] /upload/file
 [GET] /user/current
 [GET] /user/current_api_key
@@ -130,5 +133,6 @@ $ LOCO_ENV=teste2e blo-cli db status
 [[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Checking migration status
 [[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Migration 'm20220101_000001_users'... Applied
 [[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Migration 'm20231103_114510_notes'... Applied
+[[..][0m [32m INFO[0m [2msea_orm_migration::migrator[0m[2m:[0m Migration 'm20240211_191359_sessions'... Applied
 
 ```
