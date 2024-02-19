@@ -34,7 +34,10 @@ use tracing::info;
 use crate::oauth2_store::grants::authorization_code::{
     AuthorizationCodeCredentials, AuthorizationCodeUrlConfig,
 };
-use crate::{environment::Environment, logger, Error, Result};
+use crate::{
+    environment::Environment, logger,
+    oauth2_store::grants::authorization_code::AuthorizationCodeCookieConfig, Error, Result,
+};
 
 const DEFAULT_SERVER_BINDING: &str = "[::]";
 
@@ -231,6 +234,8 @@ pub struct Auth {
 ///      profile_url: https://openidconnect.googleapis.com/v1/userinfo # user profile endpoint from the provider for getting user data
 ///      scopes:
 ///       - https://www.googleapis.com/auth/userinfo.email # Scopes for requesting access to user data
+///     cookie_config:
+///       protected_url: http://localhost:3000/api/auth/google_callback # Optional - For redirecting to protect url in cookie to prevent XSS attack
 ///     timeout_seconds: 600 # Optional, default 600 seconds
 /// ```
 #[cfg(feature = "oauth2")]
@@ -245,6 +250,7 @@ pub struct AuthorizationCodeConfig {
     pub provider_name: String,
     pub client_credentials: AuthorizationCodeCredentials,
     pub url_config: AuthorizationCodeUrlConfig,
+    pub cookie_config: AuthorizationCodeCookieConfig,
     pub timeout_seconds: Option<u64>,
 }
 

@@ -93,8 +93,12 @@ pub fn set_token_with_short_live_cookie(
         .try_into()
         .map_err(|_e| Error::InternalServerError)?;
     // domain
-    let protected_url = url::Url::parse("http://localhost:3000/oauth2/protected")
-        .map_err(|_e| Error::InternalServerError)?;
+    let cookie_url = config
+        .cookie_config
+        .protected_url
+        .clone()
+        .unwrap_or("http://localhost:3000/oauth2/protected".to_string());
+    let protected_url = url::Url::parse(&cookie_url).map_err(|_e| Error::InternalServerError)?;
     let domain = protected_url.domain().unwrap_or("localhost");
     let path = protected_url.path();
     // Create the cookie with the session id, domain, path, and secure flag from

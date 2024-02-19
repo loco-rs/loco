@@ -33,6 +33,13 @@ pub struct AuthorizationCodeUrlConfig {
     pub scopes: Vec<String>,
 }
 
+/// An url config struct that holds the Cookie related URLs. - For
+/// [`AuthorizationCodeClient`]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AuthorizationCodeCookieConfig {
+    pub protected_url: Option<String>,
+}
+
 /// [`AuthorizationCodeClient`] that acts as a client for the Authorization Code
 /// Grant flow.
 pub struct AuthorizationCodeClient {
@@ -50,6 +57,9 @@ pub struct AuthorizationCodeClient {
     /// A [`std::time::Duration`] for the OAuth2 client's CSRF token timeout
     /// which defaults to 10 minutes (600s).
     pub csrf_token_timeout: std::time::Duration,
+    /// An optional [`AuthorizationCodeCookieConfig`] for the OAuth2 client's
+    /// cookie during middleware
+    pub cookie_config: AuthorizationCodeCookieConfig,
 }
 
 impl AuthorizationCodeClient {
@@ -83,6 +93,7 @@ impl AuthorizationCodeClient {
     pub fn new(
         credentials: AuthorizationCodeCredentials,
         config: AuthorizationCodeUrlConfig,
+        cookie_config: AuthorizationCodeCookieConfig,
         timeout_seconds: Option<u64>,
     ) -> OAuth2ClientResult<Self> {
         let client_id = ClientId::new(credentials.client_id);
@@ -105,6 +116,7 @@ impl AuthorizationCodeClient {
             flow_states: HashMap::new(),
             scopes,
             csrf_token_timeout: std::time::Duration::from_secs(timeout_seconds.unwrap_or(10 * 60)),
+            cookie_config,
         })
     }
     /// Remove expired flow states within the [`AuthorizationCodeClient`].
@@ -428,14 +440,17 @@ mod tests {
             client_id: settings.client_id.to_string(),
             client_secret: Some(settings.client_secret.to_string()),
         };
-        let config = AuthorizationCodeUrlConfig {
+        let url_config = AuthorizationCodeUrlConfig {
             auth_url: settings.auth_url.to_string(),
             token_url: settings.token_url.to_string(),
             redirect_url: settings.redirect_url.to_string(),
             profile_url: settings.profile_url.to_string(),
             scopes: vec![settings.scope.to_string()],
         };
-        let client = AuthorizationCodeClient::new(credentials, config, None)?;
+        let cookie_config = AuthorizationCodeCookieConfig {
+            protected_url: None,
+        };
+        let client = AuthorizationCodeClient::new(credentials, url_config, cookie_config, None)?;
         Ok((client, settings))
     }
 
@@ -500,7 +515,6 @@ mod tests {
             .get("state")
             .ok_or(TestError::QueryMapError("Couldnt find state".to_string()))?;
         assert_eq!(state[0], csrf_token.secret().to_owned());
-        // Check client id
         Ok(())
     }
 

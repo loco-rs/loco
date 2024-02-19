@@ -106,6 +106,7 @@ impl Hooks for App {
                 loco_rs::oauth2_store::grants::authorization_code::AuthorizationCodeClient::new(
                     grant.client_credentials,
                     grant.url_config,
+                    grant.cookie_config,
                     None,
                 )?;
             clients.insert(
