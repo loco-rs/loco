@@ -132,6 +132,7 @@ async fn can_authorization_url() -> Result<(), Box<dyn std::error::Error>> {
     ];
 
     testing::request::<App, _, _>(|request, ctx| async move {
+        // Test the authorization url
         let res = request.get("/oauth2").await;
         assert_eq!(res.status_code(), 200);
         for url in assert_html {
@@ -179,18 +180,23 @@ async fn can_call_google_callback() -> Result<(), Box<dyn std::error::Error>> {
         .mount(&settings.mock_server)
         .await;
     testing::request::<App, _, _>(|request, ctx| async move {
+        // Get the authorization url from the server
         let auth_res = request.get("/oauth2").await;
+        // Cookie for csrf token
         let auth_cookie = auth_res.cookies();
+        // Get the authorization url from the response HTML
         let mut auth_url = String::new();
         let re = Regex::new(r#"href="([^"]*)""#).unwrap();
         for cap in re.captures_iter(&auth_res.text()) {
             auth_url = cap[1].to_string();
         }
+        // Extract the state from the auth_url
         let state = Url::parse(&auth_url)
             .unwrap()
             .query_pairs()
             .find(|(key, _)| key == "state")
             .map(|(_, value)| value.to_string());
+        // Test the google callback with csrf token and token
         let res = request
             .get("/oauth2/google/callback")
             .add_query_params(vec![
