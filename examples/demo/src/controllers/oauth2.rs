@@ -13,6 +13,11 @@ use crate::{
     controllers::middleware::auth::{set_token_with_short_live_cookie, OAuth2CookieUser},
     models::{sessions, users, users::OAuthUserProfile},
 };
+#[derive(Debug, Deserialize)]
+pub struct AuthParams {
+    code: String,
+    state: String,
+}
 
 pub async fn authorization_url(
     State(ctx): State<AppContext>,
@@ -44,16 +49,10 @@ pub async fn authorization_url(
     )))
 }
 
-#[derive(Debug, Deserialize)]
-pub struct AuthRequest {
-    code: String,
-    state: String,
-}
-
 async fn google_callback(
     State(ctx): State<AppContext>,
     session: Session<SessionNullPool>,
-    Query(query): Query<AuthRequest>,
+    Query(params): Query<AuthParams>,
     // Extract the private cookie jar from the request
     jar: PrivateCookieJar,
 ) -> Result<impl IntoResponse> {
@@ -86,7 +85,7 @@ async fn google_callback(
         .ok_or_else(|| Error::BadRequest("CSRF token not found".to_string()))?;
     // Exchange the code with a token
     let (token, profile) = client
-        .verify_code_from_callback(query.code, query.state, csrf_token)
+        .verify_code_from_callback(params.code, params.state, csrf_token)
         .await
         .map_err(|e| Error::BadRequest(e.to_string()))?;
     // Get the user profile
