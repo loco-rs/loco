@@ -24,6 +24,11 @@ const COOKIE_NAME: &str = "sid";
 pub struct OAuth2CookieUser {
     pub user: users::Model,
 }
+impl AsRef<users::Model> for OAuth2CookieUser {
+    fn as_ref(&self) -> &users::Model {
+        &self.user
+    }
+}
 
 // Implement the FromRequestParts trait for the OAuthCookieUser struct
 #[async_trait]

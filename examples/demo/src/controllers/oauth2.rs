@@ -106,13 +106,19 @@ async fn google_callback(
 
     let jar = set_token_with_short_live_cookie(oauth_config, token, jar)
         .map_err(|_e| Error::InternalServerError)?;
-    let response = (jar, Redirect::to("/oauth2/protected")).into_response();
+    let protect_url = &oauth_config
+        .cookie_config
+        .protected_url
+        .clone()
+        .unwrap_or("/oauth2/protected".to_string());
+    let response = (jar, Redirect::to(protect_url)).into_response();
     tracing::info!("response: {:?}", response);
     Ok(response)
 }
 
 async fn protected(user: OAuth2CookieUser) -> Result<impl IntoResponse> {
-    Ok("You are protected!")
+    let user = user.as_ref();
+    Ok("You are protected! Email: ".to_string() + &user.email)
 }
 
 pub fn routes() -> Routes {
