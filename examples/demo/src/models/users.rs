@@ -26,7 +26,7 @@ pub struct RegisterParams {
     pub name: String,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OAuthUserProfile {
     pub email: String,
     pub name: String,

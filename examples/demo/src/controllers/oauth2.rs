@@ -13,6 +13,7 @@ use crate::{
     controllers::middleware::auth::{set_token_with_short_live_cookie, OAuth2CookieUser},
     models::{sessions, users, users::OAuthUserProfile},
 };
+
 #[derive(Debug, Deserialize)]
 pub struct AuthParams {
     code: String,
