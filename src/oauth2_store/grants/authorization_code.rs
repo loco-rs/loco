@@ -384,7 +384,6 @@ mod tests {
         token_type: String,
         expires_in: u64,
         refresh_token: String,
-        redirect_uri: String,
     }
 
     #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -404,7 +403,6 @@ mod tests {
                 token_type: "bearer".to_string(),
                 expires_in: 3600,
                 refresh_token: "test_refresh_token".to_string(),
-                redirect_uri: format!("{}/profile_url", url),
             };
             let user_profile = UserProfile {
                 email: "test_email".to_string(),
