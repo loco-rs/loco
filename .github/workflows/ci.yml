@@ -79,6 +79,8 @@ jobs:
         run: cargo install sea-orm-cli
       - name: Run cargo test
         uses: actions-rs/cargo@v1
+        env:
+          RUST_TEST_THREADS: 1
         with:
           command: test
           args: --all-features --all

@@ -53,7 +53,7 @@ mod tests {
     fn test_ping() {
         let mut test = Test::new();
 
-        let config = RedisServerConfig::builder().port(6379).build().unwrap();
+        let config = RedisServerConfig::builder().port(9898).build().unwrap();
         test.register(config);
 
         test.run(|instance| async move {
@@ -77,7 +77,7 @@ mod tests {
     fn can_converge() {
         let mut test = Test::new();
 
-        let config = RedisServerConfig::builder().port(6379).build().unwrap();
+        let config = RedisServerConfig::builder().port(9898).build().unwrap();
         test.register(config);
 
         test.run(|instance| async move {
