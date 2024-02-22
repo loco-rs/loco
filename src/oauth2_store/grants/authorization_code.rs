@@ -14,7 +14,7 @@ use subtle::ConstantTimeEq;
 
 use crate::oauth2_store::error::{OAuth2ClientError, OAuth2ClientResult};
 
-/// A credentials struct that holds the OAuth2 client credentials. - For
+/// A credentials struct that holds the `OAuth2` client credentials. - For
 /// [`AuthorizationCodeClient`]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AuthorizationCodeCredentials {
@@ -22,7 +22,7 @@ pub struct AuthorizationCodeCredentials {
     pub client_secret: Option<String>,
 }
 
-/// A url config struct that holds the OAuth2 client related URLs. - For
+/// A url config struct that holds the `OAuth2` client related URLs. - For
 /// [`AuthorizationCodeClient`]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AuthorizationCodeUrlConfig {
@@ -66,14 +66,17 @@ impl AuthorizationCodeClient {
     /// Create a new instance of [`OAuth2Client`].
     /// # Arguments
     /// * `credentials` - A [`AuthorizationCodeCredentials`] struct that holds
-    ///   the OAuth2 client credentials.
+    ///   the `OAuth2` client credentials.
     /// * `config` - A [`AuthorizationCodeUrlConfig`] struct that holds the
-    ///   OAuth2 client related URLs.
+    ///   `OAuth2` client related URLs.
     /// * `timeout_seconds` - An optional timeout in seconds for the csrf token.
     ///   Defaults to 10 minutes (600s).
     /// # Returns
-    /// A Result with the [`AuthorizationCodeClient`] instance or an
-    /// [`OAuth2ClientError`].
+    /// A [`AuthorizationCodeClient`] instance
+    /// # Errors
+    /// [`OAuth2ClientError::UrlError`] if the `auth_url`, `token_url`,
+    /// `redirect_url` or `profile_url` is invalid.
+    ///
     /// # Example
     /// ```rust,ignore
     /// let credentials = AuthorizationCodeCredentials {
@@ -89,7 +92,6 @@ impl AuthorizationCodeClient {
     /// };
     /// let client = AuthorizationCodeClient::new(credentials, config, None)?;
     /// ```
-    #[must_use]
     pub fn new(
         credentials: AuthorizationCodeCredentials,
         config: AuthorizationCodeUrlConfig,
@@ -198,7 +200,6 @@ pub trait AuthorizationCodeGrantTrait: Send + Sync {
     ///     Ok(auth_url)
     /// }
     /// ```
-    #[must_use]
     fn get_authorization_url(&mut self) -> (Url, CsrfToken) {
         let client = self.get_authorization_code_client();
         // Clear outdated flow states
