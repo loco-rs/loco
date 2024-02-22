@@ -7,15 +7,20 @@ cfg_if::cfg_if! {
     } else {}
 
 }
+cfg_if::cfg_if! {
+    if  #[cfg(feature = "oauth2")]{
+        use axum::Router as AxumRouter;
+        use crate::oauth2_store::OAuth2ClientStore;
+        use axum::extract::FromRef;
+        use axum_extra::extract::cookie::Key;
+    }else { }
+}
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use axum::Router as AxumRouter;
 
 #[cfg(feature = "channels")]
 use crate::controller::channels::AppChannels;
-#[cfg(feature = "oauth2")]
-use crate::oauth2_store::OAuth2ClientStore;
 use crate::{
     boot::{BootResult, ServeParams, StartMode},
     config::{self, Config},
@@ -223,6 +228,7 @@ pub trait Initializer: Sync + Send {
         Ok(router)
     }
 }
+
 // implementing FromRef is required here so we can extract substate in Axum
 // read more here: https://docs.rs/axum/latest/axum/extract/trait.FromRef.html
 #[cfg(feature = "oauth2")]
