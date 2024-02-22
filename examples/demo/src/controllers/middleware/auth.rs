@@ -109,22 +109,22 @@ pub fn set_token_with_short_live_cookie(
         .try_into()
         .map_err(|_e| Error::InternalServerError)?;
     // domain
-    let cookie_url = config
+    let protected_url = config
         .cookie_config
         .protected_url
         .clone()
         .unwrap_or("http://localhost:3000/oauth2/protected".to_string());
-    let protected_url = url::Url::parse(&cookie_url).map_err(|_e| Error::InternalServerError)?;
-    let domain = protected_url.domain().unwrap_or("localhost");
-    let path = protected_url.path();
+    let protected_url = url::Url::parse(&protected_url).map_err(|_e| Error::InternalServerError)?;
+    let protected_domain = protected_url.domain().unwrap_or("localhost");
+    let protected_path = protected_url.path();
     // Create the cookie with the session id, domain, path, and secure flag from
     // the token and profile
     let cookie = axum_extra::extract::cookie::Cookie::build((
         COOKIE_NAME,
         token.access_token().secret().to_owned(),
     ))
-    .domain(domain.to_owned())
-    .path(path.to_owned())
+    .domain(protected_domain.to_owned())
+    .path(protected_path.to_owned())
     // secure flag is for https - https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.2.1
     .secure(true)
     // Restrict access in the client side code to prevent XSS attacks

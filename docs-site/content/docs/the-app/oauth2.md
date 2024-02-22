@@ -425,4 +425,4 @@ Let's start with the authorization endpoint. This endpoint is used to redirect t
         }
     }
     ```
-   
+Full example can be found [here](). 
