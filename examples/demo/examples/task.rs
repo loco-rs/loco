@@ -1,10 +1,10 @@
+use std::{collections::BTreeMap, env};
+
 use blo::app::App;
 use loco_rs::{
     boot::{create_context, run_task},
     environment::{resolve_from_env, Environment},
 };
-use std::collections::BTreeMap;
-use std::env;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
