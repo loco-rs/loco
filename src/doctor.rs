@@ -189,7 +189,7 @@ mod tests {
     fn doctor_all_resources_should_pass() {
         let mut test = Test::new();
 
-        let config = RedisServerConfig::builder().port(5552).build().unwrap();
+        let config = RedisServerConfig::builder().port(6378).build().unwrap();
         test.register(config);
 
         let config = PostgresServerConfig::builder()
@@ -216,7 +216,7 @@ mod tests {
     fn db_should_fail() {
         let mut test = Test::new();
 
-        let config = RedisServerConfig::builder().port(5552).build().unwrap();
+        let config = RedisServerConfig::builder().port(6378).build().unwrap();
         test.register(config);
 
         test.run(|instance| async move {
