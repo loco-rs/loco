@@ -32,12 +32,9 @@ use tracing::info;
 
 #[cfg(feature = "oauth2")]
 use crate::oauth2_store::grants::authorization_code::{
-    AuthorizationCodeCredentials, AuthorizationCodeUrlConfig,
+    AuthorizationCodeCookieConfig, AuthorizationCodeCredentials, AuthorizationCodeUrlConfig,
 };
-use crate::{
-    environment::Environment, logger,
-    oauth2_store::grants::authorization_code::AuthorizationCodeCookieConfig, Error, Result,
-};
+use crate::{environment::Environment, logger, Error, Result};
 
 const DEFAULT_SERVER_BINDING: &str = "[::]";
 

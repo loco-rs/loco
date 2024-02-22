@@ -10,8 +10,7 @@ cfg_if::cfg_if! {
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use axum::{extract::FromRef, Router as AxumRouter};
-use axum_extra::extract::cookie::Key;
+use axum::Router as AxumRouter;
 
 #[cfg(feature = "channels")]
 use crate::controller::channels::AppChannels;
