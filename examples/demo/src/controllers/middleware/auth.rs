@@ -1,17 +1,17 @@
 use async_trait::async_trait;
 use axum::{
     extract::{FromRef, FromRequestParts},
-    http::{request::Parts, HeaderMap, StatusCode},
+    http::{request::Parts, StatusCode},
     RequestPartsExt,
 };
-use axum_extra::extract::{cookie::Key, PrivateCookieJar};
+use axum_extra::extract::PrivateCookieJar;
 use loco_rs::{
     app::AppContext,
     config::AuthorizationCodeConfig,
     oauth2_store::{basic::BasicTokenResponse, TokenResponse},
     prelude::*,
-    Error,
 };
+use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
 
 use crate::models::{sessions, users};
@@ -24,10 +24,32 @@ const COOKIE_NAME: &str = "sid";
 pub struct OAuth2CookieUser {
     pub user: users::Model,
 }
+
 impl AsRef<users::Model> for OAuth2CookieUser {
     fn as_ref(&self) -> &users::Model {
         &self.user
     }
+}
+
+async fn validate_session_and_retrieve_user(
+    db: &DatabaseConnection,
+    cookie: &str,
+) -> Result<users::Model> {
+    // Check if the session id is expired or exists
+    let expired = sessions::Model::is_expired(db, cookie).await.map_err(|e| {
+        tracing::info!("Cannot find cookie");
+        Error::Unauthorized(e.to_string())
+    })?;
+    if expired {
+        tracing::info!("Session expired");
+        return Err(Error::Unauthorized("Session expired".to_string()));
+    }
+    users::Model::find_by_session_id(db, cookie)
+        .await
+        .map_err(|e| {
+            tracing::info!("Cannot find user");
+            Error::Unauthorized(e.to_string())
+        })
 }
 
 // Implement the FromRequestParts trait for the OAuthCookieUser struct
@@ -52,21 +74,10 @@ where
                 tracing::info!("Cannot get cookie");
                 (StatusCode::UNAUTHORIZED, "Unauthorized!".to_string())
             })?;
-        // Check if the session id is expired or exists
-        let expired = sessions::Model::is_expired(&state.db, &cookie)
+        let user = validate_session_and_retrieve_user(&state.db, &cookie)
             .await
             .map_err(|e| {
-                tracing::info!("Cannot find cookie");
-                (StatusCode::UNAUTHORIZED, e.to_string())
-            })?;
-        if expired {
-            tracing::info!("Session expired");
-            return Err((StatusCode::UNAUTHORIZED, "Unauthorized!".to_string()));
-        }
-        let user = users::Model::find_by_session_id(&state.db, &cookie)
-            .await
-            .map_err(|e| {
-                tracing::info!("Cannot find user");
+                tracing::info!("Cannot validate session");
                 (StatusCode::UNAUTHORIZED, e.to_string())
             })?;
         Ok(Self { user })

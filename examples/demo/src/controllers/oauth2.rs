@@ -1,13 +1,23 @@
 #![allow(clippy::unused_async)]
 
+use std::sync::Arc;
+
 use axum::{
     extract::Query,
     response::{Html, Redirect},
 };
 use axum_extra::extract::PrivateCookieJar;
 use axum_session::{Session, SessionNullPool};
-use loco_rs::{oauth2_store::oauth2_grant::OAuth2ClientGrantEnum, prelude::*};
+use loco_rs::{
+    config::{AuthorizationCodeConfig, Oauth2},
+    oauth2_store::{
+        grants::authorization_code::AuthorizationCodeGrantTrait,
+        oauth2_grant::OAuth2ClientGrantEnum, OAuth2ClientStore,
+    },
+    prelude::*,
+};
 use serde::Deserialize;
+use tokio::sync::Mutex;
 
 use crate::{
     controllers::middleware::auth::{set_token_with_short_live_cookie, OAuth2CookieUser},
@@ -20,25 +30,46 @@ pub struct AuthParams {
     state: String,
 }
 
+fn get_oauth2_authorization_code_client(
+    oauth_store: &Arc<OAuth2ClientStore>,
+    name: &str,
+) -> Result<Arc<Mutex<dyn AuthorizationCodeGrantTrait>>> {
+    let client = oauth_store.get(name).ok_or_else(|| {
+        tracing::error!("Client not found");
+        Error::InternalServerError
+    })?;
+    match client {
+        OAuth2ClientGrantEnum::AuthorizationCode(client) => Ok(client.clone()),
+        _ => {
+            tracing::error!("Invalid client type");
+            Err(Error::BadRequest("Invalid client type".into()))
+        }
+    }
+}
+
+fn get_oauth2_authorization_code_config(
+    oauth_config: Option<Oauth2>,
+    name: &str,
+) -> Result<AuthorizationCodeConfig> {
+    let oauth_config = oauth_config.ok_or(Error::InternalServerError)?;
+    let oauth_config = oauth_config
+        .authorization_code
+        .iter()
+        .find(|c| c.provider_name == name)
+        .ok_or(Error::InternalServerError)?;
+    Ok(oauth_config.clone())
+}
+
 pub async fn authorization_url(
     State(ctx): State<AppContext>,
     session: Session<SessionNullPool>,
 ) -> Result<Html<String>> {
     let oauth_store = ctx.oauth2.as_ref().unwrap();
 
-    let client = oauth_store.get("google").unwrap();
-    let client = match client {
-        OAuth2ClientGrantEnum::AuthorizationCode(client) => client,
-        _ => {
-            return Err(Error::BadRequest("Invalid client type".into()));
-        }
-    };
-    let client = client.clone();
+    let client = get_oauth2_authorization_code_client(oauth_store, "google")?;
     let mut client = client.lock().await;
     let (auth_url, csrf_token) = client.get_authorization_url();
-    let saved_csrf_token = csrf_token.secret().to_owned();
-
-    session.set("CSRF_TOKEN", saved_csrf_token);
+    session.set("CSRF_TOKEN", csrf_token.secret().to_owned());
 
     Ok(Html::from(format!(
         "<p>Welcome!</p>
@@ -61,24 +92,8 @@ async fn google_callback(
         .oauth2
         .as_ref()
         .ok_or_else(|| Error::InternalServerError)?;
-    let oauth_config = ctx.config.oauth2.ok_or(Error::InternalServerError)?;
-    let oauth_config = oauth_config
-        .authorization_code
-        .iter()
-        .find(|c| c.provider_name == "google")
-        .ok_or(Error::InternalServerError)?;
-    let client = oauth_store.get("google").ok_or_else(|| {
-        tracing::error!("Client not found");
-        Error::InternalServerError
-    })?;
-    let client = match client {
-        OAuth2ClientGrantEnum::AuthorizationCode(client) => client,
-        _ => {
-            tracing::error!("Invalid client type");
-            return Err(Error::BadRequest("Invalid client type".into()));
-        }
-    };
-    let client = client.clone();
+    let oauth_config = get_oauth2_authorization_code_config(ctx.config.oauth2, "google")?;
+    let client = get_oauth2_authorization_code_client(oauth_store, "google")?;
     let mut client = client.lock().await;
     // Get the CSRF token from the session
     let csrf_token = session
@@ -104,7 +119,7 @@ async fn google_callback(
             Error::InternalServerError
         })?;
 
-    let jar = set_token_with_short_live_cookie(oauth_config, token, jar)
+    let jar = set_token_with_short_live_cookie(&oauth_config, token, jar)
         .map_err(|_e| Error::InternalServerError)?;
     let protect_url = &oauth_config
         .cookie_config
