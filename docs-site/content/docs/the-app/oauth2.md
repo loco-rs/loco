@@ -19,6 +19,8 @@ OAuth2 is a protocol that allows a user to grant a third-party web site or appli
 
 Loco supports OAuth2 with the `oauth2` feature. Currently Loco supports the Authorization Code Grant. Client Credentials Grant and Implicit Grant are planned for future releases.
 
+Offical `RFC 6749` OAuth2 documentation can be found [here](https://datatracker.ietf.org/doc/html/rfc6749).\
+Shuttle tutorial can be found [here](https://www.shuttle.rs/blog/2023/08/30/using-oauth-with-axum).
 ## Setup
 
 Add the `oauth2` function as a Hook in the `app.rs` file and import the `oauth2` module from `loco_rs`.
@@ -44,7 +46,7 @@ This hook returns an `OAuth2ClientStore` instance that holds all OAuth2 configur
 | `OAuth2ClientStore`       | Abstraction implementation for managing one or more OAuth2 clients.                                      |
 | `AuthorizationCodeClient` | A client that uses the Authorization Code Grant.                                                         |
 
-### Configure OAuth2 (Authorization Code Grant)
+## Configure OAuth2 (Authorization Code Grant)
 
 OAuth2 Configuration is done in the `config/*.yaml` file. The `oauth2` section is used to configure the OAuth2 clients.
 
@@ -71,7 +73,7 @@ oauth2:
     timeout_seconds: 600 # Optional, default 600 seconds
 ```
 
-### Initialize OAuth2 (Authorization Code Grant)
+## Initialize OAuth2 (Authorization Code Grant)
 Single OAuth2 Authorization Code Client can be initialized with the following hook in `app.rs`:
 
 ```rust
@@ -111,17 +113,17 @@ async fn oauth2(
     Ok(Some(store))
 }
 ```
-### OAuth2 Flow (Authorization Code Grant)
+## OAuth2 Flow (Authorization Code Grant)
 There are 3 entities involved in the OAuth2 Authorization Code Grant flow:
 
 1. Client - `Application server` which requests access to the user's account on the authorization server.
 2. Resource Owner - `User` who owns the account on the authorization server. In your example, this would be a user with a Google Account.
 3. Authorization Server - `Authorization Server` that hosts the user accounts and can grant access tokens to clients on behalf of the users. In this example, this would be Google Cloud.
 
-#### Pre-requisite for the Flow:
+### Pre-requisite for the Flow:
 `Client Registration`: Before the flow starts, the client (application server) must register with the authorization server. During this registration, the client will typically receive a client_id and client_secret, and will provide the authorization server with one or more redirect_uris. This step is crucial for the authorization server to recognize the client and ensure that the authorization code is sent to the correct callback URL, please set up the callback URL in the `authorization/url_config/redirect_url` field.
 
-#### OAuth2 Authorization Code Grant Flow Steps:
+### OAuth2 Authorization Code Grant Flow Steps:
 
 1. Authorization Request: The client directs the user (resource owner) to the authorization server's authorization endpoint. This request includes parameters such as the response_type (set to "code" for the authorization code grant), client_id, redirect_uri, scope (which specifies the level of access that the client is requesting), and an optional state parameter (which serves as a CSRF token).
 
@@ -136,8 +138,8 @@ There are 3 entities involved in the OAuth2 Authorization Code Grant flow:
 
 5. Resource Access: The client uses the access token to access resources on the resource server on behalf of the user.
 
-### Use OAuth2 Example (Authorization Code Grant)
-#### Setup OAuth2 Store
+## Use OAuth2 Example (Authorization Code Grant)
+### Setup OAuth2 Store
 ```rust
 // app.rs
 impl Hooks for App {
@@ -175,7 +177,7 @@ impl Hooks for App {
     }
 }
 ```
-#### Helper Functions
+### Helper Functions
 Here is some helper functions in controller to get the OAuth2 Authorization Code Client and the OAuth2 Authorization Code Config from the OAuth2 configuration.
 ```rust
 // controllers/oauth2.rs
@@ -215,7 +217,7 @@ fn get_oauth2_authorization_code_config(
     Ok(oauth_config.clone())
 }
 ```
-#### OAuth2 Code Flow
+### OAuth2 Code Flow
 The OAuth2 process requires 2 endpoints and one middleware to be set up in the `controllers` and `controllers/middleware` directories.
 
 Let's start with the authorization endpoint. This endpoint is used to redirect the user to the OAuth2 provider's authorization endpoint. The user will authenticate and authorize the client to access their data.
@@ -423,3 +425,4 @@ Let's start with the authorization endpoint. This endpoint is used to redirect t
         }
     }
     ```
+   
