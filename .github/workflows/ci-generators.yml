@@ -105,3 +105,100 @@ jobs:
           LOCO_DEPLOYMENT_KIND: docker
           REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
           DATABASE_URL: postgres://postgress:postgress@localhost:5432/postgress_test
+
+  model_fields_generator:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    strategy:
+      fail-fast: false 
+      matrix:
+        field_type:
+          - uuid
+          - uuid_col!
+          - uuid_col
+          - string
+          - string!
+          - string^
+          - text
+          - text!
+          - tiny_integer
+          - tiny_integer!
+          - tiny_integer^
+          - small_integer
+          - small_integer!
+          - small_integer^
+          - int
+          - int!
+          - int^
+          - big_integer
+          - big_integer!
+          - big_integer^
+          - float
+          - float!
+          - double
+          - double!
+          - decimal
+          - decimal!
+          - decimal_len
+          - decimal_len!
+          - bool
+          - bool!
+          - tstz
+          - tstz!
+          - date
+          - date!
+          - ts
+          - ts!
+          - json
+          - json!
+          - jsonb
+          - jsonb!
+
+    services:
+      redis:
+        image: redis
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - "6379:6379"
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_DB: postgress_test
+          POSTGRES_USER: postgress
+          POSTGRES_PASSWORD: postgress
+        ports:
+          - "5432:5432"
+        # Set health checks to wait until postgres has started
+        options: --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: ${{ env.TOOLCHAIN_PROFILE }}
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          override: true
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install seaorm cli
+        run: cargo install sea-orm-cli
+
+      - name: test ${{ matrix.field_type }} model field type
+        run: cargo run -- generate model post col:${{ matrix.field_type }} && cargo build
+        working-directory: ./examples/demo
+        env:
+          REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
+          DATABASE_URL: postgres://postgress:postgress@localhost:5432/postgress_test
