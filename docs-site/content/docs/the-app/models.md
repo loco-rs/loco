@@ -83,7 +83,9 @@ These fields are ignored if you provide them in your migration command. In addit
 For schema data types, you can use the following mapping to understand the schema:
 
 ```rust
-("uuid", "uuid"),
+("uuid", "uuid_null"),
+("uuid!", "uuid"),
+("uuid^", "uuid_uniq"),
 ("string", "string_null"),
 ("string!", "string"),
 ("string^", "string_uniq"),
@@ -109,8 +111,8 @@ For schema data types, you can use the following mapping to understand the schem
 ("decimal!", "decimal"),
 ("decimal_len", "decimal_len_null"),
 ("decimal_len!", "decimal_len"),
-("bool", "bool_null"),
-("bool!", "bool"),
+("boolean", "boolean_null"),
+("boolean!", "boolean"),
 ("tstz", "timestamptz_null"),
 ("tstz!", "timestamptz"),
 ("date", "date_null"),
@@ -119,8 +121,8 @@ For schema data types, you can use the following mapping to understand the schem
 ("ts!", "timestamp"),
 ("json", "json_null"),
 ("json!", "json"),
-("jsonb", "jsonb_null"),
-("jsonb!", "jsonb"),
+("jsonb", "json_binary_null"),
+("jsonb!", "json_binary"),
 ```
 
 
