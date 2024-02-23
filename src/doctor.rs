@@ -207,6 +207,8 @@ mod tests {
             config.database.uri = postgres.external_auth_url();
             config.redis.as_mut().unwrap().uri = redis.external_url();
 
+            println!("{:#?}", config.redis);
+
             assert_debug_snapshot!(run_all(&config).await);
         });
     }
