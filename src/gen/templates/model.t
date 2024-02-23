@@ -38,7 +38,11 @@ impl MigrationTrait for Migration {
                     .col(pk_auto({{model}}::Id))
                     {% endif -%}
                     {% for column in columns -%}
+                    {% if column.1 == "decimal_len_null" or column.1 == "decimal_len" -%}
+                    .col({{column.1}}({{model}}::{{column.0 | pascal_case }}, 16, 4))
+                    {% else -%}
                     .col({{column.1}}({{model}}::{{column.0 | pascal_case}}))
+                    {% endif -%}
                     {% endfor -%}
                     {% for ref in references -%}
                     .foreign_key(
