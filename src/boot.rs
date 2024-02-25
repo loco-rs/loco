@@ -345,7 +345,7 @@ fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
 pub async fn connect_redis(config: &Config) -> Option<Pool<RedisConnectionManager>> {
     if let Some(redis) = &config.redis {
         let manager = RedisConnectionManager::new(redis.uri.clone()).unwrap();
-        let redis = Pool::builder().max_size(200).build(manager).await.unwrap();
+        let redis = Pool::builder().max_size(1).build(manager).await.unwrap();
         Some(redis)
     } else {
         None
