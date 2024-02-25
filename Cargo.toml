@@ -151,3 +151,4 @@ dockertest-server = { git = "https://github.com/kaplanelad/dockertest-server", f
   "database",
 ] }
 serial_test = "3.0.0"
+redis = { version = "0.24.0", default-features = false }

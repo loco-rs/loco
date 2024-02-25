@@ -119,4 +119,22 @@ mod tests {
             assert!(!res);
         });
     }
+
+    #[test]
+    #[serial]
+    fn test_connection() {
+        let mut test = Test::new();
+
+        let config = RedisServerConfig::builder().port(9898).build().unwrap();
+        test.register(config);
+
+        test.run(|instance| async move {
+            let redis: RedisServer = instance.server();
+
+            let client = redis::Client::open(redis.external_url().as_str()).unwrap();
+            let mut con = client.get_connection().unwrap();
+            let res: String = redis::cmd("PING").query(&mut con).unwrap();
+            assert_eq!(res, "PONG");
+        });
+    }
 }
