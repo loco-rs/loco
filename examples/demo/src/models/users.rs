@@ -134,11 +134,7 @@ impl super::_entities::users::Model {
     pub async fn find_by_pid(db: &DatabaseConnection, pid: &str) -> ModelResult<Self> {
         let parse_uuid = Uuid::parse_str(pid).map_err(|e| ModelError::Any(e.into()))?;
         let user = users::Entity::find()
-            .filter(
-                condition()
-                    .eq(users::Column::ResetToken, parse_uuid)
-                    .build(),
-            )
+            .filter(condition().eq(users::Column::Pid, parse_uuid).build())
             .one(db)
             .await?;
         user.ok_or_else(|| ModelError::EntityNotFound)
