@@ -113,51 +113,6 @@ jobs:
     permissions:
       contents: read
 
-    strategy:
-      fail-fast: false 
-      matrix:
-        field_type:
-          - uuid
-          - uuid_col!
-          - uuid_col
-          - string
-          - string!
-          - string^
-          - text
-          - text!
-          - tiny_integer
-          - tiny_integer!
-          - tiny_integer^
-          - small_integer
-          - small_integer!
-          - small_integer^
-          - int
-          - int!
-          - int^
-          - big_integer
-          - big_integer!
-          - big_integer^
-          - float
-          - float!
-          - double
-          - double!
-          - decimal
-          - decimal!
-          - decimal_len
-          - decimal_len!
-          - bool
-          - bool!
-          - tstz
-          - tstz!
-          - date
-          - date!
-          - ts
-          - ts!
-          - json
-          - json!
-          - jsonb
-          - jsonb!
-
     services:
       redis:
         image: redis
@@ -197,7 +152,49 @@ jobs:
         run: cargo install sea-orm-cli
 
       - name: test ${{ matrix.field_type }} model field type
-        run: cargo run -- generate model post col:${{ matrix.field_type }} && cargo build
+         run: |
+            cargo run -- generate model post \
+                uuid_uniq:uuid \
+                uuid_null:uuid_col \
+                uuid:uuid_col! \
+                string_null:string \
+                string:string! \
+                string_uniq:string^ \
+                text_null:text \
+                text:text! \
+                tiny_integer_null:tiny_integer \
+                tiny_integer:tiny_integer! \
+                tiny_integer_uniq:tiny_integer^ \
+                small_integer_null:small_integer \
+                small_integer:small_integer! \
+                small_integer_uniq:small_integer^ \
+                integer_null:int \
+                integer:int! \
+                integer_uniq:int^ \
+                big_integer_null:big_integer \
+                big_integer:big_integer! \
+                big_integer_uniq:big_integer^ \
+                float_null:float \
+                float:float! \
+                double_null:double \
+                double:double! \
+                decimal_null:decimal \
+                decimal:decimal! \
+                decimal_len_null:decimal_len \
+                decimal_len:decimal_len! \
+                boolean_null:bool \
+                boolean:bool! \
+                timestamp_with_time_zone_null:tstz \
+                timestamp_with_time_zone:tstz! \
+                date_null:date \
+                date:date! \
+                timestamp_null:ts \
+                timestamp:ts! \
+                json_null:json \
+                json:json! \
+                json_binary_null:jsonb \
+                json_binary:jsonb! \
+            && cargo build
         working-directory: ./examples/demo
         env:
           REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
