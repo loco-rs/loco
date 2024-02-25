@@ -346,8 +346,8 @@ pub async fn connect_redis(config: &Config) -> Option<Pool<RedisConnectionManage
     if let Some(redis) = &config.redis {
         let manager = RedisConnectionManager::new(redis.uri.clone()).unwrap();
         let redis = Pool::builder()
-            .max_size(1)
-            .min_idle(Some(1))
+            .max_size(2)
+            // .min_idle(Some(1))
             .build(manager)
             .await
             .unwrap();
