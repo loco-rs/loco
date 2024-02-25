@@ -152,7 +152,7 @@ jobs:
         run: cargo install sea-orm-cli
 
       - name: test ${{ matrix.field_type }} model field type
-         run: |
+        run: |
             cargo run -- generate model post \
                 uuid_uniq:uuid \
                 uuid_null:uuid_col \
