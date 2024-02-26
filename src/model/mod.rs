@@ -2,6 +2,7 @@
 //!
 //! Useful when using `sea_orm` and want to propagate errors
 
+pub mod query;
 use async_trait::async_trait;
 use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};

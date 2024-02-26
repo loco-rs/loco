@@ -1,10 +1,9 @@
 use async_trait::async_trait;
 use chrono::offset::Local;
 use loco_rs::{
-    auth,
-    concern::query::prelude::*,
-    hash,
+    auth, hash,
     model::{Authenticable, ModelError, ModelResult},
+    prelude::model::query::*,
     validation,
     validator::Validate,
 };

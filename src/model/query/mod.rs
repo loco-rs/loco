@@ -80,6 +80,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" = 'loco'"
     ///     );
     /// ````
+    #[must_use]
     pub fn eq<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
         with(self.condition.add(col.eq(value)))
     }
@@ -104,6 +105,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" <> 1"
     ///     );
     /// ````
+    #[must_use]
     pub fn ne<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
         with(self.condition.add(col.ne(value)))
     }
@@ -128,6 +130,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" > 1"
     ///     );
     /// ````
+    #[must_use]
     pub fn gt<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
         with(self.condition.add(col.gt(value)))
     }
@@ -153,6 +156,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" >= 1"
     ///     );
     /// ````
+    #[must_use]
     pub fn gte<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
         with(self.condition.add(col.gte(value)))
     }
@@ -178,6 +182,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" < 1"
     ///     );
     /// ````
+    #[must_use]
     pub fn lt<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
         with(self.condition.add(col.lt(value)))
     }
@@ -203,6 +208,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" <= 1"
     ///     );
     /// ````
+    #[must_use]
     pub fn lte<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
         with(self.condition.add(col.lte(value)))
     }
@@ -228,6 +234,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" BETWEEN 1 AND 2"
     ///     );
     /// ````
+    #[must_use]
     pub fn between<T: ColumnTrait, V: Into<Value>>(self, col: T, a: V, b: V) -> Self {
         with(self.condition.add(col.between(a, b)))
     }
@@ -253,6 +260,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" NOT BETWEEN 1 AND 2"
     ///     );
     /// ````
+    #[must_use]
     pub fn not_between<T: ColumnTrait, V: Into<Value>>(self, col: T, a: V, b: V) -> Self {
         with(self.condition.add(col.not_between(a, b)))
     }
@@ -278,6 +286,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" LIKE '%lo'"
     ///     );
     /// ````
+    #[must_use]
     pub fn like<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
         with(self.condition.add(col.like(a)))
     }
@@ -303,6 +312,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" NOT LIKE '%lo'"
     ///     );
     /// ````
+    #[must_use]
     pub fn not_like<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
         with(self.condition.add(col.not_like(a)))
     }
@@ -328,6 +338,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" LIKE 'lo%'"
     ///     );
     /// ````
+    #[must_use]
     pub fn starts_with<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
         with(self.condition.add(col.starts_with(a)))
     }
@@ -353,6 +364,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" LIKE '%lo'"
     ///     );
     /// ````
+    #[must_use]
     pub fn ends_with<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
         with(self.condition.add(col.ends_with(a)))
     }
@@ -378,6 +390,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" LIKE '%lo%'"
     ///     );
     /// ````
+    #[must_use]
     pub fn contains<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
         with(self.condition.add(col.contains(a)))
     }
@@ -403,6 +416,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" IS NULL"
     ///     );
     /// ````
+    #[must_use]
     #[allow(clippy::wrong_self_convention)]
     pub fn is_null<T: ColumnTrait>(self, col: T) -> Self {
         with(self.condition.add(col.is_null()))
@@ -429,6 +443,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" IS NOT NULL"
     ///     );
     /// ````
+    #[must_use]
     #[allow(clippy::wrong_self_convention)]
     pub fn is_not_null<T: ColumnTrait>(self, col: T) -> Self {
         with(self.condition.add(col.is_not_null()))
@@ -464,10 +479,12 @@ impl ConditionBuilder {
     ///     query_str,
     ///     "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"created_at\" BETWEEN '2024-03-01 22:10:57' AND '2024-03-25 22:10:57'" );
     /// ````
+    #[must_use]
     pub fn date_range<T: ColumnTrait>(self, col: T) -> date_range::DateRangeBuilder<T> {
         date_range::DateRangeBuilder::new(self, col)
     }
 
+    #[must_use]
     pub fn build(&self) -> Condition {
         self.condition.clone().into_condition()
     }

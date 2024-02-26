@@ -68,7 +68,7 @@ mod tests {
 
     use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
 
-    use crate::{concern::query::prelude::*, tests_cfg::db::*};
+    use crate::{prelude::model::query::*, tests_cfg::db::*};
 
     #[test]
     fn condition_date_range_from() {

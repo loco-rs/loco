@@ -26,3 +26,8 @@ pub use crate::{
     worker::{self, AppWorker},
     Result,
 };
+
+#[cfg(feature = "with-db")]
+pub mod model {
+    pub use crate::model::query;
+}

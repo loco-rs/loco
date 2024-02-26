@@ -3,11 +3,11 @@
 #![allow(clippy::unused_async)]
 use axum::{extract::Query, response::IntoResponse};
 use loco_rs::{
-    concern::{pagination, query::prelude::*},
+    concern::pagination,
     controller::views::pagination::Pager,
-    prelude::*,
+    prelude::{model::query::*, *},
 };
-use sea_orm::{ColumnTrait, Condition};
+use sea_orm::Condition;
 use serde::{Deserialize, Serialize};
 
 use crate::{
