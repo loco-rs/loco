@@ -34,12 +34,12 @@ $ cargo loco routes
  .
  .
  .
-[POST] /auth/forgot
-[POST] /auth/login
-[POST] /auth/register
-[POST] /auth/reset
-[POST] /auth/verify
-[GET] /user/current
+[POST] /api/auth/forgot
+[POST] /api/auth/login
+[POST] /api/auth/register
+[POST] /api/auth/reset
+[POST] /api/auth/verify
+[GET] /api/user/current
  .
  .
  .
@@ -47,12 +47,12 @@ $ cargo loco routes
 
 ### Registering a New User
 
-The `/auth/register` endpoint creates a new user in the database with an `email_verification_token` for account verification. A welcome email is sent to the user with a verification link.
+The `/api/auth/register` endpoint creates a new user in the database with an `email_verification_token` for account verification. A welcome email is sent to the user with a verification link.
 
 ##### Example Curl Request:
 
 ```sh
-curl --location '127.0.0.1:3000/auth/register' \
+curl --location '127.0.0.1:3000/api/auth/register' \
      --header 'Content-Type: application/json' \
      --data-raw '{
          "name": "Loco user",
@@ -70,7 +70,7 @@ After registering a new user, use the following request to log in:
 ##### Example Curl Request:
 
 ```sh
-curl --location '127.0.0.1:3000/auth/login' \
+curl --location '127.0.0.1:3000/api/auth/login' \
      --header 'Content-Type: application/json' \
      --data-raw '{
          "email": "user@loco.rs",
@@ -101,7 +101,7 @@ Upon user registration, an email with a verification link is sent. Visiting this
 #### Example Curl request:
 
 ```sh
-curl --location '127.0.0.1:3000/auth/verify' \
+curl --location '127.0.0.1:3000/api/auth/verify' \
      --header 'Content-Type: application/json' \
      --data '{
          "token": "TOKEN"
@@ -117,7 +117,7 @@ The `forgot` endpoint requires only the user's email in the payload. An email is
 ##### Example Curl request:
 
 ```sh
-curl --location '127.0.0.1:3000/auth/forgot' \
+curl --location '127.0.0.1:3000/api/auth/forgot' \
      --header 'Content-Type: application/json' \
      --data-raw '{
          "email": "user@loco.rs"
@@ -131,7 +131,7 @@ To reset the password, send the token generated in the `forgot` endpoint along w
 ##### Example Curl request:
 
 ```sh
-curl --location '127.0.0.1:3000/auth/reset' \
+curl --location '127.0.0.1:3000/api/auth/reset' \
      --header 'Content-Type: application/json' \
      --data '{
          "token": "TOKEN",
