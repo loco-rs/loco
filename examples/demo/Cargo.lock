@@ -2615,6 +2615,7 @@ dependencies = [
  "sea-orm",
  "sea-orm-migration",
  "serde",
+ "serde_enabled",
  "serde_json",
  "serde_variant",
  "serde_yaml",
@@ -4140,6 +4141,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.48",
+]
+
+[[package]]
+name = "serde_enabled"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13de72cc94bee503ddaf3ac49878fa81e30030bdf1adc6940fee5579430286f7"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
