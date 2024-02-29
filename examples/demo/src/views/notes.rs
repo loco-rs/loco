@@ -1,30 +1,43 @@
-use loco_rs::controller::views::pagination::PaginationResponseTrait;
-use sea_orm::EntityTrait;
+use loco_rs::{
+    controller::views::pagination::{Pager, PagerMeta},
+    prelude::model::query::*,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::models::_entities::notes;
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct ListResponse {
+pub struct NoteResponse {
     title: Option<String>,
     content: Option<String>,
 }
 
-impl PaginationResponseTrait for ListResponse {
-    type Model = crate::models::_entities::notes::Entity;
-    type ResponseType = Self;
+#[derive(Debug, Deserialize, Serialize)]
+pub struct PaginationResponse {}
 
-    fn list(models: Vec<<Self::Model as EntityTrait>::Model>) -> Vec<Self::ResponseType> {
-        models.into_iter().map(|a| Self::new(&a)).collect()
+impl From<notes::Model> for NoteResponse {
+    fn from(note: notes::Model) -> Self {
+        Self {
+            title: note.title.clone(),
+            content: note.content,
+        }
     }
 }
 
-impl ListResponse {
+impl PaginationResponse {
     #[must_use]
-    pub fn new(note: &notes::Model) -> Self {
-        Self {
-            title: note.title.clone(),
-            content: note.content.clone(),
+    pub fn response(data: pagination::PaginatedResponse<notes::Model>) -> Pager<Vec<NoteResponse>> {
+        Pager {
+            results: data
+                .rows
+                .into_iter()
+                .map(NoteResponse::from)
+                .collect::<Vec<NoteResponse>>(),
+            info: PagerMeta {
+                page: data.info.page,
+                page_size: data.info.page_size,
+                total_pages: data.info.total_pages,
+            },
         }
     }
 }

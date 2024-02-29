@@ -59,7 +59,7 @@ impl<T: ColumnTrait> DateRangeBuilder<T> {
                 .condition
                 .add(self.col.between(from, to)),
         };
-        with(con)
+        with(con, self.condition_builder.pagination_query)
     }
 }
 

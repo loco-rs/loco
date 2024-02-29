@@ -2,18 +2,14 @@
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
 use axum::{extract::Query, response::IntoResponse};
-use loco_rs::{
-    concern::pagination,
-    controller::views::pagination::Pager,
-    prelude::{model::query::*, *},
-};
+use loco_rs::prelude::{model::query::*, *};
 use sea_orm::Condition;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     common,
     models::_entities::notes::{ActiveModel, Column, Entity, Model},
-    views::notes::ListResponse,
+    views::notes::PaginationResponse,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -27,7 +23,7 @@ pub struct ListQueryParams {
     pub title: Option<String>,
     pub content: Option<String>,
     #[serde(flatten)]
-    pub pagination: pagination::PaginationFilter,
+    pub pagination: pagination::PaginationQuery,
 }
 
 impl Params {
@@ -46,15 +42,8 @@ pub async fn list(
     State(ctx): State<AppContext>,
     Query(params): Query<ListQueryParams>,
 ) -> Result<impl IntoResponse> {
-    let notes_query = Entity::find();
-
-    let notes: Pager<Vec<ListResponse>> =
-        pagination::view::<ListResponse, crate::models::_entities::notes::Entity>(
-            &ctx.db,
-            notes_query,
-            Some(params.into_query()),
-            &params.pagination,
-        )
+    let paginated_notes = with(params.into_query(), params.pagination)
+        .paginate::<Entity>(&ctx.db)
         .await?;
 
     if let Some(settings) = &ctx.config.settings {
@@ -68,7 +57,7 @@ pub async fn list(
             cookie::Cookie::new("baz", "qux"),
         ])?
         .etag("foobar")?
-        .json(notes)
+        .json(PaginationResponse::response(paginated_notes))
 }
 
 pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Json<Model>> {

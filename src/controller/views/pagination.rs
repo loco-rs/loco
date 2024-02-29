@@ -1,6 +1,10 @@
 use sea_orm::EntityTrait;
 use serde::{Deserialize, Serialize};
 
+#[deprecated(
+    since = "0.3.2",
+    note = "reshape pagination functionality by moving under models. read more https://loco.rs/docs/the-app/pagination"
+)]
 pub trait PaginationResponseTrait {
     type Model: EntityTrait;
     type ResponseType;
@@ -9,13 +13,14 @@ pub trait PaginationResponseTrait {
     where
         Self: Sized;
 }
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Pager<T> {
     #[serde(rename(serialize = "results"))]
     pub results: T,
 
     #[serde(rename(serialize = "pagination"))]
-    pub pagination: PagerMeta,
+    pub info: PagerMeta,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -33,7 +38,7 @@ impl<T> Pager<T> {
     pub const fn new(results: T, meta: PagerMeta) -> Self {
         Self {
             results,
-            pagination: meta,
+            info: meta,
         }
     }
 }
