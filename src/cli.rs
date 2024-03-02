@@ -283,7 +283,7 @@ pub async fn playground<H: Hooks>() -> Result<AppContext> {
 /// ```
 #[cfg(feature = "with-db")]
 pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
-    let cli = Cli::parse();
+    let cli: Cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
     let config = environment.load()?;
@@ -291,6 +291,9 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
     if !H::init_logger(&config, &environment)? {
         logger::init::<H>(&config.logger);
     }
+
+    let task_span = create_root_span(&environment);
+    let _guard = task_span.enter();
 
     match cli.command {
         Commands::Start {
@@ -371,6 +374,9 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
         logger::init::<H>(&config.logger);
     }
 
+    let task_span = create_root_span(&environment);
+    let _guard = task_span.enter();
+
     match cli.command {
         Commands::Start {
             worker,
@@ -424,4 +430,8 @@ fn show_list_endpoints<H: Hooks>(ctx: &AppContext) {
     for router in routes {
         println!("{}", router.to_string());
     }
+}
+
+fn create_root_span(environment: &Environment) -> tracing::Span {
+    tracing::span!(tracing::Level::DEBUG, "app", environment = %environment)
 }
