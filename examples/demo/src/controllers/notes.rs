@@ -2,7 +2,7 @@
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
 use axum::{extract::Query, response::IntoResponse};
-use loco_rs::prelude::{model::query::*, *};
+use loco_rs::prelude::*;
 use sea_orm::Condition;
 use serde::{Deserialize, Serialize};
 
@@ -23,7 +23,7 @@ pub struct ListQueryParams {
     pub title: Option<String>,
     pub content: Option<String>,
     #[serde(flatten)]
-    pub pagination: pagination::PaginationQuery,
+    pub pagination: model::query::PaginationQuery,
 }
 
 impl Params {
@@ -42,8 +42,11 @@ pub async fn list(
     State(ctx): State<AppContext>,
     Query(params): Query<ListQueryParams>,
 ) -> Result<impl IntoResponse> {
-    let paginated_notes = with(params.into_query(), params.pagination)
-        .paginate::<Entity>(&ctx.db)
+    let paginated_notes = model::query::exec(&ctx.db)
+        .condition_builder(model::query::dsl::with(params.into_query()))
+        .page(params.pagination.page)
+        .page_size(params.pagination.page_size)
+        .paginate::<Entity>()
         .await?;
 
     if let Some(settings) = &ctx.config.settings {
@@ -93,7 +96,7 @@ pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Resu
 impl ListQueryParams {
     #[must_use]
     pub fn into_query(&self) -> Condition {
-        let mut condition = condition();
+        let mut condition = model::query::dsl::condition();
 
         if let Some(title) = &self.title {
             condition = condition.like(Column::Title, title);

@@ -1,6 +1,6 @@
 use loco_rs::{
     controller::views::pagination::{Pager, PagerMeta},
-    prelude::model::query::*,
+    prelude::model::query::PaginatedResponse,
 };
 use serde::{Deserialize, Serialize};
 
@@ -26,7 +26,7 @@ impl From<notes::Model> for NoteResponse {
 
 impl PaginationResponse {
     #[must_use]
-    pub fn response(data: pagination::PaginatedResponse<notes::Model>) -> Pager<Vec<NoteResponse>> {
+    pub fn response(data: PaginatedResponse<notes::Model>) -> Pager<Vec<NoteResponse>> {
         Pager {
             results: data
                 .rows
