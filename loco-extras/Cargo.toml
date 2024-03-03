@@ -23,6 +23,8 @@ default-features = false
 
 [features]
 default = []
-full = ["initializer-prometheus"]
+full = ["initializer-prometheus", "layer-db", "layer-multi-db"]
 
 initializer-prometheus = ["dep:axum-prometheus"]
+layer-db = []
+layer-multi-db = []
