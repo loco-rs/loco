@@ -39,17 +39,18 @@
 //!
 //! ### Customization
 //!
-//! The extras initializers are intentionally not designed for extensive
+//! The extras layers are intentionally not designed for extensive
 //! modifications. The concept is to use them as-is without complexity. If you
-//! need to customize the initializers, copy the relevant file from the
+//! need to customize the layer, copy the relevant file from the
 //! `loco_extras` project into your app, adapt it to your requirements, and
 //! update the hook to reference the new source.
 //!
 //! ### Extra Database connection:
 //!```rust
 #![doc = include_str!("././db.rs")]
+//!````
 //! ### Extra Multiple Database Connections:
-//!```rust
+//! ```rust
 #![doc = include_str!("././multi_db.rs")]
 //!````
 #[cfg(feature = "layer-db")]
