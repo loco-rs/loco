@@ -15,11 +15,12 @@
 //! pub async fn data() {
 //!     let db = dummy_connection().await;
 //!     let condition_builder = query::dsl::condition().eq(test_db::Column::Name, "loco");
-//!     let res = query::exec(&db).condition_builder(condition_builder).page(1).page_size(100).paginate::<test_db::Entity>().await;
+//!     let res = query::exec::<test_db::Entity>(&db).condition_builder(condition_builder).page(1).page_size(100).paginate().await;
 //! }
 //! ```
 pub mod pagination;
 use sea_orm::{DatabaseConnection, EntityTrait};
+use std::marker::PhantomData;
 
 use super::dsl;
 use crate::{
@@ -27,18 +28,28 @@ use crate::{
     Result as LocoResult,
 };
 
-pub struct ExecBuilder<'a> {
+pub struct ExecBuilder<'a, E>
+where
+    E: EntityTrait,
+    <E as EntityTrait>::Model: Sync,
+{
     db: &'a DatabaseConnection,
     condition_builder: Option<dsl::ConditionBuilder>,
     pagination: PaginationQuery,
+    marker: PhantomData<E>,
 }
 
 #[must_use]
-pub fn exec(db: &DatabaseConnection) -> ExecBuilder<'_> {
+pub fn exec<E>(db: &DatabaseConnection) -> ExecBuilder<'_, E>
+where
+    E: EntityTrait,
+    <E as EntityTrait>::Model: Sync,
+{
     ExecBuilder {
         db,
         condition_builder: None,
         pagination: PaginationQuery::default(),
+        marker: PhantomData,
     }
 }
 
@@ -52,10 +63,14 @@ pub fn exec(db: &DatabaseConnection) -> ExecBuilder<'_> {
 /// pub async fn data() {
 ///   let db = dummy_connection().await;
 ///   let condition_builder = query::dsl::condition().eq(test_db::Column::Name, "loco");  
-///   let res = query::exec(&db).condition_builder(condition_builder).page(1).page_size(100).paginate::<test_db::Entity>().await;
+///   let res = query::exec::<test_db::Entity>(&db).condition_builder(condition_builder).page(1).page_size(100).paginate().await;
 /// }
 /// ```
-impl ExecBuilder<'_> {
+impl<'a, E> ExecBuilder<'a, E>
+where
+    E: EntityTrait,
+    <E as EntityTrait>::Model: Sync,
+{
     /// Set the query DSL condition builder for filtering results.
     ///
     /// # Examples
@@ -66,7 +81,7 @@ impl ExecBuilder<'_> {
     /// async fn example() {
     ///     let db = dummy_connection().await;
     ///     let condition_builder = query::dsl::condition().eq(test_db::Column::Name, "loco");
-    ///     let res = query::exec(&db).condition_builder(condition_builder).paginate::<test_db::Entity>().await;;
+    ///     let res = query::exec::<test_db::Entity>(&db).condition_builder(condition_builder).paginate().await;;
     /// }
     /// ```
     pub fn condition_builder(mut self, condition_builder: dsl::ConditionBuilder) -> Self {
@@ -83,7 +98,7 @@ impl ExecBuilder<'_> {
     /// use loco_rs::prelude::model::*;
     /// async fn example() {
     ///     let db = dummy_connection().await;
-    ///     let res = query::exec(&db).page(1).paginate::<test_db::Entity>().await;;
+    ///     let res = query::exec::<test_db::Entity>(&db).page(1).paginate().await;;
     /// }
     /// ```
     pub fn page(mut self, page: u64) -> Self {
@@ -100,7 +115,7 @@ impl ExecBuilder<'_> {
     /// use loco_rs::prelude::model::*;
     /// async fn example() {
     ///     let db = dummy_connection().await;
-    ///     let res = query::exec(&db).page_size(100).paginate::<test_db::Entity>().await;;
+    ///     let res = query::exec::<test_db::Entity>(&db).page_size(100).paginate().await;;
     /// }
     /// ```
     pub fn page_size(mut self, page_size: u64) -> Self {
@@ -118,14 +133,10 @@ impl ExecBuilder<'_> {
     /// async fn example() {
     ///     let db = dummy_connection().await;
     ///     let condition_builder = query::dsl::condition().eq(test_db::Column::Name, "loco");
-    ///     let res = query::exec(&db).condition_builder(condition_builder).page(2).page_size(100).paginate::<test_db::Entity>().await;;
+    ///     let res = query::exec::<test_db::Entity>(&db).condition_builder(condition_builder).page(2).page_size(100).paginate().await;;
     /// }
     /// ```
-    pub async fn paginate<E>(&self) -> LocoResult<PaginatedResponse<E::Model>>
-    where
-        E: EntityTrait,
-        <E as EntityTrait>::Model: Sync,
-    {
+    pub async fn paginate(&self) -> LocoResult<PaginatedResponse<E::Model>> {
         let filters = self
             .condition_builder
             .as_ref()
