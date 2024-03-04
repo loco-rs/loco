@@ -42,12 +42,18 @@ pub async fn list(
     State(ctx): State<AppContext>,
     Query(params): Query<ListQueryParams>,
 ) -> Result<impl IntoResponse> {
-    let paginated_notes = model::query::exec::<Entity>(&ctx.db)
-        .condition_builder(model::query::dsl::with(params.into_query()))
-        .page(params.pagination.page)
-        .page_size(params.pagination.page_size)
-        .paginate()
-        .await?;
+    let pagination_query = model::query::PaginationQuery {
+        page_size: params.pagination.page_size,
+        page: params.pagination.page,
+    };
+
+    let paginated_notes = model::query::exec::paginate(
+        &ctx.db,
+        Entity::find(),
+        Some(model::query::dsl::with(params.into_query()).build()),
+        &pagination_query,
+    )
+    .await?;
 
     if let Some(settings) = &ctx.config.settings {
         let settings = common::settings::Settings::from_json(settings)?;

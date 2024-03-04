@@ -1,9 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 pub mod dsl;
-mod exec;
-
-pub use exec::exec;
+pub mod exec;
 
 /// Set the default pagination page size.
 const fn default_page_size() -> u64 {

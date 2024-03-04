@@ -1,5 +1,5 @@
 use sea_orm::{
-    sea_query::{IntoCondition, Order, SimpleExpr},
+    sea_query::{IntoCondition, Order},
     ColumnTrait, Condition, Value,
 };
 use serde::{Deserialize, Serialize};
@@ -30,11 +30,6 @@ impl SortDirection {
             Self::Asc => Order::Asc,
         }
     }
-}
-
-pub struct SortBy {
-    pub expr: SimpleExpr,
-    pub direction: SortDirection,
 }
 
 #[must_use]
@@ -513,156 +508,6 @@ impl ConditionBuilder {
     pub fn date_range<T: ColumnTrait>(self, col: T) -> date_range::DateRangeBuilder<T> {
         date_range::DateRangeBuilder::new(self, col)
     }
-
-    // /// Adding page size for paging query. default is
-    // [`pagination::default_page_size`] ///
-    // /// # Examples
-    // ///
-    // /// ```
-    // /// use loco_rs::tests_cfg::db::*;
-    // /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    // /// use loco_rs::prelude::*;
-    // ///
-    // /// async fn example() {
-    // ///     let db = dummy_connection().await;
-    // ///     let res = condition()
-    // ///         .page_size(100)
-    // ///         .paginate::<test_db::Entity>(&db).await;
-    // /// }
-    // /// ````
-    // #[must_use]
-    // pub fn page_size(self, size: u64) -> Self {
-    //     let mut pagination_query = self.pagination_query;
-    //     pagination_query.page_size = size;
-    //     with(self.condition, pagination_query)
-    // }
-
-    // /// Adding page for paging query. default is [`pagination::default_page`]
-    // ///
-    // /// # Examples
-    // ///
-    // /// ```
-    // /// use loco_rs::tests_cfg::db::*;
-    // /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    // /// use loco_rs::prelude::*;
-    // ///
-    // /// async fn example() {
-    // ///     let db = dummy_connection().await;
-    // ///     let res = condition()
-    // ///         .page(2)
-    // ///         .paginate::<test_db::Entity>(&db).await;
-    // /// }
-    // /// ````
-    // #[must_use]
-    // pub fn page(self, page: u64) -> Self {
-    //     let mut pagination_query = self.pagination_query;
-    //     pagination_query.page = page;
-    //     with(self.condition, pagination_query)
-    // }
-
-    // /// Setting pagination query struct
-    // ///
-    // /// # Examples
-    // ///
-    // /// ```
-    // /// use loco_rs::tests_cfg::db::*;
-    // /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    // /// use loco_rs::prelude::*;
-    // ///
-    // /// async fn example() {
-    // ///     let db = dummy_connection().await;
-    // ///     let pagination_query = pagination::PaginationQuery {
-    // ///         page_size: 100,
-    // ///         page: 1,
-    // ///     };
-    // ///     let res = condition()
-    // ///         .pagination_query(pagination_query)
-    // ///         .paginate::<test_db::Entity>(&db).await;
-    // /// }
-    // /// ````
-    // #[must_use]
-    // pub fn pagination_query(self, pagination_query: pagination::PaginationQuery)
-    // -> Self {     with(self.condition, pagination_query)
-    // }
-
-    // /// Execute the pagination query with the builder arguments
-    // ///
-    // /// # Errors
-    // /// When could not execute the query
-    // ///
-    // /// # Examples
-    // ///
-    // /// ```
-    // /// use loco_rs::tests_cfg::db::*;
-    // /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    // /// use loco_rs::prelude::*;
-    // ///
-    // /// async fn example() {
-    // ///     let db = dummy_connection().await;
-    // ///     let res = condition()
-    // ///         .contains(test_db::Column::Name, "Loco")
-    // ///         .page_size(100)
-    // ///         .paginate::<test_db::Entity>(&db).await;
-    // /// }
-    // /// ````
-    // pub async fn paginate<E>(
-    //     &self,
-    //     db: &DatabaseConnection,
-    // ) -> LocoResult<pagination::PaginatedResponse<E::Model>>
-    // where
-    //     E: EntityTrait,
-    //     <E as EntityTrait>::Model: Sync,
-    // {
-    //     let filters = self.build();
-
-    //     let notes_entity = E::find();
-    //     let paginated_response =
-    //         pagination::paginate::<E>(db, notes_entity, Some(filters),
-    // &self.pagination_query)             .await?;
-
-    //     Ok(paginated_response)
-    // }
-
-    // /// Execute the pagination query with sorting
-    // ///
-    // /// # Errors
-    // /// When could not execute the query
-    // ///
-    // /// # Examples
-    // ///
-    // /// ```
-    // /// use loco_rs::tests_cfg::db::*;
-    // /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    // /// use loco_rs::prelude::*;
-    // ///
-    // /// async fn example() {
-    // ///     let db = dummy_connection().await;
-    // ///     let res = condition()
-    // ///         .contains(test_db::Column::Name, "Loco")
-    // ///         .page_size(100)
-    // ///         .paginate_with_order::<test_db::Entity, test_db::Column>(&db,
-    // test_db::Column::Name, SortDirection::Desc).await; /// }
-    // /// ````
-    // pub async fn paginate_with_order<E, C>(
-    //     &self,
-    //     db: &DatabaseConnection,
-    //     col: C,
-    //     direction: SortDirection,
-    // ) -> LocoResult<pagination::PaginatedResponse<E::Model>>
-    // where
-    //     E: EntityTrait,
-    //     <E as EntityTrait>::Model: Sync,
-    //     C: ColumnTrait,
-    // {
-    //     let filters = self.build();
-
-    //     let notes_entity = E::find().order_by(col, direction.order());
-    //     let paginated_response =
-    //         pagination::paginate::<E>(db, notes_entity, Some(filters),
-    // &self.pagination_query)             .await?;
-
-    //     Ok(paginated_response)
-    // }
 
     #[must_use]
     pub fn build(&self) -> Condition {
