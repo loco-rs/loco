@@ -28,6 +28,7 @@ use axum_extra::extract::cookie::Cookie;
 use bytes::{BufMut, BytesMut};
 use hyper::{header, StatusCode};
 use serde::Serialize;
+use serde_json::json;
 
 use super::views::ViewRenderer;
 use crate::{controller::Json, Result};
@@ -104,6 +105,14 @@ pub fn json<T>(t: T) -> Result<Json<T>> {
     Ok(Json(t))
 }
 
+/// Respond with empty json (`{}`)
+///
+/// # Errors
+///
+/// This function will return an error if serde fails
+pub fn empty_json() -> Result<Json<serde_json::Value>> {
+    Ok(Json(json!({})))
+}
 /// Returns an HTML response
 ///
 /// # Example:

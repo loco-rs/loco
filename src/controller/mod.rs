@@ -124,6 +124,15 @@ pub fn unauthorized<T>(msg: &str) -> Result<T> {
     Err(Error::Unauthorized(msg.to_string()))
 }
 
+/// Return a bad request with a message
+///
+/// # Errors
+///
+/// This function will return an error result
+pub fn bad_request<T>(msg: &str) -> Result<T> {
+    Err(Error::BadRequest(msg.to_string()))
+}
+
 /// return not found status code
 ///
 /// # Errors
