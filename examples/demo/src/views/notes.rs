@@ -6,6 +6,7 @@ use crate::models::_entities::notes;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ListResponse {
+    id: i32,
     title: Option<String>,
     content: Option<String>,
 }
@@ -23,6 +24,7 @@ impl ListResponse {
     #[must_use]
     pub fn new(note: &notes::Model) -> Self {
         Self {
+            id: note.id,
             title: note.title.clone(),
             content: note.content.clone(),
         }

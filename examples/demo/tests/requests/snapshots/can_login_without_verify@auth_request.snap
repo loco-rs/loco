@@ -4,5 +4,5 @@ expression: "(response.status_code(), response.text())"
 ---
 (
     200,
-    "{\"token\":\"TOKEN\",\"pid\":\"PID\",\"name\":\"loco\",\"is_verified\":false}",
+    "{\"token\":\"TOKEN\",\"user\":{\"pid\":\"PID\",\"email\":\"test@loco.com\",\"name\":\"loco\",\"last_login\":\"n/a\"}}",
 )
