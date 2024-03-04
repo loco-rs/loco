@@ -76,9 +76,9 @@ jobs:
       postgres:
         image: postgres
         env:
-          POSTGRES_DB: postgress_test
-          POSTGRES_USER: postgress
-          POSTGRES_PASSWORD: postgress
+          POSTGRES_DB: postgres_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
         ports:
           - "5432:5432"
         # Set health checks to wait until postgres has started
@@ -104,5 +104,5 @@ jobs:
           args: --all-features --all
         env:
           REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
-          DATABASE_URL: postgres://postgress:postgress@localhost:5432/postgress_test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres_test
           

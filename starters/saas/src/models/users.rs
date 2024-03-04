@@ -71,7 +71,7 @@ impl Authenticable for super::_entities::users::Model {
     }
 
     async fn find_by_claims_key(db: &DatabaseConnection, claims_key: &str) -> ModelResult<Self> {
-        super::_entities::users::Model::find_by_pid(db, claims_key).await
+        Self::find_by_pid(db, claims_key).await
     }
 }
 

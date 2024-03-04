@@ -2,6 +2,9 @@
 
 ## vNext
 
+* Fix generatore fields types + adding tests. [https://github.com/loco-rs/loco/pull/459](https://github.com/loco-rs/loco/pull/459)
+* Fix channeld cors. [https://github.com/loco-rs/loco/pull/430](https://github.com/loco-rs/loco/pull/430)
+
 ## 0.3.1
 
 * **Breaking changes** Upgrade sea-orm to v1.0.0-rc.1. [https://github.com/loco-rs/loco/pull/420](https://github.com/loco-rs/loco/pull/420)

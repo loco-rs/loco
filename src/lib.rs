@@ -70,6 +70,8 @@ pub mod worker;
 
 #[cfg(feature = "channels")]
 pub use socketioxide;
+#[cfg(feature = "testing")]
+pub mod tests_cfg;
 pub use validator;
 
 /// Application results options list

@@ -2,7 +2,11 @@
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
 use axum::{extract::Query, response::IntoResponse};
-use loco_rs::{concern::pagination, controller::views::pagination::Pager, prelude::*};
+use loco_rs::{
+    concern::{pagination, query::prelude::*},
+    controller::views::pagination::Pager,
+    prelude::*,
+};
 use sea_orm::{ColumnTrait, Condition};
 use serde::{Deserialize, Serialize};
 
@@ -98,16 +102,17 @@ pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Resu
 }
 
 impl ListQueryParams {
+    #[must_use]
     pub fn into_query(&self) -> Condition {
-        let mut condition = Condition::all();
+        let mut condition = condition();
+
         if let Some(title) = &self.title {
-            condition = condition.add(Column::Title.like(title));
+            condition = condition.like(Column::Title, title);
         }
         if let Some(content) = &self.content {
-            condition = condition.add(Column::Content.like(content));
+            condition = condition.like(Column::Content, content);
         }
-
-        condition
+        condition.build()
     }
 }
 
