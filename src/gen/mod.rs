@@ -115,10 +115,9 @@ pub enum Component {
     },
     Deployment {},
 }
-
+#[allow(clippy::too_many_lines)]
 pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
     let rrgen = RRgen::default();
-
     match component {
         #[cfg(feature = "with-db")]
         Component::Model {
@@ -137,7 +136,7 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
             println!(
                 "{}",
                 scaffold::generate::<H>(&rrgen, &name, &fields, &kind)?
-            )
+            );
         }
         #[cfg(feature = "with-db")]
         Component::Migration { name } => {
