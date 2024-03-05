@@ -8,7 +8,6 @@ message: "{{file_name}} list view was added successfully."
 <html lang="en">
 
 <head>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
 
 <body>

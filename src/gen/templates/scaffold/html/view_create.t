@@ -8,13 +8,11 @@ message: "{{file_name}} create view was added successfully."
 <html lang="en">
 
 <head>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
 </head>
 
 <body>
     <h1>Create new {{name}}</h1>
-    <form hx-post="/api/{{name | plural}}" hx-ext="json-enc">
+    <form action="/api/{{name | plural}}" method="post">
      {% for column in columns -%}
         <div>
         <label>{{column.0}}</label>

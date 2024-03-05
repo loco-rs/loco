@@ -44,6 +44,7 @@ const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
 #[derive(clap::ValueEnum, Clone, Debug)]
 pub enum ScaffoldKind {
     Api,
+    Html,
     Htmx,
 }
 

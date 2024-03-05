@@ -8,13 +8,11 @@ message: "{{file_name}} edit view was added successfully."
 <html lang="en">
 
 <head>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
 </head>
 
 <body>
     <h1>Edit {{name}}: {% raw %}{{ item.id }}{% endraw %}</h1>
-    <form hx-post="/api/{{name | plural}}/{% raw %}{{ item.id }}{% endraw %}" hx-ext="json-enc">
+    <form action="/api/{{name | plural}}/{% raw %}{{ item.id }}{% endraw %}" method="post">
      {% for column in columns -%}
         <div>
         <label>{{column.0}}</label>
@@ -34,7 +32,7 @@ message: "{{file_name}} edit view was added successfully."
         {% elif column.2 == "bool"-%}
         <input id="{{column.0}}" name="{{column.0}}" type="checkbox" value="true" {% raw %}{% if item.publish %}checked{%endif %}{% endraw %}></input>
         {% elif column.2 == "bool!"-%}
-        <input id="{{column.0}}" name="{{column.0}}" type="checkbox" value="true" {% raw %}{% if item.publish %}checked{%endif %}{% endraw %} required></input>
+        <input id="{{column.0}}" name="{{column.0}}" type="checkbox" value="true" required {% raw %}{% if item.publish %}checked{%endif %}{% endraw %}></input>
         {% elif column.2 == "ts"-%}
         <input id="{{column.0}}" name="{{column.0}}" type="text" value="{% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}"></input>
         {% elif column.2 == "ts!"-%}
@@ -48,11 +46,11 @@ message: "{{file_name}} edit view was added successfully."
         {% elif column.2 == "json!" or column.2 == "jsonb!" -%}
         <textarea id="{{column.0}}" name="{{column.0}}" type="text" required>{% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}</textarea>
         {% endif -%} 
-        </div>
-        <div>
+        </div>        
+    {% endfor -%}
+    <div>
             <button type="submit">Submit</button>
         </div>
-    {% endfor -%}
     </form>
     <br />
     <a href="/api/{{name | plural}}">Back to {{name}}</a>
