@@ -16,9 +16,10 @@ pub struct ListResponse {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PaginationResponse {}
 
-impl From<notes::Model> for NoteResponse {
+impl From<notes::Model> for ListResponse {
     fn from(note: notes::Model) -> Self {
         Self {
+            id: note.id.clone(),
             title: note.title.clone(),
             content: note.content,
         }
@@ -32,7 +33,7 @@ impl PaginationResponse {
             results: data
                 .rows
                 .into_iter()
-                .map(NoteResponse::from)
+                .map(ListResponse::from)
                 .collect::<Vec<ListResponse>>(),
             info: PagerMeta {
                 page: data.info.page,
