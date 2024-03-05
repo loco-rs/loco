@@ -2,17 +2,13 @@
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
 use axum::{extract::Query, response::IntoResponse};
-use loco_rs::{
-    concern::{pagination, query::prelude::*},
-    controller::views::pagination::Pager,
-    prelude::*,
-};
+use loco_rs::prelude::*;
 use sea_orm::Condition;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     models::_entities::notes::{ActiveModel, Column, Entity, Model},
-    views::notes::ListResponse,
+    views::notes::PaginationResponse,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -26,7 +22,7 @@ pub struct ListQueryParams {
     pub title: Option<String>,
     pub content: Option<String>,
     #[serde(flatten)]
-    pub pagination: pagination::PaginationFilter,
+    pub pagination: model::query::PaginationQuery,
 }
 
 impl Params {
@@ -45,16 +41,18 @@ pub async fn list(
     State(ctx): State<AppContext>,
     Query(params): Query<ListQueryParams>,
 ) -> Result<impl IntoResponse> {
-    let notes_query = Entity::find();
+    let pagination_query = model::query::PaginationQuery {
+        page_size: params.pagination.page_size,
+        page: params.pagination.page,
+    };
 
-    let notes: Pager<Vec<ListResponse>> =
-        pagination::view::<ListResponse, crate::models::_entities::notes::Entity>(
-            &ctx.db,
-            notes_query,
-            Some(params.into_query()),
-            &params.pagination,
-        )
-        .await?;
+    let paginated_notes = model::query::exec::paginate(
+        &ctx.db,
+        Entity::find(),
+        Some(model::query::dsl::with(params.into_query()).build()),
+        &pagination_query,
+    )
+    .await?;
 
     /*
     if let Some(settings) = &ctx.config.settings {
@@ -68,7 +66,7 @@ pub async fn list(
             cookie::Cookie::new("baz", "qux"),
         ])?
         .etag("foobar")?
-        .json(notes)
+        .json(PaginationResponse::response(paginated_notes))
 }
 
 pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Json<Model>> {
@@ -104,7 +102,7 @@ pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Resu
 impl ListQueryParams {
     #[must_use]
     pub fn into_query(&self) -> Condition {
-        let mut condition = condition();
+        let mut condition = model::query::dsl::condition();
 
         if let Some(title) = &self.title {
             condition = condition.like(Column::Title, title);

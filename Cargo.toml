@@ -144,6 +144,9 @@ features = [
   "sqlx-sqlite",
 ]
 
+[package.metadata.docs.rs]
+features = ["testing"]
+
 [dev-dependencies]
 loco-rs = { path = ".", features = ["testing"] }
 rstest = "0.18.2"
