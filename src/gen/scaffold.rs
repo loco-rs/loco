@@ -6,7 +6,7 @@ use serde_json::json;
 
 use crate::{app::Hooks, gen};
 
-const CONTROLLER_SCAFFOLD_T: &str = include_str!("templates/controller_scaffold.t");
+const API_CONTROLLER_SCAFFOLD_T: &str = include_str!("templates/scaffold/api/controller.t");
 
 const HTMX_CONTROLLER_SCAFFOLD_T: &str = include_str!("templates/scaffold/htmx/controller.t");
 const HTMX_VIEW_SCAFFOLD_T: &str = include_str!("templates/scaffold/htmx/view.t");
@@ -74,7 +74,7 @@ pub fn generate<H: Hooks>(
     let vars = json!({"name": name, "columns": columns, "pkg_name": H::app_name()});
     match kind {
         gen::ScaffoldKind::Api => {
-            let res1 = rrgen.generate(CONTROLLER_SCAFFOLD_T, &vars)?;
+            let res1 = rrgen.generate(API_CONTROLLER_SCAFFOLD_T, &vars)?;
             let res2 = rrgen.generate(CONTROLLER_TEST_T, &vars)?;
             let messages = collect_messages(vec![res1, res2]);
             Ok(format!("{model_messages}{messages}"))
