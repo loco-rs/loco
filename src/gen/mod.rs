@@ -41,6 +41,12 @@ const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
     ("Nginx", DeploymentKind::Nginx),
 ];
 
+#[derive(clap::ValueEnum, Clone, Debug)]
+pub enum ScaffoldKind {
+    Api,
+    Htmx,
+}
+
 #[derive(Debug, Clone)]
 pub enum DeploymentKind {
     Docker,
@@ -86,6 +92,9 @@ pub enum Component {
 
         /// Model and params fields, eg. title:string hits:int
         fields: Vec<(String, String)>,
+
+        // k
+        kind: ScaffoldKind,
     },
     Controller {
         /// Name of the thing to generate
@@ -123,8 +132,11 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
             );
         }
         #[cfg(feature = "with-db")]
-        Component::Scaffold { name, fields } => {
-            println!("{}", scaffold::generate::<H>(&rrgen, &name, &fields)?);
+        Component::Scaffold { name, fields, kind } => {
+            println!(
+                "{}",
+                scaffold::generate::<H>(&rrgen, &name, &fields, &kind)?
+            )
         }
         #[cfg(feature = "with-db")]
         Component::Migration { name } => {

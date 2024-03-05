@@ -8,6 +8,13 @@ use crate::{app::Hooks, gen};
 
 const CONTROLLER_SCAFFOLD_T: &str = include_str!("templates/controller_scaffold.t");
 
+const HTMX_CONTROLLER_SCAFFOLD_T: &str = include_str!("templates/scaffold/htmx/controller.t");
+const HTMX_VIEW_SCAFFOLD_T: &str = include_str!("templates/scaffold/htmx/view.t");
+const HTMX_VIEW_EDIT_SCAFFOLD_T: &str = include_str!("templates/scaffold/htmx/view_edit.t");
+const HTMX_VIEW_CREATE_SCAFFOLD_T: &str = include_str!("templates/scaffold/htmx/view_create.t");
+const HTMX_VIEW_SHOW_SCAFFOLD_T: &str = include_str!("templates/scaffold/htmx/view_show.t");
+const HTMX_VIEW_LIST_SCAFFOLD_T: &str = include_str!("templates/scaffold/htmx/view_list.t");
+
 use super::{collect_messages, model, CONTROLLER_TEST_T};
 use crate::{errors::Error, Result};
 
@@ -37,6 +44,7 @@ pub fn generate<H: Hooks>(
     rrgen: &RRgen,
     name: &str,
     fields: &[(String, String)],
+    kind: &gen::ScaffoldKind,
 ) -> Result<String> {
     // - scaffold is never a link table
     // - never run with migration_only, because the controllers will refer to the
@@ -60,14 +68,25 @@ pub fn generate<H: Hooks>(
                     PARAMS_MAPPING.keys()
                 ))
             })?;
-            columns.push((fname.to_string(), *schema_type));
+            columns.push((fname.to_string(), *schema_type, ftype));
         }
     }
-
     let vars = json!({"name": name, "columns": columns, "pkg_name": H::app_name()});
-    let res1 = rrgen.generate(CONTROLLER_SCAFFOLD_T, &vars)?;
-    let res2 = rrgen.generate(CONTROLLER_TEST_T, &vars)?;
-    let messages = collect_messages(vec![res1, res2]);
-
-    Ok(format!("{model_messages}{messages}"))
+    match kind {
+        gen::ScaffoldKind::Api => {
+            let res1 = rrgen.generate(CONTROLLER_SCAFFOLD_T, &vars)?;
+            let res2 = rrgen.generate(CONTROLLER_TEST_T, &vars)?;
+            let messages = collect_messages(vec![res1, res2]);
+            Ok(format!("{model_messages}{messages}"))
+        }
+        gen::ScaffoldKind::Htmx => {
+            rrgen.generate(HTMX_CONTROLLER_SCAFFOLD_T, &vars)?;
+            rrgen.generate(HTMX_VIEW_EDIT_SCAFFOLD_T, &vars)?;
+            rrgen.generate(HTMX_VIEW_CREATE_SCAFFOLD_T, &vars)?;
+            rrgen.generate(HTMX_VIEW_SHOW_SCAFFOLD_T, &vars)?;
+            rrgen.generate(HTMX_VIEW_LIST_SCAFFOLD_T, &vars)?;
+            rrgen.generate(HTMX_VIEW_SCAFFOLD_T, &vars)?;
+            Ok(model_messages)
+        }
+    }
 }
