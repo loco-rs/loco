@@ -46,6 +46,7 @@ impl Hooks for App {
             Box::new(initializers::axum_session::AxumSessionInitializer),
             Box::new(initializers::view_engine::ViewEngineInitializer),
             Box::new(initializers::hello_view_engine::HelloViewEngineInitializer),
+            Box::new(loco_extras::initializers::multi_db::MultiDbInitializer),
         ];
 
         if ctx.environment != Environment::Test {

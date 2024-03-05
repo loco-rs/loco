@@ -7,8 +7,6 @@
 //! ### Initializers
 //! * `initializer-prometheus` For adding prometheus collection metrics
 //!   endpoint.
-//! ### layers
-//! * `layer-db` Adding extra DB connection
-//! * `layer-multi-db` Adding extra DB's connection
+//! * `initializer-extra-db` Adding extra DB connection
+//! * `initializer-multi-db` Adding extra DB's connection
 pub mod initializers;
-pub mod layers;

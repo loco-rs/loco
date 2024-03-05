@@ -21,8 +21,8 @@ To set up an additional database, begin with database connections and configurat
 
 ```yaml
 settings:
-  secondary_db:
-    uri: {{get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/secondary_db")}}
+  extra_db:
+    uri: postgres://loco:loco@localhost:5432/loco_app
     enable_logging: false
     connect_timeout: 500
     idle_timeout: 500
@@ -34,31 +34,21 @@ settings:
 ```
 
 
-After configuring the database, import [loco-extras](https://crates.io/crates/loco-extras) and enable the `layer-db` feature in your Cargo.toml:
+After configuring the database, import [loco-extras](https://crates.io/crates/loco-extras) and enable the `initializer-extra-db` feature in your Cargo.toml:
 ```toml
-loco-extras = { version = "*", features = ["layer-db"] }
+loco-extras = { version = "*", features = ["initializer-extra-db"] }
 ```
 
-
-Next, in your app.rs hooks, implement the `after_routes` function as shown below:
+Next load this [initializer](@/docs/the-app/initializers.md) into `initializers` hook like this example
 
 ```rs
-async fn after_routes(router: axum::Router, _ctx: &AppContext) -> Result<axum::Router> {
-    let secondary_db_config = _ctx
-        .config
-        .settings
-        .clone()
-        .ok_or_eyre("settings config not configured")?;
+async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
+        let  initializers: Vec<Box<dyn Initializer>> = vec![
+            Box::new(loco_extras::initializers::extra_db::ExtraDbInitializer),
+        ];
 
-    let secondary_db = secondary_db_config
-        .get("secondary_db")
-        .ok_or_eyre("secondary_db not configured")?;
-    let router =
-        loco_extras::layers::db::add(router, serde_json::from_value(secondary_db.clone())?)
-            .await?;
-
-    Ok(router)
-}
+        Ok(initializers)
+    }
 ```
 
 Now, you can use the secondary database in your controller:
@@ -77,9 +67,9 @@ pub async fn list(
 
 # Many Database Connections
 
-To connect more than two different databases, load the feature `layer-multi-db` in [loco-extras](https://crates.io/crates/loco-extras):
+To connect more than two different databases, load the feature `initializer-multi-db` in [loco-extras](https://crates.io/crates/loco-extras):
 ```toml
-loco-extras = { version = "*", features = ["loco-extras"] }
+loco-extras = { version = "*", features = ["initializer-multi-db"] }
 ```
 
 The database configuration should look like this:
@@ -87,7 +77,7 @@ The database configuration should look like this:
 settings:
   multi_db: 
     secondary_db:      
-      uri: {{get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/secondary_db")}}      
+      uri: postgres://loco:loco@localhost:5432/loco_app
       enable_logging: false      
       connect_timeout: 500      
       idle_timeout: 500      
@@ -97,7 +87,7 @@ settings:
       dangerously_truncate: false      
       dangerously_recreate: false
     third_db:      
-      uri: {{get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/third_db")}}      
+      uri: postgres://loco:loco@localhost:5432/loco_app
       enable_logging: false      
       connect_timeout: 500      
       idle_timeout: 500      
@@ -108,25 +98,16 @@ settings:
       dangerously_recreate: false
 ```
 
-In the `app.rs` hooks, implement the `after_routes` function for multiple databases:
+Next load this [initializer](@/docs/the-app/initializers.md) into `initializers` hook like this example
+
 ```rs
-async fn after_routes(router: axum::Router, _ctx: &AppContext) -> Result<axum::Router> {
-    let secondary_db_config = _ctx
-        .config
-        .settings
-        .clone()
-        .ok_or_eyre("settings config not configured")?;
+async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
+        let  initializers: Vec<Box<dyn Initializer>> = vec![
+            Box::new(loco_extras::initializers::multi_db::MultiDbInitializer),
+        ];
 
-    let multi_db = secondary_db_config
-        .get("multi_db")
-        .ok_or_eyre("multi_db not configured")?;
-
-    let res = serde_json::from_value(multi_db.clone())?;
-
-    let router = loco_extras::layers::multi_db::add(router, res).await?;
-
-    Ok(router)
-}
+        Ok(initializers)
+    }
 ```
 
 Now, you can use the multiple databases in your controller:
