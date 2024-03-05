@@ -8,11 +8,14 @@ message: "{{file_name}} create view was added successfully."
 <html lang="en">
 
 <head>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
 </head>
 
-<body>
+<body class="prose p-10">
     <h1>Create new {{name}}</h1>
-    <form action="/api/{{name | plural}}" method="post">
+     <div class="mb-10">
+    <form action="/{{name | plural}}" method="post">
+    <div class="mb-5">
      {% for column in columns -%}
         <div>
         <label>{{column.0}}</label>
@@ -44,10 +47,14 @@ message: "{{file_name}} create view was added successfully."
         {% endif -%} 
         </div>
     {% endfor -%}
+    </div>
     <div>
-        <button type="submit">Submit</button>
+        <button class=" text-xs py-3 px-6 rounded-lg bg-gray-900 text-white" type="submit">Submit</button>
     </div>
     </form>
+    <br />
+    <a href="/{{name | plural}}">Back to {{name | plural}}</a>
+    </div>
 </body>
 
 </html>

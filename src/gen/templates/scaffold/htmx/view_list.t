@@ -9,21 +9,28 @@ message: "{{file_name}} list view was added successfully."
 
 <head>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
 </head>
 
-<body>
+<body class="prose p-10">
      <h1>{{file_name}}s</h1>
+     <div class="mb-10">
     {% raw %}{% for item in items %}{% endraw %}
-    <li>
-        <a href="/api/{{name | plural}}/{% raw %}{{ item.id }}{% endraw %}">
-            {% raw %}{{ item.id }}{% endraw %}
-        </a>: {% raw %}{{item | json_encode()}}{% endraw %}
-    </li>
+    <div class="mb-5">
+            {% for column in columns -%}
+                <div>
+                <label><b>{% raw %}{{"{% endraw %}{{column.0}}{% raw %}" | capitalize }}{% endraw %}:</b> {% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}</label>
+                </div>
+            {% endfor -%}
+            <a href="/{{name | plural}}/{% raw %}{{ item.id }}{% endraw %}/edit">Edit</a>
+            <a href="/{{name | plural}}/{% raw %}{{ item.id }}{% endraw %}">View</a>
+        </div>
     {% raw %}{% endfor %}{% endraw %}
 
     <br />
     <br />
-    <a href="/api/{{name | plural}}/new">New {{name}}</a>
+    <a href="/{{name | plural}}/new">New {{name}}</a>
+    </div>
 </body>
 
 </html>

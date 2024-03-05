@@ -144,7 +144,7 @@ enum ComponentArg {
         #[clap(value_parser = parse_key_val::<String,String>)]
         fields: Vec<(String, String)>,
 
-        /// Kind
+        /// The kind of scaffold to generate
         #[clap(short, long, value_enum, default_value_t = gen::ScaffoldKind::Api)]
         kind: gen::ScaffoldKind,
     },

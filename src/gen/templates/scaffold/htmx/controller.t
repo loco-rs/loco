@@ -43,7 +43,7 @@ async fn load_item(ctx: &AppContext, id: i32) -> Result<Model> {
     item.ok_or_else(|| Error::NotFound)
 }
 
-pub async fn render_list(
+pub async fn list(
     ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
 ) -> Result<impl IntoResponse> {
@@ -54,7 +54,7 @@ pub async fn render_list(
     views::{{file_name}}::list(v, item)
 }
 
-pub async fn render_create(
+pub async fn new(
     ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
 ) -> Result<impl IntoResponse> {
@@ -73,13 +73,22 @@ pub async fn update(
     format::json(item)
 }
 
-pub async fn render_note_form(
+pub async fn edit(
     Path(id): Path<i32>,
     ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
 ) -> Result<impl IntoResponse> {
     let item = load_item(&ctx, id).await?;
     views::{{file_name}}::edit_form(v, item)
+}
+
+pub async fn show(
+    Path(id): Path<i32>,
+    ViewEngine(v): ViewEngine<TeraView>,
+    State(ctx): State<AppContext>,
+) -> Result<impl IntoResponse> {
+    let item = load_item(&ctx, id).await?;
+    views::{{file_name}}::show(v, item)
 }
 
 pub async fn add(
@@ -98,9 +107,10 @@ pub async fn add(
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("{{file_name | plural}}")
-        .add("/", get(render_list))
-        .add("/new", get(render_create))
-        .add("/:id", get(render_note_form))
+        .add("/", get(list))
+        .add("/new", get(new))
+        .add("/:id", get(show))
+        .add("/:id/edit", get(edit))
         .add("/:id", post(update))
         .add("/", post(add))
 }

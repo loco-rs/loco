@@ -8,21 +8,20 @@ message: "{{file_name}} view was added successfully."
 <html lang="en">
 
 <head>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
 </head>
 
-<body>
+<body class="prose p-10">
     <h1>View {{name}}: {% raw %}{{ item.id }}{% endraw %}</h1>
-    <form hx-post="/api/{{name | plural}}/{% raw %}{{ item.id }}{% endraw %}" hx-ext="json-enc">
+    <div class="mb-10">
      {% for column in columns -%}
         <div>
-        <label>{{column.0}}: {% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}</label>
+        <label><b>{% raw %}{{"{% endraw %}{{column.0}}{% raw %}" | capitalize }}{% endraw %}:</b> {% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}</label>
         </div>
     {% endfor -%}
-    </form>
     <br />
-    <a href="/api/{{name | plural}}">Back to {{name}}</a>
+    <a href="/{{name | plural}}">Back to {{name | plural}}</a>
+    </div>
 </body>
 
 </html>
