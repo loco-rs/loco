@@ -143,6 +143,10 @@ enum ComponentArg {
         /// Model fields, eg. title:string hits:int
         #[clap(value_parser = parse_key_val::<String,String>)]
         fields: Vec<(String, String)>,
+
+        /// The kind of scaffold to generate
+        #[clap(short, long, value_enum, default_value_t = gen::ScaffoldKind::Api)]
+        kind: gen::ScaffoldKind,
     },
     /// Generate a new controller with the given controller name, and test file.
     Controller {
@@ -186,7 +190,7 @@ impl From<ComponentArg> for Component {
             #[cfg(feature = "with-db")]
             ComponentArg::Migration { name } => Self::Migration { name },
             #[cfg(feature = "with-db")]
-            ComponentArg::Scaffold { name, fields } => Self::Scaffold { name, fields },
+            ComponentArg::Scaffold { name, fields, kind } => Self::Scaffold { name, fields, kind },
             ComponentArg::Controller { name } => Self::Controller { name },
             ComponentArg::Task { name } => Self::Task { name },
             ComponentArg::Worker { name } => Self::Worker { name },
