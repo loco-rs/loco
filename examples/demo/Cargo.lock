@@ -2568,6 +2568,7 @@ dependencies = [
  "axum",
  "axum-prometheus",
  "loco-rs",
+ "serde_json",
 ]
 
 [[package]]

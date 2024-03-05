@@ -14,15 +14,22 @@ async-trait = { workspace = true }
 axum = { workspace = true }
 # initializer
 axum-prometheus = { version = "0.6.1", optional = true }
+serde = { version = "1", optional = true }
+serde_json = { version = "1", optional = true }
 
 [dependencies.loco-rs]
 path = "../"
 version = "0.3.0"
-default-features = false
-
+default-features = true
 
 [features]
-default = []
-full = ["initializer-prometheus"]
+default = ["full"]
+full = [
+    "initializer-prometheus",
+    "initializer-extra-db",
+    "initializer-multi-db",
+]
 
 initializer-prometheus = ["dep:axum-prometheus"]
+initializer-extra-db = []
+initializer-multi-db = ["dep:serde_json"]
