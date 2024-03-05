@@ -39,5 +39,6 @@ impl PaginationResponse {
                 page_size: data.info.page_size,
                 total_pages: data.info.total_pages,
             },
+        }
     }
 }
