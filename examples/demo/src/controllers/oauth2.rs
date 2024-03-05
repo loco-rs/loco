@@ -55,7 +55,7 @@ fn get_oauth2_authorization_code_config(
     let oauth_config = oauth_config
         .authorization_code
         .iter()
-        .find(|c| c.provider_name == name)
+        .find(|c| c.client_identifier == name)
         .ok_or(Error::InternalServerError)?;
     Ok(oauth_config.clone())
 }

@@ -110,7 +110,7 @@ impl Hooks for App {
                     None,
                 )?;
             clients.insert(
-                grant.provider_name,
+                grant.client_identifier,
                 OAuth2ClientGrantEnum::AuthorizationCode(Arc::new(Mutex::new(client))),
             );
         }
