@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 use crate::models::_entities::notes;
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct NoteResponse {
+pub struct ListResponse {
+    id: i32,
     title: Option<String>,
     content: Option<String>,
 }
@@ -26,18 +27,17 @@ impl From<notes::Model> for NoteResponse {
 
 impl PaginationResponse {
     #[must_use]
-    pub fn response(data: PaginatedResponse<notes::Model>) -> Pager<Vec<NoteResponse>> {
+    pub fn response(data: PaginatedResponse<notes::Model>) -> Pager<Vec<ListResponse>> {
         Pager {
             results: data
                 .rows
                 .into_iter()
                 .map(NoteResponse::from)
-                .collect::<Vec<NoteResponse>>(),
+                .collect::<Vec<ListResponse>>(),
             info: PagerMeta {
                 page: data.info.page,
                 page_size: data.info.page_size,
                 total_pages: data.info.total_pages,
             },
-        }
     }
 }

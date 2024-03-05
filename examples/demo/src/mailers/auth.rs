@@ -29,7 +29,7 @@ impl AuthMailer {
                 locals: json!({
                   "name": user.name,
                   "verifyToken": user.email_verification_token,
-                  "domain": ctx.config.server.full_url()
+                  "host": ctx.config.server.host
                 }),
                 ..Default::default()
             },
@@ -53,7 +53,7 @@ impl AuthMailer {
                 locals: json!({
                   "name": user.name,
                   "resetToken": user.reset_token,
-                  "domain": ctx.config.server.full_url()
+                  "host": ctx.config.server.host
                 }),
                 ..Default::default()
             },

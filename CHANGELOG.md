@@ -4,6 +4,8 @@
 
 * Fix generatore fields types + adding tests. [https://github.com/loco-rs/loco/pull/459](https://github.com/loco-rs/loco/pull/459)
 * Fix channeld cors. [https://github.com/loco-rs/loco/pull/430](https://github.com/loco-rs/loco/pull/430)
+* Improve auth controller compatibility with frontend [https://github.com/loco-rs/loco/pull/472](https://github.com/loco-rs/loco/pull/472)
+
 
 ## 0.3.1
 

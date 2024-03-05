@@ -7,7 +7,6 @@ use sea_orm::Condition;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    common,
     models::_entities::notes::{ActiveModel, Column, Entity, Model},
     views::notes::PaginationResponse,
 };
@@ -55,10 +54,11 @@ pub async fn list(
     )
     .await?;
 
+    /*
     if let Some(settings) = &ctx.config.settings {
         let settings = common::settings::Settings::from_json(settings)?;
         println!("allow list: {:?}", settings.allow_list);
-    }
+    }*/
 
     format::render()
         .cookies(&[

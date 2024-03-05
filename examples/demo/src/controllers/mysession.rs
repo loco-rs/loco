@@ -2,8 +2,12 @@
 use axum_session::{Session, SessionNullPool};
 use loco_rs::prelude::*;
 
-pub async fn get_session(session: Session<SessionNullPool>) -> Result<()> {
-    println!("{:#?}", session);
+/// Get a session
+///
+/// # Errors
+///
+/// This function will return an error if result fails
+pub async fn get_session(_session: Session<SessionNullPool>) -> Result<()> {
     format::empty()
 }
 
