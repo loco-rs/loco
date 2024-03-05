@@ -25,12 +25,8 @@ message: "{{file_name}} create view was added successfully."
         <input id="{{column.0}}" name="{{column.0}}" type="text" value=""/>
         {% elif column.2 == "string!" or column.2 == "string^" -%}
         <input id="{{column.0}}" name="{{column.0}}" type="text" value="" required/>
-        {% elif column.2 == "int" or column.2 == "int^"-%}
-        <input id="{{column.0}}" name="{{column.0}}" type="number" value=""/>
-        {% elif column.2 == "int!"-%}
-        <input id="{{column.0}}" name="{{column.0}}" type="number" value="" required/>
-        {% elif column.2 == "int!"-%}
-        <input id="{{column.0}}" name="{{column.0}}" type="number" value="" required/>
+        {% elif column.2 == "int" or column.2 == "int!" or column.2 == "int^"-%}
+        <input id="{{column.0}}" name="{{column.0}}" type="number" required></input>
         {% elif column.2 == "bool"-%}
         <input id="{{column.0}}" name="{{column.0}}" type="checkbox" value="true"/>
         {% elif column.2 == "bool!"-%}

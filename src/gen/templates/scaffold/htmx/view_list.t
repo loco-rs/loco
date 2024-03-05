@@ -17,7 +17,7 @@ message: "{{file_name}} list view was added successfully."
     <li>
         <a href="/api/{{name | plural}}/{% raw %}{{ item.id }}{% endraw %}">
             {% raw %}{{ item.id }}{% endraw %}
-        </a>
+        </a>: {% raw %}{{item | json_encode()}}{% endraw %}
     </li>
     {% raw %}{% endfor %}{% endraw %}
 
