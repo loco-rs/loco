@@ -4,12 +4,24 @@ use super::{object_store_adapter::ObjectStoreAdapter, StoreDriver};
 use crate::Result;
 
 /// Create new filesystem storage with no prefix
+///
+/// # Examples
+///```
+/// use loco_rs::storage::drivers::local;
+/// let file_system_driver = local::new();
+/// ```
 #[must_use]
 pub fn new() -> Box<dyn StoreDriver> {
     Box::new(ObjectStoreAdapter::new(Box::new(LocalFileSystem::new())))
 }
 
 /// Create new filesystem storage with `prefix` applied to all paths
+///
+/// # Examples
+///```
+/// use loco_rs::storage::drivers::local;
+/// let file_system_driver = local::new_with_prefix("users");
+/// ```
 ///
 /// # Errors
 ///

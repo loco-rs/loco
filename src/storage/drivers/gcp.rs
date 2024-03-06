@@ -5,6 +5,12 @@ use crate::Result;
 
 /// Create new GCP storage.
 ///
+/// # Examples
+///```
+/// use loco_rs::storage::drivers::gcp;
+/// let gcp_driver = gcp::new("key", "account_key", "service_account");
+/// ```
+///
 /// # Errors
 ///
 /// When could not initialize the client instance
