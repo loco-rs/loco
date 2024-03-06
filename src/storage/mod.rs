@@ -48,6 +48,13 @@ pub struct Storage {
 impl Storage {
     /// Creates a new storage instance with a single store and the default
     /// strategy.
+    ///
+    /// # Examples
+    ///```
+    /// use loco_rs::storage;
+    ///
+    /// let storage = storage::Storage::single(storage::drivers::mem::new());
+    /// ```
     #[must_use]
     pub fn single(store: Box<dyn StoreDriver>) -> Self {
         let default_key = "store";
@@ -69,6 +76,20 @@ impl Storage {
     /// Uploads content to the storage at the specified path.
     ///
     /// This method uses the selected strategy for the upload operation.
+    ///
+    /// # Examples
+    ///```
+    /// use loco_rs::storage;
+    /// use std::path::Path;
+    /// use bytes::Bytes;
+    /// pub async fn upload() {
+    ///     let storage = storage::Storage::single(storage::drivers::mem::new());
+    ///     let path = Path::new("example.txt");
+    ///     let content = "Loco!";
+    ///     let result = storage.upload(path, &Bytes::from(content)).await;
+    ///     assert!(result.is_ok());
+    /// }
+    /// ```
     ///
     /// # Errors
     ///
@@ -101,6 +122,22 @@ impl Storage {
     /// Downloads content from the storage at the specified path.
     ///
     /// This method uses the selected strategy for the download operation.
+    ///
+    /// # Examples
+    ///```
+    /// use loco_rs::storage;
+    /// use std::path::Path;
+    /// use bytes::Bytes;
+    /// pub async fn download() {
+    ///     let storage = storage::Storage::single(storage::drivers::mem::new());
+    ///     let path = Path::new("example.txt");
+    ///     let content = "Loco!";
+    ///     storage.upload(path, &Bytes::from(content)).await;
+    ///
+    ///     let result: String = storage.download(path).await.unwrap();
+    ///     assert_eq!(result, "Loco!");
+    /// }
+    /// ```
     ///
     /// # Errors
     ///
@@ -140,6 +177,22 @@ impl Storage {
     ///
     /// This method uses the selected strategy for the delete operation.
     ///
+    /// # Examples
+    ///```
+    /// use loco_rs::storage;
+    /// use std::path::Path;
+    /// use bytes::Bytes;
+    /// pub async fn download() {
+    ///     let storage = storage::Storage::single(storage::drivers::mem::new());
+    ///     let path = Path::new("example.txt");
+    ///     let content = "Loco!";
+    ///     storage.upload(path, &Bytes::from(content)).await;
+    ///
+    ///     let result = storage.delete(path).await;
+    ///     assert!(result.is_ok());
+    /// }
+    /// ```
+    ///
     /// # Errors
     ///
     /// This method returns an error if the delete operation fails or if there
@@ -169,6 +222,25 @@ impl Storage {
     /// Renames content from one path to another in the storage.
     ///
     /// This method uses the selected strategy for the rename operation.
+    ///
+    /// # Examples
+    ///```
+    /// use loco_rs::storage;
+    /// use std::path::Path;
+    /// use bytes::Bytes;
+    /// pub async fn download() {
+    ///     let storage = storage::Storage::single(storage::drivers::mem::new());
+    ///     let path = Path::new("example.txt");
+    ///     let content = "Loco!";
+    ///     storage.upload(path, &Bytes::from(content)).await;
+    ///     
+    ///     let new_path = Path::new("new_path.txt");
+    ///     let store = storage.as_store("default").unwrap();
+    ///     assert!(storage.rename(&path, &new_path).await.is_ok());
+    ///     assert!(!store.exists(&path).await.unwrap());
+    ///     assert!(store.exists(&new_path).await.unwrap());
+    /// }
+    /// ```
     ///
     /// # Errors
     ///
@@ -201,6 +273,25 @@ impl Storage {
     ///
     /// This method uses the selected strategy for the copy operation.
     ///
+    /// # Examples
+    ///```
+    /// use loco_rs::storage;
+    /// use std::path::Path;
+    /// use bytes::Bytes;
+    /// pub async fn download() {
+    ///     let storage = storage::Storage::single(storage::drivers::mem::new());
+    ///     let path = Path::new("example.txt");
+    ///     let content = "Loco!";
+    ///     storage.upload(path, &Bytes::from(content)).await;
+    ///     
+    ///     let new_path = Path::new("new_path.txt");
+    ///     let store = storage.as_store("default").unwrap();
+    ///     assert!(storage.copy(&path, &new_path).await.is_ok());
+    ///     assert!(store.exists(&path).await.unwrap());
+    ///     assert!(store.exists(&new_path).await.unwrap());
+    /// }
+    /// ```
+    ///
     /// # Errors
     ///
     /// This method returns an error if the copy operation fails or if there is
@@ -228,12 +319,39 @@ impl Storage {
     }
 
     /// Returns a reference to the store with the specified name if exists.
+    ///
+    /// # Examples
+    ///```
+    /// use loco_rs::storage;
+    /// use std::path::Path;
+    /// use bytes::Bytes;
+    /// pub async fn download() {
+    ///     let storage = storage::Storage::single(storage::drivers::mem::new());
+    ///     assert!(storage.as_store("default").is_some());
+    ///     assert!(storage.as_store("store_2").is_none());
+    /// }
+    /// ```
+    ///
+    /// # Returns
+    /// Return None if the given name not found.
     #[must_use]
     pub fn as_store(&self, name: &str) -> Option<&dyn StoreDriver> {
         self.stores.get(name).map(|s| &**s)
     }
 
     /// Returns a reference to the store with the specified name.
+    ///
+    /// # Examples
+    ///```
+    /// use loco_rs::storage;
+    /// use std::path::Path;
+    /// use bytes::Bytes;
+    /// pub async fn download() {
+    ///     let storage = storage::Storage::single(storage::drivers::mem::new());
+    ///     assert!(storage.as_store_err("default").is_ok());
+    ///     assert!(storage.as_store_err("store_2").is_err());
+    /// }
+    /// ```
     ///
     /// # Errors
     ///
