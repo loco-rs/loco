@@ -51,12 +51,11 @@ pub async fn list(
         .order_by(Column::Id, Order::Desc)
         .all(&ctx.db)
         .await?;
-    views::{{file_name}}::list(v, item)
+    views::{{file_name}}::list(&v, &item)
 }
 
 pub async fn new(
     ViewEngine(v): ViewEngine<TeraView>,
-    State(ctx): State<AppContext>,
 ) -> Result<impl IntoResponse> {
     views::{{file_name}}::create(v)
 }
@@ -79,7 +78,7 @@ pub async fn edit(
     State(ctx): State<AppContext>,
 ) -> Result<impl IntoResponse> {
     let item = load_item(&ctx, id).await?;
-    views::{{file_name}}::edit_form(v, item)
+    views::{{file_name}}::edit(&v, &item)
 }
 
 pub async fn show(
@@ -88,7 +87,7 @@ pub async fn show(
     State(ctx): State<AppContext>,
 ) -> Result<impl IntoResponse> {
     let item = load_item(&ctx, id).await?;
-    views::{{file_name}}::show(v, item)
+    views::{{file_name}}::show(&v, &item)
 }
 
 pub async fn add(
@@ -101,7 +100,7 @@ pub async fn add(
     };
     params.update(&mut item);
     let item = item.insert(&ctx.db).await?;
-    views::{{file_name}}::show(v, item)
+    views::{{file_name}}::show(&v, &item)
 }
 
 pub fn routes() -> Routes {
