@@ -19,7 +19,7 @@ pub struct PaginationResponse {}
 impl From<notes::Model> for ListResponse {
     fn from(note: notes::Model) -> Self {
         Self {
-            id: note.id.clone(),
+            id: note.id,
             title: note.title.clone(),
             content: note.content,
         }

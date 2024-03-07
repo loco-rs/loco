@@ -1,7 +1,7 @@
 pub use async_trait::async_trait;
 pub use axum::{
     extract::{Form, Path, State},
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::{delete, get, post, put},
 };
 pub use axum_extra::extract::cookie;
@@ -15,7 +15,9 @@ pub use crate::controller::middleware::auth;
 pub use crate::{
     app::{AppContext, Initializer},
     controller::{
-        format, not_found, unauthorized,
+        format,
+        middleware::mime_responds::{Format, RespondTo},
+        not_found, unauthorized,
         views::{engines::TeraView, ViewEngine, ViewRenderer},
         Json, Routes,
     },
