@@ -120,8 +120,8 @@ use crate::{errors::Error, Result};
 ///     format::json(())
 /// }
 /// ````
-pub fn unauthorized<T>(msg: &str) -> Result<T> {
-    Err(Error::Unauthorized(msg.to_string()))
+pub fn unauthorized<T: Into<String>, U>(msg: T) -> Result<U> {
+    Err(Error::Unauthorized(msg.into()))
 }
 
 /// Return a bad request with a message
@@ -129,8 +129,8 @@ pub fn unauthorized<T>(msg: &str) -> Result<T> {
 /// # Errors
 ///
 /// This function will return an error result
-pub fn bad_request<T>(msg: &str) -> Result<T> {
-    Err(Error::BadRequest(msg.to_string()))
+pub fn bad_request<T: Into<String>, U>(msg: &str) -> Result<U> {
+    Err(Error::BadRequest(msg.into()))
 }
 
 /// return not found status code
@@ -138,7 +138,7 @@ pub fn bad_request<T>(msg: &str) -> Result<T> {
 /// # Errors
 /// Currently this function did't return any error. this is for feature
 /// functionality
-pub fn not_found<T>() -> Result<T> {
+pub fn not_found<T: Into<String>, U>() -> Result<U> {
     Err(Error::NotFound)
 }
 #[derive(Debug, Serialize)]
@@ -153,18 +153,20 @@ pub struct ErrorDetail {
 impl ErrorDetail {
     /// Create a new `ErrorDetail` with the specified error and description.
     #[must_use]
-    pub fn new(error: &str, description: &str) -> Self {
+    pub fn new<T: Into<String>>(error: T, description: T) -> Self
+    {
         Self {
-            error: Some(error.to_string()),
-            description: Some(description.to_string()),
+            error: Some(error.into()),
+            description: Some(description.into()),
         }
     }
 
     /// Create an `ErrorDetail` with only an error reason and no description.
     #[must_use]
-    pub fn with_reason(error: &str) -> Self {
+    pub fn with_reason<T: Into<String>>(error: T) -> Self
+    {
         Self {
-            error: Some(error.to_string()),
+            error: Some(error.into()),
             description: None,
         }
     }
