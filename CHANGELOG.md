@@ -2,6 +2,8 @@
 
 ## vNext
 
+## 0.3.2
+
 * Redisgin pagination. [https://github.com/loco-rs/loco/pull/463](https://github.com/loco-rs/loco/pull/463)
 * Wrap seaorm query and condition for common use cases. [https://github.com/loco-rs/loco/pull/463](https://github.com/loco-rs/loco/pull/463)
 * Adding to loco-extras initializer for extra or multiple db. [https://github.com/loco-rs/loco/pull/471](https://github.com/loco-rs/loco/pull/471)
