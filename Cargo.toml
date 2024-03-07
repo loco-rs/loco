@@ -95,6 +95,7 @@ tower-http = { version = "0.5.0", features = [
   "fs",
   "set-header",
   "compression-full",
+  "normalize-path",
 ] }
 byte-unit = "4.0.19"
 
