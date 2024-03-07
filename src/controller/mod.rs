@@ -12,12 +12,15 @@
 //! use loco_rs::{
 //!    app::{AppContext, Hooks},
 //!    boot::{create_app, BootResult, StartMode},
-//!    controller::{channels::AppChannels, AppRoutes},
+//!    controller::AppRoutes,
 //!    worker::Processor,
 //!    task::Tasks,
 //!    environment::Environment,
 //!    Result,
 //! };
+//! #[cfg(feature = "channels")] {
+//!    use loco_rs::controller::channels::AppChannels;
+//! }
 //! use sea_orm::DatabaseConnection;
 //! use std::path::Path;
 //!
@@ -49,6 +52,7 @@
 //!     }
 //!     
 //!    /// Only when `channels` feature is enabled
+//!    #[cfg(feature = "channels")]
 //!    fn register_channels(_ctx: &AppContext) -> AppChannels {
 //!        let channels = AppChannels::default();
 //!        //channels.register.ns("/", channels::application::on_connect);
