@@ -1,5 +1,5 @@
 ---
-description: Saas app (with DB and user auth)
+description: SaaS app (with DB and user auth)
 rules:
   - pattern: loco_starter_template
     kind: LibName

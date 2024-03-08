@@ -11,7 +11,7 @@
 //! ? ❯ What would you like to build? ›
 //! ❯ lightweight-service (minimal, only controllers and views)
 //!   Rest API (with DB and user auth)
-//!   Saas app (with DB and user auth)
+//!   SaaS app (with DB and user auth)
 //! ```
 //!
 //! ## Available Features

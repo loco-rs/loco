@@ -49,7 +49,7 @@ $ cargo install loco-cli
 
 ### Creating a new Loco app
 
-Now you can create your new app (choose "Saas app" for built-in authentication).
+Now you can create your new app (choose "SaaS app" for built-in authentication).
 
 ```sh
 $ loco new
@@ -57,7 +57,7 @@ $ loco new
 ? ❯ What would you like to build? ›
   lightweight-service (minimal, only controllers and views)
   Rest API (with DB and user auth)
-❯ Saas app (with DB and user auth)
+❯ SaaS app (with DB and user auth)
 🚂 Loco app generated successfully in:
 myapp
 ```
@@ -77,16 +77,20 @@ Make sure you also have locally installed or running (via Docker or otherwise) i
 To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>myapp_development</code>.
 </div>
 
-
 This docker command start up postgresql database server.
+
 ```sh
 docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=myapp_development -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine
 ```
+
 This docker command start up redis server:
+
 ```
 docker run -p 6379:6379 -d redis redis-server
 ```
+
 Use doctor command to check the needed resources:
+
 ```
 $ cargo loco doctor
     Finished dev [unoptimized + debuginfo] target(s) in 0.32s
@@ -96,13 +100,12 @@ $ cargo loco doctor
 ✅ Redis connection: success
 ```
 
-
 Here's a rundown of what Loco creates for you by default:
 
 | File/Folder    | Purpose                                                                                                                                                           |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/`         | Contains controllers, models, views, tasks and more                                                                                                               |
-| `app.rs`       | Main component registration point. Wire the important bits here.                                                                                                 |
+| `app.rs`       | Main component registration point. Wire the important bits here.                                                                                                  |
 | `lib.rs`       | Various rust-specific exports of your components.                                                                                                                 |
 | `bin/`         | Has your `main.rs` file, you don't need to worry about it                                                                                                         |
 | `controllers/` | Contains controllers, all controllers are exported via `mod.rs`                                                                                                   |
