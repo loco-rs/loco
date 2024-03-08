@@ -13,7 +13,7 @@ top = false
 flair = ['Auth', 'DB', 'JS', 'SSR']
 +++
 
-The Saas starter is an all-included set up for projects requiring both a UI and a REST API. For the UI this starter supports a client-side app or classic server-side templates (or a combination).
+The SaaS starter is an all-included set up for projects requiring both a UI and a REST API. For the UI this starter supports a client-side app or classic server-side templates (or a combination).
 
 **UI**
 
