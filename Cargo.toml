@@ -148,6 +148,5 @@ features = [
 features = ["testing"]
 
 [dev-dependencies]
-loco-rs = { path = ".", features = ["testing"] }
 rstest = "0.18.2"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
