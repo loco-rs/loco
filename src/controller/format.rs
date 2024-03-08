@@ -9,6 +9,7 @@
 //!
 //! ```rust
 //! use loco_rs::prelude::*;
+//! use serde::Serialize;
 //!
 //! #[derive(Serialize)]
 //! pub struct Health {
@@ -85,6 +86,7 @@ pub fn text(t: &str) -> Result<Response> {
 ///
 /// ```rust
 /// use loco_rs::prelude::*;
+/// use serde::Serialize;
 ///
 /// #[derive(Serialize)]
 /// pub struct Health {
