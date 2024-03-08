@@ -43,9 +43,10 @@ where
             {
                 return Ok(Self(RespondTo::Xml));
             }
-            return Ok(Self(RespondTo::Other(content_type.to_string())));
+
+            Ok(Self(RespondTo::Other(content_type.to_string())))
         } else {
-            return Ok(Self(RespondTo::None));
+            Ok(Self(RespondTo::None))
         }
     }
 }

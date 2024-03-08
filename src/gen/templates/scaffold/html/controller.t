@@ -47,7 +47,7 @@ async fn load_item(ctx: &AppContext, id: i32) -> Result<Model> {
 pub async fn list(
     ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
-) -> Result<impl IntoResponse> {
+) -> Result<Response> {
     let item = Entity::find()
         .order_by(Column::Id, Order::Desc)
         .all(&ctx.db)
@@ -58,7 +58,7 @@ pub async fn list(
 pub async fn new(
     ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
-) -> Result<impl IntoResponse> {
+) -> Result<Response> {
     views::{{file_name}}::create(v)
 }
 
@@ -78,7 +78,7 @@ pub async fn edit(
     Path(id): Path<i32>,
     ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
-) -> Result<impl IntoResponse> {
+) -> Result<Response> {
     let item = load_item(&ctx, id).await?;
     views::{{file_name}}::edit_form(v, item)
 }
@@ -87,7 +87,7 @@ pub async fn show(
     Path(id): Path<i32>,
     ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
-) -> Result<impl IntoResponse> {
+) -> Result<Response> {
     let item = load_item(&ctx, id).await?;
     views::{{file_name}}::show(v, item)
 }
