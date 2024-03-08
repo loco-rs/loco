@@ -68,7 +68,7 @@ mod tests {
 
     use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
 
-    use crate::{concern::query::prelude::*, tests_cfg::db::*};
+    use crate::{prelude::model::query::*, tests_cfg::db::*};
 
     #[test]
     fn condition_date_range_from() {
@@ -76,7 +76,7 @@ mod tests {
             chrono::NaiveDateTime::parse_from_str("2024-03-01 22:10:57", "%Y-%m-%d %H:%M:%S")
                 .unwrap();
 
-        let condition = condition()
+        let condition = dsl::condition()
             .date_range(test_db::Column::CreatedAt)
             .from(&date)
             .build();
@@ -101,7 +101,7 @@ mod tests {
             chrono::NaiveDateTime::parse_from_str("2024-03-01 22:10:57", "%Y-%m-%d %H:%M:%S")
                 .unwrap();
 
-        let condition = condition()
+        let condition = dsl::condition()
             .date_range(test_db::Column::CreatedAt)
             .to(&date)
             .build();
@@ -129,7 +129,7 @@ mod tests {
             chrono::NaiveDateTime::parse_from_str("2024-03-25 22:10:57", "%Y-%m-%d %H:%M:%S")
                 .unwrap();
 
-        let condition = condition()
+        let condition = dsl::condition()
             .date_range(test_db::Column::CreatedAt)
             .dates(Some(&from_date), Some(&to_date))
             .build();

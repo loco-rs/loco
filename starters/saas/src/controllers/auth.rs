@@ -138,7 +138,7 @@ async fn login(
 
 pub fn routes() -> Routes {
     Routes::new()
-        .prefix("auth")
+        .prefix("api/auth")
         .add("/register", post(register))
         .add("/verify", post(verify))
         .add("/login", post(login))

@@ -47,5 +47,17 @@
 //!```rust
 #![doc = include_str!("././prometheus.rs")]
 //!````
+//! ### Extra Database connection:
+//! ```rust
+#![doc = include_str!("././extra_db.rs")]
+//!````
+//! ### Extra Multiple Database Connections:
+//! ```rust
+#![doc = include_str!("././multi_db.rs")]
+//!````
+#[cfg(feature = "initializer-extra-db")]
+pub mod extra_db;
+#[cfg(feature = "initializer-multi-db")]
+pub mod multi_db;
 #[cfg(feature = "initializer-prometheus")]
 pub mod prometheus;

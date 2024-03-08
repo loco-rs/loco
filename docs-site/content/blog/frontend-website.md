@@ -19,27 +19,27 @@ Explore the example repository [here](https://github.com/loco-rs/todo-list-examp
 
 The key steps include:
 
-- Creating a Loco project with the Saas starter
+- Creating a Loco project with the SaaS starter
 - Setting up a Vite frontend with React
 - Configuring Loco to serve frontend static assets
 - Implementing the Notes model/controller in the REST API
 - Reloading the server and frontend during development
 - Deploying the website to production
 
-## Selecting Saas Starter
+## Selecting SaaS Starter
 
-To begin, run the following command to create a new Loco app using the Saas starter:
+To begin, run the following command to create a new Loco app using the SaaS starter:
 
 ```sh
 & loco new
 ✔ ❯ App name? · todolist
-✔ ❯ What would you like to build? · Saas app (with DB and user auth)
+✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
 
 🚂 Loco app generated successfully in:
 /tmp/todolist
 ```
 
-Follow the prompts to specify the app name (e.g., todolist) and choose the Saas app option.
+Follow the prompts to specify the app name (e.g., todolist) and choose the SaaS app option.
 
 After generating the app, ensure you have the necessary resources by running:
 
@@ -117,7 +117,7 @@ $ pnpm dev
 
 ### Serving Static Assets in Loco
 
-First, move all our rest api endpoint under `/api` prefix. for doing it go to `src/app.rs`. in `routes` hooks function add `.prefix("/api")` to the default routes. 
+First, move all our rest api endpoint under `/api` prefix. for doing it go to `src/app.rs`. in `routes` hooks function add `.prefix("/api")` to the default routes.
 ```rust
 fn routes() -> AppRoutes {
     AppRoutes::with_default_routes()

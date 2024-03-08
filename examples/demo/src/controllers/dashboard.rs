@@ -9,9 +9,14 @@ use crate::{initializers::hello_view_engine::HelloView, views};
 ///
 /// This function will return an error if render fails
 pub async fn render_home(ViewEngine(v): ViewEngine<TeraView>) -> Result<impl IntoResponse> {
-    views::dashboard::home(v)
+    views::dashboard::home(&v)
 }
 
+/// Hello
+///
+/// # Errors
+///
+/// This function will return an error if render fails
 pub async fn render_hello(ViewEngine(v): ViewEngine<HelloView>) -> Result<impl IntoResponse> {
     // NOTE: v is a hello engine, which always returns 'hello', params dont matter.
     // it's a funky behavior that we use for demonstrating how easy it is

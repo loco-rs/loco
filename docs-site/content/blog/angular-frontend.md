@@ -14,7 +14,7 @@ authors = ["LimpidCrypto"]
 
 ## Overview
 
-1. Create new Saas project
+1. Create new SaaS project
 2. Edit `.devcontainer/Dockerfile`
 3. Reopen the project in the Dev Container
 4. Delete frontend directory
@@ -23,11 +23,11 @@ authors = ["LimpidCrypto"]
 7. Edit `config/development.yml`
 8. Start Loco
 
-## Create new Saas project
+## Create new SaaS project
 
 1. Run `loco new` to create a new project
 2. Navigate through the instructions until you reach the point where to decide what type of project to create
-3. Select "Saas"
+3. Select "SaaS app (with DB and user auth)"
 
 ## Edit ".devcontainer/Dockerfile"
 

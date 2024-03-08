@@ -1,8 +1,35 @@
-use sea_orm::{sea_query::IntoCondition, ColumnTrait, Condition, Value};
-pub mod date_range;
+use sea_orm::{
+    sea_query::{IntoCondition, Order},
+    ColumnTrait, Condition, Value,
+};
+use serde::{Deserialize, Serialize};
+mod date_range;
+
+// pub mod pagination;
 
 pub struct ConditionBuilder {
     condition: Condition,
+}
+/// Enum representing sorting directions, with serialization and deserialization
+/// support.
+#[derive(Debug, Deserialize, Serialize)]
+pub enum SortDirection {
+    #[serde(rename = "desc")]
+    Desc,
+    #[serde(rename = "asc")]
+    Asc,
+}
+
+impl SortDirection {
+    /// Returns the corresponding `Order` enum variant based on the current
+    /// `SortDirection`.
+    #[must_use]
+    pub const fn order(&self) -> Order {
+        match self {
+            Self::Desc => Order::Desc,
+            Self::Asc => Order::Asc,
+        }
+    }
 }
 
 #[must_use]
@@ -23,15 +50,13 @@ pub const fn with(condition: Condition) -> ConditionBuilder {
 /// ```
 /// use loco_rs::tests_cfg::db::*;
 /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-/// use loco_rs::concern::query::prelude::*;
-///  let date =
-///            chrono::NaiveDateTime::parse_from_str("2024-03-01 22:10:57", "%Y-%m-%d %H:%M:%S")
-///               .unwrap();
+/// use loco_rs::prelude::*;
+/// let date = chrono::NaiveDateTime::parse_from_str("2024-03-01 22:10:57", "%Y-%m-%d %H:%M:%S").unwrap();
 ///
 /// let query_str = test_db::Entity::find()
 ///         .select_only()
 ///         .column(test_db::Column::Id)
-///         .filter(condition().date_range(test_db::Column::CreatedAt).from(&date).build().like(test_db::Column::Name, "%lo").build())
+///         .filter(model::query::dsl::condition().date_range(test_db::Column::CreatedAt).from(&date).build().like(test_db::Column::Name, "%lo").build())
 ///         .build(sea_orm::DatabaseBackend::Postgres)
 ///         .to_string();
 ///
@@ -47,12 +72,12 @@ impl ConditionBuilder {
     /// ```
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::concern::query::prelude::*;
+    /// use loco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(condition().eq(test_db::Column::Id, 1).build())
+    ///         .filter(model::query::dsl::condition().eq(test_db::Column::Id, 1).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -66,12 +91,12 @@ impl ConditionBuilder {
     /// ```
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::concern::query::prelude::*;
+    /// use loco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(condition().eq(test_db::Column::Name, "loco").build())
+    ///         .filter(model::query::dsl::condition().eq(test_db::Column::Name, "loco").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -80,6 +105,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" = 'loco'"
     ///     );
     /// ````
+    #[must_use]
     pub fn eq<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
         with(self.condition.add(col.eq(value)))
     }
@@ -90,12 +116,12 @@ impl ConditionBuilder {
     /// ```
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::concern::query::prelude::*;
+    /// use loco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(condition().ne(test_db::Column::Id, 1).build())
+    ///         .filter(model::query::dsl::condition().ne(test_db::Column::Id, 1).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -104,6 +130,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" <> 1"
     ///     );
     /// ````
+    #[must_use]
     pub fn ne<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
         with(self.condition.add(col.ne(value)))
     }
@@ -114,12 +141,12 @@ impl ConditionBuilder {
     /// ```
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::concern::query::prelude::*;
+    /// use loco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(condition().gt(test_db::Column::Id, 1).build())
+    ///         .filter(model::query::dsl::condition().gt(test_db::Column::Id, 1).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -128,6 +155,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" > 1"
     ///     );
     /// ````
+    #[must_use]
     pub fn gt<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
         with(self.condition.add(col.gt(value)))
     }
@@ -139,12 +167,12 @@ impl ConditionBuilder {
     /// ```
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::concern::query::prelude::*;
+    /// use loco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(condition().gte(test_db::Column::Id, 1).build())
+    ///         .filter(model::query::dsl::condition().gte(test_db::Column::Id, 1).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -153,6 +181,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" >= 1"
     ///     );
     /// ````
+    #[must_use]
     pub fn gte<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
         with(self.condition.add(col.gte(value)))
     }
@@ -164,12 +193,12 @@ impl ConditionBuilder {
     /// ```
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::concern::query::prelude::*;
+    /// use loco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(condition().lt(test_db::Column::Id, 1).build())
+    ///         .filter(model::query::dsl::condition().lt(test_db::Column::Id, 1).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -178,6 +207,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" < 1"
     ///     );
     /// ````
+    #[must_use]
     pub fn lt<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
         with(self.condition.add(col.lt(value)))
     }
@@ -189,12 +219,12 @@ impl ConditionBuilder {
     /// ```
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::concern::query::prelude::*;
+    /// use loco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(condition().lte(test_db::Column::Id, 1).build())
+    ///         .filter(model::query::dsl::condition().lte(test_db::Column::Id, 1).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -203,6 +233,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" <= 1"
     ///     );
     /// ````
+    #[must_use]
     pub fn lte<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
         with(self.condition.add(col.lte(value)))
     }
@@ -214,12 +245,12 @@ impl ConditionBuilder {
     /// ```
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::concern::query::prelude::*;
+    /// use loco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(condition().between(test_db::Column::Id, 1, 2).build())
+    ///         .filter(model::query::dsl::condition().between(test_db::Column::Id, 1, 2).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -228,6 +259,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" BETWEEN 1 AND 2"
     ///     );
     /// ````
+    #[must_use]
     pub fn between<T: ColumnTrait, V: Into<Value>>(self, col: T, a: V, b: V) -> Self {
         with(self.condition.add(col.between(a, b)))
     }
@@ -239,12 +271,12 @@ impl ConditionBuilder {
     /// ```
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::concern::query::prelude::*;
+    /// use loco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(condition().not_between(test_db::Column::Id, 1, 2).build())
+    ///         .filter(model::query::dsl::condition().not_between(test_db::Column::Id, 1, 2).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -253,6 +285,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" NOT BETWEEN 1 AND 2"
     ///     );
     /// ````
+    #[must_use]
     pub fn not_between<T: ColumnTrait, V: Into<Value>>(self, col: T, a: V, b: V) -> Self {
         with(self.condition.add(col.not_between(a, b)))
     }
@@ -264,12 +297,12 @@ impl ConditionBuilder {
     /// ```
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::concern::query::prelude::*;
+    /// use loco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(condition().like(test_db::Column::Name, "%lo").build())
+    ///         .filter(model::query::dsl::condition().like(test_db::Column::Name, "%lo").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -278,6 +311,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" LIKE '%lo'"
     ///     );
     /// ````
+    #[must_use]
     pub fn like<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
         with(self.condition.add(col.like(a)))
     }
@@ -289,12 +323,12 @@ impl ConditionBuilder {
     /// ```
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::concern::query::prelude::*;
+    /// use loco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(condition().not_like(test_db::Column::Name, "%lo").build())
+    ///         .filter(model::query::dsl::condition().not_like(test_db::Column::Name, "%lo").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -303,6 +337,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" NOT LIKE '%lo'"
     ///     );
     /// ````
+    #[must_use]
     pub fn not_like<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
         with(self.condition.add(col.not_like(a)))
     }
@@ -314,12 +349,12 @@ impl ConditionBuilder {
     /// ```
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::concern::query::prelude::*;
+    /// use loco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(condition().starts_with(test_db::Column::Name, "lo").build())
+    ///         .filter(model::query::dsl::condition().starts_with(test_db::Column::Name, "lo").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -328,6 +363,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" LIKE 'lo%'"
     ///     );
     /// ````
+    #[must_use]
     pub fn starts_with<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
         with(self.condition.add(col.starts_with(a)))
     }
@@ -339,12 +375,12 @@ impl ConditionBuilder {
     /// ```
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::concern::query::prelude::*;
+    /// use loco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(condition().ends_with(test_db::Column::Name, "lo").build())
+    ///         .filter(model::query::dsl::condition().ends_with(test_db::Column::Name, "lo").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -353,6 +389,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" LIKE '%lo'"
     ///     );
     /// ````
+    #[must_use]
     pub fn ends_with<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
         with(self.condition.add(col.ends_with(a)))
     }
@@ -364,12 +401,12 @@ impl ConditionBuilder {
     /// ```
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::concern::query::prelude::*;
+    /// use loco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(condition().contains(test_db::Column::Name, "lo").build())
+    ///         .filter(model::query::dsl::condition().contains(test_db::Column::Name, "lo").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -378,6 +415,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" LIKE '%lo%'"
     ///     );
     /// ````
+    #[must_use]
     pub fn contains<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
         with(self.condition.add(col.contains(a)))
     }
@@ -389,12 +427,12 @@ impl ConditionBuilder {
     /// ```
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::concern::query::prelude::*;
+    /// use loco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(condition().is_null(test_db::Column::Name).build())
+    ///         .filter(model::query::dsl::condition().is_null(test_db::Column::Name).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -403,6 +441,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" IS NULL"
     ///     );
     /// ````
+    #[must_use]
     #[allow(clippy::wrong_self_convention)]
     pub fn is_null<T: ColumnTrait>(self, col: T) -> Self {
         with(self.condition.add(col.is_null()))
@@ -415,12 +454,12 @@ impl ConditionBuilder {
     /// ```
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::concern::query::prelude::*;
+    /// use loco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(condition().is_not_null(test_db::Column::Name).build())
+    ///         .filter(model::query::dsl::condition().is_not_null(test_db::Column::Name).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -429,6 +468,7 @@ impl ConditionBuilder {
     ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" IS NOT NULL"
     ///     );
     /// ````
+    #[must_use]
     #[allow(clippy::wrong_self_convention)]
     pub fn is_not_null<T: ColumnTrait>(self, col: T) -> Self {
         with(self.condition.add(col.is_not_null()))
@@ -441,14 +481,14 @@ impl ConditionBuilder {
     /// ```
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::concern::query::prelude::*;
+    /// use loco_rs::prelude::*;
     ///
     /// let from_date = chrono::NaiveDateTime::parse_from_str("2024-03-01
     /// 22:10:57", "%Y-%m-%d %H:%M:%S").unwrap(); let to_date =
     /// chrono::NaiveDateTime::parse_from_str("2024-03-25 22:10:57", "%Y-%m-%d
     /// %H:%M:%S").unwrap();
     ///
-    /// let condition = condition()
+    /// let condition = model::query::dsl::condition()
     ///     .date_range(test_db::Column::CreatedAt)
     ///     .dates(Some(&from_date), Some(&to_date))
     ///     .build();
@@ -464,10 +504,12 @@ impl ConditionBuilder {
     ///     query_str,
     ///     "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"created_at\" BETWEEN '2024-03-01 22:10:57' AND '2024-03-25 22:10:57'" );
     /// ````
+    #[must_use]
     pub fn date_range<T: ColumnTrait>(self, col: T) -> date_range::DateRangeBuilder<T> {
         date_range::DateRangeBuilder::new(self, col)
     }
 
+    #[must_use]
     pub fn build(&self) -> Condition {
         self.condition.clone().into_condition()
     }

@@ -23,9 +23,9 @@ flair =[]
 
 The `auth` feature comes as a default with the library. If desired, you can turn it off and handle authentication manually.
 
-### Getting Started with a Saas App
+### Getting Started with a SaaS App
 
-Create your app using the [loco-cli](/docs/getting-started/tour) and select the `Saas app` option.
+Create your app using the [loco-cli](/docs/getting-started/tour) and select the `SaaS app (with DB and user auth)` option.
 
 To explore the out-of-the-box auth controllers, run the following command:
 

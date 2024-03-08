@@ -546,7 +546,7 @@ impl Config {
             .as_ref()
             .and_then(|auth| auth.jwt.as_ref())
             .map_or_else(
-                || Err(Error::Any("sending email error".to_string().into())),
+                || Err(Error::Any("no JWT config found".to_string().into())),
                 Ok,
             )
     }

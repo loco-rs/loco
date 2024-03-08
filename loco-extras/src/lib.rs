@@ -4,7 +4,9 @@
 //!
 //! ## Features
 //!
-//! ### initializers
+//! ### Initializers
 //! * `initializer-prometheus` For adding prometheus collection metrics
 //!   endpoint.
+//! * `initializer-extra-db` Adding extra DB connection
+//! * `initializer-multi-db` Adding extra DB's connection
 pub mod initializers;

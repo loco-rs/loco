@@ -5,6 +5,12 @@ use crate::Result;
 
 /// Create new Azure storage.
 ///
+/// # Examples
+///```
+/// use loco_rs::storage::drivers::azure;
+/// let azure_driver = azure::new("name", "account_name", "access_key");
+/// ```
+///
 /// # Errors
 ///
 /// When could not initialize the client instance
