@@ -78,6 +78,36 @@ pub fn template_selection(
     }
 }
 
+/// Warn the user if they are inside a git repository.
+///
+/// If the `ALLOW_IN_GIT_REPO` environment variable is set, this test will be skipped.
+/// If the environment variable is not set, the function will warn the user if they are inside a git
+/// and will let them cancel the operation or continue.
+///
+/// # Errors
+/// when could not prompt the question, or when the user choose not to continue.
+pub fn warn_if_in_git_repo() -> eyre::Result<()> {
+    if let Ok(_) = env::var("ALLOW_IN_GIT_REPO") {
+        return Ok(());
+    }
+
+    let question = requestty::Question::confirm("allow_git_repo")
+        .message("❯ You are inside a git repository. Do you wish to continue?")
+        .default(false)
+        .build();
+
+    let res = requestty::prompt_one(question)?;
+    let answer = res
+        .as_bool()
+        .ok_or_else(|| eyre::eyre!("allow_git_repo is empty"))?;
+
+    if answer {
+        Ok(())
+    } else {
+        Err(eyre::eyre!("user choose not to continue"))
+    }
+}
+
 /// Validates the provided application name for compatibility with Rust library conventions.
 ///
 /// Rust library names should adhere to specific conventions and avoid special characters to

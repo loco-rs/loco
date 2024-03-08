@@ -46,6 +46,10 @@ fn main() -> eyre::Result<()> {
 
     let res = match cli.command {
         Commands::New { path } => {
+            if git::is_a_git_repo(&path).unwrap_or(false) {
+                prompt::warn_if_in_git_repo()?;
+            }
+
             let app = prompt::app_name()?;
 
             let args = generate::ArgsPlaceholder {
