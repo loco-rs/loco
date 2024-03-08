@@ -30,7 +30,7 @@ pub struct ResetParams {
 async fn register(
     State(ctx): State<AppContext>,
     Json(params): Json<RegisterParams>,
-) -> impl IntoResponse {
+) -> Result<Response> {
     let res = users::Model::create_with_password(&ctx.db, &params).await;
 
     let user = match res {
@@ -65,7 +65,7 @@ async fn register(
 async fn verify(
     State(ctx): State<AppContext>,
     Json(params): Json<VerifyParams>,
-) -> impl IntoResponse {
+) -> Result<Response> {
     let user = users::Model::find_by_verification_token(&ctx.db, &params.token).await?;
 
     if user.email_verified_at.is_some() {
@@ -86,7 +86,7 @@ async fn verify(
 async fn forgot(
     State(ctx): State<AppContext>,
     Json(params): Json<ForgotParams>,
-) -> impl IntoResponse {
+) -> Result<Response> {
     let Ok(user) = users::Model::find_by_email(&ctx.db, &params.email).await else {
         // we don't want to expose our users email. if the email is invalid we still
         // returning success to the caller
@@ -104,10 +104,7 @@ async fn forgot(
 }
 
 /// reset user password by the given parameters
-async fn reset(
-    State(ctx): State<AppContext>,
-    Json(params): Json<ResetParams>,
-) -> impl IntoResponse {
+async fn reset(State(ctx): State<AppContext>, Json(params): Json<ResetParams>) -> Result<Response> {
     let Ok(user) = users::Model::find_by_reset_token(&ctx.db, &params.token).await else {
         // we don't want to expose our users email. if the email is invalid we still
         // returning success to the caller
@@ -123,10 +120,7 @@ async fn reset(
 }
 
 /// Creates a user login and returns a token
-async fn login(
-    State(ctx): State<AppContext>,
-    Json(params): Json<LoginParams>,
-) -> impl IntoResponse {
+async fn login(State(ctx): State<AppContext>, Json(params): Json<LoginParams>) -> Result<Response> {
     let user = users::Model::find_by_email(&ctx.db, &params.email).await?;
 
     let valid = user.verify_password(&params.password);
