@@ -104,7 +104,7 @@ pub fn warn_if_in_git_repo() -> eyre::Result<()> {
     if answer {
         Ok(())
     } else {
-        Err(eyre::eyre!("user choose not to continue"))
+        Err(eyre::eyre!("Aborted: You've chose not to continue."))
     }
 }
 
