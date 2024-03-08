@@ -10,11 +10,12 @@
 //! ```rust
 //! use loco_rs::prelude::*;
 //!
+//! #[derive(Serialize)]
 //! pub struct Health {
 //!     pub ok: bool,
 //! }
 //!
-//! async fn ping() -> Result<Response>> {
+//! async fn ping() -> Result<Response> {
 //!    format::json(Health { ok: true })
 //! }
 //! ```
@@ -85,6 +86,7 @@ pub fn text(t: &str) -> Result<Response> {
 /// ```rust
 /// use loco_rs::prelude::*;
 ///
+/// #[derive(Serialize)]
 /// pub struct Health {
 ///     pub ok: bool,
 /// }
