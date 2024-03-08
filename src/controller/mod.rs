@@ -71,6 +71,19 @@
 //! }
 //! ```
 
+use axum::extract::FromRequest;
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
+use colored::Colorize;
+use serde::Serialize;
+
+pub use app_routes::{AppRoutes, ListRoutes};
+pub use routes::Routes;
+
+use crate::{errors::Error, Result};
+
 mod app_routes;
 mod backtrace;
 #[cfg(feature = "channels")]
@@ -83,17 +96,6 @@ pub mod middleware;
 mod ping;
 mod routes;
 pub mod views;
-
-pub use app_routes::{AppRoutes, ListRoutes};
-use axum::{
-    http::StatusCode,
-    response::{IntoResponse, Response},
-};
-use colored::Colorize;
-pub use routes::Routes;
-use serde::Serialize;
-
-use crate::{errors::Error, Result};
 
 /// Create an unauthorized error with a specified message.
 ///
@@ -129,7 +131,7 @@ pub fn unauthorized<T: Into<String>, U>(msg: T) -> Result<U> {
 /// # Errors
 ///
 /// This function will return an error result
-pub fn bad_request<T: Into<String>, U>(msg: &str) -> Result<U> {
+pub fn bad_request<T: Into<String>, U>(msg: T) -> Result<U> {
     Err(Error::BadRequest(msg.into()))
 }
 
@@ -138,7 +140,7 @@ pub fn bad_request<T: Into<String>, U>(msg: &str) -> Result<U> {
 /// # Errors
 /// Currently this function did't return any error. this is for feature
 /// functionality
-pub fn not_found<T: Into<String>, U>() -> Result<U> {
+pub fn not_found<T>() -> Result<T> {
     Err(Error::NotFound)
 }
 #[derive(Debug, Serialize)]
@@ -153,8 +155,7 @@ pub struct ErrorDetail {
 impl ErrorDetail {
     /// Create a new `ErrorDetail` with the specified error and description.
     #[must_use]
-    pub fn new<T: Into<String>>(error: T, description: T) -> Self
-    {
+    pub fn new<T: Into<String>>(error: T, description: T) -> Self {
         Self {
             error: Some(error.into()),
             description: Some(description.into()),
@@ -163,8 +164,7 @@ impl ErrorDetail {
 
     /// Create an `ErrorDetail` with only an error reason and no description.
     #[must_use]
-    pub fn with_reason<T: Into<String>>(error: T) -> Self
-    {
+    pub fn with_reason<T: Into<String>>(error: T) -> Self {
         Self {
             error: Some(error.into()),
             description: None,
@@ -172,7 +172,6 @@ impl ErrorDetail {
     }
 }
 
-use axum::extract::FromRequest;
 #[derive(Debug, FromRequest)]
 #[from_request(via(axum::Json), rejection(Error))]
 pub struct Json<T>(pub T);

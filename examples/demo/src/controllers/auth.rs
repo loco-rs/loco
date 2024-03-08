@@ -36,12 +36,10 @@ async fn register(
     let user = match res {
         Ok(user) => user,
         Err(err) => {
-            tracing::info!(
-                message = err.to_string(),
-                user_email = &params.email,
-                "could not register user",
-            );
-            return bad_request("could not register user");
+            let msg = "could not register user";
+
+            tracing::info!(message = err.to_string(), user_email = &params.email, msg,);
+            return bad_request(msg);
         }
     };
 
