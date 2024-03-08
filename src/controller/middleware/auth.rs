@@ -3,18 +3,17 @@
 //! # Example:
 //!
 //! ```
-//! use loco_rs::{
-//!     controller::{middleware, format, Json},
-//!     app::AppContext,
-//!     Result,
-//! };
+//! use loco_rs::prelude::*;
+//! use serde::Serialize;
 //! use axum::extract::State;
 //!
+//! #[derive(Serialize)]
 //! pub struct TestResponse {
 //!     pub pid: String,
 //! }
+//!
 //! async fn current(
-//!     auth: middleware::auth::JWT,
+//!     auth: auth::JWT,
 //!     State(ctx): State<AppContext>,
 //! ) -> Result<Response> {
 //!     format::json(TestResponse{ pid: auth.claims.pid})

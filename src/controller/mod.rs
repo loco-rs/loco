@@ -107,10 +107,7 @@ use crate::{errors::Error, Result};
 /// # Example
 ///
 /// ```rust
-/// use loco_rs::{
-///     Result,
-///     controller::{format, Json, unauthorized}
-/// };
+/// use loco_rs::prelude::*;
 ///
 /// async fn login() -> Result<Response> {
 ///     let valid = false;

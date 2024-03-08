@@ -30,11 +30,7 @@ impl Routes {
     /// _ping endpoint HOST/status/_ping.
     ///
     /// ```rust
-    /// use loco_rs::{
-    ///     controller::{Routes, format, Json},
-    ///     Result,
-    /// };
-    /// use axum::routing::get;
+    /// use loco_rs::prelude::*;
     /// use serde::Serialize;;
     ///
     /// #[derive(Serialize)]
@@ -63,11 +59,7 @@ impl Routes {
     /// This example preset how to add a get endpoint int the Router.
     ///
     /// ```rust
-    /// use loco_rs::{
-    ///     Result,
-    ///     controller::{Routes, format, Json},
-    /// };
-    /// use axum::routing::get;
+    /// use loco_rs::prelude::*;
     /// use serde::Serialize;
     ///
     /// #[derive(Serialize)]
@@ -100,11 +92,7 @@ impl Routes {
     /// _ping endpoint HOST/status/_ping.
     ///
     /// ```rust
-    /// use loco_rs::{
-    ///     controller::{Routes, format, Json},
-    ///     Result,
-    /// };
-    /// use axum::routing::get;
+    /// use loco_rs::prelude::*;
     /// use serde::Serialize;
     ///
     /// #[derive(Serialize)]
