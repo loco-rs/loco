@@ -42,7 +42,7 @@ impl Routes {
     ///    pub ok: bool,
     /// }
     ///
-    /// async fn ping() -> Result<Json<Health>> {
+    /// async fn ping() -> Result<Response> {
     ///     format::json(Health { ok: true })
     /// }
     /// Routes::at("status").add("/_ping", get(ping));
@@ -75,7 +75,7 @@ impl Routes {
     ///    pub ok: bool,
     /// }
     ///
-    /// async fn ping() -> Result<Json<Health>> {
+    /// async fn ping() -> Result<Response> {
     ///     format::json(Health { ok: true })
     /// }
     /// Routes::new().add("/_ping", get(ping));
@@ -112,7 +112,7 @@ impl Routes {
     ///    pub ok: bool,
     /// }
     ///
-    /// async fn ping() -> Result<Json<Health>> {
+    /// async fn ping() -> Result<Response> {
     ///     format::json(Health { ok: true })
     /// }
     /// Routes::new().prefix("status").add("/_ping", get(ping));

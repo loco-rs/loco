@@ -2,6 +2,30 @@
 
 ## vNext
 
+* **BREAKING** Move from `Result<impl IntoResponse>` to `Result<Response>`. This enables much greater flexibility building APIs, where with `Result<Response>` you mix and match response types based on custom logic (returning JSON and HTML/String in the same route).
+* **Added**: mime responders similar to `respond_to` in Rails:
+
+1. Use the `Format` extractor
+2. Match on `respond_to`
+3. Create different content for different response formats
+
+The following route will always return JSON, unless explicitly asked for HTML with a
+`Content-Type: text/html` (or `Accept: `) header:
+
+```rust
+pub async fn get_one(
+    Format(respond_to): Format,
+    Path(id): Path<i32>,
+    State(ctx): State<AppContext>,
+) -> Result<Response> {
+    let item = load_item(&ctx, id).await?;
+    match respond_to {
+        RespondTo::Html => format::html(&format!("<html><body>{:?}</body></html>", item.title)),
+        _ => format::json(item),
+    }
+}
+```
+
 ## 0.3.2
 
 * Redisgin pagination. [https://github.com/loco-rs/loco/pull/463](https://github.com/loco-rs/loco/pull/463)

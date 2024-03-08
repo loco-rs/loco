@@ -16,7 +16,7 @@
 //! async fn current(
 //!     auth: middleware::auth::JWT,
 //!     State(ctx): State<AppContext>,
-//! ) -> Result<Json<TestResponse>> {
+//! ) -> Result<Response> {
 //!     format::json(TestResponse{ pid: auth.claims.pid})
 //! }
 //! ```

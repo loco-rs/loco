@@ -170,7 +170,7 @@ use loco_rs::{
 async fn current(
     auth: middleware::auth::Auth,
     State(ctx): State<AppContext>,
-) -> Result<Json<CurrentResponse>> {
+) -> Result<Response> {
     let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
     /// Some response
 }
@@ -238,7 +238,7 @@ use crate::{models::_entities::users, views::user::CurrentResponse};
 async fn current_by_api_key(
     auth: middleware::auth::ApiToken<users::Model>,
     State(_ctx): State<AppContext>,
-) -> Result<Json<CurrentResponse>> {
+) -> Result<Response> {
     format::json(CurrentResponse::new(&auth.user))
 }
 

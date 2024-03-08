@@ -16,7 +16,7 @@ pub use crate::{
     app::{AppContext, Initializer},
     controller::{
         format,
-        middleware::mime_responds::{Format, RespondTo},
+        middleware::format::{Format, RespondTo},
         not_found, unauthorized,
         views::{engines::TeraView, ViewEngine, ViewRenderer},
         Json, Routes,

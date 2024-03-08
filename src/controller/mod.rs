@@ -112,7 +112,7 @@ use crate::{errors::Error, Result};
 ///     controller::{format, Json, unauthorized}
 /// };
 ///
-/// async fn login() -> Result<Json<()>> {
+/// async fn login() -> Result<Response> {
 ///     let valid = false;
 ///     if !valid {
 ///         return unauthorized("unauthorized access");

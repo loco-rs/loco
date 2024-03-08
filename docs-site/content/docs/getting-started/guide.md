@@ -503,7 +503,7 @@ use loco_rs::prelude::*;
 
 use crate::models::_entities::articles;
 
-pub async fn list(State(ctx): State<AppContext>) -> Result<Json<Vec<articles::Model>>> {
+pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
     let res = articles::Entity::find().all(&ctx.db).await?;
     format::json(res)
 }
@@ -559,11 +559,11 @@ async fn load_item(ctx: &AppContext, id: i32) -> Result<Model> {
     item.ok_or_else(|| Error::NotFound)
 }
 
-pub async fn list(State(ctx): State<AppContext>) -> Result<Json<Vec<Model>>> {
+pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
     format::json(Entity::find().all(&ctx.db).await?)
 }
 
-pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Json<Model>> {
+pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Response> {
     let mut item = ActiveModel {
         ..Default::default()
     };
@@ -576,7 +576,7 @@ pub async fn update(
     Path(id): Path<i32>,
     State(ctx): State<AppContext>,
     Json(params): Json<Params>,
-) -> Result<Json<Model>> {
+) -> Result<Response> {
     let item = load_item(&ctx, id).await?;
     let mut item = item.into_active_model();
     params.update(&mut item);
@@ -589,7 +589,7 @@ pub async fn remove(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Resul
     format::empty()
 }
 
-pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Json<Model>> {
+pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Response> {
     format::json(load_item(&ctx, id).await?)
 }
 
@@ -721,7 +721,7 @@ use crate::models::_entities::{
 pub async fn comments(
     Path(id): Path<i32>,
     State(ctx): State<AppContext>,
-) -> Result<Json<Vec<comments::Model>>> {
+) -> Result<Response> {
     let item = load_item(&ctx, id).await?;
     let comments = item.find_related(comments::Entity).all(&ctx.db).await?;
     format::json(comments)
@@ -820,7 +820,7 @@ Let's see how to require authentication when **adding comments**.
 Go back to `src/controllers/comments.rs` and take a look at the `add` function:
 
 ```rust
-pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Json<Model>> {
+pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Response> {
     let mut item = ActiveModel {
         ..Default::default()
     };
@@ -837,7 +837,7 @@ async fn add(
     auth: auth::JWT,
     State(ctx): State<AppContext>,
     Json(params): Json<Params>,
-) -> Result<Json<CurrentResponse>> {
+) -> Result<Response> {
   // we only want to make sure it exists
   let _current_user = crate::models::users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
 

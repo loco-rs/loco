@@ -95,8 +95,16 @@ pub async fn remove(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Resul
     format::empty()
 }
 
-pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Response> {
-    format::json(load_item(&ctx, id).await?)
+pub async fn get_one(
+    Format(respond_to): Format,
+    Path(id): Path<i32>,
+    State(ctx): State<AppContext>,
+) -> Result<Response> {
+    let item = load_item(&ctx, id).await?;
+    match respond_to {
+        RespondTo::Html => format::html(&format!("<html><body>{:?}</body></html>", item.title)),
+        _ => format::json(item),
+    }
 }
 
 impl ListQueryParams {

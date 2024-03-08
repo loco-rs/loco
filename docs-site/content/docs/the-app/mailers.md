@@ -30,7 +30,7 @@ use crate::{
 async fn register(
     State(ctx): State<AppContext>,
     Json(params): Json<RegisterParams>,
-) -> Result<Json<()>> {
+) -> Result<Response> {
     // .. register a user ..
     AuthMailer::send_welcome(&ctx, &user.email).await.unwrap();
 }
