@@ -115,7 +115,7 @@ mailer:
 # Database Configuration
 database:
   # Database connection URI
-  uri: { { get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app") } }
+  uri: {{get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app")}}
   # When enabled, the sql query will be logged.
   enable_logging: false
   # Set the timeout duration when acquiring a connection.
@@ -136,7 +136,7 @@ database:
 # Redis Configuration
 redis:
   # Redis connection URI
-  uri: { { get_env(name="REDIS_URL", default="redis://127.0.0.1") } }
+  uri: {{get_env(name="REDIS_URL", default="redis://127.0.0.1")}}
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_flush: false
 
