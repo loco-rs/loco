@@ -253,6 +253,7 @@ fn json_error_response(status_code: StatusCode, detail: ErrorDetail) -> Response
 #[cfg(test)]
 mod tests {
     use futures_util::TryStreamExt;
+    use serde::ser::{self};
     use serde_json::{json, Value};
 
     use super::*;
@@ -286,7 +287,7 @@ mod tests {
         String::from_utf8(bytes).unwrap()
     }
     #[tokio::test]
-    async fn test_unauthorized_error() {
+    async fn test_unauthorized_method_error() {
         let result: Result<()> = unauthorized("unauthorized access");
         assert_eq!(result.is_err(), true);
         let response: Response = result.unwrap_err().into_response();
@@ -304,7 +305,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_bad_request_error() {
+    async fn test_bad_request_method_error() {
         let result: Result<()> = bad_request("bad request");
         assert_eq!(result.is_err(), true);
         let response: Response = result.unwrap_err().into_response();
@@ -321,7 +322,7 @@ mod tests {
         assert_eq!(body_value, expected);
     }
     #[tokio::test]
-    async fn test_not_found_error() {
+    async fn test_not_found_method_error() {
         let result: Result<()> = not_found();
         assert_eq!(result.is_err(), true);
         let response: Response = result.unwrap_err().into_response();
@@ -406,6 +407,135 @@ mod tests {
         // Define the expected JSON value
         let expected = json!({
             "error":"Bad Request"
+        });
+
+        // Compare the deserialized response body with the expected JSON
+        assert_eq!(body_value, expected);
+    }
+
+    #[tokio::test]
+    async fn test_tera_error() {
+        let tera_error = tera::Error::msg("tera error");
+        let result: Result<()> = Err(Error::Tera(tera_error));
+        assert_eq!(result.is_err(), true);
+        let response: Response = result.unwrap_err().into_response();
+        // Status Code
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body_value = body_value(response).await;
+        // Define the expected JSON value
+        let expected = json!({
+            "error":"Bad Request"
+        });
+
+        // Compare the deserialized response body with the expected JSON
+        assert_eq!(body_value, expected);
+    }
+
+    #[tokio::test]
+    async fn test_json_error() {
+        let json_error = ser::Error::custom("path contains invalid UTF-8 characters");
+        let result: Result<()> = Err(Error::JSON(json_error));
+        assert_eq!(result.is_err(), true);
+        let response: Response = result.unwrap_err().into_response();
+        // Status Code
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body_value = body_value(response).await;
+        // Define the expected JSON value
+        let expected = json!({
+            "error":"Bad Request"
+        });
+
+        // Compare the deserialized response body with the expected JSON
+        assert_eq!(body_value, expected);
+    }
+
+    #[tokio::test]
+    async fn test_unauthorized_error() {
+        let result: Result<()> = Err(Error::Unauthorized("unauthorized access".to_string()));
+        assert_eq!(result.is_err(), true);
+        let response: Response = result.unwrap_err().into_response();
+        // Status Code
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        let body_value = body_value(response).await;
+        // Define the expected JSON value
+        let expected = json!({
+            "error": "unauthorized",
+            "description":"You do not have permission to access this resource"
+        });
+
+        // Compare the deserialized response body with the expected JSON
+        assert_eq!(body_value, expected);
+    }
+
+    #[tokio::test]
+    async fn test_not_found_error() {
+        let result: Result<()> = Err(Error::NotFound);
+        assert_eq!(result.is_err(), true);
+        let response: Response = result.unwrap_err().into_response();
+        // Status Code
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        let body_value = body_value(response).await;
+        // Define the expected JSON value
+        let expected = json!({
+            "error": "not_found",
+            "description":"Resource was not found"
+        });
+
+        // Compare the deserialized response body with the expected JSON
+        assert_eq!(body_value, expected);
+    }
+
+    #[tokio::test]
+    async fn test_bad_request_error() {
+        let result: Result<()> = Err(Error::BadRequest("bad request".to_string()));
+        assert_eq!(result.is_err(), true);
+        let response: Response = result.unwrap_err().into_response();
+        // Status Code
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body_value = body_value(response).await;
+        // Define the expected JSON value
+        let expected = json!({
+            "error": "bad_request",
+            "description":"bad request"
+        });
+
+        // Compare the deserialized response body with the expected JSON
+        assert_eq!(body_value, expected);
+    }
+
+    #[tokio::test]
+    async fn test_custom_error() {
+        let result: Result<()> = Err(Error::CustomError(
+            StatusCode::BAD_REQUEST,
+            ErrorDetail::new("bad_request", "bad request"),
+        ));
+        assert_eq!(result.is_err(), true);
+        let response: Response = result.unwrap_err().into_response();
+        // Status Code
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body_value = body_value(response).await;
+        // Define the expected JSON value
+        let expected = json!({
+            "error": "bad_request",
+            "description":"bad request"
+        });
+
+        // Compare the deserialized response body with the expected JSON
+        assert_eq!(body_value, expected);
+    }
+
+    #[tokio::test]
+    async fn test_internal_server_error() {
+        let result: Result<()> = Err(Error::InternalServerError);
+        assert_eq!(result.is_err(), true);
+        let response: Response = result.unwrap_err().into_response();
+        // Status Code
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        let body_value = body_value(response).await;
+        // Define the expected JSON value
+        let expected = json!({
+            "error": "internal_server_error",
+            "description":"Internal Server Error"
         });
 
         // Compare the deserialized response body with the expected JSON
