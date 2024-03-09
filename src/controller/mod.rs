@@ -71,16 +71,15 @@
 //! }
 //! ```
 
-use axum::extract::FromRequest;
+pub use app_routes::{AppRoutes, ListRoutes};
 use axum::{
+    extract::FromRequest,
     http::StatusCode,
     response::{IntoResponse, Response},
 };
 use colored::Colorize;
-use serde::Serialize;
-
-pub use app_routes::{AppRoutes, ListRoutes};
 pub use routes::Routes;
+use serde::Serialize;
 
 use crate::{errors::Error, Result};
 
@@ -205,18 +204,18 @@ impl IntoResponse for Error {
             }
         }
 
-        let public_facing_error = match self {
-            Self::NotFound => (
+        match self {
+            Self::NotFound => json_error_response(
                 StatusCode::NOT_FOUND,
                 ErrorDetail::new("not_found", "Resource was not found"),
             ),
-            Self::InternalServerError => (
+            Self::InternalServerError => json_error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ErrorDetail::new("internal_server_error", "Internal Server Error"),
             ),
             Self::Unauthorized(err) => {
                 tracing::warn!(err);
-                (
+                json_error_response(
                     StatusCode::UNAUTHORIZED,
                     ErrorDetail::new(
                         "unauthorized",
@@ -224,21 +223,192 @@ impl IntoResponse for Error {
                     ),
                 )
             }
-            Self::CustomError(status_code, data) => (status_code, data),
+            Self::CustomError(status_code, data) => json_error_response(status_code, data),
             Self::WithBacktrace { inner, backtrace } => {
-                println!("\n{}", inner.to_string().red().underline());
+                tracing::error!("\n{}", inner.to_string().red().underline());
                 backtrace::print_backtrace(&backtrace).unwrap();
-                (
+                json_error_response(
                     StatusCode::BAD_REQUEST,
                     ErrorDetail::with_reason("Bad Request"),
                 )
             }
-            _ => (
+            Self::BadRequest(err) => json_error_response(
+                StatusCode::BAD_REQUEST,
+                ErrorDetail::new("bad_request", &err),
+            ),
+            Self::Message(err) => (StatusCode::BAD_REQUEST, err).into_response(),
+            _ => json_error_response(
                 StatusCode::BAD_REQUEST,
                 ErrorDetail::with_reason("Bad Request"),
             ),
+        }
+    }
+}
+/// Create a JSON error response with the specified status code and error
+/// detail.
+fn json_error_response(status_code: StatusCode, detail: ErrorDetail) -> Response {
+    (status_code, Json(detail)).into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use futures_util::TryStreamExt;
+    use serde_json::{json, Value};
+
+    use super::*;
+
+    async fn body_value(response: Response) -> Value {
+        // Convert the body into a stream and collect the bytes
+        let bytes = response
+            .into_body()
+            .into_data_stream()
+            .map_ok(|bytes| bytes.to_vec())
+            .try_concat()
+            .await
+            .unwrap_or_else(|_| Vec::new());
+
+        // Convert the bytes to a String
+        let body_string = String::from_utf8(bytes).unwrap();
+        serde_json::from_str(&body_string).unwrap()
+    }
+
+    async fn body_string(response: Response) -> String {
+        // Convert the body into a stream and collect the bytes
+        let bytes = response
+            .into_body()
+            .into_data_stream()
+            .map_ok(|bytes| bytes.to_vec())
+            .try_concat()
+            .await
+            .unwrap_or_else(|_| Vec::new());
+
+        // Convert the bytes to a String
+        String::from_utf8(bytes).unwrap()
+    }
+    #[tokio::test]
+    async fn test_unauthorized_error() {
+        let result: Result<()> = unauthorized("unauthorized access");
+        assert_eq!(result.is_err(), true);
+        let response: Response = result.unwrap_err().into_response();
+        // Status Code
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        let body_value = body_value(response).await;
+        // Define the expected JSON value
+        let expected = json!({
+            "error": "unauthorized",
+            "description":"You do not have permission to access this resource"
+        });
+
+        // Compare the deserialized response body with the expected JSON
+        assert_eq!(body_value, expected);
+    }
+
+    #[tokio::test]
+    async fn test_bad_request_error() {
+        let result: Result<()> = bad_request("bad request");
+        assert_eq!(result.is_err(), true);
+        let response: Response = result.unwrap_err().into_response();
+        // Status Code
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body_value = body_value(response).await;
+        // Define the expected JSON value
+        let expected = json!({
+            "error": "bad_request",
+            "description":"bad request"
+        });
+
+        // Compare the deserialized response body with the expected JSON
+        assert_eq!(body_value, expected);
+    }
+    #[tokio::test]
+    async fn test_not_found_error() {
+        let result: Result<()> = not_found();
+        assert_eq!(result.is_err(), true);
+        let response: Response = result.unwrap_err().into_response();
+        // Status Code
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        let body_value = body_value(response).await;
+        // Define the expected JSON value
+        let expected = json!({
+            "error": "not_found",
+            "description":"Resource was not found"
+        });
+
+        // Compare the deserialized response body with the expected JSON
+        assert_eq!(body_value, expected);
+    }
+
+    #[tokio::test]
+    async fn test_backtrace_error() {
+        let result: Result<()> = Err(Error::WithBacktrace {
+            inner: Box::new(Error::BadRequest("bad request".to_string())),
+            backtrace: Box::new(std::backtrace::Backtrace::capture()),
+        });
+        assert_eq!(result.is_err(), true);
+        let response: Response = result.unwrap_err().into_response();
+        // Status Code
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body_value = body_value(response).await;
+        // Define the expected JSON value
+        let expected = json!({
+            "error": "Bad Request"
+        });
+
+        // Compare the deserialized response body with the expected JSON
+        assert_eq!(body_value, expected);
+    }
+
+    #[tokio::test]
+    async fn test_message_error() {
+        let result: Result<()> = Err(Error::Message("bad request".to_string()));
+        assert_eq!(result.is_err(), true);
+        let response: Response = result.unwrap_err().into_response();
+        // Status Code
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body_string = body_string(response).await;
+
+        // Compare the deserialized response body with the expected JSON
+        assert_eq!(&body_string, "bad request");
+    }
+
+    #[tokio::test]
+    async fn test_task_not_found_error() {
+        let result: Result<()> = Err(Error::TaskNotFound("task not found".to_string()));
+        assert_eq!(result.is_err(), true);
+        let response: Response = result.unwrap_err().into_response();
+        // Status Code
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body_value = body_value(response).await;
+        // Define the expected JSON value
+        let expected = json!({
+            "error":"Bad Request"
+        });
+
+        // Compare the deserialized response body with the expected JSON
+        assert_eq!(body_value, expected);
+    }
+
+    #[tokio::test]
+    async fn test_axum_error() {
+        let axum_error = if let Err(e) = StatusCode::from_u16(6666) {
+            let err = e.into();
+            err
+        } else {
+            panic!("Bad status allowed!");
         };
 
-        (public_facing_error.0, Json(public_facing_error.1)).into_response()
+        let result: Result<()> = Err(Error::Axum(axum_error));
+        assert_eq!(result.is_err(), true);
+        let response: Response = result.unwrap_err().into_response();
+        // Status Code
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body_value = body_value(response).await;
+        // Define the expected JSON value
+        let expected = json!({
+            "error":"Bad Request"
+        });
+
+        // Compare the deserialized response body with the expected JSON
+        assert_eq!(body_value, expected);
     }
 }
