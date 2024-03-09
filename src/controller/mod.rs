@@ -71,6 +71,8 @@
 //! }
 //! ```
 
+use std::backtrace::Backtrace;
+
 pub use app_routes::{AppRoutes, ListRoutes};
 use axum::{
     extract::FromRequest,
@@ -184,58 +186,15 @@ impl<T: Serialize> IntoResponse for Json<T> {
 impl IntoResponse for Error {
     /// Convert an `Error` into an HTTP response.
     fn into_response(self) -> Response {
-        match &self {
-            Self::WithBacktrace {
-                inner,
-                backtrace: _,
-            } => {
-                tracing::error!(
-                error.msg = %inner,
-                error.details = ?inner,
-                "controller_error"
-                );
-            }
-            err => {
-                tracing::error!(
-                error.msg = %err,
-                error.details = ?err,
-                "controller_error"
-                );
-            }
-        }
+        log_error(&self); // Log the error first
 
         match self {
-            Self::NotFound => json_error_response(
-                StatusCode::NOT_FOUND,
-                ErrorDetail::new("not_found", "Resource was not found"),
-            ),
-            Self::InternalServerError => json_error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                ErrorDetail::new("internal_server_error", "Internal Server Error"),
-            ),
-            Self::Unauthorized(err) => {
-                tracing::warn!(err);
-                json_error_response(
-                    StatusCode::UNAUTHORIZED,
-                    ErrorDetail::new(
-                        "unauthorized",
-                        "You do not have permission to access this resource",
-                    ),
-                )
-            }
-            Self::CustomError(status_code, data) => json_error_response(status_code, data),
-            Self::WithBacktrace { inner, backtrace } => {
-                tracing::error!("\n{}", inner.to_string().red().underline());
-                backtrace::print_backtrace(&backtrace).unwrap();
-                json_error_response(
-                    StatusCode::BAD_REQUEST,
-                    ErrorDetail::with_reason("Bad Request"),
-                )
-            }
-            Self::BadRequest(err) => json_error_response(
-                StatusCode::BAD_REQUEST,
-                ErrorDetail::new("bad_request", &err),
-            ),
+            Self::NotFound => handle_not_found(),
+            Self::InternalServerError => handle_internal_server_error(),
+            Self::Unauthorized(err) => handle_unauthorized(&err),
+            Self::CustomError(status_code, data) => handle_custom_error(status_code, data),
+            Self::WithBacktrace { inner, backtrace } => handle_with_backtrace(&inner, &backtrace),
+            Self::BadRequest(err) => handle_bad_request(&err),
             Self::Message(err) => (StatusCode::BAD_REQUEST, err).into_response(),
             _ => json_error_response(
                 StatusCode::BAD_REQUEST,
@@ -244,6 +203,71 @@ impl IntoResponse for Error {
         }
     }
 }
+
+fn log_error(err: &Error) {
+    match err {
+        Error::WithBacktrace { inner, .. } => {
+            tracing::error!(
+                error.msg = %inner,
+                error.details = ?inner,
+                "controller_error"
+            );
+        }
+        _ => {
+            tracing::error!(
+                error.msg = %err,
+                error.details = ?err,
+                "controller_error"
+            );
+        }
+    }
+}
+
+fn handle_not_found() -> Response {
+    json_error_response(
+        StatusCode::NOT_FOUND,
+        ErrorDetail::new("not_found", "Resource was not found"),
+    )
+}
+
+fn handle_internal_server_error() -> Response {
+    json_error_response(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        ErrorDetail::new("internal_server_error", "Internal Server Error"),
+    )
+}
+
+fn handle_unauthorized(err: &str) -> Response {
+    tracing::warn!(err);
+    json_error_response(
+        StatusCode::UNAUTHORIZED,
+        ErrorDetail::new(
+            "unauthorized",
+            "You do not have permission to access this resource",
+        ),
+    )
+}
+
+fn handle_custom_error(status_code: StatusCode, data: ErrorDetail) -> Response {
+    json_error_response(status_code, data)
+}
+
+fn handle_with_backtrace(inner: &Error, backtrace: &Backtrace) -> Response {
+    tracing::error!("\n{}", inner.to_string().red().underline());
+    backtrace::print_backtrace(backtrace).unwrap();
+    json_error_response(
+        StatusCode::BAD_REQUEST,
+        ErrorDetail::with_reason("Bad Request"),
+    )
+}
+
+fn handle_bad_request(err: &str) -> Response {
+    json_error_response(
+        StatusCode::BAD_REQUEST,
+        ErrorDetail::new("bad_request", err),
+    )
+}
+
 /// Create a JSON error response with the specified status code and error
 /// detail.
 fn json_error_response(status_code: StatusCode, detail: ErrorDetail) -> Response {
