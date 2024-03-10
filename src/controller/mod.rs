@@ -276,6 +276,8 @@ fn json_error_response(status_code: StatusCode, detail: ErrorDetail) -> Response
 
 #[cfg(test)]
 mod tests {
+    use std::env;
+
     use futures_util::TryStreamExt;
     use serde::ser::{self};
     use serde_json::{json, Value};
@@ -365,6 +367,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_backtrace_error() {
+        env::set_var("RUST_BACKTRACE", "1");
         let result: Result<()> = Err(Error::WithBacktrace {
             inner: Box::new(Error::BadRequest("bad request".to_string())),
             backtrace: Box::new(std::backtrace::Backtrace::capture()),
