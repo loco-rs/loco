@@ -144,6 +144,33 @@ fn git_exists() -> bool {
     }
 }
 
+pub fn is_a_git_repo(destination_path: &PathBuf) -> eyre::Result<bool> {
+    let destination_path = destination_path.canonicalize()?;
+    match Command::new("git")
+        .arg("-C")
+        .arg(destination_path)
+        .arg("rev-parse")
+        .arg("--is-inside-work-tree")
+        .output()
+    {
+        Ok(output) => {
+            if output.status.success() {
+                Ok(true)
+            } else {
+                tracing::error!(
+                    error = tracing::field::debug(output),
+                    "git command returned an error"
+                );
+                Ok(false)
+            }
+        }
+        Err(err) => {
+            tracing::debug!(error = err.to_string(), "git not found");
+            Ok(false)
+        }
+    }
+}
+
 #[cfg(feature = "git2")]
 fn clone_repo_with_git2(temp_clone_dir: &Path) -> eyre::Result<()> {
     let mut fetch_options = git2::FetchOptions::new();
