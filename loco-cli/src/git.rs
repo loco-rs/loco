@@ -153,7 +153,17 @@ pub fn is_a_git_repo(destination_path: &PathBuf) -> eyre::Result<bool> {
         .arg("--is-inside-work-tree")
         .output()
     {
-        Ok(output) => Ok(output.status.success()),
+        Ok(output) => {
+            if output.status.success() {
+                Ok(true)
+            } else {
+                tracing::error!(
+                    error = tracing::field::debug(output),
+                    "git command returned an error"
+                );
+                Ok(false)
+            }
+        }
         Err(err) => {
             tracing::debug!(error = err.to_string(), "git not found");
             Ok(false)

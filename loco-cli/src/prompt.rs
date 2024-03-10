@@ -87,7 +87,7 @@ pub fn template_selection(
 /// # Errors
 /// when could not prompt the question, or when the user choose not to continue.
 pub fn warn_if_in_git_repo() -> eyre::Result<()> {
-    if let Ok(_) = env::var("ALLOW_IN_GIT_REPO") {
+    if env::var("ALLOW_IN_GIT_REPO").is_ok() {
         return Ok(());
     }
 
