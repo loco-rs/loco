@@ -2,7 +2,6 @@ use std::path::Path;
 
 use async_trait::async_trait;
 use loco_extras;
-use loco_rs::controller::channels::AppChannels;
 use loco_rs::{
     app::{AppContext, Hooks, Initializer},
     boot::{create_app, BootResult, StartMode},
