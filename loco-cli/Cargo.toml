@@ -25,7 +25,6 @@ required-features = []
 
 [features]
 default = []
-gix = ["dep:gix"]
 git2 = ["dep:git2"]
 
 [dependencies]
@@ -43,10 +42,6 @@ lazy_static = "1.4.0"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 git2 = { version = "0.18.1", optional = true }
-gix = { version = "0.56.0", features = [
-    "blocking-network-client",
-    "blocking-http-transport-reqwest-rust-tls-trust-dns",
-], optional = true }
 cfg-if = "1.0.0"
 
 [dev-dependencies]
