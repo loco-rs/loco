@@ -21,7 +21,7 @@ jobs:
           override: true
       - run: |
           cargo install loco-cli
-          LOCO_APP_NAME=saas LOCO_TEMPLATE=saas loco new
+          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=saas LOCO_TEMPLATE=saas loco new
       - run: |
           cargo build
         working-directory: ./saas
