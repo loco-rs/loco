@@ -9,4 +9,5 @@
 //!   endpoint.
 //! * `initializer-extra-db` Adding extra DB connection
 //! * `initializer-multi-db` Adding extra DB's connection
+//! * `initializer-normalize-path` Normalize the request path
 pub mod initializers;

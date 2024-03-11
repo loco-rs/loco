@@ -10,9 +10,7 @@ cfg_if::cfg_if! {
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use axum::{Router as AxumRouter, ServiceExt};
-use tower::Layer;
-use tower_http::normalize_path::NormalizePathLayer;
+use axum::Router as AxumRouter;
 
 #[cfg(feature = "channels")]
 use crate::controller::channels::AppChannels;
@@ -108,25 +106,13 @@ pub trait Hooks {
     /// # Returns
     /// A Result indicating success () or an error if the server fails to start.
     async fn serve(app: AxumRouter, server_config: ServeParams) -> Result<()> {
-        // Add the NormalizePathLayer to handle a trailing `/` at the end of URIs.
-        // Normally, adding a layer via the axum `Route::layer` method causes the layer to run
-        // after routing has already completed. This means the `NormalizePathLayer` would not normalize
-        // the uri for the purposes of routing, which defeats the point of the layer.
-        // The workaround is to wrap the entire router with `NormalizePathLayer`.
-        // See: https://docs.rs/axum/latest/axum/middleware/index.html#rewriting-request-uri-in-middleware
-        let app = NormalizePathLayer::trim_trailing_slash().layer(app);
-        // This line is used to make the rust type system happy -- without this, rust complains
-        // about the `into_make_service()` call below. I think this is because `NormalizePathLayer`
-        // doesn't know anything about the request type, but `tower::util::MapRequestLayer` does.
-        let app = tower::util::MapRequestLayer::new(|f| f).layer(app);
-
         let listener = tokio::net::TcpListener::bind(&format!(
             "{}:{}",
             server_config.binding, server_config.port
         ))
         .await?;
 
-        axum::serve(listener, app.into_make_service()).await?;
+        axum::serve(listener, app).await?;
 
         Ok(())
     }

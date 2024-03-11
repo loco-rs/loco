@@ -86,17 +86,7 @@ tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 # cli/migrations
 duct = "0.13.6"
 
-tower-http = { version = "0.5.0", features = [
-  "trace",
-  "catch-panic",
-  "timeout",
-  "add-extension",
-  "cors",
-  "fs",
-  "set-header",
-  "compression-full",
-  "normalize-path",
-] }
+tower-http = { workspace = true }
 byte-unit = "4.0.19"
 
 argon2 = { version = "0.5.2", features = ["std"] }
@@ -105,7 +95,7 @@ jsonwebtoken = { version = "9.1.0", optional = true }
 bcrypt = { version = "0.15.0", optional = true }
 validator = { version = "0.16.1", features = ["derive"] }
 futures-util = "0.3"
-tower = "0.4"
+tower = { workspace = true }
 hyper = "1.1"
 mime = "0.3"
 bytes = "1.1"
@@ -132,6 +122,18 @@ object_store = { version = "0.9.0", default-features = false }
 [workspace.dependencies]
 async-trait = { version = "0.1.74" }
 axum = { version = "0.7.1", features = ["macros"] }
+tower = "0.4"
+tower-http = { version = "0.5.0", features = [
+  "trace",
+  "catch-panic",
+  "timeout",
+  "add-extension",
+  "cors",
+  "fs",
+  "set-header",
+  "compression-full",
+  "normalize-path"
+] }
 
 [dependencies.sea-orm-migration]
 optional = true
