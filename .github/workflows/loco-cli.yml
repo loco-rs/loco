@@ -49,7 +49,7 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
       - name: Run cargo clippy
-        run: cargo clippy -- -W clippy::nursery -W clippy::pedantic -W rust-2018-idioms -W rust-2021-compatibility
+        run: cargo clippy --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms
         working-directory: ./loco-cli
 
   test:
