@@ -3,7 +3,6 @@ use insta::assert_debug_snapshot;
 
 use loco_rs::testing;
 use rstest::rstest;
-use sea_orm::entity::prelude::*;
 
 // TODO: see how to dedup / extract this to app-local test utils
 // not to framework, because that would require a runtime dep on insta
