@@ -30,7 +30,7 @@ In some cases, you may want to run tests with a clean dataset, ensuring that eac
 
 > ⚠️ Caution: Be cautious when using this feature to avoid unintentional data loss, especially in a production environment.
 
-- When doing it recommended to run all the relevant task in with (serial)[https://crates.io/crates/rstest] crate.
+- When doing it recommended to run all the relevant task in with [serial](https://crates.io/crates/rstest) crate.
 - To decide which tables you want to truncate, add the entity model to the App hook:
 
 ```rust
