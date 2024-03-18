@@ -40,7 +40,7 @@ This will enqueue a mail delivery job. The action is instant because the deliver
 
 ## Mailer Configuration
 
-Configuration for mailers is done in the `config/[stage].toml` file. Here is the default configuration: 
+Configuration for mailers is done in the `config/[stage].yaml` file. Here is the default configuration:
 
 ```yaml
 # Mailer Configuration.
