@@ -16,7 +16,8 @@ flair =[]
 
 <details>
 <summary>How can I automatically reload code?</summary>
-Try (cargo watch)[https://crates.io/crates/cargo-watch]:
+
+Try [cargo watch](https://crates.io/crates/cargo-watch):
 
 ```
 $ cargo-watch -x check  -s 'cargo loco start'
