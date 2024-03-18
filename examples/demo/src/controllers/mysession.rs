@@ -7,7 +7,7 @@ use loco_rs::prelude::*;
 /// # Errors
 ///
 /// This function will return an error if result fails
-pub async fn get_session(_session: Session<SessionNullPool>) -> Result<()> {
+pub async fn get_session(_session: Session<SessionNullPool>) -> Result<Response> {
     format::empty()
 }
 

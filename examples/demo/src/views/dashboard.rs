@@ -6,6 +6,6 @@ use serde_json::json;
 /// # Errors
 ///
 /// This function will return an error if render fails
-pub fn home(v: &impl ViewRenderer) -> Result<impl IntoResponse> {
+pub fn home(v: &impl ViewRenderer) -> Result<Response> {
     format::render().view(v, "home/hello.html", json!({}))
 }

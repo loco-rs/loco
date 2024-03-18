@@ -5,14 +5,14 @@ use crate::{models::_entities::users, views::user::CurrentResponse};
 async fn current(
     auth: auth::JWTWithUser<users::Model>,
     State(_ctx): State<AppContext>,
-) -> Result<Json<CurrentResponse>> {
+) -> Result<Response> {
     format::json(CurrentResponse::new(&auth.user))
 }
 
 async fn current_by_api_key(
     auth: auth::ApiToken<users::Model>,
     State(_ctx): State<AppContext>,
-) -> Result<Json<CurrentResponse>> {
+) -> Result<Response> {
     format::json(CurrentResponse::new(&auth.user))
 }
 

@@ -44,7 +44,7 @@ use crate::{views::auth::LoginResponse};
 async fn login(
     State(ctx): State<AppContext>,
     Json(params): Json<LoginParams>,
-) -> Result<Json<LoginResponse>> {
+) -> Result<Response> {
     // Fetching the user model with the requested parameters
     // let user = users::Model::find_by_email(&ctx.db, &params.email).await?;
 

@@ -26,7 +26,7 @@ Then it would look like this:
 async fn current(
     auth: middleware::auth::Auth,
     State(ctx): State<AppContext>,
-) -> Result<Json<CurrentResponse>> {
+) -> Result<Response> {
     let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
     format::json(CurrentResponse::new(&user))
 }

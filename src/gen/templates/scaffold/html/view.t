@@ -17,7 +17,7 @@ use crate::models::_entities::{{file_name | plural}};
 /// # Errors
 ///
 /// When there is an issue with rendering the view.
-pub fn list(v: &impl ViewRenderer, items: &Vec<{{file_name | plural}}::Model>) -> Result<impl IntoResponse> {
+pub fn list(v: &impl ViewRenderer, items: &Vec<{{file_name | plural}}::Model>) -> Result<Response> {
     format::render().view(v, "{{file_name}}/list.html", serde_json::json!({"items": items}))
 }
 
@@ -26,7 +26,7 @@ pub fn list(v: &impl ViewRenderer, items: &Vec<{{file_name | plural}}::Model>) -
 /// # Errors
 ///
 /// When there is an issue with rendering the view.
-pub fn show(v: &impl ViewRenderer, item: &{{file_name | plural}}::Model) -> Result<impl IntoResponse> {
+pub fn show(v: &impl ViewRenderer, item: &{{file_name | plural}}::Model) -> Result<Response> {
     format::render().view(v, "{{file_name}}/show.html", serde_json::json!({"item": item}))
 }
 
@@ -35,7 +35,7 @@ pub fn show(v: &impl ViewRenderer, item: &{{file_name | plural}}::Model) -> Resu
 /// # Errors
 ///
 /// When there is an issue with rendering the view.
-pub fn create(v: &impl ViewRenderer) -> Result<impl IntoResponse> {
+pub fn create(v: &impl ViewRenderer) -> Result<Response> {
     format::render().view(v, "{{file_name}}/create.html", serde_json::json!({}))
 }
 
@@ -44,6 +44,6 @@ pub fn create(v: &impl ViewRenderer) -> Result<impl IntoResponse> {
 /// # Errors
 ///
 /// When there is an issue with rendering the view.
-pub fn edit(v: &impl ViewRenderer, item: &{{file_name | plural}}::Model) -> Result<impl IntoResponse> {
+pub fn edit(v: &impl ViewRenderer, item: &{{file_name | plural}}::Model) -> Result<Response> {
     format::render().view(v, "{{file_name}}/edit.html", serde_json::json!({"item": item}))
 }

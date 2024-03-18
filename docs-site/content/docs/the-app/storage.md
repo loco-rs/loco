@@ -158,7 +158,7 @@ Follow this example, make sure you enable `multipart` feature in axum crate.
 async fn upload_file(
     State(ctx): State<AppContext>,
     mut multipart: Multipart,
-) -> Result<Json<views::upload::Response>> {
+) -> Result<Response> {
     let mut file = None;
     while let Some(field) = multipart.next_field().await.map_err(|err| {
         tracing::error!(error = ?err,"could not readd multipart");

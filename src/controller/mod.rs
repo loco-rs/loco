@@ -109,12 +109,9 @@ pub mod views;
 /// # Example
 ///
 /// ```rust
-/// use loco_rs::{
-///     Result,
-///     controller::{format, Json, unauthorized}
-/// };
+/// use loco_rs::prelude::*;
 ///
-/// async fn login() -> Result<Json<()>> {
+/// async fn login() -> Result<Response> {
 ///     let valid = false;
 ///     if !valid {
 ///         return unauthorized("unauthorized access");
