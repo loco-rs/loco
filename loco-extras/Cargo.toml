@@ -16,6 +16,10 @@ axum = { workspace = true }
 axum-prometheus = { version = "0.6.1", optional = true }
 serde = { version = "1", optional = true }
 serde_json = { version = "1", optional = true }
+tower = { workspace = true, optional = true }
+tower-http = { workspace = true, optional = true, features = [
+  "normalize-path"
+] }
 
 [dependencies.loco-rs]
 path = "../"
@@ -28,8 +32,10 @@ full = [
     "initializer-prometheus",
     "initializer-extra-db",
     "initializer-multi-db",
+    "initializer-normalize-path",
 ]
 
 initializer-prometheus = ["dep:axum-prometheus"]
 initializer-extra-db = []
 initializer-multi-db = ["dep:serde_json"]
+initializer-normalize-path = ["dep:tower", "dep:tower-http"]

@@ -2569,6 +2569,8 @@ dependencies = [
  "axum-prometheus",
  "loco-rs",
  "serde_json",
+ "tower",
+ "tower-http",
 ]
 
 [[package]]

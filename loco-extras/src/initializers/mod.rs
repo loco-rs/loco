@@ -55,9 +55,15 @@
 //! ```rust
 #![doc = include_str!("././multi_db.rs")]
 //!````
+//! ### Normalize path:
+//! ```rust
+#![doc = include_str!("././normalize_path.rs")]
+//!````
 #[cfg(feature = "initializer-extra-db")]
 pub mod extra_db;
 #[cfg(feature = "initializer-multi-db")]
 pub mod multi_db;
+#[cfg(feature = "initializer-normalize-path")]
+pub mod normalize_path;
 #[cfg(feature = "initializer-prometheus")]
 pub mod prometheus;
