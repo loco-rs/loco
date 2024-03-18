@@ -2,7 +2,7 @@
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
 use axum::extract::Query;
-use loco_rs::prelude::*;
+use loco_rs::{controller::bad_request, model::ModelError, prelude::*};
 use sea_orm::Condition;
 use serde::{Deserialize, Serialize};
 
@@ -100,10 +100,35 @@ pub async fn get_one(
     Path(id): Path<i32>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
-    let item = load_item(&ctx, id).await?;
-    match respond_to {
-        RespondTo::Html => format::html(&format!("<html><body>{:?}</body></html>", item.title)),
-        _ => format::json(item),
+    // having `load_item` is useful because inside the function you can call and use
+    // '?' to bubble up errors, then, in here, we centralize handling of errors.
+    // if you want to freely use code statements with no wrapping function, you can
+    // use the experimental `try` feature in Rust where you can do:
+    // ```
+    // let res = try {
+    //     ...
+    //     ...
+    // }
+    //
+    // match res { ..}
+    // ```
+    let res = load_item(&ctx, id).await;
+
+    match res {
+        // we're good, let's render the item based on content type
+        Ok(item) => match respond_to {
+            RespondTo::Html => format::html(&format!("<html><body>{:?}</body></html>", item.title)),
+            _ => format::json(item),
+        },
+        // we have an opinion how to render out validation errors, only in HTML content
+        Err(Error::Model(ModelError::ModelValidation { errors })) => match respond_to {
+            RespondTo::Html => {
+                format::html(&format!("<html><body>errors: {errors:?}</body></html>"))
+            }
+            _ => bad_request("opaque message: cannot respond!"),
+        },
+        // we have no clue what this is, let the framework render default errors
+        Err(err) => Err(err),
     }
 }
 
