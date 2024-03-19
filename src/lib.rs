@@ -72,4 +72,4 @@ pub mod tests_cfg;
 pub use validator;
 
 /// Application results options list
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
