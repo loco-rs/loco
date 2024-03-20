@@ -48,9 +48,9 @@ mod tests {
     use super::*;
     use crate::{boot, environment::Environment};
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn test_ping() {
+    async fn test_ping() {
         let mut test = Test::new();
 
         let config = RedisServerConfig::builder().port(9890).build().unwrap();
@@ -120,9 +120,9 @@ mod tests {
         });
     }
 
-    #[test]
+    #[tokio::test]
     #[serial]
-    fn test_connection() {
+    async fn test_connection() {
         let mut test = Test::new();
 
         let config = RedisServerConfig::builder().port(9898).build().unwrap();
