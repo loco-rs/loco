@@ -368,6 +368,7 @@ pub async fn connect_redis(config: &Config) -> Option<Pool<RedisConnectionManage
             .max_size(100)
             // .min_idle(Some(1))
             .error_sink(Box::new(PrintlnErrorSink))
+            .test_on_check_out(false)
             .build(manager)
             .await
             .unwrap();
