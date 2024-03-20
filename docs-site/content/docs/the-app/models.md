@@ -83,9 +83,9 @@ These fields are ignored if you provide them in your migration command. In addit
 For schema data types, you can use the following mapping to understand the schema:
 
 ```rust
-("uuid", "uuid_null"),
-("uuid!", "uuid"),
-("uuid^", "uuid_uniq"),
+("uuid", "uuid_uniq"),
+("uuid_col", "uuid_null"),
+("uuid_col!", "uuid"),
 ("string", "string_null"),
 ("string!", "string"),
 ("string^", "string_uniq"),
@@ -111,10 +111,10 @@ For schema data types, you can use the following mapping to understand the schem
 ("decimal!", "decimal"),
 ("decimal_len", "decimal_len_null"),
 ("decimal_len!", "decimal_len"),
-("boolean", "boolean_null"),
-("boolean!", "boolean"),
-("tstz", "timestamptz_null"),
-("tstz!", "timestamptz"),
+("bool", "boolean_null"),
+("bool!", "boolean"),
+("tstz", "timestamp_with_time_zone_null"),
+("tstz!", "timestamp_with_time_zone"),
 ("date", "date_null"),
 ("date!", "date"),
 ("ts", "timestamp_null"),
@@ -124,7 +124,6 @@ For schema data types, you can use the following mapping to understand the schem
 ("jsonb", "json_binary_null"),
 ("jsonb!", "json_binary"),
 ```
-
 
 Using `user:references` uses the special `references` type, which will create a relationship between a `post` and a `user`, adding a `user_id` reference field to the `posts` table.
 
