@@ -1,7 +1,7 @@
 //! # Application Bootstrapping and Logic
 //! This module contains functions and structures for bootstrapping and running
 //! your application.
-use std::{collections::BTreeMap, sync::Arc};
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use axum::Router;
 use bb8::ErrorSink;
@@ -366,6 +366,7 @@ pub async fn connect_redis(config: &Config) -> Option<Pool<RedisConnectionManage
         let manager = RedisConnectionManager::new(redis.uri.clone()).unwrap();
         let redis = Pool::builder()
             .max_size(100)
+            .connection_timeout(Duration::from_secs(300))
             // .min_idle(Some(1))
             .error_sink(Box::new(PrintlnErrorSink))
             .test_on_check_out(false)
