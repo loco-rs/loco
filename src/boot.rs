@@ -4,7 +4,7 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use axum::Router;
-use bb8::{ErrorSink, NopErrorSink};
+use bb8::ErrorSink;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
 use tracing::{info, trace, warn};
