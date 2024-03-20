@@ -346,11 +346,12 @@ pub async fn connect_redis(config: &Config) -> Option<Pool<RedisConnectionManage
     if let Some(redis) = &config.redis {
         let manager = RedisConnectionManager::new(redis.uri.clone()).unwrap();
         let redis = Pool::builder()
-            .max_size(16)
+            .max_size(100)
             // .min_idle(Some(1))
             .build(manager)
             .await
             .unwrap();
+        println!("Pool: {:?}", redis);
         Some(redis)
     } else {
         None
