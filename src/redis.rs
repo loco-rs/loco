@@ -133,8 +133,8 @@ mod tests {
             let redis: RedisServer = instance.server();
 
             let client = redis::Client::open(redis.external_url().as_str()).unwrap();
-            let mut con = client.get_connection().unwrap();
-            let res: String = redis::cmd("PING").query(&mut con).unwrap();
+            let mut con = client.get_async_connection().await.unwrap();
+            let res: String = redis::cmd("PING").query_async(&mut con).await.unwrap();
             assert_eq!(res, "PONG");
         });
     }
