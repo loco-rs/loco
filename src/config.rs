@@ -22,7 +22,10 @@ Notes:
 
 ***/
 
-use std::path::{Path, PathBuf};
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+};
 
 use fs_err as fs;
 use lazy_static::lazy_static;
@@ -53,6 +56,7 @@ pub struct Config {
     #[serde(default)]
     pub workers: Workers,
     pub mailer: Option<Mailer>,
+    pub initializers: Option<Initializers>,
 
     /// Custom app settings
     ///
@@ -402,6 +406,20 @@ pub struct Mailer {
     #[serde(default)]
     pub stub: bool,
 }
+
+/// Initializers configuration
+///
+/// Example (development): To configure settings for oauth2 or custom view
+/// engine
+/// ```yaml
+/// # config/development.yaml
+/// initializers:
+///  oauth2:
+///   authorization_code: # Authorization code grant type
+///     - client_identifier: google # Identifier for the `OAuth2` provider.
+///       Replace 'google' with your provider's name if different, must be
+///       unique within the oauth2 config. ... # other fields
+pub type Initializers = BTreeMap<String, serde_json::Value>;
 
 /// SMTP mailer configuration structure.
 #[derive(Debug, Clone, Deserialize, Serialize)]
