@@ -2,6 +2,10 @@
 
 ## vNext
 
+* Adding to to quiery dsl `is_in` and `is_not_in`. [https://github.com/loco-rs/loco/pull/507](https://github.com/loco-rs/loco/pull/507)
+* Docs: fix schema data types mapping. [https://github.com/loco-rs/loco/pull/506](https://github.com/loco-rs/loco/pull/506)
+* Let Result accept other errors. [https://github.com/loco-rs/loco/pull/505](https://github.com/loco-rs/loco/pull/505)
+* Allow trailing slashes in URIs by adding the NormalizePathLayer. [https://github.com/loco-rs/loco/pull/481](https://github.com/loco-rs/loco/pull/481)
 * **BREAKING** Move from `Result<impl IntoResponse>` to `Result<Response>`. This enables much greater flexibility building APIs, where with `Result<Response>` you mix and match response types based on custom logic (returning JSON and HTML/String in the same route).
 * **Added**: mime responders similar to `respond_to` in Rails:
 
