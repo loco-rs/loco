@@ -474,6 +474,68 @@ impl ConditionBuilder {
         with(self.condition.add(col.is_not_null()))
     }
 
+    /// where condition the given column is in
+    /// value
+    ///
+    /// # Examples
+    /// ```
+    /// use loco_rs::tests_cfg::db::*;
+    /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
+    /// use loco_rs::prelude::*;
+    ///
+    /// let query_str = test_db::Entity::find()
+    ///         .select_only()
+    ///         .column(test_db::Column::Id)
+    ///         .filter(model::query::dsl::condition().is_in(test_db::Column::Id, [1]).build())
+    ///         .build(sea_orm::DatabaseBackend::Postgres)
+    ///         .to_string();
+    ///
+    ///     assert_eq!(
+    ///         query_str,
+    ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" IN (1)"
+    ///     );
+    /// ````
+    #[must_use]
+    #[allow(clippy::wrong_self_convention)]
+    pub fn is_in<T: ColumnTrait, V: Into<Value>, I: IntoIterator<Item = V>>(
+        self,
+        col: T,
+        values: I,
+    ) -> Self {
+        with(self.condition.add(col.is_in(values)))
+    }
+
+    /// where condition the given column is not in
+    /// value
+    ///
+    /// # Examples
+    /// ```
+    /// use loco_rs::tests_cfg::db::*;
+    /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
+    /// use loco_rs::prelude::*;
+    ///
+    /// let query_str = test_db::Entity::find()
+    ///         .select_only()
+    ///         .column(test_db::Column::Id)
+    ///         .filter(model::query::dsl::condition().is_not_in(test_db::Column::Id, [1]).build())
+    ///         .build(sea_orm::DatabaseBackend::Postgres)
+    ///         .to_string();
+    ///
+    ///     assert_eq!(
+    ///         query_str,
+    ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" NOT IN (1)"
+    ///     );
+    /// ````
+    #[must_use]
+    #[allow(clippy::wrong_self_convention)]
+    pub fn is_not_in<T: ColumnTrait, V: Into<Value>, I: IntoIterator<Item = V>>(
+        self,
+        col: T,
+        values: I,
+    ) -> Self {
+        with(self.condition.add(col.is_not_in(values)))
+    }
+
     /// where condition the given column is not null
     /// value
     ///
@@ -745,6 +807,36 @@ mod tests {
         assert_eq!(
             query_str,
             "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" IS NOT NULL"
+        );
+    }
+
+    #[test]
+    fn condition_is_in() {
+        let query_str = test_db::Entity::find()
+            .select_only()
+            .column(test_db::Column::Id)
+            .filter(condition().is_in(test_db::Column::Id, [1]).build())
+            .build(sea_orm::DatabaseBackend::Postgres)
+            .to_string();
+
+        assert_eq!(
+            query_str,
+            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" IN (1)"
+        );
+    }
+
+    #[test]
+    fn condition_is_not_in() {
+        let query_str = test_db::Entity::find()
+            .select_only()
+            .column(test_db::Column::Id)
+            .filter(condition().is_not_in(test_db::Column::Id, [1]).build())
+            .build(sea_orm::DatabaseBackend::Postgres)
+            .to_string();
+
+        assert_eq!(
+            query_str,
+            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" NOT IN (1)"
         );
     }
 }
