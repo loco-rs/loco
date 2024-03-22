@@ -108,7 +108,6 @@ body {
 @include media-breakpoint-up(lg) {
   .docs-sidebar {
     order: 0;
-    border-right: 1px solid $gray-200;
   }
 
   @supports ((position:-webkit-sticky) or (position:sticky)) {
@@ -201,8 +200,15 @@ body {
 #TableOfContents ul {
   padding-left: 0;
   list-style: none;
+  font-size: 14px;
 }
-
+#TableOfContents>ul>li {
+  a {
+    font-family: 'DM Sans';
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+}
 ::selection {
   background: rgba(249, 106, 40, 0.2);
 }

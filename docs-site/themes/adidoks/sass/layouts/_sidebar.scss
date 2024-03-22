@@ -35,6 +35,9 @@
   background: $gray-200;
 }
 
+.page-links {
+  padding-top: 1.6em;
+}
 .docs-links h3,
 .page-links h3 {
   font-size: $font-size-base;
@@ -51,9 +54,6 @@
   }
 }
 
-.docs-links h3:not(:first-child) {
-  border-top: 1px solid $gray-200;
-}
 
 a.docs-link {
   color: $body-color;
@@ -74,9 +74,6 @@ a.docs-link {
   padding-top: 0.125rem;
 }
 
-.page-links li:not(:first-child) {
-  border-top: 1px dashed $gray-200;
-}
 
 .page-links a {
   color: $body-color;

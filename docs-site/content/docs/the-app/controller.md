@@ -1,5 +1,5 @@
 +++
-title = "Controller"
+title = "Controllers"
 description = ""
 date = 2021-05-01T18:10:00+00:00
 updated = 2021-05-01T18:10:00+00:00
@@ -17,35 +17,48 @@ flair =[]
 
 `Loco` is a framework that wraps around [axum](https://crates.io/crates/axum), offering a straightforward approach to manage routes, middlewares, authentication, and more right out of the box. At any point, you can leverage the powerful axum Router and extend it with your custom middlewares and routes.
 
-### Router Capabilities
+# Controllers and Routing
 
-`Loco` router provides several capabilities:
 
-#### Defining App Routes in the App Hook
+## Adding a controller
 
-In the example below, multiple controllers are added to your app within the `AppRouter`. During initialization, you can choose between:
+Provides a convenient code generator to simplify the creation of a starter controller connected to your project. Additionally, a test file is generated, enabling easy testing of your controller.
 
-- **AppRoutes::with_default_routes():** Adds default loco endpoints like ping or heathy.
-- **AppRoutes::empty():** Creates an empty router without default routes.
+Generate a controller:
 
-```rust
-pub struct App;
-#[async_trait]
-impl Hooks for App {
-    fn routes() -> AppRoutes {
-        AppRoutes::with_default_routes()
-            .add_route(controllers::foo::routes())
-            .add_route(controllers::bar::routes())
-    }
-    ...
-}
+```sh
+$ cargo loco generate controller [OPTIONS] <CONTROLLER_NAME>
 ```
 
-#### Adding a Prefix to All Routes
+After generating the controller, navigate to the created file in `src/controllers` to view the controller endpoints. You can also check the testing (in folder tests/requests) documentation for testing this controller.
 
-You can add a prefix URL to all your routes by providing the prefix to the AppRouter instance.
 
-#### Adding extra state
+### Displaying active routes
+
+To view a list of all your registered controllers, execute the following command:
+
+```sh
+$ cargo loco controller
+
+[GET] /_health
+[GET] /_ping
+[POST] /auth/forgot
+[POST] /auth/login
+[POST] /auth/register
+[POST] /auth/reset
+[POST] /auth/verify
+[GET] /notes/
+[POST] /notes/
+[GET] /notes/:id
+[DELETE] /notes/:id
+[POST] /notes/:id
+[GET] /user/current
+```
+
+This command will provide you with a comprehensive overview of the controllers currently registered in your system.
+
+
+## Adding state
 
 Your app context and state is held in `AppContext` and is what Loco provides and sets up for you. There are cases where you'd want to load custom data,
 logic, or entities when the app starts and be available to use in all controllers.
@@ -81,7 +94,7 @@ async fn candle_llm(Extension(m): Extension<Arc<RwLock<Llama>>>) -> impl IntoRes
 }
 ```
 
-### Routes in Controllers
+## Routes in Controllers
 
 Controllers define Loco routes capabilities. In the example below, a controller creates one GET endpoint and one POST endpoint:
 
@@ -114,7 +127,7 @@ format::render()
     .json(Entity::find().all(&ctx.db).await?)
 ```
 
-## Content type aware responses
+### Content type aware responses
 
 You can opt-in into the responders mechanism, where a format type is detected
 and handed to you.
@@ -135,7 +148,7 @@ pub async fn get_one(
 }
 ```
 
-## Content type aware responses and custom errors
+### Custom errors
 
 Here is a case where you might want to both render differently based on
 different formats AND ALSO, render differently based on kinds of errors you got.
@@ -189,18 +202,6 @@ Next we create a 2 level match to:
 
 Where we lack the knowledge for handling, we just return the error as-is and let the framework render out default errors.
 
-## Creating a Controller with the CLI Generator
-
-Provides a convenient code generator to simplify the creation of a starter controller connected to your project. Additionally, a [test](@/docs/testing/controller.md) file is generated, enabling easy testing of your controller.
-
-Generate a controller:
-
-```sh
-$ cargo loco generate controller [OPTIONS] <CONTROLLER_NAME>
-```
-
-After generating the controller, navigate to the created file in `src/controllers` to view the controller endpoints. You can also check the testing (in folder tests/requests) documentation for testing this controller.
-
 ## Creating a Controller Manually
 
 #### 1. Create a Controller File
@@ -230,33 +231,9 @@ impl Hooks for App {
 
 ```
 
-## Displaying Registered Controllers
+# Middleware
 
-To view a list of all your registered controllers, execute the following command:
-
-```sh
-$ cargo loco controller
-
-[GET] /_health
-[GET] /_ping
-[POST] /auth/forgot
-[POST] /auth/login
-[POST] /auth/register
-[POST] /auth/reset
-[POST] /auth/verify
-[GET] /notes/
-[POST] /notes/
-[GET] /notes/:id
-[DELETE] /notes/:id
-[POST] /notes/:id
-[GET] /user/current
-```
-
-This command will provide you with a comprehensive overview of the controllers currently registered in your system.
-
-## Middleware
-
-### Compression
+## Compression
 
 `Loco` leverages [CompressionLayer](https://docs.rs/tower-http/0.5.0/tower_http/compression/index.html) to enable a `one click` solution.
 
@@ -287,4 +264,118 @@ middlewares:
     precompressed: true
 ```
 
-### (More middleware docs TBD)
+
+
+# Pagination
+
+In many scenarios, when querying data and returning responses to users, pagination is crucial. In `Loco`, we provide a straightforward method to paginate your data and maintain a consistent pagination response schema for your API responses.
+
+## Using pagination
+```rust
+use loco_rs::prelude::*;
+
+let pagination_query = model::query::PaginationQuery {
+    page_size: 100,
+    page: 1,
+};
+
+let condition = model::query::dsl::condition().contains(notes::Column::Title, "loco");
+let paginated_notes = model::query::exec::paginate(
+    &ctx.db,
+    notes::Entity::find(),
+    Some(condition.build()),
+    &pagination_query,
+)
+.await?;
+```
+
+- Start by defining the entity you want to retrieve.
+- Create your query condition (in this case, filtering rows that contain "loco" in the title column).
+- Define the pagination parameters.
+- Call the paginate function.
+
+
+### Pagination view
+After creating getting the `paginated_notes` in the previous example, you can choose which fileds from the model you want to return and keep the same pagination response in all your different data responses.
+
+Define the data you're returning to the user in Loco views. If you're not familiar with views, refer to the [documentation]((@/docs/the-app/views.md)) for more context.
+
+
+Create a notes view file in `src/view/notes` with the following code:
+
+```rust
+use loco_rs::{
+    controller::views::pagination::{Pager, PagerMeta},
+    prelude::model::query::PaginatedResponse,
+};
+use serde::{Deserialize, Serialize};
+
+use crate::models::_entities::notes;
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ListResponse {
+    id: i32,
+    title: Option<String>,
+    content: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct PaginationResponse {}
+
+impl From<notes::Model> for ListResponse {
+    fn from(note: notes::Model) -> Self {
+        Self {
+            id: note.id.clone(),
+            title: note.title.clone(),
+            content: note.content,
+        }
+    }
+}
+
+impl PaginationResponse {
+    #[must_use]
+    pub fn response(data: PaginatedResponse<notes::Model>) -> Pager<Vec<ListResponse>> {
+        Pager {
+            results: data
+                .rows
+                .into_iter()
+                .map(ListResponse::from)
+                .collect::<Vec<ListResponse>>(),
+            info: PagerMeta {
+                page: data.info.page,
+                page_size: data.info.page_size,
+                total_pages: data.info.total_pages,
+            },
+        }
+    }
+}
+
+
+# Testing 
+When testing controllers, the goal is to call the router's controller endpoint and verify the HTTP response, including the status code, response content, headers, and more.
+
+To initialize a test request, use `testing::request`, which prepares your app routers, providing the request instance and the application context.
+
+In the following example, we have a POST endpoint that returns the data sent in the POST request.
+
+```rust
+
+#[tokio::test]
+#[serial]
+async fn can_print_echo() {
+    configure_insta!();
+
+    testing::request::<App, _, _>(|request, _ctx| async move {
+        let response = request
+            .post("/example")
+            .json(&serde_json::json!({"site": "Loco"}))
+            .await;
+
+        assert_debug_snapshot!((response.status_code(), response.text()));
+    })
+    .await;
+}
+```
+
+As you can see initialize the testing request and using `request` instance calling /example endpoing.
+the request returns a `Response` instance with the status code and the response test
