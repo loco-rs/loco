@@ -14,13 +14,13 @@ impl Initializer for ExtraDbInitializer {
     async fn after_routes(&self, router: AxumRouter, ctx: &AppContext) -> Result<AxumRouter> {
         let extra_db_config = ctx
             .config
-            .settings
+            .initializers
             .clone()
-            .ok_or_else(|| Error::Message("settings config not configured".to_string()))?;
+            .ok_or_else(|| Error::Message("initializers config not configured".to_string()))?;
 
         let extra_db_value = extra_db_config
             .get("extra_db")
-            .ok_or_else(|| Error::Message("settings config not configured".to_string()))?;
+            .ok_or_else(|| Error::Message("initializers config not configured".to_string()))?;
 
         let extra_db = serde_json::from_value(extra_db_value.clone())?;
 
