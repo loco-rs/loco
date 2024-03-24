@@ -159,10 +159,6 @@ pub fn is_a_git_repo(destination_path: &Path) -> eyre::Result<bool> {
             if output.status.success() {
                 Ok(true)
             } else {
-                tracing::error!(
-                    error = tracing::field::debug(output),
-                    "git command returned an error"
-                );
                 Ok(false)
             }
         }
