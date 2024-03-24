@@ -66,10 +66,6 @@ const MODULE_WHITELIST: &[&str] = &["loco_rs", "sea_orm_migration", "tower_http"
 /// 3. regardless of (1) and (2) operators in production, or elsewhere can
 ///    always use `RUST_LOG` to quickly diagnose a service
 pub fn init<H: Hooks>(config: &config::Logger) {
-    if !config.enable {
-        return;
-    }
-
     let filter = EnvFilter::try_from_default_env()
         .or_else(|_| {
             // user wanted a specific filter, don't care about our internal whitelist

@@ -102,7 +102,7 @@ $ blo-cli routes --environment test
 ```
 
 ```console 
-$ blo-cli doctor
+$ LOCO_ENV=test blo-cli doctor
 ✅ SeaORM CLI is installed
 ✅ DB connection: success
 ✅ Redis connection: success

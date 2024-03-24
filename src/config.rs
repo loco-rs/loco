@@ -1,5 +1,3 @@
-//! # Configuration Management
-//!
 //! This module defines the configuration structures and functions to manage and
 //! load configuration settings for the application.
 
@@ -30,6 +28,7 @@ use std::{
 use fs_err as fs;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
+use serde_enabled::Enable;
 use serde_json::json;
 use tracing::info;
 
@@ -47,7 +46,7 @@ lazy_static! {
 /// can be customized through YAML files for different environments.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
-    pub logger: Logger,
+    pub logger: Enable<Logger>,
     pub server: Server,
     #[cfg(feature = "with-db")]
     pub database: Database,
@@ -91,8 +90,6 @@ pub struct Config {
 /// ```
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct Logger {
-    pub enable: bool,
-
     /// Enable nice display of backtraces, in development this should be on.
     /// Turn it off in performance sensitive production deployments.
     #[serde(default)]
@@ -306,29 +303,28 @@ pub enum WorkerMode {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Middlewares {
     /// Middleware that enable compression for the response.
-    pub compression: Option<EnableMiddleware>,
+    pub compression: Option<Enable<()>>,
     /// Middleware that enable etag cache headers.
-    pub etag: Option<EnableMiddleware>,
+    pub etag: Option<Enable<()>>,
     /// Middleware that limit the payload request.
-    pub limit_payload: Option<LimitPayloadMiddleware>,
+    pub limit_payload: Option<Enable<LimitPayloadMiddleware>>,
     /// Middleware that improve the tracing logger and adding trace id for each
     /// request.
-    pub logger: Option<EnableMiddleware>,
+    pub logger: Option<Enable<()>>,
     /// catch any code panic and log the error.
-    pub catch_panic: Option<EnableMiddleware>,
+    pub catch_panic: Option<Enable<()>>,
     /// Setting a global timeout for the requests
-    pub timeout_request: Option<TimeoutRequestMiddleware>,
+    pub timeout_request: Option<Enable<TimeoutRequestMiddleware>>,
     /// Setting cors configuration
-    pub cors: Option<CorsMiddleware>,
+    pub cors: Option<Enable<CorsMiddleware>>,
     /// Serving static assets
     #[serde(rename = "static")]
-    pub static_assets: Option<StaticAssetsMiddleware>,
+    pub static_assets: Option<Enable<StaticAssetsMiddleware>>,
 }
 
 /// Static asset middleware configuration
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct StaticAssetsMiddleware {
-    pub enable: bool,
     /// Check that assets must exist on disk
     pub must_exist: bool,
     /// Assets location
@@ -353,7 +349,6 @@ pub struct FolderAssetsMiddleware {
 /// CORS middleware configuration
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CorsMiddleware {
-    pub enable: bool,
     /// Allow origins
     pub allow_origins: Option<Vec<String>>,
     /// Allow headers
@@ -367,7 +362,6 @@ pub struct CorsMiddleware {
 /// Timeout middleware configuration
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TimeoutRequestMiddleware {
-    pub enable: bool,
     // Timeout request in milliseconds
     pub timeout: u64,
 }
@@ -375,16 +369,8 @@ pub struct TimeoutRequestMiddleware {
 /// Limit payload size middleware configuration
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LimitPayloadMiddleware {
-    pub enable: bool,
     /// Body limit. for example: 5mb
     pub body_limit: String,
-}
-
-/// A generic middleware configuration that can be enabled or
-/// disabled.
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct EnableMiddleware {
-    pub enable: bool,
 }
 
 /// Mailer configuration
@@ -401,7 +387,7 @@ pub struct EnableMiddleware {
 /// ```
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Mailer {
-    pub smtp: Option<SmtpMailer>,
+    pub smtp: Option<Enable<SmtpMailer>>,
 
     #[serde(default)]
     pub stub: bool,
@@ -424,7 +410,6 @@ pub type Initializers = BTreeMap<String, serde_json::Value>;
 /// SMTP mailer configuration structure.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SmtpMailer {
-    pub enable: bool,
     /// SMTP host. for example: localhost, smtp.gmail.com etc.
     pub host: String,
     /// SMTP port/
@@ -522,5 +507,206 @@ impl Config {
                 || Err(Error::Any("no JWT config found".to_string().into())),
                 Ok,
             )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde::{Deserialize, Serialize};
+
+    use super::{Config, Enable};
+
+    #[derive(Deserialize, Serialize, Debug, Eq, PartialEq)]
+    struct FancyAssets {
+        foo: String,
+        bar: u32,
+    }
+
+    #[derive(Deserialize, Serialize, Debug)]
+    struct WithFancyAssets {
+        assets: Enable<FancyAssets>,
+    }
+
+    #[test]
+    fn default_configuration() {
+        let raw = indoc::indoc! {r#"
+            logger:
+              enable: true
+              pretty_backtrace: true
+              level: debug
+              format: compact
+
+            server:
+              port: 3000
+              host: http://localhost
+              middlewares:
+                etag:
+                  enable: true
+                limit_payload:
+                  enable: true
+                  body_limit: 5mb
+                logger:
+                  enable: true
+                catch_panic:
+                  enable: true
+                timeout_request:
+                  enable: true
+                  timeout: 5000
+                cors:
+                  enable: true
+                static:
+                  enable: true
+                  must_exist: true
+                  folder:
+                    uri: "/"
+                    path: "frontend/dist"
+                  fallback: "frontend/dist/index.html"
+                  precompressed: false
+
+            workers:
+              mode: BackgroundQueue
+
+            mailer:
+              smtp:
+                enable: true
+                host: "localhost"
+                port: 1025
+                secure: false
+
+            database:
+              uri: postgres://loco:loco@localhost:5432/loco_app
+              enable_logging: false
+              connect_timeout: 500
+              idle_timeout: 500
+              min_connections: 1
+              max_connections: 1
+              auto_migrate: true
+              dangerously_truncate: false
+              dangerously_recreate: false
+
+            redis:
+              uri: redis://127.0.0.1
+              dangerously_flush: false
+
+            auth:
+              jwt:
+                secret: PqRwLF2rhHe8J22oBeHy
+                expiration: 604800 # 7 days
+            "# };
+
+        let config: Config = serde_yaml::from_str(raw).unwrap();
+
+        assert!(config.logger.is_enabled());
+        let middlewares = &config.server.middlewares;
+
+        assert!(middlewares
+            .cors
+            .as_ref()
+            .is_some_and(|cors| cors.is_enabled()));
+        assert!(middlewares
+            .etag
+            .as_ref()
+            .is_some_and(|etag| etag.is_enabled()));
+        assert!(middlewares
+            .limit_payload
+            .as_ref()
+            .is_some_and(|limit_payload| limit_payload.is_enabled()));
+
+        assert!(middlewares
+            .catch_panic
+            .as_ref()
+            .is_some_and(|catch_panic| catch_panic.is_enabled()));
+
+        assert!(middlewares
+            .timeout_request
+            .as_ref()
+            .is_some_and(|timeout_request| timeout_request.is_enabled()));
+
+        assert!(middlewares
+            .static_assets
+            .as_ref()
+            .is_some_and(|static_assets| static_assets.is_enabled()));
+
+        assert!(config
+            .mailer
+            .as_ref()
+            .is_some_and(|mailer| mailer.smtp.as_ref().is_some_and(|smtp| smtp.is_enabled())));
+    }
+
+    #[test]
+    fn no_need_for_all_fields_for_disabled_config_item() {
+        let raw = indoc::indoc! { r#"
+            assets:
+                enable: false
+        "# };
+
+        let w: WithFancyAssets = serde_yaml::from_str(raw).unwrap();
+        assert!(!w.assets.is_enabled());
+        assert_eq!(w.assets.into_inner(), None);
+    }
+
+    #[test]
+    fn fields_are_requried_when_enabled() {
+        let raw = indoc::indoc! { r#"
+            assets:
+                enable: true
+        "# };
+
+        let outcome = serde_yaml::from_str::<WithFancyAssets>(raw);
+        assert!(outcome.is_err());
+    }
+
+    #[test]
+    fn inner_type_deserialized() {
+        let raw = indoc::indoc! { r#"
+            assets:
+                enable: true
+                foo: Hello
+                bar: 12
+        "# };
+
+        let outcome = serde_yaml::from_str::<WithFancyAssets>(raw).unwrap();
+        assert!(outcome.assets.is_enabled());
+        assert_eq!(
+            outcome.assets.into_inner(),
+            Some(FancyAssets {
+                foo: "Hello".into(),
+                bar: 12
+            })
+        );
+    }
+
+    #[test]
+    fn serialize_to_yaml() {
+        let w = WithFancyAssets {
+            assets: Enable::off(),
+        };
+
+        let outcome = serde_yaml::to_string(&w).unwrap();
+        assert_eq!(
+            outcome,
+            indoc::indoc! {r#"
+            assets:
+              enable: false
+            "#},
+        );
+
+        let w = WithFancyAssets {
+            assets: Enable::on(FancyAssets {
+                foo: "Hello".into(),
+                bar: 12,
+            }),
+        };
+
+        let outcome = serde_yaml::to_string(&w).unwrap();
+        assert_eq!(
+            outcome,
+            indoc::indoc! {r#"
+            assets:
+              enable: true
+              foo: Hello
+              bar: 12
+            "#},
+        );
     }
 }

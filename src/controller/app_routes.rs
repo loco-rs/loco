@@ -7,6 +7,7 @@ use std::{path::PathBuf, time::Duration};
 use axum::{http, response::IntoResponse, Router as AXRouter};
 use lazy_static::lazy_static;
 use regex::Regex;
+use serde_enabled::Enable;
 use tower_http::{
     add_extension::AddExtensionLayer,
     catch_panic::CatchPanicLayer,
@@ -189,61 +190,62 @@ impl AppRoutes {
 
         app = Self::add_powered_by_header(app, &ctx.config.server);
 
-        if let Some(catch_panic) = &ctx.config.server.middlewares.catch_panic {
-            if catch_panic.enable {
-                app = Self::add_catch_panic(app);
-            }
+        let middlewares = &ctx.config.server.middlewares;
+
+        if middlewares
+            .catch_panic
+            .as_ref()
+            .is_some_and(Enable::is_enabled)
+        {
+            app = Self::add_catch_panic(app);
         }
 
-        if let Some(compression) = &ctx.config.server.middlewares.compression {
-            if compression.enable {
-                app = Self::add_compression_middleware(app);
-            }
+        if middlewares
+            .compression
+            .as_ref()
+            .is_some_and(Enable::is_enabled)
+        {
+            app = Self::add_compression_middleware(app);
         }
 
-        if let Some(limit) = &ctx.config.server.middlewares.limit_payload {
-            if limit.enable {
-                app = Self::add_limit_payload_middleware(app, limit)?;
-            }
+        if let Some(limit) = middlewares
+            .limit_payload
+            .as_ref()
+            .and_then(|limit_payload| limit_payload.as_ref())
+        {
+            app = Self::add_limit_payload_middleware(app, limit)?;
         }
 
-        if let Some(logger) = &ctx.config.server.middlewares.logger {
-            if logger.enable {
-                app = Self::add_logger_middleware(app, &ctx.environment);
-            }
+        if middlewares.logger.as_ref().is_some_and(Enable::is_enabled) {
+            app = Self::add_logger_middleware(app, &ctx.environment);
         }
 
-        if let Some(timeout_request) = &ctx.config.server.middlewares.timeout_request {
-            if timeout_request.enable {
-                app = Self::add_timeout_middleware(app, timeout_request);
-            }
+        if let Some(timeout_request) = middlewares
+            .timeout_request
+            .as_ref()
+            .and_then(|t| t.as_ref())
+        {
+            app = Self::add_timeout_middleware(app, timeout_request);
         }
 
-        let cors = ctx
-            .config
-            .server
-            .middlewares
+        let cors = middlewares
             .cors
             .as_ref()
-            .filter(|cors| cors.enable)
+            .and_then(|c| c.as_ref())
             .map(Self::get_cors_middleware)
             .transpose()?;
 
-        if let Some(cors) = &cors {
-            app = app.layer(cors.clone());
+        if let Some(cors) = cors.clone() {
+            app = app.layer(cors);
             tracing::info!("[Middleware] Adding cors");
         }
 
-        if let Some(static_assets) = &ctx.config.server.middlewares.static_assets {
-            if static_assets.enable {
-                app = Self::add_static_asset_middleware(app, static_assets)?;
-            }
+        if let Some(static_assets) = middlewares.static_assets.as_ref().and_then(|e| e.as_ref()) {
+            app = Self::add_static_asset_middleware(app, static_assets)?;
         }
 
-        if let Some(etag) = &ctx.config.server.middlewares.etag {
-            if etag.enable {
-                app = Self::add_etag_middleware(app);
-            }
+        if middlewares.etag.as_ref().is_some_and(Enable::is_enabled) {
+            app = Self::add_etag_middleware(app);
         }
 
         #[cfg(feature = "channels")]
