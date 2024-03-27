@@ -153,3 +153,11 @@ features = ["testing"]
 loco-rs = { path = ".", features = ["testing"] }
 rstest = "0.18.2"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
+dockertest-server = { git = "https://github.com/kaplanelad/dockertest-server", features = [
+  "database",
+] }
+serial_test = "3.0.0"
+redis = { version = "0.24.0", default-features = false, features = [
+  "aio",
+  "tokio-comp",
+] }

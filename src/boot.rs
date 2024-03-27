@@ -1,9 +1,10 @@
 //! # Application Bootstrapping and Logic
 //! This module contains functions and structures for bootstrapping and running
 //! your application.
-use std::{collections::BTreeMap, sync::Arc};
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use axum::Router;
+use bb8::ErrorSink;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
 use tracing::{info, trace, warn};
@@ -339,6 +340,24 @@ fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
     Ok(None)
 }
 
+/// An `ErrorSink` implementation that does nothing.
+#[derive(Debug, Clone, Copy)]
+pub struct PrintlnErrorSink;
+
+impl ErrorSink<<sidekiq::RedisConnectionManager as bb8::ManageConnection>::Error>
+    for PrintlnErrorSink
+{
+    fn sink(&self, err: <sidekiq::RedisConnectionManager as bb8::ManageConnection>::Error) {
+        println!("redis error sink: {err:?}");
+    }
+
+    fn boxed_clone(
+        &self,
+    ) -> Box<dyn ErrorSink<<sidekiq::RedisConnectionManager as bb8::ManageConnection>::Error>> {
+        Box::new(*self)
+    }
+}
+
 #[allow(clippy::missing_panics_doc)]
 /// Establishes a connection to a Redis server based on the provided
 /// configuration settings.
@@ -347,7 +366,16 @@ fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
 pub async fn connect_redis(config: &Config) -> Option<Pool<RedisConnectionManager>> {
     if let Some(redis) = &config.redis {
         let manager = RedisConnectionManager::new(redis.uri.clone()).unwrap();
-        let redis = Pool::builder().build(manager).await.unwrap();
+        let redis = Pool::builder()
+            .max_size(100)
+            .connection_timeout(Duration::from_secs(300))
+            // .min_idle(Some(1))
+            .error_sink(Box::new(PrintlnErrorSink))
+            .test_on_check_out(false)
+            .build(manager)
+            .await
+            .unwrap();
+        println!("Pool: {redis:?}");
         Some(redis)
     } else {
         None

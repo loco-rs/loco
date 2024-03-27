@@ -1,0 +1,69 @@
+
+
+settings:
+  from: development.yaml
+  allow_list:
+    - google.com
+    - apple.com
+
+logger:
+  enable: true
+  pretty_backtrace: true
+  level: debug
+  format: compact
+
+server:
+  port: {{get_env(name="NODE_PORT", default=3000)}}
+  host: http://localhost
+  middlewares:
+    limit_payload:
+      enable: true
+      body_limit: 5mb
+    logger:
+      enable: true
+    catch_panic:
+      enable: true
+    timeout_request:
+      enable: true
+      timeout: 5000
+    compression:
+      enable: true
+    static_assets:
+      enable: true
+      must_exist: true
+      precompressed: true
+      folder:
+        path: assets
+      fallback: index.html
+    cors:
+      enable: true
+
+workers:
+  mode: BackgroundQueue
+
+mailer:
+  smtp:
+    enable: true
+    host: localhost
+    port: 1025
+    secure: false
+
+database:
+  uri: {{get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app")}}
+  enable_logging: false
+  connect_timeout: 500
+  idle_timeout: 500
+  min_connections: 1
+  max_connections: 1
+  auto_migrate: true
+  dangerously_truncate: false
+  dangerously_recreate: false
+
+redis:
+  uri: {{get_env(name="REDIS_URL", default="redis://127.0.0.1")}}
+  dangerously_flush: false
+
+auth:
+  jwt:
+    secret: PqRwLF2rhHe8J22oBeHy
+    expiration: 604800

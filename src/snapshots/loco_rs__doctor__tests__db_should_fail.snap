@@ -1,0 +1,23 @@
+---
+source: src/doctor.rs
+expression: run_all(&config).await
+---
+{
+    SeaOrmCLI: Check {
+        status: Ok,
+        message: "SeaORM CLI is installed",
+        description: None,
+    },
+    Database: Check {
+        status: NotOk,
+        message: "DB connection: fails",
+        description: Some(
+            "Connection Error: pool timed out while waiting for an open connection",
+        ),
+    },
+    Redis: Check {
+        status: Ok,
+        message: "Redis connection: success",
+        description: None,
+    },
+}

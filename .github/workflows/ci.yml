@@ -75,6 +75,8 @@ jobs:
           override: true
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
+      - name: Install seaorm cli
+        run: cargo install sea-orm-cli
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
