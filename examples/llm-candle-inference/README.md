@@ -1,6 +1,6 @@
 # `huggingface/candle` LLM Inference example
 
-This example showcases using `candle`, through a higher level library called [kalosm](https://github.com/floneum/floneum/tree/master/interfaces/kalosm).
+This example showcases using `candle`, through a higher level library called [kalosm](https://github.com/floneum/floneum/tree/main/interfaces/kalosm).
 
 Looking at inference in Rust, `candle` is probably where we all want to be. Note that `kalosm` GREATLY simplifies text generation with candle, so give it a deep look.
 
