@@ -4,7 +4,7 @@ expression: "Template::new(&include_dir!(\"tests/fixtures/email_template/test\")
 ---
 Ok(
     Content {
-        subject: "Test Can render test template\n",
+        subject: "Test Can render test template",
         text: "Welcome to test: Can render test template,\n\n  http://localhost/verify/<%= verifyToken %>\n",
         html: ";<html>\n\n<body>\n  This is a test content\n  <a href=\"http://localhost:/verify/1111-2222-3333-4444\">\n    Some test\n  </a>\n</body>\n\n</html>\n",
     },
