@@ -58,12 +58,14 @@ impl Mappings {
     pub fn rust_field(&self, field: &str) -> Option<&String> {
         self.field_types
             .iter()
-            .find_map(|f| f.rust.as_ref().filter(|ft| **ft == field))
+            .find(|f| f.name == field)
+            .and_then(|f| f.rust.as_ref())
     }
     pub fn schema_field(&self, field: &str) -> Option<&String> {
         self.field_types
             .iter()
-            .find_map(|f| f.schema.as_ref().filter(|ft| **ft == field))
+            .find(|f| f.name == field)
+            .and_then(|f| f.schema.as_ref())
     }
     pub fn schema_fields(&self) -> Vec<&String> {
         self.field_types
