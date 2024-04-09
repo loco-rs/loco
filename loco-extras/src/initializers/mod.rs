@@ -67,3 +67,5 @@ pub mod multi_db;
 pub mod normalize_path;
 #[cfg(feature = "initializer-prometheus")]
 pub mod prometheus;
+#[cfg(feature = "initializer-opentelemetry")]
+pub mod opentelemetry;

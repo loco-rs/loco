@@ -20,6 +20,13 @@ tower = { workspace = true, optional = true }
 tower-http = { workspace = true, optional = true, features = [
   "normalize-path"
 ] }
+opentelemetry = { version = "0.22" , optional = true}
+opentelemetry-otlp = { version = "0.15", optional = true, features = ["grpc-tonic"] }
+axum-tracing-opentelemetry = { version = "0.18", optional = true }
+init-tracing-opentelemetry = { version = "0.18", optional = true , features = ["otlp", "tracing_subscriber_ext"] }
+tracing-opentelemetry-instrumentation-sdk = { version = "0.18", optional = true }
+tracing-subscriber = { version = "0.3.18", optional = true , features = ["env-filter", "json"] }
+tracing = { version = "0.1.40", optional = true }
 
 [dependencies.loco-rs]
 path = "../"
@@ -33,9 +40,12 @@ full = [
     "initializer-extra-db",
     "initializer-multi-db",
     "initializer-normalize-path",
+    "initializer-opentelemetry",
 ]
 
 initializer-prometheus = ["dep:axum-prometheus"]
 initializer-extra-db = []
 initializer-multi-db = ["dep:serde_json"]
 initializer-normalize-path = ["dep:tower", "dep:tower-http"]
+initializer-opentelemetry = ["dep:opentelemetry","dep:opentelemetry-otlp","dep:axum-tracing-opentelemetry",
+    "dep:init-tracing-opentelemetry", "dep:tracing-opentelemetry-instrumentation-sdk","dep:tracing-subscriber","dep:tracing"]
