@@ -1,5 +1,7 @@
 use chrono::Utc;
+use lazy_static::lazy_static;
 use rrgen::{GenResult, RRgen};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 #[cfg(feature = "with-db")]
@@ -40,6 +42,53 @@ const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
     ("Shuttle", DeploymentKind::Shuttle),
     ("Nginx", DeploymentKind::Nginx),
 ];
+
+#[derive(Serialize, Deserialize, Debug)]
+struct FieldType {
+    name: String,
+    rust: Option<String>,
+    schema: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Mappings {
+    field_types: Vec<FieldType>,
+}
+impl Mappings {
+    pub fn rust_field(&self, field: &str) -> Option<&String> {
+        self.field_types
+            .iter()
+            .find(|f| f.name == field)
+            .and_then(|f| f.rust.as_ref())
+    }
+    pub fn schema_field(&self, field: &str) -> Option<&String> {
+        self.field_types
+            .iter()
+            .find(|f| f.name == field)
+            .and_then(|f| f.schema.as_ref())
+    }
+    pub fn schema_fields(&self) -> Vec<&String> {
+        self.field_types
+            .iter()
+            .filter(|f| f.schema.is_some())
+            .map(|f| &f.name)
+            .collect::<Vec<_>>()
+    }
+    pub fn rust_fields(&self) -> Vec<&String> {
+        self.field_types
+            .iter()
+            .filter(|f| f.rust.is_some())
+            .map(|f| &f.name)
+            .collect::<Vec<_>>()
+    }
+}
+
+lazy_static! {
+    static ref MAPPINGS: Mappings = {
+        let json_data = include_str!("./mappings.json");
+        serde_json::from_str(json_data).expect("JSON was not well-formatted")
+    };
+}
 
 #[derive(clap::ValueEnum, Clone, Debug)]
 pub enum ScaffoldKind {
