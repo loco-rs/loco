@@ -38,7 +38,7 @@ After generating the controller, navigate to the created file in `src/controller
 To view a list of all your registered controllers, execute the following command:
 
 ```sh
-$ cargo loco controller
+$ cargo loco routes
 
 [GET] /_health
 [GET] /_ping
