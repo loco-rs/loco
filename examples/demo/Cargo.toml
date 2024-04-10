@@ -22,7 +22,7 @@ async-trait = "0.1.74"
 tracing = "0.1.40"
 chrono = "0.4"
 validator = { version = "0.16" }
-sea-orm = { version = "1.0.0-rc.1", features = [
+sea-orm = { version = "1.0.0-rc.3", features = [
   "sqlx-sqlite",
   "sqlx-postgres",
   "runtime-tokio-rustls",
