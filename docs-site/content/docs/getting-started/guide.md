@@ -212,7 +212,7 @@ $ cargo loco start
 Now, let's test it out:
 
 ```sh
-$ curl localhost:3000/api/guide
+$ curl localhost:3000/guide
 hello
 ```
 
