@@ -627,14 +627,14 @@ Add a new article:
 $ curl -X POST -H "Content-Type: application/json" -d '{
   "title": "Your Title",
   "content": "Your Content xxx"
-}' localhost:3000/api/articles
+}' localhost:3000/articles
 {"created_at":"...","updated_at":"...","id":2,"title":"Your Title","content":"Your Content xxx"}
 ```
 
 Get a list:
 
 ```sh
-$ curl localhost:3000/api/articles
+$ curl localhost:3000/articles
 [{"created_at":"...","updated_at":"...","id":1,"title":"how to build apps in 3 steps","content":"use Loco: https://loco.rs"},{"created_at":"...","updated_at":"...","id":2,"title":"Your Title","content":"Your Content xxx"}
 ```
 
