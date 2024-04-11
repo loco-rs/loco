@@ -150,7 +150,7 @@ listening on port 3000
 And now, let's see that it's alive:
 
 ```sh
-$ curl localhost:3000/api/_ping
+$ curl localhost:3000/_ping
 {"ok":true}
 ```
 
@@ -159,7 +159,7 @@ The built in `_ping` route will tell your load balancer everything is up.
 Let's see that all services that are required are up:
 
 ```sh
-$ curl localhost:3000/api/_health
+$ curl localhost:3000/_health
 {"ok":true}
 ```
 
