@@ -504,9 +504,9 @@ Edit `src/controllers/articles.rs`:
 #![allow(clippy::unused_async)]
 use loco_rs::prelude::*;
 
-use crate::models::_entities::articles;
+use crate::models::_entities::articles::{self, Model};
 
-pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
+pub async fn list(State(ctx): State<AppContext>) -> Result<Json<Vec<Model>>> {
     let res = articles::Entity::find().all(&ctx.db).await?;
     format::json(res)
 }
@@ -525,7 +525,7 @@ $ cargo loco start
 And make a request:
 
 ```sh
-$ curl localhost:3000/api/articles
+$ curl localhost:3000/articles
 [{"created_at":"...","updated_at":"...","id":1,"title":"how to build apps in 3 steps","content":"use Loco: https://loco.rs"}]
 ```
 
