@@ -283,7 +283,7 @@ $ cargo loco start
 And hit `/home/hello`:
 
 ```sh
-$ curl localhost:3000/api/home/hello
+$ curl localhost:3000/home/hello
 ola, mundo
 ```
 
