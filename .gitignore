@@ -1,5 +1,6 @@
 # local dev
 todo.txt
+*.sqlite
 
 # IDE config files
 .idea
