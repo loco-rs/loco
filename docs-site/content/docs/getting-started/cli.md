@@ -59,7 +59,7 @@ Based on your configuration (in `config/`), your workers will know how to operat
 
 ```yaml
 workers:
-  # requires Redis
+  # requires Redis or Valkey
   mode: BackgroundQueue
 
   # can also use:
