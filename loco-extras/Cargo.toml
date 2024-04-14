@@ -18,21 +18,22 @@ serde = { version = "1", optional = true }
 serde_json = { version = "1", optional = true }
 tower = { workspace = true, optional = true }
 tower-http = { workspace = true, optional = true, features = [
-  "normalize-path"
+  "normalize-path",
 ] }
 
 [dependencies.loco-rs]
 path = "../"
 version = "0.3.0"
 default-features = true
+features = ["with-db", "auth_jwt"]
 
 [features]
 default = ["full"]
 full = [
-    "initializer-prometheus",
-    "initializer-extra-db",
-    "initializer-multi-db",
-    "initializer-normalize-path",
+  "initializer-prometheus",
+  "initializer-extra-db",
+  "initializer-multi-db",
+  "initializer-normalize-path",
 ]
 
 initializer-prometheus = ["dep:axum-prometheus"]

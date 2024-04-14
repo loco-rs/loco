@@ -71,16 +71,15 @@
 //! }
 //! ```
 
-use axum::extract::FromRequest;
+pub use app_routes::{AppRoutes, ListRoutes};
 use axum::{
+    extract::FromRequest,
     http::StatusCode,
     response::{IntoResponse, Response},
 };
 use colored::Colorize;
-use serde::Serialize;
-
-pub use app_routes::{AppRoutes, ListRoutes};
 pub use routes::Routes;
+use serde::Serialize;
 
 use crate::{errors::Error, Result};
 
