@@ -2269,6 +2269,57 @@ dependencies = [
 [[package]]
 name = "loco-rs"
 version = "0.3.2"
+dependencies = [
+ "argon2",
+ "async-trait",
+ "axum",
+ "axum-extra",
+ "axum-test",
+ "backtrace_printer",
+ "bb8",
+ "byte-unit",
+ "bytes",
+ "cargo_metadata",
+ "cfg-if",
+ "chrono",
+ "clap",
+ "colored",
+ "duct",
+ "eyre",
+ "fs-err",
+ "futures-util",
+ "hyper",
+ "include_dir",
+ "jsonwebtoken",
+ "lazy_static",
+ "lettre",
+ "mime",
+ "object_store",
+ "rand",
+ "regex",
+ "requestty",
+ "rrgen",
+ "rusty-sidekiq",
+ "sea-orm",
+ "sea-orm-migration",
+ "serde",
+ "serde_json",
+ "serde_variant",
+ "serde_yaml",
+ "tera",
+ "thiserror",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "validator",
+]
+
+[[package]]
+name = "loco-rs"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b1886d2d20ef60c490f02e9ac528876a322b025367ed70dbbe7e3f973ecfc49"
 dependencies = [
@@ -2276,7 +2327,6 @@ dependencies = [
  "async-trait",
  "axum",
  "axum-extra",
- "axum-test",
  "backtrace_printer",
  "bb8",
  "byte-unit",
@@ -2330,7 +2380,7 @@ dependencies = [
  "fluent-templates",
  "include_dir",
  "insta",
- "loco-rs",
+ "loco-rs 0.3.2",
  "migration",
  "rstest",
  "sea-orm",
@@ -2396,7 +2446,7 @@ name = "migration"
 version = "0.1.0"
 dependencies = [
  "async-std",
- "loco-rs",
+ "loco-rs 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "sea-orm-migration",
 ]
 
