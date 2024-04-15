@@ -1,7 +1,10 @@
 use std::env;
 
 use cargo_metadata::{semver::Version, MetadataCommand, Package};
-use clap::{ArgAction::SetFalse, Parser, Subcommand};
+use clap::{
+    ArgAction::{SetFalse, SetTrue},
+    Parser, Subcommand,
+};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -14,7 +17,11 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Run test on all Loco resources
-    Test {},
+    Test {
+        /// Test only Loco as a library
+        #[arg(short, long, action = SetTrue)]
+        quick: bool,
+    },
     /// Bump loco version in all dependencies places
     BumpVersion {
         #[arg(name = "VERSION")]
@@ -30,8 +37,12 @@ fn main() -> eyre::Result<()> {
     println!("running in: {project_dir:?}");
 
     let res = match cli.command {
-        Commands::Test {} => {
-            let res = xtask::ci::all_resources(project_dir.as_path())?;
+        Commands::Test { quick } => {
+            let res = if quick {
+                vec![xtask::ci::run(project_dir.as_path()).expect("test should have run")]
+            } else {
+                xtask::ci::all_resources(project_dir.as_path())?
+            };
             println!("{}", xtask::out::print_ci_results(&res));
             xtask::CmdExit::ok()
         }

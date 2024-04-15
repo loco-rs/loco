@@ -2,6 +2,21 @@
 
 ## vNext
 
+* Refactored model validation for better developer experience. Added a few traits and structs to `loco::prelude` for a smoother import story. Introducing `Validatable`:
+
+```rust
+impl Validatable for super::_entities::users::ActiveModel {
+    fn validator(&self) -> Box<dyn Validate> {
+        Box::new(Validator {
+            name: self.name.as_ref().to_owned(),
+            email: self.email.as_ref().to_owned(),
+        })
+    }
+}
+
+// now you can call `user.validate()` freely
+```
+
 * Refactored type field mapping to be centralized. Now model, scaffold share the same field mapping, so no more gaps like [https://github.com/loco-rs/loco/issues/513](https://github.com/loco-rs/loco/issues/513) (e.g. when calling `loco generate model title:string` the ability to map `string` into something useful in the code generation side)
 **NOTE** the `_integer` class of types are now just `_int`, e.g. `big_int`, so that it correlate with the `int` field name in a better way
 
