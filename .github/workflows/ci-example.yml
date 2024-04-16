@@ -9,6 +9,7 @@ on:
 env:
   RUST_TOOLCHAIN: stable
   TOOLCHAIN_PROFILE: minimal
+  SEA_CLI_VER: "@^1.0.0-rc.3"
 
 jobs:
   rustfmt:
@@ -95,7 +96,7 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
       - name: Install seaorm cli
-        run: cargo install sea-orm-cli
+        run: cargo install sea-orm-cli${{env.SEA_CLI_VER}}
       - name: Run cargo test
         run: cargo test --all-features --all
         working-directory: ./examples/demo

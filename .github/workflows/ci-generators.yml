@@ -9,6 +9,7 @@ on:
 env:
   RUST_TOOLCHAIN: stable
   TOOLCHAIN_PROFILE: minimal
+  SEA_CLI_VER: "@^1.0.0-rc.3"
 
 jobs:
   test:
@@ -54,7 +55,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Install seaorm cli
-        run: cargo install sea-orm-cli
+        run: cargo install sea-orm-cli${{env.SEA_CLI_VER}}
 
       - name: scaffold
         run: cargo run -- generate scaffold car name:string year:int && cargo build
@@ -149,7 +150,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Install seaorm cli
-        run: cargo install sea-orm-cli
+        run: cargo install sea-orm-cli${{env.SEA_CLI_VER}}
 
       - name: test ${{ matrix.field_type }} model field type
         run: |

@@ -1,6 +1,5 @@
 use blo::app::App;
 use insta::assert_debug_snapshot;
-
 use loco_rs::testing;
 use rstest::rstest;
 
@@ -15,8 +14,8 @@ macro_rules! configure_insta {
     };
 }
 
-// This tests the `_ping` endpoint, as well as the `NormalizePathLayer` that removes trailing
-// slashes from the request path.
+// This tests the `_ping` endpoint, as well as the `NormalizePathLayer` that
+// removes trailing slashes from the request path.
 #[rstest]
 #[case("ping", "/_ping")]
 #[case("ping_with_trailing_slash", "/_ping/")]
