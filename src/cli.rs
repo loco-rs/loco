@@ -37,7 +37,7 @@ use crate::{
     },
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     gen::{self, Component},
-    logger, Result,
+    logger,
 };
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -253,7 +253,7 @@ where
 /// # Errors
 ///
 /// When could not create app context
-pub async fn playground<H: Hooks>() -> Result<AppContext> {
+pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
     let cli = Playground::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
