@@ -2,6 +2,8 @@
 
 ## vNext
 
+## v0.4.0
+
 * Refactored model validation for better developer experience. Added a few traits and structs to `loco::prelude` for a smoother import story. Introducing `Validatable`:
 
 ```rust
