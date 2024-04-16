@@ -1,3 +1,8 @@
+use std::convert::Infallible;
+
+use axum::{extract::Request, response::IntoResponse, routing::Route};
+use tower::{Layer, Service};
+
 use super::describe;
 use crate::app::AppContext;
 #[derive(Clone, Default)]
@@ -12,6 +17,23 @@ pub struct Handler {
     pub uri: String,
     pub method: axum::routing::MethodRouter<AppContext>,
     pub actions: Vec<axum::http::Method>,
+}
+
+impl Handler {
+    pub fn layer<L>(self, layer: L) -> Self
+    where
+        L: Layer<Route> + Clone + Send + 'static,
+        L::Service: Service<Request> + Clone + Send + 'static,
+        <L::Service as Service<Request>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
+        <L::Service as Service<Request>>::Future: Send + 'static,
+    {
+        Self {
+            uri: self.uri,
+            actions: self.actions,
+            method: self.method.layer(layer),
+        }
+    }
 }
 
 impl Routes {
@@ -109,5 +131,30 @@ impl Routes {
     pub fn prefix(mut self, uri: &str) -> Self {
         self.prefix = Some(uri.to_owned());
         self
+    }
+
+    /// Set a layer for the routes. this layer will be a layer for all the
+    /// routes.
+    #[must_use]
+    pub fn layer<L>(self, layer: L) -> Self
+    where
+        L: Layer<Route> + Clone + Send + 'static,
+        L::Service: Service<Request> + Clone + Send + 'static,
+        <L::Service as Service<Request>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
+        <L::Service as Service<Request>>::Future: Send + 'static,
+    {
+        Self {
+            prefix: self.prefix,
+            handlers: self
+                .handlers
+                .iter()
+                .map(|handler| Handler {
+                    uri: handler.uri.clone(),
+                    actions: handler.actions.clone(),
+                    method: handler.method.clone().layer(layer.clone()),
+                })
+                .collect(),
+        }
     }
 }

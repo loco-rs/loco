@@ -3,25 +3,18 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use super::sea_orm_active_enums::RolesName;
+
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
-#[sea_orm(table_name = "users")]
+#[sea_orm(table_name = "roles")]
 pub struct Model {
     pub created_at: DateTime,
     pub updated_at: DateTime,
     #[sea_orm(primary_key)]
     pub id: i32,
+    #[sea_orm(unique)]
     pub pid: Uuid,
-    #[sea_orm(unique)]
-    pub email: String,
-    pub password: String,
-    #[sea_orm(unique)]
-    pub api_key: String,
-    pub name: String,
-    pub reset_token: Option<String>,
-    pub reset_sent_at: Option<DateTime>,
-    pub email_verification_token: Option<String>,
-    pub email_verification_sent_at: Option<DateTime>,
-    pub email_verified_at: Option<DateTime>,
+    pub name: RolesName,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -36,11 +29,11 @@ impl Related<super::users_roles::Entity> for Entity {
     }
 }
 
-impl Related<super::roles::Entity> for Entity {
+impl Related<super::users::Entity> for Entity {
     fn to() -> RelationDef {
-        super::users_roles::Relation::Roles.def()
+        super::users_roles::Relation::Users.def()
     }
     fn via() -> Option<RelationDef> {
-        Some(super::users_roles::Relation::Users.def().rev())
+        Some(super::users_roles::Relation::Roles.def().rev())
     }
 }
