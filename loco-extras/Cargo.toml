@@ -1,6 +1,6 @@
 [package]
 name = "loco-extras"
-version = "0.1.4"
+version = "0.4.0"
 description = "Common loco components"
 license.workspace = true
 edition.workspace = true
@@ -23,7 +23,7 @@ tower-http = { workspace = true, optional = true, features = [
 
 [dependencies.loco-rs]
 path = "../"
-version = "0.3.0"
+version = "0.4.0"
 default-features = true
 features = ["with-db", "auth_jwt"]
 
