@@ -2,7 +2,7 @@ use loco_rs::prelude::*;
 
 use crate::views::home::HomeResponse;
 
-async fn current() -> Result<Json<HomeResponse>> {
+async fn current() -> Result<Response> {
     format::json(HomeResponse::new("loco"))
 }
 

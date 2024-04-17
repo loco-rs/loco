@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-
-use lazy_static::lazy_static;
 use rrgen::RRgen;
 use serde_json::json;
 
@@ -22,30 +19,8 @@ const HTML_VIEW_CREATE_SCAFFOLD_T: &str = include_str!("templates/scaffold/html/
 const HTML_VIEW_SHOW_SCAFFOLD_T: &str = include_str!("templates/scaffold/html/view_show.t");
 const HTML_VIEW_LIST_SCAFFOLD_T: &str = include_str!("templates/scaffold/html/view_list.t");
 
-use super::{collect_messages, model, CONTROLLER_TEST_T};
+use super::{collect_messages, model, CONTROLLER_TEST_T, MAPPINGS};
 use crate::{errors::Error, Result};
-
-lazy_static! {
-    static ref PARAMS_MAPPING: HashMap<&'static str, &'static str> = HashMap::from([
-        ("text", "Option<String>"),
-        ("string", "Option<String>"),
-        ("string!", "String"),
-        ("string^", "String"),
-        ("int", "Option<i32>"),
-        ("int!", "i32"),
-        ("int^", "Option<i32>"),
-        ("bool", "Option<bool>"),
-        ("bool!", "bool"),
-        ("ts", "Option<DateTime>"),
-        ("ts!", "DateTime"),
-        ("uuid", "Option<Uuid>"),
-        ("uuid!", "Uuid"),
-        ("json", "Option<serde_json::Value>"),
-        ("json!", "serde_json::Value"),
-        ("jsonb", "Option<serde_json::Value>"),
-        ("jsonb!", "serde_json::Value"),
-    ]);
-}
 
 pub fn generate<H: Hooks>(
     rrgen: &RRgen,
@@ -68,14 +43,14 @@ pub fn generate<H: Hooks>(
             continue;
         }
         if ftype != "references" {
-            let schema_type = PARAMS_MAPPING.get(ftype.as_str()).ok_or_else(|| {
+            let schema_type = MAPPINGS.rust_field(ftype.as_str()).ok_or_else(|| {
                 Error::Message(format!(
                     "type: {} not found. try any of: {:?}",
                     ftype,
-                    PARAMS_MAPPING.keys()
+                    MAPPINGS.rust_fields()
                 ))
             })?;
-            columns.push((fname.to_string(), *schema_type, ftype));
+            columns.push((fname.to_string(), schema_type.as_str(), ftype));
         }
     }
     let vars = json!({"name": name, "columns": columns, "pkg_name": H::app_name()});

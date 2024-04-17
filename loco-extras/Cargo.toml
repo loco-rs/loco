@@ -1,6 +1,6 @@
 [package]
 name = "loco-extras"
-version = "0.1.4"
+version = "0.4.0"
 description = "Common loco components"
 license.workspace = true
 edition.workspace = true
@@ -18,7 +18,7 @@ serde = { version = "1", optional = true }
 serde_json = { version = "1", optional = true }
 tower = { workspace = true, optional = true }
 tower-http = { workspace = true, optional = true, features = [
-  "normalize-path"
+  "normalize-path",
 ] }
 opentelemetry = { version = "0.22" , optional = true}
 opentelemetry-otlp = { version = "0.15", optional = true, features = ["grpc-tonic"] }
@@ -30,17 +30,18 @@ tracing = { version = "0.1.40", optional = true }
 
 [dependencies.loco-rs]
 path = "../"
-version = "0.3.0"
+version = "0.4.0"
 default-features = true
+features = ["with-db", "auth_jwt"]
 
 [features]
 default = ["full"]
 full = [
-    "initializer-prometheus",
-    "initializer-extra-db",
-    "initializer-multi-db",
-    "initializer-normalize-path",
-    "initializer-opentelemetry",
+  "initializer-prometheus",
+  "initializer-extra-db",
+  "initializer-multi-db",
+  "initializer-normalize-path",
+  "initializer-opentelemetry",
 ]
 
 initializer-prometheus = ["dep:axum-prometheus"]
