@@ -139,6 +139,10 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
         .idle_timeout(Duration::from_millis(config.idle_timeout))
         .sqlx_logging(config.enable_logging);
 
+    if let Some(acquire_timeout) = config.acquire_timeout {
+        opt.acquire_timeout(Duration::from_millis(acquire_timeout));
+    }
+
     Database::connect(opt).await
 }
 

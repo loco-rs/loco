@@ -157,6 +157,9 @@ pub struct Database {
     /// Set the idle duration before closing a connection
     pub idle_timeout: u64,
 
+    /// Set the timeout for acquiring a connection
+    pub acquire_timeout: Option<u64>,
+
     /// Run migration up when application loads. It is recommended to turn it on
     /// in development. In production keep it off, and explicitly migrate your
     /// database every time you need.
