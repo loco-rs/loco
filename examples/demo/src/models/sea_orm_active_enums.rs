@@ -1,4 +1,4 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::Display;
 
 pub use crate::models::_entities::sea_orm_active_enums::RolesName;
 

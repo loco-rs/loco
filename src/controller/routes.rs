@@ -19,23 +19,6 @@ pub struct Handler {
     pub actions: Vec<axum::http::Method>,
 }
 
-impl Handler {
-    pub fn layer<L>(self, layer: L) -> Self
-    where
-        L: Layer<Route> + Clone + Send + 'static,
-        L::Service: Service<Request> + Clone + Send + 'static,
-        <L::Service as Service<Request>>::Response: IntoResponse + 'static,
-        <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
-        <L::Service as Service<Request>>::Future: Send + 'static,
-    {
-        Self {
-            uri: self.uri,
-            actions: self.actions,
-            method: self.method.layer(layer),
-        }
-    }
-}
-
 impl Routes {
     /// Creates a new [`Routes`] instance with default settings.
     #[must_use]
@@ -135,6 +118,21 @@ impl Routes {
 
     /// Set a layer for the routes. this layer will be a layer for all the
     /// routes.
+    ///
+    /// # Example
+    ///
+    /// In the following example, we are adding a layer to the routes.
+    ///
+    /// ```rust
+    /// use loco_rs::prelude::*;
+    /// use tower::{Layer, Service};
+    /// use tower_http::timeout::TimeoutLayer;
+    /// async fn ping() -> Result<Response> {
+    ///     format::json("Ok")
+    /// }
+    /// Routes::new().prefix("status").add("/_ping", get(ping)).layer(TimeoutLayer::new(std::time::Duration::from_secs(5)));
+    /// ```
+    #[allow(clippy::needless_pass_by_value)]
     #[must_use]
     pub fn layer<L>(self, layer: L) -> Self
     where

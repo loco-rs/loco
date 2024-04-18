@@ -1,7 +1,6 @@
 use std::path::Path;
 
 use async_trait::async_trait;
-use controllers::middleware;
 use loco_extras;
 use loco_rs::{
     app::{AppContext, Hooks, Initializer},
@@ -19,11 +18,10 @@ use migration::Migrator;
 use sea_orm::DatabaseConnection;
 
 use crate::{
-    controllers, initializers,
-    models::{
-        _entities::{notes, users},
-        roles,
-    },
+    controllers,
+    controllers::middlewares,
+    initializers,
+    models::_entities::{notes, users},
     tasks,
     workers::downloader::DownloadWorker,
 };
@@ -66,7 +64,7 @@ impl Hooks for App {
         AppRoutes::with_default_routes()
             .add_route(
                 controllers::mylayer::routes(ctx.clone())
-                    .layer(middleware::role::RoleRouteLayer::new(ctx.clone())),
+                    .layer(middlewares::routes::role::RoleRouteLayer::new(ctx.clone())),
             )
             .add_route(controllers::notes::routes())
             .add_route(controllers::auth::routes())

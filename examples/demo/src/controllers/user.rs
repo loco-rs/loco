@@ -23,7 +23,7 @@ async fn convert_to_admin(
     auth: auth::JWTWithUser<users::Model>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
-    let roles = roles::Model::add_user_to_admin(&ctx.db, &auth.user).await?;
+    let roles = roles::Model::add_user_to_admin_role(&ctx.db, &auth.user).await?;
     format::json(UserResponse::new(&auth.user, &roles))
 }
 
@@ -31,7 +31,7 @@ async fn convert_to_user(
     auth: auth::JWTWithUser<users::Model>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
-    let roles = roles::Model::add_user_to_user(&ctx.db, &auth.user).await?;
+    let roles = roles::Model::add_user_to_user_role(&ctx.db, &auth.user).await?;
     format::json(UserResponse::new(&auth.user, &roles))
 }
 

@@ -7,7 +7,7 @@ use crate::models::{_entities::sea_orm_active_enums::RolesName, users, users_rol
 #[async_trait]
 impl ActiveModelBehavior for ActiveModel {
     // extend activemodel below (keep comment for generators)
-    async fn before_save<C>(self, db: &C, insert: bool) -> std::result::Result<Self, DbErr>
+    async fn before_save<C>(self, _db: &C, insert: bool) -> std::result::Result<Self, DbErr>
     where
         C: ConnectionTrait,
     {
@@ -22,7 +22,7 @@ impl ActiveModelBehavior for ActiveModel {
 }
 
 impl super::_entities::roles::Model {
-    pub async fn add_user_to_admin(
+    pub async fn add_user_to_admin_role(
         db: &DatabaseConnection,
         user: &users::Model,
     ) -> ModelResult<Self> {
@@ -33,7 +33,7 @@ impl super::_entities::roles::Model {
         Ok(role)
     }
 
-    pub async fn add_user_to_user(
+    pub async fn add_user_to_user_role(
         db: &DatabaseConnection,
         user: &users::Model,
     ) -> ModelResult<Self> {
