@@ -61,3 +61,49 @@ async fn can_get_current_user_with_api_key() {
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+async fn can_convert_user_to_user_role() {
+    configure_insta!();
+
+    testing::request::<App, _, _>(|request, ctx| async move {
+        let user = prepare_data::init_user_login(&request, &ctx).await;
+
+        let (auth_key, auth_value) = prepare_data::auth_header(&user.token);
+        let response = request
+            .post("/user/convert/user")
+            .add_header(auth_key, auth_value)
+            .await;
+
+        with_settings!({
+            filters => testing::cleanup_user_model()
+        }, {
+            assert_debug_snapshot!((response.status_code(), response.text()));
+        });
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn can_convert_user_to_admin_role() {
+    configure_insta!();
+
+    testing::request::<App, _, _>(|request, ctx| async move {
+        let user = prepare_data::init_user_login(&request, &ctx).await;
+
+        let (auth_key, auth_value) = prepare_data::auth_header(&user.token);
+        let response = request
+            .post("/user/convert/admin")
+            .add_header(auth_key, auth_value)
+            .await;
+
+        with_settings!({
+            filters => testing::cleanup_user_model()
+        }, {
+            assert_debug_snapshot!((response.status_code(), response.text()));
+        });
+    })
+    .await;
+}
