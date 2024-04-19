@@ -14,6 +14,7 @@ macro_rules! configure_insta {
 #[tokio::test]
 #[serial]
 async fn cannot_get_echo_when_no_role_assigned() {
+    configure_insta!();
     testing::request::<App, _, _>(|request, ctx| async move {
         let user = prepare_data::init_user_login(&request, &ctx).await;
         let (auth_key, auth_value) = prepare_data::auth_header(&user.token);
@@ -29,6 +30,7 @@ async fn cannot_get_echo_when_no_role_assigned() {
 #[tokio::test]
 #[serial]
 async fn can_get_echo_when_admin_role_assigned() {
+    configure_insta!();
     testing::request::<App, _, _>(|request, ctx| async move {
         let user = prepare_data::init_user_login(&request, &ctx).await;
         let (auth_key, auth_value) = prepare_data::auth_header(&user.token);
@@ -51,6 +53,7 @@ async fn can_get_echo_when_admin_role_assigned() {
 #[tokio::test]
 #[serial]
 async fn can_get_echo_when_user_role_assigned() {
+    configure_insta!();
     testing::request::<App, _, _>(|request, ctx| async move {
         let user = prepare_data::init_user_login(&request, &ctx).await;
         let (auth_key, auth_value) = prepare_data::auth_header(&user.token);
@@ -74,6 +77,7 @@ async fn can_get_echo_when_user_role_assigned() {
 #[tokio::test]
 #[serial]
 async fn cannot_get_admin_when_no_role() {
+    configure_insta!();
     testing::request::<App, _, _>(|request, ctx| async move {
         let user = prepare_data::init_user_login(&request, &ctx).await;
         let (auth_key, auth_value) = prepare_data::auth_header(&user.token);
@@ -89,6 +93,7 @@ async fn cannot_get_admin_when_no_role() {
 #[tokio::test]
 #[serial]
 async fn cannot_get_admin_when_user_role_assigned() {
+    configure_insta!();
     testing::request::<App, _, _>(|request, ctx| async move {
         let user = prepare_data::init_user_login(&request, &ctx).await;
         let (auth_key, auth_value) = prepare_data::auth_header(&user.token);
@@ -112,6 +117,7 @@ async fn cannot_get_admin_when_user_role_assigned() {
 #[tokio::test]
 #[serial]
 async fn can_get_admin_when_admin_role_assigned() {
+    configure_insta!();
     testing::request::<App, _, _>(|request, ctx| async move {
         let user = prepare_data::init_user_login(&request, &ctx).await;
         let (auth_key, auth_value) = prepare_data::auth_header(&user.token);
@@ -135,6 +141,7 @@ async fn can_get_admin_when_admin_role_assigned() {
 #[tokio::test]
 #[serial]
 async fn cannot_get_user_when_no_role() {
+    configure_insta!();
     testing::request::<App, _, _>(|request, ctx| async move {
         let user = prepare_data::init_user_login(&request, &ctx).await;
         let (auth_key, auth_value) = prepare_data::auth_header(&user.token);
@@ -150,6 +157,7 @@ async fn cannot_get_user_when_no_role() {
 #[tokio::test]
 #[serial]
 async fn can_get_user_when_user_role_assigned() {
+    configure_insta!();
     testing::request::<App, _, _>(|request, ctx| async move {
         let user = prepare_data::init_user_login(&request, &ctx).await;
         let (auth_key, auth_value) = prepare_data::auth_header(&user.token);

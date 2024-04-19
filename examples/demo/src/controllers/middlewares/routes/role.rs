@@ -56,9 +56,10 @@ where
     }
 
     fn call(&mut self, req: Request<B>) -> Self::Future {
-        let mut inner = self.inner.clone();
         let state = self.state.clone();
-
+        let clone = self.inner.clone();
+        // take the service that was ready
+        let mut inner = std::mem::replace(&mut self.inner, clone);
         Box::pin(async move {
             // Example of extracting JWT and checking roles
             let (mut parts, body) = req.into_parts();
