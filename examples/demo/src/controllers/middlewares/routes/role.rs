@@ -47,8 +47,11 @@ where
     S::Future: Send + 'static,
     B: Send + 'static,
 {
-    type Response = S::Response; // Response type is the same as the inner service
-    type Error = S::Error; // Error type is the same as the inner service
+    // Response type is the same as the inner service / handler
+    type Response = S::Response;
+    // Error type is the same as the inner service / handler
+    type Error = S::Error;
+    // Future type is the same as the inner service / handler
     type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
