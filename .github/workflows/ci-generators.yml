@@ -1,4 +1,4 @@
-name: loco-generate
+name: ci-generators
 
 on:
   push:

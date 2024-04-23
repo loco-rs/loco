@@ -6,6 +6,8 @@ use kalosm::language::{Llama, ModelExt};
 use loco_rs::controller::Routes;
 use tokio::sync::RwLock;
 
+#[allow(clippy::missing_const_for_fn)]
+#[allow(clippy::unnecessary_wraps)]
 fn infallible(t: String) -> Result<String, std::convert::Infallible> {
     Ok(t)
 }

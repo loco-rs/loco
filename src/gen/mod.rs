@@ -1,4 +1,7 @@
-use chrono::Utc;
+// this is because not using with-db renders some of the structs below unused
+// TODO: should be more properly aligned with extracting out the db-related gen
+// code and then feature toggling it
+#![allow(dead_code)]
 use lazy_static::lazy_static;
 use rrgen::{GenResult, RRgen};
 use serde::{Deserialize, Serialize};
@@ -189,7 +192,7 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
         }
         #[cfg(feature = "with-db")]
         Component::Migration { name } => {
-            let vars = json!({ "name": name, "ts": Utc::now(), "pkg_name": H::app_name()});
+            let vars = json!({ "name": name, "ts": chrono::Utc::now(), "pkg_name": H::app_name()});
             rrgen.generate(MIGRATION_T, &vars)?;
         }
         Component::Controller { name } => {

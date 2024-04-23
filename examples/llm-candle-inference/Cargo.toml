@@ -12,31 +12,26 @@ edition = "2021"
 loco-rs = { version = "*", path = "../../", default-features = false, features = [
   "cli",
 ] }
-serde = "*"
-serde_json = "*"
-eyre = "*"
+serde = "1"
+serde_json = "1"
+eyre = "0.6.12"
 tokio = { version = "1.33.0", default-features = false }
 async-trait = "0.1.74"
 tracing = "0.1.40"
-validator = { version = "*" }
+validator = { version = "0.18.1" }
 
 axum = "0.7.1"
-include_dir = "*"
-uuid = { version = "*", features = ["v4"] }
+include_dir = "0.7.3"
+uuid = { version = "1.8.0", features = ["v4"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 
-candle-transformers = "*"
-candle-nn = "*"
-candle-core = "*"
-tokenizers = "*"
-hf-hub = "*"
-lazy_static = "*"
+lazy_static = "1"
 
-kalosm = { version = "*", git = "https://github.com/floneum/floneum", features = [
-  "metal",
-] }
-futures-util = "*"
-axum-streams = { version = "0.12", features = ["text"] }
+kalosm = { version = "0.2.1", features = ["metal"] }
+futures-util = "0.3.30"
+axum-streams = { version = "0.14.2", features = ["text"] }
+zstd-sys = { version = "=2.0.9" }
+
 
 [[bin]]
 name = "inference"
@@ -44,11 +39,11 @@ path = "src/bin/main.rs"
 required-features = []
 
 [dev-dependencies]
-serial_test = "*"
-rstest = "*"
+serial_test = "3.0.0"
+rstest = "0.19.0"
 loco-rs = { version = "*", path = "../../", default-features = false, features = [
   "cli",
   "testing",
 ] }
 trycmd = "0.14.19"
-insta = { version = "*", features = ["redactions", "yaml", "filters"] }
+insta = { version = "1.38.0", features = ["redactions", "yaml", "filters"] }

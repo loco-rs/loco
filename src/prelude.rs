@@ -9,8 +9,9 @@ pub use chrono::NaiveDateTime as DateTime;
 pub use include_dir::{include_dir, Dir};
 #[cfg(feature = "with-db")]
 pub use sea_orm::{
-    ActiveModelBehavior, ActiveModelTrait, ActiveValue, ConnectionTrait, DatabaseConnection, DbErr,
-    EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, Set, TransactionTrait,
+    ActiveModelBehavior, ActiveModelTrait, ActiveValue, ColumnTrait, ConnectionTrait,
+    DatabaseConnection, DbErr, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, Set,
+    TransactionTrait,
 };
 
 #[cfg(all(feature = "auth_jwt", feature = "with-db"))]

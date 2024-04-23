@@ -307,7 +307,7 @@ $
 
 ## MVC and You
 
-**Traditional MVC (model-view-controller) comes desktop UI programming paradigms**. However, it quickly made it into web services as well, the golden era of MVC was around the early 2010's, and since then many more different paradigms and architectures emerged.
+**Traditional MVC (Model-View-Controller) originated in desktop UI programming paradigms.** However, its applicability to web services led to its rapid adoption. MVC's golden era was around the early 2010s, and since then, many other paradigms and architectures have emerged.
 
 **MVC is still a very strong principle and architecture to follow for simplifying projects**, and this is what Loco follows too.
 
