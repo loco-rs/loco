@@ -6,7 +6,7 @@ use axum::{extract::State, response::Response, routing::get};
 use serde::Serialize;
 
 use super::{format, routes::Routes};
-use crate::{app::AppContext, db, redis, Result};
+use crate::{app::AppContext, redis, Result};
 
 /// Represents the health status of the application.
 #[derive(Serialize)]
