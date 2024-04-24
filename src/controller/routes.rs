@@ -83,6 +83,33 @@ impl Routes {
         self
     }
 
+    /// Merge two routes together. This will add the prefix of the route to the
+    /// routes.
+    ///
+    /// # Example
+    ///
+    /// _ping endpoint HOST/status/internal/_ping.
+    /// _ping endpoint HOST/status/external/_ping.
+    ///
+    /// ```rust
+    /// let routesA = Routes::at("internal").add("/_ping", get(ping));
+    /// let routesB = Routes::at("external").add("/_ping", get(ping));
+    /// Routes::new().prefix("status").merge(routesA).merge(routesB);
+    /// ````
+    #[must_use]
+    pub fn merge(mut self, route: Routes) -> Self {
+        let prefix = route.prefix.clone().unwrap_or("".to_string());
+        for handler in route.handlers {
+            self.handlers.push(Handler {
+                uri: format!("/{}/{}", prefix, handler.uri),
+                actions: handler.actions,
+                method: handler.method,
+            });
+        }
+        self
+    }
+
+
     /// Set a prefix for the routes. this prefix will be a prefix for all the
     /// routes.
     ///
