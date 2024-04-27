@@ -14,8 +14,7 @@ impl MigrationTrait for Migration {
                             .name("idx-users_roles-refs-pk")
                             .table(UsersRoles::Table)
                             .col(UsersRoles::UsersId)
-                            .col(UsersRoles::RolesId)
-                            ,
+                            .col(UsersRoles::RolesId),
                     )
                     .col(integer(UsersRoles::UsersId))
                     .col(integer(UsersRoles::RolesId))
@@ -52,9 +51,7 @@ enum UsersRoles {
     Table,
     UsersId,
     RolesId,
-    
 }
-
 
 #[derive(DeriveIden)]
 enum Users {
