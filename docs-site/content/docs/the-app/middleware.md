@@ -17,8 +17,8 @@ flair = []
 
 `Loco` is a framework that is built on top of [`axum`](https://crates.io/crates/axum)
 and [`tower`](https://crates.io/crates/tower). They provide a way to
-add [layer](https://docs.rs/tower/latest/tower/trait.Layer.html)
-and [service](https://docs.rs/tower/latest/tower/trait.Service.html) as middleware to your routes and handlers.
+add [layers](https://docs.rs/tower/latest/tower/trait.Layer.html)
+and [services](https://docs.rs/tower/latest/tower/trait.Service.html) as middleware to your routes and handlers.
 
 Middleware is a way to add pre- and post-processing to your requests. This can be used for logging, authentication, rate
 limiting, route specific processing, and more.
@@ -68,7 +68,7 @@ impl<S> Layer<S> for LogLayer {
 
 #[derive(Clone)]
 pub struct LogService<S> {
-    // S is the inner service, in the case is the `/auth/register` handler
+    // S is the inner service, in the case, it is the `/auth/register` handler
     inner: S,
 }
 
@@ -78,7 +78,7 @@ pub struct LogService<S> {
 /// * `B` - The body type
 impl<S, B> Service<Request<B>> for LogService<S>
     where
-        S: Service<Request<B>, Response=Response<Body>, Error=Infallible> + Clone + Send + 'static, /* Inner Service must return Response<Body> and never error, which is most of the for handlers */
+        S: Service<Request<B>, Response=Response<Body>, Error=Infallible> + Clone + Send + 'static, /* Inner Service must return Response<Body> and never error, which is typical for handlers */
         S::Future: Send + 'static,
         B: Send + 'static,
 {
@@ -110,7 +110,7 @@ impl<S, B> Service<Request<B>> for LogService<S>
 }
 ```
 
-In the first glance, this middleware is a bit overwhelming. Let's break it down.
+At the first glance, this middleware is a bit overwhelming. Let's break it down.
 
 The `LogLayer` is a [`tower::Layer`](https://docs.rs/tower/latest/tower/trait.Layer.html) that wraps around the inner
 service.
@@ -122,8 +122,8 @@ the `Service` trait for the request.
 
 **`Layer`**
 
-The `S` of the `Layer` trait is the inner service. In this case, it is the `/auth/register` handler. The`layer`function
-is going to take the inner service and return a new service which wraps around the inner service.
+In the `Layer` trait, `S` represents the inner service, which in this case is the `/auth/register` handler. The `layer`
+function takes this inner service and returns a new service that wraps around it.
 
 **`Service`**
 
@@ -162,13 +162,41 @@ and [Tokio tutorial](https://tokio.rs/blog/2021-05-14-inventing-the-service-trai
 The `LogService::call` function is used to process the request. In this case, we are logging the request method and
 path. Then we are calling the inner service with the request.
 
-**Note:** In `LogService::call` we are cloning the inner service and `std::mem::replace` replacing it. This is because
-services are permitted to panic if `LogService::call` is invoked without obtaining `Poll::Ready(Ok(()))`
-from `LogService::poll_ready`.
+**Importance of `poll_ready`:**
 
-Therefore, we should be careful when cloning services for example to move them into boxed
-futures. Even though the original service is ready, the clone might not
-be. [Tower Service Cloning Documentation](https://docs.rs/tower/latest/tower/trait.Service.html#be-careful-when-cloning-inner-services)
+In the Tower framework, before a service can be used to handle a request, it must be
+checked for readiness
+using the
+poll_ready method. This method returns `Poll::Ready(Ok(()))` when the service is ready to process a request. If a
+service is not ready, it may return `Poll::Pending`, indicating that the caller should wait before sending a request.
+This mechanism ensures that the service has the necessary resources or state to process the request efficiently and
+correctly.
+
+**Cloning and Readiness**
+
+When cloning a service, particularly to move it into a boxed future or similar context, it's crucial to understand that
+the clone does not inherit the readiness state of the original service. Each clone of a service maintains its own state.
+This means that even if the original service was ready `(Poll::Ready(Ok(())))`, the cloned service might not be in the
+same state immediately after cloning. This can lead to issues where a cloned service is used before it is ready,
+potentially causing panics or other failures.
+
+**Correct approach to cloning services using `std::mem::replace`**
+To handle cloning correctly, it's recommended to use `std::mem::replace` to swap the ready service with its clone in a
+controlled manner. This approach ensures that the service being used to handle the request is the one that has been
+verified as ready. Here’s how it works:
+
+- Clone the service: First, create a clone of the service. This clone will eventually replace the original service in
+  the service handler.
+- Replace the original with the clone: Use `std::mem::replace` to swap the original service with the clone. This
+  operation ensures that the service handler continues to hold a service instance.
+- Use the original service to handle the request: Since the original service was already checked for readiness (via
+  poll_ready), it's safe to use it to handle the incoming request. The clone, now in the handler, will be the one
+  checked for readiness next time.
+
+This method ensures that each service instance used to handle requests is always the one that has been explicitly
+checked for readiness, thus maintaining the integrity and reliability of the service handling process.
+
+Here is a simplified example to illustrate this pattern:
 
 ```rust
 // Wrong
@@ -191,6 +219,12 @@ fn call(&mut self, req: Request<B>) -> Self::Future {
     })
 }
 ```
+
+In this example, `inner` is the service that was ready, and after handling the request, `self.inner` now holds the
+clone, which will be checked for readiness in the next cycle. This careful management of service readiness and cloning
+is essential for maintaining robust and error-free service operations in asynchronous Rust applications using Tower.
+
+[Tower Service Cloning Documentation](https://docs.rs/tower/latest/tower/trait.Service.html#be-careful-when-cloning-inner-services)
 
 ## Basic Example Usage - Adding Middleware to Handler
 
