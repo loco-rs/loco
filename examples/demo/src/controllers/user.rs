@@ -9,6 +9,13 @@ async fn current(
     format::json(CurrentResponse::new(&auth.user))
 }
 
+async fn current_from_cookie(
+    auth: auth::JWTCookieWithUser<users::Model>,
+    State(_ctx): State<AppContext>,
+) -> Result<Response> {
+    format::json(CurrentResponse::new(&auth.user))
+}
+
 async fn current_by_api_key(
     auth: auth::ApiToken<users::Model>,
     State(_ctx): State<AppContext>,
@@ -21,4 +28,5 @@ pub fn routes() -> Routes {
         .prefix("user")
         .add("/current", get(current))
         .add("/current_api_key", get(current_by_api_key))
+        .add("/current_from_cookie", get(current_from_cookie))
 }

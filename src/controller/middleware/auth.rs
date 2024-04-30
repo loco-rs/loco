@@ -25,9 +25,16 @@ use axum::{
     extract::{FromRef, FromRequestParts},
     http::{request::Parts, HeaderMap},
 };
+use axum_extra::extract::cookie;
 use serde::{Deserialize, Serialize};
 
 use crate::{app::AppContext, auth, errors::Error, model::Authenticable};
+
+// ---------------------------------------
+//
+// JWT Auth extractor from bearer token
+//
+// ---------------------------------------
 
 // Define constants for token prefix and authorization header
 const TOKEN_PREFIX: &str = "Bearer ";
@@ -164,4 +171,93 @@ where
 
         Ok(Self { user })
     }
+}
+
+// ---------------------------------------
+//
+// JWT Auth extractor from cookie
+//
+// ---------------------------------------
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct JWTCookie {
+    pub claims: auth::jwt::UserClaims,
+}
+
+#[async_trait]
+impl<S> FromRequestParts<S> for JWTCookie
+where
+    AppContext: FromRef<S>,
+    S: Send + Sync,
+{
+    type Rejection = Error;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
+        let token = extract_token_from_cookie(parts)?;
+        let state: AppContext = AppContext::from_ref(state);
+
+        let jwt_secret = state.config.get_jwt_config()?;
+
+        match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
+            Ok(claims) => Ok(Self {
+                claims: claims.claims,
+            }),
+            Err(_err) => {
+                return Err(Error::Unauthorized("token is not valid".to_string()));
+            }
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct JWTCookieWithUser<T: Authenticable> {
+    pub claims: auth::jwt::UserClaims,
+    pub user: T,
+}
+
+#[async_trait]
+impl<S, T> FromRequestParts<S> for JWTCookieWithUser<T>
+where
+    AppContext: FromRef<S>,
+    S: Send + Sync,
+    T: Authenticable,
+{
+    type Rejection = Error;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
+        let token = extract_token_from_cookie(parts)?;
+        let state: AppContext = AppContext::from_ref(state);
+
+        let jwt_secret = state.config.get_jwt_config()?;
+
+        match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
+            Ok(claims) => {
+                let user = T::find_by_claims_key(&state.db, &claims.claims.pid)
+                    .await
+                    .map_err(|_| Error::Unauthorized("token is not valid".to_string()))?;
+                Ok(Self {
+                    claims: claims.claims,
+                    user,
+                })
+            }
+            Err(_err) => {
+                return Err(Error::Unauthorized("token is not valid".to_string()));
+            }
+        }
+    }
+}
+
+/// Extract a token value from cookie
+///
+/// # Errors
+/// when token value from cookie is not found
+pub fn extract_token_from_cookie(parts: &Parts) -> eyre::Result<String> {
+    let jar = cookie::CookieJar::from_headers(&parts.headers);
+    Ok(jar
+        .get("token")
+        .ok_or(Error::Unauthorized("token is not found".to_string()))?
+        .to_string()
+        .strip_prefix("token=")
+        .ok_or_else(|| eyre::eyre!("error strip {} value", "token"))?
+        .to_string())
 }
