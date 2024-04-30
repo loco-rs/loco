@@ -17,7 +17,7 @@ flair =[]
 
 A mailer will deliver emails in the background using the existing `loco` background worker infrastructure. It will all be seamless for you.
 
-## Using mailers
+# Sending email
 
 To use an existing mailer, mostly in your controller:
 
@@ -30,7 +30,7 @@ use crate::{
 async fn register(
     State(ctx): State<AppContext>,
     Json(params): Json<RegisterParams>,
-) -> Result<Json<()>> {
+) -> Result<Response> {
     // .. register a user ..
     AuthMailer::send_welcome(&ctx, &user.email).await.unwrap();
 }
@@ -38,9 +38,9 @@ async fn register(
 
 This will enqueue a mail delivery job. The action is instant because the delivery will be performed later in the background.
 
-## Mailer Configuration
+## Configuration
 
-Configuration for mailers is done in the `config/[stage].toml` file. Here is the default configuration: 
+Configuration for mailers is done in the `config/[stage].yaml` file. Here is the default configuration:
 
 ```yaml
 # Mailer Configuration.
@@ -159,6 +159,50 @@ To run both the server and the worker simultaneously, use the following command:
 cargo loco start --server-and-worker
 ```
 
-## Testing a mailer
+# Testing
 
-For testing mailers integrated into your application, `Loco` offers a straightforward implementation. Refer to the documentation [here](@/docs/testing/mailers.md) for detailed information.
+Testing emails sent as part of your workflow can be a complex task, requiring validation of various scenarios such as email verification during user registration and checking user password emails. The primary goal is to streamline the testing process by examining the number of emails sent in the workflow, reviewing email content, and allowing for data snapshots.
+
+In `Loco`, we have introduced a stub test email feature. Essentially, emails are not actually sent; instead, we collect information on the number of emails and their contents as part of the testing context.
+
+## Configuration
+
+To enable the stub in your tests, add the following field to the configuration under the mailer section in your YAML file:
+
+```yaml
+mailer:
+  stub: true
+```
+
+Note: If your email sender operates within a [worker](@/docs/the-app/workers.md) process, ensure that the worker mode is set to ForegroundBlocking.
+
+Once you have configured the stub, proceed to your unit tests and follow the example below:
+
+## Writing a test
+
+Test Description:
+
+- Create an HTTP request to the endpoint responsible for sending emails as part of your code.
+- Retrieve the mailer instance from the context and call the deliveries() function, which contains information about the number of sent emails and their content.
+
+```rust
+
+#[tokio::test]
+#[serial]
+async fn can_register() {
+    configure_insta!();
+
+    testing::request::<App, Migrator, _, _>(|request, ctx| async move {
+        // Create a request for user registration.
+
+        // Now you can call the context mailer and use the deliveries function.
+        with_settings!({
+            filters => testing::cleanup_email()
+        }, {
+            assert_debug_snapshot!(ctx.mailer.unwrap().deliveries());
+        });
+    })
+    .await;
+}
+```
+

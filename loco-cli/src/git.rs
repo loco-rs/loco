@@ -3,8 +3,7 @@ use crate::prompt;
 use fs_extra::dir::{copy, CopyOptions};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use std::env;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// getting logo debug path for working locally.
@@ -123,8 +122,6 @@ fn clone_repo() -> eyre::Result<PathBuf> {
         cfg_if::cfg_if! {
             if #[cfg(feature = "git2")] {
                 clone_repo_with_git2(&temp_clone_dir)?;
-            } else if #[cfg(feature = "gix")] {
-                clone_repo_with_gix(&temp_clone_dir)?;
             } else {
                 eyre::bail!("git command is not found. Either install it, or enable git2 or gix feature for this CLI.");
             }
@@ -144,6 +141,34 @@ fn git_exists() -> bool {
     }
 }
 
+/// Check if a given path is a Git repository
+///
+/// # Errors
+///
+/// when git binary is not found or could not canonicalize the given path
+pub fn is_a_git_repo(destination_path: &Path) -> eyre::Result<bool> {
+    let destination_path = destination_path.canonicalize()?;
+    match Command::new("git")
+        .arg("-C")
+        .arg(destination_path)
+        .arg("rev-parse")
+        .arg("--is-inside-work-tree")
+        .output()
+    {
+        Ok(output) => {
+            if output.status.success() {
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        }
+        Err(err) => {
+            tracing::debug!(error = err.to_string(), "git not found");
+            Ok(false)
+        }
+    }
+}
+
 #[cfg(feature = "git2")]
 fn clone_repo_with_git2(temp_clone_dir: &Path) -> eyre::Result<()> {
     let mut fetch_options = git2::FetchOptions::new();
@@ -151,15 +176,5 @@ fn clone_repo_with_git2(temp_clone_dir: &Path) -> eyre::Result<()> {
     git2::build::RepoBuilder::new()
         .fetch_options(fetch_options)
         .clone(BASE_REPO_URL, temp_clone_dir)?;
-    Ok(())
-}
-
-#[cfg(feature = "gix")]
-fn clone_repo_with_gix(temp_clone_dir: &Path) -> eyre::Result<()> {
-    let mut prepare_clone = gix::prepare_clone(BASE_REPO_URL, temp_clone_dir)?;
-    let (mut prepare_checkout, _outcome) = prepare_clone
-        .fetch_then_checkout(gix::progress::Discard, &gix::interrupt::IS_INTERRUPTED)?;
-    let (_repo, _outcome) =
-        prepare_checkout.main_worktree(gix::progress::Discard, &gix::interrupt::IS_INTERRUPTED)?;
     Ok(())
 }

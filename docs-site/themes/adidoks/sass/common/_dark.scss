@@ -179,7 +179,6 @@ body.dark .border-top {
 @include media-breakpoint-up(lg) {
   body.dark .docs-sidebar {
     order: 0;
-    border-right: 1px solid $border-dark;
   }
 }
 
@@ -258,9 +257,6 @@ body.dark a.docs-link {
   color: $body-color-dark;
 }
 
-body.dark .page-links li:not(:first-child) {
-  border-top: 1px dashed $border-dark;
-}
 
 body.dark .card {
   background: $body-bg-dark;

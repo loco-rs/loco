@@ -37,7 +37,7 @@ use crate::{
     },
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     gen::{self, Component},
-    logger, Result,
+    logger,
 };
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -143,6 +143,10 @@ enum ComponentArg {
         /// Model fields, eg. title:string hits:int
         #[clap(value_parser = parse_key_val::<String,String>)]
         fields: Vec<(String, String)>,
+
+        /// The kind of scaffold to generate
+        #[clap(short, long, value_enum, default_value_t = gen::ScaffoldKind::Api)]
+        kind: gen::ScaffoldKind,
     },
     /// Generate a new controller with the given controller name, and test file.
     Controller {
@@ -186,7 +190,7 @@ impl From<ComponentArg> for Component {
             #[cfg(feature = "with-db")]
             ComponentArg::Migration { name } => Self::Migration { name },
             #[cfg(feature = "with-db")]
-            ComponentArg::Scaffold { name, fields } => Self::Scaffold { name, fields },
+            ComponentArg::Scaffold { name, fields, kind } => Self::Scaffold { name, fields, kind },
             ComponentArg::Controller { name } => Self::Controller { name },
             ComponentArg::Task { name } => Self::Task { name },
             ComponentArg::Worker { name } => Self::Worker { name },
@@ -249,7 +253,7 @@ where
 /// # Errors
 ///
 /// When could not create app context
-pub async fn playground<H: Hooks>() -> Result<AppContext> {
+pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
     let cli = Playground::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
@@ -283,7 +287,7 @@ pub async fn playground<H: Hooks>() -> Result<AppContext> {
 /// ```
 #[cfg(feature = "with-db")]
 pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
-    let cli = Cli::parse();
+    let cli: Cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
     let config = environment.load()?;
@@ -291,6 +295,9 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
     if !H::init_logger(&config, &environment)? {
         logger::init::<H>(&config.logger);
     }
+
+    let task_span = create_root_span(&environment);
+    let _guard = task_span.enter();
 
     match cli.command {
         Commands::Start {
@@ -371,6 +378,9 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
         logger::init::<H>(&config.logger);
     }
 
+    let task_span = create_root_span(&environment);
+    let _guard = task_span.enter();
+
     match cli.command {
         Commands::Start {
             worker,
@@ -424,4 +434,8 @@ fn show_list_endpoints<H: Hooks>(ctx: &AppContext) {
     for router in routes {
         println!("{}", router.to_string());
     }
+}
+
+fn create_root_span(environment: &Environment) -> tracing::Span {
+    tracing::span!(tracing::Level::DEBUG, "app", environment = %environment)
 }

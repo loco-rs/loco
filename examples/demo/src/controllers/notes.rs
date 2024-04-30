@@ -1,15 +1,14 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
-use axum::{extract::Query, response::IntoResponse};
-use loco_rs::{concern::pagination, controller::views::pagination::Pager, prelude::*};
-use sea_orm::{ColumnTrait, Condition};
+use axum::extract::Query;
+use loco_rs::{controller::bad_request, model::ModelError, prelude::*};
+use sea_orm::Condition;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    common,
     models::_entities::notes::{ActiveModel, Column, Entity, Model},
-    views::notes::ListResponse,
+    views::notes::PaginationResponse,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -23,7 +22,7 @@ pub struct ListQueryParams {
     pub title: Option<String>,
     pub content: Option<String>,
     #[serde(flatten)]
-    pub pagination: pagination::PaginationFilter,
+    pub pagination: model::query::PaginationQuery,
 }
 
 impl Params {
@@ -41,22 +40,25 @@ async fn load_item(ctx: &AppContext, id: i32) -> Result<Model> {
 pub async fn list(
     State(ctx): State<AppContext>,
     Query(params): Query<ListQueryParams>,
-) -> Result<impl IntoResponse> {
-    let notes_query = Entity::find();
+) -> Result<Response> {
+    let pagination_query = model::query::PaginationQuery {
+        page_size: params.pagination.page_size,
+        page: params.pagination.page,
+    };
 
-    let notes: Pager<Vec<ListResponse>> =
-        pagination::view::<ListResponse, crate::models::_entities::notes::Entity>(
-            &ctx.db,
-            notes_query,
-            Some(params.into_query()),
-            &params.pagination,
-        )
-        .await?;
+    let paginated_notes = model::query::exec::paginate(
+        &ctx.db,
+        Entity::find(),
+        Some(model::query::dsl::with(params.into_query()).build()),
+        &pagination_query,
+    )
+    .await?;
 
+    /*
     if let Some(settings) = &ctx.config.settings {
         let settings = common::settings::Settings::from_json(settings)?;
         println!("allow list: {:?}", settings.allow_list);
-    }
+    }*/
 
     format::render()
         .cookies(&[
@@ -64,10 +66,10 @@ pub async fn list(
             cookie::Cookie::new("baz", "qux"),
         ])?
         .etag("foobar")?
-        .json(notes)
+        .json(PaginationResponse::response(paginated_notes))
 }
 
-pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Json<Model>> {
+pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Response> {
     let mut item = ActiveModel {
         ..Default::default()
     };
@@ -80,7 +82,7 @@ pub async fn update(
     Path(id): Path<i32>,
     State(ctx): State<AppContext>,
     Json(params): Json<Params>,
-) -> Result<Json<Model>> {
+) -> Result<Response> {
     let item = load_item(&ctx, id).await?;
     let mut item = item.into_active_model();
     params.update(&mut item);
@@ -88,26 +90,60 @@ pub async fn update(
     format::json(item)
 }
 
-pub async fn remove(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<()> {
+pub async fn remove(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Response> {
     load_item(&ctx, id).await?.delete(&ctx.db).await?;
     format::empty()
 }
 
-pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Json<Model>> {
-    format::json(load_item(&ctx, id).await?)
+pub async fn get_one(
+    Format(respond_to): Format,
+    Path(id): Path<i32>,
+    State(ctx): State<AppContext>,
+) -> Result<Response> {
+    // having `load_item` is useful because inside the function you can call and use
+    // '?' to bubble up errors, then, in here, we centralize handling of errors.
+    // if you want to freely use code statements with no wrapping function, you can
+    // use the experimental `try` feature in Rust where you can do:
+    // ```
+    // let res = try {
+    //     ...
+    //     ...
+    // }
+    //
+    // match res { ..}
+    // ```
+    let res = load_item(&ctx, id).await;
+
+    match res {
+        // we're good, let's render the item based on content type
+        Ok(item) => match respond_to {
+            RespondTo::Html => format::html(&format!("<html><body>{:?}</body></html>", item.title)),
+            _ => format::json(item),
+        },
+        // we have an opinion how to render out validation errors, only in HTML content
+        Err(Error::Model(ModelError::ModelValidation { errors })) => match respond_to {
+            RespondTo::Html => {
+                format::html(&format!("<html><body>errors: {errors:?}</body></html>"))
+            }
+            _ => bad_request("opaque message: cannot respond!"),
+        },
+        // we have no clue what this is, let the framework render default errors
+        Err(err) => Err(err),
+    }
 }
 
 impl ListQueryParams {
+    #[must_use]
     pub fn into_query(&self) -> Condition {
-        let mut condition = Condition::all();
+        let mut condition = model::query::dsl::condition();
+
         if let Some(title) = &self.title {
-            condition = condition.add(Column::Title.like(title));
+            condition = condition.like(Column::Title, title);
         }
         if let Some(content) = &self.content {
-            condition = condition.add(Column::Content.like(content));
+            condition = condition.like(Column::Content, content);
         }
-
-        condition
+        condition.build()
     }
 }
 

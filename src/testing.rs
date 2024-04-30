@@ -41,8 +41,11 @@ lazy_static! {
             (r"[0-9A-Za-z]+{40}", "IDENTIFIER"),
             (r"\w+, \d{1,2} \w+ \d{4} \d{2}:\d{2}:\d{2} [+-]\d{4}", "DATE"),
             (r"([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})","RANDOM_ID"),
-            // #6c23875d-3523-4805-8527-f2=\r\n82d3aa7514\
-            (r"([0-9a-fA-F]{8}-[0-9a-fA-F]{4})-[0-9a-fA-F]{4}-.*[0-9a-fA-F]{4}", "RANDOM_ID")
+
+            // also handles line break in text-format emails, where they break into a new line and then use '=' as continuation symbol.
+            // #6c23875d-3523-4805-8527-f2=\r\n82d3aa7514
+            // #6c23875d-3523-4805-8527-f282d3aa75=\r\n14 (note postfix after '=' can be short)
+            (r"([0-9a-fA-F]{8}-[0-9a-fA-F]{4})-[0-9a-fA-F]{4}-.*[0-9a-fA-F]{2}", "RANDOM_ID")
         ];
 }
 

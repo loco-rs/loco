@@ -3,7 +3,7 @@
 //! This module defines functions and operations related to the application's
 //! database interactions.
 
-use std::{fs::File, path::Path, time::Duration};
+use std::{collections::HashMap, fs::File, path::Path, time::Duration};
 
 use duct::cmd;
 use fs_err as fs;
@@ -30,6 +30,41 @@ lazy_static! {
     // mysql://loco:loco@localhost:3306/loco_app
     // the results will be loco_app
     pub static ref EXTRACT_DB_NAME: Regex = Regex::new(r"/([^/]+)$").unwrap();
+}
+
+#[derive(Default, Clone)]
+pub struct MultiDb {
+    pub db: HashMap<String, DatabaseConnection>,
+}
+
+impl MultiDb {
+    /// Creating multiple DB connection from the given hashmap
+    ///
+    /// # Errors
+    ///
+    /// When could not create database connection
+    pub async fn new(dbs_config: HashMap<String, config::Database>) -> AppResult<Self> {
+        let mut multi_db = Self::default();
+
+        for (db_name, db_config) in dbs_config {
+            multi_db.db.insert(db_name, connect(&db_config).await?);
+        }
+
+        Ok(multi_db)
+    }
+
+    /// Retrieves a database connection instance based on the specified key
+    /// name.
+    ///
+    /// # Errors
+    ///
+    /// Returns an [`AppResult`] indicating an error if the specified key does
+    /// not correspond to a database connection in the current context.
+    pub fn get(&self, name: &str) -> AppResult<&DatabaseConnection> {
+        self.db
+            .get(name)
+            .map_or_else(|| Err(Error::Message("db not found".to_owned())), Ok)
+    }
 }
 
 /// Verifies a user has access to data within its database
@@ -103,6 +138,10 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
         .connect_timeout(Duration::from_millis(config.connect_timeout))
         .idle_timeout(Duration::from_millis(config.idle_timeout))
         .sqlx_logging(config.enable_logging);
+
+    if let Some(acquire_timeout) = config.acquire_timeout {
+        opt.acquire_timeout(Duration::from_millis(acquire_timeout));
+    }
 
     Database::connect(opt).await
 }

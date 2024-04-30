@@ -21,7 +21,14 @@ pub struct Credential {
     /// AWS_SESSION_TOKEN
     pub token: Option<String>,
 }
+
 /// Create new AWS s3 storage with bucket and region.
+///
+/// # Examples
+///```
+/// use loco_rs::storage::drivers::aws;
+/// let aws_driver = aws::new("bucket_name", "region");
+/// ```
 ///
 /// # Errors
 ///
@@ -37,6 +44,17 @@ pub fn new(bucket_name: &str, region: &str) -> Result<Box<dyn StoreDriver>> {
 }
 
 /// Create new AWS s3 storage with bucket, region and credentials.
+///
+/// # Examples
+///```
+/// use loco_rs::storage::drivers::aws;
+/// let credential = aws::Credential {
+///    key_id: "".to_string(),
+///    secret_key: "".to_string(),
+///    token: None
+/// };
+/// let aws_driver = aws::with_credentials("bucket_name", "region", credential);
+/// ```
 ///
 /// # Errors
 ///

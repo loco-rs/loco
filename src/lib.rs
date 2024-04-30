@@ -11,7 +11,7 @@
 //! ? ❯ What would you like to build? ›
 //! ❯ lightweight-service (minimal, only controllers and views)
 //!   Rest API (with DB and user auth)
-//!   Saas app (with DB and user auth)
+//!   SaaS app (with DB and user auth)
 //! ```
 //!
 //! ## Available Features
@@ -67,7 +67,9 @@ pub mod validation;
 pub mod worker;
 #[cfg(feature = "channels")]
 pub use socketioxide;
+#[cfg(feature = "testing")]
+pub mod tests_cfg;
 pub use validator;
 
 /// Application results options list
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;

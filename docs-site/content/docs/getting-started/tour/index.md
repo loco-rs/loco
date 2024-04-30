@@ -24,7 +24,7 @@ $ cargo install loco-cli
 $ cargo install sea-orm-cli
 ```
 
-Now you can create your new app (choose "Saas app").
+Now you can create your new app (choose "SaaS app").
 
 ```sh
 $ loco new
@@ -32,7 +32,7 @@ $ loco new
 ? ❯ What would you like to build? ›
   lightweight-service (minimal, only controllers and views)
   Rest API (with DB and user auth)
-❯ Saas app (with DB and user auth)
+❯ SaaS app (with DB and user auth)
 🚂 Loco app generated successfully in:
 myapp
 ```
@@ -143,13 +143,16 @@ Done! enjoy your ride with `loco` 🚂
 
 Your generated app contains a fully working authentication suite, based on JWTs.
 
-To authenticate, you will need a running redis server. 
+To authenticate, you will need a running redis server.
 
 This docker command starts up a redis server:
+
 ```
 docker run -p 6379:6379 -d redis redis-server
 ```
+
 Use doctor command to check the needed resources:
+
 ```
 $ cargo loco doctor
     Finished dev [unoptimized + debuginfo] target(s) in 0.32s

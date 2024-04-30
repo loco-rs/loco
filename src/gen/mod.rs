@@ -1,5 +1,10 @@
-use chrono::Utc;
+// this is because not using with-db renders some of the structs below unused
+// TODO: should be more properly aligned with extracting out the db-related gen
+// code and then feature toggling it
+#![allow(dead_code)]
+use lazy_static::lazy_static;
 use rrgen::{GenResult, RRgen};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 #[cfg(feature = "with-db")]
@@ -40,6 +45,60 @@ const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
     ("Shuttle", DeploymentKind::Shuttle),
     ("Nginx", DeploymentKind::Nginx),
 ];
+
+#[derive(Serialize, Deserialize, Debug)]
+struct FieldType {
+    name: String,
+    rust: Option<String>,
+    schema: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Mappings {
+    field_types: Vec<FieldType>,
+}
+impl Mappings {
+    pub fn rust_field(&self, field: &str) -> Option<&String> {
+        self.field_types
+            .iter()
+            .find(|f| f.name == field)
+            .and_then(|f| f.rust.as_ref())
+    }
+    pub fn schema_field(&self, field: &str) -> Option<&String> {
+        self.field_types
+            .iter()
+            .find(|f| f.name == field)
+            .and_then(|f| f.schema.as_ref())
+    }
+    pub fn schema_fields(&self) -> Vec<&String> {
+        self.field_types
+            .iter()
+            .filter(|f| f.schema.is_some())
+            .map(|f| &f.name)
+            .collect::<Vec<_>>()
+    }
+    pub fn rust_fields(&self) -> Vec<&String> {
+        self.field_types
+            .iter()
+            .filter(|f| f.rust.is_some())
+            .map(|f| &f.name)
+            .collect::<Vec<_>>()
+    }
+}
+
+lazy_static! {
+    static ref MAPPINGS: Mappings = {
+        let json_data = include_str!("./mappings.json");
+        serde_json::from_str(json_data).expect("JSON was not well-formatted")
+    };
+}
+
+#[derive(clap::ValueEnum, Clone, Debug)]
+pub enum ScaffoldKind {
+    Api,
+    Html,
+    Htmx,
+}
 
 #[derive(Debug, Clone)]
 pub enum DeploymentKind {
@@ -86,6 +145,9 @@ pub enum Component {
 
         /// Model and params fields, eg. title:string hits:int
         fields: Vec<(String, String)>,
+
+        // k
+        kind: ScaffoldKind,
     },
     Controller {
         /// Name of the thing to generate
@@ -105,10 +167,9 @@ pub enum Component {
     },
     Deployment {},
 }
-
+#[allow(clippy::too_many_lines)]
 pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
     let rrgen = RRgen::default();
-
     match component {
         #[cfg(feature = "with-db")]
         Component::Model {
@@ -123,12 +184,15 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
             );
         }
         #[cfg(feature = "with-db")]
-        Component::Scaffold { name, fields } => {
-            println!("{}", scaffold::generate::<H>(&rrgen, &name, &fields)?);
+        Component::Scaffold { name, fields, kind } => {
+            println!(
+                "{}",
+                scaffold::generate::<H>(&rrgen, &name, &fields, &kind)?
+            );
         }
         #[cfg(feature = "with-db")]
         Component::Migration { name } => {
-            let vars = json!({ "name": name, "ts": Utc::now(), "pkg_name": H::app_name()});
+            let vars = json!({ "name": name, "ts": chrono::Utc::now(), "pkg_name": H::app_name()});
             rrgen.generate(MIGRATION_T, &vars)?;
         }
         Component::Controller { name } => {

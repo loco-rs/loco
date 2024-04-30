@@ -110,6 +110,8 @@ pub async fn run_task<H: Hooks>(
     H::register_tasks(&mut tasks);
 
     if let Some(task) = task {
+        let task_span = tracing::span!(tracing::Level::DEBUG, "task", task,);
+        let _guard = task_span.enter();
         tasks.run(app_context, task, vars).await?;
     } else {
         let list = tasks.list();

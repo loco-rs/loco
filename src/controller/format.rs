@@ -8,13 +8,15 @@
 //! Rust struct.
 //!
 //! ```rust
-//! use loco_rs::{controller::{Json, format}, Result};
+//! use loco_rs::prelude::*;
+//! use serde::Serialize;
 //!
+//! #[derive(Serialize)]
 //! pub struct Health {
 //!     pub ok: bool,
 //! }
 //!
-//! async fn ping() -> Result<Json<Health>> {
+//! async fn ping() -> Result<Response> {
 //!    format::json(Health { ok: true })
 //! }
 //! ```
@@ -22,12 +24,13 @@
 use axum::{
     body::Body,
     http::{response::Builder, HeaderName, HeaderValue},
-    response::{Html, Response},
+    response::{Html, IntoResponse, Response},
 };
 use axum_extra::extract::cookie::Cookie;
 use bytes::{BufMut, BytesMut};
 use hyper::{header, StatusCode};
 use serde::Serialize;
+use serde_json::json;
 
 use super::views::ViewRenderer;
 use crate::{controller::Json, Result};
@@ -38,9 +41,9 @@ use crate::{controller::Json, Result};
 ///
 /// This example illustrates how to return an empty response.
 /// ```rust
-/// use loco_rs::{controller::format, Result};
+/// use loco_rs::prelude::*;
 ///
-/// async fn endpoint() -> Result<()> {
+/// async fn endpoint() -> Result<Response> {
 ///    format::empty()
 /// }
 /// ```
@@ -49,8 +52,8 @@ use crate::{controller::Json, Result};
 ///
 /// Currently this function did't return any error. this is for feature
 /// functionality
-pub fn empty() -> Result<()> {
-    Ok(())
+pub fn empty() -> Result<Response> {
+    Ok(().into_response())
 }
 
 /// Returns a response containing the provided text.
@@ -59,9 +62,9 @@ pub fn empty() -> Result<()> {
 ///
 /// This example illustrates how to return an text response.
 /// ```rust
-/// use loco_rs::{controller::format, Result};
+/// use loco_rs::prelude::*;
 ///
-/// async fn endpoint() -> Result<String> {
+/// async fn endpoint() -> Result<Response> {
 ///    format::text("MESSAGE-RESPONSE")
 /// }
 /// ```
@@ -70,8 +73,8 @@ pub fn empty() -> Result<()> {
 ///
 /// Currently this function did't return any error. this is for feature
 /// functionality
-pub fn text(t: &str) -> Result<String> {
-    Ok(t.to_string())
+pub fn text(t: &str) -> Result<Response> {
+    Ok(t.to_string().into_response())
 }
 
 /// Returns a JSON response containing the provided data.
@@ -82,16 +85,15 @@ pub fn text(t: &str) -> Result<String> {
 /// Rust struct.
 ///
 /// ```rust
-/// use loco_rs::{
-///     controller::{Json, format},
-///     Result,
-/// };
+/// use loco_rs::prelude::*;
+/// use serde::Serialize;
 ///
+/// #[derive(Serialize)]
 /// pub struct Health {
 ///     pub ok: bool,
 /// }
 ///
-/// async fn endpoint() -> Result<Json<Health>> {
+/// async fn endpoint() -> Result<Response> {
 ///    format::json(Health { ok: true })
 /// }
 /// ```
@@ -100,22 +102,26 @@ pub fn text(t: &str) -> Result<String> {
 ///
 /// Currently this function did't return any error. this is for feature
 /// functionality
-pub fn json<T>(t: T) -> Result<Json<T>> {
-    Ok(Json(t))
+pub fn json<T: Serialize>(t: T) -> Result<Response> {
+    Ok(Json(t).into_response())
 }
 
+/// Respond with empty json (`{}`)
+///
+/// # Errors
+///
+/// This function will return an error if serde fails
+pub fn empty_json() -> Result<Response> {
+    json(json!({}))
+}
 /// Returns an HTML response
 ///
 /// # Example:
 ///
 /// ```rust
-/// use loco_rs::{
-///     controller::format,
-///     Result,
-/// };
-/// use axum::response::Html;
+/// use loco_rs::prelude::*;
 ///
-/// async fn endpoint() -> Result<Html<String>> {
+/// async fn endpoint() -> Result<Response> {
 ///    format::html("hello, world")
 /// }
 /// ```
@@ -124,8 +130,8 @@ pub fn json<T>(t: T) -> Result<Json<T>> {
 ///
 /// Currently this function did't return any error. this is for feature
 /// functionality
-pub fn html(content: &str) -> Result<Html<String>> {
-    Ok(Html(content.to_string()))
+pub fn html(content: &str) -> Result<Response> {
+    Ok(Html(content.to_string()).into_response())
 }
 
 /// Render template located by `key`
@@ -133,7 +139,7 @@ pub fn html(content: &str) -> Result<Html<String>> {
 /// # Errors
 ///
 /// This function will return an error if rendering fails
-pub fn view<V, S>(v: &V, key: &str, data: S) -> Result<Html<String>>
+pub fn view<V, S>(v: &V, key: &str, data: S) -> Result<Response>
 where
     V: ViewRenderer,
     S: Serialize,

@@ -1,12 +1,6 @@
 use async_trait::async_trait;
 use chrono::offset::Local;
-use loco_rs::{
-    auth, hash,
-    model::{Authenticable, ModelError, ModelResult},
-    validation,
-    validator::Validate,
-};
-use sea_orm::{entity::prelude::*, ActiveValue, DatabaseConnection, DbErr, TransactionTrait};
+use loco_rs::{auth::jwt, hash, prelude::*};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -26,19 +20,18 @@ pub struct RegisterParams {
 }
 
 #[derive(Debug, Validate, Deserialize)]
-pub struct ModelValidator {
+pub struct Validator {
     #[validate(length(min = 2, message = "Name must be at least 2 characters long."))]
     pub name: String,
     #[validate(custom = "validation::is_valid_email")]
     pub email: String,
 }
-
-impl From<&ActiveModel> for ModelValidator {
-    fn from(value: &ActiveModel) -> Self {
-        Self {
-            name: value.name.as_ref().to_string(),
-            email: value.email.as_ref().to_string(),
-        }
+impl Validatable for super::_entities::users::ActiveModel {
+    fn validator(&self) -> Box<dyn Validate> {
+        Box::new(Validator {
+            name: self.name.as_ref().to_owned(),
+            email: self.email.as_ref().to_owned(),
+        })
     }
 }
 
@@ -66,14 +59,18 @@ impl ActiveModelBehavior for super::_entities::users::ActiveModel {
 impl Authenticable for super::_entities::users::Model {
     async fn find_by_api_key(db: &DatabaseConnection, api_key: &str) -> ModelResult<Self> {
         let user = users::Entity::find()
-            .filter(users::Column::ApiKey.eq(api_key))
+            .filter(
+                query::dsl::condition()
+                    .eq(users::Column::ApiKey, api_key)
+                    .build(),
+            )
             .one(db)
             .await?;
         user.ok_or_else(|| ModelError::EntityNotFound)
     }
 
     async fn find_by_claims_key(db: &DatabaseConnection, claims_key: &str) -> ModelResult<Self> {
-        super::_entities::users::Model::find_by_pid(db, claims_key).await
+        Self::find_by_pid(db, claims_key).await
     }
 }
 
@@ -85,7 +82,11 @@ impl super::_entities::users::Model {
     /// When could not find user by the given token or DB query error
     pub async fn find_by_email(db: &DatabaseConnection, email: &str) -> ModelResult<Self> {
         let user = users::Entity::find()
-            .filter(users::Column::Email.eq(email))
+            .filter(
+                query::dsl::condition()
+                    .eq(users::Column::Email, email)
+                    .build(),
+            )
             .one(db)
             .await?;
         user.ok_or_else(|| ModelError::EntityNotFound)
@@ -101,7 +102,11 @@ impl super::_entities::users::Model {
         token: &str,
     ) -> ModelResult<Self> {
         let user = users::Entity::find()
-            .filter(users::Column::EmailVerificationToken.eq(token))
+            .filter(
+                query::dsl::condition()
+                    .eq(users::Column::EmailVerificationToken, token)
+                    .build(),
+            )
             .one(db)
             .await?;
         user.ok_or_else(|| ModelError::EntityNotFound)
@@ -114,7 +119,11 @@ impl super::_entities::users::Model {
     /// When could not find user by the given token or DB query error
     pub async fn find_by_reset_token(db: &DatabaseConnection, token: &str) -> ModelResult<Self> {
         let user = users::Entity::find()
-            .filter(users::Column::ResetToken.eq(token))
+            .filter(
+                query::dsl::condition()
+                    .eq(users::Column::ResetToken, token)
+                    .build(),
+            )
             .one(db)
             .await?;
         user.ok_or_else(|| ModelError::EntityNotFound)
@@ -128,7 +137,11 @@ impl super::_entities::users::Model {
     pub async fn find_by_pid(db: &DatabaseConnection, pid: &str) -> ModelResult<Self> {
         let parse_uuid = Uuid::parse_str(pid).map_err(|e| ModelError::Any(e.into()))?;
         let user = users::Entity::find()
-            .filter(users::Column::Pid.eq(parse_uuid))
+            .filter(
+                query::dsl::condition()
+                    .eq(users::Column::Pid, parse_uuid)
+                    .build(),
+            )
             .one(db)
             .await?;
         user.ok_or_else(|| ModelError::EntityNotFound)
@@ -141,13 +154,18 @@ impl super::_entities::users::Model {
     /// When could not find user by the given token or DB query error
     pub async fn find_by_api_key(db: &DatabaseConnection, api_key: &str) -> ModelResult<Self> {
         let user = users::Entity::find()
-            .filter(users::Column::ApiKey.eq(api_key))
+            .filter(
+                query::dsl::condition()
+                    .eq(users::Column::ApiKey, api_key)
+                    .build(),
+            )
             .one(db)
             .await?;
         user.ok_or_else(|| ModelError::EntityNotFound)
     }
 
     /// Verifies whether the provided plain password matches the hashed password
+    #[must_use]
     pub fn verify_password(&self, password: &str) -> bool {
         hash::verify_password(password, &self.password)
     }
@@ -165,7 +183,11 @@ impl super::_entities::users::Model {
         let txn = db.begin().await?;
 
         if users::Entity::find()
-            .filter(users::Column::Email.eq(&params.email))
+            .filter(
+                query::dsl::condition()
+                    .eq(users::Column::Email, &params.email)
+                    .build(),
+            )
             .one(&txn)
             .await?
             .is_some()
@@ -195,7 +217,7 @@ impl super::_entities::users::Model {
     ///
     /// when could not convert user claims to jwt token
     pub fn generate_jwt(&self, secret: &str, expiration: &u64) -> ModelResult<String> {
-        Ok(auth::jwt::JWT::new(secret).generate_token(expiration, self.pid.to_string())?)
+        Ok(jwt::JWT::new(secret).generate_token(expiration, self.pid.to_string())?)
     }
 }
 
@@ -205,12 +227,6 @@ impl super::_entities::users::ActiveModel {
     /// # Errors
     ///
     /// when the active model is not valid
-    pub fn validate(&self) -> Result<(), DbErr> {
-        let validator: ModelValidator = self.into();
-        validator
-            .validate()
-            .map_err(|e| validation::into_db_error(&e))
-    }
 
     /// Sets the email verification information for the user and
     /// updates it in the database.

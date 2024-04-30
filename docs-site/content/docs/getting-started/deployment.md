@@ -13,7 +13,7 @@ top = false
 flair =[]
 +++
 
-Deployment is super simple in Loco, and this is why this guide is super short. Although **most of the time in developemnt you are using `cargo`** when deploying, you use the **binary that was compiled**, there is no need for `cargo` or Rust on the target server.
+Deployment is super simple in Loco, and this is why this guide is super short. Although **most of the time in development you are using `cargo`** when deploying, you use the **binary that was compiled**, there is no need for `cargo` or Rust on the target server.
 
 To deploy, build your production binary for your relevant server architecture:
 

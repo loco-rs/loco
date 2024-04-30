@@ -49,7 +49,7 @@ $ cargo install loco-cli
 
 ### Creating a new Loco app
 
-Now you can create your new app (choose "Saas app" for built-in authentication).
+Now you can create your new app (choose "SaaS app" for built-in authentication).
 
 ```sh
 $ loco new
@@ -57,7 +57,7 @@ $ loco new
 ? ❯ What would you like to build? ›
   lightweight-service (minimal, only controllers and views)
   Rest API (with DB and user auth)
-❯ Saas app (with DB and user auth)
+❯ SaaS app (with DB and user auth)
 🚂 Loco app generated successfully in:
 myapp
 ```
@@ -77,16 +77,20 @@ Make sure you also have locally installed or running (via Docker or otherwise) i
 To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>myapp_development</code>.
 </div>
 
-
 This docker command start up postgresql database server.
+
 ```sh
 docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=myapp_development -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine
 ```
+
 This docker command start up redis server:
+
 ```
 docker run -p 6379:6379 -d redis redis-server
 ```
+
 Use doctor command to check the needed resources:
+
 ```
 $ cargo loco doctor
     Finished dev [unoptimized + debuginfo] target(s) in 0.32s
@@ -96,13 +100,12 @@ $ cargo loco doctor
 ✅ Redis connection: success
 ```
 
-
 Here's a rundown of what Loco creates for you by default:
 
 | File/Folder    | Purpose                                                                                                                                                           |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/`         | Contains controllers, models, views, tasks and more                                                                                                               |
-| `app.rs`       | Main component registration point. Wire the important bits here.                                                                                                 |
+| `app.rs`       | Main component registration point. Wire the important bits here.                                                                                                  |
 | `lib.rs`       | Various rust-specific exports of your components.                                                                                                                 |
 | `bin/`         | Has your `main.rs` file, you don't need to worry about it                                                                                                         |
 | `controllers/` | Contains controllers, all controllers are exported via `mod.rs`                                                                                                   |
@@ -304,7 +307,7 @@ $
 
 ## MVC and You
 
-**Traditional MVC (model-view-controller) comes desktop UI programming paradigms**. However, it quickly made it into web services as well, the golden era of MVC was around the early 2010's, and since then many more different paradigms and architectures emerged.
+**Traditional MVC (Model-View-Controller) originated in desktop UI programming paradigms.** However, its applicability to web services led to its rapid adoption. MVC's golden era was around the early 2010s, and since then, many other paradigms and architectures have emerged.
 
 **MVC is still a very strong principle and architecture to follow for simplifying projects**, and this is what Loco follows too.
 
@@ -503,7 +506,7 @@ use loco_rs::prelude::*;
 
 use crate::models::_entities::articles;
 
-pub async fn list(State(ctx): State<AppContext>) -> Result<Json<Vec<articles::Model>>> {
+pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
     let res = articles::Entity::find().all(&ctx.db).await?;
     format::json(res)
 }
@@ -559,11 +562,11 @@ async fn load_item(ctx: &AppContext, id: i32) -> Result<Model> {
     item.ok_or_else(|| Error::NotFound)
 }
 
-pub async fn list(State(ctx): State<AppContext>) -> Result<Json<Vec<Model>>> {
+pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
     format::json(Entity::find().all(&ctx.db).await?)
 }
 
-pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Json<Model>> {
+pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Response> {
     let mut item = ActiveModel {
         ..Default::default()
     };
@@ -576,7 +579,7 @@ pub async fn update(
     Path(id): Path<i32>,
     State(ctx): State<AppContext>,
     Json(params): Json<Params>,
-) -> Result<Json<Model>> {
+) -> Result<Response> {
     let item = load_item(&ctx, id).await?;
     let mut item = item.into_active_model();
     params.update(&mut item);
@@ -589,7 +592,7 @@ pub async fn remove(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Resul
     format::empty()
 }
 
-pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Json<Model>> {
+pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Response> {
     format::json(load_item(&ctx, id).await?)
 }
 
@@ -721,7 +724,7 @@ use crate::models::_entities::{
 pub async fn comments(
     Path(id): Path<i32>,
     State(ctx): State<AppContext>,
-) -> Result<Json<Vec<comments::Model>>> {
+) -> Result<Response> {
     let item = load_item(&ctx, id).await?;
     let comments = item.find_related(comments::Entity).all(&ctx.db).await?;
     format::json(comments)
@@ -820,7 +823,7 @@ Let's see how to require authentication when **adding comments**.
 Go back to `src/controllers/comments.rs` and take a look at the `add` function:
 
 ```rust
-pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Json<Model>> {
+pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Response> {
     let mut item = ActiveModel {
         ..Default::default()
     };
@@ -837,7 +840,7 @@ async fn add(
     auth: auth::JWT,
     State(ctx): State<AppContext>,
     Json(params): Json<Params>,
-) -> Result<Json<CurrentResponse>> {
+) -> Result<Response> {
   // we only want to make sure it exists
   let _current_user = crate::models::users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
 

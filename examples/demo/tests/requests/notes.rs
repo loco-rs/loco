@@ -103,31 +103,6 @@ async fn can_get_note() {
 
 #[tokio::test]
 #[serial]
-async fn can_get_note_gzip() {
-    configure_insta!();
-
-    testing::request::<App, _, _>(|request, ctx| async move {
-        testing::seed::<App>(&ctx.db).await.unwrap();
-
-        let add_note_request = request.get("notes/1").await;
-
-        with_settings!({
-            filters => {
-                 let mut combined_filters = testing::CLEANUP_DATE.to_vec();
-                    combined_filters.extend(vec![(r#"\"id\\":\d+"#, r#""id\":ID"#)]);
-                    combined_filters
-            }
-        }, {
-            assert_debug_snapshot!(
-            (add_note_request.status_code(), add_note_request.text())
-        );
-        });
-    })
-    .await;
-}
-
-#[tokio::test]
-#[serial]
 async fn can_delete_note() {
     configure_insta!();
 

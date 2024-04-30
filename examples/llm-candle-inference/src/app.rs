@@ -43,11 +43,11 @@ impl Hooks for App {
         let st = Arc::new(RwLock::new(model));
         Ok(router.layer(Extension(st)))
     }
-    fn routes(ctx: &AppContext) -> AppRoutes {
+    fn routes(_ctx: &AppContext) -> AppRoutes {
         AppRoutes::with_default_routes().add_route(controllers::home::routes())
     }
 
     fn connect_workers<'a>(_p: &'a mut Processor, _ctx: &'a AppContext) {}
 
-    fn register_tasks(tasks: &mut Tasks) {}
+    fn register_tasks(_tasks: &mut Tasks) {}
 }

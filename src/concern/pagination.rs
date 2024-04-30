@@ -3,6 +3,7 @@
 use sea_orm::{prelude::*, Condition, DatabaseConnection, EntityTrait, QueryFilter};
 use serde::Deserialize;
 
+#[allow(deprecated)]
 use crate::{
     controller::views::pagination::{Pager, PagerMeta, PaginationResponseTrait},
     Result as LocoResult,
@@ -57,6 +58,10 @@ pub struct PaginatedResponse<T> {
 ///
 /// # Errors
 /// when could not fetch the entity query
+#[deprecated(
+    since = "0.3.2",
+    note = "reshape pagination functionality by moving under models. read more https://loco.rs/docs/the-app/pagination"
+)]
 pub async fn view<R, E>(
     db: &DatabaseConnection,
     entity: Select<E>,
@@ -68,11 +73,12 @@ where
     <E as EntityTrait>::Model: Sync,
     R: PaginationResponseTrait<Model = E>,
 {
+    #![allow(deprecated)]
     let res = paginate::<R, E>(db, entity, filters, pagination_filter).await?;
 
     let res = Pager {
         results: R::list(res.rows),
-        pagination: PagerMeta {
+        info: PagerMeta {
             page: res.page,
             page_size: res.page_size,
             total_pages: res.total_pages,
@@ -87,6 +93,10 @@ where
 ///
 /// # Errors
 /// when could not fetch the entity query
+#[deprecated(
+    since = "0.3.2",
+    note = "reshape pagination functionality by moving under models. read more https://loco.rs/docs/the-app/pagination"
+)]
 pub async fn paginate<R, E>(
     db: &DatabaseConnection,
     entity: Select<E>,
@@ -98,6 +108,7 @@ where
     <E as EntityTrait>::Model: Sync,
     R: PaginationResponseTrait<Model = E>,
 {
+    #![allow(deprecated)]
     let page = if pagination_filter.page <= 1 {
         0
     } else {

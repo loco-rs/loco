@@ -11,10 +11,7 @@ use crate::views;
 ///
 /// curl -H "Content-Type: multipart/form-data" -F "file=@./test-2.json"
 /// 127.0.0.1:3000/upload/file
-async fn upload_file(
-    State(ctx): State<AppContext>,
-    mut multipart: Multipart,
-) -> Result<Json<views::upload::Response>> {
+async fn upload_file(State(ctx): State<AppContext>, mut multipart: Multipart) -> Result<Response> {
     let mut file = None;
     while let Some(field) = multipart.next_field().await.map_err(|err| {
         tracing::error!(error = ?err,"could not readd multipart");

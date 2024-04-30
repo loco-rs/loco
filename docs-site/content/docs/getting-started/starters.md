@@ -27,14 +27,14 @@ loco new
 ? ❯ What would you like to build? ›
 ❯ lightweight-service (minimal, only controllers and views)
   Rest API (with DB and user auth)
-  Saas app (with DB and user auth)
+  SaaS app (with DB and user auth)
 ```
 
 ## Available Starters
 
-#### Saas Starter
+#### SaaS Starter
 
-The Saas starter is an all-included set up for projects requiring both a UI and a REST API. For the UI this starter supports a client-side app or classic server-side templates (or a combination).
+The SaaS starter is an all-included set up for projects requiring both a UI and a REST API. For the UI this starter supports a client-side app or classic server-side templates (or a combination).
 
 **UI**
 
@@ -57,5 +57,3 @@ Choose the Rest API starter if you only need a REST API without a frontend. If y
 #### Lightweight Service Starter
 
 Focused on controllers and views (response schema), the Lightweight Service starter is minimalistic. If you require a REST API service without a database, frontend, workers, or other features that Loco provides, this is the ideal choice for you!
-
-
