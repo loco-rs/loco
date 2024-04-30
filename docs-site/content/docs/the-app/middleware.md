@@ -25,6 +25,45 @@ limiting, route specific processing, and more.
 
 # Quick Start
 
+## Source Code
+
+`Loco`'s implementation of route middleware / layer is similar
+to `axum`'s [`Router::layer`](https://github.com/tokio-rs/axum/blob/main/axum/src/routing/mod.rs#L275). You can
+find the source code for middleware in
+the [`src/controllers/routes`](https://github.com/loco-rs/loco/blob/master/src/controller/routes.rs) directory.
+This `layer` function will attach the
+middleware layer to each handler of the route.
+
+```rust
+// src/controller/routes.rs
+use axum::{extract::Request, response::IntoResponse, routing::Route};
+use tower::{Layer, Service};
+
+impl Routes {
+    pub fn layer<L>(self, layer: L) -> Self
+        where
+            L: Layer<Route> + Clone + Send + 'static,
+            L::Service: Service<Request> + Clone + Send + 'static,
+            <L::Service as Service<Request>>::Response: IntoResponse + 'static,
+            <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
+            <L::Service as Service<Request>>::Future: Send + 'static,
+    {
+        Self {
+            prefix: self.prefix,
+            handlers: self
+                .handlers
+                .iter()
+                .map(|handler| Handler {
+                    uri: handler.uri.clone(),
+                    actions: handler.actions.clone(),
+                    method: handler.method.clone().layer(layer.clone()),
+                })
+                .collect(),
+        }
+    }
+}
+```
+
 ## Basic Middleware
 
 In this example, we will create a basic middleware that will log the request method and path.
