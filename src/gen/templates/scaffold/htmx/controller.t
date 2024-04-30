@@ -17,6 +17,7 @@ injections:
 use loco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
 use sea_orm::{sea_query::Order, QueryOrder};
+use axum::debug_handler;
 
 use crate::{
     models::_entities::{{file_name | plural}}::{ActiveModel, Column, Entity, Model},
@@ -43,6 +44,7 @@ async fn load_item(ctx: &AppContext, id: i32) -> Result<Model> {
     item.ok_or_else(|| Error::NotFound)
 }
 
+#[debug_handler]
 pub async fn list(
     ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
@@ -54,6 +56,7 @@ pub async fn list(
     views::{{file_name}}::list(&v, &item)
 }
 
+#[debug_handler]
 pub async fn new(
     ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
@@ -61,6 +64,7 @@ pub async fn new(
     views::{{file_name}}::create(v)
 }
 
+#[debug_handler]
 pub async fn update(
     Path(id): Path<i32>,
     State(ctx): State<AppContext>,
@@ -73,6 +77,7 @@ pub async fn update(
     format::json(item)
 }
 
+#[debug_handler]
 pub async fn edit(
     Path(id): Path<i32>,
     ViewEngine(v): ViewEngine<TeraView>,
@@ -82,6 +87,7 @@ pub async fn edit(
     views::{{file_name}}::edit(&v, &item)
 }
 
+#[debug_handler]
 pub async fn show(
     Path(id): Path<i32>,
     ViewEngine(v): ViewEngine<TeraView>,
@@ -91,6 +97,7 @@ pub async fn show(
     views::{{file_name}}::show(&v, &item)
 }
 
+#[debug_handler]
 pub async fn add(
     ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
