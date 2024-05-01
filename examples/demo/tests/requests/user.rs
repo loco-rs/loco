@@ -61,28 +61,3 @@ async fn can_get_current_user_with_api_key() {
     })
     .await;
 }
-
-#[tokio::test]
-#[serial]
-async fn can_get_current_user_from_cookie_auth() {
-    configure_insta!();
-
-    testing::request::<App, _, _>(|request, ctx| async move {
-        let user = prepare_data::init_user_login(&request, &ctx).await;
-
-        let response = request
-            .get("/user/current_from_cookie")
-            .add_cookie(axum_extra::extract::cookie::Cookie::new(
-                "token",
-                &user.token,
-            ))
-            .await;
-
-        with_settings!({
-            filters => testing::cleanup_user_model()
-        }, {
-            assert_debug_snapshot!((response.status_code(), response.text()));
-        });
-    })
-    .await;
-}

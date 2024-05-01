@@ -19,16 +19,20 @@
 //!     format::json(TestResponse{ pid: auth.claims.pid})
 //! }
 //! ```
+use std::collections::HashMap;
 
 use async_trait::async_trait;
 use axum::{
-    extract::{FromRef, FromRequestParts},
+    extract::{FromRef, FromRequestParts, Query},
     http::{request::Parts, HeaderMap},
 };
 use axum_extra::extract::cookie;
 use serde::{Deserialize, Serialize};
 
-use crate::{app::AppContext, auth, errors::Error, model::Authenticable};
+use crate::{
+    app::AppContext, auth, config::JWT as JWTConfig, errors::Error, model::Authenticable,
+    Result as LocoResult,
+};
 
 // ---------------------------------------
 //
@@ -59,16 +63,15 @@ where
     type Rejection = Error;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
-        let token = extract_token_from_header(&parts.headers)
-            .map_err(|e| Error::Unauthorized(e.to_string()))?;
+        let ctx: AppContext = AppContext::from_ref(state);
 
-        let state: AppContext = AppContext::from_ref(state);
+        let token = extract_token(get_jwt_from_config(&ctx)?, parts)?;
 
-        let jwt_secret = state.config.get_jwt_config()?;
+        let jwt_secret = ctx.config.get_jwt_config()?;
 
         match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
             Ok(claims) => {
-                let user = T::find_by_claims_key(&state.db, &claims.claims.pid)
+                let user = T::find_by_claims_key(&ctx.db, &claims.claims.pid)
                     .await
                     .map_err(|_| Error::Unauthorized("token is not valid".to_string()))?;
                 Ok(Self {
@@ -100,12 +103,11 @@ where
     type Rejection = Error;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
-        let token = extract_token_from_header(&parts.headers)
-            .map_err(|e| Error::Unauthorized(e.to_string()))?;
+        let ctx: AppContext = AppContext::from_ref(state); // change to ctx
 
-        let state: AppContext = AppContext::from_ref(state);
+        let token = extract_token(get_jwt_from_config(&ctx)?, parts)?;
 
-        let jwt_secret = state.config.get_jwt_config()?;
+        let jwt_secret = ctx.config.get_jwt_config()?;
 
         match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
             Ok(claims) => Ok(Self {
@@ -118,19 +120,76 @@ where
     }
 }
 
+/// extract JWT token from context configuration
+///
+/// # Errors
+/// Return an error when JWT token not configured
+fn get_jwt_from_config(ctx: &AppContext) -> LocoResult<&JWTConfig> {
+    ctx.config
+        .auth
+        .as_ref()
+        .ok_or_else(|| Error::string("auth not configured"))?
+        .jwt
+        .as_ref()
+        .ok_or_else(|| Error::string("JWT token not configured"))
+}
+/// extract token from the configured jwt location settings
+fn extract_token(jwt_config: &JWTConfig, parts: &Parts) -> LocoResult<String> {
+    #[allow(clippy::match_wildcard_for_single_variants)]
+    match jwt_config
+        .location
+        .as_ref()
+        .unwrap_or(&crate::config::JWTLocation::Bearer)
+    {
+        crate::config::JWTLocation::Query { name } => extract_token_from_query(name, parts),
+        crate::config::JWTLocation::Cookie { name } => extract_token_from_cookie(name, parts),
+        crate::config::JWTLocation::Bearer => extract_token_from_header(&parts.headers)
+            .map_err(|e| Error::Unauthorized(e.to_string())),
+    }
+}
 /// Function to extract a token from the authorization header
 ///
 /// # Errors
 ///
 /// When token is not valid or out found
-pub fn extract_token_from_header(headers: &HeaderMap) -> eyre::Result<String> {
+pub fn extract_token_from_header(headers: &HeaderMap) -> LocoResult<String> {
     Ok(headers
         .get(AUTH_HEADER)
-        .ok_or_else(|| eyre::eyre!("header {} token not found", AUTH_HEADER))?
-        .to_str()?
+        .ok_or_else(|| Error::Unauthorized(format!("header {AUTH_HEADER} token not found")))?
+        .to_str()
+        .map_err(|err| Error::Unauthorized(err.to_string()))?
         .strip_prefix(TOKEN_PREFIX)
-        .ok_or_else(|| eyre::eyre!("error strip {} value", AUTH_HEADER))?
+        .ok_or_else(|| Error::Unauthorized(format!("error strip {AUTH_HEADER} value")))?
         .to_string())
+}
+
+/// Extract a token value from cookie
+///
+/// # Errors
+/// when token value from cookie is not found
+pub fn extract_token_from_cookie(name: &str, parts: &Parts) -> LocoResult<String> {
+    // LogoResult
+    let jar: cookie::CookieJar = cookie::CookieJar::from_headers(&parts.headers);
+    Ok(jar
+        .get(name)
+        .ok_or(Error::Unauthorized("token is not found".to_string()))?
+        .to_string()
+        .strip_prefix(&format!("{name}="))
+        .ok_or_else(|| Error::Unauthorized("error strip value".to_string()))?
+        .to_string())
+}
+/// Extract a token value from query
+///
+/// # Errors
+/// when token value from cookie is not found
+pub fn extract_token_from_query(name: &str, parts: &Parts) -> LocoResult<String> {
+    // LogoResult
+    let parameters: Query<HashMap<String, String>> =
+        Query::try_from_uri(&parts.uri).map_err(|err| Error::Unauthorized(err.to_string()))?;
+    parameters
+        .get(name)
+        .cloned()
+        .ok_or_else(|| Error::Unauthorized(format!("`{name}` query parameter not found")))
 }
 
 // ---------------------------------------
@@ -158,8 +217,7 @@ where
     // Extracts `ApiToken` from the request parts.
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
         // Extract API key from the request header.
-        let api_key = extract_token_from_header(&parts.headers)
-            .map_err(|e| Error::Unauthorized(e.to_string()))?;
+        let api_key = extract_token_from_header(&parts.headers)?;
 
         // Convert the state reference to the application context.
         let state: AppContext = AppContext::from_ref(state);
@@ -173,91 +231,49 @@ where
     }
 }
 
-// ---------------------------------------
-//
-// JWT Auth extractor from cookie
-//
-// ---------------------------------------
+#[cfg(test)]
+mod tests {
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct JWTCookie {
-    pub claims: auth::jwt::UserClaims,
-}
+    use insta::assert_debug_snapshot;
+    use rstest::rstest;
 
-#[async_trait]
-impl<S> FromRequestParts<S> for JWTCookie
-where
-    AppContext: FromRef<S>,
-    S: Send + Sync,
-{
-    type Rejection = Error;
+    use super::*;
+    use crate::config;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
-        let token = extract_token_from_cookie(parts)?;
-        let state: AppContext = AppContext::from_ref(state);
+    #[rstest]
+    #[case("extract_from_default", "https://loco.rs", None)]
+    #[case("extract_from_bearer", "loco.rs", Some(config::JWTLocation::Bearer))]
+    #[case("extract_from_cookie", "https://loco.rs", Some(config::JWTLocation::Cookie{name: "loco_cookie_key".to_string()}))]
+    #[case("extract_from_query", "https://loco.rs?query_token=query_token_value&test=loco", Some(config::JWTLocation::Query{name: "query_token".to_string()}))]
+    fn can_extract_token(
+        #[case] test_name: &str,
+        #[case] url: &str,
+        #[case] location: Option<config::JWTLocation>,
+    ) {
+        let jwt_config = JWTConfig {
+            location,
+            secret: String::new(),
+            expiration: 1,
+        };
 
-        let jwt_secret = state.config.get_jwt_config()?;
+        let request = axum::http::Request::builder()
+            .uri(url)
+            .header(AUTH_HEADER, format!("{TOKEN_PREFIX} bearer_token_value"))
+            .header(
+                "Cookie",
+                format!("{}={}", "loco_cookie_key", "cookie_token_value"),
+            )
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+        assert_debug_snapshot!(test_name, extract_token(&jwt_config, &parts));
 
-        match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
-            Ok(claims) => Ok(Self {
-                claims: claims.claims,
-            }),
-            Err(_err) => {
-                return Err(Error::Unauthorized("token is not valid".to_string()));
-            }
-        }
+        // expected error
+        let request = axum::http::Request::builder()
+            .uri("https://loco.rs")
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+        assert!(extract_token(&jwt_config, &parts).is_err());
     }
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct JWTCookieWithUser<T: Authenticable> {
-    pub claims: auth::jwt::UserClaims,
-    pub user: T,
-}
-
-#[async_trait]
-impl<S, T> FromRequestParts<S> for JWTCookieWithUser<T>
-where
-    AppContext: FromRef<S>,
-    S: Send + Sync,
-    T: Authenticable,
-{
-    type Rejection = Error;
-
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
-        let token = extract_token_from_cookie(parts)?;
-        let state: AppContext = AppContext::from_ref(state);
-
-        let jwt_secret = state.config.get_jwt_config()?;
-
-        match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
-            Ok(claims) => {
-                let user = T::find_by_claims_key(&state.db, &claims.claims.pid)
-                    .await
-                    .map_err(|_| Error::Unauthorized("token is not valid".to_string()))?;
-                Ok(Self {
-                    claims: claims.claims,
-                    user,
-                })
-            }
-            Err(_err) => {
-                return Err(Error::Unauthorized("token is not valid".to_string()));
-            }
-        }
-    }
-}
-
-/// Extract a token value from cookie
-///
-/// # Errors
-/// when token value from cookie is not found
-pub fn extract_token_from_cookie(parts: &Parts) -> eyre::Result<String> {
-    let jar = cookie::CookieJar::from_headers(&parts.headers);
-    Ok(jar
-        .get("token")
-        .ok_or(Error::Unauthorized("token is not found".to_string()))?
-        .to_string()
-        .strip_prefix("token=")
-        .ok_or_else(|| eyre::eyre!("error strip {} value", "token"))?
-        .to_string())
 }

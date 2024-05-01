@@ -98,7 +98,6 @@ $ blo-cli routes --environment test
 [POST] /upload/file
 [GET] /user/current
 [GET] /user/current_api_key
-[GET] /user/current_from_cookie
 
 ```
 
