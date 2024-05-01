@@ -233,6 +233,72 @@ impl Hooks for App {
 
 # Middleware
 
+### Authentication
+In the `Loco` framework, middleware plays a crucial role in authentication. `Loco` supports various authentication methods, including JSON Web Token (JWT) and API Key authentication. This section outlines how to configure and use authentication middleware in your application.
+
+#### JSON Web Token (JWT)
+
+##### Configuration
+By default, Loco uses Bearer authentication for JWT. However, you can customize this behavior in the configuration file under the auth.jwt section.
+* *Bearer Authentication:* Keep the configuration blank or explicitly set it as follows:
+  ```yaml
+  # Authentication Configuration
+  auth:
+    # JWT authentication
+    jwt:
+      location: Bearer
+  ...
+  ```
+* *Cookie Authentication:* Configure the location from which to extract the token and specify the cookie name:
+  ```yaml
+  # Authentication Configuration
+  auth:
+    # JWT authentication
+    jwt:
+      location: 
+        from: Cookie
+        name: token
+  ...
+  ```
+* *Query Parameter Authentication:* Specify the location and name of the query parameter:
+  ```yaml
+  # Authentication Configuration
+  auth:
+    # JWT authentication
+    jwt:
+      location: 
+        from: Query
+        name: token
+  ...
+  ```
+
+##### Usage
+In your controller parameters, use `auth::JWT` for authentication. This triggers authentication validation based on the configured settings.
+```rust
+use loco_rs::prelude::*;
+
+async fn current(
+    auth: auth::JWT,
+    State(_ctx): State<AppContext>,
+) -> Result<Response> {
+    // Your implementation here
+}
+```
+Additionally, you can fetch the current user by replacing auth::JWT with `auth::ApiToken<users::Model>`.
+
+#### API Key
+For API Key authentication, use auth::ApiToken. This middleware validates the API key against the user database record and loads the corresponding user into the authentication parameter.
+```rust
+use loco_rs::prelude::*;
+
+async fn current(
+    auth: auth::ApiToken<users::Model>,
+    State(_ctx): State<AppContext>,
+) -> Result<Response> {
+    // Your implementation here
+}
+```
+
 ## Compression
 
 `Loco` leverages [CompressionLayer](https://docs.rs/tower-http/0.5.0/tower_http/compression/index.html) to enable a `one click` solution.

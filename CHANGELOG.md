@@ -1,6 +1,7 @@
 # Changelog
 
 ## vNext
+* refactor auth middleware for supporting bearer, cookie and query [https://github.com/loco-rs/loco/pull/560](https://github.com/loco-rs/loco/pull/560)
 
 ## v0.4.0
 
