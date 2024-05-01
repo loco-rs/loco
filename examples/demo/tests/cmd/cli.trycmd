@@ -98,6 +98,15 @@ $ blo-cli routes --environment test
 [GET] /notes/:id
 [DELETE] /notes/:id
 [POST] /notes/:id
+[GET] /response/empty
+[GET] /response/empty_json
+[GET] /response/etag
+[GET] /response/html
+[GET] /response/json
+[GET] /response/redirect
+[GET] /response/render_with_status_code
+[GET] /response/set_cookie
+[GET] /response/text
 [POST] /upload/file
 [POST] /user/convert/admin
 [POST] /user/convert/user
