@@ -31,6 +31,7 @@ sea-orm = { version = "1.0.0-rc.1", features = [
 
 axum = { version = "0.7.1", features = ["multipart"] }
 axum_session = { version = "0.10.1", default-features = false }
+axum-extra = { version = "0.9", features = ["cookie"] }
 
 include_dir = "0.7"
 uuid = { version = "1.6.0", features = ["v4"] }
