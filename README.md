@@ -89,6 +89,7 @@ Loco is feature complete, but features are still being added rapidly.
 ## Powered by Loco
 
 * [SpectralOps](https://spectralops.io) - various services powered by Loco framework
+* [Nativish](https://nativi.sh) - app backend powered by Loco framework
 
 [open an issue to add yourself here](https://github.com/loco-rs/loco/issues)
 
