@@ -217,10 +217,28 @@ pub struct Auth {
 /// JWT configuration structure.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct JWT {
+    /// The location where JWT tokens are expected to be found during
+    /// authentication.
+    pub location: Option<JWTLocation>,
     /// The secret key For JWT token
     pub secret: String,
     /// The expiration time for authentication tokens
     pub expiration: u64,
+}
+
+/// Defines the authentication mechanism for middleware.
+///
+/// This enum represents various ways to authenticate using JSON Web Tokens
+/// (JWT) within middleware.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "from")]
+pub enum JWTLocation {
+    /// Authenticate using a Bearer token.
+    Bearer,
+    /// Authenticate using a token passed as a query parameter.
+    Query { name: String },
+    /// Authenticate using a token stored in a cookie.
+    Cookie { name: String },
 }
 
 /// Server configuration structure.
