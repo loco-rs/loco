@@ -1,6 +1,9 @@
 use axum::{async_trait, Extension, Router as AxumRouter};
 use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
-use loco_rs::{app::{AppContext, Initializer}, Error, Result};
+use loco_rs::{
+    app::{AppContext, Initializer},
+    Error, Result,
+};
 
 pub struct OpenTelemetryInitializer;
 
@@ -19,7 +22,6 @@ impl Initializer for OpenTelemetryInitializer {
             }
         }
     }
-
 
     async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
         let router = router
