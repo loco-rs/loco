@@ -36,7 +36,7 @@ use crate::{
 
 // ---------------------------------------
 //
-// JWT Auth extractor from bearer token
+// JWT Auth extractor
 //
 // ---------------------------------------
 
