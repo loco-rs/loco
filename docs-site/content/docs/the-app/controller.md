@@ -336,12 +336,12 @@ middlewares:
 
 In many scenarios, when querying data and returning responses to users, pagination is crucial. In `Loco`, we provide a straightforward method to paginate your data and maintain a consistent pagination response schema for your API responses.
 
-## Page:
+## Using pagination
 
 ```rust
 use loco_rs::prelude::*;
 
-let res = query::fetch_page(&ctx.db, notes::Entity::find(),, &query::PaginationQuery::page(2)).await;
+let res = query::fetch_page(&ctx.db, notes::Entity::find(), &query::PaginationQuery::page(2)).await;
 ```
 
 
