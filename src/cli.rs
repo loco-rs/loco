@@ -89,7 +89,7 @@ enum Commands {
     Task {
         /// Task name (identifier)
         name: Option<String>,
-        /// Task params (e.g. <my_task> foo:bar baz:qux)
+        /// Task params (e.g. <`my_task`> foo:bar baz:qux)
         #[clap(value_parser = parse_key_val::<String,String>)]
         params: Vec<(String, String)>,
     },
@@ -432,7 +432,7 @@ fn show_list_endpoints<H: Hooks>(ctx: &AppContext) {
     let mut routes = list_endpoints::<H>(ctx);
     routes.sort_by(|a, b| a.uri.cmp(&b.uri));
     for router in routes {
-        println!("{}", router.to_string());
+        println!("{router}");
     }
 }
 

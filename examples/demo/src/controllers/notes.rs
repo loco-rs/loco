@@ -22,7 +22,7 @@ pub struct ListQueryParams {
     pub title: Option<String>,
     pub content: Option<String>,
     #[serde(flatten)]
-    pub pagination: model::query::PaginationQuery,
+    pub pagination: query::PaginationQuery,
 }
 
 impl Params {
@@ -41,15 +41,15 @@ pub async fn list(
     State(ctx): State<AppContext>,
     Query(params): Query<ListQueryParams>,
 ) -> Result<Response> {
-    let pagination_query = model::query::PaginationQuery {
+    let pagination_query = query::PaginationQuery {
         page_size: params.pagination.page_size,
         page: params.pagination.page,
     };
 
-    let paginated_notes = model::query::exec::paginate(
+    let paginated_notes = query::paginate(
         &ctx.db,
         Entity::find(),
-        Some(model::query::dsl::with(params.into_query()).build()),
+        Some(query::with(params.into_query()).build()),
         &pagination_query,
     )
     .await?;
@@ -66,7 +66,10 @@ pub async fn list(
             cookie::Cookie::new("baz", "qux"),
         ])?
         .etag("foobar")?
-        .json(PaginationResponse::response(paginated_notes))
+        .json(PaginationResponse::response(
+            paginated_notes,
+            &pagination_query,
+        ))
 }
 
 pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Response> {
@@ -135,7 +138,7 @@ pub async fn get_one(
 impl ListQueryParams {
     #[must_use]
     pub fn into_query(&self) -> Condition {
-        let mut condition = model::query::dsl::condition();
+        let mut condition = query::condition();
 
         if let Some(title) = &self.title {
             condition = condition.like(Column::Title, title);

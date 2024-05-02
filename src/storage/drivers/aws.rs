@@ -14,11 +14,11 @@ use crate::Result;
 
 /// A set of AWS security credentials
 pub struct Credential {
-    /// AWS_ACCESS_KEY_ID
+    /// `AWS_ACCESS_KEY_ID`
     pub key_id: String,
-    /// AWS_SECRET_ACCESS_KEY
+    /// `AWS_SECRET_ACCESS_KEY`
     pub secret_key: String,
-    /// AWS_SESSION_TOKEN
+    /// `AWS_SESSION_TOKEN`
     pub token: Option<String>,
 }
 

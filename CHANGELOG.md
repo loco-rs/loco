@@ -1,7 +1,13 @@
 # Changelog
 
 ## vNext
-* refactor auth middleware for supporting bearer, cookie and query [https://github.com/loco-rs/loco/pull/560](https://github.com/loco-rs/loco/pull/560)
+* Opentelemetry initializer. [https://github.com/loco-rs/loco/pull/531](https://github.com/loco-rs/loco/pull/531)
+* **Braking changes** Refactored DSL and Pagination. [https://github.com/loco-rs/loco/pull/566](https://github.com/loco-rs/loco/pull/566)
+  * Replaced `model::query::dsl::` with `model::query`.
+  * Replaced `model::query::exec::paginate` with `model::query::paginate`.
+  * Updated the `PaginatedResponse` struct. Refer to its usage example [here](https://github.com/loco-rs/loco/blob/master/examples/demo/src/views/notes.rs#L29).
+* Refactor auth middleware for supporting bearer, cookie and query [https://github.com/loco-rs/loco/pull/560](https://github.com/loco-rs/loco/pull/560)
+* Add redirect response [https://github.com/loco-rs/loco/pull/563](https://github.com/loco-rs/loco/pull/563)
 
 ## v0.4.0
 
