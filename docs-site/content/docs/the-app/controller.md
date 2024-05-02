@@ -353,12 +353,14 @@ middlewares:
 
 ## Handler and Route based middleware
 
-`Loco` also allow us to apply `[layers](https://docs.rs/tower/latest/tower/trait.Layer.html) to specific routes. Here's
-an example of how to apply a layer to a specific route:
+`Loco` also allow us to apply [layers](https://docs.rs/tower/latest/tower/trait.Layer.html) to specific handlers or
+routes.
 For more information on handler and route based middleware, refer to the [middleware](/docs/the-app/middlewares)
 documentation.
 
 ### Handler based middleware:
+
+Apply a layer to a specific handler using `layer` method.
 
 ```rust
 // src/controllers/auth.rs
@@ -370,6 +372,8 @@ pub fn routes() -> Routes {
 ```
 
 ### Route based middleware:
+
+Apply a layer to a specific route using `layer` method.
 
 ```rust
 // src/main.rs
