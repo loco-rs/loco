@@ -1,6 +1,7 @@
 # Changelog
 
 ## vNext
+* Opentelemetry initializer. [https://github.com/loco-rs/loco/pull/531](https://github.com/loco-rs/loco/pull/531)
 * **Braking changes** Refactored DSL and Pagination. [https://github.com/loco-rs/loco/pull/566](https://github.com/loco-rs/loco/pull/566)
   * Replaced `model::query::dsl::` with `model::query`.
   * Replaced `model::query::exec::paginate` with `model::query::paginate`.
