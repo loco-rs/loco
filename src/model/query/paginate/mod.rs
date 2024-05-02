@@ -190,6 +190,11 @@ where
 ///     let res = query::fetch_page(&db, test_db::Entity::find(), &query::PaginationQuery::page(2)).await;
 /// }
 /// ``````
+///
+/// # Errors
+///
+/// Returns a `LocoResult` indicating any errors that occur
+/// during the fetch.
 pub async fn fetch_page<'db, C, S>(
     db: &'db C,
     selector: S,
