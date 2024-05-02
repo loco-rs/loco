@@ -364,7 +364,7 @@ let paginated_notes = model::query::exec::paginate(
 ### Pagination view
 After creating getting the `paginated_notes` in the previous example, you can choose which fileds from the model you want to return and keep the same pagination response in all your different data responses.
 
-Define the data you're returning to the user in Loco views. If you're not familiar with views, refer to the [documentation]((@/docs/the-app/views.md)) for more context.
+Define the data you're returning to the user in Loco views. If you're not familiar with views, refer to the [documentation](@/docs/the-app/views.md) for more context.
 
 
 Create a notes view file in `src/view/notes` with the following code:
