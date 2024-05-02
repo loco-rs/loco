@@ -337,16 +337,25 @@ middlewares:
 In many scenarios, when querying data and returning responses to users, pagination is crucial. In `Loco`, we provide a straightforward method to paginate your data and maintain a consistent pagination response schema for your API responses.
 
 ## Using pagination
+
 ```rust
 use loco_rs::prelude::*;
 
-let pagination_query = model::query::PaginationQuery {
+let res = query::fetch_page(&ctx.db, notes::Entity::find(), &query::PaginationQuery::page(2)).await;
+```
+
+
+## Using pagination With Filter
+```rust
+use loco_rs::prelude::*;
+
+let pagination_query = query::PaginationQuery {
     page_size: 100,
     page: 1,
 };
 
-let condition = model::query::dsl::condition().contains(notes::Column::Title, "loco");
-let paginated_notes = model::query::exec::paginate(
+let condition = query::condition().contains(notes::Column::Title, "loco");
+let paginated_notes = query::paginate(
     &ctx.db,
     notes::Entity::find(),
     Some(condition.build()),
@@ -362,7 +371,7 @@ let paginated_notes = model::query::exec::paginate(
 
 
 ### Pagination view
-After creating getting the `paginated_notes` in the previous example, you can choose which fileds from the model you want to return and keep the same pagination response in all your different data responses.
+After creating getting the `paginated_notes` in the previous example, you can choose which fields from the model you want to return and keep the same pagination response in all your different data responses.
 
 Define the data you're returning to the user in Loco views. If you're not familiar with views, refer to the [documentation](@/docs/the-app/views.md) for more context.
 
@@ -400,17 +409,17 @@ impl From<notes::Model> for ListResponse {
 
 impl PaginationResponse {
     #[must_use]
-    pub fn response(data: PaginatedResponse<notes::Model>) -> Pager<Vec<ListResponse>> {
+    pub fn response(data: PaginatedResponse<notes::Model>, pagination_query: &PaginationQuery) -> Pager<Vec<ListResponse>> {
         Pager {
             results: data
-                .rows
+                .page
                 .into_iter()
                 .map(ListResponse::from)
                 .collect::<Vec<ListResponse>>(),
             info: PagerMeta {
-                page: data.info.page,
-                page_size: data.info.page_size,
-                total_pages: data.info.total_pages,
+                page: pagination_query.page,
+                page_size: pagination_query.page_size,
+                total_pages: data.total_pages,
             },
         }
     }

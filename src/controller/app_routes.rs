@@ -2,7 +2,7 @@
 //! configuring routes in an Axum application. It allows you to define route
 //! prefixes, add routes, and configure middlewares for the application.
 
-use std::{path::PathBuf, time::Duration};
+use std::{fmt, path::PathBuf, time::Duration};
 
 use axum::{http, response::IntoResponse, Router as AXRouter};
 use lazy_static::lazy_static;
@@ -49,16 +49,16 @@ pub struct ListRoutes {
     pub method: axum::routing::MethodRouter<AppContext>,
 }
 
-impl ToString for ListRoutes {
-    fn to_string(&self) -> String {
+impl fmt::Display for ListRoutes {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let actions_str = self
             .actions
             .iter()
             .map(std::string::ToString::to_string)
             .collect::<Vec<_>>()
             .join(",");
-        // Define your custom logic here to format the struct as a string
-        format!("[{}] {}", actions_str, self.uri)
+
+        write!(f, "[{}] {}", actions_str, self.uri)
     }
 }
 
