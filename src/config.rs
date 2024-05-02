@@ -142,7 +142,7 @@ pub struct Database {
     /// * Sqlite: `sqlite://db.sqlite?mode=rwc`
     pub uri: String,
 
-    /// Enable SQLx statement logging
+    /// Enable `SQLx` statement logging
     pub enable_logging: bool,
 
     /// Minimum number of connections for a pool
@@ -191,7 +191,7 @@ pub struct Database {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Redis {
     /// The URI for connecting to the Redis server. For example:
-    /// redis://127.0.0.1/
+    /// <redis://127.0.0.1/>
     pub uri: String,
     #[serde(default)]
     /// Flush redis when application loaded. Useful for `test`.
