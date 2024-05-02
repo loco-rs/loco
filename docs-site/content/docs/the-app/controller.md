@@ -12,17 +12,19 @@ template = "docs/page.html"
 lead = ""
 toc = true
 top = false
-flair =[]
+flair = []
 +++
 
-`Loco` is a framework that wraps around [axum](https://crates.io/crates/axum), offering a straightforward approach to manage routes, middlewares, authentication, and more right out of the box. At any point, you can leverage the powerful axum Router and extend it with your custom middlewares and routes.
+`Loco` is a framework that wraps around [axum](https://crates.io/crates/axum), offering a straightforward approach to
+manage routes, middlewares, authentication, and more right out of the box. At any point, you can leverage the powerful
+axum Router and extend it with your custom middlewares and routes.
 
 # Controllers and Routing
 
-
 ## Adding a controller
 
-Provides a convenient code generator to simplify the creation of a starter controller connected to your project. Additionally, a test file is generated, enabling easy testing of your controller.
+Provides a convenient code generator to simplify the creation of a starter controller connected to your project.
+Additionally, a test file is generated, enabling easy testing of your controller.
 
 Generate a controller:
 
@@ -30,8 +32,8 @@ Generate a controller:
 $ cargo loco generate controller [OPTIONS] <CONTROLLER_NAME>
 ```
 
-After generating the controller, navigate to the created file in `src/controllers` to view the controller endpoints. You can also check the testing (in folder tests/requests) documentation for testing this controller.
-
+After generating the controller, navigate to the created file in `src/controllers` to view the controller endpoints. You
+can also check the testing (in folder tests/requests) documentation for testing this controller.
 
 ### Displaying active routes
 
@@ -57,31 +59,32 @@ $ cargo loco routes
 
 This command will provide you with a comprehensive overview of the controllers currently registered in your system.
 
-
 ## Adding state
 
-Your app context and state is held in `AppContext` and is what Loco provides and sets up for you. There are cases where you'd want to load custom data,
+Your app context and state is held in `AppContext` and is what Loco provides and sets up for you. There are cases where
+you'd want to load custom data,
 logic, or entities when the app starts and be available to use in all controllers.
 
-You could do that by using Axum's `Extension`. Here's an example for loading an LLM model, which is a time consuming task, and then providing it to a controller endpoint, where its already loaded, and fresh for use.
+You could do that by using Axum's `Extension`. Here's an example for loading an LLM model, which is a time consuming
+task, and then providing it to a controller endpoint, where its already loaded, and fresh for use.
 
 First, add a lifecycle hook in `src/app.rs`:
 
 ```rust
     // in src/app.rs, in your Hooks trait impl override the `after_routes` hook:
 
-    async fn after_routes(router: axum::Router, _ctx: &AppContext) -> Result<axum::Router> {
-        // cache should reside at: ~/.cache/huggingface/hub
-        println!("loading model");
-        let model = Llama::builder()
-            .with_source(LlamaSource::llama_7b_code())
-            .build()
-            .unwrap();
-        println!("model ready");
-        let st = Arc::new(RwLock::new(model));
+async fn after_routes(router: axum::Router, _ctx: &AppContext) -> Result<axum::Router> {
+    // cache should reside at: ~/.cache/huggingface/hub
+    println!("loading model");
+    let model = Llama::builder()
+        .with_source(LlamaSource::llama_7b_code())
+        .build()
+        .unwrap();
+    println!("model ready");
+    let st = Arc::new(RwLock::new(model));
 
-        Ok(router.layer(Extension(st)))
-    }
+    Ok(router.layer(Extension(st)))
+}
 ```
 
 Next, consume this state extension anywhere you like. Here's an example controller endpoint:
@@ -96,13 +99,14 @@ async fn candle_llm(Extension(m): Extension<Arc<RwLock<Llama>>>) -> impl IntoRes
 
 ## Routes in Controllers
 
-Controllers define Loco routes capabilities. In the example below, a controller creates one GET endpoint and one POST endpoint:
+Controllers define Loco routes capabilities. In the example below, a controller creates one GET endpoint and one POST
+endpoint:
 
 ```rust
 use axum::routing::{get, post};
 Routes::new()
-    .add("/", get(hello))
-    .add("/echo", post(echo))
+.add("/", get(hello))
+.add("/echo", post(echo))
 ```
 
 You can also define a `prefix` for all routes in a controller using the `prefix` function.
@@ -123,8 +127,8 @@ format::json(item)
 // use `render` for a builder interface for more involved responses. you can still terminate with
 // `json`, `html`, or `text`
 format::render()
-    .etag("foobar")?
-    .json(Entity::find().all(&ctx.db).await?)
+.etag("foobar") ?
+.json(Entity::find().all( & ctx.db).await?)
 ```
 
 ### Content type aware responses
@@ -152,7 +156,6 @@ pub async fn get_one(
 
 Here is a case where you might want to both render differently based on
 different formats AND ALSO, render differently based on kinds of errors you got.
-
 
 ```rust
 pub async fn get_one(
@@ -193,14 +196,16 @@ pub async fn get_one(
 }
 ```
 
-Here, we also "centralize" our error handling by first wrapping the workflow in a function, and grabbing the result type.
+Here, we also "centralize" our error handling by first wrapping the workflow in a function, and grabbing the result
+type.
 
 Next we create a 2 level match to:
 
 1. Match the result type
 2. Match the format type
 
-Where we lack the knowledge for handling, we just return the error as-is and let the framework render out default errors.
+Where we lack the knowledge for handling, we just return the error as-is and let the framework render out default
+errors.
 
 ## Creating a Controller Manually
 
@@ -220,6 +225,7 @@ In your App hook implementation (e.g., App struct), add your controller's `Route
 // src/app.rs
 
 pub struct App;
+
 #[async_trait]
 impl Hooks for App {
     fn routes() -> AppRoutes {
@@ -234,12 +240,18 @@ impl Hooks for App {
 # Middleware
 
 ### Authentication
-In the `Loco` framework, middleware plays a crucial role in authentication. `Loco` supports various authentication methods, including JSON Web Token (JWT) and API Key authentication. This section outlines how to configure and use authentication middleware in your application.
+
+In the `Loco` framework, middleware plays a crucial role in authentication. `Loco` supports various authentication
+methods, including JSON Web Token (JWT) and API Key authentication. This section outlines how to configure and use
+authentication middleware in your application.
 
 #### JSON Web Token (JWT)
 
 ##### Configuration
-By default, Loco uses Bearer authentication for JWT. However, you can customize this behavior in the configuration file under the auth.jwt section.
+
+By default, Loco uses Bearer authentication for JWT. However, you can customize this behavior in the configuration file
+under the auth.jwt section.
+
 * *Bearer Authentication:* Keep the configuration blank or explicitly set it as follows:
   ```yaml
   # Authentication Configuration
@@ -273,7 +285,10 @@ By default, Loco uses Bearer authentication for JWT. However, you can customize 
   ```
 
 ##### Usage
-In your controller parameters, use `auth::JWT` for authentication. This triggers authentication validation based on the configured settings.
+
+In your controller parameters, use `auth::JWT` for authentication. This triggers authentication validation based on the
+configured settings.
+
 ```rust
 use loco_rs::prelude::*;
 
@@ -284,10 +299,14 @@ async fn current(
     // Your implementation here
 }
 ```
+
 Additionally, you can fetch the current user by replacing auth::JWT with `auth::ApiToken<users::Model>`.
 
 #### API Key
-For API Key authentication, use auth::ApiToken. This middleware validates the API key against the user database record and loads the corresponding user into the authentication parameter.
+
+For API Key authentication, use auth::ApiToken. This middleware validates the API key against the user database record
+and loads the corresponding user into the authentication parameter.
+
 ```rust
 use loco_rs::prelude::*;
 
@@ -301,23 +320,25 @@ async fn current(
 
 ## Compression
 
-`Loco` leverages [CompressionLayer](https://docs.rs/tower-http/0.5.0/tower_http/compression/index.html) to enable a `one click` solution.
+`Loco` leverages [CompressionLayer](https://docs.rs/tower-http/0.5.0/tower_http/compression/index.html) to enable
+a `one click` solution.
 
 To enable response compression, based on `accept-encoding` request header, simply edit the configuration as follows:
 
 ```yaml
 #...
-  middlewares:
-    compression:
-      enable: true
+middlewares:
+  compression:
+    enable: true
 ```
 
 Doing so will compress each response and set `content-encoding` response header accordingly.
 
+## Precompressed assets
 
-## Prcompressed assets
-
-`Loco` leverages [ServeDir::precompressed_gzip](https://docs.rs/tower-http/latest/tower_http/services/struct.ServeDir.html#method.precompressed_gzip) to enable a `one click` solution of serving pre compressed assets.
+`Loco`
+leverages [ServeDir::precompressed_gzip](https://docs.rs/tower-http/latest/tower_http/services/struct.ServeDir.html#method.precompressed_gzip)
+to enable a `one click` solution of serving pre compressed assets.
 
 If a static assets exists on the disk as a `.gz` file, `Loco` will serve it instead of compressing it on the fly.
 
@@ -330,27 +351,64 @@ middlewares:
     precompressed: true
 ```
 
+## Handler and Route based middleware
 
+`Loco` also allow us to apply `[layers](https://docs.rs/tower/latest/tower/trait.Layer.html) to specific routes. Here's
+an example of how to apply a layer to a specific route:
+For more information on handler and route based middleware, refer to the [middleware](/docs/the-app/middlewares)
+documentation.
+
+### Handler based middleware:
+
+```rust
+// src/controllers/auth.rs
+pub fn routes() -> Routes {
+    Routes::new()
+        .prefix("auth")
+        .add("/register", post(register).layer(middlewares::log::LogLayer::new()))
+}
+```
+
+### Route based middleware:
+
+```rust
+// src/main.rs
+pub struct App;
+
+#[async_trait]
+impl Hooks for App {
+    fn routes(_ctx: &AppContext) -> AppRoutes {
+        AppRoutes::with_default_routes()
+            .add_route(
+                controllers::auth::routes()
+                    .layer(middlewares::log::LogLayer::new()),
+            )
+    }
+}
+```
 
 # Pagination
 
-In many scenarios, when querying data and returning responses to users, pagination is crucial. In `Loco`, we provide a straightforward method to paginate your data and maintain a consistent pagination response schema for your API responses.
+In many scenarios, when querying data and returning responses to users, pagination is crucial. In `Loco`, we provide a
+straightforward method to paginate your data and maintain a consistent pagination response schema for your API
+responses.
 
 ## Using pagination
+
 ```rust
 use loco_rs::prelude::*;
 
 let pagination_query = model::query::PaginationQuery {
-    page_size: 100,
-    page: 1,
+page_size: 100,
+page: 1,
 };
 
 let condition = model::query::dsl::condition().contains(notes::Column::Title, "loco");
 let paginated_notes = model::query::exec::paginate(
-    &ctx.db,
-    notes::Entity::find(),
-    Some(condition.build()),
-    &pagination_query,
+& ctx.db,
+notes::Entity::find(),
+Some(condition.build()),
+& pagination_query,
 )
 .await?;
 ```
@@ -360,12 +418,13 @@ let paginated_notes = model::query::exec::paginate(
 - Define the pagination parameters.
 - Call the paginate function.
 
-
 ### Pagination view
-After creating getting the `paginated_notes` in the previous example, you can choose which fileds from the model you want to return and keep the same pagination response in all your different data responses.
 
-Define the data you're returning to the user in Loco views. If you're not familiar with views, refer to the [documentation]((@/docs/the-app/views.md)) for more context.
+After creating getting the `paginated_notes` in the previous example, you can choose which fileds from the model you
+want to return and keep the same pagination response in all your different data responses.
 
+Define the data you're returning to the user in Loco views. If you're not familiar with views, refer to
+the [documentation]((@/docs/the-app/views.md)) for more context.
 
 Create a notes view file in `src/view/notes` with the following code:
 
@@ -417,11 +476,13 @@ impl PaginationResponse {
 }
 ```
 
+# Testing
 
-# Testing 
-When testing controllers, the goal is to call the router's controller endpoint and verify the HTTP response, including the status code, response content, headers, and more.
+When testing controllers, the goal is to call the router's controller endpoint and verify the HTTP response, including
+the status code, response content, headers, and more.
 
-To initialize a test request, use `testing::request`, which prepares your app routers, providing the request instance and the application context.
+To initialize a test request, use `testing::request`, which prepares your app routers, providing the request instance
+and the application context.
 
 In the following example, we have a POST endpoint that returns the data sent in the POST request.
 
@@ -440,7 +501,7 @@ async fn can_print_echo() {
 
         assert_debug_snapshot!((response.status_code(), response.text()));
     })
-    .await;
+        .await;
 }
 ```
 
