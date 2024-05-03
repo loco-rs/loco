@@ -32,7 +32,7 @@ impl Cache {
     /// use loco_rs::cache::{self, CacheResult};
     ///
     /// pub async fn contains_key() -> CacheResult<bool> {
-    ///     let cache = cache::Cache::new(cache::drivers::mem::new());
+    ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
     ///     cache.contains_key("key").await
     /// }
     /// ```
@@ -50,7 +50,7 @@ impl Cache {
     /// use loco_rs::cache::{self, CacheResult};
     ///
     /// pub async fn get_key() -> CacheResult<Option<String>> {
-    ///     let cache = cache::Cache::new(cache::drivers::mem::new());
+    ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
     ///     cache.get("key").await
     /// }
     /// ```
@@ -69,7 +69,7 @@ impl Cache {
     /// use loco_rs::cache::{self, CacheResult};
     ///
     /// pub async fn insert() -> CacheResult<()> {
-    ///     let cache = cache::Cache::new(cache::drivers::mem::new());
+    ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
     ///     cache.insert("key", "value").await
     /// }
     /// ```
@@ -88,7 +88,7 @@ impl Cache {
     /// use loco_rs::cache::{self, CacheResult};
     ///
     /// pub async fn remove() -> CacheResult<()> {
-    ///     let cache = cache::Cache::new(cache::drivers::mem::new());
+    ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
     ///     cache.remove("key").await
     /// }
     /// ```
@@ -107,7 +107,7 @@ impl Cache {
     /// use loco_rs::cache::{self, CacheResult};
     ///
     /// pub async fn clear() -> CacheResult<()> {
-    ///     let cache = cache::Cache::new(cache::drivers::mem::new());
+    ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
     ///     cache.clear().await
     /// }
     /// ```
