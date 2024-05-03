@@ -1,16 +1,6 @@
 //! # In-Memory Cache Driver
 //!
 //! This module implements a cache driver using an in-memory cache.
-//!
-//! ## Usage TODO....
-//!
-//! ```rust
-//! use super::CacheDriver;
-//! use crate::cache::CacheResult;
-//!
-//! // Create a new instance of the in-memory cache driver
-//! let mem = new();
-//! ```
 use std::sync::Arc;
 
 use async_trait::async_trait;
