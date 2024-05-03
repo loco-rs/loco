@@ -15,6 +15,8 @@ top = false
 flair =[]
 +++
 
+# Model principles
+
 Models in `loco` mean entity classes that allow for easy database querying and writes, but also migrations and seeding.
 
 ## Fat models, slim controllers
@@ -58,12 +60,13 @@ impl super::_entities::users::ActiveModel {
     /// # Errors
     ///
     /// .
-    pub fn validate(&self) -> Result<(), DbErr> {
-        let validator: ModelValidator = self.into();
-        validator.validate().map_err(validation::into_db_error)
+    pub fn foobar(&self) -> Result<(), DbErr> {
+        // implement and get back a `user.foobar()`
     }
 }
 ```
+
+# Crafting models
 
 ## Migrations
 
@@ -83,9 +86,9 @@ These fields are ignored if you provide them in your migration command. In addit
 For schema data types, you can use the following mapping to understand the schema:
 
 ```rust
-("uuid", "uuid_null"),
-("uuid!", "uuid"),
-("uuid^", "uuid_uniq"),
+("uuid", "uuid_uniq"),
+("uuid_col", "uuid_null"),
+("uuid_col!", "uuid"),
 ("string", "string_null"),
 ("string!", "string"),
 ("string^", "string_uniq"),
@@ -111,10 +114,10 @@ For schema data types, you can use the following mapping to understand the schem
 ("decimal!", "decimal"),
 ("decimal_len", "decimal_len_null"),
 ("decimal_len!", "decimal_len"),
-("boolean", "boolean_null"),
-("boolean!", "boolean"),
-("tstz", "timestamptz_null"),
-("tstz!", "timestamptz"),
+("bool", "boolean_null"),
+("bool!", "boolean"),
+("tstz", "timestamp_with_time_zone_null"),
+("tstz!", "timestamp_with_time_zone"),
 ("date", "date_null"),
 ("date!", "date"),
 ("ts", "timestamp_null"),
@@ -124,7 +127,6 @@ For schema data types, you can use the following mapping to understand the schem
 ("jsonb", "json_binary_null"),
 ("jsonb!", "json_binary"),
 ```
-
 
 Using `user:references` uses the special `references` type, which will create a relationship between a `post` and a `user`, adding a `user_id` reference field to the `posts` table.
 
@@ -159,6 +161,207 @@ And generate back entities (Rust code) from it:
 $ cargo loco db entities
 ```
 
+Loco is a migration-first framework, similar to Rails. Which means that when you want to add models, data fields, or model oriented changes - you start with a migration that describes it, and then you apply the migration to get back generated entities in `model/_entities`.
+
+This enforces _everything-as-code_, _reproducibility_ and _atomicity_, where no knowledge of the schema goes missing. 
+
+
+### Verbs, singular and plural
+
+* **references**: use **singular** for the table name, and a `:references` type. `user:references` (references `Users`), `vote:references` (references `Votes`)
+* **column names**: anything you like. Prefer `snake_case`
+* **table names**: **plural, snake case**. `users`, `draft_posts`.
+* **migration names**: anything that can be a file name, prefer snake case. `create_table_users`, `add_vote_id_to_movies`
+* **model names**: generated automatically for you. Usually the generated name is pascal case, plural. `Users`, `UsersVotes`
+ 
+Here are some examples showcasing the naming conventions:
+
+```sh
+$ cargo loco generate model movies long_title:string user:references
+```
+
+* model name in plural: `movies`
+* reference user is in singular: `user:references`
+* column name in snake case: `long_title:string`
+
+### Naming migrations
+
+There are no rules for how to name migrations, but here's a few guidelines to keep your migration stack readable as a list of files:
+
+* `<table>` - create a table, plural, `movies`
+* `add_<table>_<field>` - add a column, `add_users_email`
+* `index_<table>_<field>` - add an index, `index_users_email`
+* `alter_` - change a schema, `alter_users`
+* `delete_<table>_<field>` - remove a column, `delete_users_email`
+* `data_fix_` - fix some data, using entity queries or raw SQL, `data_fix_users_timezone_issue_315`
+
+Example:
+
+```sh
+$ cargo loco generate migration add_users_email
+```
+
+
+### Add or remove a column
+
+Adding a column:
+
+```rust
+  manager
+    .alter_table(
+        Table::alter()
+            .table(Movies::Table)
+            .add_column_if_not_exists(integer(Movies::Rating))
+            .to_owned(),
+    )
+    .await
+```
+
+Dropping a column:
+
+```rust
+  manager
+    .alter_table(
+        Table::alter()
+            .table(Movies::Table)
+            .drop_column(Movies::Rating)
+            .to_owned(),
+    )
+    .await
+```
+
+### Add index
+
+
+You can copy some of this code for adding an index
+
+```rust
+  manager
+    .create_index(
+        Index::create()
+            .name("idx-movies-rating")
+            .table(Movies::Table)
+            .col(Movies::Rating)
+            .to_owned(),
+    )
+    .await;
+```
+
+### Create a data fix
+
+
+Creating a data fix in a migration is easy - just `use` your models as you would otherwise:
+
+```rust
+  async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+
+    let db = manager.get_connection();
+
+    cake::ActiveModel {
+        name: Set("Cheesecake".to_owned()),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+    Ok(())
+  }
+```
+
+Having said that, it's up to you to code your data fixes in a `task` or `migration` or an ad-hoc `playground`.
+
+
+## Validation
+
+We use the [validator](https://docs.rs/validator) library under the hood. First, build your validator with the constraints you need, and then implement `Validatable` for your `ActiveModel`.
+
+
+```rust
+// in models/user.rs
+
+use loco_rs::prelude::*;
+
+#[derive(Debug, Validate, Deserialize)]
+pub struct Validator {
+    #[validate(length(min = 2, message = "Name must be at least 2 characters long."))]
+    pub name: String,
+    #[validate(custom = "validation::is_valid_email")]
+    pub email: String,
+}
+
+impl Validatable for super::_entities::users::ActiveModel {
+    fn validator(&self) -> Box<dyn Validate> {
+        Box::new(Validator {
+            name: self.name.as_ref().to_owned(),
+            email: self.email.as_ref().to_owned(),
+        })
+    }
+}
+```
+
+Note that `Validatable` is how you instruct Loco which `Validator` to provide and how to build it from a model.
+
+Now you can use `user.validate()` seamlessly in your code, when it is `Ok` the model is valid, otherwise you'll find validation errors in `Err(...)` available for inspection.
+
+
+## Relationships
+
+### One to many
+
+Here is how to associate a `Company` with an existing `User` model.
+
+```
+$ cargo loco generate model company name:string user:references
+```
+
+This will create a migration with a `user_id` field in `Company` which will reference a `User`.
+
+
+### Many to many
+
+Here is how to create a typical "votes" table, which links a `User` and a `Movie` with a many-to-many link table. Note that it uses the special `--link` flag in the model generator.
+
+Let's create a new `Movie` entity:
+
+```
+$ cargo loco generate model movies title:string
+```
+
+And now the link table between `User` (which we already have) and `Movie` (which we just generated) to record votes:
+
+```
+$ cargo loco generate model --link users_votes user:references movie:references vote:int
+    ..
+    ..
+Writing src/models/_entities/movies.rs
+Writing src/models/_entities/notes.rs
+Writing src/models/_entities/users.rs
+Writing src/models/_entities/mod.rs
+Writing src/models/_entities/prelude.rs
+... Done.
+```
+
+This will create a many-to-many link table named `UsersVotes` with a composite primary key containing both `user_id` and `movie_id`. Because it has precisely 2 IDs, SeaORM will identify it as a many-to-many link table, and generate entities with the appropriate `via()` relationship:
+
+
+```rust
+// User, newly generated entity with a `via` relation at _entities/users.rs
+
+// ..
+impl Related<super::movies::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::users_votes::Relation::Movies.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(super::users_votes::Relation::Users.def().rev())
+    }
+}
+```
+
+Using `via()` will cause `find_related` to walk through the link table without you needing to know the details of the link table.
+
+
+
+
 ## Configuration
 
 Model configuration that's available to you is exciting because it controls all aspects of development, testing, and production, with a ton of goodies, coming from production experience.
@@ -181,7 +384,246 @@ By combining these flags, you can create different expriences to help you be mor
 
 You can truncate before an app starts -- which is useful for running tests, or you can recreate the entire DB when the app starts -- which is useful for integration tests or setting up a new environment. In production, you want these turned off (hence the "dangerously" part).
 
-## Testing
+# Seeding
+
+`Loco` has a built-in 'seeds' feature that makes the process quick and easy. This is especially useful when reloading the database frequently in development and test environments. It's easy to get started with this feature
+
+`Loca` comes equipped with a convenient `seeds` feature, streamlining the process for quick and easy database reloading. This functionality proves especially invaluable during frequent resets in development and test environments. Let's explore how to get started with this feature:
+
+## Creating a new seed
+
+### 1. Creating a new seed file
+
+Navigate to `src/fixtures` and create a new seed file. For instance:
+
+```
+src/
+  fixtures/
+    users.yaml
+```
+
+In this yaml file, enlist a set of database records for insertion. Each record should encompass the mandatory database fields, based on your database constraints. Optional values are at your discretion. Suppose you have a database DDL like this:
+
+```sql
+CREATE TABLE public.users (
+	id serial4 NOT NULL,
+	email varchar NOT NULL,
+	"password" varchar NOT NULL,
+	reset_token varchar NULL,
+	created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	CONSTRAINT users_email_key UNIQUE (email),
+	CONSTRAINT users_pkey PRIMARY KEY (id)
+);
+```
+
+The mandatory fields include `id`, `password`, `email`, and `created_at`. The reset token can be left empty. Your migration content file should resemble the following:
+
+```yaml
+---
+- id: 1
+  email: user1@example.com
+  password: "$2b$12$gf4o2FShIahg/GY6YkK2wOcs8w4.lu444wP6BL3FyjX0GsxnEV6ZW"
+  created_at: "2023-11-12T12:34:56.789"
+- id: 2
+  pid: 22222222-2222-2222-2222-222222222222
+  email: user2@example.com
+  reset_token: "SJndjh2389hNJKnJI90U32NKJ"
+  password: "$2b$12$gf4o2FShIahg/GY6YkK2wOcs8w4.lu444wP6BL3FyjX0GsxnEV6ZW"
+  created_at: "2023-11-12T12:34:56.789"
+```
+
+### Connect the seed
+
+Integrate your seed into the app's Hook implementations by following these steps:
+
+1. Navigate to your app's Hook implementations.
+2. Add the seed within the seed function implementation. Here's an example in Rust:
+
+```rs
+impl Hooks for App {
+    // Other implementations...
+
+    async fn seed(db: &DatabaseConnection, base: &Path) -> Result<()> {
+        db::seed::<users::ActiveModel>(db, &base.join("users.yaml").display().to_string()).await?;
+        Ok(())
+    }
+}
+
+```
+
+This implementation ensures that the seed is executed when the seed function is called. Adjust the specifics based on your application's structure and requirements.
+
+## Running seeds
+
+The seed process is not executed automatically. You can trigger the seed process either through a task or during testing.
+
+### Using a Task
+
+1. Create a seeding task by following the instructions in the [Task Documentation](@/docs/the-app/task.md).
+2. Configure the task to execute the `seed` function, as demonstrated in the example below:
+
+```rust
+use std::collections::BTreeMap;
+
+use async_trait::async_trait;
+use loco_rs::{
+    app::AppContext,
+    db,
+    task::{Task, TaskInfo},
+    Result,
+};
+use sea_orm::EntityTrait;
+
+use crate::{app::App, models::_entities::users};
+
+pub struct SeedData;
+#[async_trait]
+impl Task for SeedData {
+    fn task(&self) -> TaskInfo {
+        TaskInfo {
+            name: "seed".to_string(),
+            detail: "Seeding data".to_string(),
+        }
+    }
+    async fn run(&self, app_context: &AppContext, vars: &BTreeMap<String, String>) -> Result<()> {
+        let path = std::path::Path::new("src/fixtures");
+        db::run_app_seed::<App>(&app_context.db, path).await
+    }
+}
+```
+
+### Using a Test
+
+1. Enable the testing feature (`testing`)
+
+2. In your test section, follow the example below:
+
+```rust
+#[tokio::test]
+#[serial]
+async fn handle_create_with_password_with_duplicate() {
+
+    let boot = testing::boot_test::<App, Migrator>().await;
+    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    assert!(get_user_by_id(1).ok());
+}
+```
+
+# Multi-DB
+
+`Loco` enables you to work with more than one database and share instances across your application.
+
+To set up an additional database, begin with database connections and configuration. The recommended approach is to navigate to your configuration file and add the following under [settings](@/docs/getting-started/config.md#settings):
+
+```yaml
+settings:
+  extra_db:
+    uri: postgres://loco:loco@localhost:5432/loco_app
+    enable_logging: false
+    connect_timeout: 500
+    idle_timeout: 500
+    min_connections: 1
+    max_connections: 1
+    auto_migrate: true
+    dangerously_truncate: false
+    dangerously_recreate: false
+```
+
+
+After configuring the database, import [loco-extras](https://crates.io/crates/loco-extras) and enable the `initializer-extra-db` feature in your Cargo.toml:
+```toml
+loco-extras = { version = "*", features = ["initializer-extra-db"] }
+```
+
+Next load this [initializer](@/docs/the-app/initializers.md) into `initializers` hook like this example
+
+```rs
+async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
+        let  initializers: Vec<Box<dyn Initializer>> = vec![
+            Box::new(loco_extras::initializers::extra_db::ExtraDbInitializer),
+        ];
+
+        Ok(initializers)
+    }
+```
+
+Now, you can use the secondary database in your controller:
+
+```rust
+use sea_orm::DatabaseConnection;
+use axum::{response::IntoResponse, Extension};
+
+pub async fn list(
+    State(ctx): State<AppContext>,
+    Extension(secondary_db): Extension<DatabaseConnection>,
+) -> Result<impl IntoResponse> {
+  let res = Entity::find().all(&secondary_db).await;
+}
+```
+
+## Configuring
+
+To connect more than two different databases, load the feature `initializer-multi-db` in [loco-extras](https://crates.io/crates/loco-extras):
+```toml
+loco-extras = { version = "*", features = ["initializer-multi-db"] }
+```
+
+The database configuration should look like this:
+```yaml
+settings:
+  multi_db: 
+    secondary_db:      
+      uri: postgres://loco:loco@localhost:5432/loco_app
+      enable_logging: false      
+      connect_timeout: 500      
+      idle_timeout: 500      
+      min_connections: 1      
+      max_connections: 1      
+      auto_migrate: true      
+      dangerously_truncate: false      
+      dangerously_recreate: false
+    third_db:      
+      uri: postgres://loco:loco@localhost:5432/loco_app
+      enable_logging: false      
+      connect_timeout: 500      
+      idle_timeout: 500      
+      min_connections: 1      
+      max_connections: 1      
+      auto_migrate: true      
+      dangerously_truncate: false      
+      dangerously_recreate: false
+```
+
+Next load this [initializer](@/docs/the-app/initializers.md) into `initializers` hook like this example
+
+```rs
+async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
+        let  initializers: Vec<Box<dyn Initializer>> = vec![
+            Box::new(loco_extras::initializers::multi_db::MultiDbInitializer),
+        ];
+
+        Ok(initializers)
+    }
+```
+
+## Using in controllers
+Now, you can use the multiple databases in your controller:
+
+```rust
+use sea_orm::DatabaseConnection;
+use axum::{response::IntoResponse, Extension};
+use loco_rs::db::MultiDb;
+
+pub async fn list(
+    State(ctx): State<AppContext>,
+    Extension(multi_db): Extension<MultiDb>,
+) -> Result<impl IntoResponse> {
+  let third_db = multi_db.get("third_db")?;
+  let res = Entity::find().all(third_db).await;
+}
+```
+
+# Testing
 
 If you used the generator to crate a model migration, you should also have an auto generated model test in `tests/models/posts.rs` (remember we generated a model named `post`?)
 
@@ -203,3 +645,82 @@ async fn can_find_by_pid() {
     assert_debug_snapshot!(non_existing_user_results);
 }
 ```
+
+
+
+To simplify the testing process, `Loco` provides helpful functions that make writing tests more convenient. Ensure you enable the testing feature in your `Cargo.toml`:
+
+```toml
+[dev-dependencies]
+loco-rs = { version = "*",  features = ["testing"] }
+```
+
+
+## Database cleanup
+
+In some cases, you may want to run tests with a clean dataset, ensuring that each test is independent of others and not affected by previous data. To enable this feature, modify the `dangerously_truncate` option to true in the `config/test.yaml` file under the database section. This setting ensures that Loco truncates all data before each test that implements the boot app.
+
+> ⚠️ Caution: Be cautious when using this feature to avoid unintentional data loss, especially in a production environment.
+
+- When doing it recommended to run all the relevant task in with [serial](https://crates.io/crates/rstest) crate.
+- To decide which tables you want to truncate, add the entity model to the App hook:
+
+```rust
+pub struct App;
+#[async_trait]
+impl Hooks for App {
+    //...
+    async fn truncate(db: &DatabaseConnection) -> Result<()> {
+        // truncate_table(db, users::Entity).await?;
+        // truncate_table(db, notes::Entity).await?;
+        Ok(())
+    }
+
+}
+```
+
+## Seeding
+
+
+```rust
+#[tokio::test]
+#[serial]
+async fn is_user_exists() {
+    configure_insta!();
+
+    let boot = testing::boot_test::<App, Migrator>().await;
+    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    assert!(get_user_by_id(1).ok());
+
+}
+```
+
+This documentation provides an in-depth guide on leveraging Loco's testing helpers, covering database cleanup, data cleanup for snapshot testing, and seeding data for tests.
+
+## Snapshot test data cleanup
+
+Snapshot testing often involves comparing data structures with dynamic fields such as `created_date`, `id`, `pid`, etc. To ensure consistent snapshots, Loco defines a list of constant data with regex replacements. These replacements can replace dynamic data with placeholders.
+
+Example using [insta](https://crates.io/crates/insta) for snapshots.
+
+in the following example you can use `cleanup_user_model` which clean all user model data.
+
+```rust
+
+#[tokio::test]
+#[serial]
+async fn can_cerate_user() {
+    testing::request::<App, Migrator, _, _>(|request, _ctx| async move {
+        // create user test
+        with_settings!({
+            filters => testing::cleanup_user_model()
+        }, {
+            assert_debug_snapshot!(current_user_request.text());
+        });
+    })
+    .await;
+}
+
+```
+
+You can also use cleanup constants directly, starting with `CLEANUP_`.

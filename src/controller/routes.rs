@@ -1,3 +1,8 @@
+use std::convert::Infallible;
+
+use axum::{extract::Request, response::IntoResponse, routing::Route};
+use tower::{Layer, Service};
+
 use super::describe;
 use crate::app::AppContext;
 #[derive(Clone, Default)]
@@ -30,11 +35,7 @@ impl Routes {
     /// _ping endpoint HOST/status/_ping.
     ///
     /// ```rust
-    /// use loco_rs::{
-    ///     controller::{Routes, format, Json},
-    ///     Result,
-    /// };
-    /// use axum::routing::get;
+    /// use loco_rs::prelude::*;
     /// use serde::Serialize;;
     ///
     /// #[derive(Serialize)]
@@ -42,7 +43,7 @@ impl Routes {
     ///    pub ok: bool,
     /// }
     ///
-    /// async fn ping() -> Result<Json<Health>> {
+    /// async fn ping() -> Result<Response> {
     ///     format::json(Health { ok: true })
     /// }
     /// Routes::at("status").add("/_ping", get(ping));
@@ -63,11 +64,7 @@ impl Routes {
     /// This example preset how to add a get endpoint int the Router.
     ///
     /// ```rust
-    /// use loco_rs::{
-    ///     Result,
-    ///     controller::{Routes, format, Json},
-    /// };
-    /// use axum::routing::get;
+    /// use loco_rs::prelude::*;
     /// use serde::Serialize;
     ///
     /// #[derive(Serialize)]
@@ -75,7 +72,7 @@ impl Routes {
     ///    pub ok: bool,
     /// }
     ///
-    /// async fn ping() -> Result<Json<Health>> {
+    /// async fn ping() -> Result<Response> {
     ///     format::json(Health { ok: true })
     /// }
     /// Routes::new().add("/_ping", get(ping));
@@ -100,11 +97,7 @@ impl Routes {
     /// _ping endpoint HOST/status/_ping.
     ///
     /// ```rust
-    /// use loco_rs::{
-    ///     controller::{Routes, format, Json},
-    ///     Result,
-    /// };
-    /// use axum::routing::get;
+    /// use loco_rs::prelude::*;
     /// use serde::Serialize;
     ///
     /// #[derive(Serialize)]
@@ -112,7 +105,7 @@ impl Routes {
     ///    pub ok: bool,
     /// }
     ///
-    /// async fn ping() -> Result<Json<Health>> {
+    /// async fn ping() -> Result<Response> {
     ///     format::json(Health { ok: true })
     /// }
     /// Routes::new().prefix("status").add("/_ping", get(ping));
@@ -121,5 +114,45 @@ impl Routes {
     pub fn prefix(mut self, uri: &str) -> Self {
         self.prefix = Some(uri.to_owned());
         self
+    }
+
+    /// Set a layer for the routes. this layer will be a layer for all the
+    /// routes.
+    ///
+    /// # Example
+    ///
+    /// In the following example, we are adding a layer to the routes.
+    ///
+    /// ```rust
+    /// use loco_rs::prelude::*;
+    /// use tower::{Layer, Service};
+    /// use tower_http::timeout::TimeoutLayer;
+    /// async fn ping() -> Result<Response> {
+    ///     format::json("Ok")
+    /// }
+    /// Routes::new().prefix("status").add("/_ping", get(ping)).layer(TimeoutLayer::new(std::time::Duration::from_secs(5)));
+    /// ```
+    #[allow(clippy::needless_pass_by_value)]
+    #[must_use]
+    pub fn layer<L>(self, layer: L) -> Self
+    where
+        L: Layer<Route> + Clone + Send + 'static,
+        L::Service: Service<Request> + Clone + Send + 'static,
+        <L::Service as Service<Request>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
+        <L::Service as Service<Request>>::Future: Send + 'static,
+    {
+        Self {
+            prefix: self.prefix,
+            handlers: self
+                .handlers
+                .iter()
+                .map(|handler| Handler {
+                    uri: handler.uri.clone(),
+                    actions: handler.actions.clone(),
+                    method: handler.method.clone().layer(layer.clone()),
+                })
+                .collect(),
+        }
     }
 }

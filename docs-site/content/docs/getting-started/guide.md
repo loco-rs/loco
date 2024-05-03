@@ -74,7 +74,7 @@ Make sure you also have locally installed or running (via Docker or otherwise) i
 - Redis
 
 <div class="infobox">
-To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>myapp_development</code>.
+To configure a database, please run a local postgres database with <code>loco:loco</code> and a db named <code>myapp_development</code>.
 </div>
 
 This docker command start up postgresql database server.
@@ -307,7 +307,7 @@ $
 
 ## MVC and You
 
-**Traditional MVC (model-view-controller) comes desktop UI programming paradigms**. However, it quickly made it into web services as well, the golden era of MVC was around the early 2010's, and since then many more different paradigms and architectures emerged.
+**Traditional MVC (Model-View-Controller) originated in desktop UI programming paradigms.** However, its applicability to web services led to its rapid adoption. MVC's golden era was around the early 2010s, and since then, many other paradigms and architectures have emerged.
 
 **MVC is still a very strong principle and architecture to follow for simplifying projects**, and this is what Loco follows too.
 
@@ -506,7 +506,7 @@ use loco_rs::prelude::*;
 
 use crate::models::_entities::articles;
 
-pub async fn list(State(ctx): State<AppContext>) -> Result<Json<Vec<articles::Model>>> {
+pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
     let res = articles::Entity::find().all(&ctx.db).await?;
     format::json(res)
 }
@@ -562,11 +562,11 @@ async fn load_item(ctx: &AppContext, id: i32) -> Result<Model> {
     item.ok_or_else(|| Error::NotFound)
 }
 
-pub async fn list(State(ctx): State<AppContext>) -> Result<Json<Vec<Model>>> {
+pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
     format::json(Entity::find().all(&ctx.db).await?)
 }
 
-pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Json<Model>> {
+pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Response> {
     let mut item = ActiveModel {
         ..Default::default()
     };
@@ -579,7 +579,7 @@ pub async fn update(
     Path(id): Path<i32>,
     State(ctx): State<AppContext>,
     Json(params): Json<Params>,
-) -> Result<Json<Model>> {
+) -> Result<Response> {
     let item = load_item(&ctx, id).await?;
     let mut item = item.into_active_model();
     params.update(&mut item);
@@ -592,7 +592,7 @@ pub async fn remove(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Resul
     format::empty()
 }
 
-pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Json<Model>> {
+pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Response> {
     format::json(load_item(&ctx, id).await?)
 }
 
@@ -614,6 +614,12 @@ A few items to note:
 - Order of extractors is important and follows `axum`'s documentation (parameters, state, body).
 - It's always better to create a `load_item` helper function and use it in all singular-item routes.
 - While `use loco_rs::prelude::*` brings in anything you need to build a controller, you should note to import `crate::models::_entities::articles::{ActiveModel, Entity, Model}` as well as `Serialize, Deserialize` for params.
+
+
+<div class="infobox">
+The order of the extractors is important, as changing the order of them can lead to compilation errors. Adding the <code>#[debug_handler]</code> macro to handlers can help by printing out better error messages. More information about extractors can be found in the <a href="https://docs.rs/axum/latest/axum/extract/index.html#the-order-of-extractors">axum documentation</a>.
+</div>
+
 
 You can now test that it works, start the app:
 
@@ -724,7 +730,7 @@ use crate::models::_entities::{
 pub async fn comments(
     Path(id): Path<i32>,
     State(ctx): State<AppContext>,
-) -> Result<Json<Vec<comments::Model>>> {
+) -> Result<Response> {
     let item = load_item(&ctx, id).await?;
     let comments = item.find_related(comments::Entity).all(&ctx.db).await?;
     format::json(comments)
@@ -823,7 +829,7 @@ Let's see how to require authentication when **adding comments**.
 Go back to `src/controllers/comments.rs` and take a look at the `add` function:
 
 ```rust
-pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Json<Model>> {
+pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Response> {
     let mut item = ActiveModel {
         ..Default::default()
     };
@@ -840,7 +846,7 @@ async fn add(
     auth: auth::JWT,
     State(ctx): State<AppContext>,
     Json(params): Json<Params>,
-) -> Result<Json<CurrentResponse>> {
+) -> Result<Response> {
   // we only want to make sure it exists
   let _current_user = crate::models::users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
 

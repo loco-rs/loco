@@ -105,10 +105,17 @@ mailer:
     #   user:
     #   password:
 
+# Initializers Configuration
+# initializers:
+#  oauth2:
+#    authorization_code: # Authorization code grant type
+#      - client_identifier: google # Identifier for the OAuth2 provider. Replace 'google' with your provider's name if different, must be unique within the oauth2 config.
+#        ... other fields
+
 # Database Configuration
 database:
   # Database connection URI
-  uri: {{ get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app") }}
+  uri: {{get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app")}}
   # When enabled, the sql query will be logged.
   enable_logging: false
   # Set the timeout duration when acquiring a connection.
@@ -129,7 +136,7 @@ database:
 # Redis Configuration
 redis:
   # Redis connection URI
-  uri: {{ get_env(name="REDIS_URL", default="redis://127.0.0.1") }}
+  uri: {{get_env(name="REDIS_URL", default="redis://127.0.0.1")}}
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_flush: false
 

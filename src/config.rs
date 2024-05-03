@@ -22,7 +22,10 @@ Notes:
 
 ***/
 
-use std::path::{Path, PathBuf};
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+};
 
 use fs_err as fs;
 use lazy_static::lazy_static;
@@ -53,6 +56,7 @@ pub struct Config {
     #[serde(default)]
     pub workers: Workers,
     pub mailer: Option<Mailer>,
+    pub initializers: Option<Initializers>,
 
     /// Custom app settings
     ///
@@ -138,7 +142,7 @@ pub struct Database {
     /// * Sqlite: `sqlite://db.sqlite?mode=rwc`
     pub uri: String,
 
-    /// Enable SQLx statement logging
+    /// Enable `SQLx` statement logging
     pub enable_logging: bool,
 
     /// Minimum number of connections for a pool
@@ -152,6 +156,9 @@ pub struct Database {
 
     /// Set the idle duration before closing a connection
     pub idle_timeout: u64,
+
+    /// Set the timeout for acquiring a connection
+    pub acquire_timeout: Option<u64>,
 
     /// Run migration up when application loads. It is recommended to turn it on
     /// in development. In production keep it off, and explicitly migrate your
@@ -184,7 +191,7 @@ pub struct Database {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Redis {
     /// The URI for connecting to the Redis server. For example:
-    /// redis://127.0.0.1/
+    /// <redis://127.0.0.1/>
     pub uri: String,
     #[serde(default)]
     /// Flush redis when application loaded. Useful for `test`.
@@ -210,10 +217,28 @@ pub struct Auth {
 /// JWT configuration structure.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct JWT {
+    /// The location where JWT tokens are expected to be found during
+    /// authentication.
+    pub location: Option<JWTLocation>,
     /// The secret key For JWT token
     pub secret: String,
     /// The expiration time for authentication tokens
     pub expiration: u64,
+}
+
+/// Defines the authentication mechanism for middleware.
+///
+/// This enum represents various ways to authenticate using JSON Web Tokens
+/// (JWT) within middleware.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "from")]
+pub enum JWTLocation {
+    /// Authenticate using a Bearer token.
+    Bearer,
+    /// Authenticate using a token passed as a query parameter.
+    Query { name: String },
+    /// Authenticate using a token stored in a cookie.
+    Cookie { name: String },
 }
 
 /// Server configuration structure.
@@ -402,6 +427,20 @@ pub struct Mailer {
     #[serde(default)]
     pub stub: bool,
 }
+
+/// Initializers configuration
+///
+/// Example (development): To configure settings for oauth2 or custom view
+/// engine
+/// ```yaml
+/// # config/development.yaml
+/// initializers:
+///  oauth2:
+///   authorization_code: # Authorization code grant type
+///     - client_identifier: google # Identifier for the `OAuth2` provider.
+///       Replace 'google' with your provider's name if different, must be
+///       unique within the oauth2 config. ... # other fields
+pub type Initializers = BTreeMap<String, serde_json::Value>;
 
 /// SMTP mailer configuration structure.
 #[derive(Debug, Clone, Deserialize, Serialize)]

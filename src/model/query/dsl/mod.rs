@@ -3,6 +3,7 @@ use sea_orm::{
     ColumnTrait, Condition, Value,
 };
 use serde::{Deserialize, Serialize};
+
 mod date_range;
 
 // pub mod pagination;
@@ -56,7 +57,7 @@ pub const fn with(condition: Condition) -> ConditionBuilder {
 /// let query_str = test_db::Entity::find()
 ///         .select_only()
 ///         .column(test_db::Column::Id)
-///         .filter(model::query::dsl::condition().date_range(test_db::Column::CreatedAt).from(&date).build().like(test_db::Column::Name, "%lo").build())
+///         .filter(query::condition().date_range(test_db::Column::CreatedAt).from(&date).build().like(test_db::Column::Name, "%lo").build())
 ///         .build(sea_orm::DatabaseBackend::Postgres)
 ///         .to_string();
 ///
@@ -77,7 +78,7 @@ impl ConditionBuilder {
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(model::query::dsl::condition().eq(test_db::Column::Id, 1).build())
+    ///         .filter(query::condition().eq(test_db::Column::Id, 1).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -96,7 +97,7 @@ impl ConditionBuilder {
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(model::query::dsl::condition().eq(test_db::Column::Name, "loco").build())
+    ///         .filter(query::condition().eq(test_db::Column::Name, "loco").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -121,7 +122,7 @@ impl ConditionBuilder {
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(model::query::dsl::condition().ne(test_db::Column::Id, 1).build())
+    ///         .filter(query::condition().ne(test_db::Column::Id, 1).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -146,7 +147,7 @@ impl ConditionBuilder {
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(model::query::dsl::condition().gt(test_db::Column::Id, 1).build())
+    ///         .filter(query::condition().gt(test_db::Column::Id, 1).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -172,7 +173,7 @@ impl ConditionBuilder {
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(model::query::dsl::condition().gte(test_db::Column::Id, 1).build())
+    ///         .filter(query::condition().gte(test_db::Column::Id, 1).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -198,7 +199,7 @@ impl ConditionBuilder {
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(model::query::dsl::condition().lt(test_db::Column::Id, 1).build())
+    ///         .filter(query::condition().lt(test_db::Column::Id, 1).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -224,7 +225,7 @@ impl ConditionBuilder {
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(model::query::dsl::condition().lte(test_db::Column::Id, 1).build())
+    ///         .filter(query::condition().lte(test_db::Column::Id, 1).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -250,7 +251,7 @@ impl ConditionBuilder {
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(model::query::dsl::condition().between(test_db::Column::Id, 1, 2).build())
+    ///         .filter(query::condition().between(test_db::Column::Id, 1, 2).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -276,7 +277,7 @@ impl ConditionBuilder {
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(model::query::dsl::condition().not_between(test_db::Column::Id, 1, 2).build())
+    ///         .filter(query::condition().not_between(test_db::Column::Id, 1, 2).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -302,7 +303,7 @@ impl ConditionBuilder {
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(model::query::dsl::condition().like(test_db::Column::Name, "%lo").build())
+    ///         .filter(query::condition().like(test_db::Column::Name, "%lo").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -328,7 +329,7 @@ impl ConditionBuilder {
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(model::query::dsl::condition().not_like(test_db::Column::Name, "%lo").build())
+    ///         .filter(query::condition().not_like(test_db::Column::Name, "%lo").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -354,7 +355,7 @@ impl ConditionBuilder {
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(model::query::dsl::condition().starts_with(test_db::Column::Name, "lo").build())
+    ///         .filter(query::condition().starts_with(test_db::Column::Name, "lo").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -380,7 +381,7 @@ impl ConditionBuilder {
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(model::query::dsl::condition().ends_with(test_db::Column::Name, "lo").build())
+    ///         .filter(query::condition().ends_with(test_db::Column::Name, "lo").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -406,7 +407,7 @@ impl ConditionBuilder {
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(model::query::dsl::condition().contains(test_db::Column::Name, "lo").build())
+    ///         .filter(query::condition().contains(test_db::Column::Name, "lo").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -432,7 +433,7 @@ impl ConditionBuilder {
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(model::query::dsl::condition().is_null(test_db::Column::Name).build())
+    ///         .filter(query::condition().is_null(test_db::Column::Name).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -459,7 +460,7 @@ impl ConditionBuilder {
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(model::query::dsl::condition().is_not_null(test_db::Column::Name).build())
+    ///         .filter(query::condition().is_not_null(test_db::Column::Name).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -472,6 +473,68 @@ impl ConditionBuilder {
     #[allow(clippy::wrong_self_convention)]
     pub fn is_not_null<T: ColumnTrait>(self, col: T) -> Self {
         with(self.condition.add(col.is_not_null()))
+    }
+
+    /// where condition the given column is in
+    /// value
+    ///
+    /// # Examples
+    /// ```
+    /// use loco_rs::tests_cfg::db::*;
+    /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
+    /// use loco_rs::prelude::*;
+    ///
+    /// let query_str = test_db::Entity::find()
+    ///         .select_only()
+    ///         .column(test_db::Column::Id)
+    ///         .filter(query::condition().is_in(test_db::Column::Id, [1]).build())
+    ///         .build(sea_orm::DatabaseBackend::Postgres)
+    ///         .to_string();
+    ///
+    ///     assert_eq!(
+    ///         query_str,
+    ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" IN (1)"
+    ///     );
+    /// ````
+    #[must_use]
+    #[allow(clippy::wrong_self_convention)]
+    pub fn is_in<T: ColumnTrait, V: Into<Value>, I: IntoIterator<Item = V>>(
+        self,
+        col: T,
+        values: I,
+    ) -> Self {
+        with(self.condition.add(col.is_in(values)))
+    }
+
+    /// where condition the given column is not in
+    /// value
+    ///
+    /// # Examples
+    /// ```
+    /// use loco_rs::tests_cfg::db::*;
+    /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
+    /// use loco_rs::prelude::*;
+    ///
+    /// let query_str = test_db::Entity::find()
+    ///         .select_only()
+    ///         .column(test_db::Column::Id)
+    ///         .filter(query::condition().is_not_in(test_db::Column::Id, [1]).build())
+    ///         .build(sea_orm::DatabaseBackend::Postgres)
+    ///         .to_string();
+    ///
+    ///     assert_eq!(
+    ///         query_str,
+    ///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" NOT IN (1)"
+    ///     );
+    /// ````
+    #[must_use]
+    #[allow(clippy::wrong_self_convention)]
+    pub fn is_not_in<T: ColumnTrait, V: Into<Value>, I: IntoIterator<Item = V>>(
+        self,
+        col: T,
+        values: I,
+    ) -> Self {
+        with(self.condition.add(col.is_not_in(values)))
     }
 
     /// where condition the given column is not null
@@ -488,7 +551,7 @@ impl ConditionBuilder {
     /// chrono::NaiveDateTime::parse_from_str("2024-03-25 22:10:57", "%Y-%m-%d
     /// %H:%M:%S").unwrap();
     ///
-    /// let condition = model::query::dsl::condition()
+    /// let condition = query::condition()
     ///     .date_range(test_db::Column::CreatedAt)
     ///     .dates(Some(&from_date), Some(&to_date))
     ///     .build();
@@ -745,6 +808,36 @@ mod tests {
         assert_eq!(
             query_str,
             "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" IS NOT NULL"
+        );
+    }
+
+    #[test]
+    fn condition_is_in() {
+        let query_str = test_db::Entity::find()
+            .select_only()
+            .column(test_db::Column::Id)
+            .filter(condition().is_in(test_db::Column::Id, [1]).build())
+            .build(sea_orm::DatabaseBackend::Postgres)
+            .to_string();
+
+        assert_eq!(
+            query_str,
+            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" IN (1)"
+        );
+    }
+
+    #[test]
+    fn condition_is_not_in() {
+        let query_str = test_db::Entity::find()
+            .select_only()
+            .column(test_db::Column::Id)
+            .filter(condition().is_not_in(test_db::Column::Id, [1]).build())
+            .build(sea_orm::DatabaseBackend::Postgres)
+            .to_string();
+
+        assert_eq!(
+            query_str,
+            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" NOT IN (1)"
         );
     }
 }

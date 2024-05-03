@@ -1,0 +1,7 @@
+---
+source: src/controller/middleware/auth.rs
+expression: "extract_token(&jwt_config, &parts)"
+---
+Ok(
+    "cookie_token_value",
+)

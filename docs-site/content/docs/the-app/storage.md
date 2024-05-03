@@ -4,7 +4,7 @@ description = ""
 date = 2024-02-07T08:00:00+00:00
 updated = 2024-02-07T08:00:00+00:00
 draft = false
-weight = 21
+weight = 19
 sort_by = "weight"
 template = "docs/page.html"
 
@@ -158,7 +158,7 @@ Follow this example, make sure you enable `multipart` feature in axum crate.
 async fn upload_file(
     State(ctx): State<AppContext>,
     mut multipart: Multipart,
-) -> Result<Json<views::upload::Response>> {
+) -> Result<Response> {
     let mut file = None;
     while let Some(field) = multipart.next_field().await.map_err(|err| {
         tracing::error!(error = ?err,"could not readd multipart");
@@ -189,6 +189,31 @@ async fn upload_file(
     })
 }
 ```
-## Testing
+# Testing
 
-Test storage in controller implementation, refer to the [documentation here](@/docs/testing/storage.md)
+By testing file storage in your controller you can follow this example:
+
+```rust
+#[tokio::test]
+#[serial]
+async fn can_register() {
+    testing::request::<App, _, _>(|request, ctx| async move {
+        let file_content = "loco file upload";
+        let file_part = Part::bytes(file_content.as_bytes()).file_name("loco.txt");
+
+        let multipart_form = MultipartForm::new().add_part("file", file_part);
+
+        let response = request.post("/upload/file").multipart(multipart_form).await;
+
+        response.assert_status_ok();
+
+        let res: views::upload::Response = serde_json::from_str(&response.text()).unwrap();
+
+        let stored_file: String = ctx.storage.unwrap().download(&res.path).await.unwrap();
+
+        assert_eq!(stored_file, file_content);
+    })
+    .await;
+}
+```
+

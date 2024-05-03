@@ -40,7 +40,8 @@ pub enum TemplateRuleKind {
 
 impl ArgsPlaceholder {
     /// replace strings placeholder with cli arguments.
-    /// For example, replace any string that contains {{LibName}} with the given lib name.
+    /// For example, replace any string that contains {{`LibName`}} with the given lib name.
+    #[must_use]
     pub fn replace_placeholders(&self, content: &str) -> String {
         content.replace(LIB_NAME_PLACEHOLDER, &self.lib_name)
     }

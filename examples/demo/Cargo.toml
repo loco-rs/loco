@@ -31,6 +31,7 @@ sea-orm = { version = "1.0.0-rc.1", features = [
 
 axum = { version = "0.7.1", features = ["multipart"] }
 axum_session = { version = "0.10.1", default-features = false }
+axum-extra = { version = "0.9", features = ["cookie"] }
 
 include_dir = "0.7"
 uuid = { version = "1.6.0", features = ["v4"] }
@@ -39,6 +40,8 @@ tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 fluent-templates = { version = "0.8.0", features = ["tera"] }
 unic-langid = "0.9.4"
 tera = "1.19.1"
+tower = "0.4.13"
+futures-util = "0.3.30"
 
 [[bin]]
 name = "blo-cli"

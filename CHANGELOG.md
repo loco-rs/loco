@@ -1,6 +1,74 @@
 # Changelog
 
 ## vNext
+* Apply a layer to a specific handler using `layer` method. [https://github.com/loco-rs/loco/pull/554](https://github.com/loco-rs/loco/pull/554)
+* Add the debug macro to the templates to improve the errors. [https://github.com/loco-rs/loco/pull/547](https://github.com/loco-rs/loco/pull/547)
+* Opentelemetry initializer. [https://github.com/loco-rs/loco/pull/531](https://github.com/loco-rs/loco/pull/531)
+* **Braking changes** Refactored DSL and Pagination. [https://github.com/loco-rs/loco/pull/566](https://github.com/loco-rs/loco/pull/566)
+  * Replaced `model::query::dsl::` with `model::query`.
+  * Replaced `model::query::exec::paginate` with `model::query::paginate`.
+  * Updated the `PaginatedResponse` struct. Refer to its usage example [here](https://github.com/loco-rs/loco/blob/master/examples/demo/src/views/notes.rs#L29).
+* Refactor auth middleware for supporting bearer, cookie and query [https://github.com/loco-rs/loco/pull/560](https://github.com/loco-rs/loco/pull/560)
+* Add redirect response [https://github.com/loco-rs/loco/pull/563](https://github.com/loco-rs/loco/pull/563)
+
+## v0.4.0
+
+* Refactored model validation for better developer experience. Added a few traits and structs to `loco::prelude` for a smoother import story. Introducing `Validatable`:
+
+```rust
+impl Validatable for super::_entities::users::ActiveModel {
+    fn validator(&self) -> Box<dyn Validate> {
+        Box::new(Validator {
+            name: self.name.as_ref().to_owned(),
+            email: self.email.as_ref().to_owned(),
+        })
+    }
+}
+
+// now you can call `user.validate()` freely
+```
+
+* Refactored type field mapping to be centralized. Now model, scaffold share the same field mapping, so no more gaps like [https://github.com/loco-rs/loco/issues/513](https://github.com/loco-rs/loco/issues/513) (e.g. when calling `loco generate model title:string` the ability to map `string` into something useful in the code generation side)
+**NOTE** the `_integer` class of types are now just `_int`, e.g. `big_int`, so that it correlate with the `int` field name in a better way
+
+* Adding to to quiery dsl `is_in` and `is_not_in`. [https://github.com/loco-rs/loco/pull/507](https://github.com/loco-rs/loco/pull/507)
+* Added: in your configuration you can now use an `initializers:` section for initializer specific settings
+
+  ```yaml
+  # Initializers Configuration
+  initializers:
+  # oauth2:
+  #   authorization_code: # Authorization code grant type
+  #     - client_identifier: google # Identifier for the OAuth2 provider. Replace 'google' with your provider's name if different, must be unique within the oauth2 config.
+  #       ... other fields
+  ```
+
+* Docs: fix schema data types mapping. [https://github.com/loco-rs/loco/pull/506](https://github.com/loco-rs/loco/pull/506)
+* Let Result accept other errors. [https://github.com/loco-rs/loco/pull/505](https://github.com/loco-rs/loco/pull/505)
+* Allow trailing slashes in URIs by adding the NormalizePathLayer. [https://github.com/loco-rs/loco/pull/481](https://github.com/loco-rs/loco/pull/481)
+* **BREAKING** Move from `Result<impl IntoResponse>` to `Result<Response>`. This enables much greater flexibility building APIs, where with `Result<Response>` you mix and match response types based on custom logic (returning JSON and HTML/String in the same route).
+* **Added**: mime responders similar to `respond_to` in Rails:
+
+1. Use the `Format` extractor
+2. Match on `respond_to`
+3. Create different content for different response formats
+
+The following route will always return JSON, unless explicitly asked for HTML with a
+`Content-Type: text/html` (or `Accept: `) header:
+
+```rust
+pub async fn get_one(
+    Format(respond_to): Format,
+    Path(id): Path<i32>,
+    State(ctx): State<AppContext>,
+) -> Result<Response> {
+    let item = load_item(&ctx, id).await?;
+    match respond_to {
+        RespondTo::Html => format::html(&format!("<html><body>{:?}</body></html>", item.title)),
+        _ => format::json(item),
+    }
+}
+```
 
 ## 0.3.2
 

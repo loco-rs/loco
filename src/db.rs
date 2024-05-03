@@ -139,6 +139,10 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
         .idle_timeout(Duration::from_millis(config.idle_timeout))
         .sqlx_logging(config.enable_logging);
 
+    if let Some(acquire_timeout) = config.acquire_timeout {
+        opt.acquire_timeout(Duration::from_millis(acquire_timeout));
+    }
+
     Database::connect(opt).await
 }
 
@@ -357,7 +361,7 @@ async fn create_postgres_database(
     db: &DatabaseConnection,
 ) -> Result<(), sea_orm::DbErr> {
     let with_options = std::env::var("LOCO_POSTGRES_TABLE_OPTIONS")
-        .map_or_else(|_| "ENCODING='UTF8'".to_string(), |options| options);
+        .unwrap_or_else(|_| "ENCODING='UTF8'".to_string());
 
     let query = format!("CREATE DATABASE {table_name} WITH {with_options}");
     tracing::info!(query, "creating postgres table");

@@ -14,7 +14,7 @@ impl Initializer for MultiDbInitializer {
     async fn after_routes(&self, router: AxumRouter, ctx: &AppContext) -> Result<AxumRouter> {
         let settings = ctx
             .config
-            .settings
+            .initializers
             .clone()
             .ok_or_else(|| Error::Message("settings config not configured".to_string()))?;
 
