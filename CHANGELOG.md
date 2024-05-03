@@ -1,6 +1,8 @@
 # Changelog
 
 ## vNext
+* Apply a layer to a specific handler using `layer` method. [https://github.com/loco-rs/loco/pull/554](https://github.com/loco-rs/loco/pull/554)
+* Add the debug macro to the templates to improve the errors. [https://github.com/loco-rs/loco/pull/547](https://github.com/loco-rs/loco/pull/547)
 * Opentelemetry initializer. [https://github.com/loco-rs/loco/pull/531](https://github.com/loco-rs/loco/pull/531)
 * **Braking changes** Refactored DSL and Pagination. [https://github.com/loco-rs/loco/pull/566](https://github.com/loco-rs/loco/pull/566)
   * Replaced `model::query::dsl::` with `model::query`.
