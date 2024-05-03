@@ -47,6 +47,8 @@ pub mod cli;
 
 pub mod auth;
 pub mod boot;
+#[cfg(feature = "cache")]
+pub mod cache;
 pub mod config;
 pub mod controller;
 pub mod environment;

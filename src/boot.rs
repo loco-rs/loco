@@ -205,6 +205,8 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
         db,
         redis,
         storage: H::storage(&config, environment).await?.map(Arc::new),
+        #[cfg(feature = "cache")]
+        cache: H::cache(&config, environment).await?.into(),
         config,
         mailer,
     })

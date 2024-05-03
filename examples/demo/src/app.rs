@@ -67,6 +67,7 @@ impl Hooks for App {
             .add_route(controllers::user::routes())
             .add_route(controllers::upload::routes())
             .add_route(controllers::responses::routes())
+            .add_route(controllers::cache::routes())
     }
 
     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
