@@ -1,5 +1,5 @@
 use sea_orm::{
-    sea_query::{IntoCondition, Order},
+    sea_query::{extension::postgres::PgExpr, Expr, IntoCondition, Order},
     ColumnTrait, Condition, Value,
 };
 use serde::{Deserialize, Serialize};
@@ -317,6 +317,37 @@ impl ConditionBuilder {
         with(self.condition.add(col.like(a)))
     }
 
+    /// where condition the given column ilike given values
+    /// value
+    ///
+    /// # Examples
+    /// ```
+    /// use loco_rs::tests_cfg::db::*;
+    /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
+    /// use loco_rs::prelude::*;
+    ///
+    /// let query_str = test_db::Entity::find()
+    ///         .select_only()
+    ///         .column(test_db::Column::Id)
+    ///         .filter(query::condition().ilike(test_db::Column::Name, "%Lo").build())
+    ///         .build(sea_orm::DatabaseBackend::Postgres)
+    ///         .to_string();
+    ///
+    /// assert_eq!(
+    ///    query_str,
+    ///   "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" ILIKE '%Lo'"
+    /// );
+    #[must_use]
+    pub fn ilike<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
+        with(
+            self.condition.add(
+                Expr::col((col.entity_name(), col))
+                    .ilike(a)
+                    .into_condition(),
+            ),
+        )
+    }
+
     /// where condition the given column not like given values
     /// value
     ///
@@ -341,6 +372,37 @@ impl ConditionBuilder {
     #[must_use]
     pub fn not_like<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
         with(self.condition.add(col.not_like(a)))
+    }
+
+    /// where condition the given column not ilike given values
+    /// value
+    ///
+    /// # Examples
+    /// ```
+    /// use loco_rs::tests_cfg::db::*;
+    /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
+    /// use loco_rs::prelude::*;
+    ///
+    /// let query_str = test_db::Entity::find()
+    ///         .select_only()
+    ///         .column(test_db::Column::Id)
+    ///         .filter(query::condition().not_ilike(test_db::Column::Name, "%Lo").build())
+    ///         .build(sea_orm::DatabaseBackend::Postgres)
+    ///         .to_string();
+    ///
+    /// assert_eq!(
+    ///    query_str,
+    ///   "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" NOT ILIKE '%Lo'"
+    /// );
+    #[must_use]
+    pub fn not_ilike<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
+        with(
+            self.condition.add(
+                Expr::col((col.entity_name(), col))
+                    .not_ilike(a)
+                    .into_condition(),
+            ),
+        )
     }
 
     /// where condition the given column start with given values
@@ -369,6 +431,34 @@ impl ConditionBuilder {
         with(self.condition.add(col.starts_with(a)))
     }
 
+    /// where condition the given column start with ilike given values
+    /// value
+    ///
+    /// # Examples
+    /// ```
+    /// use loco_rs::tests_cfg::db::*;
+    /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
+    ///
+    /// use loco_rs::prelude::*;
+    ///
+    /// let query_str = test_db::Entity::find()
+    ///         .select_only()
+    ///         .column(test_db::Column::Id)
+    ///         .filter(query::condition().ilike_starts_with(test_db::Column::Name, "lo").build())
+    ///         .build(sea_orm::DatabaseBackend::Postgres)
+    ///         .to_string();
+    ///
+    ///    assert_eq!(
+    ///       query_str,
+    ///      "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" ILIKE 'lo%'"
+    ///     );
+    /// ```
+    #[must_use]
+    pub fn ilike_starts_with<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
+        let expr = Expr::col((col.entity_name(), col)).ilike(format!("{}%", a.into()));
+        with(self.condition.add(expr))
+    }
+
     /// where condition the given column end with given values
     /// value
     ///
@@ -395,6 +485,32 @@ impl ConditionBuilder {
         with(self.condition.add(col.ends_with(a)))
     }
 
+    /// where condition the given column end with ilike given values
+    /// value
+    ///
+    /// # Examples
+    /// ```
+    /// use loco_rs::tests_cfg::db::*;
+    /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
+    /// use loco_rs::prelude::*;
+    /// let query_str = test_db::Entity::find()
+    ///                 .select_only()
+    ///                 .column(test_db::Column::Id)
+    ///                 .filter(query::condition().ilike_ends_with(test_db::Column::Name, "lo").build())
+    ///                 .build(sea_orm::DatabaseBackend::Postgres)
+    ///                 .to_string();
+    ///
+    ///    assert_eq!(
+    ///      query_str,
+    ///     "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" ILIKE '%lo'"
+    ///    );
+    /// ```
+    #[must_use]
+    pub fn ilike_ends_with<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
+        let expr = Expr::col((col.entity_name(), col)).ilike(format!("%{}", a.into()));
+        with(self.condition.add(expr))
+    }
+
     /// where condition the given column end with given values
     /// value
     ///
@@ -419,6 +535,32 @@ impl ConditionBuilder {
     #[must_use]
     pub fn contains<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
         with(self.condition.add(col.contains(a)))
+    }
+
+    /// where condition the given column contains ilike given values
+    /// value
+    ///
+    /// # Examples
+    /// ```
+    /// use loco_rs::tests_cfg::db::*;
+    /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
+    /// use loco_rs::prelude::*;
+    ///
+    /// let query_str = test_db::Entity::find()
+    ///                .select_only()
+    ///                .column(test_db::Column::Id)
+    ///                .filter(query::condition().ilike_contains(test_db::Column::Name, "lo").build())
+    ///                .build(sea_orm::DatabaseBackend::Postgres)
+    ///                .to_string();
+    ///
+    ///   assert_eq!(
+    ///     query_str,
+    ///     "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" ILIKE '%lo%'"
+    ///     );
+    #[must_use]
+    pub fn ilike_contains<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
+        let expr = Expr::col((col.entity_name(), col)).ilike(format!("%{}%", a.into()));
+        with(self.condition.add(expr))
     }
 
     /// where condition the given column is null
@@ -720,7 +862,20 @@ mod tests {
             "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" LIKE '%lo'"
         );
     }
+    #[test]
+    fn condition_ilike() {
+        let query_str = test_db::Entity::find()
+            .select_only()
+            .column(test_db::Column::Id)
+            .filter(condition().ilike(test_db::Column::Name, "%Lo").build())
+            .build(sea_orm::DatabaseBackend::Postgres)
+            .to_string();
 
+        assert_eq!(
+            query_str,
+            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" ILIKE '%Lo'"
+        );
+    }
     #[test]
     fn condition_not_like() {
         let query_str = test_db::Entity::find()
@@ -733,6 +888,21 @@ mod tests {
         assert_eq!(
             query_str,
             "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" NOT LIKE '%lo%'"
+        );
+    }
+
+    #[test]
+    fn condition_not_ilike() {
+        let query_str = test_db::Entity::find()
+            .select_only()
+            .column(test_db::Column::Id)
+            .filter(condition().not_ilike(test_db::Column::Name, "%Lo%").build())
+            .build(sea_orm::DatabaseBackend::Postgres)
+            .to_string();
+
+        assert_eq!(
+            query_str,
+            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" NOT ILIKE '%Lo%'"
         );
     }
 
@@ -752,6 +922,25 @@ mod tests {
     }
 
     #[test]
+    fn condition_ilike_starts_with() {
+        let query_str = test_db::Entity::find()
+            .select_only()
+            .column(test_db::Column::Id)
+            .filter(
+                condition()
+                    .ilike_starts_with(test_db::Column::Name, "lo")
+                    .build(),
+            )
+            .build(sea_orm::DatabaseBackend::Postgres)
+            .to_string();
+
+        assert_eq!(
+            query_str,
+            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" ILIKE 'lo%'"
+        );
+    }
+
+    #[test]
     fn condition_ends_with() {
         let query_str = test_db::Entity::find()
             .select_only()
@@ -767,6 +956,25 @@ mod tests {
     }
 
     #[test]
+    fn condition_ilike_ends_with() {
+        let query_str = test_db::Entity::find()
+            .select_only()
+            .column(test_db::Column::Id)
+            .filter(
+                condition()
+                    .ilike_ends_with(test_db::Column::Name, "lo")
+                    .build(),
+            )
+            .build(sea_orm::DatabaseBackend::Postgres)
+            .to_string();
+
+        assert_eq!(
+            query_str,
+            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" ILIKE '%lo'"
+        );
+    }
+
+    #[test]
     fn condition_contains() {
         let query_str = test_db::Entity::find()
             .select_only()
@@ -778,6 +986,25 @@ mod tests {
         assert_eq!(
             query_str,
             "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" LIKE '%lo%'"
+        );
+    }
+
+    #[test]
+    fn condition_ilike_contains() {
+        let query_str = test_db::Entity::find()
+            .select_only()
+            .column(test_db::Column::Id)
+            .filter(
+                condition()
+                    .ilike_contains(test_db::Column::Name, "lo")
+                    .build(),
+            )
+            .build(sea_orm::DatabaseBackend::Postgres)
+            .to_string();
+
+        assert_eq!(
+            query_str,
+            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" ILIKE '%lo%'"
         );
     }
 
