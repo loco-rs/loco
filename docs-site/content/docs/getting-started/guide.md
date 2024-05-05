@@ -74,7 +74,7 @@ Make sure you also have locally installed or running (via Docker or otherwise) i
 - Redis
 
 <div class="infobox">
-To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>myapp_development</code>.
+To configure a database, please run a local postgres database with <code>loco:loco</code> and a db named <code>myapp_development</code>.
 </div>
 
 This docker command start up postgresql database server.
@@ -614,6 +614,12 @@ A few items to note:
 - Order of extractors is important and follows `axum`'s documentation (parameters, state, body).
 - It's always better to create a `load_item` helper function and use it in all singular-item routes.
 - While `use loco_rs::prelude::*` brings in anything you need to build a controller, you should note to import `crate::models::_entities::articles::{ActiveModel, Entity, Model}` as well as `Serialize, Deserialize` for params.
+
+
+<div class="infobox">
+The order of the extractors is important, as changing the order of them can lead to compilation errors. Adding the <code>#[debug_handler]</code> macro to handlers can help by printing out better error messages. More information about extractors can be found in the <a href="https://docs.rs/axum/latest/axum/extract/index.html#the-order-of-extractors">axum documentation</a>.
+</div>
+
 
 You can now test that it works, start the app:
 

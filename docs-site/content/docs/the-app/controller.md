@@ -314,8 +314,8 @@ To enable response compression, based on `accept-encoding` request header, simpl
 
 Doing so will compress each response and set `content-encoding` response header accordingly.
 
+## Precompressed assets
 
-## Prcompressed assets
 
 `Loco` leverages [ServeDir::precompressed_gzip](https://docs.rs/tower-http/latest/tower_http/services/struct.ServeDir.html#method.precompressed_gzip) to enable a `one click` solution of serving pre compressed assets.
 
@@ -330,7 +330,45 @@ middlewares:
     precompressed: true
 ```
 
+## Handler and Route based middleware
 
+`Loco` also allow us to apply [layers](https://docs.rs/tower/latest/tower/trait.Layer.html) to specific handlers or
+routes.
+For more information on handler and route based middleware, refer to the [middleware](/docs/the-app/middlewares)
+documentation.
+
+### Handler based middleware:
+
+Apply a layer to a specific handler using `layer` method.
+
+```rust
+// src/controllers/auth.rs
+pub fn routes() -> Routes {
+    Routes::new()
+        .prefix("auth")
+        .add("/register", post(register).layer(middlewares::log::LogLayer::new()))
+}
+```
+
+### Route based middleware:
+
+Apply a layer to a specific route using `layer` method.
+
+```rust
+// src/main.rs
+pub struct App;
+
+#[async_trait]
+impl Hooks for App {
+    fn routes(_ctx: &AppContext) -> AppRoutes {
+        AppRoutes::with_default_routes()
+            .add_route(
+                controllers::auth::routes()
+                    .layer(middlewares::log::LogLayer::new()),
+            )
+    }
+}
+```
 
 # Pagination
 
@@ -368,7 +406,6 @@ let paginated_notes = query::paginate(
 - Create your query condition (in this case, filtering rows that contain "loco" in the title column).
 - Define the pagination parameters.
 - Call the paginate function.
-
 
 ### Pagination view
 After creating getting the `paginated_notes` in the previous example, you can choose which fields from the model you want to return and keep the same pagination response in all your different data responses.
