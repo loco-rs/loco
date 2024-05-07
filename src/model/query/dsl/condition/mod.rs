@@ -1,74 +1,19 @@
-use sea_orm::{
-    sea_query::{extension::postgres::PgExpr, Expr, IntoCondition, Order},
-    ColumnTrait, Condition, Value,
-};
-use serde::{Deserialize, Serialize};
+use sea_orm::{ColumnTrait, Condition, Value};
+pub mod database;
 
-mod condition;
-
-mod date_range;
-
-// pub mod pagination;
-
-pub struct ConditionBuilder {
-    condition: Condition,
-}
-/// Enum representing sorting directions, with serialization and deserialization
-/// support.
-#[derive(Debug, Deserialize, Serialize)]
-pub enum SortDirection {
-    #[serde(rename = "desc")]
-    Desc,
-    #[serde(rename = "asc")]
-    Asc,
-}
-
-impl SortDirection {
-    /// Returns the corresponding `Order` enum variant based on the current
-    /// `SortDirection`.
-    #[must_use]
-    pub const fn order(&self) -> Order {
-        match self {
-            Self::Desc => Order::Desc,
-            Self::Asc => Order::Asc,
-        }
-    }
-}
+use crate::model::query::dsl::date_range::DateRangeBuilder;
 
 #[must_use]
-pub fn condition() -> ConditionBuilder {
-    ConditionBuilder {
-        condition: Condition::all(),
+pub trait ConditionBuilderTrait: Sized + Into<Condition> {
+    fn new(condition: Condition) -> Self;
+    fn get_condition(&self) -> &Condition;
+    fn condition() -> Self {
+        Self::new(Condition::all())
     }
-}
+    fn with(condition: Condition) -> Self {
+        Self::new(condition)
+    }
 
-#[must_use]
-pub const fn with(condition: Condition) -> ConditionBuilder {
-    ConditionBuilder { condition }
-}
-
-/// Builder query condition
-///
-/// # Examples
-/// ```
-/// use loco_rs::tests_cfg::db::*;
-/// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-/// use loco_rs::prelude::*;
-/// let date = chrono::NaiveDateTime::parse_from_str("2024-03-01 22:10:57", "%Y-%m-%d %H:%M:%S").unwrap();
-///
-/// let query_str = test_db::Entity::find()
-///         .select_only()
-///         .column(test_db::Column::Id)
-///         .filter(query::condition().date_range(test_db::Column::CreatedAt).from(&date).build().like(test_db::Column::Name, "%lo").build())
-///         .build(sea_orm::DatabaseBackend::Postgres)
-///         .to_string();
-///
-///     assert_eq!(
-///         query_str,
-///         "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"created_at\" > '2024-03-01 22:10:57' AND \"loco\".\"name\" LIKE '%lo'"
-///     );
-/// ````
-impl ConditionBuilder {
     /// where condition the given column equals the given value
     ///
     /// # Examples
@@ -109,8 +54,8 @@ impl ConditionBuilder {
     ///     );
     /// ````
     #[must_use]
-    pub fn eq<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
-        with(self.condition.add(col.eq(value)))
+    fn eq<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
+        Self::with(self.into().add(col.eq(value)))
     }
 
     /// where condition the given column not equals the given value
@@ -134,8 +79,8 @@ impl ConditionBuilder {
     ///     );
     /// ````
     #[must_use]
-    pub fn ne<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
-        with(self.condition.add(col.ne(value)))
+    fn ne<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
+        Self::with(self.into().add(col.ne(value)))
     }
 
     /// where condition the given column greater than the given value
@@ -159,8 +104,8 @@ impl ConditionBuilder {
     ///     );
     /// ````
     #[must_use]
-    pub fn gt<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
-        with(self.condition.add(col.gt(value)))
+    fn gt<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
+        Self::with(self.into().add(col.gt(value)))
     }
 
     /// where condition the given column greater than or equal to the given
@@ -185,8 +130,8 @@ impl ConditionBuilder {
     ///     );
     /// ````
     #[must_use]
-    pub fn gte<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
-        with(self.condition.add(col.gte(value)))
+    fn gte<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
+        Self::with(self.into().add(col.gte(value)))
     }
 
     /// where condition the given column smaller than to the given
@@ -211,8 +156,8 @@ impl ConditionBuilder {
     ///     );
     /// ````
     #[must_use]
-    pub fn lt<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
-        with(self.condition.add(col.lt(value)))
+    fn lt<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
+        Self::with(self.into().add(col.lt(value)))
     }
 
     /// where condition the given column smaller than or equal to the given
@@ -237,8 +182,8 @@ impl ConditionBuilder {
     ///     );
     /// ````
     #[must_use]
-    pub fn lte<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
-        with(self.condition.add(col.lte(value)))
+    fn lte<T: ColumnTrait, V: Into<Value>>(self, col: T, value: V) -> Self {
+        Self::with(self.into().add(col.lte(value)))
     }
 
     /// where condition the given column between the given values
@@ -263,8 +208,8 @@ impl ConditionBuilder {
     ///     );
     /// ````
     #[must_use]
-    pub fn between<T: ColumnTrait, V: Into<Value>>(self, col: T, a: V, b: V) -> Self {
-        with(self.condition.add(col.between(a, b)))
+    fn between<T: ColumnTrait, V: Into<Value>>(self, col: T, a: V, b: V) -> Self {
+        Self::with(self.into().add(col.between(a, b)))
     }
 
     /// where condition the given column not between the given values
@@ -289,8 +234,8 @@ impl ConditionBuilder {
     ///     );
     /// ````
     #[must_use]
-    pub fn not_between<T: ColumnTrait, V: Into<Value>>(self, col: T, a: V, b: V) -> Self {
-        with(self.condition.add(col.not_between(a, b)))
+    fn not_between<T: ColumnTrait, V: Into<Value>>(self, col: T, a: V, b: V) -> Self {
+        Self::with(self.into().add(col.not_between(a, b)))
     }
 
     /// where condition the given column like given values
@@ -315,8 +260,8 @@ impl ConditionBuilder {
     ///     );
     /// ````
     #[must_use]
-    pub fn like<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
-        with(self.condition.add(col.like(a)))
+    fn like<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
+        Self::with(self.into().add(col.like(a)))
     }
 
     /// where condition the given column ilike given values
@@ -340,15 +285,7 @@ impl ConditionBuilder {
     ///   "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" ILIKE '%Lo'"
     /// );
     #[must_use]
-    pub fn ilike<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
-        with(
-            self.condition.add(
-                Expr::col((col.entity_name(), col))
-                    .ilike(a)
-                    .into_condition(),
-            ),
-        )
-    }
+    fn ilike<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self;
 
     /// where condition the given column not like given values
     /// value
@@ -372,8 +309,8 @@ impl ConditionBuilder {
     ///     );
     /// ````
     #[must_use]
-    pub fn not_like<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
-        with(self.condition.add(col.not_like(a)))
+    fn not_like<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
+        Self::with(self.into().add(col.not_like(a)))
     }
 
     /// where condition the given column not ilike given values
@@ -397,15 +334,7 @@ impl ConditionBuilder {
     ///   "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" NOT ILIKE '%Lo'"
     /// );
     #[must_use]
-    pub fn not_ilike<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
-        with(
-            self.condition.add(
-                Expr::col((col.entity_name(), col))
-                    .not_ilike(a)
-                    .into_condition(),
-            ),
-        )
-    }
+    fn not_ilike<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self;
 
     /// where condition the given column start with given values
     /// value
@@ -429,8 +358,8 @@ impl ConditionBuilder {
     ///     );
     /// ````
     #[must_use]
-    pub fn starts_with<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
-        with(self.condition.add(col.starts_with(a)))
+    fn starts_with<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
+        Self::with(self.into().add(col.starts_with(a)))
     }
 
     /// where condition the given column start with ilike given values
@@ -456,10 +385,7 @@ impl ConditionBuilder {
     ///     );
     /// ```
     #[must_use]
-    pub fn ilike_starts_with<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
-        let expr = Expr::col((col.entity_name(), col)).ilike(format!("{}%", a.into()));
-        with(self.condition.add(expr))
-    }
+    fn ilike_starts_with<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self;
 
     /// where condition the given column end with given values
     /// value
@@ -483,8 +409,8 @@ impl ConditionBuilder {
     ///     );
     /// ````
     #[must_use]
-    pub fn ends_with<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
-        with(self.condition.add(col.ends_with(a)))
+    fn ends_with<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
+        Self::with(self.into().add(col.ends_with(a)))
     }
 
     /// where condition the given column end with ilike given values
@@ -508,10 +434,7 @@ impl ConditionBuilder {
     ///    );
     /// ```
     #[must_use]
-    pub fn ilike_ends_with<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
-        let expr = Expr::col((col.entity_name(), col)).ilike(format!("%{}", a.into()));
-        with(self.condition.add(expr))
-    }
+    fn ilike_ends_with<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self;
 
     /// where condition the given column end with given values
     /// value
@@ -535,8 +458,8 @@ impl ConditionBuilder {
     ///     );
     /// ````
     #[must_use]
-    pub fn contains<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
-        with(self.condition.add(col.contains(a)))
+    fn contains<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
+        Self::with(self.into().add(col.contains(a)))
     }
 
     /// where condition the given column contains ilike given values
@@ -560,10 +483,7 @@ impl ConditionBuilder {
     ///     "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" ILIKE '%lo%'"
     ///     );
     #[must_use]
-    pub fn ilike_contains<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self {
-        let expr = Expr::col((col.entity_name(), col)).ilike(format!("%{}%", a.into()));
-        with(self.condition.add(expr))
-    }
+    fn ilike_contains<T: ColumnTrait, V: Into<String>>(self, col: T, a: V) -> Self;
 
     /// where condition the given column is null
     /// value
@@ -588,8 +508,8 @@ impl ConditionBuilder {
     /// ````
     #[must_use]
     #[allow(clippy::wrong_self_convention)]
-    pub fn is_null<T: ColumnTrait>(self, col: T) -> Self {
-        with(self.condition.add(col.is_null()))
+    fn is_null<T: ColumnTrait>(self, col: T) -> Self {
+        Self::with(self.into().add(col.is_null()))
     }
 
     /// where condition the given column is not null
@@ -615,8 +535,8 @@ impl ConditionBuilder {
     /// ````
     #[must_use]
     #[allow(clippy::wrong_self_convention)]
-    pub fn is_not_null<T: ColumnTrait>(self, col: T) -> Self {
-        with(self.condition.add(col.is_not_null()))
+    fn is_not_null<T: ColumnTrait>(self, col: T) -> Self {
+        Self::with(self.into().add(col.is_not_null()))
     }
 
     /// where condition the given column is in
@@ -642,12 +562,12 @@ impl ConditionBuilder {
     /// ````
     #[must_use]
     #[allow(clippy::wrong_self_convention)]
-    pub fn is_in<T: ColumnTrait, V: Into<Value>, I: IntoIterator<Item = V>>(
+    fn is_in<T: ColumnTrait, V: Into<Value>, I: IntoIterator<Item = V>>(
         self,
         col: T,
         values: I,
     ) -> Self {
-        with(self.condition.add(col.is_in(values)))
+        Self::with(self.into().add(col.is_in(values)))
     }
 
     /// where condition the given column is not in
@@ -673,12 +593,12 @@ impl ConditionBuilder {
     /// ````
     #[must_use]
     #[allow(clippy::wrong_self_convention)]
-    pub fn is_not_in<T: ColumnTrait, V: Into<Value>, I: IntoIterator<Item = V>>(
+    fn is_not_in<T: ColumnTrait, V: Into<Value>, I: IntoIterator<Item = V>>(
         self,
         col: T,
         values: I,
     ) -> Self {
-        with(self.condition.add(col.is_not_in(values)))
+        Self::with(self.into().add(col.is_not_in(values)))
     }
 
     /// where condition the given column is not null
@@ -712,361 +632,10 @@ impl ConditionBuilder {
     ///     "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"created_at\" BETWEEN '2024-03-01 22:10:57' AND '2024-03-25 22:10:57'" );
     /// ````
     #[must_use]
-    pub fn date_range<T: ColumnTrait>(self, col: T) -> date_range::DateRangeBuilder<T> {
-        date_range::DateRangeBuilder::new(self, col)
-    }
+    fn date_range<T: ColumnTrait>(self, col: T) -> DateRangeBuilder<T, Self>;
 
     #[must_use]
-    pub fn build(&self) -> Condition {
-        self.condition.clone().into_condition()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-
-    use super::*;
-    use crate::tests_cfg::db::*;
-
-    #[test]
-    fn condition_eq() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(condition().eq(test_db::Column::Id, 1).build())
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" = 1"
-        );
-    }
-
-    #[test]
-    fn condition_ne() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(condition().ne(test_db::Column::Name, "loco").build())
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" <> 'loco'"
-        );
-    }
-
-    #[test]
-    fn condition_gt() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(condition().gt(test_db::Column::Id, 1).build())
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" > 1"
-        );
-    }
-
-    #[test]
-    fn condition_gte() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(condition().gte(test_db::Column::Id, 1).build())
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" >= 1"
-        );
-    }
-
-    #[test]
-    fn condition_lt() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(condition().lt(test_db::Column::Id, 1).build())
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" < 1"
-        );
-    }
-
-    #[test]
-    fn condition_lte() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(condition().lte(test_db::Column::Id, 1).build())
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" <= 1"
-        );
-    }
-
-    #[test]
-    fn condition_between() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(condition().between(test_db::Column::Id, 1, 2).build())
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" BETWEEN 1 AND 2"
-        );
-    }
-
-    #[test]
-    fn condition_not_between() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(condition().not_between(test_db::Column::Id, 1, 2).build())
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" NOT BETWEEN 1 AND 2"
-        );
-    }
-
-    #[test]
-    fn condition_like() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(condition().like(test_db::Column::Name, "%lo").build())
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" LIKE '%lo'"
-        );
-    }
-    #[test]
-    fn condition_ilike() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(condition().ilike(test_db::Column::Name, "%Lo").build())
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" ILIKE '%Lo'"
-        );
-    }
-    #[test]
-    fn condition_not_like() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(condition().not_like(test_db::Column::Name, "%lo%").build())
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" NOT LIKE '%lo%'"
-        );
-    }
-
-    #[test]
-    fn condition_not_ilike() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(condition().not_ilike(test_db::Column::Name, "%Lo%").build())
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" NOT ILIKE '%Lo%'"
-        );
-    }
-
-    #[test]
-    fn condition_starts_with() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(condition().starts_with(test_db::Column::Name, "lo").build())
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" LIKE 'lo%'"
-        );
-    }
-
-    #[test]
-    fn condition_ilike_starts_with() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(
-                condition()
-                    .ilike_starts_with(test_db::Column::Name, "lo")
-                    .build(),
-            )
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" ILIKE 'lo%'"
-        );
-    }
-
-    #[test]
-    fn condition_ends_with() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(condition().ends_with(test_db::Column::Name, "lo").build())
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" LIKE '%lo'"
-        );
-    }
-
-    #[test]
-    fn condition_ilike_ends_with() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(
-                condition()
-                    .ilike_ends_with(test_db::Column::Name, "lo")
-                    .build(),
-            )
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" ILIKE '%lo'"
-        );
-    }
-
-    #[test]
-    fn condition_contains() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(condition().contains(test_db::Column::Name, "lo").build())
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" LIKE '%lo%'"
-        );
-    }
-
-    #[test]
-    fn condition_ilike_contains() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(
-                condition()
-                    .ilike_contains(test_db::Column::Name, "lo")
-                    .build(),
-            )
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" ILIKE '%lo%'"
-        );
-    }
-
-    #[test]
-    fn condition_is_null() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(condition().is_null(test_db::Column::Name).build())
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" IS NULL"
-        );
-    }
-
-    #[test]
-    fn condition_is_not_null() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(condition().is_not_null(test_db::Column::Name).build())
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"name\" IS NOT NULL"
-        );
-    }
-
-    #[test]
-    fn condition_is_in() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(condition().is_in(test_db::Column::Id, [1]).build())
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" IN (1)"
-        );
-    }
-
-    #[test]
-    fn condition_is_not_in() {
-        let query_str = test_db::Entity::find()
-            .select_only()
-            .column(test_db::Column::Id)
-            .filter(condition().is_not_in(test_db::Column::Id, [1]).build())
-            .build(sea_orm::DatabaseBackend::Postgres)
-            .to_string();
-
-        assert_eq!(
-            query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"id\" NOT IN (1)"
-        );
+    fn build(&self) -> Condition {
+        self.get_condition().clone()
     }
 }

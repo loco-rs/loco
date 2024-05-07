@@ -2,15 +2,16 @@ use chrono::NaiveDateTime;
 use sea_orm::ColumnTrait;
 
 use super::{with, ConditionBuilder};
-pub struct DateRangeBuilder<T: ColumnTrait> {
+use crate::model::query::dsl::condition::ConditionBuilderTrait;
+pub struct DateRangeBuilder<T: ColumnTrait, U: ConditionBuilderTrait> {
     col: T,
-    condition_builder: ConditionBuilder,
+    condition_builder: U,
     from_date: Option<NaiveDateTime>,
     to_date: Option<NaiveDateTime>,
 }
 
-impl<T: ColumnTrait> DateRangeBuilder<T> {
-    pub const fn new(condition_builder: ConditionBuilder, col: T) -> Self {
+impl<T: ColumnTrait, U: ConditionBuilderTrait> DateRangeBuilder<T, U> {
+    pub const fn new(condition_builder: U, col: T) -> Self {
         Self {
             col,
             condition_builder,
@@ -51,12 +52,12 @@ impl<T: ColumnTrait> DateRangeBuilder<T> {
 
     pub fn build(self) -> ConditionBuilder {
         let con = match (self.from_date, self.to_date) {
-            (None, None) => self.condition_builder.condition,
-            (None, Some(to)) => self.condition_builder.condition.add(self.col.lt(to)),
-            (Some(from), None) => self.condition_builder.condition.add(self.col.gt(from)),
+            (None, None) => self.condition_builder.into(),
+            (None, Some(to)) => self.condition_builder.into().add(self.col.lt(to)),
+            (Some(from), None) => self.condition_builder.into().add(self.col.gt(from)),
             (Some(from), Some(to)) => self
                 .condition_builder
-                .condition
+                .into()
                 .add(self.col.between(from, to)),
         };
         with(con)
