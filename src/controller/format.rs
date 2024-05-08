@@ -24,7 +24,7 @@
 use axum::{
     body::Body,
     http::{response::Builder, HeaderName, HeaderValue},
-    response::{Html, IntoResponse, Response},
+    response::{Html, IntoResponse, Redirect, Response},
 };
 use axum_extra::extract::cookie::Cookie;
 use bytes::{BufMut, BytesMut};
@@ -114,6 +114,7 @@ pub fn json<T: Serialize>(t: T) -> Result<Response> {
 pub fn empty_json() -> Result<Response> {
     json(json!({}))
 }
+
 /// Returns an HTML response
 ///
 /// # Example:
@@ -132,6 +133,26 @@ pub fn empty_json() -> Result<Response> {
 /// functionality
 pub fn html(content: &str) -> Result<Response> {
     Ok(Html(content.to_string()).into_response())
+}
+
+/// Returns an redirect response
+///
+/// # Example:
+///
+/// ```rust
+/// use loco_rs::prelude::*;
+///
+/// async fn login() -> Result<Response> {
+///    format::redirect("/dashboard")
+/// }
+/// ```
+///
+/// # Errors
+///
+/// Currently this function did't return any error. this is for feature
+/// functionality
+pub fn redirect(to: &str) -> Result<Response> {
+    Ok(Redirect::to(to).into_response())
 }
 
 /// Render template located by `key`
@@ -156,7 +177,7 @@ impl RenderBuilder {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            response: Builder::new().status(200),
+            response: Builder::new().status(StatusCode::OK),
         }
     }
 
@@ -291,6 +312,19 @@ impl RenderBuilder {
                 HeaderValue::from_static(mime::APPLICATION_JSON.as_ref()),
             )
             .body(body)?)
+    }
+
+    /// Finalize and redirect request
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if IO fails
+    pub fn redirect(self, to: &str) -> Result<Response> {
+        Ok(self
+            .response
+            .status(StatusCode::SEE_OTHER)
+            .header(header::LOCATION, to)
+            .body(Body::empty())?)
     }
 }
 

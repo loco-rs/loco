@@ -60,9 +60,8 @@ impl super::_entities::users::ActiveModel {
     /// # Errors
     ///
     /// .
-    pub fn validate(&self) -> Result<(), DbErr> {
-        let validator: ModelValidator = self.into();
-        validator.validate().map_err(validation::into_db_error)
+    pub fn foobar(&self) -> Result<(), DbErr> {
+        // implement and get back a `user.foobar()`
     }
 }
 ```
@@ -269,6 +268,39 @@ Creating a data fix in a migration is easy - just `use` your models as you would
 ```
 
 Having said that, it's up to you to code your data fixes in a `task` or `migration` or an ad-hoc `playground`.
+
+
+## Validation
+
+We use the [validator](https://docs.rs/validator) library under the hood. First, build your validator with the constraints you need, and then implement `Validatable` for your `ActiveModel`.
+
+
+```rust
+// in models/user.rs
+
+use loco_rs::prelude::*;
+
+#[derive(Debug, Validate, Deserialize)]
+pub struct Validator {
+    #[validate(length(min = 2, message = "Name must be at least 2 characters long."))]
+    pub name: String,
+    #[validate(custom = "validation::is_valid_email")]
+    pub email: String,
+}
+
+impl Validatable for super::_entities::users::ActiveModel {
+    fn validator(&self) -> Box<dyn Validate> {
+        Box::new(Validator {
+            name: self.name.as_ref().to_owned(),
+            email: self.email.as_ref().to_owned(),
+        })
+    }
+}
+```
+
+Note that `Validatable` is how you instruct Loco which `Validator` to provide and how to build it from a model.
+
+Now you can use `user.validate()` seamlessly in your code, when it is `Ok` the model is valid, otherwise you'll find validation errors in `Err(...)` available for inspection.
 
 
 ## Relationships

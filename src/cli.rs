@@ -37,7 +37,7 @@ use crate::{
     },
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     gen::{self, Component},
-    logger, Result,
+    logger,
 };
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -89,7 +89,7 @@ enum Commands {
     Task {
         /// Task name (identifier)
         name: Option<String>,
-        /// Task params (e.g. <my_task> foo:bar baz:qux)
+        /// Task params (e.g. <`my_task`> foo:bar baz:qux)
         #[clap(value_parser = parse_key_val::<String,String>)]
         params: Vec<(String, String)>,
     },
@@ -253,7 +253,7 @@ where
 /// # Errors
 ///
 /// When could not create app context
-pub async fn playground<H: Hooks>() -> Result<AppContext> {
+pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
     let cli = Playground::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
@@ -432,7 +432,7 @@ fn show_list_endpoints<H: Hooks>(ctx: &AppContext) {
     let mut routes = list_endpoints::<H>(ctx);
     routes.sort_by(|a, b| a.uri.cmp(&b.uri));
     for router in routes {
-        println!("{}", router.to_string());
+        println!("{router}");
     }
 }
 

@@ -233,6 +233,72 @@ impl Hooks for App {
 
 # Middleware
 
+### Authentication
+In the `Loco` framework, middleware plays a crucial role in authentication. `Loco` supports various authentication methods, including JSON Web Token (JWT) and API Key authentication. This section outlines how to configure and use authentication middleware in your application.
+
+#### JSON Web Token (JWT)
+
+##### Configuration
+By default, Loco uses Bearer authentication for JWT. However, you can customize this behavior in the configuration file under the auth.jwt section.
+* *Bearer Authentication:* Keep the configuration blank or explicitly set it as follows:
+  ```yaml
+  # Authentication Configuration
+  auth:
+    # JWT authentication
+    jwt:
+      location: Bearer
+  ...
+  ```
+* *Cookie Authentication:* Configure the location from which to extract the token and specify the cookie name:
+  ```yaml
+  # Authentication Configuration
+  auth:
+    # JWT authentication
+    jwt:
+      location: 
+        from: Cookie
+        name: token
+  ...
+  ```
+* *Query Parameter Authentication:* Specify the location and name of the query parameter:
+  ```yaml
+  # Authentication Configuration
+  auth:
+    # JWT authentication
+    jwt:
+      location: 
+        from: Query
+        name: token
+  ...
+  ```
+
+##### Usage
+In your controller parameters, use `auth::JWT` for authentication. This triggers authentication validation based on the configured settings.
+```rust
+use loco_rs::prelude::*;
+
+async fn current(
+    auth: auth::JWT,
+    State(_ctx): State<AppContext>,
+) -> Result<Response> {
+    // Your implementation here
+}
+```
+Additionally, you can fetch the current user by replacing auth::JWT with `auth::ApiToken<users::Model>`.
+
+#### API Key
+For API Key authentication, use auth::ApiToken. This middleware validates the API key against the user database record and loads the corresponding user into the authentication parameter.
+```rust
+use loco_rs::prelude::*;
+
+async fn current(
+    auth: auth::ApiToken<users::Model>,
+    State(_ctx): State<AppContext>,
+) -> Result<Response> {
+    // Your implementation here
+}
+```
+
 ## Compression
 
 `Loco` leverages [CompressionLayer](https://docs.rs/tower-http/0.5.0/tower_http/compression/index.html) to enable a `one click` solution.
@@ -248,8 +314,8 @@ To enable response compression, based on `accept-encoding` request header, simpl
 
 Doing so will compress each response and set `content-encoding` response header accordingly.
 
+## Precompressed assets
 
-## Prcompressed assets
 
 `Loco` leverages [ServeDir::precompressed_gzip](https://docs.rs/tower-http/latest/tower_http/services/struct.ServeDir.html#method.precompressed_gzip) to enable a `one click` solution of serving pre compressed assets.
 
@@ -264,23 +330,70 @@ middlewares:
     precompressed: true
 ```
 
+## Handler and Route based middleware
 
+`Loco` also allow us to apply [layers](https://docs.rs/tower/latest/tower/trait.Layer.html) to specific handlers or
+routes.
+For more information on handler and route based middleware, refer to the [middleware](/docs/the-app/middlewares)
+documentation.
+
+### Handler based middleware:
+
+Apply a layer to a specific handler using `layer` method.
+
+```rust
+// src/controllers/auth.rs
+pub fn routes() -> Routes {
+    Routes::new()
+        .prefix("auth")
+        .add("/register", post(register).layer(middlewares::log::LogLayer::new()))
+}
+```
+
+### Route based middleware:
+
+Apply a layer to a specific route using `layer` method.
+
+```rust
+// src/main.rs
+pub struct App;
+
+#[async_trait]
+impl Hooks for App {
+    fn routes(_ctx: &AppContext) -> AppRoutes {
+        AppRoutes::with_default_routes()
+            .add_route(
+                controllers::auth::routes()
+                    .layer(middlewares::log::LogLayer::new()),
+            )
+    }
+}
+```
 
 # Pagination
 
 In many scenarios, when querying data and returning responses to users, pagination is crucial. In `Loco`, we provide a straightforward method to paginate your data and maintain a consistent pagination response schema for your API responses.
 
 ## Using pagination
+
 ```rust
 use loco_rs::prelude::*;
 
-let pagination_query = model::query::PaginationQuery {
+let res = query::fetch_page(&ctx.db, notes::Entity::find(), &query::PaginationQuery::page(2)).await;
+```
+
+
+## Using pagination With Filter
+```rust
+use loco_rs::prelude::*;
+
+let pagination_query = query::PaginationQuery {
     page_size: 100,
     page: 1,
 };
 
-let condition = model::query::dsl::condition().contains(notes::Column::Title, "loco");
-let paginated_notes = model::query::exec::paginate(
+let condition = query::condition().contains(notes::Column::Title, "loco");
+let paginated_notes = query::paginate(
     &ctx.db,
     notes::Entity::find(),
     Some(condition.build()),
@@ -294,11 +407,10 @@ let paginated_notes = model::query::exec::paginate(
 - Define the pagination parameters.
 - Call the paginate function.
 
-
 ### Pagination view
-After creating getting the `paginated_notes` in the previous example, you can choose which fileds from the model you want to return and keep the same pagination response in all your different data responses.
+After creating getting the `paginated_notes` in the previous example, you can choose which fields from the model you want to return and keep the same pagination response in all your different data responses.
 
-Define the data you're returning to the user in Loco views. If you're not familiar with views, refer to the [documentation]((@/docs/the-app/views.md)) for more context.
+Define the data you're returning to the user in Loco views. If you're not familiar with views, refer to the [documentation](@/docs/the-app/views.md) for more context.
 
 
 Create a notes view file in `src/view/notes` with the following code:
@@ -334,17 +446,17 @@ impl From<notes::Model> for ListResponse {
 
 impl PaginationResponse {
     #[must_use]
-    pub fn response(data: PaginatedResponse<notes::Model>) -> Pager<Vec<ListResponse>> {
+    pub fn response(data: PaginatedResponse<notes::Model>, pagination_query: &PaginationQuery) -> Pager<Vec<ListResponse>> {
         Pager {
             results: data
-                .rows
+                .page
                 .into_iter()
                 .map(ListResponse::from)
                 .collect::<Vec<ListResponse>>(),
             info: PagerMeta {
-                page: data.info.page,
-                page_size: data.info.page_size,
-                total_pages: data.info.total_pages,
+                page: pagination_query.page,
+                page_size: pagination_query.page_size,
+                total_pages: data.total_pages,
             },
         }
     }
