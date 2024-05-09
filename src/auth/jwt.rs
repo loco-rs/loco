@@ -8,6 +8,7 @@ use jsonwebtoken::{
     EncodingKey, Header, TokenData, Validation,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 
 /// Represents the default JWT algorithm used by the [`JWT`] struct.
 const JWT_ALGORITHM: Algorithm = Algorithm::HS512;
@@ -17,6 +18,7 @@ const JWT_ALGORITHM: Algorithm = Algorithm::HS512;
 pub struct UserClaims {
     pub pid: String,
     exp: usize,
+    claims: Option<Value>,
 }
 
 /// Represents the JWT configuration and operations.
@@ -60,13 +62,18 @@ impl JWT {
     /// ```rust
     /// use loco_rs::auth;
     ///
-    /// auth::jwt::JWT::new("PqRwLF2rhHe8J22oBeHy").generate_token(&604800, "PID".to_string());
+    /// auth::jwt::JWT::new("PqRwLF2rhHe8J22oBeHy").generate_token(&604800, "PID".to_string(), None);
     /// ```
-    pub fn generate_token(&self, expiration: &u64, pid: String) -> JWTResult<String> {
+    pub fn generate_token(
+        &self,
+        expiration: &u64,
+        pid: String,
+        claims: Option<Value>,
+    ) -> JWTResult<String> {
         #[allow(clippy::cast_possible_truncation)]
         let exp = (get_current_timestamp() + expiration) as usize;
 
-        let claims = UserClaims { pid, exp };
+        let claims = UserClaims { pid, exp, claims };
 
         let token = encode(
             &Header::new(self.algorithm),
@@ -111,12 +118,13 @@ mod tests {
     use super::*;
 
     #[rstest]
-    #[case("valid token", 60)]
-    #[case("token expired", 1)]
+    #[case("valid token", 60, None)]
+    #[case("token expired", 1, None)]
+    #[case("valid token and custom claims", 60, Some(json!({})))]
     #[tokio::test]
-    async fn can_generate_token(#[case] test_name: &str, #[case] expiration: u64) {
+    async fn can_generate_token(#[case] test_name: &str, #[case] expiration: u64, #[case] claims: Option<Value>) {
         let jwt = JWT::new("PqRwLF2rhHe8J22oBeHy");
-        let token = jwt.generate_token(&expiration, "pid".to_string()).unwrap();
+        let token = jwt.generate_token(&expiration, "pid".to_string(), claims ).unwrap();
 
         std::thread::sleep(std::time::Duration::from_secs(3));
         with_settings!({filters => vec![
