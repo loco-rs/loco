@@ -2,7 +2,14 @@
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
 use axum::extract::Query;
-use loco_rs::{controller::bad_request, model::ModelError, prelude::*};
+use loco_rs::{
+    controller::bad_request,
+    model::ModelError,
+    prelude::{
+        query::condition::{postgres::Postgres, ConditionBuilderTrait},
+        *,
+    },
+};
 use sea_orm::Condition;
 use serde::{Deserialize, Serialize};
 
@@ -49,7 +56,7 @@ pub async fn list(
     let paginated_notes = query::paginate(
         &ctx.db,
         Entity::find(),
-        Some(query::with(params.into_query()).build()),
+        Some(Postgres::with(params.into_query()).build()),
         &pagination_query,
     )
     .await?;
@@ -138,7 +145,7 @@ pub async fn get_one(
 impl ListQueryParams {
     #[must_use]
     pub fn into_query(&self) -> Condition {
-        let mut condition = query::condition();
+        let mut condition = Postgres::condition();
 
         if let Some(title) = &self.title {
             condition = condition.like(Column::Title, title);
