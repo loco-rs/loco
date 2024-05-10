@@ -26,7 +26,6 @@ macro_rules! configure_insta {
 #[serial]
 async fn can_get_notes(#[case] test_name: &str, #[case] params: serde_json::Value) {
     configure_insta!();
-
     testing::request::<App, _, _>(|request, ctx| async move {
         testing::seed::<App>(&ctx.db).await.unwrap();
 
