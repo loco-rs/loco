@@ -7,11 +7,15 @@ use crate::model::query::dsl::date_range::DateRangeBuilder;
 
 #[must_use]
 pub trait ConditionBuilderTrait: Sized + Into<Condition> {
+    #[must_use]
     fn new(condition: Condition) -> Self;
+    #[must_use]
     fn get_condition(&self) -> &Condition;
+    #[must_use]
     fn condition() -> Self {
         Self::new(Condition::all())
     }
+    #[must_use]
     fn with(condition: Condition) -> Self {
         Self::new(condition)
     }
