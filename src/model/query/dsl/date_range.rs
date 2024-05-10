@@ -1,16 +1,16 @@
 use chrono::NaiveDateTime;
 use sea_orm::ColumnTrait;
 
-use super::{with, ConditionBuilder};
-pub struct DateRangeBuilder<T: ColumnTrait> {
+use crate::model::query::dsl::condition::ConditionBuilderTrait;
+pub struct DateRangeBuilder<T: ColumnTrait, U: ConditionBuilderTrait> {
     col: T,
-    condition_builder: ConditionBuilder,
+    condition_builder: U,
     from_date: Option<NaiveDateTime>,
     to_date: Option<NaiveDateTime>,
 }
 
-impl<T: ColumnTrait> DateRangeBuilder<T> {
-    pub const fn new(condition_builder: ConditionBuilder, col: T) -> Self {
+impl<T: ColumnTrait, U: ConditionBuilderTrait> DateRangeBuilder<T, U> {
+    pub const fn new(condition_builder: U, col: T) -> Self {
         Self {
             col,
             condition_builder,
@@ -49,26 +49,28 @@ impl<T: ColumnTrait> DateRangeBuilder<T> {
         }
     }
 
-    pub fn build(self) -> ConditionBuilder {
+    pub fn build(self) -> U {
         let con = match (self.from_date, self.to_date) {
-            (None, None) => self.condition_builder.condition,
-            (None, Some(to)) => self.condition_builder.condition.add(self.col.lt(to)),
-            (Some(from), None) => self.condition_builder.condition.add(self.col.gt(from)),
+            (None, None) => self.condition_builder.into(),
+            (None, Some(to)) => self.condition_builder.into().add(self.col.lt(to)),
+            (Some(from), None) => self.condition_builder.into().add(self.col.gt(from)),
             (Some(from), Some(to)) => self
                 .condition_builder
-                .condition
+                .into()
                 .add(self.col.between(from, to)),
         };
-        with(con)
+        U::new(con)
     }
 }
 
 #[cfg(test)]
 mod tests {
-
     use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
 
-    use crate::{prelude::model::query::*, tests_cfg::db::*};
+    use crate::{
+        model::query::dsl::condition::{postgres::Postgres, ConditionBuilderTrait},
+        tests_cfg::db::*,
+    };
 
     #[test]
     fn condition_date_range_from() {
@@ -76,7 +78,7 @@ mod tests {
             chrono::NaiveDateTime::parse_from_str("2024-03-01 22:10:57", "%Y-%m-%d %H:%M:%S")
                 .unwrap();
 
-        let condition = dsl::condition()
+        let condition = Postgres::condition()
             .date_range(test_db::Column::CreatedAt)
             .from(&date)
             .build();
@@ -101,7 +103,7 @@ mod tests {
             chrono::NaiveDateTime::parse_from_str("2024-03-01 22:10:57", "%Y-%m-%d %H:%M:%S")
                 .unwrap();
 
-        let condition = dsl::condition()
+        let condition = Postgres::condition()
             .date_range(test_db::Column::CreatedAt)
             .to(&date)
             .build();
@@ -129,7 +131,7 @@ mod tests {
             chrono::NaiveDateTime::parse_from_str("2024-03-25 22:10:57", "%Y-%m-%d %H:%M:%S")
                 .unwrap();
 
-        let condition = dsl::condition()
+        let condition = Postgres::condition()
             .date_range(test_db::Column::CreatedAt)
             .dates(Some(&from_date), Some(&to_date))
             .build();
