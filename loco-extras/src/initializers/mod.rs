@@ -69,3 +69,5 @@ pub mod normalize_path;
 pub mod opentelemetry;
 #[cfg(feature = "initializer-prometheus")]
 pub mod prometheus;
+#[cfg(feature = "initializer-mongodb")]
+pub mod mongodb;
