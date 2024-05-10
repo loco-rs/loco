@@ -1,7 +1,6 @@
 use chrono::NaiveDateTime;
 use sea_orm::ColumnTrait;
 
-use super::{with, ConditionBuilder};
 use crate::model::query::dsl::condition::ConditionBuilderTrait;
 pub struct DateRangeBuilder<T: ColumnTrait, U: ConditionBuilderTrait> {
     col: T,
@@ -50,7 +49,7 @@ impl<T: ColumnTrait, U: ConditionBuilderTrait> DateRangeBuilder<T, U> {
         }
     }
 
-    pub fn build(self) -> ConditionBuilder {
+    pub fn build(self) -> U {
         let con = match (self.from_date, self.to_date) {
             (None, None) => self.condition_builder.into(),
             (None, Some(to)) => self.condition_builder.into().add(self.col.lt(to)),
@@ -60,16 +59,18 @@ impl<T: ColumnTrait, U: ConditionBuilderTrait> DateRangeBuilder<T, U> {
                 .into()
                 .add(self.col.between(from, to)),
         };
-        with(con)
+        U::new(con)
     }
 }
 
 #[cfg(test)]
 mod tests {
-
     use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
 
-    use crate::{prelude::model::query::*, tests_cfg::db::*};
+    use crate::{
+        model::query::dsl::condition::{postgres::Postgres, ConditionBuilderTrait},
+        tests_cfg::db::*,
+    };
 
     #[test]
     fn condition_date_range_from() {
@@ -77,7 +78,7 @@ mod tests {
             chrono::NaiveDateTime::parse_from_str("2024-03-01 22:10:57", "%Y-%m-%d %H:%M:%S")
                 .unwrap();
 
-        let condition = dsl::condition()
+        let condition = Postgres::condition()
             .date_range(test_db::Column::CreatedAt)
             .from(&date)
             .build();
@@ -102,7 +103,7 @@ mod tests {
             chrono::NaiveDateTime::parse_from_str("2024-03-01 22:10:57", "%Y-%m-%d %H:%M:%S")
                 .unwrap();
 
-        let condition = dsl::condition()
+        let condition = Postgres::condition()
             .date_range(test_db::Column::CreatedAt)
             .to(&date)
             .build();
@@ -130,7 +131,7 @@ mod tests {
             chrono::NaiveDateTime::parse_from_str("2024-03-25 22:10:57", "%Y-%m-%d %H:%M:%S")
                 .unwrap();
 
-        let condition = dsl::condition()
+        let condition = Postgres::condition()
             .date_range(test_db::Column::CreatedAt)
             .dates(Some(&from_date), Some(&to_date))
             .build();

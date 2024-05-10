@@ -1,5 +1,7 @@
 use sea_orm::{ColumnTrait, Condition, Value};
-pub mod database;
+pub mod mysql;
+pub mod postgres;
+pub mod sqlite;
 
 use crate::model::query::dsl::date_range::DateRangeBuilder;
 
@@ -21,11 +23,11 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().eq(test_db::Column::Id, 1).build())
+    ///         .filter(Postgres::condition().eq(test_db::Column::Id, 1).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -40,11 +42,11 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().eq(test_db::Column::Name, "loco").build())
+    ///         .filter(Postgres::condition().eq(test_db::Column::Name, "loco").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -65,11 +67,11 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().ne(test_db::Column::Id, 1).build())
+    ///         .filter(Postgres::condition().ne(test_db::Column::Id, 1).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -90,11 +92,11 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().gt(test_db::Column::Id, 1).build())
+    ///         .filter(Postgres::condition().gt(test_db::Column::Id, 1).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -116,11 +118,11 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().gte(test_db::Column::Id, 1).build())
+    ///         .filter(Postgres::condition().gte(test_db::Column::Id, 1).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -142,11 +144,12 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().lt(test_db::Column::Id, 1).build())
+    ///         .filter(Postgres::condition().lt(test_db::Column::Id, 1).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -168,11 +171,12 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().lte(test_db::Column::Id, 1).build())
+    ///         .filter(Postgres::condition().lte(test_db::Column::Id, 1).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -194,11 +198,12 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().between(test_db::Column::Id, 1, 2).build())
+    ///         .filter(Postgres::condition().between(test_db::Column::Id, 1, 2).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -220,11 +225,11 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().not_between(test_db::Column::Id, 1, 2).build())
+    ///         .filter(Postgres::condition().not_between(test_db::Column::Id, 1, 2).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -246,11 +251,11 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().like(test_db::Column::Name, "%lo").build())
+    ///         .filter(Postgres::condition().like(test_db::Column::Name, "%lo").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -272,11 +277,11 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().ilike(test_db::Column::Name, "%Lo").build())
+    ///         .filter(Postgres::condition().ilike(test_db::Column::Name, "%Lo").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -295,11 +300,11 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().not_like(test_db::Column::Name, "%lo").build())
+    ///         .filter(Postgres::condition().not_like(test_db::Column::Name, "%lo").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -321,11 +326,11 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().not_ilike(test_db::Column::Name, "%Lo").build())
+    ///         .filter(Postgres::condition().not_ilike(test_db::Column::Name, "%Lo").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -344,11 +349,11 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().starts_with(test_db::Column::Name, "lo").build())
+    ///         .filter(Postgres::condition().starts_with(test_db::Column::Name, "lo").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -371,11 +376,11 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     ///
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().ilike_starts_with(test_db::Column::Name, "lo").build())
+    ///         .filter(Postgres::condition().ilike_starts_with(test_db::Column::Name, "lo").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -395,11 +400,11 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().ends_with(test_db::Column::Name, "lo").build())
+    ///         .filter(Postgres::condition().ends_with(test_db::Column::Name, "lo").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -421,10 +426,10 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    /// let query_str = test_db::Entity::find()
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait}; let query_str = test_db::Entity::find()
     ///                 .select_only()
     ///                 .column(test_db::Column::Id)
-    ///                 .filter(query::condition().ilike_ends_with(test_db::Column::Name, "lo").build())
+    ///                 .filter(Postgres::condition().ilike_ends_with(test_db::Column::Name, "lo").build())
     ///                 .build(sea_orm::DatabaseBackend::Postgres)
     ///                 .to_string();
     ///
@@ -444,11 +449,11 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().contains(test_db::Column::Name, "lo").build())
+    ///         .filter(Postgres::condition().contains(test_db::Column::Name, "lo").build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -470,11 +475,11 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let query_str = test_db::Entity::find()
     ///                .select_only()
     ///                .column(test_db::Column::Id)
-    ///                .filter(query::condition().ilike_contains(test_db::Column::Name, "lo").build())
+    ///                .filter(Postgres::condition().ilike_contains(test_db::Column::Name, "lo").build())
     ///                .build(sea_orm::DatabaseBackend::Postgres)
     ///                .to_string();
     ///
@@ -493,11 +498,11 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().is_null(test_db::Column::Name).build())
+    ///         .filter(Postgres::condition().is_null(test_db::Column::Name).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -520,11 +525,11 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().is_not_null(test_db::Column::Name).build())
+    ///         .filter(Postgres::condition().is_not_null(test_db::Column::Name).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -547,11 +552,11 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().is_in(test_db::Column::Id, [1]).build())
+    ///         .filter(Postgres::condition().is_in(test_db::Column::Id, [1]).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -578,11 +583,11 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
     ///         .column(test_db::Column::Id)
-    ///         .filter(query::condition().is_not_in(test_db::Column::Id, [1]).build())
+    ///         .filter(Postgres::condition().is_not_in(test_db::Column::Id, [1]).build())
     ///         .build(sea_orm::DatabaseBackend::Postgres)
     ///         .to_string();
     ///
@@ -609,13 +614,13 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     /// use loco_rs::tests_cfg::db::*;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
-    ///
+    /// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
     /// let from_date = chrono::NaiveDateTime::parse_from_str("2024-03-01
     /// 22:10:57", "%Y-%m-%d %H:%M:%S").unwrap(); let to_date =
     /// chrono::NaiveDateTime::parse_from_str("2024-03-25 22:10:57", "%Y-%m-%d
     /// %H:%M:%S").unwrap();
     ///
-    /// let condition = query::condition()
+    /// let condition = Postgres::condition()
     ///     .date_range(test_db::Column::CreatedAt)
     ///     .dates(Some(&from_date), Some(&to_date))
     ///     .build();
@@ -632,7 +637,9 @@ pub trait ConditionBuilderTrait: Sized + Into<Condition> {
     ///     "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"created_at\" BETWEEN '2024-03-01 22:10:57' AND '2024-03-25 22:10:57'" );
     /// ````
     #[must_use]
-    fn date_range<T: ColumnTrait>(self, col: T) -> DateRangeBuilder<T, Self>;
+    fn date_range<T: ColumnTrait>(self, col: T) -> DateRangeBuilder<T, Self> {
+        DateRangeBuilder::new(self, col)
+    }
 
     #[must_use]
     fn build(&self) -> Condition {
