@@ -61,6 +61,8 @@
 //!````
 #[cfg(feature = "initializer-extra-db")]
 pub mod extra_db;
+#[cfg(feature = "initializer-mongodb")]
+pub mod mongodb;
 #[cfg(feature = "initializer-multi-db")]
 pub mod multi_db;
 #[cfg(feature = "initializer-normalize-path")]
@@ -69,5 +71,3 @@ pub mod normalize_path;
 pub mod opentelemetry;
 #[cfg(feature = "initializer-prometheus")]
 pub mod prometheus;
-#[cfg(feature = "initializer-mongodb")]
-pub mod mongodb;
