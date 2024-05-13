@@ -61,6 +61,8 @@
 //!````
 #[cfg(feature = "initializer-extra-db")]
 pub mod extra_db;
+#[cfg(feature = "initializer-mongodb")]
+pub mod mongodb;
 #[cfg(feature = "initializer-multi-db")]
 pub mod multi_db;
 #[cfg(feature = "initializer-normalize-path")]

@@ -1,5 +1,5 @@
 ---
-source: tests/models/main.rs
+source: tests/models/users.rs
 expression: res
 ---
 Err(
