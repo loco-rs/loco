@@ -1,6 +1,6 @@
 # Contributing to Loco
 
-Thank you for taking the time to read this. 
+Thank you for taking the time to read this.
 
 The first way to show support is to star our repos :).
 
@@ -21,7 +21,7 @@ Feature requests from anyone is definitely welcomed! You can open an [issue](htt
 
 ## I want to support
 
-Awesome! The best way to support us is to recommend it to your classmates/colleagues/friends, write blog posts and tutorials on our projects and help out other users in the community. 
+Awesome! The best way to support us is to recommend it to your classmates/colleagues/friends, write blog posts and tutorials on our projects and help out other users in the community.
 
 ## I want to join
 
@@ -56,7 +56,7 @@ You can see how we test in [.github/workflows](.github/workflows/)
 #### Snapshots
 To update/create a snapshots we are using [insta](https://github.com/mitsuhiko/insta). all you need to do is install insta and run the following command:
 ```
-cargo install test --review
+cargo insta test --review
 ```
 
 In case of cli changes we snapshot the binary commands. in case of changes run the following command yo update the CLI snapshot
@@ -73,7 +73,7 @@ then cd to `docs-site` and run `zola serve`
 
 The most recommended and straightforward method to contribute changes to the project involves forking it on GitHub and subsequently initiating a pull request to propose the integration of your modifications into our repository.
 
-Changes a starters project are not recommended. read more [here](./starters/README.md) 
+Changes a starters project are not recommended. read more [here](./starters/README.md)
 
 ### In Your Pull Request Description, Include:
 - References to any bugs fixed by the change
@@ -84,6 +84,3 @@ Changes a starters project are not recommended. read more [here](./starters/READ
 - be based on the master branch
 - adhere to the code [style](#code-style)
 - Successfully passes the [test suite](#testing)
-
-
-
