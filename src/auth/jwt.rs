@@ -8,7 +8,7 @@ use jsonwebtoken::{
     EncodingKey, Header, TokenData, Validation,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::Value;
 
 /// Represents the default JWT algorithm used by the [`JWT`] struct.
 const JWT_ALGORITHM: Algorithm = Algorithm::HS512;
@@ -122,9 +122,15 @@ mod tests {
     #[case("token expired", 1, None)]
     #[case("valid token and custom claims", 60, Some(json!({})))]
     #[tokio::test]
-    async fn can_generate_token(#[case] test_name: &str, #[case] expiration: u64, #[case] claims: Option<Value>) {
+    async fn can_generate_token(
+        #[case] test_name: &str,
+        #[case] expiration: u64,
+        #[case] claims: Option<Value>,
+    ) {
         let jwt = JWT::new("PqRwLF2rhHe8J22oBeHy");
-        let token = jwt.generate_token(&expiration, "pid".to_string(), claims ).unwrap();
+        let token = jwt
+            .generate_token(&expiration, "pid".to_string(), claims)
+            .unwrap();
 
         std::thread::sleep(std::time::Duration::from_secs(3));
         with_settings!({filters => vec![

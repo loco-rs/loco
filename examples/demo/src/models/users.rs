@@ -3,6 +3,7 @@ use chrono::offset::Local;
 use loco_rs::{auth::jwt, hash, prelude::*};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use serde_json::json;
 
 pub use super::_entities::users::{self, ActiveModel, Entity, Model};
 
@@ -213,7 +214,7 @@ impl super::_entities::users::Model {
     ///
     /// when could not convert user claims to jwt token
     pub fn generate_jwt(&self, secret: &str, expiration: &u64) -> ModelResult<String> {
-        Ok(jwt::JWT::new(secret).generate_token(expiration, self.pid.to_string())?)
+        Ok(jwt::JWT::new(secret).generate_token(expiration, self.pid.to_string(), Some(json!({"Roll": "Administrator"})))?)
     }
 }
 
