@@ -114,6 +114,7 @@ mod tests {
 
     use insta::{assert_debug_snapshot, with_settings};
     use rstest::rstest;
+    use serde_json::json;
 
     use super::*;
 
