@@ -54,7 +54,7 @@ Just clone the project and run `cargo test`.
 You can see how we test in [.github/workflows](.github/workflows/)
 
 #### Snapshots
-To update/create a snapshots we are using [insta](https://github.com/mitsuhiko/insta). all you need to do is install insta and run the following command:
+To update/create a snapshots we are using [insta](https://github.com/mitsuhiko/insta). all you need to do is install insta (cargo install cargo-insta) and run the following command:
 ```
 cargo insta test --review
 ```
