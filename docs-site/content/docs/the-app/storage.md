@@ -25,6 +25,8 @@ By default, in-memory and disk storage come out of the box. To work with cloud p
 - `storage_gcp`
 - `all_storage`
 
+By default loco initialize a `Null` provider, meaning any work with the storage will return an error. 
+
 ## Setup
 
 Add the `storage` function as a Hook in the `app.rs` file and import the `storage` module from `loco_rs`.
