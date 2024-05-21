@@ -34,8 +34,7 @@ storage_aws_s3 = ["object_store/aws"]
 storage_azure = ["object_store/azure"]
 storage_gcp = ["object_store/gcp"]
 # Cache feature
-cache = []
-cache_inmem = ["cache", "dep:moka"]
+cache_inmem = ["dep:moka"]
 
 [dependencies]
 

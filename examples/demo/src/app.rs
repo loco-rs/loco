@@ -5,6 +5,7 @@ use loco_extras;
 use loco_rs::{
     app::{AppContext, Hooks, Initializer},
     boot::{create_app, BootResult, StartMode},
+    cache,
     config::Config,
     controller::AppRoutes,
     db::{self, truncate_table},
@@ -80,10 +81,7 @@ impl Hooks for App {
         create_app::<Self, Migrator>(mode, environment).await
     }
 
-    async fn storage(
-        _config: &Config,
-        environment: &Environment,
-    ) -> Result<Option<storage::Storage>> {
+    async fn storage(_config: &Config, environment: &Environment) -> Result<storage::Storage> {
         let store = if environment == &Environment::Test {
             storage::drivers::mem::new()
         } else {
@@ -91,7 +89,11 @@ impl Hooks for App {
         };
 
         let storage = Storage::single(store);
-        return Ok(Some(storage));
+        return Ok(storage);
+    }
+
+    async fn cache(_config: &Config, _environment: &Environment) -> Result<cache::Cache> {
+        Ok(cache::Cache::new(cache::drivers::inmem::new()))
     }
 
     fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {

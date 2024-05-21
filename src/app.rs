@@ -12,17 +12,16 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
 
-#[cfg(feature = "cache")]
-use crate::cache;
 #[cfg(feature = "channels")]
 use crate::controller::channels::AppChannels;
 use crate::{
     boot::{BootResult, ServeParams, StartMode},
+    cache::{self, Cache},
     config::{self, Config},
     controller::AppRoutes,
     environment::Environment,
     mailer::EmailSender,
-    storage::Storage,
+    storage::{self, Storage},
     task::Tasks,
     worker::{Pool, Processor, RedisConnectionManager},
     Result,
@@ -49,8 +48,7 @@ pub struct AppContext {
     /// An optional email sender component that can be used to send email.
     pub mailer: Option<EmailSender>,
     // An optional storage instance for the application
-    pub storage: Option<Arc<Storage>>,
-    #[cfg(feature = "cache")]
+    pub storage: Arc<Storage>,
     // Cache instance for the application
     pub cache: Arc<cache::Cache>,
 }
@@ -160,18 +158,24 @@ pub trait Hooks {
     /// Defines the application's routing configuration.
     fn routes(_ctx: &AppContext) -> AppRoutes;
 
-    /// Defines the storage configuration for the application
-    async fn storage(
-        _config: &config::Config,
-        _environment: &Environment,
-    ) -> Result<Option<Storage>> {
-        Ok(None)
+    // Provides a default null storage implementation for the application.
+    ///
+    /// This function returns a [`Storage`] instance that always returns errors.
+    /// It simplifies user workflow by avoiding the need for feature flags or
+    /// configuring a specific storage driver during development or testing.
+    async fn storage(_config: &config::Config, _environment: &Environment) -> Result<Storage> {
+        let storage = Storage::single(storage::drivers::null::new());
+        Ok(storage)
     }
 
-    #[cfg(feature = "cache")]
-    /// Defines the cache configuration for the application.
-    async fn cache(_config: &config::Config, _environment: &Environment) -> Result<cache::Cache> {
-        Ok(cache::Cache::new(cache::drivers::inmem::new()))
+    /// Provides a default null cache implementation for the application.
+    ///
+    /// This function returns a [`Cache`] instance that always returns
+    /// errors. It simplifies user workflow by avoiding the need for feature
+    /// flags or optional cache driver configurations during development or
+    /// testing.
+    async fn cache(_config: &config::Config, _environment: &Environment) -> Result<Cache> {
+        Ok(cache::Cache::new(cache::drivers::null::new()))
     }
 
     #[cfg(feature = "channels")]

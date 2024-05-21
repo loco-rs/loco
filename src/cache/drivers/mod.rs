@@ -7,6 +7,7 @@ use super::CacheResult;
 
 #[cfg(feature = "cache_inmem")]
 pub mod inmem;
+pub mod null;
 
 /// Trait representing a cache driver.
 #[async_trait]

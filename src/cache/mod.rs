@@ -8,7 +8,10 @@ use self::drivers::CacheDriver;
 /// Errors related to cache operations
 #[derive(thiserror::Error, Debug)]
 #[allow(clippy::module_name_repetitions)]
-pub enum CacheError {}
+pub enum CacheError {
+    #[error(transparent)]
+    Any(#[from] Box<dyn std::error::Error + Send + Sync>),
+}
 
 pub type CacheResult<T> = std::result::Result<T, CacheError>;
 

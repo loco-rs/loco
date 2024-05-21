@@ -1,7 +1,7 @@
 //! # Application Bootstrapping and Logic
 //! This module contains functions and structures for bootstrapping and running
 //! your application.
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
 
 use axum::Router;
 #[cfg(feature = "with-db")]
@@ -204,8 +204,7 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
         #[cfg(feature = "with-db")]
         db,
         redis,
-        storage: H::storage(&config, environment).await?.map(Arc::new),
-        #[cfg(feature = "cache")]
+        storage: H::storage(&config, environment).await?.into(),
         cache: H::cache(&config, environment).await?.into(),
         config,
         mailer,
