@@ -150,7 +150,7 @@ listening on port 3000
 And now, let's see that it's alive:
 
 ```sh
-$ curl localhost:3000/api/_ping
+$ curl localhost:3000/_ping
 {"ok":true}
 ```
 
@@ -159,7 +159,7 @@ The built in `_ping` route will tell your load balancer everything is up.
 Let's see that all services that are required are up:
 
 ```sh
-$ curl localhost:3000/api/_health
+$ curl localhost:3000/_health
 {"ok":true}
 ```
 
@@ -243,7 +243,7 @@ async fn hello(State(_ctx): State<AppContext>) -> Result<String> {
 }
 
 pub fn routes() -> Routes {
-    Routes::new().prefix("home").add("/hello", get(hello))
+    Routes::new().prefix("api/home").add("/hello", get(hello))
 }
 ```
 
@@ -293,17 +293,21 @@ You can take a look at all of your routes with:
 $ cargo loco routes
   ..
   ..
-[POST] /auth/login
-[POST] /auth/register
-[POST] /auth/reset
-[POST] /auth/verify
-[GET] /home/hello      <---- this is our new route!
-[GET] /notes
-[POST] /notes
+[POST] /api/auth/login
+[POST] /api/auth/register
+[POST] /api/auth/reset
+[POST] /api/auth/verify
+[GET] /api/home/hello      <---- this is our new route!
+[GET] /api/notes
+[POST] /api/notes
   ..
   ..
 $
 ```
+
+<div class="infobox">
+The _SaaS Starter_ keeps routes under `/api` because it is client-side ready. When using client-side routing like React Router, we want to separate backend routes from client routes: the browser will use `/home` but not `/api/home` which is the backend route, and you can call `/api/home` from the client with no worries. Nevertheless, the routes: `/_health` and `/_ping` are exceptionsk, they stay at the root.
+</div>
 
 ## MVC and You
 
