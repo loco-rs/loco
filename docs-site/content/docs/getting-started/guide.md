@@ -306,7 +306,8 @@ $
 ```
 
 <div class="infobox">
-The _SaaS Starter_ keeps routes under `/api` because it is client-side ready. When using client-side routing like React Router, we want to separate backend routes from client routes: the browser will use `/home` but not `/api/home` which is the backend route, and you can call `/api/home` from the client with no worries. Nevertheless, the routes: `/_health` and `/_ping` are exceptionsk, they stay at the root.
+The <em>SaaS Starter</em> keeps routes under <code>/api</code> because it is client-side ready. <br/>
+When using client-side routing like React Router, we want to separate backend routes from client routes: the browser will use <code>/home</code> but not <code>/api/home</code> which is the backend route, and you can call <code>/api/home</code> from the client with no worries. Nevertheless, the routes: <code>/_health</code> and <code>/_ping</code> are exceptions, they stay at the root.
 </div>
 
 ## MVC and You
