@@ -198,6 +198,7 @@ The response includes a JWT token for authentication, user ID, name, and verific
     "token": "...",
     "pid": "2b20f998-b11e-4aeb-96d7-beca7671abda",
     "name": "Loco user",
+    "claims": null
     "is_verified": false
 }
 ```

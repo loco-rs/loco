@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use chrono::offset::Local;
 use loco_rs::{auth::jwt, hash, prelude::*};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use uuid::Uuid;
 
 pub use super::_entities::users::{self, ActiveModel, Entity, Model};
@@ -60,7 +61,7 @@ impl Authenticable for super::_entities::users::Model {
     async fn find_by_api_key(db: &DatabaseConnection, api_key: &str) -> ModelResult<Self> {
         let user = users::Entity::find()
             .filter(
-                query::dsl::condition()
+                query::condition()
                     .eq(users::Column::ApiKey, api_key)
                     .build(),
             )
@@ -82,11 +83,7 @@ impl super::_entities::users::Model {
     /// When could not find user by the given token or DB query error
     pub async fn find_by_email(db: &DatabaseConnection, email: &str) -> ModelResult<Self> {
         let user = users::Entity::find()
-            .filter(
-                query::dsl::condition()
-                    .eq(users::Column::Email, email)
-                    .build(),
-            )
+            .filter(query::condition().eq(users::Column::Email, email).build())
             .one(db)
             .await?;
         user.ok_or_else(|| ModelError::EntityNotFound)
@@ -103,7 +100,7 @@ impl super::_entities::users::Model {
     ) -> ModelResult<Self> {
         let user = users::Entity::find()
             .filter(
-                query::dsl::condition()
+                query::condition()
                     .eq(users::Column::EmailVerificationToken, token)
                     .build(),
             )
@@ -120,7 +117,7 @@ impl super::_entities::users::Model {
     pub async fn find_by_reset_token(db: &DatabaseConnection, token: &str) -> ModelResult<Self> {
         let user = users::Entity::find()
             .filter(
-                query::dsl::condition()
+                query::condition()
                     .eq(users::Column::ResetToken, token)
                     .build(),
             )
@@ -138,7 +135,7 @@ impl super::_entities::users::Model {
         let parse_uuid = Uuid::parse_str(pid).map_err(|e| ModelError::Any(e.into()))?;
         let user = users::Entity::find()
             .filter(
-                query::dsl::condition()
+                query::condition()
                     .eq(users::Column::Pid, parse_uuid)
                     .build(),
             )
@@ -155,7 +152,7 @@ impl super::_entities::users::Model {
     pub async fn find_by_api_key(db: &DatabaseConnection, api_key: &str) -> ModelResult<Self> {
         let user = users::Entity::find()
             .filter(
-                query::dsl::condition()
+                query::condition()
                     .eq(users::Column::ApiKey, api_key)
                     .build(),
             )
@@ -184,7 +181,7 @@ impl super::_entities::users::Model {
 
         if users::Entity::find()
             .filter(
-                query::dsl::condition()
+                query::condition()
                     .eq(users::Column::Email, &params.email)
                     .build(),
             )
@@ -217,7 +214,11 @@ impl super::_entities::users::Model {
     ///
     /// when could not convert user claims to jwt token
     pub fn generate_jwt(&self, secret: &str, expiration: &u64) -> ModelResult<String> {
-        Ok(jwt::JWT::new(secret).generate_token(expiration, self.pid.to_string())?)
+        Ok(jwt::JWT::new(secret).generate_token(
+            expiration,
+            self.pid.to_string(),
+            Some(json!({"Roll": "Administrator"})),
+        )?)
     }
 }
 

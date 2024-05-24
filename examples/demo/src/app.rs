@@ -18,7 +18,9 @@ use migration::Migrator;
 use sea_orm::DatabaseConnection;
 
 use crate::{
-    controllers, initializers,
+    controllers,
+    controllers::middlewares,
+    initializers,
     models::_entities::{notes, users},
     tasks,
     workers::downloader::DownloadWorker,
@@ -58,14 +60,19 @@ impl Hooks for App {
         Ok(initializers)
     }
 
-    fn routes(_ctx: &AppContext) -> AppRoutes {
+    fn routes(ctx: &AppContext) -> AppRoutes {
         AppRoutes::with_default_routes()
+            .add_route(
+                controllers::mylayer::routes(ctx.clone())
+                    .layer(middlewares::routes::role::RoleRouteLayer::new(ctx.clone())),
+            )
             .add_route(controllers::notes::routes())
             .add_route(controllers::auth::routes())
             .add_route(controllers::mysession::routes())
             .add_route(controllers::dashboard::routes())
             .add_route(controllers::user::routes())
             .add_route(controllers::upload::routes())
+            .add_route(controllers::responses::routes())
     }
 
     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
