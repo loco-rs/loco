@@ -121,13 +121,13 @@ Next, try adding a `post` with `curl`:
 $ curl -X POST -H "Content-Type: application/json" -d '{
   "title": "Your Title",
   "content": "Your Content xxx"
-}' localhost:3000/api/posts
+}' localhost:3000/posts
 ```
 
 You can list your posts:
 
 ```sh
-$ curl localhost:3000/api/posts
+$ curl localhost:3000/posts
 ```
 
 For those counting -- the commands for creating a blog backend were:
