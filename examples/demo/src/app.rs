@@ -5,7 +5,7 @@ use loco_extras;
 use loco_rs::{
     app::{AppContext, Hooks, Initializer},
     boot::{create_app, BootResult, StartMode},
-    config::Config,
+    cache,
     controller::AppRoutes,
     db::{self, truncate_table},
     environment::Environment,
@@ -73,24 +73,27 @@ impl Hooks for App {
             .add_route(controllers::user::routes())
             .add_route(controllers::upload::routes())
             .add_route(controllers::responses::routes())
+            .add_route(controllers::cache::routes())
     }
 
     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
         create_app::<Self, Migrator>(mode, environment).await
     }
 
-    async fn storage(
-        _config: &Config,
-        environment: &Environment,
-    ) -> Result<Option<storage::Storage>> {
-        let store = if environment == &Environment::Test {
+    async fn after_context(ctx: AppContext) -> Result<AppContext> {
+        let store = if ctx.environment == Environment::Test {
             storage::drivers::mem::new()
         } else {
             storage::drivers::local::new_with_prefix("storage-uploads").map_err(Box::from)?
         };
 
-        let storage = Storage::single(store);
-        return Ok(Some(storage));
+        Ok(AppContext {
+            storage: Storage::single(store).into(),
+            cache: cache::Cache::new(cache::drivers::inmem::new()).into(),
+            ..ctx
+        })
+
+        // Ok(ctx)
     }
 
     fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {

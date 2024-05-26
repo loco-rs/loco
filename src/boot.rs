@@ -1,7 +1,7 @@
 //! # Application Bootstrapping and Logic
 //! This module contains functions and structures for bootstrapping and running
 //! your application.
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
 
 use axum::Router;
 #[cfg(feature = "with-db")]
@@ -13,12 +13,14 @@ use crate::db;
 use crate::{
     app::{AppContext, Hooks},
     banner::print_banner,
+    cache,
     config::{self, Config},
     controller::ListRoutes,
     environment::Environment,
     errors::Error,
     mailer::{EmailSender, MailerWorker},
     redis,
+    storage::{self, Storage},
     task::Tasks,
     worker::{self, AppWorker, Pool, Processor, RedisConnectionManager, DEFAULT_QUEUES},
     Result,
@@ -199,15 +201,19 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
     };
 
     let redis = connect_redis(&config).await;
-    Ok(AppContext {
+
+    let ctx = AppContext {
         environment: environment.clone(),
         #[cfg(feature = "with-db")]
         db,
         redis,
-        storage: H::storage(&config, environment).await?.map(Arc::new),
+        storage: Storage::single(storage::drivers::null::new()).into(),
+        cache: cache::Cache::new(cache::drivers::null::new()).into(),
         config,
         mailer,
-    })
+    };
+
+    H::after_context(ctx).await
 }
 
 #[cfg(feature = "with-db")]

@@ -25,17 +25,17 @@ By default, in-memory and disk storage come out of the box. To work with cloud p
 - `storage_gcp`
 - `all_storage`
 
+By default loco initialize a `Null` provider, meaning any work with the storage will return an error. 
+
 ## Setup
 
-Add the `storage` function as a Hook in the `app.rs` file and import the `storage` module from `loco_rs`.
+Add the `after_context` function as a Hook in the `app.rs` file and import the `storage` module from `loco_rs`.
 
 ```rust
 use loco_rs::storage;
 
-impl Hooks for App {
-    async fn storage(_config: &Config, environment: &Environment) -> Result<Option<storage::Storage>> {
-        return Ok(None);
-    }
+async fn after_context(ctx: AppContext) -> Result<AppContext> {
+    Ok(ctx)
 }
 ```
 
@@ -59,13 +59,13 @@ In this example, we initialize the in-memory driver and create a new storage wit
 
 ```rust
 use loco_rs::storage;
-async fn storage(
-        _config: &Config,
-        environment: &Environment,
-    ) -> Result<Option<storage::Storage>> {
-        let storage = Storage::single(storage::drivers::mem::new());
-        return Ok(Some(storage));
-    }
+
+async fn after_context(ctx: AppContext) -> Result<AppContext> {
+    Ok(AppContext {
+        storage: Storage::single(storage::drivers::mem::new()).into(),
+        ..ctx
+    })
+}
 ```
 
 ### Multiple Drivers
@@ -175,11 +175,7 @@ async fn upload_file(
         })?;
 
         let path = PathBuf::from("folder").join(file_name);
-        ctx.storage
-            .as_ref()
-            .unwrap()
-            .upload(path.as_path(), &content)
-            .await?;
+        ctx.storage.as_ref().upload(path.as_path(), &content).await?;
 
         file = Some(path);
     }
@@ -209,7 +205,7 @@ async fn can_register() {
 
         let res: views::upload::Response = serde_json::from_str(&response.text()).unwrap();
 
-        let stored_file: String = ctx.storage.unwrap().download(&res.path).await.unwrap();
+        let stored_file: String = ctx.storage.as_ref().download(&res.path).await.unwrap();
 
         assert_eq!(stored_file, file_content);
     })
