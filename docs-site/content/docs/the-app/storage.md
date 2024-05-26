@@ -61,9 +61,10 @@ In this example, we initialize the in-memory driver and create a new storage wit
 use loco_rs::storage;
 
 async fn after_context(ctx: AppContext) -> Result<AppContext> {
-    let mut ctx = ctx.clone()
-    ctx.storage = Storage::single(storage::drivers::mem::new()).into();
-    Ok(ctx)
+    Ok(AppContext {
+        storage: Storage::single(storage::drivers::mem::new()).into(),
+        ..ctx
+    })
 }
 ```
 

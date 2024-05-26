@@ -81,16 +81,19 @@ impl Hooks for App {
     }
 
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
-        let mut ctx = ctx.clone();
         let store = if ctx.environment == Environment::Test {
             storage::drivers::mem::new()
         } else {
             storage::drivers::local::new_with_prefix("storage-uploads").map_err(Box::from)?
         };
-        ctx.storage = Storage::single(store).into();
-        ctx.cache = cache::Cache::new(cache::drivers::inmem::new()).into();
 
-        Ok(ctx)
+        Ok(AppContext {
+            storage: Storage::single(store).into(),
+            cache: cache::Cache::new(cache::drivers::inmem::new()).into(),
+            ..ctx
+        })
+
+        // Ok(ctx)
     }
 
     fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {

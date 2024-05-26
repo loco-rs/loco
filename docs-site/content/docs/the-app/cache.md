@@ -33,8 +33,9 @@ Here's an example using an in-memory cache driver:
 use loco_rs::cache;
 
 async fn after_context(ctx: AppContext) -> Result<AppContext> {
-    let mut ctx = ctx.clone()
-    ctx.cache = cache::Cache::new(cache::drivers::inmem::new()).into();
-    Ok(ctx)
+    Ok(AppContext {
+        cache: cache::Cache::new(cache::drivers::inmem::new()).into(),
+        ..ctx
+    })
 }
 ```

@@ -158,26 +158,6 @@ pub trait Hooks {
     /// Defines the application's routing configuration.
     fn routes(_ctx: &AppContext) -> AppRoutes;
 
-    // Provides a default null storage implementation for the application.
-    ///
-    /// This function returns a [`Storage`] instance that always returns errors.
-    /// It simplifies user workflow by avoiding the need for feature flags or
-    /// configuring a specific storage driver during development or testing.
-    async fn storage(_config: &config::Config, _environment: &Environment) -> Result<Storage> {
-        let storage = Storage::single(storage::drivers::null::new());
-        Ok(storage)
-    }
-
-    /// Provides a default null cache implementation for the application.
-    ///
-    /// This function returns a [`Cache`] instance that always returns
-    /// errors. It simplifies user workflow by avoiding the need for feature
-    /// flags or optional cache driver configurations during development or
-    /// testing.
-    async fn cache(_config: &config::Config, _environment: &Environment) -> Result<Cache> {
-        Ok(cache::Cache::new(cache::drivers::null::new()))
-    }
-
     // Provides the options to change Loco [`AppContext`] after initialization.
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
         Ok(ctx)
