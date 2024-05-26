@@ -81,19 +81,16 @@ impl Hooks for App {
         create_app::<Self, Migrator>(mode, environment).await
     }
 
-    async fn storage(_config: &Config, environment: &Environment) -> Result<storage::Storage> {
-        let store = if environment == &Environment::Test {
+    async fn override_context(mut ctx: AppContext) -> Result<AppContext> {
+        let store = if ctx.environment == Environment::Test {
             storage::drivers::mem::new()
         } else {
             storage::drivers::local::new_with_prefix("storage-uploads").map_err(Box::from)?
         };
+        ctx.storage = Storage::single(store).into();
+        ctx.cache = cache::Cache::new(cache::drivers::inmem::new()).into();
 
-        let storage = Storage::single(store);
-        return Ok(storage);
-    }
-
-    async fn cache(_config: &Config, _environment: &Environment) -> Result<cache::Cache> {
-        Ok(cache::Cache::new(cache::drivers::inmem::new()))
+        Ok(ctx)
     }
 
     fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {

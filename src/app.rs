@@ -178,6 +178,12 @@ pub trait Hooks {
         Ok(cache::Cache::new(cache::drivers::null::new()))
     }
 
+    // Provides the options to override app context.
+    #[warn(unused_mut)]
+    async fn override_context(mut ctx: AppContext) -> Result<AppContext> {
+        Ok(ctx)
+    }
+
     #[cfg(feature = "channels")]
     /// Register channels endpoints to the application routers
     fn register_channels(_ctx: &AppContext) -> AppChannels;
