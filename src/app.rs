@@ -179,7 +179,7 @@ pub trait Hooks {
     }
 
     // Provides the options to override app context.
-    #[warn(unused_mut)]
+    #[allow(unused_mut)]
     async fn override_context(mut ctx: AppContext) -> Result<AppContext> {
         Ok(ctx)
     }
