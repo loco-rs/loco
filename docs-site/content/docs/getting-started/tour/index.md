@@ -19,73 +19,78 @@ flair =[]
 <br/>
 Let's create a blog backend on `loco` in 4 commands. First install `loco-cli` and `sea-orm-cli`:
 
-```sh
-$ cargo install loco-cli
-$ cargo install sea-orm-cli
-```
+<!-- <snip id="quickstart" inject_from="code" strip_prefix="//!"> -->
+ ```sh
+ $ cargo install loco-cli
+ $ cargo install sea-orm-cli # Only when DB is needed
+ ```
 
-Now you can create your new app (choose "SaaS app").
+ Now you can create your new app (choose "SaaS app").
 
-```sh
-$ loco new
-✔ ❯ App name? · myapp
-? ❯ What would you like to build? ›
-  lightweight-service (minimal, only controllers and views)
-  Rest API (with DB and user auth)
-❯ SaaS app (with DB and user auth)
-🚂 Loco app generated successfully in:
-myapp
-```
+ ```sh
+ $ loco new
+ ✔ ❯ App name? · myapp
+ ? ❯ What would you like to build? ›
+   lightweight-service (minimal, only controllers and views)
+   Rest API (with DB and user auth)
+ ❯ SaaS app (with DB and user auth)
+ 🚂 Loco app generated successfully in:
+ myapp
+ ```
 
-<div class="infobox">
-To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named is the [insert app]_development.
-</div>
+ <div class="infobox">
+ To configure a database , please run a local postgres database with
+ <code>loco:loco</code> and a db named is the [insert app]_development.
+ </div>
 
-You can use Docker to run a Postgres instance:
+ You can use Docker to run a Postgres instance:
 
-When generating a starter, the database name incorporates your application name and the environment. For instance, if you include `myapp`, the database name in the `test.yaml`configuration will be `myapp_test`, and in the `development.yaml` configuration, it will be `myapp_development`.
+ When generating a starter, the database name incorporates your application
+ name and the environment. For instance, if you include `myapp`, the database
+ name in the `test.yaml`configuration will be `myapp_test`, and in the
+ `development.yaml` configuration, it will be `myapp_development`.
 
-```
-$ docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=myapp_development -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine
-```
 
-A more advanced set of `docker-compose.yml` and `Dockerfiles` that include Redis and the `mailtutan` mailer are available for [each starter on GitHub](https://github.com/loco-rs/loco/blob/master/starters/saas/.devcontainer/docker-compose.yml).
 
-Now `cd` into your `myapp` and start your app:
+ A more advanced set of `docker-compose.yml` and `Dockerfiles` that include Redis and the `mailtutan` mailer are available for [each starter on GitHub](https://github.com/loco-rs/loco/blob/master/starters/saas/.devcontainer/docker-compose.yml).
 
-```
-$ cd myapp
-$ cargo loco start
-Finished dev [unoptimized + debuginfo] target(s) in 21.63s
-    Running `target/debug/myapp start`
+ Now `cd` into your `myapp` and start your app:
 
-    :
-    :
-    :
+ ```
+ $ cd myapp
+ $ cargo loco start
+ Finished dev [unoptimized + debuginfo] target(s) in 21.63s
+     Running `target/debug/myapp start`
 
-controller/app_routes.rs:203: [Middleware] Adding log trace id
+     :
+     :
+     :
 
-                      ▄     ▀
-                                 ▀  ▄
-                  ▄       ▀     ▄  ▄ ▄▀
-                                    ▄ ▀▄▄
-                        ▄     ▀    ▀  ▀▄▀█▄
-                                          ▀█▄
-▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄   ▄▄▄▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄▄ ▀▀█
- ██████  █████   ███ █████   ███ █████   ███ ▀█
- ██████  █████   ███ █████   ▀▀▀ █████   ███ ▄█▄
- ██████  █████   ███ █████       █████   ███ ████▄
- ██████  █████   ███ █████   ▄▄▄ █████   ███ █████
- ██████  █████   ███  ████   ███ █████   ███ ████▀
-   ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
-       ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+ controller/app_routes.rs:203: [Middleware] Adding log trace id
 
-started on port 3000
-```
+                       ▄     ▀
+                                  ▀  ▄
+                   ▄       ▀     ▄  ▄ ▄▀
+                                     ▄ ▀▄▄
+                         ▄     ▀    ▀  ▀▄▀█▄
+                                           ▀█▄
+ ▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄   ▄▄▄▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄▄ ▀▀█
+  ██████  █████   ███ █████   ███ █████   ███ ▀█
+  ██████  █████   ███ █████   ▀▀▀ █████   ███ ▄█▄
+  ██████  █████   ███ █████       █████   ███ ████▄
+  ██████  █████   ███ █████   ▄▄▄ █████   ███ █████
+  ██████  █████   ███  ████   ███ █████   ███ ████▀
+    ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
+        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
 
-<div class="infobox">
-You don't have to run things through `cargo` but in development it's highly recommended. If you build `--release`, your binary contains everything including your code and `cargo` or Rust is not needed.
-</div>
+ started on port 3000
+ ```
+
+ <div class="infobox">
+ You don't have to run things through `cargo` but in development it's highly
+ recommended. If you build `--release`, your binary contains everything
+ including your code and `cargo` or Rust is not needed. </div>
+<!-- </snip> -->
 
 ## Adding a CRUD API
 
