@@ -16,12 +16,12 @@ use axum::Router as AxumRouter;
 use crate::controller::channels::AppChannels;
 use crate::{
     boot::{BootResult, ServeParams, StartMode},
-    cache::{self, Cache},
+    cache::{self},
     config::{self, Config},
     controller::AppRoutes,
     environment::Environment,
     mailer::EmailSender,
-    storage::{self, Storage},
+    storage::Storage,
     task::Tasks,
     worker::{Pool, Processor, RedisConnectionManager},
     Result,
