@@ -29,12 +29,12 @@ By default loco initialize a `Null` provider, meaning any work with the storage 
 
 ## Setup
 
-Add the `override_context` function as a Hook in the `app.rs` file and import the `storage` module from `loco_rs`.
+Add the `after_context` function as a Hook in the `app.rs` file and import the `storage` module from `loco_rs`.
 
 ```rust
 use loco_rs::storage;
 
-async fn override_context(mut ctx: AppContext) -> Result<AppContext> {
+async fn after_context(ctx: AppContext) -> Result<AppContext> {
     Ok(ctx)
 }
 ```
@@ -60,7 +60,8 @@ In this example, we initialize the in-memory driver and create a new storage wit
 ```rust
 use loco_rs::storage;
 
-async fn override_context(mut ctx: AppContext) -> Result<AppContext> {
+async fn after_context(ctx: AppContext) -> Result<AppContext> {
+    let mut ctx = ctx.clone()
     ctx.storage = Storage::single(storage::drivers::mem::new()).into();
     Ok(ctx)
 }

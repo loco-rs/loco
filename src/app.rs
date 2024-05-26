@@ -178,9 +178,8 @@ pub trait Hooks {
         Ok(cache::Cache::new(cache::drivers::null::new()))
     }
 
-    // Provides the options to override app context.
-    #[allow(unused_mut)]
-    async fn override_context(mut ctx: AppContext) -> Result<AppContext> {
+    // Provides the options to change Loco [`AppContext`] after initialization.
+    async fn after_context(ctx: AppContext) -> Result<AppContext> {
         Ok(ctx)
     }
 

@@ -213,7 +213,7 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
         mailer,
     };
 
-    H::override_context(ctx).await
+    H::after_context(ctx).await
 }
 
 #[cfg(feature = "with-db")]

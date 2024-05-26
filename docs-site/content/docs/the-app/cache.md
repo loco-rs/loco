@@ -25,14 +25,15 @@ By default, `Loco` initializes a `Null` cache driver. This means any interaction
 
 To enable caching and configure a specific cache driver, you can replace the default `Null` driver with your preferred implementation.
 
-In your `app.rs` file, define a function named `override_context` function as a Hook in the `app.rs` file and import the `cache` module from `loco_rs`. 
+In your `app.rs` file, define a function named `after_context` function as a Hook in the `app.rs` file and import the `cache` module from `loco_rs`. 
 
 Here's an example using an in-memory cache driver:
 
 ```rust
 use loco_rs::cache;
 
-async fn override_context(mut ctx: AppContext) -> Result<AppContext> {
+async fn after_context(ctx: AppContext) -> Result<AppContext> {
+    let mut ctx = ctx.clone()
     ctx.cache = cache::Cache::new(cache::drivers::inmem::new()).into();
     Ok(ctx)
 }

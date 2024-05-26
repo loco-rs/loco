@@ -6,7 +6,6 @@ use loco_rs::{
     app::{AppContext, Hooks, Initializer},
     boot::{create_app, BootResult, StartMode},
     cache,
-    config::Config,
     controller::AppRoutes,
     db::{self, truncate_table},
     environment::Environment,
@@ -81,7 +80,8 @@ impl Hooks for App {
         create_app::<Self, Migrator>(mode, environment).await
     }
 
-    async fn override_context(mut ctx: AppContext) -> Result<AppContext> {
+    async fn after_context(ctx: AppContext) -> Result<AppContext> {
+        let mut ctx = ctx.clone();
         let store = if ctx.environment == Environment::Test {
             storage::drivers::mem::new()
         } else {
