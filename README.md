@@ -23,7 +23,7 @@
  $ cargo install sea-orm-cli # Only when DB is needed
  ```
 
- Now you can create your new app (choose "SaaS app").
+ Now you can create your new app (choose "`SaaS` app").
 
  ```sh
  $ loco new
@@ -91,7 +91,7 @@
 
  ## Project Status
  + Stateless APIs
- + Complete SaaS products with user authentication
+ + Complete `SaaS` products with user authentication
  + Purpose-built services such as ML inference endpoints
  + Full stack projects with separate frontend project integrated with Loco
  + Hobby projects full-stack with backend and HTML frontend

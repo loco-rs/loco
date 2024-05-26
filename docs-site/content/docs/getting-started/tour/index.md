@@ -25,7 +25,7 @@ Let's create a blog backend on `loco` in 4 commands. First install `loco-cli` an
  $ cargo install sea-orm-cli # Only when DB is needed
  ```
 
- Now you can create your new app (choose "SaaS app").
+ Now you can create your new app (choose "`SaaS` app").
 
  ```sh
  $ loco new
