@@ -41,8 +41,8 @@ pub struct AppContext {
     #[cfg(feature = "with-db")]
     /// A database connection used by the application.    
     pub db: DatabaseConnection,
-    /// An optional connection pool for Redis, for worker tasks
-    pub redis: Option<Pool<RedisConnectionManager>>,
+    /// An optional connection pool for Queue, for worker tasks
+    pub queue: Option<Pool<RedisConnectionManager>>,
     /// Configuration settings for the application
     pub config: Config,
     /// An optional email sender component that can be used to send email.
