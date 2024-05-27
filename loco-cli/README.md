@@ -33,5 +33,7 @@ When working with loco-cli against the local Loco repository, you can utilize th
 
 ```sh
 cd loco-cli
-$ LOCO_DEBUG_PATH=[FULL_PATH]/loco-rs/loco  cargo run new --path /tmp
+export LOCO_DEBUG_PATH=[FULL_PATH]/loco
+loco new
+...
 ```
