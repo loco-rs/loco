@@ -1,30 +1,7 @@
 #![allow(clippy::missing_const_for_fn)]
 #![allow(clippy::module_name_repetitions)]
-//! ## Starting A New Project
-//!
-//! To start a new project, you can use cargo-generate:
-//!
-//! ```sh
-//! cargo install loco-cli
-//! ❯ loco new
-//! ✔ ❯ App name? · myapp
-//! ? ❯ What would you like to build? ›
-//! ❯ lightweight-service (minimal, only controllers and views)
-//!   Rest API (with DB and user auth)
-//!   SaaS app (with DB and user auth)
-//! ```
-//!
-//! ## Available Features
-//!
-//! To avoid compiling unused dependencies, loco gates certain features.
-//!
-//! | Feature    | Default | Description                 |
-//! |------------|---------|-----------------------------|
-//! | `auth_jwt` | true    | Enable user authentication. |
-//! | `cli`      | true    | Expose Cli commands.        |
-//! | `testing   | false   | Test Utilities Module.      |
-//! | `with-db`  | true    | with-db.                    |
-//! | `channels` | false   | Enable socket channels.     |
+#![doc = include_str!("../README.md")]
+
 pub use self::errors::Error;
 
 mod banner;

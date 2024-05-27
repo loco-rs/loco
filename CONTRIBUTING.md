@@ -64,9 +64,19 @@ In case of cli changes we snapshot the binary commands. in case of changes run t
 LOCO_CI_MODE=true TRYCMD=overwrite cargo test
 ```
 
-## Running Docs website
-The documentation website based on [zola](https://www.getzola.org/), and you can see the docs [here](./docs-site/).
-then cd to `docs-site` and run `zola serve`
+## Docs
+
+The documentation consists of two main components:
+
++ The [loco.rs website](https://loco.rs) with its source code available [here](./docs-site/).
++ RustDocs.
+
+To reduce duplication in documentation and examples, we use [snipdoc](https://github.com/kaplanelad/snipdoc). As part of our CI process, we ensure that the documentation remains consistent.
+
+Updating the Documentation
++ Download [snipdoc](https://github.com/kaplanelad/snipdoc).
++ Create the snippet in the [yaml file](./snipdoc.yml) or inline the code.
++ Run `snipdoc run`.
 
 
 ## Open A Pull Request
