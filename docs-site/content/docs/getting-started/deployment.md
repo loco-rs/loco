@@ -17,7 +17,7 @@ Deployment is super simple in Loco, and this is why this guide is super short. A
 
 To deploy, build your production binary for your relevant server architecture:
 
-<!-- <snip id="loco-build-command" inject_from="yaml"> -->
+<!-- <snip id="build-command" inject_from="yaml"> -->
 ```sh
 cargo build --release
 ```
@@ -35,7 +35,7 @@ There are a few configuration sections that are important to review and set acco
 
 - Logger:
 
-<!-- <snip id="loco-configuration-logger" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
+<!-- <snip id="configuration-logger" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
 ```yaml 
  # Application logging configuration
 logger:
@@ -55,7 +55,7 @@ logger:
  
 
 - Server:
-<!-- <snip id="loco-configuration-server" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
+<!-- <snip id="configuration-server" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
 ```yaml 
  server:
   # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
@@ -68,7 +68,7 @@ logger:
 
 
 - Database:
-<!-- <snip id="loco-configuration-database" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
+<!-- <snip id="configuration-database" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
 ```yaml 
  database:
   # Database connection URI
@@ -94,7 +94,7 @@ logger:
 
 
 - Mailer:
-<!-- <snip id="loco-configuration-mailer" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
+<!-- <snip id="configuration-mailer" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
 ```yaml 
  mailer:
   # SMTP mailer configuration.
@@ -114,7 +114,7 @@ logger:
 <!-- </snip>-->
 
 - Queue:
-<!-- <snip id="loco-configuration-queue" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
+<!-- <snip id="configuration-queue" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
 ```yaml 
  queue:
   # Redis connection URI
@@ -125,7 +125,7 @@ logger:
 <!-- </snip>-->
 
 - JWT secret:
-<!-- <snip id="loco-configuration-auth" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
+<!-- <snip id="configuration-auth" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
 ```yaml 
  auth:
   # JWT authentication

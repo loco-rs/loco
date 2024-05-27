@@ -1,21 +1,18 @@
 snippets:
   description:
     content: 🚂 Loco is Rust on Rails.
-    kind: Yaml
     path: ./snipdoc.yml
-  loco-help-command:
+  help-command:
     content: |-
       ```sh
       cargo loco --help
       ```
-    kind: Yaml
     path: ./snipdoc.yml
-  loco-build-command:
+  build-command:
     content: |-
       ```sh
       cargo build --release
       ```
-    kind: Yaml
     path: ./snipdoc.yml
   quick-installation-command:
     content: |-
@@ -23,7 +20,6 @@ snippets:
       cargo install loco-cli
       cargo install sea-orm-cli # Only when DB is needed
       ```
-    kind: Yaml
     path: ./snipdoc.yml
   loco-cli-new-from-template:
     content: |-
@@ -35,7 +31,6 @@ snippets:
       🚂 Loco app generated successfully in:
       myapp
       ```
-    kind: Yaml
     path: ./snipdoc.yml
   postgres-run-docker-command:
     content: |-
@@ -46,28 +41,24 @@ snippets:
         -e POSTGRES_PASSWORD="loco" \
         postgres:15.3-alpine
       ```
-    kind: Yaml
     path: ./snipdoc.yml
   redis-run-docker-command:
     content: |-
       ```sh
       docker run -p 6379:6379 -d redis redis-server
       ```
-    kind: Yaml
     path: ./snipdoc.yml
   starting-the-server-command:
     content: |-
       ```sh
       cargo loco start
       ```
-    kind: Yaml
     path: ./snipdoc.yml
   starting-the-server-command-with-environment-env-var:
     content: |-
       ```sh
       LOCO_ENV=qa cargo loco start
       ```
-    kind: Yaml
     path: ./snipdoc.yml
   starting-the-server-command-with-output:
     content: |-
@@ -92,7 +83,6 @@ snippets:
 
       listening on port 3000
       ```
-    kind: Yaml
     path: ./snipdoc.yml
   doctor-command:
     content: |-
@@ -104,7 +94,6 @@ snippets:
       ✅ DB connection: success
       ✅ Redis connection: success
       ```
-    kind: Yaml
     path: ./snipdoc.yml
   generate-deployment-command:
     content: |-
@@ -120,5 +109,4 @@ snippets:
       skipped (exists): "dockerfile"
       added: ".dockerignore"
       ```
-    kind: Yaml
     path: ./snipdoc.yml

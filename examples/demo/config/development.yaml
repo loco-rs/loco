@@ -1,13 +1,13 @@
 # Loco configuration file documentation
 
-# <snip id="loco-configuration-settings">
+# <snip id="configuration-settings">
 settings:
   allow_list:
     - google.com
     - apple.com
 # </snip>
 
-# <snip id="loco-configuration-logger">
+# <snip id="configuration-logger">
 # Application logging configuration
 logger:
   # Enable or disable logging.
@@ -24,7 +24,7 @@ logger:
 # </snip>
 
 # Web server configuration
-# <snip id="loco-configuration-server">
+# <snip id="configuration-server">
 server:
   # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
   port: {{get_env(name="NODE_PORT", default=3000)}}
@@ -86,7 +86,7 @@ workers:
   mode: BackgroundQueue
 
 # Mailer Configuration.
-# <snip id="loco-configuration-mailer">
+# <snip id="configuration-mailer">
 mailer:
   # SMTP mailer configuration.
   smtp:
@@ -112,7 +112,7 @@ mailer:
 
 
 # Database Configuration
-# <snip id="loco-configuration-database">
+# <snip id="configuration-database">
 database:
   # Database connection URI
   uri: {{get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app")}}
@@ -135,7 +135,7 @@ database:
 # </snip>
 
 # Queue Configuration
-# <snip id="loco-configuration-queue">
+# <snip id="configuration-queue">
 queue:
   # Redis connection URI
   uri: {{get_env(name="REDIS_URL", default="redis://127.0.0.1")}}
@@ -144,7 +144,7 @@ queue:
 # </snip>
 
 # Authentication Configuration
-# <snip id="loco-configuration-auth">
+# <snip id="configuration-auth">
 auth:
   # JWT authentication
   jwt:

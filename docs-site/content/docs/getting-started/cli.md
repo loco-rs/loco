@@ -29,7 +29,7 @@ myapp
 
 Now `cd` into your app, set up a convenience `rr` alias and try out the various commands:
 
-<!-- <snip id="loco-help-command" inject_from="yaml"> -->
+<!-- <snip id="help-command" inject_from="yaml"> -->
 ```sh
 cargo loco --help
 ```

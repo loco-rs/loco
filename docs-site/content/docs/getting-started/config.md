@@ -70,7 +70,7 @@ LOCO_ENV=qa cargo loco start
 ## Settings
 
 The configuration files contain knobs to set up your Loco app. You can also have your custom settings, with the `settings:` section. in `config/development.yaml` add the `settings:` section
-<!-- <snip id="loco-configuration-settings" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
+<!-- <snip id="configuration-settings" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
 ```yaml 
  settings:
   allow_list:
