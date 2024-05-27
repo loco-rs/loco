@@ -1,10 +1,13 @@
 # Loco configuration file documentation
 
+# <snip id="loco-configuration-settings">
 settings:
   allow_list:
     - google.com
     - apple.com
+# </snip>
 
+# <snip id="loco-configuration-logger">
 # Application logging configuration
 logger:
   # Enable or disable logging.
@@ -18,14 +21,17 @@ logger:
   # By default the logger has filtering only logs that came from your code or logs that came from `loco` framework. to see all third party libraries
   # Uncomment the line below to override to see all third party libraries you can enable this config and override the logger filters.
   # override_filter: trace
+# </snip>
 
 # Web server configuration
+# <snip id="loco-configuration-server">
 server:
   # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
   port: {{get_env(name="NODE_PORT", default=3000)}}
   # The UI hostname or IP address that mailers will point to.
   host: http://localhost
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
+# </snip>
   middlewares:
     # Allows to limit the payload size request. payload that bigger than this file will blocked the request.
     limit_payload:
@@ -80,6 +86,7 @@ workers:
   mode: BackgroundQueue
 
 # Mailer Configuration.
+# <snip id="loco-configuration-mailer">
 mailer:
   # SMTP mailer configuration.
   smtp:
@@ -94,6 +101,7 @@ mailer:
     # auth:
     #   user:
     #   password:
+# </snip>
 
 # Initializers Configuration
 # initializers:
@@ -104,6 +112,7 @@ mailer:
 
 
 # Database Configuration
+# <snip id="loco-configuration-database">
 database:
   # Database connection URI
   uri: {{get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app")}}
@@ -123,15 +132,19 @@ database:
   dangerously_truncate: false
   # Recreating schema when application loaded.  This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_recreate: false
+# </snip>
 
 # Redis Configuration
+# <snip id="loco-configuration-queue">
 redis:
   # Redis connection URI
   uri: {{get_env(name="REDIS_URL", default="redis://127.0.0.1")}}
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_flush: false
+# </snip>
 
 # Authentication Configuration
+# <snip id="loco-configuration-auth">
 auth:
   # JWT authentication
   jwt:
@@ -139,3 +152,5 @@ auth:
     secret: PqRwLF2rhHe8J22oBeHy
     # Token expiration time in seconds
     expiration: 604800 # 7 days
+# </snip>
+

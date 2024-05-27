@@ -19,11 +19,13 @@ flair =[]
 <br/>
 Let's create a blog backend on `loco` in 4 commands. First install `loco-cli` and `sea-orm-cli`:
 
-<!-- <snip id="quickstart" inject_from="code" strip_prefix="//!"> -->
- ```sh
- $ cargo install loco-cli
- $ cargo install sea-orm-cli # Only when DB is needed
- ```
+<!-- <snip id="quick-installation-command" inject_from="yaml"> -->
+```sh
+cargo install loco-cli
+cargo install sea-orm-cli # Only when DB is needed
+```
+<!-- </snip> -->
+
 
  Now you can create your new app (choose "`SaaS` app").
 
@@ -50,47 +52,50 @@ Let's create a blog backend on `loco` in 4 commands. First install `loco-cli` an
  name in the `test.yaml`configuration will be `myapp_test`, and in the
  `development.yaml` configuration, it will be `myapp_development`.
 
+ <!-- <snip id="postgres-run-docker-command" inject_from="yaml"> -->
+```sh
+docker run -d -p 5432:5432 \
+  -e POSTGRES_USER=loco \
+  -e POSTGRES_DB=myapp_development \
+  -e POSTGRES_PASSWORD="loco" \
+  postgres:15.3-alpine
+```
+<!-- </snip> -->
 
 
  A more advanced set of `docker-compose.yml` and `Dockerfiles` that include Redis and the `mailtutan` mailer are available for [each starter on GitHub](https://github.com/loco-rs/loco/blob/master/starters/saas/.devcontainer/docker-compose.yml).
 
  Now `cd` into your `myapp` and start your app:
 
- ```
- $ cd myapp
- $ cargo loco start
- Finished dev [unoptimized + debuginfo] target(s) in 21.63s
-     Running `target/debug/myapp start`
+<!-- <snip id="starting-the-server-command-with-output" inject_from="yaml"> -->
+```sh
+$ cargo loco start
 
-     :
-     :
-     :
+                      ▄     ▀
+                                ▀  ▄
+                  ▄       ▀     ▄  ▄ ▄▀
+                                    ▄ ▀▄▄
+                        ▄     ▀    ▀  ▀▄▀█▄
+                                          ▀█▄
+▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄   ▄▄▄▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄▄ ▀▀█
+██████  █████   ███ █████   ███ █████   ███ ▀█
+██████  █████   ███ █████   ▀▀▀ █████   ███ ▄█▄
+██████  █████   ███ █████       █████   ███ ████▄
+██████  █████   ███ █████   ▄▄▄ █████   ███ █████
+██████  █████   ███  ████   ███ █████   ███ ████▀
+  ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
+      ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+                https://loco.rs
 
- controller/app_routes.rs:203: [Middleware] Adding log trace id
+listening on port 3000
+```
+<!-- </snip> -->
 
-                       ▄     ▀
-                                  ▀  ▄
-                   ▄       ▀     ▄  ▄ ▄▀
-                                     ▄ ▀▄▄
-                         ▄     ▀    ▀  ▀▄▀█▄
-                                           ▀█▄
- ▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄   ▄▄▄▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄▄ ▀▀█
-  ██████  █████   ███ █████   ███ █████   ███ ▀█
-  ██████  █████   ███ █████   ▀▀▀ █████   ███ ▄█▄
-  ██████  █████   ███ █████       █████   ███ ████▄
-  ██████  █████   ███ █████   ▄▄▄ █████   ███ █████
-  ██████  █████   ███  ████   ███ █████   ███ ████▀
-    ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
-        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
-
- started on port 3000
- ```
 
  <div class="infobox">
  You don't have to run things through `cargo` but in development it's highly
  recommended. If you build `--release`, your binary contains everything
  including your code and `cargo` or Rust is not needed. </div>
-<!-- </snip> -->
 
 ## Adding a CRUD API
 
@@ -115,10 +120,29 @@ injected: "tests/requests/mod.rs"
 Your database have been migrated and model, entities, and a full CRUD controller have been generated automatically.
 
 Start your app:
-
+<!-- <snip id="starting-the-server-command-with-output" inject_from="yaml"> -->
 ```sh
 $ cargo loco start
+
+                      ▄     ▀
+                                ▀  ▄
+                  ▄       ▀     ▄  ▄ ▄▀
+                                    ▄ ▀▄▄
+                        ▄     ▀    ▀  ▀▄▀█▄
+                                          ▀█▄
+▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄   ▄▄▄▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄▄ ▀▀█
+██████  █████   ███ █████   ███ █████   ███ ▀█
+██████  █████   ███ █████   ▀▀▀ █████   ███ ▄█▄
+██████  █████   ███ █████       █████   ███ ████▄
+██████  █████   ███ █████   ▄▄▄ █████   ███ █████
+██████  █████   ███  ████   ███ █████   ███ ████▀
+  ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
+      ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+                https://loco.rs
+
+listening on port 3000
 ```
+<!-- </snip> -->
 
 Next, try adding a `post` with `curl`:
 
@@ -152,20 +176,24 @@ To authenticate, you will need a running redis server.
 
 This docker command starts up a redis server:
 
-```
+<!-- <snip id="redis-run-docker-command" inject_from="yaml"> -->
+```sh
 docker run -p 6379:6379 -d redis redis-server
 ```
+<!-- </snip> -->
 
 Use doctor command to check the needed resources:
 
-```
+<!-- <snip id="doctor-command" inject_from="yaml"> -->
+```sh
 $ cargo loco doctor
     Finished dev [unoptimized + debuginfo] target(s) in 0.32s
-     Running `target/debug/myapp-cli doctor`
+    Running `target/debug/myapp-cli doctor`
 ✅ SeaORM CLI is installed
 ✅ DB connection: success
 ✅ Redis connection: success
 ```
+<!-- </snip> -->
 
 ### Registering a New User
 
