@@ -22,7 +22,7 @@ rust-version.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["auth_jwt", "cli", "with-db"]
+default = ["auth_jwt", "cli", "with-db", "cache_inmem"]
 auth_jwt = ["dep:jsonwebtoken"]
 cli = ["dep:clap"]
 testing = ["dep:axum-test"]
@@ -33,6 +33,8 @@ all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
 storage_aws_s3 = ["object_store/aws"]
 storage_azure = ["object_store/azure"]
 storage_gcp = ["object_store/gcp"]
+# Cache feature
+cache_inmem = ["dep:moka"]
 
 [dependencies]
 
@@ -118,6 +120,9 @@ socketioxide = { version = "0.10.0", features = ["state"], optional = true }
 
 # File Upload
 object_store = { version = "0.9.0", default-features = false }
+
+# cache
+moka = { version = "0.12.7", features = ["sync"], optional = true }
 
 [workspace.dependencies]
 async-trait = { version = "0.1.74" }

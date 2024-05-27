@@ -16,18 +16,24 @@ flair =[]
 
 Create your starter app:
 
-```rust
-$ cargo install loco-cli
-$ loco new
-< follow the guide >
+<!-- <snip id="loco-cli-new-from-template" inject_from="yaml"> -->
+```sh
+❯ loco new
+✔ ❯ App name? · myapp
+✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+
+🚂 Loco app generated successfully in:
+myapp
 ```
+<!-- </snip> -->
 
 Now `cd` into your app, set up a convenience `rr` alias and try out the various commands:
 
+<!-- <snip id="help-command" inject_from="yaml"> -->
+```sh
+cargo loco --help
 ```
-$ cd myapp
-$ cargo loco --help
-```
+<!-- </snip> -->
 
 You can now drive your development through the CLI:
 
@@ -49,9 +55,11 @@ $ cargo test
 
 To run you app, run:
 
+<!-- <snip id="starting-the-server-command" inject_from="yaml"> -->
+```sh
+cargo loco start
 ```
-$ cargo loco start
-```
+<!-- </snip> -->
 
 ## Background workers
 

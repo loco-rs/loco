@@ -43,24 +43,29 @@ You can follow this guide for a step-by-step "bottom up" learning, or you can ju
 
 ### Installing
 
+<!-- <snip id="quick-installation-command" inject_from="yaml"> -->
 ```sh
-$ cargo install loco-cli
+cargo install loco-cli
+cargo install sea-orm-cli # Only when DB is needed
 ```
+<!-- </snip> -->
+
 
 ### Creating a new Loco app
 
 Now you can create your new app (choose "SaaS app" for built-in authentication).
 
+<!-- <snip id="loco-cli-new-from-template" inject_from="yaml"> -->
 ```sh
-$ loco new
+❯ loco new
 ✔ ❯ App name? · myapp
-? ❯ What would you like to build? ›
-  lightweight-service (minimal, only controllers and views)
-  Rest API (with DB and user auth)
-❯ SaaS app (with DB and user auth)
+✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+
 🚂 Loco app generated successfully in:
 myapp
 ```
+<!-- </snip> -->
+
 
 You can now switch to to `myapp`:
 
@@ -79,9 +84,15 @@ To configure a database, please run a local postgres database with <code>loco:lo
 
 This docker command start up postgresql database server.
 
+<!-- <snip id="postgres-run-docker-command" inject_from="yaml"> -->
 ```sh
-docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=myapp_development -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine
+docker run -d -p 5432:5432 \
+  -e POSTGRES_USER=loco \
+  -e POSTGRES_DB=myapp_development \
+  -e POSTGRES_PASSWORD="loco" \
+  postgres:15.3-alpine
 ```
+<!-- </snip> -->
 
 This docker command start up redis server:
 
@@ -91,14 +102,16 @@ docker run -p 6379:6379 -d redis redis-server
 
 Use doctor command to check the needed resources:
 
-```
+<!-- <snip id="doctor-command" inject_from="yaml"> -->
+```sh
 $ cargo loco doctor
     Finished dev [unoptimized + debuginfo] target(s) in 0.32s
-     Running `target/debug/myapp-cli doctor`
+    Running `target/debug/myapp-cli doctor`
 ✅ SeaORM CLI is installed
 ✅ DB connection: success
 ✅ Redis connection: success
 ```
+<!-- </snip> -->
 
 Here's a rundown of what Loco creates for you by default:
 
@@ -125,27 +138,11 @@ Let's get some responses quickly. For this, we need to start up the server.
 
 ### Starting the server
 
+<!-- <snip id="starting-the-server-command" inject_from="yaml"> -->
 ```sh
-$ cargo loco start
-
-                      ▄     ▀
-                                 ▀  ▄
-                  ▄       ▀     ▄  ▄ ▄▀
-                                    ▄ ▀▄▄
-                        ▄     ▀    ▀  ▀▄▀█▄
-                                          ▀█▄
-▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄   ▄▄▄▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄▄ ▀▀█
- ██████  █████   ███ █████   ███ █████   ███ ▀█
- ██████  █████   ███ █████   ▀▀▀ █████   ███ ▄█▄
- ██████  █████   ███ █████       █████   ███ ████▄
- ██████  █████   ███ █████   ▄▄▄ █████   ███ █████
- ██████  █████   ███  ████   ███ █████   ███ ████▀
-   ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
-       ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
-                https://loco.rs
-
-listening on port 3000
+cargo loco start
 ```
+<!-- </snip> -->
 
 And now, let's see that it's alive:
 
@@ -190,7 +187,7 @@ pub async fn echo(req_body: String) -> String {
     req_body
 }
 
-pub async fn hello(State(_ctx): State<AppContext>) -> Result<String> {
+pub async fn hello(State(_ctx): State<AppContext>) -> Result<Response> {
     // do something with context (database, etc)
     format::text("hello")
 }
@@ -205,14 +202,16 @@ pub fn routes() -> Routes {
 
 Start the server:
 
+<!-- <snip id="starting-the-server-command" inject_from="yaml"> -->
 ```sh
-$ cargo loco start
+cargo loco start
 ```
+<!-- </snip> -->
 
 Now, let's test it out:
 
 ```sh
-$ curl localhost:3000/api/guide
+$ curl localhost:3000/guide
 hello
 ```
 
@@ -238,12 +237,12 @@ Next, set up a _hello_ route, this is the contents of `home.rs`:
 use loco_rs::prelude::*;
 
 // _ctx contains your database connection, as well as other app resource that you'll need
-async fn hello(State(_ctx): State<AppContext>) -> Result<String> {
+async fn hello(State(_ctx): State<AppContext>) -> Result<Response> {
     format::text("ola, mundo")
 }
 
 pub fn routes() -> Routes {
-    Routes::new().prefix("api/home").add("/hello", get(hello))
+    Routes::new().prefix("home").add("/hello", get(hello))
 }
 ```
 
@@ -276,14 +275,16 @@ impl Hooks for App {
 
 That's it. Kill the server and bring it up again:
 
+<!-- <snip id="starting-the-server-command" inject_from="yaml"> -->
+```sh
+cargo loco start
 ```
-$ cargo loco start
-```
+<!-- </snip> -->
 
 And hit `/home/hello`:
 
 ```sh
-$ curl localhost:3000/api/home/hello
+$ curl localhost:3000/home/hello
 ola, mundo
 ```
 
@@ -297,7 +298,7 @@ $ cargo loco routes
 [POST] /api/auth/register
 [POST] /api/auth/reset
 [POST] /api/auth/verify
-[GET] /api/home/hello      <---- this is our new route!
+[GET] /home/hello      <---- this is our new route!
 [GET] /api/notes
 [POST] /api/notes
   ..
@@ -523,14 +524,16 @@ pub fn routes() -> Routes {
 
 Now, start the app:
 
+<!-- <snip id="starting-the-server-command" inject_from="yaml"> -->
 ```sh
-$ cargo loco start
+cargo loco start
 ```
+<!-- </snip> -->
 
 And make a request:
 
 ```sh
-$ curl localhost:3000/api/articles
+$ curl localhost:3000/articles
 [{"created_at":"...","updated_at":"...","id":1,"title":"how to build apps in 3 steps","content":"use Loco: https://loco.rs"}]
 ```
 
@@ -628,9 +631,11 @@ The order of the extractors is important, as changing the order of them can lead
 
 You can now test that it works, start the app:
 
+<!-- <snip id="starting-the-server-command" inject_from="yaml"> -->
 ```sh
-$ cargo loco start
+cargo loco start
 ```
+<!-- </snip> -->
 
 Add a new article:
 
@@ -638,14 +643,14 @@ Add a new article:
 $ curl -X POST -H "Content-Type: application/json" -d '{
   "title": "Your Title",
   "content": "Your Content xxx"
-}' localhost:3000/api/articles
+}' localhost:3000/articles
 {"created_at":"...","updated_at":"...","id":2,"title":"Your Title","content":"Your Content xxx"}
 ```
 
 Get a list:
 
 ```sh
-$ curl localhost:3000/api/articles
+$ curl localhost:3000/articles
 [{"created_at":"...","updated_at":"...","id":1,"title":"how to build apps in 3 steps","content":"use Loco: https://loco.rs"},{"created_at":"...","updated_at":"...","id":2,"title":"Your Title","content":"Your Content xxx"}
 ```
 
@@ -752,14 +757,14 @@ Now let's add a comment to Article `1`:
 $ curl -X POST -H "Content-Type: application/json" -d '{
   "content": "this rocks",
   "article_id": 1
-}' localhost:3000/api/comments
+}' localhost:3000/comments
 {"created_at":"...","updated_at":"...","id":4,"content":"this rocks","article_id":1}
 ```
 
 And, fetch the relation:
 
 ```sh
-$ curl localhost:3000/api/articles/1/comments
+$ curl localhost:3000/articles/1/comments
 [{"created_at":"...","updated_at":"...","id":4,"content":"this rocks","article_id":1}]
 ```
 

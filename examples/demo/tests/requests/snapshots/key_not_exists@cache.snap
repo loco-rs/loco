@@ -1,0 +1,8 @@
+---
+source: tests/requests/cache.rs
+expression: "(response.text(), response.status_code())"
+---
+(
+    "{\"value\":null}",
+    200,
+)

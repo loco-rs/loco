@@ -61,27 +61,23 @@ config/
 ```
 
 To run the application using the 'qa' environment, execute the following command:
-
+<!-- <snip id="starting-the-server-command-with-environment-env-var" inject_from="yaml"> -->
+```sh
+LOCO_ENV=qa cargo loco start
 ```
-$ LOCO_ENV=qa cargo loco start
-```
+<!-- </snip> -->
 
 ## Settings
 
-The configuration files contain knobs to set up your Loco app. You can also have your custom settings, with the `settings:` section.
-
-
-```yaml
-# in config/development.yaml
-# add the `settings:` section
-settings:
+The configuration files contain knobs to set up your Loco app. You can also have your custom settings, with the `settings:` section. in `config/development.yaml` add the `settings:` section
+<!-- <snip id="configuration-settings" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
+```yaml 
+ settings:
   allow_list:
     - google.com
-    - apple.com
-
-logger:
-  # ...
-```
+    - apple.com 
+ ```
+<!-- </snip> -->
 
 These setting will appear in `ctx.config.settings` as `serde_json::Value`. You can create your strongly typed settings by adding a struct:
 

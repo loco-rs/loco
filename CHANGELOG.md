@@ -1,6 +1,9 @@
 # Changelog
 
 ## vNext
+* **Braking changes** In the application configuration setting `redis`, change to `queue`. [https://github.com/loco-rs/loco/pull/590](https://github.com/loco-rs/loco/pull/590)
+* **Braking changes** The storage webhook was changed to `after_context` see example [here](https://github.com/loco-rs/loco/pull/570/files#diff-5534e8826fb82e5c7f2587d270a51b48009341e79889d1504e6b63b2f0b652bdR83). [https://github.com/loco-rs/loco/pull/570](https://github.com/loco-rs/loco/pull/570)
+* Adding Cache to app content. [https://github.com/loco-rs/loco/pull/570](https://github.com/loco-rs/loco/pull/570)
 * Apply a layer to a specific handler using `layer` method. [https://github.com/loco-rs/loco/pull/554](https://github.com/loco-rs/loco/pull/554)
 * Add the debug macro to the templates to improve the errors. [https://github.com/loco-rs/loco/pull/547](https://github.com/loco-rs/loco/pull/547)
 * Opentelemetry initializer. [https://github.com/loco-rs/loco/pull/531](https://github.com/loco-rs/loco/pull/531)

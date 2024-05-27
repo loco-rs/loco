@@ -1,0 +1,33 @@
+name: docs
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+env:
+  RUST_TOOLCHAIN: stable
+  TOOLCHAIN_PROFILE: minimal
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: ${{ env.TOOLCHAIN_PROFILE }}
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          override: true
+          components: rustfmt
+      - run: cargo install snipdoc        
+      - run: snipdoc check        
+
+  
