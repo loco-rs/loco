@@ -113,10 +113,10 @@ logger:
  ```
 <!-- </snip>-->
 
-- Redis:
+- Queue:
 <!-- <snip id="loco-configuration-queue" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
 ```yaml 
- redis:
+ queue:
   # Redis connection URI
   uri: {{get_env(name="REDIS_URL", default="redis://127.0.0.1")}}
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
