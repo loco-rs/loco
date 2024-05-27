@@ -84,10 +84,10 @@ impl From<ModelValidationErrors> for DbErr {
 #[cfg(feature = "with-db")]
 #[must_use]
 pub fn into_db_error(errors: &ModelValidationErrors) -> sea_orm::DbErr {
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     let errors = &errors.0;
-    let error_data: HashMap<String, Vec<ModelValidationMessage>> = errors
+    let error_data: BTreeMap<String, Vec<ModelValidationMessage>> = errors
         .field_errors()
         .iter()
         .map(|(field, field_errors)| {
