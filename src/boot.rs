@@ -241,8 +241,8 @@ pub async fn create_app<H: Hooks>(
 ) -> Result<BootResult> {
     let app_context = create_context::<H>(environment).await?;
 
-    if let Some(pool) = &app_context.redis {
-        redis::converge(pool, &app_context.config.redis).await?;
+    if let Some(pool) = &app_context.queue {
+        redis::converge(pool, &app_context.config.queue).await?;
     }
 
     run_app::<H>(&mode, app_context).await
