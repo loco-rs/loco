@@ -9,7 +9,7 @@
 * Opentelemetry initializer. [https://github.com/loco-rs/loco/pull/531](https://github.com/loco-rs/loco/pull/531)
 * Refactor auth middleware for supporting bearer, cookie and query [https://github.com/loco-rs/loco/pull/560](https://github.com/loco-rs/loco/pull/560)
 * Add redirect response [https://github.com/loco-rs/loco/pull/563](https://github.com/loco-rs/loco/pull/563)
-* **Breaking changes** Adding a custom claims Option<serde_json::Value> to the UserClaims struct (type changed). [https://github.com/loco-rs/loco/pull/578](https://github.com/loco-rs/loco/pull/578)
+* **Breaking changes** Adding a custom claims `Option<serde_json::Value>` to the `UserClaims` struct (type changed). [https://github.com/loco-rs/loco/pull/578](https://github.com/loco-rs/loco/pull/578)
 * **Breaking changes** Refactored DSL and Pagination: namespace changes. [https://github.com/loco-rs/loco/pull/566](https://github.com/loco-rs/loco/pull/566)
   * Replaced `model::query::dsl::` with `model::query`.
   * Replaced `model::query::exec::paginate` with `model::query::paginate`.
