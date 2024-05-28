@@ -1,6 +1,8 @@
 # Changelog
 
 ## vNext
+* refactor auth middleware for supporting bearer, cookie and query. [https://github.com/loco-rs/loco/pull/560](https://github.com/loco-rs/loco/pull/560)
+* SeaORM rc4 upgrade tracking PR. [https://github.com/loco-rs/loco/pull/585](https://github.com/loco-rs/loco/pull/585)
 * **Braking changes** In the application configuration setting `redis`, change to `queue`. [https://github.com/loco-rs/loco/pull/590](https://github.com/loco-rs/loco/pull/590)
 * **Braking changes** The storage webhook was changed to `after_context` see example [here](https://github.com/loco-rs/loco/pull/570/files#diff-5534e8826fb82e5c7f2587d270a51b48009341e79889d1504e6b63b2f0b652bdR83). [https://github.com/loco-rs/loco/pull/570](https://github.com/loco-rs/loco/pull/570)
 * Adding Cache to app content. [https://github.com/loco-rs/loco/pull/570](https://github.com/loco-rs/loco/pull/570)
