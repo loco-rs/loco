@@ -1,6 +1,7 @@
 # Changelog
 
 ## vNext
+* **Braking changes** Adding a custom claims Option<serde_json::Value> to the UserClaims struct. [https://github.com/loco-rs/loco/pull/578](https://github.com/loco-rs/loco/pull/578)
 * refactor auth middleware for supporting bearer, cookie and query. [https://github.com/loco-rs/loco/pull/560](https://github.com/loco-rs/loco/pull/560)
 * SeaORM rc4 upgrade tracking PR. [https://github.com/loco-rs/loco/pull/585](https://github.com/loco-rs/loco/pull/585)
 * **Braking changes** In the application configuration setting `redis`, change to `queue`. [https://github.com/loco-rs/loco/pull/590](https://github.com/loco-rs/loco/pull/590)
