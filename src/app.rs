@@ -16,6 +16,7 @@ use axum::Router as AxumRouter;
 use crate::controller::channels::AppChannels;
 use crate::{
     boot::{BootResult, ServeParams, StartMode},
+    cache::{self},
     config::{self, Config},
     controller::AppRoutes,
     environment::Environment,
@@ -40,14 +41,16 @@ pub struct AppContext {
     #[cfg(feature = "with-db")]
     /// A database connection used by the application.    
     pub db: DatabaseConnection,
-    /// An optional connection pool for Redis, for worker tasks
-    pub redis: Option<Pool<RedisConnectionManager>>,
+    /// An optional connection pool for Queue, for worker tasks
+    pub queue: Option<Pool<RedisConnectionManager>>,
     /// Configuration settings for the application
     pub config: Config,
     /// An optional email sender component that can be used to send email.
     pub mailer: Option<EmailSender>,
-    // Ab optional storage instance for the application
-    pub storage: Option<Arc<Storage>>,
+    // An optional storage instance for the application
+    pub storage: Arc<Storage>,
+    // Cache instance for the application
+    pub cache: Arc<cache::Cache>,
 }
 
 /// A trait that defines hooks for customizing and extending the behavior of a
@@ -155,12 +158,9 @@ pub trait Hooks {
     /// Defines the application's routing configuration.
     fn routes(_ctx: &AppContext) -> AppRoutes;
 
-    /// Defines the storage configuration for the application
-    async fn storage(
-        _config: &config::Config,
-        _environment: &Environment,
-    ) -> Result<Option<Storage>> {
-        Ok(None)
+    // Provides the options to change Loco [`AppContext`] after initialization.
+    async fn after_context(ctx: AppContext) -> Result<AppContext> {
+        Ok(ctx)
     }
 
     #[cfg(feature = "channels")]

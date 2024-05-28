@@ -147,7 +147,6 @@ server:
 ```
 
 Now, run the Loco server again and you should see frontend app serving via Loco
-
 ```sh
 $ cargo loco start
 ```

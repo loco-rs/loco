@@ -24,7 +24,7 @@ async fn health(State(ctx): State<AppContext>) -> Result<Response> {
             false
         }
     };
-    if let Some(pool) = ctx.redis {
+    if let Some(pool) = ctx.queue {
         if let Err(error) = redis::ping(&pool).await {
             tracing::error!(err.msg = %error, err.detail = ?error, "health_redis_ping_error");
             is_ok = false;

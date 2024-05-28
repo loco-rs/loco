@@ -1,5 +1,5 @@
 use loco_rs::prelude::*;
-use sea_orm::{entity::prelude::*, ActiveValue};
+use sea_orm::ActiveValue;
 
 pub use super::_entities::users_roles::{self, ActiveModel, Column, Entity, Model};
 
@@ -15,11 +15,11 @@ impl super::_entities::users_roles::Model {
     ) -> ModelResult<Self> {
         // Find the user role if it exists
         let user_role = users_roles::Entity::find()
-            .filter(Column::UsersId.eq(user.id.clone()))
+            .filter(Column::UsersId.eq(user.id))
             .one(db)
             .await?;
         // Update the user role if it exists, otherwise create it
-        if let Some(mut user_role) = user_role {
+        if let Some(user_role) = user_role {
             // Delete the user role if the role is different
             if user_role.roles_id == role.id {
                 return Ok(user_role);
@@ -29,8 +29,8 @@ impl super::_entities::users_roles::Model {
         }
         // Create the user role
         let user_role = users_roles::ActiveModel {
-            users_id: ActiveValue::set(user.id.clone()),
-            roles_id: ActiveValue::set(role.id.clone()),
+            users_id: ActiveValue::set(user.id),
+            roles_id: ActiveValue::set(role.id),
             ..Default::default()
         }
         .insert(db)

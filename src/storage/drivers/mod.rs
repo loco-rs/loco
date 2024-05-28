@@ -10,6 +10,7 @@ pub mod azure;
 pub mod gcp;
 pub mod local;
 pub mod mem;
+pub mod null;
 pub mod object_store_adapter;
 
 use super::StorageResult;
