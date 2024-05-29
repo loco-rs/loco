@@ -2,7 +2,7 @@
 
 ## vNext
 
-## v0.5.0
+## v0.5.0 https://github.com/loco-rs/loco/pull/593
 
 * refactor auth middleware for supporting bearer, cookie and query. [https://github.com/loco-rs/loco/pull/560](https://github.com/loco-rs/loco/pull/560)
 * SeaORM upgraded: `rc1` -> `rc4`. [https://github.com/loco-rs/loco/pull/585](https://github.com/loco-rs/loco/pull/585)
