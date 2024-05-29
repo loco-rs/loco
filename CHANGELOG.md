@@ -1,6 +1,9 @@
 # Changelog
 
 ## vNext
+
+## v0.5.0
+
 * refactor auth middleware for supporting bearer, cookie and query. [https://github.com/loco-rs/loco/pull/560](https://github.com/loco-rs/loco/pull/560)
 * SeaORM upgraded: `rc1` -> `rc4`. [https://github.com/loco-rs/loco/pull/585](https://github.com/loco-rs/loco/pull/585)
 * Adding Cache to app content. [https://github.com/loco-rs/loco/pull/570](https://github.com/loco-rs/loco/pull/570)
