@@ -1,6 +1,7 @@
 # Changelog
 
 ## vNext
+* Bump socketioxide to v0.13.1. [https://github.com/loco-rs/loco/pull/594](https://github.com/loco-rs/loco/pull/594)
 
 ## v0.5.0 https://github.com/loco-rs/loco/pull/593
 
