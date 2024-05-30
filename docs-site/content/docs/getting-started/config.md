@@ -70,13 +70,13 @@ LOCO_ENV=qa cargo loco start
 ## Settings
 
 The configuration files contain knobs to set up your Loco app. You can also have your custom settings, with the `settings:` section. in `config/development.yaml` add the `settings:` section
-<!-- <snip id="configuration-settings" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
-```yaml 
- settings:
+<!-- <snip id="configuration-settings" inject_from="code" template="yaml"> -->
+```yaml
+settings:
   allow_list:
     - google.com
-    - apple.com 
- ```
+    - apple.com
+```
 <!-- </snip> -->
 
 These setting will appear in `ctx.config.settings` as `serde_json::Value`. You can create your strongly typed settings by adding a struct:

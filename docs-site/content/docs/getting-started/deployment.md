@@ -35,9 +35,9 @@ There are a few configuration sections that are important to review and set acco
 
 - Logger:
 
-<!-- <snip id="configuration-logger" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
-```yaml 
- # Application logging configuration
+<!-- <snip id="configuration-logger" inject_from="code" template="yaml"> -->
+```yaml
+# Application logging configuration
 logger:
   # Enable or disable logging.
   enable: true
@@ -49,28 +49,28 @@ logger:
   format: compact
   # By default the logger has filtering only logs that came from your code or logs that came from `loco` framework. to see all third party libraries
   # Uncomment the line below to override to see all third party libraries you can enable this config and override the logger filters.
-  # override_filter: trace 
- ```
+  # override_filter: trace
+```
 <!-- </snip>-->
  
 
 - Server:
-<!-- <snip id="configuration-server" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
-```yaml 
- server:
+<!-- <snip id="configuration-server" inject_from="code" template="yaml"> -->
+```yaml
+server:
   # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
   port: {{get_env(name="NODE_PORT", default=3000)}}
   # The UI hostname or IP address that mailers will point to.
   host: http://localhost
-  # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block 
- ```
+  # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
+```
 <!-- </snip>-->
 
 
 - Database:
-<!-- <snip id="configuration-database" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
-```yaml 
- database:
+<!-- <snip id="configuration-database" inject_from="code" template="yaml"> -->
+```yaml
+database:
   # Database connection URI
   uri: {{get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app")}}
   # When enabled, the sql query will be logged.
@@ -88,19 +88,19 @@ logger:
   # Truncate database when application loaded. This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_truncate: false
   # Recreating schema when application loaded.  This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
-  dangerously_recreate: false 
- ```
+  dangerously_recreate: false
+```
 <!-- </snip>-->
 
 
 - Mailer:
-<!-- <snip id="configuration-mailer" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
-```yaml 
- mailer:
+<!-- <snip id="configuration-mailer" inject_from="code" template="yaml"> -->
+```yaml
+mailer:
   # SMTP mailer configuration.
   smtp:
     # Enable/Disable smtp mailer.
-    enable: true
+    host: {{get_env(name="MAILER_HOST", default="localhost") }}
     # SMTP server host. e.x localhost, smtp.gmail.com
     host: localhost
     # SMTP server port
@@ -109,32 +109,32 @@ logger:
     secure: false
     # auth:
     #   user:
-    #   password: 
- ```
+    #   password:
+```
 <!-- </snip>-->
 
 - Queue:
-<!-- <snip id="configuration-queue" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
-```yaml 
- queue:
+<!-- <snip id="configuration-queue" inject_from="code" template="yaml"> -->
+```yaml
+queue:
   # Redis connection URI
   uri: {{get_env(name="REDIS_URL", default="redis://127.0.0.1")}}
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
-  dangerously_flush: false 
- ```
+  dangerously_flush: false
+```
 <!-- </snip>-->
 
 - JWT secret:
-<!-- <snip id="configuration-auth" inject_from="code" template="```yaml \n {snippet} \n ```"> -->
-```yaml 
- auth:
+<!-- <snip id="configuration-auth" inject_from="code" template="yaml"> -->
+```yaml
+auth:
   # JWT authentication
   jwt:
     # Secret key for token generation and verification
     secret: PqRwLF2rhHe8J22oBeHy
     # Token expiration time in seconds
-    expiration: 604800 # 7 days 
- ```
+    expiration: 604800 # 7 days
+```
 <!-- </snip>-->
 
 

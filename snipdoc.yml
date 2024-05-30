@@ -8,6 +8,9 @@ snippets:
       cargo loco --help
       ```
     path: ./snipdoc.yml
+  exec-help-command:
+    content: cd ./examples/demo && cargo loco --help
+    path: ./snipdoc.yml
   build-command:
     content: |-
       ```sh
