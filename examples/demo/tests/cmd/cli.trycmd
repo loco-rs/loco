@@ -3,7 +3,7 @@ $ blo-cli
 ? 2
 The one-person framework for Rust
 
-Usage: blo-cli [OPTIONS] <COMMAND>
+Usage: blo-cli[EXE] [OPTIONS] <COMMAND>
 
 Commands:
   start     Start an app
@@ -27,7 +27,7 @@ $ blo-cli db
 ? 2
 Perform DB operations
 
-Usage: blo-cli db [OPTIONS] <COMMAND>
+Usage: blo-cli[EXE] db [OPTIONS] <COMMAND>
 
 Commands:
   create    Create schema
@@ -50,7 +50,7 @@ $ blo-cli generate
 ? 2
 code generation creates a set of files and code templates based on a predefined set of rules
 
-Usage: blo-cli generate [OPTIONS] <COMMAND>
+Usage: blo-cli[EXE] generate [OPTIONS] <COMMAND>
 
 Commands:
   model       Generates a new model file for defining the data structure of your application, and test file logic

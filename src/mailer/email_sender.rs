@@ -157,7 +157,11 @@ mod tests {
             from: Some("test@framework.com".to_string()),
             to: "user1@framework.com".to_string(),
             reply_to: None,
-            subject: "Email Subject".to_string(),
+            // The subject contains a new line to demonstrate a utf8 escaping issue
+            // that could trip up users having a `subject.t` with a trailing newline.
+            //
+            // To remedy this, the templating engine strips trailing spaces from `subject.t`.
+            subject: "Email Subject\n".to_string(),
             text: "Welcome".to_string(),
             html: html.to_string(),
         };

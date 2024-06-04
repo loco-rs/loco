@@ -61,7 +61,7 @@ impl<'a> Template<'a> {
     /// Renders the email content based on the provided locals using the
     /// embedded templates.
     pub fn render(&self, locals: &serde_json::Value) -> Result<Content> {
-        let subject_t = embedded_file(self.dir, SUBJECT)?;
+        let subject_t = embedded_file(self.dir, SUBJECT)?.trim_end().to_string();
         let text_t = embedded_file(self.dir, TEXT)?;
         let html_t = embedded_file(self.dir, HTML)?;
 
