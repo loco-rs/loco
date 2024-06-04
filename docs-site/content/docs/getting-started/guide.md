@@ -43,7 +43,7 @@ You can follow this guide for a step-by-step "bottom up" learning, or you can ju
 
 ### Installing
 
-<!-- <snip id="quick-installation-command" inject_from="yaml"> -->
+<!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->
 ```sh
 cargo install loco-cli
 cargo install sea-orm-cli # Only when DB is needed
@@ -55,7 +55,7 @@ cargo install sea-orm-cli # Only when DB is needed
 
 Now you can create your new app (choose "SaaS app" for built-in authentication).
 
-<!-- <snip id="loco-cli-new-from-template" inject_from="yaml"> -->
+<!-- <snip id="loco-cli-new-from-template" inject_from="yaml" template="sh"> -->
 ```sh
 ❯ loco new
 ✔ ❯ App name? · myapp
@@ -84,7 +84,7 @@ To configure a database, please run a local postgres database with <code>loco:lo
 
 This docker command start up postgresql database server.
 
-<!-- <snip id="postgres-run-docker-command" inject_from="yaml"> -->
+<!-- <snip id="postgres-run-docker-command" inject_from="yaml" template="sh"> -->
 ```sh
 docker run -d -p 5432:5432 \
   -e POSTGRES_USER=loco \
@@ -102,7 +102,7 @@ docker run -p 6379:6379 -d redis redis-server
 
 Use doctor command to check the needed resources:
 
-<!-- <snip id="doctor-command" inject_from="yaml"> -->
+<!-- <snip id="doctor-command" inject_from="yaml template="sh"> -->
 ```sh
 $ cargo loco doctor
     Finished dev [unoptimized + debuginfo] target(s) in 0.32s
@@ -138,7 +138,7 @@ Let's get some responses quickly. For this, we need to start up the server.
 
 ### Starting the server
 
-<!-- <snip id="starting-the-server-command" inject_from="yaml"> -->
+<!-- <snip id="starting-the-server-command" inject_from="yaml" template="sh"> -->
 ```sh
 cargo loco start
 ```
@@ -202,7 +202,7 @@ pub fn routes() -> Routes {
 
 Start the server:
 
-<!-- <snip id="starting-the-server-command" inject_from="yaml"> -->
+<!-- <snip id="starting-the-server-command" inject_from="yaml" template="sh"> -->
 ```sh
 cargo loco start
 ```
@@ -275,7 +275,7 @@ impl Hooks for App {
 
 That's it. Kill the server and bring it up again:
 
-<!-- <snip id="starting-the-server-command" inject_from="yaml"> -->
+<!-- <snip id="starting-the-server-command" inject_from="yaml" template="sh"> -->
 ```sh
 cargo loco start
 ```
@@ -524,7 +524,7 @@ pub fn routes() -> Routes {
 
 Now, start the app:
 
-<!-- <snip id="starting-the-server-command" inject_from="yaml"> -->
+<!-- <snip id="starting-the-server-command" inject_from="yaml" template="sh"> -->
 ```sh
 cargo loco start
 ```
@@ -631,7 +631,7 @@ The order of the extractors is important, as changing the order of them can lead
 
 You can now test that it works, start the app:
 
-<!-- <snip id="starting-the-server-command" inject_from="yaml"> -->
+<!-- <snip id="starting-the-server-command" inject_from="yaml" template="sh"> -->
 ```sh
 cargo loco start
 ```

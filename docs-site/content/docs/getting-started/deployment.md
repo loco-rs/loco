@@ -17,7 +17,7 @@ Deployment is super simple in Loco, and this is why this guide is super short. A
 
 To deploy, build your production binary for your relevant server architecture:
 
-<!-- <snip id="build-command" inject_from="yaml"> -->
+<!-- <snip id="build-command" inject_from="yaml" template="sh"> -->
 ```sh
 cargo build --release
 ```
@@ -142,7 +142,7 @@ auth:
 
 Loco offers a deployment template enabling the creation of a deployment infrastructure.
 
-<!-- <snip id="generate-deployment-command" inject_from="yaml"> -->
+<!-- <snip id="generate-deployment-command" inject_from="yaml" template="sh"> -->
 ```sh
 cargo loco generate deployment
 ? ❯ Choose your deployment ›

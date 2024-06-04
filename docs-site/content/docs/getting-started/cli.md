@@ -16,7 +16,7 @@ flair =[]
 
 Create your starter app:
 
-<!-- <snip id="loco-cli-new-from-template" inject_from="yaml"> -->
+<!-- <snip id="loco-cli-new-from-template" inject_from="yaml" template="sh"> -->
 ```sh
 ❯ loco new
 ✔ ❯ App name? · myapp
@@ -29,7 +29,7 @@ myapp
 
 Now `cd` into your app, set up a convenience `rr` alias and try out the various commands:
 
-<!-- <snip id="help-command" inject_from="yaml"> -->
+<!-- <snip id="help-command" inject_from="yaml" template="sh"> -->
 ```sh
 cargo loco --help
 ```
@@ -80,7 +80,7 @@ $ cargo test
 
 To run you app, run:
 
-<!-- <snip id="starting-the-server-command" inject_from="yaml"> -->
+<!-- <snip id="starting-the-server-command" inject_from="yaml" template="sh"> -->
 ```sh
 cargo loco start
 ```

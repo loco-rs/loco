@@ -61,7 +61,7 @@ config/
 ```
 
 To run the application using the 'qa' environment, execute the following command:
-<!-- <snip id="starting-the-server-command-with-environment-env-var" inject_from="yaml"> -->
+<!-- <snip id="starting-the-server-command-with-environment-env-var" inject_from="yaml" template="sh"> -->
 ```sh
 LOCO_ENV=qa cargo loco start
 ```
