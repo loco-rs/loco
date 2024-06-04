@@ -21,7 +21,7 @@ flair =[]
 As a reminder, error levels and their logging can be controlled in your `development.yaml`:
 
 ### Logger
-
+<!-- <snip id="configuration-logger" inject_from="code" template="yaml"> -->
 ```yaml
 # Application logging configuration
 logger:
@@ -37,6 +37,7 @@ logger:
   # Uncomment the line below to override to see all third party libraries you can enable this config and override the logger filters.
   # override_filter: trace
 ```
+<!-- </snip> -->
 
 The most important knobs here are:
 

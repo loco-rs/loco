@@ -15,7 +15,7 @@ flair =[]
 
 Simplify your project setup with Loco's predefined boilerplates, designed to make your development journey smoother. To get started, install our CLI and choose the template that suits your needs.
 
-<!-- <snip id="quick-installation-command" inject_from="yaml"> -->
+<!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->
 ```sh
 cargo install loco-cli
 cargo install sea-orm-cli # Only when DB is needed
@@ -24,7 +24,7 @@ cargo install sea-orm-cli # Only when DB is needed
 
 Create a starter:
 
-<!-- <snip id="loco-cli-new-from-template" inject_from="yaml"> -->
+<!-- <snip id="loco-cli-new-from-template" inject_from="yaml" template="sh"> -->
 ```sh
 ❯ loco new
 ✔ ❯ App name? · myapp

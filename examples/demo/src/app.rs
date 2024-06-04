@@ -43,6 +43,7 @@ impl Hooks for App {
         env!("CARGO_CRATE_NAME")
     }
 
+    // <snip id="app-initializers">
     async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
         let mut initializers: Vec<Box<dyn Initializer>> = vec![
             Box::new(initializers::axum_session::AxumSessionInitializer),
@@ -59,6 +60,7 @@ impl Hooks for App {
 
         Ok(initializers)
     }
+    // </snip>
 
     fn routes(ctx: &AppContext) -> AppRoutes {
         AppRoutes::with_default_routes()

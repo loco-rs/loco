@@ -190,6 +190,7 @@ pub trait Hooks {
 /// An initializer.
 /// Initializers should be kept in `src/initializers/`
 #[async_trait]
+// <snip id="initializers-trait">
 pub trait Initializer: Sync + Send {
     /// The initializer name or identifier
     fn name(&self) -> String;
@@ -208,3 +209,4 @@ pub trait Initializer: Sync + Send {
         Ok(router)
     }
 }
+// </snip>

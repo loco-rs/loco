@@ -27,7 +27,9 @@ jobs:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           override: true
           components: rustfmt
-      - run: cargo install snipdoc        
+      - run: cargo install snipdoc --features exec
       - run: snipdoc check        
+        env:
+          SNIPDOC_SKIP_EXEC_COMMANDS: true
 
   
