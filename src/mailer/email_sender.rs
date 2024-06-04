@@ -109,6 +109,10 @@ impl EmailSender {
             builder = builder.bcc(bcc.parse()?);
         }
 
+        if let Some(cc) = &email.cc {
+            builder = builder.cc(cc.parse()?);
+        }
+
         if let Some(reply_to) = &email.reply_to {
             builder = builder.reply_to(reply_to.parse()?);
         }
@@ -165,6 +169,7 @@ mod tests {
             text: "Welcome".to_string(),
             html: html.to_string(),
             bcc: None,
+            cc: None,
         };
         assert!(sender.mail(&data).await.is_ok());
 
