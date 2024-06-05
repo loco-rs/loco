@@ -6,7 +6,7 @@ logger:
   enable: false
   # Log level, options: trace, debug, info, warn or error.
   level: error
-  # Define the logging format. options: compact, pretty or Json
+  # Define the logging format. options: compact, pretty or json
   format: compact
   # By default the logger has filtering only logs that came from your code or logs that came from `loco` framework. to see all third party libraries
   # Uncomment the line below to override to see all third party libraries you can enable this config and override the logger filters.
