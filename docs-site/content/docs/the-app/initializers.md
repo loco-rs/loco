@@ -20,15 +20,28 @@ Initializers are a way to encapsulate a piece of infrastructure "wiring" that yo
 ### Writing initializers
 
 Currently, an initializer is anything that implements the `Initializer` trait:
-
+<!-- <snip id="initializers-trait" inject_from="code" template="rust"> -->
 ```rust
-// implement this and place your code in `src/initializers/`
-pub trait Initializer {
+pub trait Initializer: Sync + Send {
+    /// The initializer name or identifier
     fn name(&self) -> String;
-    async fn before_run(&self, _app_context: &AppContext) -> Result<()>; 
-    async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter>;
+
+    /// Occurs after the app's `before_run`.
+    /// Use this to for one-time initializations, load caches, perform web
+    /// hooks, etc.
+    async fn before_run(&self, _app_context: &AppContext) -> Result<()> {
+        Ok(())
+    }
+
+    /// Occurs after the app's `after_routes`.
+    /// Use this to compose additional functionality and wire it into an Axum
+    /// Router
+    async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+        Ok(router)
+    }
 }
 ```
+<!-- </snip> -->
 
 ### Example: Integrating Axum Session
 
@@ -78,19 +91,26 @@ src/
 
 After you've implemented your own initializer, you should implement the `initializers(..)` hook in your `src/app.rs` and provide a Vec of your initializers:
 
-
+<!-- <snip id="app-initializers" inject_from="code" template="rust"> -->
 ```rust
-// in src/app.rs
-impl Hooks for App {
-    // return a vec of boxed initializers (`Box<dyn Initializer>`)
-    // lets Loco know what to use.
-    async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
-        Ok(vec![Box::new(
-            initializers::axum_session::AxumSessionInitializer,
-        )])
+    async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
+        let mut initializers: Vec<Box<dyn Initializer>> = vec![
+            Box::new(initializers::axum_session::AxumSessionInitializer),
+            Box::new(initializers::view_engine::ViewEngineInitializer),
+            Box::new(initializers::hello_view_engine::HelloViewEngineInitializer),
+            Box::new(loco_extras::initializers::normalize_path::NormalizePathInitializer),
+        ];
+
+        if ctx.environment != Environment::Test {
+            initializers.push(Box::new(
+                loco_extras::initializers::prometheus::AxumPrometheusInitializer,
+            ));
+        }
+
+        Ok(initializers)
     }
-}
 ```
+<!-- </snip> -->
 
 Loco will now run your initializer stack in the correct places during the app boot process.
 

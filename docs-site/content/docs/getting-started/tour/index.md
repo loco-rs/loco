@@ -19,7 +19,7 @@ flair =[]
 <br/>
 Let's create a blog backend on `loco` in 4 commands. First install `loco-cli` and `sea-orm-cli`:
 
-<!-- <snip id="quick-installation-command" inject_from="yaml"> -->
+<!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->
 ```sh
 cargo install loco-cli
 cargo install sea-orm-cli # Only when DB is needed
@@ -52,7 +52,7 @@ cargo install sea-orm-cli # Only when DB is needed
  name in the `test.yaml`configuration will be `myapp_test`, and in the
  `development.yaml` configuration, it will be `myapp_development`.
 
- <!-- <snip id="postgres-run-docker-command" inject_from="yaml"> -->
+ <!-- <snip id="postgres-run-docker-command" inject_from="yaml" template="sh"> -->
 ```sh
 docker run -d -p 5432:5432 \
   -e POSTGRES_USER=loco \
@@ -67,7 +67,7 @@ docker run -d -p 5432:5432 \
 
  Now `cd` into your `myapp` and start your app:
 
-<!-- <snip id="starting-the-server-command-with-output" inject_from="yaml"> -->
+<!-- <snip id="starting-the-server-command-with-output" inject_from="yaml" template="sh"> -->
 ```sh
 $ cargo loco start
 
@@ -120,7 +120,7 @@ injected: "tests/requests/mod.rs"
 Your database have been migrated and model, entities, and a full CRUD controller have been generated automatically.
 
 Start your app:
-<!-- <snip id="starting-the-server-command-with-output" inject_from="yaml"> -->
+<!-- <snip id="starting-the-server-command-with-output" inject_from="yaml" template="sh"> -->
 ```sh
 $ cargo loco start
 
@@ -176,7 +176,7 @@ To authenticate, you will need a running redis server.
 
 This docker command starts up a redis server:
 
-<!-- <snip id="redis-run-docker-command" inject_from="yaml"> -->
+<!-- <snip id="redis-run-docker-command" inject_from="yaml" template="sh"> -->
 ```sh
 docker run -p 6379:6379 -d redis redis-server
 ```
@@ -184,7 +184,7 @@ docker run -p 6379:6379 -d redis redis-server
 
 Use doctor command to check the needed resources:
 
-<!-- <snip id="doctor-command" inject_from="yaml"> -->
+<!-- <snip id="doctor-command" inject_from="yaml" template="sh"> -->
 ```sh
 $ cargo loco doctor
     Finished dev [unoptimized + debuginfo] target(s) in 0.32s
