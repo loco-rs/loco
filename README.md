@@ -43,12 +43,14 @@ myapp
 
 
 To configure a database , please run a local postgres database with loco:loco and a db named [insert app]_development.
-<!-- <snip id="postgres-run-docker-command" inject_from="yaml"> -->
+<!-- <snip id="postgres-run-docker-command" inject_from="yaml" template="sh"> -->
+```sh
 docker run -d -p 5432:5432 \
   -e POSTGRES_USER=loco \
   -e POSTGRES_DB=myapp_development \
   -e POSTGRES_PASSWORD="loco" \
   postgres:15.3-alpine
+```
 <!-- </snip> -->
 
 
