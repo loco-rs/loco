@@ -290,6 +290,8 @@ impl super::_entities::users::ActiveModel {
     ) -> ModelResult<Model> {
         self.password =
             ActiveValue::set(hash::hash_password(password).map_err(|e| ModelError::Any(e.into()))?);
+        self.reset_token = ActiveValue::Set(None);
+        self.reset_sent_at = ActiveValue::Set(None);
         Ok(self.update(db).await?)
     }
 }
