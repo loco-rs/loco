@@ -16,8 +16,6 @@ flair =[]
 Scaffolding is an efficient and speedy method for generating key components of an application. By utilizing scaffolding, you can create models, views, and controllers for a new resource all in one go.
 
 
-
-
 See scaffold command:
 <!-- <snip id="scaffold-help-command" inject_from="yaml" action="exec" template="sh"> -->
 ```sh
@@ -45,30 +43,28 @@ cargo loco generate scaffold posts name:string title:string content:text
 ```
 <!-- </snip> -->
 
-The scaffold generate command support api, html and htmx by adding `--template` flag to scaffold command
+The scaffold generate command support API, HTML or HTMX by adding `--template` flag to scaffold command.
 
 
+The scaffold generator will build several files in your application:
 
-
-The scaffold generator will build several files in your application
-
-| File    | Purpose                                                                                                                                                           |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `migration/src/lib.rs`         |  Include Post migration                                                                                                     |
-| `migration/src/m20240606_102031_posts.rs`         | Posts migration                                                                                         |
-| `src/app.rs`       | Adding Posts to application router.                                                                                                  |
-| `src/controllers/mod.rs`       | Include the Posts controller. |
-| `src/controllers/posts.rs`       | The Posts controller |
-| `tests/requests/posts.rs`       | Functional testing |
-| `src/models/mod.rs`       | Including Posts model |
-| `src/models/posts.rs`       | Posts model |
-| `src/models/_entities/mod.rs`       | Includes Posts Sea-orm entity model.                                                                                                  |
-| `src/models/_entities/posts.rs`       | Sea-orm entity model.                                                                                                  |
-| `src/views/mod.rs`       | Including Posts views. only for HTML and HTMX templates
-| `src/views/posts.rs`       | Posts template generator. only for HTML and HTMX templates
-| `assets/views/posts/create.html`       | Create post template. only for HTML and HTMX templates
-| `assets/views/posts/edit.html`       | Edit post template. only for HTML and HTMX templates
-| `assets/views/posts/edit.html`       | Edit post template. only for HTML and HTMX templates
-| `assets/views/posts/list.html`       | List post template. only for HTML and HTMX templates
-| `assets/views/posts/show.html`       | Show post template. only for HTML and HTMX templates
+| File    | Purpose                                                                                                                                    |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `migration/src/lib.rs`                     |  Include Post migration.                                                                                |
+| `migration/src/m20240606_102031_posts.rs`  | Posts migration.                                                                                        |
+| `src/app.rs`                               | Adding Posts to application router.                                                                     |
+| `src/controllers/mod.rs`                   | Include the Posts controller.                                                                           |
+| `src/controllers/posts.rs`                 | The Posts controller.                                                                                   |
+| `tests/requests/posts.rs`                  | Functional testing.                                                                                     |
+| `src/models/mod.rs`                        | Including Posts model.                                                                                  |
+| `src/models/posts.rs`                      | Posts model,                                                                                            |
+| `src/models/_entities/mod.rs`              | Includes Posts Sea-orm entity model.                                                                    |
+| `src/models/_entities/posts.rs`            | Sea-orm entity model.                                                                                   |
+| `src/views/mod.rs`                         | Including Posts views. only for HTML and HTMX templates.                                                |
+| `src/views/posts.rs`                       | Posts template generator. only for HTML and HTMX templates.                                             |
+| `assets/views/posts/create.html`           | Create post template. only for HTML and HTMX templates.                                                 |
+| `assets/views/posts/edit.html`             | Edit post template. only for HTML and HTMX templates.                                                   |
+| `assets/views/posts/edit.html`             | Edit post template. only for HTML and HTMX templates.                                                   |
+| `assets/views/posts/list.html`             | List post template. only for HTML and HTMX templates.                                                   |
+| `assets/views/posts/show.html`             | Show post template. only for HTML and HTMX templates.                                                   |
                                                                                                   
