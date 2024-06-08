@@ -1,8 +1,8 @@
 +++
-title = "Scaffold HTML"
-description = "Scaffold HTML"
+title = "Scaffolding full CRUD with HTML views"
+description = "Scaffolding full CRUD with HTML views"
 date = 2024-06-14T09:19:42+00:00
-updated = 2024-06-13T09:19:42+00:00
+updated = 2024-06-14T09:19:42+00:00
 draft = false
 template = "casts/page.html"
 
