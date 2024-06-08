@@ -60,7 +60,7 @@ pub async fn list(
 #[debug_handler]
 pub async fn new(
     ViewEngine(v): ViewEngine<TeraView>,
-    State(ctx): State<AppContext>,
+    State(_ctx): State<AppContext>,
 ) -> Result<Response> {
     views::{{file_name}}::create(&v)
 }
@@ -108,9 +108,15 @@ pub async fn add(
     };
     params.update(&mut item);
     item.insert(&ctx.db).await?;
-    // views::post::show(&v, &item)
     Ok(Redirect::to("{{file_name | plural}}"))
 }
+
+#[debug_handler]
+pub async fn remove(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Response> {
+    load_item(&ctx, id).await?.delete(&ctx.db).await?;
+    format::empty()
+}
+
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("{{file_name | plural}}")
@@ -119,5 +125,6 @@ pub fn routes() -> Routes {
         .add("/:id", get(show))
         .add("/:id/edit", get(edit))
         .add("/:id", post(update))
+        .add("/:id", delete(remove))
         .add("/", post(add))
 }
