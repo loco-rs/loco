@@ -21,6 +21,12 @@ section = "blog"
 url = "/blog/"
 weight = 20
 
+[[extra.menu.main]]
+name = "Casts"
+section = "casts"
+url = "/casts/"
+
+weight = 20
 [[extra.list]]
 title = "🔋 Batteries included"
 content = 'Empower the 1-person team. Service, data, emails, background jobs, tasks, CLI to drive it, everything is included.'

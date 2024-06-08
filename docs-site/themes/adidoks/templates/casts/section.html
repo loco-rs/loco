@@ -1,0 +1,42 @@
+{% extends "section.html" %}
+
+{% block body %}
+  {% set page_class = "casts list" %}
+{% endblock body %}
+
+{% block header %}
+  {# This value is matched by the config.extra.menu.main->section #}
+  {% set current_section = "casts" %}
+  {{ macros_header::header(current_section=current_section)}}
+{% endblock header %}
+
+{% block content %}
+<div class="wrap container" role="document">
+  <div class="content">
+    <div class="row justify-content-center">
+      <div class="col-md-12 col-lg-10 col-xxl-8">
+        <article>
+          <h1 class="text-center">{{ section.title }}</h1>
+          <div class="card-list">
+            {% for page in paginator.pages %}
+            <div class="cast-card">
+                <div class="cast-thumb">
+                  {{ youtube::thumb(id=page.extra.id) }}
+                </div>
+                <div class="cast-head">
+                  <code class="ep">Episode #{{page.extra.num}}</code>
+                  <h2 class="h3"> {{ page.title }}</h2>
+                  <a class="btn btn-primary" href="{{ page.permalink }}">Watch</a>
+                </div>
+            </div>
+            {% endfor %}
+            {% if paginator.previous or paginator.next %}
+              {{ macros_section_nav::navigation(paginator=paginator) }}
+            {% endif %}
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
