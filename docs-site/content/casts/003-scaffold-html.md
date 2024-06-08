@@ -5,7 +5,6 @@ date = 2024-06-14T09:19:42+00:00
 updated = 2024-06-13T09:19:42+00:00
 draft = false
 template = "casts/page.html"
-weight = 3
 
 [taxonomies]
 authors = ["Team Loco"]
