@@ -88,6 +88,6 @@ As you may have noticed Angular has built the frontend into `frontend/dist/front
 ## Start Loco
 
 1. Start Loco with `cargo loco start`
-2. Open http://localhost:3000/
+2. Open http://localhost:5150/
 
 You should now see the Angular starter Website :smile:

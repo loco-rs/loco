@@ -91,7 +91,7 @@ pub fn routes() -> Routes {
 }
 ```
 
-Now, you can call the `http://127.0.0.1:3000/api/mysession` endpoint to see the session.
+Now, you can call the `http://127.0.0.1:5150/api/mysession` endpoint to see the session.
 
 ## Creating Session With DB Encryption
 
@@ -194,4 +194,4 @@ pub fn routes() -> Routes {
 
 ```
 
-Now, calling the `http://127.0.0.1:3000/api/mysession` endpoint will display the session.
+Now, calling the `http://127.0.0.1:5150/api/mysession` endpoint will display the session.

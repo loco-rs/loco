@@ -80,7 +80,7 @@ controller/app_routes.rs:203: [Middleware] Adding log trace id
    ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
 
-started on port 3000
+started on port 5150
 ```
 
 <div class="infobox">
@@ -121,13 +121,13 @@ Next, try adding a `post` with `curl`:
 $ curl -X POST -H "Content-Type: application/json" -d '{
   "title": "Your Title",
   "content": "Your Content xxx"
-}' localhost:3000/api/posts
+}' localhost:5150/api/posts
 ```
 
 You can list your posts:
 
 ```sh
-$ curl localhost:3000/api/posts
+$ curl localhost:5150/api/posts
 ```
 
 For those counting -- the commands for creating a blog backend were:
@@ -167,7 +167,7 @@ $ cargo loco doctor
 The `/api/auth/register` endpoint creates a new user in the database with an `email_verification_token` for account verification. A welcome email is sent to the user with a verification link.
 
 ```sh
-$ curl --location '127.0.0.1:3000/api/auth/register' \
+$ curl --location '127.0.0.1:5150/api/auth/register' \
      --header 'Content-Type: application/json' \
      --data-raw '{
          "name": "Loco user",
@@ -183,7 +183,7 @@ For security reasons, if the user is already registered, no new user is created,
 After registering a new user, use the following request to log in:
 
 ```sh
-$ curl --location '127.0.0.1:3000/api/auth/login' \
+$ curl --location '127.0.0.1:5150/api/auth/login' \
      --header 'Content-Type: application/json' \
      --data-raw '{
          "email": "user@loco.rs",
@@ -207,7 +207,7 @@ The response includes a JWT token for authentication, user ID, name, and verific
 This endpoint is protected by auth middleware.
 
 ```sh
-$ curl --location --request GET '127.0.0.1:3000/api/user/current' \
+$ curl --location --request GET '127.0.0.1:5150/api/user/current' \
      --header 'Content-Type: application/json' \
      --header 'Authorization: Bearer TOKEN'
 ```

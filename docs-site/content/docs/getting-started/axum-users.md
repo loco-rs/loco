@@ -54,7 +54,7 @@ server:
 
 ```yaml
 server:
-  port: 3000
+  port: 5150
 ```
 
 ### Verdict
@@ -93,7 +93,7 @@ Loco: use your standard `config/[stage].yaml` configuration, and load specific v
 # Web server configuration
 server:
   # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
-  port: {{% get_env(name="NODE_PORT", default=3000) %}}
+  port: {{% get_env(name="NODE_PORT", default=5150) %}}
 ```
 
 This configuration is strongly typed, contains most-used values like database URL, logger levels and filtering and more. No need to guess or reinvent the wheel.

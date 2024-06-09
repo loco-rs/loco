@@ -309,7 +309,7 @@ Example of pulling a port from environment:
 
 ```yaml
 server:
-  port: {{ get_env(name="NODE_PORT", default=3000) }}
+  port: {{ get_env(name="NODE_PORT", default=5150) }}
 ```
 
 It is possible to use any `tera` templating constructs such as loops, conditionals, etc. inside YAML configuration files.

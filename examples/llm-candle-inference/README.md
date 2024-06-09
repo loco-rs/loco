@@ -19,7 +19,7 @@ It may download a large model file, and will take some more time to prepare and 
 Next, try your first inference request and wait for the tokens to start streaming:
 
 ```sh
-$ curl -vvv --no-buffer localhost:3000/candle-llm
+$ curl -vvv --no-buffer localhost:5150/candle-llm
 ```
 
 ### Adding a global state for your controllers
@@ -86,7 +86,7 @@ controller/app_routes.rs:203: [Middleware] Adding log trace id
    ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
 
-started on port 3000
+started on port 5150
 ```
 
 ## Getting help

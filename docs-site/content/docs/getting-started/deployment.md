@@ -43,7 +43,7 @@ logger:
 ```yaml
 server:
   # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
-  port: 3000
+  port: 5150
   # The UI hostname or IP address that mailers will point to.
   host: http://localhost
 ```
