@@ -19,73 +19,83 @@ flair =[]
 <br/>
 Let's create a blog backend on `loco` in 4 commands. First install `loco-cli` and `sea-orm-cli`:
 
+<!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->
 ```sh
-$ cargo install loco-cli
-$ cargo install sea-orm-cli
+cargo install loco-cli
+cargo install sea-orm-cli # Only when DB is needed
 ```
+<!-- </snip> -->
 
-Now you can create your new app (choose "SaaS app").
 
+ Now you can create your new app (choose "`SaaS` app").
+
+ ```sh
+ $ loco new
+ ✔ ❯ App name? · myapp
+ ? ❯ What would you like to build? ›
+   lightweight-service (minimal, only controllers and views)
+   Rest API (with DB and user auth)
+ ❯ SaaS app (with DB and user auth)
+ 🚂 Loco app generated successfully in:
+ myapp
+ ```
+
+ <div class="infobox">
+ To configure a database , please run a local postgres database with
+ <code>loco:loco</code> and a db named is the [insert app]_development.
+ </div>
+
+ You can use Docker to run a Postgres instance:
+
+ When generating a starter, the database name incorporates your application
+ name and the environment. For instance, if you include `myapp`, the database
+ name in the `test.yaml`configuration will be `myapp_test`, and in the
+ `development.yaml` configuration, it will be `myapp_development`.
+
+ <!-- <snip id="postgres-run-docker-command" inject_from="yaml" template="sh"> -->
 ```sh
-$ loco new
-✔ ❯ App name? · myapp
-? ❯ What would you like to build? ›
-  lightweight-service (minimal, only controllers and views)
-  Rest API (with DB and user auth)
-❯ SaaS app (with DB and user auth)
-🚂 Loco app generated successfully in:
-myapp
+docker run -d -p 5432:5432 \
+  -e POSTGRES_USER=loco \
+  -e POSTGRES_DB=myapp_development \
+  -e POSTGRES_PASSWORD="loco" \
+  postgres:15.3-alpine
 ```
+<!-- </snip> -->
 
-<div class="infobox">
-To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named is the [insert app]_development.
-</div>
 
-You can use Docker to run a Postgres instance:
+ A more advanced set of `docker-compose.yml` and `Dockerfiles` that include Redis and the `mailtutan` mailer are available for [each starter on GitHub](https://github.com/loco-rs/loco/blob/master/starters/saas/.devcontainer/docker-compose.yml).
 
-When generating a starter, the database name incorporates your application name and the environment. For instance, if you include `myapp`, the database name in the `test.yaml`configuration will be `myapp_test`, and in the `development.yaml` configuration, it will be `myapp_development`.
+ Now `cd` into your `myapp` and start your app:
 
-```
-$ docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=myapp_development -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine
-```
-
-A more advanced set of `docker-compose.yml` and `Dockerfiles` that include Redis and the `mailtutan` mailer are available for [each starter on GitHub](https://github.com/loco-rs/loco/blob/master/starters/saas/.devcontainer/docker-compose.yml).
-
-Now `cd` into your `myapp` and start your app:
-
-```
-$ cd myapp
+<!-- <snip id="starting-the-server-command-with-output" inject_from="yaml" template="sh"> -->
+```sh
 $ cargo loco start
-Finished dev [unoptimized + debuginfo] target(s) in 21.63s
-    Running `target/debug/myapp start`
-
-    :
-    :
-    :
-
-controller/app_routes.rs:203: [Middleware] Adding log trace id
 
                       ▄     ▀
-                                 ▀  ▄
+                                ▀  ▄
                   ▄       ▀     ▄  ▄ ▄▀
                                     ▄ ▀▄▄
                         ▄     ▀    ▀  ▀▄▀█▄
                                           ▀█▄
 ▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄   ▄▄▄▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄▄ ▀▀█
- ██████  █████   ███ █████   ███ █████   ███ ▀█
- ██████  █████   ███ █████   ▀▀▀ █████   ███ ▄█▄
- ██████  █████   ███ █████       █████   ███ ████▄
- ██████  █████   ███ █████   ▄▄▄ █████   ███ █████
- ██████  █████   ███  ████   ███ █████   ███ ████▀
-   ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
-       ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+██████  █████   ███ █████   ███ █████   ███ ▀█
+██████  █████   ███ █████   ▀▀▀ █████   ███ ▄█▄
+██████  █████   ███ █████       █████   ███ ████▄
+██████  █████   ███ █████   ▄▄▄ █████   ███ █████
+██████  █████   ███  ████   ███ █████   ███ ████▀
+  ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
+      ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+                https://loco.rs
 
-started on port 5150
+listening on port 5150
 ```
+<!-- </snip> -->
 
-<div class="infobox">
-You don't have to run things through `cargo` but in development it's highly recommended. If you build `--release`, your binary contains everything including your code and `cargo` or Rust is not needed.
-</div>
+
+ <div class="infobox">
+ You don't have to run things through `cargo` but in development it's highly
+ recommended. If you build `--release`, your binary contains everything
+ including your code and `cargo` or Rust is not needed. </div>
 
 ## Adding a CRUD API
 
@@ -110,10 +120,29 @@ injected: "tests/requests/mod.rs"
 Your database have been migrated and model, entities, and a full CRUD controller have been generated automatically.
 
 Start your app:
-
+<!-- <snip id="starting-the-server-command-with-output" inject_from="yaml" template="sh"> -->
 ```sh
 $ cargo loco start
+
+                      ▄     ▀
+                                ▀  ▄
+                  ▄       ▀     ▄  ▄ ▄▀
+                                    ▄ ▀▄▄
+                        ▄     ▀    ▀  ▀▄▀█▄
+                                          ▀█▄
+▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄   ▄▄▄▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄▄ ▀▀█
+██████  █████   ███ █████   ███ █████   ███ ▀█
+██████  █████   ███ █████   ▀▀▀ █████   ███ ▄█▄
+██████  █████   ███ █████       █████   ███ ████▄
+██████  █████   ███ █████   ▄▄▄ █████   ███ █████
+██████  █████   ███  ████   ███ █████   ███ ████▀
+  ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
+      ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+                https://loco.rs
+
+listening on port 3000
 ```
+<!-- </snip> -->
 
 Next, try adding a `post` with `curl`:
 
@@ -121,13 +150,13 @@ Next, try adding a `post` with `curl`:
 $ curl -X POST -H "Content-Type: application/json" -d '{
   "title": "Your Title",
   "content": "Your Content xxx"
-}' localhost:5150/api/posts
+}' localhost:5150/posts
 ```
 
 You can list your posts:
 
 ```sh
-$ curl localhost:5150/api/posts
+$ curl localhost:5150/posts
 ```
 
 For those counting -- the commands for creating a blog backend were:
@@ -147,20 +176,24 @@ To authenticate, you will need a running redis server.
 
 This docker command starts up a redis server:
 
-```
+<!-- <snip id="redis-run-docker-command" inject_from="yaml" template="sh"> -->
+```sh
 docker run -p 6379:6379 -d redis redis-server
 ```
+<!-- </snip> -->
 
 Use doctor command to check the needed resources:
 
-```
+<!-- <snip id="doctor-command" inject_from="yaml" template="sh"> -->
+```sh
 $ cargo loco doctor
     Finished dev [unoptimized + debuginfo] target(s) in 0.32s
-     Running `target/debug/myapp-cli doctor`
+    Running `target/debug/myapp-cli doctor`
 ✅ SeaORM CLI is installed
 ✅ DB connection: success
 ✅ Redis connection: success
 ```
+<!-- </snip> -->
 
 ### Registering a New User
 
@@ -198,6 +231,7 @@ The response includes a JWT token for authentication, user ID, name, and verific
     "token": "...",
     "pid": "2b20f998-b11e-4aeb-96d7-beca7671abda",
     "name": "Loco user",
+    "claims": null
     "is_verified": false
 }
 ```

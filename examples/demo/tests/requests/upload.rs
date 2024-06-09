@@ -18,7 +18,7 @@ async fn can_upload_file() {
 
         let res: views::upload::Response = serde_json::from_str(&response.text()).unwrap();
 
-        let stored_file: String = ctx.storage.unwrap().download(&res.path).await.unwrap();
+        let stored_file: String = ctx.storage.download(&res.path).await.unwrap();
 
         assert_eq!(stored_file, file_content);
     })

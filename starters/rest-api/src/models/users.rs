@@ -58,7 +58,11 @@ impl ActiveModelBehavior for super::_entities::users::ActiveModel {
 impl Authenticable for super::_entities::users::Model {
     async fn find_by_api_key(db: &DatabaseConnection, api_key: &str) -> ModelResult<Self> {
         let user = users::Entity::find()
-            .filter(users::Column::ApiKey.eq(api_key))
+            .filter(
+                model::query::condition()
+                    .eq(users::Column::ApiKey, api_key)
+                    .build(),
+            )
             .one(db)
             .await?;
         user.ok_or_else(|| ModelError::EntityNotFound)
@@ -77,7 +81,11 @@ impl super::_entities::users::Model {
     /// When could not find user by the given token or DB query error
     pub async fn find_by_email(db: &DatabaseConnection, email: &str) -> ModelResult<Self> {
         let user = users::Entity::find()
-            .filter(users::Column::Email.eq(email))
+            .filter(
+                model::query::condition()
+                    .eq(users::Column::Email, email)
+                    .build(),
+            )
             .one(db)
             .await?;
         user.ok_or_else(|| ModelError::EntityNotFound)
@@ -93,7 +101,11 @@ impl super::_entities::users::Model {
         token: &str,
     ) -> ModelResult<Self> {
         let user = users::Entity::find()
-            .filter(users::Column::EmailVerificationToken.eq(token))
+            .filter(
+                model::query::condition()
+                    .eq(users::Column::EmailVerificationToken, token)
+                    .build(),
+            )
             .one(db)
             .await?;
         user.ok_or_else(|| ModelError::EntityNotFound)
@@ -106,7 +118,11 @@ impl super::_entities::users::Model {
     /// When could not find user by the given token or DB query error
     pub async fn find_by_reset_token(db: &DatabaseConnection, token: &str) -> ModelResult<Self> {
         let user = users::Entity::find()
-            .filter(users::Column::ResetToken.eq(token))
+            .filter(
+                model::query::condition()
+                    .eq(users::Column::ResetToken, token)
+                    .build(),
+            )
             .one(db)
             .await?;
         user.ok_or_else(|| ModelError::EntityNotFound)
@@ -120,7 +136,11 @@ impl super::_entities::users::Model {
     pub async fn find_by_pid(db: &DatabaseConnection, pid: &str) -> ModelResult<Self> {
         let parse_uuid = Uuid::parse_str(pid).map_err(|e| ModelError::Any(e.into()))?;
         let user = users::Entity::find()
-            .filter(users::Column::Pid.eq(parse_uuid))
+            .filter(
+                model::query::condition()
+                    .eq(users::Column::Pid, parse_uuid)
+                    .build(),
+            )
             .one(db)
             .await?;
         user.ok_or_else(|| ModelError::EntityNotFound)
@@ -133,7 +153,11 @@ impl super::_entities::users::Model {
     /// When could not find user by the given token or DB query error
     pub async fn find_by_api_key(db: &DatabaseConnection, api_key: &str) -> ModelResult<Self> {
         let user = users::Entity::find()
-            .filter(users::Column::ApiKey.eq(api_key))
+            .filter(
+                model::query::condition()
+                    .eq(users::Column::ApiKey, api_key)
+                    .build(),
+            )
             .one(db)
             .await?;
         user.ok_or_else(|| ModelError::EntityNotFound)
@@ -162,7 +186,11 @@ impl super::_entities::users::Model {
         let txn = db.begin().await?;
 
         if users::Entity::find()
-            .filter(users::Column::Email.eq(&params.email))
+            .filter(
+                model::query::condition()
+                    .eq(users::Column::Email, &params.email)
+                    .build(),
+            )
             .one(&txn)
             .await?
             .is_some()
@@ -192,7 +220,7 @@ impl super::_entities::users::Model {
     ///
     /// when could not convert user claims to jwt token
     pub fn generate_jwt(&self, secret: &str, expiration: &u64) -> ModelResult<String> {
-        Ok(jwt::JWT::new(secret).generate_token(expiration, self.pid.to_string())?)
+        Ok(jwt::JWT::new(secret).generate_token(expiration, self.pid.to_string(), None)?)
     }
 }
 
@@ -262,6 +290,8 @@ impl super::_entities::users::ActiveModel {
     ) -> ModelResult<Model> {
         self.password =
             ActiveValue::set(hash::hash_password(password).map_err(|e| ModelError::Any(e.into()))?);
+        self.reset_token = ActiveValue::Set(None);
+        self.reset_sent_at = ActiveValue::Set(None);
         Ok(self.update(db).await?)
     }
 }

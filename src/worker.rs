@@ -35,12 +35,12 @@ where
     async fn perform_later(ctx: &AppContext, args: T) -> Result<()> {
         match &ctx.config.workers.mode {
             WorkerMode::BackgroundQueue => {
-                if let Some(redis) = &ctx.redis {
-                    Self::perform_async(redis, args).await.unwrap();
+                if let Some(queue) = &ctx.queue {
+                    Self::perform_async(queue, args).await.unwrap();
                 } else {
                     error!(
                         error.msg =
-                            "worker mode requested but no redis connection supplied, skipping job",
+                            "worker mode requested but no queue connection supplied, skipping job",
                         "worker_error"
                     );
                 }

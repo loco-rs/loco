@@ -72,7 +72,7 @@ mailer:
     # SMTP server host. e.x localhost, smtp.gmail.com
     host: {{/* get_env(name="MAILER_HOST", default="smtp.sendgrid.net") */}}
     # SMTP server port
-    port: 465
+    port: 587
     # Use secure connection (SSL/TLS).
     secure: true
     auth:

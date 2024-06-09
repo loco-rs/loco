@@ -1,7 +1,7 @@
 //! # Application Bootstrapping and Logic
 //! This module contains functions and structures for bootstrapping and running
 //! your application.
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
 
 use axum::Router;
 #[cfg(feature = "with-db")]
@@ -13,12 +13,14 @@ use crate::db;
 use crate::{
     app::{AppContext, Hooks},
     banner::print_banner,
+    cache,
     config::{self, Config},
     controller::ListRoutes,
     environment::Environment,
     errors::Error,
     mailer::{EmailSender, MailerWorker},
     redis,
+    storage::{self, Storage},
     task::Tasks,
     worker::{self, AppWorker, Pool, Processor, RedisConnectionManager, DEFAULT_QUEUES},
     Result,
@@ -198,16 +200,18 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
         None
     };
 
-    let redis = connect_redis(&config).await;
-    Ok(AppContext {
+    let ctx = AppContext {
         environment: environment.clone(),
         #[cfg(feature = "with-db")]
         db,
-        redis,
-        storage: H::storage(&config, environment).await?.map(Arc::new),
+        queue: connect_redis(&config).await,
+        storage: Storage::single(storage::drivers::null::new()).into(),
+        cache: cache::Cache::new(cache::drivers::null::new()).into(),
         config,
         mailer,
-    })
+    };
+
+    H::after_context(ctx).await
 }
 
 #[cfg(feature = "with-db")]
@@ -223,8 +227,8 @@ pub async fn create_app<H: Hooks, M: MigratorTrait>(
     let app_context = create_context::<H>(environment).await?;
     db::converge::<H, M>(&app_context.db, &app_context.config.database).await?;
 
-    if let Some(pool) = &app_context.redis {
-        redis::converge(pool, &app_context.config.redis).await?;
+    if let Some(pool) = &app_context.queue {
+        redis::converge(pool, &app_context.config.queue).await?;
     }
 
     run_app::<H>(&mode, app_context).await
@@ -237,8 +241,8 @@ pub async fn create_app<H: Hooks>(
 ) -> Result<BootResult> {
     let app_context = create_context::<H>(environment).await?;
 
-    if let Some(pool) = &app_context.redis {
-        redis::converge(pool, &app_context.config.redis).await?;
+    if let Some(pool) = &app_context.queue {
+        redis::converge(pool, &app_context.config.queue).await?;
     }
 
     run_app::<H>(&mode, app_context).await
@@ -299,9 +303,9 @@ fn create_processor<H: Hooks>(app_context: &AppContext) -> Result<Processor> {
         queues = ?queues,
         "registering queues (merged config and default)"
     );
-    let mut p = if let Some(redis) = &app_context.redis {
+    let mut p = if let Some(queue) = &app_context.queue {
         Processor::new(
-            redis.clone(),
+            queue.clone(),
             DEFAULT_QUEUES
                 .iter()
                 .map(ToString::to_string)
@@ -309,7 +313,7 @@ fn create_processor<H: Hooks>(app_context: &AppContext) -> Result<Processor> {
         )
     } else {
         return Err(Error::Message(
-            "redis is missing, cannot initialize workers".to_string(),
+            "queue is missing, cannot initialize workers".to_string(),
         ));
     };
 
@@ -345,7 +349,7 @@ fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
 // TODO: Refactor to eliminate unwrapping and instead return an appropriate
 // error type.
 pub async fn connect_redis(config: &Config) -> Option<Pool<RedisConnectionManager>> {
-    if let Some(redis) = &config.redis {
+    if let Some(redis) = &config.queue {
         let manager = RedisConnectionManager::new(redis.uri.clone()).unwrap();
         let redis = Pool::builder().build(manager).await.unwrap();
         Some(redis)

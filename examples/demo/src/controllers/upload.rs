@@ -30,7 +30,6 @@ async fn upload_file(State(ctx): State<AppContext>, mut multipart: Multipart) ->
         let path = PathBuf::from("folder").join(file_name);
         ctx.storage
             .as_ref()
-            .unwrap()
             .upload(path.as_path(), &content)
             .await?;
 

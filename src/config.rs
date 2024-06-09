@@ -51,7 +51,7 @@ pub struct Config {
     pub server: Server,
     #[cfg(feature = "with-db")]
     pub database: Database,
-    pub redis: Option<Redis>,
+    pub queue: Option<Redis>,
     pub auth: Option<Auth>,
     #[serde(default)]
     pub workers: Workers,

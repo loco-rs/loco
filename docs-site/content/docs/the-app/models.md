@@ -103,9 +103,9 @@ For schema data types, you can use the following mapping to understand the schem
 ("int", "integer_null"),
 ("int!", "integer"),
 ("int^", "integer_uniq"),
-("big_integer", "big_integer_null"),
-("big_integer!", "big_integer"),
-("big_integer^", "big_integer_uniq"),
+("big_int", "big_integer_null"),
+("big_int!", "big_integer"),
+("big_int^", "big_integer_uniq"),
 ("float", "float_null"),
 ("float!", "float"),
 ("double", "double_null"),
@@ -275,11 +275,8 @@ Having said that, it's up to you to code your data fixes in a `task` or `migrati
 We use the [validator](https://docs.rs/validator) library under the hood. First, build your validator with the constraints you need, and then implement `Validatable` for your `ActiveModel`.
 
 
+<!-- <snip id="model-validation" inject_from="code" template="rust"> -->
 ```rust
-// in models/user.rs
-
-use loco_rs::prelude::*;
-
 #[derive(Debug, Validate, Deserialize)]
 pub struct Validator {
     #[validate(length(min = 2, message = "Name must be at least 2 characters long."))]
@@ -297,6 +294,8 @@ impl Validatable for super::_entities::users::ActiveModel {
     }
 }
 ```
+<!-- </snip> -->
+
 
 Note that `Validatable` is how you instruct Loco which `Validator` to provide and how to build it from a model.
 
@@ -366,21 +365,32 @@ Using `via()` will cause `find_related` to walk through the link table without y
 
 Model configuration that's available to you is exciting because it controls all aspects of development, testing, and production, with a ton of goodies, coming from production experience.
 
+<!-- <snip id="configuration-database" inject_from="code" template="yaml"> -->
 ```yaml
-# .. other sections ..
-
 database:
-  uri: postgres://localhost:5432/rr_app
-  # uri: sqlite://db.sqlite?mode=rwc
+  # Database connection URI
+  uri: {{get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app")}}
+  # When enabled, the sql query will be logged.
   enable_logging: false
+  # Set the timeout duration when acquiring a connection.
+  connect_timeout: 500
+  # Set the idle duration before closing a connection.
+  idle_timeout: 500
+  # Minimum number of connections for a pool.
   min_connections: 1
+  # Maximum number of connections for a pool.
   max_connections: 1
+  # Run migration up when application loaded
   auto_migrate: true
-  dangerously_truncate: true
-  dangerously_recreate: true
+  # Truncate database when application loaded. This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
+  dangerously_truncate: false
+  # Recreating schema when application loaded.  This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
+  dangerously_recreate: false
 ```
+<!-- </snip>-->
 
-By combining these flags, you can create different expriences to help you be more productive.
+
+By combining these flags, you can create different experiences to help you be more productive.
 
 You can truncate before an app starts -- which is useful for running tests, or you can recreate the entire DB when the app starts -- which is useful for integration tests or setting up a new environment. In production, you want these turned off (hence the "dangerously" part).
 
@@ -665,6 +675,7 @@ In some cases, you may want to run tests with a clean dataset, ensuring that eac
 - When doing it recommended to run all the relevant task in with [serial](https://crates.io/crates/rstest) crate.
 - To decide which tables you want to truncate, add the entity model to the App hook:
 
+
 ```rust
 pub struct App;
 #[async_trait]
@@ -680,7 +691,6 @@ impl Hooks for App {
 ```
 
 ## Seeding
-
 
 ```rust
 #[tokio::test]
@@ -709,7 +719,7 @@ in the following example you can use `cleanup_user_model` which clean all user m
 
 #[tokio::test]
 #[serial]
-async fn can_cerate_user() {
+async fn can_create_user() {
     testing::request::<App, Migrator, _, _>(|request, _ctx| async move {
         // create user test
         with_settings!({

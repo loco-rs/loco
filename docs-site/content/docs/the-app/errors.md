@@ -21,7 +21,7 @@ flair =[]
 As a reminder, error levels and their logging can be controlled in your `development.yaml`:
 
 ### Logger
-
+<!-- <snip id="configuration-logger" inject_from="code" template="yaml"> -->
 ```yaml
 # Application logging configuration
 logger:
@@ -31,12 +31,13 @@ logger:
   pretty_backtrace: true
   # Log level, options: trace, debug, info, warn or error.
   level: debug
-  # Define the logging format. options: compact, pretty or Json
+  # Define the logging format. options: compact, pretty or json
   format: compact
   # By default the logger has filtering only logs that came from your code or logs that came from `loco` framework. to see all third party libraries
   # Uncomment the line below to override to see all third party libraries you can enable this config and override the logger filters.
   # override_filter: trace
 ```
+<!-- </snip> -->
 
 The most important knobs here are:
 

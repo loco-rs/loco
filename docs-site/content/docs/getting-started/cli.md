@@ -3,7 +3,7 @@ title = "CLI"
 date = 2021-05-01T08:00:00+00:00
 updated = 2021-05-01T08:00:00+00:00
 draft = false
-weight = 4
+weight = 5
 sort_by = "weight"
 template = "docs/page.html"
 
@@ -16,18 +16,49 @@ flair =[]
 
 Create your starter app:
 
-```rust
-$ cargo install loco-cli
-$ loco new
-< follow the guide >
+<!-- <snip id="loco-cli-new-from-template" inject_from="yaml" template="sh"> -->
+```sh
+❯ loco new
+✔ ❯ App name? · myapp
+✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+
+🚂 Loco app generated successfully in:
+myapp
 ```
+<!-- </snip> -->
 
 Now `cd` into your app, set up a convenience `rr` alias and try out the various commands:
 
+<!-- <snip id="help-command" inject_from="yaml" template="sh"> -->
+```sh
+cargo loco --help
 ```
-$ cd myapp
-$ cargo loco --help
+<!-- </snip> -->
+
+<!-- <snip id="exec-help-command" inject_from="yaml" action="exec" template="sh"> -->
+```sh
+The one-person framework for Rust
+
+Usage: blo-cli [OPTIONS] <COMMAND>
+
+Commands:
+  start     Start an app
+  db        Perform DB operations
+  routes    Describe all application endpoints
+  task      Run a custom task
+  generate  code generation creates a set of files and code templates based on a predefined set of rules
+  doctor    Validate and diagnose configurations
+  version   Display the app version
+  help      Print this message or the help of the given subcommand(s)
+
+Options:
+  -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
+  -h, --help                       Print help
+  -V, --version                    Print version
+
 ```
+<!-- </snip> -->
+
 
 You can now drive your development through the CLI:
 
@@ -49,9 +80,11 @@ $ cargo test
 
 To run you app, run:
 
+<!-- <snip id="starting-the-server-command" inject_from="yaml" template="sh"> -->
+```sh
+cargo loco start
 ```
-$ cargo loco start
-```
+<!-- </snip> -->
 
 ## Background workers
 

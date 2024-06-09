@@ -15,20 +15,25 @@ flair =[]
 
 Simplify your project setup with Loco's predefined boilerplates, designed to make your development journey smoother. To get started, install our CLI and choose the template that suits your needs.
 
+<!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->
 ```sh
 cargo install loco-cli
+cargo install sea-orm-cli # Only when DB is needed
 ```
+<!-- </snip> -->
 
 Create a starter:
 
+<!-- <snip id="loco-cli-new-from-template" inject_from="yaml" template="sh"> -->
 ```sh
-loco new
+❯ loco new
 ✔ ❯ App name? · myapp
-? ❯ What would you like to build? ›
-❯ lightweight-service (minimal, only controllers and views)
-  Rest API (with DB and user auth)
-  SaaS app (with DB and user auth)
+✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+
+🚂 Loco app generated successfully in:
+myapp
 ```
+<!-- </snip> -->
 
 ## Available Starters
 
