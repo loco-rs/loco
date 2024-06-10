@@ -31,6 +31,7 @@ impl Vars {
     /// let args = vec![("key1".to_string(), "value".to_string())];
     /// let vars = Vars::from_cli_args(args);
     /// ```
+    #[must_use]
     pub fn from_cli_args(args: Vec<(String, String)>) -> Self {
         Self {
             cli: args.into_iter().collect(),
