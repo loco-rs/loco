@@ -4,7 +4,9 @@
 * Bump socketioxide to v0.13.1. [https://github.com/loco-rs/loco/pull/594](https://github.com/loco-rs/loco/pull/594)
 * Add CC and BCC fields to the mailers. [https://github.com/loco-rs/loco/pull/599](https://github.com/loco-rs/loco/pull/599)
 * Delete reset tokens after use. [https://github.com/loco-rs/loco/pull/602](https://github.com/loco-rs/loco/pull/602)
-* Generator html support delete entity. [https://github.com/loco-rs/loco/pull/604](https://github.com/loco-rs/loco/pull/604) 
+* Generator html support delete entity. [https://github.com/loco-rs/loco/pull/604](https://github.com/loco-rs/loco/pull/604)
+* **Breaking changes** move task args from BTreeMap to struct. [https://github.com/loco-rs/loco/pull/609](https://github.com/loco-rs/loco/pull/609)
+  * Change task signature from `async fn run(&self, app_context: &AppContext, vars: &BTreeMap<String, String>)` to `async fn run(&self, _app_context: &AppContext, _vars: &task::Vars) -> Result<()>`
 
 ## v0.5.0 https://github.com/loco-rs/loco/pull/593
 
