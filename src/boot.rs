@@ -1,8 +1,6 @@
 //! # Application Bootstrapping and Logic
 //! This module contains functions and structures for bootstrapping and running
 //! your application.
-use std::collections::BTreeMap;
-
 use axum::Router;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
@@ -21,7 +19,7 @@ use crate::{
     mailer::{EmailSender, MailerWorker},
     redis,
     storage::{self, Storage},
-    task::Tasks,
+    task::{self, Tasks},
     worker::{self, AppWorker, Pool, Processor, RedisConnectionManager, DEFAULT_QUEUES},
     Result,
 };
@@ -105,7 +103,7 @@ async fn process(processor: Processor) -> Result<()> {
 pub async fn run_task<H: Hooks>(
     app_context: &AppContext,
     task: Option<&String>,
-    vars: &BTreeMap<String, String>,
+    vars: &task::Vars,
 ) -> Result<()> {
     let mut tasks = Tasks::default();
     H::register_tasks(&mut tasks);

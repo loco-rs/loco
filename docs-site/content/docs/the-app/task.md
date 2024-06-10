@@ -30,25 +30,44 @@ Each task is designed to parse command-line arguments into flags, utilizing the 
 
 Generate the task:
 
+<!-- <snip id="generate-task-help-command" inject_from="yaml" action="exec" template="sh"> -->
 ```sh
-$ cargo loco generate task [OPTIONS] <TASK_NAME>
+Generate a Task based on the given name
+
+Usage: blo-cli generate task [OPTIONS] <NAME>
+
+Arguments:
+  <NAME>  Name of the thing to generate
+
+Options:
+  -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
+  -h, --help                       Print help
+  -V, --version                    Print version
+
 ```
+<!-- </snip> -->
 
 ## Running a Task
 
 Execute the task you created in the previous step using the following command:
 
+<!-- <snip id="run-task-command" inject_from="yaml" template="sh"> -->
 ```sh
-$ cargo loco task <TASK_NAME>
+cargo loco task <TASK_NAME>
 ```
+<!-- </snip> -->
+
 
 ## Listing All Tasks
 
 To view a list of all tasks that have been executed, use the following command:
 
+<!-- <snip id="list-tasks-command" inject_from="yaml" template="sh"> -->
 ```sh
-$ cargo loco task
+cargo loco task
 ```
+<!-- </snip> -->
+
 
 ## Creating a Task manually
 
@@ -58,24 +77,25 @@ If you prefer a manual approach to creating tasks in `Loco`, you can follow thes
 
 Start by creating a new file under the path `src/tasks`. For example, let's create a file named `example.rs`:
 
+<!-- <snip id="task-code-example" inject_from="code" template="rust"> -->
 ```rust
-// src/tasks/example.rs
+use loco_rs::prelude::*;
 
-pub struct ExampleTask;
+pub struct Foo;
 #[async_trait]
-impl Task for ExampleTask {
+impl Task for Foo {
     fn task(&self) -> TaskInfo {
         TaskInfo {
-            name: "example".to_string(),
-            detail: "Example task executed successfully".to_string(),
+            name: "foo".to_string(),
+            detail: "run foo task".to_string(),
         }
     }
-    async fn run(&self, app_context: &AppContext, vars: &BTreeMap<String, String>) -> Result<()> {
-        println!("Example task executed successfully");
+    async fn run(&self, _app_context: &AppContext, _vars: &task::Vars) -> Result<()> {
         Ok(())
     }
 }
 ```
+<!-- </snip> -->
 
 #### 2. Load the File in mod.rs
 

@@ -8,6 +8,60 @@ use async_trait::async_trait;
 
 use crate::{app::AppContext, errors::Error, Result};
 
+/// Struct representing a collection of task arguments.
+#[derive(Default, Debug)]
+pub struct Vars {
+    /// A list of cli arguments.
+    pub cli: BTreeMap<String, String>,
+}
+
+impl Vars {
+    /// Create [`Vars`] instance from cli arguments.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - A string representing the key.
+    /// * `value` - A string representing the value.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use loco_rs::task::Vars;
+    ///
+    /// let args = vec![("key1".to_string(), "value".to_string())];
+    /// let vars = Vars::from_cli_args(args);
+    /// ```
+    #[must_use]
+    pub fn from_cli_args(args: Vec<(String, String)>) -> Self {
+        Self {
+            cli: args.into_iter().collect(),
+        }
+    }
+
+    /// Retrieves the value associated with the given key from the `cli` list.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the key does not exist.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use loco_rs::task::Vars;
+    ///
+    /// let args = vec![("key1".to_string(), "value".to_string())];
+    /// let vars = Vars::from_cli_args(args);
+    ///
+    /// assert!(vars.cli_arg("key1").is_ok());
+    /// assert!(vars.cli_arg("not-exists").is_err());
+    /// ```
+    pub fn cli_arg(&self, key: &str) -> Result<&String> {
+        self.cli
+            .get(key)
+            .ok_or(Error::Message(format!("the argument {key} does not exist")))
+    }
+}
+
 /// Information about a task, including its name and details.
 #[allow(clippy::module_name_repetitions)]
 pub struct TaskInfo {
@@ -21,7 +75,7 @@ pub trait Task: Send + Sync {
     /// Get information about the task.
     fn task(&self) -> TaskInfo;
     /// Execute the task with the provided application context and variables.
-    async fn run(&self, app_context: &AppContext, vars: &BTreeMap<String, String>) -> Result<()>;
+    async fn run(&self, app_context: &AppContext, vars: &Vars) -> Result<()>;
 }
 
 /// Managing and running tasks.
@@ -43,12 +97,7 @@ impl Tasks {
     ///
     /// Returns a [`Result`] if an task finished with error. mostly if the given
     /// task is not found or an error to run the task.s
-    pub async fn run(
-        &self,
-        app_context: &AppContext,
-        task: &str,
-        vars: &BTreeMap<String, String>,
-    ) -> Result<()> {
+    pub async fn run(&self, app_context: &AppContext, task: &str, vars: &Vars) -> Result<()> {
         let task = self
             .registry
             .get(task)
