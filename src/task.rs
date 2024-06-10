@@ -49,7 +49,7 @@ impl Vars {
     /// ```
     /// use loco_rs::task::Vars;
     ///
-    /// let params = vec![("key1".to_string(), "value".to_string())];
+    /// let args = vec![("key1".to_string(), "value".to_string())];
     /// let vars = Vars::from_cli_args(args);
     ///
     /// assert!(vars.cli_arg("key1").is_ok());
