@@ -86,3 +86,10 @@ snippets:
       skipped (exists): "dockerfile"
       added: ".dockerignore"
     path: ./snipdoc.yml
+  scaffold-help-command:
+    content: cd ./examples/demo && cargo loco generate scaffold --help
+    path: ./snipdoc.yml
+  scaffold-post-command:
+    content: cargo loco generate scaffold posts
+     name:string title:string content:text
+    path: ./snipdoc.yml
