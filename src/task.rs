@@ -16,7 +16,7 @@ pub struct Vars {
 }
 
 impl Vars {
-    /// Adds a new key-value pair to the `cli` BTreeMap.
+    /// Adds a new key-value pair to the `cli`.
     ///
     /// # Arguments
     ///
@@ -35,8 +35,7 @@ impl Vars {
         self.cli.insert(key, value);
     }
 
-    /// Retrieves the value associated with the given key from the `cli`
-    /// BTreeMap.
+    /// Retrieves the value associated with the given key from the `cli` list.
     ///
     /// # Errors
     ///
@@ -54,10 +53,9 @@ impl Vars {
     /// assert!(vars.cli_arg("not-exists").is_err());
     /// ```
     pub fn cli_arg(&self, key: &str) -> Result<&String> {
-        Ok(self
-            .cli
+        self.cli
             .get(key)
-            .ok_or(Error::Message(format!("The argument {key} does not exist")))?)
+            .ok_or(Error::Message(format!("The argument {key} does not exist")))
     }
 }
 
