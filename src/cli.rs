@@ -335,10 +335,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             show_list_endpoints::<H>(&app_context);
         }
         Commands::Task { name, params } => {
-            let mut vars = task::Vars::default();
-            for (k, v) in params {
-                vars.add_cli_arg(k, v);
-            }
+            let vars = task::Vars::from_cli_args(params);
             let app_context = create_context::<H>(&environment).await?;
             run_task::<H>(&app_context, name.as_ref(), &vars).await?;
         }

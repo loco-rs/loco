@@ -16,7 +16,7 @@ pub struct Vars {
 }
 
 impl Vars {
-    /// Adds a new key-value pair to the `cli`.
+    /// Create [`Vars`] instance from cli arguments.
     ///
     /// # Arguments
     ///
@@ -28,11 +28,13 @@ impl Vars {
     /// ```
     /// use loco_rs::task::Vars;
     ///
-    /// let mut vars = Vars::default();
-    /// vars.add_cli_arg("key1".to_string(), "value1".to_string());
+    /// let args = vec![("key1".to_string(), "value".to_string())];
+    /// let vars = Vars::from_cli_args(args);
     /// ```
-    pub fn add_cli_arg(&mut self, key: String, value: String) {
-        self.cli.insert(key, value);
+    pub fn from_cli_args(args: Vec<(String, String)>) -> Self {
+        Self {
+            cli: args.into_iter().collect(),
+        }
     }
 
     /// Retrieves the value associated with the given key from the `cli` list.
@@ -46,8 +48,8 @@ impl Vars {
     /// ```
     /// use loco_rs::task::Vars;
     ///
-    /// let mut vars = Vars::default();
-    /// vars.add_cli_arg("key1".to_string(), "value1".to_string());
+    /// let params = vec![("key1".to_string(), "value".to_string())];
+    /// let vars = Vars::from_cli_args(args);
     ///
     /// assert!(vars.cli_arg("key1").is_ok());
     /// assert!(vars.cli_arg("not-exists").is_err());
@@ -55,7 +57,7 @@ impl Vars {
     pub fn cli_arg(&self, key: &str) -> Result<&String> {
         self.cli
             .get(key)
-            .ok_or(Error::Message(format!("The argument {key} does not exist")))
+            .ok_or(Error::Message(format!("the argument {key} does not exist")))
     }
 }
 
