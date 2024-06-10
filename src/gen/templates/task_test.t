@@ -20,7 +20,7 @@ async fn test_can_run_{{name | snake_case}}() {
     let boot = testing::boot_test::<App>().await.unwrap();
 
     assert!(
-        run_task::<App>(&boot.app_context, Some(&"{{name}}".to_string()),&task::Vars::default())
+        run_task::<App>(&boot.app_context, Some(&"{{name}}".to_string()), &task::Vars::default())
             .await
             .is_ok()
     );
