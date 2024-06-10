@@ -14,9 +14,6 @@
 //!     cli::main::<App, Migrator>().await
 //! }
 //! ```
-
-use std::collections::BTreeMap;
-
 cfg_if::cfg_if! {
     if #[cfg(feature = "with-db")] {
         use sea_orm_migration::MigratorTrait;
@@ -37,7 +34,7 @@ use crate::{
     },
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     gen::{self, Component},
-    logger,
+    logger, task,
 };
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -338,12 +335,12 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             show_list_endpoints::<H>(&app_context);
         }
         Commands::Task { name, params } => {
-            let mut hash = BTreeMap::new();
+            let mut vars = task::Vars::default();
             for (k, v) in params {
-                hash.insert(k, v);
+                vars.add_cli_arg(k, v)
             }
             let app_context = create_context::<H>(&environment).await?;
-            run_task::<H>(&app_context, name.as_ref(), &hash).await?;
+            run_task::<H>(&app_context, name.as_ref(), &vars).await?;
         }
         Commands::Generate { component } => {
             gen::generate::<H>(component.into(), &config)?;

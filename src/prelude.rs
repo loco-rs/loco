@@ -30,7 +30,7 @@ pub use crate::{
     errors::Error,
     mailer,
     mailer::Mailer,
-    task::{Task, TaskInfo},
+    task::{self, Task, TaskInfo},
     validation::{self, Validatable},
     validator::Validate,
     worker::{self, AppWorker},
