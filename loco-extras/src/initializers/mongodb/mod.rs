@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use axum::{Extension, Router as AxumRouter};
 use loco_rs::prelude::*;
-
 use mongodb::{bson::doc, options::ClientOptions, Client, Database};
 
 #[allow(clippy::module_name_repetitions)]
@@ -106,7 +105,8 @@ fn merge_config_with_client(co: &mut ClientOptions, config: MongoDbConfig) -> Cl
                 .default_database
                 .or(co.default_database.clone());
             co.tls = client_options.tls.or(co.tls.clone());
-            // co.tracing_max_document_length_bytes = client_options.tracing_max_document_length_bytes;
+            // co.tracing_max_document_length_bytes =
+            // client_options.tracing_max_document_length_bytes;
             co.write_concern = client_options.write_concern.or(co.write_concern.clone());
             co.srv_max_hosts = client_options.srv_max_hosts.or(co.srv_max_hosts.clone());
 

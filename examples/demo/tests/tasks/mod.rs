@@ -1,2 +1,2 @@
-mod seed;
 mod foo;
+mod seed;
