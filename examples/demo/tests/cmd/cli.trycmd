@@ -72,7 +72,7 @@ Options:
 
 ```console 
 $ LOCO_ENV=test blo-cli task
-foo                           [test misaligned cli prints]
+foo                           [run foo task]
 seed_data                     [Task for seeding data]
 user_report                   [output a user report]
 

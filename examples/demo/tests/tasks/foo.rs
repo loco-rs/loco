@@ -1,21 +1,17 @@
 use blo::app::App;
-use loco_rs::testing;
-
-use loco_rs::boot::run_task;
-use migration::Migrator;
+use loco_rs::{boot::run_task, task, testing};
 use serial_test::serial;
-use std::collections::BTreeMap;
 
 #[tokio::test]
 #[serial]
-async fn test_can_seed_data() {
-    let boot = testing::boot_test::<App, Migrator>().await.unwrap();
+async fn test_can_run_foo_task() {
+    let boot = testing::boot_test::<App>().await.unwrap();
 
-    let vars = BTreeMap::new();
-
-    assert!(
-        run_task::<App>(&boot.app_context, Some(&"foo".to_string()), &vars)
-            .await
-            .is_ok()
-    );
+    assert!(run_task::<App>(
+        &boot.app_context,
+        Some(&"foo".to_string()),
+        &task::Vars::default()
+    )
+    .await
+    .is_ok());
 }
