@@ -140,7 +140,7 @@ $ cargo loco start
       ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
                 https://loco.rs
 
-listening on port 3000
+listening on port 5150
 ```
 <!-- </snip> -->
 
