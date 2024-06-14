@@ -34,7 +34,7 @@ controller/app_routes.rs:203: [Middleware] Adding log trace id
    ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
 
-started on port 3000
+started on port 5150
 ```
 
 ## Getting help

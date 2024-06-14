@@ -314,7 +314,7 @@ impl AppRoutes {
 
         if let Some(allow_origins) = &config.allow_origins {
             // testing CORS, assuming https://example.com in the allow list:
-            // $ curl -v --request OPTIONS 'localhost:3000/api/_ping' -H 'Origin: https://example.com' -H 'Access-Control-Request-Method: GET'
+            // $ curl -v --request OPTIONS 'localhost:5150/api/_ping' -H 'Origin: https://example.com' -H 'Access-Control-Request-Method: GET'
             // look for '< access-control-allow-origin: https://example.com' in response.
             // if it doesn't appear (test with a bogus domain), it is not allowed.
             let mut list = vec![];

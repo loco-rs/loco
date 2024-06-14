@@ -147,7 +147,7 @@ cargo loco start
 And now, let's see that it's alive:
 
 ```sh
-$ curl localhost:3000/_ping
+$ curl localhost:5150/_ping
 {"ok":true}
 ```
 
@@ -156,7 +156,7 @@ The built in `_ping` route will tell your load balancer everything is up.
 Let's see that all services that are required are up:
 
 ```sh
-$ curl localhost:3000/_health
+$ curl localhost:5150/_health
 {"ok":true}
 ```
 
@@ -211,7 +211,7 @@ cargo loco start
 Now, let's test it out:
 
 ```sh
-$ curl localhost:3000/guide
+$ curl localhost:5150/guide
 hello
 ```
 
@@ -284,7 +284,7 @@ cargo loco start
 And hit `/home/hello`:
 
 ```sh
-$ curl localhost:3000/home/hello
+$ curl localhost:5150/home/hello
 ola, mundo
 ```
 
@@ -533,7 +533,7 @@ cargo loco start
 And make a request:
 
 ```sh
-$ curl localhost:3000/articles
+$ curl localhost:5150/articles
 [{"created_at":"...","updated_at":"...","id":1,"title":"how to build apps in 3 steps","content":"use Loco: https://loco.rs"}]
 ```
 
@@ -643,14 +643,14 @@ Add a new article:
 $ curl -X POST -H "Content-Type: application/json" -d '{
   "title": "Your Title",
   "content": "Your Content xxx"
-}' localhost:3000/articles
+}' localhost:5150/articles
 {"created_at":"...","updated_at":"...","id":2,"title":"Your Title","content":"Your Content xxx"}
 ```
 
 Get a list:
 
 ```sh
-$ curl localhost:3000/articles
+$ curl localhost:5150/articles
 [{"created_at":"...","updated_at":"...","id":1,"title":"how to build apps in 3 steps","content":"use Loco: https://loco.rs"},{"created_at":"...","updated_at":"...","id":2,"title":"Your Title","content":"Your Content xxx"}
 ```
 
@@ -757,7 +757,7 @@ Now let's add a comment to Article `1`:
 $ curl -X POST -H "Content-Type: application/json" -d '{
   "content": "this rocks",
   "article_id": 1
-}' localhost:3000/comments
+}' localhost:5150/comments
 {"created_at":"...","updated_at":"...","id":4,"content":"this rocks","article_id":1}
 ```
 

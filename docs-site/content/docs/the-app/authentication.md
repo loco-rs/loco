@@ -52,7 +52,7 @@ The `/api/auth/register` endpoint creates a new user in the database with an `em
 ##### Example Curl Request:
 
 ```sh
-curl --location '127.0.0.1:3000/api/auth/register' \
+curl --location '127.0.0.1:5150/api/auth/register' \
      --header 'Content-Type: application/json' \
      --data-raw '{
          "name": "Loco user",
@@ -70,7 +70,7 @@ After registering a new user, use the following request to log in:
 ##### Example Curl Request:
 
 ```sh
-curl --location '127.0.0.1:3000/api/auth/login' \
+curl --location '127.0.0.1:5150/api/auth/login' \
      --header 'Content-Type: application/json' \
      --data-raw '{
          "email": "user@loco.rs",
@@ -101,7 +101,7 @@ Upon user registration, an email with a verification link is sent. Visiting this
 #### Example Curl request:
 
 ```sh
-curl --location '127.0.0.1:3000/api/auth/verify' \
+curl --location '127.0.0.1:5150/api/auth/verify' \
      --header 'Content-Type: application/json' \
      --data '{
          "token": "TOKEN"
@@ -117,7 +117,7 @@ The `forgot` endpoint requires only the user's email in the payload. An email is
 ##### Example Curl request:
 
 ```sh
-curl --location '127.0.0.1:3000/api/auth/forgot' \
+curl --location '127.0.0.1:5150/api/auth/forgot' \
      --header 'Content-Type: application/json' \
      --data-raw '{
          "email": "user@loco.rs"
@@ -131,7 +131,7 @@ To reset the password, send the token generated in the `forgot` endpoint along w
 ##### Example Curl request:
 
 ```sh
-curl --location '127.0.0.1:3000/api/auth/reset' \
+curl --location '127.0.0.1:5150/api/auth/reset' \
      --header 'Content-Type: application/json' \
      --data '{
          "token": "TOKEN",
@@ -144,7 +144,7 @@ curl --location '127.0.0.1:3000/api/auth/reset' \
 This endpoint is protected by auth middleware.
 
 ```sh
-curl --location --request GET '127.0.0.1:3000/user/current' \
+curl --location --request GET '127.0.0.1:5150/user/current' \
      --header 'Content-Type: application/json' \
      --header 'Authorization: Bearer TOKEN'
 ```
@@ -209,7 +209,7 @@ The `/api/auth/register` endpoint creates a new user in the database with an `ap
 #### Example Curl Request:
 
 ```sh
-curl --location '127.0.0.1:3000/api/auth/register' \
+curl --location '127.0.0.1:5150/api/auth/register' \
      --header 'Content-Type: application/json' \
      --data-raw '{
          "name": "Loco user",
@@ -252,7 +252,7 @@ To request an authenticated endpoint, you need to pass the `API_KEY` in the `Aut
 #### Example Curl Request:
 
 ```sh
-curl --location '127.0.0.1:3000/api/user/current-api' \
+curl --location '127.0.0.1:5150/api/user/current-api' \
      --header 'Content-Type: application/json' \
      --header 'Authorization: Bearer API_KEY'
 ```

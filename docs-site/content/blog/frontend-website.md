@@ -83,7 +83,7 @@ environment: development
      logger: debug
       modes: server
 
-listening on port 3000
+listening on port 5150
 ```
 
 ## Creating the Frontend
@@ -201,5 +201,5 @@ $ docker build . -t loco-todo-list
 Now run the container:
 
 ```sh
-$ docker run -e LOCO_ENV=production -p 3000:3000 loco-todo-list start
+$ docker run -e LOCO_ENV=production -p 5150:5150 loco-todo-list start
 ```
