@@ -247,7 +247,7 @@ pub enum JWTLocation {
 /// ```yaml
 /// # config/development.yaml
 /// server:
-///   port: {{ get_env(name="NODE_PORT", default=3000) }}
+///   port: {{ get_env(name="NODE_PORT", default=5150) }}
 ///   host: http://localhost
 ///   middlewares:
 ///     limit_payload:
