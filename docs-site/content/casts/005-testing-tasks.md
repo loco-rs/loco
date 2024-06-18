@@ -20,4 +20,4 @@ Reference material for this episode:
 * Loco.rs docs: [routes in controllers](https://loco.rs/docs/the-app/task/)
 * The [SaaS starter](https://loco.rs/docs/starters/saas/)
 * The [REST API starter](https://loco.rs/docs/starters/rest-api/)
-* The [Lightweight](https://loco.rs/docs/starters/service/)
+* The [Lightweight starter](https://loco.rs/docs/starters/service/)
