@@ -1,6 +1,9 @@
 # Changelog
 
-## vNext https://github.com/loco-rs/loco/pull/610
+## vNext
+
+
+## 0.6.0 https://github.com/loco-rs/loco/pull/610
 * Bump socketioxide to v0.13.1. [https://github.com/loco-rs/loco/pull/594](https://github.com/loco-rs/loco/pull/594)
 * Add CC and BCC fields to the mailers. [https://github.com/loco-rs/loco/pull/599](https://github.com/loco-rs/loco/pull/599)
 * Delete reset tokens after use. [https://github.com/loco-rs/loco/pull/602](https://github.com/loco-rs/loco/pull/602)
