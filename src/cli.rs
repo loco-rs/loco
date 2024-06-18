@@ -405,12 +405,9 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
             show_list_endpoints::<H>(&app_context)
         }
         Commands::Task { name, params } => {
-            let mut hash = BTreeMap::new();
-            for (k, v) in params {
-                hash.insert(k, v);
-            }
+            let vars = task::Vars::from_cli_args(params);
             let app_context = create_context::<H>(&environment).await?;
-            run_task::<H>(&app_context, name.as_ref(), &hash).await?;
+            run_task::<H>(&app_context, name.as_ref(), &vars).await?;
         }
         Commands::Generate { component } => {
             gen::generate::<H>(component.into(), &config)?;

@@ -764,7 +764,7 @@ $ curl -X POST -H "Content-Type: application/json" -d '{
 And, fetch the relation:
 
 ```sh
-$ curl localhost:3000/articles/1/comments
+$ curl localhost:5150/articles/1/comments
 [{"created_at":"...","updated_at":"...","id":4,"content":"this rocks","article_id":1}]
 ```
 
