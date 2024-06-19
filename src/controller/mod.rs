@@ -9,7 +9,7 @@
 //! ```rust
 //! use async_trait::async_trait;
 //! #[cfg(feature = "channels")]
-//! use loco_rs::controller::{channels::AppChannels, AppRoutes};
+//! use loco_rs::controller::channels::AppChannels;
 //! use loco_rs::{
 //!    app::{AppContext, Hooks},
 //!    boot::{create_app, BootResult, StartMode},
