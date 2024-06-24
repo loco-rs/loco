@@ -35,8 +35,6 @@ use tracing::info;
 
 use crate::{environment::Environment, logger, Error, Result};
 
-const DEFAULT_SERVER_BINDING: &str = "[::]";
-
 lazy_static! {
     static ref DEFAULT_FOLDER: PathBuf = PathBuf::from("config");
 }
@@ -283,7 +281,7 @@ pub struct Server {
 }
 
 fn default_binding() -> String {
-    DEFAULT_SERVER_BINDING.to_string()
+    "localhost".to_string()
 }
 
 impl Server {
