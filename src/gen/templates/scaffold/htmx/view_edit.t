@@ -8,15 +8,14 @@ message: "{{file_name}} edit view was added successfully."
 <html lang="en">
 
 <head>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.0/dist/htmx.min.js"></script>
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
 </head>
 
 <body class="prose p-10">
     <h1>Edit {{name}}: {% raw %}{{ item.id }}{% endraw %}</h1>
     <div class="mb-10">
-    <form hx-post="/{{name | plural}}/{% raw %}{{ item.id }}{% endraw %}" hx-ext="json-enc">
+    <form hx-post="/{{name | plural}}/{% raw %}{{ item.id }}{% endraw %}" hx-ext="submitjson" hx-target="#success-message">
     <div class="mb-5">
      {% for column in columns -%}
         <div>
@@ -50,13 +49,49 @@ message: "{{file_name}} edit view was added successfully."
         </div>
     {% endfor -%}
     <div>
-    <div>
+    <div class="mt-5">
             <button class=" text-xs py-3 px-6 rounded-lg bg-gray-900 text-white" type="submit">Submit</button>
+            <button class="text-xs py-3 px-6 rounded-lg bg-red-600 text-white"
+                        onclick="confirmDelete(event)">Delete</button>
         </div>
     </form>
+    <div id="success-message" class="mt-4"></div>
     <br />
     <a href="/{{name | plural}}">Back to {{name}}</a>
     </div>
+    <script>
+        htmx.defineExtension('submitjson', {
+            onEvent: function (name, evt) {
+                if (name === "htmx:configRequest") {
+                    evt.detail.headers['Content-Type'] = "application/json"
+                }
+            },
+            encodeParameters: function (xhr, parameters, elt) {
+                const json = {};
+                for (const [key, value] of Object.entries(parameters)) {
+                    if (elt.querySelector(`[name=${key}]`).type === 'number') {
+                        json[key] = parseFloat(value);
+                    } else {
+                        json[key] = value;
+                    }
+                }
+                return JSON.stringify(json);
+            }
+        })
+        function confirmDelete(event) {
+            event.preventDefault();
+            if (confirm("Are you sure you want to delete this item?")) {
+                var xhr = new XMLHttpRequest();
+                xhr.open("DELETE", "/movies/{% raw %}{{ item.id }}{% endraw %}", true);
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState == 4 && xhr.status == 200) {
+                        window.location.href = "/movies";
+                    }
+                };
+                xhr.send();
+            }
+        }
+    </script>
 </body>
 
 </html>

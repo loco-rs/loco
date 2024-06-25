@@ -8,15 +8,15 @@ message: "{{file_name}} create view was added successfully."
 <html lang="en">
 
 <head>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.0/dist/htmx.min.js"></script>
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
 </head>
 
 <body class="prose p-10">
-    <h1>Create new {{name}}</h1>
+    
     <div class="mb-10">
-    <form hx-post="/{{name | plural}}" hx-ext="json-enc">
+    <form hx-post="/{{name | plural}}" hx-ext="submitjson">
+     <h1>Create new {{name}}</h1>
      <div class="mb-5">
      {% for column in columns -%}
         <div>
@@ -55,6 +55,26 @@ message: "{{file_name}} create view was added successfully."
     </div>
     </form>
     </div>
+    <script>
+        htmx.defineExtension('submitjson', {
+            onEvent: function (name, evt) {
+                if (name === "htmx:configRequest") {
+                    evt.detail.headers['Content-Type'] = "application/json"
+                }
+            },
+            encodeParameters: function (xhr, parameters, elt) {
+                const json = {};
+                for (const [key, value] of Object.entries(parameters)) {
+                    if (elt.querySelector(`[name=${key}]`).type === 'number') {
+                        json[key] = parseFloat(value);
+                    } else {
+                        json[key] = value;
+                    }
+                }
+                return JSON.stringify(json);
+            }
+        })
+    </script>
 </body>
 
 </html>
