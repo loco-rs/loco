@@ -30,9 +30,9 @@ message: "{{file_name}} edit view was added successfully."
         {% elif column.2 == "int" or column.2 == "int!" or column.2 == "int^"-%}
         <input id="{{column.0}}" name="{{column.0}}" type="number" required value="{% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}"></input>
         {% elif column.2 == "bool"-%}
-        <input id="{{column.0}}" name="{{column.0}}" type="checkbox" value="true" {% raw %}{% if item.publish %}checked{%endif %}{% endraw %}></input>
+        <input id="{{column.0}}" name="{{column.0}}" type="checkbox" value="true" {% raw %}{% if item.0 %}checked{%endif %}{% endraw %}></input>
         {% elif column.2 == "bool!"-%}
-        <input id="{{column.0}}" name="{{column.0}}" type="checkbox" value="true" {% raw %}{% if item.publish %}checked{%endif %}{% endraw %} required></input>
+        <input id="{{column.0}}" name="{{column.0}}" type="checkbox" value="true" {% raw %}{% if item.0 %}checked{%endif %}{% endraw %} required></input>
         {% elif column.2 == "ts"-%}
         <input id="{{column.0}}" name="{{column.0}}" type="text" value="{% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}"></input>
         {% elif column.2 == "ts!"-%}
@@ -69,8 +69,11 @@ message: "{{file_name}} edit view was added successfully."
             encodeParameters: function (xhr, parameters, elt) {
                 const json = {};
                 for (const [key, value] of Object.entries(parameters)) {
-                    if (elt.querySelector(`[name=${key}]`).type === 'number') {
+                    const inputType = elt.querySelector(`[name=${key}]`).type;
+                    if (inputType === 'number') {
                         json[key] = parseFloat(value);
+                    } else if (inputType === 'checkbox') {
+                        json[key] = elt.querySelector(`[name=${key}]`).checked;
                     } else {
                         json[key] = value;
                     }

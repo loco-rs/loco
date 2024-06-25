@@ -65,8 +65,11 @@ message: "{{file_name}} create view was added successfully."
             encodeParameters: function (xhr, parameters, elt) {
                 const json = {};
                 for (const [key, value] of Object.entries(parameters)) {
-                    if (elt.querySelector(`[name=${key}]`).type === 'number') {
+                    const inputType = elt.querySelector(`[name=${key}]`).type;
+                    if (inputType === 'number') {
                         json[key] = parseFloat(value);
+                    } else if (inputType === 'checkbox') {
+                        json[key] = elt.querySelector(`[name=${key}]`).checked;
                     } else {
                         json[key] = value;
                     }
