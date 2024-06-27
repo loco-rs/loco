@@ -76,7 +76,7 @@ $ cd myapp
 Make sure you also have locally installed or running (via Docker or otherwise) in case you selected starter with DB dependencies:
 
 - Postgres (your database will be named `myapp_development`)
-- Redis
+- Redis or Valkey
 
 <div class="infobox">
 To configure a database, please run a local postgres database with <code>loco:loco</code> and a db named <code>myapp_development</code>.
@@ -94,10 +94,18 @@ docker run -d -p 5432:5432 \
 ```
 <!-- </snip> -->
 
-This docker command start up redis server:
+This docker command start up redis or valkey server:
 
 ```
 docker run -p 6379:6379 -d redis redis-server
+
+or
+
+docker run --name valkey -d valkey/valkey:unstable
+```
+
+Valkey is a new open-source alternative, supported by the Linux Foundation, created in response to RedisLabs altering their licensing model which led to their software no longer being classified as open-source.
+
 ```
 
 Use doctor command to check the needed resources:

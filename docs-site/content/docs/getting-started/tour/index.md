@@ -172,15 +172,23 @@ Done! enjoy your ride with `loco` 🚂
 
 Your generated app contains a fully working authentication suite, based on JWTs.
 
-To authenticate, you will need a running redis server.
+To authenticate, you will need a running redis or valkey server.
 
-This docker command starts up a redis server:
+This docker command starts up a redis or valkey server:
 
 <!-- <snip id="redis-run-docker-command" inject_from="yaml" template="sh"> -->
 ```sh
 docker run -p 6379:6379 -d redis redis-server
+
+or
+
+docker run --name valkey -d valkey/valkey:unstable
 ```
 <!-- </snip> -->
+
+Valkey is a new open-source alternative, supported by the Linux Foundation, created in response to RedisLabs altering their licensing model which led to their software no longer being classified as open-source.
+
+Please note that Valkey is currently in its early stages of development and may exhibit instability as it continues to evolve.
 
 Use doctor command to check the needed resources:
 
