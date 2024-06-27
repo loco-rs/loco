@@ -55,7 +55,7 @@ server:
       # max_age: 3600
     static:
       enable: true
-      must_exist: true
+      must_exist: false
       folder:
         uri: "/"
         path: "frontend/dist"

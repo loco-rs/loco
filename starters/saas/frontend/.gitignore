@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 dist-ssr
+dist/
 *.local
 
 # Editor directories and files
@@ -21,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Common local dotenv files popularised by Create React App & Next.js
+# https://rsbuild.dev/guide/advanced/env-vars#env-file
+.env.local
+.env.development.local
+.env.production.local
+.env.test.local
