@@ -314,10 +314,8 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             let boot_result = create_app::<H, M>(start_mode, &environment).await?;
             let serve_params = ServeParams {
                 port: port.map_or(boot_result.app_context.config.server.port, |p| p),
-                binding: binding.map_or(
-                    boot_result.app_context.config.server.binding.to_string(),
-                    |b| b,
-                ),
+                binding: binding
+                    .unwrap_or_else(|| boot_result.app_context.config.server.binding.to_string()),
             };
             start::<H>(boot_result, serve_params).await?;
         }
