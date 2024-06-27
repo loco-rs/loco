@@ -2,6 +2,9 @@
 
 ## vNext
 
+## 0.6.1
+ * Upgrade htmx generator to htmx2. [https://github.com/loco-rs/loco/pull/629](https://github.com/loco-rs/loco/pull/629)
+
 
 ## 0.6.0 https://github.com/loco-rs/loco/pull/610
 * Bump socketioxide to v0.13.1. [https://github.com/loco-rs/loco/pull/594](https://github.com/loco-rs/loco/pull/594)

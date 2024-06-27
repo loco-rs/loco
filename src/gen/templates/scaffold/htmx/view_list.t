@@ -8,12 +8,12 @@ message: "{{file_name}} list view was added successfully."
 <html lang="en">
 
 <head>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.0/dist/htmx.min.js"></script>
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
 </head>
 
 <body class="prose p-10">
-     <h1>{{file_name}}s</h1>
+     <h1>{{file_name}}</h1>
      <div class="mb-10">
     {% raw %}{% for item in items %}{% endraw %}
     <div class="mb-5">
