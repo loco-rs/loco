@@ -203,6 +203,11 @@ enum DbCommands {
     Create,
     /// Migrate schema (up)
     Migrate,
+    /// Run one down migration
+    Down {
+        /// The number of migrations to rollback
+        steps: Option<u32>,
+    },
     /// Drop all tables, then reapply all migrations
     Reset,
     /// Migration status
@@ -217,6 +222,7 @@ impl From<DbCommands> for RunDbCommand {
     fn from(value: DbCommands) -> Self {
         match value {
             DbCommands::Migrate => Self::Migrate,
+            DbCommands::Down { steps } => Self::Down(steps),
             DbCommands::Reset => Self::Reset,
             DbCommands::Status => Self::Status,
             DbCommands::Entities => Self::Entities,
