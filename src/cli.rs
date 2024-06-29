@@ -203,7 +203,7 @@ enum DbCommands {
     Create,
     /// Migrate schema (up)
     Migrate,
-    /// Run one down migration
+    /// Run one down migration, or add a number to run multiple down migrations (i.e. `down 2`)
     Down {
         /// The number of migrations to rollback
         steps: Option<u32>,
