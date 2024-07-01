@@ -51,6 +51,8 @@ pub struct AppContext {
     pub storage: Arc<Storage>,
     // Cache instance for the application
     pub cache: Arc<cache::Cache>,
+    // An optional request context for the application
+    pub request_context: Arc<crate::request_context::RequestContextStore>,
 }
 
 /// A trait that defines hooks for customizing and extending the behavior of a

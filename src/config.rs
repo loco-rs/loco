@@ -49,6 +49,7 @@ pub struct Config {
     pub server: Server,
     #[cfg(feature = "with-db")]
     pub database: Database,
+    pub request_context: RequestContext,
     pub queue: Option<Redis>,
     pub auth: Option<Auth>,
     #[serde(default)]
@@ -177,6 +178,28 @@ pub struct Database {
     pub dangerously_recreate: bool,
 }
 
+/// Request context configuration
+///
+/// Example (development):
+/// ```yaml
+/// # config/development.yaml
+/// request_context:
+///  type: Cookie
+///  value:
+///     private_key: <your private key>
+///     signed_key: <your signed key>
+/// ```
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "type", content = "value")]
+pub enum RequestContext {
+    /// Cookie session configuration
+    Cookie {
+        /// Private key for Private Cookie Jar in Cookie Sessions, must be more than 64 bytes.
+        private_key: Vec<u8>,
+        /// Signed key for Signed Cookie Jar in Cookie Sessions, must be more than 64 bytes.
+        signed_key: Vec<u8>,
+    },
+}
 /// Redis Configuration
 ///
 /// Example (development):

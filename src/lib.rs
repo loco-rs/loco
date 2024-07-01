@@ -44,6 +44,7 @@ pub mod validation;
 pub mod worker;
 #[cfg(feature = "channels")]
 pub use socketioxide;
+pub mod request_context;
 #[cfg(feature = "testing")]
 pub mod tests_cfg;
 pub use validator;

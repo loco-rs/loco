@@ -2,6 +2,7 @@
 //! This module contains functions and structures for bootstrapping and running
 //! your application.
 use axum::Router;
+use axum_extra::extract::cookie::Key;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
 use tracing::{info, trace, warn};
@@ -205,6 +206,7 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
         queue: connect_redis(&config).await,
         storage: Storage::single(storage::drivers::null::new()).into(),
         cache: cache::Cache::new(cache::drivers::null::new()).into(),
+        request_context: create_request_context_store(&config.request_context)?.into(),
         config,
         mailer,
     };
@@ -339,6 +341,32 @@ fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
         }
     }
     Ok(None)
+}
+/// Creates a [`RequestContextStore`] based on the provided configuration settings ([`config::RequestContext`]).
+fn create_request_context_store(
+    config: &config::RequestContext,
+) -> Result<crate::request_context::RequestContextStore> {
+    match config {
+        config::RequestContext::Cookie {
+            private_key,
+            signed_key,
+        } => {
+            let (private_key, signed_key) = (
+                Key::try_from(&private_key[..]).map_err(|e| {
+                    tracing::error!(error = ?e, "could not convert private key from configuration");
+                    Error::Message("could not convert private key from configuration".to_string())
+                })?,
+                Key::try_from(&signed_key[..]).map_err(|e| {
+                    tracing::error!(error = ?e, "could not convert signed key from configuration");
+                    Error::Message("could not convert signed key from configuration".to_string())
+                })?,
+            );
+            Ok(crate::request_context::RequestContextStore::new(
+                private_key,
+                signed_key,
+            ))
+        }
+    }
 }
 
 #[allow(clippy::missing_panics_doc)]
