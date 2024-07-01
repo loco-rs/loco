@@ -19,20 +19,7 @@ Scaffolding is an efficient and speedy method for generating key components of a
 See scaffold command:
 <!-- <snip id="scaffold-help-command" inject_from="yaml" action="exec" template="sh"> -->
 ```sh
-Generates a CRUD scaffold, model and controller
-
-Usage: blo-cli generate scaffold [OPTIONS] <NAME> [FIELDS]...
-
-Arguments:
-  <NAME>       Name of the thing to generate
-  [FIELDS]...  Model fields, eg. title:string hits:int
-
-Options:
-  -k, --kind <KIND>                The kind of scaffold to generate [default: api] [possible values: api, html, htmx]
-  -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
-  -h, --help                       Print help
-  -V, --version                    Print version
-
+cd ./examples/demo && cargo loco generate scaffold --help
 ```
 <!-- </snip> -->
 

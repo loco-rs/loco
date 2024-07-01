@@ -169,15 +169,19 @@ This enforces _everything-as-code_, _reproducibility_ and _atomicity_, where no 
 
 If you realize that you made a mistake, you can always undo the migration. This will undo the changes made by the migration (assuming that you added the appropriate code for `down` in the migration).
 
+<!-- <snip id="migrate-down-command" inject_from="yaml" template="sh"> -->
+```sh
+cargo loco db down
 ```
-$ cargo loco db down
-```
+<!-- </snip> -->
 
 The `down` command on its own will rollback only the last migration. If you want to rollback multiple migrations, you can specify the number of migrations to rollback.
 
+<!-- <snip id="migrate-down-n-command" inject_from="yaml" template="sh"> -->
+```sh
+cargo loco db down 2
 ```
-$ cargo loco db down 2
-```
+<!-- </snip> -->
 
 ### Verbs, singular and plural
 
