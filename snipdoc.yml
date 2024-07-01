@@ -102,3 +102,9 @@ snippets:
   list-tasks-command:
     content: cargo loco task
     path: ./snipdoc.yml
+  migrate-down-command:
+    content: cargo loco db down
+    path: ./snipdoc.yml
+  migrate-down-n-command:
+    content: cargo loco db down 2
+    path: ./snipdoc.yml

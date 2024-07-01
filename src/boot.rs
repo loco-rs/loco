@@ -126,6 +126,8 @@ pub async fn run_task<H: Hooks>(
 pub enum RunDbCommand {
     /// Apply pending migrations.
     Migrate,
+    /// Run one or more down migrations.
+    Down(u32),
     /// Drop all tables, then reapply all migrations.
     Reset,
     /// Check the status of all migrations.
@@ -152,6 +154,10 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
         RunDbCommand::Migrate => {
             tracing::warn!("migrate:");
             db::migrate::<M>(&app_context.db).await?;
+        }
+        RunDbCommand::Down(steps) => {
+            tracing::warn!("down:");
+            db::down::<M>(&app_context.db, steps).await?;
         }
         RunDbCommand::Reset => {
             tracing::warn!("reset:");
