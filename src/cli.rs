@@ -206,7 +206,8 @@ enum DbCommands {
     /// Run one down migration, or add a number to run multiple down migrations (i.e. `down 2`)
     Down {
         /// The number of migrations to rollback
-        steps: Option<u32>,
+        #[arg(default_value_t = 1)]
+        steps: u32,
     },
     /// Drop all tables, then reapply all migrations
     Reset,

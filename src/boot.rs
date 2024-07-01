@@ -127,7 +127,7 @@ pub enum RunDbCommand {
     /// Apply pending migrations.
     Migrate,
     /// Run one or more down migrations.
-    Down(Option<u32>),
+    Down(u32),
     /// Drop all tables, then reapply all migrations.
     Reset,
     /// Check the status of all migrations.
