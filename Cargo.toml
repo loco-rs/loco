@@ -67,7 +67,7 @@ async-trait = { workspace = true }
 bb8 = "0.8.1"
 
 axum = { workspace = true }
-axum-extra = { version = "0.9", features = ["cookie", "cookie-private", "cookie-signed"] }
+axum-extra = { version = "0.9", features = ["cookie", "cookie-private", ] }
 regex = "1"
 lazy_static = "1.4.0"
 fs-err = "2.11.0"
