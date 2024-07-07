@@ -27,6 +27,12 @@ impl CookieMap {
     }
 }
 
+impl Default for CookieMap {
+    fn default() -> Self {
+        Self::new(HashMap::new())
+    }
+}
+
 impl TryFrom<CookieMap> for String {
     type Error = CookieMapError;
     fn try_from(value: CookieMap) -> Result<Self, Self::Error> {
@@ -131,7 +137,7 @@ impl SignedPrivateCookieJar {
                 let cookie_map = CookieMap::try_from(private_cookie_value)?;
                 Ok(cookie_map)
             }
-            None => Ok(CookieMap::new(HashMap::new())),
+            None => Ok(CookieMap::default()),
         }
     }
 }
