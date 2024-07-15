@@ -46,7 +46,7 @@ clap = { version = "4.4.7", features = ["derive"], optional = true }
 colored = "2"
 
 
-sea-orm = { version = "1.0.0-rc.4", features = [
+sea-orm = { version = "1.0.0-rc.7", features = [
   "sqlx-postgres",        # `DATABASE_DRIVER` feature
   "sqlx-sqlite",
   "runtime-tokio-rustls",
@@ -61,7 +61,7 @@ serde_json = "1"
 serde_yaml = "0.9"
 serde_variant = "0.1.2"
 
-# worker fwk 
+# worker fwk
 rusty-sidekiq = { version = "0.8.2", default-features = false }
 async-trait = { workspace = true }
 bb8 = "0.8.1"
@@ -104,7 +104,7 @@ bytes = "1.1"
 
 axum-test = { version = "14.3.0", optional = true }
 
-# gen 
+# gen
 rrgen = "0.5.3"
 chrono = "0.4.31"
 cargo_metadata = "0.18.1"
@@ -141,7 +141,7 @@ tower-http = { version = "0.5.0", features = [
 
 [dependencies.sea-orm-migration]
 optional = true
-version = "1.0.0-rc.4"
+version = "1.0.0-rc.7"
 features = [
   # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.
   # View the list of supported features at https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime.
