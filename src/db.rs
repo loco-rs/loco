@@ -182,6 +182,18 @@ pub async fn migrate<M: MigratorTrait>(db: &DatabaseConnection) -> Result<(), se
     M::up(db, None).await
 }
 
+/// Revert migrations to the database using the provided migrator.
+///
+/// # Errors
+///
+/// Returns a [`sea_orm::DbErr`] if an error occurs during run migration up.
+pub async fn down<M: MigratorTrait>(
+    db: &DatabaseConnection,
+    steps: u32,
+) -> Result<(), sea_orm::DbErr> {
+    M::down(db, Some(steps)).await
+}
+
 /// Check the migration status of the database.
 ///
 /// # Errors
