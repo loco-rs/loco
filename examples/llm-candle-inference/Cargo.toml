@@ -27,13 +27,10 @@ tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 
 lazy_static = "1"
 
-kalosm = { version = "0.2.1", features = ["metal"] }
+kalosm = { version = "0.2.2", features = ["metal"] }
 futures-util = "0.3.30"
 axum-streams = { version = "0.14.2", features = ["text"] }
 zstd-sys = { version = "=2.0.9" }
-
-[patch.crates-io]
-kalosm = { git = "https://github.com/floneum/floneum.git", package = "interfaces/kalosm", branch = "main" }
 
 [[bin]]
 name = "inference"
