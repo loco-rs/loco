@@ -25,6 +25,87 @@ impl CookieMap {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
+    /// Inserts a `impl Serialize` value into the cookie map.
+    /// # Arguments
+    /// * `key` - The key to store the value
+    /// * `value` - The value to store
+    /// # Errors
+    /// * `CookieMapError` - When the value is unable to be serialized
+    pub fn insert<T>(&mut self, key: &str, value: T) -> Result<(), CookieMapError>
+    where
+        T: serde::Serialize,
+    {
+        let value = serde_json::to_value(value).map_err(|e| {
+            tracing::error!(?e, "Failed to serialize value");
+            CookieMapError::Serde(e)
+        })?;
+        self.0.insert(key.to_string(), value);
+        Ok(())
+    }
+
+    /// Gets a value from the cookie map.
+    ///
+    /// # Arguments
+    /// * `key` - The key to get the value
+    ///
+    /// # Return
+    /// * `Option<T>` - The value if found, otherwise None
+    ///
+    /// # Errors
+    /// * `CookieMapError` - When the value is unable to be deserialized
+    pub fn get<T: serde::de::DeserializeOwned>(
+        &self,
+        key: &str,
+    ) -> Result<Option<T>, CookieMapError> {
+        let value = self
+            .0
+            .get(key)
+            .map(|value| serde_json::from_value(value.clone()));
+        match value {
+            Some(Ok(value)) => Ok(Some(value)),
+            Some(Err(e)) => {
+                tracing::error!(?e, "Failed to deserialize value");
+                Err(CookieMapError::Serde(e))
+            }
+            None => Ok(None),
+        }
+    }
+
+    /// Removes a value from the cookie map.
+    ///
+    /// # Arguments
+    /// * `key` - The key to remove from the store
+    ///
+    /// # Return
+    /// * `Option<T>` - The value if found, otherwise None
+    ///
+    /// # Errors
+    /// * `CookieMapError` - When the value is unable to be deserialized
+    pub fn remove<T: serde::de::DeserializeOwned>(
+        &mut self,
+        key: &str,
+    ) -> Result<Option<T>, CookieMapError> {
+        let value = self.0.remove(key);
+        value.map_or_else(
+            || Ok(None),
+            |value| {
+                let value = serde_json::from_value(value);
+                match value {
+                    Ok(value) => Ok(Some(value)),
+                    Err(e) => {
+                        tracing::error!(?e, "Failed to deserialize value");
+                        Err(CookieMapError::Serde(e))
+                    }
+                }
+            },
+        )
+    }
+
+    /// Clears the cookie map.
+    pub fn clear(&mut self) {
+        self.0.clear();
+    }
 }
 
 impl Default for CookieMap {
@@ -161,7 +242,9 @@ mod test {
     use super::*;
     use axum::response::IntoResponse;
     use axum_extra::extract::cookie::Key;
+    use serde_json::Value;
     use std::collections::HashMap;
+
     const SET_COOKIE: &str = "set-cookie";
 
     fn get_cookies_from_response<T: IntoResponse>(response: T) -> Vec<String> {
@@ -183,17 +266,17 @@ mod test {
     fn create_empty_header(private_key: &Key) -> Result<HeaderMap, SignedPrivateCookieJarError> {
         let headers = HeaderMap::new();
         let jar = SignedPrivateCookieJar::new(&headers, private_key.clone());
-        assert_eq!(jar.into_cookie_map()?.is_empty(), true);
+        assert!(jar.into_cookie_map()?.is_empty());
         Ok(headers)
     }
 
     fn create_non_empty_header(
         private_key: &Key,
-        map: HashMap<String, serde_json::Value>,
+        map: HashMap<String, Value>,
     ) -> Result<HeaderMap, SignedPrivateCookieJarError> {
-        let cookie_map = CookieMap::new(map.clone());
-        let jar = SignedPrivateCookieJar::from_cookie_map(&private_key, cookie_map)?;
-        assert_eq!(jar.is_some(), true);
+        let cookie_map = CookieMap::new(map);
+        let jar = SignedPrivateCookieJar::from_cookie_map(private_key, cookie_map)?;
+        assert!(jar.is_some());
         let jar = jar.unwrap();
         let headers = signed_private_jar_to_headers(jar);
         Ok(headers)
@@ -201,10 +284,9 @@ mod test {
 
     fn signed_private_jar_to_headers(jar: SignedPrivateCookieJar) -> HeaderMap {
         let mut headers = jar.into_response().headers().clone();
-        println!("{:?}", headers);
         // Change set-cookie header to cookie header
         let value = headers.get(SET_COOKIE);
-        assert_eq!(value.is_some(), true);
+        assert!(value.is_some());
         let value = value.unwrap();
         headers.insert("cookie", value.clone());
         headers.remove(SET_COOKIE);
@@ -235,7 +317,7 @@ mod test {
         );
         let cookie_map = CookieMap::new(map.clone());
         let jar = SignedPrivateCookieJar::from_cookie_map(&private_key, cookie_map)?;
-        assert_eq!(jar.is_some(), true);
+        assert!(jar.is_some());
         let jar = jar.unwrap();
         let cookie_map = jar.into_cookie_map()?;
         assert_eq!(cookie_map.0, map);
@@ -264,7 +346,7 @@ mod test {
         // Try to create private cookie jar from empty cookie map
         let jar = SignedPrivateCookieJar::from_cookie_map(&private_key, map)?;
         // expect None
-        assert_eq!(jar.is_none(), true);
+        assert!(jar.is_none());
         Ok(())
     }
 

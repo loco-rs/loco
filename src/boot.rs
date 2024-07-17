@@ -347,23 +347,13 @@ fn create_request_context_store(
     config: &config::RequestContext,
 ) -> Result<crate::request_context::RequestContextStore> {
     match config {
-        config::RequestContext::Cookie {
-            private_key,
-            signed_key,
-        } => {
-            let (private_key, signed_key) = (
-                Key::try_from(&private_key[..]).map_err(|e| {
-                    tracing::error!(error = ?e, "could not convert private key from configuration");
-                    Error::Message("could not convert private key from configuration".to_string())
-                })?,
-                Key::try_from(&signed_key[..]).map_err(|e| {
-                    tracing::error!(error = ?e, "could not convert signed key from configuration");
-                    Error::Message("could not convert signed key from configuration".to_string())
-                })?,
-            );
+        config::RequestContext::Cookie { private_key } => {
+            let private_key = Key::try_from(&private_key[..]).map_err(|e| {
+                tracing::error!(error = ?e, "could not convert private key from configuration");
+                Error::Message("could not convert private key from configuration".to_string())
+            })?;
             Ok(crate::request_context::RequestContextStore::new(
                 private_key,
-                signed_key,
             ))
         }
     }

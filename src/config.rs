@@ -196,8 +196,6 @@ pub enum RequestContext {
     Cookie {
         /// Private key for Private Cookie Jar in Cookie Sessions, must be more than 64 bytes.
         private_key: Vec<u8>,
-        /// Signed key for Signed Cookie Jar in Cookie Sessions, must be more than 64 bytes.
-        signed_key: Vec<u8>,
     },
 }
 /// Redis Configuration
