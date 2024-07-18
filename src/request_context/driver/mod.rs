@@ -91,3 +91,128 @@ pub enum DriverError {
     #[error("TowerSessionError: {0}")]
     TowerSessionError(#[from] tower_sessions::session::Error),
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use tower_sessions::{MemoryStore, Session};
+
+    fn create_session() -> Session {
+        let store = Arc::new(MemoryStore::default());
+        Session::new(None, store, None)
+    }
+
+    #[tokio::test]
+    async fn test_driver_insert() {
+        let hash_map = HashMap::new();
+        let mut driver = Driver::CookieMap(CookieMap::new(hash_map));
+        driver
+            .insert("test", "test")
+            .await
+            .expect("Failed to insert value");
+        let value: Option<String> = driver.get("test").await.expect("Failed to get value");
+        assert_eq!(value, Some("test".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_driver_insert_tower_session() {
+        let session = create_session();
+        let mut driver = Driver::TowerSession(session);
+        driver
+            .insert("test", "test")
+            .await
+            .expect("Failed to insert value");
+        let value: Option<String> = driver.get("test").await.expect("Failed to get value");
+        assert_eq!(value, Some("test".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_driver_get() {
+        let hash_map = HashMap::new();
+        let mut driver = Driver::CookieMap(CookieMap::new(hash_map));
+        driver
+            .insert("test", "test")
+            .await
+            .expect("Failed to insert value");
+        let value: Option<String> = driver.get("test").await.expect("Failed to get value");
+        assert_eq!(value, Some("test".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_driver_get_tower_session() {
+        let session = create_session();
+        let mut driver = Driver::TowerSession(session);
+        driver
+            .insert("test", "test")
+            .await
+            .expect("Failed to insert value");
+        let value: Option<String> = driver.get("test").await.expect("Failed to get value");
+        assert_eq!(value, Some("test".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_driver_remove() {
+        let hash_map = HashMap::new();
+        let mut driver = Driver::CookieMap(CookieMap::new(hash_map));
+        driver
+            .insert("test", "test")
+            .await
+            .expect("Failed to insert value");
+        let value: Option<String> = driver.get("test").await.expect("Failed to get value");
+        assert_eq!(value, Some("test".to_string()));
+        let removed_value: Option<String> =
+            driver.remove("test").await.expect("Failed to remove value");
+        assert_eq!(removed_value, Some("test".to_string()));
+        let value: Option<String> = driver.get("test").await.expect("Failed to get value");
+        assert_eq!(value, None);
+    }
+
+    #[tokio::test]
+    async fn test_driver_remove_tower_session() {
+        let session = create_session();
+        let mut driver = Driver::TowerSession(session);
+        driver
+            .insert("test", "test")
+            .await
+            .expect("Failed to insert value");
+        let value: Option<String> = driver.get("test").await.expect("Failed to get value");
+        assert_eq!(value, Some("test".to_string()));
+        let removed_value: Option<String> =
+            driver.remove("test").await.expect("Failed to remove value");
+        assert_eq!(removed_value, Some("test".to_string()));
+        let value: Option<String> = driver.get("test").await.expect("Failed to get value");
+        assert_eq!(value, None);
+    }
+
+    #[tokio::test]
+    async fn test_driver_clear() {
+        let hash_map = HashMap::new();
+        let mut driver = Driver::CookieMap(CookieMap::new(hash_map));
+        driver
+            .insert("test", "test")
+            .await
+            .expect("Failed to insert value");
+        let value: Option<String> = driver.get("test").await.expect("Failed to get value");
+        assert_eq!(value, Some("test".to_string()));
+        driver.clear().await;
+        let value: Option<String> = driver.get("test").await.expect("Failed to get value");
+        assert_eq!(value, None);
+    }
+
+    #[tokio::test]
+    async fn test_driver_clear_tower_session() {
+        let session = create_session();
+        let mut driver = Driver::TowerSession(session);
+        driver
+            .insert("test", "test")
+            .await
+            .expect("Failed to insert value");
+        let value: Option<String> = driver.get("test").await.expect("Failed to get value");
+        assert_eq!(value, Some("test".to_string()));
+        driver.clear().await;
+        let value: Option<String> = driver.get("test").await.expect("Failed to get value");
+        assert_eq!(value, None);
+    }
+}

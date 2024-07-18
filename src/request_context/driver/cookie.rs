@@ -15,7 +15,7 @@ impl CookieMap {
     /// # Return
     /// `Self` - The cookie map instance
     #[must_use]
-    fn new(map: HashMap<String, serde_json::Value>) -> Self {
+    pub(crate) fn new(map: HashMap<String, serde_json::Value>) -> Self {
         Self(map)
     }
     /// Check if the cookie map is empty
