@@ -178,9 +178,7 @@ impl AppRoutes {
     /// Return an [`Result`] when could not convert the router setup to
     /// [`axum::Router`].
     #[allow(clippy::cognitive_complexity)]
-    pub fn to_router(&self, ctx: AppContext) -> Result<AXRouter> {
-        let mut app = AXRouter::new();
-
+    pub fn to_router(&self, ctx: AppContext, mut app: AXRouter<AppContext>) -> Result<AXRouter> {
         for router in self.collect() {
             tracing::info!("{}", router.to_string());
 

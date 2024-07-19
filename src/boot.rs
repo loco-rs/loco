@@ -265,7 +265,7 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
     }
     match mode {
         StartMode::ServerOnly => {
-            let app = H::routes(&app_context).to_router(app_context.clone())?;
+            let app = H::router(&app_context)?;
             let mut router = H::after_routes(app, &app_context).await?;
             for initializer in &initializers {
                 router = initializer.after_routes(router, &app_context).await?;
@@ -279,7 +279,7 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
         }
         StartMode::ServerAndWorker => {
             let processor = create_processor::<H>(&app_context)?;
-            let app = H::routes(&app_context).to_router(app_context.clone())?;
+            let app = H::router(&app_context)?;
             let mut router = H::after_routes(app, &app_context).await?;
             for initializer in &initializers {
                 router = initializer.after_routes(router, &app_context).await?;

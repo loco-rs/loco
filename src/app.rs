@@ -39,7 +39,7 @@ pub struct AppContext {
     /// The environment in which the application is running.
     pub environment: Environment,
     #[cfg(feature = "with-db")]
-    /// A database connection used by the application.    
+    /// A database connection used by the application.
     pub db: DatabaseConnection,
     /// An optional connection pool for Queue, for worker tasks
     pub queue: Option<Pool<RedisConnectionManager>>,
@@ -158,6 +158,13 @@ pub trait Hooks {
     /// Defines the application's routing configuration.
     fn routes(_ctx: &AppContext) -> AppRoutes;
 
+    /// Returns the Axum router for the application.
+    /// Allows the user to "seed" the router with some initial functionality
+    /// (e.g. fallback) before middleware or other routes are added.
+    fn router(ctx: &AppContext) -> Result<AxumRouter> {
+        Self::routes(ctx).to_router(ctx.clone(), AxumRouter::new())
+    }
+
     // Provides the options to change Loco [`AppContext`] after initialization.
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
         Ok(ctx)
@@ -178,11 +185,11 @@ pub trait Hooks {
     /// function. The truncate controlled from the [`crate::config::Database`]
     /// by changing dangerously_truncate to true (default false).
     /// Truncate can be useful when you want to truncate the database before any
-    /// test.        
+    /// test.
     #[cfg(feature = "with-db")]
     async fn truncate(db: &DatabaseConnection) -> Result<()>;
 
-    /// Seeds the database with initial data.    
+    /// Seeds the database with initial data.
     #[cfg(feature = "with-db")]
     async fn seed(db: &DatabaseConnection, path: &Path) -> Result<()>;
 }
