@@ -21,6 +21,7 @@ use tower_http::{
 #[cfg(feature = "channels")]
 use super::channels::AppChannels;
 use super::routes::Routes;
+use crate::request_context::layer::request_id::request_id_middleware;
 use crate::{
     app::AppContext, config, controller::middleware::etag::EtagLayer, environment::Environment,
     errors, Result,
@@ -372,9 +373,10 @@ impl AppRoutes {
         environment: &Environment,
     ) -> AXRouter<AppContext> {
         let app = app
+            // Create request_id and add it to the request extensions
+            .layer(axum::middleware::from_fn(request_id_middleware))
             .layer(
                 TraceLayer::new_for_http().make_span_with(|request: &http::Request<_>| {
-                    let request_id = uuid::Uuid::new_v4();
                     let user_agent = request
                         .headers()
                         .get(axum::http::header::USER_AGENT)
@@ -393,7 +395,8 @@ impl AppRoutes {
                         "http.version" = tracing::field::debug(request.version()),
                         "http.user_agent" = tracing::field::display(user_agent),
                         "environment" = tracing::field::display(env),
-                        request_id = tracing::field::display(request_id),
+                        // request id will be initialized by the request_id middleware
+                        "request_id" = tracing::field::Empty,
                     )
                 }),
             )
