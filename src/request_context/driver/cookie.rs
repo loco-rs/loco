@@ -1,8 +1,9 @@
 use crate::request_context::driver::PRIVATE_COOKIE_NAME;
 use axum::http::HeaderMap;
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, IntoResponseParts, ResponseParts};
 use axum_extra::extract::cookie::{Cookie, Key, PrivateCookieJar};
 use std::collections::HashMap;
+use std::convert::Infallible;
 
 /// `CookieMap` is a wrapper around a hashmap that stores the data for request context
 #[derive(Debug, Clone)]
@@ -226,6 +227,13 @@ impl SignedPrivateCookieJar {
 impl IntoResponse for SignedPrivateCookieJar {
     fn into_response(self) -> axum::http::Response<axum::body::Body> {
         self.0.into_response()
+    }
+}
+
+impl IntoResponseParts for SignedPrivateCookieJar {
+    type Error = Infallible;
+    fn into_response_parts(self, res: ResponseParts) -> Result<ResponseParts, Infallible> {
+        self.0.into_response_parts(res)
     }
 }
 

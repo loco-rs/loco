@@ -49,7 +49,6 @@ pub struct Config {
     pub server: Server,
     #[cfg(feature = "with-db")]
     pub database: Database,
-    pub request_context: RequestContext,
     pub queue: Option<Redis>,
     pub auth: Option<Auth>,
     #[serde(default)]
@@ -179,24 +178,32 @@ pub struct Database {
 }
 
 /// Request context configuration
-///
-/// Example (development):
+/// Example:
 /// ```yaml
 /// # config/development.yaml
 /// request_context:
-///  type: Cookie
-///  value:
+///  enable: true
+///  session:
+///    type: Cookie
+///    value:
 ///     private_key: <your private key>
-///     signed_key: <your signed key>
 /// ```
 #[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct RequestContextMiddleware {
+    pub enable: bool,
+    pub session: RequestContextSession,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "type", content = "value")]
-pub enum RequestContext {
+pub enum RequestContextSession {
     /// Cookie session configuration
     Cookie {
         /// Private key for Private Cookie Jar in Cookie Sessions, must be more than 64 bytes.
         private_key: Vec<u8>,
     },
+    // Tower session configuration
+    // Tower,
 }
 /// Redis Configuration
 ///
@@ -360,6 +367,8 @@ pub struct Middlewares {
     pub timeout_request: Option<TimeoutRequestMiddleware>,
     /// Setting cors configuration
     pub cors: Option<CorsMiddleware>,
+    /// Request context middleware
+    pub request_context: Option<RequestContextMiddleware>,
     /// Serving static assets
     #[serde(rename = "static")]
     pub static_assets: Option<StaticAssetsMiddleware>,

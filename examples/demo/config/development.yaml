@@ -31,7 +31,7 @@ server:
   # The UI hostname or IP address that mailers will point to.
   host: http://localhost
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
-# </snip>
+  # </snip>
   middlewares:
     # Allows to limit the payload size request. payload that bigger than this file will blocked the request.
     limit_payload:
@@ -65,6 +65,12 @@ server:
       fallback: index.html
     cors:
       enable: true
+    request_context:
+      enable: true
+      session:
+        type: Cookie
+        value:
+          private_key: [ 219, 25, 129, 200, 66, 52, 72, 66, 249, 60, 206, 40, 77, 150, 2, 8, 30, 192, 221, 5, 243, 74, 17, 172, 109, 96, 218, 46, 235, 118, 131, 150, 224, 205, 55, 147, 45, 151, 245, 23, 250, 48, 133, 115, 105, 252, 193, 15, 162, 167, 77, 189, 169, 91, 205, 172, 120, 254, 136, 111, 167, 161, 255, 107 ]
       # Set the value of the [`Access-Control-Allow-Origin`][mdn] header
       # allow_origins:
       #   - https://loco.rs
@@ -91,7 +97,7 @@ mailer:
   # SMTP mailer configuration.
   smtp:
     # Enable/Disable smtp mailer.
-    enable: true    
+    enable: true
     # SMTP server host. e.x localhost, smtp.gmail.com
     host: {{get_env(name="MAILER_HOST", default="localhost") }}
     # SMTP server port

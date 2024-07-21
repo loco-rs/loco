@@ -2,6 +2,8 @@ pub mod cookie;
 
 use crate::request_context::driver::cookie::CookieMap;
 use serde::de::DeserializeOwned;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use tower_sessions::Session;
 
 pub const PRIVATE_COOKIE_NAME: &str = "__loco_app_session";
@@ -9,7 +11,7 @@ pub const PRIVATE_COOKIE_NAME: &str = "__loco_app_session";
 #[derive(Debug, Clone)]
 pub enum Driver {
     TowerSession(Session),
-    CookieMap(CookieMap),
+    CookieMap(Arc<Mutex<CookieMap>>),
 }
 
 impl Driver {
@@ -26,7 +28,7 @@ impl Driver {
     {
         match self {
             Self::CookieMap(cookie_map) => {
-                cookie_map.insert(key, value)?;
+                cookie_map.lock().await.insert(key, value)?;
             }
             Self::TowerSession(session) => {
                 session.insert(key, value).await?;
@@ -45,7 +47,7 @@ impl Driver {
     /// * `TowerSessionError` - When the value is unable to be deserialized or if the session has not been hydrated and loading from the store fails, we fail with `Error::Store`
     pub async fn get<T: DeserializeOwned>(&self, key: &str) -> Result<Option<T>, DriverError> {
         match self {
-            Self::CookieMap(cookie_map) => Ok(cookie_map.get(key)?),
+            Self::CookieMap(cookie_map) => Ok(cookie_map.lock().await.get(key)?),
             Self::TowerSession(session) => Ok(session.get(key).await?),
         }
     }
@@ -66,7 +68,7 @@ impl Driver {
         key: &str,
     ) -> Result<Option<T>, DriverError> {
         match self {
-            Self::CookieMap(cookie_map) => Ok(cookie_map.remove(key)?),
+            Self::CookieMap(cookie_map) => Ok(cookie_map.lock().await.remove(key)?),
             Self::TowerSession(session) => Ok(session.remove(key).await?),
         }
     }
@@ -75,7 +77,7 @@ impl Driver {
     pub async fn clear(&mut self) {
         match self {
             Self::CookieMap(cookie_map) => {
-                cookie_map.clear();
+                cookie_map.lock().await.clear();
             }
             Self::TowerSession(session) => {
                 session.clear().await;
@@ -107,7 +109,7 @@ mod test {
     #[tokio::test]
     async fn test_driver_insert() {
         let hash_map = HashMap::new();
-        let mut driver = Driver::CookieMap(CookieMap::new(hash_map));
+        let mut driver = Driver::CookieMap(Arc::new(Mutex::new(CookieMap::new(hash_map))));
         driver
             .insert("test", "test")
             .await
@@ -131,7 +133,7 @@ mod test {
     #[tokio::test]
     async fn test_driver_get() {
         let hash_map = HashMap::new();
-        let mut driver = Driver::CookieMap(CookieMap::new(hash_map));
+        let mut driver = Driver::CookieMap(Arc::new(Mutex::new(CookieMap::new(hash_map))));
         driver
             .insert("test", "test")
             .await
@@ -155,7 +157,7 @@ mod test {
     #[tokio::test]
     async fn test_driver_remove() {
         let hash_map = HashMap::new();
-        let mut driver = Driver::CookieMap(CookieMap::new(hash_map));
+        let mut driver = Driver::CookieMap(Arc::new(Mutex::new(CookieMap::new(hash_map))));
         driver
             .insert("test", "test")
             .await
@@ -189,7 +191,7 @@ mod test {
     #[tokio::test]
     async fn test_driver_clear() {
         let hash_map = HashMap::new();
-        let mut driver = Driver::CookieMap(CookieMap::new(hash_map));
+        let mut driver = Driver::CookieMap(Arc::new(Mutex::new(CookieMap::new(hash_map))));
         driver
             .insert("test", "test")
             .await
