@@ -158,9 +158,12 @@ pub trait Hooks {
     /// Defines the application's routing configuration.
     fn routes(_ctx: &AppContext) -> AppRoutes;
 
-    /// Returns the Axum router for the application.
-    /// Allows the user to "seed" the router with some initial functionality
-    /// (e.g. fallback) before middleware or other routes are added.
+    /// Returns the Axum router for the application, allowing the user to
+    /// control the construction of the Axum router. This is where a fallback
+    /// handler can be installed before middleware or other routes are added.
+    ///
+    /// # Errors
+    /// Return an [`Result`] when the router could not be created.
     fn router(ctx: &AppContext) -> Result<AxumRouter> {
         Self::routes(ctx).to_router(ctx.clone(), AxumRouter::new())
     }
