@@ -182,6 +182,18 @@ pub async fn migrate<M: MigratorTrait>(db: &DatabaseConnection) -> Result<(), se
     M::up(db, None).await
 }
 
+/// Revert migrations to the database using the provided migrator.
+///
+/// # Errors
+///
+/// Returns a [`sea_orm::DbErr`] if an error occurs during run migration up.
+pub async fn down<M: MigratorTrait>(
+    db: &DatabaseConnection,
+    steps: u32,
+) -> Result<(), sea_orm::DbErr> {
+    M::down(db, Some(steps)).await
+}
+
 /// Check the migration status of the database.
 ///
 /// # Errors
@@ -353,18 +365,18 @@ pub async fn run_app_seed<H: Hooks>(db: &DatabaseConnection, path: &Path) -> App
     H::seed(db, path).await
 }
 
-/// Create a Postgres table from the given table name.
+/// Create a Postgres database from the given db name.
 ///
-/// To create the table with `LOCO_POSTGRES_TABLE_OPTIONS`
+/// To create the database with `LOCO_POSTGRES_DB_OPTIONS`
 async fn create_postgres_database(
-    table_name: &str,
+    db_name: &str,
     db: &DatabaseConnection,
 ) -> Result<(), sea_orm::DbErr> {
-    let with_options = std::env::var("LOCO_POSTGRES_TABLE_OPTIONS")
-        .unwrap_or_else(|_| "ENCODING='UTF8'".to_string());
+    let with_options =
+        std::env::var("LOCO_POSTGRES_DB_OPTIONS").unwrap_or_else(|_| "ENCODING='UTF8'".to_string());
 
-    let query = format!("CREATE DATABASE {table_name} WITH {with_options}");
-    tracing::info!(query, "creating postgres table");
+    let query = format!("CREATE DATABASE {db_name} WITH {with_options}");
+    tracing::info!(query, "creating postgres database");
 
     db.execute(sea_orm::Statement::from_string(
         sea_orm::DatabaseBackend::Postgres,
