@@ -1,6 +1,8 @@
 # Changelog
 
-## vNext
+## Unreleased
+* bump rstest crate to 0.21.0. [https://github.com/loco-rs/loco/pull/650](https://github.com/loco-rs/loco/pull/650)
+
 
 ## 0.6.2
 * Use Rust-based tooling for SaaS starter frontend. [https://github.com/loco-rs/loco/pull/625](https://github.com/loco-rs/loco/pull/625)
