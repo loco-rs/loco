@@ -131,6 +131,16 @@ pub trait Hooks {
         Ok(false)
     }
 
+    /// Returns the initial Axum router for the application, allowing the user
+    /// to control the construction of the Axum router. This is where a fallback
+    /// handler can be installed before middleware or other routes are added.
+    ///
+    /// # Errors
+    /// Return an [`Result`] when the router could not be created
+    async fn before_routes(_ctx: &AppContext) -> Result<AxumRouter<AppContext>> {
+        Ok(AxumRouter::new())
+    }
+
     /// Invoke this function after the Loco routers have been constructed. This
     /// function enables you to configure custom Axum logics, such as layers,
     /// that are compatible with Axum.
@@ -157,16 +167,6 @@ pub trait Hooks {
 
     /// Defines the application's routing configuration.
     fn routes(_ctx: &AppContext) -> AppRoutes;
-
-    /// Returns the Axum router for the application, allowing the user to
-    /// control the construction of the Axum router. This is where a fallback
-    /// handler can be installed before middleware or other routes are added.
-    ///
-    /// # Errors
-    /// Return an [`Result`] when the router could not be created.
-    fn router(ctx: &AppContext) -> Result<AxumRouter> {
-        Self::routes(ctx).to_router(ctx.clone(), AxumRouter::new())
-    }
 
     // Provides the options to change Loco [`AppContext`] after initialization.
     async fn after_context(ctx: AppContext) -> Result<AppContext> {

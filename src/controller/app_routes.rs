@@ -171,8 +171,8 @@ impl AppRoutes {
         self
     }
 
-    /// Convert the routes to an Axum Router, and set a list of middlewares that
-    /// configure in the [`config::Config`]
+    /// Add the routes to an existing Axum Router, and set a list of middlewares
+    /// that configure in the [`config::Config`]
     ///
     /// # Errors
     /// Return an [`Result`] when could not convert the router setup to
