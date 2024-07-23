@@ -119,7 +119,7 @@ socketioxide = { version = "0.13.1", features = ["state"], optional = true }
 
 
 # File Upload
-object_store = { version = "0.9.0", default-features = false }
+object_store = { version = "0.10.2", default-features = false }
 
 # cache
 moka = { version = "0.12.7", features = ["sync"], optional = true }

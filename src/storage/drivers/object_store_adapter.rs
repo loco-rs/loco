@@ -29,7 +29,7 @@ impl StoreDriver for ObjectStoreAdapter {
     /// Returns a `StorageResult` with the result of the upload operation.
     async fn upload(&self, path: &Path, content: &Bytes) -> StorageResult<UploadResponse> {
         let path = object_store::path::Path::from(path.display().to_string());
-        let res = self.object_store_impl.put(&path, content.clone()).await?;
+        let res = self.object_store_impl.put(&path, content.clone().into()).await?;
         Ok(UploadResponse {
             e_tag: res.e_tag,
             version: res.version,
