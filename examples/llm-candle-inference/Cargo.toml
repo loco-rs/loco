@@ -38,7 +38,7 @@ path = "src/bin/main.rs"
 required-features = []
 
 [dev-dependencies]
-serial_test = "3.0.0"
+serial_test = "3.1.1"
 rstest = "0.21.0"
 loco-rs = { version = "*", path = "../../", default-features = false, features = [
   "cli",
