@@ -1,6 +1,11 @@
 # Changelog
 
 ## vNext
+* Use Rust-based tooling for SaaS starter frontend. [https://github.com/loco-rs/loco/pull/625](https://github.com/loco-rs/loco/pull/625)
+* Default binding to localhost to avoid firewall dialogues during development on macOS. [https://github.com/loco-rs/loco/pull/627](https://github.com/loco-rs/loco/pull/627)
+* upgrade sea-orm to 1.0.0 RC 7. [https://github.com/loco-rs/loco/pull/627](https://github.com/loco-rs/loco/pull/639)
+* Add a down migration command. [https://github.com/loco-rs/loco/pull/414](https://github.com/loco-rs/loco/pull/414)
+* replace create_postgres_database function table_name to db_name. [https://github.com/loco-rs/loco/pull/647](https://github.com/loco-rs/loco/pull/647)
 
 ## 0.6.1
  * Upgrade htmx generator to htmx2. [https://github.com/loco-rs/loco/pull/629](https://github.com/loco-rs/loco/pull/629)
