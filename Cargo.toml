@@ -89,7 +89,7 @@ tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 duct = "0.13.6"
 
 tower-http = { workspace = true }
-byte-unit = "4.0.19"
+byte-unit = "5.1.4"
 
 argon2 = { version = "0.5.2", features = ["std"] }
 rand = { version = "0.8.5", features = ["std"] }
