@@ -21,7 +21,7 @@ tower-http = { workspace = true, optional = true, features = [
   "normalize-path",
 ] }
 opentelemetry = { version = "0.22", optional = true }
-opentelemetry-otlp = { version = "0.15", optional = true, features = [
+opentelemetry-otlp = { version = "0.17", optional = true, features = [
   "grpc-tonic",
 ] }
 axum-tracing-opentelemetry = { version = "0.18", optional = true }
