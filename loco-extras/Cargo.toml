@@ -13,7 +13,7 @@ path = "src/lib.rs"
 async-trait = { workspace = true }
 axum = { workspace = true }
 # initializer
-axum-prometheus = { version = "0.6.1", optional = true }
+axum-prometheus = { version = "0.7.0", optional = true }
 serde = { version = "1", optional = true }
 serde_json = { version = "1", optional = true }
 tower = { workspace = true, optional = true }
