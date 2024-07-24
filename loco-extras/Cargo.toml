@@ -25,7 +25,7 @@ opentelemetry-otlp = { version = "0.15", optional = true, features = [
   "grpc-tonic",
 ] }
 axum-tracing-opentelemetry = { version = "0.18", optional = true }
-init-tracing-opentelemetry = { version = "0.18", optional = true, features = [
+init-tracing-opentelemetry = { version = "0.19", optional = true, features = [
   "otlp",
   "tracing_subscriber_ext",
 ] }
