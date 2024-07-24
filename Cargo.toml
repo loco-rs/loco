@@ -9,7 +9,7 @@ license = "Apache-2.0"
 
 [package]
 name = "loco-rs"
-version = "0.6.1"
+version = "0.6.2"
 description = "The one-person framework for Rust"
 homepage = "https://loco.rs/"
 documentation = "https://docs.rs/loco-rs"
@@ -156,5 +156,5 @@ features = ["testing"]
 
 [dev-dependencies]
 loco-rs = { path = ".", features = ["testing"] }
-rstest = "0.18.2"
+rstest = "0.21.0"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
