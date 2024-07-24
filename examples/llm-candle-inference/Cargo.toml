@@ -20,7 +20,7 @@ async-trait = "0.1.74"
 tracing = "0.1.40"
 validator = { version = "0.18.1" }
 
-axum = "0.7.1"
+axum = "0.7.5"
 include_dir = "0.7.3"
 uuid = { version = "1.8.0", features = ["v4"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }

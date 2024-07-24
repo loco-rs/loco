@@ -3,6 +3,8 @@
 ## Unreleased
 * bump rstest crate to 0.21.0. [https://github.com/loco-rs/loco/pull/650](https://github.com/loco-rs/loco/pull/650)
 * bump serial_test crate to 3.1.1. [https://github.com/loco-rs/loco/pull/651](https://github.com/loco-rs/loco/pull/651)
+* bumo object store to create to 0.10.2. [https://github.com/loco-rs/loco/pull/654](https://github.com/loco-rs/loco/pull/654)
+* bump axum crate to 0.7.5. [https://github.com/loco-rs/loco/pull/652](https://github.com/loco-rs/loco/pull/652)
 
 
 ## 0.6.2
