@@ -29,7 +29,7 @@ init-tracing-opentelemetry = { version = "0.18", optional = true, features = [
   "otlp",
   "tracing_subscriber_ext",
 ] }
-tracing-opentelemetry-instrumentation-sdk = { version = "0.18", optional = true }
+tracing-opentelemetry-instrumentation-sdk = { version = "0.19", optional = true }
 tracing-subscriber = { version = "0.3.18", optional = true, features = [
   "env-filter",
   "json",
