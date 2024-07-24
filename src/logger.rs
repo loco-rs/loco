@@ -1,5 +1,7 @@
 //! initialization application logger.
 
+use std::sync::OnceLock;
+
 use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
 use tracing_appender::non_blocking::WorkerGuard;
@@ -70,6 +72,9 @@ impl std::fmt::Display for LogLevel {
 // Function to initialize the logger based on the provided configuration
 const MODULE_WHITELIST: &[&str] = &["loco_rs", "sea_orm_migration", "tower_http", "sqlx::query"];
 
+// Keep nonblocking file appender work guard
+static NONBLOCKING_WORK_GUARD_KEEP: OnceLock<WorkerGuard> = OnceLock::new();
+
 ///
 /// Tracing filtering rules:
 /// 1. if `RUST_LOG`, use that filter
@@ -98,7 +103,7 @@ pub fn init<H: Hooks>(config: &config::Logger) {
             let dir = file_appender_config
                 .dir
                 .as_ref()
-                .map_or_else(|| "./logs".to_string(), |d| d.to_string());
+                .map_or_else(|| "./logs".to_string(), ToString::to_string);
 
             let mut rolling_builder = tracing_appender::rolling::Builder::default()
                 .max_log_files(file_appender_config.max_log_files);
@@ -122,22 +127,19 @@ pub fn init<H: Hooks>(config: &config::Logger) {
                     file_appender_config
                         .filename_prefix
                         .as_ref()
-                        .map_or_else(|| "".to_string(), |p| p.to_string()),
+                        .map_or_else(String::new, ToString::to_string),
                 )
                 .filename_suffix(
                     file_appender_config
                         .filename_suffix
                         .as_ref()
-                        .map_or_else(|| "".to_string(), |s| s.to_string()),
+                        .map_or_else(String::new, ToString::to_string),
                 )
                 .build(dir)
                 .expect("logger file appender initialization failed");
             let file_appender_layer = if file_appender_config.non_blocking {
                 let (non_blocking_file_appender, work_guard) =
                     tracing_appender::non_blocking(file_appender);
-                // Keep nonblocking file appender work guard
-                use std::sync::OnceLock;
-                static NONBLOCKING_WORK_GUARD_KEEP: OnceLock<WorkerGuard> = OnceLock::new();
                 NONBLOCKING_WORK_GUARD_KEEP.set(work_guard).unwrap();
                 init_layer(
                     non_blocking_file_appender,
@@ -159,7 +161,7 @@ pub fn init<H: Hooks>(config: &config::Logger) {
         layers.push(stdout_layer);
     }
 
-    if layers.len() > 0 {
+    if !layers.is_empty() {
         tracing_subscriber::registry().with(layers).init();
     }
 }
@@ -174,7 +176,7 @@ fn init_env_filter<H: Hooks>(override_filter: Option<&String>, level: &LogLevel)
                     EnvFilter::try_new(
                         MODULE_WHITELIST
                             .iter()
-                            .map(|m| format!("{}={}", m, level))
+                            .map(|m| format!("{m}={level}"))
                             .chain(std::iter::once(format!("{}={}", H::app_name(), level)))
                             .collect::<Vec<_>>()
                             .join(","),
