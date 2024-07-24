@@ -62,7 +62,7 @@ serde_yaml = "0.9"
 serde_variant = "0.1.2"
 
 # worker fwk
-rusty-sidekiq = { version = "0.8.2", default-features = false }
+rusty-sidekiq = { version = "0.10.5", default-features = false }
 async-trait = { workspace = true }
 bb8 = "0.8.1"
 
