@@ -136,12 +136,6 @@ pub struct LoggerFileAppender {
     /// * options: `compact` | `pretty` | `json`
     pub format: logger::Format,
 
-    /// Override our custom tracing filter.
-    ///
-    /// Set this to your own filter if you want to see traces from internal
-    /// libraries. See more [here](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives)
-    pub override_filter: Option<String>,
-
     /// Set the logger file appender rotation.
     pub rotation: logger::Rotation,
 
