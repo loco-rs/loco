@@ -20,7 +20,7 @@ async-trait = "0.1.74"
 tracing = "0.1.40"
 validator = { version = "0.18.1" }
 
-axum = "0.7.1"
+axum = "0.7.5"
 include_dir = "0.7.3"
 uuid = { version = "1.8.0", features = ["v4"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
@@ -38,8 +38,8 @@ path = "src/bin/main.rs"
 required-features = []
 
 [dev-dependencies]
-serial_test = "3.0.0"
-rstest = "0.19.0"
+serial_test = "3.1.1"
+rstest = "0.21.0"
 loco-rs = { version = "*", path = "../../", default-features = false, features = [
   "cli",
   "testing",

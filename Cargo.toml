@@ -9,7 +9,7 @@ license = "Apache-2.0"
 
 [package]
 name = "loco-rs"
-version = "0.6.1"
+version = "0.6.2"
 description = "The one-person framework for Rust"
 homepage = "https://loco.rs/"
 documentation = "https://docs.rs/loco-rs"
@@ -120,14 +120,14 @@ socketioxide = { version = "0.14.0", features = ["state"], optional = true }
 
 
 # File Upload
-object_store = { version = "0.9.0", default-features = false }
+object_store = { version = "0.10.2", default-features = false }
 
 # cache
 moka = { version = "0.12.7", features = ["sync"], optional = true }
 
 [workspace.dependencies]
 async-trait = { version = "0.1.74" }
-axum = { version = "0.7.1", features = ["macros"] }
+axum = { version = "0.7.5", features = ["macros"] }
 tower = "0.4"
 tower-http = { version = "0.5.0", features = [
     "trace",
@@ -157,5 +157,5 @@ features = ["testing"]
 
 [dev-dependencies]
 loco-rs = { path = ".", features = ["testing"] }
-rstest = "0.18.2"
+rstest = "0.21.0"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
