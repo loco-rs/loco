@@ -27,7 +27,7 @@ Loco 是一个用 Rust 编写的 Web 框架，类似于 Rails。Loco 提供快�
 通过 Cargo 安装 Loco:
 
 ```sh
-cargo install loco
+cargo install loco-cli
 ```
 
 ## 快速开始
