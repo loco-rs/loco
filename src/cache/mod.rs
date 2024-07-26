@@ -3,8 +3,9 @@
 //! This module provides a generic cache interface for various cache drivers.
 pub mod drivers;
 
+use std::future::Future;
+
 use self::drivers::CacheDriver;
-use crate::app::AppContext;
 
 /// Errors related to cache operations
 #[derive(thiserror::Error, Debug)]
@@ -95,7 +96,7 @@ impl Cache {
     ///
     /// pub async fn get_or_insert(){
     ///    let app_ctx = get_app_context().await;
-    ///    let res = app_ctx.cache.get_or_insert("key", &app_ctx, |ctx: &AppContext| {
+    ///    let res = app_ctx.cache.get_or_insert("key", async {
     ///            Ok("value".to_string())
     ///     }).await.unwrap();
     ///    assert_eq!(res, "value");
@@ -105,14 +106,14 @@ impl Cache {
     /// # Errors
     ///
     /// A [`CacheResult`] indicating the success of the operation.
-    pub async fn get_or_insert<F>(&self, key: &str, ctx: &AppContext, f: F) -> CacheResult<String>
+    pub async fn get_or_insert<F>(&self, key: &str, f: F) -> CacheResult<String>
     where
-        F: Fn(&AppContext) -> CacheResult<String> + Send + Sync,
+        F: Future<Output = CacheResult<String>> + Send,
     {
         if let Some(value) = self.driver.get(key).await? {
             Ok(value)
         } else {
-            let value = f(ctx)?;
+            let value = f.await?;
             self.driver.insert(key, &value).await?;
             Ok(value)
         }
@@ -160,7 +161,7 @@ impl Cache {
 #[cfg(test)]
 mod tests {
 
-    use crate::{app::AppContext, tests_cfg};
+    use crate::tests_cfg;
 
     #[tokio::test]
     async fn can_get_or_insert() {
@@ -171,9 +172,7 @@ mod tests {
 
         let result = app_ctx
             .cache
-            .get_or_insert(get_key, &app_ctx, |_ctx: &AppContext| {
-                Ok("loco-cache-value".to_string())
-            })
+            .get_or_insert(get_key, async { Ok("loco-cache-value".to_string()) })
             .await
             .unwrap();
 
