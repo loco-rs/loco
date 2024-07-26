@@ -41,7 +41,6 @@ pub fn clone_template(
     let copy_template_to = env::var(env_vars::DEST_FOLDER)
         .map_or_else(|_| destination_path.join(folder_name), PathBuf::from);
 
-    let copy_template_to = dunce::canonicalize(&copy_template_to).unwrap_or(copy_template_to);
     if copy_template_to.exists() && env::var(env_vars::CI_MODE).is_err() {
         eyre::bail!(
             "The specified path '{}' already exist",

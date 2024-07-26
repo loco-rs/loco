@@ -62,7 +62,7 @@ fn main() -> eyre::Result<()> {
             match git::clone_template(path.as_path(), &app, &args) {
                 Ok(path) => CmdExit::ok_with_message(&format!(
                     "\n🚂 Loco app generated successfully in:\n{}",
-                    path.display()
+                    dunce::canonicalize(&path).unwrap_or(path).display()
                 )),
                 Err(err) => CmdExit::error_with_message(&format!("{err}")),
             }
