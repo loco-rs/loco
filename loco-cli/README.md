@@ -29,9 +29,9 @@ loco new --path /my-work/websites/
 
 ## Running Locally
 
-When working with loco-cli against the local Loco repository, you can utilize the `LOCO_DEBUG_PATH` environment variable to point the generator to a local starter instead of fetching from GitHub.
+When working with loco-cli against the local Loco repository, you can utilize the `STARTERS_LOCAL_PATH` environment variable to point the generator to a local starter instead of fetching from GitHub.
 
 ```sh
 cd loco-cli
-$ LOCO_DEBUG_PATH=[FULL_PATH]/loco-rs/loco  cargo run new --path /tmp
+$ STARTERS_LOCAL_PATH=[FULL_PATH]/loco-rs/loco  cargo run new --path /tmp
 ```

@@ -1,0 +1,13 @@
+```console
+$ loco new --help
+Create a new Loco website
+
+Usage: loco new [OPTIONS]
+
+Options:
+  -p, --path <PATH>  Local path to generate into [default: .]
+  -v, --verbose...   Verbosity level
+  -h, --help         Print help
+  -V, --version      Print version
+
+```

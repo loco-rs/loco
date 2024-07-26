@@ -5,6 +5,7 @@ use std::{
     path::PathBuf,
 };
 
+use crate::env_vars;
 use ignore::WalkBuilder;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use regex::Regex;
@@ -225,7 +226,7 @@ impl Template {
             if Self::should_run_file(file, rule.file_patterns.as_ref())
                 && rule.pattern.is_match(&content)
             {
-                if rule.skip_in_ci.unwrap_or(false) && env::var("LOCO_CI_MODE").is_ok() {
+                if rule.skip_in_ci.unwrap_or(false) && env::var(env_vars::CI_MODE).is_ok() {
                     continue;
                 }
 

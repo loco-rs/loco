@@ -1,0 +1,8 @@
+```console
+$ LOCO_CI_MODE=true ALLOW_IN_GIT_REPO="" LOCO_APP_NAME="generator_test" LOCO_TEMPLATE="template-1" STARTERS_LOCAL_PATH="/Users/eladka/work/github/loco-rs/loco/loco-cli/tests/cmd/generate.in" DEST_FOLDER="."   loco new 
+
+🚂 Loco app generated successfully in:
+.
+
+```
+

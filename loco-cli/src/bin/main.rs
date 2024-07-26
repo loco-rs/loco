@@ -1,8 +1,8 @@
 use clap::{Parser, Subcommand};
 use loco_cli::{generate, git, prompt, CmdExit};
+use std::env;
 use std::path::PathBuf;
 use tracing::level_filters::LevelFilter;
-
 use tracing_subscriber::EnvFilter;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -46,7 +46,9 @@ fn main() -> eyre::Result<()> {
 
     let res = match cli.command {
         Commands::New { path } => {
-            if git::is_a_git_repo(path.as_path()).unwrap_or(false) {
+            if env::var("ALLOW_IN_GIT_REPO").is_err()
+                && git::is_a_git_repo(path.as_path()).unwrap_or(false)
+            {
                 prompt::warn_if_in_git_repo()?;
             }
 
