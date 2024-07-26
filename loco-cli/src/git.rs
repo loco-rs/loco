@@ -50,7 +50,7 @@ pub fn clone_template(
 
     // in case of debug path is given, we skipping cloning project and working on the given directory
     let loco_project_path = match debug_path() {
-        Some(p) => p,
+        Some(p) => p.canonicalize().unwrap_or(p),
         None => clone_repo()?,
     };
 
