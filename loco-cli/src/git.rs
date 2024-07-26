@@ -1,3 +1,4 @@
+use crate::env_vars;
 use crate::generate;
 use crate::prompt;
 use fs_extra::dir::{copy, CopyOptions};
@@ -11,7 +12,9 @@ use std::process::Command;
 /// # Errors
 /// when the path is not given
 pub fn debug_path() -> Option<PathBuf> {
-    env::var("LOCO_DEBUG_PATH").ok().map(PathBuf::from)
+    env::var(env_vars::STARTERS_LOCAL_PATH)
+        .ok()
+        .map(PathBuf::from)
 }
 
 const BASE_REPO_URL: &str = "https://github.com/loco-rs/loco.git";
@@ -35,9 +38,10 @@ pub fn clone_template(
     args: &generate::ArgsPlaceholder,
 ) -> eyre::Result<PathBuf> {
     let destination_path = destination_path.canonicalize()?;
-    let copy_template_to = destination_path.join(folder_name);
+    let copy_template_to = env::var(env_vars::DEST_FOLDER)
+        .map_or_else(|_| destination_path.join(folder_name), PathBuf::from);
 
-    if copy_template_to.exists() {
+    if copy_template_to.exists() && env::var(env_vars::CI_MODE).is_err() {
         eyre::bail!(
             "The specified path '{}' already exist",
             copy_template_to.display()
@@ -46,7 +50,7 @@ pub fn clone_template(
 
     // in case of debug path is given, we skipping cloning project and working on the given directory
     let loco_project_path = match debug_path() {
-        Some(p) => p,
+        Some(p) => p.canonicalize().unwrap_or(p),
         None => clone_repo()?,
     };
 
@@ -72,7 +76,9 @@ pub fn clone_template(
     copy(
         &copy_from,
         &copy_template_to,
-        &CopyOptions::default().content_only(true),
+        &CopyOptions::default()
+            .content_only(true)
+            .overwrite(env::var(env_vars::CI_MODE).is_ok()),
     )?;
 
     if debug_path().is_none() {
