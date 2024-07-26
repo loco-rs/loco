@@ -32,7 +32,6 @@ jobs:
 
   clippy:
     name: Run Clippy
-    needs: [rustfmt]
     runs-on: ubuntu-latest
 
     permissions:
