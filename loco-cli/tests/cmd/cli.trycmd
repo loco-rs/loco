@@ -2,7 +2,7 @@
 $ loco new --help
 Create a new Loco website
 
-Usage: loco new [OPTIONS]
+Usage: loco new[EXE] [OPTIONS]
 
 Options:
   -p, --path <PATH>  Local path to generate into [default: .]

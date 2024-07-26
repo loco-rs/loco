@@ -78,3 +78,5 @@ jobs:
       - name: Run cargo test
         run: cargo test --all-features --all
         working-directory: ./loco-cli
+        env:
+          LOCO_CI_MODE: 1
