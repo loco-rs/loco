@@ -329,7 +329,7 @@ mod tests {
             description: "test template".to_string(),
             rules: Some(vec![
                 TemplateRule {
-                    pattern: Regex::new("loco.*").unwrap(),
+                    pattern: Regex::new("loco_starter").unwrap(),
                     kind: TemplateRuleKind::LibName,
                     file_patterns: None,
                     skip_in_ci: None,
