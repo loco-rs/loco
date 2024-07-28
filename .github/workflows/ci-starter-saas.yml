@@ -25,11 +25,9 @@ jobs:
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: ${{ env.TOOLCHAIN_PROFILE }}
           toolchain: ${{ env.RUST_TOOLCHAIN }}
-          override: true
           components: rustfmt
       - run: cargo fmt --all -- --check
         working-directory: ./starters/saas
@@ -44,11 +42,9 @@ jobs:
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: ${{ env.TOOLCHAIN_PROFILE }}
           toolchain: ${{ env.RUST_TOOLCHAIN }}
-          override: true
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
       - name: Run cargo clippy
@@ -90,11 +86,9 @@ jobs:
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: ${{ env.TOOLCHAIN_PROFILE }}
           toolchain: ${{ env.RUST_TOOLCHAIN }}
-          override: true
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
       - name: Run cargo test
@@ -139,11 +133,9 @@ jobs:
   # steps:
   #   - name: Checkout the code
   #     uses: actions/checkout@v4
-  #   - uses: actions-rs/toolchain@v1
+  #   - uses: dtolnay/rust-toolchain@stable
   #     with:
-  #       profile: ${{ env.TOOLCHAIN_PROFILE }}
   #       toolchain: ${{ env.RUST_TOOLCHAIN }}
-  #       override: true
   #   - name: Setup Rust cache
   #     uses: Swatinem/rust-cache@v2
   #   - name: Inject slug/short variables
