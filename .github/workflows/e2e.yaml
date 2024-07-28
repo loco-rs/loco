@@ -15,10 +15,9 @@ jobs:
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
-          override: true
       - run: |
           cargo install loco-cli
           ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=saas LOCO_TEMPLATE=saas loco new
@@ -36,10 +35,9 @@ jobs:
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
-          override: true
       - run: |
           cargo install loco-cli
           ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=restapi LOCO_TEMPLATE=rest-api loco new
@@ -57,7 +55,7 @@ jobs:
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
           override: true
