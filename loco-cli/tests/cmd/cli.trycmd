@@ -6,7 +6,7 @@ Usage: loco[EXE] new [OPTIONS]
 
 Options:
   -p, --path <PATH>        Local path to generate into [default: .]
-  -v, --verbose <VERBOSE>  Verbosity level [default: INFO]
+  -v, --verbose <VERBOSE>  Verbosity level [default: ERROR]
   -h, --help               Print help
   -V, --version            Print version
 

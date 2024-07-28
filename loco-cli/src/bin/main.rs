@@ -9,7 +9,7 @@ use tracing_subscriber::EnvFilter;
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
 struct Cli {
-    #[arg(global = true, short, long, value_enum, default_value = "INFO")]
+    #[arg(global = true, short, long, value_enum, default_value = "ERROR")]
     /// Verbosity level
     verbose: LevelFilter,
 
