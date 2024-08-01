@@ -26,11 +26,7 @@ pub async fn render_hello(ViewEngine(v): ViewEngine<HelloView>) -> Result<Respon
 }
 
 pub async fn render_simple() -> Result<Response> {
-    format::render().view(
-        &TeraViewInline::default(),
-        "{{name}} website",
-        json!({"name": "Loco"}),
-    )
+    format::render().template("{{name}} website", json!({"name": "Loco"}))
 }
 
 pub fn routes() -> Routes {

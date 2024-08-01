@@ -32,8 +32,13 @@ use hyper::{header, StatusCode};
 use serde::Serialize;
 use serde_json::json;
 
-use super::views::ViewRenderer;
-use crate::{controller::Json, Result};
+use crate::{
+    controller::{
+        views::{self, ViewRenderer},
+        Json,
+    },
+    Result,
+};
 
 /// Returns an empty response.
 ///
@@ -169,6 +174,18 @@ where
     html(&res)
 }
 
+/// Render template from string
+///
+/// # Errors
+///
+/// This function will return an error if rendering fails
+pub fn template<S>(template: &str, data: S) -> Result<Response>
+where
+    S: Serialize,
+{
+    html(&views::template(template, data)?)
+}
+
 pub struct RenderBuilder {
     response: Builder,
 }
@@ -276,6 +293,18 @@ impl RenderBuilder {
     {
         let content = v.render(key, data)?;
         self.html(&content)
+    }
+
+    /// Render template located by `key`
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if rendering fails
+    pub fn template<S>(self, template: &str, data: S) -> Result<Response>
+    where
+        S: Serialize,
+    {
+        html(&views::template(template, data)?)
     }
 
     /// Finalize and return a HTML response

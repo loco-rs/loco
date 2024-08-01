@@ -79,31 +79,6 @@ impl ViewRenderer for TeraView {
     }
 }
 
-/// A struct representing an inline Tera view renderer.
-///
-/// This struct provides functionality to render templates using the Tera templating engine
-/// directly from raw template strings.
-///
-/// # Example
-/// ```
-/// use loco_rs::prelude::*;
-/// use serde_json::json;
-/// let v = TeraViewInline::default();
-/// let render = v.render("{{name}} website", json!({"name": "Loco"})).unwrap();
-/// assert_eq!(render, "Loco website");
-/// ```
-#[derive(Default, Clone, Debug)]
-pub struct TeraViewInline {}
-
-impl ViewRenderer for TeraViewInline {
-    /// Renders a template with the given data.
-    fn render<S: Serialize>(&self, content: &str, data: S) -> Result<String> {
-        let mut tera = tera::Tera::default();
-        tera.add_raw_template("default", content)?;
-        Ok(tera.render("default", &tera::Context::from_serialize(data)?)?)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use serde_json::json;
@@ -136,14 +111,5 @@ mod tests {
                 .unwrap(),
             "generate test2.html file: bar-txt"
         );
-    }
-
-    #[test]
-    fn can_render_inline_view() {
-        let v = TeraViewInline::default();
-        let render = v
-            .render("{{name}} website", json!({"name": "Loco"}))
-            .unwrap();
-        assert_eq!(render, "Loco website");
     }
 }

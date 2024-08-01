@@ -24,10 +24,7 @@ pub use crate::{
         format,
         middleware::format::{Format, RespondTo},
         not_found, unauthorized,
-        views::{
-            engines::{TeraView, TeraViewInline},
-            ViewEngine, ViewRenderer,
-        },
+        views::{engines::TeraView, ViewEngine, ViewRenderer},
         Json, Routes,
     },
     errors::Error,
