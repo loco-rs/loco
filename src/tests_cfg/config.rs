@@ -12,6 +12,7 @@ pub fn test_config() -> Config {
             level: logger::LogLevel::Off,
             format: logger::Format::Json,
             override_filter: None,
+            file_appender: None,
         },
         server: config::Server {
             binding: "localhost".to_string(),
