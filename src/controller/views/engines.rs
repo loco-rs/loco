@@ -4,8 +4,7 @@ use serde::Serialize;
 
 use crate::{controller::views::ViewRenderer, Error, Result};
 
-const VIEWS_DIR: &str = "assets/views/";
-const VIEWS_GLOB: &str = "assets/views/**/*.html";
+const VIEWS_DIR: &str = "assets/views";
 
 #[derive(Clone, Debug)]
 pub struct TeraView {
@@ -20,13 +19,29 @@ impl TeraView {
     ///
     /// This function will return an error if building fails
     pub fn build() -> Result<Self> {
-        if !Path::new(VIEWS_DIR).exists() {
+        Self::from_custom_dir(&VIEWS_DIR)
+    }
+
+    /// Create a Tera view engine from a custom directory
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if building fails
+    pub fn from_custom_dir<P: AsRef<Path>>(path: &P) -> Result<Self> {
+        if !path.as_ref().exists() {
             return Err(Error::string(&format!(
-                "missing views directory: `{VIEWS_DIR}`"
+                "missing views directory: `{}`",
+                path.as_ref().display()
             )));
         }
 
-        let tera = tera::Tera::new(VIEWS_GLOB)?;
+        let tera = tera::Tera::new(
+            path.as_ref()
+                .join("**")
+                .join("*.html")
+                .to_str()
+                .ok_or_else(|| Error::string("invalid blob"))?,
+        )?;
         let ctx = tera::Context::default();
         Ok(Self {
             tera,
@@ -61,5 +76,74 @@ impl ViewRenderer for TeraView {
         */
 
         Ok(self.tera.render(key, &context)?)
+    }
+}
+
+/// A struct representing an inline Tera view renderer.
+///
+/// This struct provides functionality to render templates using the Tera templating engine
+/// directly from raw template strings.
+///
+/// # Example
+/// ```
+/// use loco_rs::prelude::*;
+/// use serde_json::json;
+/// let v = TeraViewInline::default();
+/// let render = v.render("{{name}} website", json!({"name": "Loco"})).unwrap();
+/// assert_eq!(render, "Loco website");
+/// ```
+#[derive(Default, Clone, Debug)]
+pub struct TeraViewInline {}
+
+impl ViewRenderer for TeraViewInline {
+    /// Renders a template with the given data.
+    fn render<S: Serialize>(&self, content: &str, data: S) -> Result<String> {
+        let mut tera = tera::Tera::default();
+        tera.add_raw_template("default", content)?;
+        Ok(tera.render("default", &tera::Context::from_serialize(data)?)?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+    use tree_fs;
+
+    use super::*;
+    #[test]
+    fn can_render_view() {
+        let yaml_content = r"
+        files:
+        - path: template/test.html
+          content: |-
+            generate test.html file: {{foo}}
+        - path: template/test2.html
+          content: |-
+            generate test2.html file: {{bar}}
+        ";
+
+        let tree_res = tree_fs::from_yaml_str(yaml_content).unwrap();
+        let v = TeraView::from_custom_dir(&tree_res).unwrap();
+
+        assert_eq!(
+            v.render("template/test.html", json!({"foo": "foo-txt"}))
+                .unwrap(),
+            "generate test.html file: foo-txt"
+        );
+
+        assert_eq!(
+            v.render("template/test2.html", json!({"bar": "bar-txt"}))
+                .unwrap(),
+            "generate test2.html file: bar-txt"
+        );
+    }
+
+    #[test]
+    fn can_render_inline_view() {
+        let v = TeraViewInline::default();
+        let render = v
+            .render("{{name}} website", json!({"name": "Loco"}))
+            .unwrap();
+        assert_eq!(render, "Loco website");
     }
 }

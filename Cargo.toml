@@ -158,3 +158,4 @@ features = ["testing"]
 loco-rs = { path = ".", features = ["testing"] }
 rstest = "0.21.0"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
+tree-fs = { version = "0.1.0" }
