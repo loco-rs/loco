@@ -1,6 +1,7 @@
-use blo::app::App;
+use blo::{app::App, models::users};
 use insta::assert_debug_snapshot;
 use loco_rs::testing;
+use sea_orm::ModelTrait;
 
 // TODO: see how to dedup / extract this to app-local test utils
 // not to framework, because that would require a runtime dep on insta
@@ -24,6 +25,25 @@ async fn ping() {
         assert_debug_snapshot!("insert", (response.text(), response.status_code()));
         let response = request.get("cache").await;
         assert_debug_snapshot!("read_cache_key", (response.text(), response.status_code()));
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn can_get_or_insert() {
+    configure_insta!();
+
+    testing::request::<App, _, _>(|request, ctx| async move {
+        testing::seed::<App>(&ctx.db).await.unwrap();
+        let response = request.get("/cache/get_or_insert").await;
+        assert_eq!(response.text(), "user1");
+
+        let user = users::Model::find_by_email(&ctx.db, "user1@example.com")
+            .await
+            .unwrap();
+        user.delete(&ctx.db).await.unwrap();
+        let response = request.get("/cache/get_or_insert").await;
+        assert_eq!(response.text(), "user1");
     })
     .await;
 }
