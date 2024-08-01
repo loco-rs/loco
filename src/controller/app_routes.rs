@@ -171,16 +171,14 @@ impl AppRoutes {
         self
     }
 
-    /// Convert the routes to an Axum Router, and set a list of middlewares that
-    /// configure in the [`config::Config`]
+    /// Add the routes to an existing Axum Router, and set a list of middlewares
+    /// that configure in the [`config::Config`]
     ///
     /// # Errors
     /// Return an [`Result`] when could not convert the router setup to
     /// [`axum::Router`].
     #[allow(clippy::cognitive_complexity)]
-    pub fn to_router(&self, ctx: AppContext) -> Result<AXRouter> {
-        let mut app = AXRouter::new();
-
+    pub fn to_router(&self, ctx: AppContext, mut app: AXRouter<AppContext>) -> Result<AXRouter> {
         for router in self.collect() {
             tracing::info!("{}", router.to_string());
 
