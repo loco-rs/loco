@@ -83,7 +83,7 @@ include_dir = "0.7.3"
 thiserror = "1"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
-
+tracing-appender = "0.2.3"
 
 # cli/migrations
 duct = "0.13.6"
