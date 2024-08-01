@@ -5,9 +5,9 @@ Create a new Loco website
 Usage: loco[EXE] new [OPTIONS]
 
 Options:
-  -p, --path <PATH>  Local path to generate into [default: .]
-  -v, --verbose...   Verbosity level
-  -h, --help         Print help
-  -V, --version      Print version
+  -p, --path <PATH>        Local path to generate into [default: .]
+  -v, --verbose <VERBOSE>  Verbosity level [default: ERROR]
+  -h, --help               Print help
+  -V, --version            Print version
 
 ```
