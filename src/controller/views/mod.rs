@@ -47,8 +47,7 @@ where
     S: Serialize,
 {
     let mut tera = tera::Tera::default();
-    tera.add_raw_template("default", template)?;
-    Ok(tera.render("default", &tera::Context::from_serialize(data)?)?)
+    Ok(tera.render_str(template, &tera::Context::from_serialize(data)?)?)
 }
 
 impl<E> From<E> for ViewEngine<E> {
