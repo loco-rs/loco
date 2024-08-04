@@ -1,6 +1,22 @@
 # Changelog
 
-## vNext
+## Unreleased
+* bump rstest crate to 0.21.0. [https://github.com/loco-rs/loco/pull/650](https://github.com/loco-rs/loco/pull/650)
+* bump serial_test crate to 3.1.1. [https://github.com/loco-rs/loco/pull/651](https://github.com/loco-rs/loco/pull/651)
+* bumo object store to create to 0.10.2. [https://github.com/loco-rs/loco/pull/654](https://github.com/loco-rs/loco/pull/654)
+* bump axum crate to 0.7.5. [https://github.com/loco-rs/loco/pull/652](https://github.com/loco-rs/loco/pull/652)
+* Add Hooks::before_routes to give user control over initial axum::Router construction. [https://github.com/loco-rs/loco/pull/646](https://github.com/loco-rs/loco/pull/646)
+* Support logger file appender. [https://github.com/loco-rs/loco/pull/636](https://github.com/loco-rs/loco/pull/636)
+* response from the template. [https://github.com/loco-rs/loco/pull/682](https://github.com/loco-rs/loco/pull/682)
+* add get_or_insert function to cache layer. [https://github.com/loco-rs/loco/pull/637](https://github.com/loco-rs/loco/pull/637)
+
+
+## 0.6.2
+* Use Rust-based tooling for SaaS starter frontend. [https://github.com/loco-rs/loco/pull/625](https://github.com/loco-rs/loco/pull/625)
+* Default binding to localhost to avoid firewall dialogues during development on macOS. [https://github.com/loco-rs/loco/pull/627](https://github.com/loco-rs/loco/pull/627)
+* upgrade sea-orm to 1.0.0 RC 7. [https://github.com/loco-rs/loco/pull/627](https://github.com/loco-rs/loco/pull/639)
+* Add a down migration command. [https://github.com/loco-rs/loco/pull/414](https://github.com/loco-rs/loco/pull/414)
+* replace create_postgres_database function table_name to db_name. [https://github.com/loco-rs/loco/pull/647](https://github.com/loco-rs/loco/pull/647)
 
 ## 0.6.1
  * Upgrade htmx generator to htmx2. [https://github.com/loco-rs/loco/pull/629](https://github.com/loco-rs/loco/pull/629)

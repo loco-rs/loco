@@ -32,6 +32,7 @@ Usage: blo-cli db [OPTIONS] <COMMAND>
 Commands:
   create    Create schema
   migrate   Migrate schema (up)
+  down      Run one down migration, or add a number to run multiple down migrations (i.e. `down 2`)
   reset     Drop all tables, then reapply all migrations
   status    Migration status
   entities  Generate entity .rs files from database schema
@@ -89,8 +90,6 @@ $ blo-cli routes --environment test
 [POST] /auth/verify
 [GET] /cache
 [POST] /cache/insert
-[GET] /dashboard/hello
-[GET] /dashboard/home
 [GET] /mylayer/admin
 [GET] /mylayer/echo
 [GET] /mylayer/user
@@ -114,6 +113,9 @@ $ blo-cli routes --environment test
 [POST] /user/convert/user
 [GET] /user/current
 [GET] /user/current_api_key
+[GET] /view-engine/hello
+[GET] /view-engine/home
+[GET] /view-engine/simple
 
 ```
 
