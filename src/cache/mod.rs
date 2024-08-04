@@ -12,6 +12,12 @@ use self::drivers::CacheDriver;
 #[allow(clippy::module_name_repetitions)]
 pub enum CacheError {
     #[error(transparent)]
+    Model(#[from] crate::model::ModelError),
+
+    #[error(transparent)]
+    Loco(#[from] crate::Error),
+
+    #[error(transparent)]
     Any(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 

@@ -1,5 +1,5 @@
 use crate::models::users;
-use loco_rs::{cache::CacheError, prelude::*};
+use loco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize)]
 pub struct CacheResponse {
@@ -21,9 +21,7 @@ async fn get_or_insert(State(ctx): State<AppContext>) -> Result<Response> {
     let res = ctx
         .cache
         .get_or_insert("user", async {
-            let user = users::Model::find_by_email(&ctx.db, "user1@example.com")
-                .await
-                .map_err(|_| CacheError::Any("user not found".into()))?;
+            let user = users::Model::find_by_email(&ctx.db, "user1@example.com").await?;
             Ok(user.name)
         })
         .await;
