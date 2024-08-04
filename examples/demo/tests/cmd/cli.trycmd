@@ -91,8 +91,6 @@ $ blo-cli routes --environment test
 [GET] /cache
 [GET] /cache/get_or_insert
 [POST] /cache/insert
-[GET] /dashboard/hello
-[GET] /dashboard/home
 [GET] /mylayer/admin
 [GET] /mylayer/echo
 [GET] /mylayer/user
@@ -116,6 +114,9 @@ $ blo-cli routes --environment test
 [POST] /user/convert/user
 [GET] /user/current
 [GET] /user/current_api_key
+[GET] /view-engine/hello
+[GET] /view-engine/home
+[GET] /view-engine/simple
 
 ```
 

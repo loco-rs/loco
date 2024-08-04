@@ -5,6 +5,10 @@
 * bump serial_test crate to 3.1.1. [https://github.com/loco-rs/loco/pull/651](https://github.com/loco-rs/loco/pull/651)
 * bumo object store to create to 0.10.2. [https://github.com/loco-rs/loco/pull/654](https://github.com/loco-rs/loco/pull/654)
 * bump axum crate to 0.7.5. [https://github.com/loco-rs/loco/pull/652](https://github.com/loco-rs/loco/pull/652)
+* Add Hooks::before_routes to give user control over initial axum::Router construction. [https://github.com/loco-rs/loco/pull/646](https://github.com/loco-rs/loco/pull/646)
+* Support logger file appender. [https://github.com/loco-rs/loco/pull/636](https://github.com/loco-rs/loco/pull/636)
+* response from the template. [https://github.com/loco-rs/loco/pull/682](https://github.com/loco-rs/loco/pull/682)
+* add get_or_insert function to cache layer. [https://github.com/loco-rs/loco/pull/637](https://github.com/loco-rs/loco/pull/637)
 
 
 ## 0.6.2
