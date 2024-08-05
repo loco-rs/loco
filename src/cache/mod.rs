@@ -6,17 +6,12 @@ pub mod drivers;
 use std::future::Future;
 
 use self::drivers::CacheDriver;
+use crate::Result as LocoResult;
 
 /// Errors related to cache operations
 #[derive(thiserror::Error, Debug)]
 #[allow(clippy::module_name_repetitions)]
 pub enum CacheError {
-    #[error(transparent)]
-    Model(#[from] crate::model::ModelError),
-
-    #[error(transparent)]
-    Loco(#[from] crate::Error),
-
     #[error(transparent)]
     Any(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
@@ -93,11 +88,12 @@ impl Cache {
     }
 
     /// Retrieves the value associated with the given key from the cache,
-    /// or inserts it if it does not exist, using the provided closure to generate the value.
+    /// or inserts it if it does not exist, using the provided closure to
+    /// generate the value.
     ///
     /// # Example
     /// ```
-    /// use loco_rs::{app::AppContext, cache::{self, CacheResult}};
+    /// use loco_rs::{app::AppContext};
     /// use loco_rs::tests_cfg::app::*;
     ///
     /// pub async fn get_or_insert(){
@@ -111,10 +107,10 @@ impl Cache {
     ///
     /// # Errors
     ///
-    /// A [`CacheResult`] indicating the success of the operation.
-    pub async fn get_or_insert<F>(&self, key: &str, f: F) -> CacheResult<String>
+    /// A [`LocoResult`] indicating the success of the operation.
+    pub async fn get_or_insert<F>(&self, key: &str, f: F) -> LocoResult<String>
     where
-        F: Future<Output = CacheResult<String>> + Send,
+        F: Future<Output = LocoResult<String>> + Send,
     {
         if let Some(value) = self.driver.get(key).await? {
             Ok(value)
