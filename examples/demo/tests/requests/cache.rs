@@ -2,6 +2,7 @@ use blo::{app::App, models::users};
 use insta::assert_debug_snapshot;
 use loco_rs::testing;
 use sea_orm::ModelTrait;
+use serial_test::serial;
 
 // TODO: see how to dedup / extract this to app-local test utils
 // not to framework, because that would require a runtime dep on insta
@@ -15,6 +16,7 @@ macro_rules! configure_insta {
 }
 
 #[tokio::test]
+#[serial]
 async fn ping() {
     configure_insta!();
 
@@ -30,6 +32,7 @@ async fn ping() {
 }
 
 #[tokio::test]
+#[serial]
 async fn can_get_or_insert() {
     configure_insta!();
 

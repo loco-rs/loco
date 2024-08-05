@@ -15,6 +15,9 @@ pub async fn get_app_context() -> AppContext {
         config: test_config(),
         mailer: None,
         storage: Storage::single(storage::drivers::mem::new()).into(),
+        #[cfg(feature = "cache_inmem")]
         cache: cache::Cache::new(cache::drivers::inmem::new()).into(),
+        #[cfg(not(feature = "cache_inmem"))]
+        cache: cache::Cache::new(cache::drivers::null::new()).into(),
     }
 }
