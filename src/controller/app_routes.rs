@@ -5,6 +5,7 @@
 use std::{fmt, path::PathBuf, time::Duration};
 
 use axum::{http, response::IntoResponse, Router as AXRouter};
+use axum_extra::extract::cookie::Key;
 use lazy_static::lazy_static;
 use regex::Regex;
 use tower_http::{
@@ -21,6 +22,9 @@ use tower_http::{
 #[cfg(feature = "channels")]
 use super::channels::AppChannels;
 use super::routes::Routes;
+use crate::config::RequestContextSession;
+use crate::request_context::layer::request_id::request_id_middleware;
+use crate::request_context::layer::RequestContextLayer;
 use crate::{
     app::AppContext, config, controller::middleware::etag::EtagLayer, environment::Environment,
     errors, Result,
@@ -199,6 +203,18 @@ impl AppRoutes {
             }
         }
 
+        if let Some(request_context) = &ctx.config.server.middlewares.request_context {
+            if request_context.enable {
+                match request_context.session {
+                    RequestContextSession::Cookie { .. } => {
+                        let layer = Self::get_request_context_middleware(request_context)?;
+                        app = app.layer(layer);
+                        tracing::info!("[Middleware] Adding request context");
+                    }
+                }
+            }
+        }
+
         if let Some(limit) = &ctx.config.server.middlewares.limit_payload {
             if limit.enable {
                 app = Self::add_limit_payload_middleware(app, limit)?;
@@ -345,6 +361,26 @@ impl AppRoutes {
         Ok(cors)
     }
 
+    fn get_request_context_middleware(
+        config: &config::RequestContextMiddleware,
+    ) -> Result<RequestContextLayer> {
+        let store = match &config.session {
+            config::RequestContextSession::Cookie { private_key } => {
+                let private_key = Key::try_from(&private_key[..]).map_err(|e| {
+                    tracing::error!(error = ?e, "could not convert private key from configuration");
+                    crate::prelude::Error::Message(
+                        "could not convert private key from configuration".to_string(),
+                    )
+                })?;
+                crate::request_context::RequestContextStore::new(
+                    private_key,
+                    config.session.clone(),
+                )
+            } // config::RequestContext::Tower { .. } => {}
+        };
+        Ok(RequestContextLayer::new(store))
+    }
+
     fn add_catch_panic(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
         app.layer(CatchPanicLayer::custom(handle_panic))
     }
@@ -370,9 +406,10 @@ impl AppRoutes {
         environment: &Environment,
     ) -> AXRouter<AppContext> {
         let app = app
+            // Create request_id and add it to the request extensions
+            .layer(axum::middleware::from_fn(request_id_middleware))
             .layer(
                 TraceLayer::new_for_http().make_span_with(|request: &http::Request<_>| {
-                    let request_id = uuid::Uuid::new_v4();
                     let user_agent = request
                         .headers()
                         .get(axum::http::header::USER_AGENT)
@@ -391,7 +428,8 @@ impl AppRoutes {
                         "http.version" = tracing::field::debug(request.version()),
                         "http.user_agent" = tracing::field::display(user_agent),
                         "environment" = tracing::field::display(env),
-                        request_id = tracing::field::display(request_id),
+                        // request id will be initialized by the request_id middleware
+                        "request_id" = tracing::field::Empty,
                     )
                 }),
             )

@@ -67,7 +67,7 @@ async-trait = { workspace = true }
 bb8 = "0.8.1"
 
 axum = { workspace = true }
-axum-extra = { version = "0.9", features = ["cookie"] }
+axum-extra = { version = "0.9", features = ["cookie", "cookie-private", ] }
 regex = "1"
 lazy_static = "1.4.0"
 fs-err = "2.11.0"
@@ -124,6 +124,9 @@ object_store = { version = "0.10.2", default-features = false }
 # cache
 moka = { version = "0.12.7", features = ["sync"], optional = true }
 
+# sessions
+tower-sessions = "0.12"
+
 [workspace.dependencies]
 async-trait = { version = "0.1.74" }
 axum = { version = "0.7.5", features = ["macros"] }
@@ -143,12 +146,12 @@ tower-http = { version = "0.5.0", features = [
 optional = true
 version = "1.0.0"
 features = [
-  # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.
-  # View the list of supported features at https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime.
-  # e.g.
-  "runtime-tokio-rustls", # `ASYNC_RUNTIME` feature
-  "sqlx-postgres",        # `DATABASE_DRIVER` feature
-  "sqlx-sqlite",
+    # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.
+    # View the list of supported features at https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime.
+    # e.g.
+    "runtime-tokio-rustls", # `ASYNC_RUNTIME` feature
+    "sqlx-postgres", # `DATABASE_DRIVER` feature
+    "sqlx-sqlite",
 ]
 
 [package.metadata.docs.rs]

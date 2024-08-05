@@ -218,6 +218,34 @@ pub struct Database {
     pub dangerously_recreate: bool,
 }
 
+/// Request context configuration
+/// Example:
+/// ```yaml
+/// # config/development.yaml
+/// request_context:
+///  enable: true
+///  session:
+///    type: Cookie
+///    value:
+///     private_key: <your private key>
+/// ```
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct RequestContextMiddleware {
+    pub enable: bool,
+    pub session: RequestContextSession,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "type", content = "value")]
+pub enum RequestContextSession {
+    /// Cookie session configuration
+    Cookie {
+        /// Private key for Private Cookie Jar in Cookie Sessions, must be more than 64 bytes.
+        private_key: Vec<u8>,
+    },
+    // Tower session configuration
+    // Tower,
+}
 /// Redis Configuration
 ///
 /// Example (development):
@@ -380,6 +408,8 @@ pub struct Middlewares {
     pub timeout_request: Option<TimeoutRequestMiddleware>,
     /// Setting cors configuration
     pub cors: Option<CorsMiddleware>,
+    /// Request context middleware
+    pub request_context: Option<RequestContextMiddleware>,
     /// Serving static assets
     #[serde(rename = "static")]
     pub static_assets: Option<StaticAssetsMiddleware>,
