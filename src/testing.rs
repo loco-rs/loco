@@ -31,7 +31,7 @@ lazy_static! {
     /// Constants for cleaning up date data, replacing date-time patterns with placeholders.
     pub static ref CLEANUP_DATE: Vec<(&'static str, &'static str)> =
         vec![
-            (r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+\d{2}:\d{2}", "DATE"), // with tz
+            (r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?\+\d{2}:\d{2}", "DATE"), // with tz
             (r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d+", "DATE"),
             (r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})", "DATE")
             ];
