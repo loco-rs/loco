@@ -55,6 +55,11 @@ jobs:
     name: Run Tests
     needs: [rustfmt, clippy]
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        db:
+          - "postgres://postgres:postgres@localhost:5432/postgres_test"
+          - "sqlite://loco_app.sqlite?mode=rwc"
 
     permissions:
       contents: read
@@ -92,12 +97,11 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
       - name: Run cargo test
-        run: cargo test --all-features --all
+        run: cargo loco db reset && cargo loco db entities && cargo test --all-features --all
         working-directory: ./starters/rest-api
         env:
           REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres_test
-
+          DATABASE_URL: ${{matrix.db}}
   # generate_template:
   #   name: Generate Template
   #   needs: [test]
