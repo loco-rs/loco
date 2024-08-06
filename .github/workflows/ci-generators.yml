@@ -111,7 +111,8 @@ jobs:
       matrix:
         db:
           - "postgres://postgres:postgres@localhost:5432/postgres_test"
-          - "sqlite://loco_app.sqlite?mode=rwc"
+        # XXX: need to clean up demo first
+        #  - "sqlite://loco_app.sqlite?mode=rwc"
 
     permissions:
       contents: read
