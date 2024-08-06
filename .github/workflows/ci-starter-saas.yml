@@ -96,6 +96,8 @@ jobs:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
+      - name: Install seaorm cli
+        run: cargo install sea-orm-cli
       - name: Run cargo test
         run: cargo loco db reset && cargo loco db entities && cargo test --all-features --all
         working-directory: ./starters/saas
