@@ -97,11 +97,11 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
       - name: Run cargo test
-        run: cargo test --all-features --all
+        run: cargo loco db reset && cargo loco db entities && cargo test --all-features --all
         working-directory: ./starters/saas
         env:
           REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
-          DATABASE_URL: ${{db}}
+          DATABASE_URL: ${{matrix.db}}
 
   # generate_template:
   #   name: Generate Template
