@@ -17,6 +17,19 @@ Running all tests should be done with:
 $ cargo xtask test
 ```
 
+## Rebuilding your database and local generated entities
+
+This should write out a fresh DB structure (drops and migrates):
+
+```
+$ cargo loco db reset
+```
+
+And then, the entities generators connect to that newly minted DB, to generate a corresponding entities code:
+
+```
+$ cargo loco db entities
+```
 
 ## Publishing a new version
 

@@ -1,3 +1,4 @@
+use loco_rs::schema::table_auto_tz;
 use sea_orm_migration::{prelude::*, schema::*};
 
 #[derive(DeriveMigrationName)]
@@ -8,7 +9,7 @@ impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
             .create_table(
-                table_auto(Notes::Table)
+                table_auto_tz(Notes::Table)
                     .col(pk_auto(Notes::Id))
                     .col(string_null(Notes::Title))
                     .col(string_null(Notes::Content))

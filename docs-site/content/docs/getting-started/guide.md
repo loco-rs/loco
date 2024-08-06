@@ -378,7 +378,7 @@ impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
             .create_table(
-                table_auto(Articles::Table)
+                table_auto_tz(Articles::Table)
                     .col(pk_auto(Articles::Id))
                     .col(string_null(Articles::Title))
                     .col(text(Articles::Content))

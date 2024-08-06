@@ -51,7 +51,7 @@
 //! ```
 
 use sea_orm::sea_query::{ColumnDef, Expr, IntoIden, Table, TableCreateStatement};
-use sea_orm_migration::{prelude::Iden, sea_query};
+use sea_orm_migration::{prelude::Iden, schema::timestamp_with_time_zone, sea_query};
 
 #[derive(Iden)]
 enum GeneralIds {
@@ -60,6 +60,13 @@ enum GeneralIds {
 }
 
 /// Wrapping  table schema creation.
+pub fn table_auto_tz<T>(name: T) -> TableCreateStatement
+where
+    T: IntoIden + 'static,
+{
+    timestamps_tz(Table::create().table(name).if_not_exists().take())
+}
+
 pub fn table_auto<T>(name: T) -> TableCreateStatement
 where
     T: IntoIden + 'static,
@@ -82,16 +89,18 @@ where
 
 /// Add timestamp columns (`CreatedAt` and `UpdatedAt`) to an existing table.
 #[must_use]
+pub fn timestamps_tz(t: TableCreateStatement) -> TableCreateStatement {
+    let mut t = t;
+    t.col(timestamp_with_time_zone(GeneralIds::CreatedAt).default(Expr::current_timestamp()))
+        .col(timestamp_with_time_zone(GeneralIds::UpdatedAt).default(Expr::current_timestamp()));
+    t.take()
+}
+
+#[must_use]
 pub fn timestamps(t: TableCreateStatement) -> TableCreateStatement {
     let mut t = t;
-    t.col(
-        ColumnDef::new(GeneralIds::CreatedAt)
-            .date_time()
-            .not_null()
-            .take()
-            .default(Expr::current_timestamp()),
-    )
-    .col(timestamp(GeneralIds::UpdatedAt).default(Expr::current_timestamp()));
+    t.col(timestamp(GeneralIds::CreatedAt).default(Expr::current_timestamp()))
+        .col(timestamp(GeneralIds::UpdatedAt).default(Expr::current_timestamp()));
     t.take()
 }
 

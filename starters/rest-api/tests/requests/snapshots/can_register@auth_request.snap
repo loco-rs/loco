@@ -4,8 +4,8 @@ expression: saved_user
 ---
 Ok(
     Model {
-        created_at: DATE,
-        updated_at: DATE,
+        created_at: DATE+00:00,
+        updated_at: DATE+00:00,
         id: ID
         pid: PID,
         email: "test@loco.com",
@@ -18,7 +18,7 @@ Ok(
             "PID",
         ),
         email_verification_sent_at: Some(
-            DATE,
+            DATE+00:00,
         ),
         email_verified_at: None,
     },
