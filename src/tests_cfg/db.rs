@@ -3,7 +3,7 @@
 /// # Panics
 /// Disabled the connection validation, should pass always
 pub async fn dummy_connection() -> sea_orm::DatabaseConnection {
-    let mut opt = sea_orm::ConnectOptions::new("postgres://@dummy:5432/dummy");
+    let mut opt = sea_orm::ConnectOptions::new("sqlite::memory:");
     opt.test_before_acquire(false);
 
     sea_orm::Database::connect(opt).await.unwrap()

@@ -14,7 +14,7 @@ const DB_CONNECTION_FAILED: &str = "DB connection: fails";
 const DB_CONNECTION_SUCCESS: &str = "DB connection: success";
 const REDIS_CONNECTION_SUCCESS: &str = "Redis connection: success";
 const REDIS_CONNECTION_FAILED: &str = "Redis connection: failed";
-const REDIS_CONNECTION_NOT_CONFIGURE: &str = "Redis not configure";
+const REDIS_CONNECTION_NOT_CONFIGURE: &str = "Redis not running?";
 
 /// Represents different resources that can be checked.
 #[derive(PartialOrd, PartialEq, Eq, Ord)]

@@ -122,6 +122,9 @@ pub enum Error {
     Storage(#[from] crate::storage::StorageError),
 
     #[error(transparent)]
+    Cache(#[from] crate::cache::CacheError),
+
+    #[error(transparent)]
     Any(#[from] Box<dyn std::error::Error + Send + Sync>),
 
     #[error(transparent)]

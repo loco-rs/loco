@@ -89,6 +89,7 @@ $ blo-cli routes --environment test
 [POST] /auth/reset
 [POST] /auth/verify
 [GET] /cache
+[GET] /cache/get_or_insert
 [POST] /cache/insert
 [GET] /mylayer/admin
 [GET] /mylayer/echo

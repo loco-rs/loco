@@ -18,7 +18,7 @@ pub async fn init_user_login(request: &TestServer, ctx: &AppContext) -> LoggedIn
     });
 
     //Creating a new user
-    request.post("/auth/register").json(&register_payload).await;
+    let _res = request.post("/auth/register").json(&register_payload).await;
     let user = users::Model::find_by_email(&ctx.db, USER_EMAIL)
         .await
         .unwrap();

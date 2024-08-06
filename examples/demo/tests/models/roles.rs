@@ -2,16 +2,9 @@ use blo::{
     app::App,
     models::{roles, sea_orm_active_enums, users, users::RegisterParams, users_roles},
 };
-use loco_rs::{db::truncate_table, prelude::*, testing};
+use loco_rs::{prelude::*, testing};
 use sea_orm::DatabaseConnection;
 use serial_test::serial;
-
-async fn truncate_this(db: &DatabaseConnection) -> Result<(), ModelError> {
-    truncate_table(db, roles::Entity).await?;
-    truncate_table(db, users::Entity).await?;
-    truncate_table(db, users_roles::Entity).await?;
-    Ok(()).map_err(|_: ModelError| ModelError::EntityNotFound)
-}
 
 macro_rules! configure_insta {
     ($($expr:expr),*) => {
@@ -28,8 +21,6 @@ async fn can_add_user_to_admin() {
     configure_insta!();
 
     let boot = testing::boot_test::<App>().await.unwrap();
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
-    let _t = truncate_this(&boot.app_context.db).await;
     let new_user: Result<users::Model, ModelError> = users::Model::create_with_password(
         &boot.app_context.db,
         &RegisterParams {
@@ -52,8 +43,6 @@ async fn can_add_user_to_user() {
     configure_insta!();
 
     let boot = testing::boot_test::<App>().await.unwrap();
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
-    let _t = truncate_this(&boot.app_context.db).await;
     let new_user: Result<users::Model, ModelError> = users::Model::create_with_password(
         &boot.app_context.db,
         &RegisterParams {
@@ -76,8 +65,6 @@ async fn can_convert_between_user_and_admin() {
     configure_insta!();
 
     let boot = testing::boot_test::<App>().await.unwrap();
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
-    let _t = truncate_this(&boot.app_context.db).await;
     let new_user: Result<users::Model, ModelError> = users::Model::create_with_password(
         &boot.app_context.db,
         &RegisterParams {
@@ -108,8 +95,6 @@ async fn can_find_user_roles() {
     configure_insta!();
 
     let boot = testing::boot_test::<App>().await.unwrap();
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
-    let _t = truncate_this(&boot.app_context.db).await;
     let new_user: Result<users::Model, ModelError> = users::Model::create_with_password(
         &boot.app_context.db,
         &RegisterParams {
@@ -147,8 +132,6 @@ async fn cannot_find_user_before_conversation() {
     configure_insta!();
 
     let boot = testing::boot_test::<App>().await.unwrap();
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
-    let _t = truncate_this(&boot.app_context.db).await;
     let new_user: Result<users::Model, ModelError> = users::Model::create_with_password(
         &boot.app_context.db,
         &RegisterParams {
