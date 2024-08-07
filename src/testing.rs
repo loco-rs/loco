@@ -150,9 +150,9 @@ pub async fn boot_test<H: Hooks>() -> Result<BootResult> {
 ///     assert!(false)
 /// }
 /// ```
-pub async fn seed<H: Hooks>(db: &DatabaseConnection) -> eyre::Result<()> {
+pub async fn seed<H: Hooks>(db: &DatabaseConnection) -> Result<()> {
     let path = std::path::Path::new("src/fixtures");
-    Ok(H::seed(db, path).await?)
+    H::seed(db, path).await
 }
 
 #[allow(clippy::future_not_send)]
