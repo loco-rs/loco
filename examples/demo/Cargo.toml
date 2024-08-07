@@ -10,7 +10,7 @@ edition = "2021"
 
 [dependencies]
 
-loco-rs = { version = "*", path = "../../" }
+loco-rs = { path = "../../", version = "*" }
 loco-extras = { version = "*", path = "../../loco-extras", features = ["full"] }
 migration = { path = "migration" }
 
@@ -50,7 +50,7 @@ required-features = []
 [dev-dependencies]
 serial_test = "3.1.1"
 rstest = "0.21.0"
-loco-rs = { version = "*", path = "../../", features = ["testing"] }
+loco-rs = { path = "../../", version = "*", features = ["testing"] }
 trycmd = "0.14.19"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
 loco-macros = { path = "../../macros" }
