@@ -290,7 +290,7 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
 /// }
 /// ```
 #[cfg(feature = "with-db")]
-pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
+pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
     let cli: Cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
@@ -367,7 +367,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
 }
 
 #[cfg(not(feature = "with-db"))]
-pub async fn main<H: Hooks>() -> eyre::Result<()> {
+pub async fn main<H: Hooks>() -> crate::Result<()> {
     let cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 

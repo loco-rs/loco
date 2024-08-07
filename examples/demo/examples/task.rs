@@ -8,7 +8,7 @@ use loco_rs::{
 };
 
 #[tokio::main]
-async fn main() -> eyre::Result<()> {
+async fn main() -> loco_rs::Result<()> {
     let environment: Environment = resolve_from_env().into();
 
     let args = env::args().collect::<Vec<_>>();
