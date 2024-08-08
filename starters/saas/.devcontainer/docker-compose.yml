@@ -27,6 +27,7 @@ services:
       - .env
   redis:
     image: redis:latest
+    #image: valkey/valkey:unstable An opensource drop in alternative to the RedisLabs offering.
     restart: unless-stopped
     ports:
       - 6379:6379
