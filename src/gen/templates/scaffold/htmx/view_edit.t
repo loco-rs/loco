@@ -49,11 +49,12 @@ message: "{{file_name}} edit view was added successfully."
         </div>
     {% endfor -%}
     <div>
-    <div class="mt-5">
+        <div class="mt-5">
             <button class=" text-xs py-3 px-6 rounded-lg bg-gray-900 text-white" type="submit">Submit</button>
             <button class="text-xs py-3 px-6 rounded-lg bg-red-600 text-white"
                         onclick="confirmDelete(event)">Delete</button>
         </div>
+    </div>
     </form>
     <div id="success-message" class="mt-4"></div>
     <br />
