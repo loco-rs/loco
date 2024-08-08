@@ -107,6 +107,7 @@ use crate::Result as LocoResult;
 /// use loco_rs::tests_cfg::db::*;
 /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
 /// use loco_rs::prelude::*;
+/// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
 ///
 /// async fn example() {
 ///     let db = dummy_connection().await;
@@ -114,7 +115,7 @@ use crate::Result as LocoResult;
 ///         page_size: 100,
 ///         page: 1,
 ///     };
-///     let condition = query::condition().contains(test_db::Column::Name, "loco").build();
+///     let condition = Postgres::condition().contains(test_db::Column::Name, "loco").build();
 ///     let res = query::paginate(&db, test_db::Entity::find(), Some(condition), &pagination_query).await;
 /// }
 /// ````
@@ -123,6 +124,7 @@ use crate::Result as LocoResult;
 /// use loco_rs::tests_cfg::db::*;
 /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait, sea_query::Order, QueryOrder};
 /// use loco_rs::prelude::*;
+/// use loco_rs::prelude::query::condition::{postgres::Postgres, ConditionBuilderTrait};
 ///
 /// async fn example() {
 ///     let db = dummy_connection().await;
@@ -131,7 +133,7 @@ use crate::Result as LocoResult;
 ///         page: 1,
 ///     };
 ///     
-///     let condition = query::condition().contains(test_db::Column::Name, "loco").build();
+///     let condition = Postgres::condition().contains(test_db::Column::Name, "loco").build();
 ///     let entity = test_db::Entity::find().order_by(test_db::Column::Name, Order::Desc);
 ///     let res = query::paginate(&db, entity, Some(condition), &pagination_query).await;
 /// }
