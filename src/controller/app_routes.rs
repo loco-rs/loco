@@ -184,6 +184,24 @@ impl AppRoutes {
     /// [`axum::Router`].
     #[allow(clippy::cognitive_complexity)]
     pub fn to_router(&self, ctx: AppContext, mut app: AXRouter<AppContext>) -> Result<AXRouter> {
+        //
+        // IMPORTANT: middleware ordering in this function is opposite to what you
+        // intuitively may think. when using `app.layer` to add individual middleware,
+        // the LAST middleware is the FIRST to meet the outside world (a user request
+        // starting), or "LIFO" order.
+        // We build the "onion" from the inside (start of this function),
+        // outwards (end of this function). This is why routes is first in coding order
+        // here (the core of the onion), and request ID is amongst the last
+        // (because every request is assigned with a unique ID, which starts its
+        // "life").
+        //
+        // NOTE: when using ServiceBuilder#layer the order is FIRST to LAST (but we
+        // don't use ServiceBuilder because it requires too complex generic typing for
+        // this function). ServiceBuilder is recommended to save compile times, but that
+        // may be a thing of the past as we don't notice any issues with compile times
+        // using the router directly, and ServiceBuilder has been reported to give
+        // issues in compile times itself (https://github.com/rust-lang/crates.io/pull/7443).
+        //
         for router in self.collect() {
             tracing::info!("{}", router.to_string());
 
