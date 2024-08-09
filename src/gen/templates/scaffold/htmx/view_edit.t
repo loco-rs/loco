@@ -30,9 +30,9 @@ message: "{{file_name}} edit view was added successfully."
         {% elif column.2 == "int" or column.2 == "int!" or column.2 == "int^"-%}
         <input id="{{column.0}}" name="{{column.0}}" type="number" required value="{% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}"></input>
         {% elif column.2 == "bool"-%}
-        <input id="{{column.0}}" name="{{column.0}}" type="checkbox" value="true" {% raw %}{% if item.0 %}checked{%endif %}{% endraw %}></input>
+        <input id="{{column.0}}" name="{{column.0}}" type="checkbox" value="true" {% raw %}{% if item.{% endraw %}{{column.0}}{% raw %} %}checked{%endif %}{% endraw %}></input>
         {% elif column.2 == "bool!"-%}
-        <input id="{{column.0}}" name="{{column.0}}" type="checkbox" value="true" {% raw %}{% if item.0 %}checked{%endif %}{% endraw %} required></input>
+        <input id="{{column.0}}" name="{{column.0}}" type="checkbox" value="true" {% raw %}{% if item.{% endraw %}{{column.0}}{% raw %} %}checked{%endif %}{% endraw %} required></input>
         {% elif column.2 == "ts"-%}
         <input id="{{column.0}}" name="{{column.0}}" type="text" value="{% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}"></input>
         {% elif column.2 == "ts!"-%}
@@ -49,11 +49,12 @@ message: "{{file_name}} edit view was added successfully."
         </div>
     {% endfor -%}
     <div>
-    <div class="mt-5">
+        <div class="mt-5">
             <button class=" text-xs py-3 px-6 rounded-lg bg-gray-900 text-white" type="submit">Submit</button>
             <button class="text-xs py-3 px-6 rounded-lg bg-red-600 text-white"
                         onclick="confirmDelete(event)">Delete</button>
         </div>
+    </div>
     </form>
     <div id="success-message" class="mt-4"></div>
     <br />
