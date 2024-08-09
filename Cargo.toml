@@ -109,7 +109,7 @@ cargo_metadata = "0.18.1"
 
 cfg-if = "1"
 
-uuid = { version = "1.6", features = ["v4"] }
+uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
 requestty = "0.5.0"
 
 # A socket.io server implementation

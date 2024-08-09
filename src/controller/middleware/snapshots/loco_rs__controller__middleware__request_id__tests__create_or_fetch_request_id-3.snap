@@ -1,0 +1,5 @@
+---
+source: src/controller/middleware/request_id.rs
+expression: id.len()
+---
+36

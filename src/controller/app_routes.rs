@@ -11,7 +11,6 @@ use tower_http::{
     add_extension::AddExtensionLayer,
     catch_panic::CatchPanicLayer,
     compression::CompressionLayer,
-    cors,
     services::{ServeDir, ServeFile},
     set_header::SetResponseHeaderLayer,
     timeout::TimeoutLayer,
@@ -20,9 +19,15 @@ use tower_http::{
 
 #[cfg(feature = "channels")]
 use super::channels::AppChannels;
-use super::routes::Routes;
+use super::{middleware::cors::cors_middleware, routes::Routes};
 use crate::{
-    app::AppContext, config, controller::middleware::etag::EtagLayer, environment::Environment,
+    app::AppContext,
+    config,
+    controller::middleware::{
+        etag::EtagLayer,
+        request_id::{request_id_middleware, LocoRequestId},
+    },
+    environment::Environment,
     errors, Result,
 };
 
@@ -179,13 +184,55 @@ impl AppRoutes {
     /// [`axum::Router`].
     #[allow(clippy::cognitive_complexity)]
     pub fn to_router(&self, ctx: AppContext, mut app: AXRouter<AppContext>) -> Result<AXRouter> {
+        //
+        // IMPORTANT: middleware ordering in this function is opposite to what you
+        // intuitively may think. when using `app.layer` to add individual middleware,
+        // the LAST middleware is the FIRST to meet the outside world (a user request
+        // starting), or "LIFO" order.
+        // We build the "onion" from the inside (start of this function),
+        // outwards (end of this function). This is why routes is first in coding order
+        // here (the core of the onion), and request ID is amongst the last
+        // (because every request is assigned with a unique ID, which starts its
+        // "life").
+        //
+        // NOTE: when using ServiceBuilder#layer the order is FIRST to LAST (but we
+        // don't use ServiceBuilder because it requires too complex generic typing for
+        // this function). ServiceBuilder is recommended to save compile times, but that
+        // may be a thing of the past as we don't notice any issues with compile times
+        // using the router directly, and ServiceBuilder has been reported to give
+        // issues in compile times itself (https://github.com/rust-lang/crates.io/pull/7443).
+        //
         for router in self.collect() {
             tracing::info!("{}", router.to_string());
 
             app = app.route(&router.uri, router.method);
         }
 
-        app = Self::add_powered_by_header(app, &ctx.config.server);
+        #[cfg(feature = "channels")]
+        if let Some(channels) = self.channels.as_ref() {
+            tracing::info!("[Middleware] Adding channels");
+            let channel_layer_app = tower::ServiceBuilder::new().layer(channels.layer.clone());
+            if let Some(cors) = &ctx
+                .config
+                .server
+                .middlewares
+                .cors
+                .as_ref()
+                .filter(|c| c.enable)
+            {
+                app = app.layer(
+                    tower::ServiceBuilder::new()
+                        .layer(cors_middleware(cors)?)
+                        .layer(channel_layer_app),
+                );
+            } else {
+                app = app.layer(
+                    tower::ServiceBuilder::new()
+                        .layer(tower_http::cors::CorsLayer::permissive())
+                        .layer(channel_layer_app),
+                );
+            }
+        }
 
         if let Some(catch_panic) = &ctx.config.server.middlewares.catch_panic {
             if catch_panic.enable {
@@ -193,9 +240,27 @@ impl AppRoutes {
             }
         }
 
+        if let Some(etag) = &ctx.config.server.middlewares.etag {
+            if etag.enable {
+                app = Self::add_etag_middleware(app);
+            }
+        }
+
         if let Some(compression) = &ctx.config.server.middlewares.compression {
             if compression.enable {
                 app = Self::add_compression_middleware(app);
+            }
+        }
+
+        if let Some(timeout_request) = &ctx.config.server.middlewares.timeout_request {
+            if timeout_request.enable {
+                app = Self::add_timeout_middleware(app, timeout_request);
+            }
+        }
+
+        if let Some(cors) = &ctx.config.server.middlewares.cors {
+            if cors.enable {
+                app = app.layer(cors_middleware(cors)?);
             }
         }
 
@@ -211,60 +276,26 @@ impl AppRoutes {
             }
         }
 
-        if let Some(timeout_request) = &ctx.config.server.middlewares.timeout_request {
-            if timeout_request.enable {
-                app = Self::add_timeout_middleware(app, timeout_request);
-            }
-        }
-
-        let cors = ctx
-            .config
-            .server
-            .middlewares
-            .cors
-            .as_ref()
-            .filter(|cors| cors.enable)
-            .map(Self::get_cors_middleware)
-            .transpose()?;
-
-        if let Some(cors) = &cors {
-            app = app.layer(cors.clone());
-            tracing::info!("[Middleware] Adding cors");
-        }
-
         if let Some(static_assets) = &ctx.config.server.middlewares.static_assets {
             if static_assets.enable {
                 app = Self::add_static_asset_middleware(app, static_assets)?;
             }
         }
 
-        if let Some(etag) = &ctx.config.server.middlewares.etag {
-            if etag.enable {
-                app = Self::add_etag_middleware(app);
-            }
-        }
+        // XXX todo: remote IP middleware here
 
-        #[cfg(feature = "channels")]
-        if let Some(channels) = self.channels.as_ref() {
-            tracing::info!("[Middleware] Adding channels");
-            let channel_layer_app = tower::ServiceBuilder::new().layer(channels.layer.clone());
-            if let Some(cors) = cors {
-                app = app.layer(
-                    tower::ServiceBuilder::new()
-                        .layer(cors)
-                        .layer(channel_layer_app),
-                );
-            } else {
-                app = app.layer(
-                    tower::ServiceBuilder::new()
-                        .layer(tower_http::cors::CorsLayer::permissive())
-                        .layer(channel_layer_app),
-                );
-            }
-        }
+        app = Self::add_powered_by_header(app, &ctx.config.server);
+
+        app = Self::add_request_id_middleware(app);
 
         let router = app.with_state(ctx);
         Ok(router)
+    }
+
+    fn add_request_id_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
+        let app = app.layer(axum::middleware::from_fn(request_id_middleware));
+        tracing::info!("[Middleware] Adding request_id middleware");
+        app
     }
 
     fn add_static_asset_middleware(
@@ -307,44 +338,6 @@ impl AppRoutes {
         app
     }
 
-    fn get_cors_middleware(config: &config::CorsMiddleware) -> Result<cors::CorsLayer> {
-        let mut cors: cors::CorsLayer = cors::CorsLayer::permissive();
-
-        if let Some(allow_origins) = &config.allow_origins {
-            // testing CORS, assuming https://example.com in the allow list:
-            // $ curl -v --request OPTIONS 'localhost:5150/api/_ping' -H 'Origin: https://example.com' -H 'Access-Control-Request-Method: GET'
-            // look for '< access-control-allow-origin: https://example.com' in response.
-            // if it doesn't appear (test with a bogus domain), it is not allowed.
-            let mut list = vec![];
-            for origins in allow_origins {
-                list.push(origins.parse()?);
-            }
-            cors = cors.allow_origin(list);
-        }
-
-        if let Some(allow_headers) = &config.allow_headers {
-            let mut headers = vec![];
-            for header in allow_headers {
-                headers.push(header.parse()?);
-            }
-            cors = cors.allow_headers(headers);
-        }
-
-        if let Some(allow_methods) = &config.allow_methods {
-            let mut methods = vec![];
-            for method in allow_methods {
-                methods.push(method.parse()?);
-            }
-            cors = cors.allow_methods(methods);
-        }
-
-        if let Some(max_age) = config.max_age {
-            cors = cors.max_age(Duration::from_secs(max_age));
-        }
-
-        Ok(cors)
-    }
-
     fn add_catch_panic(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
         app.layer(CatchPanicLayer::custom(handle_panic))
     }
@@ -372,7 +365,10 @@ impl AppRoutes {
         let app = app
             .layer(
                 TraceLayer::new_for_http().make_span_with(|request: &http::Request<_>| {
-                    let request_id = uuid::Uuid::new_v4();
+                    let ext = request.extensions();
+                    let request_id = ext
+                        .get::<LocoRequestId>()
+                        .map_or_else(|| "req-id-none".to_string(), |r| r.get().to_string());
                     let user_agent = request
                         .headers()
                         .get(axum::http::header::USER_AGENT)
