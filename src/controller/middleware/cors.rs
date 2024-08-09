@@ -4,6 +4,11 @@ use tower_http::cors;
 
 use crate::{config, Result};
 
+/// Create a CORS layer
+///
+/// # Errors
+///
+/// This function will return an error if parsing of header config fail
 pub fn cors_middleware(config: &config::CorsMiddleware) -> Result<cors::CorsLayer> {
     let mut cors: cors::CorsLayer = cors::CorsLayer::permissive();
 
