@@ -4,8 +4,8 @@ expression: existing_user
 ---
 Ok(
     Model {
-        created_at: 2023-11-12T12:34:56.789,
-        updated_at: 2023-11-12T12:34:56.789,
+        created_at: 2023-11-12T12:34:56.789+00:00,
+        updated_at: 2023-11-12T12:34:56.789+00:00,
         id: 1,
         pid: 11111111-1111-1111-1111-111111111111,
         email: "user1@example.com",

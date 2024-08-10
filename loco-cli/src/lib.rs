@@ -1,4 +1,5 @@
 use std::process::exit;
+mod env_vars;
 pub mod generate;
 pub mod git;
 pub mod prompt;

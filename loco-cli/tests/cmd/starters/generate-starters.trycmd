@@ -1,0 +1,23 @@
+```console
+$ ALLOW_IN_GIT_REPO="" LOCO_APP_NAME="test_saas_template" LOCO_FOLDER_NAME=saas_template LOCO_TEMPLATE=saas loco new 
+
+🚂 Loco app generated successfully in:
+[CWD]/test_saas_template
+
+```
+
+```console
+$ ALLOW_IN_GIT_REPO="true" LOCO_APP_NAME="test_rest_api_template" LOCO_FOLDER_NAME=rest_api_template LOCO_TEMPLATE=rest-api loco new 
+
+🚂 Loco app generated successfully in:
+[CWD]/test_rest_api_template
+
+```
+
+```console
+$ ALLOW_IN_GIT_REPO="true" LOCO_APP_NAME="test_lightweight_template" LOCO_FOLDER_NAME=lightweight_template LOCO_TEMPLATE=lightweight-service loco new 
+
+🚂 Loco app generated successfully in:
+[CWD]/test_lightweight_template
+
+```

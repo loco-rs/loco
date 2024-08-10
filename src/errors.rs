@@ -125,10 +125,10 @@ pub enum Error {
     RequestContext(#[from] crate::request_context::RequestContextError),
 
     #[error(transparent)]
-    Any(#[from] Box<dyn std::error::Error + Send + Sync>),
+    Cache(#[from] crate::cache::CacheError),
 
     #[error(transparent)]
-    Anyhow(#[from] eyre::Report),
+    Any(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
 impl Error {

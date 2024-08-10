@@ -1,6 +1,85 @@
 # Changelog
 
-## vNext
+## Unreleased
+
+## 0.7.0
+* Moving to _timezone aware timestamps_. From now on migrations will generate **timestamps with time zone** by default. Moving to TZ aware timestamps in combination with newly revamped timestamp code generation in SeaORM v1.0.0 finally allows for _seamlessly_ moving between using `sqlite` and `postgres` with minimal or no entities code changes (resolved [this long standing issue](https://github.com/loco-rs/loco/issues/518#issuecomment-2051708319)). TZ aware timestamps also aligns us with how Rails works today (initially Rails had a no-tz timestamps, and today the default is to use timestamps). If not specified the TZ is the server TZ, which is usually UTC, therefore semantically this is almost like a no-tz timestamp.
+
+**A few highlights:**
+
+Generated entities will now always use `DateTimeWithTimeZone` for the default timestamp fields:
+
+```
+...
+Generating users.rs
+    > Column `created_at`: DateTimeWithTimeZone, not_null
+    > Column `updated_at`: DateTimeWithTimeZone, not_null
+...
+```
+
+For better cross database provider compatibility, from now on prefer the `tstz` type instead of just `ts` when using generators (i.e. `cargo loco generate model movie released:tstz`)
+
+* remove eyer lib. [https://github.com/loco-rs/loco/pull/650](https://github.com/loco-rs/loco/pull/650)
+  ### Breaking Changes:
+     1. Update the Main Function in src/bin/main
+   
+      Replace the return type of the main function:
+   
+      **Before:**
+      ```rust
+      async fn main() -> eyre::Result<()>
+      ```
+   
+      **After:**
+      ```rust
+      async fn main() -> loco_rs::Result<()>
+      ```
+   
+   
+   2. Modify examples/playground.rs
+      You need to apply two changes here:
+   
+        a. Update the Function Signature
+        **Before:**
+        ```rust
+        async fn main() -> eyre::Result<()>
+        ```
+   
+        **After:**
+        ```rust
+        async fn main() -> loco_rs::Result<()>
+        ```
+   
+        b. Adjust the Context Handling
+        **Before:**
+        ```rust
+        let _ctx = playground::<App>().await.context("playground")?;
+        ```
+   
+        **After:**
+        ```rust
+        let _ctx = playground::<App>().await?;
+        ```
+   
+   Note, 
+   If you are using eyre in your project, you can continue to do so. We have only removed this crate from our base code dependencies.
+* Bump rstest crate to 0.21.0. [https://github.com/loco-rs/loco/pull/650](https://github.com/loco-rs/loco/pull/650)
+* Bump serial_test crate to 3.1.1. [https://github.com/loco-rs/loco/pull/651](https://github.com/loco-rs/loco/pull/651)
+* Bumo object store to create to 0.10.2. [https://github.com/loco-rs/loco/pull/654](https://github.com/loco-rs/loco/pull/654)
+* Bump axum crate to 0.7.5. [https://github.com/loco-rs/loco/pull/652](https://github.com/loco-rs/loco/pull/652)
+* Add Hooks::before_routes to give user control over initial axum::Router construction. [https://github.com/loco-rs/loco/pull/646](https://github.com/loco-rs/loco/pull/646)
+* Support logger file appender. [https://github.com/loco-rs/loco/pull/636](https://github.com/loco-rs/loco/pull/636)
+* Response from the template. [https://github.com/loco-rs/loco/pull/682](https://github.com/loco-rs/loco/pull/682)
+* Add get_or_insert function to cache layer. [https://github.com/loco-rs/loco/pull/637](https://github.com/loco-rs/loco/pull/637)
+* Bump ORM create to 1.0.0. [https://github.com/loco-rs/loco/pull/684](https://github.com/loco-rs/loco/pull/684)
+
+
+## 0.6.2
+* Use Rust-based tooling for SaaS starter frontend. [https://github.com/loco-rs/loco/pull/625](https://github.com/loco-rs/loco/pull/625)
+* Default binding to localhost to avoid firewall dialogues during development on macOS. [https://github.com/loco-rs/loco/pull/627](https://github.com/loco-rs/loco/pull/627)
+* upgrade sea-orm to 1.0.0 RC 7. [https://github.com/loco-rs/loco/pull/627](https://github.com/loco-rs/loco/pull/639)
+* Add a down migration command. [https://github.com/loco-rs/loco/pull/414](https://github.com/loco-rs/loco/pull/414)
+* replace create_postgres_database function table_name to db_name. [https://github.com/loco-rs/loco/pull/647](https://github.com/loco-rs/loco/pull/647)
 
 ## 0.6.1
  * Upgrade htmx generator to htmx2. [https://github.com/loco-rs/loco/pull/629](https://github.com/loco-rs/loco/pull/629)

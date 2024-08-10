@@ -1,5 +1,7 @@
 # local dev
 todo.txt
+examples/demo2
+*.sqlite
 
 # IDE config files
 .idea

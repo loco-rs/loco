@@ -152,12 +152,12 @@
     },
     {
       "name": "tstz",
-      "rust": "Option<DateTime>",
+      "rust": "Option<DateTimeWithTimeZone>",
       "schema": "timestamp_with_time_zone_null"
     },
     {
       "name": "tstz!",
-      "rust": "DateTime",
+      "rust": "DateTimeWithTimeZone",
       "schema": "timestamp_with_time_zone"
     },
     {

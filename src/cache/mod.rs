@@ -3,7 +3,10 @@
 //! This module provides a generic cache interface for various cache drivers.
 pub mod drivers;
 
+use std::future::Future;
+
 use self::drivers::CacheDriver;
+use crate::Result as LocoResult;
 
 /// Errors related to cache operations
 #[derive(thiserror::Error, Debug)]
@@ -84,6 +87,40 @@ impl Cache {
         self.driver.insert(key, value).await
     }
 
+    /// Retrieves the value associated with the given key from the cache,
+    /// or inserts it if it does not exist, using the provided closure to
+    /// generate the value.
+    ///
+    /// # Example
+    /// ```
+    /// use loco_rs::{app::AppContext};
+    /// use loco_rs::tests_cfg::app::*;
+    ///
+    /// pub async fn get_or_insert(){
+    ///    let app_ctx = get_app_context().await;
+    ///    let res = app_ctx.cache.get_or_insert("key", async {
+    ///            Ok("value".to_string())
+    ///     }).await.unwrap();
+    ///    assert_eq!(res, "value");
+    /// }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// A [`LocoResult`] indicating the success of the operation.
+    pub async fn get_or_insert<F>(&self, key: &str, f: F) -> LocoResult<String>
+    where
+        F: Future<Output = LocoResult<String>> + Send,
+    {
+        if let Some(value) = self.driver.get(key).await? {
+            Ok(value)
+        } else {
+            let value = f.await?;
+            self.driver.insert(key, &value).await?;
+            Ok(value)
+        }
+    }
+
     /// Removes a key-value pair from the cache.
     ///
     /// # Example
@@ -120,5 +157,31 @@ impl Cache {
     /// A [`CacheResult`] indicating the success of the operation.
     pub async fn clear(&self) -> CacheResult<()> {
         self.driver.clear().await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::tests_cfg;
+
+    #[tokio::test]
+    async fn can_get_or_insert() {
+        let app_ctx = tests_cfg::app::get_app_context().await;
+        let get_key = "loco";
+
+        assert_eq!(app_ctx.cache.get(get_key).await.unwrap(), None);
+
+        let result = app_ctx
+            .cache
+            .get_or_insert(get_key, async { Ok("loco-cache-value".to_string()) })
+            .await
+            .unwrap();
+
+        assert_eq!(result, "loco-cache-value".to_string());
+        assert_eq!(
+            app_ctx.cache.get(get_key).await.unwrap(),
+            Some("loco-cache-value".to_string())
+        );
     }
 }
