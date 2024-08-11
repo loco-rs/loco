@@ -346,7 +346,8 @@ mod test {
 
     // Check if empty cookie map doesn't create any private cookie jar
     #[test]
-    fn test_signed_private_cookie_jar_when_empty_cookie_map() -> Result<(), SignedPrivateCookieJarError> {
+    fn test_signed_private_cookie_jar_when_empty_cookie_map(
+    ) -> Result<(), SignedPrivateCookieJarError> {
         let private_key = Key::generate();
         // Simulate empty request context
         let map = CookieMap::new(HashMap::new());
@@ -493,7 +494,7 @@ mod test {
         assert!(new_jar.is_some());
         let new_jar = new_jar.unwrap();
         let headers = signed_private_jar_to_headers(new_jar);
-        let new_jar = SignedPrivateCookieJar::new(&headers, private_key.clone());
+        let new_jar = SignedPrivateCookieJar::new(&headers, private_key);
         let new_cookie_map = new_jar.into_cookie_map()?;
         assert_eq!(new_cookie_map.0, map);
 
