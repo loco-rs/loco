@@ -1,10 +1,8 @@
-pub mod request_id;
-
 use crate::config;
 use crate::prelude::IntoResponse;
 use crate::request_context::driver::cookie::SignedPrivateCookieJar;
 use crate::request_context::driver::Driver;
-use crate::request_context::layer::request_id::RequestId;
+use crate::controller::middleware::request_id::LocoRequestId;
 use crate::request_context::{RequestContext, RequestContextError, RequestContextStore};
 use axum::body::Body;
 use axum::extract::Request;
@@ -15,6 +13,7 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::sync::Mutex;
 use tower::{Layer, Service};
+
 #[derive(Debug, Clone)]
 pub struct RequestContextLayer {
     pub store: Arc<RequestContextStore>,
@@ -47,13 +46,13 @@ pub struct RequestContextService<S> {
 
 impl<S> Service<Request<Body>> for RequestContextService<S>
 where
-    S: Service<Request<Body>, Response = Response<Body>> + Clone + Send + 'static,
+    S: Service<Request<Body>, Response=Response<Body>> + Clone + Send + 'static,
     S::Response: 'static,
     S::Future: Send + 'static,
 {
     type Response = S::Response;
     type Error = S::Error;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+    type Future = Pin<Box<dyn Future<Output=Result<Self::Response, Self::Error>> + Send>>;
     #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner.poll_ready(cx)
@@ -68,7 +67,7 @@ where
         let clone = self.inner.clone();
         let mut inner = std::mem::replace(&mut self.inner, clone);
         Box::pin(async move {
-            let Some(request_id) = request.extensions().get::<RequestId>().cloned() else {
+            let Some(request_id) = request.extensions().get::<LocoRequestId>().cloned() else {
                 // In practice this should never happen because we wrap `RequestId`
                 // directly.
                 tracing::error!("missing request_id request extension");
@@ -100,13 +99,13 @@ where
                         &store.private_key,
                         cookie_map.lock().await.clone(),
                     )
-                    .map_err(|e| {
-                        tracing::error!(error=?e, "Failed to extract data from cookie jar");
-                        let err: crate::Error =
-                            RequestContextError::SignedPrivateCookieJarError(e).into();
-                        err
-                    })
-                    .map_err(axum::response::IntoResponse::into_response);
+                        .map_err(|e| {
+                            tracing::error!(error=?e, "Failed to extract data from cookie jar");
+                            let err: crate::Error =
+                                RequestContextError::SignedPrivateCookieJarError(e).into();
+                            err
+                        })
+                        .map_err(axum::response::IntoResponse::into_response);
                     let jar = match jar {
                         Ok(jar) => jar,
                         Err(e) => {
@@ -118,8 +117,8 @@ where
                     }
                     Ok(response)
                 } // config::RequestContext::Tower { .. } => {
-                  //     // This is a placeholder for when we implement the tower session driver.
-                  // }
+                //     // This is a placeholder for when we implement the tower session driver.
+                // }
             }
         })
     }

@@ -2,7 +2,6 @@
 //! This module contains functions and structures for bootstrapping and running
 //! your application.
 use axum::Router;
-use axum_extra::extract::cookie::Key;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
 use tracing::{info, trace, warn};

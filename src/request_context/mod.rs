@@ -1,8 +1,8 @@
 pub mod driver;
 pub mod layer;
 
+use crate::controller::middleware::request_id::LocoRequestId;
 use crate::request_context::driver::Driver;
-use crate::request_context::layer::request_id::RequestId;
 use crate::{config, prelude};
 use async_trait::async_trait;
 use axum::extract::FromRequestParts;
@@ -37,13 +37,13 @@ impl RequestContextStore {
 
 #[derive(Debug, Clone)]
 pub struct RequestContext {
-    request_id: RequestId,
+    request_id: LocoRequestId,
     driver: Driver,
 }
 
 impl RequestContext {
     #[must_use]
-    pub fn new(request_id: RequestId, driver: Driver) -> Self {
+    pub fn new(request_id: LocoRequestId, driver: Driver) -> Self {
         Self { request_id, driver }
     }
 
@@ -53,7 +53,7 @@ impl RequestContext {
     }
 
     #[must_use]
-    pub fn request_id(&self) -> &RequestId {
+    pub fn request_id(&self) -> &LocoRequestId {
         &self.request_id
     }
 }

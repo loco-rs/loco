@@ -21,9 +21,8 @@ use tower_http::{
 #[cfg(feature = "channels")]
 use super::channels::AppChannels;
 use crate::config::RequestContextSession;
-use crate::request_context::layer::request_id::request_id_middleware;
-use crate::request_context::layer::RequestContextLayer;
 use super::{middleware::cors::cors_middleware, routes::Routes};
+use crate::request_context::layer::RequestContextLayer;
 use crate::{
     app::AppContext,
     config,
@@ -320,7 +319,7 @@ impl AppRoutes {
     ) -> Result<AXRouter<AppContext>> {
         if config.must_exist
             && (!PathBuf::from(&config.folder.path).exists()
-                || !PathBuf::from(&config.fallback).exists())
+            || !PathBuf::from(&config.fallback).exists())
         {
             return Err(errors::Error::Message(format!(
                 "one of the static path are not found, Folder `{}` fallback: `{}`",
@@ -374,8 +373,6 @@ impl AppRoutes {
         Ok(RequestContextLayer::new(store))
     }
 
-
-
     fn add_catch_panic(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
         app.layer(CatchPanicLayer::custom(handle_panic))
     }
@@ -426,7 +423,7 @@ impl AppRoutes {
                         "http.user_agent" = tracing::field::display(user_agent),
                         "environment" = tracing::field::display(env),
                         // request id will be initialized by the request_id middleware
-                        request_id = tracing::field::Empty,
+                        request_id = tracing::field::display(request_id),
                     )
                 }),
             )
