@@ -56,8 +56,8 @@ impl super::_entities::roles::Model {
                     name: Set(name),
                     ..Default::default()
                 }
-                .insert(db)
-                .await?;
+                    .insert(db)
+                    .await?;
                 Ok(role)
             }
         }
@@ -66,7 +66,7 @@ impl super::_entities::roles::Model {
     pub async fn find_by_user(db: &DatabaseConnection, user: &users::Model) -> ModelResult<Self> {
         let role = roles::Entity::find()
             .inner_join(users_roles::Entity)
-            .filter(users_roles::Column::UsersId.eq(user.id.clone()))
+            .filter(users_roles::Column::UsersId.eq(user.id))
             .one(db)
             .await?;
         role.ok_or_else(|| ModelError::EntityNotFound)

@@ -46,13 +46,13 @@ pub struct RequestContextService<S> {
 
 impl<S> Service<Request<Body>> for RequestContextService<S>
 where
-    S: Service<Request<Body>, Response=Response<Body>> + Clone + Send + 'static,
+    S: Service<Request<Body>, Response = Response<Body>> + Clone + Send + 'static,
     S::Response: 'static,
     S::Future: Send + 'static,
 {
     type Response = S::Response;
     type Error = S::Error;
-    type Future = Pin<Box<dyn Future<Output=Result<Self::Response, Self::Error>> + Send>>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
     #[inline]
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner.poll_ready(cx)
@@ -99,13 +99,13 @@ where
                         &store.private_key,
                         cookie_map.lock().await.clone(),
                     )
-                        .map_err(|e| {
-                            tracing::error!(error=?e, "Failed to extract data from cookie jar");
-                            let err: crate::Error =
-                                RequestContextError::SignedPrivateCookieJarError(e).into();
-                            err
-                        })
-                        .map_err(axum::response::IntoResponse::into_response);
+                    .map_err(|e| {
+                        tracing::error!(error=?e, "Failed to extract data from cookie jar");
+                        let err: crate::Error =
+                            RequestContextError::SignedPrivateCookieJarError(e).into();
+                        err
+                    })
+                    .map_err(axum::response::IntoResponse::into_response);
                     let jar = match jar {
                         Ok(jar) => jar,
                         Err(e) => {
@@ -117,8 +117,8 @@ where
                     }
                     Ok(response)
                 } // config::RequestContext::Tower { .. } => {
-                //     // This is a placeholder for when we implement the tower session driver.
-                // }
+                  //     // This is a placeholder for when we implement the tower session driver.
+                  // }
             }
         })
     }
