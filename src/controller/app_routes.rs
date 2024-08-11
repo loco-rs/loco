@@ -20,8 +20,8 @@ use tower_http::{
 
 #[cfg(feature = "channels")]
 use super::channels::AppChannels;
-use crate::config::RequestContextSession;
 use super::{middleware::cors::cors_middleware, routes::Routes};
+use crate::config::RequestContextSession;
 use crate::request_context::layer::RequestContextLayer;
 use crate::{
     app::AppContext,
