@@ -1,9 +1,8 @@
 use blo::{
     app::App,
-    models::{roles, sea_orm_active_enums, users, users::RegisterParams, users_roles},
+    models::{roles, sea_orm_active_enums, users, users::RegisterParams},
 };
 use loco_rs::{prelude::*, testing};
-use sea_orm::DatabaseConnection;
 use serial_test::serial;
 
 macro_rules! configure_insta {

@@ -319,7 +319,7 @@ impl AppRoutes {
     ) -> Result<AXRouter<AppContext>> {
         if config.must_exist
             && (!PathBuf::from(&config.folder.path).exists()
-            || !PathBuf::from(&config.fallback).exists())
+                || !PathBuf::from(&config.fallback).exists())
         {
             return Err(errors::Error::Message(format!(
                 "one of the static path are not found, Folder `{}` fallback: `{}`",
