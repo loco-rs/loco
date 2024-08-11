@@ -27,6 +27,7 @@ pub fn test_config() -> Config {
                 catch_panic: None,
                 timeout_request: None,
                 cors: None,
+                request_context: None,
                 static_assets: None,
             },
         },
