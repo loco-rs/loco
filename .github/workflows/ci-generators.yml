@@ -107,6 +107,12 @@ jobs:
   model_fields_generator:
     name: Run Tests
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        db:
+          - "postgres://postgres:postgres@localhost:5432/postgres_test"
+        # XXX: need to clean up demo first
+        #  - "sqlite://loco_app.sqlite?mode=rwc"
 
     permissions:
       contents: read
@@ -194,4 +200,4 @@ jobs:
         working-directory: ./examples/demo
         env:
           REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres_test
+          DATABASE_URL: ${{matrix.db}}

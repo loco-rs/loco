@@ -6,7 +6,7 @@ use loco_rs::{
 use migration::Migrator;
 
 #[tokio::main]
-async fn main() -> eyre::Result<()> {
+async fn main() -> loco_rs::Result<()> {
     let environment: Environment = resolve_from_env().into();
 
     let boot_result = create_app::<App, Migrator>(StartMode::WorkerOnly, &environment).await?;

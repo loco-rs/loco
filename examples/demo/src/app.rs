@@ -18,10 +18,9 @@ use migration::Migrator;
 use sea_orm::DatabaseConnection;
 
 use crate::{
-    controllers,
-    controllers::middlewares,
+    controllers::{self, middlewares},
     initializers,
-    models::_entities::{notes, users},
+    models::_entities::{notes, roles, users, users_roles},
     tasks,
     workers::downloader::DownloadWorker,
 };
@@ -71,7 +70,7 @@ impl Hooks for App {
             .add_route(controllers::notes::routes())
             .add_route(controllers::auth::routes())
             .add_route(controllers::mysession::routes())
-            .add_route(controllers::dashboard::routes())
+            .add_route(controllers::view_engine::routes())
             .add_route(controllers::user::routes())
             .add_route(controllers::upload::routes())
             .add_route(controllers::responses::routes())
@@ -109,6 +108,8 @@ impl Hooks for App {
     }
 
     async fn truncate(db: &DatabaseConnection) -> Result<()> {
+        truncate_table(db, users_roles::Entity).await?;
+        truncate_table(db, roles::Entity).await?;
         truncate_table(db, users::Entity).await?;
         truncate_table(db, notes::Entity).await?;
         Ok(())
