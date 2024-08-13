@@ -1,4 +1,4 @@
-//! Axum middleware for validate token header
+//! Axum middleware for validating token header
 //!
 //! # Example:
 //!

@@ -28,6 +28,7 @@ pub fn test_config() -> Config {
                 timeout_request: None,
                 cors: None,
                 static_assets: None,
+                secure_headers: None,
             },
         },
         #[cfg(feature = "with-db")]
