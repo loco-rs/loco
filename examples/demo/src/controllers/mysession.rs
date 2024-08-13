@@ -25,10 +25,8 @@ pub async fn get_session(_session: Session<SessionNullPool>) -> Result<Response>
 ///
 #[debug_handler]
 pub async fn create_request_context(mut req: RequestContext) -> Result<Response> {
-    let driver = req.driver();
     let data = "turing".to_string();
-    driver
-        .insert(REQUEST_CONTEXT_DATA_KEY, data.clone())
+    req.insert(REQUEST_CONTEXT_DATA_KEY, data.clone())
         .await
         .map_err(|_| errors::Error::InternalServerError)?;
     tracing::info!(
@@ -47,8 +45,7 @@ pub async fn create_request_context(mut req: RequestContext) -> Result<Response>
 ///
 #[debug_handler]
 pub async fn get_request_context(mut req: Extension<RequestContext>) -> Result<Response> {
-    let driver = req.driver();
-    let data = driver
+    let data = req
         .get::<String>(REQUEST_CONTEXT_DATA_KEY)
         .await
         .map_err(|_e| errors::Error::InternalServerError)?

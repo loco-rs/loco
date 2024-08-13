@@ -8,6 +8,7 @@ use async_trait::async_trait;
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
 use axum_extra::extract::cookie::Key;
+use std::ops::{Deref, DerefMut};
 
 #[derive(thiserror::Error, Debug)]
 pub enum RequestContextError {
@@ -48,13 +49,21 @@ impl RequestContext {
     }
 
     #[must_use]
-    pub fn driver(&mut self) -> &mut Driver {
-        &mut self.driver
-    }
-
-    #[must_use]
     pub fn request_id(&self) -> &LocoRequestId {
         &self.request_id
+    }
+}
+
+impl Deref for RequestContext {
+    type Target = Driver;
+    fn deref(&self) -> &Self::Target {
+        &self.driver
+    }
+}
+
+impl DerefMut for RequestContext {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.driver
     }
 }
 
