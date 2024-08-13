@@ -19,7 +19,10 @@ use tower_http::{
 
 #[cfg(feature = "channels")]
 use super::channels::AppChannels;
-use super::{middleware::cors::cors_middleware, routes::Routes};
+use super::{
+    middleware::{cors::cors_middleware, secure_headers::SecureHeaders},
+    routes::Routes,
+};
 use crate::{
     app::AppContext,
     config,
@@ -282,7 +285,10 @@ impl AppRoutes {
             }
         }
 
-        // XXX todo: remote IP middleware here
+        if let Some(secure_headers) = &ctx.config.server.middlewares.secure_headers {
+            app = app.layer(SecureHeaders::new(secure_headers)?);
+            tracing::info!("[Middleware] Adding secure_headers middleware");
+        }
 
         app = Self::add_powered_by_header(app, &ctx.config.server);
 

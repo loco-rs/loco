@@ -1,3 +1,4 @@
+//! Configurable and flexible CORS middleware
 use std::time::Duration;
 
 use tower_http::cors;

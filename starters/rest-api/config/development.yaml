@@ -31,6 +31,9 @@ server:
       enable: true
       # the limit size. can be b,kb,kib,mb,mib,gb,gib
       body_limit: 5mb
+    # set secure headers
+    secure_headers:
+      preset: github
     # Generating a unique request ID and enhancing logging with additional information such as the start and completion of request processing, latency, status code, and other request details.
     logger:
       # Enable/Disable the middleware.

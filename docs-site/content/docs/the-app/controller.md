@@ -299,6 +299,44 @@ async fn current(
 }
 ```
 
+## Secure Headers
+
+Loco comes with default secure headers applied by the `secure_headers` middleware. This is similar to what is done in the Rails ecosystem with [secure_headers](https://github.com/github/secure_headers).
+
+In your `server.middleware` YAML section you will find the `github` preset by default (which is what Github and Twitter recommend for secure headers).
+
+```yaml
+server:
+  middleware:
+    # set secure headers
+    secure_headers:
+      preset: github
+```
+
+You can also override select headers:
+
+```yaml
+server:
+  middleware:
+    # set secure headers
+    secure_headers:
+      preset: github
+      overrides:
+        foo: bar
+```
+
+Or start from scratch:
+
+```yaml
+server:
+  middleware:
+    # set secure headers
+    secure_headers:
+      preset: empty
+      overrides:
+        foo: bar
+```
+
 ## Compression
 
 `Loco` leverages [CompressionLayer](https://docs.rs/tower-http/0.5.0/tower_http/compression/index.html) to enable a `one click` solution.

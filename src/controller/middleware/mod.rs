@@ -4,3 +4,4 @@ pub mod cors;
 pub mod etag;
 pub mod format;
 pub mod request_id;
+pub mod secure_headers;
