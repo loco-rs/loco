@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Added `secure_headers` middleware for setting secure headers by default, similar to how [https://github.com/github/secure_headers](https://github.com/github/secure_headers) works. This is now ON by default to promote security-by-default.
+
 ## 0.7.0
 * Moving to _timezone aware timestamps_. From now on migrations will generate **timestamps with time zone** by default. Moving to TZ aware timestamps in combination with newly revamped timestamp code generation in SeaORM v1.0.0 finally allows for _seamlessly_ moving between using `sqlite` and `postgres` with minimal or no entities code changes (resolved [this long standing issue](https://github.com/loco-rs/loco/issues/518#issuecomment-2051708319)). TZ aware timestamps also aligns us with how Rails works today (initially Rails had a no-tz timestamps, and today the default is to use timestamps). If not specified the TZ is the server TZ, which is usually UTC, therefore semantically this is almost like a no-tz timestamp.
 
