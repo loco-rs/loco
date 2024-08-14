@@ -4,7 +4,7 @@ use axum::{debug_handler, Extension};
 use axum_session::{Session, SessionNullPool};
 use loco_rs::errors;
 use loco_rs::prelude::*;
-use loco_rs::request_context::RequestContext;
+use loco_rs::request_context::{RequestContext, RequestContextError};
 
 const REQUEST_CONTEXT_DATA_KEY: &str = "alan";
 
@@ -26,9 +26,7 @@ pub async fn get_session(_session: Session<SessionNullPool>) -> Result<Response>
 #[debug_handler]
 pub async fn create_request_context(mut req: RequestContext) -> Result<Response> {
     let data = "turing".to_string();
-    req.insert(REQUEST_CONTEXT_DATA_KEY, data.clone())
-        .await
-        .map_err(|_| errors::Error::InternalServerError)?;
+    req.insert(REQUEST_CONTEXT_DATA_KEY, data.clone()).await?;
     tracing::info!(
         "Request Context data set - Key: {:?}, Value: {:?}",
         REQUEST_CONTEXT_DATA_KEY,
@@ -47,8 +45,7 @@ pub async fn create_request_context(mut req: RequestContext) -> Result<Response>
 pub async fn get_request_context(mut req: Extension<RequestContext>) -> Result<Response> {
     let data = req
         .get::<String>(REQUEST_CONTEXT_DATA_KEY)
-        .await
-        .map_err(|_e| errors::Error::InternalServerError)?
+        .await?
         .unwrap_or_default();
     tracing::info!(
         "Request Context data retrieved - Key: {:?}, Value: {:?}",
