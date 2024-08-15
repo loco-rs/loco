@@ -7,7 +7,7 @@ cfg_if::cfg_if! {
     } else {}
 
 }
-use std::sync::Arc;
+use std::{net::SocketAddr, sync::Arc};
 
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
@@ -115,7 +115,11 @@ pub trait Hooks {
         ))
         .await?;
 
-        axum::serve(listener, app).await?;
+        axum::serve(
+            listener,
+            app.into_make_service_with_connect_info::<SocketAddr>(),
+        )
+        .await?;
 
         Ok(())
     }

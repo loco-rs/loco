@@ -22,7 +22,10 @@ pub use crate::{
     app::{AppContext, Initializer},
     controller::{
         format,
-        middleware::format::{Format, RespondTo},
+        middleware::{
+            format::{Format, RespondTo},
+            remote_ip::RemoteIP,
+        },
         not_found, unauthorized,
         views::{engines::TeraView, ViewEngine, ViewRenderer},
         Json, Routes,
