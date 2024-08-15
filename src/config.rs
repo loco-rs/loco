@@ -34,8 +34,9 @@ use serde_json::json;
 use tracing::info;
 
 use crate::{
-    controller::middleware::secure_headers::SecureHeadersConfig, environment::Environment, logger,
-    Error, Result,
+    controller::middleware::{remote_ip::RemoteIPConfig, secure_headers::SecureHeadersConfig},
+    environment::Environment,
+    logger, Error, Result,
 };
 
 lazy_static! {
@@ -388,6 +389,8 @@ pub struct Middlewares {
     pub static_assets: Option<StaticAssetsMiddleware>,
     /// Sets a set of secure headers
     pub secure_headers: Option<SecureHeadersConfig>,
+    /// Calculates a remote IP based on `X-Forwarded-For` when behind a proxy
+    pub remote_ip: Option<RemoteIPConfig>,
 }
 
 /// Static asset middleware configuration

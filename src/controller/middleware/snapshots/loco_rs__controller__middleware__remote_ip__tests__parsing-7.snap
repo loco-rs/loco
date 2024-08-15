@@ -1,0 +1,7 @@
+---
+source: src/controller/middleware/remote_ip.rs
+expression: res
+---
+Some(
+    51.50.51.50,
+)

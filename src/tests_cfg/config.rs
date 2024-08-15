@@ -29,6 +29,7 @@ pub fn test_config() -> Config {
                 cors: None,
                 static_assets: None,
                 secure_headers: None,
+                remote_ip: None,
             },
         },
         #[cfg(feature = "with-db")]
