@@ -31,6 +31,7 @@ lazy_static! {
     /// Constants for cleaning up date data, replacing date-time patterns with placeholders.
     pub static ref CLEANUP_DATE: Vec<(&'static str, &'static str)> =
         vec![
+            (r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?\+\d{2}:\d{2}", "DATE"), // with tz
             (r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d+", "DATE"),
             (r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})", "DATE")
             ];
@@ -149,9 +150,9 @@ pub async fn boot_test<H: Hooks>() -> Result<BootResult> {
 ///     assert!(false)
 /// }
 /// ```
-pub async fn seed<H: Hooks>(db: &DatabaseConnection) -> eyre::Result<()> {
+pub async fn seed<H: Hooks>(db: &DatabaseConnection) -> Result<()> {
     let path = std::path::Path::new("src/fixtures");
-    Ok(H::seed(db, path).await?)
+    H::seed(db, path).await
 }
 
 #[allow(clippy::future_not_send)]

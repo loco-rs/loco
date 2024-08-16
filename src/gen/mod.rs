@@ -290,7 +290,7 @@ fn collect_messages(results: Vec<GenResult>) -> String {
     messages
 }
 
-fn prompt_deployment_selection() -> eyre::Result<DeploymentKind> {
+fn prompt_deployment_selection() -> Result<DeploymentKind> {
     let options: Vec<String> = DEPLOYMENT_OPTIONS.iter().map(|t| t.0.to_string()).collect();
 
     let selection_options = requestty::Question::select("deployment")
@@ -298,11 +298,11 @@ fn prompt_deployment_selection() -> eyre::Result<DeploymentKind> {
         .choices(&options)
         .build();
 
-    let answer = requestty::prompt_one(selection_options)?;
+    let answer = requestty::prompt_one(selection_options).map_err(errors::Error::msg)?;
 
     let selection = answer
         .as_list_item()
-        .ok_or_else(|| eyre::eyre!("deployment selection it empty"))?;
+        .ok_or_else(|| errors::Error::string("deployment selection it empty"))?;
 
     Ok(DEPLOYMENT_OPTIONS[selection.index].1.clone())
 }

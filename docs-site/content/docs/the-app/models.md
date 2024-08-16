@@ -165,6 +165,23 @@ Loco is a migration-first framework, similar to Rails. Which means that when you
 
 This enforces _everything-as-code_, _reproducibility_ and _atomicity_, where no knowledge of the schema goes missing. 
 
+### Down Migrations
+
+If you realize that you made a mistake, you can always undo the migration. This will undo the changes made by the migration (assuming that you added the appropriate code for `down` in the migration).
+
+<!-- <snip id="migrate-down-command" inject_from="yaml" template="sh"> -->
+```sh
+cargo loco db down
+```
+<!-- </snip> -->
+
+The `down` command on its own will rollback only the last migration. If you want to rollback multiple migrations, you can specify the number of migrations to rollback.
+
+<!-- <snip id="migrate-down-n-command" inject_from="yaml" template="sh"> -->
+```sh
+cargo loco db down 2
+```
+<!-- </snip> -->
 
 ### Verbs, singular and plural
 
@@ -250,24 +267,25 @@ You can copy some of this code for adding an index
 ### Create a data fix
 
 
-Creating a data fix in a migration is easy - just `use` your models as you would otherwise:
+Creating a data fix in a migration is easy - just use SQL statements as you like:
 
 ```rust
   async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
 
     let db = manager.get_connection();
+    
+    // issue SQL queries with `db`
+    // https://www.sea-ql.org/SeaORM/docs/basic-crud/raw-sql/#use-raw-query--execute-interface
 
-    cake::ActiveModel {
-        name: Set("Cheesecake".to_owned()),
-        ..Default::default()
-    }
-    .insert(db)
-    .await?;
     Ok(())
   }
 ```
 
-Having said that, it's up to you to code your data fixes in a `task` or `migration` or an ad-hoc `playground`.
+Having said that, it's up to you to code your data fixes in:
+
+* `task` - where you can use high level models
+* `migration` - where you can both change structure and fix data stemming from it with raw SQL
+* or an ad-hoc `playground` - where you can use high level models or experiment with things
 
 
 ## Validation

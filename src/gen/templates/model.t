@@ -13,6 +13,7 @@ injections:
   before: "pub struct Migrator"
   content: "mod {{module_name}};"
 ---
+use loco_rs::schema::table_auto_tz;
 use sea_orm_migration::{prelude::*, schema::*};
 
 #[derive(DeriveMigrationName)]
@@ -23,7 +24,7 @@ impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
             .create_table(
-                table_auto({{model}}::Table)
+                table_auto_tz({{model}}::Table)
                     {% if is_link -%}
                     .primary_key(
                         Index::create()

@@ -1,4 +1,4 @@
-use crate::generate;
+use crate::{env_vars, generate};
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::BTreeMap;
@@ -17,7 +17,7 @@ lazy_static! {
 /// # Errors
 /// when could not prompt the question to the user or enter value is empty
 pub fn app_name() -> eyre::Result<String> {
-    if let Ok(app_name) = env::var("LOCO_APP_NAME") {
+    if let Ok(app_name) = env::var(env_vars::APP_NAME) {
         validate_app_name(app_name.as_str()).map_err(|e| eyre::eyre!(e))?;
         Ok(app_name)
     } else {
@@ -47,7 +47,7 @@ pub fn app_name() -> eyre::Result<String> {
 pub fn template_selection(
     templates: &BTreeMap<String, generate::Template>,
 ) -> eyre::Result<(String, generate::Template)> {
-    if let Ok(template_name) = env::var("LOCO_TEMPLATE") {
+    if let Ok(template_name) = env::var(env_vars::TEMPLATE) {
         templates.get(&template_name).map_or_else(
             || Err(eyre::eyre!("template env var is invalid")),
             |template| Ok((template_name.to_string(), template.clone())),
@@ -87,10 +87,6 @@ pub fn template_selection(
 /// # Errors
 /// when could not prompt the question, or when the user choose not to continue.
 pub fn warn_if_in_git_repo() -> eyre::Result<()> {
-    if env::var("ALLOW_IN_GIT_REPO").is_ok() {
-        return Ok(());
-    }
-
     let question = requestty::Question::confirm("allow_git_repo")
         .message("❯ You are inside a git repository. Do you wish to continue?")
         .default(false)

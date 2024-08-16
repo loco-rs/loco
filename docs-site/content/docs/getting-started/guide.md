@@ -378,7 +378,7 @@ impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
             .create_table(
-                table_auto(Articles::Table)
+                table_auto_tz(Articles::Table)
                     .col(pk_auto(Articles::Id))
                     .col(string_null(Articles::Title))
                     .col(text(Articles::Content))
@@ -430,14 +430,13 @@ Let's fetch data using your models, using `playground.rs`:
 ```rust
 // located in examples/playground.rs
 // use this file to experiment with stuff
-use eyre::Context;
 use loco_rs::{cli::playground, prelude::*};
 // to refer to articles::ActiveModel, your imports should look like this:
 use myapp::{app::App, models::_entities::articles};
 
 #[tokio::main]
-async fn main() -> eyre::Result<()> {
-    let ctx = playground::<App>().await.context("playground")?; // <- remove '_'
+async fn main() -> loco_rs::Result<()> {
+    let ctx = playground::<App>().await?;
 
     // add this:
     let res = articles::Entity::find().all(&ctx.db).await.unwrap();
@@ -468,8 +467,8 @@ $ cargo playground
 Now, let's insert one item:
 
 ```rust
-async fn main() -> eyre::Result<()> {
-    let ctx = playground::<App>().await.context("playground")?;
+async fn main() -> loco_re::Result<()> {
+    let ctx = playground::<App>().await?;
 
     // add this:
     let active_model: articles::ActiveModel = articles::ActiveModel {

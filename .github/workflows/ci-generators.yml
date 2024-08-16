@@ -45,11 +45,9 @@ jobs:
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: ${{ env.TOOLCHAIN_PROFILE }}
           toolchain: ${{ env.RUST_TOOLCHAIN }}
-          override: true
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
 
@@ -109,6 +107,12 @@ jobs:
   model_fields_generator:
     name: Run Tests
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        db:
+          - "postgres://postgres:postgres@localhost:5432/postgres_test"
+        # XXX: need to clean up demo first
+        #  - "sqlite://loco_app.sqlite?mode=rwc"
 
     permissions:
       contents: read
@@ -140,11 +144,9 @@ jobs:
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: ${{ env.TOOLCHAIN_PROFILE }}
           toolchain: ${{ env.RUST_TOOLCHAIN }}
-          override: true
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
 
@@ -198,4 +200,4 @@ jobs:
         working-directory: ./examples/demo
         env:
           REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres_test
+          DATABASE_URL: ${{matrix.db}}

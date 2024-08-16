@@ -126,6 +126,8 @@ pub async fn run_task<H: Hooks>(
 pub enum RunDbCommand {
     /// Apply pending migrations.
     Migrate,
+    /// Run one or more down migrations.
+    Down(u32),
     /// Drop all tables, then reapply all migrations.
     Reset,
     /// Check the status of all migrations.
@@ -152,6 +154,10 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
         RunDbCommand::Migrate => {
             tracing::warn!("migrate:");
             db::migrate::<M>(&app_context.db).await?;
+        }
+        RunDbCommand::Down(steps) => {
+            tracing::warn!("down:");
+            db::down::<M>(&app_context.db, steps).await?;
         }
         RunDbCommand::Reset => {
             tracing::warn!("reset:");
@@ -259,7 +265,8 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
     }
     match mode {
         StartMode::ServerOnly => {
-            let app = H::routes(&app_context).to_router(app_context.clone())?;
+            let app = H::before_routes(&app_context).await?;
+            let app = H::routes(&app_context).to_router(app_context.clone(), app)?;
             let mut router = H::after_routes(app, &app_context).await?;
             for initializer in &initializers {
                 router = initializer.after_routes(router, &app_context).await?;
@@ -273,7 +280,8 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
         }
         StartMode::ServerAndWorker => {
             let processor = create_processor::<H>(&app_context)?;
-            let app = H::routes(&app_context).to_router(app_context.clone())?;
+            let app = H::before_routes(&app_context).await?;
+            let app = H::routes(&app_context).to_router(app_context.clone(), app)?;
             let mut router = H::after_routes(app, &app_context).await?;
             for initializer in &initializers {
                 router = initializer.after_routes(router, &app_context).await?;

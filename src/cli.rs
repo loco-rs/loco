@@ -203,6 +203,12 @@ enum DbCommands {
     Create,
     /// Migrate schema (up)
     Migrate,
+    /// Run one down migration, or add a number to run multiple down migrations (i.e. `down 2`)
+    Down {
+        /// The number of migrations to rollback
+        #[arg(default_value_t = 1)]
+        steps: u32,
+    },
     /// Drop all tables, then reapply all migrations
     Reset,
     /// Migration status
@@ -217,6 +223,7 @@ impl From<DbCommands> for RunDbCommand {
     fn from(value: DbCommands) -> Self {
         match value {
             DbCommands::Migrate => Self::Migrate,
+            DbCommands::Down { steps } => Self::Down(steps),
             DbCommands::Reset => Self::Reset,
             DbCommands::Status => Self::Status,
             DbCommands::Entities => Self::Entities,
@@ -283,7 +290,7 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
 /// }
 /// ```
 #[cfg(feature = "with-db")]
-pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
+pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
     let cli: Cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
@@ -360,7 +367,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
 }
 
 #[cfg(not(feature = "with-db"))]
-pub async fn main<H: Hooks>() -> eyre::Result<()> {
+pub async fn main<H: Hooks>() -> crate::Result<()> {
     let cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 

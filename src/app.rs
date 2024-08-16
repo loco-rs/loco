@@ -7,7 +7,7 @@ cfg_if::cfg_if! {
     } else {}
 
 }
-use std::sync::Arc;
+use std::{net::SocketAddr, sync::Arc};
 
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
@@ -39,7 +39,7 @@ pub struct AppContext {
     /// The environment in which the application is running.
     pub environment: Environment,
     #[cfg(feature = "with-db")]
-    /// A database connection used by the application.    
+    /// A database connection used by the application.
     pub db: DatabaseConnection,
     /// An optional connection pool for Queue, for worker tasks
     pub queue: Option<Pool<RedisConnectionManager>>,
@@ -115,7 +115,11 @@ pub trait Hooks {
         ))
         .await?;
 
-        axum::serve(listener, app).await?;
+        axum::serve(
+            listener,
+            app.into_make_service_with_connect_info::<SocketAddr>(),
+        )
+        .await?;
 
         Ok(())
     }
@@ -129,6 +133,16 @@ pub trait Hooks {
     /// If fails returns an error
     fn init_logger(_config: &config::Config, _env: &Environment) -> Result<bool> {
         Ok(false)
+    }
+
+    /// Returns the initial Axum router for the application, allowing the user
+    /// to control the construction of the Axum router. This is where a fallback
+    /// handler can be installed before middleware or other routes are added.
+    ///
+    /// # Errors
+    /// Return an [`Result`] when the router could not be created
+    async fn before_routes(_ctx: &AppContext) -> Result<AxumRouter<AppContext>> {
+        Ok(AxumRouter::new())
     }
 
     /// Invoke this function after the Loco routers have been constructed. This
@@ -178,11 +192,11 @@ pub trait Hooks {
     /// function. The truncate controlled from the [`crate::config::Database`]
     /// by changing dangerously_truncate to true (default false).
     /// Truncate can be useful when you want to truncate the database before any
-    /// test.        
+    /// test.
     #[cfg(feature = "with-db")]
     async fn truncate(db: &DatabaseConnection) -> Result<()>;
 
-    /// Seeds the database with initial data.    
+    /// Seeds the database with initial data.
     #[cfg(feature = "with-db")]
     async fn seed(db: &DatabaseConnection, path: &Path) -> Result<()>;
 }
