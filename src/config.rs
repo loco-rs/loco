@@ -33,7 +33,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::info;
 
-use crate::{environment::Environment, logger, Error, Result};
+use crate::{
+    controller::middleware::{remote_ip::RemoteIPConfig, secure_headers::SecureHeadersConfig},
+    environment::Environment,
+    logger, Error, Result,
+};
 
 lazy_static! {
     static ref DEFAULT_FOLDER: PathBuf = PathBuf::from("config");
@@ -413,6 +417,10 @@ pub struct Middlewares {
     /// Serving static assets
     #[serde(rename = "static")]
     pub static_assets: Option<StaticAssetsMiddleware>,
+    /// Sets a set of secure headers
+    pub secure_headers: Option<SecureHeadersConfig>,
+    /// Calculates a remote IP based on `X-Forwarded-For` when behind a proxy
+    pub remote_ip: Option<RemoteIPConfig>,
 }
 
 /// Static asset middleware configuration

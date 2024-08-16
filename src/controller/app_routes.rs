@@ -20,7 +20,10 @@ use tower_http::{
 
 #[cfg(feature = "channels")]
 use super::channels::AppChannels;
-use super::{middleware::cors::cors_middleware, routes::Routes};
+use super::{
+    middleware::{cors::cors_middleware, remote_ip::RemoteIPConfig, secure_headers::SecureHeaders},
+    routes::Routes,
+};
 use crate::config::RequestContextSession;
 use crate::request_context::layer::RequestContextLayer;
 use crate::{
@@ -28,6 +31,7 @@ use crate::{
     config,
     controller::middleware::{
         etag::EtagLayer,
+        remote_ip::RemoteIPLayer,
         request_id::{request_id_middleware, LocoRequestId},
     },
     environment::Environment,
@@ -213,7 +217,7 @@ impl AppRoutes {
 
         #[cfg(feature = "channels")]
         if let Some(channels) = self.channels.as_ref() {
-            tracing::info!("[Middleware] Adding channels");
+            tracing::info!("[Middleware] +channels");
             let channel_layer_app = tower::ServiceBuilder::new().layer(channels.layer.clone());
             if let Some(cors) = &ctx
                 .config
@@ -246,6 +250,12 @@ impl AppRoutes {
         if let Some(etag) = &ctx.config.server.middlewares.etag {
             if etag.enable {
                 app = Self::add_etag_middleware(app);
+            }
+        }
+
+        if let Some(remote_ip) = &ctx.config.server.middlewares.remote_ip {
+            if remote_ip.enable {
+                app = Self::add_remote_ip_middleware(app, remote_ip)?;
             }
         }
 
@@ -297,7 +307,10 @@ impl AppRoutes {
             }
         }
 
-        // XXX todo: remote IP middleware here
+        if let Some(secure_headers) = &ctx.config.server.middlewares.secure_headers {
+            app = app.layer(SecureHeaders::new(secure_headers)?);
+            tracing::info!("[Middleware] +secure headers");
+        }
 
         app = Self::add_powered_by_header(app, &ctx.config.server);
 
@@ -309,7 +322,7 @@ impl AppRoutes {
 
     fn add_request_id_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
         let app = app.layer(axum::middleware::from_fn(request_id_middleware));
-        tracing::info!("[Middleware] Adding request_id middleware");
+        tracing::info!("[Middleware] +request id");
         app
     }
 
@@ -327,13 +340,13 @@ impl AppRoutes {
             )));
         }
 
-        tracing::info!("[Middleware] Adding static");
+        tracing::info!("[Middleware] +static assets");
         let serve_dir =
             ServeDir::new(&config.folder.path).not_found_service(ServeFile::new(&config.fallback));
         Ok(app.nest_service(
             &config.folder.uri,
             if config.precompressed {
-                tracing::info!("[Middleware] Enable precompressed static assets");
+                tracing::info!("[Middleware] +precompressed static assets");
                 serve_dir.precompressed_gzip()
             } else {
                 serve_dir
@@ -343,14 +356,23 @@ impl AppRoutes {
 
     fn add_compression_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
         let app = app.layer(CompressionLayer::new());
-        tracing::info!("[Middleware] Adding compression layer");
+        tracing::info!("[Middleware] +compression");
         app
     }
 
     fn add_etag_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
         let app = app.layer(EtagLayer::new());
-        tracing::info!("[Middleware] Adding etag layer");
+        tracing::info!("[Middleware] +etag");
         app
+    }
+
+    fn add_remote_ip_middleware(
+        app: AXRouter<AppContext>,
+        config: &RemoteIPConfig,
+    ) -> Result<AXRouter<AppContext>> {
+        let app = app.layer(RemoteIPLayer::new(config)?);
+        tracing::info!("[Middleware] +remote IP");
+        Ok(app)
     }
 
     fn get_request_context_middleware(
@@ -386,10 +408,7 @@ impl AppRoutes {
                 .map_err(Box::from)?
                 .get_bytes() as usize,
         ));
-        tracing::info!(
-            data = &limit.body_limit,
-            "[Middleware] Adding limit payload",
-        );
+        tracing::info!(data = &limit.body_limit, "[Middleware] +limit payload",);
 
         Ok(app)
     }
@@ -429,7 +448,7 @@ impl AppRoutes {
             )
             .layer(AddExtensionLayer::new(environment.clone()));
 
-        tracing::info!("[Middleware] Adding log trace id",);
+        tracing::info!("[Middleware] +log trace id",);
         app
     }
 
@@ -439,7 +458,7 @@ impl AppRoutes {
     ) -> AXRouter<AppContext> {
         let app = app.layer(TimeoutLayer::new(Duration::from_millis(config.timeout)));
 
-        tracing::info!("[Middleware] Adding timeout layer");
+        tracing::info!("[Middleware] +timeout");
         app
     }
 

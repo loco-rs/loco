@@ -299,6 +299,88 @@ async fn current(
 }
 ```
 
+## Remote IP
+
+When your app is under a proxy or a load balancer (e.g. Nginx, ELB, etc.), it does not face the internet directly, which is why if you want to find out the connecting client IP, you'll get a socket which indicates an IP that is actually your load balancer instead.
+
+The load balancer or proxy is responsible for doing the socket work against the real client IP, and then giving your app the load via the proxy back connection to your app.
+
+This is why when your app has a concrete business need for getting the real client IP you need to use the de-facto standard proxies and load balancers use for handing you this information: the `X-Forwarded-For` header.
+
+Loco provides the `remote_ip` section for configuring the `RemoteIP` middleware:
+
+```yaml
+server:
+  middleware:
+    # calculate remote IP based on `X-Forwarded-For` when behind a proxy or load balancer
+    # use RemoteIP(..) extractor to get the remote IP.
+    # without this middleware, you'll get the proxy IP instead.
+    # For more: https://github.com/rails/rails/blob/main/actionpack/lib/action_dispatch/middleware/remote_ip.rb
+    #
+    # NOTE! only enable when under a proxy, otherwise this can lead to IP spoofing vulnerabilities
+    # trust me, you'll know if you need this middleware.
+    remote_ip:
+      enable: true
+      # # replace the default trusted proxies:
+      # trusted_proxies:
+      # - ip range 1
+      # - ip range 2 ..
+    # Generating a unique request ID and enhancing logging with additional information such as the start and completion of request processing, latency, status code, and other request details.
+```
+
+Then, use the `RemoteIP` extractor to get the IP:
+
+```rust
+#[debug_handler]
+pub async fn list(ip: RemoteIP, State(ctx): State<AppContext>) -> Result<Response> {
+    println!("remote ip {ip}");
+    format::json(Entity::find().all(&ctx.db).await?)
+}
+```
+
+When using the `RemoteIP` middleware, take note of the security implications vs. your current architecture (as noted in the documentation and in the configuration section): if your app is NOT under a proxy, you can be prone to IP spoofing vulnerability because anyone can set headers to arbitrary values, and specifically, anyone can set the `X-Forwarded-For` header.
+
+This middleware is not enabled by default. Usually, you *will know* if you need this middleware and you will be aware of the security aspects of using it in the correct architecture. If you're not sure -- don't use it (keep `enable` to `false`).
+
+
+## Secure Headers
+
+Loco comes with default secure headers applied by the `secure_headers` middleware. This is similar to what is done in the Rails ecosystem with [secure_headers](https://github.com/github/secure_headers).
+
+In your `server.middleware` YAML section you will find the `github` preset by default (which is what Github and Twitter recommend for secure headers).
+
+```yaml
+server:
+  middleware:
+    # set secure headers
+    secure_headers:
+      preset: github
+```
+
+You can also override select headers:
+
+```yaml
+server:
+  middleware:
+    # set secure headers
+    secure_headers:
+      preset: github
+      overrides:
+        foo: bar
+```
+
+Or start from scratch:
+
+```yaml
+server:
+  middleware:
+    # set secure headers
+    secure_headers:
+      preset: empty
+      overrides:
+        foo: bar
+```
+
 ## Compression
 
 `Loco` leverages [CompressionLayer](https://docs.rs/tower-http/0.5.0/tower_http/compression/index.html) to enable a `one click` solution.

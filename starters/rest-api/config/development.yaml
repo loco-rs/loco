@@ -31,6 +31,22 @@ server:
       enable: true
       # the limit size. can be b,kb,kib,mb,mib,gb,gib
       body_limit: 5mb
+    # set secure headers
+    secure_headers:
+      preset: github
+    # calculate remote IP based on `X-Forwarded-For` when behind a proxy or load balancer
+    # use RemoteIP(..) extractor to get the remote IP.
+    # without this middleware, you'll get the proxy IP instead.
+    # For more: https://github.com/rails/rails/blob/main/actionpack/lib/action_dispatch/middleware/remote_ip.rb
+    #
+    # NOTE! only enable when under a proxy, otherwise this can lead to IP spoofing vulnerabilities
+    # trust me, you'll know if you need this middleware.
+    remote_ip:
+      enable: false
+      # # replace the default trusted proxies:
+      # trusted_proxies:
+      # - ip range 1
+      # - ip range 2 ..
     # Generating a unique request ID and enhancing logging with additional information such as the start and completion of request processing, latency, status code, and other request details.
     logger:
       # Enable/Disable the middleware.

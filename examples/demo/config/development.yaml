@@ -27,7 +27,7 @@ logger:
 # <snip id="configuration-server">
 server:
   # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
-  port: {{get_env(name="NODE_PORT", default=5150)}}
+  port: {{ get_env(name="NODE_PORT", default=5150) }}
   # The UI hostname or IP address that mailers will point to.
   host: http://localhost
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
@@ -39,6 +39,9 @@ server:
       enable: true
       # the limit size. can be b,kb,kib,mb,mib,gb,gib
       body_limit: 5mb
+    # set secure headers
+    secure_headers:
+      preset: github
     # Generating a unique request ID and enhancing logging with additional information such as the start and completion of request processing, latency, status code, and other request details.
     logger:
       # Enable/Disable the middleware.
@@ -99,7 +102,7 @@ mailer:
     # Enable/Disable smtp mailer.
     enable: true
     # SMTP server host. e.x localhost, smtp.gmail.com
-    host: {{get_env(name="MAILER_HOST", default="localhost") }}
+    host: {{ get_env(name="MAILER_HOST", default="localhost") }}
     # SMTP server port
     port: 1025
     # Use secure connection (SSL/TLS).
@@ -115,7 +118,6 @@ mailer:
 #    authorization_code: # Authorization code grant type
 #      - client_identifier: google # Identifier for the OAuth2 provider. Replace 'google' with your provider's name if different, must be unique within the oauth2 config.
 #        ... other fields
-
 
 # Database Configuration
 # <snip id="configuration-database">
@@ -144,7 +146,7 @@ database:
 # <snip id="configuration-queue">
 queue:
   # Redis connection URI
-  uri: {{get_env(name="REDIS_URL", default="redis://127.0.0.1")}}
+  uri: {{ get_env(name="REDIS_URL", default="redis://127.0.0.1") }}
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_flush: false
 # </snip>
