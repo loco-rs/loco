@@ -223,12 +223,21 @@ pub struct Database {
 }
 
 /// Request context configuration
-/// Example:
+/// # Example:
 /// ```yaml
 /// # config/development.yaml
 /// request_context:
 ///  enable: true
-///  session:
+///  session_config:
+///    name: session
+///    http_only: true
+///    same_site:
+///      type: Lax
+///    expiry: 3600
+///    secure: false
+///    path: /
+///  #  domain: ""
+///  session_store:
 ///    type: Cookie
 ///    value:
 ///     private_key: <your private key>
@@ -236,9 +245,25 @@ pub struct Database {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RequestContextMiddleware {
     pub enable: bool,
-    pub session: RequestContextSession,
+    pub session_config: SessionConfig,
+    pub session_store: RequestContextSession,
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct SessionConfig {
+    pub name: String,
+    pub http_only: bool,
+    pub same_site: SameSite,
+    pub expiry: Option<i32>, // in seconds
+    pub secure: bool,
+    pub path: String,
+    pub domain: Option<String>,
+}
+
+/// `RequestContextSession` configuration
+/// # Enums:
+/// * Cookie - this is a placeholder for when we implement the cookie session driver or our custom session.
+/// * Tower - this is a placeholder for when we implement the tower session driver or our custom session.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "type", content = "value")]
 pub enum RequestContextSession {
@@ -247,9 +272,19 @@ pub enum RequestContextSession {
         /// Private key for Private Cookie Jar in Cookie Sessions, must be more than 64 bytes.
         private_key: Vec<u8>,
     },
-    // Tower session configuration
-    // Tower,
+    /// Tower session configuration
+    Tower,
 }
+
+/// `SameSite` cookie configuration
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "type", content = "value")]
+pub enum SameSite {
+    Lax,
+    Strict,
+    None,
+}
+
 /// Redis Configuration
 ///
 /// Example (development):

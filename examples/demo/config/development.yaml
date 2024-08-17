@@ -27,7 +27,7 @@ logger:
 # <snip id="configuration-server">
 server:
   # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
-  port: {{ get_env(name="NODE_PORT", default=5150) }}
+  port: {{get_env(name="NODE_PORT", default=5150)}}
   # The UI hostname or IP address that mailers will point to.
   host: http://localhost
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
@@ -70,20 +70,32 @@ server:
       enable: true
     request_context:
       enable: true
-      session:
+      session_config:
+        name: session
+        http_only: true
+        same_site:
+          type: Lax
+        expiry: 3600
+        secure: false
+        path: /
+      # domain: ""
+      session_store:
         type: Cookie
         value:
-          private_key: [ 219, 25, 129, 200, 66, 52, 72, 66, 249, 60, 206, 40, 77, 150, 2, 8, 30, 192, 221, 5, 243, 74, 17, 172, 109, 96, 218, 46, 235, 118, 131, 150, 224, 205, 55, 147, 45, 151, 245, 23, 250, 48, 133, 115, 105, 252, 193, 15, 162, 167, 77, 189, 169, 91, 205, 172, 120, 254, 136, 111, 167, 161, 255, 107 ]
-      # Set the value of the [`Access-Control-Allow-Origin`][mdn] header
-      # allow_origins:
-      #   - https://loco.rs
-      # Set the value of the [`Access-Control-Allow-Headers`][mdn] header
-      # allow_headers:
-      # - Content-Type
-      # Set the value of the [`Access-Control-Allow-Methods`][mdn] header
-      # allow_methods:
-      #   - POST
-      # Set the value of the [`Access-Control-Max-Age`][mdn] header in seconds
+          private_key: [219, 25, 129, 200, 66, 52, 72, 66, 249, 60, 206, 40, 77, 150, 2, 8, 30, 192, 221, 5, 243, 74, 17, 172, 109, 96, 218, 46, 235, 118, 131, 150, 224, 205, 55, 147, 45, 151, 245, 23, 250, 48, 133, 115, 105, 252, 193, 15, 162, 167, 77, 189, 169, 91, 205, 172, 120, 254, 136, 111, 167, 161, 255, 107]
+
+
+
+        # Set the value of the [`Access-Control-Allow-Origin`][mdn] header
+        # allow_origins:
+        #   - https://loco.rs
+        # Set the value of the [`Access-Control-Allow-Headers`][mdn] header
+        # allow_headers:
+        # - Content-Type
+        # Set the value of the [`Access-Control-Allow-Methods`][mdn] header
+        # allow_methods:
+        #   - POST
+        # Set the value of the [`Access-Control-Max-Age`][mdn] header in seconds
       # max_age: 3600
 
 # Worker Configuration
@@ -102,7 +114,7 @@ mailer:
     # Enable/Disable smtp mailer.
     enable: true
     # SMTP server host. e.x localhost, smtp.gmail.com
-    host: {{ get_env(name="MAILER_HOST", default="localhost") }}
+    host: {{get_env(name="MAILER_HOST", default="localhost")}}
     # SMTP server port
     port: 1025
     # Use secure connection (SSL/TLS).
@@ -146,7 +158,7 @@ database:
 # <snip id="configuration-queue">
 queue:
   # Redis connection URI
-  uri: {{ get_env(name="REDIS_URL", default="redis://127.0.0.1") }}
+  uri: {{get_env(name="REDIS_URL", default="redis://127.0.0.1")}}
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_flush: false
 # </snip>

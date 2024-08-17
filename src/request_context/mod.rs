@@ -9,7 +9,16 @@ use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
 use axum_extra::extract::cookie::Key;
 use serde::de::DeserializeOwned;
+use std::sync::Arc;
+use tower_sessions::session::{Id, Record};
+use tower_sessions::SessionStore;
 
+/// Enum representing errors that can occur in the `RequestContext` module.
+///
+/// # Errors
+/// - `ConfigurationError`: Indicates a configuration error.
+/// - `SignedPrivateCookieJarError`: Represents an error from the signed private cookie jar.
+/// - `DriverError`: Indicates an error from the driver module.
 #[derive(thiserror::Error, Debug)]
 pub enum RequestContextError {
     /// Configuration error
@@ -23,6 +32,11 @@ pub enum RequestContextError {
     DriverError(#[from] DriverError),
 }
 
+/// Defines a `RequestContextStore` struct that holds a private key and a configuration for request context sessions.
+///
+/// # Fields
+/// - `private_key`: Key - Private key for the `RequestContextStore`.
+/// - `config`: `RequestContextSession` - Configuration for the request context session.
 #[derive(Debug, Clone)]
 pub struct RequestContextStore {
     private_key: Key,
@@ -30,6 +44,14 @@ pub struct RequestContextStore {
 }
 
 impl RequestContextStore {
+    /// Create a new instance of the `RequestContextStore`.
+    ///
+    /// # Arguments
+    /// - `private_key`: Key - Private key for the `RequestContextStore`.
+    /// - `config::RequestContextSession` - Configuration for the request context session.
+    ///
+    /// # Return
+    /// - `Self` - The new instance of the `RequestContextStore`.
     #[must_use]
     pub fn new(private_key: Key, config: config::RequestContextSession) -> Self {
         Self {
@@ -39,6 +61,50 @@ impl RequestContextStore {
     }
 }
 
+/// Defines a `CustomSessionStore` struct to hold a `SessionStore`
+#[derive(Debug, Clone)]
+pub struct CustomSessionStore {
+    inner: Arc<dyn SessionStore + Send + Sync>,
+}
+
+impl CustomSessionStore {
+    #[must_use]
+    pub fn new<S>(inner: S) -> Self
+    where
+        S: SessionStore + Send + Sync + 'static,
+    {
+        Self {
+            inner: Arc::new(inner),
+        }
+    }
+}
+#[async_trait]
+impl SessionStore for CustomSessionStore {
+    async fn create(
+        &self,
+        session_record: &mut Record,
+    ) -> tower_sessions::session_store::Result<()> {
+        self.inner.create(session_record).await
+    }
+
+    async fn save(&self, session_record: &Record) -> tower_sessions::session_store::Result<()> {
+        self.inner.save(session_record).await
+    }
+
+    async fn load(&self, session_id: &Id) -> tower_sessions::session_store::Result<Option<Record>> {
+        self.inner.load(session_id).await
+    }
+
+    async fn delete(&self, session_id: &Id) -> tower_sessions::session_store::Result<()> {
+        self.inner.delete(session_id).await
+    }
+}
+
+/// Defines a `RequestContext` struct that holds a `LocoRequestId` and a `Driver`.
+///
+/// # Fields
+/// - `LocoRequestId` - The request id for the request context.
+/// - `Driver` - The driver for the request context.
 #[derive(Debug, Clone)]
 pub struct RequestContext {
     request_id: LocoRequestId,
@@ -46,11 +112,23 @@ pub struct RequestContext {
 }
 
 impl RequestContext {
+    /// Create a new instance of the `RequestContext`.
+    ///
+    /// # Arguments
+    /// - `LocoRequestId` - The request id for the request context.
+    /// - `Driver` - The driver for the request context.
+    ///
+    /// # Return
+    /// - `Self` - The new instance of the `RequestContext`.
     #[must_use]
     pub fn new(request_id: LocoRequestId, driver: Driver) -> Self {
         Self { request_id, driver }
     }
 
+    /// Returns the `LocoRequestId` for the current request context.
+    ///
+    /// # Return
+    /// - `&LocoRequestId` - The request id for the request context.
     #[must_use]
     pub fn request_id(&self) -> &LocoRequestId {
         &self.request_id

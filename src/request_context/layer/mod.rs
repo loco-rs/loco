@@ -38,6 +38,7 @@ impl<S> Layer<S> for RequestContextLayer {
         }
     }
 }
+
 #[derive(Debug, Clone)]
 pub struct RequestContextService<S> {
     inner: S,
@@ -116,9 +117,12 @@ where
                         response = (jar, response).into_response();
                     }
                     Ok(response)
-                } // config::RequestContext::Tower { .. } => {
-                  //     // This is a placeholder for when we implement the tower session driver.
-                  // }
+                }
+                config::RequestContextSession::Tower => {
+                    // This is a placeholder for when we implement the tower session driver.
+                    let response: Response = inner.call(request).await?;
+                    Ok(response)
+                }
             }
         })
     }

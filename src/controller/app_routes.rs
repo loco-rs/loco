@@ -2,22 +2,6 @@
 //! configuring routes in an Axum application. It allows you to define route
 //! prefixes, add routes, and configure middlewares for the application.
 
-use std::{fmt, path::PathBuf, time::Duration};
-
-use axum::{http, response::IntoResponse, Router as AXRouter};
-use axum_extra::extract::cookie::Key;
-use lazy_static::lazy_static;
-use regex::Regex;
-use tower_http::{
-    add_extension::AddExtensionLayer,
-    catch_panic::CatchPanicLayer,
-    compression::CompressionLayer,
-    services::{ServeDir, ServeFile},
-    set_header::SetResponseHeaderLayer,
-    timeout::TimeoutLayer,
-    trace::TraceLayer,
-};
-
 #[cfg(feature = "channels")]
 use super::channels::AppChannels;
 use super::{
@@ -26,6 +10,7 @@ use super::{
 };
 use crate::config::RequestContextSession;
 use crate::request_context::layer::RequestContextLayer;
+use crate::request_context::CustomSessionStore;
 use crate::{
     app::AppContext,
     config,
@@ -37,6 +22,21 @@ use crate::{
     environment::Environment,
     errors, Result,
 };
+use axum::{http, response::IntoResponse, Router as AXRouter};
+use axum_extra::extract::cookie::Key;
+use lazy_static::lazy_static;
+use regex::Regex;
+use std::{fmt, path::PathBuf, time::Duration};
+use tower_http::{
+    add_extension::AddExtensionLayer,
+    catch_panic::CatchPanicLayer,
+    compression::CompressionLayer,
+    services::{ServeDir, ServeFile},
+    set_header::SetResponseHeaderLayer,
+    timeout::TimeoutLayer,
+    trace::TraceLayer,
+};
+use tower_sessions::{SessionManagerLayer, SessionStore};
 
 lazy_static! {
     static ref NORMALIZE_URL: Regex = Regex::new(r"/+").unwrap();
@@ -53,6 +53,7 @@ pub struct AppRoutes {
     routes: Vec<Routes>,
     #[cfg(feature = "channels")]
     channels: Option<AppChannels>,
+    session_store: Option<CustomSessionStore>,
 }
 
 pub struct ListRoutes {
@@ -93,6 +94,7 @@ impl AppRoutes {
             routes: vec![],
             #[cfg(feature = "channels")]
             channels: None,
+            session_store: None,
         }
     }
 
@@ -183,6 +185,13 @@ impl AppRoutes {
         self
     }
 
+    /// Register Request Sessions
+    #[must_use]
+    pub fn add_request_sessions(mut self, session_store: impl SessionStore) -> Self {
+        self.session_store = Some(CustomSessionStore::new(session_store));
+        self
+    }
+
     /// Add the routes to an existing Axum Router, and set a list of middlewares
     /// that configure in the [`config::Config`]
     ///
@@ -267,13 +276,9 @@ impl AppRoutes {
 
         if let Some(request_context) = &ctx.config.server.middlewares.request_context {
             if request_context.enable {
-                match request_context.session {
-                    RequestContextSession::Cookie { .. } => {
-                        let layer = Self::get_request_context_middleware(request_context)?;
-                        app = app.layer(layer);
-                        tracing::info!("[Middleware] Adding request context");
-                    }
-                }
+                app = self.add_request_context_middleware(app, request_context)?;
+            } else {
+                tracing::info!("[Middleware] Request context disabled");
             }
         }
 
@@ -375,23 +380,47 @@ impl AppRoutes {
         Ok(app)
     }
 
-    fn get_request_context_middleware(
-        config: &config::RequestContextMiddleware,
-    ) -> Result<RequestContextLayer> {
-        let store = match &config.session {
-            config::RequestContextSession::Cookie { private_key } => {
-                let private_key = Key::try_from(&private_key[..]).map_err(|e| {
-                    tracing::error!(error = ?e, "could not convert private key from configuration");
-                    crate::prelude::Error::Message(
-                        "could not convert private key from configuration".to_string(),
-                    )
-                })?;
-                crate::request_context::RequestContextStore::new(
+    fn add_request_context_middleware(
+        &self,
+        mut app: AXRouter<AppContext>,
+        request_context: &config::RequestContextMiddleware,
+    ) -> Result<AXRouter<AppContext>> {
+        // Add the request context middleware
+        match &request_context.session_store {
+            RequestContextSession::Cookie { private_key } => {
+                tracing::info!("[Middleware] Adding request context");
+                let layer = Self::get_cookie_request_context_middleware(
                     private_key,
-                    config.session.clone(),
-                )
-            } // config::RequestContext::Tower { .. } => {}
-        };
+                    &request_context.session_store,
+                )?;
+                app = app.layer(layer);
+            }
+            RequestContextSession::Tower => match self.session_store.as_ref() {
+                Some(session_store) => {
+                    tracing::info!("[Middleware] Adding request context");
+                    let layer = SessionManagerLayer::new(session_store.to_owned());
+                    app = app.layer(layer);
+                }
+                None => {
+                    tracing::error!("request context session store not configured");
+                }
+            },
+        }
+        Ok(app)
+    }
+
+    fn get_cookie_request_context_middleware(
+        private_key: &[u8],
+        session_config: &config::RequestContextSession,
+    ) -> Result<RequestContextLayer> {
+        let private_key = Key::try_from(private_key).map_err(|e| {
+            tracing::error!(error = ?e, "could not convert private key from configuration");
+            crate::prelude::Error::Message(
+                "could not convert private key from configuration".to_string(),
+            )
+        })?;
+        let store =
+            crate::request_context::RequestContextStore::new(private_key, session_config.clone());
         Ok(RequestContextLayer::new(store))
     }
 
