@@ -199,6 +199,26 @@
       "name": "jsonb!",
       "rust": "serde_json::Value",
       "schema": "json_binary"
+    },
+    {
+      "name": "blob",
+      "rust": "Option<Vec<u8>>",
+      "schema": "blob_null"
+    },
+    {
+      "name": "blob!",
+      "rust": "Vec<u8>",
+      "schema": "blob"
+    },
+    {
+      "name": "money",
+      "rust": "Option<Decimal>",
+      "schema": "money_null"
+    },
+    {
+      "name": "money!",
+      "rust": "Decimal",
+      "schema": "money"
     }
   ]
 }

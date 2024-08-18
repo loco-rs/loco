@@ -196,6 +196,10 @@ jobs:
               json:json! \
               json_binary_null:jsonb \
               json_binary:jsonb! \
+              blob_null:blob \
+              blob:blob! \
+              money_null:money \
+              money:money! \
           && cargo build
         working-directory: ./examples/demo
         env:
