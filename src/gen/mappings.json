@@ -2,7 +2,7 @@
   "field_types": [
     {
       "name": "uuid",
-      "rust": "Option<Uuid>",
+      "rust": "Uuid",
       "schema": "uuid_uniq"
     },
     {
@@ -82,7 +82,7 @@
     },
     {
       "name": "int^",
-      "rust": "Option<i32>",
+      "rust": "i32",
       "schema": "integer_uniq"
     },
     {
