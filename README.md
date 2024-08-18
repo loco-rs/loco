@@ -58,7 +58,7 @@ docker run -d -p 5432:5432 \
 <!-- </snip> -->
 
 
- A more advanced set of `docker-compose.yml` and `Dockerfiles` that include Redis and the `mailtutan` mailer are available for [each starter on GitHub](https://github.com/loco-rs/loco/blob/master/starters/saas/.devcontainer/docker-compose.yml).
+ A more advanced set of `compose.yaml` and `Dockerfiles` that include Redis and the `mailtutan` mailer are available for [each starter on GitHub](https://github.com/loco-rs/loco/blob/master/starters/saas/.devcontainer/compose.yaml).
 
  Now `cd` into your `myapp` and start your app:
 
