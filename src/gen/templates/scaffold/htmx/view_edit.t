@@ -86,10 +86,10 @@ message: "{{file_name}} edit view was added successfully."
             event.preventDefault();
             if (confirm("Are you sure you want to delete this item?")) {
                 var xhr = new XMLHttpRequest();
-                xhr.open("DELETE", "/movies/{% raw %}{{ item.id }}{% endraw %}", true);
+                xhr.open("DELETE", "/{{name | plural}}/{% raw %}{{ item.id }}{% endraw %}", true);
                 xhr.onreadystatechange = function () {
                     if (xhr.readyState == 4 && xhr.status == 200) {
-                        window.location.href = "/movies";
+                        window.location.href = "/{{name | plural}}";
                     }
                 };
                 xhr.send();
