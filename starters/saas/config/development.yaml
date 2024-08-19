@@ -74,8 +74,25 @@ server:
       #   - POST
       # Set the value of the [`Access-Control-Max-Age`][mdn] header in seconds
       # max_age: 3600
+      
 
-    # server-side static assets config
+    # #############################################
+    # Full stack SaaS asset serving
+    # #############################################
+    #
+    # You can choose from:
+    #
+    # (1) Server-side rendered templates (like erb in Ruby, ejs in nodejs) based on the Tera templating engine.
+    # (2) Client-side frontend set up
+    #
+    # You can also choose both.
+    #
+    # Uncomment the relevant sections below:
+
+    #
+    # (1) Server-side static assets config
+    # ====================================
+    #
     # for use with the view_engine in initializers/view_engine.rs
     #
     # static:
@@ -87,15 +104,23 @@ server:
     #     path: "assets/static"
     #   fallback: "assets/static/404.html"
 
-    # client side app static config
-    static:
-      enable: true
-      must_exist: true
-      precompressed: false
-      folder:
-        uri: "/"
-        path: "frontend/dist"
-      fallback: "frontend/dist/index.html"
+    #
+    # (2) Client side app static config
+    # =================================
+    #
+    # Note that you need to go in `frontend` and run your frontend build first,
+    # e.g.: $ npm install & npm build
+    #
+    # static:
+    #   enable: true
+    #   must_exist: true
+    #   precompressed: false
+    #   folder:
+    #     uri: "/"
+    #     path: "frontend/dist"
+    #   fallback: "frontend/dist/index.html"
+    #
+    
 
 # Worker Configuration
 workers:
