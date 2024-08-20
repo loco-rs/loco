@@ -7,6 +7,8 @@ pub use axum::{
 pub use axum_extra::extract::cookie;
 pub use chrono::NaiveDateTime as DateTime;
 pub use include_dir::{include_dir, Dir};
+// some types required for controller generators
+pub use sea_orm::prelude::{Date, DateTimeWithTimeZone, Decimal, Uuid};
 #[cfg(feature = "with-db")]
 pub use sea_orm::{
     ActiveModelBehavior, ActiveModelTrait, ActiveValue, ColumnTrait, ConnectionTrait,
