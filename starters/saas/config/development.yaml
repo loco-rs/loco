@@ -94,7 +94,7 @@ server:
     # ====================================
     #
     # for use with the view_engine in initializers/view_engine.rs
-    #
+    # (server-block-start)
     # static:
     #   enable: true
     #   must_exist: true
@@ -103,6 +103,7 @@ server:
     #     uri: "/static"
     #     path: "assets/static"
     #   fallback: "assets/static/404.html"
+    # (server-block-end)
 
     #
     # (2) Client side app static config
@@ -111,6 +112,7 @@ server:
     # Note that you need to go in `frontend` and run your frontend build first,
     # e.g.: $ npm install & npm build
     #
+    # (client-block-start)
     # static:
     #   enable: true
     #   must_exist: true
@@ -119,6 +121,7 @@ server:
     #     uri: "/"
     #     path: "frontend/dist"
     #   fallback: "frontend/dist/index.html"
+    # (client-block-end)
     #
     
 

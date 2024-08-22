@@ -1,18 +1,26 @@
-use crate::{env_vars, generate};
+use std::{collections::BTreeMap, env};
+
+use dialoguer::{theme::ColorfulTheme, Select};
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::collections::BTreeMap;
-use std::env;
+use strum::IntoEnumIterator;
+
+use crate::{
+    env_vars,
+    generate::{self, AssetsOption, BackgroundOption, DBOption, OptionsList},
+};
 
 lazy_static! {
     static ref VALIDATE_APP_NAME: Regex = Regex::new(r"^[a-zA-Z0-9_]+$").unwrap();
 }
 
-/// Prompts the user to enter a valid application name for use with the Loco app generator.
+/// Prompts the user to enter a valid application name for use with the Loco app
+/// generator.
 ///
-/// If the `LOCO_APP_NAME` environment variable is set, the function attempts to use the specified
-/// app name directly. If the environment variable is not set or the specified app name is invalid, the
-/// function prompts the user to enter a valid app name interactively.
+/// If the `LOCO_APP_NAME` environment variable is set, the function attempts to
+/// use the specified app name directly. If the environment variable is not set
+/// or the specified app name is invalid, the function prompts the user to enter
+/// a valid app name interactively.
 ///
 /// # Errors
 /// when could not prompt the question to the user or enter value is empty
@@ -37,13 +45,13 @@ pub fn app_name() -> eyre::Result<String> {
 
 /// Prompts the user to select a template from the provided template list.
 ///
-/// If the `LOCO_TEMPLATE` environment variable is set, the function attempts to use the template with
-/// the specified name directly. If the environment variable is not set or the specified template is not
-/// found, the function presents a list of available templates to the user for selection.
+/// If the `LOCO_TEMPLATE` environment variable is set, the function attempts to
+/// use the template with the specified name directly. If the environment
+/// variable is not set or the specified template is not found, the function
+/// presents a list of available templates to the user for selection.
 ///
 /// # Errors
 /// when could not prompt the question to the user or enter value is empty
-///
 pub fn template_selection(
     templates: &BTreeMap<String, generate::Template>,
 ) -> eyre::Result<(String, generate::Template)> {
@@ -80,9 +88,10 @@ pub fn template_selection(
 
 /// Warn the user if they are inside a git repository.
 ///
-/// If the `ALLOW_IN_GIT_REPO` environment variable is set, this test will be skipped.
-/// If the environment variable is not set, the function will warn the user if they are inside a git
-/// and will let them cancel the operation or continue.
+/// If the `ALLOW_IN_GIT_REPO` environment variable is set, this test will be
+/// skipped. If the environment variable is not set, the function will warn the
+/// user if they are inside a git and will let them cancel the operation or
+/// continue.
 ///
 /// # Errors
 /// when could not prompt the question, or when the user choose not to continue.
@@ -104,11 +113,13 @@ pub fn warn_if_in_git_repo() -> eyre::Result<()> {
     }
 }
 
-/// Validates the provided application name for compatibility with Rust library conventions.
+/// Validates the provided application name for compatibility with Rust library
+/// conventions.
 ///
-/// Rust library names should adhere to specific conventions and avoid special characters to
-/// ensure compatibility with Cargo, the Rust package manager. This function checks whether the
-/// provided application name complies with these conventions.
+/// Rust library names should adhere to specific conventions and avoid special
+/// characters to ensure compatibility with Cargo, the Rust package manager.
+/// This function checks whether the provided application name complies with
+/// these conventions.
 fn validate_app_name(app: &str) -> Result<(), String> {
     if !VALIDATE_APP_NAME.is_match(app) {
         return Err(
@@ -118,4 +129,51 @@ fn validate_app_name(app: &str) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn select_option<T>(
+    text: &str,
+    kind: &OptionsList,
+    options: &[T],
+    optionsmap: &[OptionsList],
+) -> crate::Result<T>
+where
+    T: Default + ToString + Clone,
+{
+    let opt = if optionsmap.contains(kind) {
+        let selection = Select::with_theme(&ColorfulTheme::default())
+            .with_prompt(text)
+            .default(0)
+            .items(options)
+            .interact()?;
+        options.get(selection).cloned().unwrap_or_default()
+    } else {
+        T::default()
+    };
+    Ok(opt)
+}
+
+pub(crate) fn options_selection(
+    template: &generate::Template,
+) -> crate::Result<(DBOption, BackgroundOption, AssetsOption)> {
+    let optionsmap = template.options.clone().unwrap_or_default();
+    let dboption = select_option(
+        "pick db",
+        &OptionsList::DB,
+        &DBOption::iter().collect::<Vec<_>>(),
+        &optionsmap,
+    )?;
+    let bgopt = select_option(
+        "pick background",
+        &OptionsList::Background,
+        &BackgroundOption::iter().collect::<Vec<_>>(),
+        &optionsmap,
+    )?;
+    let assetopt = select_option(
+        "pick asset",
+        &OptionsList::Assets,
+        &AssetsOption::iter().collect::<Vec<_>>(),
+        &optionsmap,
+    )?;
+    Ok((dboption, bgopt, assetopt))
 }

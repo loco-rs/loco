@@ -1,11 +1,13 @@
-use crate::env_vars;
-use crate::generate;
-use crate::prompt;
+use std::{
+    env,
+    path::{Path, PathBuf},
+    process::Command,
+};
+
 use fs_extra::dir::{copy, CopyOptions};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
-use std::env;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+
+use crate::{env_vars, generate, prompt};
 
 /// getting logo debug path for working locally.
 ///
@@ -24,9 +26,10 @@ const STARTER_TEMPLATE_FOLDER: &str = "starters";
 
 /// Clone a Loco template to the specified destination folder.
 ///
-/// This function takes a destination path, a folder name, and additional generation arguments.
-/// It clones the Loco template, prompts the user to select a template, and generates the project
-/// in the specified destination folder with the provided arguments.
+/// This function takes a destination path, a folder name, and additional
+/// generation arguments. It clones the Loco template, prompts the user to
+/// select a template, and generates the project in the specified destination
+/// folder with the provided arguments.
 ///
 /// # Errors
 /// 1. when the `destination_path` is invalid
@@ -48,7 +51,8 @@ pub fn clone_template(
         );
     }
 
-    // in case of debug path is given, we skipping cloning project and working on the given directory
+    // in case of debug path is given, we skipping cloning project and working on
+    // the given directory
     let loco_project_path = match debug_path() {
         Some(p) => p.canonicalize().unwrap_or(p),
         None => clone_repo()?,
@@ -61,6 +65,7 @@ pub fn clone_template(
     let templates = generate::collect_templates(&starters_path)?;
 
     let (folder, template) = prompt::template_selection(&templates)?;
+    let (dbopt, bgopt, assetopt) = prompt::options_selection(&template)?;
 
     if !Path::new(&copy_template_to).exists() {
         std::fs::create_dir(&copy_template_to)?;
@@ -95,6 +100,7 @@ pub fn clone_template(
         }
     }
 
+    generate::adjust_options(&copy_template_to, &assetopt, &dbopt, &bgopt)?;
     template.generate(&copy_template_to, args);
 
     Ok(copy_template_to)
@@ -115,9 +121,10 @@ fn clone_repo() -> eyre::Result<PathBuf> {
         "cloning loco"
     );
 
-    // We prioritize cloning the Loco project directly from the Git binary if it is installed,
-    // to avoid potential conflicts with custom local Git settings, such as 'insteadOf'.
-    // If Git is not installed, an alternative approach is attempting to clone the repository using the 'git2' library.
+    // We prioritize cloning the Loco project directly from the Git binary if it is
+    // installed, to avoid potential conflicts with custom local Git settings,
+    // such as 'insteadOf'. If Git is not installed, an alternative approach is
+    // attempting to clone the repository using the 'git2' library.
     if git_exists() {
         let args = vec!["clone", "--depth=1", BASE_REPO_URL];
         Command::new("git")

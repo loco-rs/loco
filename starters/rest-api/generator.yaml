@@ -1,5 +1,8 @@
 ---
 description: Rest API (with DB and user auth)
+options:
+  - db
+  - bg
 rules:
   - pattern: loco_starter_template
     kind: LibName
@@ -20,3 +23,11 @@ rules:
     kind: postgres://loco:loco@localhost:5432/{{LibName}}_development
     file_patterns:
       - config/development.yaml
+  - pattern: sqlite://loco_app.sqlite?mode=rwc
+    kind: sqlite://{{LibName}}_development.sqlite?mode=rwc
+    file_patterns:
+      - config/development.yaml
+  - pattern: sqlite://loco_app.sqlite?mode=rwc
+    kind: sqlite://{{LibName}}_test.sqlite?mode=rwc
+    file_patterns:
+      - config/test.yaml

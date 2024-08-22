@@ -2,14 +2,19 @@ use std::{
     collections::BTreeMap,
     env, fs,
     io::{Read, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
-use crate::env_vars;
 use ignore::WalkBuilder;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use strum::{Display, EnumIter};
+
+use crate::{
+    constants::{CLIENT_BLOCK, OPTION_BACKGROUND_DEFAULT, OPTION_DB_DEFAULT, SERVER_BLOCK},
+    env_vars,
+};
 
 // Name of generator template that should be existing in each starter folder
 const GENERATOR_FILE_NAME: &str = "generator.yaml";
@@ -23,8 +28,50 @@ pub struct Template {
     pub description: String,
     /// List of rules for placeholder replacement in the generator.
     pub rules: Option<Vec<TemplateRule>>,
+    /// List of option tags
+    pub options: Option<Vec<OptionsList>>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub enum OptionsList {
+    #[serde(rename = "db")]
+    DB,
+    #[serde(rename = "bg")]
+    Background,
+    #[serde(rename = "assets")]
+    Assets,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, EnumIter, Display, Default, PartialEq, Eq)]
+pub enum DBOption {
+    #[default]
+    #[serde(rename = "sqlite")]
+    Sqlite,
+    #[serde(rename = "pg")]
+    Postgres,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, EnumIter, Display, Default, PartialEq, Eq)]
+pub enum BackgroundOption {
+    #[default]
+    #[serde(rename = "async")]
+    Async,
+    #[serde(rename = "queue")]
+    Queue,
+    #[serde(rename = "blocking")]
+    Blocking,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, EnumIter, Display, Default, PartialEq, Eq)]
+pub enum AssetsOption {
+    #[default]
+    #[serde(rename = "none")]
+    None,
+    #[serde(rename = "client")]
+    Clientside,
+    #[serde(rename = "server")]
+    Serverside,
+}
 #[derive(Debug, Clone)]
 /// Represents internal placeholders to be replaced.
 pub struct ArgsPlaceholder {
@@ -41,7 +88,8 @@ pub enum TemplateRuleKind {
 
 impl ArgsPlaceholder {
     /// replace strings placeholder with cli arguments.
-    /// For example, replace any string that contains {{`LibName`}} with the given lib name.
+    /// For example, replace any string that contains {{`LibName`}} with the
+    /// given lib name.
     #[must_use]
     pub fn replace_placeholders(&self, content: &str) -> String {
         content.replace(LIB_NAME_PLACEHOLDER, &self.lib_name)
@@ -271,6 +319,74 @@ impl Template {
     }
 }
 
+/// adjust config file based on selected options
+///
+/// # Errors
+///
+/// This function will return an error if operation fails
+pub fn adjust_options(
+    copy_template_to: &Path,
+    assetopt: &AssetsOption,
+    dbopt: &DBOption,
+    bgopt: &BackgroundOption,
+) -> eyre::Result<()> {
+    let dev_file = copy_template_to.join("config/development.yaml");
+    let mut development = String::new();
+    fs::File::open(&dev_file)?.read_to_string(&mut development)?;
+
+    let test_file = copy_template_to.join("config/test.yaml");
+    let mut test = String::new();
+    fs::File::open(&test_file)?.read_to_string(&mut test)?;
+
+    // in-file default is everything commented
+    if assetopt == &AssetsOption::Serverside {
+        development = enable_block(&development, SERVER_BLOCK);
+    } else if assetopt == &AssetsOption::Clientside {
+        development = enable_block(&development, CLIENT_BLOCK);
+    }
+
+    // in-file default is postgres
+    if dbopt == &DBOption::Sqlite {
+        development = development.replace(OPTION_DB_DEFAULT, "sqlite://loco_app.sqlite?mode=rwc");
+        test = test.replace(OPTION_DB_DEFAULT, "sqlite://loco_app.sqlite?mode=rwc");
+    }
+
+    // in-file default is queue
+    if bgopt == &BackgroundOption::Async {
+        development = development.replace(OPTION_BACKGROUND_DEFAULT, "BackgroundAsync");
+    } else if bgopt == &BackgroundOption::Blocking {
+        development = development.replace(OPTION_BACKGROUND_DEFAULT, "ForegroundBlocking");
+    }
+
+    let mut modified_file = fs::File::create(&dev_file)?;
+    modified_file.write_all(development.as_bytes())?;
+
+    let mut modified_file = fs::File::create(&test_file)?;
+    modified_file.write_all(test.as_bytes())?;
+    Ok(())
+}
+fn enable_block(content: &str, block: &str) -> String {
+    let mut in_server_block = false;
+    let mut processed = Vec::new();
+    let lines = content.lines();
+    for line in lines {
+        if line.contains(&format!("{block}-start")) {
+            in_server_block = true;
+            continue;
+        }
+        if line.contains(&format!("{block}-end")) {
+            in_server_block = false;
+            continue;
+        }
+        if in_server_block {
+            processed.push(line.replace("    #", "   "));
+        } else {
+            processed.push(line.to_string());
+        }
+    }
+    processed.join("\n")
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -328,6 +444,7 @@ mod tests {
 
         let template = Template {
             description: "test template".to_string(),
+            options: None,
             rules: Some(vec![
                 TemplateRule {
                     pattern: Regex::new("loco_starter").unwrap(),
@@ -386,6 +503,7 @@ mod tests {
 
         let template = Template {
             description: "test template".to_string(),
+            options: None,
             rules: Some(vec![
                 TemplateRule {
                     pattern: Regex::new("skip_lib.*").unwrap(),
