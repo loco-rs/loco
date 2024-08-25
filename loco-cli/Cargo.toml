@@ -35,7 +35,6 @@ serde_yaml = "0.9.27"
 serde_regex = "1.1.0"
 eyre = { version = "0.6.9" }
 rand = { version = "0.8.5" }
-requestty = "0.5.0"
 dialoguer = "0.11.0"
 regex = { version = "1.10.2" }
 ignore = "0.4.21"

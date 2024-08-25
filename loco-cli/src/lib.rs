@@ -14,6 +14,17 @@ pub enum Error {
 
     #[error(transparent)]
     Dialog(#[from] dialoguer::Error),
+
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
+
+    #[error(transparent)]
+    FS(#[from] fs_extra::error::Error),
+}
+impl Error {
+    const fn msg(msg: String) -> Self {
+        Self::Message(msg)
+    }
 }
 #[derive(Debug)]
 pub struct CmdExit {

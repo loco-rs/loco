@@ -1,13 +1,14 @@
 use std::{collections::BTreeMap, env};
 
-use dialoguer::{theme::ColorfulTheme, Select};
+use dialoguer::{theme::ColorfulTheme, Confirm, Input, Select};
 use lazy_static::lazy_static;
 use regex::Regex;
 use strum::IntoEnumIterator;
 
 use crate::{
     env_vars,
-    generate::{self, AssetsOption, BackgroundOption, DBOption, OptionsList},
+    generate::{self, ArgsPlaceholder, AssetsOption, BackgroundOption, DBOption, OptionsList},
+    Error,
 };
 
 lazy_static! {
@@ -24,22 +25,17 @@ lazy_static! {
 ///
 /// # Errors
 /// when could not prompt the question to the user or enter value is empty
-pub fn app_name() -> eyre::Result<String> {
-    if let Ok(app_name) = env::var(env_vars::APP_NAME) {
-        validate_app_name(app_name.as_str()).map_err(|e| eyre::eyre!(e))?;
+pub fn app_name(name: Option<String>) -> crate::Result<String> {
+    if let Some(app_name) = env::var(env_vars::APP_NAME).ok().or(name) {
+        validate_app_name(app_name.as_str()).map_err(Error::msg)?;
         Ok(app_name)
     } else {
-        let app_name = requestty::Question::input("app_name")
-            .message("❯ App name?")
-            .default("myapp")
-            .validate(|ans, _| validate_app_name(ans))
-            .build();
-
-        let res = requestty::prompt_one(app_name)?;
-        Ok(res
-            .as_string()
-            .ok_or_else(|| eyre::eyre!("app selection name is empty"))?
-            .to_string())
+        let res = Input::with_theme(&ColorfulTheme::default())
+            .with_prompt("❯ App name?")
+            .default("myapp".into())
+            .validate_with(|input: &String| validate_app_name(input))
+            .interact_text()?;
+        Ok(res)
     }
 }
 
@@ -54,10 +50,14 @@ pub fn app_name() -> eyre::Result<String> {
 /// when could not prompt the question to the user or enter value is empty
 pub fn template_selection(
     templates: &BTreeMap<String, generate::Template>,
-) -> eyre::Result<(String, generate::Template)> {
-    if let Ok(template_name) = env::var(env_vars::TEMPLATE) {
+    args: &generate::ArgsPlaceholder,
+) -> crate::Result<(String, generate::Template)> {
+    if let Some(template_name) = env::var(env_vars::TEMPLATE)
+        .ok()
+        .or_else(|| args.template.clone())
+    {
         templates.get(&template_name).map_or_else(
-            || Err(eyre::eyre!("template env var is invalid")),
+            || Err(Error::msg(format!("no such template: `{template_name}`"))),
             |template| Ok((template_name.to_string(), template.clone())),
         )
     } else {
@@ -66,23 +66,22 @@ pub fn template_selection(
             .map(|t| t.1.description.to_string())
             .collect();
 
-        let order_select = requestty::Question::select("template")
-            .message("❯ What would you like to build?")
-            .choices(&options)
-            .build();
+        let selection_index = Select::with_theme(&ColorfulTheme::default())
+            .with_prompt("❯ What would you like to build?")
+            .items(&options)
+            .default(0)
+            .interact()?;
 
-        let answer = requestty::prompt_one(order_select)?;
-
-        let selection = answer
-            .as_list_item()
-            .ok_or_else(|| eyre::eyre!("template selection it empty"))?;
+        let selection = options
+            .get(selection_index)
+            .ok_or_else(|| Error::msg("template selection is empty".to_string()))?;
 
         for (name, template) in templates {
-            if template.description == selection.text {
+            if template.description == *selection {
                 return Ok((name.to_string(), template.clone()));
             }
         }
-        Err(eyre::eyre!("selection invalid"))
+        Err(Error::msg("selection invalid".to_string()))
     }
 }
 
@@ -95,21 +94,18 @@ pub fn template_selection(
 ///
 /// # Errors
 /// when could not prompt the question, or when the user choose not to continue.
-pub fn warn_if_in_git_repo() -> eyre::Result<()> {
-    let question = requestty::Question::confirm("allow_git_repo")
-        .message("❯ You are inside a git repository. Do you wish to continue?")
+pub fn warn_if_in_git_repo() -> crate::Result<()> {
+    let answer = Confirm::with_theme(&ColorfulTheme::default())
+        .with_prompt("❯ You are inside a git repository. Do you wish to continue?")
         .default(false)
-        .build();
-
-    let res = requestty::prompt_one(question)?;
-    let answer = res
-        .as_bool()
-        .ok_or_else(|| eyre::eyre!("allow_git_repo is empty"))?;
+        .interact()?;
 
     if answer {
         Ok(())
     } else {
-        Err(eyre::eyre!("Aborted: You've chose not to continue."))
+        Err(Error::msg(
+            "Aborted: You've chose not to continue.".to_string(),
+        ))
     }
 }
 
@@ -155,25 +151,41 @@ where
 
 pub(crate) fn options_selection(
     template: &generate::Template,
+    args: &ArgsPlaceholder,
 ) -> crate::Result<(DBOption, BackgroundOption, AssetsOption)> {
     let optionsmap = template.options.clone().unwrap_or_default();
-    let dboption = select_option(
-        "pick db",
-        &OptionsList::DB,
-        &DBOption::iter().collect::<Vec<_>>(),
-        &optionsmap,
-    )?;
-    let bgopt = select_option(
-        "pick background",
-        &OptionsList::Background,
-        &BackgroundOption::iter().collect::<Vec<_>>(),
-        &optionsmap,
-    )?;
-    let assetopt = select_option(
-        "pick asset",
-        &OptionsList::Assets,
-        &AssetsOption::iter().collect::<Vec<_>>(),
-        &optionsmap,
-    )?;
+    let dboption = if let Some(dboption) = args.db.clone() {
+        dboption
+    } else {
+        select_option(
+            "❯ Select a DB Provider",
+            &OptionsList::DB,
+            &DBOption::iter().collect::<Vec<_>>(),
+            &optionsmap,
+        )?
+    };
+
+    let bgopt = if let Some(bgopt) = args.bg.clone() {
+        bgopt
+    } else {
+        select_option(
+            "❯ Select your background worker type",
+            &OptionsList::Background,
+            &BackgroundOption::iter().collect::<Vec<_>>(),
+            &optionsmap,
+        )?
+    };
+
+    let assetopt = if let Some(assetopt) = args.assets.clone() {
+        assetopt
+    } else {
+        select_option(
+            "❯ Select an asset serving configuration",
+            &OptionsList::Assets,
+            &AssetsOption::iter().collect::<Vec<_>>(),
+            &optionsmap,
+        )?
+    };
+
     Ok((dboption, bgopt, assetopt))
 }

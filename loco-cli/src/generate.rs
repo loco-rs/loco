@@ -5,6 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use clap::ValueEnum;
 use ignore::WalkBuilder;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use regex::Regex;
@@ -42,7 +43,9 @@ pub enum OptionsList {
     Assets,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, EnumIter, Display, Default, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Deserialize, Serialize, EnumIter, Display, Default, PartialEq, Eq, ValueEnum,
+)]
 pub enum DBOption {
     #[default]
     #[serde(rename = "sqlite")]
@@ -51,7 +54,9 @@ pub enum DBOption {
     Postgres,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, EnumIter, Display, Default, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Deserialize, Serialize, EnumIter, Display, Default, PartialEq, Eq, ValueEnum,
+)]
 pub enum BackgroundOption {
     #[default]
     #[serde(rename = "async")]
@@ -62,7 +67,9 @@ pub enum BackgroundOption {
     Blocking,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, EnumIter, Display, Default, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Deserialize, Serialize, EnumIter, Display, Default, PartialEq, Eq, ValueEnum,
+)]
 pub enum AssetsOption {
     #[default]
     #[serde(rename = "none")]
@@ -72,10 +79,14 @@ pub enum AssetsOption {
     #[serde(rename = "server")]
     Serverside,
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 /// Represents internal placeholders to be replaced.
 pub struct ArgsPlaceholder {
     pub lib_name: String,
+    pub db: Option<DBOption>,
+    pub bg: Option<BackgroundOption>,
+    pub assets: Option<AssetsOption>,
+    pub template: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -154,7 +165,7 @@ pub struct TemplateRule {
 ///
 /// # Errors
 /// The code should returns an error only when could get folder collections.
-pub fn collect_templates(path: &std::path::PathBuf) -> eyre::Result<BTreeMap<String, Template>> {
+pub fn collect_templates(path: &std::path::PathBuf) -> crate::Result<BTreeMap<String, Template>> {
     tracing::debug!(
         path = path.display().to_string(),
         "collecting starters template"
@@ -329,7 +340,7 @@ pub fn adjust_options(
     assetopt: &AssetsOption,
     dbopt: &DBOption,
     bgopt: &BackgroundOption,
-) -> eyre::Result<()> {
+) -> crate::Result<()> {
     let dev_file = copy_template_to.join("config/development.yaml");
     let mut development = String::new();
     fs::File::open(&dev_file)?.read_to_string(&mut development)?;
@@ -471,6 +482,7 @@ mod tests {
 
         let args = ArgsPlaceholder {
             lib_name: "lib_name_changed".to_string(),
+            ..Default::default()
         };
         template.generate(&tree_res, &args);
 
@@ -522,6 +534,7 @@ mod tests {
 
         let args = ArgsPlaceholder {
             lib_name: "lib_name_changed".to_string(),
+            ..Default::default()
         };
         template.generate(&tree_res, &args);
 
