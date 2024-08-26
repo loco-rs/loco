@@ -188,6 +188,7 @@ fn clone_repo_with_git2(temp_clone_dir: &Path) -> crate::Result<()> {
     fetch_options.depth(1);
     git2::build::RepoBuilder::new()
         .fetch_options(fetch_options)
-        .clone(BASE_REPO_URL, temp_clone_dir)?;
+        .clone(BASE_REPO_URL, temp_clone_dir)
+        .map_err(|e| Error::msg(e.to_string()))?;
     Ok(())
 }
