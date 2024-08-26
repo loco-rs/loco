@@ -349,25 +349,7 @@ pub fn adjust_options(
     let mut test = String::new();
     fs::File::open(&test_file)?.read_to_string(&mut test)?;
 
-    // in-file default is everything commented
-    if assetopt == &AssetsOption::Serverside {
-        development = enable_block(&development, SERVER_BLOCK);
-    } else if assetopt == &AssetsOption::Clientside {
-        development = enable_block(&development, CLIENT_BLOCK);
-    }
-
-    // in-file default is postgres
-    if dbopt == &DBOption::Sqlite {
-        development = development.replace(OPTION_DB_DEFAULT, "sqlite://loco_app.sqlite?mode=rwc");
-        test = test.replace(OPTION_DB_DEFAULT, "sqlite://loco_app.sqlite?mode=rwc");
-    }
-
-    // in-file default is queue
-    if bgopt == &BackgroundOption::Async {
-        development = development.replace(OPTION_BACKGROUND_DEFAULT, "BackgroundAsync");
-    } else if bgopt == &BackgroundOption::Blocking {
-        development = development.replace(OPTION_BACKGROUND_DEFAULT, "ForegroundBlocking");
-    }
+    adjust_options_for_content(&mut development, &mut test, assetopt, dbopt, bgopt);
 
     let mut modified_file = fs::File::create(&dev_file)?;
     modified_file.write_all(development.as_bytes())?;
@@ -375,6 +357,34 @@ pub fn adjust_options(
     let mut modified_file = fs::File::create(&test_file)?;
     modified_file.write_all(test.as_bytes())?;
     Ok(())
+}
+
+fn adjust_options_for_content(
+    development: &mut String,
+    test: &mut String,
+    assetopt: &AssetsOption,
+    dbopt: &DBOption,
+    bgopt: &BackgroundOption,
+) {
+    // in-file default is everything commented
+    if assetopt == &AssetsOption::Serverside {
+        *development = enable_block(&*development, SERVER_BLOCK);
+    } else if assetopt == &AssetsOption::Clientside {
+        *development = enable_block(&*development, CLIENT_BLOCK);
+    }
+
+    // in-file default is postgres
+    if dbopt == &DBOption::Sqlite {
+        *development = development.replace(OPTION_DB_DEFAULT, "sqlite://loco_app.sqlite?mode=rwc");
+        *test = test.replace(OPTION_DB_DEFAULT, "sqlite://loco_app.sqlite?mode=rwc");
+    }
+
+    // in-file default is queue
+    if bgopt == &BackgroundOption::Async {
+        *development = development.replace(OPTION_BACKGROUND_DEFAULT, "mode: BackgroundAsync");
+    } else if bgopt == &BackgroundOption::Blocking {
+        *development = development.replace(OPTION_BACKGROUND_DEFAULT, "mode: ForegroundBlocking");
+    }
 }
 fn enable_block(content: &str, block: &str) -> String {
     let mut in_server_block = false;
@@ -401,10 +411,27 @@ fn enable_block(content: &str, block: &str) -> String {
 #[cfg(test)]
 mod tests {
 
-    use insta::{assert_debug_snapshot, with_settings};
+    use insta::{assert_debug_snapshot, assert_snapshot, with_settings};
     use tree_fs;
+    const DEVELOPMENT_YAML: &str = include_str!("fixtures/development.yaml");
+    const TEST_YAML: &str = include_str!("fixtures/test.yaml");
 
     use super::*;
+
+    #[test]
+    fn can_adjust_options_in_configuration() {
+        let mut development = DEVELOPMENT_YAML.to_string();
+        let mut test = TEST_YAML.to_string();
+        adjust_options_for_content(
+            &mut development,
+            &mut test,
+            &AssetsOption::Clientside,
+            &DBOption::Sqlite,
+            &BackgroundOption::Async,
+        );
+        assert_snapshot!(development);
+        assert_snapshot!(test);
+    }
 
     #[test]
     fn can_collect_templates() {
