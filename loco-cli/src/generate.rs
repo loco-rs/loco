@@ -1,11 +1,12 @@
 use std::{
     collections::BTreeMap,
-    env, fs,
+    env,
     io::{Read, Write},
     path::{Path, PathBuf},
 };
 
 use clap::ValueEnum;
+use fs_err as fs;
 use ignore::WalkBuilder;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use regex::Regex;

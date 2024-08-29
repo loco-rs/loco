@@ -4,6 +4,7 @@ use std::{
     process::Command,
 };
 
+use fs_err as fs;
 use fs_extra::dir::{copy, CopyOptions};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
@@ -68,7 +69,7 @@ pub fn clone_template(
     let (dbopt, bgopt, assetopt) = prompt::options_selection(&template, args)?;
 
     if !Path::new(&copy_template_to).exists() {
-        std::fs::create_dir(&copy_template_to)?;
+        fs::create_dir(&copy_template_to)?;
     }
 
     let copy_from = starters_path.join(folder);
@@ -91,7 +92,7 @@ pub fn clone_template(
             folder = copy_from.display().to_string(),
             "deleting temp folder"
         );
-        if let Err(e) = std::fs::remove_dir_all(&copy_from) {
+        if let Err(e) = fs::remove_dir_all(&copy_from) {
             tracing::debug!(
                 folder = copy_from.display().to_string(),
                 error = e.to_string(),
