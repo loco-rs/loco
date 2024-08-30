@@ -8,7 +8,7 @@ on:
 
 jobs:
   saas-template-win32:
-    name: [WIN/loco-cli (master)] Create saas starter template
+    name: Create saas starter template (win32)
     runs-on: windows-latest
 
     permissions:
