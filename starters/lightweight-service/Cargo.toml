@@ -20,7 +20,7 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 
 [[bin]]
-name = "loco_starter_template_cli"
+name = "loco_starter_template-cli"
 path = "src/bin/main.rs"
 required-features = []
 

@@ -60,7 +60,7 @@ pub fn generate<H: Hooks>(
 
     if !migration_only {
         let cwd = current_dir()?;
-        let mut env_map: HashMap<_, _> = std::env::vars().collect();
+        let env_map: HashMap<_, _> = std::env::vars().collect();
 
         let _ = cmd!("cargo", "loco", "db", "migrate",)
             .stderr_to_stdout()
