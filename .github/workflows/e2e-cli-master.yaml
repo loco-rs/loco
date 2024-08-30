@@ -24,7 +24,7 @@ jobs:
           cargo install --path .
         working-directory: ./loco-cli
       - run: |
-          loco new -n saas -t saas --db sqlite --bg async
+          loco new -n saas -t saas --db sqlite --bg async --assets none
         env:
           ALLOW_IN_GIT_REPO: true
       - run: |
