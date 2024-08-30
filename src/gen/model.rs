@@ -60,9 +60,12 @@ pub fn generate<H: Hooks>(
 
     if !migration_only {
         let cwd = current_dir()?;
+        let mut env_map: HashMap<_, _> = std::env::vars().collect();
+
         let _ = cmd!("cargo", "loco", "db", "migrate",)
             .stderr_to_stdout()
             .dir(cwd.as_path())
+            .full_env(&env_map)
             .run()
             .map_err(|err| {
                 Error::Message(format!(
@@ -72,6 +75,7 @@ pub fn generate<H: Hooks>(
         let _ = cmd!("cargo", "loco", "db", "entities",)
             .stderr_to_stdout()
             .dir(cwd.as_path())
+            .full_env(&env_map)
             .run()
             .map_err(|err| {
                 Error::Message(format!(
