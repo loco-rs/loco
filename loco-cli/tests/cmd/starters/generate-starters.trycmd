@@ -1,5 +1,5 @@
 ```console
-$ ALLOW_IN_GIT_REPO="" LOCO_APP_NAME="test_saas_template" LOCO_FOLDER_NAME=saas_template LOCO_TEMPLATE=saas loco new 
+$ ALLOW_IN_GIT_REPO="" LOCO_APP_NAME="test_saas_template" LOCO_FOLDER_NAME=saas_template LOCO_TEMPLATE=saas loco new  --db postgres --assets none
 
 🚂 Loco app generated successfully in:
 [CWD]/test_saas_template
@@ -7,7 +7,7 @@ $ ALLOW_IN_GIT_REPO="" LOCO_APP_NAME="test_saas_template" LOCO_FOLDER_NAME=saas_
 ```
 
 ```console
-$ ALLOW_IN_GIT_REPO="true" LOCO_APP_NAME="test_rest_api_template" LOCO_FOLDER_NAME=rest_api_template LOCO_TEMPLATE=rest-api loco new 
+$ ALLOW_IN_GIT_REPO="true" LOCO_APP_NAME="test_rest_api_template" LOCO_FOLDER_NAME=rest_api_template LOCO_TEMPLATE=rest-api loco new --db sqlite
 
 🚂 Loco app generated successfully in:
 [CWD]/test_rest_api_template
@@ -15,7 +15,7 @@ $ ALLOW_IN_GIT_REPO="true" LOCO_APP_NAME="test_rest_api_template" LOCO_FOLDER_NA
 ```
 
 ```console
-$ ALLOW_IN_GIT_REPO="true" LOCO_APP_NAME="test_lightweight_template" LOCO_FOLDER_NAME=lightweight_template LOCO_TEMPLATE=lightweight-service loco new 
+$ ALLOW_IN_GIT_REPO="true" LOCO_APP_NAME="test_lightweight_template" LOCO_FOLDER_NAME=lightweight_template LOCO_TEMPLATE=lightweight-service loco new
 
 🚂 Loco app generated successfully in:
 [CWD]/test_lightweight_template
