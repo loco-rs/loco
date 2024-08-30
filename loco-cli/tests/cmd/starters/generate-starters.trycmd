@@ -1,5 +1,5 @@
 ```console
-$ ALLOW_IN_GIT_REPO="" LOCO_APP_NAME="test_saas_template" LOCO_FOLDER_NAME=saas_template LOCO_TEMPLATE=saas loco new  --db postgres --assets none
+$ ALLOW_IN_GIT_REPO="" LOCO_APP_NAME="test_saas_template" LOCO_FOLDER_NAME=saas_template LOCO_TEMPLATE=saas loco new  --db postgres --assets none --bg async
 
 🚂 Loco app generated successfully in:
 [CWD]/test_saas_template
@@ -7,7 +7,7 @@ $ ALLOW_IN_GIT_REPO="" LOCO_APP_NAME="test_saas_template" LOCO_FOLDER_NAME=saas_
 ```
 
 ```console
-$ ALLOW_IN_GIT_REPO="true" LOCO_APP_NAME="test_rest_api_template" LOCO_FOLDER_NAME=rest_api_template LOCO_TEMPLATE=rest-api loco new --db sqlite
+$ ALLOW_IN_GIT_REPO="true" LOCO_APP_NAME="test_rest_api_template" LOCO_FOLDER_NAME=rest_api_template LOCO_TEMPLATE=rest-api loco new --db sqlite --bg async
 
 🚂 Loco app generated successfully in:
 [CWD]/test_rest_api_template
