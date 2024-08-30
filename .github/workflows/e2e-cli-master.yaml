@@ -1,0 +1,99 @@
+name: e2e-cli-master
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  saas-template-win32:
+    name: [WIN/loco-cli (master)] Create saas starter template
+    runs-on: windows-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+      - run: |
+          cargo install --path .
+
+          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=saas LOCO_TEMPLATE=saas loco new
+        working-directory: ./loco-cli
+      - run: |
+          ALLOW_IN_GIT_REPO=true loco new -n saas -t saas --db sqlite --bg async
+      - run: |
+          cargo build
+        working-directory: ./saas
+      - run: |
+          cargo loco generate scaffold movie title:string
+        working-directory: ./saas
+      - run: |
+          cargo build
+        working-directory: ./saas
+
+  saas-template:
+    name: Create saas starter template
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+      - run: |
+          cargo install loco-cli
+          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=saas LOCO_TEMPLATE=saas loco new
+      - run: |
+          cargo build
+        working-directory: ./saas
+
+  rest-api:
+    name: Create stateless starter template
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+      - run: |
+          cargo install loco-cli
+          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=restapi LOCO_TEMPLATE=rest-api loco new
+      - run: |
+          cargo build
+        working-directory: ./restapi
+
+  lightweight-service:
+    name: Create stateless starter template
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          override: true
+      - run: |
+          cargo install loco-cli
+          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=lightweight LOCO_TEMPLATE=lightweight-service loco new
+      - run: |
+          cargo build
+        working-directory: ./lightweight
