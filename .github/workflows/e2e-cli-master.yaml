@@ -34,7 +34,7 @@ jobs:
           cargo loco generate scaffold movie title:string
         working-directory: ./saas
       - run: |
-          cargo build
+          cargo loco db migrate
         working-directory: ./saas
 
   saas-template:
