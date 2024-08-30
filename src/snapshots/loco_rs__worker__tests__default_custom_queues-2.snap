@@ -1,0 +1,8 @@
+---
+source: src/worker.rs
+expression: default_queues2
+---
+[
+    "default",
+    "mailer",
+]

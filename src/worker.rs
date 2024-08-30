@@ -56,3 +56,22 @@ where
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use insta::assert_debug_snapshot;
+
+    use super::get_queues;
+
+    #[test]
+    fn test_default_custom_queues() {
+        let default_queues = get_queues(&None);
+        assert_debug_snapshot!(default_queues);
+
+        let default_queues2 = get_queues(&Some(vec![]));
+        assert_debug_snapshot!(default_queues2);
+
+        let merged_queues = get_queues(&Some(vec!["foo".to_string(), "bar".to_string()]));
+        assert_debug_snapshot!(merged_queues);
+    }
+}
