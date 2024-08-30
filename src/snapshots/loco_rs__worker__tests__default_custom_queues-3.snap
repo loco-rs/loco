@@ -1,0 +1,10 @@
+---
+source: src/worker.rs
+expression: merged_queues
+---
+[
+    "default",
+    "mailer",
+    "foo",
+    "bar",
+]
