@@ -37,7 +37,7 @@ jobs:
           cargo loco db migrate
         working-directory: ./saas
       - run: |
-          cargo loco generate scaffold movie title:string
+          cargo loco generate scaffold movie title:string --migration-only
         working-directory: ./saas
       - run: |
           cargo loco db migrate
