@@ -22,8 +22,6 @@ jobs:
           toolchain: nightly
       - run: |
           cargo install --path .
-
-          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=saas LOCO_TEMPLATE=saas loco new
         working-directory: ./loco-cli
       - run: |
           ALLOW_IN_GIT_REPO=true loco new -n saas -t saas --db sqlite --bg async
