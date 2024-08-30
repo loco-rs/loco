@@ -1,13 +1,18 @@
 ```console
 $ loco new --help
-Create a new Loco website
+Create a new Loco app
 
 Usage: loco[EXE] new [OPTIONS]
 
 Options:
-  -p, --path <PATH>        Local path to generate into [default: .]
-  -v, --verbose <VERBOSE>  Verbosity level [default: ERROR]
-  -h, --help               Print help
-  -V, --version            Print version
+  -p, --path <PATH>          Local path to generate into [default: .]
+  -v, --verbose <VERBOSE>    Verbosity level [default: ERROR]
+  -n, --name <NAME>          App name
+  -t, --template <TEMPLATE>  Starter template
+      --db <DB>              DB Provider [possible values: sqlite, postgres]
+      --bg <BG>              Background worker configuration [possible values: async, queue, blocking]
+      --assets <ASSETS>      Assets serving configuration [possible values: none, clientside, serverside]
+  -h, --help                 Print help
+  -V, --version              Print version
 
 ```

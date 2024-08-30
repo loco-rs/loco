@@ -1,11 +1,14 @@
-use crate::env_vars;
-use crate::generate;
-use crate::prompt;
+use std::{
+    env,
+    path::{Path, PathBuf},
+    process::Command,
+};
+
+use fs_err as fs;
 use fs_extra::dir::{copy, CopyOptions};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
-use std::env;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+
+use crate::{env_vars, generate, prompt, Error};
 
 /// getting logo debug path for working locally.
 ///
@@ -24,9 +27,10 @@ const STARTER_TEMPLATE_FOLDER: &str = "starters";
 
 /// Clone a Loco template to the specified destination folder.
 ///
-/// This function takes a destination path, a folder name, and additional generation arguments.
-/// It clones the Loco template, prompts the user to select a template, and generates the project
-/// in the specified destination folder with the provided arguments.
+/// This function takes a destination path, a folder name, and additional
+/// generation arguments. It clones the Loco template, prompts the user to
+/// select a template, and generates the project in the specified destination
+/// folder with the provided arguments.
 ///
 /// # Errors
 /// 1. when the `destination_path` is invalid
@@ -36,19 +40,20 @@ pub fn clone_template(
     destination_path: &Path,
     folder_name: &str,
     args: &generate::ArgsPlaceholder,
-) -> eyre::Result<PathBuf> {
+) -> crate::Result<PathBuf> {
     let destination_path = destination_path.canonicalize()?;
     let copy_template_to = env::var(env_vars::DEST_FOLDER)
         .map_or_else(|_| destination_path.join(folder_name), PathBuf::from);
 
     if copy_template_to.exists() && env::var(env_vars::CI_MODE).is_err() {
-        eyre::bail!(
+        return Err(Error::msg(format!(
             "The specified path '{}' already exist",
             copy_template_to.display()
-        );
+        )));
     }
 
-    // in case of debug path is given, we skipping cloning project and working on the given directory
+    // in case of debug path is given, we skipping cloning project and working on
+    // the given directory
     let loco_project_path = match debug_path() {
         Some(p) => p.canonicalize().unwrap_or(p),
         None => clone_repo()?,
@@ -60,10 +65,11 @@ pub fn clone_template(
 
     let templates = generate::collect_templates(&starters_path)?;
 
-    let (folder, template) = prompt::template_selection(&templates)?;
+    let (folder, template) = prompt::template_selection(&templates, args)?;
+    let (dbopt, bgopt, assetopt) = prompt::options_selection(&template, args)?;
 
     if !Path::new(&copy_template_to).exists() {
-        std::fs::create_dir(&copy_template_to)?;
+        fs::create_dir(&copy_template_to)?;
     }
 
     let copy_from = starters_path.join(folder);
@@ -86,7 +92,7 @@ pub fn clone_template(
             folder = copy_from.display().to_string(),
             "deleting temp folder"
         );
-        if let Err(e) = std::fs::remove_dir_all(&copy_from) {
+        if let Err(e) = fs::remove_dir_all(&copy_from) {
             tracing::debug!(
                 folder = copy_from.display().to_string(),
                 error = e.to_string(),
@@ -95,12 +101,13 @@ pub fn clone_template(
         }
     }
 
+    generate::adjust_options(&copy_template_to, &assetopt, &dbopt, &bgopt)?;
     template.generate(&copy_template_to, args);
 
     Ok(copy_template_to)
 }
 
-fn clone_repo() -> eyre::Result<PathBuf> {
+fn clone_repo() -> crate::Result<PathBuf> {
     let random_string: String = thread_rng()
         .sample_iter(&Alphanumeric)
         .take(20)
@@ -115,9 +122,10 @@ fn clone_repo() -> eyre::Result<PathBuf> {
         "cloning loco"
     );
 
-    // We prioritize cloning the Loco project directly from the Git binary if it is installed,
-    // to avoid potential conflicts with custom local Git settings, such as 'insteadOf'.
-    // If Git is not installed, an alternative approach is attempting to clone the repository using the 'git2' library.
+    // We prioritize cloning the Loco project directly from the Git binary if it is
+    // installed, to avoid potential conflicts with custom local Git settings,
+    // such as 'insteadOf'. If Git is not installed, an alternative approach is
+    // attempting to clone the repository using the 'git2' library.
     if git_exists() {
         let args = vec!["clone", "--depth=1", BASE_REPO_URL];
         Command::new("git")
@@ -129,7 +137,7 @@ fn clone_repo() -> eyre::Result<PathBuf> {
             if #[cfg(feature = "git2")] {
                 clone_repo_with_git2(&temp_clone_dir)?;
             } else {
-                eyre::bail!("git command is not found. Either install it, or enable git2 or gix feature for this CLI.");
+                return Err(Error::msg("git command is not found. Either install it, or enable git2 or gix feature for this CLI.".to_string()));
             }
         }
     }
@@ -152,7 +160,7 @@ fn git_exists() -> bool {
 /// # Errors
 ///
 /// when git binary is not found or could not canonicalize the given path
-pub fn is_a_git_repo(destination_path: &Path) -> eyre::Result<bool> {
+pub fn is_a_git_repo(destination_path: &Path) -> crate::Result<bool> {
     let destination_path = destination_path.canonicalize()?;
     match Command::new("git")
         .arg("-C")
@@ -176,11 +184,12 @@ pub fn is_a_git_repo(destination_path: &Path) -> eyre::Result<bool> {
 }
 
 #[cfg(feature = "git2")]
-fn clone_repo_with_git2(temp_clone_dir: &Path) -> eyre::Result<()> {
+fn clone_repo_with_git2(temp_clone_dir: &Path) -> crate::Result<()> {
     let mut fetch_options = git2::FetchOptions::new();
     fetch_options.depth(1);
     git2::build::RepoBuilder::new()
         .fetch_options(fetch_options)
-        .clone(BASE_REPO_URL, temp_clone_dir)?;
+        .clone(BASE_REPO_URL, temp_clone_dir)
+        .map_err(|e| Error::msg(e.to_string()))?;
     Ok(())
 }

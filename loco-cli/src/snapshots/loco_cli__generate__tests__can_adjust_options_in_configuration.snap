@@ -1,3 +1,7 @@
+---
+source: src/generate.rs
+expression: development
+---
 # Loco configuration file documentation
 
 # Application logging configuration
@@ -112,16 +116,14 @@ server:
     # Note that you need to go in `frontend` and run your frontend build first,
     # e.g.: $ npm install & npm build
     #
-    # (client-block-start)
-    # static:
-    #   enable: true
-    #   must_exist: true
-    #   precompressed: false
-    #   folder:
-    #     uri: "/"
-    #     path: "frontend/dist"
-    #   fallback: "frontend/dist/index.html"
-    # (client-block-end)
+    static:
+      enable: true
+      must_exist: true
+      precompressed: false
+      folder:
+        uri: "/"
+        path: "frontend/dist"
+      fallback: "frontend/dist/index.html"
     #
     
 
@@ -131,7 +133,7 @@ workers:
   #   - BackgroundQueue - Workers operate asynchronously in the background, processing queued.
   #   - ForegroundBlocking - Workers operate in the foreground and block until tasks are completed.
   #   - BackgroundAsync - Workers operate asynchronously in the background, processing tasks with async capabilities.
-  mode: BackgroundQueue
+  mode: BackgroundAsync
 
 # Mailer Configuration.
 mailer:
@@ -159,7 +161,7 @@ mailer:
 # Database Configuration
 database:
   # Database connection URI
-  uri: {{ get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app") }}
+  uri: {{ get_env(name="DATABASE_URL", default="sqlite://loco_app.sqlite?mode=rwc") }}
   # When enabled, the sql query will be logged.
   enable_logging: false
   # Set the timeout duration when acquiring a connection.
@@ -192,4 +194,3 @@ auth:
     secret: PqRwLF2rhHe8J22oBeHy
     # Token expiration time in seconds
     expiration: 604800 # 7 days
-
