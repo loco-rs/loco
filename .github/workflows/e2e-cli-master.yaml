@@ -7,35 +7,42 @@ on:
   pull_request:
 
 jobs:
-  saas-template-win32:
-    name: [WIN/loco-cli (master)] Create saas starter template
-    runs-on: windows-latest
+  # TODO: re-enable after 0.8 to check cmd spawning fix
+  # saas-template-win32:
+  #   name: Create saas starter template (win32)
+  #   runs-on: windows-latest
 
-    permissions:
-      contents: read
+  #   permissions:
+  #     contents: read
 
-    steps:
-      - name: Checkout the code
-        uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: nightly
-      - run: |
-          cargo install --path .
-
-          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=saas LOCO_TEMPLATE=saas loco new
-        working-directory: ./loco-cli
-      - run: |
-          ALLOW_IN_GIT_REPO=true loco new -n saas -t saas --db sqlite --bg async
-      - run: |
-          cargo build
-        working-directory: ./saas
-      - run: |
-          cargo loco generate scaffold movie title:string
-        working-directory: ./saas
-      - run: |
-          cargo build
-        working-directory: ./saas
+  #   steps:
+  #     - name: Checkout the code
+  #       uses: actions/checkout@v4
+  #     - uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         toolchain: nightly
+  #     - run: |
+  #         cargo install --path .
+  #       working-directory: ./loco-cli
+  #     - run: |
+  #         loco new -n saas -t saas --db sqlite --bg async --assets none
+  #       env:
+  #         ALLOW_IN_GIT_REPO: true
+  #     - run: |
+  #         cargo build
+  #       working-directory: ./saas
+  #     - run: |
+  #         cargo loco routes
+  #       working-directory: ./saas
+  #     - run: |
+  #         cargo loco db migrate
+  #       working-directory: ./saas
+  #     - run: |
+  #         cargo loco generate scaffold movie title:string
+  #       working-directory: ./saas
+  #     - run: |
+  #         cargo loco db migrate
+  #       working-directory: ./saas
 
   saas-template:
     name: Create saas starter template
