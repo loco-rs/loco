@@ -5,6 +5,7 @@ name = "loco_starter_template"
 version = "0.1.0"
 edition = "2021"
 publish = false
+default-run = "loco_starter_template-cli"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -22,6 +23,11 @@ tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 [[bin]]
 name = "loco_starter_template-cli"
 path = "src/bin/main.rs"
+required-features = []
+
+[[bin]]
+name = "tool"
+path = "src/bin/tool.rs"
 required-features = []
 
 [dev-dependencies]

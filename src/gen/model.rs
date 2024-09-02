@@ -62,7 +62,7 @@ pub fn generate<H: Hooks>(
         let cwd = current_dir()?;
         let env_map: HashMap<_, _> = std::env::vars().collect();
 
-        let _ = cmd!("cargo", "loco", "db", "migrate",)
+        let _ = cmd!("cargo", "loco-tool", "db", "migrate",)
             .stderr_to_stdout()
             .dir(cwd.as_path())
             .full_env(&env_map)
@@ -72,7 +72,7 @@ pub fn generate<H: Hooks>(
                     "failed to run loco db migration. error details: `{err}`",
                 ))
             })?;
-        let _ = cmd!("cargo", "loco", "db", "entities",)
+        let _ = cmd!("cargo", "loco-tool", "db", "entities",)
             .stderr_to_stdout()
             .dir(cwd.as_path())
             .full_env(&env_map)
