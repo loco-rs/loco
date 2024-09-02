@@ -21,6 +21,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
+          components: rustfmt
       - name: Install seaorm cli
         run: cargo install sea-orm-cli
       - run: |
