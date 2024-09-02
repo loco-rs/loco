@@ -3,6 +3,7 @@ mod constants;
 mod env_vars;
 pub mod generate;
 pub mod git;
+mod messages;
 pub mod prompt;
 
 pub type Result<T> = std::result::Result<T, Error>;

@@ -8,7 +8,7 @@ use fs_err as fs;
 use fs_extra::dir::{copy, CopyOptions};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
-use crate::{env_vars, generate, prompt, Error};
+use crate::{env_vars, generate, messages, prompt, Error};
 
 /// getting logo debug path for working locally.
 ///
@@ -40,7 +40,7 @@ pub fn clone_template(
     destination_path: &Path,
     folder_name: &str,
     args: &generate::ArgsPlaceholder,
-) -> crate::Result<PathBuf> {
+) -> crate::Result<(PathBuf, Vec<String>)> {
     let destination_path = destination_path.canonicalize()?;
     let copy_template_to = env::var(env_vars::DEST_FOLDER)
         .map_or_else(|_| destination_path.join(folder_name), PathBuf::from);
@@ -104,7 +104,10 @@ pub fn clone_template(
     generate::adjust_options(&copy_template_to, &assetopt, &dbopt, &bgopt)?;
     template.generate(&copy_template_to, args);
 
-    Ok(copy_template_to)
+    Ok((
+        copy_template_to,
+        messages::for_options(&dbopt, &bgopt, &assetopt),
+    ))
 }
 
 fn clone_repo() -> crate::Result<PathBuf> {
