@@ -1,5 +1,5 @@
 ```console
-$ ALLOW_IN_GIT_REPO="" LOCO_APP_NAME="test_saas_template" LOCO_FOLDER_NAME=saas_template LOCO_TEMPLATE=saas loco new  --db postgres --assets none --bg async
+$ ALLOW_IN_GIT_REPO="" LOCO_APP_NAME="test_saas_template" LOCO_FOLDER_NAME=saas_template LOCO_TEMPLATE=saas loco new  --db postgres --assets serverside --bg async
 
 🚂 Loco app generated successfully in:
 [CWD]/test_saas_template

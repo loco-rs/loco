@@ -11,7 +11,7 @@ Options:
   -t, --template <TEMPLATE>  Starter template
       --db <DB>              DB Provider [possible values: sqlite, postgres]
       --bg <BG>              Background worker configuration [possible values: async, queue, blocking]
-      --assets <ASSETS>      Assets serving configuration [possible values: none, clientside, serverside]
+      --assets <ASSETS>      Assets serving configuration [possible values: serverside, clientside]
   -h, --help                 Print help
   -V, --version              Print version
 
