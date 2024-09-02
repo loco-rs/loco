@@ -21,6 +21,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
+      - name: Install seaorm cli
+        run: cargo install sea-orm-cli
       - run: |
           cargo install --path .
         working-directory: ./loco-cli
