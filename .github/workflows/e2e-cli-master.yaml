@@ -59,7 +59,7 @@ jobs:
           toolchain: nightly
       - run: |
           cargo install loco-cli
-          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=saas LOCO_TEMPLATE=saas loco new --db postgres --bg queue
+          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=saas LOCO_TEMPLATE=saas loco new --db postgres --bg queue --assets server
       - run: |
           cargo build
         working-directory: ./saas
