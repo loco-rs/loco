@@ -8,44 +8,44 @@ on:
 
 jobs:
   # TODO: re-enable after 0.8 to check cmd spawning fix
-  # saas-template-win32:
-  #   name: Create saas starter template (win32)
-  #   runs-on: windows-latest
+  saas-template-win32:
+    name: Create saas (win32)
+    runs-on: windows-latest
 
-  #   permissions:
-  #     contents: read
+    permissions:
+      contents: read
 
-  #   steps:
-  #     - name: Checkout the code
-  #       uses: actions/checkout@v4
-  #     - uses: dtolnay/rust-toolchain@stable
-  #       with:
-  #         toolchain: nightly
-  #     - run: |
-  #         cargo install --path .
-  #       working-directory: ./loco-cli
-  #     - run: |
-  #         loco new -n saas -t saas --db sqlite --bg async --assets none
-  #       env:
-  #         ALLOW_IN_GIT_REPO: true
-  #     - run: |
-  #         cargo build
-  #       working-directory: ./saas
-  #     - run: |
-  #         cargo loco routes
-  #       working-directory: ./saas
-  #     - run: |
-  #         cargo loco db migrate
-  #       working-directory: ./saas
-  #     - run: |
-  #         cargo loco generate scaffold movie title:string
-  #       working-directory: ./saas
-  #     - run: |
-  #         cargo loco db migrate
-  #       working-directory: ./saas
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+      - run: |
+          cargo install --path .
+        working-directory: ./loco-cli
+      - run: |
+          loco new -n saas -t saas --db sqlite --bg async --assets none
+        env:
+          ALLOW_IN_GIT_REPO: true
+      - run: |
+          cargo build
+        working-directory: ./saas
+      - run: |
+          cargo loco routes
+        working-directory: ./saas
+      - run: |
+          cargo loco db migrate
+        working-directory: ./saas
+      - run: |
+          cargo loco generate scaffold movie title:string
+        working-directory: ./saas
+      - run: |
+          cargo loco db migrate
+        working-directory: ./saas
 
   saas-template:
-    name: Create saas starter template
+    name: Create saas
     runs-on: ubuntu-latest
 
     permissions:
@@ -59,13 +59,13 @@ jobs:
           toolchain: nightly
       - run: |
           cargo install loco-cli
-          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=saas LOCO_TEMPLATE=saas loco new
+          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=saas LOCO_TEMPLATE=saas loco new --db postgres --bg queue
       - run: |
           cargo build
         working-directory: ./saas
 
   rest-api:
-    name: Create stateless starter template
+    name: Create rest-api
     runs-on: ubuntu-latest
 
     permissions:
@@ -79,13 +79,13 @@ jobs:
           toolchain: nightly
       - run: |
           cargo install loco-cli
-          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=restapi LOCO_TEMPLATE=rest-api loco new
+          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=restapi LOCO_TEMPLATE=rest-api loco new --db postgres --bg queue
       - run: |
           cargo build
         working-directory: ./restapi
 
   lightweight-service:
-    name: Create stateless starter template
+    name: Create lightweight-service
     runs-on: ubuntu-latest
 
     permissions:
