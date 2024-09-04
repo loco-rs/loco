@@ -322,15 +322,15 @@ impl AppRoutes {
     ) -> Result<AXRouter<AppContext>> {
         let app = if let Some(path) = &fallback.file {
             app.fallback_service(ServeFile::new(path))
-        } else if let Some(x) = &fallback.not_found {
-            let x = x.to_string();
+        } else if let Some(not_found) = &fallback.not_found {
+            let not_found = not_found.to_string();
             let code = fallback
                 .code
                 .map(StatusCode::from_u16)
                 .transpose()
                 .map_err(|e| Error::Message(format!("{e}")))?
                 .unwrap_or(StatusCode::NOT_FOUND);
-            app.fallback(move || async move { (code, x) })
+            app.fallback(move || async move { (code, not_found) })
         } else {
             //app.fallback(handler)
             let code = fallback

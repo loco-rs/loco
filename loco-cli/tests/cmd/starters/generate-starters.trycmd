@@ -4,6 +4,7 @@ $ ALLOW_IN_GIT_REPO="" LOCO_APP_NAME="test_saas_template" LOCO_FOLDER_NAME=saas_
 🚂 Loco app generated successfully in:
 [CWD]/test_saas_template
 
+- database: You've selected `postgres` as your DB provider (you should have a postgres instance to connect to)
 ```
 
 ```console
@@ -12,6 +13,7 @@ $ ALLOW_IN_GIT_REPO="true" LOCO_APP_NAME="test_rest_api_template" LOCO_FOLDER_NA
 🚂 Loco app generated successfully in:
 [CWD]/test_rest_api_template
 
+
 ```
 
 ```console
@@ -19,5 +21,6 @@ $ ALLOW_IN_GIT_REPO="true" LOCO_APP_NAME="test_lightweight_template" LOCO_FOLDER
 
 🚂 Loco app generated successfully in:
 [CWD]/test_lightweight_template
+
 
 ```
