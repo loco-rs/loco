@@ -22,6 +22,13 @@ server:
   host: http://localhost
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
   middlewares:
+    # Fallback file for not found (404) routes
+    # disable this for production or use your own file
+    fallback:
+      enable: true
+      # use a file if you want a different 404 page
+      # file: path/to/file.html
+
     # Enable Etag cache header middleware
     etag:
       enable: true
@@ -74,7 +81,6 @@ server:
       #   - POST
       # Set the value of the [`Access-Control-Max-Age`][mdn] header in seconds
       # max_age: 3600
-      
 
     # #############################################
     # Full stack SaaS asset serving
@@ -123,7 +129,6 @@ server:
     #   fallback: "frontend/dist/index.html"
     # (client-block-end)
     #
-    
 
 # Worker Configuration
 workers:
@@ -140,7 +145,7 @@ mailer:
     # Enable/Disable smtp mailer.
     enable: true
     # SMTP server host. e.x localhost, smtp.gmail.com
-    host: {{ get_env(name="MAILER_HOST", default="localhost") }}
+    host: { { get_env(name="MAILER_HOST", default="localhost") } }
     # SMTP server port
     port: 1025
     # Use secure connection (SSL/TLS).
@@ -159,7 +164,13 @@ mailer:
 # Database Configuration
 database:
   # Database connection URI
-  uri: {{ get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app") }}
+  uri:
+    {
+      {
+        get_env(name="DATABASE_URL",
+        default="postgres://loco:loco@localhost:5432/loco_app"),
+      },
+    }
   # When enabled, the sql query will be logged.
   enable_logging: false
   # Set the timeout duration when acquiring a connection.
@@ -180,7 +191,7 @@ database:
 # Queue Configuration
 queue:
   # Redis connection URI
-  uri: {{ get_env(name="REDIS_URL", default="redis://127.0.0.1") }}
+  uri: { { get_env(name="REDIS_URL", default="redis://127.0.0.1") } }
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_flush: false
 
