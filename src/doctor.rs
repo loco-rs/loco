@@ -166,17 +166,3 @@ pub fn check_seaorm_cli() -> Check {
         },
     }
 }
-
-/// Prints the configuration and its path.
-pub fn print_config(config: &Config) -> Result<(), Error> {
-    let content = serde_yaml::to_string(&config)?;
-    let path = &config.path;
-
-    println!("{content}");
-    if let Some(path) = path {
-        println!("config path: {}", path.display());
-    } else {
-        println!("config path: not found");
-    }
-    Ok(())
-}
