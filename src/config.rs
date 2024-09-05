@@ -73,6 +73,9 @@ pub struct Config {
     /// accessing `ctx.config.settings`.
     #[serde(default)]
     pub settings: Option<serde_json::Value>,
+
+    #[serde(skip)]
+    pub path: Option<PathBuf>,
 }
 
 /// Logger configuration

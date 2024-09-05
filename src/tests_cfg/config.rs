@@ -55,5 +55,6 @@ pub fn test_config() -> Config {
         mailer: None,
         initializers: None,
         settings: None,
+        path: None,
     }
 }
