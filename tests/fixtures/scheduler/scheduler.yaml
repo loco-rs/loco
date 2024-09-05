@@ -1,0 +1,18 @@
+jobs:
+
+  - name: "print task"
+    task:
+      name: "foo"
+    cron: "*/5 * * * * *"
+    tags:
+      - base
+      - echo
+
+  - name: "write to file"
+    shell:
+      command: "echo loco >> ./scheduler.txt"
+    cron: "*/5 * * * * *"
+    tags:
+      - base
+      - write
+

@@ -156,3 +156,29 @@ auth:
     expiration: 604800 # 7 days
 # </snip>
 
+# Scheduler Jobs Configuration
+# <snip id="configuration-scheduler">
+scheduler:
+  # Location of shipping the command stdout and stderr.
+  output: stdout
+  # A list of jobs to be scheduled.
+  jobs:
+      # The name of the job.
+    - name: "Run command"
+      # The type of job.
+      shell:
+        command: "echo loco >> ./scheduler.txt"
+      # The cron expression defining the job's schedule.
+      cron: "*/1 * * * * *"
+      output: silent
+
+    - name: "Run command"
+      task: 
+        name: "foo"
+      cron: "*/5 * * * * *"
+
+    - name: "list if users"
+      task:
+        name: "user_report"
+      cron: "*/7 * * * * *"
+# </snip>

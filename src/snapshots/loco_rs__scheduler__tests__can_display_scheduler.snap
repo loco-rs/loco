@@ -1,0 +1,5 @@
+---
+source: src/scheduler.rs
+expression: "format!(\"{scheduler}\")"
+---
+"#      job_name        cron               tags               kind\n1      print task      */5 * * * * *      base, echo         Task { name: \"foo\", vars: None }\n2      write to file   */5 * * * * *      base, write        Shell { command: \"echo loco >> ./scheduler.txt\" }\n"

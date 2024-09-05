@@ -1,6 +1,6 @@
 use crate::{
     config::{self, Config},
-    logger,
+    logger, scheduler,
 };
 
 #[must_use]
@@ -54,5 +54,17 @@ pub fn test_config() -> Config {
         mailer: None,
         initializers: None,
         settings: None,
+        scheduler: Some(scheduler::Config {
+            jobs: vec![scheduler::Job {
+                name: "job 1".to_string(),
+                kind: scheduler::Kind::Shell {
+                    command: "echo loco".to_string(),
+                },
+                cron: "*/5 * * * * *".to_string(),
+                tags: Some(vec!["base".to_string()]),
+                output: None,
+            }],
+            output: scheduler::Output::STDOUT,
+        }),
     }
 }

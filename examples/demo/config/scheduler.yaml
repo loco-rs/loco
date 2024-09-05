@@ -1,0 +1,17 @@
+jobs:
+  - name: "Run command"
+    shell:
+      command: "echo loco >> ./scheduler.txt"
+    cron: "*/1 * * * * *"
+
+  - name: "Run command"
+    task: 
+      name: "foo"
+      vars:
+        path: /tmp/scheduler.txt
+    cron: "*/5 * * * * *"
+
+  - name: "list if users"
+    task:
+      name: "user_report"
+    cron: "*/7 * * * * *"
