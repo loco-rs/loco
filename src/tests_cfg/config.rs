@@ -30,6 +30,7 @@ pub fn test_config() -> Config {
                 static_assets: None,
                 secure_headers: None,
                 remote_ip: None,
+                fallback: None,
             },
         },
         #[cfg(feature = "with-db")]
