@@ -1,5 +1,5 @@
 jobs:
-  - name: "Run command"
+  - name: "add text"
     shell:
       command: "echo loco >> ./scheduler.txt"
     cron: "*/1 * * * * *"
