@@ -60,10 +60,13 @@ pub enum DBOption {
 )]
 pub enum BackgroundOption {
     #[default]
+    #[strum(to_string = "Async (in-process tokyo async tasks)")]
     #[serde(rename = "async")]
     Async,
+    #[strum(to_string = "Queue (standalone workers using Redis)")]
     #[serde(rename = "queue")]
     Queue,
+    #[strum(to_string = "Blocking (run tasks in foreground)")]
     #[serde(rename = "blocking")]
     Blocking,
 }
@@ -73,12 +76,12 @@ pub enum BackgroundOption {
 )]
 pub enum AssetsOption {
     #[default]
-    #[serde(rename = "none")]
-    None,
-    #[serde(rename = "client")]
-    Clientside,
+    #[strum(to_string = "Server (configures server-rendered views)")]
     #[serde(rename = "server")]
     Serverside,
+    #[strum(to_string = "Client (configures assets for frontend serving)")]
+    #[serde(rename = "client")]
+    Clientside,
 }
 #[derive(Debug, Clone, Default)]
 /// Represents internal placeholders to be replaced.

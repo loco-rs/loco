@@ -88,9 +88,14 @@ fn main() -> eyre::Result<()> {
 
             tracing::debug!(args = format!("{:?}", args), "generate template args");
             match git::clone_template(path.as_path(), &app, &args) {
-                Ok(path) => CmdExit::ok_with_message(&format!(
-                    "\n🚂 Loco app generated successfully in:\n{}",
-                    dunce::canonicalize(&path).unwrap_or(path).display()
+                Ok((path, messages)) => CmdExit::ok_with_message(&format!(
+                    "\n🚂 Loco app generated successfully in:\n{}\n\n{}",
+                    dunce::canonicalize(&path).unwrap_or(path).display(),
+                    messages
+                        .iter()
+                        .map(|m| format!("- {m}"))
+                        .collect::<Vec<_>>()
+                        .join("\n")
                 )),
                 Err(err) => CmdExit::error_with_message(&format!("{err}")),
             }
