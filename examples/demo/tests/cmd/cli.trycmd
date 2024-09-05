@@ -60,6 +60,7 @@ Commands:
   scaffold    Generates a CRUD scaffold, model and controller
   controller  Generate a new controller with the given controller name, and test file
   task        Generate a Task based on the given name
+  scheduler   Generate a scheduler jobs configuration template
   worker      Generate worker
   mailer      Generate mailer
   deployment  Generate a deployment infrastructure

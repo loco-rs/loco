@@ -1,19 +1,19 @@
 ```console 
 $ LOCO_ENV=test blo-cli scheduler --list
-#      job_name        cron               kind
-1      Run command     */1 * * * * *      Shell { command: "echo loco >> ./scheduler.txt" }
-2      Run command     */5 * * * * *      Task { name: "foo", vars: None }
-3      list if users   */7 * * * * *      Task { name: "user_report", vars: None }
+#      job_name        cron               tags               kind
+1      Run command     */1 * * * * *      -                  Shell { command: "echo loco >> ./scheduler.txt" }
+2      Run command     */5 * * * * *      -                  Task { name: "foo", vars: None }
+3      list if users   */7 * * * * *      -                  Task { name: "user_report", vars: None }
 
 
 ```
 
 ```console 
 $ LOCO_ENV=test blo-cli scheduler --config ./config/scheduler.yaml --list
-#      job_name        cron               kind
-1      Run command     */1 * * * * *      Shell { command: "echo loco >> ./scheduler.txt" }
-2      Run command     */5 * * * * *      Task { name: "foo", vars: None }
-3      list if users   */7 * * * * *      Task { name: "user_report", vars: None }
+#      job_name        cron               tags               kind
+1      Run command     */1 * * * * *      base, infra        Shell { command: "echo loco >> ./scheduler.txt" }
+2      Run command     */5 * * * * *      -                  Task { name: "foo", vars: Some({"path": "/tmp/scheduler.txt"}) }
+3      list if users   */7 * * * * *      base, users        Task { name: "user_report", vars: None }
 
 
 ```

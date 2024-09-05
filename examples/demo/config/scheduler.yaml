@@ -3,6 +3,9 @@ jobs:
     shell:
       command: "echo loco >> ./scheduler.txt"
     cron: "*/1 * * * * *"
+    tags:
+        - base
+        - infra
 
   - name: "Run command"
     task: 
@@ -15,3 +18,6 @@ jobs:
     task:
       name: "user_report"
     cron: "*/7 * * * * *"
+    tags:
+        - base
+        - users
