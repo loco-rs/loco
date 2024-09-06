@@ -5,12 +5,13 @@ name = "loco_starter_template"
 version = "0.1.0"
 edition = "2021"
 publish = false
+default-run = "loco_starter_template-cli"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 
-loco-rs = { version = "0.7.0", default-features = false, features = ["cli"] }
+loco-rs = { version = "0.8.1", default-features = false, features = ["cli"] }
 serde = "*"
 serde_json = "*"
 tokio = { version = "1.33.0", default-features = false }
@@ -24,10 +25,15 @@ name = "loco_starter_template-cli"
 path = "src/bin/main.rs"
 required-features = []
 
+[[bin]]
+name = "tool"
+path = "src/bin/tool.rs"
+required-features = []
+
 [dev-dependencies]
 serial_test = "3.1.1"
 rstest = "0.21.0"
-loco-rs = { version = "0.7.0", default-features = false, features = [
+loco-rs = { version = "0.8.1", default-features = false, features = [
   "testing",
   "cli",
 ] }

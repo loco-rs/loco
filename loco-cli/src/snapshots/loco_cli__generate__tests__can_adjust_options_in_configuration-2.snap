@@ -1,3 +1,7 @@
+---
+source: src/generate.rs
+expression: test
+---
 # Loco configuration file documentation
 
 # Application logging configuration
@@ -96,7 +100,7 @@ mailer:
 # Database Configuration
 database:
   # Database connection URI
-  uri: {{get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app")}}
+  uri: {{get_env(name="DATABASE_URL", default="sqlite://loco_app.sqlite?mode=rwc")}}
   # When enabled, the sql query will be logged.
   enable_logging: false
   # Set the timeout duration when acquiring a connection.
@@ -129,4 +133,3 @@ auth:
     secret: PqRwLF2rhHe8J22oBeHy
     # Token expiration time in seconds
     expiration: 604800 # 7 days
-

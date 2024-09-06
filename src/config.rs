@@ -456,8 +456,25 @@ pub struct Middlewares {
     pub secure_headers: Option<SecureHeadersConfig>,
     /// Calculates a remote IP based on `X-Forwarded-For` when behind a proxy
     pub remote_ip: Option<RemoteIPConfig>,
+    /// Configure fallback behavior when hitting a missing URL
+    pub fallback: Option<FallbackConfig>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct FallbackConfig {
+    /// By default when enabled, returns a prebaked 404 not found page optimized
+    /// for development. For production set something else (see fields below)
+    pub enable: bool,
+    /// For the unlikely reason to return something different than `404`, you
+    /// can set it here
+    pub code: Option<u16>,
+    /// Returns content from a file pointed to by this field with a `404` status
+    /// code.
+    pub file: Option<String>,
+    /// Returns a "404 not found" with a single message string. This sets the
+    /// message.
+    pub not_found: Option<String>,
+}
 /// Static asset middleware configuration
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct StaticAssetsMiddleware {

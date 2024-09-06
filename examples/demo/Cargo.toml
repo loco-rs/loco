@@ -5,6 +5,7 @@
 name = "blo"
 version = "0.1.0"
 edition = "2021"
+default-run = "blo-cli"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -45,6 +46,11 @@ futures-util = "0.3.30"
 [[bin]]
 name = "blo-cli"
 path = "src/bin/main.rs"
+required-features = []
+
+[[bin]]
+name = "tool"
+path = "src/bin/tool.rs"
 required-features = []
 
 [dev-dependencies]

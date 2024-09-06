@@ -136,9 +136,13 @@ Now create a strongly typed `view` to encapsulate this template in `src/views/da
 
 ```rust
 // src/views/dashboard.rs
+use loco_rs::prelude::*;
+use serde_json::json;
+
 pub fn home(v: impl ViewRenderer) -> Result<impl IntoResponse> {
     format::render().view(&v, "home/hello.html", json!({}))
 }
+
 ```
 
 And add it to `src/views/mod.rs`:
@@ -152,9 +156,18 @@ Finally, go to your controller and use the view:
 
 ```rust
 // src/controllers/dashboard.rs
+use loco_rs::prelude::*;
+
+use crate::views;
+
 pub async fn render_home(ViewEngine(v): ViewEngine<TeraView>) -> Result<impl IntoResponse> {
     views::dashboard::home(v)
 }
+
+pub fn routes() -> Routes {
+    Routes::new().prefix("home").add("/", get(render_home))
+}
+
 ```
 
 ### How does it work?

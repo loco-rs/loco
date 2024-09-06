@@ -2,6 +2,26 @@
 //! configuring routes in an Axum application. It allows you to define route
 //! prefixes, add routes, and configure middlewares for the application.
 
+use std::{fmt, path::PathBuf, time::Duration};
+
+use axum::{
+    http,
+    response::{Html, IntoResponse},
+    Router as AXRouter,
+};
+use hyper::StatusCode;
+use lazy_static::lazy_static;
+use regex::Regex;
+use tower_http::{
+    add_extension::AddExtensionLayer,
+    catch_panic::CatchPanicLayer,
+    compression::CompressionLayer,
+    services::{ServeDir, ServeFile},
+    set_header::SetResponseHeaderLayer,
+    timeout::TimeoutLayer,
+    trace::TraceLayer,
+};
+
 #[cfg(feature = "channels")]
 use super::channels::AppChannels;
 use super::{
@@ -13,14 +33,14 @@ use crate::request_context::layer::RequestContextLayer;
 use crate::request_context::CustomSessionStore;
 use crate::{
     app::AppContext,
-    config,
+    config::{self, FallbackConfig},
     controller::middleware::{
         etag::EtagLayer,
         remote_ip::RemoteIPLayer,
         request_id::{request_id_middleware, LocoRequestId},
     },
     environment::Environment,
-    errors, Result,
+    errors, Error, Result,
 };
 use axum::{http, response::IntoResponse, Router as AXRouter};
 use axum_extra::extract::cookie::Key;
@@ -317,12 +337,48 @@ impl AppRoutes {
             tracing::info!("[Middleware] +secure headers");
         }
 
+        if let Some(fallback) = &ctx.config.server.middlewares.fallback {
+            if fallback.enable {
+                app = Self::add_fallback(app, fallback)?;
+            }
+        }
+
         app = Self::add_powered_by_header(app, &ctx.config.server);
 
         app = Self::add_request_id_middleware(app);
 
         let router = app.with_state(ctx);
         Ok(router)
+    }
+
+    fn add_fallback(
+        app: AXRouter<AppContext>,
+        fallback: &FallbackConfig,
+    ) -> Result<AXRouter<AppContext>> {
+        let app = if let Some(path) = &fallback.file {
+            app.fallback_service(ServeFile::new(path))
+        } else if let Some(not_found) = &fallback.not_found {
+            let not_found = not_found.to_string();
+            let code = fallback
+                .code
+                .map(StatusCode::from_u16)
+                .transpose()
+                .map_err(|e| Error::Message(format!("{e}")))?
+                .unwrap_or(StatusCode::NOT_FOUND);
+            app.fallback(move || async move { (code, not_found) })
+        } else {
+            //app.fallback(handler)
+            let code = fallback
+                .code
+                .map(StatusCode::from_u16)
+                .transpose()
+                .map_err(|e| Error::Message(format!("{e}")))?
+                .unwrap_or(StatusCode::NOT_FOUND);
+            let content = include_str!("fallback.html");
+            app.fallback(move || async move { (code, Html(content)) })
+        };
+        tracing::info!("[Middleware] +fallback");
+        Ok(app)
     }
 
     fn add_request_id_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {

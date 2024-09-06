@@ -1,15 +1,22 @@
 use std::{
     collections::BTreeMap,
-    env, fs,
+    env,
     io::{Read, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
-use crate::env_vars;
+use clap::ValueEnum;
+use fs_err as fs;
 use ignore::WalkBuilder;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use strum::{Display, EnumIter};
+
+use crate::{
+    constants::{CLIENT_BLOCK, OPTION_BACKGROUND_DEFAULT, OPTION_DB_DEFAULT, SERVER_BLOCK},
+    env_vars,
+};
 
 // Name of generator template that should be existing in each starter folder
 const GENERATOR_FILE_NAME: &str = "generator.yaml";
@@ -23,12 +30,67 @@ pub struct Template {
     pub description: String,
     /// List of rules for placeholder replacement in the generator.
     pub rules: Option<Vec<TemplateRule>>,
+    /// List of option tags
+    pub options: Option<Vec<OptionsList>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub enum OptionsList {
+    #[serde(rename = "db")]
+    DB,
+    #[serde(rename = "bg")]
+    Background,
+    #[serde(rename = "assets")]
+    Assets,
+}
+
+#[derive(
+    Debug, Clone, Deserialize, Serialize, EnumIter, Display, Default, PartialEq, Eq, ValueEnum,
+)]
+pub enum DBOption {
+    #[default]
+    #[serde(rename = "sqlite")]
+    Sqlite,
+    #[serde(rename = "pg")]
+    Postgres,
+}
+
+#[derive(
+    Debug, Clone, Deserialize, Serialize, EnumIter, Display, Default, PartialEq, Eq, ValueEnum,
+)]
+pub enum BackgroundOption {
+    #[default]
+    #[strum(to_string = "Async (in-process tokyo async tasks)")]
+    #[serde(rename = "async")]
+    Async,
+    #[strum(to_string = "Queue (standalone workers using Redis)")]
+    #[serde(rename = "queue")]
+    Queue,
+    #[strum(to_string = "Blocking (run tasks in foreground)")]
+    #[serde(rename = "blocking")]
+    Blocking,
+}
+
+#[derive(
+    Debug, Clone, Deserialize, Serialize, EnumIter, Display, Default, PartialEq, Eq, ValueEnum,
+)]
+pub enum AssetsOption {
+    #[default]
+    #[strum(to_string = "Server (configures server-rendered views)")]
+    #[serde(rename = "server")]
+    Serverside,
+    #[strum(to_string = "Client (configures assets for frontend serving)")]
+    #[serde(rename = "client")]
+    Clientside,
+}
+#[derive(Debug, Clone, Default)]
 /// Represents internal placeholders to be replaced.
 pub struct ArgsPlaceholder {
     pub lib_name: String,
+    pub db: Option<DBOption>,
+    pub bg: Option<BackgroundOption>,
+    pub assets: Option<AssetsOption>,
+    pub template: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -41,7 +103,8 @@ pub enum TemplateRuleKind {
 
 impl ArgsPlaceholder {
     /// replace strings placeholder with cli arguments.
-    /// For example, replace any string that contains {{`LibName`}} with the given lib name.
+    /// For example, replace any string that contains {{`LibName`}} with the
+    /// given lib name.
     #[must_use]
     pub fn replace_placeholders(&self, content: &str) -> String {
         content.replace(LIB_NAME_PLACEHOLDER, &self.lib_name)
@@ -106,7 +169,7 @@ pub struct TemplateRule {
 ///
 /// # Errors
 /// The code should returns an error only when could get folder collections.
-pub fn collect_templates(path: &std::path::PathBuf) -> eyre::Result<BTreeMap<String, Template>> {
+pub fn collect_templates(path: &std::path::PathBuf) -> crate::Result<BTreeMap<String, Template>> {
     tracing::debug!(
         path = path.display().to_string(),
         "collecting starters template"
@@ -271,13 +334,108 @@ impl Template {
     }
 }
 
+/// adjust config file based on selected options
+///
+/// # Errors
+///
+/// This function will return an error if operation fails
+pub fn adjust_options(
+    copy_template_to: &Path,
+    assetopt: &AssetsOption,
+    dbopt: &DBOption,
+    bgopt: &BackgroundOption,
+) -> crate::Result<()> {
+    let dev_file = copy_template_to.join("config/development.yaml");
+    let mut development = String::new();
+    fs::File::open(&dev_file)?.read_to_string(&mut development)?;
+
+    let test_file = copy_template_to.join("config/test.yaml");
+    let mut test = String::new();
+    fs::File::open(&test_file)?.read_to_string(&mut test)?;
+
+    adjust_options_for_content(&mut development, &mut test, assetopt, dbopt, bgopt);
+
+    let mut modified_file = fs::File::create(&dev_file)?;
+    modified_file.write_all(development.as_bytes())?;
+
+    let mut modified_file = fs::File::create(&test_file)?;
+    modified_file.write_all(test.as_bytes())?;
+    Ok(())
+}
+
+fn adjust_options_for_content(
+    development: &mut String,
+    test: &mut String,
+    assetopt: &AssetsOption,
+    dbopt: &DBOption,
+    bgopt: &BackgroundOption,
+) {
+    // in-file default is everything commented
+    if assetopt == &AssetsOption::Serverside {
+        *development = enable_block(&*development, SERVER_BLOCK);
+    } else if assetopt == &AssetsOption::Clientside {
+        *development = enable_block(&*development, CLIENT_BLOCK);
+    }
+
+    // in-file default is postgres
+    if dbopt == &DBOption::Sqlite {
+        *development = development.replace(OPTION_DB_DEFAULT, "sqlite://loco_app.sqlite?mode=rwc");
+        *test = test.replace(OPTION_DB_DEFAULT, "sqlite://loco_app.sqlite?mode=rwc");
+    }
+
+    // in-file default is queue
+    if bgopt == &BackgroundOption::Async {
+        *development = development.replace(OPTION_BACKGROUND_DEFAULT, "mode: BackgroundAsync");
+    } else if bgopt == &BackgroundOption::Blocking {
+        *development = development.replace(OPTION_BACKGROUND_DEFAULT, "mode: ForegroundBlocking");
+    }
+}
+fn enable_block(content: &str, block: &str) -> String {
+    let mut in_server_block = false;
+    let mut processed = Vec::new();
+    let lines = content.lines();
+    for line in lines {
+        if line.contains(&format!("{block}-start")) {
+            in_server_block = true;
+            continue;
+        }
+        if line.contains(&format!("{block}-end")) {
+            in_server_block = false;
+            continue;
+        }
+        if in_server_block {
+            processed.push(line.replace("    #", "   "));
+        } else {
+            processed.push(line.to_string());
+        }
+    }
+    processed.join("\n")
+}
+
 #[cfg(test)]
 mod tests {
 
-    use insta::{assert_debug_snapshot, with_settings};
+    use insta::{assert_debug_snapshot, assert_snapshot, with_settings};
     use tree_fs;
+    const DEVELOPMENT_YAML: &str = include_str!("fixtures/development.yaml");
+    const TEST_YAML: &str = include_str!("fixtures/test.yaml");
 
     use super::*;
+
+    #[test]
+    fn can_adjust_options_in_configuration() {
+        let mut development = DEVELOPMENT_YAML.to_string();
+        let mut test = TEST_YAML.to_string();
+        adjust_options_for_content(
+            &mut development,
+            &mut test,
+            &AssetsOption::Clientside,
+            &DBOption::Sqlite,
+            &BackgroundOption::Async,
+        );
+        assert_snapshot!(development);
+        assert_snapshot!(test);
+    }
 
     #[test]
     fn can_collect_templates() {
@@ -328,6 +486,7 @@ mod tests {
 
         let template = Template {
             description: "test template".to_string(),
+            options: None,
             rules: Some(vec![
                 TemplateRule {
                     pattern: Regex::new("loco_starter").unwrap(),
@@ -354,6 +513,7 @@ mod tests {
 
         let args = ArgsPlaceholder {
             lib_name: "lib_name_changed".to_string(),
+            ..Default::default()
         };
         template.generate(&tree_res, &args);
 
@@ -386,6 +546,7 @@ mod tests {
 
         let template = Template {
             description: "test template".to_string(),
+            options: None,
             rules: Some(vec![
                 TemplateRule {
                     pattern: Regex::new("skip_lib.*").unwrap(),
@@ -404,6 +565,7 @@ mod tests {
 
         let args = ArgsPlaceholder {
             lib_name: "lib_name_changed".to_string(),
+            ..Default::default()
         };
         template.generate(&tree_res, &args);
 

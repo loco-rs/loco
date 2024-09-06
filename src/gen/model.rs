@@ -1,4 +1,4 @@
-use std::env::current_dir;
+use std::{collections::HashMap, env::current_dir};
 
 use chrono::Utc;
 use duct::cmd;
@@ -60,18 +60,22 @@ pub fn generate<H: Hooks>(
 
     if !migration_only {
         let cwd = current_dir()?;
-        let _ = cmd!("cargo", "loco", "db", "migrate",)
+        let env_map: HashMap<_, _> = std::env::vars().collect();
+
+        let _ = cmd!("cargo", "loco-tool", "db", "migrate",)
             .stderr_to_stdout()
             .dir(cwd.as_path())
+            .full_env(&env_map)
             .run()
             .map_err(|err| {
                 Error::Message(format!(
                     "failed to run loco db migration. error details: `{err}`",
                 ))
             })?;
-        let _ = cmd!("cargo", "loco", "db", "entities",)
+        let _ = cmd!("cargo", "loco-tool", "db", "entities",)
             .stderr_to_stdout()
             .dir(cwd.as_path())
+            .full_env(&env_map)
             .run()
             .map_err(|err| {
                 Error::Message(format!(

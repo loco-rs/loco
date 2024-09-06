@@ -20,7 +20,7 @@ use crate::{
     redis,
     storage::{self, Storage},
     task::{self, Tasks},
-    worker::{self, AppWorker, Pool, Processor, RedisConnectionManager, DEFAULT_QUEUES},
+    worker::{self, AppWorker, Pool, Processor, RedisConnectionManager},
     Result,
 };
 
@@ -310,13 +310,7 @@ fn create_processor<H: Hooks>(app_context: &AppContext) -> Result<Processor> {
         "registering queues (merged config and default)"
     );
     let mut p = if let Some(queue) = &app_context.queue {
-        Processor::new(
-            queue.clone(),
-            DEFAULT_QUEUES
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>(),
-        )
+        Processor::new(queue.clone(), queues)
     } else {
         return Err(Error::Message(
             "queue is missing, cannot initialize workers".to_string(),

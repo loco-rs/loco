@@ -299,6 +299,43 @@ async fn current(
 }
 ```
 
+## Fallback
+
+When choosing the SaaS starter (or any starter that is not API-first), you get a default fallback behavior with the _Loco welcome screen_. This is a development-only mode where a `404` request shows you a nice and friendly page that tells you what happened and what to do next.
+
+
+You can disable or customize this behavior in your `development.yaml` file. You can set a few options:
+
+
+```yaml
+# the default pre-baked welcome screen
+fallback:
+    enable: true
+```
+
+```yaml
+# a different predefined 404 page
+fallback:
+    enable: true
+    file: assets/404.html
+```
+
+```yaml
+# a message, and customizing the status code to return 200 instead of 404
+fallback:
+    enable: true
+    code: 200
+    not_found: cannot find this resource
+```
+
+For production, it's recommended to disable this.
+
+```yaml
+# disable. you can also remove the `fallback` section entirely to disable
+fallback:
+    enable: false
+```
+
 ## Remote IP
 
 When your app is under a proxy or a load balancer (e.g. Nginx, ELB, etc.), it does not face the internet directly, which is why if you want to find out the connecting client IP, you'll get a socket which indicates an IP that is actually your load balancer instead.

@@ -3,7 +3,9 @@
 # Application logging configuration
 logger:
   # Enable or disable logging.
-  enable: false
+  enable: true
+  # Enable pretty backtrace (sets RUST_BACKTRACE=1)
+  pretty_backtrace: true
   # Log level, options: trace, debug, info, warn or error.
   level: debug
   # Define the logging format. options: compact, pretty or json
@@ -20,12 +22,31 @@ server:
   host: http://localhost
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
   middlewares:
+    # Enable Etag cache header middleware
+    etag:
+      enable: true
     # Allows to limit the payload size request. payload that bigger than this file will blocked the request.
     limit_payload:
       # Enable/Disable the middleware.
       enable: true
       # the limit size. can be b,kb,kib,mb,mib,gb,gib
       body_limit: 5mb
+    # set secure headers
+    secure_headers:
+      preset: github
+    # calculate remote IP based on `X-Forwarded-For` when behind a proxy or load balancer
+    # use RemoteIP(..) extractor to get the remote IP.
+    # without this middleware, you'll get the proxy IP instead.
+    # For more: https://github.com/rails/rails/blob/main/actionpack/lib/action_dispatch/middleware/remote_ip.rb
+    #
+    # NOTE! only enable when under a proxy, otherwise this can lead to IP spoofing vulnerabilities
+    # trust me, you'll know if you need this middleware.
+    remote_ip:
+      enable: false
+      # # replace the default trusted proxies:
+      # trusted_proxies:
+      # - ip range 1
+      # - ip range 2 ..
     # Generating a unique request ID and enhancing logging with additional information such as the start and completion of request processing, latency, status code, and other request details.
     logger:
       # Enable/Disable the middleware.
@@ -53,13 +74,56 @@ server:
       #   - POST
       # Set the value of the [`Access-Control-Max-Age`][mdn] header in seconds
       # max_age: 3600
-    static:
-      enable: true
-      must_exist: false
-      folder:
-        uri: "/"
-        path: "frontend/dist"
-      fallback: "frontend/dist/index.html"
+      
+
+    # #############################################
+    # Full stack SaaS asset serving
+    # #############################################
+    #
+    # You can choose from:
+    #
+    # (1) Server-side rendered templates (like erb in Ruby, ejs in nodejs) based on the Tera templating engine.
+    # (2) Client-side frontend set up
+    #
+    # You can also choose both.
+    #
+    # Uncomment the relevant sections below:
+
+    #
+    # (1) Server-side static assets config
+    # ====================================
+    #
+    # for use with the view_engine in initializers/view_engine.rs
+    # (server-block-start)
+    # static:
+    #   enable: true
+    #   must_exist: true
+    #   precompressed: false
+    #   folder:
+    #     uri: "/static"
+    #     path: "assets/static"
+    #   fallback: "assets/static/404.html"
+    # (server-block-end)
+
+    #
+    # (2) Client side app static config
+    # =================================
+    #
+    # Note that you need to go in `frontend` and run your frontend build first,
+    # e.g.: $ npm install & npm build
+    #
+    # (client-block-start)
+    # static:
+    #   enable: true
+    #   must_exist: true
+    #   precompressed: false
+    #   folder:
+    #     uri: "/"
+    #     path: "frontend/dist"
+    #   fallback: "frontend/dist/index.html"
+    # (client-block-end)
+    #
+    
 
 # Worker Configuration
 workers:
@@ -67,7 +131,7 @@ workers:
   #   - BackgroundQueue - Workers operate asynchronously in the background, processing queued.
   #   - ForegroundBlocking - Workers operate in the foreground and block until tasks are completed.
   #   - BackgroundAsync - Workers operate asynchronously in the background, processing tasks with async capabilities.
-  mode: ForegroundBlocking
+  mode: BackgroundQueue
 
 # Mailer Configuration.
 mailer:
@@ -76,7 +140,7 @@ mailer:
     # Enable/Disable smtp mailer.
     enable: true
     # SMTP server host. e.x localhost, smtp.gmail.com
-    host: localhost
+    host: {{ get_env(name="MAILER_HOST", default="localhost") }}
     # SMTP server port
     port: 1025
     # Use secure connection (SSL/TLS).
@@ -84,7 +148,6 @@ mailer:
     # auth:
     #   user:
     #   password:
-  stub: true
 
 # Initializers Configuration
 # initializers:
@@ -96,7 +159,7 @@ mailer:
 # Database Configuration
 database:
   # Database connection URI
-  uri: {{get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app")}}
+  uri: {{ get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app") }}
   # When enabled, the sql query will be logged.
   enable_logging: false
   # Set the timeout duration when acquiring a connection.
@@ -110,14 +173,14 @@ database:
   # Run migration up when application loaded
   auto_migrate: true
   # Truncate database when application loaded. This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
-  dangerously_truncate: true
+  dangerously_truncate: false
   # Recreating schema when application loaded.  This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_recreate: false
 
 # Queue Configuration
 queue:
   # Redis connection URI
-  uri: {{get_env(name="REDIS_URL", default="redis://127.0.0.1")}}
+  uri: {{ get_env(name="REDIS_URL", default="redis://127.0.0.1") }}
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_flush: false
 
