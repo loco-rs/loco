@@ -77,18 +77,23 @@ impl fmt::Display for Scheduler {
             "#      job_name        cron               tags               kind"
         )?;
 
-        for (index, (job_name, job)) in self.jobs.iter().enumerate() {
-            writeln!(
-                f,
-                "{:<6} {:<15} {:<18} {:<18} {:?}",
-                index + 1,
-                job_name,
-                job.cron,
-                job.tags
-                    .as_ref()
-                    .map_or("-".to_string(), |tags| tags.join(", ")),
-                job.kind,
-            )?;
+        let mut job_names: Vec<&String> = self.jobs.keys().collect();
+        job_names.sort();
+
+        for (index, &job_name) in job_names.iter().enumerate() {
+            if let Some(job) = self.jobs.get(job_name) {
+                writeln!(
+                    f,
+                    "{:<6} {:<15} {:<18} {:<18} {:?}",
+                    index + 1,
+                    job_name,
+                    job.cron,
+                    job.tags
+                        .as_ref()
+                        .map_or("-".to_string(), |tags| tags.join(", ")),
+                    job.kind,
+                )?;
+            }
         }
 
         Ok(())
