@@ -60,9 +60,8 @@ pub fn test_config() -> Config {
             jobs: HashMap::from([(
                 "job 1".to_string(),
                 scheduler::Job {
-                    kind: scheduler::Kind::Shell {
-                        command: "echo loco".to_string(),
-                    },
+                    run: "echo loco".to_string(),
+                    shell: true,
                     cron: "*/5 * * * * *".to_string(),
                     tags: Some(vec!["base".to_string()]),
                     output: None,

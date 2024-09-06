@@ -135,18 +135,16 @@ auth:
 scheduler: 
   jobs:
     Run command:
-      shell:
-        command: "echo loco >> ./scheduler.txt"
+      run: "echo loco >> ./scheduler.txt"
+      shell: true
       cron: "*/1 * * * * *"
       tags: ['base', 'infra']
 
     Run task:
-      task: 
-        name: "foo"
+      run: "foo"
       cron: "*/5 * * * * *"
 
     list if users:
-      task:
-        name: "user_report"
+      run: "user_report"
       cron: "*/7 * * * * *"
       tags: ['base', 'users']

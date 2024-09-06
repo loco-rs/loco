@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::{
-    collections::BTreeMap,
     io,
     path::{Path, PathBuf},
     time::Instant,
@@ -55,9 +54,11 @@ pub struct Config {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Job {
-    /// The type of job.
-    #[serde(flatten)]
-    pub kind: Kind,
+    /// The command to run.
+    /// In case of task: it should be a task name and also task arguments
+    pub run: String,
+    #[serde(default)]
+    pub shell: bool,
     /// The cron expression defining the job's schedule.
     ///
     /// The format is as follows:
@@ -74,7 +75,7 @@ impl fmt::Display for Scheduler {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(
             f,
-            "#      job_name        cron               tags               kind"
+            "#      job_name        cron               tags               run"
         )?;
 
         let mut job_names: Vec<&String> = self.jobs.keys().collect();
@@ -91,27 +92,13 @@ impl fmt::Display for Scheduler {
                     job.tags
                         .as_ref()
                         .map_or("-".to_string(), |tags| tags.join(", ")),
-                    job.kind,
+                    job.run,
                 )?;
             }
         }
 
         Ok(())
     }
-}
-
-/// Enum representing the types of jobs that can be scheduled.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum Kind {
-    /// A job that runs a defined task.
-    #[serde(rename = "task")]
-    Task {
-        name: String,
-        vars: Option<BTreeMap<String, String>>,
-    },
-    /// A job that executes a shell command.
-    #[serde(rename = "shell")]
-    Shell { command: String },
 }
 
 /// Representing the scheduler itself.
@@ -161,21 +148,15 @@ impl Job {
         default_output: &Output,
         environment: &Environment,
     ) -> JobDescription {
-        let command = match &self.kind {
-            Kind::Task { name, vars } => {
-                let mut result = vec![
-                    binary_path.display().to_string(),
-                    "task".to_string(),
-                    name.to_string(),
-                ];
-                if let Some(vars) = vars {
-                    for (key, value) in vars {
-                        result.push(format!("{key}:{value}"));
-                    }
-                };
-                result.join(" ")
-            }
-            Kind::Shell { command } => command.clone(),
+        let command = if self.shell {
+            self.run.to_string()
+        } else {
+            [
+                binary_path.display().to_string(),
+                "task".to_string(),
+                self.run.to_string(),
+            ]
+            .join(" ")
         };
 
         JobDescription {
@@ -241,16 +222,14 @@ impl Scheduler {
 
         let mut jobs = HashMap::new();
         for (job_name, job) in &data.jobs {
-            match job.kind {
-                Kind::Task { ref name, vars: _ } => {
-                    if tasks.names().contains(name) {
-                        jobs.insert(job_name.to_string(), job.clone());
-                    } else {
-                        return Err(Error::TaskNotFound(name.to_string()));
-                    }
-                }
-                Kind::Shell { command: _ } => {
+            if job.shell {
+                jobs.insert(job_name.to_string(), job.clone());
+            } else {
+                let task_name = job.run.split_whitespace().next().unwrap_or("");
+                if tasks.names().iter().any(|name| name.as_str() == task_name) {
                     jobs.insert(job_name.to_string(), job.clone());
+                } else {
+                    return Err(Error::TaskNotFound(task_name.to_string()));
                 }
             }
         }
@@ -425,11 +404,12 @@ mod tests {
     }
 
     #[rstest]
-    #[case("shell", Kind::Shell {command: "echo loco".to_string()})]
-    #[case("task", Kind::Task {name: "foo".to_string(),vars: Some(BTreeMap::from([("LOCO_ENV".to_string(), "test".to_string()),("SCHEDULER".to_string(), "true".to_string())]))})]
-    pub fn can_prepare_command(#[case] test_name: &str, #[case] kind: Kind) {
+    #[case("shell", "echo loco", true)]
+    #[case("task", "foo LOCO_ENV:test SCHEDULER:true", false)]
+    pub fn can_prepare_command(#[case] test_name: &str, #[case] run: &str, #[case] shell: bool) {
         let job = Job {
-            kind,
+            run: run.to_string(),
+            shell,
             cron: "*/5 * * * * *".to_string(),
             tags: None,
             output: None,
@@ -461,9 +441,8 @@ mod tests {
         scheduler.jobs = HashMap::from([(
             "test".to_string(),
             Job {
-                kind: Kind::Shell {
-                    command: format!("echo loco >> {}", path.display()),
-                },
+                run: format!("echo loco >> {}", path.display()),
+                shell: true,
                 cron: "*/1 * * * * *".to_string(),
                 tags: None,
                 output: None,

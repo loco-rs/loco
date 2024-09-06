@@ -1,15 +1,14 @@
 jobs:
   print task:
-    task:
-      name: "foo"
+    run: foo
     cron: "*/5 * * * * *"
     tags:
       - base
       - echo
 
-  write to file:
-    shell:
-      command: "echo loco >> ./scheduler.txt"
+  write to file:    
+    run: "echo loco >> ./scheduler.txt"
+    shell: true
     cron: "*/5 * * * * *"
     tags:
       - base

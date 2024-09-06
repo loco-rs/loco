@@ -163,24 +163,24 @@ scheduler:
   output: stdout
   # A list of jobs to be scheduled.
   jobs:
-      # The name of the job.
+    # The name of the job.
     Run command:
-      # The type of job.
-      shell:
-        command: "echo loco >> ./scheduler.txt"
+      # command to run
+      run: "echo loco >> ./scheduler.txt"
+      # run the command as shell 
+      shell: true
       # The cron expression defining the job's schedule.
       cron: "*/1 * * * * *"
       output: silent
       tags: ['base', 'infra']
 
     Run task:
-      task: 
-        name: "foo"
+      # Run loco task
+      run: "foo"
       cron: "*/5 * * * * *"
 
     list if users:
-      task:
-        name: "user_report"
+      run: "user_report"
       cron: "*/7 * * * * *"
       tags: ['base', 'users']
 # </snip>
