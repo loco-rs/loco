@@ -2,6 +2,7 @@
 //! TBD
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fmt;
 use std::{
     collections::BTreeMap,
@@ -44,7 +45,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 #[serde(deny_unknown_fields)]
 pub struct Config {
     /// A list of jobs to be scheduled.
-    pub jobs: Vec<Job>,
+    pub jobs: HashMap<String, Job>,
     /// The default output setting for the jobs.
     #[serde(default)]
     pub output: Output,
@@ -54,8 +55,6 @@ pub struct Config {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Job {
-    /// The name of the job.
-    pub name: String,
     /// The type of job.
     #[serde(flatten)]
     pub kind: Kind,
@@ -78,12 +77,12 @@ impl fmt::Display for Scheduler {
             "#      job_name        cron               tags               kind"
         )?;
 
-        for (index, job) in self.jobs.iter().enumerate() {
+        for (index, (job_name, job)) in self.jobs.iter().enumerate() {
             writeln!(
                 f,
                 "{:<6} {:<15} {:<18} {:<18} {:?}",
                 index + 1,
-                job.name,
+                job_name,
                 job.cron,
                 job.tags
                     .as_ref()
@@ -113,7 +112,7 @@ pub enum Kind {
 /// Representing the scheduler itself.
 #[derive(Clone)]
 pub struct Scheduler {
-    pub jobs: Vec<Job>,
+    pub jobs: HashMap<String, Job>,
     binary_path: PathBuf,
     default_output: Output,
     environment: Environment,
@@ -235,17 +234,19 @@ impl Scheduler {
         let mut tasks = Tasks::default();
         H::register_tasks(&mut tasks);
 
-        let mut jobs = vec![];
-        for job in &data.jobs {
+        let mut jobs = HashMap::new();
+        for (job_name, job) in &data.jobs {
             match job.kind {
                 Kind::Task { ref name, vars: _ } => {
                     if tasks.names().contains(name) {
-                        jobs.push(job.clone());
+                        jobs.insert(job_name.to_string(), job.clone());
                     } else {
                         return Err(Error::TaskNotFound(name.to_string()));
                     }
                 }
-                Kind::Shell { command: _ } => jobs.push(job.clone()),
+                Kind::Shell { command: _ } => {
+                    jobs.insert(job_name.to_string(), job.clone());
+                }
             }
         }
 
@@ -267,9 +268,9 @@ impl Scheduler {
         let jobs = self
             .jobs
             .into_iter()
-            .filter(|job| {
+            .filter(|(job_name, job)| {
                 if let Some(name) = &include_jobs.name {
-                    return name == &job.name;
+                    return name == job_name;
                 }
 
                 if let Some(tag) = &include_jobs.tag {
@@ -280,7 +281,7 @@ impl Scheduler {
 
                 true
             })
-            .collect::<Vec<_>>();
+            .collect::<HashMap<String, Job>>();
 
         Self { jobs, ..self }
     }
@@ -293,11 +294,11 @@ impl Scheduler {
     pub async fn run(self) -> Result<()> {
         let mut sched = JobScheduler::new().await?;
 
-        for job in &self.jobs {
+        for (job_name, job) in &self.jobs {
             let job_description =
                 job.prepare_command(&self.binary_path, &self.default_output, &self.environment);
 
-            let job_name = job.name.to_string();
+            let job_name = job_name.to_string();
             sched
                 .add(tokio_cron_scheduler::Job::new_async(
                     job.cron.as_str(),
@@ -404,10 +405,7 @@ mod tests {
         });
 
         assert_eq!(scheduler.jobs.len(), 1);
-        assert_eq!(
-            scheduler.jobs.first().unwrap().name,
-            "print task".to_string()
-        );
+        assert!(scheduler.jobs.contains_key("print task"));
     }
 
     #[test]
@@ -418,10 +416,7 @@ mod tests {
         });
 
         assert_eq!(scheduler.jobs.len(), 1);
-        assert_eq!(
-            scheduler.jobs.first().unwrap().name,
-            "write to file".to_string()
-        );
+        assert!(scheduler.jobs.contains_key("write to file"));
     }
 
     #[rstest]
@@ -429,7 +424,6 @@ mod tests {
     #[case("task", Kind::Task {name: "foo".to_string(),vars: Some(BTreeMap::from([("LOCO_ENV".to_string(), "test".to_string()),("SCHEDULER".to_string(), "true".to_string())]))})]
     pub fn can_prepare_command(#[case] test_name: &str, #[case] kind: Kind) {
         let job = Job {
-            name: "job 1".to_string(),
             kind,
             cron: "*/5 * * * * *".to_string(),
             tags: None,
@@ -459,15 +453,17 @@ mod tests {
 
         assert_eq!(std::fs::read_to_string(&path).unwrap().lines().count(), 0);
 
-        scheduler.jobs = vec![Job {
-            name: "test".to_string(),
-            kind: Kind::Shell {
-                command: format!("echo loco >> {}", path.display()),
+        scheduler.jobs = HashMap::from([(
+            "test".to_string(),
+            Job {
+                kind: Kind::Shell {
+                    command: format!("echo loco >> {}", path.display()),
+                },
+                cron: "*/1 * * * * *".to_string(),
+                tags: None,
+                output: None,
             },
-            cron: "*/1 * * * * *".to_string(),
-            tags: None,
-            output: None,
-        }];
+        )]);
 
         let handle = tokio::spawn(async move {
             scheduler.run().await.unwrap();

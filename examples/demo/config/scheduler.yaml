@@ -1,5 +1,5 @@
 jobs:
-  - name: "add text"
+  add text:
     shell:
       command: "echo loco >> ./scheduler.txt"
     cron: "*/1 * * * * *"
@@ -7,14 +7,14 @@ jobs:
         - base
         - infra
 
-  - name: "Run command"
+  Run command:
     task: 
       name: "foo"
       vars:
         path: /tmp/scheduler.txt
     cron: "*/5 * * * * *"
 
-  - name: "list if users"
+  list if users:
     task:
       name: "user_report"
     cron: "*/7 * * * * *"

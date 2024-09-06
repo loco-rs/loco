@@ -134,7 +134,7 @@ auth:
 
 scheduler: 
   jobs:
-    - name: "Run command"
+    Run command:
       shell:
         command: "echo loco >> ./scheduler.txt"
       cron: "*/1 * * * * *"
@@ -142,12 +142,12 @@ scheduler:
         - base
         - infra
 
-    - name: "Run command"
+    Run task:
       task: 
         name: "foo"
       cron: "*/5 * * * * *"
 
-    - name: "list if users"
+    list if users:
       task:
         name: "user_report"
       cron: "*/7 * * * * *"

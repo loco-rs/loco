@@ -164,7 +164,7 @@ scheduler:
   # A list of jobs to be scheduled.
   jobs:
       # The name of the job.
-    - name: "Run command"
+    Run command:
       # The type of job.
       shell:
         command: "echo loco >> ./scheduler.txt"
@@ -175,12 +175,12 @@ scheduler:
         - base
         - infra
 
-    - name: "Run command"
+    Run task:
       task: 
         name: "foo"
       cron: "*/5 * * * * *"
 
-    - name: "list if users"
+    list if users:
       task:
         name: "user_report"
       cron: "*/7 * * * * *"
