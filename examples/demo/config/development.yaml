@@ -171,9 +171,7 @@ scheduler:
       # The cron expression defining the job's schedule.
       cron: "*/1 * * * * *"
       output: silent
-      tags:
-        - base
-        - infra
+      tags: ['base', 'infra']
 
     Run task:
       task: 
@@ -184,7 +182,5 @@ scheduler:
       task:
         name: "user_report"
       cron: "*/7 * * * * *"
-      tags:
-        - base
-        - users
+      tags: ['base', 'users']
 # </snip>

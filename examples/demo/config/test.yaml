@@ -138,9 +138,7 @@ scheduler:
       shell:
         command: "echo loco >> ./scheduler.txt"
       cron: "*/1 * * * * *"
-      tags:
-        - base
-        - infra
+      tags: ['base', 'infra']
 
     Run task:
       task: 
@@ -151,6 +149,4 @@ scheduler:
       task:
         name: "user_report"
       cron: "*/7 * * * * *"
-      tags:
-        - base
-        - users
+      tags: ['base', 'users']
