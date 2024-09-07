@@ -112,13 +112,13 @@ pub trait Hooks {
             "{}:{}",
             server_config.binding, server_config.port
         ))
-            .await?;
+        .await?;
 
         axum::serve(
             listener,
             app.into_make_service_with_connect_info::<SocketAddr>(),
         )
-            .await?;
+        .await?;
 
         Ok(())
     }
