@@ -9,6 +9,7 @@ use axum::{
     response::{Html, IntoResponse},
     Router as AXRouter,
 };
+use axum_extra::extract::cookie::Key;
 use hyper::StatusCode;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -21,6 +22,7 @@ use tower_http::{
     timeout::TimeoutLayer,
     trace::TraceLayer,
 };
+use tower_sessions::{SessionManagerLayer, SessionStore};
 
 #[cfg(feature = "channels")]
 use super::channels::AppChannels;
@@ -28,35 +30,19 @@ use super::{
     middleware::{cors::cors_middleware, remote_ip::RemoteIPConfig, secure_headers::SecureHeaders},
     routes::Routes,
 };
-use crate::config::RequestContextSession;
-use crate::request_context::layer::RequestContextLayer;
-use crate::request_context::CustomSessionStore;
 use crate::{
     app::AppContext,
-    config::{self, FallbackConfig},
+    config::{self, FallbackConfig, RequestContextSession},
     controller::middleware::{
         etag::EtagLayer,
         remote_ip::RemoteIPLayer,
         request_id::{request_id_middleware, LocoRequestId},
     },
     environment::Environment,
-    errors, Error, Result,
+    errors,
+    request_context::{layer::RequestContextLayer, CustomSessionStore},
+    Error, Result,
 };
-use axum::{http, response::IntoResponse, Router as AXRouter};
-use axum_extra::extract::cookie::Key;
-use lazy_static::lazy_static;
-use regex::Regex;
-use std::{fmt, path::PathBuf, time::Duration};
-use tower_http::{
-    add_extension::AddExtensionLayer,
-    catch_panic::CatchPanicLayer,
-    compression::CompressionLayer,
-    services::{ServeDir, ServeFile},
-    set_header::SetResponseHeaderLayer,
-    timeout::TimeoutLayer,
-    trace::TraceLayer,
-};
-use tower_sessions::{SessionManagerLayer, SessionStore};
 
 lazy_static! {
     static ref NORMALIZE_URL: Regex = Regex::new(r"/+").unwrap();

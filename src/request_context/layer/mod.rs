@@ -5,11 +5,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use axum::{
-    body::Body,
-    extract::{Request},
-    response::Response,
-};
+use axum::{body::Body, extract::Request, response::Response};
 use tokio::sync::Mutex;
 use tower::{Layer, Service};
 use tower_sessions::Session;
