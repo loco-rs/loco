@@ -139,7 +139,7 @@ This command will locate the job named `"Run command"` in your scheduler.yaml fi
 You can also run multiple jobs that share the same tag. Tags are useful for grouping related jobs together. For example, you might have several jobs that perform different types of maintenance tasks—such as database cleanup, cache invalidation, and log rotation—that you want to run together. Assigning them the same tag, like `maintenance`, allows you to execute them all at once.
 <!-- <snip id="scheduler-run-job-by-tag-command" inject_from="yaml"  template="sh"> -->
 ```sh
-LOCO_ENV=production cargo loco scheduler --tag 'TAG'
+LOCO_ENV=production cargo loco scheduler --tag 'maintenance'
 ```
 <!-- </snip> -->
 

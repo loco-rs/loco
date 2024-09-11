@@ -124,5 +124,5 @@ snippets:
     content: LOCO_ENV=production cargo loco scheduler --name 'JOB_NAME'
     path: ./snipdoc.yml
   scheduler-run-job-by-tag-command:
-    content: LOCO_ENV=production cargo loco scheduler --tag 'TAG'
+    content: LOCO_ENV=production cargo loco scheduler --tag 'maintenance'
     path: ./snipdoc.yml
