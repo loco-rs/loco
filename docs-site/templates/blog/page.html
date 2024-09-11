@@ -1,0 +1,27 @@
+{# Default page template used for blog contents #}
+
+{% extends "page.html" %}
+
+{% block body %}
+{% set page_class = "blog single" %}
+{% endblock body %}
+
+{% block header %}
+{{ macros_header::header(current_section='blog')}}
+{% endblock header %}
+
+{% block content %}
+<div class="container" role="document">
+  <article>
+    <div>
+      <h1>{{ page.title }}</h1>
+      {{ macros_publish::page_publish_metadata(page=page) }}
+    </div>
+    {% if page.extra.lead %}<p class="lead">{{ page.extra.lead | safe }}</p>{% endif %}
+    <div class="markdown">
+      {{ page.content | safe }}
+    </div>
+
+  </article>
+</div>
+{% endblock content %}

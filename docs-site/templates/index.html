@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block seo %}
+{{ super() }}
+
+{% if config.title %}
+{% set title = config.title %}
+{% else %}
+{% set title = "" %}
+{% endif %}
+
+{% if config.extra.title_addition and title %}
+{% set title_addition = title_separator ~ config.extra.title_addition %}
+{% elif config.extra.title_addition %}
+{% set title_addition = config.extra.title_addition %}
+{% else %}
+{% set title_addition = "" %}
+{% endif %}
+
+{% set description = config.description %}
+
+{{ macros_head::seo(title=title, title_addition=title_addition, description=description, is_home=true) }}
+{% endblock seo %}
+
+{% block content %}
+<div class="relative bg-cover bg-left-bottom bg-no-repeat py-8 "
+    style="background-image: url(/header.svg); height: 540px;">
+    <div class="container relative z-30 pt-20 pb-12 sm:pt-56 sm:pb-48 lg:pt-64 lg:pb-48">
+        <div class="flex flex-col items-center justify-center lg:flex-row">
+        </div>
+    </div>
+</div>
+<div class="pb-20" style="background-color: #D45546;">
+
+    <div class="mb-10 text-white">
+        <h1 class="text-center text-5xl mb-5 	">
+            It’s Like Ruby on Rails, but for Rust.
+        </h1>
+        <p class="text-center text-2xl mb-5">
+            Get the same great building experience of Rails, with the incredible<br /> performance and safety of Rust.
+        </p>
+    </div>
+    <div class="flex items-center justify-center ">
+        <iframe width="1016" height="569" src="https://www.youtube.com/embed/EircfwF8c0E?si=jv_PZuWZIJ59Qz3O"
+            title="YouTube video player" frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+    </div>
+
+
+
+
+
+</div>
+<div class="pt-20" style="background-color: #BD210F; ">
+
+
+    <div class="mb-10 text-white mt-15">
+        <h1 class="text-center text-5xl mb-5 	">
+            It’s time to make Rust your super-power.
+        </h1>
+        <p class="text-center text-2xl mb-5">
+            Using Rust with Loco is super easy. With a simple request lifecycle,<br /> code generators, productivity
+            toolkits and more.
+        </p>
+    </div>
+
+    <div class="container">
+        <div class="flex items-center justify-center relative z-1 ">
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm  mb-5 w-7/12 z-10">
+                <div class="p-6">
+                    <p>$ cargo loco generate scaffold post title:string content:text</p>
+                    <br />
+                    <p>added: "src/controllers/post.rs"</p>
+                    <p>injected: "src/controllers/mod.rs"</p>
+                    <p>injected: "src/app.rs"</p>
+                    <p>...</p>
+                    <p>$ cargo loco start</p>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+    <div class="flex items-center justify-center">
+        <div class="flex items-center justify-center">
+            <a class=" rounded-md text-sm font-medium  transition-colors  border border-input bg-primary px-4 py-2 text-black"
+                href="/docs/getting-started/tour/">Get started</a>
+        </div>
+
+    </div>
+
+    <div class="mb-20"></div>
+    <div class="relative z-0 hidden xl:block">
+        <img src="/cloud.svg" class="absolute right-0 bottom-0 " />
+    </div>
+</div>
+
+
+
+<div class="pt-20 pb-20 relative z-1 relative" style="background-color: #D45546;">
+    <div class="relative z-0" style="top: -490px">
+        <img src="/mountain-bg.svg" class="absolute left-0 z-2" />
+    </div>
+    <div class="mb-10 text-white mt-15 z-10 relative">
+        <h1 class="text-center text-5xl mb-5 	">
+            Enjoy that sweet & effortless Rust performance
+        </h1>
+        <p class="text-center text-2xl mb-5">
+            Loco packs a lot of features and still gives you 10x more<br /> performance compared to Node.js
+        </p>
+    </div>
+
+    <div class="container">
+        <div class="flex items-center justify-center relative z-1 ">
+            <div class="rounded-lg border bg-card text-card-foreground shadow-sm  mb-5 w-7/12 z-10">
+                <br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br />
+            </div>
+        </div>
+
+
+    </div>
+
+
+</div>
+
+<div class=" relative z-1 relative">
+
+    <div class="container relative z-4">
+        <div class="mt-20">
+            <h2 class="text-center text-5xl mb-5">
+                Build apps locally and save lots of time.
+            </h2>
+            <p class="text-center text-2xl">
+                No need for SaaS or cloud services. Save time, money, and effort with<br /> auth, workers, emails & more
+                out of the box.
+            </p>
+        </div>
+
+        <div
+            class=" items-start justify-center gap-6 rounded-lg p-8 md:grid xl:grid-cols-2 xl:grid-cols-2 relative z-4 ">
+
+            {% for val in config.extra.homepage.features %}
+            <div class="col-span-2 grid items-start gap-6 xl:col-span-1 ">
+                <div class=" ">
+                    <div class="rounded-lg  bg-card text-card-foreground shadow">
+                        {{ val.example | markdown(inline=true) | safe }}
+                    </div>
+
+                    <h3 class="text-center text-4xl mb-5">
+                        {{ val.name }}
+                    </h3>
+                    <p class="text-center">
+                        Empower the 1-person team. Service, data, emails, background jobs, tasks, CLI to drive it,
+                        everything is included.
+                    </p>
+                </div>
+            </div>
+            {% endfor %}
+
+        </div>
+
+    </div>
+</div>
+{% endblock content %}

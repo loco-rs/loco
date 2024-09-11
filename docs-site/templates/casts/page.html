@@ -1,0 +1,33 @@
+{# Default page template used for blog contents #}
+
+{% extends "page.html" %}
+
+{% block body %}
+{% set page_class = "casts single" %}
+{% endblock body %}
+
+{% block header %}
+{{ macros_header::header(current_section='casts')}}
+{% endblock header %}
+
+{% block content %}
+<div class="wrap container" role="document">
+  <div class="content">
+    <div class="row justify-content-center">
+      <div class="cast-youtube">
+        {{ youtube::youtube(id=page.extra.id) }}
+
+        <h1>{{ page.title }}</h1>
+        <code class="ep">Episode #{{page.extra.num}}</code>
+        {{ macros_publish::page_publish_metadata(page=page) }}
+
+        <article>
+          <div class="markdown">
+            {{ page.content | safe }}
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}

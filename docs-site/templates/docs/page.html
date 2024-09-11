@@ -1,0 +1,56 @@
+{% extends "page.html" %}
+
+{% block body %}
+{% set page_class = "docs single" %}
+{% endblock body %}
+
+{% block header %}
+{# This value is matched by the config.extra.menu.main~url #}
+{% set current_section = "docs" %}
+{{ macros_header::header(current_section=current_section)}}
+{% endblock header %}
+
+{% block content %}
+<div role="document">
+  <div
+    class="container flex-1 items-start md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10">
+    <aside class="fixed top-14 z-30 -ml-2 hidden h-[calc(100vh-3.5rem)] w-full shrink-0 md:sticky md:block">
+      {{ macros_sidebar::docs_sidebar(current_section=current_section) }}
+    </aside>
+    <main class="relative py-6 lg:gap-10  xl:grid xl:grid-cols-[1fr_300px]">
+      <div class="mx-auto w-full min-w-0">
+        <h1 class="scroll-m-20 text-3xl font-bold tracking-tight border-b mb-10">{{ page.title | safe }}</h1>
+        {% if page.extra.lead %}<p class="lead">{{ page.extra.lead | safe }}</p>{% endif %}
+        <div class="markdown">
+          {{ page.content | safe }}
+        </div>
+        {% if config.extra.edit_page %}
+        {{ macros_edit_page::docs_edit_page(current_path=current_path) }}
+        {% endif %}
+        {{ macros_navigation::docs_navigation(page=page, current_section=current_section) }}
+      </div>
+
+      <div class="hidden text-sm xl:block">
+        <div class="sticky top-16 -mt-10 pt-4">
+          <div dir="ltr" class="relative overflow-hidden pb-10">
+            <div class=" h-full w-full rounded-[inherit] overflow-auto">
+              <div style="min-width: 100%; display: table;">
+                <div class="sticky top-16 -mt-10 h-[calc(100vh-3.5rem)] py-12">
+                  {{ macros_toc::docs_toc(page=page) }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+
+
+</div>
+
+
+</div>
+{% endblock content %}

@@ -1,0 +1,37 @@
+{% import 'macros/header.html' as macros_header -%}
+{% import 'macros/docs-sidebar.html' as macros_sidebar -%}
+{% import 'macros/docs-edit-page.html' as macros_edit_page -%}
+{% import 'macros/docs-navigation.html' as macros_navigation -%}
+{% import 'macros/docs-toc.html' as macros_toc -%}
+{% import 'macros/page-publish-metadata.html' as macros_publish -%}
+{% import 'macros/youtube.html' as youtube -%}
+
+
+<!DOCTYPE html>
+<html lang="{{ config.extra.language_code | default(value=" en-US") }}">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="stylesheet" type="text/css" href={{ get_url(path="styles/styles.css" ) }} />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href={{ get_url(path="apple-touch-icon.png" ) }}>
+  <link rel="icon" type="image/png" sizes="32x32" href={{ get_url(path="favicon-32x32.png" ) }}>
+  <link rel="icon" type="image/png" sizes="32x32" href={{ get_url(path="favicon-16x16.png" ) }}>
+
+</head>
+
+<body class="bg-background">
+  <div class="relative flex min-h-screen flex-col bg-background">
+    {% block header %}
+    {{ macros_header::header(current_section="/") }}
+    {% endblock header %}
+
+    {% block content %}{% endblock content %}
+  </div>
+</body>
+
+</html>
