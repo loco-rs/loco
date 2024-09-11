@@ -25,8 +25,12 @@ build_search_index = true
 [markdown]
 # Whether to do syntax highlighting
 # Theme can be customised by setting the `highlight_theme` variable to a theme supported by Zola
+highlight_theme = "css"
 highlight_code = true
-
+highlight_themes_css = [
+  { theme = "OneHalfDark", filename = "syntax-theme-dark.css" },
+  { theme = "OneHalfLight", filename = "syntax-theme-light.css" },
+]
 [extra]
 # Put all your custom variables here
 

@@ -1723,6 +1723,12 @@ a.active {
   padding-left: 2rem;
 }
 
+.prose {
+  ul {
+    padding-inline-start: 1em;
+  }
+}
+
 /* ol {
     list-style: auto
 }

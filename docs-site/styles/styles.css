@@ -43,6 +43,11 @@
     padding-right: 2rem;
     padding-left: 2rem;
 }
+.prose {
+    ul {
+        padding-inline-start: 1em;
+    }
+}
 
 /* ol {
     list-style: auto
