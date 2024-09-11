@@ -1171,6 +1171,18 @@ a.active {
   top: 4rem;
 }
 
+.top-1 {
+  top: 0.25rem;
+}
+
+.top-20 {
+  top: 5rem;
+}
+
+.top-10 {
+  top: 2.5rem;
+}
+
 .z-0 {
   z-index: 0;
 }
@@ -1276,6 +1288,18 @@ a.active {
   margin-top: 0.75rem;
 }
 
+.mt-4 {
+  margin-top: 1rem;
+}
+
+.mt-10 {
+  margin-top: 2.5rem;
+}
+
+.mt-5 {
+  margin-top: 1.25rem;
+}
+
 .block {
   display: block;
 }
@@ -1370,10 +1394,6 @@ a.active {
 
 .max-w-md {
   max-width: 28rem;
-}
-
-.max-w-screen-2xl {
-  max-width: 1536px;
 }
 
 .flex-1 {
@@ -1596,6 +1616,10 @@ a.active {
 
 .pt-4 {
   padding-top: 1rem;
+}
+
+.pt-5 {
+  padding-top: 1.25rem;
 }
 
 .text-center {
@@ -1827,6 +1851,10 @@ a.active {
 }
 
 @media (min-width: 640px) {
+  .sm\:mt-20 {
+    margin-top: 5rem;
+  }
+
   .sm\:pb-48 {
     padding-bottom: 12rem;
   }
@@ -1841,6 +1869,10 @@ a.active {
 }
 
 @media (min-width: 768px) {
+  .md\:relative {
+    position: relative;
+  }
+
   .md\:sticky {
     position: sticky;
   }
@@ -1848,6 +1880,10 @@ a.active {
   .md\:mx-auto {
     margin-left: auto;
     margin-right: auto;
+  }
+
+  .md\:mt-0 {
+    margin-top: 0px;
   }
 
   .md\:block {
@@ -1888,6 +1924,14 @@ a.active {
 
   .md\:justify-end {
     justify-content: flex-end;
+  }
+
+  .md\:bg-transparent {
+    background-color: transparent;
+  }
+
+  .md\:pt-0 {
+    padding-top: 0px;
   }
 }
 
