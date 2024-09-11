@@ -39,7 +39,7 @@ cargo loco --help
 ```sh
 The one-person framework for Rust
 
-Usage: blo-cli [OPTIONS] <COMMAND>
+Usage: demo_app-cli [OPTIONS] <COMMAND>
 
 Commands:
   start     Start an app
@@ -55,7 +55,6 @@ Options:
   -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
   -h, --help                       Print help
   -V, --version                    Print version
-
 ```
 <!-- </snip> -->
 
@@ -116,5 +115,3 @@ Because your app is compiled, and then copied to production, Loco gives you two 
 Both version strings are parsable and stable so you can use it in integration scripts, monitoring tools and so on.
 
 You can shape your own custom app versioning scheme by overriding the `app_version` hook in your `src/app.rs` file.
-
-

@@ -1,4 +1,4 @@
-use blo::app::App;
+use demo_app::app::App;
 use insta::{assert_debug_snapshot, with_settings};
 use loco_rs::testing;
 use serial_test::serial;

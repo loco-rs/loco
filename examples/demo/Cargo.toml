@@ -2,10 +2,10 @@
 # this empty pragma excludes this project from workspaces
 
 [package]
-name = "blo"
+name = "demo_app"
 version = "0.1.0"
 edition = "2021"
-default-run = "blo-cli"
+default-run = "demo_app-cli"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -44,7 +44,7 @@ tower = "0.4.13"
 futures-util = "0.3.30"
 
 [[bin]]
-name = "blo-cli"
+name = "demo_app-cli"
 path = "src/bin/main.rs"
 required-features = []
 
