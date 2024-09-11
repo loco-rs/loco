@@ -57,6 +57,10 @@
     }
 }
 
+.fatbtn {
+    @apply no-underline text-lg font-semibold text-foreground bg-background rounded-sm px-8 py-3; 
+}
+
 .container {
     width: 100%;
     margin-right: auto;
