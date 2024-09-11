@@ -5,6 +5,8 @@
 		<div class="mr-4 hidden md:flex">
 			<a class="mr-4 flex items-center space-x-2 lg:mr-6" href="/">
 				<img src="/icon.svg" width="30px" />
+				</a>
+				<a>
 				<nav class="flex items-center gap-4 text-sm lg:gap-6">
 					{% if lang == config.default_language %}
 					{% set rootsectionpath = "_index.md" %}
@@ -13,16 +15,24 @@
 					{% endif %}
 					{% set mainsec = get_section(path=rootsectionpath) %}
 					{% if mainsec.extra.menu.main %}
+					{% for val in config.extra.menu.main %}
+					<a class="nav-link text-black" href="{{ get_url(path=val.url, trailing_slash=true) | safe }}">{{
+						val.name
+						}}
+					</a>
+					{% endfor %}
 					{% elif config.extra.menu.main %}
 					{% for val in config.extra.menu.main %}
-					<a class="nav-link " href="{{ get_url(path=val.url, trailing_slash=true) | safe }}">{{
+					<a class="nav-link text-black" href="{{ get_url(path=val.url, trailing_slash=true) | safe }}">{{
 						val.name
-						}}</a>
+						}}
+					</a>
 					{% endfor %}
 					{% else %}
 
 					{% endif %}
 				</nav>
+			
 		</div>
 		<button
 			class="inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:text-accent-foreground h-9 py-2 mr-2 px-0 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 md:hidden"
@@ -44,7 +54,7 @@
 			<div class="w-full flex-1 md:w-auto md:flex-none">
 				<form class="navbar-form flex-grow-1 order-7 order-md-3 ">
 					<input id="userinput"
-						class="bg-transparent text-white placeholder-white inline-flex items-center whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input hover:bg-accent hover:text-accent-foreground px-4 py-2 relative h-8 w-full justify-start rounded-[0.5rem] bg-muted/50 text-sm font-normal shadow-none sm:pr-12 md:w-40 lg:w-64"
+						class="bg-transparent  placeholder-white inline-flex items-center whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input hover:bg-accent hover:text-accent-foreground px-4 py-2 relative h-8 w-full justify-start rounded-[0.5rem] bg-muted/50 text-sm font-normal shadow-none sm:pr-12 md:w-40 lg:w-64"
 						type="search" placeholder="Search docs..." aria-label="Search docs..." autocomplete="off">
 
 					<div id="suggestions" class="shadow bg-white rounded"></div>
@@ -59,7 +69,7 @@
 				{% for val in config.extra.menu.social %}
 				<div
 					class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground py-2 h-8 w-8 px-0">
-					<a class="nav-link text-white	" href="{{ val.url | safe }}">{{ val.pre | safe }}<span
+					<a class="nav-link " href="{{ val.url | safe }}">{{ val.pre | safe }}<span
 							class="sr-only">{{
 							val.name}}</span></a>
 				</div>

@@ -1723,13 +1723,38 @@ a.active {
   padding-left: 2rem;
 }
 
-/* ol {
-    list-style: auto
+.navbar-form {
+  position: relative;
 }
 
-h2 {
-    font-size: 2rem;
-} */
+#suggestions {
+  position: absolute;
+  right: 0;
+  margin-top: 0.5rem;
+  width: calc(100vw - 3rem);
+  max-height: 500px;
+  overflow: auto;
+  width: 30rem;
+}
+
+#suggestions a {
+  display: block;
+  text-decoration: none;
+  padding: 0.75rem;
+  margin: 0 0.5rem;
+}
+
+#suggestions a:focus {
+  outline: 0;
+}
+
+#suggestions div:first-child {
+  margin-top: 0.5rem;
+}
+
+#suggestions div:last-child {
+  margin-bottom: 0.5rem;
+}
 
 .hover\:bg-transparent:hover {
   background-color: transparent;
