@@ -1364,10 +1364,6 @@ a.active {
   max-width: 28rem;
 }
 
-.max-w-screen-2xl {
-  max-width: 1536px;
-}
-
 .flex-1 {
   flex: 1 1 0%;
 }
@@ -1721,12 +1717,6 @@ a.active {
   margin-left: auto;
   padding-right: 2rem;
   padding-left: 2rem;
-}
-
-.prose {
-  ul {
-    padding-inline-start: 1em;
-  }
 }
 
 .prose {
