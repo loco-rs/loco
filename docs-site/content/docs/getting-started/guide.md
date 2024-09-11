@@ -750,7 +750,15 @@ pub async fn comments(
 This is called "lazy loading", where we fetch the item first and later its associated relation. Don't worry - there is also a way to eagerly load comments along with an article.
 </div>
 
-Now let's add a comment to Article `1`:
+Now start the app again:
+
+<!-- <snip id="starting-the-server-command" inject_from="yaml" template="sh"> -->
+```sh
+cargo loco start
+```
+<!-- </snip> -->
+
+Add a comment to Article `1`:
 
 ```sh
 $ curl -X POST -H "Content-Type: application/json" -d '{
