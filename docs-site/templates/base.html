@@ -1,4 +1,5 @@
 {% import 'macros/header.html' as macros_header -%}
+{% import 'macros/javascript.html' as macros_js -%}
 {% import 'macros/docs-sidebar.html' as macros_sidebar -%}
 {% import 'macros/docs-edit-page.html' as macros_edit_page -%}
 {% import 'macros/docs-navigation.html' as macros_navigation -%}
@@ -33,6 +34,7 @@
 
     {% block content %}{% endblock content %}
   </div>
+    {{ macros_js::javascript() }}
 </body>
 
 </html>
