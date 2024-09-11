@@ -2,12 +2,11 @@
 <header
 	class="sticky top-0 z-50 w-full border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
 	<div class="container flex h-14  items-center md:grid md:grid-cols-[220px_minmax(0,1fr)] lg:grid-cols-[240px_minmax(0,1fr)]">
-		<div class="mr-4 hidden md:flex">
+		<div id="" class="mr-4  md:flex">
 			<a class="mr-4 flex items-center space-x-2 lg:mr-6" href="/">
 				<img src="/icon.svg" width="30px" />
 			</a>
-			<a>
-				<nav class="flex items-center gap-4 text-sm lg:gap-6">
+<nav class="flex items-center gap-4 text-sm lg:gap-6 hidden md:flex absolute md:relative md:mt-0 md:pt-0 pt-5 md:flex w-full bg-white md:bg-transparent" id="menu-toggle">
 					{% if lang == config.default_language %}
 					{% set rootsectionpath = "_index.md" %}
 					{% else %}
@@ -34,7 +33,7 @@
 				</nav>
 		
 		</div>
-		<button
+		<button onclick="toggleMenu()"
 			class="inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:text-accent-foreground h-9 py-2 mr-2 px-0 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 md:hidden"
 			type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="radix-:R15u6ja:" data-state="closed">
 			<svg stroke-width="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5">
@@ -79,4 +78,11 @@
 		</div>
 	</div>
 </header>
+<!-- JavaScript to toggle menu visibility -->
+<script>
+	function toggleMenu() {
+		var menu = document.getElementById('menu-toggle');
+		menu.classList.toggle('hidden');
+	}
+</script>
 {% endmacro %}
