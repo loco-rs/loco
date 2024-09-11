@@ -13,15 +13,15 @@
 {% block content %}
 <div role="document">
   <div
-    class="container flex-1 items-start md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10">
+    class="container flex-1 items-start md:grid md:grid-cols-[220px_minmax(0,1fr)] lg:grid-cols-[240px_minmax(0,1fr)]">
     <aside class="fixed top-14 z-30 -ml-2 hidden h-[calc(100vh-3.5rem)] w-full shrink-0 md:sticky md:block">
       {{ macros_sidebar::docs_sidebar(current_section=current_section) }}
     </aside>
-    <main class="relative py-6 lg:gap-10  xl:grid xl:grid-cols-[1fr_300px]">
+    <main class="relative py-6 xl:grid xl:grid-cols-[1fr_300px]">
       <div class="mx-auto w-full min-w-0">
-        <h1 class="scroll-m-20 text-3xl font-bold tracking-tight border-b mb-10">{{ page.title | safe }}</h1>
+        <h1 class="scroll-m-20 text-3xl font-bold tracking-tight mb-10">{{ page.title | safe }}</h1>
         {% if page.extra.lead %}<p class="lead">{{ page.extra.lead | safe }}</p>{% endif %}
-        <div class="markdown">
+        <div class="markdown prose">
           {{ page.content | safe }}
         </div>
         {% if config.extra.edit_page %}

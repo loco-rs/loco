@@ -3,7 +3,7 @@
 <nav>
 	<ul>
 		{% for h1 in page.toc %}
-		<li class="mb-1 px-2 py-1 text-sm font-semibold border-b"><a href="{{ h1.permalink | safe}}">{{
+		<li class="mb-1 px-2 py-1 text-sm font-semibold"><a href="{{ h1.permalink | safe}}">{{
 				h1.title }}</a></li>
 		{% if h1.children %}
 		<ul>

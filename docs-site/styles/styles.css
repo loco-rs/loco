@@ -1,6 +1,7 @@
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
+@import "tailwindcss/typography";
 
 @layer base {
     :root {
@@ -27,38 +28,6 @@
     body {
         @apply bg-background text-primary;
         font-feature-settings: "rlig" 1, "calt" 1;
-    }
-
-    .markdown {
-        h1 {
-            @apply my-8 text-3xl;
-        }
-
-        h2 {
-            @apply my-8 text-2xl border-b pb-2;
-        }
-
-        h3 {
-            @apply my-8 text-xl border-b pb-2;
-        }
-
-        ol {
-            list-style: auto
-        }
-    }
-
-    pre {
-        @apply bg-card block p-5 border my-5 rounded;
-
-        code {
-            display: block;
-            overflow-x: auto;
-            line-height: 1.5;
-            tab-size: 4;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(0, 0, 0, 0) rgba(0, 0, 0, 0);
-            font-size: 12px;
-        }
     }
 
     a.active {

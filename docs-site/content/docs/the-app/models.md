@@ -541,7 +541,7 @@ async fn handle_create_with_password_with_duplicate() {
 
 `Loco` enables you to work with more than one database and share instances across your application.
 
-To set up an additional database, begin with database connections and configuration. The recommended approach is to navigate to your configuration file and add the following under [settings](@/docs/getting-started/config.md#settings):
+To set up an additional database, begin with database connections and configuration. The recommended approach is to navigate to your configuration file and add the following under [settings](@/docs/the-app/your-project.md#settings):
 
 ```yaml
 settings:
@@ -563,7 +563,7 @@ After configuring the database, import [loco-extras](https://crates.io/crates/lo
 loco-extras = { version = "*", features = ["initializer-extra-db"] }
 ```
 
-Next load this [initializer](@/docs/the-app/initializers.md) into `initializers` hook like this example
+Next load this [initializer](@/docs/the-app/pluggability.md#initializers) into `initializers` hook like this example
 
 ```rs
 async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
@@ -622,7 +622,7 @@ settings:
       dangerously_recreate: false
 ```
 
-Next load this [initializer](@/docs/the-app/initializers.md) into `initializers` hook like this example
+Next load this [initializer](@/docs/the-app/pluggability.md#initializers) into `initializers` hook like this example
 
 ```rs
 async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {

@@ -1,10 +1,10 @@
 +++
-title = "Middleware (Layer)"
+title = "Pluggability"
 description = ""
-date = 2021-05-01T18:20:00+00:00
-updated = 2021-05-01T18:20:00+00:00
+date = 2021-05-01T18:10:00+00:00
+updated = 2021-05-01T18:10:00+00:00
 draft = false
-weight = 31
+weight = 33
 sort_by = "weight"
 template = "docs/page.html"
 
@@ -12,9 +12,250 @@ template = "docs/page.html"
 lead = ""
 toc = true
 top = false
-flair = []
+flair =[]
 +++
 
+## Error levels and options
+
+As a reminder, error levels and their logging can be controlled in your `development.yaml`:
+
+### Logger
+<!-- <snip id="configuration-logger" inject_from="code" template="yaml"> -->
+```yaml
+# Application logging configuration
+logger:
+  # Enable or disable logging.
+  enable: true
+  # Enable pretty backtrace (sets RUST_BACKTRACE=1)
+  pretty_backtrace: true
+  # Log level, options: trace, debug, info, warn or error.
+  level: debug
+  # Define the logging format. options: compact, pretty or json
+  format: compact
+  # By default the logger has filtering only logs that came from your code or logs that came from `loco` framework. to see all third party libraries
+  # Uncomment the line below to override to see all third party libraries you can enable this config and override the logger filters.
+  # override_filter: trace
+```
+<!-- </snip> -->
+
+The most important knobs here are:
+
+* `level` - your standard logging levels. Typically `debug` or `trace` in development. In production choose what you are used to.
+* `pretty_backtrace` - provides clear, concise path to the line of code causing the error. use `true` in development and turn off in production. In cases where you are debugging things in production and need some extra hand, you can turn it on and then off when you're done.
+
+### Controller logging
+
+In `server.middlewares` you will find:
+
+```yaml
+server:
+  middlewares:
+    #
+    # ...
+    #
+    # Generating a unique request ID and enhancing logging with additional information such as the start and completion of request processing, latency, status code, and other request details.
+    logger:
+      # Enable/Disable the middleware.
+      enable: true
+```
+
+You should enable it to get detailed request errors and a useful `request-id` that can help collate multiple request-scoped errors.
+
+
+### Database
+
+You have the option of logging live SQL queries, in your `database` section:
+
+```yaml
+database:
+  # When enabled, the sql query will be logged.
+  enable_logging: false
+```
+
+
+### Operating around errors
+
+You'll be mostly looking at your terminal for errors while developing your app, it can look something like this:
+
+```bash
+2024-02-xxx DEBUG http-request: tower_http::trace::on_request: started processing request http.method=GET http.uri=/notes http.version=HTTP/1.1 http.user_agent=curl/8.1.2 environment=development request_id=8622e624-9bda-49ce-9730-876f2a8a9a46
+2024-02-xxx11T12:19:25.295954Z ERROR http-request: loco_rs::controller: controller_error error.msg=invalid type: string "foo", expected a sequence error.details=JSON(Error("invalid type: string \"foo\", expected a sequence", line: 0, column: 0)) error.chain="" http.method=GET http.uri=/notes http.version=HTTP/1.1 http.user_agent=curl/8.1.2 environment=development request_id=8622e624-9bda-49ce-9730-876f2a8a9a46
+```
+
+Usually you can expect the following from errors:
+
+* `error.msg` a `to_string()` version of an error, for operators.
+* `error.detail` a debug representation of an error, for developers.
+* An error **type** e.g. `controller_error` as the primary message tailored for searching, rather than a verbal error message.
+* Errors are logged as _tracing_ events and spans, so that you can build any infrastructure you want to provide custom tracing subscribers. Check out the [prometheus](https://github.com/loco-rs/loco/blob/master/loco-extras/src/initializers/prometheus.rs) example in `loco-extras`.
+
+Notes:
+
+* An _error chain_ was experimented with, but provides little value in practice.
+* Errors that an end user sees are a completely different thing. We strive to provide **minimal internal details** about an error for an end user when we know a user can't do anything about an error (e.g. "database offline error"), mostly it will be a generic "Inernal Server Error" on purpose -- for security reasons.
+
+### Producing errors
+
+When you build controllers, you write your handlers to return `Result<impl IntoResponse>`. The `Result` here is a Loco `Result`, which means it also associates a Loco `Error` type.
+
+If you reach out for the Loco `Error` type you can use any of the following as a response:
+
+```rust
+Err(Error::string("some custom message"));
+Err(Error::msg(other_error)); // turns other_error to its string representation
+Err(Error::wrap(other_error));
+Err(Error::Unauthorized("some message"))
+
+// or through controller helpers:
+unauthorized("some message") // create a full response object, calling Err on a created error
+```
+
+
+
+## Initializers
+
+Initializers are a way to encapsulate a piece of infrastructure "wiring" that you need to do in your app. You put initializers in `src/initializers/`.
+
+### Writing initializers
+
+Currently, an initializer is anything that implements the `Initializer` trait:
+<!-- <snip id="initializers-trait" inject_from="code" template="rust"> -->
+```rust
+pub trait Initializer: Sync + Send {
+    /// The initializer name or identifier
+    fn name(&self) -> String;
+
+    /// Occurs after the app's `before_run`.
+    /// Use this to for one-time initializations, load caches, perform web
+    /// hooks, etc.
+    async fn before_run(&self, _app_context: &AppContext) -> Result<()> {
+        Ok(())
+    }
+
+    /// Occurs after the app's `after_routes`.
+    /// Use this to compose additional functionality and wire it into an Axum
+    /// Router
+    async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+        Ok(router)
+    }
+}
+```
+<!-- </snip> -->
+
+### Example: Integrating Axum Session
+
+You might want to add sessions to your app using `axum-session`. Also, you might want to share that piece of functionality between your own projects, or grab that piece of code from someone else.
+
+You can achieve this reuse easily, if you code the integration as an _initializer_:
+
+```rust
+// place this in `src/initializers/axum_session.rs`
+#[async_trait]
+impl Initializer for AxumSessionInitializer {
+    fn name(&self) -> String {
+        "axum-session".to_string()
+    }
+
+    async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+        let session_config =
+            axum_session::SessionConfig::default().with_table_name("sessions_table");
+        let session_store =
+            axum_session::SessionStore::<axum_session::SessionNullPool>::new(None, session_config)
+                .await
+                .unwrap();
+        let router = router.layer(axum_session::SessionLayer::new(session_store));
+        Ok(router)
+    }
+}
+```
+
+And now your app structure looks like this:
+
+```
+src/
+ bin/
+ controllers/
+    :
+    :
+ initializers/       <--- a new folder
+   mod.rs            <--- a new module
+   axum_session.rs   <--- your new initializer
+    :
+    :
+  app.rs   <--- register initializers here
+```
+
+
+### Using initializers
+
+After you've implemented your own initializer, you should implement the `initializers(..)` hook in your `src/app.rs` and provide a Vec of your initializers:
+
+<!-- <snip id="app-initializers" inject_from="code" template="rust"> -->
+```rust
+    async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
+        let mut initializers: Vec<Box<dyn Initializer>> = vec![
+            Box::new(initializers::axum_session::AxumSessionInitializer),
+            Box::new(initializers::view_engine::ViewEngineInitializer),
+            Box::new(initializers::hello_view_engine::HelloViewEngineInitializer),
+            Box::new(loco_extras::initializers::normalize_path::NormalizePathInitializer),
+        ];
+
+        if ctx.environment != Environment::Test {
+            initializers.push(Box::new(
+                loco_extras::initializers::prometheus::AxumPrometheusInitializer,
+            ));
+        }
+
+        Ok(initializers)
+    }
+```
+<!-- </snip> -->
+
+Loco will now run your initializer stack in the correct places during the app boot process.
+
+### What other things you can do?
+
+Right now initializers contain two integration points:
+
+* `before_run` - happens before running the app -- this is a pure "initialization" type of a hook. You can send web hooks, metric points, do cleanups, pre-flight checks, etc.
+* `after_routes` - happens after routes have been added. You have access to the Axum router and its powerful layering integration points, this is where you will spend most of your time.
+
+### Compared to Rails initializers
+
+Rails initializers, are regular scripts that run once -- for initialization and have access to everything. They get their power from being able to access a "live" Rails app, modify it as a global instance. 
+
+In Loco, accessing a global instance and mutating it is not possible in Rust (for a good reason!), and so we offer two integration points which are explicit and safe:
+
+1. Pure initialization (without any influence on a configured app)
+2. Integration with a running app (via Axum router)
+
+Rails initializers need _ordering_ and _modification_. Meaning, a user should be certain that they run in a specific order (or re-order them), and a user is able to remove initializers that other people set before them.
+
+In Loco, we circumvent this complexity by making the user _provide a full vec_ of initializers. Vecs are ordered, and there are no implicit initializers. 
+
+### The global logger initializer
+
+Some developers would like to customize their logging stack. In Loco this involves setting up tracing and tracing subscribers.
+
+Because at the moment tracing does not allow for re-initialization, or modification of an in-flight tracing stack, you *only get one chance to initialize and registr a global tracing stack*.
+
+This is why we added a new *App level hook*, called `init_logger`, which you can use to provide your own logging stack initialization.
+
+```rust
+// in src/app.rs
+impl Hooks for App {
+    // return `Ok(true)` if you took over initializing logger
+    // otherwise, return `Ok(false)` to use the Loco logging stack.
+    fn init_logger(_config: &config::Config, _env: &Environment) -> Result<bool> {
+        Ok(false)
+    }
+}
+```
+
+After you've set up your own logger, return `Ok(true)` to signal that you took over initialization.
+
+
+## Middlewares
 `Loco` is a framework that is built on top of [`axum`](https://crates.io/crates/axum)
 and [`tower`](https://crates.io/crates/tower). They provide a way to
 add [layers](https://docs.rs/tower/latest/tower/trait.Layer.html)
@@ -23,9 +264,8 @@ and [services](https://docs.rs/tower/latest/tower/trait.Service.html) as middlew
 Middleware is a way to add pre- and post-processing to your requests. This can be used for logging, authentication, rate
 limiting, route specific processing, and more.
 
-# Quick Start
 
-## Source Code
+### Source Code
 
 `Loco`'s implementation of route middleware / layer is similar
 to `axum`'s [`Router::layer`](https://github.com/tokio-rs/axum/blob/main/axum/src/routing/mod.rs#L275). You can
@@ -64,7 +304,7 @@ impl Routes {
 }
 ```
 
-## Basic Middleware
+### Basic Middleware
 
 In this example, we will create a basic middleware that will log the request method and path.
 
@@ -265,7 +505,7 @@ is essential for maintaining robust and error-free service operations in asynchr
 
 [Tower Service Cloning Documentation](https://docs.rs/tower/latest/tower/trait.Service.html#be-careful-when-cloning-inner-services)
 
-## Basic Example Usage - Adding Middleware to Handler
+### Adding Middleware to Handler
 
 Add the middleware to the `auth::register` handler.
 
@@ -284,7 +524,7 @@ Now when you make a request to the `auth::register` handler, you will see the re
 2024-XX-XXTXX:XX:XX.XXXXXZ  INFO http-request: xx::controllers::middleware::log Request: POST "/auth/register" http.method=POST http.uri=/auth/register http.version=HTTP/1.1  environment=development request_id=xxxxx
 ```
 
-## Basic Example Usage - Adding Middleware to Route
+## Adding Middleware to Route
 
 Add the middleware to the `auth` route.
 
@@ -310,7 +550,7 @@ Now when you make a request to any handler in the `auth` route, you will see the
 2024-XX-XXTXX:XX:XX.XXXXXZ  INFO http-request: xx::controllers::middleware::log Request: POST "/auth/register" http.method=POST http.uri=/auth/register http.version=HTTP/1.1  environment=development request_id=xxxxx
 ```
 
-## Advanced Middleware (With AppContext)
+### Advanced Middleware (With AppContext)
 
 There will be times when you need to access the `AppContext` in your middleware. For example, you might want to access
 the database connection to perform some authorization checks. To do this, you can add the `AppContext` to
@@ -416,7 +656,7 @@ impl<S, B> Service<Request<B>> for LogService<S>
 In this example, we have added the `AppContext` to the `LogLayer` and `LogService`. We are using the `AppContext` to get
 the database connection and the JWT token for pre-processing.
 
-## Advanced Example Usage - Adding Middleware to Route
+### Adding Middleware to Route (advanced)
 
 Add the middleware to the `notes` route.
 
@@ -439,7 +679,7 @@ Now when you make a request to any handler in the `notes` route, you will see th
 2024-XX-XXTXX:XX:XX.XXXXXZ  INFO http-request: xx::controllers::middleware::log User: John Doe  environment=development request_id=xxxxx
 ```
 
-## Advanced Example Usage - Adding Middleware to Handler
+### Adding Middleware to Handler (advanced)
 
 In order to add the middleware to the handler, you need to add the `AppContext` to the `routes` function
 in `src/app.rs`.

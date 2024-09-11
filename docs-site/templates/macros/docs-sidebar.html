@@ -18,17 +18,12 @@
 		{% for s in index.subsections %}
 		{% set subsection = get_section(path=s) %}
 		{% if subsection.pages %}
-		<h3 class="mb-1 px-2 py-1 text-sm font-semibold border-b">{{ subsection.title }}</h3>
-		<ul class="mb-10">
+		<h3 class="mb-1 px-2 py-1 text-sm font-semibold">{{ subsection.title }}</h3>
+		<ul class="mb-4">
 			{% for page in subsection.pages %}
 			<li>
 				<a class="{% if current_url == page.permalink %} active{% endif %} group flex w-full items-center border border-transparent px-2 py-1 hover:underline text-sm  text-foreground"
 					href="{{ page.permalink | safe }}">{{ page.title }}
-					{% if page.extra.flair %}
-					{% for flair in page.extra.flair %}
-					<label class="sidebar">{{ flair | safe }}</label>
-					{% endfor %}
-					{% endif %}
 				</a>
 			</li>
 			{% endfor %}
