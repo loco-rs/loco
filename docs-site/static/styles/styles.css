@@ -449,8 +449,8 @@ video {
 :root {
   --background: #ffffff;
   --background-secondary: #5F456B;
-  --primary: #000000;
-  --primary-foreground: green;
+  --foreground: #333;
+  --primary: #D45546;
   --border: #3A3A54;
   --card: #1D1D2A;
   --card-foreground: #FDCEF1;
@@ -463,12 +463,12 @@ video {
 
 body {
   background-color: var(--background);
-  color: var(--primary);
+  color: var(--foreground);
   font-feature-settings: "rlig" 1, "calt" 1;
 }
 
 a.active {
-  color: var(--primary-foreground);
+  color: var(--primary);
 }
 
 *, ::before, ::after {
@@ -1356,8 +1356,16 @@ a.active {
   width: 100%;
 }
 
+.w-\[100\%\] {
+  width: 100%;
+}
+
 .min-w-0 {
   min-width: 0px;
+}
+
+.min-w-\[100\%\] {
+  min-width: 100%;
 }
 
 .max-w-md {
@@ -1480,10 +1488,6 @@ a.active {
   background-color: var(--card);
 }
 
-.bg-primary {
-  background-color: var(--primary);
-}
-
 .bg-transparent {
   background-color: transparent;
 }
@@ -1517,6 +1521,10 @@ a.active {
   padding: 2rem;
 }
 
+.p-4 {
+  padding: 1rem;
+}
+
 .px-0 {
   padding-left: 0px;
   padding-right: 0px;
@@ -1530,6 +1538,11 @@ a.active {
 .px-4 {
   padding-left: 1rem;
   padding-right: 1rem;
+}
+
+.py-0 {
+  padding-top: 0px;
+  padding-bottom: 0px;
 }
 
 .py-1 {
@@ -1624,6 +1637,11 @@ a.active {
   line-height: 1.25rem;
 }
 
+.text-xs {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
 .font-bold {
   font-weight: 700;
 }
@@ -1655,6 +1673,11 @@ a.active {
 
 .text-foreground {
   color: var(--foreground);
+}
+
+.text-red-500 {
+  --tw-text-opacity: 1;
+  color: rgb(239 68 68 / var(--tw-text-opacity));
 }
 
 .text-white {
@@ -1721,12 +1744,6 @@ a.active {
   margin-left: auto;
   padding-right: 2rem;
   padding-left: 2rem;
-}
-
-.prose {
-  ul {
-    padding-inline-start: 1em;
-  }
 }
 
 .prose {

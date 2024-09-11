@@ -70,13 +70,26 @@
         <div class="flex items-center justify-center relative z-1 ">
             <div class="rounded-lg border bg-card text-card-foreground shadow-sm  mb-5 w-7/12 z-10">
                 <div class="p-6">
-                    <p>$ cargo loco generate scaffold post title:string content:text</p>
-                    <br />
-                    <p>added: "src/controllers/post.rs"</p>
-                    <p>injected: "src/controllers/mod.rs"</p>
-                    <p>injected: "src/app.rs"</p>
-                    <p>...</p>
-                    <p>$ cargo loco start</p>
+<pre><div class="text-red-500 py-0">$ cargo loco generate scaffold post title:string content:text</div>added: "src/controllers/post.rs"
+injected: "src/controllers/mod.rs"
+injected: "src/app.rs"
+...<div class="text-red-500 py-0">$ cargo loco start</div>
+                      ▄     ▀
+                                 ▀  ▄
+                  ▄       ▀     ▄  ▄ ▄▀
+                                    ▄ ▀▄▄
+                        ▄     ▀    ▀  ▀▄▀█▄
+                                          ▀█▄
+▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄   ▄▄▄▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄▄ ▀▀█
+ ██████  █████   ███ █████   ███ █████   ███ ▀█
+ ██████  █████   ███ █████   ▀▀▀ █████   ███ ▄█▄
+ ██████  █████   ███ █████       █████   ███ ████▄
+ ██████  █████   ███ █████   ▄▄▄ █████   ███ █████
+ ██████  █████   ███  ████   ███ █████   ███ ████▀
+   ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
+       ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+                https://loco.rs
+</pre>
                 </div>
             </div>
         </div>
@@ -85,8 +98,7 @@
     </div>
     <div class="flex items-center justify-center">
         <div class="flex items-center justify-center">
-            <a class=" rounded-md text-sm font-medium  transition-colors  border border-input bg-primary px-4 py-2 text-black"
-                href="/docs/getting-started/tour/">Get started</a>
+            <a class="text-foreground bg-background rounded-sm px-4 py-2" href="/docs/getting-started/tour/">Get started</a>
         </div>
 
     </div>
@@ -125,7 +137,7 @@
 
 </div>
 
-<div class=" relative z-1 relative">
+<div class="z-1 relative">
 
     <div class="container relative z-4">
         <div class="mt-20">
@@ -139,12 +151,11 @@
         </div>
 
         <div
-            class=" items-start justify-center gap-6 rounded-lg p-8 md:grid xl:grid-cols-2 xl:grid-cols-2 relative z-4 ">
+            class=" items-start justify-center gap-6 rounded-lg p-8 md:grid xl:grid-cols-2  relative z-4 ">
 
             {% for val in config.extra.homepage.features %}
             <div class="col-span-2 grid items-start gap-6 xl:col-span-1 ">
-                <div class=" ">
-                    <div class="rounded-lg  bg-card text-card-foreground shadow">
+                    <div class="overflow-auto text-sm prose min-w-[100%]">
                         {{ val.example | markdown(inline=true) | safe }}
                     </div>
 
@@ -155,7 +166,6 @@
                         Empower the 1-person team. Service, data, emails, background jobs, tasks, CLI to drive it,
                         everything is included.
                     </p>
-                </div>
             </div>
             {% endfor %}
 

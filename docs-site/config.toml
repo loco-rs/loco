@@ -75,11 +75,11 @@ impl Model {
     db: &DatabaseConnection, 
     email: &str)
   -> ModelResult<Self> {
-    let user = users::Entity::find()
-      .filter(query::condition().eq(users::Column::Email, email).build())
-      .one(db)
-      .await?;
-    user.ok_or_else(|| ModelError::EntityNotFound)
+    users::Entity::find().filter(
+         query::condition().eq(users::Column::Email, email).build()
+      )
+      .one(db).await?
+      .ok_or_else(|| ModelError::EntityNotFound)
   }
 }
 ```
@@ -98,6 +98,9 @@ pub fn routes() -> Routes {
     .prefix("users")
     .add("/", get(list))
 }
+
+
+
 ```
 '''
 
@@ -108,6 +111,9 @@ example = '''```rust
 pub fn home(v: &impl ViewRenderer) -> Result<Response> {
   format::render().view(v, "home/hello.html", json!({}))
 }
+
+
+
 ```
 '''
 

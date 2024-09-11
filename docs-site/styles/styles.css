@@ -8,8 +8,8 @@
         --background: #ffffff;
         --background-secondary: #5F456B;
 
-        --primary: #000000;
-        --primary-foreground: green;
+        --foreground: #333;
+        --primary: #D45546;
 
         --border: #3A3A54;
 
@@ -26,14 +26,13 @@
     }
 
     body {
-        @apply bg-background text-primary;
+        @apply bg-background text-foreground;
         font-feature-settings: "rlig" 1, "calt" 1;
     }
 
     a.active {
-        @apply text-primary-foreground;
+        @apply text-primary;
     }
-
 }
 
 .container {
