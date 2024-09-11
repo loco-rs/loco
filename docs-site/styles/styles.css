@@ -38,6 +38,25 @@
     }
 }
 
+.section-colored {
+    h1, h2 {
+        @apply text-background;
+    }
+}
+.section {
+    h1 {
+        @apply font-semibold;
+        @apply text-6xl;
+        @apply mb-8;
+        letter-spacing: -0.05em;
+
+    }
+    h2 {
+        @apply text-3xl font-light;
+        @apply mt-0;
+    }
+}
+
 .container {
     width: 100%;
     margin-right: auto;

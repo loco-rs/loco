@@ -1180,10 +1180,6 @@ a.active {
   top: -490px;
 }
 
-.z-0 {
-  z-index: 0;
-}
-
 .z-10 {
   z-index: 10;
 }
@@ -1233,16 +1229,6 @@ a.active {
   margin-bottom: 0.75rem;
 }
 
-.my-2 {
-  margin-top: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.my-0 {
-  margin-top: 0px;
-  margin-bottom: 0px;
-}
-
 .-ml-2 {
   margin-left: -0.5rem;
 }
@@ -1261,10 +1247,6 @@ a.active {
 
 .mb-10 {
   margin-bottom: 2.5rem;
-}
-
-.mb-20 {
-  margin-bottom: 5rem;
 }
 
 .mb-4 {
@@ -1299,16 +1281,8 @@ a.active {
   margin-top: 0.75rem;
 }
 
-.mb-2 {
-  margin-bottom: 0.5rem;
-}
-
-.mb-3 {
-  margin-bottom: 0.75rem;
-}
-
-.mb-6 {
-  margin-bottom: 1.5rem;
+.mt-\[-60px\] {
+  margin-top: -60px;
 }
 
 .block {
@@ -1399,12 +1373,12 @@ a.active {
   min-width: 100%;
 }
 
-.max-w-md {
-  max-width: 28rem;
-}
-
 .max-w-\[100\%\] {
   max-width: 100%;
+}
+
+.max-w-md {
+  max-width: 28rem;
 }
 
 .flex-1 {
@@ -1528,16 +1502,8 @@ a.active {
   background-color: rgb(255 255 255 / var(--tw-bg-opacity));
 }
 
-.bg-cover {
-  background-size: cover;
-}
-
 .bg-left-bottom {
   background-position: left bottom;
-}
-
-.bg-no-repeat {
-  background-repeat: no-repeat;
 }
 
 .p-1 {
@@ -1587,27 +1553,18 @@ a.active {
   padding-bottom: 0.5rem;
 }
 
-.py-6 {
-  padding-top: 1.5rem;
-  padding-bottom: 1.5rem;
-}
-
-.py-8 {
-  padding-top: 2rem;
-  padding-bottom: 2rem;
-}
-
 .py-5 {
   padding-top: 1.25rem;
   padding-bottom: 1.25rem;
 }
 
-.pb-10 {
-  padding-bottom: 2.5rem;
+.py-6 {
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
 }
 
-.pb-12 {
-  padding-bottom: 3rem;
+.pb-10 {
+  padding-bottom: 2.5rem;
 }
 
 .pb-20 {
@@ -1634,6 +1591,10 @@ a.active {
   padding-top: 1.25rem;
 }
 
+.pt-8 {
+  padding-top: 2rem;
+}
+
 .text-left {
   text-align: left;
 }
@@ -1642,24 +1603,9 @@ a.active {
   text-align: center;
 }
 
-.text-2xl {
-  font-size: 1.5rem;
-  line-height: 2rem;
-}
-
 .text-3xl {
   font-size: 1.875rem;
   line-height: 2.25rem;
-}
-
-.text-4xl {
-  font-size: 2.25rem;
-  line-height: 2.5rem;
-}
-
-.text-5xl {
-  font-size: 3rem;
-  line-height: 1;
 }
 
 .text-base {
@@ -1715,11 +1661,6 @@ a.active {
   color: rgb(239 68 68 / var(--tw-text-opacity));
 }
 
-.text-white {
-  --tw-text-opacity: 1;
-  color: rgb(255 255 255 / var(--tw-text-opacity));
-}
-
 .placeholder-white::-moz-placeholder {
   --tw-placeholder-opacity: 1;
   color: rgb(255 255 255 / var(--tw-placeholder-opacity));
@@ -1772,6 +1713,38 @@ a.active {
 }
 
 @import "tailwindcss/typography";
+
+.section-colored {
+  h1, h2 {
+    color: var(--background);
+  }
+}
+
+.section {
+  h1 {
+    font-weight: 600;
+  }
+  h1 {
+    font-size: 3.75rem;
+    line-height: 1;
+  }
+  h1 {
+    margin-bottom: 2rem;
+  }
+  h1 {
+    letter-spacing: -0.05em;
+  }
+  h2 {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+  h2 {
+    font-weight: 300;
+  }
+  h2 {
+    margin-top: 0px;
+  }
+}
 
 .container {
   width: 100%;
@@ -1862,16 +1835,8 @@ a.active {
 }
 
 @media (min-width: 640px) {
-  .sm\:pb-48 {
-    padding-bottom: 12rem;
-  }
-
   .sm\:pr-12 {
     padding-right: 3rem;
-  }
-
-  .sm\:pt-56 {
-    padding-top: 14rem;
   }
 }
 
@@ -1955,10 +1920,6 @@ a.active {
     grid-template-columns: 240px minmax(0,1fr);
   }
 
-  .lg\:flex-row {
-    flex-direction: row;
-  }
-
   .lg\:gap-6 {
     gap: 1.5rem;
   }
@@ -1966,14 +1927,6 @@ a.active {
   .lg\:py-8 {
     padding-top: 2rem;
     padding-bottom: 2rem;
-  }
-
-  .lg\:pb-48 {
-    padding-bottom: 12rem;
-  }
-
-  .lg\:pt-64 {
-    padding-top: 16rem;
   }
 }
 
