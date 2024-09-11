@@ -1,17 +1,15 @@
 /** @type {import('tailwindcss').Config} */
 
-const { fontFamily } = require("tailwindcss/defaultTheme")
+const { fontFamily } = require("tailwindcss/defaultTheme");
 
 module.exports = {
-  content: ['./themes/**/*.html', './templates/**/*.html', './content/**/*.md'],
+  content: ["./themes/**/*.html", "./templates/**/*.html", "./content/**/*.md"],
   theme: {
     extend: {
-      spacing: {
-
-      },
+      spacing: {},
       colors: {
         background: "var(--background)",
-        'background-secondary': "var(--background-secondary)",
+        "background-secondary": "var(--background-secondary)",
         foreground: "var(--foreground)",
         primary: {
           DEFAULT: "var(--primary)",
@@ -34,16 +32,15 @@ module.exports = {
       },
       fontFamily: {
         inter: ["Inter"],
+        text: ["Inter"],
+        heading: ["Arimo"],
       },
     },
   },
   variants: {
     extend: {
-      inset: ['negative'],
+      inset: ["negative"],
     },
   },
-  plugins: [
-    require('@tailwindcss/typography'),
-  ],
+  plugins: [require("@tailwindcss/typography")],
 };
-

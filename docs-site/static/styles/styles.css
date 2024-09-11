@@ -463,8 +463,13 @@ video {
 
 body {
   background-color: var(--background);
+  font-family: Inter;
   color: var(--foreground);
   font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+h1, h2, h3, h4, h5 {
+  letter-spacing: -0.03em;
 }
 
 a.active {
@@ -1171,16 +1176,8 @@ a.active {
   top: 4rem;
 }
 
-.top-1 {
-  top: 0.25rem;
-}
-
-.top-20 {
-  top: 5rem;
-}
-
-.top-10 {
-  top: 2.5rem;
+.top-\[-490px\] {
+  top: -490px;
 }
 
 .z-0 {
@@ -1205,6 +1202,10 @@ a.active {
 
 .col-span-2 {
   grid-column: span 2 / span 2;
+}
+
+.m-0 {
+  margin: 0px;
 }
 
 .mx-4 {
@@ -1288,18 +1289,6 @@ a.active {
   margin-top: 0.75rem;
 }
 
-.mt-4 {
-  margin-top: 1rem;
-}
-
-.mt-10 {
-  margin-top: 2.5rem;
-}
-
-.mt-5 {
-  margin-top: 1.25rem;
-}
-
 .block {
   display: block;
 }
@@ -1380,10 +1369,6 @@ a.active {
   width: 100%;
 }
 
-.w-\[100\%\] {
-  width: 100%;
-}
-
 .min-w-0 {
   min-width: 0px;
 }
@@ -1394,6 +1379,10 @@ a.active {
 
 .max-w-md {
   max-width: 28rem;
+}
+
+.max-w-\[100\%\] {
+  max-width: 100%;
 }
 
 .flex-1 {
@@ -1541,10 +1530,6 @@ a.active {
   padding: 2rem;
 }
 
-.p-4 {
-  padding: 1rem;
-}
-
 .px-0 {
   padding-left: 0px;
   padding-right: 0px;
@@ -1590,6 +1575,11 @@ a.active {
   padding-bottom: 2rem;
 }
 
+.py-5 {
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+
 .pb-10 {
   padding-bottom: 2.5rem;
 }
@@ -1620,6 +1610,10 @@ a.active {
 
 .pt-5 {
   padding-top: 1.25rem;
+}
+
+.text-left {
+  text-align: left;
 }
 
 .text-center {
@@ -1659,11 +1653,6 @@ a.active {
 .text-sm {
   font-size: 0.875rem;
   line-height: 1.25rem;
-}
-
-.text-xs {
-  font-size: 0.75rem;
-  line-height: 1rem;
 }
 
 .font-bold {
@@ -1851,10 +1840,6 @@ a.active {
 }
 
 @media (min-width: 640px) {
-  .sm\:mt-20 {
-    margin-top: 5rem;
-  }
-
   .sm\:pb-48 {
     padding-bottom: 12rem;
   }

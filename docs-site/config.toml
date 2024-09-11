@@ -118,7 +118,7 @@ pub fn home(v: &impl ViewRenderer) -> Result<Response> {
 '''
 
 [[extra.homepage.features]]
-name = "Backround Jobs"
+name = "Background Jobs"
 description = ' Empower the 1-person team. Service, data, emails, background jobs, tasks, CLI to drive it,everything is included.'
 example = '''```rust
 pub fn routes() -> Routes {

@@ -26,10 +26,13 @@
     }
 
     body {
-        @apply bg-background text-foreground;
+        @apply bg-background text-foreground font-text;
         font-feature-settings: "rlig" 1, "calt" 1;
     }
 
+    h1, h2, h3, h4, h5 {
+        letter-spacing: -0.03em;
+    }
     a.active {
         @apply text-primary;
     }
