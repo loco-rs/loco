@@ -150,15 +150,15 @@ listening on localhost:5150
             class=" items-start justify-center gap-6 rounded-lg p-8 md:grid xl:grid-cols-2  relative z-4 ">
 
             {% for val in config.extra.homepage.features %}
-            <div class="col-span-2 grid items-start gap-6 xl:col-span-1 text-center">
+            <div class="col-span-2 grid items-start xl:col-span-1 text-center">
                     <div class="overflow-auto text-sm prose min-w-[100%] text-left">
                         {{ val.example | markdown(inline=true) | safe }}
                     </div>
 
-                    <h3>
+                    <h3 class="my-3 mb-1">
                         {{ val.name }}
                     </h3>
-                    <p>
+                    <p class="mb-10">
                         Empower the 1-person team. Service, data, emails, background jobs, tasks, CLI to drive it,
                         everything is included.
                     </p>

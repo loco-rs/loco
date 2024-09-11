@@ -1233,6 +1233,16 @@ a.active {
   margin-bottom: 0.75rem;
 }
 
+.my-2 {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.my-0 {
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+
 .-ml-2 {
   margin-left: -0.5rem;
 }
@@ -1287,6 +1297,18 @@ a.active {
 
 .mt-3 {
   margin-top: 0.75rem;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+
+.mb-3 {
+  margin-bottom: 0.75rem;
+}
+
+.mb-6 {
+  margin-bottom: 1.5rem;
 }
 
 .block {
