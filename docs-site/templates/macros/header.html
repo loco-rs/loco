@@ -2,11 +2,11 @@
 <header
 	class=" sticky top-0 z-50 w-full border-border/40 backdrop-blur bg-background">
 	<div class="container flex h-14  items-center md:grid md:grid-cols-[220px_minmax(0,1fr)] lg:grid-cols-[240px_minmax(0,1fr)]">
-		<div id="" class="mr-4  md:flex">
+		<div class="mr-4 md:flex">
 			<a class="mr-4 flex items-center space-x-2 lg:mr-6" href="/">
 				<img src="/icon.svg" width="30px" />
 			</a>
-<nav class="flex items-center gap-4 text-sm lg:gap-6 hidden md:flex absolute md:relative md:mt-0 md:pt-0 pt-5 md:flex w-full  md:bg-transparent" id="menu-toggle">
+				<nav class="items-center gap-4 text-sm lg:gap-6 hidden absolute md:relative md:mt-0 md:pt-0 pt-5 md:flex w-full md:bg-transparent" id="menu-toggle">
 					{% if lang == config.default_language %}
 					{% set rootsectionpath = "_index.md" %}
 					{% else %}

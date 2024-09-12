@@ -1176,6 +1176,10 @@ a.active {
   position: sticky;
 }
 
+.inset-0 {
+  inset: 0px;
+}
+
 .bottom-0 {
   bottom: 0px;
 }
@@ -1202,6 +1206,10 @@ a.active {
 
 .z-50 {
   z-index: 50;
+}
+
+.z-0 {
+  z-index: 0;
 }
 
 .order-2 {
@@ -1362,6 +1370,14 @@ a.active {
   height: 2.25rem;
 }
 
+.h-full {
+  height: 100%;
+}
+
+.max-h-\[600px\] {
+  max-height: 600px;
+}
+
 .min-h-screen {
   min-height: 100vh;
 }
@@ -1404,6 +1420,14 @@ a.active {
 
 .max-w-md {
   max-width: 28rem;
+}
+
+.max-w-3xl {
+  max-width: 48rem;
+}
+
+.max-w-xs {
+  max-width: 20rem;
 }
 
 .flex-1 {
@@ -1574,6 +1598,14 @@ a.active {
   padding: 2rem;
 }
 
+.p-10 {
+  padding: 2.5rem;
+}
+
+.p-0 {
+  padding: 0px;
+}
+
 .px-0 {
   padding-left: 0px;
   padding-right: 0px;
@@ -1614,6 +1646,16 @@ a.active {
   padding-bottom: 2rem;
 }
 
+.px-1\.5 {
+  padding-left: 0.375rem;
+  padding-right: 0.375rem;
+}
+
+.px-5 {
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+
 .pb-12 {
   padding-bottom: 3rem;
 }
@@ -1630,10 +1672,6 @@ a.active {
   padding-left: 1.25rem;
 }
 
-.pr-12 {
-  padding-right: 3rem;
-}
-
 .pt-20 {
   padding-top: 5rem;
 }
@@ -1644,6 +1682,14 @@ a.active {
 
 .pt-8 {
   padding-top: 2rem;
+}
+
+.pb-\[56\.25\%\] {
+  padding-bottom: 56.25%;
+}
+
+.pb-\[100\%\] {
+  padding-bottom: 100%;
 }
 
 .text-left {
@@ -1677,6 +1723,30 @@ a.active {
 .text-xl {
   font-size: 1.25rem;
   line-height: 1.75rem;
+}
+
+.text-\[13px\] {
+  font-size: 13px;
+}
+
+.text-\[1px\] {
+  font-size: 1px;
+}
+
+.text-\[11px\] {
+  font-size: 11px;
+}
+
+.text-\[8px\] {
+  font-size: 8px;
+}
+
+.text-\[9px\] {
+  font-size: 9px;
+}
+
+.text-\[10px\] {
+  font-size: 10px;
 }
 
 .font-medium {
@@ -2025,8 +2095,34 @@ html.dark .toggle-dark {
 }
 
 @media (min-width: 640px) {
+  .sm\:w-7\/12 {
+    width: 58.333333%;
+  }
+
+  .sm\:p-10 {
+    padding: 2.5rem;
+  }
+
+  .sm\:px-0 {
+    padding-left: 0px;
+    padding-right: 0px;
+  }
+
+  .sm\:pr-0 {
+    padding-right: 0px;
+  }
+
   .sm\:pr-12 {
     padding-right: 3rem;
+  }
+
+  .sm\:text-base {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+
+  .sm\:text-\[16px\] {
+    font-size: 16px;
   }
 }
 
@@ -2090,6 +2186,14 @@ html.dark .toggle-dark {
 
   .md\:bg-transparent {
     background-color: transparent;
+  }
+
+  .md\:p-10 {
+    padding: 2.5rem;
+  }
+
+  .md\:pr-12 {
+    padding-right: 3rem;
   }
 
   .md\:pt-0 {
