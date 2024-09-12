@@ -1,4 +1,4 @@
-to: "config/scheduler1.yaml"
+to: "config/scheduler.yaml"
 skip_exists: true
 message: "A Scheduler job configuration was added successfully. Run with `cargo loco run scheduler --list`."
 
