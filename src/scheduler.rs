@@ -1,21 +1,20 @@
 //! # Scheduler Module
 //! TBD
 
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
-    fmt,
     collections::HashMap,
-    io,
+    fmt, io,
     path::{Path, PathBuf},
     time::Instant,
 };
-use regex::Regex;
 
 use crate::{app::Hooks, environment::Environment, task::Tasks};
 
 use tokio_cron_scheduler::{JobScheduler, JobSchedulerError};
 
-lazy_static::lazy_static!{
+lazy_static::lazy_static! {
     static ref RE_IS_CRON_SYNTAX: Regex = Regex::new(r"^[\*\d]").unwrap();
 }
 
@@ -35,7 +34,7 @@ pub enum Error {
     InvalidConfigSchema { error: serde_yaml::Error },
 
     #[error("Invalid cron {cron}. err: '{}'", error.as_display())]
-    InvalidCronSyntax{cron: String, error: String},
+    InvalidCronSyntax { cron: String, error: String },
 
     #[error(transparent)]
     Question(#[from] JobSchedulerError),
@@ -290,13 +289,17 @@ impl Scheduler {
             let job_description =
                 job.prepare_command(&self.binary_path, &self.default_output, &self.environment);
 
-
             let cron_syntax = if RE_IS_CRON_SYNTAX.is_match(&job.cron) {
                 job.cron.clone()
             } else {
-                english_to_cron::str_cron_syntax(&job.cron).map_err(|err| Error::InvalidCronSyntax{ cron: job.cron.clone(), error: err.to_string() })?
+                english_to_cron::str_cron_syntax(&job.cron).map_err(|err| {
+                    Error::InvalidCronSyntax {
+                        cron: job.cron.clone(),
+                        error: err.to_string(),
+                    }
+                })?
             };
-          
+
             let job_name = job_name.to_string();
             sched
                 .add(tokio_cron_scheduler::Job::new_async(
@@ -449,31 +452,45 @@ mod tests {
             .add("scheduler.txt", "")
             .add("scheduler2.txt", "")
             .create()
-            .unwrap()
-            ;
+            .unwrap();
 
-        assert_eq!(std::fs::read_to_string(&path.join("scheduler.txt")).unwrap().lines().count(), 0);
-        assert_eq!(std::fs::read_to_string(&path.join("scheduler2.txt")).unwrap().lines().count(), 0);
+        assert_eq!(
+            std::fs::read_to_string(&path.join("scheduler.txt"))
+                .unwrap()
+                .lines()
+                .count(),
+            0
+        );
+        assert_eq!(
+            std::fs::read_to_string(&path.join("scheduler2.txt"))
+                .unwrap()
+                .lines()
+                .count(),
+            0
+        );
 
-        scheduler.jobs = HashMap::from([(
-            "test".to_string(),
-            Job {
-                run: format!("echo loco >> {}", path.join("scheduler.txt").display()),
-                shell: true,
-                cron: "run every 1 second".to_string(),
-                tags: None,
-                output: None,
-            },
-        ),(
-            "test_2".to_string(),
-            Job {
-                run: format!("echo loco >> {}", path.join("scheduler2.txt").display()),
-                shell: true,
-                cron: "* * * * * ? *".to_string(),
-                tags: None,
-                output: None,
-            },
-        )]);
+        scheduler.jobs = HashMap::from([
+            (
+                "test".to_string(),
+                Job {
+                    run: format!("echo loco >> {}", path.join("scheduler.txt").display()),
+                    shell: true,
+                    cron: "run every 1 second".to_string(),
+                    tags: None,
+                    output: None,
+                },
+            ),
+            (
+                "test_2".to_string(),
+                Job {
+                    run: format!("echo loco >> {}", path.join("scheduler2.txt").display()),
+                    shell: true,
+                    cron: "* * * * * ? *".to_string(),
+                    tags: None,
+                    output: None,
+                },
+            ),
+        ]);
 
         let handle = tokio::spawn(async move {
             scheduler.run().await.unwrap();
@@ -482,7 +499,19 @@ mod tests {
         time::sleep(Duration::from_secs(5)).await;
         handle.abort();
 
-        assert!(std::fs::read_to_string(path.join("scheduler.txt")).unwrap().lines().count() >= 4);
-        assert!(std::fs::read_to_string(path.join("scheduler2.txt")).unwrap().lines().count() >= 4);
+        assert!(
+            std::fs::read_to_string(path.join("scheduler.txt"))
+                .unwrap()
+                .lines()
+                .count()
+                >= 4
+        );
+        assert!(
+            std::fs::read_to_string(path.join("scheduler2.txt"))
+                .unwrap()
+                .lines()
+                .count()
+                >= 4
+        );
     }
 }
