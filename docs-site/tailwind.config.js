@@ -11,6 +11,7 @@ module.exports = {
           // this is for prose class
           css: {
             "--tw-prose-headings": theme("colors.foreground"),
+            "--tw-prose-body": theme("colors.foreground"),
           },
         },
       }),
@@ -19,6 +20,8 @@ module.exports = {
         background: "var(--background)",
         "background-secondary": "var(--background-secondary)",
         foreground: "var(--foreground)",
+        redrust: "var(--redrust)",
+        orangerust: "var(--orangerust)",
         primary: {
           DEFAULT: "var(--primary)",
           foreground: "var(--primary-foreground)",

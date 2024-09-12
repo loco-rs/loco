@@ -8,8 +8,11 @@
         --background: #ffffff;
         --background-secondary: #5F456B;
 
-        --foreground: #1d1d1f;
+        /* 1f2937 gray-800*/
+        --foreground: #1f2937; /* gray-900 */
         --primary: #D45546;
+        --redrust:  #c12110;
+        --orangerust:  #cc4111;
 
         --border: #3A3A54;
 

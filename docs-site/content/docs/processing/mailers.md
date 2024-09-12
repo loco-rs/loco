@@ -174,7 +174,7 @@ mailer:
   stub: true
 ```
 
-Note: If your email sender operates within a [worker](@/docs/the-app/workers.md) process, ensure that the worker mode is set to ForegroundBlocking.
+Note: If your email sender operates within a [worker](@/docs/processing/workers.md) process, ensure that the worker mode is set to ForegroundBlocking.
 
 Once you have configured the stub, proceed to your unit tests and follow the example below:
 

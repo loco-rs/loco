@@ -487,7 +487,7 @@ The seed process is not executed automatically. You can trigger the seed process
 
 ### Using a Task
 
-1. Create a seeding task by following the instructions in the [Task Documentation](@/docs/the-app/task.md).
+1. Create a seeding task by following the instructions in the [Task Documentation](@/docs/processing/task.md).
 2. Configure the task to execute the `seed` function, as demonstrated in the example below:
 
 ```rust
@@ -563,7 +563,7 @@ After configuring the database, import [loco-extras](https://crates.io/crates/lo
 loco-extras = { version = "*", features = ["initializer-extra-db"] }
 ```
 
-Next load this [initializer](@/docs/the-app/pluggability.md#initializers) into `initializers` hook like this example
+Next load this [initializer](@/docs/extras/pluggability.md#initializers) into `initializers` hook like this example
 
 ```rs
 async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
@@ -622,7 +622,7 @@ settings:
       dangerously_recreate: false
 ```
 
-Next load this [initializer](@/docs/the-app/pluggability.md#initializers) into `initializers` hook like this example
+Next load this [initializer](@/docs/extras/pluggability.md#initializers) into `initializers` hook like this example
 
 ```rs
 async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {

@@ -100,7 +100,7 @@ You can easily test your worker background jobs using `Loco`. Ensure that your w
 
 It's recommended to implement tests in the `tests/workers` directory to consolidate all your worker tests in one place.
 
-Additionally, you can leverage the [worker generator](@/docs/the-app/workers.md#generate-a-worker), which automatically creates tests, saving you time on configuring tests in the library.
+Additionally, you can leverage the [worker generator](@/docs/processing/workers.md#generate-a-worker), which automatically creates tests, saving you time on configuring tests in the library.
 
 Here's an example of how the test should be structured:
 
