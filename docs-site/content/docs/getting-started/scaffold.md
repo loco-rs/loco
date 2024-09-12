@@ -32,6 +32,7 @@ Options:
   -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
   -h, --help                       Print help
   -V, --version                    Print version
+
 ```
 <!-- </snip> -->
 
