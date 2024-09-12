@@ -68,64 +68,94 @@ weight = 20
 
 [[extra.homepage.features]]
 name = "Models"
-description = 'Empower the 1-person team. Service, data, emails, background jobs, tasks, CLI to drive it,everything is included.'
+description = 'Model your business with rich entities and avoid writing SQL, backed by SeaORM. Build relations, validation and custom logic on your entities for the best maintainability.'
 example = '''```rust
 impl Model {
   pub async fn find_by_email(
     db: &DatabaseConnection, 
     email: &str)
   -> ModelResult<Self> {
-    users::Entity::find().filter(
-         query::condition().eq(users::Column::Email, email).build()
-      )
-      .one(db).await?
-      .ok_or_else(|| ModelError::EntityNotFound)
+      users::Entity::find().filter(
+          query::condition().eq(users::Column::Email, email).build()
+        )
+        .one(db).await?
+        .ok_or_else(|| ModelError::EntityNotFound)
+  }
+  
+  pub async create_report(&self, ctx: &AppContext) -> Result<()>{
+      ReportWorker::perform_later(
+        &ctx, 
+        ReportArgs{ user_id: self.id }
+      ).await?;
   }
 }
+
 ```
 '''
 
 [[extra.homepage.features]]
 name = "Controllers"
-description = ' Empower the 1-person team. Service,  data, emails, background jobs, tasks, CLI to drive it,everything is included.'
+description = 'Handle Web requests parameters, body, validation, and render a response that is content-aware. We use Axum for the best performance, simplicity and extensibility.'
 example = '''```rust
-pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
-  format::json(Entity::find().all(&ctx.db).await?)
+pub async fn get_one(
+    Format(respond_to): Format,
+    Path(id): Path<i32>,
+    State(ctx): State<AppContext>,
+) -> Result<Response> {
+    let res = notes::Entity::find_by_id(id).one(&ctx.db).await?;
+    match res {
+      Ok(item) => match respond_to {
+        RespondTo::Html => format::html(item_view(&item)),
+        _ => format::json(item),
+      },
+      Err(err) => Err(err),
+    }
 }
 
 pub fn routes() -> Routes {
-  Routes::new()
-    .prefix("users")
-    .add("/", get(list))
+    Routes::new()
+      .prefix("notes")
+      .add("/:id", get(get_one))
 }
-
-
-
 ```
 '''
 
 [[extra.homepage.features]]
 name = "Views"
-description = ' Empower the 1-person team. Service, data, emails, background jobs, tasks, CLI to drive it,everything is included.'
+description = 'Use server-rendered templates with Tera or JSON. Loco can render views on the server or work with a frontend app seamlessly. Configure your fullstack set up any way you like.'
 example = '''```rust
-pub fn home(v: &impl ViewRenderer) -> Result<Response> {
-  format::render().view(v, "home/hello.html", json!({}))
-}
 
+// Literals
+format::text("Loco")
 
+// Tera view engine
+format::render().view(v, "home/hello.html", json!({}))
+
+// strongly typed JSON responsed, backed by `serde`
+format::json(Health { ok: true })
+
+// Etags, cookies, and more
+format::render().etag("loco-etag")?.empty()
 
 ```
 '''
 
 [[extra.homepage.features]]
 name = "Background Jobs"
-description = ' Empower the 1-person team. Service, data, emails, background jobs, tasks, CLI to drive it,everything is included.'
+description = 'Perform compute or I/O intensive jobs in the background with a Redis backed queue, or with threads. Implementing a worker is as simple as implementing a <code>perform</code> function for the <code>Worker</code> trait.'
 example = '''```rust
-pub fn routes() -> Routes {
-  Routes::new()
-    .prefix("guide")
-    .add("/", get(hello))
-    .add("/echo", post(echo))
+impl worker::Worker<DownloadArgs> for DownloadWorker {
+    async fn perform(&self, args: DownloadArgs) -> worker::Result<()> {
+        println!("Creating users report. Requested by {}", args.user_guid);
+        let all = users::Entity::find()
+          .all(&self.ctx.db)
+          .await
+          .map_err(Box::from)?;
+        for user in &all {
+          println!("user: {}", user.id);
+        }
+        Ok(())
+    }
 }
 ```
 '''

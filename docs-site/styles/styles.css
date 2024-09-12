@@ -8,7 +8,7 @@
         --background: #ffffff;
         --background-secondary: #5F456B;
 
-        --foreground: #333;
+        --foreground: #1d1d1f;
         --primary: #D45546;
 
         --border: #3A3A54;
@@ -49,14 +49,20 @@
         @apply text-6xl;
         @apply mb-8;
         letter-spacing: -0.05em;
-
     }
     h2 {
         @apply text-3xl font-light;
         @apply mt-0;
     }
+    pre {
+        @apply my-0;
+    }
 }
-
+.footer-links {
+    a {
+        @apply no-underline text-background mx-2;
+    }
+}
 .fatbtn {
     @apply no-underline text-lg font-semibold text-foreground bg-background rounded-sm px-8 py-3; 
 }

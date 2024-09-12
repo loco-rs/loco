@@ -6,6 +6,14 @@ module.exports = {
   content: ["./themes/**/*.html", "./templates/**/*.html", "./content/**/*.md"],
   theme: {
     extend: {
+      typography: ({ theme }) => ({
+        DEFAULT: {
+          // this is for prose class
+          css: {
+            "--tw-prose-headings": theme("colors.foreground"),
+          },
+        },
+      }),
       spacing: {},
       colors: {
         background: "var(--background)",

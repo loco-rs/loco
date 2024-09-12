@@ -30,7 +30,7 @@
 </div>
 
 
-<div class="pb-20 section section-colored" style="background-color: #D45546;">
+<div class="pb-20 section section-colored" style="background-color: #c12110;">
     <div class="mb-10 pt-8 text-center section-colored">
         <h1>
             It’s Like Ruby on Rails, but for Rust.
@@ -50,7 +50,7 @@
 </div>
 
 
-<div class="pt-20 relative section section-colored" style="background-color: #BD210F; ">
+<div class="pt-20 relative section section-colored" style="background-color: #cc4111; ">
     <div class="mb-10 text-center">
         <h1>
             It’s time to make Rust your super-power.
@@ -65,10 +65,10 @@
         <div class="flex items-center justify-center relative z-1 ">
             <div class="rounded-lg border bg-card text-card-foreground shadow-sm  mb-5 w-7/12 z-10">
                 <div class="p-6">
-<pre><div class="text-red-500 py-0">$ cargo loco generate scaffold post title:string content:text</div>added: "src/controllers/post.rs"
+<pre class="text-lg bg-inherit text-inherit"><div class="text-red-100 font-semibold py-0">$ cargo loco generate scaffold post title:string content:text</div>added: "src/controllers/post.rs"
 injected: "src/controllers/mod.rs"
 injected: "src/app.rs"
-...<div class="text-red-500 py-0">$ cargo loco start</div>
+...<div class="text-red-100 font-semibold py-0">$ cargo loco start</div>
 <div style="line-height: 16px;">
                       ▄     ▀
                                  ▀  ▄
@@ -86,14 +86,13 @@ injected: "src/app.rs"
        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
                 https://loco.rs
 </div>
-environment: development
-   database: automigrate
-     logger: disabled
-compilation: debug
-      modes: server
+environment: <span class="text-red-400">development</span>
+   database: <span class="text-yellow-400">automigrate</span>
+     logger: <span class="text-red-400">disabled</span>
+compilation: <span class="text-yellow-400">debug</span>
+      modes: <span class="text-green-400">server</span>
 
-listening on localhost:5150
-</pre>
+<div class="text-yellow-500">listening on localhost:5150</div></pre>
                 </div>
             </div>
         </div>
@@ -112,7 +111,7 @@ listening on localhost:5150
 
 
 
-<div class="pt-20 pb-20 section relative section-colored" style="background-color: #D45546;">
+<div class="pt-20 pb-20 section relative section-colored" style="background-color: #c12110;">
     <div class="mb-10 mt-15 z-10 relative text-center">
         <h1>
             Enjoy that sweet & effortless Rust performance
@@ -156,12 +155,11 @@ listening on localhost:5150
                         {{ val.example | markdown(inline=true) | safe }}
                     </div>
 
-                    <h3 class="my-3 mb-1">
+                    <h3 class="my-5 mb-3 text-2xl">
                         {{ val.name }}
                     </h3>
-                    <p class="mb-10">
-                        Empower the 1-person team. Service, data, emails, background jobs, tasks, CLI to drive it,
-                        everything is included.
+                    <p class="mb-20 text-xl">
+                        {{val.description | safe}}
                     </p>
             </div>
             {% endfor %}
@@ -171,7 +169,27 @@ listening on localhost:5150
     </div>
 </div>
 
-
+<div class="section"  style="background-color: #c12110;">
+    <div class="container flex flex-col items-center text-center text-background py-8 pb-12">
+        <div>
+		    <img src="/icon.svg" width="130px" />
+        </div>
+        <div class="footer-links">
+            <a href="https://github.com/loco-rs/loco">
+                Github
+            </a>
+            <a href="https://github.com/loco-rs/loco/blob/master/CODE_OF_CONDUCT.md">
+                Code of Conduct
+            </a>
+            <a href="https://github.com/loco-rs/loco/blob/master/LICENSE">
+                License
+            </a>
+            <a href="https://github.com/loco-rs/loco/blob/master/SECURITY.md">
+                Security
+            </a>
+        </div>
+    </div>
+</div>
 </div>
 {% endblock content %}
 
