@@ -21,10 +21,10 @@
   </div>
   <div
     class="container flex-1 items-start md:grid md:grid-cols-[minmax(0,1fr)_220px] lg:grid-cols-[minmax(0,1fr)_240px]">
-    <main class="relative py-6 xl:grid xl:grid-cols-[1fr_300px]">
+    <main class="py-6 xl:grid xl:grid-cols-[1fr_300px]">
       <div class="mx-auto w-full min-w-0">
         <div class="markdown prose max-w-full pr-12">
-          <h1 class="text-3xl font-bold mb-10 mt-[9px]">{{ page.title | safe }}</h1>
+          <h1 class="mb-10 mt-[9px]">{{ page.title | safe }}</h1>
           {% if page.extra.lead %}<p class="lead">{{ page.extra.lead | safe }}</p>{% endif %}
 
           {{ page.content | safe }}
@@ -36,16 +36,8 @@
       </div>
 
       <div class="hidden text-sm xl:block">
-        <div class="sticky top-16 -mt-10 pt-4">
-          <div dir="ltr" class="relative overflow-hidden pb-10">
-            <div class=" h-full w-full rounded-[inherit] overflow-auto">
-              <div style="min-width: 100%; display: table;">
-                <div class="sticky top-16 -mt-10 h-[calc(100vh-3.5rem)] py-12">
-                  {{ macros_toc::docs_toc(page=page) }}
-                </div>
-              </div>
-            </div>
-          </div>
+        <div class="bg-gray-50 p-2 mt-[90px] border border-gray-200 rounded-sm">
+        {{ macros_toc::docs_toc(page=page) }}
         </div>
       </div>
 

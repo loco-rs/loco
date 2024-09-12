@@ -35,6 +35,7 @@
 
     h1, h2, h3, h4, h5 {
         letter-spacing: -0.03em;
+        scroll-margin-top: 56px;
     }
     a.active {
         @apply text-primary;

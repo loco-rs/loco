@@ -21,7 +21,7 @@
 		{% set subsection = get_section(path=s) %}
 		{% if subsection.pages %}
 		<div>
-			<h3 class="mb-2 py-1 text-sm font-semibold text-white border-b border-red-100">{{ subsection.title }}</h3>
+			<h3 class="mb-4 py-1 text-sm font-semibold text-white border-b border-red-100">{{ subsection.title }}</h3>
 			<ul class="mb-4">
 				{% for page in subsection.pages %}
 				<li>
