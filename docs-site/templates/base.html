@@ -9,8 +9,8 @@
 
 
 <!DOCTYPE html>
-<html lang="{{ config.extra.language_code | default(value=" en-US") }}">
-
+<html lang="{{ config.extra.language_code | default(value=" en-US") }}" >
+<div class="dark"></div>
 <head>
   <meta charset="utf-8">
   <meta http-equiv="x-ua-compatible" content="ie=edge">
@@ -18,6 +18,7 @@
 
   <link rel="stylesheet" type="text/css" href={{ get_url(path="styles/styles.css" ) }} />
   <link rel="stylesheet" type="text/css" href={{ get_url(path="syntax-theme-light.css" ) }} />
+  <link rel="stylesheet" type="text/css" href={{ get_url(path="syntax-theme-dark.css" ) }} />
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600" rel="stylesheet">
 
@@ -28,7 +29,7 @@
 </head>
 
 <body class="bg-background">
-  <div class="relative flex min-h-screen flex-col bg-background">
+  <div class="relative flex min-h-screen flex-col ">
     {% block header %}
     {{ macros_header::header(current_section="/") }}
     {% endblock header %}
