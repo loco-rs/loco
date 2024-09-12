@@ -96,6 +96,13 @@ jobs:
           REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres_test
 
+      - name: scheduler
+        run: cargo run -- generate scheduler
+        working-directory: ./examples/demo
+        env:
+          REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres_test
+
       - name: docker deployment
         run: cargo run -- generate deployment
         working-directory: ./examples/demo
