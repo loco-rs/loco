@@ -1,9 +1,9 @@
 ```console 
 $ LOCO_ENV=test blo-cli scheduler --list
 #      job_name        cron               tags               run
-1      Run command     */1 * * * * *      base, infra        "echo loco >> ./scheduler.txt"
-2      Run task        */5 * * * * *      -                  "foo"
-3      list if users   */7 * * * * *      base, users        "user_report"
+1      list_if_users   * 2 * * * *        base, users        "user_report"
+2      run_task        at 10:00 am        -                  "foo"
+3      write_content   run every 1 second base, infra        "echo loco >> ./scheduler.txt"
 
 
 ```
@@ -11,9 +11,9 @@ $ LOCO_ENV=test blo-cli scheduler --list
 ```console 
 $ LOCO_ENV=test blo-cli scheduler --config ./config/scheduler.yaml --list
 #      job_name        cron               tags               run
-1      Run command     */5 * * * * *      -                  "foo path:/tmp/scheduler.txt"
-2      add text        */1 * * * * *      base, infra        "echo loco >> ./scheduler.txt"
-3      list if users   */7 * * * * *      base, users        "user_report"
+1      list_if_users   * 2 * * * *        base, users        "user_report"
+2      run_task        at 10:00 am        -                  "foo"
+3      write_content   run every 1 second base, infra        "echo loco >> ./scheduler.txt"
 
 
 ```

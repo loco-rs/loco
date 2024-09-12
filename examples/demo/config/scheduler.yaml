@@ -1,18 +1,18 @@
 output: stdout
-  jobs:
-    write_content:
-      shell: true
-      run: "echo loco >> ./scheduler.txt"
-      cron: run every 1 second
-      output: silent
-      tags: ['base', 'infra']
+jobs:
+  write_content:
+    shell: true
+    run: "echo loco >> ./scheduler.txt"
+    cron: run every 1 second
+    output: silent
+    tags: ['base', 'infra']
 
-    run_task:
-      run: "foo"
-      cron: "at 10:00 am"
+  run_task:
+    run: "foo"
+    cron: "at 10:00 am"
 
-    list_if_users:
-      run: "user_report"
-      shell: true
-      cron: "* 2 * * * *"
-      tags: ['base', 'users']
+  list_if_users:
+    run: "user_report"
+    shell: true
+    cron: "* 2 * * * *"
+    tags: ['base', 'users']
