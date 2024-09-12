@@ -132,19 +132,22 @@ auth:
     # Token expiration time in seconds
     expiration: 604800 # 7 days
 
-scheduler: 
+scheduler:
+  output: stdout
   jobs:
-    Run command:
-      run: "echo loco >> ./scheduler.txt"
+    write_content:
       shell: true
-      cron: "*/1 * * * * *"
+      run: "echo loco >> ./scheduler.txt"
+      cron: run every 1 second
+      output: silent
       tags: ['base', 'infra']
 
-    Run task:
+    run_task:
       run: "foo"
-      cron: "*/5 * * * * *"
+      cron: "at 10:00 am"
 
-    list if users:
+    list_if_users:
       run: "user_report"
-      cron: "*/7 * * * * *"
+      shell: true
+      cron: "* 2 * * * *"
       tags: ['base', 'users']

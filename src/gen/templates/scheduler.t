@@ -5,12 +5,14 @@ message: "A Scheduler job configuration was added successfully. Run with `cargo 
 ---
 output: stdout
 jobs:
-  - name: "Run command"
-    shell:
-      command: "echo loco >> ./scheduler.txt"
-    cron: "*/1 * * * * *"
+  write_content:
+      shell: true
+      run: "echo loco >> ./scheduler.txt"
+      cron: run every 1 second
+      # cron: "* * * * * * *"
+      output: silent
+      tags: ['base', 'infra']
 
-#   - name: "Run command"
-#     task: 
-#       name: "[TASK_NAME]"
-#     cron: "*/5 * * * * *"
+  # run_task:
+  #     run: "foo"
+  #     cron: "at 10:00 am"

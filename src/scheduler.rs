@@ -282,10 +282,12 @@ impl Scheduler {
             let job_description =
                 job.prepare_command(&self.binary_path, &self.default_output, &self.environment);
 
+            let cron_syntax = english_to_cron::str_cron_syntax(&job.cron).unwrap_or_else(|_| job.cron.clone());
+                
             let job_name = job_name.to_string();
             sched
                 .add(tokio_cron_scheduler::Job::new_async(
-                    job.cron.as_str(),
+                    cron_syntax.as_str(),
                     move |uuid, mut _l| {
                         let job_description = job_description.clone();
                         let job_name = job_name.to_string();
