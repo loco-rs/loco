@@ -159,3 +159,41 @@ impl worker::Worker<DownloadArgs> for DownloadWorker {
 }
 ```
 '''
+
+[[extra.homepage.features]]
+name = "Deployment"
+description = 'Easily generate deployment configurations with a guided CLI interface. Select from deployment options for tailored deployment setups.'
+example = '''```sh
+
+$ cargo loco generate deployment
+? ❯ Choose your deployment ›
+❯ Docker
+❯ Shuttle
+❯ Nginx
+
+..
+✔ ❯ Choose your deployment · Docker
+skipped (exists): "dockerfile"
+added: ".dockerignore"
+
+```
+'''
+
+[[extra.homepage.features]]
+name = "Scheduler"
+description = 'Simplifies the traditional, often cumbersome crontab system, making it easier and more elegant to schedule tasks or shell scripts.'
+example = '''```yaml
+jobs:
+  add text:
+    run: "echo loco >> ./scheduler.txt"
+    shell: true
+    cron: "*/1 * * * * *"
+    tags: ["base", "infre"]
+
+  list if users:
+    run: "user_report"
+    cron: "Run every 3 hours"
+    tags: ["base", "users"]
+       
+```
+'''

@@ -1,12 +1,12 @@
 {% macro header(current_section) %}
 <header
-	class="sticky top-0 z-50 w-full border-border/40 bg-white/95 backdrop-blur supports-backdrop-blur:bg-white/95">
+	class=" sticky top-0 z-50 w-full border-border/40 backdrop-blur bg-background">
 	<div class="container flex h-14  items-center md:grid md:grid-cols-[220px_minmax(0,1fr)] lg:grid-cols-[240px_minmax(0,1fr)]">
-		<div id="" class="mr-4  md:flex">
+		<div class="mr-4 md:flex">
 			<a class="mr-4 flex items-center space-x-2 lg:mr-6" href="/">
 				<img src="/icon.svg" width="30px" />
 			</a>
-<nav class="flex items-center gap-4 text-sm lg:gap-6 hidden md:flex absolute md:relative md:mt-0 md:pt-0 pt-5 md:flex w-full bg-white md:bg-transparent" id="menu-toggle">
+				<nav class="items-center gap-4 text-sm lg:gap-6 hidden absolute md:relative md:mt-0 md:pt-0 pt-5 md:flex w-full md:bg-transparent" id="menu-toggle">
 					{% if lang == config.default_language %}
 					{% set rootsectionpath = "_index.md" %}
 					{% else %}
@@ -15,7 +15,7 @@
 					{% set mainsec = get_section(path=rootsectionpath) %}
 					{% if mainsec.extra.menu.main %}
 					{% for val in config.extra.menu.main %}
-					<a class="nav-link text-black" href="{{ get_url(path=val.url, trailing_slash=true) | safe }}">{{
+					<a class="nav-link text-black dark:text-white" href="{{ get_url(path=val.url, trailing_slash=true) | safe }}">{{
 						val.name
 						}}
 					</a>
@@ -52,10 +52,10 @@
 			<div class="w-full flex-1 md:w-auto md:flex-none">
 				<form class="navbar-form flex-grow-1 order-7 order-md-3 ">
 					<input id="userinput"
-						class="bg-transparent  placeholder-white inline-flex items-center whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input hover:bg-accent hover:text-accent-foreground px-4 py-2 relative h-8 w-full justify-start rounded-[0.5rem] bg-muted/50 text-sm font-normal shadow-none sm:pr-12 md:w-40 lg:w-64"
+						class="placeholder-black dark:placeholder-white bg-transparent   inline-flex items-center whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input hover:bg-accent hover:text-accent-foreground px-4 py-2 relative h-8 w-full justify-start rounded-[0.5rem] bg-muted/50 text-sm font-normal shadow-none sm:pr-12 md:w-40 lg:w-64"
 						type="search" placeholder="Search docs..." aria-label="Search docs..." autocomplete="off">
 		
-					<div id="suggestions" class="shadow bg-white rounded"></div>
+					<div id="suggestions" class="shadow  rounded"></div>
 				</form>
 			</div>
 			{% endif %}
@@ -63,6 +63,26 @@
 		
 		
 			<nav class="flex items-center">
+				<button id="mode" class="btn btn-link order-2 order-md-4" type="button" aria-label="Toggle mode">
+					<span class="toggle-dark hidden"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+							fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+							class="feather feather-moon">
+							<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+						</svg></span>
+					<span class="toggle-light"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+							fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+							class="feather feather-sun">
+							<circle cx="12" cy="12" r="5"></circle>
+							<line x1="12" y1="1" x2="12" y2="3"></line>
+							<line x1="12" y1="21" x2="12" y2="23"></line>
+							<line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+							<line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+							<line x1="1" y1="12" x2="3" y2="12"></line>
+							<line x1="21" y1="12" x2="23" y2="12"></line>
+							<line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+							<line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+						</svg></span>
+				</button>
 				{% if config.extra.menu.social %}
 				{% for val in config.extra.menu.social %}
 				<div
@@ -72,7 +92,6 @@
 				</div>
 				{% endfor %}
 				{% else %}
-		
 				{% endif %}
 			</nav>
 		</div>

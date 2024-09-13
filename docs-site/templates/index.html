@@ -25,7 +25,7 @@
 {% endblock seo %}
 
 {% block content %}
-<div class="prose max-w-[100%]">
+<div class="prose dark:prose-invert max-w-[100%]">
 
 <div class="relative bg-left-bottom">
     <img class="m-0 mt-[-60px] w-full" src="header.svg"/>
@@ -42,10 +42,14 @@
         </h2>
     </div>
     <div class="flex items-center justify-center ">
-        <div class="rounded-md shadow-xl overflow-clip"><iframe width="1016" height="569" src="https://www.youtube.com/embed/EircfwF8c0E?si=jv_PZuWZIJ59Qz3O&rel=0"
-            title="Loco.rs" frameborder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>
+    <div class="relative w-full max-w-3xl max-h-[600px] mx-auto px-5 sm:px-0">
+        <div class="relative" style="padding-top: 56.25%">
+            <iframe class="absolute inset-0 w-full h-full"
+                src="https://www.youtube.com/embed/EircfwF8c0E?si=jv_PZuWZIJ59Qz3O&rel=0" title="Loco.rs" frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        </div>
+    </div>
 
 
     </div>
@@ -63,15 +67,17 @@
         </h2>
     </div>
 
-    <div class="container">
+    <div class="container"> 
         <div class="flex items-center justify-center relative z-1 ">
-            <div class="rounded-lg border bg-card text-card-foreground shadow-sm  mb-5 w-7/12 z-10">
-                <div class="p-6">
-<pre class="text-lg bg-inherit text-inherit"><div class="text-red-100 font-semibold py-0">$ cargo loco generate scaffold post title:string content:text</div>added: "src/controllers/post.rs"
+            <div
+                class="rounded-lg border bg-card text-card-foreground shadow-sm mb-5 w-full sm:w-7/12 z-10 ">
+
+                <div class="p-6 ">
+<pre class="text-lg bg-inherit text-inherit text-[11px] sm:text-[16px]"><div class="text-red-100 font-semibold py-0">$ cargo loco generate scaffold post title:string content:text</div>added: "src/controllers/post.rs"
 injected: "src/controllers/mod.rs"
 injected: "src/app.rs"
-...<div class="text-red-100 font-semibold py-0">$ cargo loco start</div>
-<div style="line-height: 16px;">
+...<div class="text-red-100 font-semibold py-0 ">$ cargo loco start</div>
+<div style="line-height: 16px;" class="text-[9px] sm:text-[16px]">
                       ▄     ▀
                                  ▀  ▄
                   ▄       ▀     ▄  ▄ ▄▀
@@ -101,7 +107,7 @@ compilation: <span class="text-yellow-400">debug</span>
 
 
     </div>
-    <div class="flex items-center justify-center py-6">
+    <div class="flex items-center justify-center py-6 z-10 relative">
         <div class="flex items-center justify-center">
             <a class="fatbtn" href="/docs/getting-started/tour/">Get started</a>
         </div>
@@ -113,7 +119,7 @@ compilation: <span class="text-yellow-400">debug</span>
 
 
 
-<div class="pt-20 pb-20 section relative section-colored bg-redrust">
+<div class="pt-20 pb-20 section relative section-colored bg-redrust ">
     <div class="mb-10 mt-15 z-10 relative text-center">
         <h1>
             Enjoy that sweet & effortless Rust performance
@@ -136,7 +142,7 @@ compilation: <span class="text-yellow-400">debug</span>
     <img src="/mountain-bg.svg" class="absolute left-0 top-[-490px]" />
 </div>
 
-<div class="section bg-gray-100">
+<div class="section bg-gray-100 dark:bg-background">
     <div class="container">
         <div class="pt-20 text-center">
             <h1>
@@ -170,7 +176,6 @@ compilation: <span class="text-yellow-400">debug</span>
 
     </div>
 </div>
-
 
 </div>
 {% endblock content %}

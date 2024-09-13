@@ -12,7 +12,7 @@
 
 {% block content %}
 <div role="document">
-  <div class="bg-redrust text-background">
+  <div class="bg-redrust text-background dark:bg-zinc-900">
     <div class="container">
       <aside class="w-full">
         {{ macros_sidebar::docs_sidebar(current_section=current_section) }}
@@ -20,10 +20,10 @@
     </div>
   </div>
   <div
-    class="container flex-1 items-start md:grid md:grid-cols-[minmax(0,1fr)_220px] lg:grid-cols-[minmax(0,1fr)_240px]">
+    class="container flex-1 items-start md:grid-cols-[minmax(0,1fr)_220px] lg:grid-cols-[minmax(0,1fr)_240px]">
     <main class="py-6 xl:grid xl:grid-cols-[1fr_300px]">
       <div class="mx-auto w-full min-w-0">
-        <div class="markdown prose max-w-full pr-12">
+        <div class="markdown prose dark:prose-invert max-w-full md:pr-12 sm:pr-0">
           <h1 class="mb-10 mt-[9px]">{{ page.title | safe }}</h1>
           {% if page.extra.lead %}<p class="lead">{{ page.extra.lead | safe }}</p>{% endif %}
 
@@ -36,7 +36,7 @@
       </div>
 
       <div class="hidden text-sm xl:block">
-        <div class="bg-gray-50 p-2 mt-[90px] border border-gray-200 rounded-sm">
+        <div class="bg-gray-50 p-2 mt-[90px] border border-gray-200 rounded-sm dark:bg-zinc-900">
         {{ macros_toc::docs_toc(page=page) }}
         </div>
       </div>
