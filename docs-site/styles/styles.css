@@ -152,6 +152,7 @@ height: 100%;
     width: calc(100vw - 8rem);
     max-height: 500px;
     overflow: auto;
+    @apply bg-background;
 }
 
 #suggestions a {
@@ -162,7 +163,7 @@ height: 100%;
 }
 
 #suggestions a:focus {
-    @apply bg-gray-100;
+    @apply bg-gray-100 dark:bg-zinc-700;
     outline: 0;
 }
 
@@ -179,7 +180,7 @@ height: 100%;
 }
 
 #suggestions a:hover {
-    @apply bg-gray-100;
+    @apply bg-gray-100 dark:bg-zinc-800;
 }
 
 #suggestions span {
@@ -192,7 +193,7 @@ height: 100%;
 }
 
 #suggestions span:nth-child(2) {
-    @apply text-gray-700;
+    @apply text-gray-700 dark:text-gray-400;
 }
 
 @media screen(sm) {
