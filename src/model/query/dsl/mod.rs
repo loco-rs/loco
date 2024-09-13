@@ -49,7 +49,7 @@ pub const fn with(condition: Condition) -> ConditionBuilder {
 ///
 /// # Examples
 /// ```
-/// use loco_rs::tests_cfg::db::*;
+/// use loco_rs::tests_cfg::db::test_db;
 /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
 /// use loco_rs::prelude::*;
 /// let date = chrono::NaiveDateTime::parse_from_str("2024-03-01 22:10:57", "%Y-%m-%d %H:%M:%S").unwrap();
@@ -71,7 +71,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -90,7 +90,7 @@ impl ConditionBuilder {
     ///
     /// On string field
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -115,7 +115,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -140,7 +140,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -166,7 +166,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -192,7 +192,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -218,7 +218,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -244,7 +244,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -270,7 +270,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -296,7 +296,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -322,7 +322,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -348,7 +348,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -374,7 +374,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -400,7 +400,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -426,7 +426,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -453,7 +453,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -480,7 +480,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -511,7 +511,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -542,7 +542,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///

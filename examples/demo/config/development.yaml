@@ -156,3 +156,32 @@ auth:
     expiration: 604800 # 7 days
 # </snip>
 
+# Scheduler Jobs Configuration
+# <snip id="configuration-scheduler">
+scheduler:
+  # Location of shipping the command stdout and stderr.
+  output: stdout
+  # A list of jobs to be scheduled.
+  jobs:
+    # The name of the job.
+    write_content:
+      # by default false meaning executing the the run value as a task. if true execute the run value as shell command
+      shell: true
+      # command to run
+      run: "echo loco >> ./scheduler.txt"
+      # run the command as shell 
+      # The cron expression defining the job's schedule.
+      cron: run every 1 second
+      output: silent
+      tags: ['base', 'infra']
+
+    run_task:
+      run: "foo"
+      cron: "at 10:00 am"
+
+    list_if_users:
+      run: "user_report"
+      shell: true
+      cron: "* 2 * * * *"
+      tags: ['base', 'users']
+# </snip>

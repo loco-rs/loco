@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+
+## v0.8.1
+* fix: introduce secondary binary for compile-and-run on Windows. [https://github.com/loco-rs/loco/pull/727](https://github.com/loco-rs/loco/pull/727)
+* Add fallback behavior. [https://github.com/loco-rs/loco/pull/732](https://github.com/loco-rs/loco/pull/732)
+* Add Scheduler Feature for Running Cron Jobs. [https://github.com/loco-rs/loco/pull/735](https://github.com/loco-rs/loco/pull/735)
+
+
+## v0.8.0
+
 * Added: loco-cli (`loco new`) now receives options from CLI and/or interactively asks for configuration options such as which asset pipeline, background worker type, or database provider to use.
 * Fix: custom queue names now merge with default queues.
 * Added `remote_ip` middleware for resolving client remote IP when under a proxy or loadbalancer, similar to the Rails `remote_ip` middleware.
