@@ -92,14 +92,15 @@
 }
 
 .section {
+    @apply px-2 sm:px-0;
     h1 {
         @apply font-semibold;
-        @apply text-6xl;
+        @apply sm:text-6xl;
         @apply mb-8;
         letter-spacing: -0.05em;
     }
     h2 {
-        @apply text-3xl font-light;
+        @apply text-xl sm:text-3xl font-light;
         @apply mt-0;
     }
     pre {
@@ -130,8 +131,7 @@ height: 100%;
     width: 100%;
     margin-right: auto;
     margin-left: auto;
-    padding-right: 2rem;
-    padding-left: 2rem;
+    @apply px-2 md:px-0
 }
 .prose {
     ul {

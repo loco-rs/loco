@@ -25,7 +25,7 @@
 			<ul class="mb-4">
 				{% for page in subsection.pages %}
 				<li>
-					<a class="inline-block w-full py-1 hover:text-white text-sm {% if current_url == page.permalink %} text-white font-semibold {% else %} text-red-100{% endif %}"
+					<a class="inline-block w-full py-1 hover:text-white text-sm {% if current_url == page.permalink %} text-white font-semibold {% else %} text-red-200 dark:text-zinc-400{% endif %}"
 						href="{{ page.permalink | safe }}">{{ page.title }}
 					</a>
 				</li>

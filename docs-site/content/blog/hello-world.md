@@ -12,7 +12,7 @@ authors = ["Team Loco"]
 +++
 
 <center>
-<img width="150" src="/images/logo.png"/> 
+<img width="150" src="/icon.svg"/> 
 
 
 **What if [Rails](https://rubyonrails.org) was built on Rust and not Ruby?**

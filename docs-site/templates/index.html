@@ -42,16 +42,18 @@
         </h2>
     </div>
     <div class="flex items-center justify-center ">
-    <div class="relative w-full max-w-3xl max-h-[600px] mx-auto px-5 sm:px-0">
-        <div class="relative" style="padding-top: 56.25%">
-            <iframe class="absolute inset-0 w-full h-full rounded-md shadow-lg"
-                src="https://www.youtube.com/embed/EircfwF8c0E?si=jv_PZuWZIJ59Qz3O&rel=0" title="Loco.rs" frameborder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        <div class="relative w-full max-w-[50rem] max-h-[600px] mx-auto px-1 sm:px-0">
+            <div class="relative" style="padding-top: 56.25%">
+                <iframe class="absolute inset-0 w-full h-full rounded-md shadow-lg"
+                    src="https://www.youtube.com/embed/EircfwF8c0E?si=jv_PZuWZIJ59Qz3O&rel=0" title="Loco.rs" frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+            </div>
         </div>
     </div>
 
-
+    <div class="flex items-center justify-center py-6 z-10 relative">
+        <a class="fatbtn dark:bg-foreground dark:text-background" href="/docs/getting-started/tour/">Get started &rarr;</a>
     </div>
 </div>
 
@@ -70,9 +72,9 @@
     <div class="container"> 
         <div class="flex items-center justify-center relative z-1 ">
             <div
-                class="rounded-lg bg-card text-card-foreground shadow-lg mb-5 w-full sm:w-7/12 z-10 ">
+                class="rounded-lg bg-card text-card-foreground shadow-lg mb-5 w-full max-w-[50rem] z-10 ">
 
-                <div class="p-6 ">
+                <div class="p-0 sm:p-6">
 <pre class="text-lg bg-inherit text-inherit text-[11px] sm:text-[16px]"><div class="text-red-100 font-semibold py-0">$ cargo loco generate scaffold post title:string content:text</div>added: "src/controllers/post.rs"
 injected: "src/controllers/mod.rs"
 injected: "src/app.rs"
@@ -107,11 +109,6 @@ compilation: <span class="text-yellow-400">debug</span>
 
 
     </div>
-    <div class="flex items-center justify-center py-6 z-10 relative">
-        <div class="flex items-center justify-center">
-            <a class="fatbtn" href="/docs/getting-started/tour/">Get started</a>
-        </div>
-    </div>
     <div class="py-6"></div>
 
     <img src="/cloud.svg" class="absolute right-0 bottom-0 m-0" />
@@ -136,6 +133,9 @@ compilation: <span class="text-yellow-400">debug</span>
         </div>
     </div>
 
+    <div class="flex items-center justify-center py-6 z-10 relative">
+        <a class="fatbtn dark:bg-foreground dark:text-background" href="/docs/getting-started/tour/">Get started &rarr;</a>
+    </div>
     <img src="/mountain-bg.svg" class="absolute left-0 top-[-490px]" />
 </div>
 
@@ -171,6 +171,9 @@ compilation: <span class="text-yellow-400">debug</span>
 
         </div>
 
+        <div class="flex items-center justify-center py-6 z-10 relative pb-20">
+            <a class="fatbtn dark:bg-zinc-700" href="/docs/getting-started/guide/">Read the Guide &rarr;</a>
+        </div>
     </div>
 </div>
 

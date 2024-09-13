@@ -28,14 +28,14 @@
 					{% set mainsec = get_section(path=rootsectionpath) %}
 					{% if mainsec.extra.menu.main %}
 					{% for val in config.extra.menu.main %}
-					<a class="nav-link text-black dark:text-white" href="{{ get_url(path=val.url, trailing_slash=true) | safe }}">{{
+					<a class="nav-link text-black dark:text-white {% if current_section == val.section %} active{% endif %}" href="{{ get_url(path=val.url, trailing_slash=true) | safe }}">{{
 						val.name
 						}}
 					</a>
 					{% endfor %}
 					{% elif config.extra.menu.main %}
 					{% for val in config.extra.menu.main %}
-					<a class="nav-link text-black" href="{{ get_url(path=val.url, trailing_slash=true) | safe }}">{{
+					<a class="nav-link text-black {% if current_section == val.section %} active{% endif %}" href="{{ get_url(path=val.url, trailing_slash=true) | safe }}">{{
 						val.name
 						}}
 					</a>
@@ -87,7 +87,7 @@
 				{% for val in config.extra.menu.social %}
 				<div
 					class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground py-2 h-8 w-8 px-0">
-					<a class="nav-link " href="{{ val.url | safe }}">{{ val.pre | safe }}<span class="sr-only">{{
+					<a class="nav-link" href="{{ val.url | safe }}">{{ val.pre | safe }}<span class="sr-only">{{
 							val.name}}</span></a>
 				</div>
 				{% endfor %}
