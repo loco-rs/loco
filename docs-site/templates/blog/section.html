@@ -12,8 +12,8 @@
 
 {% block content %}
 
-<div class="bg-redrust text-background">
-      <h1 class="text-center text-3xl my-3 mt-10 font-semibold">Latest Updates</h1>
+<div class="bg-redrust dark:bg-zinc-900 text-white">
+      <h1 class="text-center text-3xl my-3 mt-10 font-semibold text-white">Latest Updates</h1>
       <h2 class="text-center text-xl text-red-50 mb-12">Updates and techincal articles from the team and contributors</h2>
 </div>
 
@@ -21,7 +21,7 @@
   <div class="content mx-auto max-w-[52rem] mt-8">
         <div class="flex flex-col card-list gap-3">
           {% for page in paginator.pages %}
-          <a class="stretched-link text-body hover:bg-gray-50 rounded-sm p-4" href="{{ page.permalink }}">
+          <a class="stretched-link text-body hover:bg-gray-50 dark:hover:bg-gray-900 rounded-sm p-4" href="{{ page.permalink }}">
             <div>
               <h2 class="text-lg font-semibold  -mt-1">{{ page.title }} </h2>
               <p class="text-gray-500">{{page.description | safe }}</p>

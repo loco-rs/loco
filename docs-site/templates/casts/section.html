@@ -11,8 +11,8 @@
 {% endblock header %}
 
 {% block content %}
-<div class="bg-redrust text-background">
-  <h1 class="text-center text-3xl my-3 mt-10 font-semibold">Loco Casts</h1>
+<div class="bg-redrust dark:bg-zinc-900 text-white">
+  <h1 class="text-center text-3xl my-3 mt-10 font-semibold text-white">Loco Casts</h1>
   <h2 class="text-center text-xl text-red-50 mb-12">Short and focused tutorials for learning various Loco features</h2>
 </div>
 
@@ -20,8 +20,10 @@
 <div class="content mx-auto max-w-[52rem] my-8">
     <div class="flex flex-col card-list gap-3">
       {% for page in paginator.pages %}
-      <a class="flex gap-6 stretched-link text-body hover:bg-gray-50 rounded-sm p-4" href="{{ page.permalink }}">
+      <a class="flex gap-6 stretched-link text-body hover:bg-gray-50 dark:hover:bg-gray-900 rounded-sm p-4" href="{{ page.permalink }}">
+        <div class="dark:border-gray-700 dark:rounded-sm dark:border">
         {{ youtube::thumb(id=page.extra.id) }}
+        </div>
         <div>
           <div>
             <h2 class="text-lg font-semibold  -mt-1">{{ page.title }} </h2>
