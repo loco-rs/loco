@@ -1,6 +1,6 @@
 +++
 title = "Creating Frontend Website"
-description = "How to serve a frontend website"
+description = "Build a REST API quickly with Loco and then follow by building a React frontend app to use it. Learn about generators, configuring asset serving and client-side apps with Loco."
 date = 2023-12-14T09:19:42+00:00
 updated = 2023-12-14T09:19:42+00:00
 draft = false

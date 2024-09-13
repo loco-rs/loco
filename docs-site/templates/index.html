@@ -1,3 +1,5 @@
+{% import 'macros/footer.html' as macros_footer -%}
+
 {% extends "base.html" %}
 
 {% block seo %}
@@ -169,27 +171,7 @@ compilation: <span class="text-yellow-400">debug</span>
     </div>
 </div>
 
-<div class="section bg-redrust">
-    <div class="container flex flex-col items-center text-center text-background py-8 pb-12">
-        <div>
-		    <img src="/icon.svg" width="130px" />
-        </div>
-        <div class="footer-links">
-            <a href="https://github.com/loco-rs/loco">
-                Github
-            </a>
-            <a href="https://github.com/loco-rs/loco/blob/master/CODE_OF_CONDUCT.md">
-                Code of Conduct
-            </a>
-            <a href="https://github.com/loco-rs/loco/blob/master/LICENSE">
-                License
-            </a>
-            <a href="https://github.com/loco-rs/loco/blob/master/SECURITY.md">
-                Security
-            </a>
-        </div>
-    </div>
-</div>
+
 </div>
 {% endblock content %}
 

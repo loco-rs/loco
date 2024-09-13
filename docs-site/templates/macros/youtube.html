@@ -1,5 +1,4 @@
 {% macro youtube(id, autoplay=false, class=false) %}
-<div {% if class %}class="{{class}}"{% endif %}>
   <div class="video-container">
     <iframe
         src="https://www.youtube.com/embed/{{id}}{% if autoplay %}?autoplay=1{% endif %}"
@@ -8,9 +7,8 @@
         allowfullscreen>
     </iframe>
   </div>
-</div>
 {% endmacro %}
 
 {% macro thumb(id, class=false) %}
-<img width="100%" {% if class %}class="{{class}}"{% endif %} src="https://i3.ytimg.com/vi/{{id}}/hqdefault.jpg" />
+<img class="max-w-[200px] max-h-[230px] rounded-md" {% if class %}class="{{class}}"{% endif %} src="https://i3.ytimg.com/vi/{{id}}/hqdefault.jpg" />
 {% endmacro %}

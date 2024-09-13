@@ -1,6 +1,6 @@
 +++
 title = "What if Rails was Built on Rust?"
-description = "Introducing Loco a Rails-inspired Rust web framework"
+description = "Introducing Loco: a Rails-inspired Rust web framework. See how Rust can be as expressive as Ruby and how we can build a good deal of magic that Rails has with Rust."
 date = 2023-11-24T09:19:42+00:00
 updated = 2023-11-24T09:19:42+00:00
 draft = false

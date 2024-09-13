@@ -70,7 +70,18 @@
 .fatbtn {
     @apply no-underline text-lg font-semibold text-foreground bg-background rounded-sm px-8 py-3; 
 }
-
+.video-container {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 */
+    height: 0;
+}
+.video-container iframe {
+position: absolute;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+}
 .container {
     width: 100%;
     margin-right: auto;
@@ -84,18 +95,19 @@
     }
 }
 
+
+
 .navbar-form {
     position: relative;
-}
-
+  }
+  
 #suggestions {
     position: absolute;
     right: 0;
     margin-top: 0.5rem;
-    width: calc(100vw - 3rem);
+    width: calc(100vw - 8rem);
     max-height: 500px;
     overflow: auto;
-    width: 30rem;
 }
 
 #suggestions a {
@@ -106,7 +118,12 @@
 }
 
 #suggestions a:focus {
+    @apply bg-gray-100;
     outline: 0;
+}
+
+#suggestions div:not(:first-child) {
+    @apply border-gray-200;
 }
 
 #suggestions div:first-child {
@@ -115,4 +132,44 @@
 
 #suggestions div:last-child {
     margin-bottom: 0.5rem;
+}
+
+#suggestions a:hover {
+    @apply bg-gray-100;
+}
+
+#suggestions span {
+    @apply text-sm;
+}
+
+#suggestions span:first-child {
+    @apply text-foreground;
+    @apply font-semibold;
+}
+
+#suggestions span:nth-child(2) {
+    @apply text-gray-700;
+}
+
+@media screen(sm) {
+    #suggestions {
+        width: 30rem;
+    }
+
+    #suggestions a {
+        display: flex;
+    }
+
+    #suggestions span:first-child {
+        width: 9rem;
+        padding-right: 1rem;
+        @apply border-gray-200;
+        display: inline-block;
+        text-align: right;
+    }
+
+    #suggestions span:nth-child(2) {
+        width: 19rem;
+        padding-left: 1rem;
+    }
 }

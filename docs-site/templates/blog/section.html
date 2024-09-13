@@ -11,42 +11,33 @@
 {% endblock header %}
 
 {% block content %}
+
+<div class="bg-redrust text-background">
+      <h1 class="text-center text-3xl my-3 mt-10 font-semibold">Latest Updates</h1>
+      <h2 class="text-center text-xl text-red-50 mb-12">Updates and techincal articles from the team and contributors</h2>
+</div>
+
 <div class="container" role="document">
-  <div class="content">
-    <div class="row justify-content-center">
-      <div class="col-md-12 col-lg-10 col-xxl-8">
-        <article>
-          <h1 class="text-center">{{ section.title }}</h1>
-          <div class="card-list">
-            {% for page in paginator.pages %}
-            <a class="stretched-link text-body" href="{{ page.permalink }}">
-
-              <div
-                class="flex border bg-card text-card-foreground shadow-lg rounded-lg mx-4 md:mx-auto my-10 max-w-md md:max-w-2xl ">
-                <!--horizantil margin is just for display-->
-                <div class="flex items-start px-4 py-6">
-
-                  <div class="">
-                    <div class="flex items-center justify-between">
-                      <h2 class="text-lg font-semibold  -mt-1">{{ page.title }} </h2>
-                    </div>
-                    <p class="">{{page.description | safe }}</p>
-                    <p class="mt-3  text-sm">
-                      {{ macros_publish::page_publish_metadata(page=page) }}
-                    </p>
-                  </div>
-                </div>
+  <div class="content mx-auto max-w-[52rem] mt-8">
+        <div class="flex flex-col card-list gap-3">
+          {% for page in paginator.pages %}
+          <a class="stretched-link text-body hover:bg-gray-50 rounded-sm p-4" href="{{ page.permalink }}">
+            <div>
+              <h2 class="text-lg font-semibold  -mt-1">{{ page.title }} </h2>
+              <p class="text-gray-500">{{page.description | safe }}</p>
+            </div>
+            <div class="flex mt-2 items-center">
+              <div class="text-sm text-sky-500 font-medium">
+                Read more
               </div>
-          </div>
+              <svg class="relative mt-px overflow-visible ml-2.5 text-sky-300 dark:text-sky-700" width="3" height="6" viewBox="0 0 3 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M0 0L3 3L0 6"></path></svg>
+            </div>
           </a>
           {% endfor %}
           {% if paginator.previous or paginator.next %}
           {{ macros_section_nav::navigation(paginator=paginator) }}
           {% endif %}
-      </div>
-      </article>
-    </div>
+        </div>
   </div>
-</div>
 </div>
 {% endblock content %}

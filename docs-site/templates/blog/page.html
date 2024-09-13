@@ -12,13 +12,18 @@
 
 {% block content %}
 <div class="container" role="document">
-  <article>
+  <article class="prose mx-auto my-[8rem]">
+    {{ macros_publish::page_publish_metadata(page=page) }}
+    <h1 class="mb-3">{{ page.title }}</h1>
     <div>
-      <h1>{{ page.title }}</h1>
-      {{ macros_publish::page_publish_metadata(page=page) }}
+      {% if page.taxonomies.authors and
+      config.taxonomies %} {% for author in page.taxonomies.authors %}{% if author_flag %} and {% endif %}<a
+          class="stretched-link position-relative"
+          href="{{ get_taxonomy_url(kind='authors', name=author) | safe }}">{{ author }}</a>{% set_global author_flag
+      = true %}{% endfor %}{% endif %}
     </div>
     {% if page.extra.lead %}<p class="lead">{{ page.extra.lead | safe }}</p>{% endif %}
-    <div class="markdown">
+    <div class="markdown mt-8">
       {{ page.content | safe }}
     </div>
 
