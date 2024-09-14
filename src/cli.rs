@@ -24,13 +24,15 @@ cfg_if::cfg_if! {
     } else {}
 }
 
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand};
 
 use crate::{
     app::{AppContext, Hooks},
     boot::{
-        create_app, create_context, list_endpoints, run_task, start, RunDbCommand, ServeParams,
-        StartMode,
+        create_app, create_context, list_endpoints, run_scheduler, run_task, start, RunDbCommand,
+        ServeParams, StartMode,
     },
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     gen::{self, Component},
@@ -89,6 +91,22 @@ enum Commands {
         /// Task params (e.g. <`my_task`> foo:bar baz:qux)
         #[clap(value_parser = parse_key_val::<String,String>)]
         params: Vec<(String, String)>,
+    },
+    /// Run the scheduler
+    Scheduler {
+        /// Run a specific job by its name.
+        #[arg(short, long, action)]
+        name: Option<String>,
+        /// Run jobs that are associated with a specific tag.
+        #[arg(short, long, action)]
+        tag: Option<String>,
+        /// Specify a path to a dedicated scheduler configuration file. by default load schedulers job setting from environment config.
+        #[clap(value_parser)]
+        #[arg(short, long, action)]
+        config: Option<PathBuf>,
+        /// Show all configured jobs
+        #[arg(short, long, action)]
+        list: bool,
     },
     /// code generation creates a set of files and code templates based on a
     /// predefined set of rules.
@@ -155,6 +173,8 @@ enum ComponentArg {
         /// Name of the thing to generate
         name: String,
     },
+    /// Generate a scheduler jobs configuration template
+    Scheduler {},
     /// Generate worker
     Worker {
         /// Name of the thing to generate
@@ -190,6 +210,7 @@ impl From<ComponentArg> for Component {
             ComponentArg::Scaffold { name, fields, kind } => Self::Scaffold { name, fields, kind },
             ComponentArg::Controller { name } => Self::Controller { name },
             ComponentArg::Task { name } => Self::Task { name },
+            ComponentArg::Scheduler {} => Self::Scheduler {},
             ComponentArg::Worker { name } => Self::Worker { name },
             ComponentArg::Mailer { name } => Self::Mailer { name },
             ComponentArg::Deployment {} => Self::Deployment {},
@@ -344,6 +365,15 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             let app_context = create_context::<H>(&environment).await?;
             run_task::<H>(&app_context, name.as_ref(), &vars).await?;
         }
+        Commands::Scheduler {
+            name,
+            config,
+            tag,
+            list,
+        } => {
+            let app_context = create_context::<H>(&environment).await?;
+            run_scheduler::<H>(&app_context, config.as_ref(), name, tag, list).await?;
+        }
         Commands::Generate { component } => {
             gen::generate::<H>(component.into(), &config)?;
         }
@@ -413,6 +443,15 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             let vars = task::Vars::from_cli_args(params);
             let app_context = create_context::<H>(&environment).await?;
             run_task::<H>(&app_context, name.as_ref(), &vars).await?;
+        }
+        Commands::Scheduler {
+            name,
+            config,
+            tag,
+            list,
+        } => {
+            let app_context = create_context::<H>(&environment).await?;
+            run_scheduler::<H>(&app_context, config.as_ref(), name, tag, list).await?;
         }
         Commands::Generate { component } => {
             gen::generate::<H>(component.into(), &config)?;
