@@ -72,7 +72,7 @@ Now you can create your new app (choose "`SaaS` app").
 ✔ ❯ Select an asset serving configuration · Clientside
 
 🚂 Loco app generated successfully in:
-/private/tmp/myapp
+myapp
 ```
 <!-- </snip> -->
 

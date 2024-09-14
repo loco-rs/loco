@@ -24,6 +24,9 @@ Create your starter app:
 ❯ loco new
 ✔ ❯ App name? · myapp
 ✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+✔ ❯ Select a DB Provider · Sqlite
+✔ ❯ Select your background worker type · Async
+✔ ❯ Select an asset serving configuration · Clientside
 
 🚂 Loco app generated successfully in:
 myapp
@@ -45,20 +48,20 @@ The one-person framework for Rust
 Usage: blo-cli [OPTIONS] <COMMAND>
 
 Commands:
-  start     Start an app
-  db        Perform DB operations
-  routes    Describe all application endpoints
-  task      Run a custom task
-  generate  code generation creates a set of files and code templates based on a predefined set of rules
-  doctor    Validate and diagnose configurations
-  version   Display the app version
-  help      Print this message or the help of the given subcommand(s)
+  start      Start an app
+  db         Perform DB operations
+  routes     Describe all application endpoints
+  task       Run a custom task
+  scheduler  Run the scheduler
+  generate   code generation creates a set of files and code templates based on a predefined set of rules
+  doctor     Validate and diagnose configurations
+  version    Display the app version
+  help       Print this message or the help of the given subcommand(s)
 
 Options:
   -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
   -h, --help                       Print help
   -V, --version                    Print version
-
 ```
 <!-- </snip> -->
 
@@ -142,7 +145,6 @@ Options:
   -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
   -h, --help                       Print help
   -V, --version                    Print version
-
 ```
 <!-- </snip> -->
 

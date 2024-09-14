@@ -29,6 +29,9 @@ Create a starter:
 ❯ loco new
 ✔ ❯ App name? · myapp
 ✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+✔ ❯ Select a DB Provider · Sqlite
+✔ ❯ Select your background worker type · Async
+✔ ❯ Select an asset serving configuration · Clientside
 
 🚂 Loco app generated successfully in:
 myapp
