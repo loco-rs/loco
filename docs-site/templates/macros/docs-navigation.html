@@ -4,7 +4,7 @@
   {# 1. directly find the lighter if exists, #}
   {# 2. find the last page in the previous sibling section, and #}
   {# 3. find the last page in the parent section. #}
-  {% if page.lighter %}
+  {% if page.lower %}
   <a href="{{ page.lower.permalink }}">
     <div class="card my-1">
       <div class="card-body py-2">

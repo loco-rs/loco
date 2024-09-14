@@ -13,7 +13,7 @@
 {% block content %}
 <div role="document">
   <div class="bg-redrust text-background dark:bg-zinc-900">
-    <div class="container">
+    <div class="container xl:max-w-[80rem] xl:mx-auto">
       <aside class="w-full">
         {{ macros_sidebar::docs_sidebar(current_section=current_section) }}
       </aside>
@@ -21,7 +21,7 @@
   </div>
   <div
     class="container flex-1 items-start">
-    <main class="py-6 xl:grid xl:grid-cols-[1fr_450px]">
+    <main class="py-6 xl:grid xl:grid-cols-[1fr_450px] xl:max-w-[80rem] xl:mx-auto">
       <div class="mx-auto w-full min-w-0">
         <div class="markdown prose dark:prose-invert max-w-[60rem] md:pr-12 sm:pr-0">
           <h1 class="mb-10 mt-[9px]">{{ page.title | safe }}</h1>
