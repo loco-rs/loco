@@ -2,7 +2,7 @@
 
    <img src="https://github.com/loco-rs/loco/assets/83390/992d215a-3cd3-42ee-a1c7-de9fd25a5bac"/>
 
-   <h1>Loco</h1>
+   <h1>Welcome to Loco</h1>
 
    <h3>
    <!-- <snip id="description" inject_from="yaml"> -->
@@ -17,8 +17,6 @@
  </div>
 
 English · [中文](./README-zh_CN.md)
-
-# Welcome to Loco
 
 
 ## What's Loco?
