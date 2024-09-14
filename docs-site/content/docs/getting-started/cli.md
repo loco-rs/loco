@@ -42,14 +42,15 @@ The one-person framework for Rust
 Usage: demo_app-cli [OPTIONS] <COMMAND>
 
 Commands:
-  start     Start an app
-  db        Perform DB operations
-  routes    Describe all application endpoints
-  task      Run a custom task
-  generate  code generation creates a set of files and code templates based on a predefined set of rules
-  doctor    Validate and diagnose configurations
-  version   Display the app version
-  help      Print this message or the help of the given subcommand(s)
+  start      Start an app
+  db         Perform DB operations
+  routes     Describe all application endpoints
+  task       Run a custom task
+  scheduler  Run the scheduler
+  generate   code generation creates a set of files and code templates based on a predefined set of rules
+  doctor     Validate and diagnose configurations
+  version    Display the app version
+  help       Print this message or the help of the given subcommand(s)
 
 Options:
   -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
