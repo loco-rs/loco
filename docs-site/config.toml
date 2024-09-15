@@ -187,12 +187,12 @@ jobs:
   add text:
     run: "echo loco >> ./scheduler.txt"
     shell: true
-    cron: "*/1 * * * * *"
+    schedule: "*/1 * * * * *"
     tags: ["base", "infre"]
 
   list if users:
     run: "user_report"
-    cron: "Run every 3 hours"
+    schedule: "Run every 3 hours"
     tags: ["base", "users"]
        
 ```

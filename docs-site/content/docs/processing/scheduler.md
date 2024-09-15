@@ -34,28 +34,37 @@ This command creates a `scheduler.yaml` file under the `config` folder. You can 
 
 ### 2. Environment Configuration File
 You can also configure scheduler jobs per environment by adding the scheduler section to your environment's YAML configuration file:
+
+<!-- <snip id="configuration-scheduler" inject_from="code" template="yaml"> -->
 ```yaml
-jobs:
-  add text:
-    run: "echo loco >> ./scheduler.txt"
-    shell: true
-    cron: "*/1 * * * * *"
-    tags:
-        - base
-        - infra
+scheduler:
+  # Location of shipping the command stdout and stderr.
+  output: stdout
+  # A list of jobs to be scheduled.
+  jobs:
+    # The name of the job.
+    write_content:
+      # by default false meaning executing the the run value as a task. if true execute the run value as shell command
+      shell: true
+      # command to run
+      run: "echo loco >> ./scheduler.txt"
+      # The cron expression that defines the job's schedule. 
+      schedule: run every 1 second
+      output: silent
+      tags: ['base', 'infra']
 
-  Run command:
-    run: "foo path:/tmp/scheduler.txt"
-    cron: "*/5 * * * * *"
+    run_task:
+      run: "foo"
+      schedule: "at 10:00 am"
 
-  list if users:
-    run: "user_report"
-    cron: "*/7 * * * * *"
-    tags:
-        - base
-        - users
-
+    list_if_users:
+      run: "user_report"
+      shell: true
+      schedule: "* 2 * * * *"
+      tags: ['base', 'users']
 ```
+<!-- </snip> -->
+
 
 ## Scheduler Configuration
 
@@ -65,7 +74,7 @@ The scheduler configuration consists of the following elements:
     * `stdout:` Output to the console (default).
     * `silent:` Suppress all output.
 * `scheduler.jobs:` A object of jobs to be scheduled, the object key describe the job name. Each job has:
-    * `cron`: The cron expression that defines the job's schedule. 
+    * `schedule`: The cron expression that defines the job's schedule. 
         The cron get an english that convert to cron syntax or cron syntax itself. 
 
         ##### ***English to cron***

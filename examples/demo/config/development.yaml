@@ -172,19 +172,18 @@ scheduler:
       shell: true
       # command to run
       run: "echo loco >> ./scheduler.txt"
-      # run the command as shell 
-      # The cron expression defining the job's schedule.
-      cron: run every 1 second
+      # The cron expression that defines the job's schedule. 
+      schedule: run every 1 second
       output: silent
       tags: ['base', 'infra']
 
     run_task:
       run: "foo"
-      cron: "at 10:00 am"
+      schedule: "at 10:00 am"
 
     list_if_users:
       run: "user_report"
       shell: true
-      cron: "* 2 * * * *"
+      schedule: "* 2 * * * *"
       tags: ['base', 'users']
 # </snip>
