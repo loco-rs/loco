@@ -43,16 +43,9 @@ cargo install sea-orm-cli # Only when DB is needed
 
 If you select all defaults, you'll have:
 
-* `sqlite` for database.
-* `async` for background workers.
-* `Client side` asset serving configuration. This means your backend will serve as API.
-
- <div class="infobox">
-  To use Postgres, please prepare a local postgres database with
-  <code>loco:loco</code> and a db named <code>myapp_development</code>.
-  
-  For advanced configuration that include Redis and the `mailtutan` mailer check out [each starter's devcontainer on GitHub](https://github.com/loco-rs/loco/blob/master/starters/saas/.devcontainer/compose.yaml).
- </div>
+* `sqlite` for database. Learn about database providers in [Sqlite vs Postgres](@/docs/the-app/models.md#sqlite-vs-postgres) in the _models_ section.
+* `async` for background workers. Learn about workers configuration [async vs queue](@/docs/processing/workers.md#async-vs-queue) in the _workers_ section.
+* `Client` asset serving configuration. This means your backend will serve as API.
 
 
  Now `cd` into your `myapp` and start your app by running `cargo loco start`:

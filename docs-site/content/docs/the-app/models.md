@@ -15,18 +15,27 @@ top = false
 flair =[]
 +++
 
-# Model principles
 
 Models in `loco` mean entity classes that allow for easy database querying and writes, but also migrations and seeding.
 
 ## Sqlite vs Postgres 
 
+You might have selected `sqlite` which is the default when you created your new app. Loco allows you to _seamlessly_ move between `sqlite` and `postgres`.
+
+It is typical that you could use `sqlite` for development, and `postgres` for production. Some people prefer `postgres` all the way for both development and production because they use `pg` specific features. Some people use `sqlite` for production too, these days. Either way -- all valid choices.
+
+To configure `postgres` instead of `sqlite`, go into your `config/development.yaml` (or `production.yaml`) and set this, assuming your app is named `myapp`:
+
+```yaml
+database:
+  uri: "{{ get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/myapp_development") }"
+```
 
 <div class="infobox">
-To configure a database, please run a local postgres database with <code>loco:loco</code> and a db named <code>myapp_development</code>.
+Your local postgres database should be with <code>loco:loco</code> and a db named <code>myapp_development</code>. For test and production, your DB should be named <code>myapp_test</code> and <code>myapp_production</code> respectively.
 </div>
 
-This docker command start up postgresql database server.
+For your convenience, here is a docker command to start up a Postgresql database server:
 
 <!-- <snip id="postgres-run-docker-command" inject_from="yaml" template="sh"> -->
 ```sh
@@ -40,7 +49,7 @@ docker run -d -p 5432:5432 \
 
 
 
-Use doctor command to check the needed resources:
+Finally you can also use the doctor command to validate your connection:
 
 <!-- <snip id="doctor-command" inject_from="yaml template="sh"> -->
 ```sh
