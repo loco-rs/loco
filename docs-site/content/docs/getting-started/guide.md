@@ -597,7 +597,7 @@ pub async fn update(
     format::json(item)
 }
 
-pub async fn remove(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<()> {
+pub async fn remove(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Response> {
     load_item(&ctx, id).await?.delete(&ctx.db).await?;
     format::empty()
 }
@@ -753,7 +753,15 @@ pub async fn comments(
 This is called "lazy loading", where we fetch the item first and later its associated relation. Don't worry - there is also a way to eagerly load comments along with an article.
 </div>
 
-Now let's add a comment to Article `1`:
+Now start the app again:
+
+<!-- <snip id="starting-the-server-command" inject_from="yaml" template="sh"> -->
+```sh
+cargo loco start
+```
+<!-- </snip> -->
+
+Add a comment to Article `1`:
 
 ```sh
 $ curl -X POST -H "Content-Type: application/json" -d '{
@@ -785,17 +793,36 @@ You can:
 
 This is where `cargo loco task` comes in.
 
-First, run `cargo loco task`:
+First, run `cargo loco task` to see current tasks:
 
 ```sh
 $ cargo loco task
-user_report		[output a user report]
+seed_data		[Task for seeding data]
 ```
 
-You'll see an example task that was generated for you. This is the meat of the task:
+Generate a new task `user_report`
+
+```sh
+$ cargo loco generate task user_report
+
+added: "src/tasks/user_report.rs"
+injected: "src/tasks/mod.rs"
+injected: "src/app.rs"
+added: "tests/tasks/user_report.rs"
+injected: "tests/tasks/mod.rs"
+```
+
+In `src/tasks/user_report.rs` you'll see the task that was generated for you. Replace it with following:
 
 ```rust
 // find it in `src/tasks/user_report.rs`
+
+use loco_rs::prelude::*;
+use loco_rs::task::Vars;
+
+use crate::models::users;
+
+#[async_trait]
 impl Task for UserReport {
     fn task(&self) -> TaskInfo {
       // description that appears on the CLI
@@ -829,7 +856,15 @@ Running this task is done with:
 
 ```rust
 $ cargo loco task user_report var1:val1 var2:val2 ...
+
+args: Vars { cli: {"var1": "val1", "var2": "val2"} }
+!!! user_report: listing users !!!
+------------------------
+done: 0 users
 ```
+If you have not added an user before, the report will be empty. 
+
+To add an user check out chapter [Registering a New User](/docs/getting-started/tour/#registering-a-new-user) of [A Quick Tour with Loco](/docs/getting-started/tour/).
 
 Remember: this is environmental, so you write the task once, and then execute in development or production as you wish. Tasks are compiled into the main app binary.
 

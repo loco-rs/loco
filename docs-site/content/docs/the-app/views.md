@@ -151,7 +151,7 @@ And add it to `src/views/mod.rs`:
 pub mod dashboard;
 ```
 
-Finally, go to your controller and use the view:
+Next, go to your controller and use the view:
 
 
 ```rust
@@ -168,6 +168,44 @@ pub fn routes() -> Routes {
     Routes::new().prefix("home").add("/", get(render_home))
 }
 
+```
+
+Finally, register your new controller's routes in `src/app.rs`
+
+```rust
+pub struct App;
+#[async_trait]
+impl Hooks for App {
+    // omitted for brevity
+
+    fn routes(_ctx: &AppContext) -> AppRoutes {
+        AppRoutes::with_default_routes()
+            .add_route(controllers::notes::routes())
+            .add_route(controllers::auth::routes())
+            .add_route(controllers::user::routes())
+            // include your controller's routes here
+            .add_route(controllers::dashboard::routes())
+    }
+```
+
+Once you've done all the above, you should be able to see your new routes when running `cargo loco routes`
+
+```
+$ cargo loco routes
+[GET] /_health
+[GET] /_ping
+[POST] /api/auth/forgot
+[POST] /api/auth/login
+[POST] /api/auth/register
+[POST] /api/auth/reset
+[POST] /api/auth/verify
+[GET] /api/notes
+[POST] /api/notes
+[GET] /api/notes/:id
+[DELETE] /api/notes/:id
+[POST] /api/notes/:id
+[GET] /api/user/current
+[GET] /home              <-- the corresponding URL for our new view
 ```
 
 ### How does it work?
