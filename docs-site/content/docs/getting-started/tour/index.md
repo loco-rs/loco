@@ -17,7 +17,7 @@ flair =[]
 <br/>
 <br/>
 <br/>
-Let's create a blog backend on `loco` in 4 commands. First install `loco-cli` and `sea-orm-cli`:
+Let's create a blog backend on Loco in just a few minutes. First install `loco-cli` and `sea-orm-cli`:
 
 <!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->
 ```sh
