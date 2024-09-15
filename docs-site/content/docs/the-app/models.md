@@ -19,6 +19,40 @@ flair =[]
 
 Models in `loco` mean entity classes that allow for easy database querying and writes, but also migrations and seeding.
 
+## Sqlite vs Postgres 
+
+
+<div class="infobox">
+To configure a database, please run a local postgres database with <code>loco:loco</code> and a db named <code>myapp_development</code>.
+</div>
+
+This docker command start up postgresql database server.
+
+<!-- <snip id="postgres-run-docker-command" inject_from="yaml" template="sh"> -->
+```sh
+docker run -d -p 5432:5432 \
+  -e POSTGRES_USER=loco \
+  -e POSTGRES_DB=myapp_development \
+  -e POSTGRES_PASSWORD="loco" \
+  postgres:15.3-alpine
+```
+<!-- </snip> -->
+
+
+
+Use doctor command to check the needed resources:
+
+<!-- <snip id="doctor-command" inject_from="yaml template="sh"> -->
+```sh
+$ cargo loco doctor
+    Finished dev [unoptimized + debuginfo] target(s) in 0.32s
+    Running `target/debug/myapp-cli doctor`
+✅ SeaORM CLI is installed
+✅ DB connection: success
+✅ Redis connection: success
+```
+<!-- </snip> -->
+
 ## Fat models, slim controllers
 
 `loco` models **are designed after active record**. This means they're a central point in your universe, and every logic or operation your app has should be there.

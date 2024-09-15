@@ -32,17 +32,7 @@ Generate the task:
 
 <!-- <snip id="generate-task-help-command" inject_from="yaml" action="exec" template="sh"> -->
 ```sh
-Generate a Task based on the given name
-
-Usage: blo-cli generate task [OPTIONS] <NAME>
-
-Arguments:
-  <NAME>  Name of the thing to generate
-
-Options:
-  -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
-  -h, --help                       Print help
-  -V, --version                    Print version
+cd ./examples/demo && cargo loco generate task --help
 ```
 <!-- </snip> -->
 

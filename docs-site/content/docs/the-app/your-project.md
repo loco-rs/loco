@@ -25,11 +25,11 @@ Create your starter app:
 ✔ ❯ App name? · myapp
 ✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
 ✔ ❯ Select a DB Provider · Sqlite
-✔ ❯ Select your background worker type · Async
-✔ ❯ Select an asset serving configuration · Clientside
+✔ ❯ Select your background worker type · Async (in-process tokyo async tasks)
+✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
 
 🚂 Loco app generated successfully in:
-myapp
+myapp/
 ```
 <!-- </snip> -->
 
@@ -43,25 +43,7 @@ cargo loco --help
 
 <!-- <snip id="exec-help-command" inject_from="yaml" action="exec" template="sh"> -->
 ```sh
-The one-person framework for Rust
-
-Usage: blo-cli [OPTIONS] <COMMAND>
-
-Commands:
-  start      Start an app
-  db         Perform DB operations
-  routes     Describe all application endpoints
-  task       Run a custom task
-  scheduler  Run the scheduler
-  generate   code generation creates a set of files and code templates based on a predefined set of rules
-  doctor     Validate and diagnose configurations
-  version    Display the app version
-  help       Print this message or the help of the given subcommand(s)
-
-Options:
-  -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
-  -h, --help                       Print help
-  -V, --version                    Print version
+cd ./examples/demo && cargo loco --help
 ```
 <!-- </snip> -->
 
@@ -132,19 +114,7 @@ Scaffolding is an efficient and speedy method for generating key components of a
 See scaffold command:
 <!-- <snip id="scaffold-help-command" inject_from="yaml" action="exec" template="sh"> -->
 ```sh
-Generates a CRUD scaffold, model and controller
-
-Usage: blo-cli generate scaffold [OPTIONS] <NAME> [FIELDS]...
-
-Arguments:
-  <NAME>       Name of the thing to generate
-  [FIELDS]...  Model fields, eg. title:string hits:int
-
-Options:
-  -k, --kind <KIND>                The kind of scaffold to generate [default: api] [possible values: api, html, htmx]
-  -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
-  -h, --help                       Print help
-  -V, --version                    Print version
+cd ./examples/demo && cargo loco generate scaffold --help
 ```
 <!-- </snip> -->
 

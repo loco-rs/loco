@@ -17,6 +17,28 @@ flair =[]
 
 `loco` integrates with a full blown background job processing framework: `sidekiq-rs`. You can enqueue jobs in a similar ergonomics as Rails' _ActiveJob_, and have a similar scalable processing model to perform these background jobs.
 
+## Async vs Queue
+
+
+This docker command start up redis server:
+
+```
+docker run -p 6379:6379 -d redis redis-server
+```
+
+Use doctor command to check the needed resources:
+
+<!-- <snip id="doctor-command" inject_from="yaml template="sh"> -->
+```sh
+$ cargo loco doctor
+    Finished dev [unoptimized + debuginfo] target(s) in 0.32s
+    Running `target/debug/myapp-cli doctor`
+✅ SeaORM CLI is installed
+✅ DB connection: success
+✅ Redis connection: success
+```
+<!-- </snip> -->
+
 ## Using workers
 
 To use a worker, we mainly think about adding a job to the queue, so you `use` the worker and perform later:
