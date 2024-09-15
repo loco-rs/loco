@@ -30,42 +30,32 @@ cargo install sea-orm-cli # Only when DB is needed
  Now you can create your new app (choose "`SaaS` app").
 
  ```sh
- $ loco new
- ✔ ❯ App name? · myapp
- ? ❯ What would you like to build? ›
-   lightweight-service (minimal, only controllers and views)
-   Rest API (with DB and user auth)
- ❯ SaaS app (with DB and user auth)
+ ❯ loco new
+✔ ❯ App name? · myapp
+✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+✔ ❯ Select a DB Provider · Sqlite
+✔ ❯ Select your background worker type · Async (in-process tokyo async tasks)
+✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
+
  🚂 Loco app generated successfully in:
- myapp
+ myapp/
  ```
 
+If you select all defaults, you'll have:
+
+* `sqlite` for database.
+* `async` for background workers.
+* `Client side` asset serving configuration. This means your backend will serve as API.
+
  <div class="infobox">
- To configure a database , please run a local postgres database with
- <code>loco:loco</code> and a db named is the [insert app]_development.
+  To use Postgres, please prepare a local postgres database with
+  <code>loco:loco</code> and a db named <code>myapp_development</code>.
+  
+  For advanced configuration that include Redis and the `mailtutan` mailer check out [each starter's devcontainer on GitHub](https://github.com/loco-rs/loco/blob/master/starters/saas/.devcontainer/compose.yaml).
  </div>
 
- You can use Docker to run a Postgres instance:
 
- When generating a starter, the database name incorporates your application
- name and the environment. For instance, if you include `myapp`, the database
- name in the `test.yaml`configuration will be `myapp_test`, and in the
- `development.yaml` configuration, it will be `myapp_development`.
-
- <!-- <snip id="postgres-run-docker-command" inject_from="yaml" template="sh"> -->
-```sh
-docker run -d -p 5432:5432 \
-  -e POSTGRES_USER=loco \
-  -e POSTGRES_DB=myapp_development \
-  -e POSTGRES_PASSWORD="loco" \
-  postgres:15.3-alpine
-```
-<!-- </snip> -->
-
-
- A more advanced set of `compose.yaml` and `Dockerfiles` that include Redis and the `mailtutan` mailer are available for [each starter on GitHub](https://github.com/loco-rs/loco/blob/master/starters/saas/.devcontainer/compose.yaml).
-
- Now `cd` into your `myapp` and start your app:
+ Now `cd` into your `myapp` and start your app by running `cargo loco start`:
 
 <!-- <snip id="starting-the-server-command-with-output" inject_from="yaml" template="sh"> -->
 ```sh
@@ -119,7 +109,7 @@ injected: "tests/requests/mod.rs"
 
 Your database have been migrated and model, entities, and a full CRUD controller have been generated automatically.
 
-Start your app:
+Start your app again:
 <!-- <snip id="starting-the-server-command-with-output" inject_from="yaml" template="sh"> -->
 ```sh
 $ cargo loco start
@@ -172,29 +162,6 @@ Done! enjoy your ride with `loco` 🚂
 
 Your generated app contains a fully working authentication suite, based on JWTs.
 
-To authenticate, you will need a running redis server.
-
-This docker command starts up a redis server:
-
-<!-- <snip id="redis-run-docker-command" inject_from="yaml" template="sh"> -->
-```sh
-docker run -p 6379:6379 -d redis redis-server
-```
-<!-- </snip> -->
-
-Use doctor command to check the needed resources:
-
-<!-- <snip id="doctor-command" inject_from="yaml" template="sh"> -->
-```sh
-$ cargo loco doctor
-    Finished dev [unoptimized + debuginfo] target(s) in 0.32s
-    Running `target/debug/myapp-cli doctor`
-✅ SeaORM CLI is installed
-✅ DB connection: success
-✅ Redis connection: success
-```
-<!-- </snip> -->
-
 ### Registering a New User
 
 The `/api/auth/register` endpoint creates a new user in the database with an `email_verification_token` for account verification. A welcome email is sent to the user with a verification link.
@@ -236,14 +203,18 @@ The response includes a JWT token for authentication, user ID, name, and verific
 }
 ```
 
+In your client-side app, you save this JWT token and make following requests with it using _bearer token_ (see below) in order for those to be authenticated.
+
 ### Get current user
 
-This endpoint is protected by auth middleware.
+This endpoint is protected by auth middleware. We will use the token we got earlier to perform a request with the _bearer token_ technique (replace `TOKEN` with the JWT token you got earlier):
 
 ```sh
 $ curl --location --request GET '127.0.0.1:5150/api/user/current' \
      --header 'Content-Type: application/json' \
      --header 'Authorization: Bearer TOKEN'
 ```
+
+That should be your first authenticated request!.
 
 Check out the source code for `controllers/auth.rs` to see how to use the authentication middleware in your own controllers.
