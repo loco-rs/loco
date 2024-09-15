@@ -59,7 +59,7 @@ logger:
 ```yaml
 server:
   # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
-  port: {{get_env(name="NODE_PORT", default=5150)}}
+  port: {{ get_env(name="NODE_PORT", default=5150) }}
   # The UI hostname or IP address that mailers will point to.
   host: http://localhost
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
@@ -100,9 +100,9 @@ mailer:
   # SMTP mailer configuration.
   smtp:
     # Enable/Disable smtp mailer.
-    enable: true    
+    enable: true
     # SMTP server host. e.x localhost, smtp.gmail.com
-    host: {{get_env(name="MAILER_HOST", default="localhost") }}
+    host: {{ get_env(name="MAILER_HOST", default="localhost") }}
     # SMTP server port
     port: 1025
     # Use secure connection (SSL/TLS).
@@ -118,7 +118,7 @@ mailer:
 ```yaml
 queue:
   # Redis connection URI
-  uri: {{get_env(name="REDIS_URL", default="redis://127.0.0.1")}}
+  uri: {{ get_env(name="REDIS_URL", default="redis://127.0.0.1") }}
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_flush: false
 ```
