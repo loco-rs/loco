@@ -7,6 +7,7 @@ use rrgen::{GenResult, RRgen};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
+mod controller;
 #[cfg(feature = "with-db")]
 mod model;
 #[cfg(feature = "with-db")]
@@ -152,6 +153,12 @@ pub enum Component {
     Controller {
         /// Name of the thing to generate
         name: String,
+
+        /// Action names
+        actions: Vec<String>,
+
+        // kind
+        kind: ScaffoldKind,
     },
     Task {
         /// Name of the thing to generate
@@ -195,10 +202,15 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
             let vars = json!({ "name": name, "ts": chrono::Utc::now(), "pkg_name": H::app_name()});
             rrgen.generate(MIGRATION_T, &vars)?;
         }
-        Component::Controller { name } => {
-            let vars = json!({ "name": name, "pkg_name": H::app_name()});
-            rrgen.generate(CONTROLLER_T, &vars)?;
-            rrgen.generate(CONTROLLER_TEST_T, &vars)?;
+        Component::Controller {
+            name,
+            actions,
+            kind,
+        } => {
+            println!(
+                "{}",
+                controller::generate::<H>(&rrgen, &name, &actions, &kind)?
+            );
         }
         Component::Task { name } => {
             let vars = json!({"name": name, "pkg_name": H::app_name()});
