@@ -138,16 +138,16 @@ scheduler:
     write_content:
       shell: true
       run: "echo loco >> ./scheduler.txt"
-      cron: run every 1 second
+      schedule: run every 1 second
       output: silent
       tags: ['base', 'infra']
 
     run_task:
       run: "foo"
-      cron: "at 10:00 am"
+      schedule: "at 10:00 am"
 
     list_if_users:
       run: "user_report"
       shell: true
-      cron: "* 2 * * * *"
+      schedule: "* 2 * * * *"
       tags: ['base', 'users']
