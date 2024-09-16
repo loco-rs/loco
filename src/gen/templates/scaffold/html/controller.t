@@ -119,12 +119,12 @@ pub async fn remove(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Resul
 
 pub fn routes() -> Routes {
     Routes::new()
-        .prefix("{{file_name | plural}}")
+        .prefix("{{file_name | plural}}/")
         .add("/", get(list))
-        .add("/new", get(new))
-        .add("/:id", get(show))
-        .add("/:id/edit", get(edit))
-        .add("/:id", post(update))
-        .add("/:id", delete(remove))
         .add("/", post(add))
+        .add("new", get(new))
+        .add(":id", get(show))
+        .add(":id/edit", get(edit))
+        .add(":id", post(update))
+        .add(":id", delete(remove))
 }

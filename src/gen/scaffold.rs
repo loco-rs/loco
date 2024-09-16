@@ -4,6 +4,7 @@ use serde_json::json;
 use crate::{app::Hooks, gen};
 
 const API_CONTROLLER_SCAFFOLD_T: &str = include_str!("templates/scaffold/api/controller.t");
+const API_CONTROLLER_TEST_T: &str = include_str!("templates/scaffold/api/test.t");
 
 const HTMX_CONTROLLER_SCAFFOLD_T: &str = include_str!("templates/scaffold/htmx/controller.t");
 const HTMX_BASE_SCAFFOLD_T: &str = include_str!("templates/scaffold/htmx/base.t");
@@ -21,7 +22,7 @@ const HTML_VIEW_CREATE_SCAFFOLD_T: &str = include_str!("templates/scaffold/html/
 const HTML_VIEW_SHOW_SCAFFOLD_T: &str = include_str!("templates/scaffold/html/view_show.t");
 const HTML_VIEW_LIST_SCAFFOLD_T: &str = include_str!("templates/scaffold/html/view_list.t");
 
-use super::{collect_messages, model, CONTROLLER_TEST_T, MAPPINGS};
+use super::{collect_messages, model, MAPPINGS};
 use crate::{errors::Error, Result};
 
 pub fn generate<H: Hooks>(
@@ -59,7 +60,7 @@ pub fn generate<H: Hooks>(
     match kind {
         gen::ScaffoldKind::Api => {
             let res1 = rrgen.generate(API_CONTROLLER_SCAFFOLD_T, &vars)?;
-            let res2 = rrgen.generate(CONTROLLER_TEST_T, &vars)?;
+            let res2 = rrgen.generate(API_CONTROLLER_TEST_T, &vars)?;
             let messages = collect_messages(vec![res1, res2]);
             Ok(format!("{model_messages}{messages}"))
         }

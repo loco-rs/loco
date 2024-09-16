@@ -100,7 +100,8 @@ enum Commands {
         /// Run jobs that are associated with a specific tag.
         #[arg(short, long, action)]
         tag: Option<String>,
-        /// Specify a path to a dedicated scheduler configuration file. by default load schedulers job setting from environment config.
+        /// Specify a path to a dedicated scheduler configuration file. by
+        /// default load schedulers job setting from environment config.
         #[clap(value_parser)]
         #[arg(short, long, action)]
         config: Option<PathBuf>,
@@ -179,6 +180,13 @@ enum ComponentArg {
     Controller {
         /// Name of the thing to generate
         name: String,
+
+        /// Actions
+        actions: Vec<String>,
+
+        /// The kind of scaffold to generate
+        #[clap(short, long, value_enum, default_value_t = gen::ScaffoldKind::Api)]
+        kind: gen::ScaffoldKind,
     },
     /// Generate a Task based on the given name
     Task {
@@ -244,7 +252,15 @@ impl TryFrom<ComponentArg> for Component {
 
                 Ok(Self::Scaffold { name, fields, kind })
             }
-            ComponentArg::Controller { name } => Ok(Self::Controller { name }),
+            ComponentArg::Controller {
+                name,
+                actions,
+                kind,
+            } => Ok(Self::Controller {
+                name,
+                actions,
+                kind,
+            }),
             ComponentArg::Task { name } => Ok(Self::Task { name }),
             ComponentArg::Scheduler {} => Ok(Self::Scheduler {}),
             ComponentArg::Worker { name } => Ok(Self::Worker { name }),
@@ -260,7 +276,8 @@ enum DbCommands {
     Create,
     /// Migrate schema (up)
     Migrate,
-    /// Run one down migration, or add a number to run multiple down migrations (i.e. `down 2`)
+    /// Run one down migration, or add a number to run multiple down migrations
+    /// (i.e. `down 2`)
     Down {
         /// The number of migrations to rollback
         #[arg(default_value_t = 1)]

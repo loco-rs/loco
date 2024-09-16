@@ -100,32 +100,38 @@ impl AppRoutes {
 
     #[must_use]
     pub fn collect(&self) -> Vec<ListRoutes> {
-        let base_url_prefix = self.get_prefix().map_or("/", |url| url.as_str());
+        let base_url_prefix = self
+            .get_prefix()
+            // add a leading slash forcefully. Axum routes must start with a leading slash.
+            // if we have double leading slashes - it will get normalized into a single slash later
+            .map_or("/".to_string(), |url| format!("/{}", url.as_str()));
 
         self.get_routes()
             .iter()
-            .flat_map(|router| {
-                let mut uri_parts = vec![base_url_prefix];
-                if let Some(prefix) = router.prefix.as_ref() {
-                    uri_parts.push(prefix);
+            .flat_map(|controller| {
+                let mut uri_parts = vec![base_url_prefix.clone()];
+                if let Some(prefix) = controller.prefix.as_ref() {
+                    uri_parts.push(prefix.to_string());
                 }
-                router.handlers.iter().map(move |controller| {
-                    let uri = format!("{}{}", uri_parts.join("/"), &controller.uri);
-                    let binding = NORMALIZE_URL.replace_all(&uri, "/");
+                controller.handlers.iter().map(move |handler| {
+                    let mut parts = uri_parts.clone();
+                    parts.push(handler.uri.to_string());
+                    let joined_parts = parts.join("/");
 
-                    let uri = if binding.len() > 1 {
-                        NORMALIZE_URL
-                            .replace_all(&uri, "/")
-                            .strip_suffix('/')
-                            .map_or_else(|| binding.to_string(), std::string::ToString::to_string)
+                    let normalized = NORMALIZE_URL.replace_all(&joined_parts, "/");
+                    let uri = if normalized == "/" {
+                        normalized.to_string()
                     } else {
-                        binding.to_string()
+                        normalized.strip_suffix('/').map_or_else(
+                            || normalized.to_string(),
+                            std::string::ToString::to_string,
+                        )
                     };
 
                     ListRoutes {
                         uri,
-                        actions: controller.actions.clone(),
-                        method: controller.method.clone(),
+                        actions: handler.actions.clone(),
+                        method: handler.method.clone(),
                     }
                 })
             })
