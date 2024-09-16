@@ -167,6 +167,13 @@ enum ComponentArg {
     Controller {
         /// Name of the thing to generate
         name: String,
+
+        /// Actions
+        actions: Vec<String>,
+
+        /// The kind of scaffold to generate
+        #[clap(short, long, value_enum, default_value_t = gen::ScaffoldKind::Api)]
+        kind: gen::ScaffoldKind,
     },
     /// Generate a Task based on the given name
     Task {
@@ -208,7 +215,15 @@ impl From<ComponentArg> for Component {
             ComponentArg::Migration { name } => Self::Migration { name },
             #[cfg(feature = "with-db")]
             ComponentArg::Scaffold { name, fields, kind } => Self::Scaffold { name, fields, kind },
-            ComponentArg::Controller { name } => Self::Controller { name },
+            ComponentArg::Controller {
+                name,
+                actions,
+                kind,
+            } => Self::Controller {
+                name,
+                actions,
+                kind,
+            },
             ComponentArg::Task { name } => Self::Task { name },
             ComponentArg::Scheduler {} => Self::Scheduler {},
             ComponentArg::Worker { name } => Self::Worker { name },
@@ -224,7 +239,8 @@ enum DbCommands {
     Create,
     /// Migrate schema (up)
     Migrate,
-    /// Run one down migration, or add a number to run multiple down migrations (i.e. `down 2`)
+    /// Run one down migration, or add a number to run multiple down migrations
+    /// (i.e. `down 2`)
     Down {
         /// The number of migrations to rollback
         #[arg(default_value_t = 1)]
