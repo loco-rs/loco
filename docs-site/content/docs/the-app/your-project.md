@@ -141,7 +141,10 @@ Arguments:
   [FIELDS]...  Model fields, eg. title:string hits:int
 
 Options:
-  -k, --kind <KIND>                The kind of scaffold to generate [default: api] [possible values: api, html, htmx]
+  -k, --kind <KIND>                The kind of scaffold to generate [possible values: api, html, htmx]
+      --htmx                       Use HTMX scaffold
+      --html                       Use HTML scaffold
+      --api                        Use API scaffold
   -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
   -h, --help                       Print help
   -V, --version                    Print version
