@@ -4,7 +4,7 @@ description = "Shows how to move from Axum to Loco"
 date = 2023-12-01T19:30:00+00:00
 updated = 2023-12-01T19:30:00+00:00
 draft = false
-weight = 6
+weight = 5
 sort_by = "weight"
 template = "docs/page.html"
 

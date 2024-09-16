@@ -36,7 +36,7 @@ use tracing::info;
 use crate::{
     controller::middleware::{remote_ip::RemoteIPConfig, secure_headers::SecureHeadersConfig},
     environment::Environment,
-    logger, Error, Result,
+    logger, scheduler, Error, Result,
 };
 
 lazy_static! {
@@ -73,6 +73,8 @@ pub struct Config {
     /// accessing `ctx.config.settings`.
     #[serde(default)]
     pub settings: Option<serde_json::Value>,
+
+    pub scheduler: Option<scheduler::Config>,
 }
 
 /// Logger configuration

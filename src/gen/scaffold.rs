@@ -6,6 +6,7 @@ use crate::{app::Hooks, gen};
 const API_CONTROLLER_SCAFFOLD_T: &str = include_str!("templates/scaffold/api/controller.t");
 
 const HTMX_CONTROLLER_SCAFFOLD_T: &str = include_str!("templates/scaffold/htmx/controller.t");
+const HTMX_BASE_SCAFFOLD_T: &str = include_str!("templates/scaffold/htmx/base.t");
 const HTMX_VIEW_SCAFFOLD_T: &str = include_str!("templates/scaffold/htmx/view.t");
 const HTMX_VIEW_EDIT_SCAFFOLD_T: &str = include_str!("templates/scaffold/htmx/view_edit.t");
 const HTMX_VIEW_CREATE_SCAFFOLD_T: &str = include_str!("templates/scaffold/htmx/view_create.t");
@@ -13,6 +14,7 @@ const HTMX_VIEW_SHOW_SCAFFOLD_T: &str = include_str!("templates/scaffold/htmx/vi
 const HTMX_VIEW_LIST_SCAFFOLD_T: &str = include_str!("templates/scaffold/htmx/view_list.t");
 
 const HTML_CONTROLLER_SCAFFOLD_T: &str = include_str!("templates/scaffold/html/controller.t");
+const HTML_BASE_SCAFFOLD_T: &str = include_str!("templates/scaffold/html/base.t");
 const HTML_VIEW_SCAFFOLD_T: &str = include_str!("templates/scaffold/html/view.t");
 const HTML_VIEW_EDIT_SCAFFOLD_T: &str = include_str!("templates/scaffold/html/view_edit.t");
 const HTML_VIEW_CREATE_SCAFFOLD_T: &str = include_str!("templates/scaffold/html/view_create.t");
@@ -63,6 +65,7 @@ pub fn generate<H: Hooks>(
         }
         gen::ScaffoldKind::Html => {
             rrgen.generate(HTML_CONTROLLER_SCAFFOLD_T, &vars)?;
+            rrgen.generate(HTML_BASE_SCAFFOLD_T, &vars)?;
             rrgen.generate(HTML_VIEW_EDIT_SCAFFOLD_T, &vars)?;
             rrgen.generate(HTML_VIEW_CREATE_SCAFFOLD_T, &vars)?;
             rrgen.generate(HTML_VIEW_SHOW_SCAFFOLD_T, &vars)?;
@@ -72,6 +75,7 @@ pub fn generate<H: Hooks>(
         }
         gen::ScaffoldKind::Htmx => {
             rrgen.generate(HTMX_CONTROLLER_SCAFFOLD_T, &vars)?;
+            rrgen.generate(HTMX_BASE_SCAFFOLD_T, &vars)?;
             rrgen.generate(HTMX_VIEW_EDIT_SCAFFOLD_T, &vars)?;
             rrgen.generate(HTMX_VIEW_CREATE_SCAFFOLD_T, &vars)?;
             rrgen.generate(HTMX_VIEW_SHOW_SCAFFOLD_T, &vars)?;

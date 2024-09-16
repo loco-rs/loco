@@ -131,3 +131,23 @@ auth:
     secret: PqRwLF2rhHe8J22oBeHy
     # Token expiration time in seconds
     expiration: 604800 # 7 days
+
+scheduler:
+  output: stdout
+  jobs:
+    write_content:
+      shell: true
+      run: "echo loco >> ./scheduler.txt"
+      schedule: run every 1 second
+      output: silent
+      tags: ['base', 'infra']
+
+    run_task:
+      run: "foo"
+      schedule: "at 10:00 am"
+
+    list_if_users:
+      run: "user_report"
+      shell: true
+      schedule: "* 2 * * * *"
+      tags: ['base', 'users']

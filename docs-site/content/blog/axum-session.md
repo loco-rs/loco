@@ -1,6 +1,6 @@
 +++
 title = "Building a Rust App with Axum Session"
-description = "Building a Rust App with Axum Session"
+description = "Add sessions to your app with Axum Sessions. Configure a session provider, and set up Axum Session and Loco with simple app hooks."
 date = 2023-12-19T09:19:42+00:00
 updated = 2023-12-19T09:19:42+00:00
 draft = false

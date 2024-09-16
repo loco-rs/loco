@@ -1,6 +1,6 @@
 +++
 title = "Testing tasks"
-description = "Testing tasks"
+description = "See how tasks in Loco are a simple linear workflow with access to your full app context, and how to easily test them. You can write a linear business workflow and test it giving it input and asserting its output."
 date = 2024-06-18T09:20:42+00:00
 updated = 2024-06-18T09:20:42+00:00
 draft = false

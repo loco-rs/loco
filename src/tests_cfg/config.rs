@@ -1,7 +1,8 @@
 use crate::{
     config::{self, Config},
-    logger,
+    logger, scheduler,
 };
+use std::collections::HashMap;
 
 #[must_use]
 pub fn test_config() -> Config {
@@ -55,5 +56,19 @@ pub fn test_config() -> Config {
         mailer: None,
         initializers: None,
         settings: None,
+        scheduler: Some(scheduler::Config {
+            jobs: HashMap::from([(
+                "job 1".to_string(),
+                scheduler::Job {
+                    run: "echo loco".to_string(),
+                    shell: true,
+                    cron: "*/5 * * * * *".to_string(),
+                    tags: Some(vec!["base".to_string()]),
+                    output: None,
+                },
+            )]),
+
+            output: scheduler::Output::STDOUT,
+        }),
     }
 }
