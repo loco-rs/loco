@@ -8,6 +8,8 @@
 * Add fallback behavior. [https://github.com/loco-rs/loco/pull/732](https://github.com/loco-rs/loco/pull/732)
 * Add Scheduler Feature for Running Cron Jobs. [https://github.com/loco-rs/loco/pull/735](https://github.com/loco-rs/loco/pull/735)
 * Add `--html`, `--htmx` and `--api` flags to scaffold CLI command. [https://github.com/loco-rs/loco/pull/749](https://github.com/loco-rs/loco/pull/749)
+* Add base template for scaffold generation. [https://github.com/loco-rs/loco/pull/752](https://github.com/loco-rs/loco/pull/752)
+
 
 
 ## v0.8.0
