@@ -30,7 +30,7 @@ pub async fn {{action}}(
 
 pub fn routes() -> Routes {
     Routes::new()
-        .prefix("{{file_name | plural}}")
+        .prefix("{{file_name | plural}}/")
         {%- for action in actions %}
         .add("{{action}}", get({{action}}))
         {%- endfor %}
