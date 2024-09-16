@@ -4,6 +4,7 @@ use serde_json::json;
 use crate::{app::Hooks, gen};
 
 const API_CONTROLLER_CONTROLLER_T: &str = include_str!("templates/controller/api/controller.t");
+const API_CONTROLLER_TEST_T: &str = include_str!("templates/controller/api/test.t");
 
 const HTMX_CONTROLLER_CONTROLLER_T: &str = include_str!("templates/controller/htmx/controller.t");
 const HTMX_VIEW_T: &str = include_str!("templates/controller/htmx/view.t");
@@ -11,7 +12,7 @@ const HTMX_VIEW_T: &str = include_str!("templates/controller/htmx/view.t");
 const HTML_CONTROLLER_CONTROLLER_T: &str = include_str!("templates/controller/html/controller.t");
 const HTML_VIEW_T: &str = include_str!("templates/controller/html/view.t");
 
-use super::{collect_messages, CONTROLLER_TEST_T};
+use super::collect_messages;
 use crate::Result;
 
 pub fn generate<H: Hooks>(
@@ -24,7 +25,7 @@ pub fn generate<H: Hooks>(
     match kind {
         gen::ScaffoldKind::Api => {
             let res1 = rrgen.generate(API_CONTROLLER_CONTROLLER_T, &vars)?;
-            let res2 = rrgen.generate(CONTROLLER_TEST_T, &vars)?;
+            let res2 = rrgen.generate(API_CONTROLLER_TEST_T, &vars)?;
             let messages = collect_messages(vec![res1, res2]);
             Ok(messages)
         }
