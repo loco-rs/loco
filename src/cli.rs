@@ -100,7 +100,8 @@ enum Commands {
         /// Run jobs that are associated with a specific tag.
         #[arg(short, long, action)]
         tag: Option<String>,
-        /// Specify a path to a dedicated scheduler configuration file. by default load schedulers job setting from environment config.
+        /// Specify a path to a dedicated scheduler configuration file. by
+        /// default load schedulers job setting from environment config.
         #[clap(value_parser)]
         #[arg(short, long, action)]
         config: Option<PathBuf>,
@@ -255,11 +256,11 @@ impl TryFrom<ComponentArg> for Component {
                 name,
                 actions,
                 kind,
-            } => Self::Controller {
+            } => Ok(Self::Controller {
                 name,
                 actions,
                 kind,
-            },
+            }),
             ComponentArg::Task { name } => Ok(Self::Task { name }),
             ComponentArg::Scheduler {} => Ok(Self::Scheduler {}),
             ComponentArg::Worker { name } => Ok(Self::Worker { name }),
