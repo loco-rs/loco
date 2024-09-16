@@ -8,11 +8,11 @@ jobs:
   write_content:
       shell: true
       run: "echo loco >> ./scheduler.txt"
-      cron: run every 1 second
-      # cron: "* * * * * * *"
+      schedule: run every 1 second
+      # schedule: "* * * * * * *"
       output: silent
       tags: ['base', 'infra']
 
   # run_task:
   #     run: "foo"
-  #     cron: "at 10:00 am"
+  #     schedule: "at 10:00 am"

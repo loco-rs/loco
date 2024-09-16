@@ -66,6 +66,7 @@ pub struct Job {
     pub run: String,
     #[serde(default)]
     pub shell: bool,
+    #[serde(rename = "schedule")]
     /// The cron expression defining the job's schedule.
     ///
     /// The format is as follows:
@@ -82,7 +83,7 @@ impl fmt::Display for Scheduler {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(
             f,
-            "#      job_name        cron               tags               run"
+            "#      job_name        schedule               tags               run"
         )?;
 
         let mut job_names: Vec<&String> = self.jobs.keys().collect();
@@ -92,7 +93,7 @@ impl fmt::Display for Scheduler {
             if let Some(job) = self.jobs.get(job_name) {
                 writeln!(
                     f,
-                    "{:<6} {:<15} {:<18} {:<18} {:?}",
+                    "{:<6} {:<15} {:<22} {:<18} {:?}",
                     index + 1,
                     job_name,
                     job.cron,
@@ -455,14 +456,14 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            std::fs::read_to_string(&path.join("scheduler.txt"))
+            std::fs::read_to_string(path.join("scheduler.txt"))
                 .unwrap()
                 .lines()
                 .count(),
             0
         );
         assert_eq!(
-            std::fs::read_to_string(&path.join("scheduler2.txt"))
+            std::fs::read_to_string(path.join("scheduler2.txt"))
                 .unwrap()
                 .lines()
                 .count(),

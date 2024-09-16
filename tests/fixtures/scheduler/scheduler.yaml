@@ -1,7 +1,7 @@
 jobs:
   print_task:
     run: foo
-    cron: "*/5 * * * * *"
+    schedule: "*/5 * * * * *"
     tags:
       - base
       - echo
@@ -9,7 +9,7 @@ jobs:
   write_to_file:    
     run: "echo loco >> ./scheduler.txt"
     shell: true
-    cron: "*/5 * * * * *"
+    schedule: "*/5 * * * * *"
     tags:
       - base
       - write
