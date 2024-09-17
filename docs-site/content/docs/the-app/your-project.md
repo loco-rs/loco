@@ -134,7 +134,11 @@ See scaffold command:
 ```sh
 Generates a CRUD scaffold, model and controller
 
+<<<<<<< HEAD
 Usage: demo_app-cli generate scaffold [OPTIONS] <NAME> [FIELDS]...
+=======
+Usage: blo-cli generate scaffold [OPTIONS] <NAME> [FIELDS]...
+>>>>>>> upstream/master
 
 Arguments:
   <NAME>       Name of the thing to generate
