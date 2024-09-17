@@ -55,7 +55,7 @@ jobs:
         run: cargo install sea-orm-cli
 
       - name: scaffold
-        run: cargo run -- generate scaffold car name:string year:int && cargo build
+        run: cargo run -- generate scaffold --htmx car name:string year:int && cargo build
         working-directory: ./examples/demo
         env:
           REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
@@ -69,7 +69,7 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres_test
 
       - name: controller
-        run: cargo run -- generate controller post && cargo build && cargo test requests::post
+        run: cargo run -- generate controller pages about && cargo build && cargo test pages
         working-directory: ./examples/demo
         env:
           REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
@@ -215,7 +215,7 @@ jobs:
 
       - name: test ${{ matrix.field_type }} scaffold field type
         run: |
-          cargo run -- generate scaffold room \
+          cargo run -- generate scaffold --api room \
               uuid_uniq:uuid \
               uuid_null:uuid_col \
               uuid:uuid_col! \

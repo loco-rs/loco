@@ -21,9 +21,12 @@ snippets:
       ❯ loco new
       ✔ ❯ App name? · myapp
       ✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+      ✔ ❯ Select a DB Provider · Sqlite
+      ✔ ❯ Select your background worker type · Async (in-process tokyo async tasks)
+      ✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
 
       🚂 Loco app generated successfully in:
-      myapp
+      myapp/
     path: ./snipdoc.yml
   postgres-run-docker-command:
     content: |-
@@ -40,7 +43,7 @@ snippets:
     content: cargo loco start
     path: ./snipdoc.yml
   starting-the-server-command-with-environment-env-var:
-    content: LOCO_ENV=qa cargo loco start      
+    content: LOCO_ENV=qa cargo loco start
     path: ./snipdoc.yml
   starting-the-server-command-with-output:
     content: |-
@@ -91,7 +94,7 @@ snippets:
     path: ./snipdoc.yml
   scaffold-post-command:
     content: cargo loco generate scaffold posts
-     name:string title:string content:text
+      name:string title:string content:text
     path: ./snipdoc.yml
   generate-task-help-command:
     content: cd ./examples/demo && cargo loco generate task --help

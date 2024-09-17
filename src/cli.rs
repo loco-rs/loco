@@ -35,7 +35,7 @@ use crate::{
         ServeParams, StartMode,
     },
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
-    gen::{self, Component},
+    gen::{self, Component, ScaffoldKind},
     logger, task,
 };
 #[derive(Parser)]
@@ -100,7 +100,8 @@ enum Commands {
         /// Run jobs that are associated with a specific tag.
         #[arg(short, long, action)]
         tag: Option<String>,
-        /// Specify a path to a dedicated scheduler configuration file. by default load schedulers job setting from environment config.
+        /// Specify a path to a dedicated scheduler configuration file. by
+        /// default load schedulers job setting from environment config.
         #[clap(value_parser)]
         #[arg(short, long, action)]
         config: Option<PathBuf>,
@@ -160,13 +161,32 @@ enum ComponentArg {
         fields: Vec<(String, String)>,
 
         /// The kind of scaffold to generate
-        #[clap(short, long, value_enum, default_value_t = gen::ScaffoldKind::Api)]
-        kind: gen::ScaffoldKind,
+        #[clap(short, long, value_enum, group = "scaffold_kind_group")]
+        kind: Option<gen::ScaffoldKind>,
+
+        /// Use HTMX scaffold
+        #[clap(long, group = "scaffold_kind_group")]
+        htmx: bool,
+
+        /// Use HTML scaffold
+        #[clap(long, group = "scaffold_kind_group")]
+        html: bool,
+
+        /// Use API scaffold
+        #[clap(long, group = "scaffold_kind_group")]
+        api: bool,
     },
     /// Generate a new controller with the given controller name, and test file.
     Controller {
         /// Name of the thing to generate
         name: String,
+
+        /// Actions
+        actions: Vec<String>,
+
+        /// The kind of scaffold to generate
+        #[clap(short, long, value_enum, default_value_t = gen::ScaffoldKind::Api)]
+        kind: gen::ScaffoldKind,
     },
     /// Generate a Task based on the given name
     Task {
@@ -189,8 +209,9 @@ enum ComponentArg {
     Deployment {},
 }
 
-impl From<ComponentArg> for Component {
-    fn from(value: ComponentArg) -> Self {
+impl TryFrom<ComponentArg> for Component {
+    type Error = crate::Error;
+    fn try_from(value: ComponentArg) -> Result<Self, Self::Error> {
         match value {
             #[cfg(feature = "with-db")]
             ComponentArg::Model {
@@ -198,22 +219,53 @@ impl From<ComponentArg> for Component {
                 link,
                 migration_only,
                 fields,
-            } => Self::Model {
+            } => Ok(Self::Model {
                 name,
                 link,
                 migration_only,
                 fields,
-            },
+            }),
             #[cfg(feature = "with-db")]
-            ComponentArg::Migration { name } => Self::Migration { name },
+            ComponentArg::Migration { name } => Ok(Self::Migration { name }),
             #[cfg(feature = "with-db")]
-            ComponentArg::Scaffold { name, fields, kind } => Self::Scaffold { name, fields, kind },
-            ComponentArg::Controller { name } => Self::Controller { name },
-            ComponentArg::Task { name } => Self::Task { name },
-            ComponentArg::Scheduler {} => Self::Scheduler {},
-            ComponentArg::Worker { name } => Self::Worker { name },
-            ComponentArg::Mailer { name } => Self::Mailer { name },
-            ComponentArg::Deployment {} => Self::Deployment {},
+            ComponentArg::Scaffold {
+                name,
+                fields,
+                kind,
+                htmx,
+                html,
+                api,
+            } => {
+                let kind = if let Some(kind) = kind {
+                    kind
+                } else if htmx {
+                    ScaffoldKind::Htmx
+                } else if html {
+                    ScaffoldKind::Html
+                } else if api {
+                    ScaffoldKind::Api
+                } else {
+                    return Err(crate::Error::string(
+                        "Error: One of `kind`, `htmx`, `html`, or `api` must be specified.",
+                    ));
+                };
+
+                Ok(Self::Scaffold { name, fields, kind })
+            }
+            ComponentArg::Controller {
+                name,
+                actions,
+                kind,
+            } => Ok(Self::Controller {
+                name,
+                actions,
+                kind,
+            }),
+            ComponentArg::Task { name } => Ok(Self::Task { name }),
+            ComponentArg::Scheduler {} => Ok(Self::Scheduler {}),
+            ComponentArg::Worker { name } => Ok(Self::Worker { name }),
+            ComponentArg::Mailer { name } => Ok(Self::Mailer { name }),
+            ComponentArg::Deployment {} => Ok(Self::Deployment {}),
         }
     }
 }
@@ -224,7 +276,8 @@ enum DbCommands {
     Create,
     /// Migrate schema (up)
     Migrate,
-    /// Run one down migration, or add a number to run multiple down migrations (i.e. `down 2`)
+    /// Run one down migration, or add a number to run multiple down migrations
+    /// (i.e. `down 2`)
     Down {
         /// The number of migrations to rollback
         #[arg(default_value_t = 1)]
@@ -375,7 +428,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             run_scheduler::<H>(&app_context, config.as_ref(), name, tag, list).await?;
         }
         Commands::Generate { component } => {
-            gen::generate::<H>(component.into(), &config)?;
+            gen::generate::<H>(component.try_into()?, &config)?;
         }
         Commands::Doctor {} => {
             let mut should_exit = false;
