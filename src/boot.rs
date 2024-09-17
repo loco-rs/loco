@@ -396,11 +396,12 @@ fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
 // TODO: Refactor to eliminate unwrapping and instead return an appropriate
 // error type.
 pub async fn connect_redis(config: &Config) -> Option<Pool<RedisConnectionManager>> {
-    if let Some(redis) = &config.queue {
-        let manager = RedisConnectionManager::new(redis.uri.clone()).unwrap();
-        let redis = Pool::builder().build(manager).await.unwrap();
-        Some(redis)
-    } else {
-        None
+    if config.workers.mode == config::WorkerMode::BackgroundQueue {
+        if let Some(redis) = &config.queue {
+            let manager = RedisConnectionManager::new(redis.uri.clone()).unwrap();
+            let redis = Pool::builder().build(manager).await.unwrap();
+            return Some(redis);
+        }
     }
+    None
 }
