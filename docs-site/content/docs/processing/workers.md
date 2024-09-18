@@ -107,6 +107,20 @@ To use a worker, we mainly think about adding a job to the queue, so you `use` t
     .await
 ```
 
+If you want to add the job be run after a specified time, you can use the `perform_in` method and specify a `std::time::Duration`, for example:
+
+```rust
+    // .. in your controller ..
+    DownloadWorker::perform_in(
+        &ctx,
+        std::time::Duration::from_secs(60), // Start job after 60 seconds has passed
+        DownloadWorkerArgs {
+            user_guid: "foo".to_string(),
+        },
+    )
+    .await
+```
+
 Unlike Rails and Ruby, with Rust you can enjoy _strongly typed_ job arguments which gets serialized and pushed into the queue.
 
 ## Creating a new worker
@@ -169,9 +183,30 @@ workers:
   mode: BackgroundQueue
 ```
 
+By default, `loco` has 2 queues: `default` and `mailer`. If you want to specify other queues for your workers to use, you have to specify them. Adding a `custom` queue would look like this:
+
+```yaml
+  mode: BackgroundQueue
+  queues:
+    - custom
+```
+And then you can specify which queue to use for each worker by implementing the `opts` function on the `Worker` trait.
+
+```rust
+#[async_trait]
+impl Worker<DownloadWorkerArgs> for DownloadWorker {
+    //..
+    fn opts() -> worker::AppWorkerOpts<DownloadWorkerArgs, Self> {
+        // this won't run if the queue you supply is not in the config
+        worker::AppWorkerOpts::new().queue("custom")
+    } 
+    //..
+}
+```
+
 ## Testing a Worker
 
-You can easily test your worker background jobs using `Loco`. Ensure that your worker is set to the `ForegroundBlocking` mode, which blocks the job, ensuring it runs synchronously. When testing the worker, the test will wait until your worker is completed, allowing you to verify if the worker accomplished its intended tasks.
+You can easily test your worker background jobs using `loco`. Ensure that your worker is set to the `ForegroundBlocking` mode, which blocks the job, ensuring it runs synchronously. When testing the worker, the test will wait until your worker is completed, allowing you to verify if the worker accomplished its intended tasks.
 
 It's recommended to implement tests in the `tests/workers` directory to consolidate all your worker tests in one place.
 
