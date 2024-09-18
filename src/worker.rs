@@ -34,6 +34,50 @@ where
     T: Send + Sync + serde::Serialize + 'static,
 {
     fn build(ctx: &AppContext) -> Self;
+
+    async fn perform_in(ctx: &AppContext, duration: std::time::Duration, args: T) -> Result<()> {
+        match &ctx.config.workers.mode {
+            WorkerMode::BackgroundQueue => {
+                if let Some(queue) = &ctx.queue {
+                    Self::opts()
+                        .perform_in(queue, duration, args)
+                        .await
+                        .unwrap();
+                } else {
+                    error!(
+                        error.msg =
+                            "worker mode requested but no queue connection supplied, skipping job",
+                        "worker_error"
+                    );
+                }
+            }
+            WorkerMode::ForegroundBlocking => {
+                std::thread::sleep(duration);
+                Self::build(ctx).perform(args).await.unwrap();
+            }
+            WorkerMode::BackgroundAsync => {
+                let dx = ctx.clone();
+                tokio::spawn(async move {
+                    // If wait time is larger than a minute (+ 4 seconds), wait in
+                    // intervals of 1 minute to avoid long running tasks in the
+                    // event loop, as well as computer sleep mode or clock changing.
+                    if duration > std::time::Duration::from_secs(64) {
+                        // Give 4 seconds buffer for waking up
+                        let num_sleeps = duration.as_secs() / 60;
+                        for _ in 0..num_sleeps {
+                            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+                        }
+                    } else {
+                        tokio::time::sleep(duration).await;
+                    }
+
+                    Self::build(&dx).perform(args).await
+                });
+            }
+        }
+        Ok(())
+    }
+
     async fn perform_later(ctx: &AppContext, args: T) -> Result<()> {
         match &ctx.config.workers.mode {
             WorkerMode::BackgroundQueue => {
