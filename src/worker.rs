@@ -24,6 +24,8 @@ pub fn get_queues(config_queues: &Option<Vec<String>>) -> Vec<String> {
     queues
 }
 
+pub type AppWorkerOpts<Args, T> = sidekiq::WorkerOpts<Args, T>;
+
 #[async_trait]
 #[allow(clippy::module_name_repetitions)]
 pub trait AppWorker<T>: Worker<T>

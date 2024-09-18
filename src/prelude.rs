@@ -39,7 +39,7 @@ pub use crate::{
     task::{self, Task, TaskInfo},
     validation::{self, Validatable},
     validator::Validate,
-    worker::{self, AppWorker},
+    worker::{self, AppWorker, AppWorkerOpts},
     Result,
 };
 
