@@ -2,7 +2,7 @@
   "field_types": [
     {
       "name": "uuid",
-      "rust": "Option<Uuid>",
+      "rust": "Uuid",
       "schema": "uuid_uniq"
     },
     {
@@ -42,32 +42,32 @@
     },
     {
       "name": "tiny_int",
-      "rust": "Option<i32>",
+      "rust": "Option<i16>",
       "schema": "tiny_integer_null"
     },
     {
       "name": "tiny_int!",
-      "rust": "i32",
+      "rust": "i16",
       "schema": "tiny_integer"
     },
     {
       "name": "tiny_int^",
-      "rust": "i32",
+      "rust": "i16",
       "schema": "tiny_integer_uniq"
     },
     {
       "name": "small_int",
-      "rust": "Option<i32>",
+      "rust": "Option<i16>",
       "schema": "small_integer_null"
     },
     {
       "name": "small_int!",
-      "rust": "i32",
+      "rust": "i16",
       "schema": "small_integer"
     },
     {
       "name": "small_int^",
-      "rust": "i32",
+      "rust": "i16",
       "schema": "small_integer_uniq"
     },
     {
@@ -82,7 +82,7 @@
     },
     {
       "name": "int^",
-      "rust": "Option<i32>",
+      "rust": "i32",
       "schema": "integer_uniq"
     },
     {
@@ -152,12 +152,12 @@
     },
     {
       "name": "tstz",
-      "rust": "Option<DateTime>",
+      "rust": "Option<DateTimeWithTimeZone>",
       "schema": "timestamp_with_time_zone_null"
     },
     {
       "name": "tstz!",
-      "rust": "DateTime",
+      "rust": "DateTimeWithTimeZone",
       "schema": "timestamp_with_time_zone"
     },
     {
@@ -199,6 +199,26 @@
       "name": "jsonb!",
       "rust": "serde_json::Value",
       "schema": "json_binary"
+    },
+    {
+      "name": "blob",
+      "rust": "Option<Vec<u8>>",
+      "schema": "blob_null"
+    },
+    {
+      "name": "blob!",
+      "rust": "Vec<u8>",
+      "schema": "blob"
+    },
+    {
+      "name": "money",
+      "rust": "Option<Decimal>",
+      "schema": "money_null"
+    },
+    {
+      "name": "money!",
+      "rust": "Decimal",
+      "schema": "money"
     }
   ]
 }

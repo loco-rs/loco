@@ -1,0 +1,32 @@
+name: docs
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+env:
+  RUST_TOOLCHAIN: stable
+  TOOLCHAIN_PROFILE: minimal
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - run: cargo install snipdoc --features exec
+      - run: snipdoc check        
+        env:
+          SNIPDOC_SKIP_EXEC_COMMANDS: true
+
+  

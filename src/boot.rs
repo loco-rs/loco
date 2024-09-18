@@ -1,7 +1,7 @@
 //! # Application Bootstrapping and Logic
 //! This module contains functions and structures for bootstrapping and running
 //! your application.
-use std::{collections::BTreeMap, sync::Arc};
+use std::path::PathBuf;
 
 use axum::Router;
 #[cfg(feature = "with-db")]
@@ -13,14 +13,17 @@ use crate::db;
 use crate::{
     app::{AppContext, Hooks},
     banner::print_banner,
+    cache,
     config::{self, Config},
     controller::ListRoutes,
     environment::Environment,
     errors::Error,
     mailer::{EmailSender, MailerWorker},
     redis,
-    task::Tasks,
-    worker::{self, AppWorker, Pool, Processor, RedisConnectionManager, DEFAULT_QUEUES},
+    scheduler::{self, Scheduler},
+    storage::{self, Storage},
+    task::{self, Tasks},
+    worker::{self, AppWorker, Pool, Processor, RedisConnectionManager},
     Result,
 };
 
@@ -103,7 +106,7 @@ async fn process(processor: Processor) -> Result<()> {
 pub async fn run_task<H: Hooks>(
     app_context: &AppContext,
     task: Option<&String>,
-    vars: &BTreeMap<String, String>,
+    vars: &task::Vars,
 ) -> Result<()> {
     let mut tasks = Tasks::default();
     H::register_tasks(&mut tasks);
@@ -121,11 +124,57 @@ pub async fn run_task<H: Hooks>(
     Ok(())
 }
 
+/// Runs the scheduler with the given configuration and context. in case if list args is true
+/// prints scheduler job configuration
+///
+/// This function initializes the scheduler, registers tasks through the provided [`Hooks`],
+/// and executes the scheduler based on the specified configuration or context. The scheduler
+/// continuously runs, managing and executing scheduled tasks until a signal is received to shut down.
+/// Upon receiving this signal, the function gracefully shuts down all running tasks and exits safely.
+///
+/// # Errors
+///
+/// When running could not run the scheduler.
+pub async fn run_scheduler<H: Hooks>(
+    app_context: &AppContext,
+    config: Option<&PathBuf>,
+    name: Option<String>,
+    tag: Option<String>,
+    list: bool,
+) -> Result<()> {
+    let mut tasks = Tasks::default();
+    H::register_tasks(&mut tasks);
+
+    let task_span = tracing::span!(tracing::Level::DEBUG, "scheduler_jobs");
+    let _guard = task_span.enter();
+
+    let scheduler = match config {
+        Some(path) => Scheduler::from_config::<H>(path, &app_context.environment)?,
+        None => {
+            if let Some(config) = &app_context.config.scheduler {
+                Scheduler::new::<H>(config, &app_context.environment)?
+            } else {
+                return Err(Error::Scheduler(scheduler::Error::Empty));
+            }
+        }
+    };
+
+    let scheduler = scheduler.by_spec(&scheduler::Spec { name, tag });
+    if list {
+        println!("{scheduler}");
+        Ok(())
+    } else {
+        Ok(scheduler.run().await?)
+    }
+}
+
 /// Represents commands for handling database-related operations.
 #[derive(Debug)]
 pub enum RunDbCommand {
     /// Apply pending migrations.
     Migrate,
+    /// Run one or more down migrations.
+    Down(u32),
     /// Drop all tables, then reapply all migrations.
     Reset,
     /// Check the status of all migrations.
@@ -152,6 +201,10 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
         RunDbCommand::Migrate => {
             tracing::warn!("migrate:");
             db::migrate::<M>(&app_context.db).await?;
+        }
+        RunDbCommand::Down(steps) => {
+            tracing::warn!("down:");
+            db::down::<M>(&app_context.db, steps).await?;
         }
         RunDbCommand::Reset => {
             tracing::warn!("reset:");
@@ -198,16 +251,18 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
         None
     };
 
-    let redis = connect_redis(&config).await;
-    Ok(AppContext {
+    let ctx = AppContext {
         environment: environment.clone(),
         #[cfg(feature = "with-db")]
         db,
-        redis,
-        storage: H::storage(&config, environment).await?.map(Arc::new),
+        queue: connect_redis(&config).await,
+        storage: Storage::single(storage::drivers::null::new()).into(),
+        cache: cache::Cache::new(cache::drivers::null::new()).into(),
         config,
         mailer,
-    })
+    };
+
+    H::after_context(ctx).await
 }
 
 #[cfg(feature = "with-db")]
@@ -223,8 +278,8 @@ pub async fn create_app<H: Hooks, M: MigratorTrait>(
     let app_context = create_context::<H>(environment).await?;
     db::converge::<H, M>(&app_context.db, &app_context.config.database).await?;
 
-    if let Some(pool) = &app_context.redis {
-        redis::converge(pool, &app_context.config.redis).await?;
+    if let Some(pool) = &app_context.queue {
+        redis::converge(pool, &app_context.config.queue).await?;
     }
 
     run_app::<H>(&mode, app_context).await
@@ -237,8 +292,8 @@ pub async fn create_app<H: Hooks>(
 ) -> Result<BootResult> {
     let app_context = create_context::<H>(environment).await?;
 
-    if let Some(pool) = &app_context.redis {
-        redis::converge(pool, &app_context.config.redis).await?;
+    if let Some(pool) = &app_context.queue {
+        redis::converge(pool, &app_context.config.queue).await?;
     }
 
     run_app::<H>(&mode, app_context).await
@@ -257,7 +312,8 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
     }
     match mode {
         StartMode::ServerOnly => {
-            let app = H::routes(&app_context).to_router(app_context.clone())?;
+            let app = H::before_routes(&app_context).await?;
+            let app = H::routes(&app_context).to_router(app_context.clone(), app)?;
             let mut router = H::after_routes(app, &app_context).await?;
             for initializer in &initializers {
                 router = initializer.after_routes(router, &app_context).await?;
@@ -271,7 +327,8 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
         }
         StartMode::ServerAndWorker => {
             let processor = create_processor::<H>(&app_context)?;
-            let app = H::routes(&app_context).to_router(app_context.clone())?;
+            let app = H::before_routes(&app_context).await?;
+            let app = H::routes(&app_context).to_router(app_context.clone(), app)?;
             let mut router = H::after_routes(app, &app_context).await?;
             for initializer in &initializers {
                 router = initializer.after_routes(router, &app_context).await?;
@@ -299,17 +356,11 @@ fn create_processor<H: Hooks>(app_context: &AppContext) -> Result<Processor> {
         queues = ?queues,
         "registering queues (merged config and default)"
     );
-    let mut p = if let Some(redis) = &app_context.redis {
-        Processor::new(
-            redis.clone(),
-            DEFAULT_QUEUES
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>(),
-        )
+    let mut p = if let Some(queue) = &app_context.queue {
+        Processor::new(queue.clone(), queues)
     } else {
         return Err(Error::Message(
-            "redis is missing, cannot initialize workers".to_string(),
+            "queue is missing, cannot initialize workers".to_string(),
         ));
     };
 
@@ -345,11 +396,12 @@ fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
 // TODO: Refactor to eliminate unwrapping and instead return an appropriate
 // error type.
 pub async fn connect_redis(config: &Config) -> Option<Pool<RedisConnectionManager>> {
-    if let Some(redis) = &config.redis {
-        let manager = RedisConnectionManager::new(redis.uri.clone()).unwrap();
-        let redis = Pool::builder().build(manager).await.unwrap();
-        Some(redis)
-    } else {
-        None
+    if config.workers.mode == config::WorkerMode::BackgroundQueue {
+        if let Some(redis) = &config.queue {
+            let manager = RedisConnectionManager::new(redis.uri.clone()).unwrap();
+            let redis = Pool::builder().build(manager).await.unwrap();
+            return Some(redis);
+        }
     }
+    None
 }

@@ -1,5 +1,14 @@
 # SaaS Frontend
 
+## Batteries included
+
+- [TypeScript](https://www.typescriptlang.org/): A typed superset of JavaScript
+- [Rsbuild](https://rsbuild.dev/): A Rust-based web build tool
+- [Biome](https://biomejs.dev/): A Rust-based formatter and sensible linter for the web
+- [React](https://reactjs.org/): A JavaScript library for building user interfaces
+
+If you don't like React for some reason, Rsbuild makes it easy to replace it with something else!
+
 # Development
 
 To get started with the development of the SaaS frontend, follow these steps:

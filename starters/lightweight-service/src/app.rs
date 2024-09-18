@@ -10,6 +10,8 @@ use loco_rs::{
 };
 
 use crate::controllers;
+#[allow(unused_imports)]
+use crate::tasks;
 
 pub struct App;
 #[async_trait]
@@ -40,5 +42,8 @@ impl Hooks for App {
 
     fn connect_workers<'a>(_p: &'a mut Processor, _ctx: &'a AppContext) {}
 
-    fn register_tasks(_tasks: &mut Tasks) {}
+    #[allow(unused_variables)]
+    fn register_tasks(tasks: &mut Tasks) {
+        // tasks.register(TASK);
+    }
 }

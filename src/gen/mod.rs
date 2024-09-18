@@ -7,6 +7,7 @@ use rrgen::{GenResult, RRgen};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
+mod controller;
 #[cfg(feature = "with-db")]
 mod model;
 #[cfg(feature = "with-db")]
@@ -28,6 +29,8 @@ const MIGRATION_T: &str = include_str!("templates/migration.t");
 const TASK_T: &str = include_str!("templates/task.t");
 const TASK_TEST_T: &str = include_str!("templates/task_test.t");
 
+const SCHEDULER_T: &str = include_str!("templates/scheduler.t");
+
 const WORKER_T: &str = include_str!("templates/worker.t");
 const WORKER_TEST_T: &str = include_str!("templates/worker_test.t");
 
@@ -38,7 +41,7 @@ const DEPLOYMENT_SHUTTLE_T: &str = include_str!("templates/deployment_shuttle.t"
 const DEPLOYMENT_SHUTTLE_CONFIG_T: &str = include_str!("templates/deployment_shuttle_config.t");
 const DEPLOYMENT_NGINX_T: &str = include_str!("templates/deployment_nginx.t");
 
-const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.38.0";
+const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.46.0";
 
 const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
     ("Docker", DeploymentKind::Docker),
@@ -152,11 +155,18 @@ pub enum Component {
     Controller {
         /// Name of the thing to generate
         name: String,
+
+        /// Action names
+        actions: Vec<String>,
+
+        // kind
+        kind: ScaffoldKind,
     },
     Task {
         /// Name of the thing to generate
         name: String,
     },
+    Scheduler {},
     Worker {
         /// Name of the thing to generate
         name: String,
@@ -195,15 +205,24 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
             let vars = json!({ "name": name, "ts": chrono::Utc::now(), "pkg_name": H::app_name()});
             rrgen.generate(MIGRATION_T, &vars)?;
         }
-        Component::Controller { name } => {
-            let vars = json!({ "name": name, "pkg_name": H::app_name()});
-            rrgen.generate(CONTROLLER_T, &vars)?;
-            rrgen.generate(CONTROLLER_TEST_T, &vars)?;
+        Component::Controller {
+            name,
+            actions,
+            kind,
+        } => {
+            println!(
+                "{}",
+                controller::generate::<H>(&rrgen, &name, &actions, &kind)?
+            );
         }
         Component::Task { name } => {
             let vars = json!({"name": name, "pkg_name": H::app_name()});
             rrgen.generate(TASK_T, &vars)?;
             rrgen.generate(TASK_TEST_T, &vars)?;
+        }
+        Component::Scheduler {} => {
+            let vars = json!({"pkg_name": H::app_name()});
+            rrgen.generate(SCHEDULER_T, &vars)?;
         }
         Component::Worker { name } => {
             let vars = json!({"name": name, "pkg_name": H::app_name()});
@@ -290,7 +309,7 @@ fn collect_messages(results: Vec<GenResult>) -> String {
     messages
 }
 
-fn prompt_deployment_selection() -> eyre::Result<DeploymentKind> {
+fn prompt_deployment_selection() -> Result<DeploymentKind> {
     let options: Vec<String> = DEPLOYMENT_OPTIONS.iter().map(|t| t.0.to_string()).collect();
 
     let selection_options = requestty::Question::select("deployment")
@@ -298,11 +317,11 @@ fn prompt_deployment_selection() -> eyre::Result<DeploymentKind> {
         .choices(&options)
         .build();
 
-    let answer = requestty::prompt_one(selection_options)?;
+    let answer = requestty::prompt_one(selection_options).map_err(errors::Error::msg)?;
 
     let selection = answer
         .as_list_item()
-        .ok_or_else(|| eyre::eyre!("deployment selection it empty"))?;
+        .ok_or_else(|| errors::Error::string("deployment selection it empty"))?;
 
     Ok(DEPLOYMENT_OPTIONS[selection.index].1.clone())
 }

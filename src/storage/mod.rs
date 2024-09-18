@@ -36,6 +36,9 @@ pub enum StorageError {
 
     #[error("secondaries errors")]
     Multi(BTreeMap<String, String>),
+
+    #[error(transparent)]
+    Any(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
 pub type StorageResult<T> = std::result::Result<T, StorageError>;

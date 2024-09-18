@@ -35,12 +35,12 @@ where
     async fn perform_later(ctx: &AppContext, args: T) -> Result<()> {
         match &ctx.config.workers.mode {
             WorkerMode::BackgroundQueue => {
-                if let Some(redis) = &ctx.redis {
-                    Self::perform_async(redis, args).await.unwrap();
+                if let Some(queue) = &ctx.queue {
+                    Self::perform_async(queue, args).await.unwrap();
                 } else {
                     error!(
                         error.msg =
-                            "worker mode requested but no redis connection supplied, skipping job",
+                            "worker mode requested but no queue connection supplied, skipping job",
                         "worker_error"
                     );
                 }
@@ -54,5 +54,24 @@ where
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use insta::assert_debug_snapshot;
+
+    use super::get_queues;
+
+    #[test]
+    fn test_default_custom_queues() {
+        let default_queues = get_queues(&None);
+        assert_debug_snapshot!(default_queues);
+
+        let default_queues2 = get_queues(&Some(vec![]));
+        assert_debug_snapshot!(default_queues2);
+
+        let merged_queues = get_queues(&Some(vec!["foo".to_string(), "bar".to_string()]));
+        assert_debug_snapshot!(merged_queues);
     }
 }

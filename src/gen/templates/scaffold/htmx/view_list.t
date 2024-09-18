@@ -4,17 +4,15 @@ to: assets/views/{{file_name}}/list.html
 skip_exists: true
 message: "{{file_name}} list view was added successfully."
 ---
-<!DOCTYPE html>
-<html lang="en">
+{% raw %}{% extends "base.html" %}{% endraw %}
 
-<head>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
-</head>
+{% raw %}{% block title %}{% endraw %}
+List of {{file_name}}
+{% raw %}{% endblock title %}{% endraw %}
 
-<body class="prose p-10">
-     <h1>{{file_name}}s</h1>
-     <div class="mb-10">
+{% raw %}{% block content %}{% endraw %}
+<h1>{{file_name}}</h1>
+<div class="mb-10">
     {% raw %}{% for item in items %}{% endraw %}
     <div class="mb-5">
             {% for column in columns -%}
@@ -30,7 +28,5 @@ message: "{{file_name}} list view was added successfully."
     <br />
     <br />
     <a href="/{{name | plural}}/new">New {{name}}</a>
-    </div>
-</body>
-
-</html>
+</div>
+{% raw %}{% endblock content %}{% endraw %}

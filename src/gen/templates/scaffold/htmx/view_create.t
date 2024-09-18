@@ -4,21 +4,18 @@ to: assets/views/{{file_name}}/create.html
 skip_exists: true
 message: "{{file_name}} create view was added successfully."
 ---
-<!DOCTYPE html>
-<html lang="en">
+{% raw %}{% extends "base.html" %}{% endraw %}
 
-<head>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
-</head>
+{% raw %}{% block title %}{% endraw %}
+Create {{file_name}}
+{% raw %}{% endblock title %}{% endraw %}
 
-<body class="prose p-10">
-    <h1>Create new {{name}}</h1>
-    <div class="mb-10">
-    <form hx-post="/{{name | plural}}" hx-ext="json-enc">
-     <div class="mb-5">
-     {% for column in columns -%}
+{% raw %}{% block content %}{% endraw %}
+<div class="mb-10">
+    <form hx-post="/{{name | plural}}" hx-ext="submitjson">
+        <h1>Create new {{name}}</h1>
+        <div class="mb-5">
+        {% for column in columns -%}
         <div>
         <label>{{column.0}}</label>
         <br />
@@ -54,7 +51,31 @@ message: "{{file_name}} create view was added successfully."
         <button class=" text-xs py-3 px-6 rounded-lg bg-gray-900 text-white" type="submit">Submit</button>
     </div>
     </form>
-    </div>
-</body>
+</div>
+{% raw %}{% endblock content %}{% endraw %}
 
-</html>
+{% raw %}{% block js %}{% endraw %}
+<script>
+    htmx.defineExtension('submitjson', {
+        onEvent: function (name, evt) {
+            if (name === "htmx:configRequest") {
+                evt.detail.headers['Content-Type'] = "application/json"
+            }
+        },
+        encodeParameters: function (xhr, parameters, elt) {
+            const json = {};
+            for (const [key, value] of Object.entries(parameters)) {
+                const inputType = elt.querySelector(`[name=${key}]`).type;
+                if (inputType === 'number') {
+                    json[key] = parseFloat(value);
+                } else if (inputType === 'checkbox') {
+                    json[key] = elt.querySelector(`[name=${key}]`).checked;
+                } else {
+                    json[key] = value;
+                }
+            }
+            return JSON.stringify(json);
+        }
+    })
+</script>
+{% raw %}{% endblock js %}{% endraw %}

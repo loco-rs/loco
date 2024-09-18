@@ -6,7 +6,7 @@ logger:
   enable: false
   # Log level, options: trace, debug, info, warn or error.
   level: error
-  # Define the logging format. options: compact, pretty or Json
+  # Define the logging format. options: compact, pretty or json
   format: compact
   # By default the logger has filtering only logs that came from your code or logs that came from `loco` framework. to see all third party libraries
   # Uncomment the line below to override to see all third party libraries you can enable this config and override the logger filters.
@@ -15,7 +15,7 @@ logger:
 # Web server configuration
 server:
   # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
-  port: 3000
+  port: 5150
   # The UI hostname or IP address that mailers will point to.
   host: http://localhost
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
@@ -116,8 +116,8 @@ database:
   # Recreating schema when application loaded.  This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_recreate: true
 
-# Redis Configuration
-redis:
+# Queue Configuration
+queue:
   # Redis connection URI
   uri: {{get_env(name="REDIS_URL", default="redis://127.0.0.1")}}
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
@@ -131,3 +131,23 @@ auth:
     secret: PqRwLF2rhHe8J22oBeHy
     # Token expiration time in seconds
     expiration: 604800 # 7 days
+
+scheduler:
+  output: stdout
+  jobs:
+    write_content:
+      shell: true
+      run: "echo loco >> ./scheduler.txt"
+      schedule: run every 1 second
+      output: silent
+      tags: ['base', 'infra']
+
+    run_task:
+      run: "foo"
+      schedule: "at 10:00 am"
+
+    list_if_users:
+      run: "user_report"
+      shell: true
+      schedule: "* 2 * * * *"
+      tags: ['base', 'users']

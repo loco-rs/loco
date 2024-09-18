@@ -24,6 +24,8 @@ pub struct Args {
     pub to: String,
     pub reply_to: Option<String>,
     pub locals: serde_json::Value,
+    pub bcc: Option<String>,
+    pub cc: Option<String>,
 }
 
 /// The structure representing an email details.
@@ -41,6 +43,10 @@ pub struct Email {
     pub text: String,
     /// HTML template
     pub html: String,
+    /// BCC header to message
+    pub bcc: Option<String>,
+    /// CC header to message
+    pub cc: Option<String>,
 }
 
 /// The options struct for configuring the email sender.
@@ -91,6 +97,8 @@ pub trait Mailer {
                 subject: content.subject,
                 text: content.text,
                 html: content.html,
+                bcc: args.bcc.clone(),
+                cc: args.cc.clone(),
             },
         )
         .await

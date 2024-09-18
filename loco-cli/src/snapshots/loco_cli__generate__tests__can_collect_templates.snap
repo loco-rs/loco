@@ -24,10 +24,12 @@ Ok(
                     },
                 ],
             ),
+            options: None,
         },
         "template-b": Template {
             description: "template_b",
             rules: None,
+            options: None,
         },
     },
 )

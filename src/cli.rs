@@ -14,9 +14,6 @@
 //!     cli::main::<App, Migrator>().await
 //! }
 //! ```
-
-use std::collections::BTreeMap;
-
 cfg_if::cfg_if! {
     if #[cfg(feature = "with-db")] {
         use sea_orm_migration::MigratorTrait;
@@ -27,17 +24,19 @@ cfg_if::cfg_if! {
     } else {}
 }
 
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand};
 
 use crate::{
     app::{AppContext, Hooks},
     boot::{
-        create_app, create_context, list_endpoints, run_task, start, RunDbCommand, ServeParams,
-        StartMode,
+        create_app, create_context, list_endpoints, run_scheduler, run_task, start, RunDbCommand,
+        ServeParams, StartMode,
     },
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
-    gen::{self, Component},
-    logger,
+    gen::{self, Component, ScaffoldKind},
+    logger, task,
 };
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -89,9 +88,26 @@ enum Commands {
     Task {
         /// Task name (identifier)
         name: Option<String>,
-        /// Task params (e.g. <my_task> foo:bar baz:qux)
+        /// Task params (e.g. <`my_task`> foo:bar baz:qux)
         #[clap(value_parser = parse_key_val::<String,String>)]
         params: Vec<(String, String)>,
+    },
+    /// Run the scheduler
+    Scheduler {
+        /// Run a specific job by its name.
+        #[arg(short, long, action)]
+        name: Option<String>,
+        /// Run jobs that are associated with a specific tag.
+        #[arg(short, long, action)]
+        tag: Option<String>,
+        /// Specify a path to a dedicated scheduler configuration file. by
+        /// default load schedulers job setting from environment config.
+        #[clap(value_parser)]
+        #[arg(short, long, action)]
+        config: Option<PathBuf>,
+        /// Show all configured jobs
+        #[arg(short, long, action)]
+        list: bool,
     },
     /// code generation creates a set of files and code templates based on a
     /// predefined set of rules.
@@ -145,19 +161,40 @@ enum ComponentArg {
         fields: Vec<(String, String)>,
 
         /// The kind of scaffold to generate
-        #[clap(short, long, value_enum, default_value_t = gen::ScaffoldKind::Api)]
-        kind: gen::ScaffoldKind,
+        #[clap(short, long, value_enum, group = "scaffold_kind_group")]
+        kind: Option<gen::ScaffoldKind>,
+
+        /// Use HTMX scaffold
+        #[clap(long, group = "scaffold_kind_group")]
+        htmx: bool,
+
+        /// Use HTML scaffold
+        #[clap(long, group = "scaffold_kind_group")]
+        html: bool,
+
+        /// Use API scaffold
+        #[clap(long, group = "scaffold_kind_group")]
+        api: bool,
     },
     /// Generate a new controller with the given controller name, and test file.
     Controller {
         /// Name of the thing to generate
         name: String,
+
+        /// Actions
+        actions: Vec<String>,
+
+        /// The kind of scaffold to generate
+        #[clap(short, long, value_enum, default_value_t = gen::ScaffoldKind::Api)]
+        kind: gen::ScaffoldKind,
     },
     /// Generate a Task based on the given name
     Task {
         /// Name of the thing to generate
         name: String,
     },
+    /// Generate a scheduler jobs configuration template
+    Scheduler {},
     /// Generate worker
     Worker {
         /// Name of the thing to generate
@@ -172,8 +209,9 @@ enum ComponentArg {
     Deployment {},
 }
 
-impl From<ComponentArg> for Component {
-    fn from(value: ComponentArg) -> Self {
+impl TryFrom<ComponentArg> for Component {
+    type Error = crate::Error;
+    fn try_from(value: ComponentArg) -> Result<Self, Self::Error> {
         match value {
             #[cfg(feature = "with-db")]
             ComponentArg::Model {
@@ -181,21 +219,53 @@ impl From<ComponentArg> for Component {
                 link,
                 migration_only,
                 fields,
-            } => Self::Model {
+            } => Ok(Self::Model {
                 name,
                 link,
                 migration_only,
                 fields,
-            },
+            }),
             #[cfg(feature = "with-db")]
-            ComponentArg::Migration { name } => Self::Migration { name },
+            ComponentArg::Migration { name } => Ok(Self::Migration { name }),
             #[cfg(feature = "with-db")]
-            ComponentArg::Scaffold { name, fields, kind } => Self::Scaffold { name, fields, kind },
-            ComponentArg::Controller { name } => Self::Controller { name },
-            ComponentArg::Task { name } => Self::Task { name },
-            ComponentArg::Worker { name } => Self::Worker { name },
-            ComponentArg::Mailer { name } => Self::Mailer { name },
-            ComponentArg::Deployment {} => Self::Deployment {},
+            ComponentArg::Scaffold {
+                name,
+                fields,
+                kind,
+                htmx,
+                html,
+                api,
+            } => {
+                let kind = if let Some(kind) = kind {
+                    kind
+                } else if htmx {
+                    ScaffoldKind::Htmx
+                } else if html {
+                    ScaffoldKind::Html
+                } else if api {
+                    ScaffoldKind::Api
+                } else {
+                    return Err(crate::Error::string(
+                        "Error: One of `kind`, `htmx`, `html`, or `api` must be specified.",
+                    ));
+                };
+
+                Ok(Self::Scaffold { name, fields, kind })
+            }
+            ComponentArg::Controller {
+                name,
+                actions,
+                kind,
+            } => Ok(Self::Controller {
+                name,
+                actions,
+                kind,
+            }),
+            ComponentArg::Task { name } => Ok(Self::Task { name }),
+            ComponentArg::Scheduler {} => Ok(Self::Scheduler {}),
+            ComponentArg::Worker { name } => Ok(Self::Worker { name }),
+            ComponentArg::Mailer { name } => Ok(Self::Mailer { name }),
+            ComponentArg::Deployment {} => Ok(Self::Deployment {}),
         }
     }
 }
@@ -206,6 +276,13 @@ enum DbCommands {
     Create,
     /// Migrate schema (up)
     Migrate,
+    /// Run one down migration, or add a number to run multiple down migrations
+    /// (i.e. `down 2`)
+    Down {
+        /// The number of migrations to rollback
+        #[arg(default_value_t = 1)]
+        steps: u32,
+    },
     /// Drop all tables, then reapply all migrations
     Reset,
     /// Migration status
@@ -220,6 +297,7 @@ impl From<DbCommands> for RunDbCommand {
     fn from(value: DbCommands) -> Self {
         match value {
             DbCommands::Migrate => Self::Migrate,
+            DbCommands::Down { steps } => Self::Down(steps),
             DbCommands::Reset => Self::Reset,
             DbCommands::Status => Self::Status,
             DbCommands::Entities => Self::Entities,
@@ -286,7 +364,7 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
 /// }
 /// ```
 #[cfg(feature = "with-db")]
-pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
+pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
     let cli: Cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
@@ -317,10 +395,8 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             let boot_result = create_app::<H, M>(start_mode, &environment).await?;
             let serve_params = ServeParams {
                 port: port.map_or(boot_result.app_context.config.server.port, |p| p),
-                binding: binding.map_or(
-                    boot_result.app_context.config.server.binding.to_string(),
-                    |b| b,
-                ),
+                binding: binding
+                    .unwrap_or_else(|| boot_result.app_context.config.server.binding.to_string()),
             };
             start::<H>(boot_result, serve_params).await?;
         }
@@ -338,15 +414,21 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
             show_list_endpoints::<H>(&app_context);
         }
         Commands::Task { name, params } => {
-            let mut hash = BTreeMap::new();
-            for (k, v) in params {
-                hash.insert(k, v);
-            }
+            let vars = task::Vars::from_cli_args(params);
             let app_context = create_context::<H>(&environment).await?;
-            run_task::<H>(&app_context, name.as_ref(), &hash).await?;
+            run_task::<H>(&app_context, name.as_ref(), &vars).await?;
+        }
+        Commands::Scheduler {
+            name,
+            config,
+            tag,
+            list,
+        } => {
+            let app_context = create_context::<H>(&environment).await?;
+            run_scheduler::<H>(&app_context, config.as_ref(), name, tag, list).await?;
         }
         Commands::Generate { component } => {
-            gen::generate::<H>(component.into(), &config)?;
+            gen::generate::<H>(component.try_into()?, &config)?;
         }
         Commands::Doctor {} => {
             let mut should_exit = false;
@@ -368,7 +450,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> eyre::Result<()> {
 }
 
 #[cfg(not(feature = "with-db"))]
-pub async fn main<H: Hooks>() -> eyre::Result<()> {
+pub async fn main<H: Hooks>() -> crate::Result<()> {
     let cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
@@ -411,12 +493,18 @@ pub async fn main<H: Hooks>() -> eyre::Result<()> {
             show_list_endpoints::<H>(&app_context)
         }
         Commands::Task { name, params } => {
-            let mut hash = BTreeMap::new();
-            for (k, v) in params {
-                hash.insert(k, v);
-            }
+            let vars = task::Vars::from_cli_args(params);
             let app_context = create_context::<H>(&environment).await?;
-            run_task::<H>(&app_context, name.as_ref(), &hash).await?;
+            run_task::<H>(&app_context, name.as_ref(), &vars).await?;
+        }
+        Commands::Scheduler {
+            name,
+            config,
+            tag,
+            list,
+        } => {
+            let app_context = create_context::<H>(&environment).await?;
+            run_scheduler::<H>(&app_context, config.as_ref(), name, tag, list).await?;
         }
         Commands::Generate { component } => {
             gen::generate::<H>(component.into(), &config)?;
@@ -432,7 +520,7 @@ fn show_list_endpoints<H: Hooks>(ctx: &AppContext) {
     let mut routes = list_endpoints::<H>(ctx);
     routes.sort_by(|a, b| a.uri.cmp(&b.uri));
     for router in routes {
-        println!("{}", router.to_string());
+        println!("{router}");
     }
 }
 

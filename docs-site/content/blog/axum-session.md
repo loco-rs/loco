@@ -1,6 +1,6 @@
 +++
 title = "Building a Rust App with Axum Session"
-description = "Building a Rust App with Axum Session"
+description = "Add sessions to your app with Axum Sessions. Configure a session provider, and set up Axum Session and Loco with simple app hooks."
 date = 2023-12-19T09:19:42+00:00
 updated = 2023-12-19T09:19:42+00:00
 draft = false
@@ -91,7 +91,7 @@ pub fn routes() -> Routes {
 }
 ```
 
-Now, you can call the `http://127.0.0.1:3000/api/mysession` endpoint to see the session.
+Now, you can call the `http://127.0.0.1:5150/mysession` endpoint to see the session.
 
 ## Creating Session With DB Encryption
 
@@ -194,4 +194,4 @@ pub fn routes() -> Routes {
 
 ```
 
-Now, calling the `http://127.0.0.1:3000/api/mysession` endpoint will display the session.
+Now, calling the `http://127.0.0.1:5150/mysession` endpoint will display the session.

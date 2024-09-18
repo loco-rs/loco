@@ -2,16 +2,20 @@
 //! configuring routes in an Axum application. It allows you to define route
 //! prefixes, add routes, and configure middlewares for the application.
 
-use std::{path::PathBuf, time::Duration};
+use std::{fmt, path::PathBuf, time::Duration};
 
-use axum::{http, response::IntoResponse, Router as AXRouter};
+use axum::{
+    http,
+    response::{Html, IntoResponse},
+    Router as AXRouter,
+};
+use hyper::StatusCode;
 use lazy_static::lazy_static;
 use regex::Regex;
 use tower_http::{
     add_extension::AddExtensionLayer,
     catch_panic::CatchPanicLayer,
     compression::CompressionLayer,
-    cors,
     services::{ServeDir, ServeFile},
     set_header::SetResponseHeaderLayer,
     timeout::TimeoutLayer,
@@ -20,10 +24,20 @@ use tower_http::{
 
 #[cfg(feature = "channels")]
 use super::channels::AppChannels;
-use super::routes::Routes;
+use super::{
+    middleware::{cors::cors_middleware, remote_ip::RemoteIPConfig, secure_headers::SecureHeaders},
+    routes::Routes,
+};
 use crate::{
-    app::AppContext, config, controller::middleware::etag::EtagLayer, environment::Environment,
-    errors, Result,
+    app::AppContext,
+    config::{self, FallbackConfig},
+    controller::middleware::{
+        etag::EtagLayer,
+        remote_ip::RemoteIPLayer,
+        request_id::{request_id_middleware, LocoRequestId},
+    },
+    environment::Environment,
+    errors, Error, Result,
 };
 
 lazy_static! {
@@ -49,16 +63,16 @@ pub struct ListRoutes {
     pub method: axum::routing::MethodRouter<AppContext>,
 }
 
-impl ToString for ListRoutes {
-    fn to_string(&self) -> String {
+impl fmt::Display for ListRoutes {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let actions_str = self
             .actions
             .iter()
             .map(std::string::ToString::to_string)
             .collect::<Vec<_>>()
             .join(",");
-        // Define your custom logic here to format the struct as a string
-        format!("[{}] {}", actions_str, self.uri)
+
+        write!(f, "[{}] {}", actions_str, self.uri)
     }
 }
 
@@ -86,32 +100,38 @@ impl AppRoutes {
 
     #[must_use]
     pub fn collect(&self) -> Vec<ListRoutes> {
-        let base_url_prefix = self.get_prefix().map_or("/", |url| url.as_str());
+        let base_url_prefix = self
+            .get_prefix()
+            // add a leading slash forcefully. Axum routes must start with a leading slash.
+            // if we have double leading slashes - it will get normalized into a single slash later
+            .map_or("/".to_string(), |url| format!("/{}", url.as_str()));
 
         self.get_routes()
             .iter()
-            .flat_map(|router| {
-                let mut uri_parts = vec![base_url_prefix];
-                if let Some(prefix) = router.prefix.as_ref() {
-                    uri_parts.push(prefix);
+            .flat_map(|controller| {
+                let mut uri_parts = vec![base_url_prefix.clone()];
+                if let Some(prefix) = controller.prefix.as_ref() {
+                    uri_parts.push(prefix.to_string());
                 }
-                router.handlers.iter().map(move |controller| {
-                    let uri = format!("{}{}", uri_parts.join("/"), &controller.uri);
-                    let binding = NORMALIZE_URL.replace_all(&uri, "/");
+                controller.handlers.iter().map(move |handler| {
+                    let mut parts = uri_parts.clone();
+                    parts.push(handler.uri.to_string());
+                    let joined_parts = parts.join("/");
 
-                    let uri = if binding.len() > 1 {
-                        NORMALIZE_URL
-                            .replace_all(&uri, "/")
-                            .strip_suffix('/')
-                            .map_or_else(|| binding.to_string(), std::string::ToString::to_string)
+                    let normalized = NORMALIZE_URL.replace_all(&joined_parts, "/");
+                    let uri = if normalized == "/" {
+                        normalized.to_string()
                     } else {
-                        binding.to_string()
+                        normalized.strip_suffix('/').map_or_else(
+                            || normalized.to_string(),
+                            std::string::ToString::to_string,
+                        )
                     };
 
                     ListRoutes {
                         uri,
-                        actions: controller.actions.clone(),
-                        method: controller.method.clone(),
+                        actions: handler.actions.clone(),
+                        method: handler.method.clone(),
                     }
                 })
             })
@@ -171,23 +191,63 @@ impl AppRoutes {
         self
     }
 
-    /// Convert the routes to an Axum Router, and set a list of middlewares that
-    /// configure in the [`config::Config`]
+    /// Add the routes to an existing Axum Router, and set a list of middlewares
+    /// that configure in the [`config::Config`]
     ///
     /// # Errors
     /// Return an [`Result`] when could not convert the router setup to
     /// [`axum::Router`].
     #[allow(clippy::cognitive_complexity)]
-    pub fn to_router(&self, ctx: AppContext) -> Result<AXRouter> {
-        let mut app = AXRouter::new();
-
+    pub fn to_router(&self, ctx: AppContext, mut app: AXRouter<AppContext>) -> Result<AXRouter> {
+        //
+        // IMPORTANT: middleware ordering in this function is opposite to what you
+        // intuitively may think. when using `app.layer` to add individual middleware,
+        // the LAST middleware is the FIRST to meet the outside world (a user request
+        // starting), or "LIFO" order.
+        // We build the "onion" from the inside (start of this function),
+        // outwards (end of this function). This is why routes is first in coding order
+        // here (the core of the onion), and request ID is amongst the last
+        // (because every request is assigned with a unique ID, which starts its
+        // "life").
+        //
+        // NOTE: when using ServiceBuilder#layer the order is FIRST to LAST (but we
+        // don't use ServiceBuilder because it requires too complex generic typing for
+        // this function). ServiceBuilder is recommended to save compile times, but that
+        // may be a thing of the past as we don't notice any issues with compile times
+        // using the router directly, and ServiceBuilder has been reported to give
+        // issues in compile times itself (https://github.com/rust-lang/crates.io/pull/7443).
+        //
         for router in self.collect() {
             tracing::info!("{}", router.to_string());
 
             app = app.route(&router.uri, router.method);
         }
 
-        app = Self::add_powered_by_header(app, &ctx.config.server);
+        #[cfg(feature = "channels")]
+        if let Some(channels) = self.channels.as_ref() {
+            tracing::info!("[Middleware] +channels");
+            let channel_layer_app = tower::ServiceBuilder::new().layer(channels.layer.clone());
+            if let Some(cors) = &ctx
+                .config
+                .server
+                .middlewares
+                .cors
+                .as_ref()
+                .filter(|c| c.enable)
+            {
+                app = app.layer(
+                    tower::ServiceBuilder::new()
+                        .layer(cors_middleware(cors)?)
+                        .layer(channel_layer_app),
+                );
+            } else {
+                app = app.layer(
+                    tower::ServiceBuilder::new()
+                        .layer(tower_http::cors::CorsLayer::permissive())
+                        .layer(channel_layer_app),
+                );
+            }
+        }
 
         if let Some(catch_panic) = &ctx.config.server.middlewares.catch_panic {
             if catch_panic.enable {
@@ -195,9 +255,33 @@ impl AppRoutes {
             }
         }
 
+        if let Some(etag) = &ctx.config.server.middlewares.etag {
+            if etag.enable {
+                app = Self::add_etag_middleware(app);
+            }
+        }
+
+        if let Some(remote_ip) = &ctx.config.server.middlewares.remote_ip {
+            if remote_ip.enable {
+                app = Self::add_remote_ip_middleware(app, remote_ip)?;
+            }
+        }
+
         if let Some(compression) = &ctx.config.server.middlewares.compression {
             if compression.enable {
                 app = Self::add_compression_middleware(app);
+            }
+        }
+
+        if let Some(timeout_request) = &ctx.config.server.middlewares.timeout_request {
+            if timeout_request.enable {
+                app = Self::add_timeout_middleware(app, timeout_request);
+            }
+        }
+
+        if let Some(cors) = &ctx.config.server.middlewares.cors {
+            if cors.enable {
+                app = app.layer(cors_middleware(cors)?);
             }
         }
 
@@ -213,60 +297,65 @@ impl AppRoutes {
             }
         }
 
-        if let Some(timeout_request) = &ctx.config.server.middlewares.timeout_request {
-            if timeout_request.enable {
-                app = Self::add_timeout_middleware(app, timeout_request);
-            }
-        }
-
-        let cors = ctx
-            .config
-            .server
-            .middlewares
-            .cors
-            .as_ref()
-            .filter(|cors| cors.enable)
-            .map(Self::get_cors_middleware)
-            .transpose()?;
-
-        if let Some(cors) = &cors {
-            app = app.layer(cors.clone());
-            tracing::info!("[Middleware] Adding cors");
-        }
-
         if let Some(static_assets) = &ctx.config.server.middlewares.static_assets {
             if static_assets.enable {
                 app = Self::add_static_asset_middleware(app, static_assets)?;
             }
         }
 
-        if let Some(etag) = &ctx.config.server.middlewares.etag {
-            if etag.enable {
-                app = Self::add_etag_middleware(app);
+        if let Some(secure_headers) = &ctx.config.server.middlewares.secure_headers {
+            app = app.layer(SecureHeaders::new(secure_headers)?);
+            tracing::info!("[Middleware] +secure headers");
+        }
+
+        if let Some(fallback) = &ctx.config.server.middlewares.fallback {
+            if fallback.enable {
+                app = Self::add_fallback(app, fallback)?;
             }
         }
 
-        #[cfg(feature = "channels")]
-        if let Some(channels) = self.channels.as_ref() {
-            tracing::info!("[Middleware] Adding channels");
-            let channel_layer_app = tower::ServiceBuilder::new().layer(channels.layer.clone());
-            if let Some(cors) = cors {
-                app = app.layer(
-                    tower::ServiceBuilder::new()
-                        .layer(cors)
-                        .layer(channel_layer_app),
-                );
-            } else {
-                app = app.layer(
-                    tower::ServiceBuilder::new()
-                        .layer(tower_http::cors::CorsLayer::permissive())
-                        .layer(channel_layer_app),
-                );
-            }
-        }
+        app = Self::add_powered_by_header(app, &ctx.config.server);
+
+        app = Self::add_request_id_middleware(app);
 
         let router = app.with_state(ctx);
         Ok(router)
+    }
+
+    fn add_fallback(
+        app: AXRouter<AppContext>,
+        fallback: &FallbackConfig,
+    ) -> Result<AXRouter<AppContext>> {
+        let app = if let Some(path) = &fallback.file {
+            app.fallback_service(ServeFile::new(path))
+        } else if let Some(not_found) = &fallback.not_found {
+            let not_found = not_found.to_string();
+            let code = fallback
+                .code
+                .map(StatusCode::from_u16)
+                .transpose()
+                .map_err(|e| Error::Message(format!("{e}")))?
+                .unwrap_or(StatusCode::NOT_FOUND);
+            app.fallback(move || async move { (code, not_found) })
+        } else {
+            //app.fallback(handler)
+            let code = fallback
+                .code
+                .map(StatusCode::from_u16)
+                .transpose()
+                .map_err(|e| Error::Message(format!("{e}")))?
+                .unwrap_or(StatusCode::NOT_FOUND);
+            let content = include_str!("fallback.html");
+            app.fallback(move || async move { (code, Html(content)) })
+        };
+        tracing::info!("[Middleware] +fallback");
+        Ok(app)
+    }
+
+    fn add_request_id_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
+        let app = app.layer(axum::middleware::from_fn(request_id_middleware));
+        tracing::info!("[Middleware] +request id");
+        app
     }
 
     fn add_static_asset_middleware(
@@ -283,13 +372,13 @@ impl AppRoutes {
             )));
         }
 
-        tracing::info!("[Middleware] Adding static");
+        tracing::info!("[Middleware] +static assets");
         let serve_dir =
             ServeDir::new(&config.folder.path).not_found_service(ServeFile::new(&config.fallback));
         Ok(app.nest_service(
             &config.folder.uri,
             if config.precompressed {
-                tracing::info!("[Middleware] Enable precompressed static assets");
+                tracing::info!("[Middleware] +precompressed static assets");
                 serve_dir.precompressed_gzip()
             } else {
                 serve_dir
@@ -299,52 +388,23 @@ impl AppRoutes {
 
     fn add_compression_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
         let app = app.layer(CompressionLayer::new());
-        tracing::info!("[Middleware] Adding compression layer");
+        tracing::info!("[Middleware] +compression");
         app
     }
 
     fn add_etag_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
         let app = app.layer(EtagLayer::new());
-        tracing::info!("[Middleware] Adding etag layer");
+        tracing::info!("[Middleware] +etag");
         app
     }
 
-    fn get_cors_middleware(config: &config::CorsMiddleware) -> Result<cors::CorsLayer> {
-        let mut cors: cors::CorsLayer = cors::CorsLayer::permissive();
-
-        if let Some(allow_origins) = &config.allow_origins {
-            // testing CORS, assuming https://example.com in the allow list:
-            // $ curl -v --request OPTIONS 'localhost:3000/api/_ping' -H 'Origin: https://example.com' -H 'Access-Control-Request-Method: GET'
-            // look for '< access-control-allow-origin: https://example.com' in response.
-            // if it doesn't appear (test with a bogus domain), it is not allowed.
-            let mut list = vec![];
-            for origins in allow_origins {
-                list.push(origins.parse()?);
-            }
-            cors = cors.allow_origin(list);
-        }
-
-        if let Some(allow_headers) = &config.allow_headers {
-            let mut headers = vec![];
-            for header in allow_headers {
-                headers.push(header.parse()?);
-            }
-            cors = cors.allow_headers(headers);
-        }
-
-        if let Some(allow_methods) = &config.allow_methods {
-            let mut methods = vec![];
-            for method in allow_methods {
-                methods.push(method.parse()?);
-            }
-            cors = cors.allow_methods(methods);
-        }
-
-        if let Some(max_age) = config.max_age {
-            cors = cors.max_age(Duration::from_secs(max_age));
-        }
-
-        Ok(cors)
+    fn add_remote_ip_middleware(
+        app: AXRouter<AppContext>,
+        config: &RemoteIPConfig,
+    ) -> Result<AXRouter<AppContext>> {
+        let app = app.layer(RemoteIPLayer::new(config)?);
+        tracing::info!("[Middleware] +remote IP");
+        Ok(app)
     }
 
     fn add_catch_panic(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
@@ -360,10 +420,7 @@ impl AppRoutes {
                 .map_err(Box::from)?
                 .get_bytes() as usize,
         ));
-        tracing::info!(
-            data = &limit.body_limit,
-            "[Middleware] Adding limit payload",
-        );
+        tracing::info!(data = &limit.body_limit, "[Middleware] +limit payload",);
 
         Ok(app)
     }
@@ -374,7 +431,10 @@ impl AppRoutes {
         let app = app
             .layer(
                 TraceLayer::new_for_http().make_span_with(|request: &http::Request<_>| {
-                    let request_id = uuid::Uuid::new_v4();
+                    let ext = request.extensions();
+                    let request_id = ext
+                        .get::<LocoRequestId>()
+                        .map_or_else(|| "req-id-none".to_string(), |r| r.get().to_string());
                     let user_agent = request
                         .headers()
                         .get(axum::http::header::USER_AGENT)
@@ -399,7 +459,7 @@ impl AppRoutes {
             )
             .layer(AddExtensionLayer::new(environment.clone()));
 
-        tracing::info!("[Middleware] Adding log trace id",);
+        tracing::info!("[Middleware] +log trace id",);
         app
     }
 
@@ -409,7 +469,7 @@ impl AppRoutes {
     ) -> AXRouter<AppContext> {
         let app = app.layer(TimeoutLayer::new(Duration::from_millis(config.timeout)));
 
-        tracing::info!("[Middleware] Adding timeout layer");
+        tracing::info!("[Middleware] +timeout");
         app
     }
 

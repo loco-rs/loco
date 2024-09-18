@@ -1,6 +1,6 @@
 +++
 title = "Creating Frontend Website Using Angular"
-description = "How to serve a frontend website using Angular"
+description = "Setting up a Loco app for serving an Angular clientside app is easy. Learn how to configure and set up a full-stack Angular app with Loco."
 date = 2024-01-25T18:03:52+01:00
 updated = 2024-01-25T18:03:52+01:00
 draft = false
@@ -10,7 +10,6 @@ template = "blog/page.html"
 authors = ["LimpidCrypto"]
 
 +++
-# Loco with Angular
 
 ## Overview
 
@@ -88,6 +87,6 @@ As you may have noticed Angular has built the frontend into `frontend/dist/front
 ## Start Loco
 
 1. Start Loco with `cargo loco start`
-2. Open http://localhost:3000/
+2. Open http://localhost:5150/
 
 You should now see the Angular starter Website :smile:

@@ -1,6 +1,6 @@
 +++
 title = "Creating Frontend Website"
-description = "How to serve a frontend website"
+description = "Build a REST API quickly with Loco and then follow by building a React frontend app to use it. Learn about generators, configuring asset serving and client-side apps with Loco."
 date = 2023-12-14T09:19:42+00:00
 updated = 2023-12-14T09:19:42+00:00
 draft = false
@@ -83,7 +83,7 @@ environment: development
      logger: debug
       modes: server
 
-listening on port 3000
+listening on port 5150
 ```
 
 ## Creating the Frontend
@@ -147,7 +147,6 @@ server:
 ```
 
 Now, run the Loco server again and you should see frontend app serving via Loco
-
 ```sh
 $ cargo loco start
 ```
@@ -202,5 +201,5 @@ $ docker build . -t loco-todo-list
 Now run the container:
 
 ```sh
-$ docker run -e LOCO_ENV=production -p 3000:3000 loco-todo-list start
+$ docker run -e LOCO_ENV=production -p 5150:5150 loco-todo-list start
 ```

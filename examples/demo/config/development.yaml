@@ -1,10 +1,13 @@
 # Loco configuration file documentation
 
+# <snip id="configuration-settings">
 settings:
   allow_list:
     - google.com
     - apple.com
+# </snip>
 
+# <snip id="configuration-logger">
 # Application logging configuration
 logger:
   # Enable or disable logging.
@@ -13,19 +16,22 @@ logger:
   pretty_backtrace: true
   # Log level, options: trace, debug, info, warn or error.
   level: debug
-  # Define the logging format. options: compact, pretty or Json
+  # Define the logging format. options: compact, pretty or json
   format: compact
   # By default the logger has filtering only logs that came from your code or logs that came from `loco` framework. to see all third party libraries
   # Uncomment the line below to override to see all third party libraries you can enable this config and override the logger filters.
   # override_filter: trace
+# </snip>
 
 # Web server configuration
+# <snip id="configuration-server">
 server:
   # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
-  port: {{get_env(name="NODE_PORT", default=3000)}}
+  port: {{ get_env(name="NODE_PORT", default=5150) }}
   # The UI hostname or IP address that mailers will point to.
   host: http://localhost
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
+  # </snip>
   middlewares:
     # Allows to limit the payload size request. payload that bigger than this file will blocked the request.
     limit_payload:
@@ -33,6 +39,12 @@ server:
       enable: true
       # the limit size. can be b,kb,kib,mb,mib,gb,gib
       body_limit: 5mb
+    # set secure headers
+    secure_headers:
+      preset: github
+      overrides: 
+        # this allows you to use HTMX, and has unsafe-inline. Remove or consider in production 
+        "Content-Security-Policy": "default-src 'self' https:; font-src 'self' https: data:; img-src 'self' https: data:; object-src 'none'; script-src 'unsafe-inline' 'self' https:; style-src 'self' https: 'unsafe-inline'"
     # Generating a unique request ID and enhancing logging with additional information such as the start and completion of request processing, latency, status code, and other request details.
     logger:
       # Enable/Disable the middleware.
@@ -80,13 +92,14 @@ workers:
   mode: BackgroundQueue
 
 # Mailer Configuration.
+# <snip id="configuration-mailer">
 mailer:
   # SMTP mailer configuration.
   smtp:
     # Enable/Disable smtp mailer.
     enable: true
     # SMTP server host. e.x localhost, smtp.gmail.com
-    host: localhost
+    host: {{ get_env(name="MAILER_HOST", default="localhost") }}
     # SMTP server port
     port: 1025
     # Use secure connection (SSL/TLS).
@@ -94,6 +107,7 @@ mailer:
     # auth:
     #   user:
     #   password:
+# </snip>
 
 # Initializers Configuration
 # initializers:
@@ -102,8 +116,8 @@ mailer:
 #      - client_identifier: google # Identifier for the OAuth2 provider. Replace 'google' with your provider's name if different, must be unique within the oauth2 config.
 #        ... other fields
 
-
 # Database Configuration
+# <snip id="configuration-database">
 database:
   # Database connection URI
   uri: {{get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app")}}
@@ -123,15 +137,19 @@ database:
   dangerously_truncate: false
   # Recreating schema when application loaded.  This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_recreate: false
+# </snip>
 
-# Redis Configuration
-redis:
+# Queue Configuration
+# <snip id="configuration-queue">
+queue:
   # Redis connection URI
-  uri: {{get_env(name="REDIS_URL", default="redis://127.0.0.1")}}
+  uri: {{ get_env(name="REDIS_URL", default="redis://127.0.0.1") }}
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_flush: false
+# </snip>
 
 # Authentication Configuration
+# <snip id="configuration-auth">
 auth:
   # JWT authentication
   jwt:
@@ -139,3 +157,33 @@ auth:
     secret: PqRwLF2rhHe8J22oBeHy
     # Token expiration time in seconds
     expiration: 604800 # 7 days
+# </snip>
+
+# Scheduler Jobs Configuration
+# <snip id="configuration-scheduler">
+scheduler:
+  # Location of shipping the command stdout and stderr.
+  output: stdout
+  # A list of jobs to be scheduled.
+  jobs:
+    # The name of the job.
+    write_content:
+      # by default false meaning executing the the run value as a task. if true execute the run value as shell command
+      shell: true
+      # command to run
+      run: "echo loco >> ./scheduler.txt"
+      # The cron expression that defines the job's schedule. 
+      schedule: run every 1 second
+      output: silent
+      tags: ['base', 'infra']
+
+    run_task:
+      run: "foo"
+      schedule: "at 10:00 am"
+
+    list_if_users:
+      run: "user_report"
+      shell: true
+      schedule: "* 2 * * * *"
+      tags: ['base', 'users']
+# </snip>

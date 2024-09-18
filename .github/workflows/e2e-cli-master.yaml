@@ -1,0 +1,109 @@
+name: e2e-cli-master
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  # TODO: re-enable after 0.8 to check cmd spawning fix
+  saas-template-win32:
+    name: Create saas (win32)
+    runs-on: windows-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          components: rustfmt
+      - name: Install seaorm cli
+        run: cargo install sea-orm-cli
+      - run: |
+          cargo install --path .
+        working-directory: ./loco-cli
+      - run: |
+          loco new -n saas -t saas --db sqlite --bg async --assets serverside
+        env:
+          ALLOW_IN_GIT_REPO: true
+      - run: |
+          cargo build
+        working-directory: ./saas
+      - run: |
+          cargo loco routes
+        working-directory: ./saas
+      - run: |
+          cargo loco db migrate
+        working-directory: ./saas
+      - run: |
+          cargo loco generate scaffold movie title:string
+        working-directory: ./saas
+      - run: |
+          cargo loco db migrate
+        working-directory: ./saas
+
+  saas-template:
+    name: Create saas
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+      - run: |
+          cargo install loco-cli
+          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=saas LOCO_TEMPLATE=saas loco new --db postgres --bg queue --assets serverside
+      - run: |
+          cargo build
+        working-directory: ./saas
+
+  rest-api:
+    name: Create rest-api
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+      - run: |
+          cargo install loco-cli
+          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=restapi LOCO_TEMPLATE=rest-api loco new --db postgres --bg queue
+      - run: |
+          cargo build
+        working-directory: ./restapi
+
+  lightweight-service:
+    name: Create lightweight-service
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          override: true
+      - run: |
+          cargo install loco-cli
+          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=lightweight LOCO_TEMPLATE=lightweight-service loco new
+      - run: |
+          cargo build
+        working-directory: ./lightweight

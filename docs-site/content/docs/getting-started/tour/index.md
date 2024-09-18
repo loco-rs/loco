@@ -1,9 +1,9 @@
 +++
-title = "A Quick Tour with Loco"
+title = "A Quick Tour"
 date = 2021-05-01T08:00:00+00:00
 updated = 2021-05-01T08:00:00+00:00
 draft = false
-weight = 1
+weight = 2
 sort_by = "weight"
 template = "docs/page.html"
 
@@ -17,75 +17,68 @@ flair =[]
 <br/>
 <br/>
 <br/>
-Let's create a blog backend on `loco` in 4 commands. First install `loco-cli` and `sea-orm-cli`:
+Let's create a blog backend on Loco in just a few minutes. First install `loco-cli` and `sea-orm-cli`:
 
+<!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->
 ```sh
-$ cargo install loco-cli
-$ cargo install sea-orm-cli
+cargo install loco-cli
+cargo install sea-orm-cli # Only when DB is needed
 ```
+<!-- </snip> -->
 
-Now you can create your new app (choose "SaaS app").
 
-```sh
-$ loco new
+ Now you can create your new app (choose "`SaaS` app").
+
+ ```sh
+ ❯ loco new
 ✔ ❯ App name? · myapp
-? ❯ What would you like to build? ›
-  lightweight-service (minimal, only controllers and views)
-  Rest API (with DB and user auth)
-❯ SaaS app (with DB and user auth)
-🚂 Loco app generated successfully in:
-myapp
-```
+✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+✔ ❯ Select a DB Provider · Sqlite
+✔ ❯ Select your background worker type · Async (in-process tokyo async tasks)
+✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
 
-<div class="infobox">
-To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named is the [insert app]_development.
-</div>
+ 🚂 Loco app generated successfully in:
+ myapp/
+ ```
 
-You can use Docker to run a Postgres instance:
+If you select all defaults, you'll have:
 
-When generating a starter, the database name incorporates your application name and the environment. For instance, if you include `myapp`, the database name in the `test.yaml`configuration will be `myapp_test`, and in the `development.yaml` configuration, it will be `myapp_development`.
+* `sqlite` for database. Learn about database providers in [Sqlite vs Postgres](@/docs/the-app/models.md#sqlite-vs-postgres) in the _models_ section.
+* `async` for background workers. Learn about workers configuration [async vs queue](@/docs/processing/workers.md#async-vs-queue) in the _workers_ section.
+* `Client` asset serving configuration. This means your backend will serve as API.
 
-```
-$ docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=myapp_development -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine
-```
 
-A more advanced set of `docker-compose.yml` and `Dockerfiles` that include Redis and the `mailtutan` mailer are available for [each starter on GitHub](https://github.com/loco-rs/loco/blob/master/starters/saas/.devcontainer/docker-compose.yml).
+ Now `cd` into your `myapp` and start your app by running `cargo loco start`:
 
-Now `cd` into your `myapp` and start your app:
-
-```
-$ cd myapp
+<!-- <snip id="starting-the-server-command-with-output" inject_from="yaml" template="sh"> -->
+```sh
 $ cargo loco start
-Finished dev [unoptimized + debuginfo] target(s) in 21.63s
-    Running `target/debug/myapp start`
-
-    :
-    :
-    :
-
-controller/app_routes.rs:203: [Middleware] Adding log trace id
 
                       ▄     ▀
-                                 ▀  ▄
+                                ▀  ▄
                   ▄       ▀     ▄  ▄ ▄▀
                                     ▄ ▀▄▄
                         ▄     ▀    ▀  ▀▄▀█▄
                                           ▀█▄
 ▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄   ▄▄▄▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄▄ ▀▀█
- ██████  █████   ███ █████   ███ █████   ███ ▀█
- ██████  █████   ███ █████   ▀▀▀ █████   ███ ▄█▄
- ██████  █████   ███ █████       █████   ███ ████▄
- ██████  █████   ███ █████   ▄▄▄ █████   ███ █████
- ██████  █████   ███  ████   ███ █████   ███ ████▀
-   ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
-       ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+██████  █████   ███ █████   ███ █████   ███ ▀█
+██████  █████   ███ █████   ▀▀▀ █████   ███ ▄█▄
+██████  █████   ███ █████       █████   ███ ████▄
+██████  █████   ███ █████   ▄▄▄ █████   ███ █████
+██████  █████   ███  ████   ███ █████   ███ ████▀
+  ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
+      ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+                https://loco.rs
 
-started on port 3000
+listening on port 5150
 ```
+<!-- </snip> -->
 
-<div class="infobox">
-You don't have to run things through `cargo` but in development it's highly recommended. If you build `--release`, your binary contains everything including your code and `cargo` or Rust is not needed.
-</div>
+
+ <div class="infobox">
+ You don't have to run things through `cargo` but in development it's highly
+ recommended. If you build `--release`, your binary contains everything
+ including your code and `cargo` or Rust is not needed. </div>
 
 ## Adding a CRUD API
 
@@ -109,11 +102,30 @@ injected: "tests/requests/mod.rs"
 
 Your database have been migrated and model, entities, and a full CRUD controller have been generated automatically.
 
-Start your app:
-
+Start your app again:
+<!-- <snip id="starting-the-server-command-with-output" inject_from="yaml" template="sh"> -->
 ```sh
 $ cargo loco start
+
+                      ▄     ▀
+                                ▀  ▄
+                  ▄       ▀     ▄  ▄ ▄▀
+                                    ▄ ▀▄▄
+                        ▄     ▀    ▀  ▀▄▀█▄
+                                          ▀█▄
+▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄   ▄▄▄▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄▄ ▀▀█
+██████  █████   ███ █████   ███ █████   ███ ▀█
+██████  █████   ███ █████   ▀▀▀ █████   ███ ▄█▄
+██████  █████   ███ █████       █████   ███ ████▄
+██████  █████   ███ █████   ▄▄▄ █████   ███ █████
+██████  █████   ███  ████   ███ █████   ███ ████▀
+  ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
+      ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+                https://loco.rs
+
+listening on port 5150
 ```
+<!-- </snip> -->
 
 Next, try adding a `post` with `curl`:
 
@@ -121,13 +133,13 @@ Next, try adding a `post` with `curl`:
 $ curl -X POST -H "Content-Type: application/json" -d '{
   "title": "Your Title",
   "content": "Your Content xxx"
-}' localhost:3000/api/posts
+}' localhost:5150/posts
 ```
 
 You can list your posts:
 
 ```sh
-$ curl localhost:3000/api/posts
+$ curl localhost:5150/posts
 ```
 
 For those counting -- the commands for creating a blog backend were:
@@ -143,31 +155,12 @@ Done! enjoy your ride with `loco` 🚂
 
 Your generated app contains a fully working authentication suite, based on JWTs.
 
-To authenticate, you will need a running redis server.
-
-This docker command starts up a redis server:
-
-```
-docker run -p 6379:6379 -d redis redis-server
-```
-
-Use doctor command to check the needed resources:
-
-```
-$ cargo loco doctor
-    Finished dev [unoptimized + debuginfo] target(s) in 0.32s
-     Running `target/debug/myapp-cli doctor`
-✅ SeaORM CLI is installed
-✅ DB connection: success
-✅ Redis connection: success
-```
-
 ### Registering a New User
 
 The `/api/auth/register` endpoint creates a new user in the database with an `email_verification_token` for account verification. A welcome email is sent to the user with a verification link.
 
 ```sh
-$ curl --location '127.0.0.1:3000/api/auth/register' \
+$ curl --location '127.0.0.1:5150/api/auth/register' \
      --header 'Content-Type: application/json' \
      --data-raw '{
          "name": "Loco user",
@@ -183,7 +176,7 @@ For security reasons, if the user is already registered, no new user is created,
 After registering a new user, use the following request to log in:
 
 ```sh
-$ curl --location '127.0.0.1:3000/api/auth/login' \
+$ curl --location '127.0.0.1:5150/api/auth/login' \
      --header 'Content-Type: application/json' \
      --data-raw '{
          "email": "user@loco.rs",
@@ -198,18 +191,23 @@ The response includes a JWT token for authentication, user ID, name, and verific
     "token": "...",
     "pid": "2b20f998-b11e-4aeb-96d7-beca7671abda",
     "name": "Loco user",
+    "claims": null
     "is_verified": false
 }
 ```
 
+In your client-side app, you save this JWT token and make following requests with it using _bearer token_ (see below) in order for those to be authenticated.
+
 ### Get current user
 
-This endpoint is protected by auth middleware.
+This endpoint is protected by auth middleware. We will use the token we got earlier to perform a request with the _bearer token_ technique (replace `TOKEN` with the JWT token you got earlier):
 
 ```sh
-$ curl --location --request GET '127.0.0.1:3000/api/user/current' \
+$ curl --location --request GET '127.0.0.1:5150/api/user/current' \
      --header 'Content-Type: application/json' \
      --header 'Authorization: Bearer TOKEN'
 ```
+
+That should be your first authenticated request!.
 
 Check out the source code for `controllers/auth.rs` to see how to use the authentication middleware in your own controllers.

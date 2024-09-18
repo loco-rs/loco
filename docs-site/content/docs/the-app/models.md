@@ -4,7 +4,7 @@ description = ""
 date = 2021-05-01T18:10:00+00:00
 updated = 2024-01-07T21:10:00+00:00
 draft = false
-weight = 11
+weight = 3
 sort_by = "weight"
 template = "docs/page.html"
 
@@ -15,9 +15,52 @@ top = false
 flair =[]
 +++
 
-# Model principles
 
 Models in `loco` mean entity classes that allow for easy database querying and writes, but also migrations and seeding.
+
+## Sqlite vs Postgres 
+
+You might have selected `sqlite` which is the default when you created your new app. Loco allows you to _seamlessly_ move between `sqlite` and `postgres`.
+
+It is typical that you could use `sqlite` for development, and `postgres` for production. Some people prefer `postgres` all the way for both development and production because they use `pg` specific features. Some people use `sqlite` for production too, these days. Either way -- all valid choices.
+
+To configure `postgres` instead of `sqlite`, go into your `config/development.yaml` (or `production.yaml`) and set this, assuming your app is named `myapp`:
+
+```yaml
+database:
+  uri: "{{ get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/myapp_development") }"
+```
+
+<div class="infobox">
+Your local postgres database should be with <code>loco:loco</code> and a db named <code>myapp_development</code>. For test and production, your DB should be named <code>myapp_test</code> and <code>myapp_production</code> respectively.
+</div>
+
+For your convenience, here is a docker command to start up a Postgresql database server:
+
+<!-- <snip id="postgres-run-docker-command" inject_from="yaml" template="sh"> -->
+```sh
+docker run -d -p 5432:5432 \
+  -e POSTGRES_USER=loco \
+  -e POSTGRES_DB=myapp_development \
+  -e POSTGRES_PASSWORD="loco" \
+  postgres:15.3-alpine
+```
+<!-- </snip> -->
+
+
+
+Finally you can also use the doctor command to validate your connection:
+
+<!-- <snip id="doctor-command" inject_from="yaml template="sh"> -->
+```sh
+$ cargo loco doctor
+    Finished dev [unoptimized + debuginfo] target(s) in 0.32s
+    Running `target/debug/myapp-cli doctor`
+✅ SeaORM CLI is installed
+✅ DB connection: success
+✅ Redis connection: success
+```
+<!-- </snip> -->
 
 ## Fat models, slim controllers
 
@@ -103,9 +146,9 @@ For schema data types, you can use the following mapping to understand the schem
 ("int", "integer_null"),
 ("int!", "integer"),
 ("int^", "integer_uniq"),
-("big_integer", "big_integer_null"),
-("big_integer!", "big_integer"),
-("big_integer^", "big_integer_uniq"),
+("big_int", "big_integer_null"),
+("big_int!", "big_integer"),
+("big_int^", "big_integer_uniq"),
 ("float", "float_null"),
 ("float!", "float"),
 ("double", "double_null"),
@@ -165,6 +208,23 @@ Loco is a migration-first framework, similar to Rails. Which means that when you
 
 This enforces _everything-as-code_, _reproducibility_ and _atomicity_, where no knowledge of the schema goes missing. 
 
+### Down Migrations
+
+If you realize that you made a mistake, you can always undo the migration. This will undo the changes made by the migration (assuming that you added the appropriate code for `down` in the migration).
+
+<!-- <snip id="migrate-down-command" inject_from="yaml" template="sh"> -->
+```sh
+cargo loco db down
+```
+<!-- </snip> -->
+
+The `down` command on its own will rollback only the last migration. If you want to rollback multiple migrations, you can specify the number of migrations to rollback.
+
+<!-- <snip id="migrate-down-n-command" inject_from="yaml" template="sh"> -->
+```sh
+cargo loco db down 2
+```
+<!-- </snip> -->
 
 ### Verbs, singular and plural
 
@@ -250,24 +310,25 @@ You can copy some of this code for adding an index
 ### Create a data fix
 
 
-Creating a data fix in a migration is easy - just `use` your models as you would otherwise:
+Creating a data fix in a migration is easy - just use SQL statements as you like:
 
 ```rust
   async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
 
     let db = manager.get_connection();
+    
+    // issue SQL queries with `db`
+    // https://www.sea-ql.org/SeaORM/docs/basic-crud/raw-sql/#use-raw-query--execute-interface
 
-    cake::ActiveModel {
-        name: Set("Cheesecake".to_owned()),
-        ..Default::default()
-    }
-    .insert(db)
-    .await?;
     Ok(())
   }
 ```
 
-Having said that, it's up to you to code your data fixes in a `task` or `migration` or an ad-hoc `playground`.
+Having said that, it's up to you to code your data fixes in:
+
+* `task` - where you can use high level models
+* `migration` - where you can both change structure and fix data stemming from it with raw SQL
+* or an ad-hoc `playground` - where you can use high level models or experiment with things
 
 
 ## Validation
@@ -275,11 +336,8 @@ Having said that, it's up to you to code your data fixes in a `task` or `migrati
 We use the [validator](https://docs.rs/validator) library under the hood. First, build your validator with the constraints you need, and then implement `Validatable` for your `ActiveModel`.
 
 
+<!-- <snip id="model-validation" inject_from="code" template="rust"> -->
 ```rust
-// in models/user.rs
-
-use loco_rs::prelude::*;
-
 #[derive(Debug, Validate, Deserialize)]
 pub struct Validator {
     #[validate(length(min = 2, message = "Name must be at least 2 characters long."))]
@@ -297,6 +355,8 @@ impl Validatable for super::_entities::users::ActiveModel {
     }
 }
 ```
+<!-- </snip> -->
+
 
 Note that `Validatable` is how you instruct Loco which `Validator` to provide and how to build it from a model.
 
@@ -366,21 +426,32 @@ Using `via()` will cause `find_related` to walk through the link table without y
 
 Model configuration that's available to you is exciting because it controls all aspects of development, testing, and production, with a ton of goodies, coming from production experience.
 
+<!-- <snip id="configuration-database" inject_from="code" template="yaml"> -->
 ```yaml
-# .. other sections ..
-
 database:
-  uri: postgres://localhost:5432/rr_app
-  # uri: sqlite://db.sqlite?mode=rwc
+  # Database connection URI
+  uri: {{get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app")}}
+  # When enabled, the sql query will be logged.
   enable_logging: false
+  # Set the timeout duration when acquiring a connection.
+  connect_timeout: 500
+  # Set the idle duration before closing a connection.
+  idle_timeout: 500
+  # Minimum number of connections for a pool.
   min_connections: 1
+  # Maximum number of connections for a pool.
   max_connections: 1
+  # Run migration up when application loaded
   auto_migrate: true
-  dangerously_truncate: true
-  dangerously_recreate: true
+  # Truncate database when application loaded. This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
+  dangerously_truncate: false
+  # Recreating schema when application loaded.  This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
+  dangerously_recreate: false
 ```
+<!-- </snip>-->
 
-By combining these flags, you can create different expriences to help you be more productive.
+
+By combining these flags, you can create different experiences to help you be more productive.
 
 You can truncate before an app starts -- which is useful for running tests, or you can recreate the entire DB when the app starts -- which is useful for integration tests or setting up a new environment. In production, you want these turned off (hence the "dangerously" part).
 
@@ -459,7 +530,7 @@ The seed process is not executed automatically. You can trigger the seed process
 
 ### Using a Task
 
-1. Create a seeding task by following the instructions in the [Task Documentation](@/docs/the-app/task.md).
+1. Create a seeding task by following the instructions in the [Task Documentation](@/docs/processing/task.md).
 2. Configure the task to execute the `seed` function, as demonstrated in the example below:
 
 ```rust
@@ -513,7 +584,7 @@ async fn handle_create_with_password_with_duplicate() {
 
 `Loco` enables you to work with more than one database and share instances across your application.
 
-To set up an additional database, begin with database connections and configuration. The recommended approach is to navigate to your configuration file and add the following under [settings](@/docs/getting-started/config.md#settings):
+To set up an additional database, begin with database connections and configuration. The recommended approach is to navigate to your configuration file and add the following under [settings](@/docs/the-app/your-project.md#settings):
 
 ```yaml
 settings:
@@ -535,7 +606,7 @@ After configuring the database, import [loco-extras](https://crates.io/crates/lo
 loco-extras = { version = "*", features = ["initializer-extra-db"] }
 ```
 
-Next load this [initializer](@/docs/the-app/initializers.md) into `initializers` hook like this example
+Next load this [initializer](@/docs/extras/pluggability.md#initializers) into `initializers` hook like this example
 
 ```rs
 async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
@@ -594,7 +665,7 @@ settings:
       dangerously_recreate: false
 ```
 
-Next load this [initializer](@/docs/the-app/initializers.md) into `initializers` hook like this example
+Next load this [initializer](@/docs/extras/pluggability.md#initializers) into `initializers` hook like this example
 
 ```rs
 async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
@@ -665,6 +736,7 @@ In some cases, you may want to run tests with a clean dataset, ensuring that eac
 - When doing it recommended to run all the relevant task in with [serial](https://crates.io/crates/rstest) crate.
 - To decide which tables you want to truncate, add the entity model to the App hook:
 
+
 ```rust
 pub struct App;
 #[async_trait]
@@ -680,7 +752,6 @@ impl Hooks for App {
 ```
 
 ## Seeding
-
 
 ```rust
 #[tokio::test]
@@ -709,7 +780,7 @@ in the following example you can use `cleanup_user_model` which clean all user m
 
 #[tokio::test]
 #[serial]
-async fn can_cerate_user() {
+async fn can_create_user() {
     testing::request::<App, Migrator, _, _>(|request, _ctx| async move {
         // create user test
         with_settings!({

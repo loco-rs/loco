@@ -11,8 +11,6 @@ injections:
   after: "fn register_tasks"
   content: "        tasks.register(tasks::{{file_name}}::{{module_name}});"
 ---
-use std::collections::BTreeMap;
-
 use loco_rs::prelude::*;
 
 pub struct {{module_name}};
@@ -24,7 +22,7 @@ impl Task for {{module_name}} {
             detail: "Task generator".to_string(),
         }
     }
-    async fn run(&self, _app_context: &AppContext, _vars: &BTreeMap<String, String>) -> Result<()> {
+    async fn run(&self, _app_context: &AppContext, _vars: &task::Vars) -> Result<()> {
         println!("Task {{module_name}} generated");
         Ok(())
     }
