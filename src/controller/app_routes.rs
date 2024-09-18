@@ -533,7 +533,7 @@ mod tests {
     use tower::ServiceExt;
 
     async fn action() -> Result<Response> {
-        format::json("Hello, World!")
+        format::json("loco")
     }
 
     #[test]
