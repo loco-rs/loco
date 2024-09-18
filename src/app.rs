@@ -7,7 +7,7 @@ cfg_if::cfg_if! {
     } else {}
 
 }
-use std::sync::Arc;
+use std::{net::SocketAddr, sync::Arc};
 
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
@@ -16,6 +16,7 @@ use axum::Router as AxumRouter;
 use crate::controller::channels::AppChannels;
 use crate::{
     boot::{BootResult, ServeParams, StartMode},
+    cache::{self},
     config::{self, Config},
     controller::AppRoutes,
     environment::Environment,
@@ -38,16 +39,18 @@ pub struct AppContext {
     /// The environment in which the application is running.
     pub environment: Environment,
     #[cfg(feature = "with-db")]
-    /// A database connection used by the application.    
+    /// A database connection used by the application.
     pub db: DatabaseConnection,
-    /// An optional connection pool for Redis, for worker tasks
-    pub redis: Option<Pool<RedisConnectionManager>>,
+    /// An optional connection pool for Queue, for worker tasks
+    pub queue: Option<Pool<RedisConnectionManager>>,
     /// Configuration settings for the application
     pub config: Config,
     /// An optional email sender component that can be used to send email.
     pub mailer: Option<EmailSender>,
-    // Ab optional storage instance for the application
-    pub storage: Option<Arc<Storage>>,
+    // An optional storage instance for the application
+    pub storage: Arc<Storage>,
+    // Cache instance for the application
+    pub cache: Arc<cache::Cache>,
 }
 
 /// A trait that defines hooks for customizing and extending the behavior of a
@@ -112,7 +115,11 @@ pub trait Hooks {
         ))
         .await?;
 
-        axum::serve(listener, app).await?;
+        axum::serve(
+            listener,
+            app.into_make_service_with_connect_info::<SocketAddr>(),
+        )
+        .await?;
 
         Ok(())
     }
@@ -126,6 +133,16 @@ pub trait Hooks {
     /// If fails returns an error
     fn init_logger(_config: &config::Config, _env: &Environment) -> Result<bool> {
         Ok(false)
+    }
+
+    /// Returns the initial Axum router for the application, allowing the user
+    /// to control the construction of the Axum router. This is where a fallback
+    /// handler can be installed before middleware or other routes are added.
+    ///
+    /// # Errors
+    /// Return an [`Result`] when the router could not be created
+    async fn before_routes(_ctx: &AppContext) -> Result<AxumRouter<AppContext>> {
+        Ok(AxumRouter::new())
     }
 
     /// Invoke this function after the Loco routers have been constructed. This
@@ -155,12 +172,9 @@ pub trait Hooks {
     /// Defines the application's routing configuration.
     fn routes(_ctx: &AppContext) -> AppRoutes;
 
-    /// Defines the storage configuration for the application
-    async fn storage(
-        _config: &config::Config,
-        _environment: &Environment,
-    ) -> Result<Option<Storage>> {
-        Ok(None)
+    // Provides the options to change Loco [`AppContext`] after initialization.
+    async fn after_context(ctx: AppContext) -> Result<AppContext> {
+        Ok(ctx)
     }
 
     #[cfg(feature = "channels")]
@@ -178,11 +192,11 @@ pub trait Hooks {
     /// function. The truncate controlled from the [`crate::config::Database`]
     /// by changing dangerously_truncate to true (default false).
     /// Truncate can be useful when you want to truncate the database before any
-    /// test.        
+    /// test.
     #[cfg(feature = "with-db")]
     async fn truncate(db: &DatabaseConnection) -> Result<()>;
 
-    /// Seeds the database with initial data.    
+    /// Seeds the database with initial data.
     #[cfg(feature = "with-db")]
     async fn seed(db: &DatabaseConnection, path: &Path) -> Result<()>;
 }
@@ -190,6 +204,7 @@ pub trait Hooks {
 /// An initializer.
 /// Initializers should be kept in `src/initializers/`
 #[async_trait]
+// <snip id="initializers-trait">
 pub trait Initializer: Sync + Send {
     /// The initializer name or identifier
     fn name(&self) -> String;
@@ -208,3 +223,4 @@ pub trait Initializer: Sync + Send {
         Ok(router)
     }
 }
+// </snip>

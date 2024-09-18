@@ -4,7 +4,7 @@ description = ""
 date = 2021-05-01T18:10:00+00:00
 updated = 2021-05-01T18:10:00+00:00
 draft = false
-weight = 13
+weight = 5
 sort_by = "weight"
 template = "docs/page.html"
 
@@ -38,7 +38,7 @@ After generating the controller, navigate to the created file in `src/controller
 To view a list of all your registered controllers, execute the following command:
 
 ```sh
-$ cargo loco controller
+$ cargo loco routes
 
 [GET] /_health
 [GET] /_ping
@@ -233,6 +233,191 @@ impl Hooks for App {
 
 # Middleware
 
+### Authentication
+In the `Loco` framework, middleware plays a crucial role in authentication. `Loco` supports various authentication methods, including JSON Web Token (JWT) and API Key authentication. This section outlines how to configure and use authentication middleware in your application.
+
+#### JSON Web Token (JWT)
+
+##### Configuration
+By default, Loco uses Bearer authentication for JWT. However, you can customize this behavior in the configuration file under the auth.jwt section.
+* *Bearer Authentication:* Keep the configuration blank or explicitly set it as follows:
+  ```yaml
+  # Authentication Configuration
+  auth:
+    # JWT authentication
+    jwt:
+      location: Bearer
+  ...
+  ```
+* *Cookie Authentication:* Configure the location from which to extract the token and specify the cookie name:
+  ```yaml
+  # Authentication Configuration
+  auth:
+    # JWT authentication
+    jwt:
+      location: 
+        from: Cookie
+        name: token
+  ...
+  ```
+* *Query Parameter Authentication:* Specify the location and name of the query parameter:
+  ```yaml
+  # Authentication Configuration
+  auth:
+    # JWT authentication
+    jwt:
+      location: 
+        from: Query
+        name: token
+  ...
+  ```
+
+##### Usage
+In your controller parameters, use `auth::JWT` for authentication. This triggers authentication validation based on the configured settings.
+```rust
+use loco_rs::prelude::*;
+
+async fn current(
+    auth: auth::JWT,
+    State(_ctx): State<AppContext>,
+) -> Result<Response> {
+    // Your implementation here
+}
+```
+Additionally, you can fetch the current user by replacing auth::JWT with `auth::ApiToken<users::Model>`.
+
+#### API Key
+For API Key authentication, use auth::ApiToken. This middleware validates the API key against the user database record and loads the corresponding user into the authentication parameter.
+```rust
+use loco_rs::prelude::*;
+
+async fn current(
+    auth: auth::ApiToken<users::Model>,
+    State(_ctx): State<AppContext>,
+) -> Result<Response> {
+    // Your implementation here
+}
+```
+
+## Fallback
+
+When choosing the SaaS starter (or any starter that is not API-first), you get a default fallback behavior with the _Loco welcome screen_. This is a development-only mode where a `404` request shows you a nice and friendly page that tells you what happened and what to do next.
+
+
+You can disable or customize this behavior in your `development.yaml` file. You can set a few options:
+
+
+```yaml
+# the default pre-baked welcome screen
+fallback:
+    enable: true
+```
+
+```yaml
+# a different predefined 404 page
+fallback:
+    enable: true
+    file: assets/404.html
+```
+
+```yaml
+# a message, and customizing the status code to return 200 instead of 404
+fallback:
+    enable: true
+    code: 200
+    not_found: cannot find this resource
+```
+
+For production, it's recommended to disable this.
+
+```yaml
+# disable. you can also remove the `fallback` section entirely to disable
+fallback:
+    enable: false
+```
+
+## Remote IP
+
+When your app is under a proxy or a load balancer (e.g. Nginx, ELB, etc.), it does not face the internet directly, which is why if you want to find out the connecting client IP, you'll get a socket which indicates an IP that is actually your load balancer instead.
+
+The load balancer or proxy is responsible for doing the socket work against the real client IP, and then giving your app the load via the proxy back connection to your app.
+
+This is why when your app has a concrete business need for getting the real client IP you need to use the de-facto standard proxies and load balancers use for handing you this information: the `X-Forwarded-For` header.
+
+Loco provides the `remote_ip` section for configuring the `RemoteIP` middleware:
+
+```yaml
+server:
+  middleware:
+    # calculate remote IP based on `X-Forwarded-For` when behind a proxy or load balancer
+    # use RemoteIP(..) extractor to get the remote IP.
+    # without this middleware, you'll get the proxy IP instead.
+    # For more: https://github.com/rails/rails/blob/main/actionpack/lib/action_dispatch/middleware/remote_ip.rb
+    #
+    # NOTE! only enable when under a proxy, otherwise this can lead to IP spoofing vulnerabilities
+    # trust me, you'll know if you need this middleware.
+    remote_ip:
+      enable: true
+      # # replace the default trusted proxies:
+      # trusted_proxies:
+      # - ip range 1
+      # - ip range 2 ..
+    # Generating a unique request ID and enhancing logging with additional information such as the start and completion of request processing, latency, status code, and other request details.
+```
+
+Then, use the `RemoteIP` extractor to get the IP:
+
+```rust
+#[debug_handler]
+pub async fn list(ip: RemoteIP, State(ctx): State<AppContext>) -> Result<Response> {
+    println!("remote ip {ip}");
+    format::json(Entity::find().all(&ctx.db).await?)
+}
+```
+
+When using the `RemoteIP` middleware, take note of the security implications vs. your current architecture (as noted in the documentation and in the configuration section): if your app is NOT under a proxy, you can be prone to IP spoofing vulnerability because anyone can set headers to arbitrary values, and specifically, anyone can set the `X-Forwarded-For` header.
+
+This middleware is not enabled by default. Usually, you *will know* if you need this middleware and you will be aware of the security aspects of using it in the correct architecture. If you're not sure -- don't use it (keep `enable` to `false`).
+
+
+## Secure Headers
+
+Loco comes with default secure headers applied by the `secure_headers` middleware. This is similar to what is done in the Rails ecosystem with [secure_headers](https://github.com/github/secure_headers).
+
+In your `server.middleware` YAML section you will find the `github` preset by default (which is what Github and Twitter recommend for secure headers).
+
+```yaml
+server:
+  middleware:
+    # set secure headers
+    secure_headers:
+      preset: github
+```
+
+You can also override select headers:
+
+```yaml
+server:
+  middleware:
+    # set secure headers
+    secure_headers:
+      preset: github
+      overrides:
+        foo: bar
+```
+
+Or start from scratch:
+
+```yaml
+server:
+  middleware:
+    # set secure headers
+    secure_headers:
+      preset: empty
+      overrides:
+        foo: bar
+```
+
 ## Compression
 
 `Loco` leverages [CompressionLayer](https://docs.rs/tower-http/0.5.0/tower_http/compression/index.html) to enable a `one click` solution.
@@ -248,8 +433,8 @@ To enable response compression, based on `accept-encoding` request header, simpl
 
 Doing so will compress each response and set `content-encoding` response header accordingly.
 
+## Precompressed assets
 
-## Prcompressed assets
 
 `Loco` leverages [ServeDir::precompressed_gzip](https://docs.rs/tower-http/latest/tower_http/services/struct.ServeDir.html#method.precompressed_gzip) to enable a `one click` solution of serving pre compressed assets.
 
@@ -264,23 +449,70 @@ middlewares:
     precompressed: true
 ```
 
+## Handler and Route based middleware
 
+`Loco` also allow us to apply [layers](https://docs.rs/tower/latest/tower/trait.Layer.html) to specific handlers or
+routes.
+For more information on handler and route based middleware, refer to the [middleware](/docs/the-app/middlewares)
+documentation.
+
+### Handler based middleware:
+
+Apply a layer to a specific handler using `layer` method.
+
+```rust
+// src/controllers/auth.rs
+pub fn routes() -> Routes {
+    Routes::new()
+        .prefix("auth")
+        .add("/register", post(register).layer(middlewares::log::LogLayer::new()))
+}
+```
+
+### Route based middleware:
+
+Apply a layer to a specific route using `layer` method.
+
+```rust
+// src/main.rs
+pub struct App;
+
+#[async_trait]
+impl Hooks for App {
+    fn routes(_ctx: &AppContext) -> AppRoutes {
+        AppRoutes::with_default_routes()
+            .add_route(
+                controllers::auth::routes()
+                    .layer(middlewares::log::LogLayer::new()),
+            )
+    }
+}
+```
 
 # Pagination
 
 In many scenarios, when querying data and returning responses to users, pagination is crucial. In `Loco`, we provide a straightforward method to paginate your data and maintain a consistent pagination response schema for your API responses.
 
 ## Using pagination
+
 ```rust
 use loco_rs::prelude::*;
 
-let pagination_query = model::query::PaginationQuery {
+let res = query::fetch_page(&ctx.db, notes::Entity::find(), &query::PaginationQuery::page(2)).await;
+```
+
+
+## Using pagination With Filter
+```rust
+use loco_rs::prelude::*;
+
+let pagination_query = query::PaginationQuery {
     page_size: 100,
     page: 1,
 };
 
-let condition = model::query::dsl::condition().contains(notes::Column::Title, "loco");
-let paginated_notes = model::query::exec::paginate(
+let condition = query::condition().contains(notes::Column::Title, "loco");
+let paginated_notes = query::paginate(
     &ctx.db,
     notes::Entity::find(),
     Some(condition.build()),
@@ -294,11 +526,10 @@ let paginated_notes = model::query::exec::paginate(
 - Define the pagination parameters.
 - Call the paginate function.
 
-
 ### Pagination view
-After creating getting the `paginated_notes` in the previous example, you can choose which fileds from the model you want to return and keep the same pagination response in all your different data responses.
+After creating getting the `paginated_notes` in the previous example, you can choose which fields from the model you want to return and keep the same pagination response in all your different data responses.
 
-Define the data you're returning to the user in Loco views. If you're not familiar with views, refer to the [documentation]((@/docs/the-app/views.md)) for more context.
+Define the data you're returning to the user in Loco views. If you're not familiar with views, refer to the [documentation](@/docs/the-app/views.md) for more context.
 
 
 Create a notes view file in `src/view/notes` with the following code:
@@ -334,17 +565,17 @@ impl From<notes::Model> for ListResponse {
 
 impl PaginationResponse {
     #[must_use]
-    pub fn response(data: PaginatedResponse<notes::Model>) -> Pager<Vec<ListResponse>> {
+    pub fn response(data: PaginatedResponse<notes::Model>, pagination_query: &PaginationQuery) -> Pager<Vec<ListResponse>> {
         Pager {
             results: data
-                .rows
+                .page
                 .into_iter()
                 .map(ListResponse::from)
                 .collect::<Vec<ListResponse>>(),
             info: PagerMeta {
-                page: data.info.page,
-                page_size: data.info.page_size,
-                total_pages: data.info.total_pages,
+                page: pagination_query.page,
+                page_size: pagination_query.page_size,
+                total_pages: data.total_pages,
             },
         }
     }

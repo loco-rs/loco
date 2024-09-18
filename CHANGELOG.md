@@ -1,8 +1,174 @@
 # Changelog
 
-## vNext
+## Unreleased
+
+* Add fallback behavior. [https://github.com/loco-rs/loco/pull/732](https://github.com/loco-rs/loco/pull/732)
+* Add Scheduler Feature for Running Cron Jobs. [https://github.com/loco-rs/loco/pull/735](https://github.com/loco-rs/loco/pull/735)
+* Add `--html`, `--htmx` and `--api` flags to scaffold CLI command. [https://github.com/loco-rs/loco/pull/749](https://github.com/loco-rs/loco/pull/749)
+* Add base template for scaffold generation. [https://github.com/loco-rs/loco/pull/752](https://github.com/loco-rs/loco/pull/752)
+* Connect Redis only when the worker is BackgroundQueue. [https://github.com/loco-rs/loco/pull/755](https://github.com/loco-rs/loco/pull/755)
+
+## v0.8.1
+* fix: introduce secondary binary for compile-and-run on Windows. [https://github.com/loco-rs/loco/pull/727](https://github.com/loco-rs/loco/pull/727)
+
+
+## v0.8.0
+
+* Added: loco-cli (`loco new`) now receives options from CLI and/or interactively asks for configuration options such as which asset pipeline, background worker type, or database provider to use.
+* Fix: custom queue names now merge with default queues.
+* Added `remote_ip` middleware for resolving client remote IP when under a proxy or loadbalancer, similar to the Rails `remote_ip` middleware.
+* Added `secure_headers` middleware for setting secure headers by default, similar to how [https://github.com/github/secure_headers](https://github.com/github/secure_headers) works. This is now ON by default to promote security-by-default.
+* Added: `money`, `blob` types to entitie generator.
+
+## 0.7.0
+* Moving to _timezone aware timestamps_. From now on migrations will generate **timestamps with time zone** by default. Moving to TZ aware timestamps in combination with newly revamped timestamp code generation in SeaORM v1.0.0 finally allows for _seamlessly_ moving between using `sqlite` and `postgres` with minimal or no entities code changes (resolved [this long standing issue](https://github.com/loco-rs/loco/issues/518#issuecomment-2051708319)). TZ aware timestamps also aligns us with how Rails works today (initially Rails had a no-tz timestamps, and today the default is to use timestamps). If not specified the TZ is the server TZ, which is usually UTC, therefore semantically this is almost like a no-tz timestamp.
+
+**A few highlights:**
+
+Generated entities will now always use `DateTimeWithTimeZone` for the default timestamp fields:
+
+```
+...
+Generating users.rs
+    > Column `created_at`: DateTimeWithTimeZone, not_null
+    > Column `updated_at`: DateTimeWithTimeZone, not_null
+...
+```
+
+For better cross database provider compatibility, from now on prefer the `tstz` type instead of just `ts` when using generators (i.e. `cargo loco generate model movie released:tstz`)
+
+* remove eyer lib. [https://github.com/loco-rs/loco/pull/650](https://github.com/loco-rs/loco/pull/650)
+  ### Breaking Changes:
+     1. Update the Main Function in src/bin/main
+   
+      Replace the return type of the main function:
+   
+      **Before:**
+      ```rust
+      async fn main() -> eyre::Result<()>
+      ```
+   
+      **After:**
+      ```rust
+      async fn main() -> loco_rs::Result<()>
+      ```
+   
+   
+   2. Modify examples/playground.rs
+      You need to apply two changes here:
+   
+        a. Update the Function Signature
+        **Before:**
+        ```rust
+        async fn main() -> eyre::Result<()>
+        ```
+   
+        **After:**
+        ```rust
+        async fn main() -> loco_rs::Result<()>
+        ```
+   
+        b. Adjust the Context Handling
+        **Before:**
+        ```rust
+        let _ctx = playground::<App>().await.context("playground")?;
+        ```
+   
+        **After:**
+        ```rust
+        let _ctx = playground::<App>().await?;
+        ```
+   
+   Note, 
+   If you are using eyre in your project, you can continue to do so. We have only removed this crate from our base code dependencies.
+* Bump rstest crate to 0.21.0. [https://github.com/loco-rs/loco/pull/650](https://github.com/loco-rs/loco/pull/650)
+* Bump serial_test crate to 3.1.1. [https://github.com/loco-rs/loco/pull/651](https://github.com/loco-rs/loco/pull/651)
+* Bumo object store to create to 0.10.2. [https://github.com/loco-rs/loco/pull/654](https://github.com/loco-rs/loco/pull/654)
+* Bump axum crate to 0.7.5. [https://github.com/loco-rs/loco/pull/652](https://github.com/loco-rs/loco/pull/652)
+* Add Hooks::before_routes to give user control over initial axum::Router construction. [https://github.com/loco-rs/loco/pull/646](https://github.com/loco-rs/loco/pull/646)
+* Support logger file appender. [https://github.com/loco-rs/loco/pull/636](https://github.com/loco-rs/loco/pull/636)
+* Response from the template. [https://github.com/loco-rs/loco/pull/682](https://github.com/loco-rs/loco/pull/682)
+* Add get_or_insert function to cache layer. [https://github.com/loco-rs/loco/pull/637](https://github.com/loco-rs/loco/pull/637)
+* Bump ORM create to 1.0.0. [https://github.com/loco-rs/loco/pull/684](https://github.com/loco-rs/loco/pull/684)
+
+
+## 0.6.2
+* Use Rust-based tooling for SaaS starter frontend. [https://github.com/loco-rs/loco/pull/625](https://github.com/loco-rs/loco/pull/625)
+* Default binding to localhost to avoid firewall dialogues during development on macOS. [https://github.com/loco-rs/loco/pull/627](https://github.com/loco-rs/loco/pull/627)
+* upgrade sea-orm to 1.0.0 RC 7. [https://github.com/loco-rs/loco/pull/627](https://github.com/loco-rs/loco/pull/639)
+* Add a down migration command. [https://github.com/loco-rs/loco/pull/414](https://github.com/loco-rs/loco/pull/414)
+* replace create_postgres_database function table_name to db_name. [https://github.com/loco-rs/loco/pull/647](https://github.com/loco-rs/loco/pull/647)
+
+## 0.6.1
+ * Upgrade htmx generator to htmx2. [https://github.com/loco-rs/loco/pull/629](https://github.com/loco-rs/loco/pull/629)
+
+
+## 0.6.0 https://github.com/loco-rs/loco/pull/610
+* Bump socketioxide to v0.13.1. [https://github.com/loco-rs/loco/pull/594](https://github.com/loco-rs/loco/pull/594)
+* Add CC and BCC fields to the mailers. [https://github.com/loco-rs/loco/pull/599](https://github.com/loco-rs/loco/pull/599)
+* Delete reset tokens after use. [https://github.com/loco-rs/loco/pull/602](https://github.com/loco-rs/loco/pull/602)
+* Generator html support delete entity. [https://github.com/loco-rs/loco/pull/604](https://github.com/loco-rs/loco/pull/604)
+* **Breaking changes** move task args from BTreeMap to struct. [https://github.com/loco-rs/loco/pull/609](https://github.com/loco-rs/loco/pull/609)
+  * Change task signature from `async fn run(&self, app_context: &AppContext, vars: &BTreeMap<String, String>)` to `async fn run(&self, _app_context: &AppContext, _vars: &task::Vars) -> Result<()>`
+  *  **Breaking changes** change default port to 5150. [https://github.com/loco-rs/loco/pull/611](https://github.com/loco-rs/loco/pull/611)
+*  Update shuttle version in deployment generation. [https://github.com/loco-rs/loco/pull/616](https://github.com/loco-rs/loco/pull/616)
+
+## v0.5.0 https://github.com/loco-rs/loco/pull/593
+
+* refactor auth middleware for supporting bearer, cookie and query. [https://github.com/loco-rs/loco/pull/560](https://github.com/loco-rs/loco/pull/560)
+* SeaORM upgraded: `rc1` -> `rc4`. [https://github.com/loco-rs/loco/pull/585](https://github.com/loco-rs/loco/pull/585)
+* Adding Cache to app content. [https://github.com/loco-rs/loco/pull/570](https://github.com/loco-rs/loco/pull/570)
+* Apply a layer to a specific handler using `layer` method. [https://github.com/loco-rs/loco/pull/554](https://github.com/loco-rs/loco/pull/554)
+* Add the debug macro to the templates to improve the errors. [https://github.com/loco-rs/loco/pull/547](https://github.com/loco-rs/loco/pull/547)
+* Opentelemetry initializer. [https://github.com/loco-rs/loco/pull/531](https://github.com/loco-rs/loco/pull/531)
+* Refactor auth middleware for supporting bearer, cookie and query [https://github.com/loco-rs/loco/pull/560](https://github.com/loco-rs/loco/pull/560)
+* Add redirect response [https://github.com/loco-rs/loco/pull/563](https://github.com/loco-rs/loco/pull/563)
+* **Breaking changes** Adding a custom claims `Option<serde_json::Value>` to the `UserClaims` struct (type changed). [https://github.com/loco-rs/loco/pull/578](https://github.com/loco-rs/loco/pull/578)
+* **Breaking changes** Refactored DSL and Pagination: namespace changes. [https://github.com/loco-rs/loco/pull/566](https://github.com/loco-rs/loco/pull/566)
+  * Replaced `model::query::dsl::` with `model::query`.
+  * Replaced `model::query::exec::paginate` with `model::query::paginate`.
+  * Updated the `PaginatedResponse` struct. Refer to its usage example [here](https://github.com/loco-rs/loco/blob/master/examples/demo/src/views/notes.rs#L29).
+* **Breaking changes** When introducing the Cache system which is much more flexible than having just Redis, we now call the 'redis' member simply a 'queue' which indicates it should be used only for the internal queue and not as a general purpose cache. In the application configuration setting `redis`, change to `queue`. [https://github.com/loco-rs/loco/pull/590](https://github.com/loco-rs/loco/pull/590)
+```yaml
+# before:
+redis:
+# after:
+queue:
+```
+* **Breaking changes** We have made a few parts of the context pluggable, such as the `storage` and new `cache` subsystems, this is why we decided to let you configure the context entirely before starting up your app. As a result, if you have a storage building hook code it should move to `after_context`, see example [here](https://github.com/loco-rs/loco/pull/570/files#diff-5534e8826fb82e5c7f2587d270a51b48009341e79889d1504e6b63b2f0b652bdR83). [https://github.com/loco-rs/loco/pull/570](https://github.com/loco-rs/loco/pull/570)
+
+## v0.4.0
+
+* Refactored model validation for better developer experience. Added a few traits and structs to `loco::prelude` for a smoother import story. Introducing `Validatable`:
+
+```rust
+impl Validatable for super::_entities::users::ActiveModel {
+    fn validator(&self) -> Box<dyn Validate> {
+        Box::new(Validator {
+            name: self.name.as_ref().to_owned(),
+            email: self.email.as_ref().to_owned(),
+        })
+    }
+}
+
+// now you can call `user.validate()` freely
+```
+
+* Refactored type field mapping to be centralized. Now model, scaffold share the same field mapping, so no more gaps like [https://github.com/loco-rs/loco/issues/513](https://github.com/loco-rs/loco/issues/513) (e.g. when calling `loco generate model title:string` the ability to map `string` into something useful in the code generation side)
+**NOTE** the `_integer` class of types are now just `_int`, e.g. `big_int`, so that it correlate with the `int` field name in a better way
 
 * Adding to to quiery dsl `is_in` and `is_not_in`. [https://github.com/loco-rs/loco/pull/507](https://github.com/loco-rs/loco/pull/507)
+* Added: in your configuration you can now use an `initializers:` section for initializer specific settings
+
+  ```yaml
+  # Initializers Configuration
+  initializers:
+  # oauth2:
+  #   authorization_code: # Authorization code grant type
+  #     - client_identifier: google # Identifier for the OAuth2 provider. Replace 'google' with your provider's name if different, must be unique within the oauth2 config.
+  #       ... other fields
+  ```
+
 * Docs: fix schema data types mapping. [https://github.com/loco-rs/loco/pull/506](https://github.com/loco-rs/loco/pull/506)
 * Let Result accept other errors. [https://github.com/loco-rs/loco/pull/505](https://github.com/loco-rs/loco/pull/505)
 * Allow trailing slashes in URIs by adding the NormalizePathLayer. [https://github.com/loco-rs/loco/pull/481](https://github.com/loco-rs/loco/pull/481)
@@ -269,7 +435,7 @@ Example of pulling a port from environment:
 
 ```yaml
 server:
-  port: {{ get_env(name="NODE_PORT", default=3000) }}
+  port: {{ get_env(name="NODE_PORT", default=5150) }}
 ```
 
 It is possible to use any `tera` templating constructs such as loops, conditionals, etc. inside YAML configuration files.

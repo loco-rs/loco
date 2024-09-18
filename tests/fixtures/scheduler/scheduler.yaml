@@ -1,0 +1,16 @@
+jobs:
+  print_task:
+    run: foo
+    schedule: "*/5 * * * * *"
+    tags:
+      - base
+      - echo
+
+  write_to_file:    
+    run: "echo loco >> ./scheduler.txt"
+    shell: true
+    schedule: "*/5 * * * * *"
+    tags:
+      - base
+      - write
+

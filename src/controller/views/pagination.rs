@@ -1,18 +1,4 @@
-use sea_orm::EntityTrait;
 use serde::{Deserialize, Serialize};
-
-#[deprecated(
-    since = "0.3.2",
-    note = "reshape pagination functionality by moving under models. read more https://loco.rs/docs/the-app/pagination"
-)]
-pub trait PaginationResponseTrait {
-    type Model: EntityTrait;
-    type ResponseType;
-
-    fn list(models: Vec<<Self::Model as EntityTrait>::Model>) -> Vec<Self::ResponseType>
-    where
-        Self: Sized;
-}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Pager<T> {

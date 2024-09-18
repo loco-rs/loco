@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use async_trait::async_trait;
 use axum::Extension;
 use kalosm::language::{Llama, LlamaSource};
@@ -12,7 +10,6 @@ use loco_rs::{
     worker::Processor,
     Result,
 };
-use tokio::sync::RwLock;
 
 use crate::controllers;
 
@@ -38,16 +35,16 @@ impl Hooks for App {
         let model = Llama::builder()
             .with_source(LlamaSource::llama_7b_code())
             .build()
+            .await
             .unwrap();
         println!("model ready");
-        let st = Arc::new(RwLock::new(model));
-        Ok(router.layer(Extension(st)))
+        Ok(router.layer(Extension(model)))
     }
-    fn routes(ctx: &AppContext) -> AppRoutes {
+    fn routes(_ctx: &AppContext) -> AppRoutes {
         AppRoutes::with_default_routes().add_route(controllers::home::routes())
     }
 
     fn connect_workers<'a>(_p: &'a mut Processor, _ctx: &'a AppContext) {}
 
-    fn register_tasks(tasks: &mut Tasks) {}
+    fn register_tasks(_tasks: &mut Tasks) {}
 }

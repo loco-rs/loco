@@ -1,0 +1,7 @@
+---
+source: src/controller/middleware/remote_ip.rs
+expression: res
+---
+Some(
+    192.1.1.1,
+)

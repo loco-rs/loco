@@ -1,0 +1,22 @@
+---
+description: Test Template
+rules:
+  - pattern: generator_test
+    kind: LibName
+    file_patterns:
+      - rs
+      - toml
+      - trycmd
+  - pattern: rhXGWBIQk2zvGxgz2B7O
+    kind: JwtToken
+    file_patterns:
+      - config/test.yaml
+      - config/development.yaml
+  - pattern: postgres://loco:loco@localhost:5432/loco_app
+    kind: postgres://loco:loco@localhost:5432/{{LibName}}_test
+    file_patterns:
+      - config/test.yaml
+  - pattern: postgres://loco:loco@localhost:5432/loco_app
+    kind: postgres://loco:loco@localhost:5432/{{LibName}}_development
+    file_patterns:
+      - config/development.yaml

@@ -33,9 +33,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::info;
 
-use crate::{environment::Environment, logger, Error, Result};
-
-const DEFAULT_SERVER_BINDING: &str = "[::]";
+use crate::{
+    controller::middleware::{remote_ip::RemoteIPConfig, secure_headers::SecureHeadersConfig},
+    environment::Environment,
+    logger, scheduler, Error, Result,
+};
 
 lazy_static! {
     static ref DEFAULT_FOLDER: PathBuf = PathBuf::from("config");
@@ -51,7 +53,7 @@ pub struct Config {
     pub server: Server,
     #[cfg(feature = "with-db")]
     pub database: Database,
-    pub redis: Option<Redis>,
+    pub queue: Option<Redis>,
     pub auth: Option<Auth>,
     #[serde(default)]
     pub workers: Workers,
@@ -71,6 +73,8 @@ pub struct Config {
     /// accessing `ctx.config.settings`.
     #[serde(default)]
     pub settings: Option<serde_json::Value>,
+
+    pub scheduler: Option<scheduler::Config>,
 }
 
 /// Logger configuration
@@ -91,6 +95,7 @@ pub struct Config {
 /// ```
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct Logger {
+    /// Enable log write to stdout
     pub enable: bool,
 
     /// Enable nice display of backtraces, in development this should be on.
@@ -113,6 +118,46 @@ pub struct Logger {
     /// Set this to your own filter if you want to see traces from internal
     /// libraries. See more [here](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives)
     pub override_filter: Option<String>,
+
+    /// Set this if you want to write log to file
+    pub file_appender: Option<LoggerFileAppender>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct LoggerFileAppender {
+    /// Enable logger file appender
+    pub enable: bool,
+
+    /// Enable write log to file non-blocking
+    #[serde(default)]
+    pub non_blocking: bool,
+
+    /// Set the logger file appender level.
+    ///
+    /// * options: `trace` | `debug` | `info` | `warn` | `error`
+    pub level: logger::LogLevel,
+
+    /// Set the logger file appender format.
+    ///
+    /// * options: `compact` | `pretty` | `json`
+    pub format: logger::Format,
+
+    /// Set the logger file appender rotation.
+    pub rotation: logger::Rotation,
+
+    /// Set the logger file appender dir
+    ///
+    /// default is `./logs`
+    pub dir: Option<String>,
+
+    /// Set log filename prefix
+    pub filename_prefix: Option<String>,
+
+    /// Set log filename suffix
+    pub filename_suffix: Option<String>,
+
+    /// Set the logger file appender keep max log files.
+    pub max_log_files: usize,
 }
 
 /// Database configuration
@@ -142,7 +187,7 @@ pub struct Database {
     /// * Sqlite: `sqlite://db.sqlite?mode=rwc`
     pub uri: String,
 
-    /// Enable SQLx statement logging
+    /// Enable `SQLx` statement logging
     pub enable_logging: bool,
 
     /// Minimum number of connections for a pool
@@ -156,6 +201,9 @@ pub struct Database {
 
     /// Set the idle duration before closing a connection
     pub idle_timeout: u64,
+
+    /// Set the timeout for acquiring a connection
+    pub acquire_timeout: Option<u64>,
 
     /// Run migration up when application loads. It is recommended to turn it on
     /// in development. In production keep it off, and explicitly migrate your
@@ -188,7 +236,7 @@ pub struct Database {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Redis {
     /// The URI for connecting to the Redis server. For example:
-    /// redis://127.0.0.1/
+    /// <redis://127.0.0.1/>
     pub uri: String,
     #[serde(default)]
     /// Flush redis when application loaded. Useful for `test`.
@@ -214,10 +262,28 @@ pub struct Auth {
 /// JWT configuration structure.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct JWT {
+    /// The location where JWT tokens are expected to be found during
+    /// authentication.
+    pub location: Option<JWTLocation>,
     /// The secret key For JWT token
     pub secret: String,
     /// The expiration time for authentication tokens
     pub expiration: u64,
+}
+
+/// Defines the authentication mechanism for middleware.
+///
+/// This enum represents various ways to authenticate using JSON Web Tokens
+/// (JWT) within middleware.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "from")]
+pub enum JWTLocation {
+    /// Authenticate using a Bearer token.
+    Bearer,
+    /// Authenticate using a token passed as a query parameter.
+    Query { name: String },
+    /// Authenticate using a token stored in a cookie.
+    Cookie { name: String },
 }
 
 /// Server configuration structure.
@@ -226,7 +292,7 @@ pub struct JWT {
 /// ```yaml
 /// # config/development.yaml
 /// server:
-///   port: {{ get_env(name="NODE_PORT", default=3000) }}
+///   port: {{ get_env(name="NODE_PORT", default=5150) }}
 ///   host: http://localhost
 ///   middlewares:
 ///     limit_payload:
@@ -262,7 +328,7 @@ pub struct Server {
 }
 
 fn default_binding() -> String {
-    DEFAULT_SERVER_BINDING.to_string()
+    "localhost".to_string()
 }
 
 impl Server {
@@ -288,7 +354,7 @@ pub struct Workers {
 }
 
 /// Worker mode configuration
-#[derive(Clone, Default, Serialize, Deserialize, Debug)]
+#[derive(Clone, Default, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum WorkerMode {
     /// Workers operate asynchronously in the background, processing queued
     /// tasks. **Requires a Redis connection**.
@@ -323,8 +389,29 @@ pub struct Middlewares {
     /// Serving static assets
     #[serde(rename = "static")]
     pub static_assets: Option<StaticAssetsMiddleware>,
+    /// Sets a set of secure headers
+    pub secure_headers: Option<SecureHeadersConfig>,
+    /// Calculates a remote IP based on `X-Forwarded-For` when behind a proxy
+    pub remote_ip: Option<RemoteIPConfig>,
+    /// Configure fallback behavior when hitting a missing URL
+    pub fallback: Option<FallbackConfig>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct FallbackConfig {
+    /// By default when enabled, returns a prebaked 404 not found page optimized
+    /// for development. For production set something else (see fields below)
+    pub enable: bool,
+    /// For the unlikely reason to return something different than `404`, you
+    /// can set it here
+    pub code: Option<u16>,
+    /// Returns content from a file pointed to by this field with a `404` status
+    /// code.
+    pub file: Option<String>,
+    /// Returns a "404 not found" with a single message string. This sets the
+    /// message.
+    pub not_found: Option<String>,
+}
 /// Static asset middleware configuration
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct StaticAssetsMiddleware {

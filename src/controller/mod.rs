@@ -7,12 +7,13 @@
 //! endpoints to your application
 //!
 //! ```rust
-//! # #[cfg(feature = "with-db")] {
 //! use async_trait::async_trait;
+//! #[cfg(feature = "channels")]
+//! use loco_rs::controller::channels::AppChannels;
 //! use loco_rs::{
 //!    app::{AppContext, Hooks},
 //!    boot::{create_app, BootResult, StartMode},
-//!    controller::{channels::AppChannels, AppRoutes},
+//!    controller::AppRoutes,
 //!    worker::Processor,
 //!    task::Tasks,
 //!    environment::Environment,
@@ -48,13 +49,13 @@
 //!          create_app::<Self, Migrator>(mode, environment).await
 //!     }
 //!     
+//!     #[cfg(feature = "channels")]
 //!    /// Only when `channels` feature is enabled
 //!    fn register_channels(_ctx: &AppContext) -> AppChannels {
 //!        let channels = AppChannels::default();
 //!        //channels.register.ns("/", channels::application::on_connect);
 //!        channels
 //!    }
-//!
 //!
 //!     fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {}
 //!
@@ -68,19 +69,17 @@
 //!         Ok(())
 //!     }
 //! }
-//! }
 //! ```
 
-use axum::extract::FromRequest;
+pub use app_routes::{AppRoutes, ListRoutes};
 use axum::{
+    extract::FromRequest,
     http::StatusCode,
     response::{IntoResponse, Response},
 };
 use colored::Colorize;
-use serde::Serialize;
-
-pub use app_routes::{AppRoutes, ListRoutes};
 pub use routes::Routes;
+use serde::Serialize;
 
 use crate::{errors::Error, Result};
 

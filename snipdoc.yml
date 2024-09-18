@@ -1,0 +1,131 @@
+snippets:
+  description:
+    content: 🚂 Loco is Rust on Rails.
+    path: ./snipdoc.yml
+  help-command:
+    content: cargo loco --help
+    path: ./snipdoc.yml
+  exec-help-command:
+    content: cd ./examples/demo && cargo loco --help
+    path: ./snipdoc.yml
+  build-command:
+    content: cargo build --release
+    path: ./snipdoc.yml
+  quick-installation-command:
+    content: |-
+      cargo install loco-cli
+      cargo install sea-orm-cli # Only when DB is needed
+    path: ./snipdoc.yml
+  loco-cli-new-from-template:
+    content: |-
+      ❯ loco new
+      ✔ ❯ App name? · myapp
+      ✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+      ✔ ❯ Select a DB Provider · Sqlite
+      ✔ ❯ Select your background worker type · Async (in-process tokyo async tasks)
+      ✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
+
+      🚂 Loco app generated successfully in:
+      myapp/
+    path: ./snipdoc.yml
+  postgres-run-docker-command:
+    content: |-
+      docker run -d -p 5432:5432 \
+        -e POSTGRES_USER=loco \
+        -e POSTGRES_DB=myapp_development \
+        -e POSTGRES_PASSWORD="loco" \
+        postgres:15.3-alpine
+    path: ./snipdoc.yml
+  redis-run-docker-command:
+    content: docker run -p 6379:6379 -d redis redis-server
+    path: ./snipdoc.yml
+  starting-the-server-command:
+    content: cargo loco start
+    path: ./snipdoc.yml
+  starting-the-server-command-with-environment-env-var:
+    content: LOCO_ENV=qa cargo loco start
+    path: ./snipdoc.yml
+  starting-the-server-command-with-output:
+    content: |-
+      $ cargo loco start
+
+                            ▄     ▀
+                                      ▀  ▄
+                        ▄       ▀     ▄  ▄ ▄▀
+                                          ▄ ▀▄▄
+                              ▄     ▀    ▀  ▀▄▀█▄
+                                                ▀█▄
+      ▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄   ▄▄▄▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄▄ ▀▀█
+      ██████  █████   ███ █████   ███ █████   ███ ▀█
+      ██████  █████   ███ █████   ▀▀▀ █████   ███ ▄█▄
+      ██████  █████   ███ █████       █████   ███ ████▄
+      ██████  █████   ███ █████   ▄▄▄ █████   ███ █████
+      ██████  █████   ███  ████   ███ █████   ███ ████▀
+        ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
+            ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+                      https://loco.rs
+
+      listening on port 5150
+    path: ./snipdoc.yml
+  doctor-command:
+    content: |-
+      $ cargo loco doctor
+          Finished dev [unoptimized + debuginfo] target(s) in 0.32s
+          Running `target/debug/myapp-cli doctor`
+      ✅ SeaORM CLI is installed
+      ✅ DB connection: success
+      ✅ Redis connection: success
+    path: ./snipdoc.yml
+  generate-deployment-command:
+    content: |-
+      cargo loco generate deployment
+      ? ❯ Choose your deployment ›
+      ❯ Docker
+      ❯ Shuttle
+      ❯ Nginx
+
+      ..
+      ✔ ❯ Choose your deployment · Docker
+      skipped (exists): "dockerfile"
+      added: ".dockerignore"
+    path: ./snipdoc.yml
+  scaffold-help-command:
+    content: cd ./examples/demo && cargo loco generate scaffold --help
+    path: ./snipdoc.yml
+  scaffold-post-command:
+    content: cargo loco generate scaffold posts
+      name:string title:string content:text
+    path: ./snipdoc.yml
+  generate-task-help-command:
+    content: cd ./examples/demo && cargo loco generate task --help
+    path: ./snipdoc.yml
+  run-task-command:
+    content: cargo loco task <TASK_NAME>
+    path: ./snipdoc.yml
+  list-tasks-command:
+    content: cargo loco task
+    path: ./snipdoc.yml
+  migrate-down-command:
+    content: cargo loco db down
+    path: ./snipdoc.yml
+  migrate-down-n-command:
+    content: cargo loco db down 2
+    path: ./snipdoc.yml
+  scheduler-generate-command:
+    content: cargo loco generate scheduler
+    path: ./snipdoc.yml
+  scheduler-list-command:
+    content: cargo loco scheduler --list
+    path: ./snipdoc.yml
+  scheduler-list-from-file-command:
+    content: cargo loco scheduler --path config/scheduler.yaml --list
+    path: ./snipdoc.yml
+  scheduler-list-from-env-setting-command:
+    content: LOCO_ENV=production cargo loco scheduler --list
+    path: ./snipdoc.yml
+  scheduler-run-job-by-name-command:
+    content: LOCO_ENV=production cargo loco scheduler --name 'JOB_NAME'
+    path: ./snipdoc.yml
+  scheduler-run-job-by-tag-command:
+    content: LOCO_ENV=production cargo loco scheduler --tag 'maintenance'
+    path: ./snipdoc.yml

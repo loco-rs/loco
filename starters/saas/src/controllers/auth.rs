@@ -1,3 +1,4 @@
+use axum::debug_handler;
 use loco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -27,10 +28,11 @@ pub struct ResetParams {
 
 /// Register function creates a new user with the given parameters and sends a
 /// welcome email to the user
+#[debug_handler]
 async fn register(
     State(ctx): State<AppContext>,
     Json(params): Json<RegisterParams>,
-) -> Result<Json<()>> {
+) -> Result<Response> {
     let res = users::Model::create_with_password(&ctx.db, &params).await;
 
     let user = match res {
@@ -57,10 +59,11 @@ async fn register(
 
 /// Verify register user. if the user not verified his email, he can't login to
 /// the system.
+#[debug_handler]
 async fn verify(
     State(ctx): State<AppContext>,
     Json(params): Json<VerifyParams>,
-) -> Result<Json<()>> {
+) -> Result<Response> {
     let user = users::Model::find_by_verification_token(&ctx.db, &params.token).await?;
 
     if user.email_verified_at.is_some() {
@@ -78,10 +81,11 @@ async fn verify(
 /// and send email to the user. In case the email not found in our DB, we are
 /// returning a valid request for for security reasons (not exposing users DB
 /// list).
+#[debug_handler]
 async fn forgot(
     State(ctx): State<AppContext>,
     Json(params): Json<ForgotParams>,
-) -> Result<Json<()>> {
+) -> Result<Response> {
     let Ok(user) = users::Model::find_by_email(&ctx.db, &params.email).await else {
         // we don't want to expose our users email. if the email is invalid we still
         // returning success to the caller
@@ -99,7 +103,8 @@ async fn forgot(
 }
 
 /// reset user password by the given parameters
-async fn reset(State(ctx): State<AppContext>, Json(params): Json<ResetParams>) -> Result<Json<()>> {
+#[debug_handler]
+async fn reset(State(ctx): State<AppContext>, Json(params): Json<ResetParams>) -> Result<Response> {
     let Ok(user) = users::Model::find_by_reset_token(&ctx.db, &params.token).await else {
         // we don't want to expose our users email. if the email is invalid we still
         // returning success to the caller
@@ -115,10 +120,8 @@ async fn reset(State(ctx): State<AppContext>, Json(params): Json<ResetParams>) -
 }
 
 /// Creates a user login and returns a token
-async fn login(
-    State(ctx): State<AppContext>,
-    Json(params): Json<LoginParams>,
-) -> Result<Json<LoginResponse>> {
+#[debug_handler]
+async fn login(State(ctx): State<AppContext>, Json(params): Json<LoginParams>) -> Result<Response> {
     let user = users::Model::find_by_email(&ctx.db, &params.email).await?;
 
     let valid = user.verify_password(&params.password);

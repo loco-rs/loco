@@ -150,6 +150,7 @@ async fn can_reset_password() {
             .await
             .unwrap();
         assert!(user.reset_token.is_some());
+        assert!(user.reset_sent_at.is_some());
 
         let new_password = "new-password";
         let reset_payload = serde_json::json!({
@@ -162,7 +163,9 @@ async fn can_reset_password() {
         let user = users::Model::find_by_email(&ctx.db, &user.email)
             .await
             .unwrap();
-        assert!(user.reset_sent_at.is_some());
+
+        assert!(user.reset_token.is_none());
+        assert!(user.reset_sent_at.is_none());
 
         assert_debug_snapshot!((reset_response.status_code(), reset_response.text()));
 

@@ -5,38 +5,25 @@
 //!
 //! In the following example you can see how you can validate a user model
 //! ```rust,ignore
-//! use loco_rs::{
-//!    validation,
-//!    validator::Validate,
-//! };
-//! use sea_orm::DbErr;
+//! use loco_rs::prelude::*;
 //! pub use myapp::_entities::users::ActiveModel;
 //!
 //! // Validation structure
 //! #[derive(Debug, Validate, Deserialize)]
-//! pub struct ModelValidator {
+//! pub struct Validator {
 //!     #[validate(length(min = 2, message = "Name must be at least 2 characters long."))]
 //!     pub name: String,
 //! }
 //!
-//! /// Convert from UserModel to ModelValidator
-//! impl From<&ActiveModel> for ModelValidator {
-//!    fn from(value: &ActiveModel) -> Self {
-//!        Self {
-//!            name: value.name.as_ref().to_string(),
-//!        }
-//!    }
+//! impl Validatable for ActiveModel {
+//!   fn validator(&self) -> Box<dyn Validate> {
+//!     Box::new(Validator {
+//!         name: self.name.as_ref().to_owned(),
+//!     })
+//!   }
 //! }
 //!
-//! /// Creating validator function
-//! impl ActiveModel {
-//!    pub fn validate(&self) -> Result<(), DbErr> {
-//!        let validator: ModelValidator = self.into();
-//!        validator.validate().map_err(validation::into_db_error)
-//!    }
-//! }
-//!
-//! /// Inheritance `before_save` function and run validation function to make sure that we are inset the expected data.
+//! /// Override `before_save` function and run validation to make sure that we insert valid data.
 //! #[async_trait::async_trait]
 //! impl ActiveModelBehavior for ActiveModel {
 //!     async fn before_save<C>(self, _db: &C, insert: bool) -> Result<Self, DbErr>
@@ -50,14 +37,15 @@
 //!     }
 //! }
 //! ```
-use std::collections::HashMap;
 
+#[cfg(feature = "with-db")]
+use sea_orm::DbErr;
 use serde::{Deserialize, Serialize};
-use validator::{ValidationError, ValidationErrors};
+use validator::{Validate, ValidationError, ValidationErrors};
 
 #[derive(Debug, Deserialize, Serialize)]
 #[allow(clippy::module_name_repetitions)]
-pub struct ModelValidation {
+pub struct ModelValidationMessage {
     pub code: String,
     pub message: Option<String>,
 }
@@ -75,46 +63,65 @@ pub fn is_valid_email(email: &str) -> Result<(), ValidationError> {
     }
 }
 
-/// Convert `ValidationErrors` into a `HashMap` of field errors.
+///
+/// <DbErr conversion hack>
+///
+///
+/// Convert `ModelValidationErrors` (pretty) into a `DbErr` (ugly) for database
+/// handling. Because `DbErr` is used in model hooks and we implement the hooks
+/// in the trait, we MUST use `DbErr`, so we need to "hide" a _representation_
+/// of the error in `DbErr::Custom`, so that it can be unpacked later down the
+/// stream, in the central error response handler.
+pub struct ModelValidationErrors(pub ValidationErrors);
+
+#[cfg(feature = "with-db")]
+impl From<ModelValidationErrors> for DbErr {
+    fn from(errors: ModelValidationErrors) -> Self {
+        into_db_error(&errors)
+    }
+}
+
+#[cfg(feature = "with-db")]
 #[must_use]
-pub fn into_errors(errors: &ValidationErrors) -> HashMap<String, Vec<ModelValidation>> {
-    errors
+pub fn into_db_error(errors: &ModelValidationErrors) -> sea_orm::DbErr {
+    use std::collections::BTreeMap;
+
+    let errors = &errors.0;
+    let error_data: BTreeMap<String, Vec<ModelValidationMessage>> = errors
         .field_errors()
         .iter()
         .map(|(field, field_errors)| {
             let errors = field_errors
                 .iter()
-                .map(|err| ModelValidation {
+                .map(|err| ModelValidationMessage {
                     code: err.code.to_string(),
                     message: err.message.as_ref().map(std::string::ToString::to_string),
                 })
                 .collect();
             ((*field).to_string(), errors)
         })
-        .collect()
-}
-
-/// Convert `ValidationErrors` into a JSON `Value`.
-///
-/// # Errors
-/// when could not convert errors hashmap into a serde value
-pub fn into_json_errors(
-    errors: &ValidationErrors,
-) -> Result<serde_json::Value, serde_json::error::Error> {
-    let error_data = into_errors(errors);
-    serde_json::to_value(error_data)
-}
-
-#[cfg(feature = "with-db")]
-/// Convert `ValidationErrors` into a `DbErr` for database handling.
-#[must_use]
-pub fn into_db_error(errors: &ValidationErrors) -> sea_orm::DbErr {
-    match into_json_errors(errors) {
+        .collect();
+    let json_errors = serde_json::to_value(error_data);
+    match json_errors {
         Ok(errors_json) => sea_orm::DbErr::Custom(errors_json.to_string()),
         Err(err) => sea_orm::DbErr::Custom(format!(
             "[before_save] could not parse validation errors. err: {err}"
         )),
     }
+}
+
+/// Implement `Validatable` for `ActiveModel` when you want it to have a
+/// `validate()` function.
+pub trait Validatable {
+    /// Perform validation
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if there are validation errors
+    fn validate(&self) -> Result<(), ModelValidationErrors> {
+        self.validator().validate().map_err(ModelValidationErrors)
+    }
+    fn validator(&self) -> Box<dyn Validate>;
 }
 
 #[cfg(test)]
@@ -151,7 +158,8 @@ mod tests {
 
         assert_debug_snapshot!(
             format!("struct-[{name}]"),
-            data.validate().map_err(|e| into_db_error(&e))
+            data.validate()
+                .map_err(|e| into_db_error(&ModelValidationErrors(e)))
         );
     }
 }

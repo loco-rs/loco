@@ -20,7 +20,6 @@ macro_rules! configure_insta {
 #[rstest]
 #[case("get_notes", serde_json::json!({}))]
 #[case("get_notes_with_page_size", serde_json::json!({"page_size":"1"}))]
-#[case("get_notes_withnext_page", serde_json::json!({"page":"2"}))]
 #[case("get_notes_with_size_and_page", serde_json::json!({"page":"2", "page_size": "5"}))]
 #[case("get_notes_with_filters", serde_json::json!({"page":"1", "page_size": "2", "title": "%note%"}))]
 #[tokio::test]

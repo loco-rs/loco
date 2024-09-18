@@ -1,7 +1,13 @@
-use chrono::Utc;
+// this is because not using with-db renders some of the structs below unused
+// TODO: should be more properly aligned with extracting out the db-related gen
+// code and then feature toggling it
+#![allow(dead_code)]
+use lazy_static::lazy_static;
 use rrgen::{GenResult, RRgen};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 
+mod controller;
 #[cfg(feature = "with-db")]
 mod model;
 #[cfg(feature = "with-db")]
@@ -23,6 +29,8 @@ const MIGRATION_T: &str = include_str!("templates/migration.t");
 const TASK_T: &str = include_str!("templates/task.t");
 const TASK_TEST_T: &str = include_str!("templates/task_test.t");
 
+const SCHEDULER_T: &str = include_str!("templates/scheduler.t");
+
 const WORKER_T: &str = include_str!("templates/worker.t");
 const WORKER_TEST_T: &str = include_str!("templates/worker_test.t");
 
@@ -33,13 +41,60 @@ const DEPLOYMENT_SHUTTLE_T: &str = include_str!("templates/deployment_shuttle.t"
 const DEPLOYMENT_SHUTTLE_CONFIG_T: &str = include_str!("templates/deployment_shuttle_config.t");
 const DEPLOYMENT_NGINX_T: &str = include_str!("templates/deployment_nginx.t");
 
-const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.38.0";
+const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.46.0";
 
 const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
     ("Docker", DeploymentKind::Docker),
     ("Shuttle", DeploymentKind::Shuttle),
     ("Nginx", DeploymentKind::Nginx),
 ];
+
+#[derive(Serialize, Deserialize, Debug)]
+struct FieldType {
+    name: String,
+    rust: Option<String>,
+    schema: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Mappings {
+    field_types: Vec<FieldType>,
+}
+impl Mappings {
+    pub fn rust_field(&self, field: &str) -> Option<&String> {
+        self.field_types
+            .iter()
+            .find(|f| f.name == field)
+            .and_then(|f| f.rust.as_ref())
+    }
+    pub fn schema_field(&self, field: &str) -> Option<&String> {
+        self.field_types
+            .iter()
+            .find(|f| f.name == field)
+            .and_then(|f| f.schema.as_ref())
+    }
+    pub fn schema_fields(&self) -> Vec<&String> {
+        self.field_types
+            .iter()
+            .filter(|f| f.schema.is_some())
+            .map(|f| &f.name)
+            .collect::<Vec<_>>()
+    }
+    pub fn rust_fields(&self) -> Vec<&String> {
+        self.field_types
+            .iter()
+            .filter(|f| f.rust.is_some())
+            .map(|f| &f.name)
+            .collect::<Vec<_>>()
+    }
+}
+
+lazy_static! {
+    static ref MAPPINGS: Mappings = {
+        let json_data = include_str!("./mappings.json");
+        serde_json::from_str(json_data).expect("JSON was not well-formatted")
+    };
+}
 
 #[derive(clap::ValueEnum, Clone, Debug)]
 pub enum ScaffoldKind {
@@ -100,11 +155,18 @@ pub enum Component {
     Controller {
         /// Name of the thing to generate
         name: String,
+
+        /// Action names
+        actions: Vec<String>,
+
+        // kind
+        kind: ScaffoldKind,
     },
     Task {
         /// Name of the thing to generate
         name: String,
     },
+    Scheduler {},
     Worker {
         /// Name of the thing to generate
         name: String,
@@ -140,18 +202,27 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
         }
         #[cfg(feature = "with-db")]
         Component::Migration { name } => {
-            let vars = json!({ "name": name, "ts": Utc::now(), "pkg_name": H::app_name()});
+            let vars = json!({ "name": name, "ts": chrono::Utc::now(), "pkg_name": H::app_name()});
             rrgen.generate(MIGRATION_T, &vars)?;
         }
-        Component::Controller { name } => {
-            let vars = json!({ "name": name, "pkg_name": H::app_name()});
-            rrgen.generate(CONTROLLER_T, &vars)?;
-            rrgen.generate(CONTROLLER_TEST_T, &vars)?;
+        Component::Controller {
+            name,
+            actions,
+            kind,
+        } => {
+            println!(
+                "{}",
+                controller::generate::<H>(&rrgen, &name, &actions, &kind)?
+            );
         }
         Component::Task { name } => {
             let vars = json!({"name": name, "pkg_name": H::app_name()});
             rrgen.generate(TASK_T, &vars)?;
             rrgen.generate(TASK_TEST_T, &vars)?;
+        }
+        Component::Scheduler {} => {
+            let vars = json!({"pkg_name": H::app_name()});
+            rrgen.generate(SCHEDULER_T, &vars)?;
         }
         Component::Worker { name } => {
             let vars = json!({"name": name, "pkg_name": H::app_name()});
@@ -238,7 +309,7 @@ fn collect_messages(results: Vec<GenResult>) -> String {
     messages
 }
 
-fn prompt_deployment_selection() -> eyre::Result<DeploymentKind> {
+fn prompt_deployment_selection() -> Result<DeploymentKind> {
     let options: Vec<String> = DEPLOYMENT_OPTIONS.iter().map(|t| t.0.to_string()).collect();
 
     let selection_options = requestty::Question::select("deployment")
@@ -246,11 +317,11 @@ fn prompt_deployment_selection() -> eyre::Result<DeploymentKind> {
         .choices(&options)
         .build();
 
-    let answer = requestty::prompt_one(selection_options)?;
+    let answer = requestty::prompt_one(selection_options).map_err(errors::Error::msg)?;
 
     let selection = answer
         .as_list_item()
-        .ok_or_else(|| eyre::eyre!("deployment selection it empty"))?;
+        .ok_or_else(|| errors::Error::string("deployment selection it empty"))?;
 
     Ok(DEPLOYMENT_OPTIONS[selection.index].1.clone())
 }

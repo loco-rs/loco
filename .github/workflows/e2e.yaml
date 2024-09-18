@@ -15,13 +15,12 @@ jobs:
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
-          override: true
       - run: |
           cargo install loco-cli
-          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=saas LOCO_TEMPLATE=saas loco new
+          ALLOW_IN_GIT_REPO=true loco new --template saas --name saas --db sqlite --bg async --assets serverside
       - run: |
           cargo build
         working-directory: ./saas
@@ -36,13 +35,12 @@ jobs:
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
-          override: true
       - run: |
           cargo install loco-cli
-          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=restapi LOCO_TEMPLATE=rest-api loco new
+          ALLOW_IN_GIT_REPO=true loco new --template rest-api --name restapi --db sqlite --bg async
       - run: |
           cargo build
         working-directory: ./restapi
@@ -57,13 +55,12 @@ jobs:
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
-          override: true
       - run: |
           cargo install loco-cli
-          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=lightweight LOCO_TEMPLATE=lightweight-service loco new
+          ALLOW_IN_GIT_REPO=true loco new --template lightweight-service --name lightweight --db sqlite --bg async
       - run: |
           cargo build
         working-directory: ./lightweight

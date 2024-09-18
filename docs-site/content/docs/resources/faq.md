@@ -4,7 +4,7 @@ description = "Answers to frequently asked questions."
 date = 2021-05-01T19:30:00+00:00
 updated = 2021-05-01T19:30:00+00:00
 draft = false
-weight = 30
+weight = 1
 sort_by = "weight"
 template = "docs/page.html"
 
@@ -54,6 +54,8 @@ Loco is compatible with Axum middlewares. Simply implement `FromRequestParts` in
 <details>
 <summary>Injecting Custom State or Layers in Loco?</summary>
 Yes, you can achieve this by implementing `Hooks::after_routes`. This hook receive Axum routers that Loco has already built, allowing you to seamlessly add any available Axum functions that suit your needs.
+
+If you need your routes or (404) fallback handler to be affected by loco's middleware, you can add them in `Hooks::before_routes` which is called before the middleware is installed.
 </details>
 
 <br/>

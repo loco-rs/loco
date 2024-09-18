@@ -5,7 +5,7 @@ use loco_extras;
 use loco_rs::{
     app::{AppContext, Hooks, Initializer},
     boot::{create_app, BootResult, StartMode},
-    config::Config,
+    cache,
     controller::AppRoutes,
     db::{self, truncate_table},
     environment::Environment,
@@ -18,8 +18,9 @@ use migration::Migrator;
 use sea_orm::DatabaseConnection;
 
 use crate::{
-    controllers, initializers,
-    models::_entities::{notes, users},
+    controllers::{self, middlewares},
+    initializers,
+    models::_entities::{notes, roles, users, users_roles},
     tasks,
     workers::downloader::DownloadWorker,
 };
@@ -41,6 +42,7 @@ impl Hooks for App {
         env!("CARGO_CRATE_NAME")
     }
 
+    // <snip id="app-initializers">
     async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
         let mut initializers: Vec<Box<dyn Initializer>> = vec![
             Box::new(initializers::axum_session::AxumSessionInitializer),
@@ -57,33 +59,42 @@ impl Hooks for App {
 
         Ok(initializers)
     }
+    // </snip>
 
-    fn routes(_ctx: &AppContext) -> AppRoutes {
+    fn routes(ctx: &AppContext) -> AppRoutes {
         AppRoutes::with_default_routes()
+            .add_route(
+                controllers::mylayer::routes(ctx.clone())
+                    .layer(middlewares::routes::role::RoleRouteLayer::new(ctx.clone())),
+            )
             .add_route(controllers::notes::routes())
             .add_route(controllers::auth::routes())
             .add_route(controllers::mysession::routes())
-            .add_route(controllers::dashboard::routes())
+            .add_route(controllers::view_engine::routes())
             .add_route(controllers::user::routes())
             .add_route(controllers::upload::routes())
+            .add_route(controllers::responses::routes())
+            .add_route(controllers::cache::routes())
     }
 
     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
         create_app::<Self, Migrator>(mode, environment).await
     }
 
-    async fn storage(
-        _config: &Config,
-        environment: &Environment,
-    ) -> Result<Option<storage::Storage>> {
-        let store = if environment == &Environment::Test {
+    async fn after_context(ctx: AppContext) -> Result<AppContext> {
+        let store = if ctx.environment == Environment::Test {
             storage::drivers::mem::new()
         } else {
             storage::drivers::local::new_with_prefix("storage-uploads").map_err(Box::from)?
         };
 
-        let storage = Storage::single(store);
-        return Ok(Some(storage));
+        Ok(AppContext {
+            storage: Storage::single(store).into(),
+            cache: cache::Cache::new(cache::drivers::inmem::new()).into(),
+            ..ctx
+        })
+
+        // Ok(ctx)
     }
 
     fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {
@@ -97,6 +108,8 @@ impl Hooks for App {
     }
 
     async fn truncate(db: &DatabaseConnection) -> Result<()> {
+        truncate_table(db, users_roles::Entity).await?;
+        truncate_table(db, roles::Entity).await?;
         truncate_table(db, users::Entity).await?;
         truncate_table(db, notes::Entity).await?;
         Ok(())

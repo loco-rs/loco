@@ -42,6 +42,9 @@ pub enum Error {
     TaskNotFound(String),
 
     #[error(transparent)]
+    Scheduler(#[from] crate::scheduler::Error),
+
+    #[error(transparent)]
     Axum(#[from] axum::http::Error),
 
     #[error(transparent)]
@@ -122,10 +125,10 @@ pub enum Error {
     Storage(#[from] crate::storage::StorageError),
 
     #[error(transparent)]
-    Any(#[from] Box<dyn std::error::Error + Send + Sync>),
+    Cache(#[from] crate::cache::CacheError),
 
     #[error(transparent)]
-    Anyhow(#[from] eyre::Report),
+    Any(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
 impl Error {

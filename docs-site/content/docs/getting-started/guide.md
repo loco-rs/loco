@@ -3,7 +3,7 @@ title = "The Loco Guide"
 date = 2021-05-01T08:00:00+00:00
 updated = 2021-05-01T08:00:00+00:00
 draft = false
-weight = 2
+weight = 3
 sort_by = "weight"
 template = "docs/page.html"
 
@@ -15,19 +15,25 @@ flair =[]
 
 ## Guide Assumptions
 
-Loco is a Rust API and web framework for full stack product builders.
+This is a "long way round" tutorial. It is long and indepth on purpose, it shows you how to build things manually **and** automatically using generators, so that you learn the skills to build and also how things work.
+
+
+### What's with the name?
 
 The name `Loco` comes from **loco**motive, as a tribute to Rails, and `loco` is easier to type than `locomotive` :-). Also, in some languages it means "crazy" but that was not the original intention (or, is it crazy to build a Rails on Rust? only time will tell!).
 
-You need to be familiar with Rust to a moderate level. You need to know how to build, test, and run Rust projects, have used some popular libraries such as `clap`, `regex`, `tokio`, `axum` or other web framework, nothing too fancy. There are no crazy lifetime twisters or complex / too magical, macros in Loco that you need to know how they work.
+### How much Rust do I need to know?
+
+You need to be familiar with Rust to a beginner but not more than moderate-beginner level. You need to know how to build, test, and run Rust projects, have used some popular libraries such as `clap`, `regex`, `tokio`, `axum` or other web framework, nothing too fancy. There are no crazy lifetime twisters or complex / too magical, macros in Loco that you need to know how they work.
+
+
+### What is Loco?
 
 Loco is strongly inspired by Rails. If you know Rails _and_ Rust, you'll feel at home. If you only know Rails and new to Rust, you'll find Loco refreshing. We do not assume you know Rails.
 
 <div class="infobox">
 We think Rails is so great, that this guide is strongly inspired from the <a href="https://guides.rubyonrails.org/getting_started.html">Rails guide, too</a>
 </div>
-
-## What is Loco?
 
 Loco is a Web or API framework for Rust. It's also a productivity suite for developers: it contains everything you need while building a hobby or your next startup. It's also strongly inspired by Rails.
 
@@ -43,62 +49,33 @@ You can follow this guide for a step-by-step "bottom up" learning, or you can ju
 
 ### Installing
 
+<!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->
 ```sh
-$ cargo install loco-cli
+cargo install loco-cli
+cargo install sea-orm-cli # Only when DB is needed
 ```
+<!-- </snip> -->
+
 
 ### Creating a new Loco app
 
 Now you can create your new app (choose "SaaS app" for built-in authentication).
 
+<!-- <snip id="loco-cli-new-from-template" inject_from="yaml" template="sh"> -->
 ```sh
-$ loco new
+❯ loco new
 ✔ ❯ App name? · myapp
-? ❯ What would you like to build? ›
-  lightweight-service (minimal, only controllers and views)
-  Rest API (with DB and user auth)
-❯ SaaS app (with DB and user auth)
+✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+✔ ❯ Select a DB Provider · Sqlite
+✔ ❯ Select your background worker type · Async (in-process tokyo async tasks)
+✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
+
 🚂 Loco app generated successfully in:
-myapp
+myapp/
 ```
+<!-- </snip> -->
 
-You can now switch to to `myapp`:
 
-```sh
-$ cd myapp
-```
-
-Make sure you also have locally installed or running (via Docker or otherwise) in case you selected starter with DB dependencies:
-
-- Postgres (your database will be named `myapp_development`)
-- Redis
-
-<div class="infobox">
-To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>myapp_development</code>.
-</div>
-
-This docker command start up postgresql database server.
-
-```sh
-docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=myapp_development -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine
-```
-
-This docker command start up redis server:
-
-```
-docker run -p 6379:6379 -d redis redis-server
-```
-
-Use doctor command to check the needed resources:
-
-```
-$ cargo loco doctor
-    Finished dev [unoptimized + debuginfo] target(s) in 0.32s
-     Running `target/debug/myapp-cli doctor`
-✅ SeaORM CLI is installed
-✅ DB connection: success
-✅ Redis connection: success
-```
 
 Here's a rundown of what Loco creates for you by default:
 
@@ -123,34 +100,24 @@ Here's a rundown of what Loco creates for you by default:
 
 Let's get some responses quickly. For this, we need to start up the server.
 
-### Starting the server
+You can now switch to to `myapp`:
 
 ```sh
-$ cargo loco start
-
-                      ▄     ▀
-                                 ▀  ▄
-                  ▄       ▀     ▄  ▄ ▄▀
-                                    ▄ ▀▄▄
-                        ▄     ▀    ▀  ▀▄▀█▄
-                                          ▀█▄
-▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄   ▄▄▄▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄▄ ▀▀█
- ██████  █████   ███ █████   ███ █████   ███ ▀█
- ██████  █████   ███ █████   ▀▀▀ █████   ███ ▄█▄
- ██████  █████   ███ █████       █████   ███ ████▄
- ██████  █████   ███ █████   ▄▄▄ █████   ███ █████
- ██████  █████   ███  ████   ███ █████   ███ ████▀
-   ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
-       ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
-                https://loco.rs
-
-listening on port 3000
+$ cd myapp
 ```
+
+### Starting the server
+
+<!-- <snip id="starting-the-server-command" inject_from="yaml" template="sh"> -->
+```sh
+cargo loco start
+```
+<!-- </snip> -->
 
 And now, let's see that it's alive:
 
 ```sh
-$ curl localhost:3000/api/_ping
+$ curl localhost:5150/_ping
 {"ok":true}
 ```
 
@@ -159,7 +126,7 @@ The built in `_ping` route will tell your load balancer everything is up.
 Let's see that all services that are required are up:
 
 ```sh
-$ curl localhost:3000/api/_health
+$ curl localhost:5150/_health
 {"ok":true}
 ```
 
@@ -190,7 +157,7 @@ pub async fn echo(req_body: String) -> String {
     req_body
 }
 
-pub async fn hello(State(_ctx): State<AppContext>) -> Result<String> {
+pub async fn hello(State(_ctx): State<AppContext>) -> Result<Response> {
     // do something with context (database, etc)
     format::text("hello")
 }
@@ -205,14 +172,16 @@ pub fn routes() -> Routes {
 
 Start the server:
 
+<!-- <snip id="starting-the-server-command" inject_from="yaml" template="sh"> -->
 ```sh
-$ cargo loco start
+cargo loco start
 ```
+<!-- </snip> -->
 
 Now, let's test it out:
 
 ```sh
-$ curl localhost:3000/api/guide
+$ curl localhost:5150/guide
 hello
 ```
 
@@ -238,7 +207,7 @@ Next, set up a _hello_ route, this is the contents of `home.rs`:
 use loco_rs::prelude::*;
 
 // _ctx contains your database connection, as well as other app resource that you'll need
-async fn hello(State(_ctx): State<AppContext>) -> Result<String> {
+async fn hello(State(_ctx): State<AppContext>) -> Result<Response> {
     format::text("ola, mundo")
 }
 
@@ -276,14 +245,16 @@ impl Hooks for App {
 
 That's it. Kill the server and bring it up again:
 
+<!-- <snip id="starting-the-server-command" inject_from="yaml" template="sh"> -->
+```sh
+cargo loco start
 ```
-$ cargo loco start
-```
+<!-- </snip> -->
 
 And hit `/home/hello`:
 
 ```sh
-$ curl localhost:3000/api/home/hello
+$ curl localhost:5150/home/hello
 ola, mundo
 ```
 
@@ -293,21 +264,26 @@ You can take a look at all of your routes with:
 $ cargo loco routes
   ..
   ..
-[POST] /auth/login
-[POST] /auth/register
-[POST] /auth/reset
-[POST] /auth/verify
+[POST] /api/auth/login
+[POST] /api/auth/register
+[POST] /api/auth/reset
+[POST] /api/auth/verify
 [GET] /home/hello      <---- this is our new route!
-[GET] /notes
-[POST] /notes
+[GET] /api/notes
+[POST] /api/notes
   ..
   ..
 $
 ```
 
+<div class="infobox">
+The <em>SaaS Starter</em> keeps routes under <code>/api</code> because it is client-side ready. <br/>
+When using client-side routing like React Router, we want to separate backend routes from client routes: the browser will use <code>/home</code> but not <code>/api/home</code> which is the backend route, and you can call <code>/api/home</code> from the client with no worries. Nevertheless, the routes: <code>/_health</code> and <code>/_ping</code> are exceptions, they stay at the root.
+</div>
+
 ## MVC and You
 
-**Traditional MVC (model-view-controller) comes desktop UI programming paradigms**. However, it quickly made it into web services as well, the golden era of MVC was around the early 2010's, and since then many more different paradigms and architectures emerged.
+**Traditional MVC (Model-View-Controller) originated in desktop UI programming paradigms.** However, its applicability to web services led to its rapid adoption. MVC's golden era was around the early 2010s, and since then, many other paradigms and architectures have emerged.
 
 **MVC is still a very strong principle and architecture to follow for simplifying projects**, and this is what Loco follows too.
 
@@ -339,7 +315,7 @@ Models in Loco carry the same semantics as in Rails: <b>fat models, slim control
 
 ### Generating a model
 
-A model in Loco represents data. Typically that data is stored in your database. Most, if not all, business processes of your applications would be coded on the model (as an Active Record) or as an orchestration of a few models.
+A model in Loco represents data *and* functionality. Typically the data is stored in your database. Most, if not all, business processes of your applications would be coded on the model (as an Active Record) or as an orchestration of a few models.
 
 Let's create a new model called `Article`:
 
@@ -355,7 +331,7 @@ injected: "tests/models/mod.rs"
 
 ### Database migrations
 
-**Keeping your schema is done with migrations**. A migration is a singular change to your database structure: it can contain complete table additions, modifications, or index creation.
+**Keeping your schema honest is done with migrations**. A migration is a singular change to your database structure: it can contain complete table additions, modifications, or index creation.
 
 ```rust
 // this was generated into `migrations/` from the command:
@@ -372,7 +348,7 @@ impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
             .create_table(
-                table_auto(Articles::Table)
+                table_auto_tz(Articles::Table)
                     .col(pk_auto(Articles::Id))
                     .col(string_null(Articles::Title))
                     .col(text(Articles::Content))
@@ -389,7 +365,7 @@ impl MigrationTrait for Migration {
 }
 ```
 
-You can recreate a complete database **by applying migrations in-series onto a fresh database schema** -- this is done automatically by Loco's migrator (which is derived from SeaORM).
+You can recreate a complete database **by applying migrations in-series onto a fresh database** -- this is done automatically by Loco's migrator (which is derived from SeaORM).
 
 When generating a new model, Loco will:
 
@@ -424,14 +400,13 @@ Let's fetch data using your models, using `playground.rs`:
 ```rust
 // located in examples/playground.rs
 // use this file to experiment with stuff
-use eyre::Context;
 use loco_rs::{cli::playground, prelude::*};
 // to refer to articles::ActiveModel, your imports should look like this:
 use myapp::{app::App, models::_entities::articles};
 
 #[tokio::main]
-async fn main() -> eyre::Result<()> {
-    let ctx = playground::<App>().await.context("playground")?; // <- remove '_'
+async fn main() -> loco_rs::Result<()> {
+    let ctx = playground::<App>().await?;
 
     // add this:
     let res = articles::Entity::find().all(&ctx.db).await.unwrap();
@@ -462,8 +437,8 @@ $ cargo playground
 Now, let's insert one item:
 
 ```rust
-async fn main() -> eyre::Result<()> {
-    let ctx = playground::<App>().await.context("playground")?;
+async fn main() -> loco_re::Result<()> {
+    let ctx = playground::<App>().await?;
 
     // add this:
     let active_model: articles::ActiveModel = articles::ActiveModel {
@@ -518,14 +493,16 @@ pub fn routes() -> Routes {
 
 Now, start the app:
 
+<!-- <snip id="starting-the-server-command" inject_from="yaml" template="sh"> -->
 ```sh
-$ cargo loco start
+cargo loco start
 ```
+<!-- </snip> -->
 
 And make a request:
 
 ```sh
-$ curl localhost:3000/api/articles
+$ curl localhost:5150/articles
 [{"created_at":"...","updated_at":"...","id":1,"title":"how to build apps in 3 steps","content":"use Loco: https://loco.rs"}]
 ```
 
@@ -587,7 +564,7 @@ pub async fn update(
     format::json(item)
 }
 
-pub async fn remove(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<()> {
+pub async fn remove(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Response> {
     load_item(&ctx, id).await?.delete(&ctx.db).await?;
     format::empty()
 }
@@ -615,11 +592,19 @@ A few items to note:
 - It's always better to create a `load_item` helper function and use it in all singular-item routes.
 - While `use loco_rs::prelude::*` brings in anything you need to build a controller, you should note to import `crate::models::_entities::articles::{ActiveModel, Entity, Model}` as well as `Serialize, Deserialize` for params.
 
+
+<div class="infobox">
+The order of the extractors is important, as changing the order of them can lead to compilation errors. Adding the <code>#[debug_handler]</code> macro to handlers can help by printing out better error messages. More information about extractors can be found in the <a href="https://docs.rs/axum/latest/axum/extract/index.html#the-order-of-extractors">axum documentation</a>.
+</div>
+
+
 You can now test that it works, start the app:
 
+<!-- <snip id="starting-the-server-command" inject_from="yaml" template="sh"> -->
 ```sh
-$ cargo loco start
+cargo loco start
 ```
+<!-- </snip> -->
 
 Add a new article:
 
@@ -627,18 +612,18 @@ Add a new article:
 $ curl -X POST -H "Content-Type: application/json" -d '{
   "title": "Your Title",
   "content": "Your Content xxx"
-}' localhost:3000/api/articles
+}' localhost:5150/articles
 {"created_at":"...","updated_at":"...","id":2,"title":"Your Title","content":"Your Content xxx"}
 ```
 
 Get a list:
 
 ```sh
-$ curl localhost:3000/api/articles
+$ curl localhost:5150/articles
 [{"created_at":"...","updated_at":"...","id":1,"title":"how to build apps in 3 steps","content":"use Loco: https://loco.rs"},{"created_at":"...","updated_at":"...","id":2,"title":"Your Title","content":"Your Content xxx"}
 ```
 
-## Adding a second model
+### Adding a second model
 
 Let's add another model, this time: `Comment`. We want to create a relation - a comment belongs to a post, and each post can have multiple comments.
 
@@ -735,20 +720,28 @@ pub async fn comments(
 This is called "lazy loading", where we fetch the item first and later its associated relation. Don't worry - there is also a way to eagerly load comments along with an article.
 </div>
 
-Now let's add a comment to Article `1`:
+Now start the app again:
+
+<!-- <snip id="starting-the-server-command" inject_from="yaml" template="sh"> -->
+```sh
+cargo loco start
+```
+<!-- </snip> -->
+
+Add a comment to Article `1`:
 
 ```sh
 $ curl -X POST -H "Content-Type: application/json" -d '{
   "content": "this rocks",
   "article_id": 1
-}' localhost:3000/api/comments
+}' localhost:5150/comments
 {"created_at":"...","updated_at":"...","id":4,"content":"this rocks","article_id":1}
 ```
 
 And, fetch the relation:
 
 ```sh
-$ curl localhost:3000/api/articles/1/comments
+$ curl localhost:5150/articles/1/comments
 [{"created_at":"...","updated_at":"...","id":4,"content":"this rocks","article_id":1}]
 ```
 
@@ -767,17 +760,36 @@ You can:
 
 This is where `cargo loco task` comes in.
 
-First, run `cargo loco task`:
+First, run `cargo loco task` to see current tasks:
 
 ```sh
 $ cargo loco task
-user_report		[output a user report]
+seed_data		[Task for seeding data]
 ```
 
-You'll see an example task that was generated for you. This is the meat of the task:
+Generate a new task `user_report`
+
+```sh
+$ cargo loco generate task user_report
+
+added: "src/tasks/user_report.rs"
+injected: "src/tasks/mod.rs"
+injected: "src/app.rs"
+added: "tests/tasks/user_report.rs"
+injected: "tests/tasks/mod.rs"
+```
+
+In `src/tasks/user_report.rs` you'll see the task that was generated for you. Replace it with following:
 
 ```rust
 // find it in `src/tasks/user_report.rs`
+
+use loco_rs::prelude::*;
+use loco_rs::task::Vars;
+
+use crate::models::users;
+
+#[async_trait]
 impl Task for UserReport {
     fn task(&self) -> TaskInfo {
       // description that appears on the CLI
@@ -811,7 +823,15 @@ Running this task is done with:
 
 ```rust
 $ cargo loco task user_report var1:val1 var2:val2 ...
+
+args: Vars { cli: {"var1": "val1", "var2": "val2"} }
+!!! user_report: listing users !!!
+------------------------
+done: 0 users
 ```
+If you have not added an user before, the report will be empty. 
+
+To add an user check out chapter [Registering a New User](/docs/getting-started/tour/#registering-a-new-user) of [A Quick Tour with Loco](/docs/getting-started/tour/).
 
 Remember: this is environmental, so you write the task once, and then execute in development or production as you wish. Tasks are compiled into the main app binary.
 

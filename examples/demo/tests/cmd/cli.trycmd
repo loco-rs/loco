@@ -6,14 +6,15 @@ The one-person framework for Rust
 Usage: blo-cli[EXE] [OPTIONS] <COMMAND>
 
 Commands:
-  start     Start an app
-  db        Perform DB operations
-  routes    Describe all application endpoints
-  task      Run a custom task
-  generate  code generation creates a set of files and code templates based on a predefined set of rules
-  doctor    Validate and diagnose configurations
-  version   Display the app version
-  help      Print this message or the help of the given subcommand(s)
+  start      Start an app
+  db         Perform DB operations
+  routes     Describe all application endpoints
+  task       Run a custom task
+  scheduler  Run the scheduler
+  generate   code generation creates a set of files and code templates based on a predefined set of rules
+  doctor     Validate and diagnose configurations
+  version    Display the app version
+  help       Print this message or the help of the given subcommand(s)
 
 Options:
   -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
@@ -32,6 +33,7 @@ Usage: blo-cli[EXE] db [OPTIONS] <COMMAND>
 Commands:
   create    Create schema
   migrate   Migrate schema (up)
+  down      Run one down migration, or add a number to run multiple down migrations (i.e. `down 2`)
   reset     Drop all tables, then reapply all migrations
   status    Migration status
   entities  Generate entity .rs files from database schema
@@ -58,6 +60,7 @@ Commands:
   scaffold    Generates a CRUD scaffold, model and controller
   controller  Generate a new controller with the given controller name, and test file
   task        Generate a Task based on the given name
+  scheduler   Generate a scheduler jobs configuration template
   worker      Generate worker
   mailer      Generate mailer
   deployment  Generate a deployment infrastructure
@@ -72,7 +75,7 @@ Options:
 
 ```console 
 $ LOCO_ENV=test blo-cli task
-foo                           [test misaligned cli prints]
+foo                           [run foo task]
 seed_data                     [Task for seeding data]
 user_report                   [output a user report]
 
@@ -87,17 +90,35 @@ $ blo-cli routes --environment test
 [POST] /auth/register
 [POST] /auth/reset
 [POST] /auth/verify
-[GET] /dashboard/hello
-[GET] /dashboard/home
+[GET] /cache
+[GET] /cache/get_or_insert
+[POST] /cache/insert
+[GET] /mylayer/admin
+[GET] /mylayer/echo
+[GET] /mylayer/user
 [GET] /mysession
 [GET] /notes
 [POST] /notes
 [GET] /notes/:id
 [DELETE] /notes/:id
 [POST] /notes/:id
+[GET] /response/empty
+[GET] /response/empty_json
+[GET] /response/etag
+[GET] /response/html
+[GET] /response/json
+[GET] /response/redirect
+[GET] /response/render_with_status_code
+[GET] /response/set_cookie
+[GET] /response/text
 [POST] /upload/file
+[POST] /user/convert/admin
+[POST] /user/convert/user
 [GET] /user/current
 [GET] /user/current_api_key
+[GET] /view-engine/hello
+[GET] /view-engine/home
+[GET] /view-engine/simple
 
 ```
 
@@ -130,5 +151,7 @@ $ LOCO_ENV=teste2e blo-cli db status
 [..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m Checking migration status [2m[3menvironment[0m[2m=[0mteste2e[0m
 [..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m Migration 'm20220101_000001_users'... Applied [2m[3menvironment[0m[2m=[0mteste2e[0m
 [..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m Migration 'm20231103_114510_notes'... Applied [2m[3menvironment[0m[2m=[0mteste2e[0m
+[..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m Migration 'm20240416_071825_roles'... Applied [2m[3menvironment[0m[2m=[0mteste2e[0m
+[..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m Migration 'm20240416_082115_users_roles'... Applied [2m[3menvironment[0m[2m=[0mteste2e[0m
 
 ```

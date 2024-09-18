@@ -1,6 +1,6 @@
 +++
 title = "Deploying Rust App with Terraform on AWS Fargate"
-description = "Deploying Rust App with Terraform on AWS Fargate"
+description = "Learn how to deploy a Loco app with Terraform (IaC). Generate a deployment with Loco generators and set it up step-by-step."
 date = 2023-12-20T16:04:40+00:00
 updated = 2023-12-16T04:20:40+00:00
 draft = false
@@ -173,7 +173,7 @@ resource "aws_ecs_task_definition" "myapp_task" {
       "essential": true,
       "portMappings": [
         {
-          "containerPort": 3000
+          "containerPort": 5150
         }
       ],
       "command": ["start"],
@@ -255,7 +255,7 @@ resource "aws_security_group" "load_balancer_security_group" {
 }
 resource "aws_lb_target_group" "myapp" {
   name        = "myapp-tg"
-  port        = 3000
+  port        = 5150
   protocol    = "HTTP"
   target_type = "ip"
   vpc_id      = aws_vpc.myapp_vpc.id
@@ -311,7 +311,7 @@ resource "aws_ecs_service" "myapp" {
   load_balancer {
     target_group_arn = aws_lb_target_group.myapp.arn
     container_name   = aws_ecs_task_definition.myapp_task.family
-    container_port   = 3000
+    container_port   = 5150
   }
 
   network_configuration {
@@ -507,8 +507,8 @@ resource "aws_security_group" "ingress_api" {
   vpc_id      = aws_vpc.myapp_vpc.id
 
   ingress {
-    from_port   = 3000
-    to_port     = 3000
+    from_port   = 5150
+    to_port     = 5150
     protocol    = "TCP"
     cidr_blocks = ["0.0.0.0/0"]
   }
