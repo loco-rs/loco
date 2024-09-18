@@ -2,7 +2,7 @@ pub use async_trait::async_trait;
 pub use axum::{
     extract::{Form, Path, State},
     response::{IntoResponse, Response},
-    routing::{delete, get, post, put},
+    routing::{delete, get, head, options, patch, post, put, trace},
 };
 pub use axum_extra::extract::cookie;
 pub use chrono::NaiveDateTime as DateTime;
