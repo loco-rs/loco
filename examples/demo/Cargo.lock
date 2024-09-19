@@ -781,40 +781,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "blo"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "axum 0.7.5",
- "axum-extra",
- "axum-test",
- "axum_session",
- "chrono",
- "fluent-templates",
- "futures-util",
- "include_dir",
- "insta",
- "loco-extras",
- "loco-macros",
- "loco-rs",
- "migration",
- "rstest",
- "sea-orm",
- "serde",
- "serde_json",
- "serial_test",
- "tera",
- "tokio",
- "tower",
- "tracing",
- "tracing-subscriber",
- "trycmd",
- "unic-langid",
- "uuid",
- "validator",
-]
-
-[[package]]
 name = "block-buffer"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1419,6 +1385,40 @@ name = "data-encoding"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8566979429cf69b49a5c740c60791108e86440e8be149bbea4fe54d2c32d6e2"
+
+[[package]]
+name = "demo_app"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum 0.7.5",
+ "axum-extra",
+ "axum-test",
+ "axum_session",
+ "chrono",
+ "fluent-templates",
+ "futures-util",
+ "include_dir",
+ "insta",
+ "loco-extras",
+ "loco-macros",
+ "loco-rs",
+ "migration",
+ "rstest",
+ "sea-orm",
+ "serde",
+ "serde_json",
+ "serial_test",
+ "tera",
+ "tokio",
+ "tower",
+ "tracing",
+ "tracing-subscriber",
+ "trycmd",
+ "unic-langid",
+ "uuid",
+ "validator",
+]
 
 [[package]]
 name = "der"

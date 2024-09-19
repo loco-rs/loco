@@ -45,7 +45,7 @@ cargo loco --help
 ```sh
 The one-person framework for Rust
 
-Usage: blo-cli [OPTIONS] <COMMAND>
+Usage: demo_app-cli [OPTIONS] <COMMAND>
 
 Commands:
   start      Start an app
@@ -134,7 +134,7 @@ See scaffold command:
 ```sh
 Generates a CRUD scaffold, model and controller
 
-Usage: blo-cli generate scaffold [OPTIONS] <NAME> [FIELDS]...
+Usage: demo_app-cli generate scaffold [OPTIONS] <NAME> [FIELDS]...
 
 Arguments:
   <NAME>       Name of the thing to generate
