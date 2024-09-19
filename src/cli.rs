@@ -184,9 +184,21 @@ enum ComponentArg {
         /// Actions
         actions: Vec<String>,
 
-        /// The kind of scaffold to generate
-        #[clap(short, long, value_enum, default_value_t = gen::ScaffoldKind::Api)]
-        kind: gen::ScaffoldKind,
+        /// The kind of controller actions to generate
+        #[clap(short, long, value_enum, group = "scaffold_kind_group")]
+        kind: Option<gen::ScaffoldKind>,
+
+        /// Use HTMX controller actions
+        #[clap(long, group = "scaffold_kind_group")]
+        htmx: bool,
+
+        /// Use HTML controller actions
+        #[clap(long, group = "scaffold_kind_group")]
+        html: bool,
+
+        /// Use API controller actions
+        #[clap(long, group = "scaffold_kind_group")]
+        api: bool,
     },
     /// Generate a Task based on the given name
     Task {
@@ -256,11 +268,30 @@ impl TryFrom<ComponentArg> for Component {
                 name,
                 actions,
                 kind,
-            } => Ok(Self::Controller {
-                name,
-                actions,
-                kind,
-            }),
+                htmx,
+                html,
+                api,
+            } => {
+                let kind = if let Some(kind) = kind {
+                    kind
+                } else if htmx {
+                    ScaffoldKind::Htmx
+                } else if html {
+                    ScaffoldKind::Html
+                } else if api {
+                    ScaffoldKind::Api
+                } else {
+                    return Err(crate::Error::string(
+                        "Error: One of `kind`, `htmx`, `html`, or `api` must be specified.",
+                    ));
+                };
+
+                Ok(Self::Controller {
+                    name,
+                    actions,
+                    kind,
+                })
+            }
             ComponentArg::Task { name } => Ok(Self::Task { name }),
             ComponentArg::Scheduler {} => Ok(Self::Scheduler {}),
             ComponentArg::Worker { name } => Ok(Self::Worker { name }),
