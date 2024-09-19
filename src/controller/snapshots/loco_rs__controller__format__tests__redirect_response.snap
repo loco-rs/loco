@@ -1,0 +1,14 @@
+---
+source: src/controller/format.rs
+expression: response
+---
+Response {
+    status: 303,
+    version: HTTP/1.1,
+    headers: {
+        "location": "https://loco.rs",
+    },
+    body: Body(
+        UnsyncBoxBody,
+    ),
+}

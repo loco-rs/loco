@@ -100,7 +100,7 @@ database:
   # When enabled, the sql query will be logged.
   enable_logging: false
   # Set the timeout duration when acquiring a connection.
-  connect_timeout: 500
+  connect_timeout: {{ get_env(name="DB_CONNECT_TIMEOUT", default="500") }}
   # Set the idle duration before closing a connection.
   idle_timeout: 500
   # Minimum number of connections for a pool.

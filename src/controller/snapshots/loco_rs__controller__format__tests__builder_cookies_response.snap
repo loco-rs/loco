@@ -1,0 +1,8 @@
+---
+source: src/controller/format.rs
+expression: response.headers()
+---
+{
+    "set-cookie": "foo=bar",
+    "set-cookie": "baz=qux",
+}
