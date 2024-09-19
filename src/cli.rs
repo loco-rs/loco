@@ -118,7 +118,11 @@ enum Commands {
     },
     #[cfg(feature = "with-db")]
     /// Validate and diagnose configurations.
-    Doctor {},
+    Doctor {
+        /// print out the current configurations.
+        #[arg(short, long, action)]
+        config: bool,
+    },
     /// Display the app version
     Version {},
 }
@@ -461,16 +465,21 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         Commands::Generate { component } => {
             gen::generate::<H>(component.try_into()?, &config)?;
         }
-        Commands::Doctor {} => {
-            let mut should_exit = false;
-            for (_, check) in doctor::run_all(&config).await {
-                if !should_exit && !check.valid() {
-                    should_exit = true;
+        Commands::Doctor { config: config_arg } => {
+            if config_arg {
+                println!("{}", &config);
+                println!("Environment: {}", &environment);
+            } else {
+                let mut should_exit = false;
+                for (_, check) in doctor::run_all(&config).await {
+                    if !should_exit && !check.valid() {
+                        should_exit = true;
+                    }
+                    println!("{check}");
                 }
-                println!("{check}");
-            }
-            if should_exit {
-                exit(1);
+                if should_exit {
+                    exit(1);
+                }
             }
         }
         Commands::Version {} => {
