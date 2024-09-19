@@ -354,7 +354,7 @@ pub struct Workers {
 }
 
 /// Worker mode configuration
-#[derive(Clone, Default, Serialize, Deserialize, Debug)]
+#[derive(Clone, Default, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum WorkerMode {
     /// Workers operate asynchronously in the background, processing queued
     /// tasks. **Requires a Redis connection**.

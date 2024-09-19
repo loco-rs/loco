@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, process::Command};
 
 use crate::{
     boot,
-    config::{Config, Database},
+    config::{self, Config, Database},
     db, redis, Error, Result,
 };
 
@@ -89,11 +89,16 @@ impl std::fmt::Display for Check {
 
 /// Runs checks for all configured resources.
 pub async fn run_all(config: &Config) -> BTreeMap<Resource, Check> {
-    BTreeMap::from([
+    let mut checks = BTreeMap::from([
         (Resource::SeaOrmCLI, check_seaorm_cli()),
         (Resource::Database, check_db(&config.database).await),
-        (Resource::Redis, check_redis(config).await),
-    ])
+    ]);
+
+    if config.workers.mode == config::WorkerMode::BackgroundQueue {
+        checks.insert(Resource::Redis, check_redis(config).await);
+    }
+
+    checks
 }
 
 /// Checks the database connection.

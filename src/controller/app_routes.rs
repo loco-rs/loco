@@ -100,32 +100,38 @@ impl AppRoutes {
 
     #[must_use]
     pub fn collect(&self) -> Vec<ListRoutes> {
-        let base_url_prefix = self.get_prefix().map_or("/", |url| url.as_str());
+        let base_url_prefix = self
+            .get_prefix()
+            // add a leading slash forcefully. Axum routes must start with a leading slash.
+            // if we have double leading slashes - it will get normalized into a single slash later
+            .map_or("/".to_string(), |url| format!("/{}", url.as_str()));
 
         self.get_routes()
             .iter()
-            .flat_map(|router| {
-                let mut uri_parts = vec![base_url_prefix];
-                if let Some(prefix) = router.prefix.as_ref() {
-                    uri_parts.push(prefix);
+            .flat_map(|controller| {
+                let mut uri_parts = vec![base_url_prefix.clone()];
+                if let Some(prefix) = controller.prefix.as_ref() {
+                    uri_parts.push(prefix.to_string());
                 }
-                router.handlers.iter().map(move |controller| {
-                    let uri = format!("{}{}", uri_parts.join("/"), &controller.uri);
-                    let binding = NORMALIZE_URL.replace_all(&uri, "/");
+                controller.handlers.iter().map(move |handler| {
+                    let mut parts = uri_parts.clone();
+                    parts.push(handler.uri.to_string());
+                    let joined_parts = parts.join("/");
 
-                    let uri = if binding.len() > 1 {
-                        NORMALIZE_URL
-                            .replace_all(&uri, "/")
-                            .strip_suffix('/')
-                            .map_or_else(|| binding.to_string(), std::string::ToString::to_string)
+                    let normalized = NORMALIZE_URL.replace_all(&joined_parts, "/");
+                    let uri = if normalized == "/" {
+                        normalized.to_string()
                     } else {
-                        binding.to_string()
+                        normalized.strip_suffix('/').map_or_else(
+                            || normalized.to_string(),
+                            std::string::ToString::to_string,
+                        )
                     };
 
                     ListRoutes {
                         uri,
-                        actions: controller.actions.clone(),
-                        method: controller.method.clone(),
+                        actions: handler.actions.clone(),
+                        method: handler.method.clone(),
                     }
                 })
             })
@@ -514,4 +520,111 @@ fn handle_panic(err: Box<dyn std::any::Any + Send + 'static>) -> axum::response:
     tracing::error!(err.msg = err, "server_panic");
 
     errors::Error::InternalServerError.into_response()
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use crate::prelude::*;
+    use crate::tests_cfg;
+    use insta::assert_debug_snapshot;
+    use rstest::rstest;
+    use tower::ServiceExt;
+
+    async fn action() -> Result<Response> {
+        format::json("loco")
+    }
+
+    #[test]
+    fn can_load_app_route_from_default() {
+        for route in AppRoutes::with_default_routes().collect() {
+            assert_debug_snapshot!(
+                format!("[{}]", route.uri.replace('/', "[slash]")),
+                format!("{:?} {}", route.actions, route.uri)
+            );
+        }
+    }
+
+    #[test]
+    fn can_load_empty_app_routes() {
+        assert_eq!(AppRoutes::empty().collect().len(), 0);
+    }
+
+    #[test]
+    fn can_load_routes() {
+        let router_without_prefix = Routes::new().add("/", get(action));
+        let normalizer = Routes::new()
+            .prefix("/normalizer")
+            .add("no-slash", get(action))
+            .add("/", post(action))
+            .add("//loco///rs//", delete(action))
+            .add("//////multiple-start", head(action))
+            .add("multiple-end/////", trace(action));
+
+        let app_router = AppRoutes::empty()
+            .add_route(router_without_prefix)
+            .add_route(normalizer)
+            .add_routes(vec![
+                Routes::new().add("multiple1", put(action)),
+                Routes::new().add("multiple2", options(action)),
+                Routes::new().add("multiple3", patch(action)),
+            ]);
+
+        for route in app_router.collect() {
+            assert_debug_snapshot!(
+                format!("[{}]", route.uri.replace('/', "[slash]")),
+                format!("{:?} {}", route.actions, route.uri)
+            );
+        }
+    }
+
+    #[test]
+    fn can_load_routes_with_root_prefix() {
+        let router_without_prefix = Routes::new()
+            .add("/loco", get(action))
+            .add("loco-rs", get(action));
+
+        let app_router = AppRoutes::empty()
+            .prefix("api")
+            .add_route(router_without_prefix);
+
+        for route in app_router.collect() {
+            assert_debug_snapshot!(
+                format!("[{}]", route.uri.replace('/', "[slash]")),
+                format!("{:?} {}", route.actions, route.uri)
+            );
+        }
+    }
+    #[rstest]
+    #[case(axum::http::Method::GET, get(action))]
+    #[case(axum::http::Method::POST, post(action))]
+    #[case(axum::http::Method::DELETE, delete(action))]
+    #[case(axum::http::Method::HEAD, head(action))]
+    #[case(axum::http::Method::OPTIONS, options(action))]
+    #[case(axum::http::Method::PATCH, patch(action))]
+    #[case(axum::http::Method::POST, post(action))]
+    #[case(axum::http::Method::PUT, put(action))]
+    #[case(axum::http::Method::TRACE, trace(action))]
+    #[tokio::test]
+    async fn can_xx(
+        #[case] http_method: axum::http::Method,
+        #[case] method: axum::routing::MethodRouter<AppContext>,
+    ) {
+        let router_without_prefix = Routes::new().add("/loco", method);
+
+        let app_router = AppRoutes::empty().add_route(router_without_prefix);
+
+        let ctx = tests_cfg::app::get_app_context().await;
+        let router = app_router.to_router(ctx, axum::Router::new()).unwrap();
+
+        let req = axum::http::Request::builder()
+            .uri("/loco")
+            .method(http_method)
+            .body(axum::body::Body::empty())
+            .unwrap();
+
+        let response = router.oneshot(req).await.unwrap();
+        assert!(response.status().is_success());
+    }
 }
