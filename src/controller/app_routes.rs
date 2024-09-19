@@ -521,3 +521,110 @@ fn handle_panic(err: Box<dyn std::any::Any + Send + 'static>) -> axum::response:
 
     errors::Error::InternalServerError.into_response()
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use crate::prelude::*;
+    use crate::tests_cfg;
+    use insta::assert_debug_snapshot;
+    use rstest::rstest;
+    use tower::ServiceExt;
+
+    async fn action() -> Result<Response> {
+        format::json("loco")
+    }
+
+    #[test]
+    fn can_load_app_route_from_default() {
+        for route in AppRoutes::with_default_routes().collect() {
+            assert_debug_snapshot!(
+                format!("[{}]", route.uri.replace('/', "[slash]")),
+                format!("{:?} {}", route.actions, route.uri)
+            );
+        }
+    }
+
+    #[test]
+    fn can_load_empty_app_routes() {
+        assert_eq!(AppRoutes::empty().collect().len(), 0);
+    }
+
+    #[test]
+    fn can_load_routes() {
+        let router_without_prefix = Routes::new().add("/", get(action));
+        let normalizer = Routes::new()
+            .prefix("/normalizer")
+            .add("no-slash", get(action))
+            .add("/", post(action))
+            .add("//loco///rs//", delete(action))
+            .add("//////multiple-start", head(action))
+            .add("multiple-end/////", trace(action));
+
+        let app_router = AppRoutes::empty()
+            .add_route(router_without_prefix)
+            .add_route(normalizer)
+            .add_routes(vec![
+                Routes::new().add("multiple1", put(action)),
+                Routes::new().add("multiple2", options(action)),
+                Routes::new().add("multiple3", patch(action)),
+            ]);
+
+        for route in app_router.collect() {
+            assert_debug_snapshot!(
+                format!("[{}]", route.uri.replace('/', "[slash]")),
+                format!("{:?} {}", route.actions, route.uri)
+            );
+        }
+    }
+
+    #[test]
+    fn can_load_routes_with_root_prefix() {
+        let router_without_prefix = Routes::new()
+            .add("/loco", get(action))
+            .add("loco-rs", get(action));
+
+        let app_router = AppRoutes::empty()
+            .prefix("api")
+            .add_route(router_without_prefix);
+
+        for route in app_router.collect() {
+            assert_debug_snapshot!(
+                format!("[{}]", route.uri.replace('/', "[slash]")),
+                format!("{:?} {}", route.actions, route.uri)
+            );
+        }
+    }
+    #[rstest]
+    #[case(axum::http::Method::GET, get(action))]
+    #[case(axum::http::Method::POST, post(action))]
+    #[case(axum::http::Method::DELETE, delete(action))]
+    #[case(axum::http::Method::HEAD, head(action))]
+    #[case(axum::http::Method::OPTIONS, options(action))]
+    #[case(axum::http::Method::PATCH, patch(action))]
+    #[case(axum::http::Method::POST, post(action))]
+    #[case(axum::http::Method::PUT, put(action))]
+    #[case(axum::http::Method::TRACE, trace(action))]
+    #[tokio::test]
+    async fn can_xx(
+        #[case] http_method: axum::http::Method,
+        #[case] method: axum::routing::MethodRouter<AppContext>,
+    ) {
+        let router_without_prefix = Routes::new().add("/loco", method);
+
+        let app_router = AppRoutes::empty().add_route(router_without_prefix);
+
+        let ctx = tests_cfg::app::get_app_context().await;
+        let router = app_router.to_router(ctx, axum::Router::new()).unwrap();
+
+        let req = axum::http::Request::builder()
+            .uri("/loco")
+            .method(http_method)
+            .body(axum::body::Body::empty())
+            .unwrap();
+
+        let response = router.oneshot(req).await.unwrap();
+        assert!(response.status().is_success());
+    }
+}
