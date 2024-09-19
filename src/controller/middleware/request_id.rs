@@ -1,3 +1,5 @@
+//! Generate a unique request ID for every request, sets header in
+//! `x-request-id`
 use axum::{extract::Request, http::HeaderValue, middleware::Next, response::Response};
 use lazy_static::lazy_static;
 use regex::Regex;

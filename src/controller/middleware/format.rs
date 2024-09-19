@@ -1,3 +1,4 @@
+//! Detect a content type and format and responds accordingly
 use axum::{async_trait, extract::FromRequestParts, http::request::Parts};
 use hyper::header::{ACCEPT, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};

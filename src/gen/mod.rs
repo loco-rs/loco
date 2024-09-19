@@ -7,6 +7,7 @@ use rrgen::{GenResult, RRgen};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
+mod controller;
 #[cfg(feature = "with-db")]
 mod model;
 #[cfg(feature = "with-db")]
@@ -27,6 +28,8 @@ const MIGRATION_T: &str = include_str!("templates/migration.t");
 
 const TASK_T: &str = include_str!("templates/task.t");
 const TASK_TEST_T: &str = include_str!("templates/task_test.t");
+
+const SCHEDULER_T: &str = include_str!("templates/scheduler.t");
 
 const WORKER_T: &str = include_str!("templates/worker.t");
 const WORKER_TEST_T: &str = include_str!("templates/worker_test.t");
@@ -152,11 +155,18 @@ pub enum Component {
     Controller {
         /// Name of the thing to generate
         name: String,
+
+        /// Action names
+        actions: Vec<String>,
+
+        // kind
+        kind: ScaffoldKind,
     },
     Task {
         /// Name of the thing to generate
         name: String,
     },
+    Scheduler {},
     Worker {
         /// Name of the thing to generate
         name: String,
@@ -195,15 +205,24 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
             let vars = json!({ "name": name, "ts": chrono::Utc::now(), "pkg_name": H::app_name()});
             rrgen.generate(MIGRATION_T, &vars)?;
         }
-        Component::Controller { name } => {
-            let vars = json!({ "name": name, "pkg_name": H::app_name()});
-            rrgen.generate(CONTROLLER_T, &vars)?;
-            rrgen.generate(CONTROLLER_TEST_T, &vars)?;
+        Component::Controller {
+            name,
+            actions,
+            kind,
+        } => {
+            println!(
+                "{}",
+                controller::generate::<H>(&rrgen, &name, &actions, &kind)?
+            );
         }
         Component::Task { name } => {
             let vars = json!({"name": name, "pkg_name": H::app_name()});
             rrgen.generate(TASK_T, &vars)?;
             rrgen.generate(TASK_TEST_T, &vars)?;
+        }
+        Component::Scheduler {} => {
+            let vars = json!({"pkg_name": H::app_name()});
+            rrgen.generate(SCHEDULER_T, &vars)?;
         }
         Component::Worker { name } => {
             let vars = json!({"name": name, "pkg_name": H::app_name()});

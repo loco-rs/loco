@@ -102,7 +102,7 @@ async fn can_find_by_pid() {
     let existing_user =
         Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111").await;
     let non_existing_user_results =
-        Model::find_by_email(&boot.app_context.db, "23232323-2323-2323-2323-232323232323").await;
+        Model::find_by_pid(&boot.app_context.db, "23232323-2323-2323-2323-232323232323").await;
 
     assert_debug_snapshot!(existing_user);
     assert_debug_snapshot!(non_existing_user_results);

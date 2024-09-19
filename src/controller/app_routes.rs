@@ -4,7 +4,12 @@
 
 use std::{fmt, path::PathBuf, time::Duration};
 
-use axum::{http, response::IntoResponse, Router as AXRouter};
+use axum::{
+    http,
+    response::{Html, IntoResponse},
+    Router as AXRouter,
+};
+use hyper::StatusCode;
 use lazy_static::lazy_static;
 use regex::Regex;
 use tower_http::{
@@ -19,16 +24,20 @@ use tower_http::{
 
 #[cfg(feature = "channels")]
 use super::channels::AppChannels;
-use super::{middleware::cors::cors_middleware, routes::Routes};
+use super::{
+    middleware::{cors::cors_middleware, remote_ip::RemoteIPConfig, secure_headers::SecureHeaders},
+    routes::Routes,
+};
 use crate::{
     app::AppContext,
-    config,
+    config::{self, FallbackConfig},
     controller::middleware::{
         etag::EtagLayer,
+        remote_ip::RemoteIPLayer,
         request_id::{request_id_middleware, LocoRequestId},
     },
     environment::Environment,
-    errors, Result,
+    errors, Error, Result,
 };
 
 lazy_static! {
@@ -91,32 +100,38 @@ impl AppRoutes {
 
     #[must_use]
     pub fn collect(&self) -> Vec<ListRoutes> {
-        let base_url_prefix = self.get_prefix().map_or("/", |url| url.as_str());
+        let base_url_prefix = self
+            .get_prefix()
+            // add a leading slash forcefully. Axum routes must start with a leading slash.
+            // if we have double leading slashes - it will get normalized into a single slash later
+            .map_or("/".to_string(), |url| format!("/{}", url.as_str()));
 
         self.get_routes()
             .iter()
-            .flat_map(|router| {
-                let mut uri_parts = vec![base_url_prefix];
-                if let Some(prefix) = router.prefix.as_ref() {
-                    uri_parts.push(prefix);
+            .flat_map(|controller| {
+                let mut uri_parts = vec![base_url_prefix.clone()];
+                if let Some(prefix) = controller.prefix.as_ref() {
+                    uri_parts.push(prefix.to_string());
                 }
-                router.handlers.iter().map(move |controller| {
-                    let uri = format!("{}{}", uri_parts.join("/"), &controller.uri);
-                    let binding = NORMALIZE_URL.replace_all(&uri, "/");
+                controller.handlers.iter().map(move |handler| {
+                    let mut parts = uri_parts.clone();
+                    parts.push(handler.uri.to_string());
+                    let joined_parts = parts.join("/");
 
-                    let uri = if binding.len() > 1 {
-                        NORMALIZE_URL
-                            .replace_all(&uri, "/")
-                            .strip_suffix('/')
-                            .map_or_else(|| binding.to_string(), std::string::ToString::to_string)
+                    let normalized = NORMALIZE_URL.replace_all(&joined_parts, "/");
+                    let uri = if normalized == "/" {
+                        normalized.to_string()
                     } else {
-                        binding.to_string()
+                        normalized.strip_suffix('/').map_or_else(
+                            || normalized.to_string(),
+                            std::string::ToString::to_string,
+                        )
                     };
 
                     ListRoutes {
                         uri,
-                        actions: controller.actions.clone(),
-                        method: controller.method.clone(),
+                        actions: handler.actions.clone(),
+                        method: handler.method.clone(),
                     }
                 })
             })
@@ -210,7 +225,7 @@ impl AppRoutes {
 
         #[cfg(feature = "channels")]
         if let Some(channels) = self.channels.as_ref() {
-            tracing::info!("[Middleware] Adding channels");
+            tracing::info!("[Middleware] +channels");
             let channel_layer_app = tower::ServiceBuilder::new().layer(channels.layer.clone());
             if let Some(cors) = &ctx
                 .config
@@ -243,6 +258,12 @@ impl AppRoutes {
         if let Some(etag) = &ctx.config.server.middlewares.etag {
             if etag.enable {
                 app = Self::add_etag_middleware(app);
+            }
+        }
+
+        if let Some(remote_ip) = &ctx.config.server.middlewares.remote_ip {
+            if remote_ip.enable {
+                app = Self::add_remote_ip_middleware(app, remote_ip)?;
             }
         }
 
@@ -282,7 +303,16 @@ impl AppRoutes {
             }
         }
 
-        // XXX todo: remote IP middleware here
+        if let Some(secure_headers) = &ctx.config.server.middlewares.secure_headers {
+            app = app.layer(SecureHeaders::new(secure_headers)?);
+            tracing::info!("[Middleware] +secure headers");
+        }
+
+        if let Some(fallback) = &ctx.config.server.middlewares.fallback {
+            if fallback.enable {
+                app = Self::add_fallback(app, fallback)?;
+            }
+        }
 
         app = Self::add_powered_by_header(app, &ctx.config.server);
 
@@ -292,9 +322,39 @@ impl AppRoutes {
         Ok(router)
     }
 
+    fn add_fallback(
+        app: AXRouter<AppContext>,
+        fallback: &FallbackConfig,
+    ) -> Result<AXRouter<AppContext>> {
+        let app = if let Some(path) = &fallback.file {
+            app.fallback_service(ServeFile::new(path))
+        } else if let Some(not_found) = &fallback.not_found {
+            let not_found = not_found.to_string();
+            let code = fallback
+                .code
+                .map(StatusCode::from_u16)
+                .transpose()
+                .map_err(|e| Error::Message(format!("{e}")))?
+                .unwrap_or(StatusCode::NOT_FOUND);
+            app.fallback(move || async move { (code, not_found) })
+        } else {
+            //app.fallback(handler)
+            let code = fallback
+                .code
+                .map(StatusCode::from_u16)
+                .transpose()
+                .map_err(|e| Error::Message(format!("{e}")))?
+                .unwrap_or(StatusCode::NOT_FOUND);
+            let content = include_str!("fallback.html");
+            app.fallback(move || async move { (code, Html(content)) })
+        };
+        tracing::info!("[Middleware] +fallback");
+        Ok(app)
+    }
+
     fn add_request_id_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
         let app = app.layer(axum::middleware::from_fn(request_id_middleware));
-        tracing::info!("[Middleware] Adding request_id middleware");
+        tracing::info!("[Middleware] +request id");
         app
     }
 
@@ -312,13 +372,13 @@ impl AppRoutes {
             )));
         }
 
-        tracing::info!("[Middleware] Adding static");
+        tracing::info!("[Middleware] +static assets");
         let serve_dir =
             ServeDir::new(&config.folder.path).not_found_service(ServeFile::new(&config.fallback));
         Ok(app.nest_service(
             &config.folder.uri,
             if config.precompressed {
-                tracing::info!("[Middleware] Enable precompressed static assets");
+                tracing::info!("[Middleware] +precompressed static assets");
                 serve_dir.precompressed_gzip()
             } else {
                 serve_dir
@@ -328,14 +388,23 @@ impl AppRoutes {
 
     fn add_compression_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
         let app = app.layer(CompressionLayer::new());
-        tracing::info!("[Middleware] Adding compression layer");
+        tracing::info!("[Middleware] +compression");
         app
     }
 
     fn add_etag_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
         let app = app.layer(EtagLayer::new());
-        tracing::info!("[Middleware] Adding etag layer");
+        tracing::info!("[Middleware] +etag");
         app
+    }
+
+    fn add_remote_ip_middleware(
+        app: AXRouter<AppContext>,
+        config: &RemoteIPConfig,
+    ) -> Result<AXRouter<AppContext>> {
+        let app = app.layer(RemoteIPLayer::new(config)?);
+        tracing::info!("[Middleware] +remote IP");
+        Ok(app)
     }
 
     fn add_catch_panic(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
@@ -351,10 +420,7 @@ impl AppRoutes {
                 .map_err(Box::from)?
                 .get_bytes() as usize,
         ));
-        tracing::info!(
-            data = &limit.body_limit,
-            "[Middleware] Adding limit payload",
-        );
+        tracing::info!(data = &limit.body_limit, "[Middleware] +limit payload",);
 
         Ok(app)
     }
@@ -393,7 +459,7 @@ impl AppRoutes {
             )
             .layer(AddExtensionLayer::new(environment.clone()));
 
-        tracing::info!("[Middleware] Adding log trace id",);
+        tracing::info!("[Middleware] +log trace id",);
         app
     }
 
@@ -403,7 +469,7 @@ impl AppRoutes {
     ) -> AXRouter<AppContext> {
         let app = app.layer(TimeoutLayer::new(Duration::from_millis(config.timeout)));
 
-        tracing::info!("[Middleware] Adding timeout layer");
+        tracing::info!("[Middleware] +timeout");
         app
     }
 
@@ -454,4 +520,111 @@ fn handle_panic(err: Box<dyn std::any::Any + Send + 'static>) -> axum::response:
     tracing::error!(err.msg = err, "server_panic");
 
     errors::Error::InternalServerError.into_response()
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use crate::prelude::*;
+    use crate::tests_cfg;
+    use insta::assert_debug_snapshot;
+    use rstest::rstest;
+    use tower::ServiceExt;
+
+    async fn action() -> Result<Response> {
+        format::json("loco")
+    }
+
+    #[test]
+    fn can_load_app_route_from_default() {
+        for route in AppRoutes::with_default_routes().collect() {
+            assert_debug_snapshot!(
+                format!("[{}]", route.uri.replace('/', "[slash]")),
+                format!("{:?} {}", route.actions, route.uri)
+            );
+        }
+    }
+
+    #[test]
+    fn can_load_empty_app_routes() {
+        assert_eq!(AppRoutes::empty().collect().len(), 0);
+    }
+
+    #[test]
+    fn can_load_routes() {
+        let router_without_prefix = Routes::new().add("/", get(action));
+        let normalizer = Routes::new()
+            .prefix("/normalizer")
+            .add("no-slash", get(action))
+            .add("/", post(action))
+            .add("//loco///rs//", delete(action))
+            .add("//////multiple-start", head(action))
+            .add("multiple-end/////", trace(action));
+
+        let app_router = AppRoutes::empty()
+            .add_route(router_without_prefix)
+            .add_route(normalizer)
+            .add_routes(vec![
+                Routes::new().add("multiple1", put(action)),
+                Routes::new().add("multiple2", options(action)),
+                Routes::new().add("multiple3", patch(action)),
+            ]);
+
+        for route in app_router.collect() {
+            assert_debug_snapshot!(
+                format!("[{}]", route.uri.replace('/', "[slash]")),
+                format!("{:?} {}", route.actions, route.uri)
+            );
+        }
+    }
+
+    #[test]
+    fn can_load_routes_with_root_prefix() {
+        let router_without_prefix = Routes::new()
+            .add("/loco", get(action))
+            .add("loco-rs", get(action));
+
+        let app_router = AppRoutes::empty()
+            .prefix("api")
+            .add_route(router_without_prefix);
+
+        for route in app_router.collect() {
+            assert_debug_snapshot!(
+                format!("[{}]", route.uri.replace('/', "[slash]")),
+                format!("{:?} {}", route.actions, route.uri)
+            );
+        }
+    }
+    #[rstest]
+    #[case(axum::http::Method::GET, get(action))]
+    #[case(axum::http::Method::POST, post(action))]
+    #[case(axum::http::Method::DELETE, delete(action))]
+    #[case(axum::http::Method::HEAD, head(action))]
+    #[case(axum::http::Method::OPTIONS, options(action))]
+    #[case(axum::http::Method::PATCH, patch(action))]
+    #[case(axum::http::Method::POST, post(action))]
+    #[case(axum::http::Method::PUT, put(action))]
+    #[case(axum::http::Method::TRACE, trace(action))]
+    #[tokio::test]
+    async fn can_xx(
+        #[case] http_method: axum::http::Method,
+        #[case] method: axum::routing::MethodRouter<AppContext>,
+    ) {
+        let router_without_prefix = Routes::new().add("/loco", method);
+
+        let app_router = AppRoutes::empty().add_route(router_without_prefix);
+
+        let ctx = tests_cfg::app::get_app_context().await;
+        let router = app_router.to_router(ctx, axum::Router::new()).unwrap();
+
+        let req = axum::http::Request::builder()
+            .uri("/loco")
+            .method(http_method)
+            .body(axum::body::Body::empty())
+            .unwrap();
+
+        let response = router.oneshot(req).await.unwrap();
+        assert!(response.status().is_success());
+    }
 }

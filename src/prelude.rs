@@ -2,11 +2,14 @@ pub use async_trait::async_trait;
 pub use axum::{
     extract::{Form, Path, State},
     response::{IntoResponse, Response},
-    routing::{delete, get, post, put},
+    routing::{delete, get, head, options, patch, post, put, trace},
 };
 pub use axum_extra::extract::cookie;
 pub use chrono::NaiveDateTime as DateTime;
 pub use include_dir::{include_dir, Dir};
+// some types required for controller generators
+#[cfg(feature = "with-db")]
+pub use sea_orm::prelude::{Date, DateTimeWithTimeZone, Decimal, Uuid};
 #[cfg(feature = "with-db")]
 pub use sea_orm::{
     ActiveModelBehavior, ActiveModelTrait, ActiveValue, ColumnTrait, ConnectionTrait,
@@ -22,7 +25,10 @@ pub use crate::{
     app::{AppContext, Initializer},
     controller::{
         format,
-        middleware::format::{Format, RespondTo},
+        middleware::{
+            format::{Format, RespondTo},
+            remote_ip::RemoteIP,
+        },
         not_found, unauthorized,
         views::{engines::TeraView, ViewEngine, ViewRenderer},
         Json, Routes,

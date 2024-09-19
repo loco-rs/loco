@@ -1,3 +1,4 @@
+//! etag middleware for caching requests. See [ETag](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/ETag)
 use std::task::{Context, Poll};
 
 use axum::{body::Body, extract::Request, response::Response};

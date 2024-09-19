@@ -33,18 +33,18 @@ This is done by using Axum `Extension` state, in the `after_routes` lifecycle ho
         let model = Llama::builder()
             .with_source(LlamaSource::llama_7b_code())
             .build()
+            .await
             .unwrap();
         println!("model ready");
-        let st = Arc::new(RwLock::new(model));
 
-        Ok(router.layer(Extension(st)))
+        Ok(router.layer(Extension(model)))
     }
 ```
 
 You can add any state with `router.layer(Extension(<..>))`, then consume it in your controller:
 
 ```rust
-async fn candle_llm(Extension(m): Extension<Arc<RwLock<Llama>>>) -> impl IntoResponse {
+async fn candle_llm(Extension(m): Extension<Llama>) -> impl IntoResponse {
     // use `m` from your state extension
     let prompt = "write binary search";
     ...

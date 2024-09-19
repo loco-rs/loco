@@ -88,51 +88,51 @@ use crate::Result as LocoResult;
 ///
 /// Without conditions
 /// ```
-/// use loco_rs::tests_cfg::db::*;
+/// use loco_rs::tests_cfg::db;
 /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
 /// use loco_rs::prelude::*;
 ///
 /// async fn example() {
-///     let db = dummy_connection().await;
+///     let db = db::dummy_connection().await;
 ///     let pagination_query = query::PaginationQuery {
 ///         page_size: 100,
 ///         page: 1,
 ///     };
 ///     
-///     let res = query::paginate(&db, test_db::Entity::find(), None, &pagination_query).await;
+///     let res = query::paginate(&db, db::test_db::Entity::find(), None, &pagination_query).await;
 /// }
 /// ````
 /// With conditions
 /// ```
-/// use loco_rs::tests_cfg::db::*;
+/// use loco_rs::tests_cfg::db;
 /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
 /// use loco_rs::prelude::*;
 ///
 /// async fn example() {
-///     let db = dummy_connection().await;
+///     let db = db::dummy_connection().await;
 ///     let pagination_query = query::PaginationQuery {
 ///         page_size: 100,
 ///         page: 1,
 ///     };
-///     let condition = query::condition().contains(test_db::Column::Name, "loco").build();
-///     let res = query::paginate(&db, test_db::Entity::find(), Some(condition), &pagination_query).await;
+///     let condition = query::condition().contains(db::test_db::Column::Name, "loco").build();
+///     let res = query::paginate(&db, db::test_db::Entity::find(), Some(condition), &pagination_query).await;
 /// }
 /// ````
 /// With Order By
 /// ```
-/// use loco_rs::tests_cfg::db::*;
+/// use loco_rs::tests_cfg::db;
 /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait, sea_query::Order, QueryOrder};
 /// use loco_rs::prelude::*;
 ///
 /// async fn example() {
-///     let db = dummy_connection().await;
+///     let db = db::dummy_connection().await;
 ///     let pagination_query = query::PaginationQuery {
 ///         page_size: 100,
 ///         page: 1,
 ///     };
 ///     
-///     let condition = query::condition().contains(test_db::Column::Name, "loco").build();
-///     let entity = test_db::Entity::find().order_by(test_db::Column::Name, Order::Desc);
+///     let condition = query::condition().contains(db::test_db::Column::Name, "loco").build();
+///     let entity = db::test_db::Entity::find().order_by(db::test_db::Column::Name, Order::Desc);
 ///     let res = query::paginate(&db, entity, Some(condition), &pagination_query).await;
 /// }
 /// ````
@@ -177,17 +177,17 @@ where
 ///
 /// From Entity
 /// ```
-/// use loco_rs::tests_cfg::db::*;
+/// use loco_rs::tests_cfg::db;
 /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
 /// use loco_rs::prelude::*;
 ///
 /// async fn example() {
-///     let db = dummy_connection().await;
+///     let db = db::dummy_connection().await;
 ///     let pagination_query = query::PaginationQuery {
 ///         page_size: 100,
 ///         page: 1,
 ///     };
-///     let res = query::fetch_page(&db, test_db::Entity::find(), &query::PaginationQuery::page(2)).await;
+///     let res = query::fetch_page(&db, db::test_db::Entity::find(), &query::PaginationQuery::page(2)).await;
 /// }
 /// ``````
 ///

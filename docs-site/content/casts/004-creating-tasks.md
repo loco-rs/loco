@@ -1,6 +1,6 @@
 +++
 title = "Creating tasks"
-description = "Creating tasks"
+description = "Ever reached out to write a small script to reset a user password? send email notifications to your users? You can use Tasks in Loco to write these operational bits in pure Rust and access your full app from your task."
 date = 2024-06-18T09:19:42+00:00
 updated = 2024-06-18T09:19:42+00:00
 draft = false

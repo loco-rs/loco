@@ -91,6 +91,15 @@ impl Tasks {
         self.registry.values().map(|t| t.task()).collect::<Vec<_>>()
     }
 
+    /// List of all tasks names
+    #[must_use]
+    pub fn names(&self) -> Vec<String> {
+        self.registry
+            .values()
+            .map(|t| t.task().name)
+            .collect::<Vec<_>>()
+    }
+
     /// Run a registered task by name with provided variables.
     ///
     /// # Errors

@@ -4,5 +4,7 @@ $ LOCO_CI_MODE=true ALLOW_IN_GIT_REPO="" LOCO_APP_NAME="generator_test" LOCO_TEM
 🚂 Loco app generated successfully in:
 [CWD]
 
+
+
 ```
 

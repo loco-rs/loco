@@ -9,7 +9,7 @@ license = "Apache-2.0"
 
 [package]
 name = "loco-rs"
-version = "0.7.0"
+version = "0.8.1"
 description = "The one-person framework for Rust"
 homepage = "https://loco.rs/"
 documentation = "https://docs.rs/loco-rs"
@@ -72,10 +72,10 @@ fs-err = "2.11.0"
 # mailer
 tera = "1.19.1"
 lettre = { version = "0.11.4", default-features = false, features = [
-  "builder",
-  "hostname",
-  "smtp-transport",
-  "tokio1-rustls-tls",
+    "builder",
+    "hostname",
+    "smtp-transport",
+    "tokio1-rustls-tls",
 ] }
 include_dir = "0.7.3"
 thiserror = "1"
@@ -83,8 +83,8 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 tracing-appender = "0.2.3"
 
-# cli/migrations
-duct = "0.13.6"
+duct = { version = "0.13.6" }
+duct_sh = { version = "0.13.7" }
 
 tower-http = { workspace = true }
 byte-unit = "4.0.19"
@@ -99,6 +99,7 @@ tower = { workspace = true }
 hyper = "1.1"
 mime = "0.3"
 bytes = "1.1"
+ipnetwork = "0.20.0"
 
 axum-test = { version = "14.3.0", optional = true }
 
@@ -113,7 +114,7 @@ uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
 requestty = "0.5.0"
 
 # A socket.io server implementation
-socketioxide = { version = "0.13.1", features = ["state"], optional = true }
+socketioxide = { version = "0.14.0", features = ["state"], optional = true }
 
 
 # File Upload
@@ -122,31 +123,35 @@ object_store = { version = "0.10.2", default-features = false }
 # cache
 moka = { version = "0.12.7", features = ["sync"], optional = true }
 
+# Scheduler
+tokio-cron-scheduler = { version = "0.11.0", features = ["signal"] }
+english-to-cron = {version = "0.1.2"}
+
 [workspace.dependencies]
 async-trait = { version = "0.1.74" }
 axum = { version = "0.7.5", features = ["macros"] }
 tower = "0.4"
 tower-http = { version = "0.5.0", features = [
-  "trace",
-  "catch-panic",
-  "timeout",
-  "add-extension",
-  "cors",
-  "fs",
-  "set-header",
-  "compression-full",
+    "trace",
+    "catch-panic",
+    "timeout",
+    "add-extension",
+    "cors",
+    "fs",
+    "set-header",
+    "compression-full",
 ] }
 
 [dependencies.sea-orm-migration]
 optional = true
 version = "1.1.0-rc.1"
 features = [
-  # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.
-  # View the list of supported features at https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime.
-  # e.g.
-  "runtime-tokio-rustls", # `ASYNC_RUNTIME` feature
-  "sqlx-postgres",        # `DATABASE_DRIVER` feature
-  "sqlx-sqlite",
+    # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.
+    # View the list of supported features at https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime.
+    # e.g.
+    "runtime-tokio-rustls", # `ASYNC_RUNTIME` feature
+    "sqlx-postgres",        # `DATABASE_DRIVER` feature
+    "sqlx-sqlite",
 ]
 
 [package.metadata.docs.rs]

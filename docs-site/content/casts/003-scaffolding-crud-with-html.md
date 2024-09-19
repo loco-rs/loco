@@ -1,6 +1,6 @@
 +++
 title = "Scaffolding full CRUD with HTML views"
-description = "Scaffolding full CRUD with HTML views"
+description = "Loco generators are very powerful. Generate a full CRUD app with a single command, by including the main entity type and its set of fields. Loco will generate models, controllers, views, and migrations for you."
 date = 2024-06-14T09:19:42+00:00
 updated = 2024-06-14T09:19:42+00:00
 draft = false

@@ -1,6 +1,8 @@
 //! # Application Bootstrapping and Logic
 //! This module contains functions and structures for bootstrapping and running
 //! your application.
+use std::path::PathBuf;
+
 use axum::Router;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
@@ -18,9 +20,10 @@ use crate::{
     errors::Error,
     mailer::{EmailSender, MailerWorker},
     redis,
+    scheduler::{self, Scheduler},
     storage::{self, Storage},
     task::{self, Tasks},
-    worker::{self, AppWorker, Pool, Processor, RedisConnectionManager, DEFAULT_QUEUES},
+    worker::{self, AppWorker, Pool, Processor, RedisConnectionManager},
     Result,
 };
 
@@ -119,6 +122,50 @@ pub async fn run_task<H: Hooks>(
         }
     }
     Ok(())
+}
+
+/// Runs the scheduler with the given configuration and context. in case if list args is true
+/// prints scheduler job configuration
+///
+/// This function initializes the scheduler, registers tasks through the provided [`Hooks`],
+/// and executes the scheduler based on the specified configuration or context. The scheduler
+/// continuously runs, managing and executing scheduled tasks until a signal is received to shut down.
+/// Upon receiving this signal, the function gracefully shuts down all running tasks and exits safely.
+///
+/// # Errors
+///
+/// When running could not run the scheduler.
+pub async fn run_scheduler<H: Hooks>(
+    app_context: &AppContext,
+    config: Option<&PathBuf>,
+    name: Option<String>,
+    tag: Option<String>,
+    list: bool,
+) -> Result<()> {
+    let mut tasks = Tasks::default();
+    H::register_tasks(&mut tasks);
+
+    let task_span = tracing::span!(tracing::Level::DEBUG, "scheduler_jobs");
+    let _guard = task_span.enter();
+
+    let scheduler = match config {
+        Some(path) => Scheduler::from_config::<H>(path, &app_context.environment)?,
+        None => {
+            if let Some(config) = &app_context.config.scheduler {
+                Scheduler::new::<H>(config, &app_context.environment)?
+            } else {
+                return Err(Error::Scheduler(scheduler::Error::Empty));
+            }
+        }
+    };
+
+    let scheduler = scheduler.by_spec(&scheduler::Spec { name, tag });
+    if list {
+        println!("{scheduler}");
+        Ok(())
+    } else {
+        Ok(scheduler.run().await?)
+    }
 }
 
 /// Represents commands for handling database-related operations.
@@ -310,13 +357,7 @@ fn create_processor<H: Hooks>(app_context: &AppContext) -> Result<Processor> {
         "registering queues (merged config and default)"
     );
     let mut p = if let Some(queue) = &app_context.queue {
-        Processor::new(
-            queue.clone(),
-            DEFAULT_QUEUES
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>(),
-        )
+        Processor::new(queue.clone(), queues)
     } else {
         return Err(Error::Message(
             "queue is missing, cannot initialize workers".to_string(),
@@ -355,11 +396,12 @@ fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
 // TODO: Refactor to eliminate unwrapping and instead return an appropriate
 // error type.
 pub async fn connect_redis(config: &Config) -> Option<Pool<RedisConnectionManager>> {
-    if let Some(redis) = &config.queue {
-        let manager = RedisConnectionManager::new(redis.uri.clone()).unwrap();
-        let redis = Pool::builder().build(manager).await.unwrap();
-        Some(redis)
-    } else {
-        None
+    if config.workers.mode == config::WorkerMode::BackgroundQueue {
+        if let Some(redis) = &config.queue {
+            let manager = RedisConnectionManager::new(redis.uri.clone()).unwrap();
+            let redis = Pool::builder().build(manager).await.unwrap();
+            return Some(redis);
+        }
     }
+    None
 }

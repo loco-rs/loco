@@ -1,0 +1,45 @@
+{% import 'macros/footer.html' as macros_footer -%}
+{% import 'macros/header.html' as macros_header -%}
+{% import 'macros/javascript.html' as macros_js -%}
+{% import 'macros/docs-sidebar.html' as macros_sidebar -%}
+{% import 'macros/docs-edit-page.html' as macros_edit_page -%}
+{% import 'macros/docs-navigation.html' as macros_navigation -%}
+{% import 'macros/docs-toc.html' as macros_toc -%}
+{% import 'macros/page-publish-metadata.html' as macros_publish -%}
+{% import 'macros/youtube.html' as youtube -%}
+
+
+<!DOCTYPE html>
+<html lang="{{ config.extra.language_code | default(value=" en-US") }}" >
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="stylesheet" type="text/css" href={{ get_url(path="styles/styles.css" ) }} />
+  <link rel="stylesheet" type="text/css" href={{ get_url(path="syntax-theme-light.css" ) }} />
+  <link rel="stylesheet" type="text/css" href={{ get_url(path="syntax-theme-dark.css" ) }} />
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800" rel="stylesheet">
+
+  <link rel="apple-touch-icon" sizes="180x180" href={{ get_url(path="apple-touch-icon.png" ) }}>
+  <link rel="icon" type="image/png" href={{ get_url(path="favicon-32x32.png" ) }}>
+
+</head>
+
+<body class="bg-background">
+  <div class="dark"></div>
+  <div class="relative flex min-h-screen flex-col ">
+    {% block header %}
+    {{ macros_header::header(current_section="/") }}
+    {% endblock header %}
+
+    {% block content %}{% endblock content %}
+  </div>
+
+  {{macros_footer::footer()}}
+  {{ macros_js::javascript() }}
+
+</body>
+
+</html>

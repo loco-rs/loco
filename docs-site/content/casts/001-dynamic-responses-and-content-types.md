@@ -1,6 +1,6 @@
 +++
 title = "Dynamic responses and content types"
-description = "Dynamic responses and content types"
+description = "Learn how to respond to incoming requests with the appropriate content type. Match on the incoming format, and render JSON, HTML or other types of responses."
 date = 2024-06-10T09:19:42+00:00
 updated = 2024-06-10T09:19:42+00:00
 draft = false
