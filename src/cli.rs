@@ -547,7 +547,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             run_scheduler::<H>(&app_context, config.as_ref(), name, tag, list).await?;
         }
         Commands::Generate { component } => {
-            gen::generate::<H>(component.into(), &config)?;
+            gen::generate::<H>(component.try_into()?, &config)?;
         }
         Commands::Version {} => {
             println!("{}", H::app_version(),);
