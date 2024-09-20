@@ -5,9 +5,7 @@
    <h1>Loco vous souhaite la bienvenue</h1>
 
    <h3>
-   <!-- <snip id="description" inject_from="yaml"> -->
 🚂 Loco c'est Rust on Rails. 
-<!--</snip> -->
    </h3>
 
    [![crate](https://img.shields.io/crates/v/loco-rs.svg)](https://crates.io/crates/loco-rs)
