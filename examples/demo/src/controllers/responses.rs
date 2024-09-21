@@ -97,7 +97,7 @@ pub async fn set_cookie() -> Result<Response> {
     format::render().cookies(&[cookie])?.json(())
 }
 
-pub fn routes() -> Routes {
+pub fn routes() -> Routes<AppContext> {
     Routes::new()
         .prefix("response")
         .add("/empty", get(empty))

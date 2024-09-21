@@ -15,7 +15,7 @@ async fn echo() -> Result<Response> {
     format::json("Hello, World!")
 }
 
-pub fn routes(ctx: AppContext) -> Routes {
+pub fn routes(ctx: AppContext) -> Routes<AppContext> {
     Routes::new()
         .prefix("mylayer")
         // Only users with the RoleName::Admin can access this route

@@ -12,7 +12,7 @@
 //! command with the `refresh:true` argument: ```sh
 //! cargo run task seed_data refresh:true
 //! ```
-use loco_rs::{db, prelude::*};
+use loco_rs::{app::Context, db, prelude::*};
 use migration::Migrator;
 
 use crate::app::App;
@@ -27,16 +27,16 @@ impl Task for SeedData {
             detail: "Task for seeding data".to_string(),
         }
     }
-    async fn run(&self, app_context: &AppContext, vars: &task::Vars) -> Result<()> {
+    async fn run(&self, app_context: &dyn Context, vars: &task::Vars) -> Result<()> {
         let refresh = vars
             .cli_arg("refresh")
             .is_ok_and(|refresh| refresh == "true");
 
         if refresh {
-            db::reset::<Migrator>(&app_context.db).await?;
+            db::reset::<Migrator>(app_context.db()).await?;
         }
         let path = std::path::Path::new("src/fixtures");
-        db::run_app_seed::<App>(&app_context.db, path).await?;
+        db::run_app_seed::<AppContext, App>(app_context.db(), path).await?;
         Ok(())
     }
 }

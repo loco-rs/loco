@@ -1,6 +1,6 @@
 use axum::{async_trait, Extension, Router as AxumRouter};
 use loco_rs::{
-    app::{AppContext, Initializer},
+    app::{AppContext, Context, Initializer},
     controller::views::{ViewEngine, ViewRenderer},
     Result,
 };
@@ -21,7 +21,7 @@ impl Initializer for HelloViewEngineInitializer {
         "custom-view-engine".to_string()
     }
 
-    async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+    async fn after_routes(&self, router: AxumRouter, _ctx: &dyn Context) -> Result<AxumRouter> {
         Ok(router.layer(Extension(ViewEngine::from(HelloView))))
     }
 }

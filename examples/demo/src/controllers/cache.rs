@@ -32,7 +32,7 @@ async fn get_or_insert(State(ctx): State<AppContext>) -> Result<Response> {
     }
 }
 
-pub fn routes() -> Routes {
+pub fn routes() -> Routes<AppContext> {
     Routes::new()
         .prefix("cache")
         .add("/", get(get_cache))

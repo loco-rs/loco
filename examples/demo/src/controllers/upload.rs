@@ -41,7 +41,7 @@ async fn upload_file(State(ctx): State<AppContext>, mut multipart: Multipart) ->
     })
 }
 
-pub fn routes() -> Routes {
+pub fn routes() -> Routes<AppContext> {
     Routes::new()
         .prefix("upload")
         .add("/file", post(upload_file))

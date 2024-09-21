@@ -1,10 +1,10 @@
 use demo_app::app::App;
 #[allow(unused_imports)]
-use loco_rs::{cli::playground, prelude::*};
+use loco_rs::{app::AppContext, cli::playground, prelude::*};
 
 #[tokio::main]
 async fn main() -> loco_rs::Result<()> {
-    let _ctx = playground::<App>().await?;
+    let _ctx = playground::<AppContext, App>().await?;
 
     // let active_model: articles::ActiveModel = ActiveModel {
     //     title: Set(Some("how to build apps in 3 steps".to_string())),

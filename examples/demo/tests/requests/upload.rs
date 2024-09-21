@@ -1,12 +1,12 @@
 use axum_test::multipart::{MultipartForm, Part};
 use demo_app::{app::App, views};
-use loco_rs::testing;
+use loco_rs::{app::AppContext, testing};
 use serial_test::serial;
 
 #[tokio::test]
 #[serial]
 async fn can_upload_file() {
-    testing::request::<App, _, _>(|request, ctx| async move {
+    testing::request::<AppContext, App, _, _>(|request, ctx| async move {
         let file_content = "loco file upload";
         let file_part = Part::bytes(file_content.as_bytes()).file_name("loco.txt");
 

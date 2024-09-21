@@ -150,7 +150,7 @@ impl ListQueryParams {
     }
 }
 
-pub fn routes() -> Routes {
+pub fn routes() -> Routes<AppContext> {
     Routes::new()
         .prefix("notes")
         .add("/", get(list))

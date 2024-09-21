@@ -11,6 +11,6 @@ pub async fn get_session(_session: Session<SessionNullPool>) -> Result<Response>
     format::empty()
 }
 
-pub fn routes() -> Routes {
+pub fn routes() -> Routes<AppContext> {
     Routes::new().prefix("mysession").add("/", get(get_session))
 }

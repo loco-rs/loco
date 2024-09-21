@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
-use loco_rs::prelude::*;
+use loco_rs::{app::Context, prelude::*};
 
 pub struct AxumSessionInitializer;
 
@@ -10,7 +10,7 @@ impl Initializer for AxumSessionInitializer {
         "axum-session".to_string()
     }
 
-    async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+    async fn after_routes(&self, router: AxumRouter, _ctx: &dyn Context) -> Result<AxumRouter> {
         let session_config =
             axum_session::SessionConfig::default().with_table_name("sessions_table");
 

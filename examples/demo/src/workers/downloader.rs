@@ -15,7 +15,7 @@ pub struct DownloadWorkerArgs {
     pub user_guid: String,
 }
 
-impl worker::AppWorker<DownloadWorkerArgs> for DownloadWorker {
+impl worker::AppWorker<AppContext, DownloadWorkerArgs> for DownloadWorker {
     fn build(ctx: &AppContext) -> Self {
         Self { ctx: ctx.clone() }
     }

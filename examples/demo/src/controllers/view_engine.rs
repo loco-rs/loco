@@ -29,7 +29,7 @@ pub async fn render_simple() -> Result<Response> {
     format::render().template("{{name}} website", json!({"name": "Loco"}))
 }
 
-pub fn routes() -> Routes {
+pub fn routes() -> Routes<AppContext> {
     Routes::new()
         .prefix("view-engine")
         .add("/home", get(render_home))

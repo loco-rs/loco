@@ -2,6 +2,7 @@ use std::env;
 
 use demo_app::app::App;
 use loco_rs::{
+    app::AppContext,
     boot::{create_context, run_task},
     environment::{resolve_from_env, Environment},
     task,
@@ -13,8 +14,8 @@ async fn main() -> loco_rs::Result<()> {
 
     let args = env::args().collect::<Vec<_>>();
     let cmd = args.get(1);
-    let app_context = create_context::<App>(&environment).await?;
-    run_task::<App>(&app_context, cmd, &task::Vars::default()).await?;
+    let app_context = create_context::<AppContext, App>(&environment).await?;
+    run_task::<AppContext, App>(&app_context, cmd, &task::Vars::default()).await?;
 
     Ok(())
 }

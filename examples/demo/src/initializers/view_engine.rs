@@ -1,7 +1,7 @@
 use axum::{async_trait, Extension, Router as AxumRouter};
 use fluent_templates::{ArcLoader, FluentLoader};
 use loco_rs::{
-    app::{AppContext, Initializer},
+    app::{AppContext, Context, Initializer},
     controller::views::{engines, ViewEngine},
     Error, Result,
 };
@@ -17,7 +17,7 @@ impl Initializer for ViewEngineInitializer {
         "view-engine".to_string()
     }
 
-    async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+    async fn after_routes(&self, router: AxumRouter, _ctx: &dyn Context) -> Result<AxumRouter> {
         let mut tera_engine = engines::TeraView::build()?;
         if std::path::Path::new(I18N_DIR).exists() {
             let arc = ArcLoader::builder(&I18N_DIR, unic_langid::langid!("en-US"))

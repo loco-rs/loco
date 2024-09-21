@@ -1,6 +1,6 @@
 use demo_app::app::App;
 use insta::assert_debug_snapshot;
-use loco_rs::testing;
+use loco_rs::{app::AppContext, testing};
 use rstest::rstest;
 use serial_test::serial;
 // TODO: see how to dedup / extract this to app-local test utils
@@ -22,7 +22,7 @@ macro_rules! configure_insta {
 #[serial]
 async fn can_get_view_engine(#[case] uri: &str) {
     configure_insta!();
-    testing::request::<App, _, _>(|request, _ctx| async move {
+    testing::request::<AppContext, App, _, _>(|request, _ctx| async move {
         let response = request.get(&format!("/view-engine/{uri}")).await;
 
         assert_debug_snapshot!(

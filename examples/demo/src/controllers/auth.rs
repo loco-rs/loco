@@ -136,7 +136,7 @@ async fn login(State(ctx): State<AppContext>, Json(params): Json<LoginParams>) -
     format::json(UserSession::new(&user, &token))
 }
 
-pub fn routes() -> Routes {
+pub fn routes() -> Routes<AppContext> {
     Routes::new()
         .prefix("auth")
         .add("/register", post(register))

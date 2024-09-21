@@ -35,7 +35,7 @@ async fn convert_to_user(
     format::json(UserResponse::new(&auth.user, &roles))
 }
 
-pub fn routes() -> Routes {
+pub fn routes() -> Routes<AppContext> {
     Routes::new()
         .prefix("user")
         .add("/current", get(current))

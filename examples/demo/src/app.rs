@@ -27,7 +27,7 @@ use crate::{
 
 pub struct App;
 #[async_trait]
-impl Hooks for App {
+impl Hooks<AppContext> for App {
     fn app_version() -> String {
         format!(
             "{} ({})",
@@ -61,7 +61,7 @@ impl Hooks for App {
     }
     // </snip>
 
-    fn routes(ctx: &AppContext) -> AppRoutes {
+    fn routes(ctx: &AppContext) -> AppRoutes<AppContext> {
         AppRoutes::with_default_routes()
             .add_route(
                 controllers::mylayer::routes(ctx.clone())
@@ -77,8 +77,8 @@ impl Hooks for App {
             .add_route(controllers::cache::routes())
     }
 
-    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
-        create_app::<Self, Migrator>(mode, environment).await
+    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult<AppContext>> {
+        create_app::<AppContext, Self, Migrator>(mode, environment).await
     }
 
     async fn after_context(ctx: AppContext) -> Result<AppContext> {

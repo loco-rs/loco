@@ -1,5 +1,5 @@
 // <snip id="task-code-example" />
-use loco_rs::prelude::*;
+use loco_rs::{app::Context, prelude::*};
 
 pub struct Foo;
 #[async_trait]
@@ -10,7 +10,7 @@ impl Task for Foo {
             detail: "run foo task".to_string(),
         }
     }
-    async fn run(&self, _app_context: &AppContext, _vars: &task::Vars) -> Result<()> {
+    async fn run(&self, _app_context: &dyn Context, _vars: &task::Vars) -> Result<()> {
         Ok(())
     }
 }
