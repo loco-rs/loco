@@ -1,7 +1,10 @@
 use rrgen::RRgen;
 use serde_json::json;
 
-use crate::{app::Hooks, gen};
+use crate::{
+    app::{AppContextTrait, Hooks},
+    gen,
+};
 
 const API_CONTROLLER_CONTROLLER_T: &str = include_str!("templates/controller/api/controller.t");
 const API_CONTROLLER_TEST_T: &str = include_str!("templates/controller/api/test.t");
@@ -15,7 +18,7 @@ const HTML_VIEW_T: &str = include_str!("templates/controller/html/view.t");
 use super::collect_messages;
 use crate::Result;
 
-pub fn generate<H: Hooks>(
+pub fn generate<AC: AppContextTrait, H: Hooks<AC>>(
     rrgen: &RRgen,
     name: &str,
     actions: &[String],

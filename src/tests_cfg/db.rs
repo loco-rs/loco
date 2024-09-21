@@ -81,7 +81,7 @@ impl MigratorTrait for Migrator {
 
 pub struct AppHook;
 #[async_trait]
-impl Hooks for AppHook {
+impl Hooks<AppContext> for AppHook {
     fn app_version() -> String {
         "test".to_string()
     }
@@ -94,12 +94,12 @@ impl Hooks for AppHook {
         Ok(vec![])
     }
 
-    fn routes(_ctx: &AppContext) -> AppRoutes {
+    fn routes(_ctx: &AppContext) -> AppRoutes<AppContext> {
         AppRoutes::with_default_routes()
     }
 
-    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
-        create_app::<Self, Migrator>(mode, environment).await
+    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult<AppContext>> {
+        create_app::<AppContext, Self, Migrator>(mode, environment).await
     }
 
     fn connect_workers<'a>(_p: &'a mut Processor, _ctx: &'a AppContext) {}

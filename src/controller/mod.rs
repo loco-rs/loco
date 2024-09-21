@@ -34,21 +34,21 @@
 //! }
 //!
 //! #[async_trait]
-//! impl Hooks for App {
+//! impl Hooks<AppContext> for App {
 //!
 //!    fn app_name() -> &'static str {
 //!        env!("CARGO_CRATE_NAME")
 //!    }
 //!
-//!     fn routes(ctx: &AppContext) -> AppRoutes {
+//!     fn routes(ctx: &AppContext) -> AppRoutes<AppContext> {
 //!         AppRoutes::with_default_routes()
 //!             // .add_route(controllers::notes::routes())
 //!     }
-//!     
-//!     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult>{
-//!          create_app::<Self, Migrator>(mode, environment).await
+//!
+//!     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult<AppContext>>{
+//!          create_app::<AppContext, Self, Migrator>(mode, environment).await
 //!     }
-//!     
+//!
 //!     #[cfg(feature = "channels")]
 //!    /// Only when `channels` feature is enabled
 //!    fn register_channels(_ctx: &AppContext) -> AppChannels {

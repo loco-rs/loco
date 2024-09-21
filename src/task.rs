@@ -6,7 +6,11 @@ use std::collections::BTreeMap;
 
 use async_trait::async_trait;
 
-use crate::{app::AppContext, errors::Error, Result};
+use crate::{
+    app::{AppContextTrait, Context},
+    errors::Error,
+    Result,
+};
 
 /// Struct representing a collection of task arguments.
 #[derive(Default, Debug)]
@@ -75,7 +79,7 @@ pub trait Task: Send + Sync {
     /// Get information about the task.
     fn task(&self) -> TaskInfo;
     /// Execute the task with the provided application context and variables.
-    async fn run(&self, app_context: &AppContext, vars: &Vars) -> Result<()>;
+    async fn run(&self, app_context: &dyn Context, vars: &Vars) -> Result<()>;
 }
 
 /// Managing and running tasks.
@@ -106,7 +110,12 @@ impl Tasks {
     ///
     /// Returns a [`Result`] if an task finished with error. mostly if the given
     /// task is not found or an error to run the task.s
-    pub async fn run(&self, app_context: &AppContext, task: &str, vars: &Vars) -> Result<()> {
+    pub async fn run<AC: AppContextTrait>(
+        &self,
+        app_context: &AC,
+        task: &str,
+        vars: &Vars,
+    ) -> Result<()> {
         let task = self
             .registry
             .get(task)

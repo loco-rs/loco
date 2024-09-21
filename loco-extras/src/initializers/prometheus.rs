@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
 use axum_prometheus::PrometheusMetricLayer;
-use loco_rs::prelude::*;
+use loco_rs::{app::Context, prelude::*};
 
 pub struct AxumPrometheusInitializer;
 
@@ -11,7 +11,7 @@ impl Initializer for AxumPrometheusInitializer {
         "axum-prometheus".to_string()
     }
 
-    async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+    async fn after_routes(&self, router: AxumRouter, _ctx: &dyn Context) -> Result<AxumRouter> {
         let (prometheus_layer, metric_handle) = PrometheusMetricLayer::pair();
         let router = router
             .route("/metrics", get(|| async move { metric_handle.render() }))

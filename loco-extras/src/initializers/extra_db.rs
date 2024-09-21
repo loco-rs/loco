@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use axum::{Extension, Router as AxumRouter};
-use loco_rs::{db, prelude::*};
+use loco_rs::{app::Context, db, prelude::*};
 
 #[allow(clippy::module_name_repetitions)]
 pub struct ExtraDbInitializer;
@@ -11,9 +11,9 @@ impl Initializer for ExtraDbInitializer {
         "extra-db".to_string()
     }
 
-    async fn after_routes(&self, router: AxumRouter, ctx: &AppContext) -> Result<AxumRouter> {
+    async fn after_routes(&self, router: AxumRouter, ctx: &dyn Context) -> Result<AxumRouter> {
         let extra_db_config = ctx
-            .config
+            .config()
             .initializers
             .clone()
             .ok_or_else(|| Error::Message("initializers config not configured".to_string()))?;

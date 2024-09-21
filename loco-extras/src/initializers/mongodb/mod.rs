@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use axum::{Extension, Router as AxumRouter};
-use loco_rs::prelude::*;
+use loco_rs::{app::Context, prelude::*};
 use mongodb::{bson::doc, options::ClientOptions, Client, Database};
 
 #[allow(clippy::module_name_repetitions)]
@@ -12,9 +12,9 @@ impl Initializer for MongoDbInitializer {
         "mongodb".to_string()
     }
 
-    async fn after_routes(&self, router: AxumRouter, ctx: &AppContext) -> Result<AxumRouter> {
+    async fn after_routes(&self, router: AxumRouter, ctx: &dyn Context) -> Result<AxumRouter> {
         let mongo_db_config = ctx
-            .config
+            .config()
             .initializers
             .clone()
             .ok_or_else(|| Error::Message("initializers config not configured".to_string()))?;

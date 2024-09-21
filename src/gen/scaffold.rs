@@ -1,7 +1,10 @@
 use rrgen::RRgen;
 use serde_json::json;
 
-use crate::{app::Hooks, gen};
+use crate::{
+    app::{AppContextTrait, Hooks},
+    gen,
+};
 
 const API_CONTROLLER_SCAFFOLD_T: &str = include_str!("templates/scaffold/api/controller.t");
 const API_CONTROLLER_TEST_T: &str = include_str!("templates/scaffold/api/test.t");
@@ -25,7 +28,7 @@ const HTML_VIEW_LIST_SCAFFOLD_T: &str = include_str!("templates/scaffold/html/vi
 use super::{collect_messages, model, MAPPINGS};
 use crate::{errors::Error, Result};
 
-pub fn generate<H: Hooks>(
+pub fn generate<AC: AppContextTrait, H: Hooks<AC>>(
     rrgen: &RRgen,
     name: &str,
     fields: &[(String, String)],
@@ -34,7 +37,7 @@ pub fn generate<H: Hooks>(
     // - scaffold is never a link table
     // - never run with migration_only, because the controllers will refer to the
     //   models. the models only arrive after migration and entities sync.
-    let model_messages = model::generate::<H>(rrgen, name, false, false, fields)?;
+    let model_messages = model::generate::<AC, H>(rrgen, name, false, false, fields)?;
 
     let mut columns = Vec::new();
     for (fname, ftype) in fields {

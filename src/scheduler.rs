@@ -10,7 +10,11 @@ use std::{
     time::Instant,
 };
 
-use crate::{app::Hooks, environment::Environment, task::Tasks};
+use crate::{
+    app::{AppContextTrait, Hooks},
+    environment::Environment,
+    task::Tasks,
+};
 
 use tokio_cron_scheduler::{JobScheduler, JobSchedulerError};
 
@@ -203,7 +207,10 @@ impl Scheduler {
     /// # Errors
     ///
     /// When could not parse the given file content into a [`Config`] struct.
-    pub fn from_config<H: Hooks>(config: &Path, environment: &Environment) -> Result<Self> {
+    pub fn from_config<AC: AppContextTrait, H: Hooks<AC>>(
+        config: &Path,
+        environment: &Environment,
+    ) -> Result<Self> {
         let config_str =
             std::fs::read_to_string(config).map_err(|error| Error::ConfigNotFound {
                 path: config.to_path_buf(),
@@ -213,7 +220,7 @@ impl Scheduler {
         let config: Config = serde_yaml::from_str(&config_str)
             .map_err(|error| Error::InvalidConfigSchema { error })?;
 
-        Self::new::<H>(&config, environment)
+        Self::new::<AC, H>(&config, environment)
     }
 
     /// Creates a new scheduler instance from the provided configuration data.
@@ -224,7 +231,10 @@ impl Scheduler {
     /// # Errors
     ///
     /// When there is not job in the given config
-    pub fn new<H: Hooks>(data: &Config, environment: &Environment) -> Result<Self> {
+    pub fn new<AC: AppContextTrait, H: Hooks<AC>>(
+        data: &Config,
+        environment: &Environment,
+    ) -> Result<Self> {
         let mut tasks = Tasks::default();
         H::register_tasks(&mut tasks);
 
@@ -352,7 +362,7 @@ impl Scheduler {
 mod tests {
 
     use super::*;
-    use crate::tests_cfg;
+    use crate::{app::AppContext, tests_cfg};
     use insta::assert_debug_snapshot;
 
     use rstest::rstest;
@@ -365,7 +375,10 @@ mod tests {
             .join("scheduler")
             .join("scheduler.yaml");
 
-        Scheduler::from_config::<AppHook>(&scheduler_config_path, &Environment::Development)
+        Scheduler::from_config::<AppContext, AppHook>(
+            &scheduler_config_path,
+            &Environment::Development,
+        )
     }
 
     #[test]
@@ -382,7 +395,7 @@ mod tests {
     #[tokio::test]
     pub async fn can_load_from_env_config() {
         let app_context = tests_cfg::app::get_app_context().await;
-        let scheduler = Scheduler::new::<AppHook>(
+        let scheduler = Scheduler::new::<AppContext, AppHook>(
             &app_context.config.scheduler.unwrap(),
             &Environment::Development,
         );

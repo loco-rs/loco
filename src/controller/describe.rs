@@ -2,7 +2,7 @@ use axum::{http, routing::MethodRouter};
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::app::AppContext;
+use crate::app::AppContextTrait;
 
 lazy_static! {
     static ref DESCRIBE_METHOD_ACTION: Regex = Regex::new(r"\b(\w+):\s*BoxedHandler\b").unwrap();
@@ -13,7 +13,7 @@ lazy_static! {
 /// Currently axum not exposed the action type of the router. for hold extra
 /// information about routers we need to convert the `method` to string and
 /// capture the details
-pub fn method_action(method: &MethodRouter<AppContext>) -> Vec<http::Method> {
+pub fn method_action<AC: AppContextTrait>(method: &MethodRouter<AC>) -> Vec<http::Method> {
     let method_str = format!("{method:?}");
 
     DESCRIBE_METHOD_ACTION

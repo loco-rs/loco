@@ -1,31 +1,37 @@
 use colored::Colorize;
 
-use crate::boot::{BootResult, ServeParams};
+use crate::{
+    app::AppContextTrait,
+    boot::{BootResult, ServeParams},
+};
 
 pub const BANNER: &str = r"
-                      ▄     ▀                     
-                                 ▀  ▄             
-                  ▄       ▀     ▄  ▄ ▄▀           
-                                    ▄ ▀▄▄         
-                        ▄     ▀    ▀  ▀▄▀█▄       
-                                          ▀█▄     
-▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄   ▄▄▄▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄▄ ▀▀█    
- ██████  █████   ███ █████   ███ █████   ███ ▀█   
- ██████  █████   ███ █████   ▀▀▀ █████   ███ ▄█▄  
+                      ▄     ▀
+                                 ▀  ▄
+                  ▄       ▀     ▄  ▄ ▄▀
+                                    ▄ ▀▄▄
+                        ▄     ▀    ▀  ▀▄▀█▄
+                                          ▀█▄
+▄▄▄▄▄▄▄  ▄▄▄▄▄▄▄▄▄   ▄▄▄▄▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄▄▄ ▀▀█
+ ██████  █████   ███ █████   ███ █████   ███ ▀█
+ ██████  █████   ███ █████   ▀▀▀ █████   ███ ▄█▄
  ██████  █████   ███ █████       █████   ███ ████▄
  ██████  █████   ███ █████   ▄▄▄ █████   ███ █████
  ██████  █████   ███  ████   ███ █████   ███ ████▀
-   ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀  
-       ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀    
+   ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
+       ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
                 https://loco.rs
 ";
 
-pub fn print_banner(boot_result: &BootResult, server_config: &ServeParams) {
+pub fn print_banner<AC: AppContextTrait>(
+    boot_result: &BootResult<AC>,
+    server_config: &ServeParams,
+) {
     let ctx = &boot_result.app_context;
     println!("{BANNER}");
-    let config = &ctx.config;
+    let config = ctx.config();
 
-    println!("environment: {}", ctx.environment.to_string().green());
+    println!("environment: {}", ctx.environment().to_string().green());
 
     #[cfg(feature = "with-db")]
     {

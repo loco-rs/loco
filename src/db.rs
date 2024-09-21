@@ -18,7 +18,7 @@ use tracing::info;
 
 use super::Result as AppResult;
 use crate::{
-    app::{AppContext, Hooks},
+    app::{AppContextTrait, Hooks},
     config, doctor,
     errors::Error,
 };
@@ -102,7 +102,7 @@ pub async fn verify_access(db: &DatabaseConnection) -> AppResult<()> {
 ///  an `AppResult`, which is an alias for `Result<(), AppError>`. It may
 /// return an `AppError` variant representing different database operation
 /// failures.
-pub async fn converge<H: Hooks, M: MigratorTrait>(
+pub async fn converge<AC: AppContextTrait, H: Hooks<AC>, M: MigratorTrait>(
     db: &DatabaseConnection,
     config: &config::Database,
 ) -> AppResult<()> {
@@ -251,9 +251,9 @@ where
 /// # Errors
 ///
 /// Returns a [`AppResult`] if an error occurs during generate model entity.
-pub async fn entities<M: MigratorTrait>(ctx: &AppContext) -> AppResult<String> {
+pub async fn entities<AC: AppContextTrait, M: MigratorTrait>(ctx: &AC) -> AppResult<String> {
     doctor::check_seaorm_cli().to_result()?;
-    doctor::check_db(&ctx.config.database).await.to_result()?;
+    doctor::check_db(&ctx.config().database).await.to_result()?;
 
     let out = cmd!(
         "sea-orm-cli",
@@ -264,7 +264,7 @@ pub async fn entities<M: MigratorTrait>(ctx: &AppContext) -> AppResult<String> {
         "--output-dir",
         "src/models/_entities",
         "--database-url",
-        &ctx.config.database.uri
+        &ctx.config().database.uri
     )
     .stderr_to_stdout()
     .run()
@@ -361,7 +361,10 @@ where
 /// # Errors
 ///
 /// when seed process is fails
-pub async fn run_app_seed<H: Hooks>(db: &DatabaseConnection, path: &Path) -> AppResult<()> {
+pub async fn run_app_seed<AC: AppContextTrait, H: Hooks<AC>>(
+    db: &DatabaseConnection,
+    path: &Path,
+) -> AppResult<()> {
     H::seed(db, path).await
 }
 

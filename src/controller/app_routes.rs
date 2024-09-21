@@ -29,7 +29,7 @@ use super::{
     routes::Routes,
 };
 use crate::{
-    app::AppContext,
+    app::AppContextTrait,
     config::{self, FallbackConfig},
     controller::middleware::{
         etag::EtagLayer,
@@ -50,20 +50,20 @@ lazy_static! {
 
 /// Represents the routes of the application.
 #[derive(Clone)]
-pub struct AppRoutes {
+pub struct AppRoutes<AC: AppContextTrait> {
     prefix: Option<String>,
-    routes: Vec<Routes>,
+    routes: Vec<Routes<AC>>,
     #[cfg(feature = "channels")]
     channels: Option<AppChannels>,
 }
 
-pub struct ListRoutes {
+pub struct ListRoutes<AC: AppContextTrait> {
     pub uri: String,
     pub actions: Vec<axum::http::Method>,
-    pub method: axum::routing::MethodRouter<AppContext>,
+    pub method: axum::routing::MethodRouter<AC>,
 }
 
-impl fmt::Display for ListRoutes {
+impl<AC: AppContextTrait> fmt::Display for ListRoutes<AC> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let actions_str = self
             .actions
@@ -76,7 +76,7 @@ impl fmt::Display for ListRoutes {
     }
 }
 
-impl AppRoutes {
+impl<AC: AppContextTrait> AppRoutes<AC> {
     /// Create a new instance with the default routes.
     #[must_use]
     pub fn with_default_routes() -> Self {
@@ -99,7 +99,7 @@ impl AppRoutes {
     }
 
     #[must_use]
-    pub fn collect(&self) -> Vec<ListRoutes> {
+    pub fn collect(&self) -> Vec<ListRoutes<AC>> {
         let base_url_prefix = self
             .get_prefix()
             // add a leading slash forcefully. Axum routes must start with a leading slash.
@@ -146,7 +146,7 @@ impl AppRoutes {
 
     /// Get the routes.
     #[must_use]
-    pub fn get_routes(&self) -> &[Routes] {
+    pub fn get_routes(&self) -> &[Routes<AC>] {
         self.routes.as_ref()
     }
 
@@ -158,9 +158,9 @@ impl AppRoutes {
     /// In the following example you are adding api as a prefix for all routes
     ///
     /// ```rust
-    /// use loco_rs::controller::AppRoutes;
+    /// use loco_rs::{app::AppContext, controller::AppRoutes};
     ///
-    /// AppRoutes::with_default_routes().prefix("api");
+    /// AppRoutes::<AppContext>::with_default_routes().prefix("api");
     /// ```
     #[must_use]
     pub fn prefix(mut self, prefix: &str) -> Self {
@@ -170,14 +170,14 @@ impl AppRoutes {
 
     /// Add a single route.
     #[must_use]
-    pub fn add_route(mut self, route: Routes) -> Self {
+    pub fn add_route(mut self, route: Routes<AC>) -> Self {
         self.routes.push(route);
         self
     }
 
     /// Add multiple routes.
     #[must_use]
-    pub fn add_routes(mut self, mounts: Vec<Routes>) -> Self {
+    pub fn add_routes(mut self, mounts: Vec<Routes<AC>>) -> Self {
         for mount in mounts {
             self.routes.push(mount);
         }
@@ -198,7 +198,7 @@ impl AppRoutes {
     /// Return an [`Result`] when could not convert the router setup to
     /// [`axum::Router`].
     #[allow(clippy::cognitive_complexity)]
-    pub fn to_router(&self, ctx: AppContext, mut app: AXRouter<AppContext>) -> Result<AXRouter> {
+    pub fn to_router(&self, ctx: AC, mut app: AXRouter<AC>) -> Result<AXRouter> {
         //
         // IMPORTANT: middleware ordering in this function is opposite to what you
         // intuitively may think. when using `app.layer` to add individual middleware,
@@ -249,72 +249,72 @@ impl AppRoutes {
             }
         }
 
-        if let Some(catch_panic) = &ctx.config.server.middlewares.catch_panic {
+        if let Some(catch_panic) = &ctx.config().server.middlewares.catch_panic {
             if catch_panic.enable {
                 app = Self::add_catch_panic(app);
             }
         }
 
-        if let Some(etag) = &ctx.config.server.middlewares.etag {
+        if let Some(etag) = &ctx.config().server.middlewares.etag {
             if etag.enable {
                 app = Self::add_etag_middleware(app);
             }
         }
 
-        if let Some(remote_ip) = &ctx.config.server.middlewares.remote_ip {
+        if let Some(remote_ip) = &ctx.config().server.middlewares.remote_ip {
             if remote_ip.enable {
                 app = Self::add_remote_ip_middleware(app, remote_ip)?;
             }
         }
 
-        if let Some(compression) = &ctx.config.server.middlewares.compression {
+        if let Some(compression) = &ctx.config().server.middlewares.compression {
             if compression.enable {
                 app = Self::add_compression_middleware(app);
             }
         }
 
-        if let Some(timeout_request) = &ctx.config.server.middlewares.timeout_request {
+        if let Some(timeout_request) = &ctx.config().server.middlewares.timeout_request {
             if timeout_request.enable {
                 app = Self::add_timeout_middleware(app, timeout_request);
             }
         }
 
-        if let Some(cors) = &ctx.config.server.middlewares.cors {
+        if let Some(cors) = &ctx.config().server.middlewares.cors {
             if cors.enable {
                 app = app.layer(cors_middleware(cors)?);
             }
         }
 
-        if let Some(limit) = &ctx.config.server.middlewares.limit_payload {
+        if let Some(limit) = &ctx.config().server.middlewares.limit_payload {
             if limit.enable {
                 app = Self::add_limit_payload_middleware(app, limit)?;
             }
         }
 
-        if let Some(logger) = &ctx.config.server.middlewares.logger {
+        if let Some(logger) = &ctx.config().server.middlewares.logger {
             if logger.enable {
-                app = Self::add_logger_middleware(app, &ctx.environment);
+                app = Self::add_logger_middleware(app, ctx.environment());
             }
         }
 
-        if let Some(static_assets) = &ctx.config.server.middlewares.static_assets {
+        if let Some(static_assets) = &ctx.config().server.middlewares.static_assets {
             if static_assets.enable {
                 app = Self::add_static_asset_middleware(app, static_assets)?;
             }
         }
 
-        if let Some(secure_headers) = &ctx.config.server.middlewares.secure_headers {
+        if let Some(secure_headers) = &ctx.config().server.middlewares.secure_headers {
             app = app.layer(SecureHeaders::new(secure_headers)?);
             tracing::info!("[Middleware] +secure headers");
         }
 
-        if let Some(fallback) = &ctx.config.server.middlewares.fallback {
+        if let Some(fallback) = &ctx.config().server.middlewares.fallback {
             if fallback.enable {
                 app = Self::add_fallback(app, fallback)?;
             }
         }
 
-        app = Self::add_powered_by_header(app, &ctx.config.server);
+        app = Self::add_powered_by_header(app, &ctx.config().server);
 
         app = Self::add_request_id_middleware(app);
 
@@ -322,10 +322,7 @@ impl AppRoutes {
         Ok(router)
     }
 
-    fn add_fallback(
-        app: AXRouter<AppContext>,
-        fallback: &FallbackConfig,
-    ) -> Result<AXRouter<AppContext>> {
+    fn add_fallback(app: AXRouter<AC>, fallback: &FallbackConfig) -> Result<AXRouter<AC>> {
         let app = if let Some(path) = &fallback.file {
             app.fallback_service(ServeFile::new(path))
         } else if let Some(not_found) = &fallback.not_found {
@@ -352,16 +349,16 @@ impl AppRoutes {
         Ok(app)
     }
 
-    fn add_request_id_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
+    fn add_request_id_middleware(app: AXRouter<AC>) -> AXRouter<AC> {
         let app = app.layer(axum::middleware::from_fn(request_id_middleware));
         tracing::info!("[Middleware] +request id");
         app
     }
 
     fn add_static_asset_middleware(
-        app: AXRouter<AppContext>,
+        app: AXRouter<AC>,
         config: &config::StaticAssetsMiddleware,
-    ) -> Result<AXRouter<AppContext>> {
+    ) -> Result<AXRouter<AC>> {
         if config.must_exist
             && (!PathBuf::from(&config.folder.path).exists()
                 || !PathBuf::from(&config.fallback).exists())
@@ -386,35 +383,35 @@ impl AppRoutes {
         ))
     }
 
-    fn add_compression_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
+    fn add_compression_middleware(app: AXRouter<AC>) -> AXRouter<AC> {
         let app = app.layer(CompressionLayer::new());
         tracing::info!("[Middleware] +compression");
         app
     }
 
-    fn add_etag_middleware(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
+    fn add_etag_middleware(app: AXRouter<AC>) -> AXRouter<AC> {
         let app = app.layer(EtagLayer::new());
         tracing::info!("[Middleware] +etag");
         app
     }
 
     fn add_remote_ip_middleware(
-        app: AXRouter<AppContext>,
+        app: AXRouter<AC>,
         config: &RemoteIPConfig,
-    ) -> Result<AXRouter<AppContext>> {
+    ) -> Result<AXRouter<AC>> {
         let app = app.layer(RemoteIPLayer::new(config)?);
         tracing::info!("[Middleware] +remote IP");
         Ok(app)
     }
 
-    fn add_catch_panic(app: AXRouter<AppContext>) -> AXRouter<AppContext> {
+    fn add_catch_panic(app: AXRouter<AC>) -> AXRouter<AC> {
         app.layer(CatchPanicLayer::custom(handle_panic))
     }
 
     fn add_limit_payload_middleware(
-        app: AXRouter<AppContext>,
+        app: AXRouter<AC>,
         limit: &config::LimitPayloadMiddleware,
-    ) -> Result<AXRouter<AppContext>> {
+    ) -> Result<AXRouter<AC>> {
         let app = app.layer(axum::extract::DefaultBodyLimit::max(
             byte_unit::Byte::from_str(&limit.body_limit)
                 .map_err(Box::from)?
@@ -424,10 +421,7 @@ impl AppRoutes {
 
         Ok(app)
     }
-    fn add_logger_middleware(
-        app: AXRouter<AppContext>,
-        environment: &Environment,
-    ) -> AXRouter<AppContext> {
+    fn add_logger_middleware(app: AXRouter<AC>, environment: &Environment) -> AXRouter<AC> {
         let app = app
             .layer(
                 TraceLayer::new_for_http().make_span_with(|request: &http::Request<_>| {
@@ -464,19 +458,16 @@ impl AppRoutes {
     }
 
     fn add_timeout_middleware(
-        app: AXRouter<AppContext>,
+        app: AXRouter<AC>,
         config: &config::TimeoutRequestMiddleware,
-    ) -> AXRouter<AppContext> {
+    ) -> AXRouter<AC> {
         let app = app.layer(TimeoutLayer::new(Duration::from_millis(config.timeout)));
 
         tracing::info!("[Middleware] +timeout");
         app
     }
 
-    fn add_powered_by_header(
-        app: AXRouter<AppContext>,
-        config: &config::Server,
-    ) -> AXRouter<AppContext> {
+    fn add_powered_by_header(app: AXRouter<AC>, config: &config::Server) -> AXRouter<AC> {
         let ident_value = config.ident.as_ref().map_or_else(
             || Some(DEFAULT_IDENT_HEADER_VALUE.clone()),
             |ident| {
@@ -538,7 +529,7 @@ mod tests {
 
     #[test]
     fn can_load_app_route_from_default() {
-        for route in AppRoutes::with_default_routes().collect() {
+        for route in AppRoutes::<AppContext>::with_default_routes().collect() {
             assert_debug_snapshot!(
                 format!("[{}]", route.uri.replace('/', "[slash]")),
                 format!("{:?} {}", route.actions, route.uri)
@@ -548,12 +539,12 @@ mod tests {
 
     #[test]
     fn can_load_empty_app_routes() {
-        assert_eq!(AppRoutes::empty().collect().len(), 0);
+        assert_eq!(AppRoutes::<AppContext>::empty().collect().len(), 0);
     }
 
     #[test]
     fn can_load_routes() {
-        let router_without_prefix = Routes::new().add("/", get(action));
+        let router_without_prefix = Routes::<AppContext>::new().add("/", get(action));
         let normalizer = Routes::new()
             .prefix("/normalizer")
             .add("no-slash", get(action))
@@ -581,7 +572,7 @@ mod tests {
 
     #[test]
     fn can_load_routes_with_root_prefix() {
-        let router_without_prefix = Routes::new()
+        let router_without_prefix = Routes::<AppContext>::new()
             .add("/loco", get(action))
             .add("loco-rs", get(action));
 

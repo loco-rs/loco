@@ -6,7 +6,7 @@ use axum::{extract::State, response::Response, routing::get};
 use serde::Serialize;
 
 use super::{format, routes::Routes};
-use crate::{app::AppContext, redis, Result};
+use crate::{app::AppContextTrait, redis, Result};
 
 /// Represents the health status of the application.
 #[derive(Serialize)]
@@ -16,15 +16,15 @@ struct Health {
 
 /// Check the healthiness of the application bt ping to the redis and the DB to
 /// insure that connection
-async fn health(State(ctx): State<AppContext>) -> Result<Response> {
-    let mut is_ok = match ctx.db.ping().await {
+async fn health<AC: AppContextTrait>(State(ctx): State<AC>) -> Result<Response> {
+    let mut is_ok = match ctx.db().ping().await {
         Ok(()) => true,
         Err(error) => {
             tracing::error!(err.msg = %error, err.detail = ?error, "health_db_ping_error");
             false
         }
     };
-    if let Some(pool) = ctx.queue {
+    if let Some(pool) = ctx.queue() {
         if let Err(error) = redis::ping(&pool).await {
             tracing::error!(err.msg = %error, err.detail = ?error, "health_redis_ping_error");
             is_ok = false;
@@ -34,6 +34,6 @@ async fn health(State(ctx): State<AppContext>) -> Result<Response> {
 }
 
 /// Defines and returns the health-related routes.
-pub fn routes() -> Routes {
-    Routes::new().add("/_health", get(health))
+pub fn routes<AC: AppContextTrait>() -> Routes<AC> {
+    Routes::new().add("/_health", get(health::<AC>))
 }

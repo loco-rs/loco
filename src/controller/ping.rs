@@ -6,7 +6,7 @@ use axum::{response::Response, routing::get};
 use serde::Serialize;
 
 use super::{format, routes::Routes};
-use crate::Result;
+use crate::{app::AppContextTrait, Result};
 
 /// Represents the health status of the application.
 #[derive(Serialize)]
@@ -20,6 +20,6 @@ async fn ping() -> Result<Response> {
 }
 
 /// Defines and returns the health-related routes.
-pub fn routes() -> Routes {
+pub fn routes<AC: AppContextTrait>() -> Routes<AC> {
     Routes::new().add("/_ping", get(ping))
 }

@@ -10,7 +10,10 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{fmt, EnvFilter, Layer, Registry};
 
-use crate::{app::Hooks, config};
+use crate::{
+    app::{AppContextTrait, Hooks},
+    config,
+};
 
 // Define an enumeration for log levels
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
@@ -91,7 +94,7 @@ static NONBLOCKING_WORK_GUARD_KEEP: OnceLock<WorkerGuard> = OnceLock::new();
 ///    use via PR)
 /// 3. regardless of (1) and (2) operators in production, or elsewhere can
 ///    always use `RUST_LOG` to quickly diagnose a service
-pub fn init<H: Hooks>(config: &config::Logger) {
+pub fn init<AC: AppContextTrait, H: Hooks<AC>>(config: &config::Logger) {
     let mut layers: Vec<Box<dyn Layer<Registry> + Sync + Send>> = Vec::new();
 
     if let Some(file_appender_config) = config.file_appender.as_ref() {
@@ -153,7 +156,7 @@ pub fn init<H: Hooks>(config: &config::Logger) {
     }
 
     if !layers.is_empty() {
-        let env_filter = init_env_filter::<H>(config.override_filter.as_ref(), &config.level);
+        let env_filter = init_env_filter::<AC, H>(config.override_filter.as_ref(), &config.level);
         tracing_subscriber::registry()
             .with(layers)
             .with(env_filter)
@@ -161,7 +164,10 @@ pub fn init<H: Hooks>(config: &config::Logger) {
     }
 }
 
-fn init_env_filter<H: Hooks>(override_filter: Option<&String>, level: &LogLevel) -> EnvFilter {
+fn init_env_filter<AC: AppContextTrait, H: Hooks<AC>>(
+    override_filter: Option<&String>,
+    level: &LogLevel,
+) -> EnvFilter {
     EnvFilter::try_from_default_env()
         .or_else(|_| {
             // user wanted a specific filter, don't care about our internal whitelist

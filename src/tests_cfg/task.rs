@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{app::Context, prelude::*};
 
 pub struct Foo;
 #[async_trait]
@@ -9,7 +9,7 @@ impl Task for Foo {
             detail: "run foo task".to_string(),
         }
     }
-    async fn run(&self, _app_context: &AppContext, _vars: &task::Vars) -> Result<()> {
+    async fn run(&self, _app_context: &dyn Context, _vars: &task::Vars) -> Result<()> {
         println!("Foo task executed!!!");
         Ok(())
     }
@@ -24,7 +24,7 @@ impl Task for ParseArgs {
             detail: "Validate the paring args".to_string(),
         }
     }
-    async fn run(&self, _app_context: &AppContext, vars: &task::Vars) -> Result<()> {
+    async fn run(&self, _app_context: &dyn Context, vars: &task::Vars) -> Result<()> {
         let refresh = vars.cli_arg("test").is_ok_and(|test| test == "true");
 
         let app = vars

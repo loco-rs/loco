@@ -10,7 +10,7 @@ use lazy_static::lazy_static;
 use sea_orm::DatabaseConnection;
 
 use crate::{
-    app::{AppContext, Hooks},
+    app::{AppContext, AppContextTrait, Hooks},
     boot::{self, BootResult},
     environment::Environment,
     Result,
@@ -108,19 +108,19 @@ pub fn cleanup_email() -> Vec<(&'static str, &'static str)> {
 /// application context.
 ///
 /// ```rust,ignore
-/// use myapp::app::App;
+/// use myapp::app::{App, AppContext};
 /// use loco_rs::testing;
 /// use migration::Migrator;
 ///
 /// #[tokio::test]
 /// async fn test_create_user() {
-///     let boot = testing::boot_test::<App, Migrator>().await;
+///     let boot = testing::boot_test::<AppContext, App, Migrator>().await;
 ///
 ///     /// .....
 ///     assert!(false)
 /// }
 /// ```
-pub async fn boot_test<H: Hooks>() -> Result<BootResult> {
+pub async fn boot_test<AC: AppContextTrait, H: Hooks<AC>>() -> Result<BootResult<AC>> {
     H::boot(boot::StartMode::ServerOnly, &Environment::Test).await
 }
 
@@ -150,7 +150,7 @@ pub async fn boot_test<H: Hooks>() -> Result<BootResult> {
 ///     assert!(false)
 /// }
 /// ```
-pub async fn seed<H: Hooks>(db: &DatabaseConnection) -> Result<()> {
+pub async fn seed<AC: AppContextTrait, H: Hooks<AC>>(db: &DatabaseConnection) -> Result<()> {
     let path = std::path::Path::new("src/fixtures");
     H::seed(db, path).await
 }
@@ -188,12 +188,12 @@ pub async fn seed<H: Hooks>(db: &DatabaseConnection) -> Result<()> {
 /// }
 /// ```
 #[allow(clippy::future_not_send)]
-pub async fn request<H: Hooks, F, Fut>(callback: F)
+pub async fn request<AC: AppContextTrait, H: Hooks<AC>, F, Fut>(callback: F)
 where
-    F: FnOnce(TestServer, AppContext) -> Fut,
+    F: FnOnce(TestServer, AC) -> Fut,
     Fut: std::future::Future<Output = ()>,
 {
-    let boot = boot_test::<H>().await.unwrap();
+    let boot = boot_test::<AC, H>().await.unwrap();
 
     let config = TestServerConfig::builder()
         .default_content_type("application/json")

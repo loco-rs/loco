@@ -15,17 +15,44 @@ use axum::Router as AxumRouter;
 #[cfg(feature = "channels")]
 use crate::controller::channels::AppChannels;
 use crate::{
-    boot::{BootResult, ServeParams, StartMode},
-    cache::{self},
+    boot::{create_mailer, BootResult, ServeParams, StartMode},
+    cache::{self, Cache},
     config::{self, Config},
     controller::AppRoutes,
     environment::Environment,
     mailer::EmailSender,
-    storage::Storage,
+    storage::{self, Storage},
     task::Tasks,
     worker::{Pool, Processor, RedisConnectionManager},
     Result,
 };
+
+pub trait Context: Send + Sync + 'static {
+    fn environment(&self) -> &Environment;
+    #[cfg(feature = "with-db")]
+    fn db(&self) -> &DatabaseConnection;
+    fn queue(&self) -> &Option<Pool<RedisConnectionManager>>;
+    fn config(&self) -> &Config;
+    fn mailer(&self) -> &Option<EmailSender>;
+    fn storage(&self) -> Arc<Storage>;
+    fn cache(&self) -> Arc<cache::Cache>;
+}
+
+pub trait AppContextTrait: Clone + Default + Context {
+    #[cfg(feature = "with-db")]
+    fn create(
+        environment: Environment,
+        config: Config,
+        db: DatabaseConnection,
+        queue: Option<Pool<RedisConnectionManager>>,
+    ) -> Result<Self>;
+    #[cfg(not(feature = "with-db"))]
+    fn create(
+        environment: Environment,
+        config: Config,
+        queue: Option<Pool<RedisConnectionManager>>,
+    ) -> Result<Self>;
+}
 
 /// Represents the application context for a web server.
 ///
@@ -53,6 +80,107 @@ pub struct AppContext {
     pub cache: Arc<cache::Cache>,
 }
 
+impl Default for AppContext {
+    fn default() -> Self {
+        let environment = Environment::Test;
+        #[cfg(feature = "with-db")]
+        let db = DatabaseConnection::default();
+        let config = environment
+            .load()
+            .expect("Failed to load config for test environment");
+
+        AppContext {
+            environment,
+            #[cfg(feature = "with-db")]
+            db,
+            queue: None,
+            storage: Storage::single(storage::drivers::null::new()).into(),
+            cache: Cache::new(cache::drivers::null::new()).into(),
+            config,
+            mailer: None,
+        }
+    }
+}
+
+impl Context for AppContext {
+    fn environment(&self) -> &Environment {
+        &self.environment
+    }
+
+    #[cfg(feature = "with-db")]
+    fn db(&self) -> &DatabaseConnection {
+        &self.db
+    }
+
+    fn queue(&self) -> &Option<Pool<RedisConnectionManager>> {
+        &self.queue
+    }
+
+    fn config(&self) -> &Config {
+        &self.config
+    }
+
+    fn mailer(&self) -> &Option<EmailSender> {
+        &self.mailer
+    }
+
+    fn storage(&self) -> Arc<Storage> {
+        self.storage.clone()
+    }
+
+    fn cache(&self) -> Arc<cache::Cache> {
+        self.cache.clone()
+    }
+}
+
+impl AppContextTrait for AppContext {
+    #[cfg(feature = "with-db")]
+    fn create(
+        environment: Environment,
+        config: Config,
+        db: DatabaseConnection,
+        queue: Option<Pool<RedisConnectionManager>>,
+    ) -> Result<Self> {
+        let mailer = if let Some(cfg) = config.mailer.as_ref() {
+            create_mailer(cfg)?
+        } else {
+            None
+        };
+
+        Ok(AppContext {
+            environment,
+            db,
+            queue,
+            storage: Storage::single(storage::drivers::null::new()).into(),
+            cache: Cache::new(cache::drivers::null::new()).into(),
+            config,
+            mailer,
+        })
+    }
+
+    #[cfg(not(feature = "with-db"))]
+    fn create(
+        environment: Environment,
+        config: Config,
+        queue: Option<Pool<RedisConnectionManager>>,
+    ) -> Result<Self> {
+        let mailer = if let Some(cfg) = config.mailer.as_ref() {
+            create_mailer(cfg)?
+        } else {
+            None
+        };
+
+        Ok(AppContext {
+            environment,
+            queue,
+            storage: Storage::single(storage::drivers::null::new()).into(),
+            cache: Cache::new(cache::drivers::null::new()).into(),
+            config,
+            mailer,
+        })
+    }
+}
+
 /// A trait that defines hooks for customizing and extending the behavior of a
 /// web server application.
 ///
@@ -60,7 +188,7 @@ pub struct AppContext {
 /// the application's routing, worker connections, task registration, and
 /// database actions according to their specific requirements and use cases.
 #[async_trait]
-pub trait Hooks {
+pub trait Hooks<AC: AppContextTrait> {
     /// Defines the composite app version
     #[must_use]
     fn app_version() -> String {
@@ -101,7 +229,7 @@ pub trait Hooks {
     ///
     /// # Errors
     /// Could not boot the application
-    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult>;
+    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult<AC>>;
 
     /// Start serving the Axum web application on the specified address and
     /// port.
@@ -141,7 +269,7 @@ pub trait Hooks {
     ///
     /// # Errors
     /// Return an [`Result`] when the router could not be created
-    async fn before_routes(_ctx: &AppContext) -> Result<AxumRouter<AppContext>> {
+    async fn before_routes(_ctx: &AC) -> Result<AxumRouter<AC>> {
         Ok(AxumRouter::new())
     }
 
@@ -151,39 +279,39 @@ pub trait Hooks {
     ///
     /// # Errors
     /// Axum router error
-    async fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+    async fn after_routes(router: AxumRouter, _ctx: &AC) -> Result<AxumRouter> {
         Ok(router)
     }
 
     /// Provide a list of initializers
     /// An initializer can be used to seamlessly add functionality to your app
     /// or to initialize some aspects of it.
-    async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
+    async fn initializers(_ctx: &AC) -> Result<Vec<Box<dyn Initializer>>> {
         Ok(vec![])
     }
 
     /// Calling the function before run the app
     /// You can now code some custom loading of resources or other things before
     /// the app runs
-    async fn before_run(_app_context: &AppContext) -> Result<()> {
+    async fn before_run(_app_context: &AC) -> Result<()> {
         Ok(())
     }
 
     /// Defines the application's routing configuration.
-    fn routes(_ctx: &AppContext) -> AppRoutes;
+    fn routes(_ctx: &AC) -> AppRoutes<AC>;
 
     // Provides the options to change Loco [`AppContext`] after initialization.
-    async fn after_context(ctx: AppContext) -> Result<AppContext> {
+    async fn after_context(ctx: AC) -> Result<AC> {
         Ok(ctx)
     }
 
     #[cfg(feature = "channels")]
     /// Register channels endpoints to the application routers
-    fn register_channels(_ctx: &AppContext) -> AppChannels;
+    fn register_channels(_ctx: &AC) -> AppChannels;
 
     /// Connects custom workers to the application using the provided
     /// [`Processor`] and [`AppContext`].
-    fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext);
+    fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AC);
 
     /// Registers custom tasks with the provided [`Tasks`] object.
     fn register_tasks(tasks: &mut Tasks);
@@ -212,14 +340,14 @@ pub trait Initializer: Sync + Send {
     /// Occurs after the app's `before_run`.
     /// Use this to for one-time initializations, load caches, perform web
     /// hooks, etc.
-    async fn before_run(&self, _app_context: &AppContext) -> Result<()> {
+    async fn before_run(&self, _app_context: &dyn Context) -> Result<()> {
         Ok(())
     }
 
     /// Occurs after the app's `after_routes`.
     /// Use this to compose additional functionality and wire it into an Axum
     /// Router
-    async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+    async fn after_routes(&self, router: AxumRouter, _ctx: &dyn Context) -> Result<AxumRouter> {
         Ok(router)
     }
 }

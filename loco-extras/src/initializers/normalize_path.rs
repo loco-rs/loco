@@ -15,7 +15,7 @@
 //! [axum-docs]: https://docs.rs/axum/latest/axum/middleware/index.html#rewriting-request-uri-in-middleware
 use async_trait::async_trait;
 use axum::Router;
-use loco_rs::prelude::*;
+use loco_rs::{app::Context, prelude::*};
 use tower::Layer;
 use tower_http::normalize_path::NormalizePathLayer;
 
@@ -28,7 +28,7 @@ impl Initializer for NormalizePathInitializer {
         "normalize-path".to_string()
     }
 
-    async fn after_routes(&self, router: Router, _ctx: &AppContext) -> Result<Router> {
+    async fn after_routes(&self, router: Router, _ctx: &dyn Context) -> Result<Router> {
         let router = NormalizePathLayer::trim_trailing_slash().layer(router);
         let router = Router::new().nest_service("", router);
         Ok(router)

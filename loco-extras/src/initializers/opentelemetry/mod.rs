@@ -1,7 +1,7 @@
 use axum::{async_trait, Router as AxumRouter};
 use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
 use loco_rs::{
-    app::{AppContext, Initializer},
+    app::{AppContext, Context, Initializer},
     Error, Result,
 };
 
@@ -13,7 +13,7 @@ impl Initializer for OpenTelemetryInitializer {
         "opentelemetry".to_string()
     }
 
-    async fn before_run(&self, _app_context: &AppContext) -> Result<()> {
+    async fn before_run(&self, _app_context: &dyn Context) -> Result<()> {
         match init_tracing_opentelemetry::tracing_subscriber_ext::init_subscribers() {
             Ok(_) => Ok(()),
             Err(e) => {
@@ -23,7 +23,7 @@ impl Initializer for OpenTelemetryInitializer {
         }
     }
 
-    async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+    async fn after_routes(&self, router: AxumRouter, _ctx: &dyn Context) -> Result<AxumRouter> {
         let router = router
             .layer(OtelInResponseLayer::default())
             .layer(OtelAxumLayer::default());

@@ -11,9 +11,8 @@ use tracing::{info, trace, warn};
 #[cfg(feature = "with-db")]
 use crate::db;
 use crate::{
-    app::{AppContext, Hooks},
+    app::{AppContextTrait, Hooks},
     banner::print_banner,
-    cache,
     config::{self, Config},
     controller::ListRoutes,
     environment::Environment,
@@ -21,7 +20,6 @@ use crate::{
     mailer::{EmailSender, MailerWorker},
     redis,
     scheduler::{self, Scheduler},
-    storage::{self, Storage},
     task::{self, Tasks},
     worker::{self, AppWorker, Pool, Processor, RedisConnectionManager},
     Result,
@@ -37,9 +35,9 @@ pub enum StartMode {
     /// Pulling job worker and execute them
     WorkerOnly,
 }
-pub struct BootResult {
+pub struct BootResult<AC: AppContextTrait> {
     /// Application Context
-    pub app_context: AppContext,
+    pub app_context: AC,
     /// Web server routes
     pub router: Option<Router>,
     /// worker processor
@@ -64,7 +62,10 @@ pub struct ServeParams {
 /// # Errors
 ///
 /// When could not initialize the application.
-pub async fn start<H: Hooks>(boot: BootResult, server_config: ServeParams) -> Result<()> {
+pub async fn start<AC: AppContextTrait, H: Hooks<AC>>(
+    boot: BootResult<AC>,
+    server_config: ServeParams,
+) -> Result<()> {
     print_banner(&boot, &server_config);
 
     let BootResult {
@@ -103,8 +104,8 @@ async fn process(processor: Processor) -> Result<()> {
 /// # Errors
 ///
 /// When running could not run the task.
-pub async fn run_task<H: Hooks>(
-    app_context: &AppContext,
+pub async fn run_task<AC: AppContextTrait, H: Hooks<AC>>(
+    app_context: &AC,
     task: Option<&String>,
     vars: &task::Vars,
 ) -> Result<()> {
@@ -135,8 +136,8 @@ pub async fn run_task<H: Hooks>(
 /// # Errors
 ///
 /// When running could not run the scheduler.
-pub async fn run_scheduler<H: Hooks>(
-    app_context: &AppContext,
+pub async fn run_scheduler<AC: AppContextTrait, H: Hooks<AC>>(
+    app_context: &AC,
     config: Option<&PathBuf>,
     name: Option<String>,
     tag: Option<String>,
@@ -149,10 +150,10 @@ pub async fn run_scheduler<H: Hooks>(
     let _guard = task_span.enter();
 
     let scheduler = match config {
-        Some(path) => Scheduler::from_config::<H>(path, &app_context.environment)?,
+        Some(path) => Scheduler::from_config::<AC, H>(path, app_context.environment())?,
         None => {
-            if let Some(config) = &app_context.config.scheduler {
-                Scheduler::new::<H>(config, &app_context.environment)?
+            if let Some(config) = &app_context.config().scheduler {
+                Scheduler::new::<AC, H>(config, app_context.environment())?
             } else {
                 return Err(Error::Scheduler(scheduler::Error::Empty));
             }
@@ -193,35 +194,35 @@ pub enum RunDbCommand {
 ///
 /// Return an error when the given command fails. mostly return
 /// [`sea_orm::DbErr`]
-pub async fn run_db<H: Hooks, M: MigratorTrait>(
-    app_context: &AppContext,
+pub async fn run_db<AC: AppContextTrait, H: Hooks<AC>, M: MigratorTrait>(
+    app_context: &AC,
     cmd: RunDbCommand,
 ) -> Result<()> {
     match cmd {
         RunDbCommand::Migrate => {
             tracing::warn!("migrate:");
-            db::migrate::<M>(&app_context.db).await?;
+            db::migrate::<M>(app_context.db()).await?;
         }
         RunDbCommand::Down(steps) => {
             tracing::warn!("down:");
-            db::down::<M>(&app_context.db, steps).await?;
+            db::down::<M>(app_context.db(), steps).await?;
         }
         RunDbCommand::Reset => {
             tracing::warn!("reset:");
-            db::reset::<M>(&app_context.db).await?;
+            db::reset::<M>(app_context.db()).await?;
         }
         RunDbCommand::Status => {
             tracing::warn!("status:");
-            db::status::<M>(&app_context.db).await?;
+            db::status::<M>(app_context.db()).await?;
         }
         RunDbCommand::Entities => {
             tracing::warn!("entities:");
 
-            tracing::warn!("{}", db::entities::<M>(app_context).await?);
+            tracing::warn!("{}", db::entities::<AC, M>(app_context).await?);
         }
         RunDbCommand::Truncate => {
             tracing::warn!("truncate:");
-            H::truncate(&app_context.db).await?;
+            H::truncate(app_context.db()).await?;
         }
     }
     Ok(())
@@ -232,7 +233,9 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
 ///
 /// # Errors
 /// When has an error to create DB connection.
-pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppContext> {
+pub async fn create_context<AC: AppContextTrait, H: Hooks<AC>>(
+    environment: &Environment,
+) -> Result<AC> {
     let config = environment.load()?;
 
     if config.logger.pretty_backtrace {
@@ -242,25 +245,17 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
              for production. disable with `logger.pretty_backtrace` in your config yaml)"
         );
     }
+
+    let queue = connect_redis(&config).await;
+
     #[cfg(feature = "with-db")]
-    let db = db::connect(&config.database).await?;
-
-    let mailer = if let Some(cfg) = config.mailer.as_ref() {
-        create_mailer(cfg)?
-    } else {
-        None
+    let ctx = {
+        let db = db::connect(&config.database).await?;
+        AC::create(environment.clone(), config, db, queue)?
     };
 
-    let ctx = AppContext {
-        environment: environment.clone(),
-        #[cfg(feature = "with-db")]
-        db,
-        queue: connect_redis(&config).await,
-        storage: Storage::single(storage::drivers::null::new()).into(),
-        cache: cache::Cache::new(cache::drivers::null::new()).into(),
-        config,
-        mailer,
-    };
+    #[cfg(not(feature = "with-db"))]
+    let ctx = AC::create(environment.clone(), config, queue)?;
 
     H::after_context(ctx).await
 }
@@ -271,39 +266,42 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
 /// # Errors
 ///
 /// When could not create the application
-pub async fn create_app<H: Hooks, M: MigratorTrait>(
+pub async fn create_app<AC: AppContextTrait, H: Hooks<AC>, M: MigratorTrait>(
     mode: StartMode,
     environment: &Environment,
-) -> Result<BootResult> {
-    let app_context = create_context::<H>(environment).await?;
-    db::converge::<H, M>(&app_context.db, &app_context.config.database).await?;
+) -> Result<BootResult<AC>> {
+    let app_context = create_context::<AC, H>(environment).await?;
+    db::converge::<AC, H, M>(app_context.db(), &app_context.config().database).await?;
 
-    if let Some(pool) = &app_context.queue {
-        redis::converge(pool, &app_context.config.queue).await?;
+    if let Some(pool) = app_context.queue() {
+        redis::converge(pool, &app_context.config().queue).await?;
     }
 
-    run_app::<H>(&mode, app_context).await
+    run_app::<AC, H>(&mode, app_context).await
 }
 
 #[cfg(not(feature = "with-db"))]
-pub async fn create_app<H: Hooks>(
+pub async fn create_app<AC: AppContextTrait, H: Hooks<AC>>(
     mode: StartMode,
     environment: &Environment,
 ) -> Result<BootResult> {
-    let app_context = create_context::<H>(environment).await?;
+    let app_context = create_context::<AC, H>(environment).await?;
 
     if let Some(pool) = &app_context.queue {
         redis::converge(pool, &app_context.config.queue).await?;
     }
 
-    run_app::<H>(&mode, app_context).await
+    run_app::<AC, H>(&mode, app_context).await
 }
 
 /// Run the application with the  given mode
 /// # Errors
 ///
 /// When could not create the application
-pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Result<BootResult> {
+pub async fn run_app<AC: AppContextTrait, H: Hooks<AC>>(
+    mode: &StartMode,
+    app_context: AC,
+) -> Result<BootResult<AC>> {
     H::before_run(&app_context).await?;
     let initializers = H::initializers(&app_context).await?;
     info!(initializers = ?initializers.iter().map(|init| init.name()).collect::<Vec<_>>().join(","), "initializers loaded");
@@ -326,7 +324,7 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
             })
         }
         StartMode::ServerAndWorker => {
-            let processor = create_processor::<H>(&app_context)?;
+            let processor = create_processor::<AC, H>(&app_context)?;
             let app = H::before_routes(&app_context).await?;
             let app = H::routes(&app_context).to_router(app_context.clone(), app)?;
             let mut router = H::after_routes(app, &app_context).await?;
@@ -340,7 +338,7 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
             })
         }
         StartMode::WorkerOnly => {
-            let processor = create_processor::<H>(&app_context)?;
+            let processor = create_processor::<AC, H>(&app_context)?;
             Ok(BootResult {
                 app_context,
                 router: None,
@@ -350,13 +348,13 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
     }
 }
 /// Creates and configures a [`Processor`] for handling worker tasks.
-fn create_processor<H: Hooks>(app_context: &AppContext) -> Result<Processor> {
-    let queues = worker::get_queues(&app_context.config.workers.queues);
+fn create_processor<AC: AppContextTrait, H: Hooks<AC>>(app_context: &AC) -> Result<Processor> {
+    let queues = worker::get_queues(&app_context.config().workers.queues);
     trace!(
         queues = ?queues,
         "registering queues (merged config and default)"
     );
-    let mut p = if let Some(queue) = &app_context.queue {
+    let mut p = if let Some(queue) = app_context.queue() {
         Processor::new(queue.clone(), queues)
     } else {
         return Err(Error::Message(
@@ -372,13 +370,13 @@ fn create_processor<H: Hooks>(app_context: &AppContext) -> Result<Processor> {
 }
 
 #[must_use]
-pub fn list_endpoints<H: Hooks>(ctx: &AppContext) -> Vec<ListRoutes> {
+pub fn list_endpoints<AC: AppContextTrait, H: Hooks<AC>>(ctx: &AC) -> Vec<ListRoutes<AC>> {
     H::routes(ctx).collect()
 }
 
 /// Initializes an [`EmailSender`] based on the mailer configuration settings
 /// ([`config::Mailer`]).
-fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
+pub(crate) fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
     if config.stub {
         return Ok(Some(EmailSender::stub()));
     }

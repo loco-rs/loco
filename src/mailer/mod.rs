@@ -11,6 +11,8 @@ use include_dir::Dir;
 use serde::{Deserialize, Serialize};
 use sidekiq::Worker;
 
+use crate::app::AppContextTrait;
+
 use self::template::Template;
 use super::{app::AppContext, worker::AppWorker, Result};
 
@@ -108,20 +110,20 @@ pub trait Mailer {
 /// The [`MailerWorker`] struct represents a worker responsible for asynchronous
 /// email processing.
 #[allow(clippy::module_name_repetitions)]
-pub struct MailerWorker {
-    pub ctx: AppContext,
+pub struct MailerWorker<AC: AppContextTrait> {
+    pub ctx: AC,
 }
 
 /// Implementation of the `AppWorker` trait for the [`MailerWorker`].
-impl AppWorker<Email> for MailerWorker {
-    fn build(ctx: &AppContext) -> Self {
+impl<AC: AppContextTrait> AppWorker<AC, Email> for MailerWorker<AC> {
+    fn build(ctx: &AC) -> Self {
         Self { ctx: ctx.clone() }
     }
 }
 
 /// Implementation of the [`Worker`] trait for the [`MailerWorker`].
 #[async_trait]
-impl Worker<Email> for MailerWorker {
+impl<AC: AppContextTrait> Worker<Email> for MailerWorker<AC> {
     /// Returns options for the mailer worker, specifying the queue to process.
     fn opts() -> sidekiq::WorkerOpts<Email, Self> {
         sidekiq::WorkerOpts::new().queue("mailer")
@@ -130,7 +132,7 @@ impl Worker<Email> for MailerWorker {
     /// Performs the email sending operation using the provided [`AppContext`]
     /// and email details.
     async fn perform(&self, email: Email) -> sidekiq::Result<()> {
-        if let Some(mailer) = &self.ctx.mailer {
+        if let Some(mailer) = self.ctx.mailer() {
             Ok(mailer.mail(&email).await.map_err(Box::from)?)
         } else {
             Err(sidekiq::Error::Message(

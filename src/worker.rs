@@ -3,7 +3,7 @@ pub use bb8::Pool;
 pub use sidekiq::{Processor, RedisConnectionManager, Result, Worker};
 use tracing::error;
 
-use super::{app::AppContext, config::WorkerMode};
+use super::{app::AppContextTrait, config::WorkerMode};
 pub const DEFAULT_QUEUES: &[&str] = &["default", "mailer"];
 
 pub fn get_queues(config_queues: &Option<Vec<String>>) -> Vec<String> {
@@ -26,16 +26,17 @@ pub fn get_queues(config_queues: &Option<Vec<String>>) -> Vec<String> {
 
 #[async_trait]
 #[allow(clippy::module_name_repetitions)]
-pub trait AppWorker<T>: Worker<T>
+pub trait AppWorker<AC, T>: Worker<T>
 where
     Self: Sized,
     T: Send + Sync + serde::Serialize + 'static,
+    AC: AppContextTrait,
 {
-    fn build(ctx: &AppContext) -> Self;
-    async fn perform_later(ctx: &AppContext, args: T) -> Result<()> {
-        match &ctx.config.workers.mode {
+    fn build(ctx: &AC) -> Self;
+    async fn perform_later(ctx: &AC, args: T) -> Result<()> {
+        match &ctx.config().workers.mode {
             WorkerMode::BackgroundQueue => {
-                if let Some(queue) = &ctx.queue {
+                if let Some(queue) = ctx.queue() {
                     Self::perform_async(queue, args).await.unwrap();
                 } else {
                     error!(

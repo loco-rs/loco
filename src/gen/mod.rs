@@ -14,7 +14,11 @@ mod model;
 mod scaffold;
 use std::str::FromStr;
 
-use crate::{app::Hooks, config::Config, errors, Result};
+use crate::{
+    app::{AppContextTrait, Hooks},
+    config::Config,
+    errors, Result,
+};
 
 const CONTROLLER_T: &str = include_str!("templates/controller.t");
 const CONTROLLER_TEST_T: &str = include_str!("templates/request_test.t");
@@ -178,7 +182,10 @@ pub enum Component {
     Deployment {},
 }
 #[allow(clippy::too_many_lines)]
-pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
+pub fn generate<AC: AppContextTrait, H: Hooks<AC>>(
+    component: Component,
+    config: &Config,
+) -> Result<()> {
     let rrgen = RRgen::default();
     match component {
         #[cfg(feature = "with-db")]
@@ -190,14 +197,14 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
         } => {
             println!(
                 "{}",
-                model::generate::<H>(&rrgen, &name, link, migration_only, &fields)?
+                model::generate::<AC, H>(&rrgen, &name, link, migration_only, &fields)?
             );
         }
         #[cfg(feature = "with-db")]
         Component::Scaffold { name, fields, kind } => {
             println!(
                 "{}",
-                scaffold::generate::<H>(&rrgen, &name, &fields, &kind)?
+                scaffold::generate::<AC, H>(&rrgen, &name, &fields, &kind)?
             );
         }
         #[cfg(feature = "with-db")]
@@ -212,7 +219,7 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
         } => {
             println!(
                 "{}",
-                controller::generate::<H>(&rrgen, &name, &actions, &kind)?
+                controller::generate::<AC, H>(&rrgen, &name, &actions, &kind)?
             );
         }
         Component::Task { name } => {
