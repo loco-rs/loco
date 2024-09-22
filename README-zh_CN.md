@@ -11,7 +11,7 @@
 
  </div>
 
-[English](./README.md) · 中文
+[English](./README.md) · 中文 · [Français](./README.fr.md)
 
 Loco 是一个用 Rust 编写的 Web 框架，类似于 Rails。Loco 提供快速构建 Web 应用的功能，并且允许创建自定义任务，可以通过 CLI 运行。
 
