@@ -94,6 +94,32 @@ async fn candle_llm(Extension(m): Extension<Arc<RwLock<Llama>>>) -> impl IntoRes
 }
 ```
 
+## Global app-wide state
+
+Sometimes you might want state that can be shared between controllers, workers, and other areas of your app.
+
+You can review the example [shared-global-state](https://github.com/loco-rs/shared-global-state) app to see how to integrate `libvips`, which is a C based image manipulation library. `libvips` requires an odd thing from the developer: to keep a single instance of it loaded per app process. We do this by keeping a [single `lazy_static` field](https://github.com/loco-rs/shared-global-state/blob/main/src/app.rs#L27-L34), and referring to it from different places in the app.
+
+Read the following to see how it's done in each individual part of the app.
+
+### Shared state in controllers
+
+You can use the solution provided in this document. A live example [is here](https://github.com/loco-rs/loco/blob/master/examples/llm-candle-inference/src/app.rs#L41).
+
+### Shared state in workers
+
+Workers are intentionally verbatim initialized in [app hooks](https://github.com/loco-rs/loco/blob/master/starters/saas/src/app.rs#L59).
+
+This means you can shape them as a "regular" Rust struct that takes a state as a field. Then refer to that field in perform.
+
+[Here's how the worker is initialized](https://github.com/loco-rs/shared-global-state/blob/main/src/workers/downloader.rs#L19) with the global `vips` instance in the `shared-global-state` example.
+
+Note that by-design _sharing state between controllers and workers have no meaning_, because even though you may choose to run workers in the same process as controllers initially (and share state) -- you'd want to quickly switch to proper workers backed by queue and running in a standalone workers process as you scale horizontally, and so workers should by-design have no shared state with controllers, for your own good.
+
+### Shared state in tasks
+
+Tasks don't really have a value for shared state, as they have a similar life as any exec'd binary. The process fires up, boots, creates all resources needed (connects to db, etc.), performs the task logic, and then the 
+
 ## Routes in Controllers
 
 Controllers define Loco routes capabilities. In the example below, a controller creates one GET endpoint and one POST endpoint:
