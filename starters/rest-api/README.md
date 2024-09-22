@@ -1,24 +1,16 @@
 # Welcome to Loco :train:
 
-Loco is a web and API framework running on Rust.
+[Loco](https://loco.rs) is a web and API framework running on Rust.
 
 This is the **Rest API starter** which includes a `User` model and authentication based on JWT.
 
 ## Quick Start
 
-You need:
-
-- A local postgres instance
-- A local Redis instance
-
-Check out your development [configuration](config/development.yaml).
-
-> To configure a database , please run a local postgres database with <code>loco:loco</code> and a db named <code>[app name]_development.</code>:
-> <code>docker run -d -p 5432:5432 -e POSTGRES_USER=loco -e POSTGRES_DB=[app name]_development -e POSTGRES_PASSWORD="loco" postgres:15.3-alpine</code>
-
-Now start your app:
-
+```sh
+cargo loco start
 ```
+
+```sh
 $ cargo loco start
 Finished dev [unoptimized + debuginfo] target(s) in 21.63s
     Running `target/debug/myapp start`
@@ -43,8 +35,15 @@ controller/app_routes.rs:203: [Middleware] Adding log trace id
  ██████  █████   ███  ████   ███ █████   ███ ████▀
    ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+                https://loco.rs
 
-started on port 5150
+environment: development
+   database: automigrate
+     logger: debug
+compilation: debug
+      modes: server
+
+listening on localhost:5150
 ```
 
 ## Getting help
