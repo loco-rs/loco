@@ -125,13 +125,15 @@ pub async fn run_task<AC: AppContextTrait, H: Hooks<AC>>(
     Ok(())
 }
 
-/// Runs the scheduler with the given configuration and context. in case if list args is true
-/// prints scheduler job configuration
+/// Runs the scheduler with the given configuration and context. in case if list
+/// args is true prints scheduler job configuration
 ///
-/// This function initializes the scheduler, registers tasks through the provided [`Hooks`],
-/// and executes the scheduler based on the specified configuration or context. The scheduler
-/// continuously runs, managing and executing scheduled tasks until a signal is received to shut down.
-/// Upon receiving this signal, the function gracefully shuts down all running tasks and exits safely.
+/// This function initializes the scheduler, registers tasks through the
+/// provided [`Hooks`], and executes the scheduler based on the specified
+/// configuration or context. The scheduler continuously runs, managing and
+/// executing scheduled tasks until a signal is received to shut down.
+/// Upon receiving this signal, the function gracefully shuts down all running
+/// tasks and exits safely.
 ///
 /// # Errors
 ///

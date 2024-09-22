@@ -30,7 +30,7 @@ use crate::{
 /// Object-safe trait for representing application context needed
 /// by the web server to operate.
 ///
-/// See [AppContextTrait] for more complete documentation on
+/// See [`AppContextTrait`] for more complete documentation on
 /// application context.
 pub trait Context: Send + Sync + 'static {
     fn environment(&self) -> &Environment;
@@ -46,9 +46,9 @@ pub trait Context: Send + Sync + 'static {
 /// This trait defines the configuration required by the
 /// web server to operate.
 ///
-/// This trait along with [Context] should be implemented for any
+/// This trait along with [`Context`] should be implemented for any
 /// struct used to represent the application context. A default implementation
-/// is provided by the [AppContext] struct that can be used in your server.
+/// is provided by the [`AppContext`] struct that can be used in your server.
 ///
 /// ```rust,ignore
 /// use loco_rs::{app::{AppContext, AppContextTrait, Context}};

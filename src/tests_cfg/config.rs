@@ -1,8 +1,9 @@
+use std::collections::HashMap;
+
 use crate::{
     config::{self, Config},
     logger, scheduler,
 };
-use std::collections::HashMap;
 
 #[must_use]
 pub fn test_config() -> Config {

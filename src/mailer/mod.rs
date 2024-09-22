@@ -11,10 +11,9 @@ use include_dir::Dir;
 use serde::{Deserialize, Serialize};
 use sidekiq::Worker;
 
-use crate::app::AppContextTrait;
-
 use self::template::Template;
 use super::{app::AppContext, worker::AppWorker, Result};
+use crate::app::AppContextTrait;
 
 pub const DEFAULT_FROM_SENDER: &str = "System <system@example.com>";
 

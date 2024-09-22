@@ -47,7 +47,6 @@ impl<AC: AppContextTrait> Routes<AC> {
     ///     format::json(Health { ok: true })
     /// }
     /// Routes::<AppContext>::at("status").add("/_ping", get(ping));
-    ///
     /// ````
     #[must_use]
     pub fn at(prefix: &str) -> Self {

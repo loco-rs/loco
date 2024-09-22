@@ -516,12 +516,12 @@ fn handle_panic(err: Box<dyn std::any::Any + Send + 'static>) -> axum::response:
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-    use crate::prelude::*;
-    use crate::tests_cfg;
     use insta::assert_debug_snapshot;
     use rstest::rstest;
     use tower::ServiceExt;
+
+    use super::*;
+    use crate::{prelude::*, tests_cfg};
 
     async fn action() -> Result<Response> {
         format::json("loco")

@@ -1,8 +1,6 @@
 //! # Scheduler Module
 //! TBD
 
-use regex::Regex;
-use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fmt, io,
@@ -10,13 +8,15 @@ use std::{
     time::Instant,
 };
 
+use regex::Regex;
+use serde::{Deserialize, Serialize};
+use tokio_cron_scheduler::{JobScheduler, JobSchedulerError};
+
 use crate::{
     app::{AppContextTrait, Hooks},
     environment::Environment,
     task::Tasks,
 };
-
-use tokio_cron_scheduler::{JobScheduler, JobSchedulerError};
 
 lazy_static::lazy_static! {
     static ref RE_IS_CRON_SYNTAX: Regex = Regex::new(r"^[\*\d]").unwrap();
@@ -75,7 +75,7 @@ pub struct Job {
     ///
     /// The format is as follows:
     /// sec   min   hour   day of month   month   day of week   year
-    /// *     *     *      *              *       *             *
+    /// * *     *      *              *       *             *
     pub cron: String,
     /// Tags for tagging the job.
     pub tags: Option<Vec<String>>,
@@ -225,8 +225,8 @@ impl Scheduler {
 
     /// Creates a new scheduler instance from the provided configuration data.
     ///
-    /// When creating a new scheduler instance all register task should be loaded for validate the
-    /// given configuration.
+    /// When creating a new scheduler instance all register task should be
+    /// loaded for validate the given configuration.
     ///
     /// # Errors
     ///
@@ -361,13 +361,13 @@ impl Scheduler {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-    use crate::{app::AppContext, tests_cfg};
     use insta::assert_debug_snapshot;
-
     use rstest::rstest;
     use tests_cfg::db::AppHook;
     use tokio::time::{self, Duration};
+
+    use super::*;
+    use crate::{app::AppContext, tests_cfg};
 
     fn get_scheduler_from_config() -> Result<Scheduler, Error> {
         let scheduler_config_path = PathBuf::from("tests")

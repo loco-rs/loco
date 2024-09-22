@@ -5,10 +5,9 @@ use std::sync::OnceLock;
 use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
 use tracing_appender::non_blocking::WorkerGuard;
-use tracing_subscriber::fmt::MakeWriter;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{fmt, EnvFilter, Layer, Registry};
+use tracing_subscriber::{
+    fmt, fmt::MakeWriter, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer, Registry,
+};
 
 use crate::{
     app::{AppContextTrait, Hooks},

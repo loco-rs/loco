@@ -1,3 +1,9 @@
+use std::path::Path;
+
+use async_trait::async_trait;
+use sea_orm::DatabaseConnection;
+pub use sea_orm_migration::prelude::*;
+
 #[cfg(feature = "channels")]
 use crate::controller::channels::AppChannels;
 use crate::{
@@ -9,12 +15,6 @@ use crate::{
     worker::Processor,
     Result,
 };
-
-use std::path::Path;
-
-use async_trait::async_trait;
-use sea_orm::DatabaseConnection;
-pub use sea_orm_migration::prelude::*;
 
 /// Creating a dummy db connection for docs
 ///
