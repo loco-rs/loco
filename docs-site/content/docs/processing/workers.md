@@ -109,6 +109,13 @@ To use a worker, we mainly think about adding a job to the queue, so you `use` t
 
 Unlike Rails and Ruby, with Rust you can enjoy _strongly typed_ job arguments which gets serialized and pushed into the queue.
 
+### Using shared state from a worker
+
+See [How to have global state](@/docs/the-app/controller.md#global-app-wide-state), but generally you use a single shared state by using something like `lazy_static` and then simply refer to it from the worker.
+
+If this state can be serializable, _strongly prefer_ to pass it through the `WorkerArgs`.
+
+
 ## Creating a new worker
 
 Adding a worker meaning coding the background job logic to take the _arguments_ and perform a job. We also need to let `loco` know about it and register it into the global job processor.
