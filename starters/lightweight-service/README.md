@@ -1,14 +1,16 @@
 # Welcome to Loco :train:
 
-Loco is a web and API framework running on Rust.
+[Loco](https://loco.rs) is a web and API framework running on Rust.
 
 This is the **lightweight-service starter** which comes with no database or state dependencies.
 
 ## Quick Start
 
-Start your app:
-
+```sh
+cargo loco start
 ```
+
+```sh
 $ cargo loco start
 Finished dev [unoptimized + debuginfo] target(s) in 21.63s
     Running `target/debug/myapp start`
@@ -33,8 +35,14 @@ controller/app_routes.rs:203: [Middleware] Adding log trace id
  ██████  █████   ███  ████   ███ █████   ███ ████▀
    ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀
        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+                https://loco.rs
 
-started on port 5150
+environment: development
+     logger: debug
+compilation: debug
+      modes: server
+
+listening on localhost:5150
 ```
 
 ## Getting help

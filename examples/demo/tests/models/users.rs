@@ -1,4 +1,4 @@
-use blo::{
+use demo_app::{
     app::App,
     models::users::{self, Model, RegisterParams},
 };

@@ -1007,6 +1007,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cron"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6f8c3e73077b4b4a6ab1ea5047c37c57aee77657bc8ecd6f29b0af082d0b0c07"
+dependencies = [
+ "chrono",
+ "nom",
+ "once_cell",
+]
+
+[[package]]
 name = "cron_clock"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1207,6 +1218,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "duct_sh"
+version = "0.13.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a6633cadba557545fbbe0299a2f9adc4bb2fc5fb238773f5e841e0c23d62146"
+dependencies = [
+ "duct",
+]
+
+[[package]]
 name = "educe"
 version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1248,6 +1268,16 @@ name = "encode_unicode"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a357d28ed41a50f9c765dbfe56cbc04a64e53e5fc58ba79fbc34c10ef3df831f"
+
+[[package]]
+name = "english-to-cron"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c16423ac933fee80f05a52b435a912d5b08edbbbfe936e0042ebb3accdf303da"
+dependencies = [
+ "lazy_static",
+ "regex",
+]
 
 [[package]]
 name = "enum-ordinalize"
@@ -2259,7 +2289,7 @@ dependencies = [
 
 [[package]]
 name = "loco-rs"
-version = "0.8.1"
+version = "0.9.0"
 dependencies = [
  "argon2",
  "async-trait",
@@ -2276,6 +2306,8 @@ dependencies = [
  "clap",
  "colored",
  "duct",
+ "duct_sh",
+ "english-to-cron",
  "fs-err",
  "futures-util",
  "hyper",
@@ -2301,6 +2333,7 @@ dependencies = [
  "tera",
  "thiserror",
  "tokio",
+ "tokio-cron-scheduler",
  "tower",
  "tower-http",
  "tracing",
@@ -2511,6 +2544,17 @@ name = "num-conv"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51d515d32fb182ee37cda2ccdcb92950d6a3c2893aa280e540671c2cd0f3b1d9"
+
+[[package]]
+name = "num-derive"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed3955f1a9c7c0c15e092f9c887db08b1fc683305fdf6eb6684f22555355e202"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.72",
+]
 
 [[package]]
 name = "num-integer"
@@ -3126,9 +3170,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.10.5"
+version = "1.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b91213439dad192326a0d7c6ee3955910425f441d7038e0d6933b0aec5c4517f"
+checksum = "4219d74c6b67a3654a9fbebc4b419e22126d13d2f3c4a07ee0cb61ff79a79619"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -4584,6 +4628,21 @@ dependencies = [
  "socket2 0.5.7",
  "tokio-macros",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "tokio-cron-scheduler"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7b9480125554f0ace1c3c3797a24b5cc56c6a7cd82c739db35fb54c4dc046f3"
+dependencies = [
+ "chrono",
+ "cron",
+ "num-derive",
+ "num-traits",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

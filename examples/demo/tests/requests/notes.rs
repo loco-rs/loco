@@ -1,4 +1,4 @@
-use blo::{app::App, models::_entities::notes::Entity};
+use demo_app::{app::App, models::_entities::notes::Entity};
 use insta::{assert_debug_snapshot, with_settings};
 use loco_rs::testing;
 use rstest::rstest;

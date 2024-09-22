@@ -1,4 +1,4 @@
-use blo::app::App;
+use demo_app::app::App;
 use loco_rs::{
     boot::{create_app, start, ServeParams, StartMode},
     environment::{resolve_from_env, Environment},

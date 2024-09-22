@@ -118,7 +118,11 @@ enum Commands {
     },
     #[cfg(feature = "with-db")]
     /// Validate and diagnose configurations.
-    Doctor {},
+    Doctor {
+        /// print out the current configurations.
+        #[arg(short, long, action)]
+        config: bool,
+    },
     /// Display the app version
     Version {},
 }
@@ -184,9 +188,21 @@ enum ComponentArg {
         /// Actions
         actions: Vec<String>,
 
-        /// The kind of scaffold to generate
-        #[clap(short, long, value_enum, default_value_t = gen::ScaffoldKind::Api)]
-        kind: gen::ScaffoldKind,
+        /// The kind of controller actions to generate
+        #[clap(short, long, value_enum, group = "scaffold_kind_group")]
+        kind: Option<gen::ScaffoldKind>,
+
+        /// Use HTMX controller actions
+        #[clap(long, group = "scaffold_kind_group")]
+        htmx: bool,
+
+        /// Use HTML controller actions
+        #[clap(long, group = "scaffold_kind_group")]
+        html: bool,
+
+        /// Use API controller actions
+        #[clap(long, group = "scaffold_kind_group")]
+        api: bool,
     },
     /// Generate a Task based on the given name
     Task {
@@ -256,11 +272,30 @@ impl TryFrom<ComponentArg> for Component {
                 name,
                 actions,
                 kind,
-            } => Ok(Self::Controller {
-                name,
-                actions,
-                kind,
-            }),
+                htmx,
+                html,
+                api,
+            } => {
+                let kind = if let Some(kind) = kind {
+                    kind
+                } else if htmx {
+                    ScaffoldKind::Htmx
+                } else if html {
+                    ScaffoldKind::Html
+                } else if api {
+                    ScaffoldKind::Api
+                } else {
+                    return Err(crate::Error::string(
+                        "Error: One of `kind`, `htmx`, `html`, or `api` must be specified.",
+                    ));
+                };
+
+                Ok(Self::Controller {
+                    name,
+                    actions,
+                    kind,
+                })
+            }
             ComponentArg::Task { name } => Ok(Self::Task { name }),
             ComponentArg::Scheduler {} => Ok(Self::Scheduler {}),
             ComponentArg::Worker { name } => Ok(Self::Worker { name }),
@@ -430,16 +465,21 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         Commands::Generate { component } => {
             gen::generate::<H>(component.try_into()?, &config)?;
         }
-        Commands::Doctor {} => {
-            let mut should_exit = false;
-            for (_, check) in doctor::run_all(&config).await {
-                if !should_exit && !check.valid() {
-                    should_exit = true;
+        Commands::Doctor { config: config_arg } => {
+            if config_arg {
+                println!("{}", &config);
+                println!("Environment: {}", &environment);
+            } else {
+                let mut should_exit = false;
+                for (_, check) in doctor::run_all(&config).await {
+                    if !should_exit && !check.valid() {
+                        should_exit = true;
+                    }
+                    println!("{check}");
                 }
-                println!("{check}");
-            }
-            if should_exit {
-                exit(1);
+                if should_exit {
+                    exit(1);
+                }
             }
         }
         Commands::Version {} => {
@@ -507,7 +547,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             run_scheduler::<H>(&app_context, config.as_ref(), name, tag, list).await?;
         }
         Commands::Generate { component } => {
-            gen::generate::<H>(component.into(), &config)?;
+            gen::generate::<H>(component.try_into()?, &config)?;
         }
         Commands::Version {} => {
             println!("{}", H::app_version(),);

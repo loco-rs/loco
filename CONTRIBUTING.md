@@ -78,6 +78,11 @@ Updating the Documentation
 + Create the snippet in the [yaml file](./snipdoc.yml) or inline the code.
 + Run `snipdoc run`.
 
+To run the documentation site locally, we use [zola](https://www.getzola.org/) so you'll need to [install](https://www.getzola.org/documentation/getting-started/installation/) it. The documentation site works with zola version `0.19.2` and since zola still has breaking changes, we make no guarantees about other versions.
+
+Running the local preview
++ `cd docs-site`
++ `npm run serve` or `zola serve`
 
 ## Open A Pull Request
 

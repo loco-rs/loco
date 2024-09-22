@@ -1,0 +1,14 @@
+---
+source: src/controller/format.rs
+expression: "view(&v, \"template/none.html\", serde_json::json!({}))"
+---
+Err(
+    Tera(
+        Error {
+            kind: TemplateNotFound(
+                "template/none.html",
+            ),
+            source: None,
+        },
+    ),
+)

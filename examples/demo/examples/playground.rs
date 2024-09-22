@@ -1,4 +1,4 @@
-use blo::app::App;
+use demo_app::app::App;
 #[allow(unused_imports)]
 use loco_rs::{cli::playground, prelude::*};
 
