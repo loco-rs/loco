@@ -27,6 +27,11 @@ use crate::{
     Result,
 };
 
+/// Object-safe trait for representing application context needed
+/// by the web server to operate.
+///
+/// See [AppContextTrait] for more complete documentation on
+/// application context.
 pub trait Context: Send + Sync + 'static {
     fn environment(&self) -> &Environment;
     #[cfg(feature = "with-db")]
@@ -38,7 +43,114 @@ pub trait Context: Send + Sync + 'static {
     fn cache(&self) -> Arc<cache::Cache>;
 }
 
-pub trait AppContextTrait: Clone + Default + Context {
+/// This trait defines the configuration required by the
+/// web server to operate.
+///
+/// This trait along with [Context] should be implemented for any
+/// struct used to represent the application context. A default implementation
+/// is provided by the [AppContext] struct that can be used in your server.
+///
+/// ```rust,ignore
+/// use loco_rs::{app::{AppContext, AppContextTrait, Context}};
+///
+/// #[derive(Default)]
+/// struct LocalContext {
+///     app_context: AppContext,
+/// }
+///
+/// impl Context for LocalContext {
+///     fn environment(&self) -> &Environment {
+///         &self.app_context.environment
+///     }
+///
+///     #[cfg(feature = "with-db")]
+///     fn db(&self) -> &DatabaseConnection {
+///         &self.app_context.db
+///     }
+///
+///     fn queue(&self) -> &Option<Pool<RedisConnectionManager>> {
+///         &self.app_context.queue
+///     }
+///
+///     fn config(&self) -> &Config {
+///         &self.app_context.config
+///     }
+///
+///     fn mailer(&self) -> &Option<EmailSender> {
+///         &self.app_context.mailer
+///     }
+///
+///     fn storage(&self) -> Arc<Storage> {
+///         self.app_context.storage.clone()
+///     }
+///
+///     fn cache(&self) -> Arc<cache::Cache> {
+///         self.app_context.cache.clone()
+///     }
+/// }
+///
+/// impl AppContextTrait for LocalContext {
+///
+///     #[cfg(feature = "with-db")]
+///     fn create(
+///         environment: Environment,
+///         config: Config,
+///         db: DatabaseConnection,
+///         queue: Option<Pool<RedisConnectionManager>>,
+///     ) -> Result<Self> {
+///         let mailer = if let Some(cfg) = config.mailer.as_ref() {
+///             create_mailer(cfg)?
+///         } else {
+///             None
+///         };
+///
+///         Ok(LocalContext {
+///             app_context: AppContext {
+///                 environment,
+///                 db,
+///                 queue,
+///                 storage: Storage::single(storage::drivers::null::new()).into(),
+///                 cache: Cache::new(cache::drivers::null::new()).into(),
+///                 config,
+///                 mailer,
+///             }
+///         })
+///     }
+///
+///
+///
+///     #[cfg(not(feature = "with-db"))]
+///     fn create(
+///         environment: Environment,
+///         config: Config,
+///         queue: Option<Pool<RedisConnectionManager>>,
+///     ) -> Result<Self> {
+///         let mailer = if let Some(cfg) = config.mailer.as_ref() {
+///             create_mailer(cfg)?
+///         } else {
+///             None
+///         };
+///
+///         Ok(LocalContext {
+///             app_context: AppContext {
+///                 environment,
+///                 queue,
+///                 storage: Storage::single(storage::drivers::null::new()).into(),
+///                 cache: Cache::new(cache::drivers::null::new()).into(),
+///                 config,
+///                 mailer,
+///             }
+///         })
+///     }
+/// }
+///
+/// impl Hooks<LocalContext> for App {
+///     .
+///     .
+///     .
+/// }
+/// ```
+pub trait AppContextTrait: Context + Clone + Default {
     #[cfg(feature = "with-db")]
     fn create(
         environment: Environment,
