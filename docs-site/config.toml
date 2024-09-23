@@ -75,14 +75,14 @@ impl Model {
     db: &DatabaseConnection, 
     email: &str)
   -> ModelResult<Self> {
-      users::Entity::find().filter(
-          query::condition().eq(users::Column::Email, email).build()
+      Users::find().filter(
+          condition().eq(users::Column::Email, email).build()
         )
         .one(db).await?
         .ok_or_else(|| ModelError::EntityNotFound)
   }
   
-  pub async create_report(&self, ctx: &AppContext) -> Result<()>{
+  pub async fn create_report(&self, ctx: &AppContext) -> Result<()>{
       ReportWorker::perform_later(
         &ctx, 
         ReportArgs{ user_id: self.id }
@@ -102,10 +102,10 @@ pub async fn get_one(
     Path(id): Path<i32>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
-    let res = notes::Entity::find_by_id(id).one(&ctx.db).await?;
+    let res = Notes::find_by_id(id).one(&ctx.db).await?;
     match res {
       Ok(item) => match respond_to {
-        RespondTo::Html => format::html(item_view(&item)),
+        RespondTo::Html => html_view(&item),
         _ => format::json(item),
       },
       Err(err) => Err(err),
@@ -144,10 +144,9 @@ format::render().etag("loco-etag")?.empty()
 name = "Background Jobs"
 description = 'Perform compute or I/O intensive jobs in the background with a Redis backed queue, or with threads. Implementing a worker is as simple as implementing a <code>perform</code> function for the <code>Worker</code> trait.'
 example = '''```rust
-impl worker::Worker<DownloadArgs> for DownloadWorker {
+impl worker::Worker<DownloadArgs> for UsersReportWorker {
     async fn perform(&self, args: DownloadArgs) -> worker::Result<()> {
-        println!("Creating users report. Requested by {}", args.user_guid);
-        let all = users::Entity::find()
+        let all = Users::find()
           .all(&self.ctx.db)
           .await
           .map_err(Box::from)?;
@@ -157,6 +156,7 @@ impl worker::Worker<DownloadArgs> for DownloadWorker {
         Ok(())
     }
 }
+
 ```
 '''
 
@@ -184,16 +184,16 @@ name = "Scheduler"
 description = 'Simplifies the traditional, often cumbersome crontab system, making it easier and more elegant to schedule tasks or shell scripts.'
 example = '''```yaml
 jobs:
-  add text:
-    run: "echo loco >> ./scheduler.txt"
+  db_vaccum:
+    run: "db_vaccum.sh"
     shell: true
-    schedule: "*/1 * * * * *"
-    tags: ["base", "infre"]
+    schedule: "0 0 * * *"
+    tags: ["maintenance"]
 
-  list if users:
-    run: "user_report"
-    schedule: "Run every 3 hours"
-    tags: ["base", "users"]
+  send_birthday:
+    run: "user_birthday_task"
+    schedule: "Run every 2 hours"
+    tags: ["marketing"]
        
 ```
 '''
