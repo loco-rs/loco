@@ -1,6 +1,5 @@
 use sea_orm::{
     sea_query::{IntoCondition, Order},
-    sqlx::query,
     ColumnTrait, Condition, Value,
 };
 use serde::{Deserialize, Serialize};
@@ -46,99 +45,99 @@ pub const fn with(condition: Condition) -> ConditionBuilder {
     ConditionBuilder { condition }
 }
 
-/// See [ConditionBuilder::eq]
+/// See [`ConditionBuilder::eq`]
 #[must_use]
 pub fn eq<T: ColumnTrait, V: Into<Value>>(col: T, value: V) -> ConditionBuilder {
     condition().eq(col, value)
 }
 
-/// See [ConditionBuilder::ne]
+/// See [`ConditionBuilder::ne`]
 #[must_use]
 pub fn not_equal<T: ColumnTrait, V: Into<Value>>(col: T, value: V) -> ConditionBuilder {
     condition().ne(col, value)
 }
 
-/// See [ConditionBuilder::gt]
+/// See [`ConditionBuilder::gt`]
 #[must_use]
 pub fn gt<T: ColumnTrait, V: Into<Value>>(col: T, value: V) -> ConditionBuilder {
     condition().gt(col, value)
 }
 
-/// See [ConditionBuilder::gte]
+/// See [`ConditionBuilder::gte`]
 #[must_use]
 pub fn gt_equal<T: ColumnTrait, V: Into<Value>>(col: T, value: V) -> ConditionBuilder {
     condition().gte(col, value)
 }
 
-/// See [ConditionBuilder::lt]
+/// See [`ConditionBuilder::lt`]
 #[must_use]
 pub fn lt<T: ColumnTrait, V: Into<Value>>(col: T, value: V) -> ConditionBuilder {
     condition().lt(col, value)
 }
 
-/// See [ConditionBuilder::lte]
+/// See [`ConditionBuilder::lte`]
 #[must_use]
 pub fn lt_equal<T: ColumnTrait, V: Into<Value>>(col: T, value: V) -> ConditionBuilder {
     condition().lte(col, value)
 }
 
-/// See [ConditionBuilder::between]
+/// See [`ConditionBuilder::between`]
 #[must_use]
 pub fn between<T: ColumnTrait, V: Into<Value>>(col: T, a: V, b: V) -> ConditionBuilder {
     condition().between(col, a, b)
 }
 
-/// See [ConditionBuilder::not_between]
+/// See [`ConditionBuilder::not_between`]
 #[must_use]
 pub fn not_between<T: ColumnTrait, V: Into<Value>>(col: T, a: V, b: V) -> ConditionBuilder {
     condition().not_between(col, a, b)
 }
 
-/// See [ConditionBuilder::like]
+/// See [`ConditionBuilder::like`]
 #[must_use]
 pub fn like<T: ColumnTrait, V: Into<String>>(col: T, a: V) -> ConditionBuilder {
     condition().like(col, a)
 }
 
-/// See [ConditionBuilder::not_like]
+/// See [`ConditionBuilder::not_like`]
 #[must_use]
 pub fn not_like<T: ColumnTrait, V: Into<String>>(col: T, a: V) -> ConditionBuilder {
     condition().not_like(col, a)
 }
 
-/// See [ConditionBuilder::starts_with]
+/// See [`ConditionBuilder::starts_with`]
 #[must_use]
 pub fn starts_with<T: ColumnTrait, V: Into<String>>(col: T, a: V) -> ConditionBuilder {
     condition().starts_with(col, a)
 }
 
-/// See [ConditionBuilder::ends_with]
+/// See [`ConditionBuilder::ends_with`]
 #[must_use]
 pub fn ends_with<T: ColumnTrait, V: Into<String>>(col: T, a: V) -> ConditionBuilder {
     condition().ends_with(col, a)
 }
 
-/// See [ConditionBuilder::contains]
+/// See [`ConditionBuilder::contains`]
 #[must_use]
 pub fn contains<T: ColumnTrait, V: Into<String>>(col: T, a: V) -> ConditionBuilder {
     condition().contains(col, a)
 }
 
-/// See [ConditionBuilder::is_null]
+/// See [`ConditionBuilder::is_null`]
 #[must_use]
 #[allow(clippy::wrong_self_convention)]
 pub fn is_null<T: ColumnTrait>(col: T) -> ConditionBuilder {
     condition().is_null(col)
 }
 
-/// See [ConditionBuilder::is_not_null]
+/// See [`ConditionBuilder::is_not_null`]
 #[must_use]
 #[allow(clippy::wrong_self_convention)]
 pub fn is_not_null<T: ColumnTrait>(col: T) -> ConditionBuilder {
     condition().is_not_null(col)
 }
 
-/// See [ConditionBuilder::is_in]
+/// See [`ConditionBuilder::is_in`]
 #[must_use]
 #[allow(clippy::wrong_self_convention)]
 pub fn is_in<T: ColumnTrait, V: Into<Value>, I: IntoIterator<Item = V>>(
@@ -148,7 +147,7 @@ pub fn is_in<T: ColumnTrait, V: Into<Value>, I: IntoIterator<Item = V>>(
     condition().is_in(col, values)
 }
 
-/// See [ConditionBuilder::is_not_in]
+/// See [`ConditionBuilder::is_not_in`]
 #[must_use]
 #[allow(clippy::wrong_self_convention)]
 pub fn is_not_in<T: ColumnTrait, V: Into<Value>, I: IntoIterator<Item = V>>(
@@ -158,7 +157,7 @@ pub fn is_not_in<T: ColumnTrait, V: Into<Value>, I: IntoIterator<Item = V>>(
     condition().is_not_in(col, values)
 }
 
-/// See [ConditionBuilder::date_range]
+/// See [`ConditionBuilder::date_range`]
 #[must_use]
 pub fn date_range<T: ColumnTrait>(col: T) -> date_range::DateRangeBuilder<T> {
     date_range::DateRangeBuilder::new(condition(), col)
