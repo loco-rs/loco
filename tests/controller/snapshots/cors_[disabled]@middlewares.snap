@@ -1,0 +1,9 @@
+---
+source: tests/controller/middlewares.rs
+expression: "infra_cfg::response::get_headers_from_response(res)"
+---
+{
+    "x-powered-by": "loco.rs",
+    "content-length": "0",
+    "allow": "GET,HEAD,POST",
+}

@@ -596,6 +596,7 @@ mod tests {
             );
         }
     }
+
     #[rstest]
     #[case(axum::http::Method::GET, get(action))]
     #[case(axum::http::Method::POST, post(action))]
@@ -607,7 +608,7 @@ mod tests {
     #[case(axum::http::Method::PUT, put(action))]
     #[case(axum::http::Method::TRACE, trace(action))]
     #[tokio::test]
-    async fn can_xx(
+    async fn can_request_method(
         #[case] http_method: axum::http::Method,
         #[case] method: axum::routing::MethodRouter<AppContext>,
     ) {

@@ -1,0 +1,14 @@
+---
+source: tests/controller/middlewares.rs
+expression: "infra_cfg::response::get_headers_from_response(res)"
+---
+{
+    "access-control-allow-origin": "*",
+    "vary": "origin, access-control-request-method, access-control-request-headers",
+    "access-control-allow-methods": "*",
+    "access-control-allow-headers": "*",
+    "access-control-max-age": "20",
+    "x-powered-by": "loco.rs",
+    "content-length": "0",
+    "allow": "GET,HEAD,POST",
+}
