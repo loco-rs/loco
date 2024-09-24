@@ -58,14 +58,19 @@ where
             WorkerMode::BackgroundAsync => {
                 let dx = ctx.clone();
                 tokio::spawn(async move {
-                    // If wait time is larger than a minute (+ 4 seconds), wait in
-                    // intervals of 1 minute to avoid long running tasks in the
-                    // event loop, as well as computer sleep mode or clock changing.
-                    if duration > std::time::Duration::from_secs(64) {
-                        // Give 4 seconds buffer for waking up
+                    // If wait time is larger than a minute, wait in
+                    // intervals of 1 minute to avoid long running tasks
+                    if duration > std::time::Duration::from_secs(60) {
                         let num_sleeps = duration.as_secs() / 60;
+                        let remaining_time = duration.as_secs() % 60;
+
                         for _ in 0..num_sleeps {
                             tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+                        }
+
+                        if remaining_time > 0 {
+                            tokio::time::sleep(std::time::Duration::from_secs(remaining_time))
+                                .await;
                         }
                     } else {
                         tokio::time::sleep(duration).await;
