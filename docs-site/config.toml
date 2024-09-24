@@ -98,17 +98,14 @@ name = "Controllers"
 description = 'Handle Web requests parameters, body, validation, and render a response that is content-aware. We use Axum for the best performance, simplicity and extensibility.'
 example = '''```rust
 pub async fn get_one(
-    Format(respond_to): Format,
+    respond_to: RespondTo,
     Path(id): Path<i32>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
-    let res = Notes::find_by_id(id).one(&ctx.db).await?;
-    match res {
-      Ok(item) => match respond_to {
-        RespondTo::Html => html_view(&item),
-        _ => format::json(item),
-      },
-      Err(err) => Err(err),
+    let item = Notes::find_by_id(id).one(&ctx.db).await?;
+    match respond_to {
+      RespondTo::Html => html_view(&item),
+      _ => format::json(item),
     }
 }
 

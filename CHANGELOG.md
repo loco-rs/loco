@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+* `Format(respond_to): Format` extractor in controller can now be replaced with `respond_to: RespondTo` extractor for less typing.
+* When supplying data to views, you can now use `data!` instead of `serde_json::json!` for shorthand.
+
+
 ## v0.9.0
 
 * Add fallback behavior. [https://github.com/loco-rs/loco/pull/732](https://github.com/loco-rs/loco/pull/732)
