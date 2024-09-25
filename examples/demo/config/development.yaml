@@ -42,6 +42,9 @@ server:
     # set secure headers
     secure_headers:
       preset: github
+      overrides: 
+        # this allows you to use HTMX, and has unsafe-inline. Remove or consider in production 
+        "Content-Security-Policy": "default-src 'self' https:; font-src 'self' https: data:; img-src 'self' https: data:; object-src 'none'; script-src 'unsafe-inline' 'self' https:; style-src 'self' https: 'unsafe-inline'"
     # Generating a unique request ID and enhancing logging with additional information such as the start and completion of request processing, latency, status code, and other request details.
     logger:
       # Enable/Disable the middleware.
@@ -174,3 +177,31 @@ auth:
     expiration: 604800 # 7 days
 # </snip>
 
+# Scheduler Jobs Configuration
+# <snip id="configuration-scheduler">
+scheduler:
+  # Location of shipping the command stdout and stderr.
+  output: stdout
+  # A list of jobs to be scheduled.
+  jobs:
+    # The name of the job.
+    write_content:
+      # by default false meaning executing the the run value as a task. if true execute the run value as shell command
+      shell: true
+      # command to run
+      run: "echo loco >> ./scheduler.txt"
+      # The cron expression that defines the job's schedule. 
+      schedule: run every 1 second
+      output: silent
+      tags: ['base', 'infra']
+
+    run_task:
+      run: "foo"
+      schedule: "at 10:00 am"
+
+    list_if_users:
+      run: "user_report"
+      shell: true
+      schedule: "* 2 * * * *"
+      tags: ['base', 'users']
+# </snip>

@@ -42,6 +42,9 @@ pub enum Error {
     TaskNotFound(String),
 
     #[error(transparent)]
+    Scheduler(#[from] crate::scheduler::Error),
+
+    #[error(transparent)]
     Axum(#[from] axum::http::Error),
 
     #[error(transparent)]

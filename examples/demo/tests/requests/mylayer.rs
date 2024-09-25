@@ -1,4 +1,4 @@
-use blo::{app::App, views::user::UserResponse};
+use demo_app::{app::App, views::user::UserResponse};
 use loco_rs::testing;
 use serial_test::serial;
 

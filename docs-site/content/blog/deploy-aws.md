@@ -1,6 +1,6 @@
 +++
 title = "Deploying Rust App with Terraform on AWS Fargate"
-description = "Deploying Rust App with Terraform on AWS Fargate"
+description = "Learn how to deploy a Loco app with Terraform (IaC). Generate a deployment with Loco generators and set it up step-by-step."
 date = 2023-12-20T16:04:40+00:00
 updated = 2023-12-16T04:20:40+00:00
 draft = false

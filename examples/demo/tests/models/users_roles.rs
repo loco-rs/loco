@@ -1,4 +1,4 @@
-use blo::{
+use demo_app::{
     app::App,
     models::{roles, sea_orm_active_enums, users, users::RegisterParams, users_roles},
 };

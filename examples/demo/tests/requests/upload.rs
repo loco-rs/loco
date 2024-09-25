@@ -1,5 +1,5 @@
 use axum_test::multipart::{MultipartForm, Part};
-use blo::{app::App, views};
+use demo_app::{app::App, views};
 use loco_rs::testing;
 use serial_test::serial;
 

@@ -9,7 +9,7 @@ license = "Apache-2.0"
 
 [package]
 name = "loco-rs"
-version = "0.8.1"
+version = "0.9.0"
 description = "The one-person framework for Rust"
 homepage = "https://loco.rs/"
 documentation = "https://docs.rs/loco-rs"
@@ -71,6 +71,7 @@ lazy_static = "1.4.0"
 fs-err = "2.11.0"
 # mailer
 tera = "1.19.1"
+heck = "0.4.0"
 lettre = { version = "0.11.4", default-features = false, features = [
     "builder",
     "hostname",
@@ -83,8 +84,8 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 tracing-appender = "0.2.3"
 
-# cli/migrations
-duct = "0.13.6"
+duct = { version = "0.13.6" }
+duct_sh = { version = "0.13.7" }
 
 tower-http = { workspace = true }
 byte-unit = "4.0.19"
@@ -125,6 +126,10 @@ moka = { version = "0.12.7", features = ["sync"], optional = true }
 
 # sessions
 tower-sessions = "0.12"
+
+# Scheduler
+tokio-cron-scheduler = { version = "0.11.0", features = ["signal"] }
+english-to-cron = { version = "0.1.2" }
 
 [workspace.dependencies]
 async-trait = { version = "0.1.74" }

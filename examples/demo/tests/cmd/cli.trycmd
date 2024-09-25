@@ -1,19 +1,20 @@
 ```console
-$ blo-cli 
+$ demo_app-cli 
 ? 2
 The one-person framework for Rust
 
-Usage: blo-cli [OPTIONS] <COMMAND>
+Usage: demo_app-cli [OPTIONS] <COMMAND>
 
 Commands:
-  start     Start an app
-  db        Perform DB operations
-  routes    Describe all application endpoints
-  task      Run a custom task
-  generate  code generation creates a set of files and code templates based on a predefined set of rules
-  doctor    Validate and diagnose configurations
-  version   Display the app version
-  help      Print this message or the help of the given subcommand(s)
+  start      Start an app
+  db         Perform DB operations
+  routes     Describe all application endpoints
+  task       Run a custom task
+  scheduler  Run the scheduler
+  generate   code generation creates a set of files and code templates based on a predefined set of rules
+  doctor     Validate and diagnose configurations
+  version    Display the app version
+  help       Print this message or the help of the given subcommand(s)
 
 Options:
   -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
@@ -23,11 +24,11 @@ Options:
 ```
 
 ```console 
-$ blo-cli db
+$ demo_app-cli db
 ? 2
 Perform DB operations
 
-Usage: blo-cli db [OPTIONS] <COMMAND>
+Usage: demo_app-cli db [OPTIONS] <COMMAND>
 
 Commands:
   create    Create schema
@@ -47,11 +48,11 @@ Options:
 ```
 
 ```console
-$ blo-cli generate
+$ demo_app-cli generate
 ? 2
 code generation creates a set of files and code templates based on a predefined set of rules
 
-Usage: blo-cli generate [OPTIONS] <COMMAND>
+Usage: demo_app-cli generate [OPTIONS] <COMMAND>
 
 Commands:
   model       Generates a new model file for defining the data structure of your application, and test file logic
@@ -59,6 +60,7 @@ Commands:
   scaffold    Generates a CRUD scaffold, model and controller
   controller  Generate a new controller with the given controller name, and test file
   task        Generate a Task based on the given name
+  scheduler   Generate a scheduler jobs configuration template
   worker      Generate worker
   mailer      Generate mailer
   deployment  Generate a deployment infrastructure
@@ -72,7 +74,7 @@ Options:
 ```
 
 ```console 
-$ LOCO_ENV=test blo-cli task
+$ LOCO_ENV=test demo_app-cli task
 foo                           [run foo task]
 seed_data                     [Task for seeding data]
 user_report                   [output a user report]
@@ -80,7 +82,7 @@ user_report                   [output a user report]
 ```
 
 ```console
-$ blo-cli routes --environment test
+$ demo_app-cli routes --environment test
 [GET] /_health
 [GET] /_ping
 [POST] /auth/forgot
@@ -123,7 +125,7 @@ $ blo-cli routes --environment test
 ```
 
 ```console 
-$ blo-cli doctor
+$ demo_app-cli doctor
 ✅ SeaORM CLI is installed
 ✅ DB connection: success
 ✅ Redis connection: success
@@ -131,12 +133,12 @@ $ blo-cli doctor
 ```
 
 ```console 
-$ LOCO_ENV=test blo-cli db reset
+$ LOCO_ENV=test demo_app-cli db reset
 
 ```
 
 ```console 
-$ LOCO_ENV=teste2e blo-cli db migrate
+$ LOCO_ENV=teste2e demo_app-cli db migrate
 [..][0m [32m INFO[0m [1mapp[0m: [2mloco_rs::config[0m[2m:[0m loading environment from [3mselected_path[0m[2m=[0m"config/teste2e.yaml" [2m[3menvironment[0m[2m=[0mteste2e[0m
 [..][0m [33m WARN[0m [1mapp[0m: [2mloco_rs::boot[0m[2m:[0m migrate: [2m[3menvironment[0m[2m=[0mteste2e[0m
 [..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m Applying all pending migrations [2m[3menvironment[0m[2m=[0mteste2e[0m
@@ -145,7 +147,7 @@ $ LOCO_ENV=teste2e blo-cli db migrate
 ```
 
 ```console 
-$ LOCO_ENV=teste2e blo-cli db status
+$ LOCO_ENV=teste2e demo_app-cli db status
 [..][0m [32m INFO[0m [1mapp[0m: [2mloco_rs::config[0m[2m:[0m loading environment from [3mselected_path[0m[2m=[0m"config/teste2e.yaml" [2m[3menvironment[0m[2m=[0mteste2e[0m
 [..][0m [33m WARN[0m [1mapp[0m: [2mloco_rs::boot[0m[2m:[0m status: [2m[3menvironment[0m[2m=[0mteste2e[0m
 [..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m Checking migration status [2m[3menvironment[0m[2m=[0mteste2e[0m

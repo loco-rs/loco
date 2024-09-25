@@ -1,4 +1,4 @@
-use blo::{app::App, models::users};
+use demo_app::{app::App, models::users};
 use insta::assert_debug_snapshot;
 use loco_rs::testing;
 use sea_orm::ModelTrait;

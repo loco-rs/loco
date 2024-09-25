@@ -1,5 +1,5 @@
 use axum::http::HeaderMap;
-use blo::app::App;
+use demo_app::app::App;
 use insta::assert_debug_snapshot;
 use loco_rs::testing;
 use rstest::rstest;

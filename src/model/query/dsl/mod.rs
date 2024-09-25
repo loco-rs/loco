@@ -45,11 +45,135 @@ pub const fn with(condition: Condition) -> ConditionBuilder {
     ConditionBuilder { condition }
 }
 
+/// See [`ConditionBuilder::eq`]
+#[must_use]
+pub fn eq<T: ColumnTrait, V: Into<Value>>(col: T, value: V) -> ConditionBuilder {
+    condition().eq(col, value)
+}
+
+/// See [`ConditionBuilder::ne`]
+#[must_use]
+pub fn not_equal<T: ColumnTrait, V: Into<Value>>(col: T, value: V) -> ConditionBuilder {
+    condition().ne(col, value)
+}
+
+/// See [`ConditionBuilder::gt`]
+#[must_use]
+pub fn gt<T: ColumnTrait, V: Into<Value>>(col: T, value: V) -> ConditionBuilder {
+    condition().gt(col, value)
+}
+
+/// See [`ConditionBuilder::gte`]
+#[must_use]
+pub fn gt_equal<T: ColumnTrait, V: Into<Value>>(col: T, value: V) -> ConditionBuilder {
+    condition().gte(col, value)
+}
+
+/// See [`ConditionBuilder::lt`]
+#[must_use]
+pub fn lt<T: ColumnTrait, V: Into<Value>>(col: T, value: V) -> ConditionBuilder {
+    condition().lt(col, value)
+}
+
+/// See [`ConditionBuilder::lte`]
+#[must_use]
+pub fn lt_equal<T: ColumnTrait, V: Into<Value>>(col: T, value: V) -> ConditionBuilder {
+    condition().lte(col, value)
+}
+
+/// See [`ConditionBuilder::between`]
+#[must_use]
+pub fn between<T: ColumnTrait, V: Into<Value>>(col: T, a: V, b: V) -> ConditionBuilder {
+    condition().between(col, a, b)
+}
+
+/// See [`ConditionBuilder::not_between`]
+#[must_use]
+pub fn not_between<T: ColumnTrait, V: Into<Value>>(col: T, a: V, b: V) -> ConditionBuilder {
+    condition().not_between(col, a, b)
+}
+
+/// See [`ConditionBuilder::like`]
+#[must_use]
+pub fn like<T: ColumnTrait, V: Into<String>>(col: T, a: V) -> ConditionBuilder {
+    condition().like(col, a)
+}
+
+/// See [`ConditionBuilder::not_like`]
+#[must_use]
+pub fn not_like<T: ColumnTrait, V: Into<String>>(col: T, a: V) -> ConditionBuilder {
+    condition().not_like(col, a)
+}
+
+/// See [`ConditionBuilder::starts_with`]
+#[must_use]
+pub fn starts_with<T: ColumnTrait, V: Into<String>>(col: T, a: V) -> ConditionBuilder {
+    condition().starts_with(col, a)
+}
+
+/// See [`ConditionBuilder::ends_with`]
+#[must_use]
+pub fn ends_with<T: ColumnTrait, V: Into<String>>(col: T, a: V) -> ConditionBuilder {
+    condition().ends_with(col, a)
+}
+
+/// See [`ConditionBuilder::contains`]
+#[must_use]
+pub fn contains<T: ColumnTrait, V: Into<String>>(col: T, a: V) -> ConditionBuilder {
+    condition().contains(col, a)
+}
+
+/// See [`ConditionBuilder::is_null`]
+#[must_use]
+#[allow(clippy::wrong_self_convention)]
+pub fn is_null<T: ColumnTrait>(col: T) -> ConditionBuilder {
+    condition().is_null(col)
+}
+
+/// See [`ConditionBuilder::is_not_null`]
+#[must_use]
+#[allow(clippy::wrong_self_convention)]
+pub fn is_not_null<T: ColumnTrait>(col: T) -> ConditionBuilder {
+    condition().is_not_null(col)
+}
+
+/// See [`ConditionBuilder::is_in`]
+#[must_use]
+#[allow(clippy::wrong_self_convention)]
+pub fn is_in<T: ColumnTrait, V: Into<Value>, I: IntoIterator<Item = V>>(
+    col: T,
+    values: I,
+) -> ConditionBuilder {
+    condition().is_in(col, values)
+}
+
+/// See [`ConditionBuilder::is_not_in`]
+#[must_use]
+#[allow(clippy::wrong_self_convention)]
+pub fn is_not_in<T: ColumnTrait, V: Into<Value>, I: IntoIterator<Item = V>>(
+    col: T,
+    values: I,
+) -> ConditionBuilder {
+    condition().is_not_in(col, values)
+}
+
+/// See [`ConditionBuilder::date_range`]
+#[must_use]
+pub fn date_range<T: ColumnTrait>(col: T) -> date_range::DateRangeBuilder<T> {
+    date_range::DateRangeBuilder::new(condition(), col)
+}
+
+impl IntoCondition for ConditionBuilder {
+    fn into_condition(self) -> Condition {
+        self.build()
+    }
+}
+
 /// Builder query condition
 ///
 /// # Examples
 /// ```
-/// use loco_rs::tests_cfg::db::*;
+/// use loco_rs::tests_cfg::db::test_db;
 /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
 /// use loco_rs::prelude::*;
 /// let date = chrono::NaiveDateTime::parse_from_str("2024-03-01 22:10:57", "%Y-%m-%d %H:%M:%S").unwrap();
@@ -71,7 +195,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -90,7 +214,7 @@ impl ConditionBuilder {
     ///
     /// On string field
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -115,7 +239,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -140,7 +264,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -166,7 +290,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -192,7 +316,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -218,7 +342,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -244,7 +368,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -270,7 +394,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -296,7 +420,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -322,7 +446,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -348,7 +472,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -374,7 +498,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -400,7 +524,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -426,7 +550,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -453,7 +577,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -480,7 +604,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -511,7 +635,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///
@@ -542,7 +666,7 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::*;
+    /// use loco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
     /// use loco_rs::prelude::*;
     ///

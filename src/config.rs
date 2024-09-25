@@ -36,7 +36,7 @@ use tracing::info;
 use crate::{
     controller::middleware::{remote_ip::RemoteIPConfig, secure_headers::SecureHeadersConfig},
     environment::Environment,
-    logger, Error, Result,
+    logger, scheduler, Error, Result,
 };
 
 lazy_static! {
@@ -73,6 +73,8 @@ pub struct Config {
     /// accessing `ctx.config.settings`.
     #[serde(default)]
     pub settings: Option<serde_json::Value>,
+
+    pub scheduler: Option<scheduler::Config>,
 }
 
 /// Logger configuration
@@ -415,7 +417,7 @@ pub struct Workers {
 }
 
 /// Worker mode configuration
-#[derive(Clone, Default, Serialize, Deserialize, Debug)]
+#[derive(Clone, Default, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum WorkerMode {
     /// Workers operate asynchronously in the background, processing queued
     /// tasks. **Requires a Redis connection**.
@@ -672,5 +674,12 @@ impl Config {
                 || Err(Error::Any("no JWT config found".to_string().into())),
                 Ok,
             )
+    }
+}
+
+impl std::fmt::Display for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let content = serde_yaml::to_string(self).unwrap_or_default();
+        write!(f, "{content}")
     }
 }

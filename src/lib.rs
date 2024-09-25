@@ -34,6 +34,7 @@ pub mod hash;
 mod logger;
 pub mod mailer;
 mod redis;
+pub mod scheduler;
 pub mod task;
 #[cfg(feature = "testing")]
 pub mod testing;

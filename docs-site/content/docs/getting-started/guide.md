@@ -3,7 +3,7 @@ title = "The Loco Guide"
 date = 2021-05-01T08:00:00+00:00
 updated = 2021-05-01T08:00:00+00:00
 draft = false
-weight = 2
+weight = 3
 sort_by = "weight"
 template = "docs/page.html"
 
@@ -15,19 +15,25 @@ flair =[]
 
 ## Guide Assumptions
 
-Loco is a Rust API and web framework for full stack product builders.
+This is a "long way round" tutorial. It is long and indepth on purpose, it shows you how to build things manually **and** automatically using generators, so that you learn the skills to build and also how things work.
+
+
+### What's with the name?
 
 The name `Loco` comes from **loco**motive, as a tribute to Rails, and `loco` is easier to type than `locomotive` :-). Also, in some languages it means "crazy" but that was not the original intention (or, is it crazy to build a Rails on Rust? only time will tell!).
 
-You need to be familiar with Rust to a moderate level. You need to know how to build, test, and run Rust projects, have used some popular libraries such as `clap`, `regex`, `tokio`, `axum` or other web framework, nothing too fancy. There are no crazy lifetime twisters or complex / too magical, macros in Loco that you need to know how they work.
+### How much Rust do I need to know?
+
+You need to be familiar with Rust to a beginner but not more than moderate-beginner level. You need to know how to build, test, and run Rust projects, have used some popular libraries such as `clap`, `regex`, `tokio`, `axum` or other web framework, nothing too fancy. There are no crazy lifetime twisters or complex / too magical, macros in Loco that you need to know how they work.
+
+
+### What is Loco?
 
 Loco is strongly inspired by Rails. If you know Rails _and_ Rust, you'll feel at home. If you only know Rails and new to Rust, you'll find Loco refreshing. We do not assume you know Rails.
 
 <div class="infobox">
 We think Rails is so great, that this guide is strongly inspired from the <a href="https://guides.rubyonrails.org/getting_started.html">Rails guide, too</a>
 </div>
-
-## What is Loco?
 
 Loco is a Web or API framework for Rust. It's also a productivity suite for developers: it contains everything you need while building a hobby or your next startup. It's also strongly inspired by Rails.
 
@@ -60,58 +66,16 @@ Now you can create your new app (choose "SaaS app" for built-in authentication).
 ❯ loco new
 ✔ ❯ App name? · myapp
 ✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+✔ ❯ Select a DB Provider · Sqlite
+✔ ❯ Select your background worker type · Async (in-process tokyo async tasks)
+✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
 
 🚂 Loco app generated successfully in:
-myapp
+myapp/
 ```
 <!-- </snip> -->
 
 
-You can now switch to to `myapp`:
-
-```sh
-$ cd myapp
-```
-
-Make sure you also have locally installed or running (via Docker or otherwise) in case you selected starter with DB dependencies:
-
-- Postgres (your database will be named `myapp_development`)
-- Redis
-
-<div class="infobox">
-To configure a database, please run a local postgres database with <code>loco:loco</code> and a db named <code>myapp_development</code>.
-</div>
-
-This docker command start up postgresql database server.
-
-<!-- <snip id="postgres-run-docker-command" inject_from="yaml" template="sh"> -->
-```sh
-docker run -d -p 5432:5432 \
-  -e POSTGRES_USER=loco \
-  -e POSTGRES_DB=myapp_development \
-  -e POSTGRES_PASSWORD="loco" \
-  postgres:15.3-alpine
-```
-<!-- </snip> -->
-
-This docker command start up redis server:
-
-```
-docker run -p 6379:6379 -d redis redis-server
-```
-
-Use doctor command to check the needed resources:
-
-<!-- <snip id="doctor-command" inject_from="yaml template="sh"> -->
-```sh
-$ cargo loco doctor
-    Finished dev [unoptimized + debuginfo] target(s) in 0.32s
-    Running `target/debug/myapp-cli doctor`
-✅ SeaORM CLI is installed
-✅ DB connection: success
-✅ Redis connection: success
-```
-<!-- </snip> -->
 
 Here's a rundown of what Loco creates for you by default:
 
@@ -135,6 +99,12 @@ Here's a rundown of what Loco creates for you by default:
 ## Hello, Loco!
 
 Let's get some responses quickly. For this, we need to start up the server.
+
+You can now switch to to `myapp`:
+
+```sh
+$ cd myapp
+```
 
 ### Starting the server
 
@@ -345,7 +315,7 @@ Models in Loco carry the same semantics as in Rails: <b>fat models, slim control
 
 ### Generating a model
 
-A model in Loco represents data. Typically that data is stored in your database. Most, if not all, business processes of your applications would be coded on the model (as an Active Record) or as an orchestration of a few models.
+A model in Loco represents data *and* functionality. Typically the data is stored in your database. Most, if not all, business processes of your applications would be coded on the model (as an Active Record) or as an orchestration of a few models.
 
 Let's create a new model called `Article`:
 
@@ -361,7 +331,7 @@ injected: "tests/models/mod.rs"
 
 ### Database migrations
 
-**Keeping your schema is done with migrations**. A migration is a singular change to your database structure: it can contain complete table additions, modifications, or index creation.
+**Keeping your schema honest is done with migrations**. A migration is a singular change to your database structure: it can contain complete table additions, modifications, or index creation.
 
 ```rust
 // this was generated into `migrations/` from the command:
@@ -395,7 +365,7 @@ impl MigrationTrait for Migration {
 }
 ```
 
-You can recreate a complete database **by applying migrations in-series onto a fresh database schema** -- this is done automatically by Loco's migrator (which is derived from SeaORM).
+You can recreate a complete database **by applying migrations in-series onto a fresh database** -- this is done automatically by Loco's migrator (which is derived from SeaORM).
 
 When generating a new model, Loco will:
 
@@ -594,7 +564,7 @@ pub async fn update(
     format::json(item)
 }
 
-pub async fn remove(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<()> {
+pub async fn remove(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Response> {
     load_item(&ctx, id).await?.delete(&ctx.db).await?;
     format::empty()
 }
@@ -653,7 +623,7 @@ $ curl localhost:5150/articles
 [{"created_at":"...","updated_at":"...","id":1,"title":"how to build apps in 3 steps","content":"use Loco: https://loco.rs"},{"created_at":"...","updated_at":"...","id":2,"title":"Your Title","content":"Your Content xxx"}
 ```
 
-## Adding a second model
+### Adding a second model
 
 Let's add another model, this time: `Comment`. We want to create a relation - a comment belongs to a post, and each post can have multiple comments.
 
@@ -750,7 +720,15 @@ pub async fn comments(
 This is called "lazy loading", where we fetch the item first and later its associated relation. Don't worry - there is also a way to eagerly load comments along with an article.
 </div>
 
-Now let's add a comment to Article `1`:
+Now start the app again:
+
+<!-- <snip id="starting-the-server-command" inject_from="yaml" template="sh"> -->
+```sh
+cargo loco start
+```
+<!-- </snip> -->
+
+Add a comment to Article `1`:
 
 ```sh
 $ curl -X POST -H "Content-Type: application/json" -d '{
@@ -782,17 +760,36 @@ You can:
 
 This is where `cargo loco task` comes in.
 
-First, run `cargo loco task`:
+First, run `cargo loco task` to see current tasks:
 
 ```sh
 $ cargo loco task
-user_report		[output a user report]
+seed_data		[Task for seeding data]
 ```
 
-You'll see an example task that was generated for you. This is the meat of the task:
+Generate a new task `user_report`
+
+```sh
+$ cargo loco generate task user_report
+
+added: "src/tasks/user_report.rs"
+injected: "src/tasks/mod.rs"
+injected: "src/app.rs"
+added: "tests/tasks/user_report.rs"
+injected: "tests/tasks/mod.rs"
+```
+
+In `src/tasks/user_report.rs` you'll see the task that was generated for you. Replace it with following:
 
 ```rust
 // find it in `src/tasks/user_report.rs`
+
+use loco_rs::prelude::*;
+use loco_rs::task::Vars;
+
+use crate::models::users;
+
+#[async_trait]
 impl Task for UserReport {
     fn task(&self) -> TaskInfo {
       // description that appears on the CLI
@@ -826,7 +823,15 @@ Running this task is done with:
 
 ```rust
 $ cargo loco task user_report var1:val1 var2:val2 ...
+
+args: Vars { cli: {"var1": "val1", "var2": "val2"} }
+!!! user_report: listing users !!!
+------------------------
+done: 0 users
 ```
+If you have not added an user before, the report will be empty. 
+
+To add an user check out chapter [Registering a New User](/docs/getting-started/tour/#registering-a-new-user) of [A Quick Tour with Loco](/docs/getting-started/tour/).
 
 Remember: this is environmental, so you write the task once, and then execute in development or production as you wish. Tasks are compiled into the main app binary.
 
