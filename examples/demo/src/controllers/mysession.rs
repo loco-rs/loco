@@ -4,7 +4,7 @@ use axum::{debug_handler, Extension};
 use axum_session::{Session, SessionNullPool};
 use loco_rs::errors;
 use loco_rs::prelude::*;
-use loco_rs::request_context::{RequestContext, RequestContextError};
+use loco_rs::request_context::{RequestContext};
 
 const REQUEST_CONTEXT_DATA_KEY: &str = "alan";
 
