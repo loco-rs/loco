@@ -1,6 +1,7 @@
-use crate::models::users;
 use loco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
+
+use crate::models::users;
 #[derive(Serialize, Deserialize)]
 pub struct CacheResponse {
     value: Option<String>,

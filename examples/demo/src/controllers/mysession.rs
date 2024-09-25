@@ -2,9 +2,7 @@
 
 use axum::{debug_handler, Extension};
 use axum_session::{Session, SessionNullPool};
-use loco_rs::errors;
-use loco_rs::prelude::*;
-use loco_rs::request_context::{RequestContext};
+use loco_rs::{errors, prelude::*, request_context::RequestContext};
 
 const REQUEST_CONTEXT_DATA_KEY: &str = "alan";
 
@@ -22,7 +20,6 @@ pub async fn get_session(_session: Session<SessionNullPool>) -> Result<Response>
 /// # Errors
 ///
 /// This function will return an error if result fails
-///
 #[debug_handler]
 pub async fn create_request_context(mut req: RequestContext) -> Result<Response> {
     let data = "turing".to_string();
@@ -40,7 +37,6 @@ pub async fn create_request_context(mut req: RequestContext) -> Result<Response>
 /// # Errors
 ///
 /// This function will return an error if result fails
-///
 #[debug_handler]
 pub async fn get_request_context(mut req: Extension<RequestContext>) -> Result<Response> {
     let data = req

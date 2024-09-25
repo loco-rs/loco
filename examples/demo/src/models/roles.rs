@@ -56,8 +56,8 @@ impl super::_entities::roles::Model {
                     name: Set(name),
                     ..Default::default()
                 }
-                    .insert(db)
-                    .await?;
+                .insert(db)
+                .await?;
                 Ok(role)
             }
         }
