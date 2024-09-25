@@ -71,24 +71,24 @@ name = "Models"
 description = 'Model your business with rich entities and avoid writing SQL, backed by SeaORM. Build relations, validation and custom logic on your entities for the best maintainability.'
 example = '''```rust
 impl Model {
-  pub async fn find_by_email(
-    db: &DatabaseConnection, 
-    email: &str)
+  pub async fn find_by_email(db: &DatabaseConnection, email: &str)
   -> ModelResult<Self> {
-      Users::find().filter(
-          condition().eq(users::Column::Email, email).build()
-        )
+
+      Users::find()
+        .filter(eq(Column::Email, email))
         .one(db).await?
         .ok_or_else(|| ModelError::EntityNotFound)
   }
   
-  pub async fn create_report(&self, ctx: &AppContext) -> Result<()>{
+  pub async fn create_report(&self, ctx: &AppContext) -> Result<()> {
       ReportWorker::perform_later(
         &ctx, 
         ReportArgs{ user_id: self.id }
       ).await?;
   }
 }
+
+
 
 ```
 '''
