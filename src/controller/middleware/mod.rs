@@ -78,28 +78,51 @@ pub fn default_middleware_stack(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
     /// Compression for the response.
+    #[serde(default)]
     pub compression: compression::Compression,
+
     /// Etag cache headers.
+    #[serde(default)]
     pub etag: etag::Etag,
+
     /// Limit the payload request.
+    #[serde(default)]
     pub limit_payload: limit_payload::LimitPayload,
+
     /// Logger and augmenting trace id with request data
+    #[serde(default)]
     pub logger: logger::Config,
+
     /// Catch any code panic and log the error.
+    #[serde(default)]
     pub catch_panic: catch_panic::CatchPanic,
+
     /// Setting a global timeout for requests
+    #[serde(default)]
     pub timeout_request: timeout::TimeOut,
+
     /// CORS configuration
+    #[serde(default)]
     pub cors: cors::Cors,
+
     /// Serving static assets
     #[serde(rename = "static")]
+    #[serde(default)]
     pub static_assets: static_assets::StaticAssets,
+
     /// Sets a set of secure headers
+    #[serde(default)]
     pub secure_headers: secure_headers::SecureHeader,
+
     /// Calculates a remote IP based on `X-Forwarded-For` when behind a proxy
+    #[serde(default)]
     pub remote_ip: remote_ip::RemoteIpMiddleware,
+
     /// Configure fallback behavior when hitting a missing URL
+    #[serde(default)]
     pub fallback: fallback::Fallback,
+
     /// Request ID
+    #[serde(default)]
     pub request_id: request_id::RequestId,
 }
