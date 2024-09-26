@@ -63,9 +63,14 @@ lazy_static! {
 /// For the list of presets and their content look at [secure_headers.json](https://github.com/loco-rs/loco/blob/master/src/controller/middleware/secure_headers.rs)
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SecureHeader {
+    #[serde(default = "default_true")]
     pub enable: bool,
     pub preset: Option<String>,
     pub overrides: Option<BTreeMap<String, String>>,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl Default for SecureHeader {
