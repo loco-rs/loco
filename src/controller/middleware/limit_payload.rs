@@ -1,17 +1,20 @@
 //! Limit Payload Middleware
 //!
-//! This middleware restricts the maximum allowed size for HTTP request payloads. It is configurable
-//! based on the [`LimitPayloadMiddleware`] settings in the application's middleware configuration.
-//! The middleware sets a limit on the request body size using Axum's `DefaultBodyLimit` layer.
+//! This middleware restricts the maximum allowed size for HTTP request
+//! payloads. It is configurable based on the [`LimitPayloadMiddleware`]
+//! settings in the application's middleware configuration. The middleware sets
+//! a limit on the request body size using Axum's `DefaultBodyLimit` layer.
 //!
 //! # Note
 //!
-//! Ensure that the `body: axum::body::Bytes` variable is properly set in the request action to
-//! enforce the payload limit correctly. Without this, the middleware will not function as intended.
+//! Ensure that the `body: axum::body::Bytes` variable is properly set in the
+//! request action to enforce the payload limit correctly. Without this, the
+//! middleware will not function as intended.
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 use axum::Router as AXRouter;
 use serde::{Deserialize, Deserializer, Serialize};
+
+use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LimitPayload {
@@ -25,7 +28,7 @@ impl Default for LimitPayload {
     fn default() -> Self {
         Self {
             enable: true,
-            body_limit: 1024,
+            body_limit: 2_000_000,
         }
     }
 }
@@ -44,7 +47,7 @@ where
 impl MiddlewareLayer for LimitPayload {
     /// Returns the name of the middleware
     fn name(&self) -> &'static str {
-        "limit payload"
+        "limit_payload"
     }
 
     /// Returns whether the middleware is enabled or not
@@ -52,7 +55,8 @@ impl MiddlewareLayer for LimitPayload {
         self.enable
     }
 
-    /// Applies the payload limit middleware to the application router by adding a `DefaultBodyLimit` layer.
+    /// Applies the payload limit middleware to the application router by adding
+    /// a `DefaultBodyLimit` layer.
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
         Ok(app.layer(axum::extract::DefaultBodyLimit::max(self.body_limit)))
     }

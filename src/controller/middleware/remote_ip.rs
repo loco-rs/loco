@@ -1,12 +1,21 @@
-//! Remote IP Middleware for inferring the client's IP address based on the `X-Forwarded-For` header.
+//! Remote IP Middleware for inferring the client's IP address based on the
+//! `X-Forwarded-For` header.
 //!
-//! This middleware is useful when running behind proxies or load balancers that add the
-//! `X-Forwarded-For` header, which includes the original client IP address.
+//! This middleware is useful when running behind proxies or load balancers that
+//! add the `X-Forwarded-For` header, which includes the original client IP
+//! address.
 //!
-//! The middleware provides a mechanism to configure trusted proxies and extract the most likely
-//! client IP from the `X-Forwarded-For` header, skipping any trusted proxy IPs.
-//!
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
+//! The middleware provides a mechanism to configure trusted proxies and extract
+//! the most likely client IP from the `X-Forwarded-For` header, skipping any
+//! trusted proxy IPs.
+use std::{
+    fmt,
+    iter::Iterator,
+    net::{IpAddr, SocketAddr},
+    str::FromStr,
+    task::{Context, Poll},
+};
+
 use async_trait::async_trait;
 use axum::{
     body::Body,
@@ -20,15 +29,10 @@ use hyper::HeaderMap;
 use ipnetwork::IpNetwork;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use std::{
-    fmt,
-    iter::Iterator,
-    net::{IpAddr, SocketAddr},
-    str::FromStr,
-    task::{Context, Poll},
-};
 use tower::{Layer, Service};
 use tracing::error;
+
+use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
 
 lazy_static! {
 // matching what Rails does is probably a smart idea:
@@ -98,7 +102,7 @@ pub struct RemoteIpMiddleware {
 impl MiddlewareLayer for RemoteIpMiddleware {
     /// Returns the name of the middleware
     fn name(&self) -> &'static str {
-        "remote IP"
+        "remote_ip"
     }
 
     /// Returns whether the middleware is enabled or not

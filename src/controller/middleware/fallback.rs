@@ -1,12 +1,14 @@
 //! Fallback Middleware
 //!
-//! This middleware handles fallback logic for the application when routes do not match. It serves
-//! a file, a custom not-found message, or a default HTML fallback page based on the configuration.
+//! This middleware handles fallback logic for the application when routes do
+//! not match. It serves a file, a custom not-found message, or a default HTML
+//! fallback page based on the configuration.
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
 use axum::{http::StatusCode, response::Html, Router as AXRouter};
 use serde::{Deserialize, Serialize};
 use tower_http::services::ServeFile;
+
+use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
 
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
 pub struct Fallback {
@@ -58,7 +60,6 @@ impl MiddlewareLayer for Fallback {
             let content = include_str!("fallback.html");
             app.fallback(move || async move { (code, Html(content)) })
         };
-        tracing::info!("[Middleware] +fallback");
         Ok(app)
     }
 }
