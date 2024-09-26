@@ -26,6 +26,21 @@ pub struct Cors {
 }
 
 impl Cors {
+    /// Creates cors layer
+    ///
+    /// # Errors
+    ///
+    /// This function returns an error in the following cases:
+    ///
+    /// - If any of the provided origins in `allow_origins` cannot be parsed as a valid URI,
+    ///   the function will return a parsing error.
+    /// - If any of the provided headers in `allow_headers` cannot be parsed as valid HTTP headers,
+    ///   the function will return a parsing error.
+    /// - If any of the provided methods in `allow_methods` cannot be parsed as valid HTTP methods,
+    ///   the function will return a parsing error.
+    ///
+    /// In all of these cases, the error returned will be the result of the `parse` method
+    /// of the corresponding type.
     pub fn cors(&self) -> Result<cors::CorsLayer> {
         let mut cors: cors::CorsLayer = cors::CorsLayer::permissive();
         if let Some(allow_origins) = &self.allow_origins {
