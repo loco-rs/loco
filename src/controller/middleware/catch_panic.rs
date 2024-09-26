@@ -1,7 +1,7 @@
 //! Catch Panic Middleware for Axum
 //!
 //! This middleware catches panics that occur during request handling in the
-//! Axum application. When a panic occurs, it logs the error and returns an
+//! application. When a panic occurs, it logs the error and returns an
 //! internal server error response. This middleware helps ensure that the
 //! application can gracefully handle unexpected errors without crashing the
 //! server.

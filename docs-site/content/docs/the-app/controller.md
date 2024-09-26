@@ -259,6 +259,15 @@ impl Hooks for App {
 
 # Middleware
 
+Loco comes with a set of built-in middleware out of the box. Some are enabled by default, while others need to be configured. Middleware registration is flexible and can be managed either through the `*.yaml` environment configuration or directly in the code.
+
+You get all the enabled middlewares run the following command
+<!-- <snip id="cli-middleware-list" inject_from="yaml" template="sh"> -->
+```sh
+cargo loco middleware
+```
+<!-- </snip> -->
+
 ### Authentication
 In the `Loco` framework, middleware plays a crucial role in authentication. `Loco` supports various authentication methods, including JSON Web Token (JWT) and API Key authentication. This section outlines how to configure and use authentication middleware in your application.
 
@@ -324,6 +333,76 @@ async fn current(
     // Your implementation here
 }
 ```
+
+## Catch Panic
+
+This middleware catches panics that occur during request handling in the application. When a panic occurs, it logs the error and returns an internal server error response. This middleware helps ensure that the application can gracefully handle unexpected errors without crashing the server.
+
+To disable the middleware edit the configuration as follows:
+
+```yaml
+#...
+  middlewares:
+    catch_panic:
+      enable: false
+```
+
+
+## Limit Payload
+
+Restricts the maximum allowed size for HTTP request payloads.
+The middleware by default is enabled and configured to 2MB. 
+
+You can disable or customize this behavior in your config file. You can set a few options:
+
+```yaml
+#...
+  middlewares:
+    limit_payload:
+      enable: true
+      body_limit: 5mb
+```
+
+##### Usage
+In your controller parameters, use `axum::body::Bytes`.
+```rust
+use loco_rs::prelude::*;
+
+async fn current(_body: axum::body::Bytes,) -> Result<Response> {
+    // Your implementation here
+}
+```
+
+## Timeout
+
+Applies a timeout to requests processed by the application. The middleware ensures that requests do not run beyond the specified timeout period, improving the overall performance and responsiveness of the application.
+
+If a request exceeds the specified timeout duration, the middleware will return a `408 Request Timeout` status code to the client, indicating that the request took too long to process.
+
+To enable the middleware edit the configuration as follows:
+
+```yaml
+#...
+  middlewares:
+    timeout_request:
+      enable: false
+      timeout: 5000
+```
+
+
+## Logger
+
+Provides logging functionality for HTTP requests. Detailed information about each request, such as the HTTP method, URI, version, user agent, and an associated request ID. Additionally, it integrates the application's runtime environment into the log context, allowing environment-specific logging (e.g., "development", "production").
+
+To disable the middleware edit the configuration as follows:
+
+```yaml
+#...
+  middlewares:
+    logger:
+      enable: false
+```
+
 
 ## Fallback
 
@@ -481,6 +560,30 @@ middlewares:
 routes.
 For more information on handler and route based middleware, refer to the [middleware](/docs/the-app/middlewares)
 documentation.
+
+## Cors
+This middleware enables Cross-Origin Resource Sharing (CORS) by allowing configurable origins, methods, and headers in HTTP requests. 
+It can be tailored to fit various application requirements, supporting permissive CORS or specific rules as defined in the middleware configuration.
+
+```yaml
+#...
+middlewares:
+  ...
+  cors:
+    enable: true
+    # Set the value of the [`Access-Control-Allow-Origin`][mdn] header
+    # allow_origins:
+    #   - https://loco.rs
+    # Set the value of the [`Access-Control-Allow-Headers`][mdn] header
+    # allow_headers:
+    # - Content-Type
+    # Set the value of the [`Access-Control-Allow-Methods`][mdn] header
+    # allow_methods:
+    #   - POST
+    # Set the value of the [`Access-Control-Max-Age`][mdn] header in seconds
+    # max_age: 3600
+
+```
 
 ### Handler based middleware:
 
