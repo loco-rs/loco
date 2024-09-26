@@ -162,7 +162,7 @@ Use the `Format` extractor for this:
 
 ```rust
 pub async fn get_one(
-    Format(respond_to): Format,
+    respond_to: RespondTo,
     Path(id): Path<i32>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
@@ -182,7 +182,7 @@ different formats AND ALSO, render differently based on kinds of errors you got.
 
 ```rust
 pub async fn get_one(
-    Format(respond_to): Format,
+    respond_to: RespondTo,
     Path(id): Path<i32>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
