@@ -417,6 +417,7 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
 /// ```
 #[cfg(feature = "with-db")]
 #[allow(clippy::too_many_lines)]
+#[allow(clippy::cognitive_complexity)]
 pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
     let cli: Cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();

@@ -177,12 +177,12 @@ impl AppRoutes {
     /// # Errors
     /// Return an [`Result`] when could not convert the router setup to
     /// [`axum::Router`].
+    #[allow(clippy::cognitive_complexity)]
     pub fn to_router<H: Hooks>(
         &self,
         ctx: AppContext,
         mut app: AXRouter<AppContext>,
     ) -> Result<AXRouter> {
-        //
         // IMPORTANT: middleware ordering in this function is opposite to what you
         // intuitively may think. when using `app.layer` to add individual middleware,
         // the LAST middleware is the FIRST to meet the outside world (a user request
@@ -202,7 +202,6 @@ impl AppRoutes {
         //
         for router in self.collect() {
             tracing::info!("{}", router.to_string());
-
             app = app.route(&router.uri, router.method);
         }
 
@@ -210,17 +209,10 @@ impl AppRoutes {
         if let Some(channels) = self.channels.as_ref() {
             tracing::info!("[Middleware] +channels");
             let channel_layer_app = tower::ServiceBuilder::new().layer(channels.layer.clone());
-            if let Some(cors) = &ctx
-                .config
-                .server
-                .middlewares
-                .cors
-                .as_ref()
-                .filter(|c| c.enable)
-            {
+            if ctx.config.server.middlewares.cors.is_enabled() {
                 app = app.layer(
                     tower::ServiceBuilder::new()
-                        .layer(cors_middleware(cors)?)
+                        .layer(ctx.config.server.middlewares.cors.cors()?)
                         .layer(channel_layer_app),
                 );
             } else {
@@ -237,7 +229,6 @@ impl AppRoutes {
             app = mid.apply(app)?;
             tracing::info!(name = mid.name(), "+middleware");
         }
-
         let router = app.with_state(ctx);
         Ok(router)
     }

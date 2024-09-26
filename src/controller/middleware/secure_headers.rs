@@ -92,7 +92,7 @@ impl MiddlewareLayer for SecureHeader {
 
     /// Applies the secure headers layer to the application router
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
-        Ok(app.layer(SecureHeaders::new(&self)?))
+        Ok(app.layer(SecureHeaders::new(self)?))
     }
 }
 

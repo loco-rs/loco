@@ -25,19 +25,8 @@ pub struct Cors {
     pub max_age: Option<u64>,
 }
 
-impl MiddlewareLayer for Cors {
-    /// Returns the name of the middleware
-    fn name(&self) -> &'static str {
-        "cors"
-    }
-
-    /// Returns whether the middleware is enabled or not
-    fn is_enabled(&self) -> bool {
-        self.enable
-    }
-
-    /// Applies the CORS middleware layer to the Axum router.
-    fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+impl Cors {
+    pub fn cors(&self) -> Result<cors::CorsLayer> {
         let mut cors: cors::CorsLayer = cors::CorsLayer::permissive();
         if let Some(allow_origins) = &self.allow_origins {
             // testing CORS, assuming https://example.com in the allow list:
@@ -67,7 +56,23 @@ impl MiddlewareLayer for Cors {
         if let Some(max_age) = self.max_age {
             cors = cors.max_age(Duration::from_secs(max_age));
         }
-        Ok(app.layer(cors))
+        Ok(cors)
+    }
+}
+impl MiddlewareLayer for Cors {
+    /// Returns the name of the middleware
+    fn name(&self) -> &'static str {
+        "cors"
+    }
+
+    /// Returns whether the middleware is enabled or not
+    fn is_enabled(&self) -> bool {
+        self.enable
+    }
+
+    /// Applies the CORS middleware layer to the Axum router.
+    fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+        Ok(app.layer(self.cors()?))
     }
 }
 
