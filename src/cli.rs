@@ -31,8 +31,8 @@ use clap::{Parser, Subcommand};
 use crate::{
     app::{AppContext, Hooks},
     boot::{
-        create_app, create_context, list_endpoints, run_scheduler, run_task, start, RunDbCommand,
-        ServeParams, StartMode,
+        create_app, create_context, list_endpoints, list_middlewares, run_scheduler, run_task,
+        start, RunDbCommand, ServeParams, StartMode,
     },
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     gen::{self, Component, ScaffoldKind},
@@ -84,6 +84,8 @@ enum Commands {
     },
     /// Describe all application endpoints
     Routes {},
+    /// Describe all application middlewares
+    Middleware {},
     /// Run a custom task
     Task {
         /// Task name (identifier)
@@ -448,6 +450,13 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             let app_context = create_context::<H>(&environment).await?;
             show_list_endpoints::<H>(&app_context);
         }
+        Commands::Middleware {} => {
+            let app_context = create_context::<H>(&environment).await?;
+            let middlewares = list_middlewares::<H>(&app_context);
+            for middleware in middlewares {
+                println!("{middleware}");
+            }
+        }
         Commands::Task { name, params } => {
             let vars = task::Vars::from_cli_args(params);
             let app_context = create_context::<H>(&environment).await?;
@@ -531,6 +540,13 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
         Commands::Routes {} => {
             let app_context = create_context::<H>(&environment).await?;
             show_list_endpoints::<H>(&app_context)
+        }
+        Commands::Middleware {} => {
+            let app_context = create_context::<H>(&environment).await?;
+            let middlewares = list_middlewares::<H>(&app_context);
+            for middleware in middlewares {
+                println!("{middleware}");
+            }
         }
         Commands::Task { name, params } => {
             let vars = task::Vars::from_cli_args(params);

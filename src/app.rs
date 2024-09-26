@@ -18,7 +18,10 @@ use crate::{
     boot::{BootResult, ServeParams, StartMode},
     cache::{self},
     config::{self, Config},
-    controller::AppRoutes,
+    controller::{
+        middleware::{self, MiddlewareLayer},
+        AppRoutes,
+    },
     environment::Environment,
     mailer::EmailSender,
     storage::Storage,
@@ -160,6 +163,12 @@ pub trait Hooks {
     /// or to initialize some aspects of it.
     async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
         Ok(vec![])
+    }
+
+    /// Provide a list of middlewares
+    #[must_use]
+    fn middlewares(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer>> {
+        middleware::default_middleware_stack(ctx)
     }
 
     /// Calling the function before run the app

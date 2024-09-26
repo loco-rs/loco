@@ -1,7 +1,7 @@
 use crate::infra_cfg;
 use axum::http::StatusCode;
 use insta::assert_debug_snapshot;
-use loco_rs::{config, controller::middleware::remote_ip, prelude::*, tests_cfg};
+use loco_rs::{controller::middleware, prelude::*, tests_cfg};
 use rstest::rstest;
 use serial_test::serial;
 use std::{collections::BTreeMap, path::PathBuf};
@@ -20,7 +20,7 @@ macro_rules! configure_insta {
 #[case(false)]
 #[tokio::test]
 #[serial]
-async fn middleware_panic(#[case] enable: bool) {
+async fn panic(#[case] enable: bool) {
     configure_insta!();
 
     #[allow(clippy::items_after_statements)]
@@ -29,7 +29,7 @@ async fn middleware_panic(#[case] enable: bool) {
     }
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
-    ctx.config.server.middlewares.catch_panic = Some(config::EnableMiddleware { enable });
+    ctx.config.server.middlewares.catch_panic = middleware::catch_panic::CatchPanic { enable };
 
     let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
     let res = reqwest::get(infra_cfg::server::get_base_url()).await;
@@ -52,14 +52,14 @@ async fn middleware_panic(#[case] enable: bool) {
 #[case(false)]
 #[tokio::test]
 #[serial]
-async fn middleware_etag(#[case] enable: bool) {
+async fn etag(#[case] enable: bool) {
     async fn action() -> Result<Response> {
         format::render().etag("loco-etag")?.text("content")
     }
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
-    ctx.config.server.middlewares.etag = Some(config::EnableMiddleware { enable });
+    ctx.config.server.middlewares.etag = middleware::etag::Etag { enable };
 
     let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
 
@@ -84,7 +84,7 @@ async fn middleware_etag(#[case] enable: bool) {
 #[case(false, "--")]
 #[tokio::test]
 #[serial]
-async fn middleware_remote_ip(#[case] enable: bool, #[case] expected: &str) {
+async fn remote_ip(#[case] enable: bool, #[case] expected: &str) {
     #[allow(clippy::items_after_statements)]
     async fn action(remote_ip: RemoteIP) -> Result<Response> {
         format::text(&remote_ip.to_string())
@@ -92,10 +92,10 @@ async fn middleware_remote_ip(#[case] enable: bool, #[case] expected: &str) {
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
-    ctx.config.server.middlewares.remote_ip = Some(remote_ip::RemoteIPConfig {
+    ctx.config.server.middlewares.remote_ip = middleware::remote_ip::RemoteIpMiddleware {
         enable,
         trusted_proxies: Some(vec!["192.1.1.1/8".to_string()]),
-    });
+    };
 
     let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
 
@@ -119,7 +119,7 @@ async fn middleware_remote_ip(#[case] enable: bool, #[case] expected: &str) {
 #[case(false)]
 #[tokio::test]
 #[serial]
-async fn middleware_timeout(#[case] enable: bool) {
+async fn timeout(#[case] enable: bool) {
     #[allow(clippy::items_after_statements)]
     async fn action() -> Result<Response> {
         tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
@@ -129,7 +129,7 @@ async fn middleware_timeout(#[case] enable: bool) {
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
     ctx.config.server.middlewares.timeout_request =
-        Some(config::TimeoutRequestMiddleware { enable, timeout: 2 });
+        middleware::timeout::TimeOut { enable, timeout: 2 };
 
     let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
 
@@ -154,7 +154,7 @@ async fn middleware_timeout(#[case] enable: bool) {
 #[case(false, "disabled", None, None, None)]
 #[tokio::test]
 #[serial]
-async fn middleware_cors(
+async fn cors(
     #[case] enable: bool,
     #[case] test_name: &str,
     #[case] allow_headers: Option<Vec<String>>,
@@ -165,13 +165,13 @@ async fn middleware_cors(
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
-    ctx.config.server.middlewares.cors = Some(config::CorsMiddleware {
+    ctx.config.server.middlewares.cors = middleware::cors::Cors {
         enable,
         allow_origins: None,
         allow_headers,
         allow_methods,
         max_age,
-    });
+    };
 
     let handle = infra_cfg::server::start_from_ctx(ctx).await;
 
@@ -183,7 +183,22 @@ async fn middleware_cors(
 
     assert_debug_snapshot!(
         format!("cors_[{test_name}]"),
-        infra_cfg::response::get_headers_from_response(res)
+        (
+            format!(
+                "access-control-allow-origin: {:?}",
+                res.headers().get("access-control-allow-origin")
+            ),
+            format!("vary: {:?}", res.headers().get("vary")),
+            format!(
+                "access-control-allow-methods: {:?}",
+                res.headers().get("access-control-allow-methods")
+            ),
+            format!(
+                "access-control-allow-headers: {:?}",
+                res.headers().get("access-control-allow-headers")
+            ),
+            format!("allow: {:?}", res.headers().get("allow")),
+        )
     );
 
     handle.abort();
@@ -194,15 +209,15 @@ async fn middleware_cors(
 #[case(false)]
 #[tokio::test]
 #[serial]
-async fn middleware_limit_payload(#[case] enable: bool) {
+async fn limit_payload(#[case] enable: bool) {
     configure_insta!();
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
-    ctx.config.server.middlewares.limit_payload = Some(config::LimitPayloadMiddleware {
+    ctx.config.server.middlewares.limit_payload = middleware::limit_payload::Config {
         enable,
-        body_limit: "1b".to_string(),
-    });
+        body_limit: 0x1B,
+    };
 
     let handle = infra_cfg::server::start_from_ctx(ctx).await;
 
@@ -224,7 +239,7 @@ async fn middleware_limit_payload(#[case] enable: bool) {
 
 #[tokio::test]
 #[serial]
-async fn middleware_static_assets() {
+async fn static_assets() {
     configure_insta!();
 
     let base_static_assets_path = PathBuf::from("assets").join("static");
@@ -242,16 +257,16 @@ async fn middleware_static_assets() {
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
     let base_static_path = static_asset_path.join(base_static_assets_path);
-    ctx.config.server.middlewares.static_assets = Some(config::StaticAssetsMiddleware {
+    ctx.config.server.middlewares.static_assets = middleware::static_assets::StaticAssets {
         enable: true,
         must_exist: true,
-        folder: config::FolderAssetsMiddleware {
+        folder: middleware::static_assets::FolderConfig {
             uri: "/static".to_string(),
             path: base_static_path.display().to_string(),
         },
         fallback: base_static_path.join("404.html").display().to_string(),
         precompressed: false,
-    });
+    };
 
     let handle = infra_cfg::server::start_from_ctx(ctx).await;
 
@@ -285,7 +300,7 @@ async fn middleware_static_assets() {
     )])))]
 #[tokio::test]
 #[serial]
-async fn middleware_secure_headers(
+async fn secure_headers(
     #[case] preset: Option<String>,
     #[case] overrides: Option<BTreeMap<String, String>>,
 ) {
@@ -293,12 +308,12 @@ async fn middleware_secure_headers(
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
-    ctx.config.server.middlewares.secure_headers = Some(
-        loco_rs::controller::middleware::secure_headers::SecureHeadersConfig {
+    ctx.config.server.middlewares.secure_headers =
+        loco_rs::controller::middleware::secure_headers::SecureHeader {
+            enable: true,
             preset: preset.clone(),
             overrides: overrides.clone(),
-        },
-    );
+        };
 
     let handle = infra_cfg::server::start_from_ctx(ctx).await;
 
@@ -328,13 +343,13 @@ async fn middleware_secure_headers(
 }
 
 #[rstest]
-// #[case(None, false, None)]
-// #[case(Some(444), false, None)]
-// #[case(None, true, None)]
+#[case(None, false, None)]
+#[case(Some(444), false, None)]
+#[case(None, true, None)]
 #[case(None, false, Some("text fallback response".to_string()))]
 #[tokio::test]
 #[serial]
-async fn middleware_fallback(
+async fn fallback(
     #[case] code: Option<u16>,
     #[case] file: bool,
     #[case] not_found: Option<String>,
@@ -356,12 +371,12 @@ async fn middleware_fallback(
         None
     };
 
-    ctx.config.server.middlewares.fallback = Some(config::FallbackConfig {
+    ctx.config.server.middlewares.fallback = middleware::fallback::Fallback {
         enable: true,
         code,
         file: file.clone().map(|f| f.display().to_string()),
         not_found: not_found.clone(),
-    });
+    };
 
     let handle = infra_cfg::server::start_from_ctx(ctx).await;
 
@@ -394,7 +409,7 @@ async fn middleware_fallback(
 #[case(Some("custom".to_string()))]
 #[tokio::test]
 #[serial]
-async fn middleware_powered_by_header(#[case] ident: Option<String>) {
+async fn powered_by_header(#[case] ident: Option<String>) {
     configure_insta!();
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;

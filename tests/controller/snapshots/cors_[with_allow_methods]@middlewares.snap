@@ -1,13 +1,11 @@
 ---
 source: tests/controller/middlewares.rs
-expression: "infra_cfg::response::get_headers_from_response(res)"
+expression: "(format!(\"access-control-allow-origin: {:?}\",\n        res.headers().get(\"access-control-allow-origin\")),\n    format!(\"vary: {:?}\", res.headers().get(\"vary\")),\n    format!(\"access-control-allow-methods: {:?}\",\n        res.headers().get(\"access-control-allow-methods\")),\n    format!(\"access-control-allow-headers: {:?}\",\n        res.headers().get(\"access-control-allow-headers\")),\n    format!(\"allow: {:?}\", res.headers().get(\"allow\")))"
 ---
-{
-    "access-control-allow-origin": "*",
-    "vary": "origin, access-control-request-method, access-control-request-headers",
-    "access-control-allow-methods": "post,get",
-    "access-control-allow-headers": "*",
-    "x-powered-by": "loco.rs",
-    "content-length": "0",
-    "allow": "GET,HEAD,POST",
-}
+(
+    "access-control-allow-origin: Some(\"*\")",
+    "vary: Some(\"origin, access-control-request-method, access-control-request-headers\")",
+    "access-control-allow-methods: Some(\"post,get\")",
+    "access-control-allow-headers: Some(\"*\")",
+    "allow: Some(\"GET,HEAD,POST\")",
+)

@@ -1,28 +1,76 @@
-//! Generate a unique request ID for every request, sets header in
-//! `x-request-id`
-use axum::{extract::Request, http::HeaderValue, middleware::Next, response::Response};
+//! Middleware to generate or ensure a unique request ID for every request.
+//! The request ID is stored in the `x-request-id` header, and it is either
+//! generated or sanitized if already present in the request.
+//!
+//! This can be useful for tracking requests across services, logging, and debugging.
+
+use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
+use axum::{
+    extract::Request, http::HeaderValue, middleware::Next, response::Response, Router as AXRouter,
+};
 use lazy_static::lazy_static;
 use regex::Regex;
-use tracing::warn;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+const X_REQUEST_ID: &str = "x-request-id";
+const MAX_LEN: usize = 255;
+
+lazy_static! {
+    static ref ID_CLEANUP: Regex = Regex::new(r"[^\w\-@]").unwrap();
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct RequestId {
+    enable: bool,
+}
+
+impl Default for RequestId {
+    fn default() -> Self {
+        Self { enable: true }
+    }
+}
+
+impl MiddlewareLayer for RequestId {
+    /// Returns the name of the middleware
+    fn name(&self) -> &'static str {
+        "request id"
+    }
+
+    /// Returns whether the middleware is enabled or not
+    fn is_enabled(&self) -> bool {
+        self.enable
+    }
+
+    /// Applies the request ID middleware to the Axum router.
+    ///
+    /// This function sets up the middleware in the router and ensures that every
+    /// request passing through it will have a unique or sanitized request ID.
+    ///
+    /// # Errors
+    /// This function returns an error if the middleware cannot be applied.
+    fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+        Ok(app.layer(axum::middleware::from_fn(request_id_middleware)))
+    }
+}
+
+/// Wrapper struct for storing the request ID in the request's extensions.
 #[derive(Debug, Clone)]
 pub struct LocoRequestId(String);
 
 impl LocoRequestId {
-    /// Get the request id
+    /// Retrieves the request ID as a string slice.
     #[must_use]
     pub fn get(&self) -> &str {
         self.0.as_str()
     }
 }
 
-const X_REQUEST_ID: &str = "x-request-id";
-const MAX_LEN: usize = 255;
-lazy_static! {
-    static ref ID_CLEANUP: Regex = Regex::new(r"[^\w\-@]").unwrap();
-}
-
+/// Middleware function to ensure or generate a unique request ID.
+///
+/// This function intercepts requests, checks for the presence of the `x-request-id`
+/// header, and either sanitizes its value or generates a new UUID if absent.
+/// The resulting request ID is added to both the request extensions and the response headers.
 pub async fn request_id_middleware(mut request: Request, next: Next) -> Response {
     let header_request_id = request.headers().get(X_REQUEST_ID).cloned();
     let request_id = make_request_id(header_request_id);
@@ -34,11 +82,12 @@ pub async fn request_id_middleware(mut request: Request, next: Next) -> Response
     if let Ok(v) = HeaderValue::from_str(request_id.as_str()) {
         res.headers_mut().insert(X_REQUEST_ID, v);
     } else {
-        warn!("could not set request ID into response headers: `{request_id}`",);
+        tracing::warn!("could not set request ID into response headers: `{request_id}`",);
     }
     res
 }
 
+/// Generates or sanitizes a request ID.
 fn make_request_id(maybe_request_id: Option<HeaderValue>) -> String {
     maybe_request_id
         .and_then(|hdr| {

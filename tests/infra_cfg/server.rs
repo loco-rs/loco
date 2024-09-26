@@ -58,7 +58,7 @@ pub async fn start_from_ctx(ctx: AppContext) -> tokio::task::JoinHandle<()> {
                 .add("/", get(get_action))
                 .add("/", post(post_action)),
         )
-        .to_router(ctx.clone(), axum::Router::new())
+        .to_router::<AppHook>(ctx.clone(), axum::Router::new())
         .expect("to router");
 
     let boot = boot::BootResult {
@@ -78,7 +78,7 @@ pub async fn start_with_route(
 ) -> tokio::task::JoinHandle<()> {
     let app_router = AppRoutes::empty()
         .add_route(Routes::new().add(uri, method))
-        .to_router(ctx.clone(), axum::Router::new())
+        .to_router::<AppHook>(ctx.clone(), axum::Router::new())
         .expect("to router");
 
     let boot = boot::BootResult {

@@ -21,7 +21,6 @@ Notes:
 * We typically provide best practice values for development and test, but by-design we do not provide default values for production
 
 ***/
-
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
@@ -33,11 +32,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::info;
 
-use crate::{
-    controller::middleware::{remote_ip::RemoteIPConfig, secure_headers::SecureHeadersConfig},
-    environment::Environment,
-    logger, scheduler, Error, Result,
-};
+use crate::{controller::middleware, environment::Environment, logger, scheduler, Error, Result};
 
 lazy_static! {
     static ref DEFAULT_FOLDER: PathBuf = PathBuf::from("config");
@@ -324,7 +319,7 @@ pub struct Server {
     pub ident: Option<String>,
     /// Middleware configurations for the server, including payload limits,
     /// logging, and error handling.
-    pub middlewares: Middlewares,
+    pub middlewares: middleware::Config,
 }
 
 fn default_binding() -> String {
@@ -366,112 +361,6 @@ pub enum WorkerMode {
     /// Workers operate asynchronously in the background, processing tasks with
     /// async capabilities in the same process.
     BackgroundAsync,
-}
-
-/// Server middleware configuration structure.
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Middlewares {
-    /// Middleware that enable compression for the response.
-    pub compression: Option<EnableMiddleware>,
-    /// Middleware that enable etag cache headers.
-    pub etag: Option<EnableMiddleware>,
-    /// Middleware that limit the payload request.
-    pub limit_payload: Option<LimitPayloadMiddleware>,
-    /// Middleware that improve the tracing logger and adding trace id for each
-    /// request.
-    pub logger: Option<EnableMiddleware>,
-    /// catch any code panic and log the error.
-    pub catch_panic: Option<EnableMiddleware>,
-    /// Setting a global timeout for the requests
-    pub timeout_request: Option<TimeoutRequestMiddleware>,
-    /// Setting cors configuration
-    pub cors: Option<CorsMiddleware>,
-    /// Serving static assets
-    #[serde(rename = "static")]
-    pub static_assets: Option<StaticAssetsMiddleware>,
-    /// Sets a set of secure headers
-    pub secure_headers: Option<SecureHeadersConfig>,
-    /// Calculates a remote IP based on `X-Forwarded-For` when behind a proxy
-    pub remote_ip: Option<RemoteIPConfig>,
-    /// Configure fallback behavior when hitting a missing URL
-    pub fallback: Option<FallbackConfig>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct FallbackConfig {
-    /// By default when enabled, returns a prebaked 404 not found page optimized
-    /// for development. For production set something else (see fields below)
-    pub enable: bool,
-    /// For the unlikely reason to return something different than `404`, you
-    /// can set it here
-    pub code: Option<u16>,
-    /// Returns content from a file pointed to by this field with a `404` status
-    /// code.
-    pub file: Option<String>,
-    /// Returns a "404 not found" with a single message string. This sets the
-    /// message.
-    pub not_found: Option<String>,
-}
-/// Static asset middleware configuration
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct StaticAssetsMiddleware {
-    pub enable: bool,
-    /// Check that assets must exist on disk
-    pub must_exist: bool,
-    /// Assets location
-    pub folder: FolderAssetsMiddleware,
-    /// Fallback page for a case when no asset exists (404). Useful for SPA
-    /// (single page app) where routes are virtual.
-    pub fallback: String,
-    /// Enable `precompressed_gzip`
-    #[serde(default = "bool::default")]
-    pub precompressed: bool,
-}
-
-/// Asset folder config.
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct FolderAssetsMiddleware {
-    /// Uri for the assets
-    pub uri: String,
-    /// Path for the assets
-    pub path: String,
-}
-
-/// CORS middleware configuration
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct CorsMiddleware {
-    pub enable: bool,
-    /// Allow origins
-    pub allow_origins: Option<Vec<String>>,
-    /// Allow headers
-    pub allow_headers: Option<Vec<String>>,
-    /// Allow methods
-    pub allow_methods: Option<Vec<String>>,
-    /// Max age
-    pub max_age: Option<u64>,
-}
-
-/// Timeout middleware configuration
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct TimeoutRequestMiddleware {
-    pub enable: bool,
-    // Timeout request in milliseconds
-    pub timeout: u64,
-}
-
-/// Limit payload size middleware configuration
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct LimitPayloadMiddleware {
-    pub enable: bool,
-    /// Body limit. for example: 5mb
-    pub body_limit: String,
-}
-
-/// A generic middleware configuration that can be enabled or
-/// disabled.
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct EnableMiddleware {
-    pub enable: bool,
 }
 
 /// Mailer configuration
