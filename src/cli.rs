@@ -27,6 +27,7 @@ cfg_if::cfg_if! {
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
+use duct::cmd;
 
 use crate::{
     app::{AppContext, Hooks},
@@ -36,7 +37,7 @@ use crate::{
     },
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     gen::{self, Component, ScaffoldKind},
-    logger, task,
+    logger, task, Error,
 };
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -125,6 +126,16 @@ enum Commands {
     },
     /// Display the app version
     Version {},
+
+    /// Watch and restart the app
+    Watch {
+        /// start worker
+        #[arg(short, long, action)]
+        worker: bool,
+        /// start same-process server and worker
+        #[arg(short, long, action)]
+        server_and_worker: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -399,6 +410,7 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
 /// }
 /// ```
 #[cfg(feature = "with-db")]
+#[allow(clippy::too_many_lines)]
 pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
     let cli: Cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
@@ -485,6 +497,28 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         Commands::Version {} => {
             println!("{}", H::app_version(),);
         }
+
+        Commands::Watch {
+            worker,
+            server_and_worker,
+        } => {
+            // cargo-watch  -s 'cargo loco start'
+            let mut subcmd = vec!["cargo", "loco", "start"];
+            if worker {
+                subcmd.push("--worker");
+            } else if server_and_worker {
+                subcmd.push("--server-and-worker");
+            }
+
+            cmd("cargo-watch", &["-s", &subcmd.join(" ")])
+                .run()
+                .map_err(|err| {
+                    Error::Message(format!(
+                        "failed to start with `cargo-watch`. Did you `cargo install \
+                         cargo-watch`?. error details: `{err}`",
+                    ))
+                })?;
+        }
     }
     Ok(())
 }
@@ -551,6 +585,27 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
         }
         Commands::Version {} => {
             println!("{}", H::app_version(),);
+        }
+        Commands::Watch {
+            worker,
+            server_and_worker,
+        } => {
+            // cargo-watch  -s 'cargo loco start'
+            let mut subcmd = vec!["cargo", "loco", "start"];
+            if worker {
+                subcmd.push("--worker");
+            } else if server_and_worker {
+                subcmd.push("--server-and-worker");
+            }
+
+            cmd("cargo-watch", &["-s", &subcmd.join(" ")])
+                .run()
+                .map_err(|err| {
+                    Error::Message(format!(
+                        "failed to start with `cargo-watch`. Did you `cargo install \
+                         cargo-watch`?. error details: `{err}`",
+                    ))
+                })?;
         }
     }
     Ok(())
