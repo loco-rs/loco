@@ -124,13 +124,15 @@ pub async fn run_task<H: Hooks>(
     Ok(())
 }
 
-/// Runs the scheduler with the given configuration and context. in case if list args is true
-/// prints scheduler job configuration
+/// Runs the scheduler with the given configuration and context. in case if list
+/// args is true prints scheduler job configuration
 ///
-/// This function initializes the scheduler, registers tasks through the provided [`Hooks`],
-/// and executes the scheduler based on the specified configuration or context. The scheduler
-/// continuously runs, managing and executing scheduled tasks until a signal is received to shut down.
-/// Upon receiving this signal, the function gracefully shuts down all running tasks and exits safely.
+/// This function initializes the scheduler, registers tasks through the
+/// provided [`Hooks`], and executes the scheduler based on the specified
+/// configuration or context. The scheduler continuously runs, managing and
+/// executing scheduled tasks until a signal is received to shut down.
+/// Upon receiving this signal, the function gracefully shuts down all running
+/// tasks and exits safely.
 ///
 /// # Errors
 ///
@@ -381,7 +383,7 @@ pub fn list_middlewares<H: Hooks>(ctx: &AppContext) -> Vec<String> {
     H::routes(ctx)
         .middlewares::<H>(ctx)
         .iter()
-        .map(|m| m.name().replace(' ', "_"))
+        .map(|m| heck::AsSnakeCase(m.name()).to_string())
         .collect::<Vec<String>>()
 }
 
