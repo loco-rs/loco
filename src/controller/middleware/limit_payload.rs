@@ -19,7 +19,6 @@ use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LimitPayload {
     pub enable: bool,
-    /// Body limit. for example: 5mb
     #[serde(deserialize_with = "deserialize_body_limit")]
     pub body_limit: usize,
 }
