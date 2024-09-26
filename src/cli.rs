@@ -63,6 +63,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Start an app
+    #[clap(alias("s"))]
     Start {
         /// start worker
         #[arg(short, long, action)]
@@ -86,6 +87,7 @@ enum Commands {
     /// Describe all application endpoints
     Routes {},
     /// Run a custom task
+    #[clap(alias("t"))]
     Task {
         /// Task name (identifier)
         name: Option<String>,
@@ -112,6 +114,7 @@ enum Commands {
     },
     /// code generation creates a set of files and code templates based on a
     /// predefined set of rules.
+    #[clap(alias("g"))]
     Generate {
         /// What to generate
         #[command(subcommand)]
@@ -128,6 +131,7 @@ enum Commands {
     Version {},
 
     /// Watch and restart the app
+    #[clap(alias("w"))]
     Watch {
         /// start worker
         #[arg(short, long, action)]
