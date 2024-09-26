@@ -108,7 +108,7 @@ impl MiddlewareLayer for RemoteIpMiddleware {
 
     /// Applies the Remote IP middleware to the given Axum router.
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
-        Ok(app.layer(RemoteIPLayer::new(&self)?))
+        Ok(app.layer(RemoteIPLayer::new(self)?))
     }
 }
 

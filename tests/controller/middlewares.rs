@@ -214,7 +214,7 @@ async fn limit_payload(#[case] enable: bool) {
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
-    ctx.config.server.middlewares.limit_payload = middleware::limit_payload::Config {
+    ctx.config.server.middlewares.limit_payload = middleware::limit_payload::LimitPayload {
         enable,
         body_limit: 0x1B,
     };

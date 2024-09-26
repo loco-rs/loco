@@ -80,7 +80,7 @@ pub struct Config {
     pub etag: etag::Etag,
     /// Middleware that limit the payload request.
     #[serde(default)]
-    pub limit_payload: limit_payload::Config,
+    pub limit_payload: limit_payload::LimitPayload,
     /// Middleware that improve the tracing logger and adding trace id for each
     /// request.
     #[serde(default)]

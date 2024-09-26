@@ -13,12 +13,21 @@ use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 use axum::Router as AXRouter;
 use serde::{Deserialize, Deserializer, Serialize};
 
-#[derive(Default, Debug, Clone, Deserialize, Serialize)]
-pub struct Config {
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct LimitPayload {
     pub enable: bool,
     /// Body limit. for example: 5mb
     #[serde(deserialize_with = "deserialize_body_limit")]
     pub body_limit: usize,
+}
+
+impl Default for LimitPayload {
+    fn default() -> Self {
+        Self {
+            enable: true,
+            body_limit: 1024,
+        }
+    }
 }
 
 fn deserialize_body_limit<'de, D>(deserializer: D) -> Result<usize, D::Error>
@@ -32,7 +41,7 @@ where
     )
 }
 
-impl MiddlewareLayer for Config {
+impl MiddlewareLayer for LimitPayload {
     /// Returns the name of the middleware
     fn name(&self) -> &'static str {
         "limit payload"
