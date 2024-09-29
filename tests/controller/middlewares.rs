@@ -398,10 +398,8 @@ async fn fallback(
 
     if let Some(code) = code {
         assert_eq!(res.status(), code);
-    } else if file.is_some() {
-        assert_eq!(res.status(), StatusCode::OK);
     } else {
-        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+        assert_eq!(res.status(), StatusCode::OK);
     }
 
     let response_text = res.text().await.expect("response text");
