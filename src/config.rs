@@ -275,8 +275,6 @@ pub struct JWT {
 pub enum JWTLocation {
     /// Authenticate using a Bearer token.
     Bearer,
-    /// Authenticate using a token passed as a query parameter.
-    Query { name: String },
     /// Authenticate using a token stored in a cookie.
     Cookie { name: String },
 }
