@@ -264,7 +264,7 @@ Loco comes with a set of built-in middleware out of the box. Some are enabled by
 You get all the enabled middlewares run the following command
 <!-- <snip id="cli-middleware-list" inject_from="yaml" template="sh"> -->
 ```sh
-cargo loco middleware
+cargo loco middleware --config
 ```
 <!-- </snip> -->
 

@@ -22,6 +22,7 @@ pub mod request_id;
 pub mod secure_headers;
 pub mod static_assets;
 pub mod timeout;
+
 use axum::Router as AXRouter;
 use serde::{Deserialize, Serialize};
 
@@ -36,6 +37,12 @@ pub trait MiddlewareLayer {
     fn is_enabled(&self) -> bool {
         true
     }
+
+    /// Returns middleware config.
+    ///
+    /// # Errors
+    /// when could not convert middleware to [`serde_json::Value`]
+    fn config(&self) -> serde_json::Result<serde_json::Value>;
 
     /// Applies the middleware to the given Axum router and returns the modified
     /// router.

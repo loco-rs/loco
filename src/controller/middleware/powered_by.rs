@@ -60,6 +60,13 @@ impl MiddlewareLayer for Middleware {
         self.ident.is_some()
     }
 
+    fn config(&self) -> serde_json::Result<serde_json::Value> {
+        self.ident.as_ref().map_or_else(
+            || Ok(serde_json::json!({})),
+            |ident| Ok(serde_json::json!({"ident": ident.to_str().unwrap_or_default()})),
+        )
+    }
+
     /// Applies the middleware to the application by adding the `X-Powered-By` header to
     /// each response.
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {

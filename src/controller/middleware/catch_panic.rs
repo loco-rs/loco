@@ -25,6 +25,7 @@ impl Default for CatchPanic {
         Self { enable: true }
     }
 }
+
 /// Handler function for the [`CatchPanicLayer`] middleware.
 ///
 /// This function processes panics by extracting error messages, logging them,
@@ -50,6 +51,10 @@ impl MiddlewareLayer for CatchPanic {
     /// Returns whether the middleware is enabled or not
     fn is_enabled(&self) -> bool {
         self.enable
+    }
+
+    fn config(&self) -> serde_json::Result<serde_json::Value> {
+        serde_json::to_value(self)
     }
 
     /// Applies the Catch Panic middleware layer to the Axum router.

@@ -97,6 +97,10 @@ impl MiddlewareLayer for SecureHeader {
         self.enable
     }
 
+    fn config(&self) -> serde_json::Result<serde_json::Value> {
+        serde_json::to_value(self)
+    }
+
     /// Applies the secure headers layer to the application router
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
         Ok(app.layer(SecureHeaders::new(self)?))

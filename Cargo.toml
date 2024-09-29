@@ -132,7 +132,7 @@ english-to-cron = { version = "0.1.2" }
 async-trait = { version = "0.1.74" }
 axum = { version = "0.7.5", features = ["macros"] }
 tower = "0.4"
-tower-http = { version = "0.5.0", features = [
+tower-http = { version = "0.6.1", features = [
     "trace",
     "catch-panic",
     "timeout",

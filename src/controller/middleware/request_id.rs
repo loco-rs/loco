@@ -44,6 +44,10 @@ impl MiddlewareLayer for RequestId {
         self.enable
     }
 
+    fn config(&self) -> serde_json::Result<serde_json::Value> {
+        serde_json::to_value(self)
+    }
+
     /// Applies the request ID middleware to the Axum router.
     ///
     /// This function sets up the middleware in the router and ensures that

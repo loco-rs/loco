@@ -26,6 +26,7 @@ use crate::{
     worker::{self, AppWorker, Pool, Processor, RedisConnectionManager},
     Result,
 };
+use colored::Colorize;
 
 /// Represents the application startup mode.
 pub enum StartMode {
@@ -379,11 +380,21 @@ pub fn list_endpoints<H: Hooks>(ctx: &AppContext) -> Vec<ListRoutes> {
 }
 
 #[must_use]
-pub fn list_middlewares<H: Hooks>(ctx: &AppContext) -> Vec<String> {
+pub fn list_middlewares<H: Hooks>(ctx: &AppContext, with_config: bool) -> Vec<String> {
     H::routes(ctx)
         .middlewares::<H>(ctx)
         .iter()
-        .map(|m| heck::AsSnakeCase(m.name()).to_string())
+        .map(|m| {
+            let text = heck::AsSnakeCase(m.name()).to_string().bold();
+            if with_config {
+                format!(
+                    "{text:<22} {}",
+                    serde_json::to_string(&m.config().unwrap_or_default()).unwrap_or_default()
+                )
+            } else {
+                format!("{text}")
+            }
+        })
         .collect::<Vec<String>>()
 }
 

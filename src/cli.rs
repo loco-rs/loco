@@ -87,7 +87,11 @@ enum Commands {
     /// Describe all application endpoints
     Routes {},
     /// Describe all application middlewares
-    Middleware {},
+    Middleware {
+        // print out the middleware configurations.
+        #[arg(short, long, action)]
+        config: bool,
+    },
     /// Run a custom task
     #[clap(alias("t"))]
     Task {
@@ -467,9 +471,9 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             let app_context = create_context::<H>(&environment).await?;
             show_list_endpoints::<H>(&app_context);
         }
-        Commands::Middleware {} => {
+        Commands::Middleware { config } => {
             let app_context = create_context::<H>(&environment).await?;
-            let middlewares = list_middlewares::<H>(&app_context);
+            let middlewares = list_middlewares::<H>(&app_context, config);
             for middleware in middlewares {
                 println!("{middleware}");
             }
@@ -580,9 +584,9 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             let app_context = create_context::<H>(&environment).await?;
             show_list_endpoints::<H>(&app_context)
         }
-        Commands::Middleware {} => {
+        Commands::Middleware { config } => {
             let app_context = create_context::<H>(&environment).await?;
-            let middlewares = list_middlewares::<H>(&app_context);
+            let middlewares = list_middlewares::<H>(&app_context, config);
             for middleware in middlewares {
                 println!("{middleware}");
             }

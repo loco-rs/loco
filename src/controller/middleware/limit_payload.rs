@@ -54,6 +54,10 @@ impl MiddlewareLayer for LimitPayload {
         self.enable
     }
 
+    fn config(&self) -> serde_json::Result<serde_json::Value> {
+        serde_json::to_value(self)
+    }
+
     /// Applies the payload limit middleware to the application router by adding
     /// a `DefaultBodyLimit` layer.
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {

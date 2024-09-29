@@ -52,6 +52,10 @@ impl MiddlewareLayer for StaticAssets {
         self.enable
     }
 
+    fn config(&self) -> serde_json::Result<serde_json::Value> {
+        serde_json::to_value(self)
+    }
+
     /// Applies the static assets middleware to the application router.
     ///
     /// This method wraps the provided [`AXRouter`] with a service to serve
