@@ -132,7 +132,7 @@ english-to-cron = { version = "0.1.2" }
 async-trait = { version = "0.1.74" }
 axum = { version = "0.7.5", features = ["macros"] }
 tower = "0.4"
-tower-http = { version = "0.5.0", features = [
+tower-http = { version = "0.6.1", features = [
     "trace",
     "catch-panic",
     "timeout",
@@ -163,3 +163,5 @@ loco-rs = { path = ".", features = ["testing"] }
 rstest = "0.21.0"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
 tree-fs = { version = "0.1.0" }
+reqwest = { version = "0.12.7" }
+serial_test = "3.1.1"

@@ -26,6 +26,7 @@ use crate::{
     worker::{self, AppWorker, Pool, Processor, RedisConnectionManager},
     Result,
 };
+use colored::Colorize;
 
 /// Represents the application startup mode.
 pub enum StartMode {
@@ -124,13 +125,15 @@ pub async fn run_task<H: Hooks>(
     Ok(())
 }
 
-/// Runs the scheduler with the given configuration and context. in case if list args is true
-/// prints scheduler job configuration
+/// Runs the scheduler with the given configuration and context. in case if list
+/// args is true prints scheduler job configuration
 ///
-/// This function initializes the scheduler, registers tasks through the provided [`Hooks`],
-/// and executes the scheduler based on the specified configuration or context. The scheduler
-/// continuously runs, managing and executing scheduled tasks until a signal is received to shut down.
-/// Upon receiving this signal, the function gracefully shuts down all running tasks and exits safely.
+/// This function initializes the scheduler, registers tasks through the
+/// provided [`Hooks`], and executes the scheduler based on the specified
+/// configuration or context. The scheduler continuously runs, managing and
+/// executing scheduled tasks until a signal is received to shut down.
+/// Upon receiving this signal, the function gracefully shuts down all running
+/// tasks and exits safely.
 ///
 /// # Errors
 ///
@@ -313,7 +316,7 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
     match mode {
         StartMode::ServerOnly => {
             let app = H::before_routes(&app_context).await?;
-            let app = H::routes(&app_context).to_router(app_context.clone(), app)?;
+            let app = H::routes(&app_context).to_router::<H>(app_context.clone(), app)?;
             let mut router = H::after_routes(app, &app_context).await?;
             for initializer in &initializers {
                 router = initializer.after_routes(router, &app_context).await?;
@@ -328,7 +331,7 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
         StartMode::ServerAndWorker => {
             let processor = create_processor::<H>(&app_context)?;
             let app = H::before_routes(&app_context).await?;
-            let app = H::routes(&app_context).to_router(app_context.clone(), app)?;
+            let app = H::routes(&app_context).to_router::<H>(app_context.clone(), app)?;
             let mut router = H::after_routes(app, &app_context).await?;
             for initializer in &initializers {
                 router = initializer.after_routes(router, &app_context).await?;
@@ -374,6 +377,25 @@ fn create_processor<H: Hooks>(app_context: &AppContext) -> Result<Processor> {
 #[must_use]
 pub fn list_endpoints<H: Hooks>(ctx: &AppContext) -> Vec<ListRoutes> {
     H::routes(ctx).collect()
+}
+
+#[must_use]
+pub fn list_middlewares<H: Hooks>(ctx: &AppContext, with_config: bool) -> Vec<String> {
+    H::routes(ctx)
+        .middlewares::<H>(ctx)
+        .iter()
+        .map(|m| {
+            let text = heck::AsSnakeCase(m.name()).to_string().bold();
+            if with_config {
+                format!(
+                    "{text:<22} {}",
+                    serde_json::to_string(&m.config().unwrap_or_default()).unwrap_or_default()
+                )
+            } else {
+                format!("{text}")
+            }
+        })
+        .collect::<Vec<String>>()
 }
 
 /// Initializes an [`EmailSender`] based on the mailer configuration settings
