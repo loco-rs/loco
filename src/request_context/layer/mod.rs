@@ -83,7 +83,7 @@ where
                     tracing::error!("missing request_id request extension");
                     return Ok(Response::default());
                 };
-                match store.config {
+                match store.session_config {
                     config::RequestContextSession::Cookie { .. } => {
                         let jar = SignedPrivateCookieJar::new(
                             request.headers(),
@@ -110,6 +110,7 @@ where
                         let jar = SignedPrivateCookieJar::from_cookie_map(
                             &store.private_key,
                             cookie_map.lock().await.clone(),
+                            &store.session_cookie_config.clone(),
                         )
                         .map_err(|e| {
                             tracing::error!(error=?e, "Failed to extract data from cookie jar");
@@ -127,11 +128,10 @@ where
                         };
                         if let Some(jar) = jar {
                             response = (jar, response).into_response();
-                            Ok(response)
                         } else {
                             tracing::error!("Cannot find cookie jar from request context");
-                            Ok(response)
                         }
+                        Ok(response)
                     }
                     config::RequestContextSession::Tower => {
                         let Some(session) = request.extensions().get::<Session>().cloned() else {

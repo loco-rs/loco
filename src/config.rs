@@ -247,12 +247,12 @@ pub struct Database {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RequestContextMiddleware {
     pub enable: bool,
-    pub session_config: SessionConfig,
+    pub session_cookie_config: SessionCookieConfig,
     pub session_store: RequestContextSession,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct SessionConfig {
+pub struct SessionCookieConfig {
     pub name: String,
     pub http_only: bool,
     pub same_site: SameSite,
@@ -264,14 +264,17 @@ pub struct SessionConfig {
 
 /// `RequestContextSession` configuration
 /// # Enums:
-/// * Cookie - this is a placeholder for when we implement the cookie session driver or our custom session.
-/// * Tower - this is a placeholder for when we implement the tower session driver or our custom session.
+/// * Cookie - this is a placeholder for when we implement the cookie session
+///   driver or our custom session.
+/// * Tower - this is a placeholder for when we implement the tower session
+///   driver or our custom session.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "type", content = "value")]
 pub enum RequestContextSession {
     /// Cookie session configuration
     Cookie {
-        /// Private key for Private Cookie Jar in Cookie Sessions, must be more than 64 bytes.
+        /// Private key for Private Cookie Jar in Cookie Sessions, must be more
+        /// than 64 bytes.
         private_key: Vec<u8>,
     },
     /// Tower session configuration

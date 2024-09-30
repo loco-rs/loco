@@ -2,7 +2,7 @@
 //! configuring routes in an Axum application. It allows you to define route
 //! prefixes, add routes, and configure middlewares for the application.
 
-use std::{fmt, path::PathBuf, time::Duration};
+use std::{fmt, path::PathBuf};
 
 use axum::{
     http,
@@ -22,7 +22,7 @@ use tower_http::{
     timeout::TimeoutLayer,
     trace::TraceLayer,
 };
-use tower_sessions::{SessionManagerLayer, SessionStore};
+use tower_sessions::{cookie, cookie::time, Expiry, SessionManagerLayer, SessionStore};
 
 #[cfg(feature = "channels")]
 use super::channels::AppChannels;
@@ -32,7 +32,7 @@ use super::{
 };
 use crate::{
     app::AppContext,
-    config::{self, FallbackConfig, RequestContextSession},
+    config::{self, FallbackConfig, RequestContextSession, SameSite, SessionCookieConfig},
     controller::middleware::{
         etag::EtagLayer,
         remote_ip::RemoteIPLayer,
@@ -440,6 +440,7 @@ impl AppRoutes {
                 let layer = Self::get_cookie_request_context_middleware(
                     private_key,
                     &request_context.session_store,
+                    &request_context.session_cookie_config,
                 )?;
                 app = app.layer(layer);
             }
@@ -447,6 +448,10 @@ impl AppRoutes {
                 Some(session_store) => {
                     tracing::info!("[Middleware] Adding request context");
                     let layer = SessionManagerLayer::new(session_store.to_owned());
+                    let layer = Self::add_request_context_config_tower(
+                        layer,
+                        &request_context.session_cookie_config,
+                    );
                     app = app.layer(layer);
                 }
                 None => {
@@ -457,9 +462,34 @@ impl AppRoutes {
         Ok(app)
     }
 
+    fn add_request_context_config_tower(
+        mut layer: SessionManagerLayer<CustomSessionStore>,
+        config: &SessionCookieConfig,
+    ) -> SessionManagerLayer<CustomSessionStore> {
+        layer = layer.with_name(config.name.to_string());
+        if config.http_only {
+            layer = layer.with_http_only(true);
+        }
+        if config.secure {
+            layer = layer.with_secure(true);
+        }
+        match config.same_site {
+            SameSite::Strict => layer = layer.with_same_site(cookie::SameSite::Strict),
+            SameSite::Lax => layer = layer.with_same_site(cookie::SameSite::Lax),
+            SameSite::None => layer = layer.with_same_site(cookie::SameSite::None),
+        }
+        if let Some(expiry) = &config.expiry {
+            tracing::info!("request context session expiry: {:?}", expiry);
+            let expiry = Expiry::OnInactivity(time::Duration::seconds(i64::from(*expiry)));
+            layer = layer.with_expiry(expiry);
+        }
+        layer
+    }
+
     fn get_cookie_request_context_middleware(
         private_key: &[u8],
         session_config: &config::RequestContextSession,
+        session_cookie_config: &SessionCookieConfig,
     ) -> Result<RequestContextLayer> {
         let private_key = Key::try_from(private_key).map_err(|e| {
             tracing::error!(error = ?e, "could not convert private key from configuration");
@@ -467,8 +497,11 @@ impl AppRoutes {
                 "could not convert private key from configuration".to_string(),
             )
         })?;
-        let store =
-            crate::request_context::RequestContextStore::new(private_key, session_config.clone());
+        let store = crate::request_context::RequestContextStore::new(
+            private_key,
+            session_config.clone(),
+            session_cookie_config.clone(),
+        );
         Ok(RequestContextLayer::new(store))
     }
 
@@ -533,7 +566,9 @@ impl AppRoutes {
         app: AXRouter<AppContext>,
         config: &config::TimeoutRequestMiddleware,
     ) -> AXRouter<AppContext> {
-        let app = app.layer(TimeoutLayer::new(Duration::from_millis(config.timeout)));
+        let app = app.layer(TimeoutLayer::new(std::time::Duration::from_millis(
+            config.timeout,
+        )));
 
         tracing::info!("[Middleware] +timeout");
         app
@@ -591,12 +626,12 @@ fn handle_panic(err: Box<dyn std::any::Any + Send + 'static>) -> axum::response:
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-    use crate::prelude::*;
-    use crate::tests_cfg;
     use insta::assert_debug_snapshot;
     use rstest::rstest;
     use tower::ServiceExt;
+
+    use super::*;
+    use crate::{prelude::*, tests_cfg};
 
     async fn action() -> Result<Response> {
         format::json("loco")

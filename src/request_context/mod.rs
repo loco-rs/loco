@@ -1,23 +1,31 @@
 pub mod driver;
 pub mod layer;
 
-use crate::controller::middleware::request_id::LocoRequestId;
-use crate::request_context::driver::{Driver, DriverError};
-use crate::{config, prelude};
+use std::sync::Arc;
+
 use async_trait::async_trait;
-use axum::extract::FromRequestParts;
-use axum::http::request::Parts;
+use axum::{extract::FromRequestParts, http::request::Parts};
 use axum_extra::extract::cookie::Key;
 use serde::de::DeserializeOwned;
-use std::sync::Arc;
-use tower_sessions::session::{Id, Record};
-use tower_sessions::SessionStore;
+use tower_sessions::{
+    session::{Id, Record},
+    SessionStore,
+};
+
+use crate::{
+    config,
+    config::SessionCookieConfig,
+    controller::middleware::request_id::LocoRequestId,
+    prelude,
+    request_context::driver::{Driver, DriverError},
+};
 
 /// Enum representing errors that can occur in the `RequestContext` module.
 ///
 /// # Errors
 /// - `ConfigurationError`: Indicates a configuration error.
-/// - `SignedPrivateCookieJarError`: Represents an error from the signed private cookie jar.
+/// - `SignedPrivateCookieJarError`: Represents an error from the signed private
+///   cookie jar.
 /// - `DriverError`: Indicates an error from the driver module.
 #[derive(thiserror::Error, Debug)]
 pub enum RequestContextError {
@@ -32,15 +40,18 @@ pub enum RequestContextError {
     DriverError(#[from] DriverError),
 }
 
-/// Defines a `RequestContextStore` struct that holds a private key and a configuration for request context sessions.
+/// Defines a `RequestContextStore` struct that holds a private key and a
+/// configuration for request context sessions.
 ///
 /// # Fields
 /// - `private_key`: Key - Private key for the `RequestContextStore`.
-/// - `config`: `RequestContextSession` - Configuration for the request context session.
+/// - `config`: `RequestContextSession` - Configuration for the request context
+///   session.
 #[derive(Debug, Clone)]
 pub struct RequestContextStore {
     private_key: Key,
-    config: config::RequestContextSession,
+    session_config: config::RequestContextSession,
+    session_cookie_config: SessionCookieConfig,
 }
 
 impl RequestContextStore {
@@ -48,15 +59,21 @@ impl RequestContextStore {
     ///
     /// # Arguments
     /// - `private_key`: Key - Private key for the `RequestContextStore`.
-    /// - `config::RequestContextSession` - Configuration for the request context session.
+    /// - `config::RequestContextSession` - Configuration for the request
+    ///   context session.
     ///
     /// # Return
     /// - `Self` - The new instance of the `RequestContextStore`.
     #[must_use]
-    pub fn new(private_key: Key, config: config::RequestContextSession) -> Self {
+    pub fn new(
+        private_key: Key,
+        session_config: config::RequestContextSession,
+        session_cookie_config: SessionCookieConfig,
+    ) -> Self {
         Self {
             private_key,
-            config,
+            session_config,
+            session_cookie_config,
         }
     }
 }
@@ -100,7 +117,8 @@ impl SessionStore for CustomSessionStore {
     }
 }
 
-/// Defines a `RequestContext` struct that holds a `LocoRequestId` and a `Driver`.
+/// Defines a `RequestContext` struct that holds a `LocoRequestId` and a
+/// `Driver`.
 ///
 /// # Fields
 /// - `LocoRequestId` - The request id for the request context.
@@ -140,7 +158,9 @@ impl RequestContext {
     /// * `value` - The value to store
     /// # Errors
     /// * `CookieMapError` - When the value is unable to be serialized
-    /// * `TowerSessionError` - When the value is unable to be serialized or if the session has not been hydrated and loading from the store fails, we fail with `Error::Store`
+    /// * `TowerSessionError` - When the value is unable to be serialized or if
+    ///   the session has not been hydrated and loading from the store fails, we
+    ///   fail with `Error::Store`
     pub async fn insert<T>(&mut self, key: &str, value: T) -> Result<(), RequestContextError>
     where
         T: serde::Serialize + Send + Sync,
@@ -158,7 +178,9 @@ impl RequestContext {
     /// * `Option<T>` - The value if it exists
     /// # Errors
     /// * `CookieMapError` - When the value is unable to be deserialized
-    /// * `TowerSessionError` - When the value is unable to be deserialized or if the session has not been hydrated and loading from the store fails, we fail with `Error::Store`
+    /// * `TowerSessionError` - When the value is unable to be deserialized or
+    ///   if the session has not been hydrated and loading from the store fails,
+    ///   we fail with `Error::Store`
     pub async fn get<T: DeserializeOwned>(
         &self,
         key: &str,
@@ -179,7 +201,9 @@ impl RequestContext {
     ///
     /// # Errors
     /// * `CookieMapError` - When the value is unable to be deserialized
-    /// * `TowerSessionError` - When the value is unable to be deserialized or if the session has not been hydrated and loading from the store fails, we fail with `Error::Store`
+    /// * `TowerSessionError` - When the value is unable to be deserialized or
+    ///   if the session has not been hydrated and loading from the store fails,
+    ///   we fail with `Error::Store`
     pub async fn remove<T: DeserializeOwned>(
         &mut self,
         key: &str,

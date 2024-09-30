@@ -1,10 +1,12 @@
 pub mod cookie;
 
-use crate::request_context::driver::cookie::CookieMap;
-use serde::de::DeserializeOwned;
 use std::sync::Arc;
+
+use serde::de::DeserializeOwned;
 use tokio::sync::Mutex;
 use tower_sessions::Session;
+
+use crate::request_context::driver::cookie::CookieMap;
 
 pub const PRIVATE_COOKIE_NAME: &str = "__loco_app_session";
 
@@ -21,7 +23,9 @@ impl Driver {
     /// * `value` - The value to store
     /// # Errors
     /// * `CookieMapError` - When the value is unable to be serialized
-    /// * `TowerSessionError` - When the value is unable to be serialized or if the session has not been hydrated and loading from the store fails, we fail with `Error::Store`
+    /// * `TowerSessionError` - When the value is unable to be serialized or if
+    ///   the session has not been hydrated and loading from the store fails, we
+    ///   fail with `Error::Store`
     pub async fn insert<T>(&mut self, key: &str, value: T) -> Result<(), DriverError>
     where
         T: serde::Serialize + Send + Sync,
@@ -44,7 +48,9 @@ impl Driver {
     /// * `Option<T>` - The value if it exists
     /// # Errors
     /// * `CookieMapError` - When the value is unable to be deserialized
-    /// * `TowerSessionError` - When the value is unable to be deserialized or if the session has not been hydrated and loading from the store fails, we fail with `Error::Store`
+    /// * `TowerSessionError` - When the value is unable to be deserialized or
+    ///   if the session has not been hydrated and loading from the store fails,
+    ///   we fail with `Error::Store`
     pub async fn get<T: DeserializeOwned>(&self, key: &str) -> Result<Option<T>, DriverError> {
         match self {
             Self::CookieMap(cookie_map) => Ok(cookie_map.lock().await.get(key)?),
@@ -62,7 +68,9 @@ impl Driver {
     ///
     /// # Errors
     /// * `CookieMapError` - When the value is unable to be deserialized
-    /// * `TowerSessionError` - When the value is unable to be deserialized or if the session has not been hydrated and loading from the store fails, we fail with `Error::Store`
+    /// * `TowerSessionError` - When the value is unable to be deserialized or
+    ///   if the session has not been hydrated and loading from the store fails,
+    ///   we fail with `Error::Store`
     pub async fn remove<T: DeserializeOwned>(
         &mut self,
         key: &str,
@@ -96,10 +104,11 @@ pub enum DriverError {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use std::collections::HashMap;
-    use std::sync::Arc;
+    use std::{collections::HashMap, sync::Arc};
+
     use tower_sessions::{MemoryStore, Session};
+
+    use super::*;
 
     fn create_session() -> Session {
         let store = Arc::new(MemoryStore::default());
