@@ -58,7 +58,7 @@ If not, feel free to skip this side-note and continue on to the next part.
 
 * For DB providers you can choose `Sqlite` or `Postgres`, both options are supported in `loco`. This option and the following options are not available when you choose the `lightweight-service` template.
 
-* For Background worker type, your options are:
+* For the background worker type, your options are:
   * `Async` which spawns workers in-process using the `tokio` async runtime.
   * `Queue` which spawns workers using `redis` as a queue. Does not use the same process because it uses `redis`.
   * `Blocking` which spawns workers synchronously in the same process, and blocks until they are completed. Use caution when choosing this option as it will block the entire thread.
