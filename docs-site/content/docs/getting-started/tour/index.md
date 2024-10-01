@@ -56,7 +56,7 @@ If not, feel free to skip this side-note and continue on to the next part.
   * `Rest API` which has the DB connection and user auth, but does not include views (no asset serving option later on).
   * `SaaS app` which comes with the DB connection and user auth, as well as views and templating.
 
-* For DB providers you can choose `Sqlite` or `Postgres`. This option and the following options are not available when you choose the `lightweight-service` template.
+* For DB providers you can choose `Sqlite` or `Postgres`, both options are supported in `loco`. This option and the following options are not available when you choose the `lightweight-service` template.
 </div>
 
  Now `cd` into your `myapp` and start your app by running `cargo loco start`:
