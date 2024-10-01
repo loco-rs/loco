@@ -47,6 +47,10 @@ If you select all defaults, you'll have:
 * `async` for background workers. Learn about workers configuration [async vs queue](@/docs/processing/workers.md#async-vs-queue) in the _workers_ section.
 * `Client` asset serving configuration. This means your backend will serve as API.
 
+ <div class="infobox">
+If you'd like to know more about the options the `loco new` command provides, here's a quick rundown.
+If not, feel free to skip this side-note and continue on to the next part.
+</div>
 
  Now `cd` into your `myapp` and start your app by running `cargo loco start`:
 
