@@ -62,6 +62,11 @@ If not, feel free to skip this side-note and continue on to the next part.
   * `Async` which spawns workers in-process using the `tokio` async runtime.
   * `Queue` which spawns workers using `redis` as a queue. Does not use the same process because it uses `redis`.
   * `Blocking` which spawns workers synchronously in the same process, and blocks until they are completed. Use caution when choosing this option as it will block the entire thread.
+
+* Finally, if you chose the  `SaaS app` template above, you have two options to choose from for how your assets will be served. These options set different configuration options, and can be changed after with little effort. The options are:
+  * `Server` - Which is intended to work when you want to use server-side rendered views. It serves your static assets from the `assets/static/` directory using the `/static` route.
+  * `Client` - Which is intended to work with the provided `frontend/` client-side rendered app. It serves your static assets from the `frontend/dist/` directory using the `/` route.
+  * Note that this option only changes the relevant section in the `config/development.yml` file, so not only can you easily change it later (by commenting/uncommenting the relevant blocks), but you can set it up to use both if your needs require it.
 </div>
 
  Now `cd` into your `myapp` and start your app by running `cargo loco start`:
