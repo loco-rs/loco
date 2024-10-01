@@ -54,7 +54,7 @@ If not, feel free to skip this side-note and continue on to the next part.
 * For the built-in starter templates, the options are:
   * `lightweight-service` which is aimed to be minimal and only has controllers and views. Choosing this option will not include the selection options for database, background workers, or asset serving.
   * `Rest API` which has the DB connection and user auth, but does not include views (no asset serving option later on).
-  * `SaaS app` which comes with the DB connection and user auth, as well as views and templating.
+  * `SaaS app` which comes with the DB connection and user auth, as well as views and templating. It uses Tera for server-side rendering in `assets/views/` and React for client-side in `frontend/`.
 
 * For DB providers you can choose `Sqlite` or `Postgres`, both options are supported in `loco`. This option and the following options are not available when you choose the `lightweight-service` template.
 
