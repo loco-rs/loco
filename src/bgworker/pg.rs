@@ -5,8 +5,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use sqlx::{
-    postgres::{PgConnectOptions, PgPoolOptions},
-    ConnectOptions, Postgres,
+    postgres::{PgConnectOptions, PgPoolOptions, PgRow},
+    ConnectOptions, Postgres, Row,
 };
 use tokio::{task::JoinHandle, time::sleep};
 use tracing::{debug, error, trace};
@@ -31,7 +31,7 @@ type TaskHandler = Box<
         + Sync,
 >;
 
-#[derive(Debug, Deserialize, Serialize, sqlx::FromRow)]
+#[derive(Debug, Deserialize, Serialize)]
 struct Task {
     pub id: TaskId,
     pub name: String,
@@ -220,10 +220,20 @@ pub async fn enqueue(
 
 async fn dequeue(client: &Pool) -> Result<Option<Task>> {
     let mut tx = client.begin().await?;
-    let row = sqlx::query_as::<_, Task>(
+    let row = sqlx::query(
         "SELECT id, name, task_data, status, run_at, interval FROM pg_loco_queue WHERE status = \
          'queued' AND run_at <= NOW() ORDER BY run_at LIMIT 1 FOR UPDATE SKIP LOCKED",
     )
+    // avoid using FromRow because it requires the 'macros' feature, which nothing
+    // in our dep tree uses, so it'll create smaller, faster builds if we do this manually
+    .map(|row: PgRow| Task {
+        id: row.get("id"),
+        name: row.get("name"),
+        task_data: row.get("task_data"),
+        status: row.get("status"),
+        run_at: row.get("run_at"),
+        interval: row.get("interval"),
+    })
     .fetch_optional(&mut *tx)
     .await?;
 

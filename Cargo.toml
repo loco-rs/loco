@@ -92,9 +92,9 @@ byte-unit = "4.0.19"
 
 argon2 = { version = "0.5.2", features = ["std"] }
 rand = { version = "0.8.5", features = ["std"] }
-jsonwebtoken = { version = "9.1.0", optional = true }
+jsonwebtoken = { version = "9.3.0", optional = true }
 bcrypt = { version = "0.15.0", optional = true }
-validator = { version = "0.16.1", features = ["derive"] }
+validator = { version = "0.18.1", features = ["derive"] }
 futures-util = "0.3"
 tower = { workspace = true }
 hyper = "1.1"
@@ -102,17 +102,17 @@ mime = "0.3"
 bytes = "1.1"
 ipnetwork = "0.20.0"
 
-axum-test = { version = "14.3.0", optional = true }
+axum-test = { version = "16.1.0", optional = true }
 
 # gen
 rrgen = "0.5.3"
 chrono = "0.4.31"
 cargo_metadata = "0.18.1"
+dialoguer = "0.11.0"
 
 cfg-if = "1"
 
 uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
-requestty = "0.5.0"
 
 # A socket.io server implementation
 socketioxide = { version = "0.14.0", features = ["state"], optional = true }
@@ -129,7 +129,9 @@ tokio-cron-scheduler = { version = "0.11.0", features = ["signal"] }
 english-to-cron = { version = "0.1.2" }
 
 # bg_pg: postgres workers
-sqlx = { version = "0.7", features = ["postgres"], optional = true }
+sqlx = { version = "0.7", default-features = false, features = [
+    "postgres",
+], optional = true }
 ulid = { version = "1", optional = true }
 
 # bg_redis: redis workers
