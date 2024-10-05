@@ -98,7 +98,7 @@ impl Hooks for App {
     }
 
     async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {
-        queue.register(DownloadWorker::build(ctx));
+        queue.register(DownloadWorker::build(ctx)).await?;
         Ok(())
     }
 

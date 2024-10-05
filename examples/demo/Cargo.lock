@@ -600,7 +600,7 @@ dependencies = [
  "once_cell",
  "pin-project",
  "tokio",
- "tower",
+ "tower 0.4.13",
  "tower-http 0.5.2",
 ]
 
@@ -2998,7 +2998,7 @@ dependencies = [
  "opentelemetry-otlp",
  "serde",
  "serde_json",
- "tower",
+ "tower 0.4.13",
  "tower-http 0.6.1",
  "tracing",
  "tracing-opentelemetry-instrumentation-sdk",
@@ -3062,7 +3062,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-cron-scheduler",
- "tower",
+ "tower 0.4.13",
  "tower-http 0.6.1",
  "tracing",
  "tracing-appender",

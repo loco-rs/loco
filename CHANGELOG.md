@@ -17,7 +17,7 @@ fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {
 
 // AFTER
 async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()>{
-    queue.register(DownloadWorker::build(ctx));
+    queue.register(DownloadWorker::build(ctx)).await?;
     Ok(())
 }
 
