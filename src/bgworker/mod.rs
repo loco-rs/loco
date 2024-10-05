@@ -23,7 +23,7 @@ pub enum Queue {
     ),
     #[cfg(feature = "bg_pg")]
     Postgres(
-        sqlx::Pool<sqlx::Postgres>,
+        pg::PgPool,
         std::sync::Arc<tokio::sync::Mutex<pg::TaskRegistry>>,
         pg::RunOpts,
     ),

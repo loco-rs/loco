@@ -306,7 +306,7 @@ pub async fn create_app<H: Hooks>(
     let app_context = create_context::<H>(environment).await?;
 
     if let (Some(queue), Some(config)) = (&app_context.queue_provider, &app_context.config.queue) {
-        bgworker::converge(queue.deref(), config).await?;
+        bgworker::converge(queue, config).await?;
     }
 
     run_app::<H>(&mode, app_context).await

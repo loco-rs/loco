@@ -4,9 +4,10 @@ use std::{collections::HashMap, future::Future, pin::Pin, sync::Arc, time::Durat
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
+pub use sqlx::PgPool;
 use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions, PgRow},
-    ConnectOptions, Postgres, Row,
+    ConnectOptions, Row,
 };
 use tokio::{task::JoinHandle, time::sleep};
 use tracing::{debug, error, trace};
@@ -14,10 +15,6 @@ use ulid::Ulid;
 
 use super::{BackgroundWorker, Queue};
 use crate::{config::PostgresQueueConfig, Result};
-
-/// Postgres connection pool
-pub type Pool = sqlx::Pool<Postgres>;
-
 type TaskId = String;
 type TaskData = JsonValue;
 type TaskStatus = String;
@@ -85,7 +82,7 @@ impl TaskRegistry {
     }
 
     /// Runs the task handlers with the provided number of workers.
-    pub fn run(&self, pool: &Pool, opts: &RunOpts) -> Vec<JoinHandle<()>> {
+    pub fn run(&self, pool: &PgPool, opts: &RunOpts) -> Vec<JoinHandle<()>> {
         let mut tasks = Vec::new();
 
         let interval = opts.poll_interval_sec;
@@ -155,7 +152,7 @@ impl Default for TaskRegistry {
     }
 }
 
-async fn connect(cfg: &PostgresQueueConfig) -> Result<Pool> {
+async fn connect(cfg: &PostgresQueueConfig) -> Result<PgPool> {
     let mut conn_opts: PgConnectOptions = cfg.uri.parse()?;
     if !cfg.enable_logging {
         conn_opts = conn_opts.disable_statement_logging();
@@ -170,7 +167,7 @@ async fn connect(cfg: &PostgresQueueConfig) -> Result<Pool> {
     Ok(pool)
 }
 
-pub async fn initialize_database(pool: &Pool) -> Result<()> {
+pub async fn initialize_database(pool: &PgPool) -> Result<()> {
     debug!("pg worker: initialize database");
     sqlx::raw_sql(
         r"
@@ -192,7 +189,7 @@ pub async fn initialize_database(pool: &Pool) -> Result<()> {
 }
 
 pub async fn enqueue(
-    pool: &Pool,
+    pool: &PgPool,
     name: &str,
     task_data: TaskData,
     run_at: DateTime<Utc>,
@@ -218,7 +215,7 @@ pub async fn enqueue(
     Ok(id)
 }
 
-async fn dequeue(client: &Pool) -> Result<Option<Task>> {
+async fn dequeue(client: &PgPool) -> Result<Option<Task>> {
     let mut tx = client.begin().await?;
     let row = sqlx::query(
         "SELECT id, name, task_data, status, run_at, interval FROM pg_loco_queue WHERE status = \
@@ -253,7 +250,7 @@ async fn dequeue(client: &Pool) -> Result<Option<Task>> {
     }
 }
 
-async fn complete_task(pool: &Pool, task_id: &TaskId, interval_ms: Option<i64>) -> Result<()> {
+async fn complete_task(pool: &PgPool, task_id: &TaskId, interval_ms: Option<i64>) -> Result<()> {
     if let Some(interval_ms) = interval_ms {
         let next_run_at = Utc::now() + chrono::Duration::milliseconds(interval_ms);
         sqlx::query(
@@ -275,7 +272,7 @@ async fn complete_task(pool: &Pool, task_id: &TaskId, interval_ms: Option<i64>) 
     Ok(())
 }
 
-async fn fail_task(pool: &Pool, task_id: &TaskId, error: &crate::Error) -> Result<()> {
+async fn fail_task(pool: &PgPool, task_id: &TaskId, error: &crate::Error) -> Result<()> {
     let msg = error.to_string();
     error!(err = msg, "failed task");
     let error_json = serde_json::json!({ "error": msg });
@@ -290,14 +287,14 @@ async fn fail_task(pool: &Pool, task_id: &TaskId, error: &crate::Error) -> Resul
     Ok(())
 }
 
-pub async fn clear(pool: &Pool) -> Result<()> {
+pub async fn clear(pool: &PgPool) -> Result<()> {
     sqlx::query("DELETE from pg_loco_queue")
         .execute(pool)
         .await?;
     Ok(())
 }
 
-pub async fn ping(pool: &Pool) -> Result<()> {
+pub async fn ping(pool: &PgPool) -> Result<()> {
     sqlx::query("SELECT id from pg_loco_queue LIMIT 1")
         .execute(pool)
         .await?;
