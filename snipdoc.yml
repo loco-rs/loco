@@ -129,3 +129,6 @@ snippets:
   scheduler-run-job-by-tag-command:
     content: LOCO_ENV=production cargo loco scheduler --tag 'maintenance'
     path: ./snipdoc.yml
+  cli-middleware-list:
+    content: cargo loco middleware --config
+    path: ./snipdoc.yml

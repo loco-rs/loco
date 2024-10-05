@@ -32,6 +32,10 @@ impl MiddlewareLayer for Compression {
         self.enable
     }
 
+    fn config(&self) -> serde_json::Result<serde_json::Value> {
+        serde_json::to_value(self)
+    }
+
     /// Applies the Compression middleware layer to the Axum router.
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
         Ok(app.layer(CompressionLayer::new()))

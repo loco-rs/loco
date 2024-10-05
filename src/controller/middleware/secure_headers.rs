@@ -2,6 +2,11 @@
 //! This middleware applies secure HTTP headers, providing pre-defined presets
 //! (e.g., "github") and the ability to override or define custom headers.
 
+use std::{
+    collections::{BTreeMap, HashMap},
+    task::{Context, Poll},
+};
+
 use axum::{
     body::Body,
     http::{HeaderName, HeaderValue, Request},
@@ -12,10 +17,6 @@ use futures_util::future::BoxFuture;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use serde_json;
-use std::{
-    collections::{BTreeMap, HashMap},
-    task::{Context, Poll},
-};
 use tower::{Layer, Service};
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
@@ -63,13 +64,19 @@ lazy_static! {
 /// For the list of presets and their content look at [secure_headers.json](https://github.com/loco-rs/loco/blob/master/src/controller/middleware/secure_headers.rs)
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SecureHeader {
+    #[serde(default = "default_true")]
     pub enable: bool,
     pub preset: Option<String>,
     pub overrides: Option<BTreeMap<String, String>>,
 }
 
+fn default_true() -> bool {
+    true
+}
+
 impl Default for SecureHeader {
-    /// Provides a default secure header configuration, using the `github` preset.
+    /// Provides a default secure header configuration, using the `github`
+    /// preset.
     fn default() -> Self {
         Self {
             enable: true,
@@ -90,9 +97,13 @@ impl MiddlewareLayer for SecureHeader {
         self.enable
     }
 
+    fn config(&self) -> serde_json::Result<serde_json::Value> {
+        serde_json::to_value(self)
+    }
+
     /// Applies the secure headers layer to the application router
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
-        Ok(app.layer(SecureHeaders::new(&self)?))
+        Ok(app.layer(SecureHeaders::new(self)?))
     }
 }
 
@@ -118,8 +129,9 @@ impl SecureHeader {
 
     /// Helper function to push headers into a mutable vector.
     ///
-    /// This function takes a map of header names and values, converting them into
-    /// valid HTTP headers and adding them to the provided `headers` vector.
+    /// This function takes a map of header names and values, converting them
+    /// into valid HTTP headers and adding them to the provided `headers`
+    /// vector.
     fn push_headers(
         headers: &mut Vec<(HeaderName, HeaderValue)>,
         hm: &BTreeMap<String, String>,
@@ -134,14 +146,16 @@ impl SecureHeader {
     }
 }
 
-/// The [`SecureHeaders`] layer which wraps around the service and injects security headers
+/// The [`SecureHeaders`] layer which wraps around the service and injects
+/// security headers
 #[derive(Clone)]
 pub struct SecureHeaders {
     headers: Vec<(HeaderName, HeaderValue)>,
 }
 
 impl SecureHeaders {
-    /// Creates a new [`SecureHeaders`] instance with the provided configuration.
+    /// Creates a new [`SecureHeaders`] instance with the provided
+    /// configuration.
     ///
     /// # Errors
     /// Returns an error if any header values are invalid.

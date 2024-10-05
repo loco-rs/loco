@@ -165,13 +165,19 @@ async fn cors(
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
-    ctx.config.server.middlewares.cors = middleware::cors::Cors {
+    let mut middleware = loco_rs::controller::middleware::cors::Cors {
         enable,
-        allow_origins: None,
-        allow_headers,
-        allow_methods,
-        max_age,
+        ..Default::default()
     };
+    if let Some(allow_headers) = allow_headers {
+        middleware.allow_headers = allow_headers;
+    }
+    if let Some(allow_methods) = allow_methods {
+        middleware.allow_methods = allow_methods;
+    }
+    middleware.max_age = max_age;
+
+    ctx.config.server.middlewares.cors = middleware;
 
     let handle = infra_cfg::server::start_from_ctx(ctx).await;
 
@@ -344,13 +350,13 @@ async fn secure_headers(
 
 #[rstest]
 #[case(None, false, None)]
-#[case(Some(444), false, None)]
+#[case(Some(StatusCode::BAD_REQUEST), false, None)]
 #[case(None, true, None)]
 #[case(None, false, Some("text fallback response".to_string()))]
 #[tokio::test]
 #[serial]
 async fn fallback(
-    #[case] code: Option<u16>,
+    #[case] code: Option<StatusCode>,
     #[case] file: bool,
     #[case] not_found: Option<String>,
 ) {
@@ -371,12 +377,18 @@ async fn fallback(
         None
     };
 
-    ctx.config.server.middlewares.fallback = middleware::fallback::Fallback {
+    let mut fallback_config = middleware::fallback::Fallback {
         enable: true,
-        code,
         file: file.clone().map(|f| f.display().to_string()),
         not_found: not_found.clone(),
+        ..Default::default()
     };
+
+    if let Some(code) = code {
+        fallback_config.code = code;
+    };
+
+    ctx.config.server.middlewares.fallback = fallback_config;
 
     let handle = infra_cfg::server::start_from_ctx(ctx).await;
 
@@ -386,10 +398,8 @@ async fn fallback(
 
     if let Some(code) = code {
         assert_eq!(res.status(), code);
-    } else if file.is_some() {
-        assert_eq!(res.status(), StatusCode::OK);
     } else {
-        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+        assert_eq!(res.status(), StatusCode::OK);
     }
 
     let response_text = res.text().await.expect("response text");

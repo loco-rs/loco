@@ -1,17 +1,19 @@
 //! Catch Panic Middleware for Axum
 //!
-//! This middleware catches panics that occur during request handling in the Axum application.
-//! When a panic occurs, it logs the error and returns an internal server error response.
-//! This middleware helps ensure that the application can gracefully handle unexpected errors
-//! without crashing the server.
+//! This middleware catches panics that occur during request handling in the
+//! application. When a panic occurs, it logs the error and returns an
+//! internal server error response. This middleware helps ensure that the
+//! application can gracefully handle unexpected errors without crashing the
+//! server.
+use axum::Router as AXRouter;
+use serde::{Deserialize, Serialize};
+use tower_http::catch_panic::CatchPanicLayer;
+
 use crate::{
     app::AppContext,
     controller::{middleware::MiddlewareLayer, IntoResponse},
     errors, Result,
 };
-use axum::Router as AXRouter;
-use serde::{Deserialize, Serialize};
-use tower_http::catch_panic::CatchPanicLayer;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CatchPanic {
@@ -23,6 +25,7 @@ impl Default for CatchPanic {
         Self { enable: true }
     }
 }
+
 /// Handler function for the [`CatchPanicLayer`] middleware.
 ///
 /// This function processes panics by extracting error messages, logging them,
@@ -42,12 +45,16 @@ fn handle_panic(err: Box<dyn std::any::Any + Send + 'static>) -> axum::response:
 impl MiddlewareLayer for CatchPanic {
     /// Returns the name of the middleware
     fn name(&self) -> &'static str {
-        "catch panic"
+        "catch_panic"
     }
 
     /// Returns whether the middleware is enabled or not
     fn is_enabled(&self) -> bool {
         self.enable
+    }
+
+    fn config(&self) -> serde_json::Result<serde_json::Value> {
+        serde_json::to_value(self)
     }
 
     /// Applies the Catch Panic middleware layer to the Axum router.
@@ -59,7 +66,6 @@ impl MiddlewareLayer for CatchPanic {
 #[cfg(test)]
 mod tests {
 
-    use crate::tests_cfg;
     use axum::{
         body::Body,
         http::{Method, Request, StatusCode},
@@ -69,6 +75,7 @@ mod tests {
     use tower::ServiceExt;
 
     use super::*;
+    use crate::tests_cfg;
 
     #[tokio::test]
     async fn panic_enabled() {

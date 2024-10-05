@@ -4,6 +4,7 @@
 
 * `Format(respond_to): Format` extractor in controller can now be replaced with `respond_to: RespondTo` extractor for less typing.
 * When supplying data to views, you can now use `data!` instead of `serde_json::json!` for shorthand.
+* Refactor middlewares. [https://github.com/loco-rs/loco/pull/785](https://github.com/loco-rs/loco/pull/785)
 * **NEW (BREAKING)** background worker subsystem is now queue agnostic. Providing for both Redis and Postgres with a change of configuration. This means you can now use a full-Postgres stack to remove Redis as a dependency if you wish. Here are steps to migrate your codebase:
 
 ```rust

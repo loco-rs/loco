@@ -87,7 +87,11 @@ enum Commands {
     /// Describe all application endpoints
     Routes {},
     /// Describe all application middlewares
-    Middleware {},
+    Middleware {
+        // print out the middleware configurations.
+        #[arg(short, long, action)]
+        config: bool,
+    },
     /// Run a custom task
     #[clap(alias("t"))]
     Task {
@@ -417,6 +421,7 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
 /// ```
 #[cfg(feature = "with-db")]
 #[allow(clippy::too_many_lines)]
+#[allow(clippy::cognitive_complexity)]
 pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
     let cli: Cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
@@ -466,9 +471,9 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             let app_context = create_context::<H>(&environment).await?;
             show_list_endpoints::<H>(&app_context);
         }
-        Commands::Middleware {} => {
+        Commands::Middleware { config } => {
             let app_context = create_context::<H>(&environment).await?;
-            let middlewares = list_middlewares::<H>(&app_context);
+            let middlewares = list_middlewares::<H>(&app_context, config);
             for middleware in middlewares {
                 println!("{middleware}");
             }
@@ -579,9 +584,9 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             let app_context = create_context::<H>(&environment).await?;
             show_list_endpoints::<H>(&app_context)
         }
-        Commands::Middleware {} => {
+        Commands::Middleware { config } => {
             let app_context = create_context::<H>(&environment).await?;
-            let middlewares = list_middlewares::<H>(&app_context);
+            let middlewares = list_middlewares::<H>(&app_context, config);
             for middleware in middlewares {
                 println!("{middleware}");
             }

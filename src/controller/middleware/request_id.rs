@@ -2,9 +2,9 @@
 //! The request ID is stored in the `x-request-id` header, and it is either
 //! generated or sanitized if already present in the request.
 //!
-//! This can be useful for tracking requests across services, logging, and debugging.
+//! This can be useful for tracking requests across services, logging, and
+//! debugging.
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 use axum::{
     extract::Request, http::HeaderValue, middleware::Next, response::Response, Router as AXRouter,
 };
@@ -12,6 +12,8 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 
 const X_REQUEST_ID: &str = "x-request-id";
 const MAX_LEN: usize = 255;
@@ -34,7 +36,7 @@ impl Default for RequestId {
 impl MiddlewareLayer for RequestId {
     /// Returns the name of the middleware
     fn name(&self) -> &'static str {
-        "request id"
+        "request_id"
     }
 
     /// Returns whether the middleware is enabled or not
@@ -42,10 +44,15 @@ impl MiddlewareLayer for RequestId {
         self.enable
     }
 
+    fn config(&self) -> serde_json::Result<serde_json::Value> {
+        serde_json::to_value(self)
+    }
+
     /// Applies the request ID middleware to the Axum router.
     ///
-    /// This function sets up the middleware in the router and ensures that every
-    /// request passing through it will have a unique or sanitized request ID.
+    /// This function sets up the middleware in the router and ensures that
+    /// every request passing through it will have a unique or sanitized
+    /// request ID.
     ///
     /// # Errors
     /// This function returns an error if the middleware cannot be applied.
@@ -68,9 +75,10 @@ impl LocoRequestId {
 
 /// Middleware function to ensure or generate a unique request ID.
 ///
-/// This function intercepts requests, checks for the presence of the `x-request-id`
-/// header, and either sanitizes its value or generates a new UUID if absent.
-/// The resulting request ID is added to both the request extensions and the response headers.
+/// This function intercepts requests, checks for the presence of the
+/// `x-request-id` header, and either sanitizes its value or generates a new
+/// UUID if absent. The resulting request ID is added to both the request
+/// extensions and the response headers.
 pub async fn request_id_middleware(mut request: Request, next: Next) -> Response {
     let header_request_id = request.headers().get(X_REQUEST_ID).cloned();
     let request_id = make_request_id(header_request_id);

@@ -16,13 +16,103 @@ use tower_http::cors;
 pub struct Cors {
     pub enable: bool,
     /// Allow origins
-    pub allow_origins: Option<Vec<String>>,
+    #[serde(default = "default_allow_origins")]
+    pub allow_origins: Vec<String>,
     /// Allow headers
-    pub allow_headers: Option<Vec<String>>,
+    #[serde(default = "default_allow_headers")]
+    pub allow_headers: Vec<String>,
     /// Allow methods
-    pub allow_methods: Option<Vec<String>>,
+    #[serde(default = "default_allow_methods")]
+    pub allow_methods: Vec<String>,
     /// Max age
     pub max_age: Option<u64>,
+    // Vary headers
+    #[serde(default = "default_vary_headers")]
+    pub vary: Vec<String>,
+}
+
+fn default_allow_origins() -> Vec<String> {
+    vec!["any".to_string()]
+}
+
+fn default_allow_headers() -> Vec<String> {
+    vec!["*".to_string()]
+}
+
+fn default_allow_methods() -> Vec<String> {
+    vec!["*".to_string()]
+}
+
+fn default_vary_headers() -> Vec<String> {
+    vec![
+        "origin".to_string(),
+        "access-control-request-method".to_string(),
+        "access-control-request-headers".to_string(),
+    ]
+}
+
+impl Cors {
+    /// Creates cors layer
+    ///
+    /// # Errors
+    ///
+    /// This function returns an error in the following cases:
+    ///
+    /// - If any of the provided origins in `allow_origins` cannot be parsed as a valid URI,
+    ///   the function will return a parsing error.
+    /// - If any of the provided headers in `allow_headers` cannot be parsed as valid HTTP headers,
+    ///   the function will return a parsing error.
+    /// - If any of the provided methods in `allow_methods` cannot be parsed as valid HTTP methods,
+    ///   the function will return a parsing error.
+    ///
+    /// In all of these cases, the error returned will be the result of the `parse` method
+    /// of the corresponding type.
+    pub fn cors(&self) -> Result<cors::CorsLayer> {
+        let mut cors: cors::CorsLayer = cors::CorsLayer::permissive();
+
+        let mut list = vec![];
+
+        // testing CORS, assuming https://example.com in the allow list:
+        // $ curl -v --request OPTIONS 'localhost:5150/api/_ping' -H 'Origin: https://example.com' -H 'Acces
+        // look for '< access-control-allow-origin: https://example.com' in response.
+        // if it doesn't appear (test with a bogus domain), it is not allowed.
+        for origin in &self.allow_origins {
+            list.push(origin.parse()?);
+        }
+        if !list.is_empty() {
+            cors = cors.allow_origin(list);
+        }
+
+        let mut list = vec![];
+        for header in &self.allow_headers {
+            list.push(header.parse()?);
+        }
+        if !list.is_empty() {
+            cors = cors.allow_headers(list);
+        }
+
+        let mut list = vec![];
+        for method in &self.allow_methods {
+            list.push(method.parse()?);
+        }
+        if !list.is_empty() {
+            cors = cors.allow_methods(list);
+        }
+
+        let mut list = vec![];
+        for v in &self.vary {
+            list.push(v.parse()?);
+        }
+        if !list.is_empty() {
+            cors = cors.vary(list);
+        }
+
+        if let Some(max_age) = self.max_age {
+            cors = cors.max_age(Duration::from_secs(max_age));
+        }
+
+        Ok(cors)
+    }
 }
 
 impl MiddlewareLayer for Cors {
@@ -36,38 +126,13 @@ impl MiddlewareLayer for Cors {
         self.enable
     }
 
+    fn config(&self) -> serde_json::Result<serde_json::Value> {
+        serde_json::to_value(self)
+    }
+
     /// Applies the CORS middleware layer to the Axum router.
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
-        let mut cors: cors::CorsLayer = cors::CorsLayer::permissive();
-        if let Some(allow_origins) = &self.allow_origins {
-            // testing CORS, assuming https://example.com in the allow list:
-            // $ curl -v --request OPTIONS 'localhost:5150/api/_ping' -H 'Origin: https://example.com' -H 'Acces
-            // look for '< access-control-allow-origin: https://example.com' in response.
-            // if it doesn't appear (test with a bogus domain), it is not allowed.
-            let mut list = vec![];
-            for origins in allow_origins {
-                list.push(origins.parse()?);
-            }
-            cors = cors.allow_origin(list);
-        }
-        if let Some(allow_headers) = &self.allow_headers {
-            let mut headers = vec![];
-            for header in allow_headers {
-                headers.push(header.parse()?);
-            }
-            cors = cors.allow_headers(headers);
-        }
-        if let Some(allow_methods) = &self.allow_methods {
-            let mut methods = vec![];
-            for method in allow_methods {
-                methods.push(method.parse()?);
-            }
-            cors = cors.allow_methods(methods);
-        }
-        if let Some(max_age) = self.max_age {
-            cors = cors.max_age(Duration::from_secs(max_age));
-        }
-        Ok(app.layer(cors))
+        Ok(app.layer(self.cors()?))
     }
 }
 
@@ -99,13 +164,14 @@ mod tests {
         #[case] allow_methods: Option<Vec<String>>,
         #[case] max_age: Option<u64>,
     ) {
-        let middleware = Cors {
-            enable: true,
-            allow_origins: None,
-            allow_headers,
-            allow_methods,
-            max_age,
-        };
+        let mut middleware = Cors::default();
+        if let Some(allow_headers) = allow_headers {
+            middleware.allow_headers = allow_headers;
+        }
+        if let Some(allow_methods) = allow_methods {
+            middleware.allow_methods = allow_methods;
+        }
+        middleware.max_age = max_age;
 
         let app = Router::new().route("/", get(|| async {}));
         let app = middleware
@@ -144,13 +210,7 @@ mod tests {
 
     #[test]
     fn should_be_disabled() {
-        let middleware = Cors {
-            enable: false,
-            allow_origins: None,
-            allow_headers: None,
-            allow_methods: None,
-            max_age: None,
-        };
+        let middleware = Cors::default();
         assert!(!middleware.is_enabled());
     }
 }
