@@ -802,7 +802,7 @@ impl Task for UserReport {
     // variables through the CLI:
     // `$ cargo loco task name:foobar count:2`
     // will appear as {"name":"foobar", "count":2} in `vars`
-    async fn run(&self, app_context: &AppContext, vars: &BTreeMap<String, String>) -> Result<()> {
+    async fn run(&self, app_context: &AppContext, vars: &Vars) -> Result<()> {
         let users = users::Entity::find().all(&app_context.db).await?;
         println!("args: {vars:?}");
         println!("!!! user_report: listing users !!!");
