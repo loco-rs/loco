@@ -128,7 +128,7 @@ $ demo_app-cli routes --environment test
 $ demo_app-cli doctor
 ✅ SeaORM CLI is installed
 ✅ DB connection: success
-✅ Redis connection: success
+✅ redis queue: queue connection: success
 
 ```
 
