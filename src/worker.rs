@@ -24,6 +24,8 @@ pub fn get_queues(config_queues: &Option<Vec<String>>) -> Vec<String> {
     queues
 }
 
+pub type AppWorkerOpts<Args, T> = sidekiq::WorkerOpts<Args, T>;
+
 #[async_trait]
 #[allow(clippy::module_name_repetitions)]
 pub trait AppWorker<T>: Worker<T>
@@ -32,6 +34,55 @@ where
     T: Send + Sync + serde::Serialize + 'static,
 {
     fn build(ctx: &AppContext) -> Self;
+
+    async fn perform_in(ctx: &AppContext, duration: std::time::Duration, args: T) -> Result<()> {
+        match &ctx.config.workers.mode {
+            WorkerMode::BackgroundQueue => {
+                if let Some(queue) = &ctx.queue {
+                    Self::opts()
+                        .perform_in(queue, duration, args)
+                        .await
+                        .unwrap();
+                } else {
+                    error!(
+                        error.msg =
+                            "worker mode requested but no queue connection supplied, skipping job",
+                        "worker_error"
+                    );
+                }
+            }
+            WorkerMode::ForegroundBlocking => {
+                std::thread::sleep(duration);
+                Self::build(ctx).perform(args).await.unwrap();
+            }
+            WorkerMode::BackgroundAsync => {
+                let dx = ctx.clone();
+                tokio::spawn(async move {
+                    // If wait time is larger than a minute, wait in
+                    // intervals of 1 minute to avoid long running tasks
+                    if duration > std::time::Duration::from_secs(60) {
+                        let num_sleeps = duration.as_secs() / 60;
+                        let remaining_time = duration.as_secs() % 60;
+
+                        for _ in 0..num_sleeps {
+                            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+                        }
+
+                        if remaining_time > 0 {
+                            tokio::time::sleep(std::time::Duration::from_secs(remaining_time))
+                                .await;
+                        }
+                    } else {
+                        tokio::time::sleep(duration).await;
+                    }
+
+                    Self::build(&dx).perform(args).await
+                });
+            }
+        }
+        Ok(())
+    }
+
     async fn perform_later(ctx: &AppContext, args: T) -> Result<()> {
         match &ctx.config.workers.mode {
             WorkerMode::BackgroundQueue => {
