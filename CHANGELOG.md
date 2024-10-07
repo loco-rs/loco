@@ -21,9 +21,11 @@ async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()>{
     Ok(())
 }
 
-// in your app.rs, remove the `worker` module references.
+// in your app.rs, replace the `worker` module references.
 // REMOVE
 worker::{AppWorker, Processor},
+// REPLACE WITH
+bgworker::{BackgroundWorker, Queue},
 
 // in your workers change the signature, and add the `build` function
 
@@ -48,6 +50,14 @@ impl worker::AppWorker<DownloadWorkerArgs> for DownloadWorker {
     }
 }
 ```
+
+Finally, update your `development.yaml` and `test.yaml` with a `kind`:
+
+```yaml
+queue:
+  kind: Redis  # add this to the existing `queue` section
+```
+
 
 * **UPGRADED (BREAKING)**: `validator` crate was upgraded which require some small tweaks to work with the new API:
 
