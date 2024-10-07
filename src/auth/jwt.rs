@@ -29,6 +29,7 @@ pub struct UserClaims {
 ///
 /// auth::jwt::JWT::new("PqRwLF2rhHe8J22oBeHy");
 /// ```
+#[derive(Debug)]
 pub struct JWT {
     secret: String,
     algorithm: Algorithm,

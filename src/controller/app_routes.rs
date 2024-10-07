@@ -21,7 +21,7 @@ lazy_static! {
 }
 
 /// Represents the routes of the application.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AppRoutes {
     prefix: Option<String>,
     routes: Vec<Routes>,
@@ -29,6 +29,7 @@ pub struct AppRoutes {
     channels: Option<AppChannels>,
 }
 
+#[derive(Debug)]
 pub struct ListRoutes {
     pub uri: String,
     pub actions: Vec<axum::http::Method>,

@@ -14,7 +14,7 @@ use hyper::header::{ETAG, IF_NONE_MATCH};
 use sha2::{Digest, Sha256};
 use tower::{Layer, Service}; // Corrected import
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EtagLayer;
 
 impl EtagLayer {
@@ -30,7 +30,7 @@ impl<S> Layer<S> for EtagLayer {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EtagMiddleware<S> {
     inner: S,
 }

@@ -148,7 +148,7 @@ impl SecureHeader {
 
 /// The [`SecureHeaders`] layer which wraps around the service and injects
 /// security headers
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SecureHeaders {
     headers: Vec<(HeaderName, HeaderValue)>,
 }
@@ -179,7 +179,7 @@ impl<S> Layer<S> for SecureHeaders {
 }
 
 /// The secure headers middleware
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[must_use]
 pub struct SecureHeadersMiddleware<S> {
     inner: S,
