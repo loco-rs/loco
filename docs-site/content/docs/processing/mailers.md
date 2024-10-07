@@ -97,6 +97,38 @@ impl Mailer for AuthMailer {
 }
 ```
 
+### Using a mail catcher in development
+
+You can use an app like `MailHog` or `mailtutan` (written in Rust):
+
+```
+$ cargo install mailtutan
+$ mailtutan
+listening on smtp://0.0.0.0:1025
+listening on http://0.0.0.0:1080
+```
+
+This will bring up a local smtp server and a nice UI on `http://localhost:1080` that "catches" and shows emails as they are received.
+
+And then put this in your `development.yaml`:
+
+```yaml
+# Mailer Configuration.
+mailer:
+  # SMTP mailer configuration.
+  smtp:
+    # Enable/Disable smtp mailer.
+    enable: true
+    # SMTP server host. e.x localhost, smtp.gmail.com
+    host: localhost
+    # SMTP server port
+    port: 1025
+    # Use secure connection (SSL/TLS).
+    secure: false
+```
+
+Now your mailer workers will send email to the SMTP server at `localhost`.
+
 ## Adding a mailer
 
 You can generate a mailer:

@@ -5,7 +5,76 @@
 * `Format(respond_to): Format` extractor in controller can now be replaced with `respond_to: RespondTo` extractor for less typing.
 * When supplying data to views, you can now use `data!` instead of `serde_json::json!` for shorthand.
 * Refactor middlewares. [https://github.com/loco-rs/loco/pull/785](https://github.com/loco-rs/loco/pull/785)
+* **NEW (BREAKING)** background worker subsystem is now queue agnostic. Providing for both Redis and Postgres with a change of configuration. This means you can now use a full-Postgres stack to remove Redis as a dependency if you wish. Here are steps to migrate your codebase:
 
+```rust
+// in your app.rs, change the worker registration code:
+
+// BEFORE
+fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {
+    p.register(DownloadWorker::build(ctx)); 
+}
+
+// AFTER
+async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()>{
+    queue.register(DownloadWorker::build(ctx)).await?;
+    Ok(())
+}
+
+// in your app.rs, remove the `worker` module references.
+// REMOVE
+worker::{AppWorker, Processor},
+
+// in your workers change the signature, and add the `build` function
+
+// BEFORE
+impl worker::Worker<DownloadWorkerArgs> for DownloadWorker {
+    async fn perform(&self, args: DownloadWorkerArgs) -> worker::Result<()> {
+
+// AFTER
+#[async_trait]
+impl BackgroundWorker<DownloadWorkerArgs> for DownloadWorker {
+    fn build(ctx: &AppContext) -> Self {
+        Self { ctx: ctx.clone() }
+    }
+    async fn perform(&self, args: DownloadWorkerArgs) -> Result<()> {
+  
+// Finally, remove the `AppWorker` trait implementation completely.
+
+// REMOVE
+impl worker::AppWorker<DownloadWorkerArgs> for DownloadWorker {
+    fn build(ctx: &AppContext) -> Self {
+        Self { ctx: ctx.clone() }
+    }
+}
+```
+
+* **UPGRADED (BREAKING)**: `validator` crate was upgraded which require some small tweaks to work with the new API:
+
+```rust
+// BEFORE:
+#[validate(custom = "validation::is_valid_email")]
+pub email: String,
+
+// AFTER:
+#[validate(custom (function = "validation::is_valid_email"))]
+pub email: String,
+```
+
+Then update your `Cargo.toml` to take version `0.18`:
+
+```toml
+# update
+validator = { version = "0.18" }
+```
+
+* **UPGRADED (BREAKING)**: `axum-test` crate was upgraded 
+Update your `Cargo.toml` to version `16`:
+
+```toml
+# update
+axum-test = { version = "16" }
+```
 
 ## v0.9.0
 

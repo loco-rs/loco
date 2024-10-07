@@ -2290,6 +2290,8 @@ dependencies = [
 [[package]]
 name = "loco-rs"
 version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92b58f8834452bee76b822ad42a9042c3d86367805d1cb4c8f3633c73bd4e73c"
 dependencies = [
  "argon2",
  "async-trait",

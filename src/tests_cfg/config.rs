@@ -1,9 +1,10 @@
+use std::collections::HashMap;
+
 use crate::{
     config::{self, Config},
     controller::middleware,
     logger, scheduler,
 };
-use std::collections::HashMap;
 
 #[must_use]
 pub fn test_config() -> Config {
@@ -40,7 +41,6 @@ pub fn test_config() -> Config {
         auth: None,
         workers: config::Workers {
             mode: config::WorkerMode::ForegroundBlocking,
-            queues: None,
         },
         mailer: None,
         initializers: None,

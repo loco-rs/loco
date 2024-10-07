@@ -75,7 +75,7 @@ pub fn print_banner(boot_result: &BootResult, server_config: &ServeParams) {
             server_config.port.to_string().green()
         ));
     }
-    if boot_result.processor.is_some() {
+    if boot_result.run_worker {
         modes.push("worker".green());
         servingline.push(format!("worker is {}", "online".green()));
     }

@@ -97,6 +97,7 @@ database:
 
 # Queue Configuration
 queue:
+  kind: Redis
   # Redis connection URI
   uri: {{get_env(name="APP_REDIS_URI", default="redis://127.0.0.1")}}
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode

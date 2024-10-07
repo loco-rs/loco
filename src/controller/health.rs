@@ -6,7 +6,7 @@ use axum::{extract::State, response::Response, routing::get};
 use serde::Serialize;
 
 use super::{format, routes::Routes};
-use crate::{app::AppContext, redis, Result};
+use crate::{app::AppContext, Result};
 
 /// Represents the health status of the application.
 #[derive(Serialize)]
@@ -24,8 +24,9 @@ async fn health(State(ctx): State<AppContext>) -> Result<Response> {
             false
         }
     };
-    if let Some(pool) = ctx.queue {
-        if let Err(error) = redis::ping(&pool).await {
+
+    if let Some(queue) = ctx.queue_provider {
+        if let Err(error) = queue.ping().await {
             tracing::error!(err.msg = %error, err.detail = ?error, "health_redis_ping_error");
             is_ok = false;
         }
