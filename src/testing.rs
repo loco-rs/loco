@@ -196,7 +196,6 @@ where
     let boot = boot_test::<H>().await.unwrap();
 
     let config = TestServerConfig {
-        default_content_type: Some("application/json".to_string()),
         ..Default::default()
     };
 
