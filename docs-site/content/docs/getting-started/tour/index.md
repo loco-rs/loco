@@ -180,7 +180,7 @@ Your generated app contains a fully working authentication suite, based on JWTs.
 The `/api/auth/register` endpoint creates a new user in the database with an `email_verification_token` for account verification. A welcome email is sent to the user with a verification link.
 
 ```sh
-$ curl --location '127.0.0.1:5150/api/auth/register' \
+$ curl --location 'localhost:5150/api/auth/register' \
      --header 'Content-Type: application/json' \
      --data-raw '{
          "name": "Loco user",
@@ -196,7 +196,7 @@ For security reasons, if the user is already registered, no new user is created,
 After registering a new user, use the following request to log in:
 
 ```sh
-$ curl --location '127.0.0.1:5150/api/auth/login' \
+$ curl --location 'localhost:5150/api/auth/login' \
      --header 'Content-Type: application/json' \
      --data-raw '{
          "email": "user@loco.rs",
@@ -223,7 +223,7 @@ In your client-side app, you save this JWT token and make following requests wit
 This endpoint is protected by auth middleware. We will use the token we got earlier to perform a request with the _bearer token_ technique (replace `TOKEN` with the JWT token you got earlier):
 
 ```sh
-$ curl --location --request GET '127.0.0.1:5150/api/user/current' \
+$ curl --location --request GET 'localhost:5150/api/user/current' \
      --header 'Content-Type: application/json' \
      --header 'Authorization: Bearer TOKEN'
 ```
