@@ -82,6 +82,7 @@ listening on port 5150
 
 
  <div class="infobox">
+ 
  You don't have to run things through `cargo` but in development it's highly
  recommended. If you build `--release`, your binary contains everything
  including your code and `cargo` or Rust is not needed. </div>
