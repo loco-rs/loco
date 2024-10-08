@@ -49,6 +49,12 @@ If you select all defaults, you'll have:
 
 
  Now `cd` into your `myapp` and start your app by running `cargo loco start`:
+ 
+ 
+ <div class="infobox">
+ 
+ If you have the `Client` asset serving option configured, make sure you build your frontend before starting the server. This can be done by changing into the frontend directory (`cd frontend`) and running `pnpm install` and `pnpm build`.
+ </div>
 
 <!-- <snip id="starting-the-server-command-with-output" inject_from="yaml" template="sh"> -->
 ```sh
@@ -83,6 +89,11 @@ listening on port 5150
 ## Adding a CRUD API
 
 We have a base SaaS app with user authentication generated for us. Let's make it a blog backend by adding a `post` and a full CRUD API using `scaffold`:
+
+<div class="infobox">
+
+You can choose between generating an `api`, `html` or `htmx` scaffold using the required `-k` flag.
+</div>
 
 ```sh
 $ cargo loco generate scaffold post title:string content:text -k api
@@ -126,6 +137,14 @@ $ cargo loco start
 listening on port 5150
 ```
 <!-- </snip> -->
+
+<div class="infobox"> 
+
+Depending on which `-k` option you chose, the steps for creating a scaffolded resource will change. With the `api` flag or the `htmx` flag you can use the below example. But with the `html` flag, it is recommended you do the post creation steps in your browser.
+  
+If you want to use `curl` to test the `html` scaffold, you will need to send your requests with the Content-Type `application/x-www-form-urlencoded` and the body as `title=Your+Title&content=Your+Content` by default. This can be changed to allow `application/json` as a `Content-Type` in the code if desired.
+
+</div>
 
 Next, try adding a `post` with `curl`:
 
