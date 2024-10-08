@@ -6,8 +6,8 @@ use loco_rs::{
     boot::{create_app, BootResult, StartMode},
     controller::AppRoutes,
     environment::Environment,
+    prelude::*,
     task::Tasks,
-    worker::Processor,
     Result,
 };
 
@@ -44,7 +44,9 @@ impl Hooks for App {
         AppRoutes::with_default_routes().add_route(controllers::home::routes())
     }
 
-    fn connect_workers<'a>(_p: &'a mut Processor, _ctx: &'a AppContext) {}
+    async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {
+        Ok(())
+    }
 
     fn register_tasks(_tasks: &mut Tasks) {}
 }

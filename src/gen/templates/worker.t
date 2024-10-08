@@ -9,7 +9,7 @@ injections:
   content: "pub mod {{ module_name}};"
 - into: src/app.rs
   after: "fn connect_workers"
-  content: "        p.register(crate::workers::{{module_name}}::{{struct_name}}Worker::build(ctx));"
+  content: "        queue.register(crate::workers::{{module_name}}::{{struct_name}}Worker::build(ctx)).await?;"
 ---
 use serde::{Deserialize, Serialize};
 use loco_rs::prelude::*;
@@ -22,15 +22,12 @@ pub struct {{struct_name}}Worker {
 pub struct {{struct_name}}WorkerArgs {
 }
 
-impl worker::AppWorker<{{struct_name}}WorkerArgs> for {{struct_name}}Worker {
+#[async_trait]
+impl BackgroundWorker<{{struct_name}}WorkerArgs> for {{struct_name}}Worker {
     fn build(ctx: &AppContext) -> Self {
         Self { ctx: ctx.clone() }
     }
-}
-
-#[async_trait]
-impl worker::Worker<{{struct_name}}WorkerArgs> for {{struct_name}}Worker {
-    async fn perform(&self, _args: {{struct_name}}WorkerArgs) -> worker::Result<()> {
+    async fn perform(&self, _args: {{struct_name}}WorkerArgs) -> Result<()> {
         println!("================={{struct_name}}=======================");
         // TODO: Some actual work goes here...
         Ok(())

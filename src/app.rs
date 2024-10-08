@@ -15,6 +15,7 @@ use axum::Router as AxumRouter;
 #[cfg(feature = "channels")]
 use crate::controller::channels::AppChannels;
 use crate::{
+    bgworker::{self, Queue},
     boot::{BootResult, ServeParams, StartMode},
     cache::{self},
     config::{self, Config},
@@ -26,7 +27,6 @@ use crate::{
     mailer::EmailSender,
     storage::Storage,
     task::Tasks,
-    worker::{Pool, Processor, RedisConnectionManager},
     Result,
 };
 
@@ -44,8 +44,8 @@ pub struct AppContext {
     #[cfg(feature = "with-db")]
     /// A database connection used by the application.
     pub db: DatabaseConnection,
-    /// An optional connection pool for Queue, for worker tasks
-    pub queue: Option<Pool<RedisConnectionManager>>,
+    /// Queue provider
+    pub queue_provider: Option<Arc<bgworker::Queue>>,
     /// Configuration settings for the application
     pub config: Config,
     /// An optional email sender component that can be used to send email.
@@ -192,7 +192,7 @@ pub trait Hooks {
 
     /// Connects custom workers to the application using the provided
     /// [`Processor`] and [`AppContext`].
-    fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext);
+    async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()>;
 
     /// Registers custom tasks with the provided [`Tasks`] object.
     fn register_tasks(tasks: &mut Tasks);

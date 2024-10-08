@@ -5,6 +5,7 @@
 pub use self::errors::Error;
 
 mod banner;
+mod bgworker;
 pub mod prelude;
 
 #[cfg(feature = "with-db")]
@@ -33,7 +34,6 @@ mod gen;
 pub mod hash;
 mod logger;
 pub mod mailer;
-mod redis;
 pub mod scheduler;
 pub mod task;
 #[cfg(feature = "testing")]
@@ -42,7 +42,6 @@ pub mod testing;
 pub use axum_test::TestServer;
 pub mod storage;
 pub mod validation;
-pub mod worker;
 #[cfg(feature = "channels")]
 pub use socketioxide;
 #[cfg(feature = "testing")]
