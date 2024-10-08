@@ -19,11 +19,10 @@
 //!     format::json(TestResponse{ pid: auth.claims.pid})
 //! }
 //! ```
-use std::collections::HashMap;
 
 use async_trait::async_trait;
 use axum::{
-    extract::{FromRef, FromRequestParts, Query},
+    extract::{FromRef, FromRequestParts},
     http::{request::Parts, HeaderMap},
 };
 use axum_extra::extract::cookie;
@@ -141,7 +140,6 @@ fn extract_token(jwt_config: &JWTConfig, parts: &Parts) -> LocoResult<String> {
         .as_ref()
         .unwrap_or(&crate::config::JWTLocation::Bearer)
     {
-        crate::config::JWTLocation::Query { name } => extract_token_from_query(name, parts),
         crate::config::JWTLocation::Cookie { name } => extract_token_from_cookie(name, parts),
         crate::config::JWTLocation::Bearer => extract_token_from_header(&parts.headers)
             .map_err(|e| Error::Unauthorized(e.to_string())),
@@ -177,19 +175,6 @@ pub fn extract_token_from_cookie(name: &str, parts: &Parts) -> LocoResult<String
         .strip_prefix(&format!("{name}="))
         .ok_or_else(|| Error::Unauthorized("error strip value".to_string()))?
         .to_string())
-}
-/// Extract a token value from query
-///
-/// # Errors
-/// when token value from cookie is not found
-pub fn extract_token_from_query(name: &str, parts: &Parts) -> LocoResult<String> {
-    // LogoResult
-    let parameters: Query<HashMap<String, String>> =
-        Query::try_from_uri(&parts.uri).map_err(|err| Error::Unauthorized(err.to_string()))?;
-    parameters
-        .get(name)
-        .cloned()
-        .ok_or_else(|| Error::Unauthorized(format!("`{name}` query parameter not found")))
 }
 
 // ---------------------------------------
@@ -244,7 +229,6 @@ mod tests {
     #[case("extract_from_default", "https://loco.rs", None)]
     #[case("extract_from_bearer", "loco.rs", Some(config::JWTLocation::Bearer))]
     #[case("extract_from_cookie", "https://loco.rs", Some(config::JWTLocation::Cookie{name: "loco_cookie_key".to_string()}))]
-    #[case("extract_from_query", "https://loco.rs?query_token=query_token_value&test=loco", Some(config::JWTLocation::Query{name: "query_token".to_string()}))]
     fn can_extract_token(
         #[case] test_name: &str,
         #[case] url: &str,
