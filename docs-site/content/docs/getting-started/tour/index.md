@@ -47,6 +47,27 @@ If you select all defaults, you'll have:
 * `async` for background workers. Learn about workers configuration [async vs queue](@/docs/processing/workers.md#async-vs-queue) in the _workers_ section.
 * `Client` asset serving configuration. This means your backend will serve as API.
 
+ <div class="infobox">
+If you'd like to know more about the options the `loco new` command provides, here's a quick rundown.
+If not, feel free to skip this side-note and continue on to the next part.
+
+* For the built-in starter templates, the options are:
+  * `lightweight-service` which is aimed to be minimal and only has controllers and views. Choosing this option will not include the selection options for database, background workers, or asset serving.
+  * `Rest API` which has the DB connection and user auth, but does not include views (no asset serving option later on).
+  * `SaaS app` which comes with the DB connection and user auth, as well as views and templating. It uses Tera for server-side rendering in `assets/views/` and React for client-side in `frontend/`.
+
+* For DB providers you can choose `Sqlite` or `Postgres`, both options are supported in `loco`. This option and the following options are not available when you choose the `lightweight-service` template.
+
+* For the background worker type, your options are:
+  * `Async` which spawns workers in-process using the `tokio` async runtime.
+  * `Queue` which spawns workers using `redis` as a queue. Does not use the same process because it uses `redis`.
+  * `Blocking` which spawns workers synchronously in the same process, and blocks until they are completed. Use caution when choosing this option as it will block the entire thread.
+
+* Finally, if you chose the  `SaaS app` template above, you have two options to choose from for how your assets will be served. These options set different configuration options, and can be changed after with little effort. The options are:
+  * `Server` - Which is intended to work when you want to use server-side rendered views. It serves your static assets from the `assets/static/` directory using the `/static` route.
+  * `Client` - Which is intended to work with the provided `frontend/` client-side rendered app. It serves your static assets from the `frontend/dist/` directory using the `/` route.
+  * **Note**: This option only changes the relevant section in the `config/development.yml` file, so not only can you easily change it later (by commenting/uncommenting the relevant blocks), but you can set it up to use both if your needs require it.
+</div>
 
  Now `cd` into your `myapp` and start your app by running `cargo loco start`:
 
