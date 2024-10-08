@@ -36,7 +36,6 @@ impl Hooks for App {
 
     fn routes(_ctx: &AppContext) -> AppRoutes {
         AppRoutes::empty()
-            .prefix("/api")
             .add_route(controllers::home::routes())
     }
 
