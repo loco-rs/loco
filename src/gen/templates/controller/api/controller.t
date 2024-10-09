@@ -32,7 +32,7 @@ pub async fn {{action}}(State(_ctx): State<AppContext>) -> Result<Response> {
 
 pub fn routes() -> Routes {
     Routes::new()
-        .prefix("{{file_name | plural}}/")
+        .prefix("api/{{file_name | plural}}/")
         .add("/", get(index))
         {%- for action in actions %}
         .add("{{action}}", get({{action}}))
