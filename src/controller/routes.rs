@@ -5,14 +5,14 @@ use tower::{Layer, Service};
 
 use super::describe;
 use crate::app::AppContext;
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct Routes {
     pub prefix: Option<String>,
     pub handlers: Vec<Handler>,
     // pub version: Option<String>,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct Handler {
     pub uri: String,
     pub method: axum::routing::MethodRouter<AppContext>,

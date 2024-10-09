@@ -72,6 +72,7 @@ pub fn is_valid_email(email: &str) -> Result<(), ValidationError> {
 /// in the trait, we MUST use `DbErr`, so we need to "hide" a _representation_
 /// of the error in `DbErr::Custom`, so that it can be unpacked later down the
 /// stream, in the central error response handler.
+#[derive(Debug)]
 pub struct ModelValidationErrors(pub ValidationErrors);
 
 #[cfg(feature = "with-db")]

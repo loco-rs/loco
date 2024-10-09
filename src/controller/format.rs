@@ -186,6 +186,7 @@ where
     html(&views::template(template, data)?)
 }
 
+#[derive(Debug)]
 pub struct RenderBuilder {
     response: Builder,
 }

@@ -70,6 +70,7 @@ pub mod test_db {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
+#[derive(Debug)]
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -79,6 +80,7 @@ impl MigratorTrait for Migrator {
     }
 }
 
+#[derive(Debug)]
 pub struct AppHook;
 #[async_trait]
 impl Hooks for AppHook {

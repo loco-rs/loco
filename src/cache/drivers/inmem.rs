@@ -22,6 +22,7 @@ pub fn new() -> Box<dyn CacheDriver> {
 }
 
 /// Represents the in-memory cache driver.
+#[derive(Debug)]
 pub struct Inmem {
     cache: Cache<String, String>,
 }

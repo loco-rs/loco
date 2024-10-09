@@ -121,6 +121,7 @@ impl FromStr for DeploymentKind {
     }
 }
 
+#[derive(Debug)]
 pub enum Component {
     #[cfg(feature = "with-db")]
     Model {

@@ -18,6 +18,7 @@ lazy_static::lazy_static! {
 }
 
 /// [`Middleware`] struct responsible for managing the identifier value for the `X-Powered-By` header.
+#[derive(Debug)]
 pub struct Middleware {
     ident: Option<HeaderValue>,
 }

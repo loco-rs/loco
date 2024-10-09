@@ -301,6 +301,7 @@ pub async fn ping(pool: &PgPool) -> Result<()> {
     Ok(())
 }
 
+#[derive(Debug)]
 pub struct RunOpts {
     pub num_workers: u32,
     pub poll_interval_sec: u32,

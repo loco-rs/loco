@@ -32,7 +32,7 @@ lazy_static! {
     pub static ref EXTRACT_DB_NAME: Regex = Regex::new(r"/([^/]+)$").unwrap();
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct MultiDb {
     pub db: HashMap<String, DatabaseConnection>,
 }

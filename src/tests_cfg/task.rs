@@ -1,6 +1,8 @@
 use crate::prelude::*;
 
+#[derive(Debug)]
 pub struct Foo;
+
 #[async_trait]
 impl Task for Foo {
     fn task(&self) -> TaskInfo {
@@ -15,7 +17,9 @@ impl Task for Foo {
     }
 }
 
+#[derive(Debug)]
 pub struct ParseArgs;
+
 #[async_trait]
 impl Task for ParseArgs {
     fn task(&self) -> TaskInfo {

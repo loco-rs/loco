@@ -2,6 +2,8 @@ use chrono::NaiveDateTime;
 use sea_orm::ColumnTrait;
 
 use super::{with, ConditionBuilder};
+
+#[derive(Debug)]
 pub struct DateRangeBuilder<T: ColumnTrait> {
     col: T,
     condition_builder: ConditionBuilder,

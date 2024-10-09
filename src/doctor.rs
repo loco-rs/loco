@@ -17,7 +17,7 @@ const QUEUE_CONN_FAILED: &str = "queue connection: failed";
 const QUEUE_NOT_CONFIGURED: &str = "queue not configured?";
 
 /// Represents different resources that can be checked.
-#[derive(PartialOrd, PartialEq, Eq, Ord)]
+#[derive(PartialOrd, PartialEq, Eq, Ord, Debug)]
 pub enum Resource {
     SeaOrmCLI,
     Database,
