@@ -21,7 +21,7 @@ lazy_static! {
 }
 
 /// Represents the routes of the application.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct AppRoutes {
     prefix: Option<String>,
     routes: Vec<Routes>,

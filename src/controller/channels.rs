@@ -4,7 +4,7 @@ use socketioxide::{layer::SocketIoLayer, SocketIo, SocketIoBuilder};
 
 /// Struct representing channels for the application, including a socket IO
 /// layer and a socket IO instance for registration.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct AppChannels {
     /// Socket IO layer for managing communication channels.
     pub layer: SocketIoLayer,
