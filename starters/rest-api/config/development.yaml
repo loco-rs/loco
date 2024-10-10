@@ -20,60 +20,6 @@ server:
   port: 5150
   # The UI hostname or IP address that mailers will point to.
   host: http://localhost
-  # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
-  middlewares:
-    # Enable Etag cache header middleware
-    etag:
-      enable: true
-    # Allows to limit the payload size request. payload that bigger than this file will blocked the request.
-    limit_payload:
-      # Enable/Disable the middleware.
-      enable: true
-      # the limit size. can be b,kb,kib,mb,mib,gb,gib
-      body_limit: 5mb
-    # set secure headers
-    secure_headers:
-      preset: github
-    # calculate remote IP based on `X-Forwarded-For` when behind a proxy or load balancer
-    # use RemoteIP(..) extractor to get the remote IP.
-    # without this middleware, you'll get the proxy IP instead.
-    # For more: https://github.com/rails/rails/blob/main/actionpack/lib/action_dispatch/middleware/remote_ip.rb
-    #
-    # NOTE! only enable when under a proxy, otherwise this can lead to IP spoofing vulnerabilities
-    # trust me, you'll know if you need this middleware.
-    remote_ip:
-      enable: false
-      # # replace the default trusted proxies:
-      # trusted_proxies:
-      # - ip range 1
-      # - ip range 2 ..
-    # Generating a unique request ID and enhancing logging with additional information such as the start and completion of request processing, latency, status code, and other request details.
-    logger:
-      # Enable/Disable the middleware.
-      enable: true
-    # when your code is panicked, the request still returns 500 status code.
-    catch_panic:
-      # Enable/Disable the middleware.
-      enable: true
-    # Timeout for incoming requests middleware. requests that take more time from the configuration will cute and 408 status code will returned.
-    timeout_request:
-      # Enable/Disable the middleware.
-      enable: false
-      # Duration time in milliseconds.
-      timeout: 5000
-    cors:
-      enable: true
-      # Set the value of the [`Access-Control-Allow-Origin`][mdn] header
-      # allow_origins:
-      #   - https://loco.rs
-      # Set the value of the [`Access-Control-Allow-Headers`][mdn] header
-      # allow_headers:
-      # - Content-Type
-      # Set the value of the [`Access-Control-Allow-Methods`][mdn] header
-      # allow_methods:
-      #   - POST
-      # Set the value of the [`Access-Control-Max-Age`][mdn] header in seconds
-      # max_age: 3600
 
 # Worker Configuration
 workers:
