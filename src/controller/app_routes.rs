@@ -214,8 +214,8 @@ impl AppRoutes {
                 .server
                 .middlewares
                 .cors
-                .map(|m| m.is_enabled())
-                .unwrap_or_default()
+                .as_ref()
+                .is_some_and(super::middleware::MiddlewareLayer::is_enabled)
             {
                 app = app.layer(
                     tower::ServiceBuilder::new()
@@ -224,6 +224,7 @@ impl AppRoutes {
                                 .server
                                 .middlewares
                                 .cors
+                                .clone()
                                 .unwrap_or_default()
                                 .cors()?,
                         )
