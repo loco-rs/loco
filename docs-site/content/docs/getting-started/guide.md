@@ -67,7 +67,7 @@ Now you can create your new app (choose "SaaS app" for built-in authentication).
 ✔ ❯ App name? · myapp
 ✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
 ✔ ❯ Select a DB Provider · Sqlite
-✔ ❯ Select your background worker type · Async (in-process tokyo async tasks)
+✔ ❯ Select your background worker type · Async (in-process tokio async tasks)
 ✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
 
 🚂 Loco app generated successfully in:
@@ -307,7 +307,7 @@ src/
     mod.rs
 ```
 
-**This is an important _cognitive_ principle**. And the principle claims that you can only create safe, compatible API responses if you treat those as a separate, independently goverened _thing_ -- hence the 'V' in MVC, in Loco.
+**This is an important _cognitive_ principle**. And the principle claims that you can only create safe, compatible API responses if you treat those as a separate, independently governed _thing_ -- hence the 'V' in MVC, in Loco.
 
 <div class="infobox">
 Models in Loco carry the same semantics as in Rails: <b>fat models, slim controllers</b>. This means that every time you want to build something -- <em>you reach out to a model</em>.

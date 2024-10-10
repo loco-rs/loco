@@ -60,7 +60,7 @@ pub enum DBOption {
 )]
 pub enum BackgroundOption {
     #[default]
-    #[strum(to_string = "Async (in-process tokyo async tasks)")]
+    #[strum(to_string = "Async (in-process tokio async tasks)")]
     #[serde(rename = "async")]
     Async,
     #[strum(to_string = "Queue (standalone workers using Redis)")]
