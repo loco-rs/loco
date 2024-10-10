@@ -24,13 +24,8 @@ lazy_static! {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RequestId {
-    enable: bool,
-}
-
-impl Default for RequestId {
-    fn default() -> Self {
-        Self { enable: true }
-    }
+    #[serde(default)]
+    pub enable: bool,
 }
 
 impl MiddlewareLayer for RequestId {

@@ -1,10 +1,12 @@
-use crate::infra_cfg;
+use std::{collections::BTreeMap, path::PathBuf};
+
 use axum::http::StatusCode;
 use insta::assert_debug_snapshot;
 use loco_rs::{controller::middleware, prelude::*, tests_cfg};
 use rstest::rstest;
 use serial_test::serial;
-use std::{collections::BTreeMap, path::PathBuf};
+
+use crate::infra_cfg;
 
 macro_rules! configure_insta {
     ($($expr:expr),*) => {
@@ -29,7 +31,8 @@ async fn panic(#[case] enable: bool) {
     }
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
-    ctx.config.server.middlewares.catch_panic = middleware::catch_panic::CatchPanic { enable };
+    ctx.config.server.middlewares.catch_panic =
+        Some(middleware::catch_panic::CatchPanic { enable });
 
     let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
     let res = reqwest::get(infra_cfg::server::get_base_url()).await;
@@ -59,7 +62,7 @@ async fn etag(#[case] enable: bool) {
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
-    ctx.config.server.middlewares.etag = middleware::etag::Etag { enable };
+    ctx.config.server.middlewares.etag = Some(middleware::etag::Etag { enable });
 
     let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
 
@@ -92,10 +95,10 @@ async fn remote_ip(#[case] enable: bool, #[case] expected: &str) {
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
-    ctx.config.server.middlewares.remote_ip = middleware::remote_ip::RemoteIpMiddleware {
+    ctx.config.server.middlewares.remote_ip = Some(middleware::remote_ip::RemoteIpMiddleware {
         enable,
         trusted_proxies: Some(vec!["192.1.1.1/8".to_string()]),
-    };
+    });
 
     let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
 
@@ -129,7 +132,7 @@ async fn timeout(#[case] enable: bool) {
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
     ctx.config.server.middlewares.timeout_request =
-        middleware::timeout::TimeOut { enable, timeout: 2 };
+        Some(middleware::timeout::TimeOut { enable, timeout: 2 });
 
     let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
 
@@ -161,14 +164,15 @@ async fn cors(
     #[case] allow_methods: Option<Vec<String>>,
     #[case] max_age: Option<u64>,
 ) {
+    use loco_rs::controller::middleware::cors::Cors;
+
     configure_insta!();
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
-    let mut middleware = loco_rs::controller::middleware::cors::Cors {
-        enable,
-        ..Default::default()
-    };
+    let mut middleware = Cors::empty();
+    middleware.enable = enable;
+
     if let Some(allow_headers) = allow_headers {
         middleware.allow_headers = allow_headers;
     }
@@ -177,7 +181,7 @@ async fn cors(
     }
     middleware.max_age = max_age;
 
-    ctx.config.server.middlewares.cors = middleware;
+    ctx.config.server.middlewares.cors = Some(middleware);
 
     let handle = infra_cfg::server::start_from_ctx(ctx).await;
 
@@ -220,10 +224,10 @@ async fn limit_payload(#[case] enable: bool) {
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
-    ctx.config.server.middlewares.limit_payload = middleware::limit_payload::LimitPayload {
+    ctx.config.server.middlewares.limit_payload = Some(middleware::limit_payload::LimitPayload {
         enable,
         body_limit: 0x1B,
-    };
+    });
 
     let handle = infra_cfg::server::start_from_ctx(ctx).await;
 
@@ -263,7 +267,7 @@ async fn static_assets() {
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
     let base_static_path = static_asset_path.join(base_static_assets_path);
-    ctx.config.server.middlewares.static_assets = middleware::static_assets::StaticAssets {
+    ctx.config.server.middlewares.static_assets = Some(middleware::static_assets::StaticAssets {
         enable: true,
         must_exist: true,
         folder: middleware::static_assets::FolderConfig {
@@ -272,7 +276,7 @@ async fn static_assets() {
         },
         fallback: base_static_path.join("404.html").display().to_string(),
         precompressed: false,
-    };
+    });
 
     let handle = infra_cfg::server::start_from_ctx(ctx).await;
 
@@ -314,12 +318,13 @@ async fn secure_headers(
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
-    ctx.config.server.middlewares.secure_headers =
+    ctx.config.server.middlewares.secure_headers = Some(
         loco_rs::controller::middleware::secure_headers::SecureHeader {
             enable: true,
-            preset: preset.clone(),
+            preset: preset.clone().unwrap_or_else(|| "github".to_string()),
             overrides: overrides.clone(),
-        };
+        },
+    );
 
     let handle = infra_cfg::server::start_from_ctx(ctx).await;
 
@@ -388,7 +393,7 @@ async fn fallback(
         fallback_config.code = code;
     };
 
-    ctx.config.server.middlewares.fallback = fallback_config;
+    ctx.config.server.middlewares.fallback = Some(fallback_config);
 
     let handle = infra_cfg::server::start_from_ctx(ctx).await;
 

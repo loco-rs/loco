@@ -17,13 +17,8 @@ use crate::{
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CatchPanic {
+    #[serde(default)]
     pub enable: bool,
-}
-
-impl Default for CatchPanic {
-    fn default() -> Self {
-        Self { enable: true }
-    }
 }
 
 /// Handler function for the [`CatchPanicLayer`] middleware.

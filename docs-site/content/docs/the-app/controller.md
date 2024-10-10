@@ -261,12 +261,147 @@ impl Hooks for App {
 
 Loco comes with a set of built-in middleware out of the box. Some are enabled by default, while others need to be configured. Middleware registration is flexible and can be managed either through the `*.yaml` environment configuration or directly in the code.
 
+## The default stack
+
 You get all the enabled middlewares run the following command
 <!-- <snip id="cli-middleware-list" inject_from="yaml" template="sh"> -->
 ```sh
 cargo loco middleware --config
 ```
 <!-- </snip> -->
+
+This is the stack in `development` mode:
+
+```sh
+$ cargo loco middleware --config
+
+limit_payload          {"enable":true,"body_limit":2000000}
+cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
+catch_panic            {"enable":true}
+etag                   {"enable":true}
+logger                 {"config":{"enable":true},"environment":"development"}
+request_id             {"enable":true}
+fallback               {"enable":true,"code":200,"file":null,"not_found":null}
+powered_by             {"ident":"loco.rs"}
+
+
+remote_ip              (disabled)
+compression            (disabled)
+timeout                (disabled)
+static_assets          (disabled)
+secure_headers         (disabled)
+```
+
+### Example: disable all middleware
+
+Take what ever is enabled, and use `enable: false` with the relevant field. If `middlewares:` section in `server` is missing, add it.
+
+```yaml
+server:
+  middlewares:
+    limit_payload:
+      enable: false
+    cors:
+      enable: false
+    catch_panic:
+      enable: false
+    etag:
+      enable: false
+    logger:
+      enable: false
+    request_id:
+      enable: false
+    fallback:
+      enable: false
+```
+
+The result:
+
+```sh
+$ cargo loco middleware --config
+powered_by             {"ident":"loco.rs"}
+
+
+limit_payload          (disabled)
+cors                   (disabled)
+catch_panic            (disabled)
+etag                   (disabled)
+remote_ip              (disabled)
+compression            (disabled)
+timeout_request        (disabled)
+static                 (disabled)
+secure_headers         (disabled)
+logger                 (disabled)
+request_id             (disabled)
+fallback               (disabled)
+```
+
+You can control the `powered_by` middleware by changing the value for `server.ident`:
+
+```yaml
+server:
+    ident: my-server #(or empty string to disable)
+```
+
+### Example: add a non-default middleware
+
+Lets add the _Remote IP_ middleware to the stack. This is done just by configuration:
+
+```yaml
+server:
+  middlewares:
+    remote_ip:
+      enable: true
+```
+
+The result:
+
+```sh
+$ cargo loco middleware --config
+
+limit_payload          {"enable":true,"body_limit":2000000}
+cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
+catch_panic            {"enable":true}
+etag                   {"enable":true}
+remote_ip              {"enable":true,"trusted_proxies":null}
+logger                 {"config":{"enable":true},"environment":"development"}
+request_id             {"enable":true}
+fallback               {"enable":true,"code":200,"file":null,"not_found":null}
+powered_by             {"ident":"loco.rs"}
+```
+
+### Example: change a configuration for an enabled middleware
+
+Let's change the request body limit to `5mb`. When overriding a middleware configuration, rememeber to keep an `enable: true`:
+
+```yaml
+  middlewares:
+    limit_payload:
+      enable: true
+      body_limit: 5mb
+```
+
+The result:
+
+```sh
+$ cargo loco middleware --config
+
+limit_payload          {"enable":true,"body_limit":5000000}
+cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
+catch_panic            {"enable":true}
+etag                   {"enable":true}
+logger                 {"config":{"enable":true},"environment":"development"}
+request_id             {"enable":true}
+fallback               {"enable":true,"code":200,"file":null,"not_found":null}
+powered_by             {"ident":"loco.rs"}
+
+
+remote_ip              (disabled)
+compression            (disabled)
+timeout_request        (disabled)
+static                 (disabled)
+secure_headers         (disabled)
+```
 
 ### Authentication
 In the `Loco` framework, middleware plays a crucial role in authentication. `Loco` supports various authentication methods, including JSON Web Token (JWT) and API Key authentication. This section outlines how to configure and use authentication middleware in your application.
@@ -523,6 +658,16 @@ server:
         foo: bar
 ```
 
+To support `htmx`, You can add the following override, to allow some inline running of scripts:
+
+```yaml
+secure_headers:
+    preset: github
+    overrides:
+        # this allows you to use HTMX, and has unsafe-inline. Remove or consider in production
+        "Content-Security-Policy": "default-src 'self' https:; font-src 'self' https: data:; img-src 'self' https: data:; object-src 'none'; script-src 'unsafe-inline' 'self' https:; style-src 'self' https: 'unsafe-inline'"
+```
+
 ## Compression
 
 `Loco` leverages [CompressionLayer](https://docs.rs/tower-http/0.5.0/tower_http/compression/index.html) to enable a `one click` solution.
@@ -554,14 +699,7 @@ middlewares:
     precompressed: true
 ```
 
-## Handler and Route based middleware
-
-`Loco` also allow us to apply [layers](https://docs.rs/tower/latest/tower/trait.Layer.html) to specific handlers or
-routes.
-For more information on handler and route based middleware, refer to the [middleware](/docs/the-app/middlewares)
-documentation.
-
-## Cors
+## CORS
 This middleware enables Cross-Origin Resource Sharing (CORS) by allowing configurable origins, methods, and headers in HTTP requests. 
 It can be tailored to fit various application requirements, supporting permissive CORS or specific rules as defined in the middleware configuration.
 
@@ -584,6 +722,14 @@ middlewares:
     # max_age: 3600
 
 ```
+
+## Handler and Route based middleware
+
+`Loco` also allow us to apply [layers](https://docs.rs/tower/latest/tower/trait.Layer.html) to specific handlers or
+routes.
+For more information on handler and route based middleware, refer to the [middleware](/docs/the-app/middlewares)
+documentation.
+
 
 ### Handler based middleware:
 

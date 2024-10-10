@@ -93,6 +93,7 @@ const X_FORWARDED_FOR: &str = "X-Forwarded-For";
 ///   "Trusted proxy list"
 #[derive(Default, Serialize, Deserialize, Debug, Clone)]
 pub struct RemoteIpMiddleware {
+    #[serde(default)]
     pub enable: bool,
     /// A list of alternative proxy list IP ranges and/or network range (will
     /// replace built-in proxy list)
@@ -107,7 +108,9 @@ impl MiddlewareLayer for RemoteIpMiddleware {
 
     /// Returns whether the middleware is enabled or not
     fn is_enabled(&self) -> bool {
-        self.enable && self.trusted_proxies.as_ref().is_some_and(|t| !t.is_empty())
+        self.enable
+            && (self.trusted_proxies.is_none()
+                || self.trusted_proxies.as_ref().is_some_and(|t| !t.is_empty()))
     }
 
     fn config(&self) -> serde_json::Result<serde_json::Value> {

@@ -423,6 +423,8 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::cognitive_complexity)]
 pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
+    use colored::Colorize;
+
     let cli: Cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
@@ -473,9 +475,21 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         }
         Commands::Middleware { config } => {
             let app_context = create_context::<H>(&environment).await?;
-            let middlewares = list_middlewares::<H>(&app_context, config);
-            for middleware in middlewares {
-                println!("{middleware}");
+            let middlewares = list_middlewares::<H>(&app_context);
+            for middleware in middlewares.iter().filter(|m| m.enabled) {
+                println!(
+                    "{:<22} {}",
+                    middleware.id.bold(),
+                    if config {
+                        middleware.detail.as_str()
+                    } else {
+                        ""
+                    }
+                );
+            }
+            println!("\n");
+            for middleware in middlewares.iter().filter(|m| !m.enabled) {
+                println!("{:<22} (disabled)", middleware.id.bold().dimmed(),);
             }
         }
         Commands::Task { name, params } => {

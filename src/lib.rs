@@ -5,7 +5,7 @@
 pub use self::errors::Error;
 
 mod banner;
-mod bgworker;
+pub mod bgworker;
 pub mod prelude;
 
 #[cfg(feature = "with-db")]

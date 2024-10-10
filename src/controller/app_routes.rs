@@ -2,14 +2,14 @@
 //! configuring routes in an Axum application. It allows you to define route
 //! prefixes, add routes, and configure middlewares for the application.
 
+use std::fmt;
+
 use axum::Router as AXRouter;
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::fmt;
 
 #[cfg(feature = "channels")]
 use super::channels::AppChannels;
-
 use crate::{
     app::{AppContext, Hooks},
     controller::{middleware::MiddlewareLayer, routes::Routes},
@@ -209,10 +209,25 @@ impl AppRoutes {
         if let Some(channels) = self.channels.as_ref() {
             tracing::info!("[Middleware] +channels");
             let channel_layer_app = tower::ServiceBuilder::new().layer(channels.layer.clone());
-            if ctx.config.server.middlewares.cors.is_enabled() {
+            if ctx
+                .config
+                .server
+                .middlewares
+                .cors
+                .as_ref()
+                .is_some_and(super::middleware::MiddlewareLayer::is_enabled)
+            {
                 app = app.layer(
                     tower::ServiceBuilder::new()
-                        .layer(ctx.config.server.middlewares.cors.cors()?)
+                        .layer(
+                            ctx.config
+                                .server
+                                .middlewares
+                                .cors
+                                .clone()
+                                .unwrap_or_default()
+                                .cors()?,
+                        )
                         .layer(channel_layer_app),
                 );
             } else {
@@ -237,12 +252,12 @@ impl AppRoutes {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-    use crate::prelude::*;
-    use crate::tests_cfg;
     use insta::assert_debug_snapshot;
     use rstest::rstest;
     use tower::ServiceExt;
+
+    use super::*;
+    use crate::{prelude::*, tests_cfg};
 
     async fn action() -> Result<Response> {
         format::json("loco")

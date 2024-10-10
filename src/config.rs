@@ -373,6 +373,7 @@ pub struct Server {
     pub ident: Option<String>,
     /// Middleware configurations for the server, including payload limits,
     /// logging, and error handling.
+    #[serde(default)]
     pub middlewares: middleware::Config,
 }
 

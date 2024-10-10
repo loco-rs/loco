@@ -18,18 +18,24 @@ use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LimitPayload {
+    #[serde(default)]
     pub enable: bool,
     #[serde(deserialize_with = "deserialize_body_limit")]
+    #[serde(default = "default_body_limit")]
     pub body_limit: usize,
 }
 
 impl Default for LimitPayload {
     fn default() -> Self {
         Self {
-            enable: true,
-            body_limit: 2_000_000,
+            enable: false,
+            body_limit: default_body_limit(),
         }
     }
+}
+
+fn default_body_limit() -> usize {
+    2_000_000
 }
 
 fn deserialize_body_limit<'de, D>(deserializer: D) -> Result<usize, D::Error>
