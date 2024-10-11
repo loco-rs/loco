@@ -72,6 +72,7 @@ mod tests {
     use super::*;
     use crate::tests_cfg;
 
+    #[allow(dependency_on_unit_never_type_fallback)]
     #[tokio::test]
     async fn panic_enabled() {
         let middleware = CatchPanic { enable: true };
