@@ -237,6 +237,9 @@ pub struct RedisQueueConfig {
     /// Custom queue names declaration. Useful to model priority queues.
     /// First queue in list is more important.
     pub queues: Option<Vec<String>>,
+
+    #[serde(default = "num_workers")]
+    pub num_workers: u32,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -264,7 +267,7 @@ pub struct PostgresQueueConfig {
     #[serde(default = "pgq_poll_interval")]
     pub poll_interval_sec: u32,
 
-    #[serde(default = "pgq_num_workers")]
+    #[serde(default = "num_workers")]
     pub num_workers: u32,
 }
 
@@ -288,7 +291,7 @@ fn pgq_poll_interval() -> u32 {
     1
 }
 
-fn pgq_num_workers() -> u32 {
+fn num_workers() -> u32 {
     2
 }
 

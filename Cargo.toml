@@ -134,7 +134,7 @@ sqlx = { version = "0.7", default-features = false, features = [
 ulid = { version = "1", optional = true }
 
 # bg_redis: redis workers
-rusty-sidekiq = { version = "0.8.2", default-features = false, optional = true }
+rusty-sidekiq = { version = "0.11.0", default-features = false, optional = true }
 bb8 = { version = "0.8.1", optional = true }
 
 [workspace.dependencies]
