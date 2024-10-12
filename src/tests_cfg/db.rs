@@ -1,20 +1,20 @@
-#[cfg(feature = "channels")]
-use crate::controller::channels::AppChannels;
-use crate::{
-    app::{AppContext, Hooks, Initializer},
-    boot::{create_app, BootResult, StartMode},
-    controller::AppRoutes,
-    environment::Environment,
-    task::Tasks,
-    worker::Processor,
-    Result,
-};
-
 use std::path::Path;
 
 use async_trait::async_trait;
 use sea_orm::DatabaseConnection;
 pub use sea_orm_migration::prelude::*;
+
+#[cfg(feature = "channels")]
+use crate::controller::channels::AppChannels;
+use crate::{
+    app::{AppContext, Hooks, Initializer},
+    bgworker::Queue,
+    boot::{create_app, BootResult, StartMode},
+    controller::AppRoutes,
+    environment::Environment,
+    task::Tasks,
+    Result,
+};
 
 /// Creating a dummy db connection for docs
 ///
@@ -102,7 +102,9 @@ impl Hooks for AppHook {
         create_app::<Self, Migrator>(mode, environment).await
     }
 
-    fn connect_workers<'a>(_p: &'a mut Processor, _ctx: &'a AppContext) {}
+    async fn connect_workers(_ctx: &AppContext, _q: &Queue) -> Result<()> {
+        Ok(())
+    }
 
     fn register_tasks(tasks: &mut Tasks) {
         tasks.register(super::task::Foo);

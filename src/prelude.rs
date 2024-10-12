@@ -16,6 +16,8 @@ pub use sea_orm::{
     DatabaseConnection, DbErr, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, Set,
     TransactionTrait,
 };
+// sugar for controller views to use `data!({"item": ..})` instead of `json!`
+pub use serde_json::json as data;
 
 #[cfg(all(feature = "auth_jwt", feature = "with-db"))]
 pub use crate::controller::middleware::auth;
@@ -23,6 +25,7 @@ pub use crate::controller::middleware::auth;
 pub use crate::model::{query, Authenticable, ModelError, ModelResult};
 pub use crate::{
     app::{AppContext, Initializer},
+    bgworker::{BackgroundWorker, Queue},
     controller::{
         format,
         middleware::{
@@ -39,10 +42,8 @@ pub use crate::{
     task::{self, Task, TaskInfo},
     validation::{self, Validatable},
     validator::Validate,
-    worker::{self, AppWorker},
     Result,
 };
-
 #[cfg(feature = "with-db")]
 pub mod model {
     pub use crate::model::query;

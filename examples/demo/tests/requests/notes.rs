@@ -83,7 +83,7 @@ async fn can_get_note() {
     testing::request::<App, _, _>(|request, ctx| async move {
         testing::seed::<App>(&ctx.db).await.unwrap();
 
-        let add_note_request = request.get("notes/1").await;
+        let add_note_request = request.get("/notes/1").await;
 
         with_settings!({
             filters => {
@@ -109,7 +109,7 @@ async fn can_delete_note() {
         testing::seed::<App>(&ctx.db).await.unwrap();
 
         let count_before_delete = Entity::find().all(&ctx.db).await.unwrap().len();
-        let delete_note_request = request.delete("notes/1").await;
+        let delete_note_request = request.delete("/notes/1").await;
 
         with_settings!({
             filters => {

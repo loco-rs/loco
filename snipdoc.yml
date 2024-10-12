@@ -22,7 +22,7 @@ snippets:
       ✔ ❯ App name? · myapp
       ✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
       ✔ ❯ Select a DB Provider · Sqlite
-      ✔ ❯ Select your background worker type · Async (in-process tokyo async tasks)
+      ✔ ❯ Select your background worker type · Async (in-process tokio async tasks)
       ✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
 
       🚂 Loco app generated successfully in:
@@ -128,4 +128,7 @@ snippets:
     path: ./snipdoc.yml
   scheduler-run-job-by-tag-command:
     content: LOCO_ENV=production cargo loco scheduler --tag 'maintenance'
+    path: ./snipdoc.yml
+  cli-middleware-list:
+    content: cargo loco middleware --config
     path: ./snipdoc.yml

@@ -27,16 +27,17 @@ cfg_if::cfg_if! {
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
+use duct::cmd;
 
 use crate::{
     app::{AppContext, Hooks},
     boot::{
-        create_app, create_context, list_endpoints, run_scheduler, run_task, start, RunDbCommand,
-        ServeParams, StartMode,
+        create_app, create_context, list_endpoints, list_middlewares, run_scheduler, run_task,
+        start, RunDbCommand, ServeParams, StartMode,
     },
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     gen::{self, Component, ScaffoldKind},
-    logger, task,
+    logger, task, Error,
 };
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -62,6 +63,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Start an app
+    #[clap(alias("s"))]
     Start {
         /// start worker
         #[arg(short, long, action)]
@@ -84,7 +86,14 @@ enum Commands {
     },
     /// Describe all application endpoints
     Routes {},
+    /// Describe all application middlewares
+    Middleware {
+        // print out the middleware configurations.
+        #[arg(short, long, action)]
+        config: bool,
+    },
     /// Run a custom task
+    #[clap(alias("t"))]
     Task {
         /// Task name (identifier)
         name: Option<String>,
@@ -111,6 +120,7 @@ enum Commands {
     },
     /// code generation creates a set of files and code templates based on a
     /// predefined set of rules.
+    #[clap(alias("g"))]
     Generate {
         /// What to generate
         #[command(subcommand)]
@@ -125,6 +135,17 @@ enum Commands {
     },
     /// Display the app version
     Version {},
+
+    /// Watch and restart the app
+    #[clap(alias("w"))]
+    Watch {
+        /// start worker
+        #[arg(short, long, action)]
+        worker: bool,
+        /// start same-process server and worker
+        #[arg(short, long, action)]
+        server_and_worker: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -399,6 +420,8 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
 /// }
 /// ```
 #[cfg(feature = "with-db")]
+#[allow(clippy::too_many_lines)]
+#[allow(clippy::cognitive_complexity)]
 pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
     let cli: Cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
@@ -448,6 +471,13 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             let app_context = create_context::<H>(&environment).await?;
             show_list_endpoints::<H>(&app_context);
         }
+        Commands::Middleware { config } => {
+            let app_context = create_context::<H>(&environment).await?;
+            let middlewares = list_middlewares::<H>(&app_context, config);
+            for middleware in middlewares {
+                println!("{middleware}");
+            }
+        }
         Commands::Task { name, params } => {
             let vars = task::Vars::from_cli_args(params);
             let app_context = create_context::<H>(&environment).await?;
@@ -484,6 +514,28 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         }
         Commands::Version {} => {
             println!("{}", H::app_version(),);
+        }
+
+        Commands::Watch {
+            worker,
+            server_and_worker,
+        } => {
+            // cargo-watch  -s 'cargo loco start'
+            let mut subcmd = vec!["cargo", "loco", "start"];
+            if worker {
+                subcmd.push("--worker");
+            } else if server_and_worker {
+                subcmd.push("--server-and-worker");
+            }
+
+            cmd("cargo-watch", &["-s", &subcmd.join(" ")])
+                .run()
+                .map_err(|err| {
+                    Error::Message(format!(
+                        "failed to start with `cargo-watch`. Did you `cargo install \
+                         cargo-watch`?. error details: `{err}`",
+                    ))
+                })?;
         }
     }
     Ok(())
@@ -532,6 +584,13 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             let app_context = create_context::<H>(&environment).await?;
             show_list_endpoints::<H>(&app_context)
         }
+        Commands::Middleware { config } => {
+            let app_context = create_context::<H>(&environment).await?;
+            let middlewares = list_middlewares::<H>(&app_context, config);
+            for middleware in middlewares {
+                println!("{middleware}");
+            }
+        }
         Commands::Task { name, params } => {
             let vars = task::Vars::from_cli_args(params);
             let app_context = create_context::<H>(&environment).await?;
@@ -551,6 +610,27 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
         }
         Commands::Version {} => {
             println!("{}", H::app_version(),);
+        }
+        Commands::Watch {
+            worker,
+            server_and_worker,
+        } => {
+            // cargo-watch  -s 'cargo loco start'
+            let mut subcmd = vec!["cargo", "loco", "start"];
+            if worker {
+                subcmd.push("--worker");
+            } else if server_and_worker {
+                subcmd.push("--server-and-worker");
+            }
+
+            cmd("cargo-watch", &["-s", &subcmd.join(" ")])
+                .run()
+                .map_err(|err| {
+                    Error::Message(format!(
+                        "failed to start with `cargo-watch`. Did you `cargo install \
+                         cargo-watch`?. error details: `{err}`",
+                    ))
+                })?;
         }
     }
     Ok(())
