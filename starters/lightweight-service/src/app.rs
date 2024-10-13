@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use loco_rs::{
     app::{AppContext, Hooks},
+    bgworker::Queue,
     boot::{create_app, BootResult, StartMode},
     controller::AppRoutes,
     environment::Environment,
     task::Tasks,
-    worker::Processor,
     Result,
 };
 
@@ -39,7 +39,9 @@ impl Hooks for App {
             .add_route(controllers::home::routes())
     }
 
-    fn connect_workers<'a>(_p: &'a mut Processor, _ctx: &'a AppContext) {}
+    async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {
+        Ok(())
+    }
 
     #[allow(unused_variables)]
     fn register_tasks(tasks: &mut Tasks) {
