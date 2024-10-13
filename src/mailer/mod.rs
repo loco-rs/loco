@@ -9,10 +9,11 @@ use async_trait::async_trait;
 pub use email_sender::EmailSender;
 use include_dir::Dir;
 use serde::{Deserialize, Serialize};
-use sidekiq::Worker;
+use tracing::error;
 
 use self::template::Template;
-use super::{app::AppContext, worker::AppWorker, Result};
+use super::{app::AppContext, Result};
+use crate::prelude::BackgroundWorker;
 
 pub const DEFAULT_FROM_SENDER: &str = "System <system@example.com>";
 
@@ -50,7 +51,7 @@ pub struct Email {
 }
 
 /// The options struct for configuring the email sender.
-#[derive(Default)]
+#[derive(Default, Debug)]
 #[allow(clippy::module_name_repetitions)]
 pub struct MailerOpts {
     pub from: String,
@@ -78,9 +79,7 @@ pub trait Mailer {
         email.from = Some(email.from.unwrap_or_else(|| opts.from.clone()));
         email.reply_to = email.reply_to.or_else(|| opts.reply_to.clone());
 
-        MailerWorker::perform_later(ctx, email.clone())
-            .await
-            .map_err(Box::from)?;
+        MailerWorker::perform_later(ctx, email.clone()).await?;
         Ok(())
     }
 
@@ -112,30 +111,35 @@ pub struct MailerWorker {
     pub ctx: AppContext,
 }
 
-/// Implementation of the `AppWorker` trait for the [`MailerWorker`].
-impl AppWorker<Email> for MailerWorker {
-    fn build(ctx: &AppContext) -> Self {
-        Self { ctx: ctx.clone() }
-    }
-}
-
 /// Implementation of the [`Worker`] trait for the [`MailerWorker`].
 #[async_trait]
-impl Worker<Email> for MailerWorker {
-    /// Returns options for the mailer worker, specifying the queue to process.
-    fn opts() -> sidekiq::WorkerOpts<Email, Self> {
-        sidekiq::WorkerOpts::new().queue("mailer")
+impl BackgroundWorker<Email> for MailerWorker {
+    fn queue() -> Option<String> {
+        Some("mailer".to_string())
+    }
+
+    fn build(ctx: &AppContext) -> Self {
+        Self { ctx: ctx.clone() }
     }
 
     /// Performs the email sending operation using the provided [`AppContext`]
     /// and email details.
-    async fn perform(&self, email: Email) -> sidekiq::Result<()> {
+    async fn perform(&self, email: Email) -> crate::Result<()> {
         if let Some(mailer) = &self.ctx.mailer {
-            Ok(mailer.mail(&email).await.map_err(Box::from)?)
+            let res = mailer.mail(&email).await;
+            match res {
+                Ok(res) => Ok(res),
+                Err(err) => {
+                    error!(err = err.to_string(), "mailer error");
+                    Err(err)
+                }
+            }
         } else {
-            Err(sidekiq::Error::Message(
+            let err = crate::Error::Message(
                 "attempting to send email but no email sender configured".to_string(),
-            ))
+            );
+            error!(err = err.to_string(), "mailer error");
+            Err(err)
         }
     }
 }

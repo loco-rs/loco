@@ -6,13 +6,14 @@ use lettre::{
     message::MultiPart, transport::smtp::authentication::Credentials, AsyncTransport, Message,
     Tokio1Executor, Transport,
 };
+use tracing::error;
 
 use super::{Email, Result, DEFAULT_FROM_SENDER};
 use crate::{config, errors::Error};
 
 /// An enumeration representing the possible transport methods for sending
 /// emails.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum EmailTransport {
     /// SMTP (Simple Mail Transfer Protocol) transport.
     Smtp(lettre::AsyncSmtpTransport<lettre::Tokio1Executor>),
@@ -22,7 +23,7 @@ pub enum EmailTransport {
 
 /// A structure representing the email sender, encapsulating the chosen
 /// transport method.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EmailSender {
     pub transport: EmailTransport,
 }
@@ -45,8 +46,8 @@ impl EmailSender {
         let mut email_builder = if config.secure {
             lettre::AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&config.host)
                 .map_err(|error| {
-                    tracing::error!(err.msg = %error, err.detail = ?error, "smtp_init_error");
-                    Error::Any("error initialize smtp mailer".to_string().into())
+                    error!(err.msg = %error, err.detail = ?error, "smtp_init_error");
+                    error
                 })?
                 .port(config.port)
         } else {
@@ -121,8 +122,8 @@ impl EmailSender {
             .subject(email.subject.clone())
             .multipart(content)
             .map_err(|error| {
-                tracing::error!(err.msg = %error, err.detail = ?error, "email_building_error");
-                Error::Any("error building email message".to_string().into())
+                error!(err.msg = %error, err.detail = ?error, "email_building_error");
+                error
             })?;
 
         match &self.transport {
@@ -131,7 +132,7 @@ impl EmailSender {
             }
             EmailTransport::Test(xp) => {
                 xp.send(&msg)
-                    .map_err(|_| Error::Any("sending email error".to_string().into()))?;
+                    .map_err(|e| Error::Message(format!("sending email error: {e}")))?;
             }
         };
         Ok(())

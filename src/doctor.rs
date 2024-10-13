@@ -1,9 +1,9 @@
 use std::{collections::BTreeMap, process::Command};
 
 use crate::{
-    boot,
+    bgworker,
     config::{self, Config, Database},
-    db, redis, Error, Result,
+    db, Error, Result,
 };
 
 const SEAORM_INSTALLED: &str = "SeaORM CLI is installed";
@@ -12,12 +12,12 @@ const SEAORM_NOT_FIX: &str = r"To fix, run:
       $ cargo install sea-orm-cli";
 const DB_CONNECTION_FAILED: &str = "DB connection: fails";
 const DB_CONNECTION_SUCCESS: &str = "DB connection: success";
-const REDIS_CONNECTION_SUCCESS: &str = "Redis connection: success";
-const REDIS_CONNECTION_FAILED: &str = "Redis connection: failed";
-const REDIS_CONNECTION_NOT_CONFIGURE: &str = "Redis not running?";
+const QUEUE_CONN_OK: &str = "queue connection: success";
+const QUEUE_CONN_FAILED: &str = "queue connection: failed";
+const QUEUE_NOT_CONFIGURED: &str = "queue not configured?";
 
 /// Represents different resources that can be checked.
-#[derive(PartialOrd, PartialEq, Eq, Ord)]
+#[derive(PartialOrd, PartialEq, Eq, Ord, Debug)]
 pub enum Resource {
     SeaOrmCLI,
     Database,
@@ -95,7 +95,7 @@ pub async fn run_all(config: &Config) -> BTreeMap<Resource, Check> {
     ]);
 
     if config.workers.mode == config::WorkerMode::BackgroundQueue {
-        checks.insert(Resource::Redis, check_redis(config).await);
+        checks.insert(Resource::Redis, check_queue(config).await);
     }
 
     checks
@@ -132,24 +132,24 @@ pub async fn check_db(config: &Database) -> Check {
 }
 
 /// Checks the Redis connection.
-pub async fn check_redis(config: &Config) -> Check {
-    if let Some(conn) = boot::connect_redis(config).await {
-        match redis::ping(&conn).await {
+pub async fn check_queue(config: &Config) -> Check {
+    if let Ok(Some(queue)) = bgworker::create_queue_provider(config).await {
+        match queue.ping().await {
             Ok(()) => Check {
                 status: CheckStatus::Ok,
-                message: REDIS_CONNECTION_SUCCESS.to_string(),
+                message: format!("{}: {}", queue.describe(), QUEUE_CONN_OK),
                 description: None,
             },
             Err(err) => Check {
                 status: CheckStatus::NotOk,
-                message: REDIS_CONNECTION_FAILED.to_string(),
+                message: format!("{}: {}", queue.describe(), QUEUE_CONN_FAILED),
                 description: Some(err.to_string()),
             },
         }
     } else {
         Check {
             status: CheckStatus::NotConfigure,
-            message: REDIS_CONNECTION_NOT_CONFIGURE.to_string(),
+            message: QUEUE_NOT_CONFIGURED.to_string(),
             description: None,
         }
     }

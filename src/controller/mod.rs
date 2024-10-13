@@ -14,7 +14,7 @@
 //!    app::{AppContext, Hooks},
 //!    boot::{create_app, BootResult, StartMode},
 //!    controller::AppRoutes,
-//!    worker::Processor,
+//!    prelude::*,
 //!    task::Tasks,
 //!    environment::Environment,
 //!    Result,
@@ -56,8 +56,10 @@
 //!        //channels.register.ns("/", channels::application::on_connect);
 //!        channels
 //!    }
+//!     async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {
+//!         Ok(())
+//!     }
 //!
-//!     fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {}
 //!
 //!     fn register_tasks(tasks: &mut Tasks) {}
 //!

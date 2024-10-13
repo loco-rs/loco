@@ -48,7 +48,7 @@ pub struct Config {
     pub server: Server,
     #[cfg(feature = "with-db")]
     pub database: Database,
-    pub queue: Option<Redis>,
+    pub queue: Option<QueueConfig>,
     pub auth: Option<Auth>,
     #[serde(default)]
     pub workers: Workers,
@@ -219,23 +219,80 @@ pub struct Database {
     pub dangerously_recreate: bool,
 }
 
-/// Redis Configuration
-///
-/// Example (development):
-/// ```yaml
-/// # config/development.yaml
-/// redis:
-///   uri: redis://127.0.0.1/
-///   dangerously_flush: false
-/// ```
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Redis {
-    /// The URI for connecting to the Redis server. For example:
-    /// <redis://127.0.0.1/>
+#[serde(tag = "kind")]
+pub enum QueueConfig {
+    /// Redis queue
+    Redis(RedisQueueConfig),
+    /// Postgres queue
+    Postgres(PostgresQueueConfig),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct RedisQueueConfig {
     pub uri: String,
     #[serde(default)]
-    /// Flush redis when application loaded. Useful for `test`.
     pub dangerously_flush: bool,
+
+    /// Custom queue names declaration. Useful to model priority queues.
+    /// First queue in list is more important.
+    pub queues: Option<Vec<String>>,
+
+    #[serde(default = "num_workers")]
+    pub num_workers: u32,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct PostgresQueueConfig {
+    pub uri: String,
+
+    #[serde(default)]
+    pub dangerously_flush: bool,
+
+    #[serde(default)]
+    pub enable_logging: bool,
+
+    #[serde(default = "db_max_conn")]
+    pub max_connections: u32,
+
+    #[serde(default = "db_min_conn")]
+    pub min_connections: u32,
+
+    #[serde(default = "db_connect_timeout")]
+    pub connect_timeout: u64,
+
+    #[serde(default = "db_idle_timeout")]
+    pub idle_timeout: u64,
+
+    #[serde(default = "pgq_poll_interval")]
+    pub poll_interval_sec: u32,
+
+    #[serde(default = "num_workers")]
+    pub num_workers: u32,
+}
+
+fn db_min_conn() -> u32 {
+    1
+}
+
+fn db_max_conn() -> u32 {
+    20
+}
+
+fn db_connect_timeout() -> u64 {
+    500
+}
+
+fn db_idle_timeout() -> u64 {
+    500
+}
+
+fn pgq_poll_interval() -> u32 {
+    1
+}
+
+fn num_workers() -> u32 {
+    2
 }
 
 /// User authentication configuration.
@@ -319,6 +376,7 @@ pub struct Server {
     pub ident: Option<String>,
     /// Middleware configurations for the server, including payload limits,
     /// logging, and error handling.
+    #[serde(default)]
     pub middlewares: middleware::Config,
 }
 
@@ -343,9 +401,6 @@ impl Server {
 pub struct Workers {
     /// Toggle between different worker modes
     pub mode: WorkerMode,
-    /// Custom queue names declaration. Required if you set up a dedicated
-    /// worker against a dedicated queue.
-    pub queues: Option<Vec<String>>,
 }
 
 /// Worker mode configuration

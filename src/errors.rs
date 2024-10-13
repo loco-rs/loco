@@ -38,6 +38,12 @@ pub enum Error {
     #[error("{0}")]
     Message(String),
 
+    #[error(
+        "error while running worker: no queue provider populated in context. Did you configure \
+         BackgroundQueue and connection details in `queue` in your config file?"
+    )]
+    QueueProviderMissing,
+
     #[error("task not found: '{0}'")]
     TaskNotFound(String),
 
@@ -65,7 +71,10 @@ pub enum Error {
     #[error(transparent)]
     EnvVar(#[from] std::env::VarError),
 
-    #[error(transparent)]
+    #[error("Error sending email: '{0}'")]
+    EmailSender(#[from] lettre::error::Error),
+
+    #[error("Error sending email (smtp): '{0}'")]
     Smtp(#[from] smtp::Error),
 
     #[error(transparent)]
@@ -110,16 +119,25 @@ pub enum Error {
     #[error(transparent)]
     InvalidMethod(#[from] InvalidMethod),
 
+    #[error(transparent)]
+    TaskJoinError(#[from] tokio::task::JoinError),
+
     #[cfg(feature = "with-db")]
     // Model
     #[error(transparent)]
     Model(#[from] crate::model::ModelError),
 
+    #[cfg(feature = "bg_redis")]
     #[error(transparent)]
     RedisPool(#[from] bb8::RunError<sidekiq::RedisError>),
 
+    #[cfg(feature = "bg_redis")]
     #[error(transparent)]
     Redis(#[from] sidekiq::redis_rs::RedisError),
+
+    #[cfg(feature = "bg_pg")]
+    #[error(transparent)]
+    Sqlx(#[from] sqlx::Error),
 
     #[error(transparent)]
     Storage(#[from] crate::storage::StorageError),

@@ -1,0 +1,8 @@
+---
+source: src/bgworker/skq.rs
+expression: default_queues
+---
+[
+    "default",
+    "mailer",
+]

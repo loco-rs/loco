@@ -9,7 +9,7 @@ license = "Apache-2.0"
 
 [package]
 name = "loco-rs"
-version = "0.9.0"
+version = "0.10.1"
 description = "The one-person framework for Rust"
 homepage = "https://loco.rs/"
 documentation = "https://docs.rs/loco-rs"
@@ -22,7 +22,7 @@ rust-version.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["auth_jwt", "cli", "with-db", "cache_inmem"]
+default = ["auth_jwt", "cli", "with-db", "cache_inmem", "bg_redis", "bg_pg"]
 auth_jwt = ["dep:jsonwebtoken"]
 cli = ["dep:clap"]
 testing = ["dep:axum-test"]
@@ -35,6 +35,8 @@ storage_azure = ["object_store/azure"]
 storage_gcp = ["object_store/gcp"]
 # Cache feature
 cache_inmem = ["dep:moka"]
+bg_redis = ["dep:rusty-sidekiq", "dep:bb8"]
+bg_pg = ["dep:sqlx", "dep:ulid"]
 
 [dependencies]
 backtrace_printer = { version = "1.3.0" }
@@ -59,10 +61,8 @@ serde_json = "1"
 serde_yaml = "0.9"
 serde_variant = "0.1.2"
 
-# worker fwk
-rusty-sidekiq = { version = "0.8.2", default-features = false }
+
 async-trait = { workspace = true }
-bb8 = "0.8.1"
 
 axum = { workspace = true }
 axum-extra = { version = "0.9", features = ["cookie"] }
@@ -92,9 +92,8 @@ byte-unit = "4.0.19"
 
 argon2 = { version = "0.5.2", features = ["std"] }
 rand = { version = "0.8.5", features = ["std"] }
-jsonwebtoken = { version = "9.1.0", optional = true }
-bcrypt = { version = "0.15.0", optional = true }
-validator = { version = "0.16.1", features = ["derive"] }
+jsonwebtoken = { version = "9.3.0", optional = true }
+validator = { version = "0.18.1", features = ["derive"] }
 futures-util = "0.3"
 tower = { workspace = true }
 hyper = "1.1"
@@ -102,24 +101,24 @@ mime = "0.3"
 bytes = "1.1"
 ipnetwork = "0.20.0"
 
-axum-test = { version = "14.3.0", optional = true }
+axum-test = { version = "16.1.0", optional = true }
 
 # gen
 rrgen = "0.5.3"
 chrono = "0.4.31"
 cargo_metadata = "0.18.1"
+dialoguer = "0.11.0"
 
 cfg-if = "1"
 
 uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
-requestty = "0.5.0"
 
 # A socket.io server implementation
 socketioxide = { version = "0.14.0", features = ["state"], optional = true }
 
 
 # File Upload
-object_store = { version = "0.10.2", default-features = false }
+object_store = { version = "0.11.0", default-features = false }
 
 # cache
 moka = { version = "0.12.7", features = ["sync"], optional = true }
@@ -127,6 +126,16 @@ moka = { version = "0.12.7", features = ["sync"], optional = true }
 # Scheduler
 tokio-cron-scheduler = { version = "0.11.0", features = ["signal"] }
 english-to-cron = { version = "0.1.2" }
+
+# bg_pg: postgres workers
+sqlx = { version = "0.7", default-features = false, features = [
+    "postgres",
+], optional = true }
+ulid = { version = "1", optional = true }
+
+# bg_redis: redis workers
+rusty-sidekiq = { version = "0.11.0", default-features = false, optional = true }
+bb8 = { version = "0.8.1", optional = true }
 
 [workspace.dependencies]
 async-trait = { version = "0.1.74" }

@@ -1,5 +1,6 @@
 use bytes::Bytes;
 
+#[derive(Debug)]
 pub struct Contents {
     data: Bytes,
 }

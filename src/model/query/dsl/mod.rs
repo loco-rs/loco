@@ -8,6 +8,7 @@ mod date_range;
 
 // pub mod pagination;
 
+#[derive(Debug)]
 pub struct ConditionBuilder {
     condition: Condition,
 }
