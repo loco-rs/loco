@@ -557,6 +557,8 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
 
 #[cfg(not(feature = "with-db"))]
 pub async fn main<H: Hooks>() -> crate::Result<()> {
+    use colored::Colorize;
+
     let cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 

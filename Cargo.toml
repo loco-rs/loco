@@ -9,7 +9,7 @@ license = "Apache-2.0"
 
 [package]
 name = "loco-rs"
-version = "0.10.0"
+version = "0.10.1"
 description = "The one-person framework for Rust"
 homepage = "https://loco.rs/"
 documentation = "https://docs.rs/loco-rs"

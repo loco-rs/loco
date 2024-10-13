@@ -11,7 +11,7 @@ default-run = "loco_starter_template-cli"
 
 [dependencies]
 
-loco-rs = { version = "0.10.0", default-features = false, features = ["cli"] }
+loco-rs = { version = "0.10.1", default-features = false, features = ["cli"] }
 serde = "1"
 serde_json = "1"
 tokio = { version = "1.33.0", default-features = false, features = [
@@ -35,7 +35,7 @@ required-features = []
 [dev-dependencies]
 serial_test = "3.1.1"
 rstest = "0.21.0"
-loco-rs = { version = "0.10.0", default-features = false, features = [
+loco-rs = { version = "0.10.1", default-features = false, features = [
   "testing",
   "cli",
 ] }
