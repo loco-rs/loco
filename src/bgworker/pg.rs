@@ -14,7 +14,7 @@ use tracing::{debug, error, trace};
 use ulid::Ulid;
 
 use super::{BackgroundWorker, Queue};
-use crate::{config::PostgresQueueConfig, Result};
+use crate::{config::PostgresQueueConfig, Error, Result};
 type TaskId = String;
 type TaskData = JsonValue;
 type TaskStatus = String;
@@ -45,6 +45,7 @@ pub struct TaskRegistry {
 
 impl TaskRegistry {
     /// Creates a new `TaskRegistry`.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             handlers: Arc::new(HashMap::new()),
@@ -52,7 +53,9 @@ impl TaskRegistry {
     }
 
     /// Registers a task handler with the provided name.
-    pub fn register_worker<Args, W>(&mut self, name: String, worker: W)
+    /// # Errors
+    /// Fails if cannot register worker
+    pub fn register_worker<Args, W>(&mut self, name: String, worker: W) -> Result<()>
     where
         Args: Send + Serialize + Sync + 'static,
         W: BackgroundWorker<Args> + 'static,
@@ -72,16 +75,19 @@ impl TaskRegistry {
         };
 
         Arc::get_mut(&mut self.handlers)
-            .unwrap()
+            .ok_or_else(|| Error::string("cannot register worker"))?
             .insert(name, Box::new(wrapped_handler));
+        Ok(())
     }
 
     /// Returns a reference to the task handlers.
+    #[must_use]
     pub fn handlers(&self) -> &Arc<HashMap<String, TaskHandler>> {
         &self.handlers
     }
 
     /// Runs the task handlers with the provided number of workers.
+    #[must_use]
     pub fn run(&self, pool: &PgPool, opts: &RunOpts) -> Vec<JoinHandle<()>> {
         let mut tasks = Vec::new();
 
@@ -167,6 +173,11 @@ async fn connect(cfg: &PostgresQueueConfig) -> Result<PgPool> {
     Ok(pool)
 }
 
+/// Initialize task tables
+///
+/// # Errors
+///
+/// This function will return an error if it fails
 pub async fn initialize_database(pool: &PgPool) -> Result<()> {
     debug!("pg worker: initialize database");
     sqlx::raw_sql(
@@ -188,6 +199,11 @@ pub async fn initialize_database(pool: &PgPool) -> Result<()> {
     Ok(())
 }
 
+/// Add a task
+///
+/// # Errors
+///
+/// This function will return an error if it fails
 pub async fn enqueue(
     pool: &PgPool,
     name: &str,
@@ -287,6 +303,11 @@ async fn fail_task(pool: &PgPool, task_id: &TaskId, error: &crate::Error) -> Res
     Ok(())
 }
 
+/// Clear all tasks
+///
+/// # Errors
+///
+/// This function will return an error if it fails
 pub async fn clear(pool: &PgPool) -> Result<()> {
     sqlx::query("DELETE from pg_loco_queue")
         .execute(pool)
@@ -294,6 +315,11 @@ pub async fn clear(pool: &PgPool) -> Result<()> {
     Ok(())
 }
 
+/// Ping system
+///
+/// # Errors
+///
+/// This function will return an error if it fails
 pub async fn ping(pool: &PgPool) -> Result<()> {
     sqlx::query("SELECT id from pg_loco_queue LIMIT 1")
         .execute(pool)
@@ -306,6 +332,11 @@ pub struct RunOpts {
     pub poll_interval_sec: u32,
 }
 
+/// Create this provider
+///
+/// # Errors
+///
+/// This function will return an error if it fails
 pub async fn create_provider(qcfg: &PostgresQueueConfig) -> Result<Queue> {
     let pool = connect(qcfg).await.map_err(Box::from)?;
     let registry = TaskRegistry::new();

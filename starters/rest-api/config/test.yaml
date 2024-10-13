@@ -18,41 +18,6 @@ server:
   port: 5150
   # The UI hostname or IP address that mailers will point to.
   host: http://localhost
-  # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
-  middlewares:
-    # Allows to limit the payload size request. payload that bigger than this file will blocked the request.
-    limit_payload:
-      # Enable/Disable the middleware.
-      enable: true
-      # the limit size. can be b,kb,kib,mb,mib,gb,gib
-      body_limit: 5mb
-    # Generating a unique request ID and enhancing logging with additional information such as the start and completion of request processing, latency, status code, and other request details.
-    logger:
-      # Enable/Disable the middleware.
-      enable: true
-    # when your code is panicked, the request still returns 500 status code.
-    catch_panic:
-      # Enable/Disable the middleware.
-      enable: true
-    # Timeout for incoming requests middleware. requests that take more time from the configuration will cute and 408 status code will returned.
-    timeout_request:
-      # Enable/Disable the middleware.
-      enable: false
-      # Duration time in milliseconds.
-      timeout: 5000
-    cors:
-      enable: true
-      # Set the value of the [`Access-Control-Allow-Origin`][mdn] header
-      # allow_origins:
-      #   - https://loco.rs
-      # Set the value of the [`Access-Control-Allow-Headers`][mdn] header
-      # allow_headers:
-      # - Content-Type
-      # Set the value of the [`Access-Control-Allow-Methods`][mdn] header
-      # allow_methods:
-      #   - POST
-      # Set the value of the [`Access-Control-Max-Age`][mdn] header in seconds
-      # max_age: 3600
 
 # Worker Configuration
 workers:
@@ -110,6 +75,7 @@ database:
 
 # Queue Configuration
 queue:
+  kind: Redis
   # Redis connection URI
   uri: {{get_env(name="REDIS_URL", default="redis://127.0.0.1")}}
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
