@@ -87,7 +87,7 @@ impl Queue {
             #[cfg(feature = "bg_pg")]
             Self::Postgres(_, registry, _) => {
                 let mut r = registry.lock().await;
-                r.register_worker(W::class_name(), worker);
+                r.register_worker(W::class_name(), worker)?;
             }
             _ => {}
         }
@@ -250,6 +250,11 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
     async fn perform(&self, args: A) -> crate::Result<()>;
 }
 
+/// Initialize the system according to configuration
+///
+/// # Errors
+///
+/// This function will return an error if it fails
 pub async fn converge(queue: &Queue, config: &QueueConfig) -> Result<()> {
     queue.setup().await?;
     match config {
