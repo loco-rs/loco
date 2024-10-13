@@ -58,11 +58,7 @@ export const LocoSplash = () => {
       </header>
       <div className="logo">
         <h1>Loco: SaaS application</h1>
-        <img
-          src="https://loco.rs/icon.svg"
-          className="logo"
-          alt="Loco logo"
-        />
+        <img src="https://loco.rs/icon.svg" className="logo" alt="Loco logo" />
       </div>
       <footer>
         <ul>
