@@ -32,7 +32,7 @@ lazy_static! {
     pub static ref EXTRACT_DB_NAME: Regex = Regex::new(r"/([^/]+)$").unwrap();
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct MultiDb {
     pub db: HashMap<String, DatabaseConnection>,
 }
@@ -320,11 +320,13 @@ fn fix_entities() -> AppResult<()> {
                 .ok_or_else(|| Error::string("cannot extract file stem"))?
                 .to_str()
                 .ok_or_else(|| Error::string("cannot extract file stem"))?;
+            let module_pascal = heck::AsPascalCase(module);
             fs::write(
                 &new_file,
                 format!(
                     r"use sea_orm::entity::prelude::*;
-use super::_entities::{module}::ActiveModel;
+use super::_entities::{module}::{{ActiveModel, Entity}};
+pub type {module_pascal} = Entity;
 
 impl ActiveModelBehavior for ActiveModel {{
     // extend activemodel below (keep comment for generators)

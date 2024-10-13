@@ -1,5 +1,5 @@
 use axum::http::{HeaderName, HeaderValue};
-use blo::{models::users, views::auth::UserSession};
+use demo_app::{models::users, views::auth::UserSession};
 use loco_rs::{app::AppContext, TestServer};
 
 const USER_EMAIL: &str = "test@loco.com";

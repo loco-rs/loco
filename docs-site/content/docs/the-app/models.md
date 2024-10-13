@@ -342,7 +342,7 @@ We use the [validator](https://docs.rs/validator) library under the hood. First,
 pub struct Validator {
     #[validate(length(min = 2, message = "Name must be at least 2 characters long."))]
     pub name: String,
-    #[validate(custom = "validation::is_valid_email")]
+    #[validate(custom(function = "validation::is_valid_email"))]
     pub email: String,
 }
 
@@ -459,7 +459,7 @@ You can truncate before an app starts -- which is useful for running tests, or y
 
 `Loco` has a built-in 'seeds' feature that makes the process quick and easy. This is especially useful when reloading the database frequently in development and test environments. It's easy to get started with this feature
 
-`Loca` comes equipped with a convenient `seeds` feature, streamlining the process for quick and easy database reloading. This functionality proves especially invaluable during frequent resets in development and test environments. Let's explore how to get started with this feature:
+`Loco` comes equipped with a convenient `seeds` feature, streamlining the process for quick and easy database reloading. This functionality proves especially invaluable during frequent resets in development and test environments. Let's explore how to get started with this feature:
 
 ## Creating a new seed
 

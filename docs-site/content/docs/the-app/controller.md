@@ -94,6 +94,32 @@ async fn candle_llm(Extension(m): Extension<Arc<RwLock<Llama>>>) -> impl IntoRes
 }
 ```
 
+## Global app-wide state
+
+Sometimes you might want state that can be shared between controllers, workers, and other areas of your app.
+
+You can review the example [shared-global-state](https://github.com/loco-rs/shared-global-state) app to see how to integrate `libvips`, which is a C based image manipulation library. `libvips` requires an odd thing from the developer: to keep a single instance of it loaded per app process. We do this by keeping a [single `lazy_static` field](https://github.com/loco-rs/shared-global-state/blob/main/src/app.rs#L27-L34), and referring to it from different places in the app.
+
+Read the following to see how it's done in each individual part of the app.
+
+### Shared state in controllers
+
+You can use the solution provided in this document. A live example [is here](https://github.com/loco-rs/loco/blob/master/examples/llm-candle-inference/src/app.rs#L41).
+
+### Shared state in workers
+
+Workers are intentionally verbatim initialized in [app hooks](https://github.com/loco-rs/loco/blob/master/starters/saas/src/app.rs#L59).
+
+This means you can shape them as a "regular" Rust struct that takes a state as a field. Then refer to that field in perform.
+
+[Here's how the worker is initialized](https://github.com/loco-rs/shared-global-state/blob/main/src/workers/downloader.rs#L19) with the global `vips` instance in the `shared-global-state` example.
+
+Note that by-design _sharing state between controllers and workers have no meaning_, because even though you may choose to run workers in the same process as controllers initially (and share state) -- you'd want to quickly switch to proper workers backed by queue and running in a standalone workers process as you scale horizontally, and so workers should by-design have no shared state with controllers, for your own good.
+
+### Shared state in tasks
+
+Tasks don't really have a value for shared state, as they have a similar life as any exec'd binary. The process fires up, boots, creates all resources needed (connects to db, etc.), performs the task logic, and then the 
+
 ## Routes in Controllers
 
 Controllers define Loco routes capabilities. In the example below, a controller creates one GET endpoint and one POST endpoint:
@@ -136,7 +162,7 @@ Use the `Format` extractor for this:
 
 ```rust
 pub async fn get_one(
-    Format(respond_to): Format,
+    respond_to: RespondTo,
     Path(id): Path<i32>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
@@ -156,7 +182,7 @@ different formats AND ALSO, render differently based on kinds of errors you got.
 
 ```rust
 pub async fn get_one(
-    Format(respond_to): Format,
+    respond_to: RespondTo,
     Path(id): Path<i32>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
@@ -233,6 +259,150 @@ impl Hooks for App {
 
 # Middleware
 
+Loco comes with a set of built-in middleware out of the box. Some are enabled by default, while others need to be configured. Middleware registration is flexible and can be managed either through the `*.yaml` environment configuration or directly in the code.
+
+## The default stack
+
+You get all the enabled middlewares run the following command
+<!-- <snip id="cli-middleware-list" inject_from="yaml" template="sh"> -->
+```sh
+cargo loco middleware --config
+```
+<!-- </snip> -->
+
+This is the stack in `development` mode:
+
+```sh
+$ cargo loco middleware --config
+
+limit_payload          {"enable":true,"body_limit":2000000}
+cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
+catch_panic            {"enable":true}
+etag                   {"enable":true}
+logger                 {"config":{"enable":true},"environment":"development"}
+request_id             {"enable":true}
+fallback               {"enable":true,"code":200,"file":null,"not_found":null}
+powered_by             {"ident":"loco.rs"}
+
+
+remote_ip              (disabled)
+compression            (disabled)
+timeout                (disabled)
+static_assets          (disabled)
+secure_headers         (disabled)
+```
+
+### Example: disable all middleware
+
+Take what ever is enabled, and use `enable: false` with the relevant field. If `middlewares:` section in `server` is missing, add it.
+
+```yaml
+server:
+  middlewares:
+    limit_payload:
+      enable: false
+    cors:
+      enable: false
+    catch_panic:
+      enable: false
+    etag:
+      enable: false
+    logger:
+      enable: false
+    request_id:
+      enable: false
+    fallback:
+      enable: false
+```
+
+The result:
+
+```sh
+$ cargo loco middleware --config
+powered_by             {"ident":"loco.rs"}
+
+
+limit_payload          (disabled)
+cors                   (disabled)
+catch_panic            (disabled)
+etag                   (disabled)
+remote_ip              (disabled)
+compression            (disabled)
+timeout_request        (disabled)
+static                 (disabled)
+secure_headers         (disabled)
+logger                 (disabled)
+request_id             (disabled)
+fallback               (disabled)
+```
+
+You can control the `powered_by` middleware by changing the value for `server.ident`:
+
+```yaml
+server:
+    ident: my-server #(or empty string to disable)
+```
+
+### Example: add a non-default middleware
+
+Lets add the _Remote IP_ middleware to the stack. This is done just by configuration:
+
+```yaml
+server:
+  middlewares:
+    remote_ip:
+      enable: true
+```
+
+The result:
+
+```sh
+$ cargo loco middleware --config
+
+limit_payload          {"enable":true,"body_limit":2000000}
+cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
+catch_panic            {"enable":true}
+etag                   {"enable":true}
+remote_ip              {"enable":true,"trusted_proxies":null}
+logger                 {"config":{"enable":true},"environment":"development"}
+request_id             {"enable":true}
+fallback               {"enable":true,"code":200,"file":null,"not_found":null}
+powered_by             {"ident":"loco.rs"}
+```
+
+### Example: change a configuration for an enabled middleware
+
+Let's change the request body limit to `5mb`. When overriding a middleware configuration, rememeber to keep an `enable: true`:
+
+```yaml
+  middlewares:
+    limit_payload:
+      enable: true
+      body_limit: 5mb
+```
+
+The result:
+
+```sh
+$ cargo loco middleware --config
+
+limit_payload          {"enable":true,"body_limit":5000000}
+cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
+catch_panic            {"enable":true}
+etag                   {"enable":true}
+logger                 {"config":{"enable":true},"environment":"development"}
+request_id             {"enable":true}
+fallback               {"enable":true,"code":200,"file":null,"not_found":null}
+powered_by             {"ident":"loco.rs"}
+
+
+remote_ip              (disabled)
+compression            (disabled)
+timeout_request        (disabled)
+static                 (disabled)
+secure_headers         (disabled)
+```
+
 ### Authentication
 In the `Loco` framework, middleware plays a crucial role in authentication. `Loco` supports various authentication methods, including JSON Web Token (JWT) and API Key authentication. This section outlines how to configure and use authentication middleware in your application.
 
@@ -298,6 +468,76 @@ async fn current(
     // Your implementation here
 }
 ```
+
+## Catch Panic
+
+This middleware catches panics that occur during request handling in the application. When a panic occurs, it logs the error and returns an internal server error response. This middleware helps ensure that the application can gracefully handle unexpected errors without crashing the server.
+
+To disable the middleware edit the configuration as follows:
+
+```yaml
+#...
+  middlewares:
+    catch_panic:
+      enable: false
+```
+
+
+## Limit Payload
+
+Restricts the maximum allowed size for HTTP request payloads.
+The middleware by default is enabled and configured to 2MB. 
+
+You can disable or customize this behavior in your config file. You can set a few options:
+
+```yaml
+#...
+  middlewares:
+    limit_payload:
+      enable: true
+      body_limit: 5mb
+```
+
+##### Usage
+In your controller parameters, use `axum::body::Bytes`.
+```rust
+use loco_rs::prelude::*;
+
+async fn current(_body: axum::body::Bytes,) -> Result<Response> {
+    // Your implementation here
+}
+```
+
+## Timeout
+
+Applies a timeout to requests processed by the application. The middleware ensures that requests do not run beyond the specified timeout period, improving the overall performance and responsiveness of the application.
+
+If a request exceeds the specified timeout duration, the middleware will return a `408 Request Timeout` status code to the client, indicating that the request took too long to process.
+
+To enable the middleware edit the configuration as follows:
+
+```yaml
+#...
+  middlewares:
+    timeout_request:
+      enable: false
+      timeout: 5000
+```
+
+
+## Logger
+
+Provides logging functionality for HTTP requests. Detailed information about each request, such as the HTTP method, URI, version, user agent, and an associated request ID. Additionally, it integrates the application's runtime environment into the log context, allowing environment-specific logging (e.g., "development", "production").
+
+To disable the middleware edit the configuration as follows:
+
+```yaml
+#...
+  middlewares:
+    logger:
+      enable: false
+```
+
 
 ## Fallback
 
@@ -418,6 +658,16 @@ server:
         foo: bar
 ```
 
+To support `htmx`, You can add the following override, to allow some inline running of scripts:
+
+```yaml
+secure_headers:
+    preset: github
+    overrides:
+        # this allows you to use HTMX, and has unsafe-inline. Remove or consider in production
+        "Content-Security-Policy": "default-src 'self' https:; font-src 'self' https: data:; img-src 'self' https: data:; object-src 'none'; script-src 'unsafe-inline' 'self' https:; style-src 'self' https: 'unsafe-inline'"
+```
+
 ## Compression
 
 `Loco` leverages [CompressionLayer](https://docs.rs/tower-http/0.5.0/tower_http/compression/index.html) to enable a `one click` solution.
@@ -449,12 +699,37 @@ middlewares:
     precompressed: true
 ```
 
+## CORS
+This middleware enables Cross-Origin Resource Sharing (CORS) by allowing configurable origins, methods, and headers in HTTP requests. 
+It can be tailored to fit various application requirements, supporting permissive CORS or specific rules as defined in the middleware configuration.
+
+```yaml
+#...
+middlewares:
+  ...
+  cors:
+    enable: true
+    # Set the value of the [`Access-Control-Allow-Origin`][mdn] header
+    # allow_origins:
+    #   - https://loco.rs
+    # Set the value of the [`Access-Control-Allow-Headers`][mdn] header
+    # allow_headers:
+    # - Content-Type
+    # Set the value of the [`Access-Control-Allow-Methods`][mdn] header
+    # allow_methods:
+    #   - POST
+    # Set the value of the [`Access-Control-Max-Age`][mdn] header in seconds
+    # max_age: 3600
+
+```
+
 ## Handler and Route based middleware
 
 `Loco` also allow us to apply [layers](https://docs.rs/tower/latest/tower/trait.Layer.html) to specific handlers or
 routes.
 For more information on handler and route based middleware, refer to the [middleware](/docs/the-app/middlewares)
 documentation.
+
 
 ### Handler based middleware:
 

@@ -18,7 +18,7 @@ use crate::models::_entities::{{file_name | plural}};
 ///
 /// When there is an issue with rendering the view.
 pub fn list(v: &impl ViewRenderer, items: &Vec<{{file_name | plural}}::Model>) -> Result<Response> {
-    format::render().view(v, "{{file_name}}/list.html", serde_json::json!({"items": items}))
+    format::render().view(v, "{{file_name}}/list.html", data!({"items": items}))
 }
 
 /// Render a single {{name}} view.
@@ -27,7 +27,7 @@ pub fn list(v: &impl ViewRenderer, items: &Vec<{{file_name | plural}}::Model>) -
 ///
 /// When there is an issue with rendering the view.
 pub fn show(v: &impl ViewRenderer, item: &{{file_name | plural}}::Model) -> Result<Response> {
-    format::render().view(v, "{{file_name}}/show.html", serde_json::json!({"item": item}))
+    format::render().view(v, "{{file_name}}/show.html", data!({"item": item}))
 }
 
 /// Render a {{name }} create form.
@@ -36,7 +36,7 @@ pub fn show(v: &impl ViewRenderer, item: &{{file_name | plural}}::Model) -> Resu
 ///
 /// When there is an issue with rendering the view.
 pub fn create(v: &impl ViewRenderer) -> Result<Response> {
-    format::render().view(v, "{{file_name}}/create.html", serde_json::json!({}))
+    format::render().view(v, "{{file_name}}/create.html", data!({}))
 }
 
 /// Render a {{name}} edit form.
@@ -45,5 +45,5 @@ pub fn create(v: &impl ViewRenderer) -> Result<Response> {
 ///
 /// When there is an issue with rendering the view.
 pub fn edit(v: &impl ViewRenderer, item: &{{file_name | plural}}::Model) -> Result<Response> {
-    format::render().view(v, "{{file_name}}/edit.html", serde_json::json!({"item": item}))
+    format::render().view(v, "{{file_name}}/edit.html", data!({"item": item}))
 }

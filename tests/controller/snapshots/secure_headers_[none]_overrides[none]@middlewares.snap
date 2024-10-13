@@ -1,0 +1,7 @@
+---
+source: tests/controller/middlewares.rs
+expression: policy
+---
+Some(
+    "default-src 'self' https:; font-src 'self' https: data:; img-src 'self' https: data:; object-src 'none'; script-src https:; style-src 'self' https: 'unsafe-inline'",
+)

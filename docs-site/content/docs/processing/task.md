@@ -34,7 +34,7 @@ Generate the task:
 ```sh
 Generate a Task based on the given name
 
-Usage: blo-cli generate task [OPTIONS] <NAME>
+Usage: demo_app-cli generate task [OPTIONS] <NAME>
 
 Arguments:
   <NAME>  Name of the thing to generate

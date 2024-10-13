@@ -1,4 +1,4 @@
-use blo::{app::App, models::users};
+use demo_app::{app::App, models::users};
 use insta::assert_debug_snapshot;
 use loco_rs::testing;
 use sea_orm::ModelTrait;
@@ -23,7 +23,7 @@ async fn ping() {
     testing::request::<App, _, _>(|request, _ctx| async move {
         let response = request.get("cache").await;
         assert_debug_snapshot!("key_not_exists", (response.text(), response.status_code()));
-        let response = request.post("cache/insert").await;
+        let response = request.post("/cache/insert").await;
         assert_debug_snapshot!("insert", (response.text(), response.status_code()));
         let response = request.get("cache").await;
         assert_debug_snapshot!("read_cache_key", (response.text(), response.status_code()));

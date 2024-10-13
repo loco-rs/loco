@@ -15,7 +15,14 @@ top = false
 flair =[]
 +++
 
-`loco` integrates with a full blown background job processing framework: `sidekiq-rs`. You can enqueue jobs in a similar ergonomics as Rails' _ActiveJob_, and have a similar scalable processing model to perform these background jobs.
+Loco provides the following options for background jobs:
+
+* Redis backed (powered by `sidekiq-rs`)
+* Postgres backed (own implementation)
+* Tokio-async based (same-process, evented thread based background jobs)
+
+
+You enqueue and perform jobs without knowledge of the actual background queue implementation, similar to  Rails' _ActiveJob_, so you can switch with a simple change of configuration and no code change.
 
 ## Async vs Queue
 
@@ -35,36 +42,25 @@ workers:
   mode: BackgroundQueue
 ```
 
-Then, configure the Redis queue connection:
+Then, configure a Redis based queue backend:
 
 ```yaml
-# Queue Configuration
 queue:
+  kind: Redis
   # Redis connection URI
   uri: "{{ get_env(name="REDIS_URL", default="redis://127.0.0.1") }}"
+  dangerously_flush: false
 ```
 
-Loco can use Redis (or valkey or any Redis-protocol compliant server) for a real queue implementation, and you can seamlessly switch between different configurations.
+Or a Postgres based queue backend:
 
-
-To get a Redis server up and running, you can use this docker command:
-
+```yaml
+queue:
+  kind: Postgres
+  # Redis connection URI
+  uri: "{{ get_env(name="PGQ_URL", default="postgres://localhost:5432/mydb") }}"
+  dangerously_flush: false
 ```
-docker run -p 6379:6379 -d redis redis-server
-```
-
-Finally use doctor to check the connections:
-
-<!-- <snip id="doctor-command" inject_from="yaml template="sh"> -->
-```sh
-$ cargo loco doctor
-    Finished dev [unoptimized + debuginfo] target(s) in 0.32s
-    Running `target/debug/myapp-cli doctor`
-✅ SeaORM CLI is installed
-✅ DB connection: success
-✅ Redis connection: success
-```
-<!-- </snip> -->
 
 ## Running the worker process
 You can run in two ways, depending on which setting you chose for background workers:
@@ -109,6 +105,13 @@ To use a worker, we mainly think about adding a job to the queue, so you `use` t
 
 Unlike Rails and Ruby, with Rust you can enjoy _strongly typed_ job arguments which gets serialized and pushed into the queue.
 
+### Using shared state from a worker
+
+See [How to have global state](@/docs/the-app/controller.md#global-app-wide-state), but generally you use a single shared state by using something like `lazy_static` and then simply refer to it from the worker.
+
+If this state can be serializable, _strongly prefer_ to pass it through the `WorkerArgs`.
+
+
 ## Creating a new worker
 
 Adding a worker meaning coding the background job logic to take the _arguments_ and perform a job. We also need to let `loco` know about it and register it into the global job processor.
@@ -117,7 +120,10 @@ Add a worker to `workers/`:
 
 ```rust
 #[async_trait]
-impl Worker<DownloadWorkerArgs> for DownloadWorker {
+impl BackgroundWorker<DownloadWorkerArgs> for DownloadWorker {
+    fn build(ctx: &AppContext) -> Self {
+        Self { ctx: ctx.clone() }
+    }
     async fn perform(&self, args: DownloadWorkerArgs) -> Result<()> {
         println!("================================================");
         println!("Sending payment report to user {}", args.user_guid);
@@ -136,8 +142,9 @@ And register it in `app.rs`:
 #[async_trait]
 impl Hooks for App {
 //..
-    fn connect_workers<'a>(p: &'a mut Processor, ctx: &'a AppContext) {
-        p.register(DownloadWorker::build(ctx));
+    async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {
+        queue.register(DownloadWorker::build(ctx)).await?;
+        Ok(())
     }
 // ..
 }

@@ -8,7 +8,7 @@ description = "Loco is a productivity-first web and service framework in Rust"
 compile_sass = true
 
 # Whether to generate a feed file for the site
-generate_feed = true
+generate_feeds = true
 
 # When set to "true", the generated HTML files are minified.
 minify_html = false
@@ -71,24 +71,24 @@ name = "Models"
 description = 'Model your business with rich entities and avoid writing SQL, backed by SeaORM. Build relations, validation and custom logic on your entities for the best maintainability.'
 example = '''```rust
 impl Model {
-  pub async fn find_by_email(
-    db: &DatabaseConnection, 
-    email: &str)
+  pub async fn find_by_email(db: &DatabaseConnection, email: &str)
   -> ModelResult<Self> {
-      users::Entity::find().filter(
-          query::condition().eq(users::Column::Email, email).build()
-        )
+
+      Users::find()
+        .filter(eq(Column::Email, email))
         .one(db).await?
         .ok_or_else(|| ModelError::EntityNotFound)
   }
   
-  pub async create_report(&self, ctx: &AppContext) -> Result<()>{
+  pub async fn create_report(&self, ctx: &AppContext) -> Result<()> {
       ReportWorker::perform_later(
         &ctx, 
         ReportArgs{ user_id: self.id }
       ).await?;
   }
 }
+
+
 
 ```
 '''
@@ -98,17 +98,14 @@ name = "Controllers"
 description = 'Handle Web requests parameters, body, validation, and render a response that is content-aware. We use Axum for the best performance, simplicity and extensibility.'
 example = '''```rust
 pub async fn get_one(
-    Format(respond_to): Format,
+    respond_to: RespondTo,
     Path(id): Path<i32>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
-    let res = notes::Entity::find_by_id(id).one(&ctx.db).await?;
-    match res {
-      Ok(item) => match respond_to {
-        RespondTo::Html => format::html(item_view(&item)),
-        _ => format::json(item),
-      },
-      Err(err) => Err(err),
+    let item = Notes::find_by_id(id).one(&ctx.db).await?;
+    match respond_to {
+      RespondTo::Html => html_view(&item),
+      _ => format::json(item),
     }
 }
 
@@ -144,10 +141,9 @@ format::render().etag("loco-etag")?.empty()
 name = "Background Jobs"
 description = 'Perform compute or I/O intensive jobs in the background with a Redis backed queue, or with threads. Implementing a worker is as simple as implementing a <code>perform</code> function for the <code>Worker</code> trait.'
 example = '''```rust
-impl worker::Worker<DownloadArgs> for DownloadWorker {
+impl worker::Worker<DownloadArgs> for UsersReportWorker {
     async fn perform(&self, args: DownloadArgs) -> worker::Result<()> {
-        println!("Creating users report. Requested by {}", args.user_guid);
-        let all = users::Entity::find()
+        let all = Users::find()
           .all(&self.ctx.db)
           .await
           .map_err(Box::from)?;
@@ -157,6 +153,7 @@ impl worker::Worker<DownloadArgs> for DownloadWorker {
         Ok(())
     }
 }
+
 ```
 '''
 
@@ -184,16 +181,16 @@ name = "Scheduler"
 description = 'Simplifies the traditional, often cumbersome crontab system, making it easier and more elegant to schedule tasks or shell scripts.'
 example = '''```yaml
 jobs:
-  add text:
-    run: "echo loco >> ./scheduler.txt"
+  db_vaccum:
+    run: "db_vaccum.sh"
     shell: true
-    schedule: "*/1 * * * * *"
-    tags: ["base", "infre"]
+    schedule: "0 0 * * *"
+    tags: ["maintenance"]
 
-  list if users:
-    run: "user_report"
-    schedule: "Run every 3 hours"
-    tags: ["base", "users"]
+  send_birthday:
+    run: "user_birthday_task"
+    schedule: "Run every 2 hours"
+    tags: ["marketing"]
        
 ```
 '''

@@ -13,6 +13,8 @@ top = false
 flair =[]
 +++
 
+English - [Français](./index.fr.md)
+
 <img style="width:100%; max-width:640px" src="tour.png"/>
 <br/>
 <br/>
@@ -34,7 +36,7 @@ cargo install sea-orm-cli # Only when DB is needed
 ✔ ❯ App name? · myapp
 ✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
 ✔ ❯ Select a DB Provider · Sqlite
-✔ ❯ Select your background worker type · Async (in-process tokyo async tasks)
+✔ ❯ Select your background worker type · Async (in-process tokio async tasks)
 ✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
 
  🚂 Loco app generated successfully in:
@@ -49,6 +51,12 @@ If you select all defaults, you'll have:
 
 
  Now `cd` into your `myapp` and start your app by running `cargo loco start`:
+ 
+ 
+ <div class="infobox">
+ 
+ If you have the `Client` asset serving option configured, make sure you build your frontend before starting the server. This can be done by changing into the frontend directory (`cd frontend`) and running `pnpm install` and `pnpm build`.
+ </div>
 
 <!-- <snip id="starting-the-server-command-with-output" inject_from="yaml" template="sh"> -->
 ```sh
@@ -76,6 +84,7 @@ listening on port 5150
 
 
  <div class="infobox">
+ 
  You don't have to run things through `cargo` but in development it's highly
  recommended. If you build `--release`, your binary contains everything
  including your code and `cargo` or Rust is not needed. </div>
@@ -84,8 +93,13 @@ listening on port 5150
 
 We have a base SaaS app with user authentication generated for us. Let's make it a blog backend by adding a `post` and a full CRUD API using `scaffold`:
 
+<div class="infobox">
+
+You can choose between generating an `api`, `html` or `htmx` scaffold using the required `-k` flag.
+</div>
+
 ```sh
-$ cargo loco generate scaffold post title:string content:text
+$ cargo loco generate scaffold post title:string content:text -k api
 
   :
   :
@@ -127,6 +141,14 @@ listening on port 5150
 ```
 <!-- </snip> -->
 
+<div class="infobox"> 
+
+Depending on which `-k` option you chose, the steps for creating a scaffolded resource will change. With the `api` flag or the `htmx` flag you can use the below example. But with the `html` flag, it is recommended you do the post creation steps in your browser.
+  
+If you want to use `curl` to test the `html` scaffold, you will need to send your requests with the Content-Type `application/x-www-form-urlencoded` and the body as `title=Your+Title&content=Your+Content` by default. This can be changed to allow `application/json` as a `Content-Type` in the code if desired.
+
+</div>
+
 Next, try adding a `post` with `curl`:
 
 ```sh
@@ -147,7 +169,7 @@ For those counting -- the commands for creating a blog backend were:
 1. `cargo install loco-cli`
 2. `cargo install sea-orm-cli`
 3. `loco new`
-4. `cargo loco generate scaffold post title:string content:text`
+4. `cargo loco generate scaffold post title:string content:text -k api`
 
 Done! enjoy your ride with `loco` 🚂
 
@@ -160,7 +182,7 @@ Your generated app contains a fully working authentication suite, based on JWTs.
 The `/api/auth/register` endpoint creates a new user in the database with an `email_verification_token` for account verification. A welcome email is sent to the user with a verification link.
 
 ```sh
-$ curl --location '127.0.0.1:5150/api/auth/register' \
+$ curl --location 'localhost:5150/api/auth/register' \
      --header 'Content-Type: application/json' \
      --data-raw '{
          "name": "Loco user",
@@ -176,7 +198,7 @@ For security reasons, if the user is already registered, no new user is created,
 After registering a new user, use the following request to log in:
 
 ```sh
-$ curl --location '127.0.0.1:5150/api/auth/login' \
+$ curl --location 'localhost:5150/api/auth/login' \
      --header 'Content-Type: application/json' \
      --data-raw '{
          "email": "user@loco.rs",
@@ -203,7 +225,7 @@ In your client-side app, you save this JWT token and make following requests wit
 This endpoint is protected by auth middleware. We will use the token we got earlier to perform a request with the _bearer token_ technique (replace `TOKEN` with the JWT token you got earlier):
 
 ```sh
-$ curl --location --request GET '127.0.0.1:5150/api/user/current' \
+$ curl --location --request GET 'localhost:5150/api/user/current' \
      --header 'Content-Type: application/json' \
      --header 'Authorization: Bearer TOKEN'
 ```

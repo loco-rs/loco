@@ -1,4 +1,13 @@
-//! Calculate a likely remote IP based on the `X-Forwarded-For` header
+//! Remote IP Middleware for inferring the client's IP address based on the
+//! `X-Forwarded-For` header.
+//!
+//! This middleware is useful when running behind proxies or load balancers that
+//! add the `X-Forwarded-For` header, which includes the original client IP
+//! address.
+//!
+//! The middleware provides a mechanism to configure trusted proxies and extract
+//! the most likely client IP from the `X-Forwarded-For` header, skipping any
+//! trusted proxy IPs.
 use std::{
     fmt,
     iter::Iterator,
@@ -13,6 +22,7 @@ use axum::{
     extract::{ConnectInfo, FromRequestParts, Request},
     http::request::Parts,
     response::Response,
+    Router as AXRouter,
 };
 use futures_util::future::BoxFuture;
 use hyper::HeaderMap;
@@ -22,7 +32,7 @@ use serde::{Deserialize, Serialize};
 use tower::{Layer, Service};
 use tracing::error;
 
-use crate::{Error, Result};
+use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
 
 lazy_static! {
 // matching what Rails does is probably a smart idea:
@@ -41,8 +51,80 @@ static ref LOCAL_TRUSTED_PROXIES: Vec<IpNetwork> =  [
 }
 const X_FORWARDED_FOR: &str = "X-Forwarded-For";
 
+///
+/// Performs a remote ip "calculation", inferring the most likely
+/// client IP from the `X-Forwarded-For` header that is used by
+/// load balancers and proxies.
+///
+/// WARNING
+/// =======
+///
+/// LIKE ANY SUCH REMOTE IP MIDDLEWARE, IN THE WRONG ARCHITECTURE IT CAN MAKE
+/// YOU VULNERABLE TO IP SPOOFING.
+///
+/// This middleware assumes that there is at least one proxy sitting around and
+/// setting headers with the client's remote IP address. Otherwise any client
+/// can claim to have any IP address by setting the `X-Forwarded-For` header.
+///
+/// DO NOT USE THIS MIDDLEWARE IF YOU DONT KNOW THAT YOU NEED IT
+///
+/// -- But if you need it, it's crucial to use it (since it's the only way to
+/// get the original client IP)
+///
+/// This middleware is mostly implemented after the Rails `remote_ip`
+/// middleware, and looking at other production Rust services with Axum, taking
+/// the best of both worlds to balance performance and pragmatism.
+///
+/// Similarities to the Rails `remote_ip` middleware:
+///
+/// * Uses `X-Forwarded-For`
+/// * Uses the same built-in trusted proxies list
+/// * You can provide a list of `trusted_proxies` which will **replace** the
+///   built-in trusted proxies
+///
+/// Differences from the Rails `remote_ip` middleware:
+///
+/// * You get an indication if the remote IP is actually resolved or is the
+///   socket IP (no `X-Forwarded-For` header or could not parse)
+/// * We do not not use the `Client-IP` header, or try to detect "spoofing"
+///   (spoofing while doing remote IP resolution is virtually non-detectable)
+/// * Order of filtering IPs from `X-Forwarded-For` is done according to [the de
+///   facto spec](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For#selecting_an_ip_address)
+///   "Trusted proxy list"
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+pub struct RemoteIpMiddleware {
+    #[serde(default)]
+    pub enable: bool,
+    /// A list of alternative proxy list IP ranges and/or network range (will
+    /// replace built-in proxy list)
+    pub trusted_proxies: Option<Vec<String>>,
+}
+
+impl MiddlewareLayer for RemoteIpMiddleware {
+    /// Returns the name of the middleware
+    fn name(&self) -> &'static str {
+        "remote_ip"
+    }
+
+    /// Returns whether the middleware is enabled or not
+    fn is_enabled(&self) -> bool {
+        self.enable
+            && (self.trusted_proxies.is_none()
+                || self.trusted_proxies.as_ref().is_some_and(|t| !t.is_empty()))
+    }
+
+    fn config(&self) -> serde_json::Result<serde_json::Value> {
+        serde_json::to_value(self)
+    }
+
+    /// Applies the Remote IP middleware to the given Axum router.
+    fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+        Ok(app.layer(RemoteIPLayer::new(self)?))
+    }
+}
+
 // implementation reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
-pub fn maybe_get_forwarded(
+fn maybe_get_forwarded(
     headers: &HeaderMap,
     trusted_proxies: &Option<Vec<IpNetwork>>,
 ) -> Option<IpAddr> {
@@ -125,56 +207,8 @@ impl fmt::Display for RemoteIP {
     }
 }
 
-///
-/// Performs a remote ip "calculation", inferring the most likely
-/// client IP from the `X-Forwarded-For` header that is used by
-/// load balancers and proxies.
-///
-/// WARNING
-/// =======
-///
-/// LIKE ANY SUCH REMOTE IP MIDDLEWARE, IN THE WRONG ARCHITECTURE IT CAN MAKE
-/// YOU VULNERABLE TO IP SPOOFING.
-///
-/// This middleware assumes that there is at least one proxy sitting around and
-/// setting headers with the client's remote IP address. Otherwise any client
-/// can claim to have any IP address by setting the `X-Forwarded-For` header.
-///
-/// DO NOT USE THIS MIDDLEWARE IF YOU DONT KNOW THAT YOU NEED IT
-///
-/// -- But if you need it, it's crucial to use it (since it's the only way to
-/// get the original client IP)
-///
-/// This middleware is mostly implemented after the Rails `remote_ip`
-/// middleware, and looking at other production Rust services with Axum, taking
-/// the best of both worlds to balance performance and pragmatism.
-///
-/// Similarities to the Rails `remote_ip` middleware:
-///
-/// * Uses `X-Forwarded-For`
-/// * Uses the same built-in trusted proxies list
-/// * You can provide a list of `trusted_proxies` which will **replace** the
-///   built-in trusted proxies
-///
-/// Differences from the Rails `remote_ip` middleware:
-///
-/// * You get an indication if the remote IP is actually resolved or is the
-///   socket IP (no `X-Forwarded-For` header or could not parse)
-/// * We do not not use the `Client-IP` header, or try to detect "spoofing"
-///   (spoofing while doing remote IP resolution is virtually non-detectable)
-/// * Order of filtering IPs from `X-Forwarded-For` is done according to [the de
-///   facto spec](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For#selecting_an_ip_address)
-///   "Trusted proxy list"
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct RemoteIPConfig {
-    pub enable: bool,
-    /// A list of alternative proxy list IP ranges and/or network range (will
-    /// replace built-in proxy list)
-    pub trusted_proxies: Option<Vec<String>>,
-}
-
-#[derive(Clone)]
-pub struct RemoteIPLayer {
+#[derive(Clone, Debug)]
+struct RemoteIPLayer {
     trusted_proxies: Option<Vec<IpNetwork>>,
 }
 
@@ -183,7 +217,7 @@ impl RemoteIPLayer {
     ///
     /// # Errors
     /// Fails if invalid header values found
-    pub fn new(config: &RemoteIPConfig) -> Result<Self> {
+    pub fn new(config: &RemoteIpMiddleware) -> Result<Self> {
         Ok(Self {
             trusted_proxies: config
                 .trusted_proxies
@@ -218,7 +252,7 @@ impl<S> Layer<S> for RemoteIPLayer {
 }
 
 /// Remote IP Detection Middleware
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[must_use]
 pub struct RemoteIPMiddleware<S> {
     inner: S,

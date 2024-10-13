@@ -1,4 +1,7 @@
 //! Sets secure headers for your backend to promote security-by-default.
+//! This middleware applies secure HTTP headers, providing pre-defined presets
+//! (e.g., "github") and the ability to override or define custom headers.
+
 use std::{
     collections::{BTreeMap, HashMap},
     task::{Context, Poll},
@@ -8,16 +11,22 @@ use axum::{
     body::Body,
     http::{HeaderName, HeaderValue, Request},
     response::Response,
+    Router as AXRouter,
 };
 use futures_util::future::BoxFuture;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use serde_json;
+use serde_json::{self, json};
 use tower::{Layer, Service};
 
-use crate::{Error, Result};
+use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
 
-///
+lazy_static! {
+        /// Predefined secure header presets loaded from `secure_headers.json`
+    static ref PRESETS: HashMap<String, BTreeMap<String, String>> =
+        serde_json::from_str(include_str!("secure_headers.json")).unwrap();
+}
+
 /// Sets a predefined or custom set of secure headers.
 ///
 /// We recommend our `github` preset. Presets values are derived
@@ -52,70 +61,113 @@ use crate::{Error, Result};
 ///       one: two
 /// ```
 ///
+/// To support `htmx`, You can add the following override, to allow some inline
+/// running of scripts:
+///
+/// ```yaml
+/// secure_headers:
+///     preset: github
+///     overrides:
+///         # this allows you to use HTMX, and has unsafe-inline. Remove or consider in production
+///         "Content-Security-Policy": "default-src 'self' https:; font-src 'self' https: data:; img-src 'self' https: data:; object-src 'none'; script-src 'unsafe-inline' 'self' https:; style-src 'self' https: 'unsafe-inline'"
+/// ```
+///
 /// For the list of presets and their content look at [secure_headers.json](https://github.com/loco-rs/loco/blob/master/src/controller/middleware/secure_headers.rs)
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SecureHeadersConfig {
-    pub preset: Option<String>,
+pub struct SecureHeader {
+    #[serde(default)]
+    pub enable: bool,
+    #[serde(default = "default_preset")]
+    pub preset: String,
+    #[serde(default)]
     pub overrides: Option<BTreeMap<String, String>>,
 }
 
-fn push_headers(
-    headers: &mut Vec<(HeaderName, HeaderValue)>,
-    hm: &BTreeMap<String, String>,
-) -> Result<()> {
-    for (k, v) in hm {
-        headers.push((
-            HeaderName::from_bytes(k.clone().as_bytes()).map_err(Box::from)?,
-            HeaderValue::from_str(v.clone().as_str()).map_err(Box::from)?,
-        ));
-    }
-    Ok(())
-}
-
-impl Default for SecureHeadersConfig {
+impl Default for SecureHeader {
     fn default() -> Self {
-        Self {
-            preset: Some("github".to_string()),
-            overrides: None,
-        }
+        serde_json::from_value(json!({})).unwrap()
     }
 }
 
-impl SecureHeadersConfig {
+fn default_preset() -> String {
+    "github".to_string()
+}
+
+impl MiddlewareLayer for SecureHeader {
+    /// Returns the name of the middleware
+    fn name(&self) -> &'static str {
+        "secure_headers"
+    }
+
+    /// Returns whether the middleware is enabled or not
+    fn is_enabled(&self) -> bool {
+        self.enable
+    }
+
+    fn config(&self) -> serde_json::Result<serde_json::Value> {
+        serde_json::to_value(self)
+    }
+
+    /// Applies the secure headers layer to the application router
+    fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+        Ok(app.layer(SecureHeaders::new(self)?))
+    }
+}
+
+impl SecureHeader {
+    /// Converts the configuration into a list of headers.
+    ///
+    /// Applies the preset headers and any custom overrides.
     fn as_headers(&self) -> Result<Vec<(HeaderName, HeaderValue)>> {
         let mut headers = vec![];
-        if let Some(preset) = &self.preset {
-            let p = PRESETS.get(preset).ok_or_else(|| {
-                Error::Message(format!(
-                    "secure_headers: a preset named `{preset}` does not exist"
-                ))
-            })?;
-            push_headers(&mut headers, p)?;
-        }
+
+        let preset = &self.preset;
+        let p = PRESETS.get(preset).ok_or_else(|| {
+            Error::Message(format!(
+                "secure_headers: a preset named `{preset}` does not exist"
+            ))
+        })?;
+
+        Self::push_headers(&mut headers, p)?;
         if let Some(overrides) = &self.overrides {
-            push_headers(&mut headers, overrides)?;
+            Self::push_headers(&mut headers, overrides)?;
         }
         Ok(headers)
     }
+
+    /// Helper function to push headers into a mutable vector.
+    ///
+    /// This function takes a map of header names and values, converting them
+    /// into valid HTTP headers and adding them to the provided `headers`
+    /// vector.
+    fn push_headers(
+        headers: &mut Vec<(HeaderName, HeaderValue)>,
+        hm: &BTreeMap<String, String>,
+    ) -> Result<()> {
+        for (k, v) in hm {
+            headers.push((
+                HeaderName::from_bytes(k.clone().as_bytes()).map_err(Box::from)?,
+                HeaderValue::from_str(v.clone().as_str()).map_err(Box::from)?,
+            ));
+        }
+        Ok(())
+    }
 }
 
-lazy_static! {
-    static ref PRESETS: HashMap<String, BTreeMap<String, String>> =
-        serde_json::from_str(include_str!("secure_headers.json")).unwrap();
-}
-
-/// The secure headers layer
-#[derive(Clone)]
+/// The [`SecureHeaders`] layer which wraps around the service and injects
+/// security headers
+#[derive(Clone, Debug)]
 pub struct SecureHeaders {
     headers: Vec<(HeaderName, HeaderValue)>,
 }
 
 impl SecureHeaders {
-    /// Returns new secure headers middleware
+    /// Creates a new [`SecureHeaders`] instance with the provided
+    /// configuration.
     ///
     /// # Errors
-    /// Fails if invalid header values found
-    pub fn new(config: &SecureHeadersConfig) -> Result<Self> {
+    /// Returns an error if any header values are invalid.
+    pub fn new(config: &SecureHeader) -> Result<Self> {
         Ok(Self {
             headers: config.as_headers()?,
         })
@@ -125,6 +177,7 @@ impl SecureHeaders {
 impl<S> Layer<S> for SecureHeaders {
     type Service = SecureHeadersMiddleware<S>;
 
+    /// Wraps the provided service with the secure headers middleware.
     fn layer(&self, inner: S) -> Self::Service {
         SecureHeadersMiddleware {
             inner,
@@ -134,7 +187,7 @@ impl<S> Layer<S> for SecureHeaders {
 }
 
 /// The secure headers middleware
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[must_use]
 pub struct SecureHeadersMiddleware<S> {
     inner: S,
@@ -180,8 +233,9 @@ mod tests {
 
     #[tokio::test]
     async fn can_set_headers() {
-        let config = SecureHeadersConfig {
-            preset: Some("github".to_string()),
+        let config = SecureHeader {
+            enable: true,
+            preset: "github".to_string(),
             overrides: None,
         };
         let app = Router::new()
@@ -203,8 +257,9 @@ mod tests {
         overrides.insert("X-Download-Options".to_string(), "foobar".to_string());
         overrides.insert("New-Header".to_string(), "baz".to_string());
 
-        let config = SecureHeadersConfig {
-            preset: Some("github".to_string()),
+        let config = SecureHeader {
+            enable: true,
+            preset: "github".to_string(),
             overrides: Some(overrides),
         };
         let app = Router::new()
@@ -222,7 +277,7 @@ mod tests {
 
     #[tokio::test]
     async fn default_is_github_preset() {
-        let config = SecureHeadersConfig::default();
+        let config = SecureHeader::default();
         let app = Router::new()
             .route("/", get(|| async {}))
             .layer(SecureHeaders::new(&config).unwrap());

@@ -12,8 +12,8 @@ use {{pkg_name}}::app::App;
 use loco_rs::prelude::*;
 use loco_rs::testing;
 
-use blo::workers::{{module_name}}::{{struct_name}}Worker;
-use blo::workers::{{module_name}}::{{struct_name}}WorkerArgs;
+use {{pkg_name}}::workers::{{module_name}}::{{struct_name}}Worker;
+use {{pkg_name}}::workers::{{module_name}}::{{struct_name}}WorkerArgs;
 use serial_test::serial;
 
 

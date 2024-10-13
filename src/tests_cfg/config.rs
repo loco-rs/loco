@@ -1,8 +1,10 @@
+use std::collections::HashMap;
+
 use crate::{
     config::{self, Config},
+    controller::middleware,
     logger, scheduler,
 };
-use std::collections::HashMap;
 
 #[must_use]
 pub fn test_config() -> Config {
@@ -20,19 +22,7 @@ pub fn test_config() -> Config {
             port: 3000,
             host: "localhost".to_string(),
             ident: None,
-            middlewares: config::Middlewares {
-                compression: None,
-                etag: None,
-                limit_payload: None,
-                logger: None,
-                catch_panic: None,
-                timeout_request: None,
-                cors: None,
-                static_assets: None,
-                secure_headers: None,
-                remote_ip: None,
-                fallback: None,
-            },
+            middlewares: middleware::Config::default(),
         },
         #[cfg(feature = "with-db")]
         database: config::Database {
@@ -51,7 +41,6 @@ pub fn test_config() -> Config {
         auth: None,
         workers: config::Workers {
             mode: config::WorkerMode::ForegroundBlocking,
-            queues: None,
         },
         mailer: None,
         initializers: None,

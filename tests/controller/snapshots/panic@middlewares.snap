@@ -1,0 +1,10 @@
+---
+source: tests/controller/middlewares.rs
+expression: "(res.status().to_string(), res.text().await)"
+---
+(
+    "500 Internal Server Error",
+    Ok(
+        "{\"error\":\"internal_server_error\",\"description\":\"Internal Server Error\"}",
+    ),
+)

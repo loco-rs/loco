@@ -2,10 +2,10 @@
 # this empty pragma excludes this project from workspaces
 
 [package]
-name = "blo"
+name = "demo_app"
 version = "0.1.0"
 edition = "2021"
-default-run = "blo-cli"
+default-run = "demo_app-cli"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -21,7 +21,7 @@ tokio = { version = "1.33.0", features = ["full"] }
 async-trait = "0.1.74"
 tracing = "0.1.40"
 chrono = "0.4"
-validator = { version = "0.16" }
+validator = { version = "0.18" }
 sea-orm = { version = "1.0.0", features = [
   "sqlx-sqlite",
   "sqlx-postgres",
@@ -44,7 +44,7 @@ tower = "0.4.13"
 futures-util = "0.3.30"
 
 [[bin]]
-name = "blo-cli"
+name = "demo_app-cli"
 path = "src/bin/main.rs"
 required-features = []
 
@@ -60,4 +60,4 @@ loco-rs = { path = "../../", version = "*", features = ["testing"] }
 trycmd = "0.14.19"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
 loco-macros = { path = "../../macros" }
-axum-test = { version = "14.3.0" }
+axum-test = { version = "16" }

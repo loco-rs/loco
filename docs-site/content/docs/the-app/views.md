@@ -137,10 +137,9 @@ Now create a strongly typed `view` to encapsulate this template in `src/views/da
 ```rust
 // src/views/dashboard.rs
 use loco_rs::prelude::*;
-use serde_json::json;
 
 pub fn home(v: impl ViewRenderer) -> Result<impl IntoResponse> {
-    format::render().view(&v, "home/hello.html", json!({}))
+    format::render().view(&v, "home/hello.html", data!({}))
 }
 
 ```

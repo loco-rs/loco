@@ -23,7 +23,7 @@ pub async fn {{action}}(
     ViewEngine(v): ViewEngine<TeraView>,
     State(_ctx): State<AppContext>
 ) -> Result<Response> {
-    format::render().view(&v, "{{file_name}}/{{action}}.html", serde_json::json!({}))
+    format::render().view(&v, "{{file_name}}/{{action}}.html", data!({}))
 }
 
 {% endfor -%}

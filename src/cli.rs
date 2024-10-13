@@ -27,16 +27,17 @@ cfg_if::cfg_if! {
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
+use duct::cmd;
 
 use crate::{
     app::{AppContext, Hooks},
     boot::{
-        create_app, create_context, list_endpoints, run_scheduler, run_task, start, RunDbCommand,
-        ServeParams, StartMode,
+        create_app, create_context, list_endpoints, list_middlewares, run_scheduler, run_task,
+        start, RunDbCommand, ServeParams, StartMode,
     },
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     gen::{self, Component, ScaffoldKind},
-    logger, task,
+    logger, task, Error,
 };
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -62,6 +63,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Start an app
+    #[clap(alias("s"))]
     Start {
         /// start worker
         #[arg(short, long, action)]
@@ -84,7 +86,14 @@ enum Commands {
     },
     /// Describe all application endpoints
     Routes {},
+    /// Describe all application middlewares
+    Middleware {
+        // print out the middleware configurations.
+        #[arg(short, long, action)]
+        config: bool,
+    },
     /// Run a custom task
+    #[clap(alias("t"))]
     Task {
         /// Task name (identifier)
         name: Option<String>,
@@ -111,6 +120,7 @@ enum Commands {
     },
     /// code generation creates a set of files and code templates based on a
     /// predefined set of rules.
+    #[clap(alias("g"))]
     Generate {
         /// What to generate
         #[command(subcommand)]
@@ -118,9 +128,24 @@ enum Commands {
     },
     #[cfg(feature = "with-db")]
     /// Validate and diagnose configurations.
-    Doctor {},
+    Doctor {
+        /// print out the current configurations.
+        #[arg(short, long, action)]
+        config: bool,
+    },
     /// Display the app version
     Version {},
+
+    /// Watch and restart the app
+    #[clap(alias("w"))]
+    Watch {
+        /// start worker
+        #[arg(short, long, action)]
+        worker: bool,
+        /// start same-process server and worker
+        #[arg(short, long, action)]
+        server_and_worker: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -184,9 +209,21 @@ enum ComponentArg {
         /// Actions
         actions: Vec<String>,
 
-        /// The kind of scaffold to generate
-        #[clap(short, long, value_enum, default_value_t = gen::ScaffoldKind::Api)]
-        kind: gen::ScaffoldKind,
+        /// The kind of controller actions to generate
+        #[clap(short, long, value_enum, group = "scaffold_kind_group")]
+        kind: Option<gen::ScaffoldKind>,
+
+        /// Use HTMX controller actions
+        #[clap(long, group = "scaffold_kind_group")]
+        htmx: bool,
+
+        /// Use HTML controller actions
+        #[clap(long, group = "scaffold_kind_group")]
+        html: bool,
+
+        /// Use API controller actions
+        #[clap(long, group = "scaffold_kind_group")]
+        api: bool,
     },
     /// Generate a Task based on the given name
     Task {
@@ -256,11 +293,30 @@ impl TryFrom<ComponentArg> for Component {
                 name,
                 actions,
                 kind,
-            } => Ok(Self::Controller {
-                name,
-                actions,
-                kind,
-            }),
+                htmx,
+                html,
+                api,
+            } => {
+                let kind = if let Some(kind) = kind {
+                    kind
+                } else if htmx {
+                    ScaffoldKind::Htmx
+                } else if html {
+                    ScaffoldKind::Html
+                } else if api {
+                    ScaffoldKind::Api
+                } else {
+                    return Err(crate::Error::string(
+                        "Error: One of `kind`, `htmx`, `html`, or `api` must be specified.",
+                    ));
+                };
+
+                Ok(Self::Controller {
+                    name,
+                    actions,
+                    kind,
+                })
+            }
             ComponentArg::Task { name } => Ok(Self::Task { name }),
             ComponentArg::Scheduler {} => Ok(Self::Scheduler {}),
             ComponentArg::Worker { name } => Ok(Self::Worker { name }),
@@ -364,7 +420,11 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
 /// }
 /// ```
 #[cfg(feature = "with-db")]
+#[allow(clippy::too_many_lines)]
+#[allow(clippy::cognitive_complexity)]
 pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
+    use colored::Colorize;
+
     let cli: Cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
@@ -413,6 +473,25 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             let app_context = create_context::<H>(&environment).await?;
             show_list_endpoints::<H>(&app_context);
         }
+        Commands::Middleware { config } => {
+            let app_context = create_context::<H>(&environment).await?;
+            let middlewares = list_middlewares::<H>(&app_context);
+            for middleware in middlewares.iter().filter(|m| m.enabled) {
+                println!(
+                    "{:<22} {}",
+                    middleware.id.bold(),
+                    if config {
+                        middleware.detail.as_str()
+                    } else {
+                        ""
+                    }
+                );
+            }
+            println!("\n");
+            for middleware in middlewares.iter().filter(|m| !m.enabled) {
+                println!("{:<22} (disabled)", middleware.id.bold().dimmed(),);
+            }
+        }
         Commands::Task { name, params } => {
             let vars = task::Vars::from_cli_args(params);
             let app_context = create_context::<H>(&environment).await?;
@@ -430,20 +509,47 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         Commands::Generate { component } => {
             gen::generate::<H>(component.try_into()?, &config)?;
         }
-        Commands::Doctor {} => {
-            let mut should_exit = false;
-            for (_, check) in doctor::run_all(&config).await {
-                if !should_exit && !check.valid() {
-                    should_exit = true;
+        Commands::Doctor { config: config_arg } => {
+            if config_arg {
+                println!("{}", &config);
+                println!("Environment: {}", &environment);
+            } else {
+                let mut should_exit = false;
+                for (_, check) in doctor::run_all(&config).await {
+                    if !should_exit && !check.valid() {
+                        should_exit = true;
+                    }
+                    println!("{check}");
                 }
-                println!("{check}");
-            }
-            if should_exit {
-                exit(1);
+                if should_exit {
+                    exit(1);
+                }
             }
         }
         Commands::Version {} => {
             println!("{}", H::app_version(),);
+        }
+
+        Commands::Watch {
+            worker,
+            server_and_worker,
+        } => {
+            // cargo-watch  -s 'cargo loco start'
+            let mut subcmd = vec!["cargo", "loco", "start"];
+            if worker {
+                subcmd.push("--worker");
+            } else if server_and_worker {
+                subcmd.push("--server-and-worker");
+            }
+
+            cmd("cargo-watch", &["-s", &subcmd.join(" ")])
+                .run()
+                .map_err(|err| {
+                    Error::Message(format!(
+                        "failed to start with `cargo-watch`. Did you `cargo install \
+                         cargo-watch`?. error details: `{err}`",
+                    ))
+                })?;
         }
     }
     Ok(())
@@ -451,6 +557,8 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
 
 #[cfg(not(feature = "with-db"))]
 pub async fn main<H: Hooks>() -> crate::Result<()> {
+    use colored::Colorize;
+
     let cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
@@ -492,6 +600,25 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             let app_context = create_context::<H>(&environment).await?;
             show_list_endpoints::<H>(&app_context)
         }
+        Commands::Middleware { config } => {
+            let app_context = create_context::<H>(&environment).await?;
+            let middlewares = list_middlewares::<H>(&app_context);
+            for middleware in middlewares.iter().filter(|m| m.enabled) {
+                println!(
+                    "{:<22} {}",
+                    middleware.id.bold(),
+                    if config {
+                        middleware.detail.as_str()
+                    } else {
+                        ""
+                    }
+                );
+            }
+            println!("\n");
+            for middleware in middlewares.iter().filter(|m| !m.enabled) {
+                println!("{:<22} (disabled)", middleware.id.bold().dimmed(),);
+            }
+        }
         Commands::Task { name, params } => {
             let vars = task::Vars::from_cli_args(params);
             let app_context = create_context::<H>(&environment).await?;
@@ -507,10 +634,31 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             run_scheduler::<H>(&app_context, config.as_ref(), name, tag, list).await?;
         }
         Commands::Generate { component } => {
-            gen::generate::<H>(component.into(), &config)?;
+            gen::generate::<H>(component.try_into()?, &config)?;
         }
         Commands::Version {} => {
             println!("{}", H::app_version(),);
+        }
+        Commands::Watch {
+            worker,
+            server_and_worker,
+        } => {
+            // cargo-watch  -s 'cargo loco start'
+            let mut subcmd = vec!["cargo", "loco", "start"];
+            if worker {
+                subcmd.push("--worker");
+            } else if server_and_worker {
+                subcmd.push("--server-and-worker");
+            }
+
+            cmd("cargo-watch", &["-s", &subcmd.join(" ")])
+                .run()
+                .map_err(|err| {
+                    Error::Message(format!(
+                        "failed to start with `cargo-watch`. Did you `cargo install \
+                         cargo-watch`?. error details: `{err}`",
+                    ))
+                })?;
         }
     }
     Ok(())

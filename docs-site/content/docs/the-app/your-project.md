@@ -25,7 +25,7 @@ Create your starter app:
 ✔ ❯ App name? · myapp
 ✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
 ✔ ❯ Select a DB Provider · Sqlite
-✔ ❯ Select your background worker type · Async (in-process tokyo async tasks)
+✔ ❯ Select your background worker type · Async (in-process tokio async tasks)
 ✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
 
 🚂 Loco app generated successfully in:
@@ -45,18 +45,20 @@ cargo loco --help
 ```sh
 The one-person framework for Rust
 
-Usage: blo-cli [OPTIONS] <COMMAND>
+Usage: demo_app-cli [OPTIONS] <COMMAND>
 
 Commands:
-  start      Start an app
-  db         Perform DB operations
-  routes     Describe all application endpoints
-  task       Run a custom task
-  scheduler  Run the scheduler
-  generate   code generation creates a set of files and code templates based on a predefined set of rules
-  doctor     Validate and diagnose configurations
-  version    Display the app version
-  help       Print this message or the help of the given subcommand(s)
+  start       Start an app
+  db          Perform DB operations
+  routes      Describe all application endpoints
+  middleware  Describe all application middlewares
+  task        Run a custom task
+  scheduler   Run the scheduler
+  generate    code generation creates a set of files and code templates based on a predefined set of rules
+  doctor      Validate and diagnose configurations
+  version     Display the app version
+  watch       Watch and restart the app
+  help        Print this message or the help of the given subcommand(s)
 
 Options:
   -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
@@ -134,7 +136,7 @@ See scaffold command:
 ```sh
 Generates a CRUD scaffold, model and controller
 
-Usage: blo-cli generate scaffold [OPTIONS] <NAME> [FIELDS]...
+Usage: demo_app-cli generate scaffold [OPTIONS] <NAME> [FIELDS]...
 
 Arguments:
   <NAME>       Name of the thing to generate
