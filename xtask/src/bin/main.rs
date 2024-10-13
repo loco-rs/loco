@@ -1,10 +1,10 @@
-use std::env;
-
 use cargo_metadata::{semver::Version, MetadataCommand, Package};
 use clap::{
     ArgAction::{SetFalse, SetTrue},
     Parser, Subcommand,
 };
+use std::env;
+use xtask::fuzzy_steps;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -29,6 +29,18 @@ enum Commands {
         #[arg(short, long, action = SetFalse)]
         exclude_starters: bool,
     },
+    Fuzzy {
+        #[arg(short, long, value_parser = clap::value_parser!(u64))]
+        seed: Option<u64>,
+        #[command(subcommand)]
+        command: FuzzyCommands,
+    },
+}
+
+#[derive(Subcommand)]
+enum FuzzyCommands {
+    GenerateTemplate,
+    Scaffold,
 }
 
 fn main() -> eyre::Result<()> {
@@ -68,6 +80,36 @@ fn main() -> eyre::Result<()> {
                 .run()?;
             }
             xtask::CmdExit::ok()
+        }
+        Commands::Fuzzy { command, seed } => {
+            let randomizer = seed.map_or_else(crazy_train::Randomizer::default, |seed| {
+                crazy_train::Randomizer::with_seed(seed)
+            });
+
+            let temp_dir = env::temp_dir().join("loco");
+
+            let runner = match command {
+                FuzzyCommands::GenerateTemplate => {
+                    fuzzy_steps::generate_project::run(randomizer, temp_dir.as_path())
+                }
+                FuzzyCommands::Scaffold => {
+                    fuzzy_steps::scaffold::run(randomizer, temp_dir.as_path())
+                }
+            };
+
+            let result = runner.run();
+
+            if temp_dir.exists() {
+                std::fs::remove_dir_all(temp_dir).expect("remove dir");
+            }
+
+            if let Err(err) = &result {
+                println!("{err}");
+
+                xtask::CmdExit::error_with_message("step failed")
+            } else {
+                xtask::CmdExit::ok()
+            }
         }
     };
 

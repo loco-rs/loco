@@ -2,6 +2,7 @@ use std::process::exit;
 pub mod bump_version;
 pub mod ci;
 pub mod errors;
+pub mod fuzzy_steps;
 pub mod out;
 pub mod prompt;
 pub mod utils;
