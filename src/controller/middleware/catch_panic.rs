@@ -17,13 +17,8 @@ use crate::{
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CatchPanic {
+    #[serde(default)]
     pub enable: bool,
-}
-
-impl Default for CatchPanic {
-    fn default() -> Self {
-        Self { enable: true }
-    }
 }
 
 /// Handler function for the [`CatchPanicLayer`] middleware.
@@ -77,6 +72,7 @@ mod tests {
     use super::*;
     use crate::tests_cfg;
 
+    #[allow(dependency_on_unit_never_type_fallback)]
     #[tokio::test]
     async fn panic_enabled() {
         let middleware = CatchPanic { enable: true };

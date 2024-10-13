@@ -6,6 +6,7 @@
 
 use axum::{http::StatusCode, response::Html, Router as AXRouter};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_json::json;
 use tower_http::services::ServeFile;
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
@@ -13,10 +14,11 @@ use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 #[derive(Debug)]
 pub struct StatusCodeWrapper(pub StatusCode);
 
-#[derive(Default, Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Fallback {
     /// By default when enabled, returns a prebaked 404 not found page optimized
     /// for development. For production set something else (see fields below)
+    #[serde(default)]
     pub enable: bool,
     /// For the unlikely reason to return something different than `404`, you
     /// can set it here
@@ -36,6 +38,12 @@ pub struct Fallback {
 
 fn default_status_code() -> StatusCode {
     StatusCode::OK
+}
+
+impl Default for Fallback {
+    fn default() -> Self {
+        serde_json::from_value(json!({})).unwrap()
+    }
 }
 
 fn deserialize_status_code<'de, D>(de: D) -> Result<StatusCode, D::Error>
