@@ -8,8 +8,6 @@ use tower_sessions::Session;
 
 use crate::request_context::driver::cookie::CookieMap;
 
-pub const PRIVATE_COOKIE_NAME: &str = "__loco_app_session";
-
 #[derive(Debug, Clone)]
 pub enum Driver {
     TowerSession(Session),
