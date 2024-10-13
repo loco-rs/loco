@@ -1,5 +1,5 @@
 +++
-title = "A Quick Tour"
+title = "Aperçu rapide"
 date = 2021-05-01T08:00:00+00:00
 updated = 2021-05-01T08:00:00+00:00
 draft = false
@@ -13,13 +13,13 @@ top = false
 flair =[]
 +++
 
-English - [Français](./index.fr.md)
+[English](./index.md) - Français
 
 <img style="width:100%; max-width:640px" src="tour.png"/>
 <br/>
 <br/>
 <br/>
-Let's create a blog backend on Loco in just a few minutes. First install `loco-cli` and `sea-orm-cli`:
+Créons un blog coté serveur sur Loco en quelques minutes. Commençons par installer `loco-cli` et `sea-orm-cli`:
 
 <!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->
 ```sh
@@ -29,34 +29,28 @@ cargo install sea-orm-cli # Only when DB is needed
 <!-- </snip> -->
 
 
- Now you can create your new app (choose "`SaaS` app").
+ Vous pouvez maintenant créer votre nouvelle application (choisissez "`SaaS` app").
 
  ```sh
  ❯ loco new
 ✔ ❯ App name? · myapp
 ✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
 ✔ ❯ Select a DB Provider · Sqlite
-✔ ❯ Select your background worker type · Async (in-process tokio async tasks)
+✔ ❯ Select your background worker type · Async (in-process tokyo async tasks)
 ✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
 
  🚂 Loco app generated successfully in:
  myapp/
  ```
 
-If you select all defaults, you'll have:
+Si vous sélectionnez tous les paramètres par défaut, vous aurez:
 
-* `sqlite` for database. Learn about database providers in [Sqlite vs Postgres](@/docs/the-app/models.md#sqlite-vs-postgres) in the _models_ section.
-* `async` for background workers. Learn about workers configuration [async vs queue](@/docs/processing/workers.md#async-vs-queue) in the _workers_ section.
-* `Client` asset serving configuration. This means your backend will serve as API.
+* `sqlite` pour la base de données. Découvrez les types de bases de données dans [Sqlite vs Postgres](@/docs/the-app/models.md#sqlite-vs-postgres) dans la section _models_ .
+* `async` pour les _workers_ en arrière-plan. En savoir plus sur la configuration des _workers_  [async vs queue](@/docs/processing/workers.md#async-vs-queue) dans la section _workers_ .
+* `Client` configuration pour la diffusion des ressources. Cela signifie que votre backend servira d'API.
 
 
- Now `cd` into your `myapp` and start your app by running `cargo loco start`:
- 
- 
- <div class="infobox">
- 
- If you have the `Client` asset serving option configured, make sure you build your frontend before starting the server. This can be done by changing into the frontend directory (`cd frontend`) and running `pnpm install` and `pnpm build`.
- </div>
+ Maintenant, faites `cd` dans votre `myapp` et démarrez votre application en exécutant `cargo loco start`:
 
 <!-- <snip id="starting-the-server-command-with-output" inject_from="yaml" template="sh"> -->
 ```sh
@@ -84,22 +78,16 @@ listening on port 5150
 
 
  <div class="infobox">
- 
- You don't have to run things through `cargo` but in development it's highly
- recommended. If you build `--release`, your binary contains everything
- including your code and `cargo` or Rust is not needed. </div>
+ Vous n'êtes pas obligé d'exécuter via `cargo` mais en développement, c'est fortement
+recommandé. Si vous compilez avec `--release`, votre binaire contiendra tout
+y compris votre code. Ainsi `cargo` ou Rust ne seront plus nécessaire. </div>
 
-## Adding a CRUD API
+## Ajouter une API de type CRUD
 
-We have a base SaaS app with user authentication generated for us. Let's make it a blog backend by adding a `post` and a full CRUD API using `scaffold`:
-
-<div class="infobox">
-
-You can choose between generating an `api`, `html` or `htmx` scaffold using the required `-k` flag.
-</div>
+Nous avons une application SaaS de base avec une authentification utilisateur générée pour nous. Faisons-en un backend de blog en ajoutant un `post` et une API CRUD complète à l'aide de `scaffold` :
 
 ```sh
-$ cargo loco generate scaffold post title:string content:text -k api
+$ cargo loco generate scaffold post title:string content:text
 
   :
   :
@@ -114,9 +102,9 @@ injected: "tests/requests/mod.rs"
 * Tests for controller `post` was added successfully. Run `cargo test`.
 ```
 
-Your database have been migrated and model, entities, and a full CRUD controller have been generated automatically.
+Votre base de données a été migrée et le modèle, les entités et un contrôleur CRUD complet ont été générés automatiquement.
 
-Start your app again:
+Redémarrez votre application :
 <!-- <snip id="starting-the-server-command-with-output" inject_from="yaml" template="sh"> -->
 ```sh
 $ cargo loco start
@@ -141,15 +129,7 @@ listening on port 5150
 ```
 <!-- </snip> -->
 
-<div class="infobox"> 
-
-Depending on which `-k` option you chose, the steps for creating a scaffolded resource will change. With the `api` flag or the `htmx` flag you can use the below example. But with the `html` flag, it is recommended you do the post creation steps in your browser.
-  
-If you want to use `curl` to test the `html` scaffold, you will need to send your requests with the Content-Type `application/x-www-form-urlencoded` and the body as `title=Your+Title&content=Your+Content` by default. This can be changed to allow `application/json` as a `Content-Type` in the code if desired.
-
-</div>
-
-Next, try adding a `post` with `curl`:
+Ensuite, essayez d’ajouter un `post` avec `curl`:
 
 ```sh
 $ curl -X POST -H "Content-Type: application/json" -d '{
@@ -158,31 +138,31 @@ $ curl -X POST -H "Content-Type: application/json" -d '{
 }' localhost:5150/posts
 ```
 
-You can list your posts:
+Vous pouvez lister vos publications (posts):
 
 ```sh
 $ curl localhost:5150/posts
 ```
 
-For those counting -- the commands for creating a blog backend were:
+Pour ceux qui comptent -- les commandes pour créer un backend de blog étaient:
 
 1. `cargo install loco-cli`
 2. `cargo install sea-orm-cli`
 3. `loco new`
-4. `cargo loco generate scaffold post title:string content:text -k api`
+4. `cargo loco generate scaffold post title:string content:text`
 
-Done! enjoy your ride with `loco` 🚂
+Voilà! Profitez de votre balade avec `loco` 🚂
 
-## Checking Out SaaS Authentication
+## Vérifions l'authentification SaaS
 
-Your generated app contains a fully working authentication suite, based on JWTs.
+L'application Saas générée contient une suite d’authentification entièrement fonctionnelle, basée sur les JWT.
 
-### Registering a New User
+### Enregistrer un nouvel utilisateur
 
-The `/api/auth/register` endpoint creates a new user in the database with an `email_verification_token` for account verification. A welcome email is sent to the user with a verification link.
+Le point de terminaison `/api/auth/register` crée un nouvel utilisateur dans la base de données avec un `email_verification_token` pour la vérification du compte. Un e-mail de bienvenue est envoyé à l'utilisateur avec un lien de vérification.
 
 ```sh
-$ curl --location 'localhost:5150/api/auth/register' \
+$ curl --location '127.0.0.1:5150/api/auth/register' \
      --header 'Content-Type: application/json' \
      --data-raw '{
          "name": "Loco user",
@@ -191,14 +171,14 @@ $ curl --location 'localhost:5150/api/auth/register' \
      }'
 ```
 
-For security reasons, if the user is already registered, no new user is created, and a 200 status is returned without exposing user email details.
+Pour des raisons de sécurité, si l'utilisateur est déjà enregistré, aucun nouvel utilisateur n'est créé et un statut 200 est renvoyé sans exposer les détails de l'e-mail de l'utilisateur.
 
 ### Login
 
-After registering a new user, use the following request to log in:
+Après avoir enregistré un nouvel utilisateur, utilisez la requête suivante pour vous connecter:
 
 ```sh
-$ curl --location 'localhost:5150/api/auth/login' \
+$ curl --location '127.0.0.1:5150/api/auth/login' \
      --header 'Content-Type: application/json' \
      --data-raw '{
          "email": "user@loco.rs",
@@ -206,7 +186,7 @@ $ curl --location 'localhost:5150/api/auth/login' \
      }'
 ```
 
-The response includes a JWT token for authentication, user ID, name, and verification status.
+La réponse inclut un Token (jeton) JWT pour l’authentification, l’ID utilisateur, le nom et l’état de vérification.
 
 ```sh
 {
@@ -218,18 +198,18 @@ The response includes a JWT token for authentication, user ID, name, and verific
 }
 ```
 
-In your client-side app, you save this JWT token and make following requests with it using _bearer token_ (see below) in order for those to be authenticated.
+Dans votre application côté client, vous enregistrez ce jeton JWT et effectuez les requêtes suivantes avec le jeton en utilisant _bearer token_ (voir ci-dessous) afin que les requêtes soient authentifiées.
 
-### Get current user
+### Obtenir l'utilisateur actuel
 
-This endpoint is protected by auth middleware. We will use the token we got earlier to perform a request with the _bearer token_ technique (replace `TOKEN` with the JWT token you got earlier):
+Ce point de terminaison est protégé par un middleware d'authentification. Nous utiliserons le jeton que nous avons obtenu précédemment pour effectuer une requête avec la technique _bearer token_ (remplacez `TOKEN` par le jeton JWT que vous avez obtenu précédemment):
 
 ```sh
-$ curl --location --request GET 'localhost:5150/api/user/current' \
+$ curl --location --request GET '127.0.0.1:5150/api/user/current' \
      --header 'Content-Type: application/json' \
      --header 'Authorization: Bearer TOKEN'
 ```
 
-That should be your first authenticated request!.
+Voilà votre première demande authentifiée !
 
-Check out the source code for `controllers/auth.rs` to see how to use the authentication middleware in your own controllers.
+Consultez le code source de `controllers/auth.rs` pour voir comment utiliser le middleware d'authentification dans vos propres contrôleurs.
