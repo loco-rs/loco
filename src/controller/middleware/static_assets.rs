@@ -13,25 +13,55 @@ use std::path::PathBuf;
 
 use axum::Router as AXRouter;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tower_http::services::{ServeDir, ServeFile};
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
 
 /// Static asset middleware configuration
-#[derive(Default, Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct StaticAssets {
+    #[serde(default)]
     pub enable: bool,
     /// Check that assets must exist on disk
+    #[serde(default = "default_must_exist")]
     pub must_exist: bool,
     /// Assets location
+    #[serde(default = "default_folder_config")]
     pub folder: FolderConfig,
     /// Fallback page for a case when no asset exists (404). Useful for SPA
     /// (single page app) where routes are virtual.
+    #[serde(default = "default_fallback")]
     pub fallback: String,
     /// Enable `precompressed_gzip`
+    #[serde(default = "default_precompressed")]
     pub precompressed: bool,
 }
 
+impl Default for StaticAssets {
+    fn default() -> Self {
+        serde_json::from_value(json!({})).unwrap()
+    }
+}
+
+fn default_must_exist() -> bool {
+    true
+}
+
+fn default_precompressed() -> bool {
+    false
+}
+
+fn default_fallback() -> String {
+    "assets/static/404.html".to_string()
+}
+
+fn default_folder_config() -> FolderConfig {
+    FolderConfig {
+        uri: "/static".to_string(),
+        path: "assets/static".to_string(),
+    }
+}
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
 pub struct FolderConfig {
     /// Uri for the assets
@@ -44,7 +74,7 @@ pub struct FolderConfig {
 impl MiddlewareLayer for StaticAssets {
     /// Returns the name of the middleware.
     fn name(&self) -> &'static str {
-        "static_assets"
+        "static"
     }
 
     /// Checks if the static assets middleware is enabled.
