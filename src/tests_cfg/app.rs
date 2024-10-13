@@ -11,7 +11,7 @@ pub async fn get_app_context() -> AppContext {
         environment: Environment::Test,
         #[cfg(feature = "with-db")]
         db: super::db::dummy_connection().await,
-        queue: None,
+        queue_provider: None,
         config: test_config(),
         mailer: None,
         storage: Storage::single(storage::drivers::mem::new()).into(),

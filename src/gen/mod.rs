@@ -299,20 +299,17 @@ fn collect_messages(results: Vec<GenResult>) -> String {
     }
     messages
 }
+use dialoguer::{theme::ColorfulTheme, Select};
 
 fn prompt_deployment_selection() -> Result<DeploymentKind> {
     let options: Vec<String> = DEPLOYMENT_OPTIONS.iter().map(|t| t.0.to_string()).collect();
 
-    let selection_options = requestty::Question::select("deployment")
-        .message("❯ Choose your deployment")
-        .choices(&options)
-        .build();
+    let selection = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("❯ Choose your deployment")
+        .items(&options)
+        .default(0)
+        .interact()
+        .map_err(errors::Error::msg)?;
 
-    let answer = requestty::prompt_one(selection_options).map_err(errors::Error::msg)?;
-
-    let selection = answer
-        .as_list_item()
-        .ok_or_else(|| errors::Error::string("deployment selection it empty"))?;
-
-    Ok(DEPLOYMENT_OPTIONS[selection.index].1.clone())
+    Ok(DEPLOYMENT_OPTIONS[selection].1.clone())
 }

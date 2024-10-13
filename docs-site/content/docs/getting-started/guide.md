@@ -67,7 +67,7 @@ Now you can create your new app (choose "SaaS app" for built-in authentication).
 ✔ ❯ App name? · myapp
 ✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
 ✔ ❯ Select a DB Provider · Sqlite
-✔ ❯ Select your background worker type · Async (in-process tokyo async tasks)
+✔ ❯ Select your background worker type · Async (in-process tokio async tasks)
 ✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
 
 🚂 Loco app generated successfully in:
@@ -139,7 +139,7 @@ The built in <code>_health</code> route will tell you that you have configured y
 Let's add a quick _hello_ response to our service.
 
 ```sh
-$ cargo loco generate controller guide
+$ cargo loco generate controller guide -k api
 added: "src/controllers/guide.rs"
 injected: "src/controllers/mod.rs"
 injected: "src/app.rs"
@@ -307,7 +307,7 @@ src/
     mod.rs
 ```
 
-**This is an important _cognitive_ principle**. And the principle claims that you can only create safe, compatible API responses if you treat those as a separate, independently goverened _thing_ -- hence the 'V' in MVC, in Loco.
+**This is an important _cognitive_ principle**. And the principle claims that you can only create safe, compatible API responses if you treat those as a separate, independently governed _thing_ -- hence the 'V' in MVC, in Loco.
 
 <div class="infobox">
 Models in Loco carry the same semantics as in Rails: <b>fat models, slim controllers</b>. This means that every time you want to build something -- <em>you reach out to a model</em>.
@@ -465,7 +465,7 @@ $ cargo playground
 We're now ready to plug this into an `articles` controller. First, generate a new controller:
 
 ```sh
-$ cargo loco generate controller articles
+$ cargo loco generate controller articles -k api
 added: "src/controllers/articles.rs"
 injected: "src/controllers/mod.rs"
 injected: "src/app.rs"
@@ -630,7 +630,7 @@ Let's add another model, this time: `Comment`. We want to create a relation - a 
 Instead of coding the model and controller by hand, we're going to create a **comment scaffold** which will generate a fully working CRUD API comments. We're also going to use the special `references` type:
 
 ```sh
-$ cargo loco generate scaffold comment content:text article:references
+$ cargo loco generate scaffold comment content:text article:references -k api
 ```
 
 If you peek into the new migration, you'll discover a new database relation in the articles table:
@@ -802,7 +802,7 @@ impl Task for UserReport {
     // variables through the CLI:
     // `$ cargo loco task name:foobar count:2`
     // will appear as {"name":"foobar", "count":2} in `vars`
-    async fn run(&self, app_context: &AppContext, vars: &BTreeMap<String, String>) -> Result<()> {
+    async fn run(&self, app_context: &AppContext, vars: &Vars) -> Result<()> {
         let users = users::Entity::find().all(&app_context.db).await?;
         println!("args: {vars:?}");
         println!("!!! user_report: listing users !!!");
@@ -829,7 +829,7 @@ args: Vars { cli: {"var1": "val1", "var2": "val2"} }
 ------------------------
 done: 0 users
 ```
-If you have not added an user before, the report will be empty. 
+If you have not added an user before, the report will be empty.
 
 To add an user check out chapter [Registering a New User](/docs/getting-started/tour/#registering-a-new-user) of [A Quick Tour with Loco](/docs/getting-started/tour/).
 

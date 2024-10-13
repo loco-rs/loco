@@ -25,6 +25,7 @@ pub use crate::controller::middleware::auth;
 pub use crate::model::{query, Authenticable, ModelError, ModelResult};
 pub use crate::{
     app::{AppContext, Initializer},
+    bgworker::{BackgroundWorker, Queue},
     controller::{
         format,
         middleware::{
@@ -41,7 +42,6 @@ pub use crate::{
     task::{self, Task, TaskInfo},
     validation::{self, Validatable},
     validator::Validate,
-    worker::{self, AppWorker},
     Result,
 };
 #[cfg(feature = "with-db")]

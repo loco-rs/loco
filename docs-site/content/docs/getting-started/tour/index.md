@@ -34,7 +34,7 @@ cargo install sea-orm-cli # Only when DB is needed
 ✔ ❯ App name? · myapp
 ✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
 ✔ ❯ Select a DB Provider · Sqlite
-✔ ❯ Select your background worker type · Async (in-process tokyo async tasks)
+✔ ❯ Select your background worker type · Async (in-process tokio async tasks)
 ✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
 
  🚂 Loco app generated successfully in:
@@ -106,7 +106,7 @@ listening on port 5150
 We have a base SaaS app with user authentication generated for us. Let's make it a blog backend by adding a `post` and a full CRUD API using `scaffold`:
 
 ```sh
-$ cargo loco generate scaffold post title:string content:text
+$ cargo loco generate scaffold post title:string content:text -k api
 
   :
   :
@@ -168,7 +168,7 @@ For those counting -- the commands for creating a blog backend were:
 1. `cargo install loco-cli`
 2. `cargo install sea-orm-cli`
 3. `loco new`
-4. `cargo loco generate scaffold post title:string content:text`
+4. `cargo loco generate scaffold post title:string content:text -k api`
 
 Done! enjoy your ride with `loco` 🚂
 

@@ -195,9 +195,10 @@ where
 {
     let boot = boot_test::<H>().await.unwrap();
 
-    let config = TestServerConfig::builder()
-        .default_content_type("application/json")
-        .build();
+    let config = TestServerConfig {
+        default_content_type: Some("application/json".to_string()),
+        ..Default::default()
+    };
 
     let server = TestServer::new_with_config(boot.router.unwrap(), config).unwrap();
 

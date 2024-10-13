@@ -6,24 +6,23 @@ use std::path::PathBuf;
 use axum::Router;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
-use tracing::{info, trace, warn};
+use tracing::{debug, error, info, warn};
 
 #[cfg(feature = "with-db")]
 use crate::db;
 use crate::{
     app::{AppContext, Hooks},
     banner::print_banner,
-    cache,
-    config::{self, Config},
+    bgworker, cache,
+    config::{self},
     controller::ListRoutes,
     environment::Environment,
     errors::Error,
     mailer::{EmailSender, MailerWorker},
-    redis,
+    prelude::BackgroundWorker,
     scheduler::{self, Scheduler},
     storage::{self, Storage},
     task::{self, Tasks},
-    worker::{self, AppWorker, Pool, Processor, RedisConnectionManager},
     Result,
 };
 use colored::Colorize;
@@ -44,7 +43,7 @@ pub struct BootResult {
     /// Web server routes
     pub router: Option<Router>,
     /// worker processor
-    pub processor: Option<Processor>,
+    pub run_worker: bool,
 }
 
 /// Configuration structure for serving an application.
@@ -70,32 +69,43 @@ pub async fn start<H: Hooks>(boot: BootResult, server_config: ServeParams) -> Re
 
     let BootResult {
         router,
-        processor,
-        app_context: _,
+        run_worker,
+        app_context,
     } = boot;
 
-    match (router, processor) {
-        (Some(router), Some(processor)) => {
+    match (router, run_worker) {
+        (Some(router), false) => {
+            H::serve(router, server_config).await?;
+        }
+        (Some(router), true) => {
             tokio::spawn(async move {
-                if let Err(err) = process(processor).await {
-                    tracing::error!("Error in processing: {:?}", err);
+                debug!("note: worker is run in-process (tokio spawn)");
+                if let Some(queue) = &app_context.queue_provider {
+                    let res = queue.run().await;
+                    if res.is_err() {
+                        error!(
+                            err = res.unwrap_err().to_string(),
+                            "error while running worker"
+                        );
+                    }
+                } else {
+                    error!(
+                        err = Error::QueueProviderMissing.to_string(),
+                        "cannot start worker"
+                    );
                 }
             });
             H::serve(router, server_config).await?;
         }
-        (Some(router), None) => {
-            H::serve(router, server_config).await?;
-        }
-        (None, Some(processor)) => {
-            process(processor).await?;
+        (None, true) => {
+            if let Some(queue) = &app_context.queue_provider {
+                queue.run().await?;
+            } else {
+                return Err(Error::QueueProviderMissing);
+            }
         }
         _ => {}
     }
-    Ok(())
-}
-
-async fn process(processor: Processor) -> Result<()> {
-    processor.run().await;
     Ok(())
 }
 
@@ -254,11 +264,12 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
         None
     };
 
+    let queue_provider = bgworker::create_queue_provider(&config).await?;
     let ctx = AppContext {
         environment: environment.clone(),
         #[cfg(feature = "with-db")]
         db,
-        queue: connect_redis(&config).await,
+        queue_provider,
         storage: Storage::single(storage::drivers::null::new()).into(),
         cache: cache::Cache::new(cache::drivers::null::new()).into(),
         config,
@@ -281,8 +292,8 @@ pub async fn create_app<H: Hooks, M: MigratorTrait>(
     let app_context = create_context::<H>(environment).await?;
     db::converge::<H, M>(&app_context.db, &app_context.config.database).await?;
 
-    if let Some(pool) = &app_context.queue {
-        redis::converge(pool, &app_context.config.queue).await?;
+    if let (Some(queue), Some(config)) = (&app_context.queue_provider, &app_context.config.queue) {
+        bgworker::converge(queue, config).await?;
     }
 
     run_app::<H>(&mode, app_context).await
@@ -295,8 +306,8 @@ pub async fn create_app<H: Hooks>(
 ) -> Result<BootResult> {
     let app_context = create_context::<H>(environment).await?;
 
-    if let Some(pool) = &app_context.queue {
-        redis::converge(pool, &app_context.config.queue).await?;
+    if let (Some(queue), Some(config)) = (&app_context.queue_provider, &app_context.config.queue) {
+        bgworker::converge(queue, config).await?;
     }
 
     run_app::<H>(&mode, app_context).await
@@ -325,11 +336,11 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
             Ok(BootResult {
                 app_context,
                 router: Some(router),
-                processor: None,
+                run_worker: false,
             })
         }
         StartMode::ServerAndWorker => {
-            let processor = create_processor::<H>(&app_context)?;
+            register_workers::<H>(&app_context).await?;
             let app = H::before_routes(&app_context).await?;
             let app = H::routes(&app_context).to_router::<H>(app_context.clone(), app)?;
             let mut router = H::after_routes(app, &app_context).await?;
@@ -339,39 +350,30 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
             Ok(BootResult {
                 app_context,
                 router: Some(router),
-                processor: Some(processor),
+                run_worker: true,
             })
         }
         StartMode::WorkerOnly => {
-            let processor = create_processor::<H>(&app_context)?;
+            register_workers::<H>(&app_context).await?;
             Ok(BootResult {
                 app_context,
                 router: None,
-                processor: Some(processor),
+                run_worker: true,
             })
         }
     }
 }
-/// Creates and configures a [`Processor`] for handling worker tasks.
-fn create_processor<H: Hooks>(app_context: &AppContext) -> Result<Processor> {
-    let queues = worker::get_queues(&app_context.config.workers.queues);
-    trace!(
-        queues = ?queues,
-        "registering queues (merged config and default)"
-    );
-    let mut p = if let Some(queue) = &app_context.queue {
-        Processor::new(queue.clone(), queues)
+
+async fn register_workers<H: Hooks>(app_context: &AppContext) -> Result<()> {
+    if let Some(queue) = &app_context.queue_provider {
+        queue.register(MailerWorker::build(app_context)).await?;
+        H::connect_workers(app_context, queue).await?;
     } else {
-        return Err(Error::Message(
-            "queue is missing, cannot initialize workers".to_string(),
-        ));
-    };
+        return Err(Error::QueueProviderMissing);
+    }
 
-    p.register(MailerWorker::build(app_context));
-    H::connect_workers(&mut p, app_context);
-
-    trace!("done registering workers and queues");
-    Ok(p)
+    debug!("done registering workers and queues");
+    Ok(())
 }
 
 #[must_use]
@@ -410,20 +412,4 @@ fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
         }
     }
     Ok(None)
-}
-
-#[allow(clippy::missing_panics_doc)]
-/// Establishes a connection to a Redis server based on the provided
-/// configuration settings.
-// TODO: Refactor to eliminate unwrapping and instead return an appropriate
-// error type.
-pub async fn connect_redis(config: &Config) -> Option<Pool<RedisConnectionManager>> {
-    if config.workers.mode == config::WorkerMode::BackgroundQueue {
-        if let Some(redis) = &config.queue {
-            let manager = RedisConnectionManager::new(redis.uri.clone()).unwrap();
-            let redis = Pool::builder().build(manager).await.unwrap();
-            return Some(redis);
-        }
-    }
-    None
 }
