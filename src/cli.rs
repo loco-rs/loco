@@ -600,9 +600,21 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
         }
         Commands::Middleware { config } => {
             let app_context = create_context::<H>(&environment).await?;
-            let middlewares = list_middlewares::<H>(&app_context, config);
-            for middleware in middlewares {
-                println!("{middleware}");
+            let middlewares = list_middlewares::<H>(&app_context);
+            for middleware in middlewares.iter().filter(|m| m.enabled) {
+                println!(
+                    "{:<22} {}",
+                    middleware.id.bold(),
+                    if config {
+                        middleware.detail.as_str()
+                    } else {
+                        ""
+                    }
+                );
+            }
+            println!("\n");
+            for middleware in middlewares.iter().filter(|m| !m.enabled) {
+                println!("{:<22} (disabled)", middleware.id.bold().dimmed(),);
             }
         }
         Commands::Task { name, params } => {
