@@ -62,7 +62,6 @@ server:
   port: {{ get_env(name="NODE_PORT", default=5150) }}
   # The UI hostname or IP address that mailers will point to.
   host: http://localhost
-  # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
 ```
 <!-- </snip>-->
 
@@ -117,6 +116,7 @@ mailer:
 <!-- <snip id="configuration-queue" inject_from="code" template="yaml"> -->
 ```yaml
 queue:
+  kind: Redis
   # Redis connection URI
   uri: {{ get_env(name="REDIS_URL", default="redis://127.0.0.1") }}
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
