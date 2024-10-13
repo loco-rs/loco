@@ -29,6 +29,7 @@ pub struct AppRoutes {
     channels: Option<AppChannels>,
 }
 
+#[derive(Debug)]
 pub struct ListRoutes {
     pub uri: String,
     pub actions: Vec<axum::http::Method>,

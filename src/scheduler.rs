@@ -110,7 +110,7 @@ impl fmt::Display for Scheduler {
 }
 
 /// Representing the scheduler itself.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Scheduler {
     pub jobs: HashMap<String, Job>,
     binary_path: PathBuf,
@@ -119,6 +119,7 @@ pub struct Scheduler {
 }
 
 /// Specification used to filter all scheduler job with the given Spec.
+#[derive(Debug)]
 pub struct Spec {
     pub name: Option<String>,
     pub tag: Option<String>,

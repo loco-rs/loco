@@ -27,6 +27,7 @@ use crate::{
 };
 
 /// Represents the application startup mode.
+#[derive(Debug)]
 pub enum StartMode {
     /// Run the application as a server only. when running web server only,
     /// workers job will not handle.
@@ -36,6 +37,7 @@ pub enum StartMode {
     /// Pulling job worker and execute them
     WorkerOnly,
 }
+
 pub struct BootResult {
     /// Application Context
     pub app_context: AppContext,
@@ -46,6 +48,7 @@ pub struct BootResult {
 }
 
 /// Configuration structure for serving an application.
+#[derive(Debug)]
 pub struct ServeParams {
     /// The port number on which the server will listen for incoming
     /// connections.

@@ -7,6 +7,7 @@ use bb8::Pool;
 use sidekiq::{Processor, ProcessorConfig, RedisConnectionManager};
 pub type RedisPool = Pool<RedisConnectionManager>;
 
+#[derive(Debug)]
 pub struct SidekiqBackgroundWorker<W, A> {
     pub inner: W, // Now we store the worker with its actual type instead of a trait object
     _phantom: PhantomData<A>,

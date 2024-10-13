@@ -64,6 +64,7 @@ impl Vars {
 
 /// Information about a task, including its name and details.
 #[allow(clippy::module_name_repetitions)]
+#[derive(Debug)]
 pub struct TaskInfo {
     pub name: String,
     pub detail: String,
