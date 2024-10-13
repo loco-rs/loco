@@ -16,7 +16,7 @@ use axum::{
 use futures_util::future::BoxFuture;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use serde_json;
+use serde_json::{self, json};
 use tower::{Layer, Service};
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
@@ -61,35 +61,42 @@ lazy_static! {
 ///       one: two
 /// ```
 ///
+/// To support `htmx`, You can add the following override, to allow some inline
+/// running of scripts:
+///
+/// ```yaml
+/// secure_headers:
+///     preset: github
+///     overrides:
+///         # this allows you to use HTMX, and has unsafe-inline. Remove or consider in production
+///         "Content-Security-Policy": "default-src 'self' https:; font-src 'self' https: data:; img-src 'self' https: data:; object-src 'none'; script-src 'unsafe-inline' 'self' https:; style-src 'self' https: 'unsafe-inline'"
+/// ```
+///
 /// For the list of presets and their content look at [secure_headers.json](https://github.com/loco-rs/loco/blob/master/src/controller/middleware/secure_headers.rs)
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SecureHeader {
-    #[serde(default = "default_true")]
+    #[serde(default)]
     pub enable: bool,
-    pub preset: Option<String>,
+    #[serde(default = "default_preset")]
+    pub preset: String,
+    #[serde(default)]
     pub overrides: Option<BTreeMap<String, String>>,
 }
 
-fn default_true() -> bool {
-    true
+impl Default for SecureHeader {
+    fn default() -> Self {
+        serde_json::from_value(json!({})).unwrap()
+    }
 }
 
-impl Default for SecureHeader {
-    /// Provides a default secure header configuration, using the `github`
-    /// preset.
-    fn default() -> Self {
-        Self {
-            enable: true,
-            preset: Some("github".to_string()),
-            overrides: None,
-        }
-    }
+fn default_preset() -> String {
+    "github".to_string()
 }
 
 impl MiddlewareLayer for SecureHeader {
     /// Returns the name of the middleware
     fn name(&self) -> &'static str {
-        "secure headers"
+        "secure_headers"
     }
 
     /// Returns whether the middleware is enabled or not
@@ -113,14 +120,15 @@ impl SecureHeader {
     /// Applies the preset headers and any custom overrides.
     fn as_headers(&self) -> Result<Vec<(HeaderName, HeaderValue)>> {
         let mut headers = vec![];
-        if let Some(preset) = &self.preset {
-            let p = PRESETS.get(preset).ok_or_else(|| {
-                Error::Message(format!(
-                    "secure_headers: a preset named `{preset}` does not exist"
-                ))
-            })?;
-            Self::push_headers(&mut headers, p)?;
-        }
+
+        let preset = &self.preset;
+        let p = PRESETS.get(preset).ok_or_else(|| {
+            Error::Message(format!(
+                "secure_headers: a preset named `{preset}` does not exist"
+            ))
+        })?;
+
+        Self::push_headers(&mut headers, p)?;
         if let Some(overrides) = &self.overrides {
             Self::push_headers(&mut headers, overrides)?;
         }
@@ -227,7 +235,7 @@ mod tests {
     async fn can_set_headers() {
         let config = SecureHeader {
             enable: true,
-            preset: Some("github".to_string()),
+            preset: "github".to_string(),
             overrides: None,
         };
         let app = Router::new()
@@ -251,7 +259,7 @@ mod tests {
 
         let config = SecureHeader {
             enable: true,
-            preset: Some("github".to_string()),
+            preset: "github".to_string(),
             overrides: Some(overrides),
         };
         let app = Router::new()
