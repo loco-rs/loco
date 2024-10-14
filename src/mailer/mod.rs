@@ -51,7 +51,7 @@ pub struct Email {
 }
 
 /// The options struct for configuring the email sender.
-#[derive(Default)]
+#[derive(Default, Debug)]
 #[allow(clippy::module_name_repetitions)]
 pub struct MailerOpts {
     pub from: String,

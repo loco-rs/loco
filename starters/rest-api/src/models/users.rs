@@ -23,7 +23,7 @@ pub struct RegisterParams {
 pub struct Validator {
     #[validate(length(min = 2, message = "Name must be at least 2 characters long."))]
     pub name: String,
-    #[validate(custom = "validation::is_valid_email")]
+    #[validate(custom(function = "validation::is_valid_email"))]
     pub email: String,
 }
 
@@ -111,7 +111,7 @@ impl super::_entities::users::Model {
         user.ok_or_else(|| ModelError::EntityNotFound)
     }
 
-    /// /// finds a user by the provided reset token
+    /// finds a user by the provided reset token
     ///
     /// # Errors
     ///
@@ -279,7 +279,8 @@ impl super::_entities::users::ActiveModel {
     /// updates it in the database.
     ///
     /// This method hashes the provided password and sets it as the new password
-    /// for the user.    
+    /// for the user.
+    ///
     /// # Errors
     ///
     /// when has DB query error or could not hashed the given password

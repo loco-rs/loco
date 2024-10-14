@@ -13,22 +13,35 @@ use std::time::Duration;
 
 use axum::Router as AXRouter;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tower_http::timeout::TimeoutLayer;
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 
 /// Timeout middleware configuration
-#[derive(Default, Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TimeOut {
+    #[serde(default)]
     pub enable: bool,
     // Timeout request in milliseconds
+    #[serde(default = "default_timeout")]
     pub timeout: u64,
+}
+
+impl Default for TimeOut {
+    fn default() -> Self {
+        serde_json::from_value(json!({})).unwrap()
+    }
+}
+
+fn default_timeout() -> u64 {
+    5_000
 }
 
 impl MiddlewareLayer for TimeOut {
     /// Returns the name of the middleware.
     fn name(&self) -> &'static str {
-        "timeout"
+        "timeout_request"
     }
 
     /// Checks if the timeout middleware is enabled.

@@ -20,13 +20,8 @@ use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Etag {
+    #[serde(default)]
     pub enable: bool,
-}
-
-impl Default for Etag {
-    fn default() -> Self {
-        Self { enable: true }
-    }
 }
 
 impl MiddlewareLayer for Etag {

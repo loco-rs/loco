@@ -20,17 +20,12 @@ use crate::{
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
-    enable: bool,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self { enable: true }
-    }
+    #[serde(default)]
+    pub enable: bool,
 }
 
 /// [`Middleware`] struct responsible for logging HTTP requests.
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct Middleware {
     config: Config,
     environment: Environment,

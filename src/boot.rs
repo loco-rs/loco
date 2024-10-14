@@ -28,6 +28,7 @@ use crate::{
 };
 
 /// Represents the application startup mode.
+#[derive(Debug)]
 pub enum StartMode {
     /// Run the application as a server only. when running web server only,
     /// workers job will not handle.
@@ -37,6 +38,7 @@ pub enum StartMode {
     /// Pulling job worker and execute them
     WorkerOnly,
 }
+
 pub struct BootResult {
     /// Application Context
     pub app_context: AppContext,
@@ -47,6 +49,7 @@ pub struct BootResult {
 }
 
 /// Configuration structure for serving an application.
+#[derive(Debug)]
 pub struct ServeParams {
     /// The port number on which the server will listen for incoming
     /// connections.
@@ -382,23 +385,22 @@ pub fn list_endpoints<H: Hooks>(ctx: &AppContext) -> Vec<ListRoutes> {
     H::routes(ctx).collect()
 }
 
+pub struct MiddlewareInfo {
+    pub id: String,
+    pub enabled: bool,
+    pub detail: String,
+}
+
 #[must_use]
-pub fn list_middlewares<H: Hooks>(ctx: &AppContext, with_config: bool) -> Vec<String> {
-    H::routes(ctx)
-        .middlewares::<H>(ctx)
+pub fn list_middlewares<H: Hooks>(ctx: &AppContext) -> Vec<MiddlewareInfo> {
+    H::middlewares(ctx)
         .iter()
-        .map(|m| {
-            let text = heck::AsSnakeCase(m.name()).to_string().bold();
-            if with_config {
-                format!(
-                    "{text:<22} {}",
-                    serde_json::to_string(&m.config().unwrap_or_default()).unwrap_or_default()
-                )
-            } else {
-                format!("{text}")
-            }
+        .map(|m| MiddlewareInfo {
+            id: m.name().to_string(),
+            enabled: m.is_enabled(),
+            detail: m.config().unwrap_or_default().to_string(),
         })
-        .collect::<Vec<String>>()
+        .collect::<Vec<_>>()
 }
 
 /// Initializes an [`EmailSender`] based on the mailer configuration settings

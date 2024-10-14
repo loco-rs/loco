@@ -1,32 +1,29 @@
 //! Powered-By Middleware
 //!
-//! This middleware injects an HTTP header `X-Powered-By` into the response
-//! headers of every request handled by the application. The header identifies
-//! the software or technology stack powering the application. It supports a
-//! custom identifier string or defaults to "loco.rs" if no identifier is
-//! provided.
+//! This middleware injects an HTTP header `X-Powered-By` into the response headers of
+//! every request handled by the application. The header identifies the software or technology
+//! stack powering the application. It supports a custom identifier string or defaults to "loco.rs"
+//! if no identifier is provided.
 
+use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 use axum::{
     http::header::{HeaderName, HeaderValue},
     Router as AXRouter,
 };
 use tower_http::set_header::SetResponseHeaderLayer;
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
-
 lazy_static::lazy_static! {
     static ref DEFAULT_IDENT_HEADER_VALUE: HeaderValue =
         HeaderValue::from_static("loco.rs");
 }
 
-/// [`Middleware`] struct responsible for managing the identifier value for the
-/// `X-Powered-By` header.
+/// [`Middleware`] struct responsible for managing the identifier value for the `X-Powered-By` header.
+#[derive(Debug)]
 pub struct Middleware {
     ident: Option<HeaderValue>,
 }
 
-/// Creates a new instance of [`Middleware`] by cloning the [`Config`]
-/// configuration.
+/// Creates a new instance of [`Middleware`] by cloning the [`Config`] configuration.
 #[must_use]
 pub fn new(ident: Option<&str>) -> Middleware {
     let ident_value = ident.map_or_else(
@@ -71,8 +68,8 @@ impl MiddlewareLayer for Middleware {
         )
     }
 
-    /// Applies the middleware to the application by adding the `X-Powered-By`
-    /// header to each response.
+    /// Applies the middleware to the application by adding the `X-Powered-By` header to
+    /// each response.
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
         Ok(app.layer(SetResponseHeaderLayer::overriding(
             HeaderName::from_static("x-powered-by"),

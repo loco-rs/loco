@@ -9,13 +9,15 @@ use std::time::Duration;
 
 use axum::Router as AXRouter;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tower_http::cors;
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 
 /// CORS middleware configuration
-#[derive(Default, Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Cors {
+    #[serde(default)]
     pub enable: bool,
     /// Allow origins
     #[serde(default = "default_allow_origins")]
@@ -31,6 +33,12 @@ pub struct Cors {
     // Vary headers
     #[serde(default = "default_vary_headers")]
     pub vary: Vec<String>,
+}
+
+impl Default for Cors {
+    fn default() -> Self {
+        serde_json::from_value(json!({})).unwrap()
+    }
 }
 
 fn default_allow_origins() -> Vec<String> {
@@ -54,6 +62,17 @@ fn default_vary_headers() -> Vec<String> {
 }
 
 impl Cors {
+    #[must_use]
+    pub fn empty() -> Self {
+        Self {
+            enable: true,
+            allow_headers: vec![],
+            allow_methods: vec![],
+            allow_origins: vec![],
+            max_age: None,
+            vary: vec![],
+        }
+    }
     /// Creates cors layer
     ///
     /// # Errors
@@ -167,7 +186,7 @@ mod tests {
         #[case] allow_methods: Option<Vec<String>>,
         #[case] max_age: Option<u64>,
     ) {
-        let mut middleware = Cors::default();
+        let mut middleware = Cors::empty();
         if let Some(allow_headers) = allow_headers {
             middleware.allow_headers = allow_headers;
         }

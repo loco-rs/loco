@@ -29,6 +29,7 @@ pub struct AppRoutes {
     channels: Option<AppChannels>,
 }
 
+#[derive(Debug)]
 pub struct ListRoutes {
     pub uri: String,
     pub actions: Vec<axum::http::Method>,
@@ -209,10 +210,25 @@ impl AppRoutes {
         if let Some(channels) = self.channels.as_ref() {
             tracing::info!("[Middleware] +channels");
             let channel_layer_app = tower::ServiceBuilder::new().layer(channels.layer.clone());
-            if ctx.config.server.middlewares.cors.is_enabled() {
+            if ctx
+                .config
+                .server
+                .middlewares
+                .cors
+                .as_ref()
+                .is_some_and(super::middleware::MiddlewareLayer::is_enabled)
+            {
                 app = app.layer(
                     tower::ServiceBuilder::new()
-                        .layer(ctx.config.server.middlewares.cors.cors()?)
+                        .layer(
+                            ctx.config
+                                .server
+                                .middlewares
+                                .cors
+                                .clone()
+                                .unwrap_or_default()
+                                .cors()?,
+                        )
                         .layer(channel_layer_app),
                 );
             } else {

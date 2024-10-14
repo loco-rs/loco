@@ -13,13 +13,8 @@ use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Compression {
-    enable: bool,
-}
-
-impl Default for Compression {
-    fn default() -> Self {
-        Self { enable: true }
-    }
+    #[serde(default)]
+    pub enable: bool,
 }
 
 impl MiddlewareLayer for Compression {

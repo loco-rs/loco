@@ -45,7 +45,7 @@ Loco is a Web or API framework for Rust. It's also a productivity suite for deve
 
 ## Creating a New Loco App
 
-You can follow this guide for a step-by-step "bottom up" learning, or you can jump and go with the [tour](./tour.md) instead for a quicker "top down" intro.
+You can follow this guide for a step-by-step "bottom up" learning, or you can jump and go with the [tour](@/docs/getting-started/tour/index.md) instead for a quicker "top down" intro.
 
 ### Installing
 

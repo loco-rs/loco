@@ -30,76 +30,7 @@ server:
   port: {{get_env(name="NODE_PORT", default=5150)}}
   # The UI hostname or IP address that mailers will point to.
   host: http://localhost
-  # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
-  # </snip>
-  middlewares:
-    # Allows to limit the payload size request. payload that bigger than this file will blocked the request.
-    limit_payload:
-      # Enable/Disable the middleware.
-      enable: true
-      # the limit size. can be b,kb,kib,mb,mib,gb,gib
-      body_limit: 5mb
-    # set secure headers
-    secure_headers:
-      preset: github
-      overrides: 
-        # this allows you to use HTMX, and has unsafe-inline. Remove or consider in production 
-        "Content-Security-Policy": "default-src 'self' https:; font-src 'self' https: data:; img-src 'self' https: data:; object-src 'none'; script-src 'unsafe-inline' 'self' https:; style-src 'self' https: 'unsafe-inline'"
-    # Generating a unique request ID and enhancing logging with additional information such as the start and completion of request processing, latency, status code, and other request details.
-    logger:
-      # Enable/Disable the middleware.
-      enable: true
-    # when your code is panicked, the request still returns 500 status code.
-    catch_panic:
-      # Enable/Disable the middleware.
-      enable: true
-    # Timeout for incoming requests middleware. requests that take more time from the configuration will cute and 408 status code will returned.
-    timeout_request:
-      # Enable/Disable the middleware.
-      enable: true
-      # Duration time in milliseconds.
-      timeout: 5000
-    compression:
-      # Enable/Disable the middleware.
-      enable: true
-    static_assets:
-      enable: true
-      must_exist: true
-      precompressed: true
-      folder:
-        path: assets
-      fallback: index.html
-    cors:
-      enable: true
-    request_context:
-      enable: true
-      session_config:
-        name: session
-        http_only: true
-        same_site:
-          type: Lax
-        expiry: 3600
-        secure: false
-        path: /
-      # domain: ""
-      session_store:
-        type: Cookie
-        value:
-          private_key: [219, 25, 129, 200, 66, 52, 72, 66, 249, 60, 206, 40, 77, 150, 2, 8, 30, 192, 221, 5, 243, 74, 17, 172, 109, 96, 218, 46, 235, 118, 131, 150, 224, 205, 55, 147, 45, 151, 245, 23, 250, 48, 133, 115, 105, 252, 193, 15, 162, 167, 77, 189, 169, 91, 205, 172, 120, 254, 136, 111, 167, 161, 255, 107]
-
-
-
-        # Set the value of the [`Access-Control-Allow-Origin`][mdn] header
-        # allow_origins:
-        #   - https://loco.rs
-        # Set the value of the [`Access-Control-Allow-Headers`][mdn] header
-        # allow_headers:
-        # - Content-Type
-        # Set the value of the [`Access-Control-Allow-Methods`][mdn] header
-        # allow_methods:
-        #   - POST
-        # Set the value of the [`Access-Control-Max-Age`][mdn] header in seconds
-      # max_age: 3600
+# </snip>
 
 # Worker Configuration
 workers:
@@ -117,7 +48,7 @@ mailer:
     # Enable/Disable smtp mailer.
     enable: true
     # SMTP server host. e.x localhost, smtp.gmail.com
-    host: {{get_env(name="MAILER_HOST", default="localhost")}}
+    host: {{ get_env(name="MAILER_HOST", default="localhost") }}
     # SMTP server port
     port: 1025
     # Use secure connection (SSL/TLS).
@@ -162,7 +93,7 @@ database:
 queue:
   kind: Redis
   # Redis connection URI
-  uri: {{get_env(name="REDIS_URL", default="redis://127.0.0.1")}}
+  uri: {{ get_env(name="REDIS_URL", default="redis://127.0.0.1") }}
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_flush: false
 # </snip>

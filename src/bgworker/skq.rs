@@ -1,13 +1,13 @@
 use std::{marker::PhantomData, sync::Arc};
 
-use async_trait::async_trait;
-use bb8::Pool;
-use sidekiq::{Processor, RedisConnectionManager};
-
 use super::{BackgroundWorker, Queue};
 use crate::{config::RedisQueueConfig, Result};
+use async_trait::async_trait;
+use bb8::Pool;
+use sidekiq::{Processor, ProcessorConfig, RedisConnectionManager};
 pub type RedisPool = Pool<RedisConnectionManager>;
 
+#[derive(Debug)]
 pub struct SidekiqBackgroundWorker<W, A> {
     pub inner: W, // Now we store the worker with its actual type instead of a trait object
     _phantom: PhantomData<A>,
@@ -45,6 +45,11 @@ where
         res.map_err(|e| sidekiq::Error::Any(Box::from(e)))
     }
 }
+/// Clear tasks
+///
+/// # Errors
+///
+/// This function will return an error if it fails
 pub async fn clear(pool: &RedisPool) -> Result<()> {
     let mut conn = pool.get().await?;
     sidekiq::redis_rs::cmd("FLUSHDB")
@@ -53,6 +58,11 @@ pub async fn clear(pool: &RedisPool) -> Result<()> {
     Ok(())
 }
 
+/// Add a task
+///
+/// # Errors
+///
+/// This function will return an error if it fails
 pub async fn enqueue(
     pool: &RedisPool,
     class: String,
@@ -67,6 +77,11 @@ pub async fn enqueue(
     Ok(())
 }
 
+/// Ping system
+///
+/// # Errors
+///
+/// This function will return an error if it fails
 pub async fn ping(pool: &RedisPool) -> Result<()> {
     let mut conn = pool.get().await?;
     Ok(sidekiq::redis_rs::cmd("PING")
@@ -93,13 +108,21 @@ pub fn get_queues(config_queues: &Option<Vec<String>>) -> Vec<String> {
 
     queues
 }
+/// Create this provider
+///
+/// # Errors
+///
+/// This function will return an error if it fails
 pub async fn create_provider(qcfg: &RedisQueueConfig) -> Result<Queue> {
     let manager = RedisConnectionManager::new(qcfg.uri.clone())?;
     let redis = Pool::builder().build(manager).await?;
     let queues = get_queues(&qcfg.queues);
     Ok(Queue::Redis(
         redis.clone(),
-        Arc::new(tokio::sync::Mutex::new(Processor::new(redis, queues))),
+        Arc::new(tokio::sync::Mutex::new(
+            Processor::new(redis, queues)
+                .with_config(ProcessorConfig::default().num_workers(qcfg.num_workers as usize)),
+        )),
     ))
 }
 
