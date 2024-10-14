@@ -5,10 +5,11 @@
 //! times and reducing bandwidth usage. The middleware configuration allows for
 //! enabling or disabling compression based on the application settings.
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 use axum::Router as AXRouter;
 use serde::{Deserialize, Serialize};
 use tower_http::compression::CompressionLayer;
+
+use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Compression {

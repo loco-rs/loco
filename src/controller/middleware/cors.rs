@@ -1,15 +1,17 @@
 //! Configurable and Flexible CORS Middleware
 //!
 //! This middleware enables Cross-Origin Resource Sharing (CORS) by allowing
-//! configurable origins, methods, and headers in HTTP requests. It can be tailored
-//! to fit various application requirements, supporting permissive CORS or
-//! specific rules as defined in the middleware configuration.
+//! configurable origins, methods, and headers in HTTP requests. It can be
+//! tailored to fit various application requirements, supporting permissive CORS
+//! or specific rules as defined in the middleware configuration.
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
+use std::time::Duration;
+
 use axum::Router as AXRouter;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 use tower_http::cors;
+
+use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 
 /// CORS middleware configuration
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
@@ -58,15 +60,15 @@ impl Cors {
     ///
     /// This function returns an error in the following cases:
     ///
-    /// - If any of the provided origins in `allow_origins` cannot be parsed as a valid URI,
-    ///   the function will return a parsing error.
-    /// - If any of the provided headers in `allow_headers` cannot be parsed as valid HTTP headers,
-    ///   the function will return a parsing error.
-    /// - If any of the provided methods in `allow_methods` cannot be parsed as valid HTTP methods,
-    ///   the function will return a parsing error.
+    /// - If any of the provided origins in `allow_origins` cannot be parsed as
+    ///   a valid URI, the function will return a parsing error.
+    /// - If any of the provided headers in `allow_headers` cannot be parsed as
+    ///   valid HTTP headers, the function will return a parsing error.
+    /// - If any of the provided methods in `allow_methods` cannot be parsed as
+    ///   valid HTTP methods, the function will return a parsing error.
     ///
-    /// In all of these cases, the error returned will be the result of the `parse` method
-    /// of the corresponding type.
+    /// In all of these cases, the error returned will be the result of the
+    /// `parse` method of the corresponding type.
     pub fn cors(&self) -> Result<cors::CorsLayer> {
         let mut cors: cors::CorsLayer = cors::CorsLayer::permissive();
 
@@ -139,8 +141,6 @@ impl MiddlewareLayer for Cors {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-    use crate::tests_cfg;
     use axum::{
         body::Body,
         http::{Method, Request},
@@ -150,6 +150,9 @@ mod tests {
     use insta::assert_debug_snapshot;
     use rstest::rstest;
     use tower::ServiceExt;
+
+    use super::*;
+    use crate::tests_cfg;
 
     #[rstest]
     #[case("default", None, None, None)]

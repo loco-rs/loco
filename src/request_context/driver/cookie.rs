@@ -8,7 +8,7 @@ use axum_extra::extract::cookie::{Cookie, Key, PrivateCookieJar};
 use hyper::header::{COOKIE, SET_COOKIE};
 use tower_sessions::{cookie, cookie::time};
 
-use crate::config::{SameSite, SessionCookieConfig};
+use crate::controller::middleware::request_context::{SameSite, SessionCookieConfig};
 
 /// `CookieMap` is a wrapper around a hashmap that stores the data for request
 /// context

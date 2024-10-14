@@ -9,6 +9,9 @@ cfg_if::cfg_if! {
 }
 use std::{net::SocketAddr, sync::Arc};
 
+use async_trait::async_trait;
+use axum::Router as AxumRouter;
+
 #[cfg(feature = "channels")]
 use crate::controller::channels::AppChannels;
 use crate::{
@@ -22,12 +25,11 @@ use crate::{
     },
     environment::Environment,
     mailer::EmailSender,
+    request_context::CustomSessionStore,
     storage::Storage,
     task::Tasks,
     Result,
 };
-use async_trait::async_trait;
-use axum::Router as AxumRouter;
 
 /// Represents the application context for a web server.
 ///
@@ -53,6 +55,8 @@ pub struct AppContext {
     pub storage: Arc<Storage>,
     // Cache instance for the application
     pub cache: Arc<cache::Cache>,
+    /// Request context session store
+    pub session_store: Option<CustomSessionStore>,
 }
 
 /// A trait that defines hooks for customizing and extending the behavior of a
@@ -182,6 +186,7 @@ pub trait Hooks {
 
     // Provides the options to change Loco [`AppContext`] after initialization.
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
+        // ctx.session_store = Some(CustomSessionStore::new(MemoryStore::default()));
         Ok(ctx)
     }
 

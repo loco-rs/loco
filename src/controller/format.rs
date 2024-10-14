@@ -371,10 +371,11 @@ pub fn render() -> RenderBuilder {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-    use crate::{controller::views::engines::TeraView, prelude::*};
     use insta::assert_debug_snapshot;
     use tree_fs;
+
+    use super::*;
+    use crate::{controller::views::engines::TeraView, prelude::*};
 
     async fn response_body_to_string(response: hyper::Response<Body>) -> String {
         let bytes = axum::body::to_bytes(response.into_body(), 200)

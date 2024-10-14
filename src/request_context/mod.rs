@@ -13,9 +13,7 @@ use tower_sessions::{
 };
 
 use crate::{
-    config,
-    config::SessionCookieConfig,
-    controller::middleware::request_id::LocoRequestId,
+    controller::middleware::{self, request_id::LocoRequestId},
     prelude,
     request_context::driver::{Driver, DriverError},
 };
@@ -50,8 +48,8 @@ pub enum RequestContextError {
 #[derive(Debug, Clone)]
 pub struct RequestContextStore {
     private_key: Key,
-    session_config: config::RequestContextSession,
-    session_cookie_config: SessionCookieConfig,
+    session_config: middleware::request_context::RequestContextSession,
+    session_cookie_config: middleware::request_context::SessionCookieConfig,
 }
 
 impl RequestContextStore {
@@ -67,8 +65,8 @@ impl RequestContextStore {
     #[must_use]
     pub fn new(
         private_key: Key,
-        session_config: config::RequestContextSession,
-        session_cookie_config: SessionCookieConfig,
+        session_config: middleware::request_context::RequestContextSession,
+        session_cookie_config: middleware::request_context::SessionCookieConfig,
     ) -> Self {
         Self {
             private_key,

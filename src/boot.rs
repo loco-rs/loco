@@ -4,6 +4,7 @@
 use std::path::PathBuf;
 
 use axum::Router;
+use colored::Colorize;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
 use tracing::{debug, error, info, warn};
@@ -25,7 +26,6 @@ use crate::{
     task::{self, Tasks},
     Result,
 };
-use colored::Colorize;
 
 /// Represents the application startup mode.
 pub enum StartMode {
@@ -274,6 +274,7 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
         cache: cache::Cache::new(cache::drivers::null::new()).into(),
         config,
         mailer,
+        session_store: None,
     };
 
     H::after_context(ctx).await

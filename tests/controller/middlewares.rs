@@ -1,10 +1,12 @@
-use crate::infra_cfg;
+use std::{collections::BTreeMap, path::PathBuf};
+
 use axum::http::StatusCode;
 use insta::assert_debug_snapshot;
 use loco_rs::{controller::middleware, prelude::*, tests_cfg};
 use rstest::rstest;
 use serial_test::serial;
-use std::{collections::BTreeMap, path::PathBuf};
+
+use crate::infra_cfg;
 
 macro_rules! configure_insta {
     ($($expr:expr),*) => {

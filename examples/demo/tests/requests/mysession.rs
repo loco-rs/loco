@@ -1,3 +1,4 @@
+use axum::http::HeaderName;
 use demo_app::app::App;
 use loco_rs::testing;
 use serial_test::serial;
@@ -56,7 +57,10 @@ async fn get_request_context_with_setting_data() {
 
         let response = request
             .get("/mysession/request_context")
-            .add_header("cookie".parse().unwrap(), cookie_value.unwrap().clone())
+            .add_header(
+                "cookie".parse::<HeaderName>().unwrap(),
+                cookie_value.unwrap().clone(),
+            )
             .await;
         // Get response body
         assert_eq!(response.status_code(), 200);

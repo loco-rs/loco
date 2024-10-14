@@ -2,14 +2,14 @@
 //! configuring routes in an Axum application. It allows you to define route
 //! prefixes, add routes, and configure middlewares for the application.
 
+use std::fmt;
+
 use axum::Router as AXRouter;
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::fmt;
 
 #[cfg(feature = "channels")]
 use super::channels::AppChannels;
-
 use crate::{
     app::{AppContext, Hooks},
     controller::{middleware::MiddlewareLayer, routes::Routes},
@@ -237,12 +237,12 @@ impl AppRoutes {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-    use crate::prelude::*;
-    use crate::tests_cfg;
     use insta::assert_debug_snapshot;
     use rstest::rstest;
     use tower::ServiceExt;
+
+    use super::*;
+    use crate::{prelude::*, tests_cfg};
 
     async fn action() -> Result<Response> {
         format::json("loco")

@@ -12,8 +12,7 @@ use tower_sessions::Session;
 use tracing::Instrument;
 
 use crate::{
-    config,
-    controller::middleware::request_id::LocoRequestId,
+    controller::middleware::{self, request_id::LocoRequestId},
     prelude::IntoResponse,
     request_context::{
         driver::{cookie::SignedPrivateCookieJar, Driver},
@@ -84,7 +83,7 @@ where
                     return Ok(Response::default());
                 };
                 match store.session_config {
-                    config::RequestContextSession::Cookie { .. } => {
+                    middleware::request_context::RequestContextSession::Cookie { .. } => {
                         let jar = SignedPrivateCookieJar::new(
                             request.headers(),
                             store.private_key.clone(),
@@ -135,7 +134,7 @@ where
                         }
                         Ok(response)
                     }
-                    config::RequestContextSession::Tower => {
+                    middleware::request_context::RequestContextSession::Tower => {
                         let Some(session) = request.extensions().get::<Session>().cloned() else {
                             // In practice this should never happen because we wrap `Session`
                             // directly.

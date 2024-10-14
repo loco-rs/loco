@@ -18,6 +18,7 @@ pub mod limit_payload;
 pub mod logger;
 pub mod powered_by;
 pub mod remote_ip;
+pub mod request_context;
 pub mod request_id;
 pub mod secure_headers;
 pub mod static_assets;
@@ -68,6 +69,10 @@ pub fn default_middleware_stack(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer
         Box::new(ctx.config.server.middlewares.etag.clone()),
         Box::new(ctx.config.server.middlewares.remote_ip.clone()),
         Box::new(ctx.config.server.middlewares.compression.clone()),
+        Box::new(request_context::RequestContextMiddleware::new(
+            ctx.config.server.middlewares.request_context.clone(),
+            ctx.session_store.clone(),
+        )),
         Box::new(ctx.config.server.middlewares.timeout_request.clone()),
         Box::new(ctx.config.server.middlewares.static_assets.clone()),
         Box::new(ctx.config.server.middlewares.secure_headers.clone()),
@@ -132,4 +137,8 @@ pub struct Config {
     /// Request ID
     #[serde(default)]
     pub request_id: request_id::RequestId,
+
+    /// Request context
+    #[serde(default)]
+    pub request_context: request_context::RequestContextMiddlewareConfig,
 }
