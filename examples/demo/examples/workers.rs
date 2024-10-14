@@ -14,6 +14,6 @@ async fn main() -> loco_rs::Result<()> {
         port: boot_result.app_context.config.server.port,
         binding: boot_result.app_context.config.server.binding.to_string(),
     };
-    start::<App>(boot_result, serve_params).await?;
+    start::<App>(boot_result, serve_params, true).await?;
     Ok(())
 }

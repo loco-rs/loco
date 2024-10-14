@@ -66,8 +66,14 @@ pub struct ServeParams {
 /// # Errors
 ///
 /// When could not initialize the application.
-pub async fn start<H: Hooks>(boot: BootResult, server_config: ServeParams) -> Result<()> {
-    print_banner(&boot, &server_config);
+pub async fn start<H: Hooks>(
+    boot: BootResult,
+    server_config: ServeParams,
+    show_banner: bool,
+) -> Result<()> {
+    if show_banner {
+        print_banner(&boot, &server_config);
+    }
 
     let BootResult {
         router,

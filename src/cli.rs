@@ -26,7 +26,7 @@ cfg_if::cfg_if! {
 
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
+use clap::{ArgAction, Parser, Subcommand};
 use duct::cmd;
 
 use crate::{
@@ -77,6 +77,9 @@ enum Commands {
         /// server port address
         #[arg(short, long, action)]
         port: Option<i32>,
+        /// disable the banner display
+        #[arg(short, long, action = ArgAction::SetTrue)]
+        no_banner: bool,
     },
     #[cfg(feature = "with-db")]
     /// Perform DB operations
@@ -443,6 +446,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             server_and_worker,
             binding,
             port,
+            no_banner,
         } => {
             let start_mode = if worker {
                 StartMode::WorkerOnly
@@ -458,7 +462,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                 binding: binding
                     .unwrap_or_else(|| boot_result.app_context.config.server.binding.to_string()),
             };
-            start::<H>(boot_result, serve_params).await?;
+            start::<H>(boot_result, serve_params, !no_banner).await?;
         }
         #[cfg(feature = "with-db")]
         Commands::Db { command } => {
@@ -577,6 +581,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             server_and_worker,
             binding,
             port,
+            no_banner,
         } => {
             let start_mode = if worker {
                 StartMode::WorkerOnly
@@ -594,7 +599,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
                     |b| b,
                 ),
             };
-            start::<H>(boot_result, serve_params).await?;
+            start::<H>(boot_result, serve_params, !no_banner).await?;
         }
         Commands::Routes {} => {
             let app_context = create_context::<H>(&environment).await?;
