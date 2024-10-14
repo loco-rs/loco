@@ -2,6 +2,7 @@
 use axum_extra::extract::cookie::Cookie;
 use loco_rs::prelude::*;
 use serde::Serialize;
+use utoipa::{openapi, OpenApi, ToSchema};
 
 #[derive(Serialize)]
 pub struct Health {
@@ -97,6 +98,39 @@ pub async fn set_cookie() -> Result<Response> {
     format::render().cookies(&[cookie])?.json(())
 }
 
+#[derive(Serialize, Debug, ToSchema)]
+pub struct Album {
+    title: String,
+    rating: u32,
+}
+
+//
+// OpenAPI spec with `utoipa`
+//
+#[derive(OpenApi)]
+#[openapi(paths(album))]
+struct Spec;
+
+/// Return an OpenAPI-spec'd response
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+#[utoipa::path(
+    get,
+    path = "/response/album",
+    responses(
+        (status = 200, description = "Album found", body = Album),
+    ),
+)]
+pub async fn album() -> Result<Response> {
+    println!("{}", Spec::openapi().to_pretty_json().unwrap());
+
+    format::json(Album {
+        title: "VH II".to_string(),
+        rating: 10,
+    })
+}
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("response")
@@ -108,5 +142,6 @@ pub fn routes() -> Routes {
         .add("/redirect", get(redirect))
         .add("/render_with_status_code", get(render_with_status_code))
         .add("/etag", get(etag))
+        .add("/album", get(album))
         .add("/set_cookie", get(set_cookie))
 }

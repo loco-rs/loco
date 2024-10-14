@@ -104,6 +104,7 @@ $ demo_app-cli routes --environment test
 [GET] /notes/:id
 [DELETE] /notes/:id
 [POST] /notes/:id
+[GET] /response/album
 [GET] /response/empty
 [GET] /response/empty_json
 [GET] /response/etag
@@ -126,10 +127,8 @@ $ demo_app-cli routes --environment test
 
 ```console 
 $ demo_app-cli doctor
-[..][0m [34mDEBUG[0m [1mapp[0m: [2mloco_rs::bgworker[0m[2m:[0m job queue ping requested [2m[3menvironment[0m[2m=[0mdevelopment[0m
 ✅ SeaORM CLI is installed
 ✅ DB connection: success
-✅ redis queue: queue connection: success
 
 ```
 

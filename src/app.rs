@@ -16,7 +16,7 @@ use axum::Router as AxumRouter;
 use crate::controller::channels::AppChannels;
 use crate::{
     bgworker::{self, Queue},
-    boot::{BootResult, ServeParams, StartMode},
+    boot::{shutdown_signal, BootResult, StartMode},
     cache::{self},
     config::{self, Config},
     controller::{
@@ -63,7 +63,7 @@ pub struct AppContext {
 /// the application's routing, worker connections, task registration, and
 /// database actions according to their specific requirements and use cases.
 #[async_trait]
-pub trait Hooks {
+pub trait Hooks: Send {
     /// Defines the composite app version
     #[must_use]
     fn app_version() -> String {
@@ -111,17 +111,23 @@ pub trait Hooks {
     ///
     /// # Returns
     /// A Result indicating success () or an error if the server fails to start.
-    async fn serve(app: AxumRouter, server_config: ServeParams) -> Result<()> {
+    async fn serve(app: AxumRouter, ctx: &AppContext) -> Result<()> {
         let listener = tokio::net::TcpListener::bind(&format!(
             "{}:{}",
-            server_config.binding, server_config.port
+            ctx.config.server.binding, ctx.config.server.port
         ))
         .await?;
 
+        let cloned_ctx = ctx.clone();
         axum::serve(
             listener,
             app.into_make_service_with_connect_info::<SocketAddr>(),
         )
+        .with_graceful_shutdown(async move {
+            shutdown_signal().await;
+            tracing::info!("shutting down...");
+            Self::on_shutdown(&cloned_ctx).await;
+        })
         .await?;
 
         Ok(())
@@ -208,6 +214,11 @@ pub trait Hooks {
     /// Seeds the database with initial data.
     #[cfg(feature = "with-db")]
     async fn seed(db: &DatabaseConnection, path: &Path) -> Result<()>;
+
+    /// Called when the application is shutting down.
+    /// This function allows users to perform any necessary cleanup or final
+    /// actions before the application stops completely.
+    async fn on_shutdown(_ctx: &AppContext) {}
 }
 
 /// An initializer.
