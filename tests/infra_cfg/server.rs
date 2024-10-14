@@ -42,6 +42,7 @@ pub async fn start_from_boot(boot_result: boot::BootResult) -> tokio::task::Join
                 port: TEST_PORT_SERVER,
                 binding: TEST_BINDING_SERVER.to_string(),
             },
+            false,
         )
         .await
         .expect("start the server");
