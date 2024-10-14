@@ -31,6 +31,12 @@ Check out Loco resources and links from around the Web.
 
 - [A Legendary Web Framework is Reborn... in Rust](https://www.youtube.com/watch?v=7utPutDORb4) - by [Code to the Moon](https://www.youtube.com/@codetothemoon)
 
+
+## Ecosystem
+
+- [rhai-loco](https://docs.rs/rhai-loco/latest/rhai_loco/) - This crate adds [Rhai](https://rhai.rs) script support to [Loco](https://loco.rs)
+- [loco-oauth2](https://github.com/yinho999/loco-oauth2) - Loco OAuth2 is a simple OAuth2 initializer for the Loco API. It is designed to be a tiny and easy-to-use library for implementing OAuth2 in your application.
+
 ## App Examples
 
 * [Chat rooms](https://github.com/loco-rs/chat-rooms) - With opening a web socket 

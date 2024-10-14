@@ -42,6 +42,7 @@ unic-langid = "0.9.4"
 tera = "1.19.1"
 tower = "0.4.13"
 futures-util = "0.3.30"
+utoipa = "4.2.3"
 
 [[bin]]
 name = "demo_app-cli"
