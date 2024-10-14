@@ -194,7 +194,6 @@ async fn can_reset_password() {
     .await;
 }
 
-
 #[tokio::test]
 #[serial]
 async fn can_get_current_user() {
