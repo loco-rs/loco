@@ -224,8 +224,7 @@ pub async fn reset<M: MigratorTrait>(db: &DatabaseConnection) -> Result<(), sea_
 /// Returns a [`AppResult`] if could not render the path content into
 /// [`Vec<serde_json::Value>`] or could not inset the vector to DB.
 #[allow(clippy::type_repetition_in_bounds)]
-#[allow(clippy::unused_async)]
-pub async fn seed<A>(_db: &DatabaseConnection, path: &str) -> AppResult<()>
+pub async fn seed<A>(db: &DatabaseConnection, path: &str) -> AppResult<()>
 where
     <<A as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<A>,
     for<'de> <<A as ActiveModelTrait>::Entity as EntityTrait>::Model: serde::de::Deserialize<'de>,
@@ -235,8 +234,11 @@ where
     let seed_data: Vec<serde_json::Value> = serde_yaml::from_reader(File::open(path)?)?;
 
     for row in seed_data {
-        let mut entity = <A as ActiveModelTrait>::default();
-        entity.set_from_json(row)?;
+        let mut model = <A as ActiveModelTrait>::default();
+        model.set_from_json(row)?;
+        <A as ActiveModelTrait>::Entity::insert(model)
+            .exec(db)
+            .await?;
     }
 
     Ok(())
