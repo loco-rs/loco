@@ -93,7 +93,7 @@ snippets:
     content: cd ./examples/demo && cargo loco generate scaffold --help
     path: ./snipdoc.yml
   scaffold-post-command:
-    content: cargo loco generate scaffold posts 
+    content: cargo loco generate scaffold posts
       name:string title:string content:text --api
     path: ./snipdoc.yml
   generate-task-help-command:
