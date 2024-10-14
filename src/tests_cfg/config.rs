@@ -19,7 +19,7 @@ pub fn test_config() -> Config {
         },
         server: config::Server {
             binding: "localhost".to_string(),
-            port: 3000,
+            port: 5555,
             host: "localhost".to_string(),
             ident: None,
             middlewares: middleware::Config::default(),
