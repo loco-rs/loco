@@ -13,7 +13,6 @@ top = false
 flair =[]
 +++
 
-English - [Français](./index.fr.md)
 
 <img style="width:100%; max-width:640px" src="tour.png"/>
 <br/>
