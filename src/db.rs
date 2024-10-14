@@ -148,14 +148,14 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
     if db.get_database_backend() == DatabaseBackend::Sqlite {
         db.execute(Statement::from_string(
             DatabaseBackend::Sqlite,
-            r#"
+            "
             PRAGMA foreign_keys = ON;
             PRAGMA journal_mode = WAL;
             PRAGMA synchronous = NORMAL;
             PRAGMA mmap_size = 134217728;
             PRAGMA journal_size_limit = 67108864;
             PRAGMA cache_size = 2000;
-            "#,
+            ",
         ))
         .await?;
     }
