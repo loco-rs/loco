@@ -98,7 +98,7 @@ You can choose between generating an `api`, `html` or `htmx` scaffold using the 
 </div>
 
 ```sh
-$ cargo loco generate scaffold post title:string content:text -k api
+$ cargo loco generate scaffold post title:string content:text --api
 
   :
   :
@@ -168,7 +168,7 @@ For those counting -- the commands for creating a blog backend were:
 1. `cargo install loco-cli`
 2. `cargo install sea-orm-cli`
 3. `loco new`
-4. `cargo loco generate scaffold post title:string content:text -k api`
+4. `cargo loco generate scaffold post title:string content:text --api`
 
 Done! enjoy your ride with `loco` 🚂
 
