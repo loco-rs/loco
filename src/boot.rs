@@ -69,9 +69,9 @@ pub struct ServeParams {
 pub async fn start<H: Hooks>(
     boot: BootResult,
     server_config: ServeParams,
-    show_banner: bool,
+    no_banner: bool,
 ) -> Result<()> {
-    if show_banner {
+    if !no_banner {
         print_banner(&boot, &server_config);
     }
 

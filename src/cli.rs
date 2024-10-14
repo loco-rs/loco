@@ -462,7 +462,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                 binding: binding
                     .unwrap_or_else(|| boot_result.app_context.config.server.binding.to_string()),
             };
-            start::<H>(boot_result, serve_params, !no_banner).await?;
+            start::<H>(boot_result, serve_params, no_banner).await?;
         }
         #[cfg(feature = "with-db")]
         Commands::Db { command } => {
@@ -599,7 +599,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
                     |b| b,
                 ),
             };
-            start::<H>(boot_result, serve_params, !no_banner).await?;
+            start::<H>(boot_result, serve_params, no_banner).await?;
         }
         Commands::Routes {} => {
             let app_context = create_context::<H>(&environment).await?;
