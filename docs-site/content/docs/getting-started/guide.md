@@ -320,7 +320,7 @@ A model in Loco represents data *and* functionality. Typically the data is store
 Let's create a new model called `Article`:
 
 ```sh
-$ cargo loco generate model article title:string content:text -k api
+$ cargo loco generate model article title:string content:text
 
 added: "migration/src/m20231202_173012_articles.rs"
 injected: "migration/src/lib.rs"
@@ -336,7 +336,7 @@ injected: "tests/models/mod.rs"
 ```rust
 // this was generated into `migrations/` from the command:
 //
-// $ cargo loco generate model article title:string content:text -k api
+// $ cargo loco generate model article title:string content:text
 //
 // it is automatically applied by Loco's migrator framework.
 // you can also apply it manually using the command:
