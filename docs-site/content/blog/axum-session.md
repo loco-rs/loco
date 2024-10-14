@@ -64,7 +64,7 @@ impl Hooks for App {
 Now, you can create your controller that uses Axum session. Use the `cargo loco generate controller` command:
 
 ```sh
-❯ cargo loco generate controller mysession -k api
+❯ cargo loco generate controller mysession --api 
     Finished dev [unoptimized + debuginfo] target(s) in 0.36s
      Running `target/debug/axum-session-cli generate controller mysession`
 added: "src/controllers/mysession.rs"
@@ -166,7 +166,7 @@ impl Hooks for App {
 Create the controller as before using `cargo loco generate controller`
 
 ```sh
-❯ cargo loco generate controller mysession -k api
+❯ cargo loco generate controller mysession --api
     Finished dev [unoptimized + debuginfo] target(s) in 0.36s
      Running `target/debug/axum-session-cli generate controller mysession`
 added: "src/controllers/mysession.rs"

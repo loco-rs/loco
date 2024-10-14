@@ -156,7 +156,7 @@ Options:
 You can begin by generating a scaffold for the Post resource, which will represent a single blog posting. To accomplish this, open your terminal and enter the following command:
 <!-- <snip id="scaffold-post-command" inject_from="yaml" template="sh"> -->
 ```sh
-cargo loco generate scaffold posts name:string title:string content:text -k api
+cargo loco generate scaffold posts name:string title:string content:text --api
 ```
 <!-- </snip> -->
 
