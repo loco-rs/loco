@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use axum::Router;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
+use tokio::signal;
 use tracing::{debug, error, info, warn};
 
 #[cfg(feature = "with-db")]
@@ -83,27 +84,26 @@ pub async fn start<H: Hooks>(
 
     match (router, run_worker) {
         (Some(router), false) => {
-            H::serve(router, server_config).await?;
+            H::serve(router, &app_context).await?;
         }
         (Some(router), true) => {
-            tokio::spawn(async move {
-                debug!("note: worker is run in-process (tokio spawn)");
-                if let Some(queue) = &app_context.queue_provider {
-                    let res = queue.run().await;
+            debug!("note: worker is run in-process (tokio spawn)");
+            if let Some(queue) = &app_context.queue_provider {
+                let cloned_queue = queue.clone();
+                tokio::spawn(async move {
+                    let res = cloned_queue.run().await;
                     if res.is_err() {
                         error!(
                             err = res.unwrap_err().to_string(),
                             "error while running worker"
                         );
                     }
-                } else {
-                    error!(
-                        err = Error::QueueProviderMissing.to_string(),
-                        "cannot start worker"
-                    );
-                }
-            });
-            H::serve(router, server_config).await?;
+                });
+            } else {
+                return Err(Error::QueueProviderMissing);
+            }
+
+            H::serve(router, &app_context).await?;
         }
         (None, true) => {
             if let Some(queue) = &app_context.queue_provider {
@@ -387,6 +387,36 @@ async fn register_workers<H: Hooks>(app_context: &AppContext) -> Result<()> {
 #[must_use]
 pub fn list_endpoints<H: Hooks>(ctx: &AppContext) -> Vec<ListRoutes> {
     H::routes(ctx).collect()
+}
+
+/// Waits for a shutdown signal, either via Ctrl+C or termination signal.
+///
+/// # Panics
+///
+/// This function will panic if it fails to install the signal handlers for
+/// Ctrl+C or the terminate signal on Unix-based systems.
+pub async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        () = ctrl_c => {},
+        () = terminate => {},
+    }
 }
 
 pub struct MiddlewareInfo {
