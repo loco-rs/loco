@@ -7,6 +7,7 @@ use std::{
     task::{Context, Poll},
 };
 
+use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
 use axum::{
     body::Body,
     http::{HeaderName, HeaderValue, Request},
@@ -17,9 +18,9 @@ use futures_util::future::BoxFuture;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use serde_json::{self, json};
+#[allow(unused_imports)]
+use tower::util::ServiceExt;
 use tower::{Layer, Service};
-
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
 
 lazy_static! {
         /// Predefined secure header presets loaded from `secure_headers.json`
