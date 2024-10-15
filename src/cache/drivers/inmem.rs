@@ -16,7 +16,7 @@ use crate::cache::CacheResult;
 ///
 /// A boxed [`CacheDriver`] instance.
 #[must_use]
-pub fn new() -> Box<dyn CacheDriver> {
+pub fn new() -> Box<dyn CacheDriver<Key = String, Value = String>> {
     let cache = Cache::builder().max_capacity(32 * 1024 * 1024).build();
     Inmem::from(cache)
 }
@@ -34,19 +34,27 @@ impl Inmem {
     ///
     /// A boxed [`CacheDriver`] instance.
     #[must_use]
-    pub fn from(cache: Cache<String, String>) -> Box<dyn CacheDriver> {
+    pub fn from(
+        cache: Cache<String, String>,
+    ) -> Box<dyn CacheDriver<Key = String, Value = String>> {
         Box::new(Self { cache })
     }
 }
 
 #[async_trait]
 impl CacheDriver for Inmem {
+    /// The type used for cache keys. Must be serializable and deserializable.
+    type Key = String;
+
+    /// The type used for cache values. Must be serializable and deserializable.
+    type Value = String;
+
     /// Checks if a key exists in the cache.
     ///
     /// # Errors
     ///
     /// Returns a `CacheError` if there is an error during the operation.
-    async fn contains_key(&self, key: &str) -> CacheResult<bool> {
+    async fn contains_key(&self, key: &Self::Key) -> CacheResult<bool> {
         Ok(self.cache.contains_key(key))
     }
 
@@ -55,7 +63,7 @@ impl CacheDriver for Inmem {
     /// # Errors
     ///
     /// Returns a `CacheError` if there is an error during the operation.
-    async fn get(&self, key: &str) -> CacheResult<Option<String>> {
+    async fn get(&self, key: &Self::Key) -> CacheResult<Option<Self::Value>> {
         Ok(self.cache.get(key))
     }
 
@@ -64,7 +72,7 @@ impl CacheDriver for Inmem {
     /// # Errors
     ///
     /// Returns a `CacheError` if there is an error during the operation.
-    async fn insert(&self, key: &str, value: &str) -> CacheResult<()> {
+    async fn insert(&self, key: &Self::Key, value: &Self::Value) -> CacheResult<()> {
         self.cache
             .insert(key.to_string(), Arc::new(value).to_string());
         Ok(())
@@ -75,7 +83,7 @@ impl CacheDriver for Inmem {
     /// # Errors
     ///
     /// Returns a `CacheError` if there is an error during the operation.
-    async fn remove(&self, key: &str) -> CacheResult<()> {
+    async fn remove(&self, key: &Self::Key) -> CacheResult<()> {
         self.cache.remove(key);
         Ok(())
     }
@@ -99,40 +107,46 @@ mod tests {
     #[tokio::test]
     async fn is_contains_key() {
         let mem = new();
-        assert!(!mem.contains_key("key").await.unwrap());
-        assert!(mem.insert("key", "loco").await.is_ok());
-        assert!(mem.contains_key("key").await.unwrap());
+        let key = "key".to_string();
+        let value = "loco".to_string();
+        assert!(!mem.contains_key(&key).await.unwrap());
+        assert!(mem.insert(&key, &value).await.is_ok());
+        assert!(mem.contains_key(&key).await.unwrap());
     }
 
     #[tokio::test]
     async fn can_get_key_value() {
         let mem = new();
-        assert!(mem.insert("key", "loco").await.is_ok());
-        assert_eq!(mem.get("key").await.unwrap(), Some("loco".to_string()));
+        let key = "key".to_string();
+        let value = "loco".to_string();
+        assert!(mem.insert(&key, &value).await.is_ok());
+        assert_eq!(mem.get(&key).await.unwrap(), Some(value));
 
         //try getting key that not exists
-        assert_eq!(mem.get("not-found").await.unwrap(), None);
+        let not_found_key = "not-found".to_string();
+        assert_eq!(mem.get(&not_found_key).await.unwrap(), None);
     }
 
     #[tokio::test]
     async fn can_remove_key() {
         let mem = new();
-        assert!(mem.insert("key", "loco").await.is_ok());
-        assert!(mem.contains_key("key").await.unwrap());
-        mem.remove("key").await.unwrap();
-        assert!(!mem.contains_key("key").await.unwrap());
+        let key = "key".to_string();
+        let value = "loco".to_string();
+        assert!(mem.insert(&key, &value).await.is_ok());
+        assert!(mem.contains_key(&key).await.unwrap());
+        mem.remove(&key).await.unwrap();
+        assert!(!mem.contains_key(&key).await.unwrap());
     }
 
     #[tokio::test]
     async fn can_clear() {
         let mem = new();
-
-        let keys = vec!["key", "key2", "key3"];
+        let keys = vec!["key".to_string(), "key2".to_string(), "key3".to_string()];
         for key in &keys {
-            assert!(mem.insert(key, "loco").await.is_ok());
+            assert!(mem.insert(key, &"loco".to_string()).await.is_ok());
         }
         for key in &keys {
-            assert!(mem.contains_key(key).await.is_ok());
+            assert!(mem.contains_key(key).await.unwrap());
         }
         assert!(mem.clear().await.is_ok());
         for key in &keys {

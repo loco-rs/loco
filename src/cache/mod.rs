@@ -5,6 +5,8 @@ pub mod drivers;
 
 use std::future::Future;
 
+use serde::{Deserialize, Serialize};
+
 use self::drivers::CacheDriver;
 use crate::Result as LocoResult;
 
@@ -17,17 +19,28 @@ pub enum CacheError {
 }
 
 pub type CacheResult<T> = std::result::Result<T, CacheError>;
+/// The type used for cache keys. Must be serializable and deserializable.
 
 /// Represents a cache instance
-pub struct Cache {
+pub struct Cache<Key = String, Value = String>
+where
+    Key: Serialize + for<'de> Deserialize<'de> + Send + Sync,
+
+    Value: Serialize + for<'de> Deserialize<'de> + Send + Sync,
+{
     /// The cache driver used for underlying operations
-    pub driver: Box<dyn CacheDriver>,
+    pub driver: Box<dyn CacheDriver<Key = Key, Value = Value>>,
 }
 
-impl Cache {
+impl<Key, Value> Cache<Key, Value>
+where
+    Key: Serialize + for<'de> Deserialize<'de> + Send + Sync,
+
+    Value: Serialize + for<'de> Deserialize<'de> + Send + Sync,
+{
     /// Creates a new cache instance with the specified cache driver.
     #[must_use]
-    pub fn new(driver: Box<dyn CacheDriver>) -> Self {
+    pub fn new(driver: Box<dyn CacheDriver<Key = Key, Value = Value>>) -> Self {
         Self { driver }
     }
 
@@ -39,13 +52,13 @@ impl Cache {
     ///
     /// pub async fn contains_key() -> CacheResult<bool> {
     ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
-    ///     cache.contains_key("key").await
+    ///     cache.contains_key(&"key".to_string()).await
     /// }
     /// ```
     ///
     /// # Errors
     /// A [`CacheResult`] indicating whether the key exists in the cache.
-    pub async fn contains_key(&self, key: &str) -> CacheResult<bool> {
+    pub async fn contains_key(&self, key: &Key) -> CacheResult<bool> {
         self.driver.contains_key(key).await
     }
 
@@ -57,14 +70,14 @@ impl Cache {
     ///
     /// pub async fn get_key() -> CacheResult<Option<String>> {
     ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
-    ///     cache.get("key").await
+    ///     cache.get(&"key".to_string()).await
     /// }
     /// ```
     ///
     /// # Errors
     /// A [`CacheResult`] containing an `Option` representing the retrieved
     /// value.
-    pub async fn get(&self, key: &str) -> CacheResult<Option<String>> {
+    pub async fn get(&self, key: &Key) -> CacheResult<Option<Value>> {
         self.driver.get(key).await
     }
 
@@ -76,14 +89,14 @@ impl Cache {
     ///
     /// pub async fn insert() -> CacheResult<()> {
     ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
-    ///     cache.insert("key", "value").await
+    ///     cache.insert(&"key".to_string(), &"value".to_string()).await
     /// }
     /// ```
     ///
     /// # Errors
     ///
     /// A [`CacheResult`] indicating the success of the operation.
-    pub async fn insert(&self, key: &str, value: &str) -> CacheResult<()> {
+    pub async fn insert(&self, key: &Key, value: &Value) -> CacheResult<()> {
         self.driver.insert(key, value).await
     }
 
@@ -98,19 +111,19 @@ impl Cache {
     ///
     /// pub async fn get_or_insert(){
     ///    let app_ctx = get_app_context().await;
-    ///    let res = app_ctx.cache.get_or_insert("key", async {
+    ///    let res = app_ctx.cache.get_or_insert(&"key".to_string(), async {
     ///            Ok("value".to_string())
     ///     }).await.unwrap();
-    ///    assert_eq!(res, "value");
+    ///    assert_eq!(res, "value".to_string());
     /// }
     /// ```
     ///
     /// # Errors
     ///
     /// A [`LocoResult`] indicating the success of the operation.
-    pub async fn get_or_insert<F>(&self, key: &str, f: F) -> LocoResult<String>
+    pub async fn get_or_insert<F>(&self, key: &Key, f: F) -> LocoResult<Value>
     where
-        F: Future<Output = LocoResult<String>> + Send,
+        F: Future<Output = LocoResult<Value>> + Send,
     {
         if let Some(value) = self.driver.get(key).await? {
             Ok(value)
@@ -129,14 +142,14 @@ impl Cache {
     ///
     /// pub async fn remove() -> CacheResult<()> {
     ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
-    ///     cache.remove("key").await
+    ///     cache.remove(&"key".to_string()).await
     /// }
     /// ```
     ///
     /// # Errors
     ///
     /// A [`CacheResult`] indicating the success of the operation.
-    pub async fn remove(&self, key: &str) -> CacheResult<()> {
+    pub async fn remove(&self, key: &Key) -> CacheResult<()> {
         self.driver.remove(key).await
     }
 
@@ -168,19 +181,19 @@ mod tests {
     #[tokio::test]
     async fn can_get_or_insert() {
         let app_ctx = tests_cfg::app::get_app_context().await;
-        let get_key = "loco";
+        let get_key = "loco".to_string();
 
-        assert_eq!(app_ctx.cache.get(get_key).await.unwrap(), None);
+        assert_eq!(app_ctx.cache.get(&get_key).await.unwrap(), None);
 
         let result = app_ctx
             .cache
-            .get_or_insert(get_key, async { Ok("loco-cache-value".to_string()) })
+            .get_or_insert(&get_key, async { Ok("loco-cache-value".to_string()) })
             .await
             .unwrap();
 
         assert_eq!(result, "loco-cache-value".to_string());
         assert_eq!(
-            app_ctx.cache.get(get_key).await.unwrap(),
+            app_ctx.cache.get(&get_key).await.unwrap(),
             Some("loco-cache-value".to_string())
         );
     }
