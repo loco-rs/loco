@@ -44,7 +44,9 @@ impl step::StepTrait for GenerateProjectStep {
 
     fn plan(&self, _randomizer: &Randomizer) -> crazy_train::Result<step::Plan> {
         // TODO:: --template and --assets should be random also
-        let command = format!("loco new --name '{}' --template saas --db sqlite --bg async --assets serverside --path {}", self.project_name,self.location.display());
+        let escaped_project_name =
+            shell_escape::escape(self.project_name.clone().into()).to_string();
+        let command = format!("loco new --name {} --template saas --db sqlite --bg async --assets serverside --path {}", escaped_project_name,self.location.display());
 
         Ok(step::Plan {
             id: std::any::type_name::<Self>().to_string(),

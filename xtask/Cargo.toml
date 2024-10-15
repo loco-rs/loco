@@ -27,5 +27,6 @@ thiserror = "1"
 tabled = "0.14.0"
 colored = "2.1.0"
 crazy-train = "0.1.0"
+shell-escape = "0.1.5"
 
 [dev-dependencies]

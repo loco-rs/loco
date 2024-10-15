@@ -3,7 +3,6 @@ use clap::{
     ArgAction::{SetFalse, SetTrue},
     Parser, Subcommand,
 };
-use colored::Colorize;
 use std::env;
 use xtask::fuzzy_steps;
 
@@ -123,7 +122,6 @@ fn main() -> eyre::Result<()> {
                 .collect();
 
             results.sort_by(|a, b| a.error.is_some().cmp(&b.error.is_some()));
-            let mut has_error = false;
 
             println!();
             println!("====================================");
@@ -132,21 +130,14 @@ fn main() -> eyre::Result<()> {
 
             for result in results {
                 if let Some(err) = result.error {
-                    has_error = true;
-                    println!(
-                        "{}",
-                        format!("seed {}: error\n\n {}\n", result.seed, err).red()
-                    );
+                    println!("seed {}: error\n\n {}\n", result.seed, err);
+                    xtask::CmdExit::error_with_message("failed").exit();
                 } else {
-                    println!("{}", format!("seed {}: passed", result.seed).green());
+                    println!("seed {}: passed", result.seed);
                 }
             }
 
-            if has_error {
-                xtask::CmdExit::error_with_message("failed")
-            } else {
-                xtask::CmdExit::ok()
-            }
+            xtask::CmdExit::ok()
         }
     };
 
