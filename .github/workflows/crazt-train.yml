@@ -22,7 +22,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
-      - run: |
+      - name: Install loco-cli
+        run: |
          cargo install loco-cli
-         cargo xtask fuzzy generate-template --times 10
+      - name: generate loco template
+        run: |
+         cargo xtask fuzzy generate-template --times 100
   
