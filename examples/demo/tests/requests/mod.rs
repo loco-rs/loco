@@ -1,6 +1,7 @@
 mod auth;
 mod cache;
 mod mylayer;
+mod mysession;
 mod notes;
 mod ping;
 mod prepare_data;
