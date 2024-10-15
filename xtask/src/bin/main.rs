@@ -33,7 +33,7 @@ enum Commands {
     Fuzzy {
         #[arg(global = true, short, long, default_value_t = 1)]
         times: u64,
-        #[arg(short, long, value_parser = clap::value_parser!(u64))]
+        #[arg(global = true, short, long, value_parser = clap::value_parser!(u64))]
         seed: Option<u64>,
         #[command(subcommand)]
         command: FuzzyCommands,

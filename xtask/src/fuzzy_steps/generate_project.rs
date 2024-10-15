@@ -9,8 +9,6 @@ pub struct GenerateProjectStep {
     pub project_name: String,
     pub run_check: bool,
     pub run_test: bool,
-    pub templates: Vec<String>,
-    pub assets: Vec<String>,
 }
 
 impl GenerateProjectStep {
@@ -35,12 +33,6 @@ impl GenerateProjectStep {
             project_name,
             run_check,
             run_test,
-            templates: vec![
-                "saas".to_string(),
-                "rest-api".to_string(),
-                "lightweight-service".to_string(),
-            ],
-            assets: vec!["serverside".to_string(), "clientside".to_string()],
         }
     }
 }
@@ -50,38 +42,9 @@ impl step::StepTrait for GenerateProjectStep {
         Ok(std::fs::create_dir_all(&self.location)?)
     }
 
-    fn plan(&self, randomizer: &Randomizer) -> crazy_train::Result<step::Plan> {
-        let template = if randomizer.bool() {
-            randomizer
-                .string(StringDef::from_randomizer(randomizer))
-                .to_string()
-        } else {
-            randomizer
-                .shuffle(&self.templates)
-                .first()
-                .expect("template")
-                .to_string()
-        };
-
-        let asset = if randomizer.bool() {
-            randomizer
-                .string(StringDef::from_randomizer(randomizer))
-                .to_string()
-        } else {
-            randomizer
-                .shuffle(&self.assets)
-                .first()
-                .expect("asset")
-                .to_string()
-        };
-
-        let command = format!(
-            "loco new --name '{}' --template '{}' --db sqlite --bg async --assets '{}' --path {}",
-            self.project_name,
-            template,
-            asset,
-            self.location.display()
-        );
+    fn plan(&self, _randomizer: &Randomizer) -> crazy_train::Result<step::Plan> {
+        // TODO:: --template and --assets should be random also
+        let command = format!("loco new --name '{}' --template saas --db sqlite --bg async --assets serverside --path {}", self.project_name,self.location.display());
 
         Ok(step::Plan {
             id: std::any::type_name::<Self>().to_string(),
