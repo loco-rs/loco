@@ -131,7 +131,7 @@ $ curl localhost:5150/_health
 ```
 
 <div class="infobox">
-The built in <code>_health</code> route will tell you that you have configured your app properly: it can establish a connection to your Postgres and Redis instances successfully.
+The built in <code>_health</code> route will tell you that you have configured your app properly: it can establish a connection to your Database and Redis instances successfully.
 </div>
 
 ### Say "Hello", Loco
@@ -139,7 +139,7 @@ The built in <code>_health</code> route will tell you that you have configured y
 Let's add a quick _hello_ response to our service.
 
 ```sh
-$ cargo loco generate controller guide -k api
+$ cargo loco generate controller guide --api
 added: "src/controllers/guide.rs"
 injected: "src/controllers/mod.rs"
 injected: "src/app.rs"
@@ -465,7 +465,7 @@ $ cargo playground
 We're now ready to plug this into an `articles` controller. First, generate a new controller:
 
 ```sh
-$ cargo loco generate controller articles -k api
+$ cargo loco generate controller articles --api
 added: "src/controllers/articles.rs"
 injected: "src/controllers/mod.rs"
 injected: "src/app.rs"
@@ -630,7 +630,7 @@ Let's add another model, this time: `Comment`. We want to create a relation - a 
 Instead of coding the model and controller by hand, we're going to create a **comment scaffold** which will generate a fully working CRUD API comments. We're also going to use the special `references` type:
 
 ```sh
-$ cargo loco generate scaffold comment content:text article:references -k api
+$ cargo loco generate scaffold comment content:text article:references --api
 ```
 
 If you peek into the new migration, you'll discover a new database relation in the articles table:
