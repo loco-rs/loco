@@ -8,6 +8,8 @@
 * Fix some comments in the starters and example code. [https://github.com/loco-rs/loco/pull/824](https://github.com/loco-rs/loco/pull/824)
 * Fix Y2038 bug for JWT on 32 bit platforms. [https://github.com/loco-rs/loco/pull/825](https://github.com/loco-rs/loco/pull/825)
 * Make App URL in Boot Banner Clickable. [https://github.com/loco-rs/loco/pull/826](https://github.com/loco-rs/loco/pull/826)
+* Add `--no-banner` flag to allow disabling the banner display. [https://github.com/loco-rs/loco/pull/839](https://github.com/loco-rs/loco/pull/839)
+* add on_shutdown hook. [https://github.com/loco-rs/loco/pull/842](https://github.com/loco-rs/loco/pull/842)
 
 
 ## v0.10.1
