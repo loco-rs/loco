@@ -4,5 +4,5 @@ expression: "(add_note_request.status_code(), add_note_request.text())"
 ---
 (
     200,
-    "{\"created_at\":\"DATE\",\"updated_at\":\"DATE\",\"id\":ID,\"title\":\"Loco note 1\",\"content\":\"content 1\"}",
+    "{\"created_at\":\"DATE\",\"updated_at\":\"DATE\",\"id\":ID,\"title\":null,\"content\":\"content 1\"}",
 )
