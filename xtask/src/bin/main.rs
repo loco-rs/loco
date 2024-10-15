@@ -3,6 +3,7 @@ use clap::{
     ArgAction::{SetFalse, SetTrue},
     Parser, Subcommand,
 };
+use colored::Colorize;
 use std::env;
 use xtask::fuzzy_steps;
 
@@ -30,6 +31,8 @@ enum Commands {
         exclude_starters: bool,
     },
     Fuzzy {
+        #[arg(global = true, short, long, default_value_t = 1)]
+        times: u64,
         #[arg(short, long, value_parser = clap::value_parser!(u64))]
         seed: Option<u64>,
         #[command(subcommand)]
@@ -43,6 +46,10 @@ enum FuzzyCommands {
     Scaffold,
 }
 
+struct FuzzyResult {
+    seed: u64,
+    error: Option<crazy_train::Error>,
+}
 fn main() -> eyre::Result<()> {
     let cli = Cli::parse();
     let project_dir = env::current_dir()?;
@@ -81,32 +88,62 @@ fn main() -> eyre::Result<()> {
             }
             xtask::CmdExit::ok()
         }
-        Commands::Fuzzy { command, seed } => {
-            let randomizer = seed.map_or_else(crazy_train::Randomizer::default, |seed| {
-                crazy_train::Randomizer::with_seed(seed)
-            });
+        Commands::Fuzzy {
+            command,
+            seed,
+            times,
+        } => {
+            let mut results: Vec<FuzzyResult> = (1..=times)
+                .map(|_| {
+                    let randomizer = seed.map_or_else(crazy_train::Randomizer::default, |seed| {
+                        crazy_train::Randomizer::with_seed(seed)
+                    });
+                    let seed = randomizer.seed;
+                    let temp_dir = env::temp_dir().join("loco");
 
-            let temp_dir = env::temp_dir().join("loco");
+                    let runner = match command {
+                        FuzzyCommands::GenerateTemplate => {
+                            fuzzy_steps::generate_project::run(randomizer, temp_dir.as_path())
+                        }
+                        FuzzyCommands::Scaffold => {
+                            fuzzy_steps::scaffold::run(randomizer, temp_dir.as_path())
+                        }
+                    };
 
-            let runner = match command {
-                FuzzyCommands::GenerateTemplate => {
-                    fuzzy_steps::generate_project::run(randomizer, temp_dir.as_path())
+                    let result: Result<(), crazy_train::Error> = runner.run();
+
+                    if temp_dir.exists() {
+                        std::fs::remove_dir_all(temp_dir).expect("remove dir");
+                    }
+                    FuzzyResult {
+                        seed,
+                        error: result.err(),
+                    }
+                })
+                .collect();
+
+            results.sort_by(|a, b| a.error.is_some().cmp(&b.error.is_some()));
+            let mut has_error = false;
+
+            println!();
+            println!("====================================");
+            println!("          Results Summary           ");
+            println!("====================================");
+
+            for result in results {
+                if let Some(err) = result.error {
+                    has_error = true;
+                    println!(
+                        "{}",
+                        format!("seed {}: error\n\n {}\n", result.seed, err).red()
+                    );
+                } else {
+                    println!("{}", format!("seed {}: passed", result.seed).green());
                 }
-                FuzzyCommands::Scaffold => {
-                    fuzzy_steps::scaffold::run(randomizer, temp_dir.as_path())
-                }
-            };
-
-            let result = runner.run();
-
-            if temp_dir.exists() {
-                std::fs::remove_dir_all(temp_dir).expect("remove dir");
             }
 
-            if let Err(err) = &result {
-                println!("{err}");
-
-                xtask::CmdExit::error_with_message("step failed")
+            if has_error {
+                xtask::CmdExit::error_with_message("failed")
             } else {
                 xtask::CmdExit::ok()
             }

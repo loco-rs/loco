@@ -1,0 +1,27 @@
+name: Crazy Train - Fuzzy loco cli generator
+
+on:
+  pull_request:
+
+# on:
+#   schedule:
+#     - cron: 0 * * * * 
+
+env:
+  RUST_TOOLCHAIN: stable
+  TOOLCHAIN_PROFILE: minimal
+
+jobs:
+  generate_template:
+    name: Generate Template
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - run: |
+         cargo xtask fuzzy generate-template --times 100
+  
