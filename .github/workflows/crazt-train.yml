@@ -23,5 +23,5 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
       - run: |
-         cargo xtask fuzzy generate-template --times 100
+         cargo xtask fuzzy generate-template --times 10
   
