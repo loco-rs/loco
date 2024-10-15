@@ -58,7 +58,10 @@ impl step::StepTrait for GenerateProjectStep {
         &self,
         execution_result: &executer::Output,
     ) -> std::result::Result<bool, &'static str> {
-        let re_invalid_project_name = Regex::new(r"Error: app name is invalid, illegal characters. keep names simple: myapp or my_app\n\nLocation:\n").unwrap();
+        let re_invalid_project_name = Regex::new(
+            r"(the first character must be a|characters must be Unicode XID characters|the name cannot start with a digit)",
+        )
+        .unwrap();
         let re_folder_exists = Regex::new(r"🙀 The specified path '.*.' already exist\n").unwrap();
         let re_successfully = Regex::new(r"\n🚂 Loco app generated successfully in:\n.*").unwrap();
 
