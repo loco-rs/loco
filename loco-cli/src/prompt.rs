@@ -123,7 +123,7 @@ fn validate_app_name(app_name: &str) -> Result<(), &str> {
 
     let mut chars = app_name.chars();
     if let Some(ch) = chars.next() {
-        if ch.is_digit(10) {
+        if ch.is_ascii_digit() {
             return Err("the name cannot start with a digit");
         }
         if !(unicode_xid::UnicodeXID::is_xid_start(ch) || ch == '_') {
