@@ -1,8 +1,6 @@
 use std::{collections::BTreeMap, env};
 
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, Select};
-use lazy_static::lazy_static;
-use regex::Regex;
 use strum::IntoEnumIterator;
 
 use crate::{
@@ -10,10 +8,6 @@ use crate::{
     generate::{self, ArgsPlaceholder, AssetsOption, BackgroundOption, DBOption, OptionsList},
     Error,
 };
-
-lazy_static! {
-    static ref VALIDATE_APP_NAME: Regex = Regex::new(r"^[a-zA-Z0-9_]+$").unwrap();
-}
 
 /// Prompts the user to enter a valid application name for use with the Loco app
 /// generator.
@@ -27,13 +21,19 @@ lazy_static! {
 /// when could not prompt the question to the user or enter value is empty
 pub fn app_name(name: Option<String>) -> crate::Result<String> {
     if let Some(app_name) = env::var(env_vars::APP_NAME).ok().or(name) {
-        validate_app_name(app_name.as_str()).map_err(Error::msg)?;
+        validate_app_name(app_name.as_str()).map_err(|err| Error::msg(err.to_string()))?;
         Ok(app_name)
     } else {
         let res = Input::with_theme(&ColorfulTheme::default())
             .with_prompt("❯ App name?")
             .default("myapp".into())
-            .validate_with(|input: &String| validate_app_name(input))
+            .validate_with(|input: &String| {
+                if let Err(err) = validate_app_name(input) {
+                    Err(err.to_string())
+                } else {
+                    Ok(())
+                }
+            })
             .interact_text()?;
         Ok(res)
     }
@@ -116,14 +116,29 @@ pub fn warn_if_in_git_repo() -> crate::Result<()> {
 /// characters to ensure compatibility with Cargo, the Rust package manager.
 /// This function checks whether the provided application name complies with
 /// these conventions.
-fn validate_app_name(app: &str) -> Result<(), String> {
-    if !VALIDATE_APP_NAME.is_match(app) {
-        return Err(
-            "app name is invalid, illegal characters. keep names simple: myapp or my_app"
-                .to_owned(),
-        );
+fn validate_app_name(app_name: &str) -> Result<(), &str> {
+    if app_name.is_empty() {
+        return Err("app name could not be empty");
     }
 
+    let mut chars = app_name.chars();
+    if let Some(ch) = chars.next() {
+        if ch.is_ascii_digit() {
+            return Err("the name cannot start with a digit");
+        }
+        if !(unicode_xid::UnicodeXID::is_xid_start(ch) || ch == '_') {
+            return Err(
+                "the first character must be a Unicode XID start character (most letters or `_`)",
+            );
+        }
+    }
+    for ch in chars {
+        if !(unicode_xid::UnicodeXID::is_xid_continue(ch) || ch == '-') {
+            return Err(
+                "characters must be Unicode XID characters (numbers, `-`, `_`, or most letters)",
+            );
+        }
+    }
     Ok(())
 }
 
