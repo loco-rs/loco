@@ -104,6 +104,7 @@ $ demo_app-cli routes --environment test
 [GET] /notes/:id
 [DELETE] /notes/:id
 [POST] /notes/:id
+[GET] /response/album
 [GET] /response/empty
 [GET] /response/empty_json
 [GET] /response/etag

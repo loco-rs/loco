@@ -25,7 +25,7 @@ pub struct Config {
 }
 
 /// [`Middleware`] struct responsible for logging HTTP requests.
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct Middleware {
     config: Config,
     environment: Environment,

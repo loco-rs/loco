@@ -10,6 +10,7 @@ use super::CacheDriver;
 use crate::cache::{CacheError, CacheResult};
 
 /// Represents the in-memory cache driver.
+#[derive(Debug)]
 pub struct Null {}
 
 /// Creates a new null cache instance

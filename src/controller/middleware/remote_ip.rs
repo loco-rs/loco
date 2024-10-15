@@ -207,7 +207,7 @@ impl fmt::Display for RemoteIP {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct RemoteIPLayer {
     trusted_proxies: Option<Vec<IpNetwork>>,
 }
@@ -252,7 +252,7 @@ impl<S> Layer<S> for RemoteIPLayer {
 }
 
 /// Remote IP Detection Middleware
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[must_use]
 pub struct RemoteIPMiddleware<S> {
     inner: S,

@@ -1,13 +1,13 @@
 use std::{marker::PhantomData, sync::Arc};
 
-use async_trait::async_trait;
-use bb8::Pool;
-use sidekiq::{Processor, RedisConnectionManager};
-
 use super::{BackgroundWorker, Queue};
 use crate::{config::RedisQueueConfig, Result};
+use async_trait::async_trait;
+use bb8::Pool;
+use sidekiq::{Processor, ProcessorConfig, RedisConnectionManager};
 pub type RedisPool = Pool<RedisConnectionManager>;
 
+#[derive(Debug)]
 pub struct SidekiqBackgroundWorker<W, A> {
     pub inner: W, // Now we store the worker with its actual type instead of a trait object
     _phantom: PhantomData<A>,
@@ -119,7 +119,10 @@ pub async fn create_provider(qcfg: &RedisQueueConfig) -> Result<Queue> {
     let queues = get_queues(&qcfg.queues);
     Ok(Queue::Redis(
         redis.clone(),
-        Arc::new(tokio::sync::Mutex::new(Processor::new(redis, queues))),
+        Arc::new(tokio::sync::Mutex::new(
+            Processor::new(redis, queues)
+                .with_config(ProcessorConfig::default().num_workers(qcfg.num_workers as usize)),
+        )),
     ))
 }
 

@@ -273,6 +273,7 @@ pub async fn converge(queue: &Queue, config: &QueueConfig) -> Result<()> {
             dangerously_flush,
             uri: _,
             queues: _,
+            num_workers: _,
         }) => {
             if *dangerously_flush {
                 queue.clear().await?;
