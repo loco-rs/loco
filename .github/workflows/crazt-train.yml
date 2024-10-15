@@ -23,5 +23,6 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
       - run: |
+         cargo install loco-cli
          cargo xtask fuzzy generate-template --times 10
   
