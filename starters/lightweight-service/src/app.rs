@@ -35,8 +35,7 @@ impl Hooks for App {
     }
 
     fn routes(_ctx: &AppContext) -> AppRoutes {
-        AppRoutes::empty()
-            .add_route(controllers::home::routes())
+        AppRoutes::empty().add_route(controllers::home::routes())
     }
 
     async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {
