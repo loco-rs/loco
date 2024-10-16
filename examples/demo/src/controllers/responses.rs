@@ -3,6 +3,7 @@ use axum_extra::extract::cookie::Cookie;
 use loco_rs::prelude::*;
 use serde::Serialize;
 use utoipa::{openapi, OpenApi, ToSchema};
+use utoipa_axum::{router::OpenApiRouter, routes};
 
 #[derive(Serialize)]
 pub struct Health {
@@ -144,4 +145,9 @@ pub fn routes() -> Routes {
         .add("/etag", get(etag))
         .add("/album", get(album))
         .add("/set_cookie", get(set_cookie))
+}
+
+pub fn api_routes() -> OpenApiRouter<AppContext> {
+    OpenApiRouter::new()
+        .routes(routes!(album))
 }

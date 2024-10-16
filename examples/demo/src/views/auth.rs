@@ -2,12 +2,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::models::_entities::users;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UserSession {
     pub token: String,
     pub user: UserDetail,
 }
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct UserDetail {
     pub pid: String,
     pub email: String,

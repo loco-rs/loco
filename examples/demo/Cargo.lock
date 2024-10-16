@@ -183,6 +183,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3d1d046238990b9cf5bcde22a3fb3584ee5cf65fb2765f454ed428c7a0063da"
 
 [[package]]
+name = "arbitrary"
+version = "1.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d5a26814d8dcb93b0e5a0ff3c6d80a8843bafb21b39e8e18a6f05471870e110"
+dependencies = [
+ "derive_arbitrary",
+]
+
+[[package]]
 name = "arc-swap"
 version = "1.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1446,6 +1455,10 @@ dependencies = [
  "trycmd",
  "unic-langid",
  "utoipa",
+ "utoipa-axum",
+ "utoipa-redoc",
+ "utoipa-scalar",
+ "utoipa-swagger-ui",
  "uuid",
  "validator",
 ]
@@ -1480,6 +1493,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "derive_arbitrary"
+version = "1.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67e77553c4162a157adbf834ebae5b415acbecbeafc7a74b0e886657506a7611"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.66",
 ]
 
 [[package]]
@@ -2995,6 +3019,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "lockfree-object-pool"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9374ef4228402d4b7e403e5838cb880d9ee663314b0a900d5a6aabf0c213552e"
+
+[[package]]
 name = "loco-extras"
 version = "0.4.0"
 dependencies = [
@@ -4375,6 +4405,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "rust-embed"
+version = "8.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa66af4a4fdd5e7ebc276f115e895611a34739a9c1c01028383d612d550953c0"
+dependencies = [
+ "rust-embed-impl",
+ "rust-embed-utils",
+ "walkdir",
+]
+
+[[package]]
+name = "rust-embed-impl"
+version = "8.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6125dbc8867951125eec87294137f4e9c2c96566e61bf72c45095a7c77761478"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "rust-embed-utils",
+ "syn 2.0.66",
+ "walkdir",
+]
+
+[[package]]
+name = "rust-embed-utils"
+version = "8.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e5347777e9aacb56039b0e1f28785929a8a3b709e87482e7442c72e7c12529d"
+dependencies = [
+ "sha2",
+ "walkdir",
+]
+
+[[package]]
 name = "rust-multipart-rfc7578_2"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5069,6 +5133,12 @@ dependencies = [
  "digest",
  "rand_core",
 ]
+
+[[package]]
+name = "simd-adler32"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d66dc143e6b11c1eddc06d5c423cfc97062865baf299914ab64caa38182078fe"
 
 [[package]]
 name = "simdutf8"
@@ -6451,9 +6521,9 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "utoipa"
-version = "4.2.3"
+version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5afb1a60e207dca502682537fefcfd9921e71d0b83e9576060f09abc6efab23"
+checksum = "5e2b34fc58a72021914a5745832024b2baa638fe771df5a35f3d1b69266bd92c"
 dependencies = [
  "indexmap 2.2.6",
  "serde",
@@ -6462,16 +6532,76 @@ dependencies = [
 ]
 
 [[package]]
-name = "utoipa-gen"
-version = "4.3.1"
+name = "utoipa-axum"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20c24e8ab68ff9ee746aad22d39b5535601e6416d1b0feeabf78be986a5c4392"
+checksum = "06e6cee799402b054e6cb75294d86a4ccdd1227bb4ce87e2a732a68f2aa9f934"
 dependencies = [
- "proc-macro-error",
+ "axum 0.7.7",
+ "paste",
+ "tower-layer",
+ "tower-service",
+ "utoipa",
+]
+
+[[package]]
+name = "utoipa-gen"
+version = "5.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "866f11b33be38a747542f435578a164674b8922d958cc065d7f19319c19d4784"
+dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.66",
 ]
+
+[[package]]
+name = "utoipa-redoc"
+version = "5.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9218304bba9a0ea5e92085b0a427ccce5fd56eaaf6436d245b7578e6a95787e1"
+dependencies = [
+ "axum 0.7.7",
+ "serde",
+ "serde_json",
+ "utoipa",
+]
+
+[[package]]
+name = "utoipa-scalar"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1291aa7a2223c2f8399d1c6627ca0ba57ca0d7ecac762a2094a9dfd6376445a"
+dependencies = [
+ "axum 0.7.7",
+ "serde",
+ "serde_json",
+ "utoipa",
+]
+
+[[package]]
+name = "utoipa-swagger-ui"
+version = "8.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f0800ca865caaff4484adca065a77927a801bd9c48879f0451ec08846eb6a12b"
+dependencies = [
+ "axum 0.7.7",
+ "mime_guess",
+ "regex",
+ "rust-embed",
+ "serde",
+ "serde_json",
+ "url",
+ "utoipa",
+ "utoipa-swagger-ui-vendored",
+ "zip",
+]
+
+[[package]]
+name = "utoipa-swagger-ui-vendored"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c20d6689d3a5693eec4d21f6b9d7c54f37468b856da8e98a7bb316f7b32df6e3"
 
 [[package]]
 name = "uuid"
@@ -7036,6 +7166,37 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.66",
+]
+
+[[package]]
+name = "zip"
+version = "2.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "40dd8c92efc296286ce1fbd16657c5dbefff44f1b4ca01cc5f517d8b7b3d3e2e"
+dependencies = [
+ "arbitrary",
+ "crc32fast",
+ "crossbeam-utils",
+ "displaydoc",
+ "flate2",
+ "indexmap 2.2.6",
+ "memchr",
+ "thiserror",
+ "zopfli",
+]
+
+[[package]]
+name = "zopfli"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5019f391bac5cf252e93bbcc53d039ffd62c7bfb7c150414d61369afe57e946"
+dependencies = [
+ "bumpalo",
+ "crc32fast",
+ "lockfree-object-pool",
+ "log",
+ "once_cell",
+ "simd-adler32",
 ]
 
 [[package]]

@@ -7,13 +7,13 @@ use uuid::Uuid;
 
 pub use super::_entities::users::{self, ActiveModel, Entity, Model};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct LoginParams {
     pub email: String,
     pub password: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, utoipa::ToSchema)]
 pub struct RegisterParams {
     pub email: String,
     pub password: String,
