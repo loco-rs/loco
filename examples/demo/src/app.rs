@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use async_trait::async_trait;
+use axum::Router as AxumRouter;
 use loco_extras;
 use loco_rs::{
     app::{AppContext, Hooks, Initializer},
@@ -16,6 +17,11 @@ use loco_rs::{
 };
 use migration::Migrator;
 use sea_orm::DatabaseConnection;
+use utoipa::OpenApi;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_redoc::{Redoc, Servable};
+use utoipa_scalar::{Scalar, Servable as ScalarServable};
+use utoipa_swagger_ui::SwaggerUi;
 
 use crate::{
     controllers::{self, middlewares},
@@ -75,6 +81,28 @@ impl Hooks for App {
             .add_route(controllers::upload::routes())
             .add_route(controllers::responses::routes())
             .add_route(controllers::cache::routes())
+    }
+
+    async fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+        // Serveing the OpenAPI doc
+        #[derive(OpenApi)]
+        #[openapi(info(
+            title = "Loco Demo",
+            description = "This app is a kitchensink for various capabilities and examples of the [Loco](https://loco.rs) project."
+        ))]
+        struct ApiDoc;
+
+        let (_, api) = OpenApiRouter::with_openapi(ApiDoc::openapi())
+            .merge(controllers::auth::api_routes())
+            .merge(controllers::responses::api_routes())
+            .split_for_parts();
+
+        let router = router
+            .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", api.clone()))
+            .merge(Redoc::with_url("/redoc", api.clone()))
+            .merge(Scalar::with_url("/scalar", api));
+
+        Ok(router)
     }
 
     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
