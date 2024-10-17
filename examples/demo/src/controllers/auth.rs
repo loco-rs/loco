@@ -30,7 +30,7 @@ pub struct ResetParams {
 ///
 /// Register function creates a new user with the given parameters and sends a
 /// welcome email to the user
-#[utoipa::path(post, request_body = RegisterParams, path = "/api/auth/register", responses((status = 200, body = UserSession)))]
+#[utoipa::path(post, tag = "auth", request_body = RegisterParams, path = "/api/auth/register", responses((status = 200, body = UserSession)))]
 async fn register(
     State(ctx): State<AppContext>,
     Json(params): Json<RegisterParams>,
@@ -66,7 +66,7 @@ async fn register(
 ///
 /// Verify register user. if the user not verified his email, he can't login to
 /// the system.
-#[utoipa::path(post, request_body = VerifyParams, path = "/api/auth/verify", responses((status = 200)))]
+#[utoipa::path(post, tag = "auth", request_body = VerifyParams, path = "/api/auth/verify", responses((status = 200)))]
 async fn verify(
     State(ctx): State<AppContext>,
     Json(params): Json<VerifyParams>,
@@ -90,7 +90,7 @@ async fn verify(
 /// and send email to the user. In case the email not found in our DB, we are
 /// returning a valid request for for security reasons (not exposing users DB
 /// list).
-#[utoipa::path(post, request_body = ForgotParams, path = "/api/auth/forgot", responses((status = 200)))]
+#[utoipa::path(post, tag = "auth", request_body = ForgotParams, path = "/api/auth/forgot", responses((status = 200)))]
 async fn forgot(
     State(ctx): State<AppContext>,
     Json(params): Json<ForgotParams>,
@@ -114,7 +114,7 @@ async fn forgot(
 /// Reset password
 ///
 /// reset user password by the given parameters
-#[utoipa::path(post, request_body = ResetParams, path = "/api/auth/reset", responses((status = 200)))]
+#[utoipa::path(post, tag = "auth", request_body = ResetParams, path = "/api/auth/reset", responses((status = 200)))]
 async fn reset(State(ctx): State<AppContext>, Json(params): Json<ResetParams>) -> Result<Response> {
     let Ok(user) = users::Model::find_by_reset_token(&ctx.db, &params.token).await else {
         // we don't want to expose our users email. if the email is invalid we still
@@ -133,7 +133,7 @@ async fn reset(State(ctx): State<AppContext>, Json(params): Json<ResetParams>) -
 /// Login
 ///
 /// Creates a user login and returns a token
-#[utoipa::path(post, request_body = LoginParams, path = "/api/auth/login", responses((status = 200, body = UserSession)))]
+#[utoipa::path(post, tag = "auth", request_body = LoginParams, path = "/api/auth/login", responses((status = 200, body = UserSession)))]
 async fn login(State(ctx): State<AppContext>, Json(params): Json<LoginParams>) -> Result<Response> {
     let user = users::Model::find_by_email(&ctx.db, &params.email).await?;
 
