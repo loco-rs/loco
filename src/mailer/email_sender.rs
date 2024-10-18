@@ -13,7 +13,7 @@ use crate::{config, errors::Error};
 
 /// An enumeration representing the possible transport methods for sending
 /// emails.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum EmailTransport {
     /// SMTP (Simple Mail Transfer Protocol) transport.
     Smtp(lettre::AsyncSmtpTransport<lettre::Tokio1Executor>),
@@ -23,7 +23,7 @@ pub enum EmailTransport {
 
 /// A structure representing the email sender, encapsulating the chosen
 /// transport method.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EmailSender {
     pub transport: EmailTransport,
 }

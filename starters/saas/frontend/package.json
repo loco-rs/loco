@@ -15,8 +15,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1",
-    "@rsbuild/core": "^0.7",
-    "@rsbuild/plugin-react": "^0.7",
+    "@rsbuild/core": "^1",
+    "@rsbuild/plugin-react": "^1",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "typescript": "^5"

@@ -87,9 +87,6 @@ impl Model {
       ).await?;
   }
 }
-
-
-
 ```
 '''
 

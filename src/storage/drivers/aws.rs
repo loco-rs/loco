@@ -13,6 +13,7 @@ use super::{object_store_adapter::ObjectStoreAdapter, StoreDriver};
 use crate::Result;
 
 /// A set of AWS security credentials
+#[derive(Debug)]
 pub struct Credential {
     /// `AWS_ACCESS_KEY_ID`
     pub key_id: String,

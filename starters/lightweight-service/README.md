@@ -42,7 +42,7 @@ environment: development
 compilation: debug
       modes: server
 
-listening on localhost:5150
+listening on http://localhost:5150
 ```
 
 ## Getting help

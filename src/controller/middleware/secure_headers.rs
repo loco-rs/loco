@@ -1,4 +1,5 @@
 //! Sets secure headers for your backend to promote security-by-default.
+//!
 //! This middleware applies secure HTTP headers, providing pre-defined presets
 //! (e.g., "github") and the ability to override or define custom headers.
 
@@ -156,7 +157,7 @@ impl SecureHeader {
 
 /// The [`SecureHeaders`] layer which wraps around the service and injects
 /// security headers
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SecureHeaders {
     headers: Vec<(HeaderName, HeaderValue)>,
 }
@@ -187,7 +188,7 @@ impl<S> Layer<S> for SecureHeaders {
 }
 
 /// The secure headers middleware
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[must_use]
 pub struct SecureHeadersMiddleware<S> {
     inner: S,
