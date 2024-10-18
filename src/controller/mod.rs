@@ -44,11 +44,11 @@
 //!         AppRoutes::with_default_routes()
 //!             // .add_route(controllers::notes::routes())
 //!     }
-//!     
+//!
 //!     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult>{
 //!          create_app::<Self, Migrator>(mode, environment).await
 //!     }
-//!     
+//!
 //!     #[cfg(feature = "channels")]
 //!    /// Only when `channels` feature is enabled
 //!    fn register_channels(_ctx: &AppContext) -> AppChannels {
@@ -177,6 +177,16 @@ pub struct Json<T>(pub T);
 impl<T: Serialize> IntoResponse for Json<T> {
     fn into_response(self) -> axum::response::Response {
         axum::Json(self.0).into_response()
+    }
+}
+
+#[derive(Debug, FromRequest)]
+#[from_request(via(axum::Form), rejection(Error))]
+pub struct Form<T>(pub T);
+
+impl<T: Serialize> IntoResponse for Form<T> {
+    fn into_response(self) -> axum::response::Response {
+        axum::Form(self.0).into_response()
     }
 }
 
