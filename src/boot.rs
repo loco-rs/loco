@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use axum::Router;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
-use tokio::signal;
+use tokio::{select, signal};
 use tracing::{debug, error, info, warn};
 
 #[cfg(feature = "with-db")]
@@ -86,11 +86,12 @@ pub async fn start<H: Hooks>(
         (Some(router), false) => {
             H::serve(router, &app_context).await?;
         }
-        (Some(router), true) => {
+        (router, true) => {
             debug!("note: worker is run in-process (tokio spawn)");
+            let handle;
             if let Some(queue) = &app_context.queue_provider {
                 let cloned_queue = queue.clone();
-                tokio::spawn(async move {
+                handle = tokio::spawn(async move {
                     let res = cloned_queue.run().await;
                     if res.is_err() {
                         error!(
@@ -102,14 +103,20 @@ pub async fn start<H: Hooks>(
             } else {
                 return Err(Error::QueueProviderMissing);
             }
-
-            H::serve(router, &app_context).await?;
-        }
-        (None, true) => {
-            if let Some(queue) = &app_context.queue_provider {
-                queue.run().await?;
+            
+            if let Some(router) = router {
+                H::serve(router, &app_context).await?;
             } else {
-                return Err(Error::QueueProviderMissing);
+                shutdown_signal().await;
+            }
+
+            // queue provider exists at this point so can safely unwrap here
+            let _ = &app_context.queue_provider.unwrap().shutdown().unwrap();
+
+            println!("press ctrl-c again to force quit");
+            select! {
+                _ = handle => {}
+                _ = shutdown_signal() => {}
             }
         }
         _ => {}

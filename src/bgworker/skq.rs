@@ -117,12 +117,16 @@ pub async fn create_provider(qcfg: &RedisQueueConfig) -> Result<Queue> {
     let manager = RedisConnectionManager::new(qcfg.uri.clone())?;
     let redis = Pool::builder().build(manager).await?;
     let queues = get_queues(&qcfg.queues);
+    let processor = Processor::new(redis.clone(), queues)
+        .with_config(ProcessorConfig::default().num_workers(qcfg.num_workers as usize));
+    let cancellation_token = processor.get_cancellation_token();
+
     Ok(Queue::Redis(
-        redis.clone(),
+        redis,
         Arc::new(tokio::sync::Mutex::new(
-            Processor::new(redis, queues)
-                .with_config(ProcessorConfig::default().num_workers(qcfg.num_workers as usize)),
+            processor,
         )),
+        cancellation_token,
     ))
 }
 
