@@ -1,4 +1,5 @@
 //! Middleware to generate or ensure a unique request ID for every request.
+//!
 //! The request ID is stored in the `x-request-id` header, and it is either
 //! generated or sanitized if already present in the request.
 //!
