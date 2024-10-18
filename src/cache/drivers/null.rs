@@ -19,18 +19,20 @@ pub struct Null {}
 ///
 /// A boxed [`CacheDriver`] instance.
 #[must_use]
-pub fn new() -> Box<dyn CacheDriver> {
+pub fn new() -> Box<dyn CacheDriver<Key = String, Value = String>> {
     Box::new(Null {})
 }
 
 #[async_trait]
 impl CacheDriver for Null {
+    type Key = String;
+    type Value = String;
     /// Checks if a key exists in the cache.
     ///
     /// # Errors
     ///
     /// Returns always error
-    async fn contains_key(&self, _key: &str) -> CacheResult<bool> {
+    async fn contains_key(&self, _key: &Self::Key) -> CacheResult<bool> {
         Err(CacheError::Any(
             "Operation not supported by null cache".into(),
         ))
@@ -41,7 +43,7 @@ impl CacheDriver for Null {
     /// # Errors
     ///
     /// Returns always error
-    async fn get(&self, _key: &str) -> CacheResult<Option<String>> {
+    async fn get(&self, _key: &Self::Key) -> CacheResult<Option<Self::Value>> {
         Ok(None)
     }
 
@@ -50,7 +52,7 @@ impl CacheDriver for Null {
     /// # Errors
     ///
     /// Returns always error
-    async fn insert(&self, _key: &str, _value: &str) -> CacheResult<()> {
+    async fn insert(&self, _key: &Self::Key, _value: &Self::Value) -> CacheResult<()> {
         Err(CacheError::Any(
             "Operation not supported by null cache".into(),
         ))
@@ -61,7 +63,7 @@ impl CacheDriver for Null {
     /// # Errors
     ///
     /// Returns always error
-    async fn remove(&self, _key: &str) -> CacheResult<()> {
+    async fn remove(&self, _key: &Self::Key) -> CacheResult<()> {
         Err(CacheError::Any(
             "Operation not supported by null cache".into(),
         ))
