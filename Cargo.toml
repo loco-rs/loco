@@ -54,6 +54,7 @@ sea-orm = { version = "1.0.0", features = [
 ], optional = true }
 
 tokio = { version = "1.33.0", default-features = false }
+tokio-util = "0.7.10"
 # the rest
 
 serde = "1"
