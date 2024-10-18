@@ -103,7 +103,7 @@ pub async fn start<H: Hooks>(
             } else {
                 return Err(Error::QueueProviderMissing);
             }
-            
+
             if let Some(router) = router {
                 H::serve(router, &app_context).await?;
             } else {

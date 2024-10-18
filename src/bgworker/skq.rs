@@ -123,9 +123,7 @@ pub async fn create_provider(qcfg: &RedisQueueConfig) -> Result<Queue> {
 
     Ok(Queue::Redis(
         redis,
-        Arc::new(tokio::sync::Mutex::new(
-            processor,
-        )),
+        Arc::new(tokio::sync::Mutex::new(processor)),
         cancellation_token,
     ))
 }

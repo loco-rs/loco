@@ -203,7 +203,7 @@ impl Queue {
         match self {
             #[cfg(feature = "bg_redis")]
             Self::Redis(_, _, cancellation_token) => cancellation_token.cancel(),
-            _ => {},
+            _ => {}
         }
 
         Ok(())
