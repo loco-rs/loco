@@ -48,8 +48,8 @@ impl Hooks for App {
     }
 
     // <snip id="app-initializers">
-    async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
-        let mut initializers: Vec<Box<dyn Initializer>> = vec![
+    async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
+        let initializers: Vec<Box<dyn Initializer>> = vec![
             Box::new(initializers::axum_session::AxumSessionInitializer),
             Box::new(initializers::view_engine::ViewEngineInitializer),
             Box::new(initializers::hello_view_engine::HelloViewEngineInitializer),

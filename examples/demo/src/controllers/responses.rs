@@ -148,6 +148,5 @@ pub fn routes() -> Routes {
 }
 
 pub fn api_routes() -> OpenApiRouter<AppContext> {
-    OpenApiRouter::new()
-        .routes(routes!(album))
+    OpenApiRouter::new().routes(routes!(album))
 }
