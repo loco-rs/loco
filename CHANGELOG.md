@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+
+## v0.11.0
+
+
+* Upgrade **SeaORM to v1.1.0**
+* Added OpenAPI example
+* Improve health route [https://github.com/loco-rs/loco/pull/851](https://github.com/loco-rs/loco/pull/851)
+* Add good pragmas to Sqlite [https://github.com/loco-rs/loco/pull/848](https://github.com/loco-rs/loco/pull/848)
 * Upgrade to rsbuild 1.0. [https://github.com/loco-rs/loco/pull/792](https://github.com/loco-rs/loco/pull/792)
 * Implements fmt::Debug to pub structs. [https://github.com/loco-rs/loco/pull/812](https://github.com/loco-rs/loco/pull/812)
 * Add num_workers config for sidekiq queue. [https://github.com/loco-rs/loco/pull/823](https://github.com/loco-rs/loco/pull/823)
