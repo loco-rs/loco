@@ -2,6 +2,8 @@
 todo.txt
 examples/demo2
 *.sqlite
+*.sqlite-wal
+*.sqlite-shm
 
 # IDE config files
 .idea

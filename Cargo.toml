@@ -9,7 +9,7 @@ license = "Apache-2.0"
 
 [package]
 name = "loco-rs"
-version = "0.10.1"
+version = "0.11.0"
 description = "The one-person framework for Rust"
 homepage = "https://loco.rs/"
 documentation = "https://docs.rs/loco-rs"
@@ -128,7 +128,7 @@ tokio-cron-scheduler = { version = "0.11.0", features = ["signal"] }
 english-to-cron = { version = "0.1.2" }
 
 # bg_pg: postgres workers
-sqlx = { version = "0.8", default-features = false, features = [
+sqlx = { version = "0.8.2", default-features = false, features = [
   "postgres",
 ], optional = true }
 ulid = { version = "1", optional = true }

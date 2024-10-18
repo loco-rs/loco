@@ -15,7 +15,7 @@ use crate::{
     app::{AppContext, Hooks},
     banner::print_banner,
     bgworker, cache,
-    config::{self},
+    config::{self, WorkerMode},
     controller::ListRoutes,
     environment::Environment,
     errors::Error,
@@ -88,19 +88,21 @@ pub async fn start<H: Hooks>(
         }
         (Some(router), true) => {
             debug!("note: worker is run in-process (tokio spawn)");
-            if let Some(queue) = &app_context.queue_provider {
-                let cloned_queue = queue.clone();
-                tokio::spawn(async move {
-                    let res = cloned_queue.run().await;
-                    if res.is_err() {
-                        error!(
-                            err = res.unwrap_err().to_string(),
-                            "error while running worker"
-                        );
-                    }
-                });
-            } else {
-                return Err(Error::QueueProviderMissing);
+            if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
+                if let Some(queue) = &app_context.queue_provider {
+                    let cloned_queue = queue.clone();
+                    tokio::spawn(async move {
+                        let res = cloned_queue.run().await;
+                        if res.is_err() {
+                            error!(
+                                err = res.unwrap_err().to_string(),
+                                "error while running worker"
+                            );
+                        }
+                    });
+                } else {
+                    return Err(Error::QueueProviderMissing);
+                }
             }
 
             H::serve(router, &app_context).await?;
@@ -373,14 +375,16 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
 }
 
 async fn register_workers<H: Hooks>(app_context: &AppContext) -> Result<()> {
-    if let Some(queue) = &app_context.queue_provider {
-        queue.register(MailerWorker::build(app_context)).await?;
-        H::connect_workers(app_context, queue).await?;
-    } else {
-        return Err(Error::QueueProviderMissing);
-    }
+    if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
+        if let Some(queue) = &app_context.queue_provider {
+            queue.register(MailerWorker::build(app_context)).await?;
+            H::connect_workers(app_context, queue).await?;
+        } else {
+            return Err(Error::QueueProviderMissing);
+        }
 
-    debug!("done registering workers and queues");
+        debug!("done registering workers and queues");
+    }
     Ok(())
 }
 
