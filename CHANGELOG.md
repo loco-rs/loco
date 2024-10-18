@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+* `cargo loco doctor` now checks for minimal required SeaORM CLI version
+* **BREAKING** Improved migration generator. If you have an existing migration project, add the following comment indicator to the top of the `vec` statement and right below the opening bracked like so in `migration/src/lib.rs`:
+```rust
+    fn migrations() -> Vec<Box<dyn MigrationTrait>> {
+        vec![
+            // inject-below (do not remove this comment)
+```
+
+## v0.11.0
+
+
+* Upgrade **SeaORM to v1.1.0**
+* Added OpenAPI example
+* Improve health route [https://github.com/loco-rs/loco/pull/851](https://github.com/loco-rs/loco/pull/851)
+* Add good pragmas to Sqlite [https://github.com/loco-rs/loco/pull/848](https://github.com/loco-rs/loco/pull/848)
 * Upgrade to rsbuild 1.0. [https://github.com/loco-rs/loco/pull/792](https://github.com/loco-rs/loco/pull/792)
 * Implements fmt::Debug to pub structs. [https://github.com/loco-rs/loco/pull/812](https://github.com/loco-rs/loco/pull/812)
 * Add num_workers config for sidekiq queue. [https://github.com/loco-rs/loco/pull/823](https://github.com/loco-rs/loco/pull/823)
