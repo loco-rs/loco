@@ -161,11 +161,12 @@ pub struct TemplateRule {
 }
 
 /// Collects template configurations from files named [`GENERATOR_FILE_NAME`]
-/// within the root level directories in the provided path. This function
-/// gracefully handles any issues related to the existence or format of the
-/// generator files, allowing the code to skip problematic starter templates
-/// without returning an error. This approach is designed to avoid negatively
-/// impacting users due to faulty template configurations.
+/// within the root level directories in the provided path.
+///
+/// This function gracefully handles any issues related to the existence or
+/// format of the generator files, allowing the code to skip problematic starter
+/// templates without returning an error. This approach is designed to avoid
+/// negatively impacting users due to faulty template configurations.
 ///
 /// # Errors
 /// The code should returns an error only when could get folder collections.
