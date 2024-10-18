@@ -1,4 +1,5 @@
 //! Sets secure headers for your backend to promote security-by-default.
+//!
 //! This middleware applies secure HTTP headers, providing pre-defined presets
 //! (e.g., "github") and the ability to override or define custom headers.
 
