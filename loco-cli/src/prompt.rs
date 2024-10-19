@@ -12,7 +12,7 @@ use crate::{
 };
 
 lazy_static! {
-    static ref VALIDATE_APP_NAME: Regex = Regex::new(r"^[a-zA-Z0-9_]+$").unwrap();
+    static ref VALIDATE_APP_NAME: Regex = Regex::new(r"^[a-zA-Z0-9_-]+$").unwrap();
 }
 
 /// Prompts the user to enter a valid application name for use with the Loco app

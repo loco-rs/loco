@@ -1,11 +1,11 @@
 [workspace]
 
 [package]
-name = "loco_starter_template"
+name = "loco-starter-template"
 version = "0.1.0"
 edition = "2021"
 publish = false
-default-run = "loco_starter_template-cli"
+default-run = "loco-starter-template-cli"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -39,7 +39,7 @@ unic-langid = "0.9.4"
 # /view engine
 
 [[bin]]
-name = "loco_starter_template-cli"
+name = "loco-starter-template-cli"
 path = "src/bin/main.rs"
 required-features = []
 

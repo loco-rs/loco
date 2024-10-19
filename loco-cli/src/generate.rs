@@ -20,7 +20,7 @@ use crate::{
 
 // Name of generator template that should be existing in each starter folder
 const GENERATOR_FILE_NAME: &str = "generator.yaml";
-
+const APP_NAME_PLACEHOLDER: &str = "{{AppName}}";
 const LIB_NAME_PLACEHOLDER: &str = "{{LibName}}";
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -86,6 +86,7 @@ pub enum AssetsOption {
 #[derive(Debug, Clone, Default)]
 /// Represents internal placeholders to be replaced.
 pub struct ArgsPlaceholder {
+    pub app_name: String,
     pub lib_name: String,
     pub db: Option<DBOption>,
     pub bg: Option<BackgroundOption>,
@@ -96,6 +97,9 @@ pub struct ArgsPlaceholder {
 #[derive(Debug, Clone, Serialize)]
 /// Enum representing different kinds of template rules.
 pub enum TemplateRuleKind {
+    /// A non snake case version of the app name
+    AppName,
+    /// Snake case version of the app name
     LibName,
     JwtToken,
     Any(String),
@@ -107,7 +111,9 @@ impl ArgsPlaceholder {
     /// given lib name.
     #[must_use]
     pub fn replace_placeholders(&self, content: &str) -> String {
-        content.replace(LIB_NAME_PLACEHOLDER, &self.lib_name)
+        content
+            .replace(APP_NAME_PLACEHOLDER, &self.app_name)
+            .replace(LIB_NAME_PLACEHOLDER, &self.lib_name)
     }
 }
 
@@ -121,6 +127,7 @@ impl<'de> Deserialize<'de> for TemplateRuleKind {
 
         match &value {
             serde_yaml::Value::String(s) => match s.as_str() {
+                "AppName" => Ok(Self::AppName),
                 "LibName" => Ok(Self::LibName),
                 "JwtToken" => Ok(Self::JwtToken),
                 _ => Ok(Self::Any(s.clone())),
@@ -135,6 +142,7 @@ impl TemplateRuleKind {
     /// Get the value from the rule Kind.
     pub fn get_val(&self, args: &ArgsPlaceholder) -> String {
         match self {
+            Self::AppName => args.app_name.to_string(),
             Self::LibName => args.lib_name.to_string(),
             Self::JwtToken => thread_rng()
                 .sample_iter(&Alphanumeric)
@@ -295,10 +303,8 @@ impl Template {
                 }
 
                 let replace = match rule.kind {
-                    TemplateRuleKind::LibName | TemplateRuleKind::JwtToken => {
-                        rule.kind.get_val(args)
-                    }
                     TemplateRuleKind::Any(_) => args.replace_placeholders(&rule.kind.get_val(args)),
+                    _ => rule.kind.get_val(args),
                 };
                 content = rule.pattern.replace_all(&content, replace).to_string();
                 is_changed = true;
