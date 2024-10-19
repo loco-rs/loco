@@ -70,27 +70,21 @@ fn merge_config_with_client(co: &mut ClientOptions, config: MongoDbConfig) -> Cl
             co.command_event_handler = client_options
                 .command_event_handler
                 .or(co.command_event_handler.clone());
-            co.connect_timeout = client_options
-                .connect_timeout
-                .or(co.connect_timeout.clone());
+            co.connect_timeout = client_options.connect_timeout.or(co.connect_timeout);
             co.credential = client_options.credential.or(co.credential.clone());
-            co.direct_connection = client_options
-                .direct_connection
-                .or(co.direct_connection.clone());
+            co.direct_connection = client_options.direct_connection.or(co.direct_connection);
             co.driver_info = client_options.driver_info.or(co.driver_info.clone());
-            co.heartbeat_freq = client_options.heartbeat_freq.or(co.heartbeat_freq.clone());
-            co.load_balanced = client_options.load_balanced.or(co.load_balanced.clone());
-            co.local_threshold = client_options
-                .local_threshold
-                .or(co.local_threshold.clone());
-            co.max_idle_time = client_options.max_idle_time.or(co.max_idle_time.clone());
-            co.max_pool_size = client_options.max_pool_size.or(co.max_pool_size.clone());
-            co.min_pool_size = client_options.min_pool_size.or(co.min_pool_size.clone());
-            co.max_connecting = client_options.max_connecting.or(co.max_connecting.clone());
+            co.heartbeat_freq = client_options.heartbeat_freq.or(co.heartbeat_freq);
+            co.load_balanced = client_options.load_balanced.or(co.load_balanced);
+            co.local_threshold = client_options.local_threshold.or(co.local_threshold);
+            co.max_idle_time = client_options.max_idle_time.or(co.max_idle_time);
+            co.max_pool_size = client_options.max_pool_size.or(co.max_pool_size);
+            co.min_pool_size = client_options.min_pool_size.or(co.min_pool_size);
+            co.max_connecting = client_options.max_connecting.or(co.max_connecting);
             co.read_concern = client_options.read_concern.or(co.read_concern.clone());
             co.repl_set_name = client_options.repl_set_name.or(co.repl_set_name.clone());
-            co.retry_reads = client_options.retry_reads.or(co.retry_reads.clone());
-            co.retry_writes = client_options.retry_writes.or(co.retry_writes.clone());
+            co.retry_reads = client_options.retry_reads.or(co.retry_reads);
+            co.retry_writes = client_options.retry_writes.or(co.retry_writes);
             co.sdam_event_handler = client_options
                 .sdam_event_handler
                 .or(co.sdam_event_handler.clone());
@@ -100,7 +94,7 @@ fn merge_config_with_client(co: &mut ClientOptions, config: MongoDbConfig) -> Cl
             co.server_api = client_options.server_api.or(co.server_api.clone());
             co.server_selection_timeout = client_options
                 .server_selection_timeout
-                .or(co.server_selection_timeout.clone());
+                .or(co.server_selection_timeout);
             co.default_database = client_options
                 .default_database
                 .or(co.default_database.clone());
@@ -108,7 +102,7 @@ fn merge_config_with_client(co: &mut ClientOptions, config: MongoDbConfig) -> Cl
             // co.tracing_max_document_length_bytes =
             // client_options.tracing_max_document_length_bytes;
             co.write_concern = client_options.write_concern.or(co.write_concern.clone());
-            co.srv_max_hosts = client_options.srv_max_hosts.or(co.srv_max_hosts.clone());
+            co.srv_max_hosts = client_options.srv_max_hosts.or(co.srv_max_hosts);
 
             co.clone()
         }
