@@ -428,6 +428,8 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
 pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
     use colored::Colorize;
 
+    use crate::gen::AppInfo;
+
     let cli: Cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
@@ -511,7 +513,13 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             run_scheduler::<H>(&app_context, config.as_ref(), name, tag, list).await?;
         }
         Commands::Generate { component } => {
-            gen::generate::<H>(component.try_into()?, &config)?;
+            gen::generate(
+                component.try_into()?,
+                &config,
+                &AppInfo {
+                    app_name: H::app_name().to_string(),
+                },
+            )?;
         }
         Commands::Doctor { config: config_arg } => {
             if config_arg {

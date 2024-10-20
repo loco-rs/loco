@@ -14,7 +14,7 @@ mod model;
 mod scaffold;
 use std::str::FromStr;
 
-use crate::{app::Hooks, config::Config, errors, Result};
+use crate::{config::Config, errors, Result};
 
 const CONTROLLER_T: &str = include_str!("templates/controller.t");
 const CONTROLLER_TEST_T: &str = include_str!("templates/request_test.t");
@@ -178,9 +178,20 @@ pub enum Component {
     },
     Deployment {},
 }
+pub struct AppInfo {
+    pub app_name: String,
+}
+
 #[allow(clippy::too_many_lines)]
-pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
+pub fn generate(component: Component, config: &Config, appinfo: &AppInfo) -> Result<()> {
     let rrgen = RRgen::default();
+    /*
+    (1)
+    XXX: remove hooks generic from child generator, materialize it here and pass it
+         means each generator accepts a [component, config, context] tuple
+         this will allow us to test without an app instance
+    (2) proceed to test individual generators
+     */
     match component {
         #[cfg(feature = "with-db")]
         Component::Model {
@@ -191,19 +202,20 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
         } => {
             println!(
                 "{}",
-                model::generate::<H>(&rrgen, &name, link, migration_only, &fields)?
+                model::generate(&rrgen, &name, link, migration_only, &fields, appinfo)?
             );
         }
         #[cfg(feature = "with-db")]
         Component::Scaffold { name, fields, kind } => {
             println!(
                 "{}",
-                scaffold::generate::<H>(&rrgen, &name, &fields, &kind)?
+                scaffold::generate(&rrgen, &name, &fields, &kind, appinfo)?
             );
         }
         #[cfg(feature = "with-db")]
         Component::Migration { name } => {
-            let vars = json!({ "name": name, "ts": chrono::Utc::now(), "pkg_name": H::app_name()});
+            let vars =
+                json!({ "name": name, "ts": chrono::Utc::now(), "pkg_name": appinfo.app_name});
             rrgen.generate(MIGRATION_T, &vars)?;
         }
         Component::Controller {
@@ -213,20 +225,20 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
         } => {
             println!(
                 "{}",
-                controller::generate::<H>(&rrgen, &name, &actions, &kind)?
+                controller::generate(&rrgen, &name, &actions, &kind, appinfo)?
             );
         }
         Component::Task { name } => {
-            let vars = json!({"name": name, "pkg_name": H::app_name()});
+            let vars = json!({"name": name, "pkg_name": appinfo.app_name});
             rrgen.generate(TASK_T, &vars)?;
             rrgen.generate(TASK_TEST_T, &vars)?;
         }
         Component::Scheduler {} => {
-            let vars = json!({"pkg_name": H::app_name()});
+            let vars = json!({"pkg_name": appinfo.app_name});
             rrgen.generate(SCHEDULER_T, &vars)?;
         }
         Component::Worker { name } => {
-            let vars = json!({"name": name, "pkg_name": H::app_name()});
+            let vars = json!({"name": name, "pkg_name": appinfo.app_name});
             rrgen.generate(WORKER_T, &vars)?;
             rrgen.generate(WORKER_TEST_T, &vars)?;
         }
@@ -264,7 +276,7 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
                         .unwrap_or_default();
 
                     let vars = json!({
-                        "pkg_name": H::app_name(),
+                        "pkg_name": appinfo.app_name,
                         "copy_asset_folder": copy_asset_folder,
                         "fallback_file": fallback_file
                     });
@@ -273,7 +285,7 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
                 }
                 DeploymentKind::Shuttle => {
                     let vars = json!({
-                        "pkg_name": H::app_name(),
+                        "pkg_name": appinfo.app_name,
                         "shuttle_runtime_version": DEPLOYMENT_SHUTTLE_RUNTIME_VERSION,
                         "with_db": cfg!(feature = "with-db")
                     });
@@ -287,7 +299,7 @@ pub fn generate<H: Hooks>(component: Component, config: &Config) -> Result<()> {
                         .replace("http://", "")
                         .replace("https://", "");
                     let vars = json!({
-                        "pkg_name": H::app_name(),
+                        "pkg_name": appinfo.app_name,
                         "domain": &host,
                         "port": &config.server.port
                     });
