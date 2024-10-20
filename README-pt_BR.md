@@ -6,7 +6,7 @@
 
    <h3>
    <!-- <snip id="description" inject_from="yaml"> -->
-🚂 Loco é Rust on Rails.
+🚂 Loco is Rust on Rails.
 <!--</snip> -->
    </h3>
 
