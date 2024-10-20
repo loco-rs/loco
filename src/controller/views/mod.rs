@@ -28,8 +28,8 @@ impl<E> ViewEngine<E> {
 
 /// A struct representing an inline Tera view renderer.
 ///
-/// This struct provides functionality to render templates using the Tera templating engine
-/// directly from raw template strings.
+/// This struct provides functionality to render templates using the Tera
+/// templating engine directly from raw template strings.
 ///
 /// # Example
 /// ```
