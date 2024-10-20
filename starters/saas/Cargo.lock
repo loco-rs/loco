@@ -2355,7 +2355,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "loco_starter_template"
+name = "loco-starter-template"
 version = "0.1.0"
 dependencies = [
  "async-trait",

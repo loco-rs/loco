@@ -4,6 +4,12 @@ options:
   - db
   - bg
 rules:
+  - pattern: loco-starter-template
+    kind: AppName
+    file_patterns:
+      - rs
+      - toml
+      - trycmd
   - pattern: loco_starter_template
     kind: LibName
     file_patterns:

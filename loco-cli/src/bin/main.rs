@@ -1,6 +1,7 @@
 use std::{env, path::PathBuf};
 
 use clap::{Parser, Subcommand};
+use heck::ToSnakeCase;
 use loco_cli::{
     generate::{self, AssetsOption, BackgroundOption, DBOption},
     git, prompt, CmdExit,
@@ -76,10 +77,11 @@ fn main() -> eyre::Result<()> {
                 prompt::warn_if_in_git_repo()?;
             }
 
-            let app = prompt::app_name(name)?;
-
+            let app_name = prompt::app_name(name)?;
+            let lib_name = app_name.to_snake_case();
             let args = generate::ArgsPlaceholder {
-                lib_name: app.to_string(),
+                app_name: app_name.clone(),
+                lib_name,
                 db,
                 bg,
                 assets,
@@ -87,7 +89,7 @@ fn main() -> eyre::Result<()> {
             };
 
             tracing::debug!(args = format!("{:?}", args), "generate template args");
-            match git::clone_template(path.as_path(), &app, &args) {
+            match git::clone_template(path.as_path(), &app_name, &args) {
                 Ok((path, messages)) => CmdExit::ok_with_message(&format!(
                     "\n🚂 Loco app generated successfully in:\n{}\n\n{}",
                     dunce::canonicalize(&path).unwrap_or(path).display(),
