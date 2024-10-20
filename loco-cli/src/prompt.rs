@@ -9,7 +9,6 @@ use crate::{
     Error,
 };
 
-
 /// Prompts the user to enter a valid application name for use with the Loco app
 /// generator.
 ///
