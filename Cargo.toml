@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["xtask", "loco-extras"]
+members = ["loco-rs", "loco-extras", "xtask"]
 exclude = ["starters"]
 
 [workspace.package]
