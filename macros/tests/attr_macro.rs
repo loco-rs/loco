@@ -1,5 +1,6 @@
 // tests/attribute_macro.rs
 
+#[allow(unused)]
 use loco_macros::*;
 
 // macro converts struct S to struct H
@@ -7,5 +8,8 @@ use loco_macros::*;
 #[test]
 //#[test_request]
 fn test_macro() {
-    assert!(true);
+    #[allow(clippy::assertions_on_constants)]
+    {
+        assert!(true);
+    }
 }
