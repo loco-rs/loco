@@ -1,0 +1,153 @@
+[package]
+name = "loco-rs"
+version = "0.11.0"
+description = "The one-person framework for Rust"
+homepage = "https://loco.rs/"
+documentation = "https://docs.rs/loco-rs"
+authors = ["Dotan Nahum <dotan@rng0.io>", "Elad Kaplan <kaplan.elad@gmail.com>"]
+repository = "https://github.com/loco-rs/loco"
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ["auth_jwt", "cli", "with-db", "cache_inmem", "bg_redis", "bg_pg"]
+auth_jwt = ["dep:jsonwebtoken"]
+cli = ["dep:clap"]
+testing = ["dep:axum-test"]
+with-db = ["dep:sea-orm", "dep:sea-orm-migration"]
+channels = ["dep:socketioxide"]
+# Storage features
+all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
+storage_aws_s3 = ["object_store/aws"]
+storage_azure = ["object_store/azure"]
+storage_gcp = ["object_store/gcp"]
+# Cache feature
+cache_inmem = ["dep:moka"]
+bg_redis = ["dep:rusty-sidekiq", "dep:bb8"]
+bg_pg = ["dep:sqlx", "dep:ulid"]
+
+[dependencies]
+backtrace_printer = { version = "1.3.0" }
+
+# cli
+clap = { version = "4.4.7", features = ["derive"], optional = true }
+colored = "2"
+
+
+sea-orm = { version = "1.0.0", features = [
+    "sqlx-postgres",        # `DATABASE_DRIVER` feature
+    "sqlx-sqlite",
+    "runtime-tokio-rustls",
+    "macros",
+], optional = true }
+
+tokio = { version = "1.33.0", default-features = false }
+# the rest
+
+serde = "1"
+serde_json = "1"
+serde_yaml = "0.9"
+serde_variant = "0.1.2"
+
+
+async-trait = { workspace = true }
+
+axum = { workspace = true }
+axum-extra = { version = "0.9", features = ["cookie"] }
+regex = "1"
+lazy_static = "1.4.0"
+fs-err = "2.11.0"
+# mailer
+tera = "1.19.1"
+heck = "0.4.0"
+lettre = { version = "0.11.4", default-features = false, features = [
+    "builder",
+    "hostname",
+    "smtp-transport",
+    "tokio1-rustls-tls",
+] }
+include_dir = "0.7.3"
+thiserror = "1"
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
+tracing-appender = "0.2.3"
+
+duct = { version = "0.13.6" }
+duct_sh = { version = "0.13.7" }
+
+tower-http = { workspace = true }
+byte-unit = "4.0.19"
+
+argon2 = { version = "0.5.2", features = ["std"] }
+rand = { version = "0.8.5", features = ["std"] }
+jsonwebtoken = { version = "9.3.0", optional = true }
+validator = { version = "0.18.1", features = ["derive"] }
+futures-util = "0.3"
+tower = { workspace = true }
+hyper = "1.1"
+mime = "0.3"
+bytes = "1.1"
+ipnetwork = "0.20.0"
+
+axum-test = { version = "16.1.0", optional = true }
+
+# gen
+rrgen = "0.5.3"
+chrono = "0.4.31"
+cargo_metadata = "0.18.1"
+dialoguer = "0.11.0"
+
+cfg-if = "1"
+
+uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
+
+# A socket.io server implementation
+socketioxide = { version = "0.14.0", features = ["state"], optional = true }
+
+
+# File Upload
+object_store = { version = "0.11.0", default-features = false }
+
+# cache
+moka = { version = "0.12.7", features = ["sync"], optional = true }
+
+# Scheduler
+tokio-cron-scheduler = { version = "0.11.0", features = ["signal"] }
+english-to-cron = { version = "0.1.2" }
+
+# bg_pg: postgres workers
+sqlx = { version = "0.8.2", default-features = false, features = [
+    "postgres",
+], optional = true }
+ulid = { version = "1", optional = true }
+
+# bg_redis: redis workers
+rusty-sidekiq = { version = "0.11.0", default-features = false, optional = true }
+bb8 = { version = "0.8.1", optional = true }
+
+[dependencies.sea-orm-migration]
+optional = true
+version = "1.0.0"
+features = [
+    # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.
+    # View the list of supported features at https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime.
+    # e.g.
+    "runtime-tokio-rustls", # `ASYNC_RUNTIME` feature
+    "sqlx-postgres",        # `DATABASE_DRIVER` feature
+    "sqlx-sqlite",
+]
+
+[package.metadata.docs.rs]
+features = ["testing"]
+
+[dev-dependencies]
+loco-rs = { path = ".", features = ["testing"] }
+rstest = "0.21.0"
+insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
+tree-fs = { version = "0.1.0" }
+reqwest = { version = "0.12.7" }
+serial_test = "3.1.1"
+tower = { workspace = true, features = ["util"] }
