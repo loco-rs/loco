@@ -175,3 +175,7 @@ tree-fs = { version = "0.1.0" }
 reqwest = { version = "0.12.7" }
 serial_test = "3.1.1"
 tower = { workspace = true, features = ["util"] }
+
+# generator tests
+tempfile = "3"
+duct_sh = { version = "0.13.7" }

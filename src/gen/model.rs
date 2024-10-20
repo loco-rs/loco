@@ -87,3 +87,35 @@ pub fn generate<H: Hooks>(
     let messages = collect_messages(vec![res1, res2]);
     Ok(messages)
 }
+
+#[cfg(test)]
+mod tests {
+    use std::env;
+
+    #[test]
+    fn test_can_generate_app() {
+        let curdir = env::current_dir().unwrap();
+        println!("current: {curdir:?}");
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path();
+
+        println!("tmp: {path:?}");
+        env::set_current_dir(path).unwrap();
+
+        let newdir = env::current_dir().unwrap();
+        println!("changed to: {newdir:?}");
+
+        let cmd = "loco new -n saas -t saas --db sqlite --bg async --assets serverside";
+        println!("RUN {cmd}");
+        let result = duct_sh::sh_dangerous(cmd)
+            .stderr_capture()
+            .stderr_capture()
+            .unchecked()
+            .run()
+            .unwrap();
+        println!("result:\n{result:?}");
+
+        env::set_current_dir(curdir).unwrap();
+        panic!();
+    }
+}
