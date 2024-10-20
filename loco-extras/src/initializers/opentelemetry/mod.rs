@@ -25,7 +25,7 @@ impl Initializer for OpenTelemetryInitializer {
 
     async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
         let router = router
-            .layer(OtelInResponseLayer::default())
+            .layer(OtelInResponseLayer)
             .layer(OtelAxumLayer::default());
         Ok(router)
     }

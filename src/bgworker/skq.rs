@@ -1,10 +1,11 @@
 use std::{marker::PhantomData, sync::Arc};
 
-use super::{BackgroundWorker, Queue};
-use crate::{config::RedisQueueConfig, Result};
 use async_trait::async_trait;
 use bb8::Pool;
 use sidekiq::{Processor, ProcessorConfig, RedisConnectionManager};
+
+use super::{BackgroundWorker, Queue};
+use crate::{config::RedisQueueConfig, Result};
 pub type RedisPool = Pool<RedisConnectionManager>;
 
 #[derive(Debug)]

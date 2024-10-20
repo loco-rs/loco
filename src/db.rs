@@ -248,16 +248,15 @@ where
     A: sea_orm::ActiveModelTrait + Send + Sync,
     sea_orm::Insert<A>: Send + Sync, // Add this Send bound
 {
-    let loader: Vec<serde_json::Value> = serde_yaml::from_reader(File::open(path)?)?;
+    let seed_data: Vec<serde_json::Value> = serde_yaml::from_reader(File::open(path)?)?;
 
-    let mut users: Vec<A> = vec![];
-    for user in loader {
-        users.push(A::from_json(user)?);
+    for row in seed_data {
+        let mut model = <A as ActiveModelTrait>::default();
+        model.set_from_json(row)?;
+        <A as ActiveModelTrait>::Entity::insert(model)
+            .exec(db)
+            .await?;
     }
-
-    <A as ActiveModelTrait>::Entity::insert_many(users)
-        .exec(db)
-        .await?;
 
     Ok(())
 }
