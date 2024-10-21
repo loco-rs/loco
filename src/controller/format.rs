@@ -55,7 +55,7 @@ use crate::{
 ///
 /// # Errors
 ///
-/// Currently this function did't return any error. this is for feature
+/// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn empty() -> Result<Response> {
     Ok(().into_response())
@@ -76,7 +76,7 @@ pub fn empty() -> Result<Response> {
 ///
 /// # Errors
 ///
-/// Currently this function did't return any error. this is for feature
+/// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn text(t: &str) -> Result<Response> {
     Ok(t.to_string().into_response())
@@ -105,7 +105,7 @@ pub fn text(t: &str) -> Result<Response> {
 ///
 /// # Errors
 ///
-/// Currently this function did't return any error. this is for feature
+/// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn json<T: Serialize>(t: T) -> Result<Response> {
     Ok(Json(t).into_response())
@@ -134,7 +134,7 @@ pub fn empty_json() -> Result<Response> {
 ///
 /// # Errors
 ///
-/// Currently this function did't return any error. this is for feature
+/// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn html(content: &str) -> Result<Response> {
     Ok(Html(content.to_string()).into_response())
@@ -154,7 +154,7 @@ pub fn html(content: &str) -> Result<Response> {
 ///
 /// # Errors
 ///
-/// Currently this function did't return any error. this is for feature
+/// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn redirect(to: &str) -> Result<Response> {
     Ok(Redirect::to(to).into_response())
