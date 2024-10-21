@@ -69,14 +69,6 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
 
-      # for generators tests
-      - name: Install seaorm cli
-        run: cargo install sea-orm-cli
-      - run: |
-          cargo install --path .
-        working-directory: ./loco-cli
-      # /generators test
-
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:

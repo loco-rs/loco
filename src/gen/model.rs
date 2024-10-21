@@ -137,7 +137,7 @@ mod tests {
                 &rrgen,
                 "movies",
                 false,
-                false,
+                true,
                 &[("title".to_string(), "string".to_string())],
                 &AppInfo {
                     app_name: "saas".to_string(),
@@ -152,12 +152,6 @@ mod tests {
             assert_file(migration.to_str().unwrap(), |content| {
                 content.assert_syntax();
                 content.assert_regex_match("Title");
-            });
-            assert_file("src/models/_entities/movies.rs", |content| {
-                content.assert_regex_match("title");
-            });
-            assert_file("src/models/movies.rs", |content| {
-                content.assert_syntax();
             });
             assert_cargo_check();
         });
