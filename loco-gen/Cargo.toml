@@ -1,6 +1,6 @@
 [package]
 name = "loco-gen"
-version = "0.1.0"
+version = "0.11.0"
 description = "Loco generators"
 license.workspace = true
 edition.workspace = true
@@ -24,7 +24,9 @@ tracing = { workspace = true }
 chrono = { workspace = true }
 
 clap = { version = "4.4.7", features = ["derive"] }
-tempfile = "3"
-syn = "2"
 dialoguer = "0.11"
 duct = "0.13"
+
+[dev-dependencies]
+tempfile = "3"
+syn = { version = "2", features = ["full"] }

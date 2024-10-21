@@ -135,7 +135,7 @@ bb8 = { version = "0.8.1", optional = true }
 
 [workspace.dependencies]
 
-chrono = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1.40"
 regex = "1"
 thiserror = "1"

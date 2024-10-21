@@ -117,7 +117,7 @@ mod tests {
                     "--assets",
                     "serverside",
                 ])
-                .env("STARTERS_LOCAL_PATH", previous)
+                .env("STARTERS_LOCAL_PATH", previous.join("../"))
                 .status()
                 .expect("cannot run command");
 
@@ -131,35 +131,6 @@ mod tests {
 
     #[test]
     fn test_can_generate_model() {
-        /*
-        issues: 1. setting current dir is too aggressive and fails other test that are run in parallel.
-                   - possible solution to forget 'temp' and always generate in actual current dir, making sure to delete before and after
-                   - or isolate these tests and run them with serial
-                   - either way may be to gate under a test_generators feature flag
-                   - or move all these into integration tests, but then need to expose the generators functions
-                   - or add a magic env var, saying where the base app folder is, and have all gen operations start from there
-                   - another solution is to use category_... and aggressively use cargo test filtering from now on
-                     test_ (unit test)
-                     gen_test (generators tests)
-                     integration_(various integration)
-                   - another solution: move gen into loco-gen make it a crate, then its testable in isolation in another ci job
-
-                        < the only reverse dep is the Error and Result types, which we can take care of >
-
-                    another insight: we don't need 'gen' when building to production. this is a dev only feature and dev only crate
-                            [ ] refactor into() to be manual and take config, create a proper deployment and nginx params
-                                generate should not know about loco config
-                            [ ] create a thiserror result/error typeset
-                            [ ] with-db feature should be irrelevant to gen, or propogate this feature from master crate
-                            [ ] migrate all errors to gen local things
-                            [ ] map error at the root calling gen to loco crate errors
-                            [ ] refactor all gen namespaces and types into loco_gen
-                            [ ] shuffle / move deps from loco to gen and take care of shared deps
-
-                2. running seaorm and migrations is too heavy
-
-                3. running cargo check may be too heavy, and requires 'cd' into the dir too
-         */
         let rrgen = rrgen::RRgen::default();
         with_new_app("saas", || {
             super::generate(
