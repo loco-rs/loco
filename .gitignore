@@ -1,5 +1,6 @@
 # local dev
 todo.txt
+todo.md
 examples/demo2
 *.sqlite
 *.sqlite-wal

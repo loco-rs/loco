@@ -30,7 +30,6 @@ pub mod config;
 pub mod controller;
 pub mod environment;
 pub mod errors;
-mod gen;
 pub mod hash;
 mod logger;
 pub mod mailer;
