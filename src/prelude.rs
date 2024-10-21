@@ -1,6 +1,6 @@
 pub use async_trait::async_trait;
 pub use axum::{
-    extract::{Form, Path, State},
+    extract::{Path, State},
     response::{IntoResponse, Response},
     routing::{delete, get, head, options, patch, post, put, trace},
 };
@@ -34,7 +34,7 @@ pub use crate::{
         },
         not_found, unauthorized,
         views::{engines::TeraView, ViewEngine, ViewRenderer},
-        Json, Routes,
+        Form, Json, Routes,
     },
     errors::Error,
     mailer,
