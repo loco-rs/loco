@@ -74,8 +74,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - run: |
-          cargo install --path .
-        working-directory: ../loco-cli
+          cargo install --path ../loco-cli
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
