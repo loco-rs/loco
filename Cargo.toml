@@ -179,3 +179,4 @@ tower = { workspace = true, features = ["util"] }
 # generator tests
 tempfile = "3"
 duct_sh = { version = "0.13.7" }
+syn = { version = "2", features = ["full"] }

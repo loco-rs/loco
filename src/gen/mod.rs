@@ -12,6 +12,8 @@ mod controller;
 mod model;
 #[cfg(feature = "with-db")]
 mod scaffold;
+#[cfg(test)]
+mod testutil;
 use std::str::FromStr;
 
 use crate::{config::Config, errors, Result};

@@ -91,32 +91,75 @@ pub fn generate(
 
 #[cfg(test)]
 mod tests {
-    use std::env;
+    use std::{env, process::Command};
+
+    use crate::gen::{
+        testutil::{self, assert_cargo_check, assert_file, assert_single_file_match},
+        AppInfo,
+    };
+
+    fn with_new_app<F>(app_name: &str, f: F)
+    where
+        F: FnOnce(),
+    {
+        testutil::with_temp_dir(|previous, current| {
+            let status = Command::new("loco")
+                .args([
+                    "new",
+                    "-n",
+                    app_name,
+                    "-t",
+                    "saas",
+                    "--db",
+                    "sqlite",
+                    "--bg",
+                    "async",
+                    "--assets",
+                    "serverside",
+                ])
+                .env("STARTERS_LOCAL_PATH", previous)
+                .status()
+                .expect("cannot run command");
+
+            assert!(status.success(), "Command failed: loco new -n {app_name}");
+            env::set_current_dir(current.join(app_name))
+                .expect("Failed to change directory to app");
+            f(); // Execute the provided closure
+        })
+        .expect("temp dir setup");
+    }
 
     #[test]
-    fn test_can_generate_app() {
-        let curdir = env::current_dir().unwrap();
-        println!("current: {curdir:?}");
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path();
-
-        println!("tmp: {path:?}");
-        env::set_current_dir(path).unwrap();
-
-        let newdir = env::current_dir().unwrap();
-        println!("changed to: {newdir:?}");
-
-        let cmd = "loco new -n saas -t saas --db sqlite --bg async --assets serverside";
-        println!("RUN {cmd}");
-        let result = duct_sh::sh_dangerous(cmd)
-            .stderr_capture()
-            .stderr_capture()
-            .unchecked()
-            .run()
-            .unwrap();
-        println!("result:\n{result:?}");
-
-        env::set_current_dir(curdir).unwrap();
-        panic!();
+    fn test_can_generate_model() {
+        let rrgen = rrgen::RRgen::default();
+        with_new_app("saas", || {
+            super::generate(
+                &rrgen,
+                "movies",
+                false,
+                false,
+                &[("title".to_string(), "string".to_string())],
+                &AppInfo {
+                    app_name: "saas".to_string(),
+                },
+            )
+            .expect("generate");
+            assert_file("migration/src/lib.rs", |content| {
+                content.assert_syntax();
+                content.assert_regex_match("_movies::Migration");
+            });
+            let migration = assert_single_file_match("migration/src", ".*_movies.rs$");
+            assert_file(migration.to_str().unwrap(), |content| {
+                content.assert_syntax();
+                content.assert_regex_match("Title");
+            });
+            assert_file("src/models/_entities/movies.rs", |content| {
+                content.assert_regex_match("title");
+            });
+            assert_file("src/models/movies.rs", |content| {
+                content.assert_syntax();
+            });
+            assert_cargo_check();
+        });
     }
 }
