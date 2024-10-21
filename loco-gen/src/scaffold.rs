@@ -1,7 +1,7 @@
 use rrgen::RRgen;
 use serde_json::json;
 
-use crate::gen;
+use crate as gen;
 
 const API_CONTROLLER_SCAFFOLD_T: &str = include_str!("templates/scaffold/api/controller.t");
 const API_CONTROLLER_TEST_T: &str = include_str!("templates/scaffold/api/test.t");
@@ -22,8 +22,7 @@ const HTML_VIEW_CREATE_SCAFFOLD_T: &str = include_str!("templates/scaffold/html/
 const HTML_VIEW_SHOW_SCAFFOLD_T: &str = include_str!("templates/scaffold/html/view_show.t");
 const HTML_VIEW_LIST_SCAFFOLD_T: &str = include_str!("templates/scaffold/html/view_list.t");
 
-use super::{collect_messages, model, AppInfo, MAPPINGS};
-use crate::{errors::Error, Result};
+use super::{collect_messages, model, AppInfo, Error, Result, MAPPINGS};
 
 pub fn generate(
     rrgen: &RRgen,

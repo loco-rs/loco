@@ -1,7 +1,7 @@
 use rrgen::RRgen;
 use serde_json::json;
 
-use crate::gen;
+use crate as gen;
 
 const API_CONTROLLER_CONTROLLER_T: &str = include_str!("templates/controller/api/controller.t");
 const API_CONTROLLER_TEST_T: &str = include_str!("templates/controller/api/test.t");
@@ -12,8 +12,7 @@ const HTMX_VIEW_T: &str = include_str!("templates/controller/htmx/view.t");
 const HTML_CONTROLLER_CONTROLLER_T: &str = include_str!("templates/controller/html/controller.t");
 const HTML_VIEW_T: &str = include_str!("templates/controller/html/view.t");
 
-use super::{collect_messages, AppInfo};
-use crate::Result;
+use super::{collect_messages, AppInfo, Result};
 
 pub fn generate(
     rrgen: &RRgen,

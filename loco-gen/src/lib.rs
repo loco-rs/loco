@@ -16,8 +16,6 @@ mod scaffold;
 mod testutil;
 use std::str::FromStr;
 
-use crate::{config::Config, errors, Result};
-
 const CONTROLLER_T: &str = include_str!("templates/controller.t");
 const CONTROLLER_TEST_T: &str = include_str!("templates/request_test.t");
 
@@ -50,6 +48,26 @@ const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
     ("Shuttle", DeploymentKind::Shuttle),
     ("Nginx", DeploymentKind::Nginx),
 ];
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[error("{0}")]
+    Message(String),
+    #[error(transparent)]
+    RRgen(#[from] rrgen::Error),
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
+    #[error(transparent)]
+    Any(#[from] Box<dyn std::error::Error + Send + Sync>),
+}
+
+impl Error {
+    pub fn msg(err: impl std::error::Error + Send + Sync + 'static) -> Self {
+        Self::Message(err.to_string()) //.bt()
+    }
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct FieldType {
@@ -178,14 +196,24 @@ pub enum Component {
         /// Name of the thing to generate
         name: String,
     },
-    Deployment {},
+    Deployment {
+        fallback_file: Option<String>,
+        asset_folder: Option<String>,
+        host: String,
+        port: i32,
+    },
 }
 pub struct AppInfo {
     pub app_name: String,
 }
 
+/// Generate a component
+///
+/// # Errors
+///
+/// This function will return an error if it fails
 #[allow(clippy::too_many_lines)]
-pub fn generate(component: Component, config: &Config, appinfo: &AppInfo) -> Result<()> {
+pub fn generate(component: Component, appinfo: &AppInfo) -> Result<()> {
     let rrgen = RRgen::default();
     /*
     (1)
@@ -251,36 +279,25 @@ pub fn generate(component: Component, config: &Config, appinfo: &AppInfo) -> Res
             rrgen.generate(MAILER_TEXT_T, &vars)?;
             rrgen.generate(MAILER_HTML_T, &vars)?;
         }
-        Component::Deployment {} => {
+        Component::Deployment {
+            fallback_file,
+            asset_folder,
+            host,
+            port,
+        } => {
             let deployment_kind = match std::env::var("LOCO_DEPLOYMENT_KIND") {
-                Ok(kind) => kind.parse::<DeploymentKind>().map_err(|_e| {
-                    errors::Error::Message(format!("deployment {kind} not supported"))
-                })?,
+                Ok(kind) => kind
+                    .parse::<DeploymentKind>()
+                    .map_err(|_e| Error::Message(format!("deployment {kind} not supported")))?,
                 Err(_err) => prompt_deployment_selection().map_err(Box::from)?,
             };
 
             match deployment_kind {
                 DeploymentKind::Docker => {
-                    let copy_asset_folder = &config
-                        .server
-                        .middlewares
-                        .static_assets
-                        .clone()
-                        .map(|a| a.folder.path)
-                        .unwrap_or_default();
-
-                    let fallback_file = &config
-                        .server
-                        .middlewares
-                        .static_assets
-                        .clone()
-                        .map(|a| a.fallback)
-                        .unwrap_or_default();
-
                     let vars = json!({
                         "pkg_name": appinfo.app_name,
-                        "copy_asset_folder": copy_asset_folder,
-                        "fallback_file": fallback_file
+                        "copy_asset_folder": asset_folder.unwrap_or_default(),
+                        "fallback_file": fallback_file.unwrap_or_default()
                     });
                     rrgen.generate(DEPLOYMENT_DOCKER_T, &vars)?;
                     rrgen.generate(DEPLOYMENT_DOCKER_IGNORE_T, &vars)?;
@@ -295,15 +312,11 @@ pub fn generate(component: Component, config: &Config, appinfo: &AppInfo) -> Res
                     rrgen.generate(DEPLOYMENT_SHUTTLE_CONFIG_T, &vars)?;
                 }
                 DeploymentKind::Nginx => {
-                    let host = &config
-                        .server
-                        .host
-                        .replace("http://", "")
-                        .replace("https://", "");
+                    let host = host.replace("http://", "").replace("https://", "");
                     let vars = json!({
                         "pkg_name": appinfo.app_name,
-                        "domain": &host,
-                        "port": &config.server.port
+                        "domain": host,
+                        "port": port
                     });
                     rrgen.generate(DEPLOYMENT_NGINX_T, &vars)?;
                 }
@@ -335,7 +348,7 @@ fn prompt_deployment_selection() -> Result<DeploymentKind> {
         .items(&options)
         .default(0)
         .interact()
-        .map_err(errors::Error::msg)?;
+        .map_err(Error::msg)?;
 
     Ok(DEPLOYMENT_OPTIONS[selection].1.clone())
 }

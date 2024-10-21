@@ -1,0 +1,30 @@
+[package]
+name = "loco-gen"
+version = "0.1.0"
+description = "Loco generators"
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[features]
+with-db = []
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+
+lazy_static = { workspace = true }
+rrgen = "0.5.3"
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+regex = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+
+clap = { version = "4.4.7", features = ["derive"] }
+tempfile = "3"
+syn = "2"
+dialoguer = "0.11"
+duct = "0.13"
