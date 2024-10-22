@@ -5,6 +5,7 @@ use clap::{
     ArgAction::{SetFalse, SetTrue},
     Parser, Subcommand,
 };
+use xtask::versions;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -28,6 +29,10 @@ enum Commands {
         new_version: Version,
         #[arg(short, long, action = SetFalse)]
         exclude_starters: bool,
+    },
+    Bump {
+        #[arg(name = "VERSION")]
+        new_version: Version,
     },
 }
 
@@ -67,6 +72,10 @@ fn main() -> eyre::Result<()> {
                 }
                 .run()?;
             }
+            xtask::CmdExit::ok()
+        }
+        Commands::Bump { new_version } => {
+            versions::bump_version(&new_version.to_string());
             xtask::CmdExit::ok()
         }
     };
