@@ -37,7 +37,7 @@ jobs:
         working-directory: ./starters/lightweight-service
 
   test:
-    needs: [rustfmt, clippy]
+    needs: [style]
     runs-on: ubuntu-latest
 
     permissions:

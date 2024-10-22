@@ -37,7 +37,7 @@ jobs:
         working-directory: ./starters/rest-api
 
   test:
-    needs: [rustfmt, clippy]
+    needs: [style]
     runs-on: ubuntu-latest
     strategy:
       matrix:

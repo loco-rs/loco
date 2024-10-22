@@ -33,7 +33,7 @@ jobs:
         working-directory: ./examples/demo
 
   test:
-    needs: [rustfmt, clippy]
+    needs: [style]
     runs-on: ubuntu-latest
 
     permissions:

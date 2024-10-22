@@ -38,7 +38,7 @@ jobs:
           args: --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms
 
   test:
-    needs: [rustfmt, clippy]
+    needs: [style]
     runs-on: ubuntu-latest
 
     permissions:
