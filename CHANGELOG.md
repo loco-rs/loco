@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-* **BREAKING** Improved migration generator. If you have an existing migration project, add the following comment indicator to the top of the `vec` statement and right below the opening bracked like so:
+* `cargo loco doctor` now checks for minimal required SeaORM CLI version
+* **BREAKING** Improved migration generator. If you have an existing migration project, add the following comment indicator to the top of the `vec` statement and right below the opening bracked like so in `migration/src/lib.rs`:
 ```rust
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
         vec![
