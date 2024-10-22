@@ -667,7 +667,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             run_scheduler::<H>(&app_context, config.as_ref(), name, tag, list).await?;
         }
         Commands::Generate { component } => {
-            gen::generate(
+            loco_gen::generate(
                 component.into_gen_component(&config)?,
                 &AppInfo {
                     app_name: H::app_name().to_string(),
