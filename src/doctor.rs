@@ -1,5 +1,8 @@
 use std::{collections::BTreeMap, process::Command};
 
+use regex::Regex;
+use semver::Version;
+
 use crate::{
     bgworker,
     config::{self, Config, Database},
@@ -88,9 +91,11 @@ impl std::fmt::Display for Check {
 }
 
 /// Runs checks for all configured resources.
-pub async fn run_all(config: &Config) -> BTreeMap<Resource, Check> {
+/// # Errors
+/// Error when one of the checks fail
+pub async fn run_all(config: &Config) -> Result<BTreeMap<Resource, Check>> {
     let mut checks = BTreeMap::from([
-        (Resource::SeaOrmCLI, check_seaorm_cli()),
+        (Resource::SeaOrmCLI, check_seaorm_cli()?),
         (Resource::Database, check_db(&config.database).await),
     ]);
 
@@ -98,7 +103,7 @@ pub async fn run_all(config: &Config) -> BTreeMap<Resource, Check> {
         checks.insert(Resource::Redis, check_queue(config).await);
     }
 
-    checks
+    Ok(checks)
 }
 
 /// Checks the database connection.
@@ -155,19 +160,54 @@ pub async fn check_queue(config: &Config) -> Check {
     }
 }
 
+const MIN_SEAORMCLI_VER: &str = "1.1.0";
 /// Checks the presence and version of `SeaORM` CLI.
-#[must_use]
-pub fn check_seaorm_cli() -> Check {
+/// # Panics
+/// On illegal regex
+/// # Errors
+/// Fails when cannot check version
+pub fn check_seaorm_cli() -> Result<Check> {
     match Command::new("sea-orm-cli").arg("--version").output() {
-        Ok(_) => Check {
-            status: CheckStatus::Ok,
-            message: SEAORM_INSTALLED.to_string(),
-            description: None,
-        },
-        Err(_) => Check {
+        Ok(out) => {
+            let input = String::from_utf8_lossy(&out.stdout);
+            // Extract the version from the input string
+            let re = Regex::new(r"(\d+\.\d+\.\d+)").unwrap();
+
+            let version_str = re
+                .captures(&input)
+                .and_then(|caps| caps.get(0))
+                .map(|m| m.as_str())
+                .ok_or("SeaORM CLI version not found")
+                .map_err(Box::from)?;
+
+            // Parse the extracted version using semver
+            let version = Version::parse(version_str).map_err(Box::from)?;
+
+            // Parse the minimum version for comparison
+            let min_version = Version::parse(MIN_SEAORMCLI_VER).map_err(Box::from)?;
+
+            // Compare the extracted version with the minimum version
+            if version >= min_version {
+                Ok(Check {
+                    status: CheckStatus::Ok,
+                    message: SEAORM_INSTALLED.to_string(),
+                    description: None,
+                })
+            } else {
+                Ok(Check {
+                    status: CheckStatus::NotOk,
+                    message: format!(
+                        "SeaORM CLI minimal version is `{min_version}` (you have `{version}`). \
+                         Run `cargo install sea-orm-cli` to update."
+                    ),
+                    description: Some(SEAORM_NOT_FIX.to_string()),
+                })
+            }
+        }
+        Err(_) => Ok(Check {
             status: CheckStatus::NotOk,
             message: SEAORM_NOT_INSTALLED.to_string(),
             description: Some(SEAORM_NOT_FIX.to_string()),
-        },
+        }),
     }
 }
