@@ -96,9 +96,9 @@ pub async fn start<H: Hooks>(
                         let res = cloned_queue.run().await;
                         if res.is_err() {
                             error!(
-                            err = res.unwrap_err().to_string(),
-                            "error while running worker"
-                        );
+                                err = res.unwrap_err().to_string(),
+                                "error while running worker"
+                            );
                         }
                     }));
                 } else {
