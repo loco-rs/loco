@@ -764,38 +764,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "428d9aa8fbc0670b7b8d6030a7fadd0f86151cae55e4dbbece15f3780a3dfaf3"
 
 [[package]]
-name = "camino"
-version = "1.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0ec6b951b160caa93cc0c7b209e5a3bff7aae9062213451ac99493cd844c239"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "cargo-platform"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24b1f0365a6c6bb4020cd05806fd0d33c44d38046b8bd7f0e40814b9763cabfc"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "cargo_metadata"
-version = "0.18.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d886547e41f740c616ae73108f6eb70afe6d940c7bc697cb30f13daec073037"
-dependencies = [
- "camino",
- "cargo-platform",
- "semver",
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
 name = "cc"
 version = "1.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2161,8 +2129,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "loco-rs"
+name = "loco-gen"
 version = "0.11.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "dialoguer",
+ "duct",
+ "lazy_static",
+ "regex",
+ "rrgen",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
+name = "loco-rs"
+version = "0.11.1"
 dependencies = [
  "argon2",
  "async-trait",
@@ -2173,12 +2158,10 @@ dependencies = [
  "bb8",
  "byte-unit",
  "bytes",
- "cargo_metadata",
  "cfg-if",
  "chrono",
  "clap",
  "colored",
- "dialoguer",
  "duct",
  "duct_sh",
  "english-to-cron",
@@ -2191,15 +2174,16 @@ dependencies = [
  "jsonwebtoken",
  "lazy_static",
  "lettre",
+ "loco-gen",
  "mime",
  "moka",
  "object_store",
  "rand",
  "regex",
- "rrgen",
  "rusty-sidekiq",
  "sea-orm",
  "sea-orm-migration",
+ "semver",
  "serde",
  "serde_json",
  "serde_variant",
@@ -3576,9 +3560,6 @@ name = "semver"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61697e0a1c7e512e84a621326239844a24d8207b4669b41bc18b32ea5cbf988b"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "serde"

@@ -268,7 +268,7 @@ where
 ///
 /// Returns a [`AppResult`] if an error occurs during generate model entity.
 pub async fn entities<M: MigratorTrait>(ctx: &AppContext) -> AppResult<String> {
-    doctor::check_seaorm_cli().to_result()?;
+    doctor::check_seaorm_cli()?.to_result()?;
     doctor::check_db(&ctx.config.database).await.to_result()?;
 
     let out = cmd!(

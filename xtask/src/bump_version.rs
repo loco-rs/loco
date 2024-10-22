@@ -40,8 +40,9 @@ impl BumpVersion {
     /// # Errors
     /// Returns an error when it could not update one of the resources.
     pub fn run(&self) -> Result<()> {
-        self.bump_loco_framework()?;
-        println!("Bump Loco lib updated successfully");
+        self.bump_loco_framework(".")?;
+        self.bump_loco_framework("loco-gen")?;
+        self.bump_subcrates_version(&["loco-gen"])?;
 
         // change starters from fixed (v0.1.x) to local ("../../") in order
         // to test all starters against what is going to be released
@@ -85,10 +86,12 @@ impl BumpVersion {
     /// # Errors
     /// Returns an error when it could not parse the loco Cargo.toml file or has
     /// an error updating the file.
-    fn bump_loco_framework(&self) -> Result<()> {
+    fn bump_loco_framework(&self, path: &str) -> Result<()> {
+        println!("bumping to `{}` on `{path}`", self.version);
+
         let mut content = String::new();
 
-        let cargo_toml_file = self.base_dir.join("Cargo.toml");
+        let cargo_toml_file = self.base_dir.join(path).join("Cargo.toml");
         fs::File::open(&cargo_toml_file)?.read_to_string(&mut content)?;
 
         if !REPLACE_LOCO_LIB_VERSION_.is_match(&content) {
@@ -98,13 +101,53 @@ impl BumpVersion {
             });
         }
 
-        let content = REPLACE_LOCO_LIB_VERSION_.replace(&content, |captures: &regex::Captures| {
-            format!("{}{}", &captures["name"], self.version)
-        });
+        let content = REPLACE_LOCO_LIB_VERSION_
+            .replace(&content, |captures: &regex::Captures<'_>| {
+                format!("{}{}", &captures["name"], self.version)
+            });
 
         let mut modified_file = fs::File::create(cargo_toml_file)?;
         modified_file.write_all(content.as_bytes())?;
 
+        Ok(())
+    }
+
+    fn bump_subcrates_version(&self, crates: &[&str]) -> Result<()> {
+        let mut content = String::new();
+
+        let cargo_toml_file = self.base_dir.join("Cargo.toml");
+        fs::File::open(&cargo_toml_file)?.read_to_string(&mut content)?;
+
+        println!("in root package:");
+        for subcrate in crates {
+            println!("bumping subcrate `{}` to `{}`", subcrate, self.version);
+            let re = Regex::new(&format!(
+                r#"{subcrate}\s*=\s*\{{\s*version\s*=\s*"[0-9]+\.[0-9]+\.[0-9]+",\s*path\s*=\s*"[^"]+"\s*\}}"#,
+            ))
+            .unwrap();
+
+            if !re.is_match(&content) {
+                return Err(Error::BumpVersion {
+                    path: cargo_toml_file.clone(),
+                    package: subcrate.to_string(),
+                });
+            }
+
+            // Replace the full version line with the new version, keeping the structure
+            // intact
+            content = re
+                .replace(
+                    &content,
+                    format!(
+                        r#"{subcrate} = {{ version = "{}", path = "./{subcrate}" }}"#,
+                        self.version
+                    ),
+                )
+                .to_string();
+        }
+
+        let mut modified_file = fs::File::create(cargo_toml_file)?;
+        modified_file.write_all(content.as_bytes())?;
         Ok(())
     }
 
@@ -149,7 +192,7 @@ impl BumpVersion {
             });
         }
         content = REPLACE_LOCO_PACKAGE_VERSION
-            .replace_all(&content, |_captures: &regex::Captures| {
+            .replace_all(&content, |_captures: &regex::Captures<'_>| {
                 replace_with.to_string()
             })
             .to_string();
