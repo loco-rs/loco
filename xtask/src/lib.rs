@@ -5,6 +5,7 @@ pub mod errors;
 pub mod out;
 pub mod prompt;
 pub mod utils;
+pub mod versions;
 
 #[derive(Debug)]
 pub struct CmdExit {
