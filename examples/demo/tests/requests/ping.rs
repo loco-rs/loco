@@ -1,6 +1,6 @@
 use demo_app::app::App;
 use insta::assert_debug_snapshot;
-use loco_rs::testing;
+use loco_rs::{testing, tokio};
 use rstest::rstest;
 
 // TODO: see how to dedup / extract this to app-local test utils

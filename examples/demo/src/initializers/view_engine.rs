@@ -1,11 +1,11 @@
-use axum::{async_trait, Extension, Router as AxumRouter};
 use fluent_templates::{ArcLoader, FluentLoader};
 use loco_rs::{
     app::{AppContext, Initializer},
+    axum::{async_trait, Extension, Router as AxumRouter},
     controller::views::{engines, ViewEngine},
+    tracing::info,
     Error, Result,
 };
-use tracing::info;
 
 const I18N_DIR: &str = "assets/i18n";
 const I18N_SHARED: &str = "assets/i18n/shared.ftl";

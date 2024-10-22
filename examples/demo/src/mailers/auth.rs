@@ -1,7 +1,7 @@
 // auth mailer
 #![allow(non_upper_case_globals)]
 
-use loco_rs::prelude::*;
+use loco_rs::{include_dir::include_dir, prelude::*};
 use serde_json::json;
 
 use crate::models::users;

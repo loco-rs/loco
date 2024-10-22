@@ -1,9 +1,9 @@
-use async_trait::async_trait;
-use chrono::offset::Local;
-use loco_rs::{auth::jwt, hash, prelude::*};
+pub use loco_rs::validator;
+use loco_rs::{
+    auth::jwt, chrono::offset::Local, hash, prelude::*, uuid::Uuid, validator::Validate,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use uuid::Uuid;
 
 pub use super::_entities::users::{self, ActiveModel, Entity, Model};
 
@@ -39,7 +39,7 @@ impl Validatable for super::_entities::users::ActiveModel {
 }
 // </snip>
 
-#[async_trait::async_trait]
+#[async_trait]
 impl ActiveModelBehavior for super::_entities::users::ActiveModel {
     async fn before_save<C>(self, _db: &C, insert: bool) -> Result<Self, DbErr>
     where

@@ -1,6 +1,4 @@
-use async_trait::async_trait;
-use axum::Router as AxumRouter;
-use loco_rs::prelude::*;
+use loco_rs::{axum::Router as AxumRouter, prelude::*};
 
 pub struct AxumSessionInitializer;
 

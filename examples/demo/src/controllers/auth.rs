@@ -1,4 +1,4 @@
-use loco_rs::{controller::bad_request, prelude::*};
+use loco_rs::{controller::bad_request, prelude::*, tracing};
 use serde::{Deserialize, Serialize};
 
 use crate::{

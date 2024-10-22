@@ -1,6 +1,6 @@
 use axum_test::multipart::{MultipartForm, Part};
 use demo_app::{app::App, views};
-use loco_rs::testing;
+use loco_rs::{testing, tokio};
 use serial_test::serial;
 
 #[tokio::test]

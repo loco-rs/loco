@@ -16,24 +16,13 @@ migration = { path = "migration" }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tokio = { version = "1.33.0", features = ["full"] }
-async-trait = "0.1.74"
-tracing = "0.1.40"
-chrono = "0.4"
+
+sea-orm = { version = "1.1.0", default-features = false, features = ["macros"] }
 validator = { version = "0.18" }
-sea-orm = { version = "1.1.0", features = [
-  "sqlx-sqlite",
-  "sqlx-postgres",
-  "runtime-tokio-rustls",
-  "macros",
-] }
+include_dir = "0.7.3"
 
-axum = { version = "0.7.5", features = ["multipart"] }
 axum_session = { version = "0.10.1", default-features = false }
-axum-extra = { version = "0.9", features = ["cookie"] }
 
-include_dir = "0.7"
-uuid = { version = "1.6.0", features = ["v4"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 
 fluent-templates = { version = "0.8.0", features = ["tera"] }

@@ -1,7 +1,6 @@
-use axum::http::HeaderMap;
 use demo_app::app::App;
 use insta::assert_debug_snapshot;
-use loco_rs::testing;
+use loco_rs::{axum::http::HeaderMap, testing, tokio};
 use rstest::rstest;
 use serial_test::serial;
 // TODO: see how to dedup / extract this to app-local test utils

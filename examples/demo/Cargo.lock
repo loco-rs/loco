@@ -1230,12 +1230,8 @@ dependencies = [
 name = "demo_app"
 version = "0.1.0"
 dependencies = [
- "async-trait",
- "axum",
- "axum-extra",
  "axum-test",
  "axum_session",
- "chrono",
  "fluent-templates",
  "futures-util",
  "include_dir",
@@ -1248,14 +1244,11 @@ dependencies = [
  "serde_json",
  "serial_test",
  "tera",
- "tokio",
  "tower 0.4.13",
- "tracing",
  "tracing-subscriber",
  "trycmd",
  "unic-langid",
  "utoipa",
- "uuid",
  "validator",
 ]
 

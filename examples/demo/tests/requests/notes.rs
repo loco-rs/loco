@@ -1,6 +1,6 @@
 use demo_app::{app::App, models::_entities::notes::Entity};
 use insta::{assert_debug_snapshot, with_settings};
-use loco_rs::testing;
+use loco_rs::{testing, tokio};
 use rstest::rstest;
 use sea_orm::entity::prelude::*;
 use serde_json;

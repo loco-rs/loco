@@ -1,6 +1,6 @@
 use demo_app::{app::App, models::users};
 use insta::{assert_debug_snapshot, with_settings};
-use loco_rs::testing;
+use loco_rs::{testing, tokio};
 use rstest::rstest;
 use serial_test::serial;
 

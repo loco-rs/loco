@@ -1,21 +1,4 @@
-pub use async_trait::async_trait;
-pub use axum::{
-    extract::{Form, Path, State},
-    response::{IntoResponse, Response},
-    routing::{delete, get, head, options, patch, post, put, trace},
-};
-pub use axum_extra::extract::cookie;
-pub use chrono::NaiveDateTime as DateTime;
-pub use include_dir::{include_dir, Dir};
 // some types required for controller generators
-#[cfg(feature = "with-db")]
-pub use sea_orm::prelude::{Date, DateTimeWithTimeZone, Decimal, Uuid};
-#[cfg(feature = "with-db")]
-pub use sea_orm::{
-    ActiveModelBehavior, ActiveModelTrait, ActiveValue, ColumnTrait, ConnectionTrait,
-    DatabaseConnection, DbErr, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, Set,
-    TransactionTrait,
-};
 // sugar for controller views to use `data!({"item": ..})` instead of `json!`
 pub use serde_json::json as data;
 
@@ -23,9 +6,25 @@ pub use serde_json::json as data;
 pub use crate::controller::middleware::auth;
 #[cfg(feature = "with-db")]
 pub use crate::model::{query, Authenticable, ModelError, ModelResult};
+#[cfg(feature = "with-db")]
+pub use crate::sea_orm::prelude::{Date, DateTimeWithTimeZone, Decimal, Uuid};
+#[cfg(feature = "with-db")]
+pub use crate::sea_orm::{
+    ActiveModelBehavior, ActiveModelTrait, ActiveValue, ColumnTrait, ConnectionTrait,
+    DatabaseConnection, DbErr, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, Set,
+    TransactionTrait,
+};
 pub use crate::{
     app::{AppContext, Initializer},
+    async_trait::async_trait,
+    axum::{
+        extract::{Form, Path, State},
+        response::{IntoResponse, Response},
+        routing::{delete, get, head, options, patch, post, put, trace},
+    },
+    axum_extra::extract::cookie,
     bgworker::{BackgroundWorker, Queue},
+    chrono::NaiveDateTime as DateTime,
     controller::{
         format,
         middleware::{
@@ -37,6 +36,7 @@ pub use crate::{
         Json, Routes,
     },
     errors::Error,
+    include_dir::{include_dir, Dir},
     mailer,
     mailer::Mailer,
     task::{self, Task, TaskInfo},
