@@ -15,7 +15,7 @@ use crate::{
     app::{AppContext, Hooks},
     banner::print_banner,
     bgworker, cache,
-    config::{self},
+    config::{self, WorkerMode},
     controller::ListRoutes,
     environment::Environment,
     errors::Error,
@@ -88,20 +88,22 @@ pub async fn start<H: Hooks>(
         }
         (router, true) => {
             debug!("note: worker is run in-process (tokio spawn)");
-            let handle;
-            if let Some(queue) = &app_context.queue_provider {
-                let cloned_queue = queue.clone();
-                handle = tokio::spawn(async move {
-                    let res = cloned_queue.run().await;
-                    if res.is_err() {
-                        error!(
+            let mut handle = None;
+            if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
+                if let Some(queue) = &app_context.queue_provider {
+                    let cloned_queue = queue.clone();
+                    handle = Some(tokio::spawn(async move {
+                        let res = cloned_queue.run().await;
+                        if res.is_err() {
+                            error!(
                             err = res.unwrap_err().to_string(),
                             "error while running worker"
                         );
-                    }
-                });
-            } else {
-                return Err(Error::QueueProviderMissing);
+                        }
+                    }));
+                } else {
+                    return Err(Error::QueueProviderMissing);
+                }
             }
 
             if let Some(router) = router {
@@ -110,13 +112,15 @@ pub async fn start<H: Hooks>(
                 shutdown_signal().await;
             }
 
-            // queue provider exists at this point so can safely unwrap here
-            let _ = &app_context.queue_provider.unwrap().shutdown().unwrap();
+            if let Some(handle) = handle {
+                // queue provider exists at this point so can safely unwrap here
+                let _ = &app_context.queue_provider.unwrap().shutdown().unwrap();
 
-            println!("press ctrl-c again to force quit");
-            select! {
-                _ = handle => {}
-                _ = shutdown_signal() => {}
+                println!("press ctrl-c again to force quit");
+                select! {
+                    _ = handle => {}
+                    _ = shutdown_signal() => {}
+                }
             }
         }
         _ => {}
@@ -380,14 +384,16 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
 }
 
 async fn register_workers<H: Hooks>(app_context: &AppContext) -> Result<()> {
-    if let Some(queue) = &app_context.queue_provider {
-        queue.register(MailerWorker::build(app_context)).await?;
-        H::connect_workers(app_context, queue).await?;
-    } else {
-        return Err(Error::QueueProviderMissing);
-    }
+    if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
+        if let Some(queue) = &app_context.queue_provider {
+            queue.register(MailerWorker::build(app_context)).await?;
+            H::connect_workers(app_context, queue).await?;
+        } else {
+            return Err(Error::QueueProviderMissing);
+        }
 
-    debug!("done registering workers and queues");
+        debug!("done registering workers and queues");
+    }
     Ok(())
 }
 

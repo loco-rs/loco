@@ -1,5 +1,5 @@
 [workspace]
-members = ["macros", "xtask", "loco-extras"]
+members = ["xtask", "loco-extras"]
 exclude = ["starters"]
 
 [workspace.package]
@@ -9,7 +9,7 @@ license = "Apache-2.0"
 
 [package]
 name = "loco-rs"
-version = "0.10.1"
+version = "0.11.0"
 description = "The one-person framework for Rust"
 homepage = "https://loco.rs/"
 documentation = "https://docs.rs/loco-rs"
@@ -129,7 +129,7 @@ tokio-cron-scheduler = { version = "0.11.0", features = ["signal"] }
 english-to-cron = { version = "0.1.2" }
 
 # bg_pg: postgres workers
-sqlx = { version = "0.8", default-features = false, features = [
+sqlx = { version = "0.8.2", default-features = false, features = [
   "postgres",
 ], optional = true }
 ulid = { version = "1", optional = true }
@@ -175,3 +175,4 @@ insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
 tree-fs = { version = "0.1.0" }
 reqwest = { version = "0.12.7" }
 serial_test = "3.1.1"
+tower = { workspace = true, features = ["util"] }

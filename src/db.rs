@@ -143,7 +143,24 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
         opt.acquire_timeout(Duration::from_millis(acquire_timeout));
     }
 
-    Database::connect(opt).await
+    let db = Database::connect(opt).await?;
+
+    if db.get_database_backend() == DatabaseBackend::Sqlite {
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "
+            PRAGMA foreign_keys = ON;
+            PRAGMA journal_mode = WAL;
+            PRAGMA synchronous = NORMAL;
+            PRAGMA mmap_size = 134217728;
+            PRAGMA journal_size_limit = 67108864;
+            PRAGMA cache_size = 2000;
+            ",
+        ))
+        .await?;
+    }
+
+    Ok(db)
 }
 
 ///  Create a new database. This functionality is currently exclusive to Postgre
@@ -231,16 +248,15 @@ where
     A: sea_orm::ActiveModelTrait + Send + Sync,
     sea_orm::Insert<A>: Send + Sync, // Add this Send bound
 {
-    let loader: Vec<serde_json::Value> = serde_yaml::from_reader(File::open(path)?)?;
+    let seed_data: Vec<serde_json::Value> = serde_yaml::from_reader(File::open(path)?)?;
 
-    let mut users: Vec<A> = vec![];
-    for user in loader {
-        users.push(A::from_json(user)?);
+    for row in seed_data {
+        let mut model = <A as ActiveModelTrait>::default();
+        model.set_from_json(row)?;
+        <A as ActiveModelTrait>::Entity::insert(model)
+            .exec(db)
+            .await?;
     }
-
-    <A as ActiveModelTrait>::Entity::insert_many(users)
-        .exec(db)
-        .await?;
 
     Ok(())
 }
