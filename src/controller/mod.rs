@@ -136,7 +136,7 @@ pub fn bad_request<T: Into<String>, U>(msg: T) -> Result<U> {
 /// return not found status code
 ///
 /// # Errors
-/// Currently this function did't return any error. this is for feature
+/// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn not_found<T>() -> Result<T> {
     Err(Error::NotFound)
