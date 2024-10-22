@@ -113,13 +113,14 @@ pub async fn start<H: Hooks>(
             }
 
             if let Some(handle) = handle {
-                // queue provider exists at this point so can safely unwrap here
-                let _ = &app_context.queue_provider.unwrap().shutdown().unwrap();
+                if let Some(queue) = &app_context.queue_provider {
+                    queue.shutdown()?;
+                }
 
                 println!("press ctrl-c again to force quit");
                 select! {
                     _ = handle => {}
-                    _ = shutdown_signal() => {}
+                    () = shutdown_signal() => {}
                 }
             }
         }

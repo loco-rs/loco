@@ -198,6 +198,10 @@ impl Queue {
         }
     }
 
+    /// # Errors
+    ///
+    /// Does not currently return an error, but the postgres or other future queue implementations
+    /// might, so using Result here as return type.
     pub fn shutdown(&self) -> Result<()> {
         println!("waiting for running jobs to finish...");
         match self {
