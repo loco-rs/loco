@@ -1,0 +1,63 @@
+name: "[loco-cli:e2e]"
+
+on:
+  schedule:
+    - cron: 0 * * * * # every hour
+
+jobs:
+  saas:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+      - run: |
+          cargo install loco-cli
+          ALLOW_IN_GIT_REPO=true loco new --template saas --name saas --db sqlite --bg async --assets serverside
+      - run: |
+          cargo build
+        working-directory: ./saas
+
+  rest-api:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+      - run: |
+          cargo install loco-cli
+          ALLOW_IN_GIT_REPO=true loco new --template rest-api --name restapi --db sqlite --bg async
+      - run: |
+          cargo build
+        working-directory: ./restapi
+
+  lightweight-service:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+      - run: |
+          cargo install loco-cli
+          ALLOW_IN_GIT_REPO=true loco new --template lightweight-service --name lightweight --db sqlite --bg async
+      - run: |
+          cargo build
+        working-directory: ./lightweight
