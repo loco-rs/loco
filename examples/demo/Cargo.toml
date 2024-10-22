@@ -12,7 +12,9 @@ default-run = "demo_app-cli"
 [dependencies]
 
 loco-rs = { path = "../../", version = "*" }
-loco-extras = { version = "*", path = "../../loco-extras", features = ["full"] }
+loco-extras = { version = "*", path = "../../../loco-extras", features = [
+  "full",
+] }
 migration = { path = "migration" }
 
 serde = { version = "1", features = ["derive"] }
