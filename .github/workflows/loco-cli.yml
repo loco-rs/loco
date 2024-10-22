@@ -33,7 +33,7 @@ jobs:
         working-directory: ./loco-cli
 
   test:
-    needs: [rustfmt, clippy]
+    needs: [style]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
