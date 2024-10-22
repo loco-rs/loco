@@ -1433,7 +1433,6 @@ dependencies = [
  "include_dir",
  "insta",
  "loco-extras",
- "loco-macros",
  "loco-rs",
  "migration",
  "rstest",
@@ -2982,14 +2981,6 @@ dependencies = [
  "tracing",
  "tracing-opentelemetry-instrumentation-sdk",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "loco-macros"
-version = "0.1.0"
-dependencies = [
- "quote",
- "syn 2.0.66",
 ]
 
 [[package]]
