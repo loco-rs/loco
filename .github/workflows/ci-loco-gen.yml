@@ -1,4 +1,4 @@
-name: CI
+name: CI/loco-gen
 
 on:
   push:
@@ -9,6 +9,10 @@ on:
 env:
   RUST_TOOLCHAIN: stable
   TOOLCHAIN_PROFILE: minimal
+
+defaults:
+  run:
+    working-directory: ./loco-gen
 
 jobs:
   rustfmt:
@@ -69,8 +73,11 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
 
+      - run: |
+          cargo install --path ../loco-cli
+
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --all-features --workspace --exclude loco-gen
+          args: --all-features --all
