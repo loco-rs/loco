@@ -546,7 +546,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                 println!("Environment: {}", &environment);
             } else {
                 let mut should_exit = false;
-                for (_, check) in doctor::run_all(&config).await {
+                for (_, check) in doctor::run_all(&config).await? {
                     if !should_exit && !check.valid() {
                         should_exit = true;
                     }
