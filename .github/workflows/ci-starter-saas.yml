@@ -16,7 +16,6 @@ env:
 
 jobs:
   style:
-    name: Check Style
     runs-on: ubuntu-latest
 
     permissions:
@@ -38,7 +37,6 @@ jobs:
         working-directory: ./starters/saas
 
   test:
-    name: Run Tests
     needs: [rustfmt, clippy]
     runs-on: ubuntu-latest
     strategy:

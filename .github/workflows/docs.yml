@@ -12,7 +12,6 @@ env:
 
 jobs:
   check:
-    name: Check
     runs-on: ubuntu-latest
 
     permissions:

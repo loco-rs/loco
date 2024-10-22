@@ -16,7 +16,6 @@ env:
 
 jobs:
   style:
-    name: Check Style
     runs-on: ubuntu-latest
 
     permissions:

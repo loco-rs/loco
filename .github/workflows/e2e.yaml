@@ -6,7 +6,6 @@ on:
 
 jobs:
   saas:
-    name: Create saas starter template
     runs-on: ubuntu-latest
 
     permissions:
@@ -26,7 +25,6 @@ jobs:
         working-directory: ./saas
 
   rest-api:
-    name: Create stateless starter template
     runs-on: ubuntu-latest
 
     permissions:
@@ -46,7 +44,6 @@ jobs:
         working-directory: ./restapi
 
   lightweight-service:
-    name: Create stateless starter template
     runs-on: ubuntu-latest
 
     permissions:

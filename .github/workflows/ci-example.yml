@@ -33,7 +33,6 @@ jobs:
         working-directory: ./examples/demo
 
   test:
-    name: test
     needs: [rustfmt, clippy]
     runs-on: ubuntu-latest
 

@@ -12,7 +12,6 @@ env:
 
 jobs:
   style:
-    name: Check Style
     runs-on: ubuntu-latest
 
     permissions:
@@ -39,7 +38,6 @@ jobs:
           args: --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms
 
   test:
-    name: Run Tests
     needs: [rustfmt, clippy]
     runs-on: ubuntu-latest
 
