@@ -1,4 +1,4 @@
-name: e2e-cli-master
+name: "[e2e:cli-master]"
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   # TODO: re-enable after 0.8 to check cmd spawning fix
-  saas-template-win32:
+  saas-win32:
     name: Create saas (win32)
     runs-on: windows-latest
 
@@ -47,7 +47,7 @@ jobs:
           cargo loco db migrate
         working-directory: ./saas
 
-  saas-template:
+  saas:
     name: Create saas
     runs-on: ubuntu-latest
 

@@ -1,4 +1,4 @@
-name: ci-generators
+name: "[ci:generators]"
 
 on:
   push:
@@ -12,7 +12,7 @@ env:
 
 jobs:
   test:
-    name: Run Tests
+    name: test-generate
     runs-on: ubuntu-latest
 
     permissions:
@@ -112,7 +112,7 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres_test
 
   model_fields_generator:
-    name: Run Tests
+    name: test-fields
     runs-on: ubuntu-latest
     strategy:
       matrix:

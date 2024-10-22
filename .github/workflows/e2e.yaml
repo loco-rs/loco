@@ -1,11 +1,11 @@
-name: e2e
+name: "[e2e:cli]"
 
 on:
   schedule:
     - cron: 0 * * * * # every hour
 
 jobs:
-  saas-template:
+  saas:
     name: Create saas starter template
     runs-on: ubuntu-latest
 
