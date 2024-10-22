@@ -87,9 +87,10 @@ pub async fn start<H: Hooks>(
             H::serve(router, &app_context).await?;
         }
         (router, true) => {
-            debug!("note: worker is run in-process (tokio spawn)");
             let mut handle = None;
             if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
+                debug!("note: worker is run in-process (tokio spawn)");
+
                 if let Some(queue) = &app_context.queue_provider {
                     let cloned_queue = queue.clone();
                     handle = Some(tokio::spawn(async move {
