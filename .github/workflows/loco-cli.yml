@@ -1,4 +1,4 @@
-name: "[ci:loco-cli]"
+name: "[loco-cli:ci]"
 
 on:
   push:
