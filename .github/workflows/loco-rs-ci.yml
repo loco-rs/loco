@@ -1,4 +1,4 @@
-name: CI/loco-gen
+name: "[loco_rs:ci]"
 
 on:
   push:
@@ -10,13 +10,8 @@ env:
   RUST_TOOLCHAIN: stable
   TOOLCHAIN_PROFILE: minimal
 
-defaults:
-  run:
-    working-directory: ./loco-gen
-
 jobs:
-  rustfmt:
-    name: Check Style
+  style:
     runs-on: ubuntu-latest
 
     permissions:
@@ -29,27 +24,13 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           components: rustfmt
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
-
-  clippy:
-    name: Run Clippy
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-
-    steps:
-      - name: Checkout the code
-        uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
-      - name: Setup Rust cache
-        uses: Swatinem/rust-cache@v2
       - name: Run cargo clippy
         uses: actions-rs/cargo@v1
         with:
@@ -57,8 +38,7 @@ jobs:
           args: --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms
 
   test:
-    name: Run Tests
-    needs: [rustfmt, clippy]
+    needs: [style]
     runs-on: ubuntu-latest
 
     permissions:
@@ -73,11 +53,8 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
 
-      - run: |
-          cargo install --path ../loco-cli
-
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --all-features
+          args: --all-features --workspace --exclude loco-gen

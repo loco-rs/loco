@@ -1,12 +1,11 @@
-name: e2e
+name: "[loco-cli:e2e]"
 
 on:
   schedule:
     - cron: 0 * * * * # every hour
 
 jobs:
-  saas-template:
-    name: Create saas starter template
+  saas:
     runs-on: ubuntu-latest
 
     permissions:
@@ -26,7 +25,6 @@ jobs:
         working-directory: ./saas
 
   rest-api:
-    name: Create stateless starter template
     runs-on: ubuntu-latest
 
     permissions:
@@ -46,7 +44,6 @@ jobs:
         working-directory: ./restapi
 
   lightweight-service:
-    name: Create stateless starter template
     runs-on: ubuntu-latest
 
     permissions:

@@ -1,4 +1,4 @@
-name: e2e-cli-master
+name: "[loco-cli:e2e(master)]"
 
 on:
   push:
@@ -8,8 +8,7 @@ on:
 
 jobs:
   # TODO: re-enable after 0.8 to check cmd spawning fix
-  saas-template-win32:
-    name: Create saas (win32)
+  saas-win32:
     runs-on: windows-latest
 
     permissions:
@@ -47,8 +46,7 @@ jobs:
           cargo loco db migrate
         working-directory: ./saas
 
-  saas-template:
-    name: Create saas
+  saas:
     runs-on: ubuntu-latest
 
     permissions:
@@ -68,7 +66,6 @@ jobs:
         working-directory: ./saas
 
   rest-api:
-    name: Create rest-api
     runs-on: ubuntu-latest
 
     permissions:
@@ -88,7 +85,6 @@ jobs:
         working-directory: ./restapi
 
   lightweight-service:
-    name: Create lightweight-service
     runs-on: ubuntu-latest
 
     permissions:
