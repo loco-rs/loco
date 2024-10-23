@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
-use axum::extract::Multipart;
-use loco_rs::prelude::*;
+use loco_rs::{axum::extract::Multipart, prelude::*, tracing};
 
 use crate::views;
 

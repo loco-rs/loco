@@ -1,8 +1,7 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
-use axum::extract::Query;
-use loco_rs::{controller::bad_request, model::ModelError, prelude::*};
+use loco_rs::{axum::extract::Query, controller::bad_request, model::ModelError, prelude::*};
 use sea_orm::Condition;
 use serde::{Deserialize, Serialize};
 

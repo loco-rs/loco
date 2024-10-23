@@ -3,7 +3,7 @@ use demo_app::{
     models::users::{self, Model, RegisterParams},
 };
 use insta::assert_debug_snapshot;
-use loco_rs::{model::ModelError, testing};
+use loco_rs::{model::ModelError, testing, tokio};
 use sea_orm::{ActiveModelTrait, ActiveValue, IntoActiveModel};
 use serial_test::serial;
 

@@ -3,13 +3,15 @@ use std::{
     task::{Context, Poll},
 };
 
-use axum::{
-    body::Body,
-    extract::{FromRequestParts, Request},
-    response::Response,
-};
 use futures_util::future::BoxFuture;
-use loco_rs::prelude::{auth::JWTWithUser, *};
+use loco_rs::{
+    axum::{
+        body::Body,
+        extract::{FromRequestParts, Request},
+        response::Response,
+    },
+    prelude::{auth::JWTWithUser, *},
+};
 use tower::{Layer, Service};
 
 use crate::models::{roles, users};

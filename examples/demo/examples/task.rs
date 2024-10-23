@@ -4,7 +4,7 @@ use demo_app::app::App;
 use loco_rs::{
     boot::{create_context, run_task},
     environment::{resolve_from_env, Environment},
-    task,
+    task, tokio,
 };
 
 #[tokio::main]

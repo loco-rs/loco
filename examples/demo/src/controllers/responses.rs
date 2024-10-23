@@ -1,6 +1,5 @@
 #![allow(clippy::unused_async)]
-use axum_extra::extract::cookie::Cookie;
-use loco_rs::prelude::*;
+use loco_rs::{axum_extra::extract::cookie::Cookie, prelude::*};
 use serde::Serialize;
 use utoipa::{openapi, OpenApi, ToSchema};
 

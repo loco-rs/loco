@@ -1,8 +1,7 @@
 use std::time::Duration;
 
-use loco_rs::prelude::*;
+use loco_rs::{prelude::*, tokio::time::sleep};
 use serde::{Deserialize, Serialize};
-use tokio::time::sleep;
 
 use crate::models::users;
 

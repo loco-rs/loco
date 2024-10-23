@@ -2,8 +2,8 @@ use demo_app::{
     app::App,
     models::{roles, sea_orm_active_enums, users, users::RegisterParams, users_roles},
 };
-use loco_rs::{prelude::*, testing};
-use sea_orm::{ColumnTrait, DatabaseConnection};
+use loco_rs::{prelude::*, testing, tokio};
+use sea_orm::ColumnTrait;
 use serial_test::serial;
 macro_rules! configure_insta {
     ($($expr:expr),*) => {

@@ -1,6 +1,6 @@
 use demo_app::{app::App, models::users};
 use insta::assert_debug_snapshot;
-use loco_rs::testing;
+use loco_rs::{testing, tokio};
 use sea_orm::ModelTrait;
 use serial_test::serial;
 

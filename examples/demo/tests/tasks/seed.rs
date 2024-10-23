@@ -1,5 +1,5 @@
 use demo_app::app::App;
-use loco_rs::{boot::run_task, task, testing};
+use loco_rs::{boot::run_task, task, testing, tokio};
 use serial_test::serial;
 
 #[tokio::test]

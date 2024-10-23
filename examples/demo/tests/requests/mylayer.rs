@@ -1,5 +1,5 @@
 use demo_app::{app::App, views::user::UserResponse};
-use loco_rs::testing;
+use loco_rs::{testing, tokio};
 use serial_test::serial;
 
 use crate::requests::prepare_data;

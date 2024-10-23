@@ -1,6 +1,6 @@
-use axum::{async_trait, Extension, Router as AxumRouter};
 use loco_rs::{
     app::{AppContext, Initializer},
+    axum::{async_trait, Extension, Router as AxumRouter},
     controller::views::{ViewEngine, ViewRenderer},
     Result,
 };
