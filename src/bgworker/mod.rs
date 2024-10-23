@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use serde::Serialize;
+use tokio_util::sync::CancellationToken;
 use tracing::{debug, error};
 #[cfg(feature = "bg_pg")]
 pub mod pg;
@@ -20,6 +21,7 @@ pub enum Queue {
     Redis(
         bb8::Pool<sidekiq::RedisConnectionManager>,
         Arc<tokio::sync::Mutex<sidekiq::Processor>>,
+        CancellationToken,
     ),
     #[cfg(feature = "bg_pg")]
     Postgres(
@@ -45,7 +47,7 @@ impl Queue {
         debug!(worker = class, "job enqueue");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _) => {
+            Self::Redis(pool, _, _) => {
                 skq::enqueue(pool, class, queue, args).await?;
             }
             #[cfg(feature = "bg_pg")]
@@ -80,7 +82,7 @@ impl Queue {
         debug!(worker = W::class_name(), "register worker");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, p) => {
+            Self::Redis(_, p, _) => {
                 let mut p = p.lock().await;
                 p.register(skq::SidekiqBackgroundWorker::new(worker));
             }
@@ -103,7 +105,7 @@ impl Queue {
         debug!("running background jobs");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, p) => {
+            Self::Redis(_, p, _) => {
                 p.lock().await.clone().run().await;
             }
             #[cfg(feature = "bg_pg")]
@@ -133,7 +135,7 @@ impl Queue {
         debug!("workers setup");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _) => {}
+            Self::Redis(_, _, _) => {}
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, _, _) => {
                 pg::initialize_database(pool).await.map_err(Box::from)?;
@@ -152,7 +154,7 @@ impl Queue {
         debug!("clearing job queues");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _) => {
+            Self::Redis(pool, _, _) => {
                 skq::clear(pool).await?;
             }
             #[cfg(feature = "bg_pg")]
@@ -173,7 +175,7 @@ impl Queue {
         debug!("job queue ping requested");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _) => {
+            Self::Redis(pool, _, _) => {
                 skq::ping(pool).await?;
             }
             #[cfg(feature = "bg_pg")]
@@ -189,11 +191,26 @@ impl Queue {
     pub fn describe(&self) -> String {
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _) => "redis queue".to_string(),
+            Self::Redis(_, _, _) => "redis queue".to_string(),
             #[cfg(feature = "bg_pg")]
             Self::Postgres(_, _, _) => "postgres queue".to_string(),
             _ => "no queue".to_string(),
         }
+    }
+
+    /// # Errors
+    ///
+    /// Does not currently return an error, but the postgres or other future queue implementations
+    /// might, so using Result here as return type.
+    pub fn shutdown(&self) -> Result<()> {
+        println!("waiting for running jobs to finish...");
+        match self {
+            #[cfg(feature = "bg_redis")]
+            Self::Redis(_, _, cancellation_token) => cancellation_token.cancel(),
+            _ => {}
+        }
+
+        Ok(())
     }
 }
 
