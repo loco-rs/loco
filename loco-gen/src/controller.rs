@@ -1,7 +1,7 @@
 use rrgen::RRgen;
 use serde_json::json;
 
-use crate::{app::Hooks, gen};
+use crate as gen;
 
 const API_CONTROLLER_CONTROLLER_T: &str = include_str!("templates/controller/api/controller.t");
 const API_CONTROLLER_TEST_T: &str = include_str!("templates/controller/api/test.t");
@@ -12,16 +12,16 @@ const HTMX_VIEW_T: &str = include_str!("templates/controller/htmx/view.t");
 const HTML_CONTROLLER_CONTROLLER_T: &str = include_str!("templates/controller/html/controller.t");
 const HTML_VIEW_T: &str = include_str!("templates/controller/html/view.t");
 
-use super::collect_messages;
-use crate::Result;
+use super::{collect_messages, AppInfo, Result};
 
-pub fn generate<H: Hooks>(
+pub fn generate(
     rrgen: &RRgen,
     name: &str,
     actions: &[String],
     kind: &gen::ScaffoldKind,
+    appinfo: &AppInfo,
 ) -> Result<String> {
-    let vars = json!({"name": name, "actions": actions, "pkg_name": H::app_name()});
+    let vars = json!({"name": name, "actions": actions, "pkg_name": appinfo.app_name});
     match kind {
         gen::ScaffoldKind::Api => {
             let res1 = rrgen.generate(API_CONTROLLER_CONTROLLER_T, &vars)?;
@@ -34,7 +34,7 @@ pub fn generate<H: Hooks>(
             let res = rrgen.generate(HTML_CONTROLLER_CONTROLLER_T, &vars)?;
             messages.push(res);
             for action in actions {
-                let vars = json!({"name": name, "action": action, "pkg_name": H::app_name()});
+                let vars = json!({"name": name, "action": action, "pkg_name": appinfo.app_name});
                 messages.push(rrgen.generate(HTML_VIEW_T, &vars)?);
             }
             Ok(collect_messages(messages))
@@ -44,7 +44,7 @@ pub fn generate<H: Hooks>(
             let res = rrgen.generate(HTMX_CONTROLLER_CONTROLLER_T, &vars)?;
             messages.push(res);
             for action in actions {
-                let vars = json!({"name": name, "action": action, "pkg_name": H::app_name()});
+                let vars = json!({"name": name, "action": action, "pkg_name": appinfo.app_name});
                 messages.push(rrgen.generate(HTMX_VIEW_T, &vars)?);
             }
             Ok(collect_messages(messages))

@@ -131,7 +131,7 @@ $ curl localhost:5150/_health
 ```
 
 <div class="infobox">
-The built in <code>_health</code> route will tell you that you have configured your app properly: it can establish a connection to your Postgres and Redis instances successfully.
+The built in <code>_health</code> route will tell you that you have configured your app properly: it can establish a connection to your Database and Redis instances successfully.
 </div>
 
 ### Say "Hello", Loco

@@ -1,4 +1,4 @@
-name: "[loco-cli:ci]"
+name: "[loco-gen:ci]"
 
 on:
   push:
@@ -9,6 +9,10 @@ on:
 env:
   RUST_TOOLCHAIN: stable
   TOOLCHAIN_PROFILE: minimal
+
+defaults:
+  run:
+    working-directory: ./loco-gen
 
 jobs:
   style:
@@ -26,18 +30,20 @@ jobs:
           components: rustfmt
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
-      - run: cargo fmt --all -- --check
-        working-directory: ./loco-cli
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
       - name: Run cargo clippy
-        run: cargo clippy --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms
-        working-directory: ./loco-cli
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms
 
   test:
     needs: [style]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
+    runs-on: ubuntu-latest
 
     permissions:
       contents: read
@@ -45,16 +51,17 @@ jobs:
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4
-
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
-
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
 
+      - run: |
+          cargo install --path ../loco-cli
+
       - name: Run cargo test
-        run: cargo test --all-features --all
-        working-directory: ./loco-cli
-        env:
-          LOCO_CI_MODE: 1
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all-features
