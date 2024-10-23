@@ -1,7 +1,7 @@
 //! # Application Error Handling
 
 use axum::{
-    extract::rejection::JsonRejection,
+    extract::rejection::{FormRejection, JsonRejection},
     http::{
         header::{InvalidHeaderName, InvalidHeaderValue},
         method::InvalidMethod,
@@ -61,6 +61,9 @@ pub enum Error {
 
     #[error(transparent)]
     JsonRejection(#[from] JsonRejection),
+
+    #[error(transparent)]
+    FormRejection(#[from] FormRejection),
 
     #[error("cannot parse `{1}`: {0}")]
     YAMLFile(#[source] serde_yaml::Error, String),
