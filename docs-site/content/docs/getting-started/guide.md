@@ -150,24 +150,32 @@ injected: "tests/requests/mod.rs"
 This is the generated controller body:
 
 ```rust
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
 use loco_rs::prelude::*;
+use axum::debug_handler;
 
-pub async fn echo(req_body: String) -> String {
-    req_body
-}
-
-pub async fn hello(State(_ctx): State<AppContext>) -> Result<Response> {
-    // do something with context (database, etc)
-    format::text("hello")
+#[debug_handler]
+pub async fn index(State(_ctx): State<AppContext>) -> Result<Response> {
+    format::empty()
 }
 
 pub fn routes() -> Routes {
     Routes::new()
-        .prefix("guide")
-        .add("/", get(hello))
-        .add("/echo", post(echo))
+        .prefix("guides/")
+        .add("/", get(index))
 }
+```
+
+
+Change the `index` handler body:
+
+```rust
+// replace
+    format::empty()
+// with this
+    format::text("hello")
 ```
 
 Start the server:
@@ -181,7 +189,7 @@ cargo loco start
 Now, let's test it out:
 
 ```sh
-$ curl localhost:5150/guide
+$ curl localhost:5150/guides
 hello
 ```
 
