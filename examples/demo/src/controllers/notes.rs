@@ -1,7 +1,12 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
-use loco_rs::{axum::extract::Query, controller::bad_request, model::ModelError, prelude::*};
+use loco_rs::{
+    axum::{debug_handler, extract::Query},
+    controller::bad_request,
+    model::ModelError,
+    prelude::*,
+};
 use sea_orm::Condition;
 use serde::{Deserialize, Serialize};
 
@@ -35,7 +40,7 @@ async fn load_item(ctx: &AppContext, id: i32) -> Result<Model> {
     let item = Entity::find_by_id(id).one(&ctx.db).await?;
     item.ok_or_else(|| Error::NotFound)
 }
-
+#[debug_handler]
 pub async fn list(
     State(ctx): State<AppContext>,
     Query(params): Query<ListQueryParams>,

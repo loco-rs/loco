@@ -1230,6 +1230,7 @@ dependencies = [
 name = "demo_app"
 version = "0.1.0"
 dependencies = [
+ "axum",
  "axum-test",
  "axum_session",
  "fluent-templates",

@@ -21,6 +21,7 @@ sea-orm = { version = "1.1.0", default-features = false, features = ["macros"] }
 validator = { version = "0.18" }
 include_dir = "0.7.3"
 
+axum = { version = "0.7.5", features = ["multipart"] }
 axum_session = { version = "0.10.1", default-features = false }
 
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
