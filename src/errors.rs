@@ -140,6 +140,9 @@ pub enum Error {
     Storage(#[from] crate::storage::StorageError),
 
     #[error(transparent)]
+    RequestContext(#[from] crate::request_context::RequestContextError),
+
+    #[error(transparent)]
     Cache(#[from] crate::cache::CacheError),
 
     #[error(transparent)]

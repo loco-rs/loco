@@ -66,7 +66,7 @@ serde_variant = "0.1.2"
 async-trait = { workspace = true }
 
 axum = { workspace = true }
-axum-extra = { version = "0.9", features = ["cookie"] }
+axum-extra = { version = "0.9", features = ["cookie", "cookie-private", ] }
 regex = { workspace = true }
 lazy_static = { workspace = true }
 fs-err = "2.11.0"
@@ -119,6 +119,9 @@ object_store = { version = "0.11.0", default-features = false }
 
 # cache
 moka = { version = "0.12.7", features = ["sync"], optional = true }
+
+# sessions
+tower-sessions = "0.12"
 
 # Scheduler
 tokio-cron-scheduler = { version = "0.11.0", features = ["signal"] }

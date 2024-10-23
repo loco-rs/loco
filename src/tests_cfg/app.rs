@@ -19,5 +19,6 @@ pub async fn get_app_context() -> AppContext {
         cache: cache::Cache::new(cache::drivers::inmem::new()).into(),
         #[cfg(not(feature = "cache_inmem"))]
         cache: cache::Cache::new(cache::drivers::null::new()).into(),
+        session_store: None,
     }
 }
