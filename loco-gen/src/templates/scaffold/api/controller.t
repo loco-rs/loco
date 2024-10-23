@@ -14,9 +14,8 @@ injections:
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
-use loco_rs::prelude::*;
+use loco_rs::{axum::debug_handler, prelude::*};
 use serde::{Deserialize, Serialize};
-use axum::debug_handler;
 
 use crate::models::_entities::{{file_name | plural}}::{ActiveModel, Entity, Model};
 

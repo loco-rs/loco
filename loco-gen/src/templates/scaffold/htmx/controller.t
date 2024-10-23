@@ -14,10 +14,12 @@ injections:
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
-use loco_rs::prelude::*;
+use loco_rs::{
+    axum::debug_handler,
+    prelude::*,
+    sea_orm::{sea_query::Order, QueryOrder},
+};
 use serde::{Deserialize, Serialize};
-use sea_orm::{sea_query::Order, QueryOrder};
-use axum::debug_handler;
 
 use crate::{
     models::_entities::{{file_name | plural}}::{ActiveModel, Column, Entity, Model},

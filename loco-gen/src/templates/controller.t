@@ -12,8 +12,7 @@ injections:
   content: "            .add_route(controllers::{{ file_name }}::routes())"
 ---
 #![allow(clippy::unused_async)]
-use loco_rs::prelude::*;
-use axum::debug_handler;
+use loco_rs::{axum::debug_handler, prelude::*};
 
 
 #[debug_handler]
