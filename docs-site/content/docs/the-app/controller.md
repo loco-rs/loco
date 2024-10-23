@@ -47,12 +47,7 @@ $ cargo loco routes
 [POST] /auth/register
 [POST] /auth/reset
 [POST] /auth/verify
-[GET] /notes/
-[POST] /notes/
-[GET] /notes/:id
-[DELETE] /notes/:id
-[POST] /notes/:id
-[GET] /user/current
+[GET] /auth/current
 ```
 
 This command will provide you with a comprehensive overview of the controllers currently registered in your system.
@@ -767,6 +762,8 @@ impl Hooks for App {
 # Pagination
 
 In many scenarios, when querying data and returning responses to users, pagination is crucial. In `Loco`, we provide a straightforward method to paginate your data and maintain a consistent pagination response schema for your API responses.
+
+We assume you have a `notes` entity and/or scaffold (replace this with any entity you like).
 
 ## Using pagination
 

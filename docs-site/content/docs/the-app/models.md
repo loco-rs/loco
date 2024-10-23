@@ -393,7 +393,6 @@ $ cargo loco generate model --link users_votes user:references movie:references 
     ..
     ..
 Writing src/models/_entities/movies.rs
-Writing src/models/_entities/notes.rs
 Writing src/models/_entities/users.rs
 Writing src/models/_entities/mod.rs
 Writing src/models/_entities/prelude.rs
@@ -744,7 +743,6 @@ impl Hooks for App {
     //...
     async fn truncate(db: &DatabaseConnection) -> Result<()> {
         // truncate_table(db, users::Entity).await?;
-        // truncate_table(db, notes::Entity).await?;
         Ok(())
     }
 
