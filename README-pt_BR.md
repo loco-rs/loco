@@ -16,7 +16,7 @@
 
  </div>
 
-[English](./README.md) · [中文](./README-zh_CN.md) · [Français](./README.fr.md) · Portuguese (Brazil)
+[English](./README.md) · [中文](./README-zh_CN.md) · [Français](./README.fr.md) · Portuguese (Brazil) ・ [日本語](./README.ja.md)
 
 
 ## O que é o Loco?
