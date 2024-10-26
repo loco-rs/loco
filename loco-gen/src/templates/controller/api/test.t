@@ -17,7 +17,7 @@ use serial_test::serial;
 #[serial]
 async fn can_get_{{action}}() {
     testing::request::<App, _, _>(|request, _ctx| async move {
-        let res = request.get("/{{ name | snake_case }}/{{action}}").await;
+        let res = request.get("/{{ name | plural | snake_case }}/{{action}}").await;
         assert_eq!(res.status_code(), 200);
     })
     .await;
