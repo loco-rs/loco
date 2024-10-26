@@ -371,7 +371,7 @@ where
 {
     match db {
         DatabaseConnection::SqlxPostgresPoolConnection(_) => {
-            let table_name = T::table_name(&entity);
+            let table_name = entity.table_name();
             let query = format!("TRUNCATE TABLE {table_name} RESTART IDENTITY");
             tracing::info!(query, "truncating postgres table {table_name}");
 
