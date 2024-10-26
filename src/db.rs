@@ -251,8 +251,7 @@ where
     let seed_data: Vec<serde_json::Value> = serde_yaml::from_reader(File::open(path)?)?;
 
     for row in seed_data {
-        let mut model = <A as ActiveModelTrait>::default();
-        model.set_from_json(row)?;
+        let model = <A as ActiveModelTrait>::from_json(row)?;
         <A as ActiveModelTrait>::Entity::insert(model)
             .exec(db)
             .await?;
