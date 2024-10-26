@@ -2265,9 +2265,7 @@ dependencies = [
 
 [[package]]
 name = "loco-gen"
-version = "0.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a10a9cae31e28c77650a9dcf3416a180e0f9b9c79b93c10d2231f28f53ff2a20"
+version = "0.11.2"
 dependencies = [
  "chrono",
  "clap",
@@ -2284,9 +2282,7 @@ dependencies = [
 
 [[package]]
 name = "loco-rs"
-version = "0.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f22fc4dccb697923ab293e5ef12cfb5e94e1af400543dad1dee01123586d5d5d"
+version = "0.11.2"
 dependencies = [
  "argon2",
  "async-trait",
