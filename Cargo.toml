@@ -9,7 +9,7 @@ license = "Apache-2.0"
 
 [package]
 name = "loco-rs"
-version = "0.11.1"
+version = "0.11.2"
 description = "The one-person framework for Rust"
 homepage = "https://loco.rs/"
 documentation = "https://docs.rs/loco-rs"
@@ -39,7 +39,7 @@ bg_redis = ["dep:rusty-sidekiq", "dep:bb8"]
 bg_pg = ["dep:sqlx", "dep:ulid"]
 
 [dependencies]
-loco-gen = { version = "0.11.1", path = "./loco-gen" }
+loco-gen = { version = "0.11.2", path = "./loco-gen" }
 backtrace_printer = { version = "1.3.0" }
 
 # cli
