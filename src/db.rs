@@ -365,11 +365,26 @@ impl ActiveModelBehavior for ActiveModel {{
 /// # Errors
 ///
 /// Returns a [`AppResult`] if an error occurs during truncate the given table
-pub async fn truncate_table<T>(db: &DatabaseConnection, _: T) -> Result<(), sea_orm::DbErr>
+pub async fn truncate_table<T>(db: &DatabaseConnection, entity: T) -> Result<(), sea_orm::DbErr>
 where
     T: EntityTrait,
 {
-    T::delete_many().exec(db).await?;
+    match db {
+        DatabaseConnection::SqlxPostgresPoolConnection(_) => {
+            let table_name = T::table_name(&entity);
+            let query = format!("TRUNCATE TABLE {table_name} RESTART IDENTITY");
+            tracing::info!(query, "truncating postgres table {table_name}");
+
+            db.execute(sea_orm::Statement::from_string(
+                sea_orm::DatabaseBackend::Postgres,
+                query,
+            ))
+            .await?;
+        }
+        _ => {
+            T::delete_many().exec(db).await?;
+        }
+    }
     Ok(())
 }
 
