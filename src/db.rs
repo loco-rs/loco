@@ -248,16 +248,14 @@ where
     A: sea_orm::ActiveModelTrait + Send + Sync,
     sea_orm::Insert<A>: Send + Sync, // Add this Send bound
 {
-    let loader: Vec<serde_json::Value> = serde_yaml::from_reader(File::open(path)?)?;
+    let seed_data: Vec<serde_json::Value> = serde_yaml::from_reader(File::open(path)?)?;
 
-    let mut users: Vec<A> = vec![];
-    for user in loader {
-        users.push(A::from_json(user)?);
+    for row in seed_data {
+        let model = <A as ActiveModelTrait>::from_json(row)?;
+        <A as ActiveModelTrait>::Entity::insert(model)
+            .exec(db)
+            .await?;
     }
-
-    <A as ActiveModelTrait>::Entity::insert_many(users)
-        .exec(db)
-        .await?;
 
     Ok(())
 }
@@ -269,7 +267,7 @@ where
 ///
 /// Returns a [`AppResult`] if an error occurs during generate model entity.
 pub async fn entities<M: MigratorTrait>(ctx: &AppContext) -> AppResult<String> {
-    doctor::check_seaorm_cli().to_result()?;
+    doctor::check_seaorm_cli()?.to_result()?;
     doctor::check_db(&ctx.config.database).await.to_result()?;
 
     let out = cmd!(
