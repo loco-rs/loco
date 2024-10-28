@@ -43,10 +43,6 @@ name = "loco_starter_template-cli"
 path = "src/bin/main.rs"
 required-features = []
 
-[[bin]]
-name = "tool"
-path = "src/bin/tool.rs"
-required-features = []
 
 [dev-dependencies]
 serial_test = "3.1.1"
