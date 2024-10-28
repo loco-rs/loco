@@ -8,7 +8,7 @@ use crate::{
         _entities::users,
         users::{LoginParams, RegisterParams},
     },
-    views::auth::LoginResponse,
+    views::auth::{CurrentResponse, LoginResponse},
 };
 #[derive(Debug, Deserialize, Serialize)]
 pub struct VerifyParams {
@@ -139,12 +139,19 @@ async fn login(State(ctx): State<AppContext>, Json(params): Json<LoginParams>) -
     format::json(LoginResponse::new(&user, &token))
 }
 
+#[debug_handler]
+async fn current(auth: auth::JWT, State(ctx): State<AppContext>) -> Result<Response> {
+    let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
+    format::json(CurrentResponse::new(&user))
+}
+
 pub fn routes() -> Routes {
     Routes::new()
-        .prefix("auth")
+        .prefix("/api/auth")
         .add("/register", post(register))
         .add("/verify", post(verify))
         .add("/login", post(login))
         .add("/forgot", post(forgot))
         .add("/reset", post(reset))
+        .add("/current", get(current))
 }
