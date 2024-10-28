@@ -7,7 +7,7 @@ skip_glob: "migration/src/*_{{plural_snake}}.rs"
 message: "Migration for `{{name}}` added! You can now apply it with `$ cargo loco db migrate`."
 injections:
 - into: "migration/src/lib.rs"
-  after: "inject-below"
+  before_last: "\\]"
   content: "            Box::new({{module_name}}::Migration),"
 - into: "migration/src/lib.rs"
   before: "pub struct Migrator"
