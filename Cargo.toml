@@ -120,6 +120,9 @@ object_store = { version = "0.11.0", default-features = false }
 # cache
 moka = { version = "0.12.7", features = ["sync"], optional = true }
 
+notify-debouncer-full = { version = "0.4.0" }
+tower-livereload = { version = "0.9.4" }
+
 # Scheduler
 tokio-cron-scheduler = { version = "0.11.0", features = ["signal"] }
 english-to-cron = { version = "0.1.2" }
