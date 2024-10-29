@@ -27,7 +27,7 @@ jobs:
           cargo install --path .
         working-directory: ./loco-cli
       - run: |
-          loco new -n saas -t saas --db sqlite --bg async --assets serverside
+          STARTERS_LOCAL_PATH=. loco new -n saas -t saas --db sqlite --bg async --assets serverside
         env:
           ALLOW_IN_GIT_REPO: true
       - run: |
@@ -60,7 +60,7 @@ jobs:
           toolchain: nightly
       - run: |
           cargo install loco-cli
-          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=saas LOCO_TEMPLATE=saas loco new --db postgres --bg queue --assets serverside
+          STARTERS_LOCAL_PATH=. ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=saas LOCO_TEMPLATE=saas loco new --db postgres --bg queue --assets serverside
       - run: |
           cargo build
         working-directory: ./saas
@@ -79,7 +79,7 @@ jobs:
           toolchain: nightly
       - run: |
           cargo install loco-cli
-          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=restapi LOCO_TEMPLATE=rest-api loco new --db postgres --bg queue
+          STARTERS_LOCAL_PATH=. ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=restapi LOCO_TEMPLATE=rest-api loco new --db postgres --bg queue
       - run: |
           cargo build
         working-directory: ./restapi
@@ -99,7 +99,7 @@ jobs:
           override: true
       - run: |
           cargo install loco-cli
-          ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=lightweight LOCO_TEMPLATE=lightweight-service loco new
+          STARTERS_LOCAL_PATH=. ALLOW_IN_GIT_REPO=true LOCO_APP_NAME=lightweight LOCO_TEMPLATE=lightweight-service loco new
       - run: |
           cargo build
         working-directory: ./lightweight
