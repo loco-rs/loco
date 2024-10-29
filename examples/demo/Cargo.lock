@@ -2602,7 +2602,7 @@ dependencies = [
 
 [[package]]
 name = "loco-gen"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "chrono",
  "clap",
@@ -2619,7 +2619,7 @@ dependencies = [
 
 [[package]]
 name = "loco-rs"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "argon2",
  "async-trait",
@@ -2665,6 +2665,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-cron-scheduler",
+ "toml",
  "tower 0.4.13",
  "tower-http",
  "tracing",
@@ -5045,6 +5046,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "toml"
+version = "0.8.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac2caab0bf757388c6c0ae23b3293fdb463fee59434529014f85e3263b995c28"
+dependencies = [
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_edit 0.22.16",
+]
+
+[[package]]
 name = "toml_datetime"
 version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5066,9 +5079,9 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.22.14"
+version = "0.22.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f21c7aaf97f1bd9ca9d4f9e73b0a6c74bd5afef56f2bc931943a6e1c37e04e38"
+checksum = "278f3d518e152219c994ce877758516bca5e118eaed6996192a774fb9fbf0788"
 dependencies = [
  "indexmap",
  "serde",
@@ -5260,7 +5273,7 @@ dependencies = [
  "serde",
  "shlex",
  "snapbox",
- "toml_edit 0.22.14",
+ "toml_edit 0.22.16",
 ]
 
 [[package]]
