@@ -27,9 +27,10 @@ jobs:
           cargo install --path .
         working-directory: ./loco-cli
       - run: |
-          STARTERS_LOCAL_PATH=. loco new -n saas -t saas --db sqlite --bg async --assets serverside
+          loco new -n saas -t saas --db sqlite --bg async --assets serverside
         env:
           ALLOW_IN_GIT_REPO: true
+          STARTERS_LOCAL_PATH: "."
       - run: |
           cargo build
         working-directory: ./saas
