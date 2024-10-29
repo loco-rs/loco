@@ -371,12 +371,13 @@ where
 {
     match db {
         DatabaseConnection::SqlxPostgresPoolConnection(_) => {
-            let table_name = entity.table_name();
-            let query = format!("TRUNCATE TABLE {table_name} RESTART IDENTITY");
-            tracing::info!(query, "truncating postgres table {table_name}");
-
-            db.execute(sea_orm::Statement::from_string(
-                sea_orm::DatabaseBackend::Postgres,
+            let query = sea_orm::sea_query::Table::truncate()
+                .table(entity.table_ref())
+                .build(sea_orm::sea_query::PostgresQueryBuilder)
+                .to_owned() + " RESTART IDENTITY";
+            tracing::info!(query, "truncating postgres table");
+            db.execute(Statement::from_string(
+                DatabaseBackend::Postgres,
                 query,
             ))
             .await?;
