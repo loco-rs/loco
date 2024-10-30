@@ -38,11 +38,14 @@ fn bump_version_in_file(
 }
 
 pub fn bump_version(version: &str) -> Result<()> {
-    for cargo in [
+    let starters = [
         "starters/saas/Cargo.toml",
-        "starters/saas/migration/Cargo.toml",
-    ] {
-        // turn starters to local
+        "starters/rest-api/Cargo.toml",
+        "starters/lightweight-service/Cargo.toml",
+    ];
+
+    // turn starters to local "../../" version for testing
+    for cargo in starters {
         bump_version_in_file(
             cargo,
             // loco-rs = { version =".."
@@ -50,22 +53,25 @@ pub fn bump_version(version: &str) -> Result<()> {
             r#"loco-rs = { path="../../""#,
             false,
         );
+    }
 
-        println!("Testing starters CI");
+    println!("Testing starters CI");
+    let starter_projects: Vec<ci::RunResults> = ci::run_all_in_folder(Path::new("starters"))?;
 
-        let starter_projects: Vec<ci::RunResults> = ci::run_all_in_folder(Path::new("starters"))?;
-
-        println!("Starters CI results:");
-        println!("{}", out::print_ci_results(&starter_projects));
-        for starter in &starter_projects {
-            if !starter.is_valid() {
-                return Err(Error::Message(format!(
-                    "starter {} ins not passing the CI",
-                    starter.path.display()
-                )));
-            }
+    println!("Starters CI results:");
+    println!("{}", out::print_ci_results(&starter_projects));
+    for starter in &starter_projects {
+        if !starter.is_valid() {
+            return Err(Error::Message(format!(
+                "starter {} ins not passing the CI",
+                starter.path.display()
+            )));
         }
-        // turn starters from local to version
+    }
+
+    // all oK
+    // turn starters from local to version
+    for cargo in starters {
         bump_version_in_file(
             cargo,
             // loco-rs = { path =".."
