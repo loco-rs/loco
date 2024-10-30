@@ -167,14 +167,6 @@ impl BumpVersion {
 
         for starter_project in starter_projects {
             Self::replace_loco_rs_version(&starter_project, replace_with)?;
-
-            let migration_lock_file = starter_project.join("migration");
-            if migration_lock_file.exists() {
-                Self::replace_loco_rs_version(
-                    &migration_lock_file,
-                    replace_migrator.unwrap_or(replace_with),
-                )?;
-            }
         }
 
         Ok(())
