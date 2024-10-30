@@ -2,7 +2,7 @@
 {% set module_name = file_name | pascal_case -%}
 to: tests/requests/{{ file_name }}.rs
 skip_exists: true
-message: "Tests for controller `{{module_name}}` was added successfully. Run `cargo run test`."
+message: "Tests for controller `{{module_name}}` was added successfully. Run `cargo test`."
 injections:
 - into: tests/requests/mod.rs
   append: true
