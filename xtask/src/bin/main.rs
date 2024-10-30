@@ -75,7 +75,18 @@ fn main() -> eyre::Result<()> {
             xtask::CmdExit::ok()
         }
         Commands::Bump { new_version } => {
-            versions::bump_version(&new_version.to_string());
+            let meta = MetadataCommand::new()
+                .manifest_path("./Cargo.toml")
+                .current_dir(&project_dir)
+                .exec()
+                .unwrap();
+            let root: &Package = meta.root_package().unwrap();
+            if xtask::prompt::confirmation(&format!(
+                "upgrading loco version from {} to {}",
+                root.version, new_version,
+            ))? {
+                versions::bump_version(&new_version.to_string())?;
+            }
             xtask::CmdExit::ok()
         }
     };

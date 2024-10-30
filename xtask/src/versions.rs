@@ -2,6 +2,12 @@ use std::path::Path;
 
 use regex::Regex;
 
+use crate::{
+    ci,
+    errors::{Error, Result},
+    out,
+};
+
 fn bump_version_in_file(
     file_path: &str,
     version_regex: &str,
@@ -31,7 +37,7 @@ fn bump_version_in_file(
     }
 }
 
-pub fn bump_version(version: &str) {
+pub fn bump_version(version: &str) -> Result<()> {
     for cargo in [
         "starters/saas/Cargo.toml",
         "starters/saas/migration/Cargo.toml",
@@ -45,6 +51,20 @@ pub fn bump_version(version: &str) {
             false,
         );
 
+        println!("Testing starters CI");
+
+        let starter_projects: Vec<ci::RunResults> = ci::run_all_in_folder(Path::new("starters"))?;
+
+        println!("Starters CI results:");
+        println!("{}", out::print_ci_results(&starter_projects));
+        for starter in &starter_projects {
+            if !starter.is_valid() {
+                return Err(Error::Message(format!(
+                    "starter {} ins not passing the CI",
+                    starter.path.display()
+                )));
+            }
+        }
         // turn starters from local to version
         bump_version_in_file(
             cargo,
@@ -69,4 +89,5 @@ pub fn bump_version(version: &str) {
     // sync new version to subcrates in main Cargo.toml
     let loco_gen_dep = format!(r#"loco-gen = {{ version = "{version}","#);
     bump_version_in_file("Cargo.toml", r"(?m)^loco-gen [^,]*,", &loco_gen_dep, false);
+    Ok(())
 }
