@@ -24,7 +24,7 @@ enum Commands {
         quick: bool,
     },
     /// Bump loco version in all dependencies places
-    BumpVersion {
+    DeprecatedBumpVersion {
         #[arg(name = "VERSION")]
         new_version: Version,
         #[arg(short, long, action = SetFalse)]
@@ -51,7 +51,7 @@ fn main() -> eyre::Result<()> {
             println!("{}", xtask::out::print_ci_results(&res));
             xtask::CmdExit::ok()
         }
-        Commands::BumpVersion {
+        Commands::DeprecatedBumpVersion {
             new_version,
             exclude_starters,
         } => {
