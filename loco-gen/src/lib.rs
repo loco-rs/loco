@@ -2,7 +2,6 @@
 // TODO: should be more properly aligned with extracting out the db-related gen
 // code and then feature toggling it
 #![allow(dead_code)]
-use lazy_static::lazy_static;
 use rrgen::{GenResult, RRgen};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -14,7 +13,7 @@ mod model;
 mod scaffold;
 #[cfg(test)]
 mod testutil;
-use std::str::FromStr;
+use std::{str::FromStr, sync::OnceLock};
 
 const CONTROLLER_T: &str = include_str!("templates/controller.t");
 const CONTROLLER_TEST_T: &str = include_str!("templates/request_test.t");
@@ -109,11 +108,13 @@ impl Mappings {
     }
 }
 
-lazy_static! {
-    static ref MAPPINGS: Mappings = {
+static MAPPINGS: OnceLock<Mappings> = OnceLock::new();
+
+fn get_mappings() -> &'static Mappings {
+    MAPPINGS.get_or_init(|| {
         let json_data = include_str!("./mappings.json");
         serde_json::from_str(json_data).expect("JSON was not well-formatted")
-    };
+    })
 }
 
 #[derive(clap::ValueEnum, Clone, Debug)]

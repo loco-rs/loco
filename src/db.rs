@@ -3,11 +3,10 @@
 //! This module defines functions and operations related to the application's
 //! database interactions.
 
-use std::{collections::HashMap, fs::File, path::Path, time::Duration};
+use std::{collections::HashMap, fs::File, path::Path, sync::OnceLock, time::Duration};
 
 use duct::cmd;
 use fs_err as fs;
-use lazy_static::lazy_static;
 use regex::Regex;
 use sea_orm::{
     ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
@@ -23,13 +22,10 @@ use crate::{
     errors::Error,
 };
 
-lazy_static! {
-    // Getting the table name from the environment configuration.
-    // For example:
-    // postgres://loco:loco@localhost:5432/loco_app
-    // mysql://loco:loco@localhost:3306/loco_app
-    // the results will be loco_app
-    pub static ref EXTRACT_DB_NAME: Regex = Regex::new(r"/([^/]+)$").unwrap();
+pub static EXTRACT_DB_NAME: OnceLock<Regex> = OnceLock::new();
+
+fn get_extract_db_name() -> &'static Regex {
+    EXTRACT_DB_NAME.get_or_init(|| Regex::new(r"/([^/]+)$").unwrap())
 }
 
 #[derive(Default, Clone, Debug)]
@@ -175,7 +171,7 @@ pub async fn create(db_uri: &str) -> AppResult<()> {
             "Only Postgres databases are supported for table creation",
         ));
     }
-    let db_name = EXTRACT_DB_NAME
+    let db_name = get_extract_db_name()
         .captures(db_uri)
         .and_then(|cap| cap.get(1).map(|db| db.as_str()))
         .ok_or_else(|| {
@@ -184,7 +180,9 @@ pub async fn create(db_uri: &str) -> AppResult<()> {
             )
         })?;
 
-    let conn = EXTRACT_DB_NAME.replace(db_uri, "/postgres").to_string();
+    let conn = get_extract_db_name()
+        .replace(db_uri, "/postgres")
+        .to_string();
     let db = Database::connect(conn).await?;
 
     Ok(create_postgres_database(db_name, &db).await?)

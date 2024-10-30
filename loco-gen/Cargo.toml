@@ -14,7 +14,6 @@ path = "src/lib.rs"
 
 [dependencies]
 
-lazy_static = { workspace = true }
 rrgen = "0.5.3"
 serde = { workspace = true }
 serde_json = { workspace = true }

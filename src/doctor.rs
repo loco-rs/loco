@@ -1,10 +1,10 @@
 use std::{
     collections::{BTreeMap, HashMap},
     process::Command,
+    sync::OnceLock,
 };
 
 use colored::Colorize;
-use lazy_static::lazy_static;
 use regex::Regex;
 use semver::Version;
 
@@ -26,8 +26,10 @@ const QUEUE_NOT_CONFIGURED: &str = "queue not configured?";
 
 // versions health
 const MIN_SEAORMCLI_VER: &str = "1.1.0";
-lazy_static! {
-    static ref MIN_DEP_VERSIONS: HashMap<&'static str, &'static str> = {
+static MIN_DEP_VERSIONS: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+
+fn get_min_dep_versions() -> &'static HashMap<&'static str, &'static str> {
+    MIN_DEP_VERSIONS.get_or_init(|| {
         let mut min_vers = HashMap::new();
 
         min_vers.insert("tokio", "1.33.0");
@@ -36,7 +38,7 @@ lazy_static! {
         min_vers.insert("axum", "0.7.5");
 
         min_vers
-    };
+    })
 }
 
 /// Represents different resources that can be checked.
@@ -137,7 +139,8 @@ pub async fn run_all(config: &Config, production: bool) -> Result<BTreeMap<Resou
 pub fn check_deps() -> Result<Check> {
     let cargolock = fs_err::read_to_string("Cargo.lock")?;
 
-    let crate_statuses = depcheck::check_crate_versions(&cargolock, MIN_DEP_VERSIONS.clone())?;
+    let crate_statuses =
+        depcheck::check_crate_versions(&cargolock, get_min_dep_versions().clone())?;
     let mut report = String::new();
     report.push_str("Dependencies\n");
     let mut all_ok = true;

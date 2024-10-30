@@ -13,6 +13,7 @@ use std::{
     iter::Iterator,
     net::{IpAddr, SocketAddr},
     str::FromStr,
+    sync::OnceLock,
     task::{Context, Poll},
 };
 
@@ -27,28 +28,30 @@ use axum::{
 use futures_util::future::BoxFuture;
 use hyper::HeaderMap;
 use ipnetwork::IpNetwork;
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use tower::{Layer, Service};
 use tracing::error;
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
 
-lazy_static! {
-// matching what Rails does is probably a smart idea:
-// https://github.com/rails/rails/blob/main/actionpack/lib/action_dispatch/middleware/remote_ip.rb#L40
-static ref LOCAL_TRUSTED_PROXIES: Vec<IpNetwork> =  [
-        "127.0.0.0/8",    // localhost IPv4 range, per RFC-3330
-        "::1",            // localhost IPv6
-        "fc00::/7",       // private IPv6 range fc00::/7
-        "10.0.0.0/8",     // private IPv4 range 10.x.x.x
-        "172.16.0.0/12",  // private IPv4 range 172.16.0.0 .. 172.31.255.255
-        "192.168.0.0/16"
-    ]
-    .iter()
-    .map(|ip| IpNetwork::from_str(ip).unwrap())
-    .collect();
+static LOCAL_TRUSTED_PROXIES: OnceLock<Vec<IpNetwork>> = OnceLock::new();
+
+fn get_local_trusted_proxies() -> &'static Vec<IpNetwork> {
+    LOCAL_TRUSTED_PROXIES.get_or_init(|| {
+        [
+            "127.0.0.0/8",   // localhost IPv4 range, per RFC-3330
+            "::1",           // localhost IPv6
+            "fc00::/7",      // private IPv6 range fc00::/7
+            "10.0.0.0/8",    // private IPv4 range 10.x.x.x
+            "172.16.0.0/12", // private IPv4 range 172.16.0.0 .. 172.31.255.255
+            "192.168.0.0/16",
+        ]
+        .iter()
+        .map(|ip| IpNetwork::from_str(ip).unwrap())
+        .collect()
+    })
 }
+
 const X_FORWARDED_FOR: &str = "X-Forwarded-For";
 
 ///
@@ -160,7 +163,9 @@ fn maybe_get_forwarded(
         */
         .filter(|ip| {
             // trusted proxies provided REPLACES our default local proxies
-            let proxies = trusted_proxies.as_ref().unwrap_or(&LOCAL_TRUSTED_PROXIES);
+            let proxies = trusted_proxies
+                .as_ref()
+                .unwrap_or(&get_local_trusted_proxies());
             !proxies
                 .iter()
                 .any(|trusted_proxy| trusted_proxy.contains(*ip))

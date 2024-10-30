@@ -1,7 +1,7 @@
 use rrgen::RRgen;
 use serde_json::json;
 
-use crate as gen;
+use crate::{self as gen, get_mappings};
 
 const API_CONTROLLER_SCAFFOLD_T: &str = include_str!("templates/scaffold/api/controller.t");
 const API_CONTROLLER_TEST_T: &str = include_str!("templates/scaffold/api/test.t");
@@ -22,7 +22,7 @@ const HTML_VIEW_CREATE_SCAFFOLD_T: &str = include_str!("templates/scaffold/html/
 const HTML_VIEW_SHOW_SCAFFOLD_T: &str = include_str!("templates/scaffold/html/view_show.t");
 const HTML_VIEW_LIST_SCAFFOLD_T: &str = include_str!("templates/scaffold/html/view_list.t");
 
-use super::{collect_messages, model, AppInfo, Error, Result, MAPPINGS};
+use super::{collect_messages, model, AppInfo, Error, Result};
 
 pub fn generate(
     rrgen: &RRgen,
@@ -35,6 +35,7 @@ pub fn generate(
     // - never run with migration_only, because the controllers will refer to the
     //   models. the models only arrive after migration and entities sync.
     let model_messages = model::generate(rrgen, name, false, false, fields, appinfo)?;
+    let mappings = get_mappings();
 
     let mut columns = Vec::new();
     for (fname, ftype) in fields {
@@ -46,11 +47,11 @@ pub fn generate(
             continue;
         }
         if ftype != "references" {
-            let schema_type = MAPPINGS.rust_field(ftype.as_str()).ok_or_else(|| {
+            let schema_type = mappings.rust_field(ftype.as_str()).ok_or_else(|| {
                 Error::Message(format!(
                     "type: {} not found. try any of: {:?}",
                     ftype,
-                    MAPPINGS.rust_fields()
+                    mappings.rust_fields()
                 ))
             })?;
             columns.push((fname.to_string(), schema_type.as_str(), ftype));
