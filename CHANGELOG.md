@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+* `loco doctor` now checks for app-specific minimum dependency versions. This should help in upgrades. `doctor` also supports "production only" checks which you can run in production with `loco doctor --production`. This, for example, will check your connections but will not check dependencies.
+* 
+
 ## v0.12.0
 
 This release have been primarily about cleanups and simplification.
