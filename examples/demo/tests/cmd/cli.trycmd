@@ -132,6 +132,7 @@ $ demo_app-cli doctor
 ✅ DB connection: success
 ✅ redis queue: queue connection: success
 ✅ Dependencies
+
 ```
 
 ```console 
