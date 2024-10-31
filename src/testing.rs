@@ -17,12 +17,12 @@ use crate::{
     Result,
 };
 
-pub static CLEANUP_USER_MODEL: OnceLock<Vec<(&'static str, &'static str)>> = OnceLock::new();
-pub static CLEANUP_DATE: OnceLock<Vec<(&'static str, &'static str)>> = OnceLock::new();
-pub static CLEANUP_MODEL: OnceLock<Vec<(&'static str, &'static str)>> = OnceLock::new();
-pub static CLEANUP_MAIL: OnceLock<Vec<(&'static str, &'static str)>> = OnceLock::new();
+static CLEANUP_USER_MODEL: OnceLock<Vec<(&'static str, &'static str)>> = OnceLock::new();
+static CLEANUP_DATE: OnceLock<Vec<(&'static str, &'static str)>> = OnceLock::new();
+static CLEANUP_MODEL: OnceLock<Vec<(&'static str, &'static str)>> = OnceLock::new();
+static CLEANUP_MAIL: OnceLock<Vec<(&'static str, &'static str)>> = OnceLock::new();
 
-fn get_cleanup_user_model() -> &'static Vec<(&'static str, &'static str)> {
+pub fn get_cleanup_user_model() -> &'static Vec<(&'static str, &'static str)> {
     CLEANUP_USER_MODEL.get_or_init(|| {
         vec![
             (
@@ -35,7 +35,7 @@ fn get_cleanup_user_model() -> &'static Vec<(&'static str, &'static str)> {
     })
 }
 
-fn get_cleanup_date() -> &'static Vec<(&'static str, &'static str)> {
+pub fn get_cleanup_date() -> &'static Vec<(&'static str, &'static str)> {
     CLEANUP_DATE.get_or_init(|| {
         vec![
             (
@@ -48,11 +48,11 @@ fn get_cleanup_date() -> &'static Vec<(&'static str, &'static str)> {
     })
 }
 
-fn get_cleanup_model() -> &'static Vec<(&'static str, &'static str)> {
+pub fn get_cleanup_model() -> &'static Vec<(&'static str, &'static str)> {
     CLEANUP_MODEL.get_or_init(|| vec![(r"id: \d+,", "id: ID")])
 }
 
-fn get_cleanup_mail() -> &'static Vec<(&'static str, &'static str)> {
+pub fn get_cleanup_mail() -> &'static Vec<(&'static str, &'static str)> {
     CLEANUP_MAIL.get_or_init(|| {
         vec![
             (r"[0-9A-Za-z]+{40}", "IDENTIFIER"),
