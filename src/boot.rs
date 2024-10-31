@@ -110,22 +110,6 @@ pub async fn start<H: Hooks>(
     Ok(())
 }
 
-async fn shutdown_and_await_queue_worker(
-    app_context: &AppContext,
-    handle: JoinHandle<()>,
-) -> Result<(), Error> {
-    if let Some(queue) = &app_context.queue_provider {
-        queue.shutdown()?;
-    }
-
-    println!("press ctrl-c again to force quit");
-    select! {
-        _ = handle => {}
-        () = shutdown_signal() => {}
-    }
-    Ok(())
-}
-
 fn start_queue_worker(app_context: &AppContext) -> Result<JoinHandle<()>> {
     debug!("note: worker is run in-process (tokio spawn)");
 
@@ -144,6 +128,22 @@ fn start_queue_worker(app_context: &AppContext) -> Result<JoinHandle<()>> {
     }
 
     Err(Error::QueueProviderMissing)
+}
+
+async fn shutdown_and_await_queue_worker(
+    app_context: &AppContext,
+    handle: JoinHandle<()>,
+) -> Result<(), Error> {
+    if let Some(queue) = &app_context.queue_provider {
+        queue.shutdown()?;
+    }
+
+    println!("press ctrl-c again to force quit");
+    select! {
+        _ = handle => {}
+        () = shutdown_signal() => {}
+    }
+    Ok(())
 }
 
 /// Run task
