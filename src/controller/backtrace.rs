@@ -60,8 +60,8 @@ pub fn print_backtrace(bt: &std::backtrace::Backtrace) -> Result<()> {
     backtrace_printer::print_backtrace(
         &mut std::io::stdout(),
         bt,
-        &get_name_blocklist(),
-        &get_file_blocklist(),
+        get_name_blocklist(),
+        get_file_blocklist(),
     )
     .map_err(Error::msg)
 }

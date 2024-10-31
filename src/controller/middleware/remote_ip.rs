@@ -165,7 +165,7 @@ fn maybe_get_forwarded(
             // trusted proxies provided REPLACES our default local proxies
             let proxies = trusted_proxies
                 .as_ref()
-                .unwrap_or(&get_local_trusted_proxies());
+                .unwrap_or_else(|| get_local_trusted_proxies());
             !proxies
                 .iter()
                 .any(|trusted_proxy| trusted_proxy.contains(*ip))

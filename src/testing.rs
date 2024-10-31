@@ -105,7 +105,7 @@ fn get_cleanup_mail() -> &'static Vec<(&'static str, &'static str)> {
 /// ```
 #[must_use]
 pub fn cleanup_user_model() -> Vec<(&'static str, &'static str)> {
-    let mut combined_filters = get_cleanup_user_model().to_vec();
+    let mut combined_filters = get_cleanup_user_model().clone();
     combined_filters.extend(get_cleanup_date().iter().copied());
     combined_filters.extend(get_cleanup_model().iter().copied());
     combined_filters
@@ -114,7 +114,7 @@ pub fn cleanup_user_model() -> Vec<(&'static str, &'static str)> {
 /// Combines cleanup filters from emails  that can be dynamic
 #[must_use]
 pub fn cleanup_email() -> Vec<(&'static str, &'static str)> {
-    let mut combined_filters = get_cleanup_mail().to_vec();
+    let mut combined_filters = get_cleanup_mail().clone();
     combined_filters.extend(get_cleanup_date().iter().copied());
     combined_filters
 }
