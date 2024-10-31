@@ -37,7 +37,7 @@ pub fn for_options(
     match assetopt {
         AssetsOption::Clientside => res.push(format!(
             "{}: You've selected `{}` for your asset serving configuration.\n\nNext step, build \
-             your frontend:\n  $ cd {}\n  $ npm install && npm build\n",
+             your frontend:\n  $ cd {}\n  $ npm install && npm run build\n",
             "assets".underline(),
             "clientside".yellow(),
             "frontend/".yellow()

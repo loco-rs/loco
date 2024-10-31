@@ -2,7 +2,7 @@
 {% set struct_name = module_name | pascal_case -%}
 to: "tests/workers/{{module_name}}.rs"
 skip_exists: true
-message: "Test for worker `{{struct_name}}` was added successfully. Run `cargo run test`."
+message: "Test for worker `{{struct_name}}` was added successfully. Run `cargo test`."
 injections:
 - into: tests/workers/mod.rs
   append: true
