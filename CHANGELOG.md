@@ -1,6 +1,30 @@
 # Changelog
 
-## Unreleased
+## v0.12.0
+
+This release have been primarily about cleanups and simplification.
+
+Please update:
+
+* `loco-rs`
+* `loco-cli`
+
+Changes:
+
+* **generators (BREAKING)**: all prefixes in starters (e.g. `/api`) are now _local to each controller_, and generators will be prefix-aware (`--api` generator will add an `/api` prefix to controllers) [https://github.com/loco-rs/loco/pull/818](https://github.com/loco-rs/loco/pull/818)
+
+To migrate, please move prefixes from `app.rs` to each controller you use in `controllers/`, for example in `notes` controller:
+
+```rust
+Routes::new()
+    .prefix("api/notes")
+    .add("/", get(list))
+```
+
+* **starters**: removed `.devcontainer` which can now be found in [loco-devcontainer](https://github.com/loco-rs/loco-devcontainer)
+* **starters**: removed example `notes` scaffold (model, controllers, etc), and unified `user` and `auth` into a single file: `auth.rs`
+* **generators**: `scaffold` generator will now generate a CRUD with `PUT` and `PATCH` semantics for updating an entity [https://github.com/loco-rs/loco/issues/896](https://github.com/loco-rs/loco/issues/896)
+* **cleanup**: `loco-extras` was moved out of the repo, but we've incorporated `MultiDB` and `ExtraDB` from `extras` into `loco-rs` [https://github.com/loco-rs/loco/pull/917](https://github.com/loco-rs/loco/pull/917)
 
 * `cargo loco doctor` now checks for minimal required SeaORM CLI version
 * **BREAKING** Improved migration generator. If you have an existing migration project, add the following comment indicator to the top of the `vec` statement and right below the opening bracked like so in `migration/src/lib.rs`:

@@ -14,9 +14,9 @@ use serial_test::serial;
 
 #[tokio::test]
 #[serial]
-async fn can_list() {
+async fn can_get_{{ name | plural | snake_case }}() {
     testing::request::<App, _, _>(|request, _ctx| async move {
-        let res = request.get("/{{ name | snake_case }}/").await;
+        let res = request.get("/{{ name | plural | snake_case }}/").await;
         assert_eq!(res.status_code(), 200);
 
         // you can assert content like this:
