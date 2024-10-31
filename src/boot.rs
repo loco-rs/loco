@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use axum::Router;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
+use tokio::task::JoinHandle;
 use tokio::{select, signal};
 use tracing::{debug, error, info, warn};
 
@@ -86,48 +87,63 @@ pub async fn start<H: Hooks>(
         (Some(router), false) => {
             H::serve(router, &app_context).await?;
         }
-        (router, true) => {
-            let mut handle = None;
-            if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
-                debug!("note: worker is run in-process (tokio spawn)");
+        (Some(router), true) => {
+            let handle = if app_context.config.workers.mode == WorkerMode::BackgroundQueue { Some(start_queue_worker(&app_context)?) } else { None };
 
-                if let Some(queue) = &app_context.queue_provider {
-                    let cloned_queue = queue.clone();
-                    handle = Some(tokio::spawn(async move {
-                        let res = cloned_queue.run().await;
-                        if res.is_err() {
-                            error!(
-                                err = res.unwrap_err().to_string(),
-                                "error while running worker"
-                            );
-                        }
-                    }));
-                } else {
-                    return Err(Error::QueueProviderMissing);
-                }
-            }
-
-            if let Some(router) = router {
-                H::serve(router, &app_context).await?;
-            } else {
-                shutdown_signal().await;
-            }
+            H::serve(router, &app_context).await?;
 
             if let Some(handle) = handle {
-                if let Some(queue) = &app_context.queue_provider {
-                    queue.shutdown()?;
-                }
+                shutdown_and_await_queue_worker(&app_context, handle).await?;
+            }
+        }
+        (None, true) => {
+            let handle = if app_context.config.workers.mode == WorkerMode::BackgroundQueue { Some(start_queue_worker(&app_context)?) } else { None };
 
-                println!("press ctrl-c again to force quit");
-                select! {
-                    _ = handle => {}
-                    () = shutdown_signal() => {}
-                }
+            shutdown_signal().await;
+
+            if let Some(handle) = handle {
+                shutdown_and_await_queue_worker(&app_context, handle).await?;
             }
         }
         _ => {}
     }
     Ok(())
+}
+
+async fn shutdown_and_await_queue_worker(
+    app_context: &AppContext,
+    handle: JoinHandle<()>,
+) -> Result<(), Error> {
+    if let Some(queue) = &app_context.queue_provider {
+        queue.shutdown()?;
+    }
+
+    println!("press ctrl-c again to force quit");
+    select! {
+        _ = handle => {}
+        () = shutdown_signal() => {}
+    }
+    Ok(())
+}
+
+fn start_queue_worker(app_context: &AppContext) -> Result<JoinHandle<()>> {
+    debug!("note: worker is run in-process (tokio spawn)");
+
+    if let Some(queue) = &app_context.queue_provider {
+        let cloned_queue = queue.clone();
+        let handle = tokio::spawn(async move {
+            let res = cloned_queue.run().await;
+            if res.is_err() {
+                error!(
+                    err = res.unwrap_err().to_string(),
+                    "error while running worker"
+                );
+            }
+        });
+        return Ok(handle);
+    }
+
+    Err(Error::QueueProviderMissing)
 }
 
 /// Run task
