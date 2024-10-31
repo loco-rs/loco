@@ -6,11 +6,12 @@ use rrgen::RRgen;
 use serde_json::json;
 
 use super::{Error, Result};
+use crate::get_mappings;
 
 const MODEL_T: &str = include_str!("templates/model.t");
 const MODEL_TEST_T: &str = include_str!("templates/model_test.t");
 
-use super::{collect_messages, AppInfo, MAPPINGS};
+use super::{collect_messages, AppInfo};
 
 /// skipping some fields from the generated models.
 /// For example, the `created_at` and `updated_at` fields are automatically
@@ -44,11 +45,12 @@ pub fn generate(
             // user, user_id
             references.push((fname, fkey));
         } else {
-            let schema_type = MAPPINGS.schema_field(ftype.as_str()).ok_or_else(|| {
+            let mappings = get_mappings();
+            let schema_type = mappings.schema_field(ftype.as_str()).ok_or_else(|| {
                 Error::Message(format!(
                     "type: {} not found. try any of: {:?}",
                     ftype,
-                    MAPPINGS.schema_fields()
+                    mappings.schema_fields()
                 ))
             })?;
             columns.push((fname.to_string(), schema_type.as_str()));

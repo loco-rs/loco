@@ -69,7 +69,6 @@ async-trait = { workspace = true }
 axum = { workspace = true }
 axum-extra = { version = "0.9", features = ["cookie"] }
 regex = { workspace = true }
-lazy_static = { workspace = true }
 fs-err = "2.11.0"
 # mailer
 tera = "1.19.1"
@@ -143,7 +142,6 @@ regex = "1"
 thiserror = "1"
 serde = "1"
 serde_json = "1"
-lazy_static = "1.4.0"
 async-trait = { version = "0.1.74" }
 axum = { version = "0.7.5", features = ["macros"] }
 tower = "0.4"

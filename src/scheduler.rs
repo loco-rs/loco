@@ -5,6 +5,7 @@ use std::{
     collections::HashMap,
     fmt, io,
     path::{Path, PathBuf},
+    sync::OnceLock,
     time::Instant,
 };
 
@@ -14,8 +15,10 @@ use tokio_cron_scheduler::{JobScheduler, JobSchedulerError};
 
 use crate::{app::Hooks, environment::Environment, task::Tasks};
 
-lazy_static::lazy_static! {
-    static ref RE_IS_CRON_SYNTAX: Regex = Regex::new(r"^[\*\d]").unwrap();
+static RE_IS_CRON_SYNTAX: OnceLock<Regex> = OnceLock::new();
+
+fn get_re_is_cron_syntax() -> &'static Regex {
+    RE_IS_CRON_SYNTAX.get_or_init(|| Regex::new(r"^[\*\d]").unwrap())
 }
 
 /// Errors that may occur while operating the scheduler.
@@ -291,7 +294,7 @@ impl Scheduler {
             let job_description =
                 job.prepare_command(&self.binary_path, &self.default_output, &self.environment);
 
-            let cron_syntax = if RE_IS_CRON_SYNTAX.is_match(&job.cron) {
+            let cron_syntax = if get_re_is_cron_syntax().is_match(&job.cron) {
                 job.cron.clone()
             } else {
                 english_to_cron::str_cron_syntax(&job.cron).map_err(|err| {
