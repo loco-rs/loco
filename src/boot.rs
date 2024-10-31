@@ -88,7 +88,11 @@ pub async fn start<H: Hooks>(
             H::serve(router, &app_context).await?;
         }
         (Some(router), true) => {
-            let handle = if app_context.config.workers.mode == WorkerMode::BackgroundQueue { Some(start_queue_worker(&app_context)?) } else { None };
+            let handle = if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
+                Some(start_queue_worker(&app_context)?)
+            } else {
+                None
+            };
 
             H::serve(router, &app_context).await?;
 
@@ -97,7 +101,11 @@ pub async fn start<H: Hooks>(
             }
         }
         (None, true) => {
-            let handle = if app_context.config.workers.mode == WorkerMode::BackgroundQueue { Some(start_queue_worker(&app_context)?) } else { None };
+            let handle = if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
+                Some(start_queue_worker(&app_context)?)
+            } else {
+                None
+            };
 
             shutdown_signal().await;
 
