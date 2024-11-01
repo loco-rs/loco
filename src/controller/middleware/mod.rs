@@ -122,9 +122,17 @@ pub fn default_middleware_stack(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer
                 .clone()
                 .unwrap_or_else(|| compression::Compression { enable: false }),
         ),
-        // Request Context Middleware with optional session store
+        // Request Context Middleware with a default if none
         Box::new(request_context::RequestContextMiddleware::new(
-            ctx.config.server.middlewares.request_context.clone(),
+            ctx.config
+                .server
+                .middlewares
+                .request_context
+                .clone()
+                .unwrap_or_else(|| request_context::RequestContextMiddlewareConfig {
+                    enable: true,
+                    ..Default::default()
+                }),
             ctx.session_store.clone(),
         )),
         // Timeout Request middleware with a default if none

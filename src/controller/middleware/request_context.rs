@@ -104,9 +104,13 @@ impl Default for SessionCookieConfig {
 
 impl Default for RequestContextSession {
     fn default() -> Self {
-        Self::Cookie {
-            private_key: Key::generate().master().to_vec(),
-        }
+        // Generate a private key for the cookie session
+        let private_key = Key::generate().master().to_vec();
+        tracing::info!(
+            "[Middleware] Generating private key for cookie session: {:?}",
+            private_key
+        );
+        Self::Cookie { private_key }
     }
 }
 
