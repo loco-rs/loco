@@ -1,8 +1,6 @@
 //! # Scheduler Module
 //! TBD
 
-use regex::Regex;
-use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fmt, io,
@@ -357,13 +355,13 @@ impl Scheduler {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-    use crate::tests_cfg;
     use insta::assert_debug_snapshot;
-
     use rstest::rstest;
     use tests_cfg::db::AppHook;
     use tokio::time::{self, Duration};
+
+    use super::*;
+    use crate::tests_cfg;
 
     fn get_scheduler_from_config() -> Result<Scheduler, Error> {
         let scheduler_config_path = PathBuf::from("tests")
