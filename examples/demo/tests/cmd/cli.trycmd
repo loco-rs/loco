@@ -133,6 +133,8 @@ $ demo_app-cli doctor
 ✅ SeaORM CLI is installed
 ✅ DB connection: success
 ✅ redis queue: queue connection: success
+✅ Dependencies
+
 
 ```
 

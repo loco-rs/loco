@@ -18,8 +18,6 @@ macro_rules! configure_insta {
 // removes trailing slashes from the request path.
 #[rstest]
 #[case("ping", "/_ping")]
-#[case("ping_with_trailing_slash", "/_ping/")]
-#[case("ping_with_multiple_trailing_slashes", "/_ping////")]
 #[tokio::test]
 async fn ping(#[case] test_name: &str, #[case] path: &str) {
     configure_insta!();

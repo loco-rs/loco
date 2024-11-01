@@ -24,20 +24,21 @@ Notes:
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
+    sync::OnceLock,
 };
 
 use fs_err as fs;
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::info;
 
 use crate::{controller::middleware, environment::Environment, logger, scheduler, Error, Result};
 
-lazy_static! {
-    static ref DEFAULT_FOLDER: PathBuf = PathBuf::from("config");
-}
+static DEFAULT_FOLDER: OnceLock<PathBuf> = OnceLock::new();
 
+fn get_default_folder() -> &'static PathBuf {
+    DEFAULT_FOLDER.get_or_init(|| PathBuf::from("config"))
+}
 /// Main application configuration structure.
 ///
 /// This struct encapsulates various configuration settings. The configuration
@@ -505,7 +506,7 @@ impl Config {
     ///     Config::new(environment).expect("configuration loading")
     /// }
     pub fn new(env: &Environment) -> Result<Self> {
-        let config = Self::from_folder(env, DEFAULT_FOLDER.as_path())?;
+        let config = Self::from_folder(env, get_default_folder().as_path())?;
         Ok(config)
     }
 

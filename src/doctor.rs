@@ -1,9 +1,17 @@
-use std::{collections::BTreeMap, process::Command};
+use std::{
+    collections::{BTreeMap, HashMap},
+    process::Command,
+    sync::OnceLock,
+};
+
+use colored::Colorize;
+use regex::Regex;
+use semver::Version;
 
 use crate::{
     bgworker,
     config::{self, Config, Database},
-    db, Error, Result,
+    db, depcheck, Error, Result,
 };
 
 const SEAORM_INSTALLED: &str = "SeaORM CLI is installed";
@@ -16,12 +24,30 @@ const QUEUE_CONN_OK: &str = "queue connection: success";
 const QUEUE_CONN_FAILED: &str = "queue connection: failed";
 const QUEUE_NOT_CONFIGURED: &str = "queue not configured?";
 
+// versions health
+const MIN_SEAORMCLI_VER: &str = "1.1.0";
+static MIN_DEP_VERSIONS: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+
+fn get_min_dep_versions() -> &'static HashMap<&'static str, &'static str> {
+    MIN_DEP_VERSIONS.get_or_init(|| {
+        let mut min_vers = HashMap::new();
+
+        min_vers.insert("tokio", "1.33.0");
+        min_vers.insert("sea-orm", "1.1.0");
+        min_vers.insert("validator", "0.18.0");
+        min_vers.insert("axum", "0.7.5");
+
+        min_vers
+    })
+}
+
 /// Represents different resources that can be checked.
 #[derive(PartialOrd, PartialEq, Eq, Ord, Debug)]
 pub enum Resource {
     SeaOrmCLI,
     Database,
-    Redis,
+    Queue,
+    Deps,
 }
 
 /// Represents the status of a resource check.
@@ -88,17 +114,61 @@ impl std::fmt::Display for Check {
 }
 
 /// Runs checks for all configured resources.
-pub async fn run_all(config: &Config) -> BTreeMap<Resource, Check> {
-    let mut checks = BTreeMap::from([
-        (Resource::SeaOrmCLI, check_seaorm_cli()),
-        (Resource::Database, check_db(&config.database).await),
-    ]);
+/// # Errors
+/// Error when one of the checks fail
+pub async fn run_all(config: &Config, production: bool) -> Result<BTreeMap<Resource, Check>> {
+    let mut checks = BTreeMap::from([(Resource::Database, check_db(&config.database).await)]);
 
     if config.workers.mode == config::WorkerMode::BackgroundQueue {
-        checks.insert(Resource::Redis, check_queue(config).await);
+        checks.insert(Resource::Queue, check_queue(config).await);
     }
 
-    checks
+    if !production {
+        checks.insert(Resource::Deps, check_deps()?);
+        checks.insert(Resource::SeaOrmCLI, check_seaorm_cli()?);
+    }
+
+    Ok(checks)
+}
+
+/// Checks "blessed" / major dependencies in a Loco app Cargo.toml, and
+/// recommend to update.
+/// Only if a dep exists, we check it against a min version
+/// # Errors
+/// Returns error if fails
+pub fn check_deps() -> Result<Check> {
+    let cargolock = fs_err::read_to_string("Cargo.lock")?;
+
+    let crate_statuses =
+        depcheck::check_crate_versions(&cargolock, get_min_dep_versions().clone())?;
+    let mut report = String::new();
+    report.push_str("Dependencies\n");
+    let mut all_ok = true;
+
+    for status in &crate_statuses {
+        if let depcheck::VersionStatus::Invalid {
+            version,
+            min_version,
+        } = &status.status
+        {
+            report.push_str(&format!(
+                "     {}: version {} does not meet minimum version {}\n",
+                status.crate_name.yellow(),
+                version.red(),
+                min_version.green()
+            ));
+            all_ok = false;
+        }
+    }
+    Ok(Check {
+        status: if all_ok {
+            CheckStatus::Ok
+        } else {
+            CheckStatus::NotOk
+        },
+        message: report,
+        description: None,
+    })
 }
 
 /// Checks the database connection.
@@ -156,18 +226,52 @@ pub async fn check_queue(config: &Config) -> Check {
 }
 
 /// Checks the presence and version of `SeaORM` CLI.
-#[must_use]
-pub fn check_seaorm_cli() -> Check {
+/// # Panics
+/// On illegal regex
+/// # Errors
+/// Fails when cannot check version
+pub fn check_seaorm_cli() -> Result<Check> {
     match Command::new("sea-orm-cli").arg("--version").output() {
-        Ok(_) => Check {
-            status: CheckStatus::Ok,
-            message: SEAORM_INSTALLED.to_string(),
-            description: None,
-        },
-        Err(_) => Check {
+        Ok(out) => {
+            let input = String::from_utf8_lossy(&out.stdout);
+            // Extract the version from the input string
+            let re = Regex::new(r"(\d+\.\d+\.\d+)").unwrap();
+
+            let version_str = re
+                .captures(&input)
+                .and_then(|caps| caps.get(0))
+                .map(|m| m.as_str())
+                .ok_or("SeaORM CLI version not found")
+                .map_err(Box::from)?;
+
+            // Parse the extracted version using semver
+            let version = Version::parse(version_str).map_err(Box::from)?;
+
+            // Parse the minimum version for comparison
+            let min_version = Version::parse(MIN_SEAORMCLI_VER).map_err(Box::from)?;
+
+            // Compare the extracted version with the minimum version
+            if version >= min_version {
+                Ok(Check {
+                    status: CheckStatus::Ok,
+                    message: SEAORM_INSTALLED.to_string(),
+                    description: None,
+                })
+            } else {
+                Ok(Check {
+                    status: CheckStatus::NotOk,
+                    message: format!(
+                        "SeaORM CLI minimal version is `{min_version}` (you have `{version}`). \
+                         Run `cargo install sea-orm-cli` to update."
+                    ),
+                    description: Some(SEAORM_NOT_FIX.to_string()),
+                })
+            }
+        }
+        Err(_) => Ok(Check {
             status: CheckStatus::NotOk,
             message: SEAORM_NOT_INSTALLED.to_string(),
             description: Some(SEAORM_NOT_FIX.to_string()),
-        },
+        }),
     }
 }

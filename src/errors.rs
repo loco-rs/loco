@@ -10,7 +10,7 @@ use axum::{
 };
 use lettre::{address::AddressError, transport::smtp};
 
-use crate::controller::ErrorDetail;
+use crate::{controller::ErrorDetail, depcheck};
 
 /*
 backtrace principles:
@@ -85,9 +85,6 @@ pub enum Error {
     DB(#[from] sea_orm::DbErr),
 
     #[error(transparent)]
-    RRgen(#[from] rrgen::Error),
-
-    #[error(transparent)]
     ParseAddress(#[from] AddressError),
 
     #[error("{0}")]
@@ -147,6 +144,12 @@ pub enum Error {
 
     #[error(transparent)]
     Cache(#[from] crate::cache::CacheError),
+
+    #[error(transparent)]
+    Generators(#[from] loco_gen::Error),
+
+    #[error(transparent)]
+    VersionCheck(#[from] depcheck::VersionCheckError),
 
     #[error(transparent)]
     Any(#[from] Box<dyn std::error::Error + Send + Sync>),

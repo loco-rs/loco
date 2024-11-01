@@ -1,9 +1,11 @@
 //! Sets secure headers for your backend to promote security-by-default.
+//!
 //! This middleware applies secure HTTP headers, providing pre-defined presets
 //! (e.g., "github") and the ability to override or define custom headers.
 
 use std::{
     collections::{BTreeMap, HashMap},
+    sync::OnceLock,
     task::{Context, Poll},
 };
 
@@ -14,19 +16,19 @@ use axum::{
     Router as AXRouter,
 };
 use futures_util::future::BoxFuture;
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use serde_json::{self, json};
 use tower::{Layer, Service};
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
 
-lazy_static! {
-        /// Predefined secure header presets loaded from `secure_headers.json`
-    static ref PRESETS: HashMap<String, BTreeMap<String, String>> =
-        serde_json::from_str(include_str!("secure_headers.json")).unwrap();
+static PRESETS: OnceLock<HashMap<String, BTreeMap<String, String>>> = OnceLock::new();
+fn get_presets() -> &'static HashMap<String, BTreeMap<String, String>> {
+    PRESETS.get_or_init(|| {
+        let json_data = include_str!("secure_headers.json");
+        serde_json::from_str(json_data).unwrap()
+    })
 }
-
 /// Sets a predefined or custom set of secure headers.
 ///
 /// We recommend our `github` preset. Presets values are derived
@@ -122,7 +124,7 @@ impl SecureHeader {
         let mut headers = vec![];
 
         let preset = &self.preset;
-        let p = PRESETS.get(preset).ok_or_else(|| {
+        let p = get_presets().get(preset).ok_or_else(|| {
             Error::Message(format!(
                 "secure_headers: a preset named `{preset}` does not exist"
             ))

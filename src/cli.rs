@@ -28,6 +28,7 @@ use std::path::PathBuf;
 
 use clap::{ArgAction, Parser, Subcommand};
 use duct::cmd;
+use loco_gen::{Component, ScaffoldKind};
 
 use crate::{
     app::{AppContext, Hooks},
@@ -35,8 +36,8 @@ use crate::{
         create_app, create_context, list_endpoints, list_middlewares, run_scheduler, run_task,
         start, RunDbCommand, ServeParams, StartMode,
     },
+    config::Config,
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
-    gen::{self, Component, ScaffoldKind},
     logger, task, Error,
 };
 #[derive(Parser)]
@@ -135,6 +136,8 @@ enum Commands {
         /// print out the current configurations.
         #[arg(short, long, action)]
         config: bool,
+        #[arg(short, long, action)]
+        production: bool,
     },
     /// Display the app version
     Version {},
@@ -190,7 +193,7 @@ enum ComponentArg {
 
         /// The kind of scaffold to generate
         #[clap(short, long, value_enum, group = "scaffold_kind_group")]
-        kind: Option<gen::ScaffoldKind>,
+        kind: Option<ScaffoldKind>,
 
         /// Use HTMX scaffold
         #[clap(long, group = "scaffold_kind_group")]
@@ -214,7 +217,7 @@ enum ComponentArg {
 
         /// The kind of controller actions to generate
         #[clap(short, long, value_enum, group = "scaffold_kind_group")]
-        kind: Option<gen::ScaffoldKind>,
+        kind: Option<ScaffoldKind>,
 
         /// Use HTMX controller actions
         #[clap(long, group = "scaffold_kind_group")]
@@ -249,26 +252,25 @@ enum ComponentArg {
     Deployment {},
 }
 
-impl TryFrom<ComponentArg> for Component {
-    type Error = crate::Error;
-    fn try_from(value: ComponentArg) -> Result<Self, Self::Error> {
-        match value {
+impl ComponentArg {
+    fn into_gen_component(self, config: &Config) -> crate::Result<Component> {
+        match self {
             #[cfg(feature = "with-db")]
-            ComponentArg::Model {
+            Self::Model {
                 name,
                 link,
                 migration_only,
                 fields,
-            } => Ok(Self::Model {
+            } => Ok(Component::Model {
                 name,
                 link,
                 migration_only,
                 fields,
             }),
             #[cfg(feature = "with-db")]
-            ComponentArg::Migration { name } => Ok(Self::Migration { name }),
+            Self::Migration { name } => Ok(Component::Migration { name }),
             #[cfg(feature = "with-db")]
-            ComponentArg::Scaffold {
+            Self::Scaffold {
                 name,
                 fields,
                 kind,
@@ -290,9 +292,9 @@ impl TryFrom<ComponentArg> for Component {
                     ));
                 };
 
-                Ok(Self::Scaffold { name, fields, kind })
+                Ok(Component::Scaffold { name, fields, kind })
             }
-            ComponentArg::Controller {
+            Self::Controller {
                 name,
                 actions,
                 kind,
@@ -314,17 +316,38 @@ impl TryFrom<ComponentArg> for Component {
                     ));
                 };
 
-                Ok(Self::Controller {
+                Ok(Component::Controller {
                     name,
                     actions,
                     kind,
                 })
             }
-            ComponentArg::Task { name } => Ok(Self::Task { name }),
-            ComponentArg::Scheduler {} => Ok(Self::Scheduler {}),
-            ComponentArg::Worker { name } => Ok(Self::Worker { name }),
-            ComponentArg::Mailer { name } => Ok(Self::Mailer { name }),
-            ComponentArg::Deployment {} => Ok(Self::Deployment {}),
+            Self::Task { name } => Ok(Component::Task { name }),
+            Self::Scheduler {} => Ok(Component::Scheduler {}),
+            Self::Worker { name } => Ok(Component::Worker { name }),
+            Self::Mailer { name } => Ok(Component::Mailer { name }),
+            Self::Deployment {} => {
+                let copy_asset_folder = &config
+                    .server
+                    .middlewares
+                    .static_assets
+                    .clone()
+                    .map(|a| a.folder.path);
+
+                let fallback_file = &config
+                    .server
+                    .middlewares
+                    .static_assets
+                    .clone()
+                    .map(|a| a.fallback);
+
+                Ok(Component::Deployment {
+                    asset_folder: copy_asset_folder.clone(),
+                    fallback_file: fallback_file.clone(),
+                    host: config.server.host.clone(),
+                    port: config.server.port,
+                })
+            }
         }
     }
 }
@@ -427,6 +450,7 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
 #[allow(clippy::cognitive_complexity)]
 pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
     use colored::Colorize;
+    use loco_gen::AppInfo;
 
     let cli: Cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
@@ -511,15 +535,23 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             run_scheduler::<H>(&app_context, config.as_ref(), name, tag, list).await?;
         }
         Commands::Generate { component } => {
-            gen::generate::<H>(component.try_into()?, &config)?;
+            loco_gen::generate(
+                component.into_gen_component(&config)?,
+                &AppInfo {
+                    app_name: H::app_name().to_string(),
+                },
+            )?;
         }
-        Commands::Doctor { config: config_arg } => {
+        Commands::Doctor {
+            config: config_arg,
+            production,
+        } => {
             if config_arg {
                 println!("{}", &config);
                 println!("Environment: {}", &environment);
             } else {
                 let mut should_exit = false;
-                for (_, check) in doctor::run_all(&config).await {
+                for (_, check) in doctor::run_all(&config, production).await? {
                     if !should_exit && !check.valid() {
                         should_exit = true;
                     }
@@ -562,6 +594,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
 #[cfg(not(feature = "with-db"))]
 pub async fn main<H: Hooks>() -> crate::Result<()> {
     use colored::Colorize;
+    use loco_gen::AppInfo;
 
     let cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
@@ -639,7 +672,12 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             run_scheduler::<H>(&app_context, config.as_ref(), name, tag, list).await?;
         }
         Commands::Generate { component } => {
-            gen::generate::<H>(component.try_into()?, &config)?;
+            loco_gen::generate(
+                component.into_gen_component(&config)?,
+                &AppInfo {
+                    app_name: H::app_name().to_string(),
+                },
+            )?;
         }
         Commands::Version {} => {
             println!("{}", H::app_version(),);

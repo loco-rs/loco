@@ -131,7 +131,7 @@ $ curl localhost:5150/_health
 ```
 
 <div class="infobox">
-The built in <code>_health</code> route will tell you that you have configured your app properly: it can establish a connection to your Postgres and Redis instances successfully.
+The built in <code>_health</code> route will tell you that you have configured your app properly: it can establish a connection to your Database and Redis instances successfully.
 </div>
 
 ### Say "Hello", Loco
@@ -150,24 +150,32 @@ injected: "tests/requests/mod.rs"
 This is the generated controller body:
 
 ```rust
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
 use loco_rs::prelude::*;
+use axum::debug_handler;
 
-pub async fn echo(req_body: String) -> String {
-    req_body
-}
-
-pub async fn hello(State(_ctx): State<AppContext>) -> Result<Response> {
-    // do something with context (database, etc)
-    format::text("hello")
+#[debug_handler]
+pub async fn index(State(_ctx): State<AppContext>) -> Result<Response> {
+    format::empty()
 }
 
 pub fn routes() -> Routes {
     Routes::new()
-        .prefix("guide")
-        .add("/", get(hello))
-        .add("/echo", post(echo))
+        .prefix("guides/")
+        .add("/", get(index))
 }
+```
+
+
+Change the `index` handler body:
+
+```rust
+// replace
+    format::empty()
+// with this
+    format::text("hello")
 ```
 
 Start the server:
@@ -181,7 +189,7 @@ cargo loco start
 Now, let's test it out:
 
 ```sh
-$ curl localhost:5150/guide
+$ curl localhost:5150/guides
 hello
 ```
 
@@ -236,9 +244,7 @@ impl Hooks for App {
     fn routes() -> AppRoutes {
         AppRoutes::with_default_routes()
             .add_route(controllers::guide::routes())
-            .add_route(controllers::notes::routes())
             .add_route(controllers::auth::routes())
-            .add_route(controllers::user::routes())
             .add_route(controllers::home::routes()) // <--- add this
     }
 ```
@@ -269,8 +275,6 @@ $ cargo loco routes
 [POST] /api/auth/reset
 [POST] /api/auth/verify
 [GET] /home/hello      <---- this is our new route!
-[GET] /api/notes
-[POST] /api/notes
   ..
   ..
 $
@@ -380,12 +384,10 @@ src/models/
 ├── _entities
 │   ├── articles.rs  <-- sync'd from db schema, do not edit
 │   ├── mod.rs
-│   ├── notes.rs
 │   ├── prelude.rs
 │   └── users.rs
 ├── articles.rs   <-- generated for you, your logic goes here.
 ├── mod.rs
-├── notes.rs
 └── users.rs
 ```
 

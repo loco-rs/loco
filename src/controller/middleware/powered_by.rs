@@ -1,33 +1,40 @@
 //! Powered-By Middleware
 //!
-//! This middleware injects an HTTP header `X-Powered-By` into the response headers of
-//! every request handled by the application. The header identifies the software or technology
-//! stack powering the application. It supports a custom identifier string or defaults to "loco.rs"
-//! if no identifier is provided.
+//! This middleware injects an HTTP header `X-Powered-By` into the response
+//! headers of every request handled by the application. The header identifies
+//! the software or technology stack powering the application. It supports a
+//! custom identifier string or defaults to "loco.rs" if no identifier is
+//! provided.
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
+use std::sync::OnceLock;
+
 use axum::{
     http::header::{HeaderName, HeaderValue},
     Router as AXRouter,
 };
 use tower_http::set_header::SetResponseHeaderLayer;
 
-lazy_static::lazy_static! {
-    static ref DEFAULT_IDENT_HEADER_VALUE: HeaderValue =
-        HeaderValue::from_static("loco.rs");
+use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
+
+static DEFAULT_IDENT_HEADER_VALUE: OnceLock<HeaderValue> = OnceLock::new();
+
+fn get_default_ident_header_value() -> &'static HeaderValue {
+    DEFAULT_IDENT_HEADER_VALUE.get_or_init(|| HeaderValue::from_static("loco.rs"))
 }
 
-/// [`Middleware`] struct responsible for managing the identifier value for the `X-Powered-By` header.
+/// [`Middleware`] struct responsible for managing the identifier value for the
+/// `X-Powered-By` header.
 #[derive(Debug)]
 pub struct Middleware {
     ident: Option<HeaderValue>,
 }
 
-/// Creates a new instance of [`Middleware`] by cloning the [`Config`] configuration.
+/// Creates a new instance of [`Middleware`] by cloning the [`Config`]
+/// configuration.
 #[must_use]
 pub fn new(ident: Option<&str>) -> Middleware {
     let ident_value = ident.map_or_else(
-        || Some(DEFAULT_IDENT_HEADER_VALUE.clone()),
+        || Some(get_default_ident_header_value().clone()),
         |ident| {
             if ident.is_empty() {
                 None
@@ -40,7 +47,7 @@ pub fn new(ident: Option<&str>) -> Middleware {
                             val = ident,
                             "could not set custom ident header"
                         );
-                        Some(DEFAULT_IDENT_HEADER_VALUE.clone())
+                        Some(get_default_ident_header_value().clone())
                     }
                 }
             }
@@ -68,14 +75,14 @@ impl MiddlewareLayer for Middleware {
         )
     }
 
-    /// Applies the middleware to the application by adding the `X-Powered-By` header to
-    /// each response.
+    /// Applies the middleware to the application by adding the `X-Powered-By`
+    /// header to each response.
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
         Ok(app.layer(SetResponseHeaderLayer::overriding(
             HeaderName::from_static("x-powered-by"),
             self.ident
                 .clone()
-                .unwrap_or_else(|| DEFAULT_IDENT_HEADER_VALUE.clone()),
+                .unwrap_or_else(|| get_default_ident_header_value().clone()),
         )))
     }
 }

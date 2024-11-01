@@ -6,6 +6,8 @@ pub use self::errors::Error;
 
 mod banner;
 pub mod bgworker;
+mod depcheck;
+pub mod initializers;
 pub mod prelude;
 
 #[cfg(feature = "with-db")]
@@ -30,7 +32,6 @@ pub mod config;
 pub mod controller;
 pub mod environment;
 pub mod errors;
-mod gen;
 pub mod hash;
 mod logger;
 pub mod mailer;

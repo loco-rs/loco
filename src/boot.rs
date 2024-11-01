@@ -7,7 +7,8 @@ use axum::Router;
 use colored::Colorize;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
-use tokio::signal;
+use tokio::task::JoinHandle;
+use tokio::{select, signal};
 use tracing::{debug, error, info, warn};
 
 #[cfg(feature = "with-db")]
@@ -16,7 +17,7 @@ use crate::{
     app::{AppContext, Hooks},
     banner::print_banner,
     bgworker, cache,
-    config::{self},
+    config::{self, WorkerMode},
     controller::ListRoutes,
     environment::Environment,
     errors::Error,
@@ -88,32 +89,68 @@ pub async fn start<H: Hooks>(
             H::serve(router, &app_context).await?;
         }
         (Some(router), true) => {
-            debug!("note: worker is run in-process (tokio spawn)");
-            if let Some(queue) = &app_context.queue_provider {
-                let cloned_queue = queue.clone();
-                tokio::spawn(async move {
-                    let res = cloned_queue.run().await;
-                    if res.is_err() {
-                        error!(
-                            err = res.unwrap_err().to_string(),
-                            "error while running worker"
-                        );
-                    }
-                });
+            let handle = if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
+                Some(start_queue_worker(&app_context)?)
             } else {
-                return Err(Error::QueueProviderMissing);
-            }
+                None
+            };
 
             H::serve(router, &app_context).await?;
+
+            if let Some(handle) = handle {
+                shutdown_and_await_queue_worker(&app_context, handle).await?;
+            }
         }
         (None, true) => {
-            if let Some(queue) = &app_context.queue_provider {
-                queue.run().await?;
+            let handle = if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
+                Some(start_queue_worker(&app_context)?)
             } else {
-                return Err(Error::QueueProviderMissing);
+                None
+            };
+
+            shutdown_signal().await;
+
+            if let Some(handle) = handle {
+                shutdown_and_await_queue_worker(&app_context, handle).await?;
             }
         }
         _ => {}
+    }
+    Ok(())
+}
+
+fn start_queue_worker(app_context: &AppContext) -> Result<JoinHandle<()>> {
+    debug!("note: worker is run in-process (tokio spawn)");
+
+    if let Some(queue) = &app_context.queue_provider {
+        let cloned_queue = queue.clone();
+        let handle = tokio::spawn(async move {
+            let res = cloned_queue.run().await;
+            if res.is_err() {
+                error!(
+                    err = res.unwrap_err().to_string(),
+                    "error while running worker"
+                );
+            }
+        });
+        return Ok(handle);
+    }
+
+    Err(Error::QueueProviderMissing)
+}
+
+async fn shutdown_and_await_queue_worker(
+    app_context: &AppContext,
+    handle: JoinHandle<()>,
+) -> Result<(), Error> {
+    if let Some(queue) = &app_context.queue_provider {
+        queue.shutdown()?;
+    }
+
+    println!("press ctrl-c again to force quit");
+    select! {
+        _ = handle => {}
+        () = shutdown_signal() => {}
     }
     Ok(())
 }
@@ -375,14 +412,16 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
 }
 
 async fn register_workers<H: Hooks>(app_context: &AppContext) -> Result<()> {
-    if let Some(queue) = &app_context.queue_provider {
-        queue.register(MailerWorker::build(app_context)).await?;
-        H::connect_workers(app_context, queue).await?;
-    } else {
-        return Err(Error::QueueProviderMissing);
-    }
+    if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
+        if let Some(queue) = &app_context.queue_provider {
+            queue.register(MailerWorker::build(app_context)).await?;
+            H::connect_workers(app_context, queue).await?;
+        } else {
+            return Err(Error::QueueProviderMissing);
+        }
 
-    debug!("done registering workers and queues");
+        debug!("done registering workers and queues");
+    }
     Ok(())
 }
 

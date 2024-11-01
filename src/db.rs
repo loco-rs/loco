@@ -3,11 +3,10 @@
 //! This module defines functions and operations related to the application's
 //! database interactions.
 
-use std::{collections::HashMap, fs::File, path::Path, time::Duration};
+use std::{collections::HashMap, fs::File, path::Path, sync::OnceLock, time::Duration};
 
 use duct::cmd;
 use fs_err as fs;
-use lazy_static::lazy_static;
 use regex::Regex;
 use sea_orm::{
     ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
@@ -23,13 +22,10 @@ use crate::{
     errors::Error,
 };
 
-lazy_static! {
-    // Getting the table name from the environment configuration.
-    // For example:
-    // postgres://loco:loco@localhost:5432/loco_app
-    // mysql://loco:loco@localhost:3306/loco_app
-    // the results will be loco_app
-    pub static ref EXTRACT_DB_NAME: Regex = Regex::new(r"/([^/]+)$").unwrap();
+pub static EXTRACT_DB_NAME: OnceLock<Regex> = OnceLock::new();
+
+fn get_extract_db_name() -> &'static Regex {
+    EXTRACT_DB_NAME.get_or_init(|| Regex::new(r"/([^/]+)$").unwrap())
 }
 
 #[derive(Default, Clone, Debug)]
@@ -143,7 +139,24 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
         opt.acquire_timeout(Duration::from_millis(acquire_timeout));
     }
 
-    Database::connect(opt).await
+    let db = Database::connect(opt).await?;
+
+    if db.get_database_backend() == DatabaseBackend::Sqlite {
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "
+            PRAGMA foreign_keys = ON;
+            PRAGMA journal_mode = WAL;
+            PRAGMA synchronous = NORMAL;
+            PRAGMA mmap_size = 134217728;
+            PRAGMA journal_size_limit = 67108864;
+            PRAGMA cache_size = 2000;
+            ",
+        ))
+        .await?;
+    }
+
+    Ok(db)
 }
 
 ///  Create a new database. This functionality is currently exclusive to Postgre
@@ -158,7 +171,7 @@ pub async fn create(db_uri: &str) -> AppResult<()> {
             "Only Postgres databases are supported for table creation",
         ));
     }
-    let db_name = EXTRACT_DB_NAME
+    let db_name = get_extract_db_name()
         .captures(db_uri)
         .and_then(|cap| cap.get(1).map(|db| db.as_str()))
         .ok_or_else(|| {
@@ -167,7 +180,9 @@ pub async fn create(db_uri: &str) -> AppResult<()> {
             )
         })?;
 
-    let conn = EXTRACT_DB_NAME.replace(db_uri, "/postgres").to_string();
+    let conn = get_extract_db_name()
+        .replace(db_uri, "/postgres")
+        .to_string();
     let db = Database::connect(conn).await?;
 
     Ok(create_postgres_database(db_name, &db).await?)
@@ -231,16 +246,14 @@ where
     A: sea_orm::ActiveModelTrait + Send + Sync,
     sea_orm::Insert<A>: Send + Sync, // Add this Send bound
 {
-    let loader: Vec<serde_json::Value> = serde_yaml::from_reader(File::open(path)?)?;
+    let seed_data: Vec<serde_json::Value> = serde_yaml::from_reader(File::open(path)?)?;
 
-    let mut users: Vec<A> = vec![];
-    for user in loader {
-        users.push(A::from_json(user)?);
+    for row in seed_data {
+        let model = <A as ActiveModelTrait>::from_json(row)?;
+        <A as ActiveModelTrait>::Entity::insert(model)
+            .exec(db)
+            .await?;
     }
-
-    <A as ActiveModelTrait>::Entity::insert_many(users)
-        .exec(db)
-        .await?;
 
     Ok(())
 }
@@ -252,7 +265,7 @@ where
 ///
 /// Returns a [`AppResult`] if an error occurs during generate model entity.
 pub async fn entities<M: MigratorTrait>(ctx: &AppContext) -> AppResult<String> {
-    doctor::check_seaorm_cli().to_result()?;
+    doctor::check_seaorm_cli()?.to_result()?;
     doctor::check_db(&ctx.config.database).await.to_result()?;
 
     let out = cmd!(

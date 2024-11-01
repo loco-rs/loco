@@ -1,4 +1,4 @@
-name: docs
+name: "[docs]"
 
 on:
   push:
@@ -12,7 +12,6 @@ env:
 
 jobs:
   check:
-    name: Check
     runs-on: ubuntu-latest
 
     permissions:
@@ -25,8 +24,6 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
       - run: cargo install snipdoc --features exec
-      - run: snipdoc check        
+      - run: snipdoc check
         env:
           SNIPDOC_SKIP_EXEC_COMMANDS: true
-
-  
