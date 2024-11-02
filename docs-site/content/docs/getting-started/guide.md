@@ -635,6 +635,10 @@ Instead of coding the model and controller by hand, we're going to create a **co
 $ cargo loco generate scaffold comment content:text article:references --api
 ```
 
+<div class="infobox">
+The special <code>references:&lt;table&gt;</code> is also available. For when you want to have a different name for your column.
+</div>
+
 If you peek into the new migration, you'll discover a new database relation in the articles table:
 
 ```rust
@@ -652,6 +656,7 @@ If you peek into the new migration, you'll discover a new database relation in t
       ..
       ..
 ```
+
 
 Now, lets modify our API in the following way:
 

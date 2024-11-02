@@ -124,7 +124,7 @@ When a model is added via migration, the following default fields are provided:
 - `created_at` (ts!): This is a timestamp indicating when your model was created.
 - `updated_at` (ts!): This is a timestamp indicating when your model was updated.
 
-These fields are ignored if you provide them in your migration command. In addition, `create_at` and `update_at` fields are also ignored if provided.
+These fields are ignored if you provide them in your migration command.
 
 For schema data types, you can use the following mapping to understand the schema:
 
@@ -172,6 +172,8 @@ For schema data types, you can use the following mapping to understand the schem
 ```
 
 Using `user:references` uses the special `references` type, which will create a relationship between a `post` and a `user`, adding a `user_id` reference field to the `posts` table.
+
+Using `aproved_by:references:users` uses the special `references:<table>` type, which will create a relationship between a `post` and a `user`, adding a `aproved_by` reference field to the `posts` table.
 
 You can generate an empty model:
 
@@ -228,20 +230,21 @@ cargo loco db down 2
 
 ### Verbs, singular and plural
 
-* **references**: use **singular** for the table name, and a `:references` type. `user:references` (references `Users`), `vote:references` (references `Votes`)
-* **column names**: anything you like. Prefer `snake_case`
+* **references**: use **singular** for the table name, and a `:references` type. `user:references` (references `Users`), `vote:references` (references `Votes`). `:references:<table>` is also available `departing_train:references:trains` (references `Trains`).
+* **column names**: anything you like. Prefer `snake_case`.
 * **table names**: **plural, snake case**. `users`, `draft_posts`.
-* **migration names**: anything that can be a file name, prefer snake case. `create_table_users`, `add_vote_id_to_movies`
-* **model names**: generated automatically for you. Usually the generated name is pascal case, plural. `Users`, `UsersVotes`
+* **migration names**: anything that can be a file name, prefer snake case. `create_table_users`, `add_vote_id_to_movies`.
+* **model names**: generated automatically for you. Usually the generated name is pascal case, plural. `Users`, `UsersVotes`.
  
 Here are some examples showcasing the naming conventions:
 
 ```sh
-$ cargo loco generate model movies long_title:string user:references
+$ cargo loco generate model movies long_title:string added_by:references:users director:references
 ```
 
 * model name in plural: `movies`
-* reference user is in singular: `user:references`
+* refecence director is in singular: `director:references`
+* reference added_by is in singular, the referenced model is a model and is plural: `added_by:references:users`
 * column name in snake case: `long_title:string`
 
 ### Naming migrations
