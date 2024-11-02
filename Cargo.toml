@@ -112,7 +112,7 @@ cfg-if = "1"
 uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
 
 # A socket.io server implementation
-socketioxide = { version = "0.14.0", features = ["state"], optional = true }
+socketioxide = { version = "0.15.1", features = ["state"], optional = true }
 
 
 # File Upload
