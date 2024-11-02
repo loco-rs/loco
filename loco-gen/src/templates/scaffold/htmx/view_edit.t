@@ -13,7 +13,7 @@ Edit {{name}}: {% raw %}{{ item.id }}{% endraw %}
 {% raw %}{% block content %}{% endraw %}
 <h1>Edit {{name}}: {% raw %}{{ item.id }}{% endraw %}</h1>
 <div class="mb-10">
-    <form hx-post="/{{name | plural}}/{% raw %}{{ item.id }}{% endraw %}" hx-ext="submitjson" hx-target="#success-message">
+    <form hx-put="/{{name | plural}}/{% raw %}{{ item.id }}{% endraw %}" hx-ext="submitjson" hx-target="#success-message">
     <div class="mb-5">
     {% for column in columns -%}
         <div>
