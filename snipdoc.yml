@@ -118,7 +118,7 @@ snippets:
     content: cargo loco scheduler --list
     path: ./snipdoc.yml
   scheduler-list-from-file-command:
-    content: cargo loco scheduler --path config/scheduler.yaml --list
+    content: cargo loco scheduler --config config/scheduler.yaml --list
     path: ./snipdoc.yml
   scheduler-list-from-env-setting-command:
     content: LOCO_ENV=production cargo loco scheduler --list
