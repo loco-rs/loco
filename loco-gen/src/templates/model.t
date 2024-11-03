@@ -3,7 +3,7 @@
 {% set module_name = "m" ~  mig_ts ~ "_" ~ plural_snake -%}
 {% set model = name | plural | pascal_case -%}
 to: "migration/src/{{module_name}}.rs"
-skip_glob: "migration/src/*_{{plural_snake}}.rs"
+skip_glob: "migration/src/m????????_??????_{{plural_snake}}.rs"
 message: "Migration for `{{name}}` added! You can now apply it with `$ cargo loco db migrate`."
 injections:
 - into: "migration/src/lib.rs"
