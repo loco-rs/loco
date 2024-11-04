@@ -341,6 +341,7 @@ fn fix_entities() -> AppResult<()> {
 use super::_entities::{module}::{{ActiveModel, Entity}};
 pub type {module_pascal} = Entity;
 
+#[async_trait::async_trait]
 impl ActiveModelBehavior for ActiveModel {{
     // extend activemodel below (keep comment for generators)
 
