@@ -192,19 +192,12 @@ After you've implemented your own initializer, you should implement the `initial
 
 <!-- <snip id="app-initializers" inject_from="code" template="rust"> -->
 ```rust
-    async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
-        let mut initializers: Vec<Box<dyn Initializer>> = vec![
+    async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
+        let initializers: Vec<Box<dyn Initializer>> = vec![
             Box::new(initializers::axum_session::AxumSessionInitializer),
             Box::new(initializers::view_engine::ViewEngineInitializer),
             Box::new(initializers::hello_view_engine::HelloViewEngineInitializer),
-            Box::new(loco_extras::initializers::normalize_path::NormalizePathInitializer),
         ];
-
-        if ctx.environment != Environment::Test {
-            initializers.push(Box::new(
-                loco_extras::initializers::prometheus::AxumPrometheusInitializer,
-            ));
-        }
 
         Ok(initializers)
     }
