@@ -13,6 +13,7 @@
    [![crate](https://img.shields.io/crates/v/loco-rs.svg)](https://crates.io/crates/loco-rs)
    [![docs](https://docs.rs/loco-rs/badge.svg)](https://docs.rs/loco-rs)
    [![Discord channel](https://img.shields.io/badge/discord-Join-us)](https://discord.gg/fTvyBzwKS8)
+   [![Gurubase](https://img.shields.io/badge/Gurubase-Ask%20Loco%20Guru-006BFF)](https://gurubase.io/g/loco)
 
  </div>
 
