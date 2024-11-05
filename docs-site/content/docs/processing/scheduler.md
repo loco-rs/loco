@@ -109,7 +109,7 @@ After setting up your jobs, you can verify the configuration to ensure everythin
 Run the following command to list the jobs from your scheduler file:
 <!-- <snip id="scheduler-list-from-file-command" inject_from="yaml"  template="sh"> -->
 ```sh
-cargo loco scheduler --path config/scheduler.yaml --list
+cargo loco scheduler --config config/scheduler.yaml --list
 ```
 <!-- </snip> -->
 
