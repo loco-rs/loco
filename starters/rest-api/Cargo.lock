@@ -2130,7 +2130,7 @@ dependencies = [
 
 [[package]]
 name = "loco-gen"
-version = "0.11.2"
+version = "0.12.0"
 dependencies = [
  "chrono",
  "clap",
@@ -2147,7 +2147,7 @@ dependencies = [
 
 [[package]]
 name = "loco-rs"
-version = "0.11.2"
+version = "0.12.0"
 dependencies = [
  "argon2",
  "async-trait",

@@ -1,6 +1,6 @@
 [package]
 name = "loco-gen"
-version = "0.11.2"
+version = "0.12.0"
 description = "Loco generators"
 license.workspace = true
 edition.workspace = true
@@ -14,7 +14,6 @@ path = "src/lib.rs"
 
 [dependencies]
 
-lazy_static = { workspace = true }
 rrgen = "0.5.3"
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -3,7 +3,6 @@ use insta::{assert_debug_snapshot, with_settings};
 use loco_rs::{testing, tokio};
 use rstest::rstest;
 use sea_orm::entity::prelude::*;
-use serde_json;
 use serial_test::serial;
 
 // TODO: see how to dedup / extract this to app-local test utils
@@ -34,7 +33,7 @@ async fn can_get_notes(#[case] test_name: &str, #[case] params: serde_json::Valu
 
         with_settings!({
             filters => {
-                 let mut combined_filters = testing::CLEANUP_DATE.to_vec();
+                 let mut combined_filters = testing::get_cleanup_date().clone();
                     combined_filters.extend(vec![(r#"\"id\\":\d+"#, r#""id\":ID"#)]);
                     combined_filters
             }
@@ -62,7 +61,7 @@ async fn can_add_note() {
 
         with_settings!({
             filters => {
-                 let mut combined_filters = testing::CLEANUP_DATE.to_vec();
+                 let mut combined_filters = testing::get_cleanup_date().clone();
                     combined_filters.extend(vec![(r#"\"id\\":\d+"#, r#""id\":ID"#)]);
                     combined_filters
             }
@@ -87,7 +86,7 @@ async fn can_get_note() {
 
         with_settings!({
             filters => {
-                 let mut combined_filters = testing::CLEANUP_DATE.to_vec();
+                 let mut combined_filters = testing::get_cleanup_date().clone();
                     combined_filters.extend(vec![(r#"\"id\\":\d+"#, r#""id\":ID"#)]);
                     combined_filters
             }
@@ -113,7 +112,7 @@ async fn can_delete_note() {
 
         with_settings!({
             filters => {
-                 let mut combined_filters = testing::CLEANUP_DATE.to_vec();
+                 let mut combined_filters = testing::get_cleanup_date().clone();
                     combined_filters.extend(vec![(r#"\"id\\":\d+"#, r#""id\":ID"#)]);
                     combined_filters
             }

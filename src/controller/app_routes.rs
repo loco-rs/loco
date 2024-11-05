@@ -2,10 +2,9 @@
 //! configuring routes in an Axum application. It allows you to define route
 //! prefixes, add routes, and configure middlewares for the application.
 
-use std::fmt;
+use std::{fmt, sync::OnceLock};
 
 use axum::Router as AXRouter;
-use lazy_static::lazy_static;
 use regex::Regex;
 
 #[cfg(feature = "channels")]
@@ -16,8 +15,10 @@ use crate::{
     Result,
 };
 
-lazy_static! {
-    static ref NORMALIZE_URL: Regex = Regex::new(r"/+").unwrap();
+static NORMALIZE_URL: OnceLock<Regex> = OnceLock::new();
+
+fn get_normalize_url() -> &'static Regex {
+    NORMALIZE_URL.get_or_init(|| Regex::new(r"/+").unwrap())
 }
 
 /// Represents the routes of the application.
@@ -91,7 +92,7 @@ impl AppRoutes {
                     parts.push(handler.uri.to_string());
                     let joined_parts = parts.join("/");
 
-                    let normalized = NORMALIZE_URL.replace_all(&joined_parts, "/");
+                    let normalized = get_normalize_url().replace_all(&joined_parts, "/");
                     let uri = if normalized == "/" {
                         normalized.to_string()
                     } else {

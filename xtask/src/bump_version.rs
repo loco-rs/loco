@@ -2,11 +2,11 @@ use std::{
     fs,
     io::{Read, Write},
     path::{Path, PathBuf},
+    sync::OnceLock,
 };
 
 use cargo_metadata::semver::Version;
 use colored::Colorize;
-use lazy_static::lazy_static;
 use regex::Regex;
 
 use crate::{
@@ -15,19 +15,22 @@ use crate::{
     out, utils,
 };
 
-lazy_static! {
-    /// Regular expression for replacing the version in the root package's Cargo.toml file.
-    static ref REPLACE_LOCO_LIB_VERSION_: Regex = Regex::new(
-        r#"(?P<name>name\s*=\s*".+\s+version\s*=\s*")(?P<version>[0-9]+\.[0-9]+\.[0-9]+)"#
-    )
-    .unwrap();
+static REPLACE_LOCO_LIB_VERSION_: OnceLock<Regex> = OnceLock::new();
+static REPLACE_LOCO_PACKAGE_VERSION: OnceLock<Regex> = OnceLock::new();
 
-    /// Regular expression for updating the version in loco-rs package dependencies in Cargo.toml files.
-    static ref REPLACE_LOCO_PACKAGE_VERSION: Regex =
-        Regex::new(r#"loco-rs = \{ (version|path) = "[^"]+""#).unwrap();
-
+fn get_replace_loco_lib_version() -> &'static Regex {
+    REPLACE_LOCO_LIB_VERSION_.get_or_init(|| {
+        Regex::new(
+            r#"(?P<name>name\s*=\s*".+\s+version\s*=\s*")(?P<version>[0-9]+\.[0-9]+\.[0-9]+)"#,
+        )
+        .unwrap()
+    })
 }
 
+fn get_replace_loco_package_version() -> &'static Regex {
+    REPLACE_LOCO_PACKAGE_VERSION
+        .get_or_init(|| Regex::new(r#"loco-rs = \{ (version|path) = "[^"]+""#).unwrap())
+}
 pub struct BumpVersion {
     pub base_dir: PathBuf,
     pub version: Version,
@@ -94,14 +97,14 @@ impl BumpVersion {
         let cargo_toml_file = self.base_dir.join(path).join("Cargo.toml");
         fs::File::open(&cargo_toml_file)?.read_to_string(&mut content)?;
 
-        if !REPLACE_LOCO_LIB_VERSION_.is_match(&content) {
+        if !get_replace_loco_lib_version().is_match(&content) {
             return Err(Error::BumpVersion {
                 path: cargo_toml_file,
                 package: "root_package".to_string(),
             });
         }
 
-        let content = REPLACE_LOCO_LIB_VERSION_
+        let content = get_replace_loco_lib_version()
             .replace(&content, |captures: &regex::Captures<'_>| {
                 format!("{}{}", &captures["name"], self.version)
             });
@@ -167,14 +170,6 @@ impl BumpVersion {
 
         for starter_project in starter_projects {
             Self::replace_loco_rs_version(&starter_project, replace_with)?;
-
-            let migration_lock_file = starter_project.join("migration");
-            if migration_lock_file.exists() {
-                Self::replace_loco_rs_version(
-                    &migration_lock_file,
-                    replace_migrator.unwrap_or(replace_with),
-                )?;
-            }
         }
 
         Ok(())
@@ -185,13 +180,13 @@ impl BumpVersion {
         let cargo_toml_file = path.join("Cargo.toml");
         fs::File::open(&cargo_toml_file)?.read_to_string(&mut content)?;
 
-        if !REPLACE_LOCO_PACKAGE_VERSION.is_match(&content) {
+        if !get_replace_loco_package_version().is_match(&content) {
             return Err(Error::BumpVersion {
                 path: cargo_toml_file,
                 package: "loco-rs".to_string(),
             });
         }
-        content = REPLACE_LOCO_PACKAGE_VERSION
+        content = get_replace_loco_package_version()
             .replace_all(&content, |_captures: &regex::Captures<'_>| {
                 replace_with.to_string()
             })

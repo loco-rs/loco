@@ -126,6 +126,8 @@ pub fn routes() -> Routes {
         .add("new", get(new))
         .add(":id", get(show))
         .add(":id/edit", get(edit))
-        .add(":id", post(update))
         .add(":id", delete(remove))
+        .add(":id", put(update))
+        .add(":id", patch(update))
+}
 }

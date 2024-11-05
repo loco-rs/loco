@@ -244,9 +244,7 @@ impl Hooks for App {
     fn routes() -> AppRoutes {
         AppRoutes::with_default_routes()
             .add_route(controllers::guide::routes())
-            .add_route(controllers::notes::routes())
             .add_route(controllers::auth::routes())
-            .add_route(controllers::user::routes())
             .add_route(controllers::home::routes()) // <--- add this
     }
 ```
@@ -277,8 +275,6 @@ $ cargo loco routes
 [POST] /api/auth/reset
 [POST] /api/auth/verify
 [GET] /home/hello      <---- this is our new route!
-[GET] /api/notes
-[POST] /api/notes
   ..
   ..
 $
@@ -388,12 +384,10 @@ src/models/
 ├── _entities
 │   ├── articles.rs  <-- sync'd from db schema, do not edit
 │   ├── mod.rs
-│   ├── notes.rs
 │   ├── prelude.rs
 │   └── users.rs
 ├── articles.rs   <-- generated for you, your logic goes here.
 ├── mod.rs
-├── notes.rs
 └── users.rs
 ```
 

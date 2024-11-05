@@ -393,7 +393,6 @@ $ cargo loco generate model --link users_votes user:references movie:references 
     ..
     ..
 Writing src/models/_entities/movies.rs
-Writing src/models/_entities/notes.rs
 Writing src/models/_entities/users.rs
 Writing src/models/_entities/mod.rs
 Writing src/models/_entities/prelude.rs
@@ -584,6 +583,8 @@ async fn handle_create_with_password_with_duplicate() {
 
 `Loco` enables you to work with more than one database and share instances across your application.
 
+## Extra DB
+
 To set up an additional database, begin with database connections and configuration. The recommended approach is to navigate to your configuration file and add the following under [settings](@/docs/the-app/your-project.md#settings):
 
 ```yaml
@@ -601,17 +602,13 @@ settings:
 ```
 
 
-After configuring the database, import [loco-extras](https://crates.io/crates/loco-extras) and enable the `initializer-extra-db` feature in your Cargo.toml:
-```toml
-loco-extras = { version = "*", features = ["initializer-extra-db"] }
-```
 
-Next load this [initializer](@/docs/extras/pluggability.md#initializers) into `initializers` hook like this example
+Load this [initializer](@/docs/extras/pluggability.md#initializers) into `initializers` hook like this example
 
 ```rs
 async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
         let  initializers: Vec<Box<dyn Initializer>> = vec![
-            Box::new(loco_extras::initializers::extra_db::ExtraDbInitializer),
+            Box::new(loco_rs::initializers::extra_db::ExtraDbInitializer),
         ];
 
         Ok(initializers)
@@ -632,14 +629,9 @@ pub async fn list(
 }
 ```
 
-## Configuring
+## Multi-DB (multi-tenant)
 
-To connect more than two different databases, load the feature `initializer-multi-db` in [loco-extras](https://crates.io/crates/loco-extras):
-```toml
-loco-extras = { version = "*", features = ["initializer-multi-db"] }
-```
-
-The database configuration should look like this:
+To connect more than two different databases, the database configuration should look like this:
 ```yaml
 settings:
   multi_db: 
@@ -670,14 +662,13 @@ Next load this [initializer](@/docs/extras/pluggability.md#initializers) into `i
 ```rs
 async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
         let  initializers: Vec<Box<dyn Initializer>> = vec![
-            Box::new(loco_extras::initializers::multi_db::MultiDbInitializer),
+            Box::new(loco_rs::initializers::multi_db::MultiDbInitializer),
         ];
 
         Ok(initializers)
     }
 ```
 
-## Using in controllers
 Now, you can use the multiple databases in your controller:
 
 ```rust
@@ -744,7 +735,6 @@ impl Hooks for App {
     //...
     async fn truncate(db: &DatabaseConnection) -> Result<()> {
         // truncate_table(db, users::Entity).await?;
-        // truncate_table(db, notes::Entity).await?;
         Ok(())
     }
 

@@ -136,6 +136,8 @@ enum Commands {
         /// print out the current configurations.
         #[arg(short, long, action)]
         config: bool,
+        #[arg(short, long, action)]
+        production: bool,
     },
     /// Display the app version
     Version {},
@@ -540,13 +542,16 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                 },
             )?;
         }
-        Commands::Doctor { config: config_arg } => {
+        Commands::Doctor {
+            config: config_arg,
+            production,
+        } => {
             if config_arg {
                 println!("{}", &config);
                 println!("Environment: {}", &environment);
             } else {
                 let mut should_exit = false;
-                for (_, check) in doctor::run_all(&config).await? {
+                for (_, check) in doctor::run_all(&config, production).await? {
                     if !should_exit && !check.valid() {
                         should_exit = true;
                     }
