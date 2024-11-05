@@ -129,4 +129,3 @@ pub fn routes() -> Routes {
         .add(":id", put(update))
         .add(":id", patch(update))
 }
-}
