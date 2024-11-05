@@ -2,8 +2,16 @@
 
 ## Unreleased
 
-* `loco doctor` now checks for app-specific minimum dependency versions. This should help in upgrades. `doctor` also supports "production only" checks which you can run in production with `loco doctor --production`. This, for example, will check your connections but will not check dependencies.
-* 
+* `loco doctor` now checks for app-specific minimum dependency versions. This should help in upgrades. `doctor` also supports "production only" checks which you can run in production with `loco doctor --production`. This, for example, will check your connections but will not check dependencies. [https://github.com/loco-rs/loco/pull/931](https://github.com/loco-rs/loco/pull/931)
+* Use a single loco-rs dep for a whole project. [https://github.com/loco-rs/loco/pull/927](https://github.com/loco-rs/loco/pull/927)
+* chore: fix generated testcase. [https://github.com/loco-rs/loco/pull/939](https://github.com/loco-rs/loco/pull/939)
+* chore: Correct cargo test message. [https://github.com/loco-rs/loco/pull/938](https://github.com/loco-rs/loco/pull/938)
+* Add relevant meta tags for better defaults. [https://github.com/loco-rs/loco/pull/943](https://github.com/loco-rs/loco/pull/943)
+* Update cli message with correct command. [https://github.com/loco-rs/loco/pull/942](https://github.com/loco-rs/loco/pull/942)
+* remove lazy_static. [https://github.com/loco-rs/loco/pull/941](https://github.com/loco-rs/loco/pull/941)
+* change update HTTP verb semantics to put+patch. [https://github.com/loco-rs/loco/pull/919](https://github.com/loco-rs/loco/pull/919)
+* Fixed HTML scaffold error. [https://github.com/loco-rs/loco/pull/960](https://github.com/loco-rs/loco/pull/960)
+* Scaffolded HTML update method should be POST. [https://github.com/loco-rs/loco/pull/963](https://github.com/loco-rs/loco/pull/963)
 
 ## v0.12.0
 
