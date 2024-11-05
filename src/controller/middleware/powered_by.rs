@@ -6,6 +6,8 @@
 //! custom identifier string or defaults to "loco.rs" if no identifier is
 //! provided.
 
+use std::sync::OnceLock;
+
 use axum::{
     http::header::{HeaderName, HeaderValue},
     Router as AXRouter,
@@ -14,9 +16,10 @@ use tower_http::set_header::SetResponseHeaderLayer;
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 
-lazy_static::lazy_static! {
-    static ref DEFAULT_IDENT_HEADER_VALUE: HeaderValue =
-        HeaderValue::from_static("loco.rs");
+static DEFAULT_IDENT_HEADER_VALUE: OnceLock<HeaderValue> = OnceLock::new();
+
+fn get_default_ident_header_value() -> &'static HeaderValue {
+    DEFAULT_IDENT_HEADER_VALUE.get_or_init(|| HeaderValue::from_static("loco.rs"))
 }
 
 /// [`Middleware`] struct responsible for managing the identifier value for the
@@ -31,7 +34,7 @@ pub struct Middleware {
 #[must_use]
 pub fn new(ident: Option<&str>) -> Middleware {
     let ident_value = ident.map_or_else(
-        || Some(DEFAULT_IDENT_HEADER_VALUE.clone()),
+        || Some(get_default_ident_header_value().clone()),
         |ident| {
             if ident.is_empty() {
                 None
@@ -44,7 +47,7 @@ pub fn new(ident: Option<&str>) -> Middleware {
                             val = ident,
                             "could not set custom ident header"
                         );
-                        Some(DEFAULT_IDENT_HEADER_VALUE.clone())
+                        Some(get_default_ident_header_value().clone())
                     }
                 }
             }
@@ -79,7 +82,7 @@ impl MiddlewareLayer for Middleware {
             HeaderName::from_static("x-powered-by"),
             self.ident
                 .clone()
-                .unwrap_or_else(|| DEFAULT_IDENT_HEADER_VALUE.clone()),
+                .unwrap_or_else(|| get_default_ident_header_value().clone()),
         )))
     }
 }

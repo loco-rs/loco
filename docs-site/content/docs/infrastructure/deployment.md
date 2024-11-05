@@ -137,6 +137,13 @@ auth:
 ```
 <!-- </snip>-->
 
+## Running `loco doctor`
+
+You can run `loco doctor` in your server to check the connection health of your environment. 
+
+```sh
+$ myapp doctor --production
+```
 
 ## Generate
 

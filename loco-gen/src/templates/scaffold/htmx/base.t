@@ -7,6 +7,8 @@ message: "Base template was added successfully."
 <html lang="en">
 
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% raw %}{% block title %}{% endblock title %}{% endraw %}</title>
 
   <script src="https://unpkg.com/htmx.org@2.0.0/dist/htmx.min.js"></script>
