@@ -40,8 +40,8 @@ logger:
 
 The most important knobs here are:
 
-* `level` - your standard logging levels. Typically `debug` or `trace` in development. In production choose what you are used to.
-* `pretty_backtrace` - provides clear, concise path to the line of code causing the error. use `true` in development and turn off in production. In cases where you are debugging things in production and need some extra hand, you can turn it on and then off when you're done.
+* `level` - your standard logging levels. Typically `debug` or `trace` in development. In production, choose what you are used to.
+* `pretty_backtrace` - provides a clear, concise path to the line of code causing the error. Use `true` in development and turn it off in production. In cases where you are debugging things in production and need some extra hand, you can turn it on and then off when you're done.
 
 ### Controller logging
 
@@ -92,7 +92,7 @@ Usually you can expect the following from errors:
 Notes:
 
 * An _error chain_ was experimented with, but provides little value in practice.
-* Errors that an end user sees are a completely different thing. We strive to provide **minimal internal details** about an error for an end user when we know a user can't do anything about an error (e.g. "database offline error"), mostly it will be a generic "Inernal Server Error" on purpose -- for security reasons.
+* Errors that an end user sees are a completely different thing. We strive to provide **minimal internal details** about an error for an end user when we know a user can't do anything about an error (e.g. "database offline error"), mostly it will be a generic "Internal Server Error" on purpose -- for security reasons.
 
 ### Producing errors
 
@@ -255,12 +255,12 @@ add [layers](https://docs.rs/tower/latest/tower/trait.Layer.html)
 and [services](https://docs.rs/tower/latest/tower/trait.Service.html) as middleware to your routes and handlers.
 
 Middleware is a way to add pre- and post-processing to your requests. This can be used for logging, authentication, rate
-limiting, route specific processing, and more.
+limiting, route-specific processing, and more.
 
 
 ### Source Code
 
-`Loco`'s implementation of route middleware / layer is similar
+`Loco`'s implementation of route middleware/layer is similar
 to `axum`'s [`Router::layer`](https://github.com/tokio-rs/axum/blob/main/axum/src/routing/mod.rs#L275). You can
 find the source code for middleware in
 the [`src/controllers/routes`](https://github.com/loco-rs/loco/blob/master/src/controller/routes.rs) directory.
@@ -439,7 +439,7 @@ path. Then we are calling the inner service with the request.
 In the Tower framework, before a service can be used to handle a request, it must be
 checked for readiness
 using the
-poll_ready method. This method returns `Poll::Ready(Ok(()))` when the service is ready to process a request. If a
+`poll_ready` method. This method returns `Poll::Ready(Ok(()))` when the service is ready to process a request. If a
 service is not ready, it may return `Poll::Pending`, indicating that the caller should wait before sending a request.
 This mechanism ensures that the service has the necessary resources or state to process the request efficiently and
 correctly.
@@ -462,7 +462,7 @@ verified as ready. Here’s how it works:
 - Replace the original with the clone: Use `std::mem::replace` to swap the original service with the clone. This
   operation ensures that the service handler continues to hold a service instance.
 - Use the original service to handle the request: Since the original service was already checked for readiness (via
-  poll_ready), it's safe to use it to handle the incoming request. The clone, now in the handler, will be the one
+  `poll_ready`), it's safe to use it to handle the incoming request. The clone, now in the handler, will be the one
   checked for readiness next time.
 
 This method ensures that each service instance used to handle requests is always the one that has been explicitly
