@@ -11,6 +11,7 @@
 * remove lazy_static. [https://github.com/loco-rs/loco/pull/941](https://github.com/loco-rs/loco/pull/941)
 * change update HTTP verb semantics to put+patch. [https://github.com/loco-rs/loco/pull/919](https://github.com/loco-rs/loco/pull/919)
 * Fixed HTML scaffold error. [https://github.com/loco-rs/loco/pull/960](https://github.com/loco-rs/loco/pull/960)
+* Scaffolded HTML update method should be POST. [https://github.com/loco-rs/loco/pull/963](https://github.com/loco-rs/loco/pull/963)
 
 ## v0.12.0
 
