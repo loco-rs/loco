@@ -1,0 +1,332 @@
+//! This module defines the `Generator` struct, which is responsible for executing
+//! scripted commands for file and template operations. It integrates with an
+//! executor to perform file manipulations and uses a scripting engine to run
+//! custom scripts based on application settings.
+
+use std::path::{Path, PathBuf};
+pub mod executer;
+pub mod template;
+use crate::settings;
+use include_dir::{include_dir, Dir};
+use rhai::{Engine, Scope};
+use std::sync::Arc;
+
+static APP_TEMPLATE: Dir<'_> = include_dir!("loco-new/base_template");
+
+/// Extracts a default template to a temporary directory for use by the application.
+///
+/// # Errors
+/// when could not extract the the base template
+pub fn extract_default_template() -> std::io::Result<PathBuf> {
+    let generator_tmp_folder = std::env::temp_dir().join("loco-generator");
+    if generator_tmp_folder.exists() {
+        std::fs::remove_dir_all(&generator_tmp_folder)?;
+    }
+
+    std::fs::create_dir_all(&generator_tmp_folder)?;
+
+    APP_TEMPLATE.extract(&generator_tmp_folder)?;
+    Ok(generator_tmp_folder)
+}
+
+/// The `Generator` struct provides functionality to execute scripted operations,
+/// such as copying files and templates, based on the current settings.
+#[derive(Clone)]
+pub struct Generator {
+    pub executer: Arc<dyn executer::Executer>,
+    pub settings: settings::Settings,
+}
+impl Generator {
+    /// Creates a new [`Generator`] with a given executor and settings.
+    pub fn new(executer: Arc<dyn executer::Executer>, settings: settings::Settings) -> Self {
+        Self { executer, settings }
+    }
+
+    /// Runs the default script.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the script execution fails.
+    pub fn run(&self) -> crate::Result<()> {
+        self.run_from_script(include_str!("../../setup.rhai"))
+    }
+
+    /// Runs a custom script provided as a string.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the script execution fails.
+    pub fn run_from_script(&self, script: &str) -> crate::Result<()> {
+        let mut engine = Engine::new();
+
+        tracing::debug!(
+            settings = format!("{:?}", self.settings),
+            script,
+            "prepare installation script"
+        );
+        engine
+            .build_type::<settings::Settings>()
+            .build_type::<settings::Initializers>()
+            .register_fn("copy_file", Self::copy_file)
+            .register_fn("copy_files", Self::copy_files)
+            .register_fn("copy_dir", Self::copy_dir)
+            .register_fn("copy_dirs", Self::copy_dirs)
+            .register_fn("copy_template", Self::copy_template)
+            .register_fn("copy_template_dir", Self::copy_template_dir);
+
+        let settings_dynamic = rhai::Dynamic::from(self.settings.clone());
+
+        let mut scope = Scope::new();
+        scope.set_value("settings", settings_dynamic);
+        scope.push("gen", self.clone());
+        // TODO:: move it as part of the settings?
+        scope.push("db", self.settings.db.is_some());
+        scope.push("background", self.settings.background.is_some());
+        scope.push("initializers", self.settings.initializers.is_some());
+        scope.push("asset", self.settings.asset.is_some());
+
+        engine.run_with_scope(&mut scope, script)?;
+        Ok(())
+    }
+
+    /// Copies a single file from the specified path.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file copy operation fails.
+    pub fn copy_file(&mut self, path: &str) -> Result<(), Box<rhai::EvalAltResult>> {
+        let span = tracing::info_span!("copy_file", path);
+        let _guard = span.enter();
+
+        self.executer.copy_file(Path::new(path)).map_err(|err| {
+            Box::new(rhai::EvalAltResult::ErrorSystem(
+                "copy_file".to_string(),
+                err.into(),
+            ))
+        })?;
+        Ok(())
+    }
+
+    /// Copies list of files from the specified path.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file copy operation fails.
+    pub fn copy_files(&mut self, paths: rhai::Array) -> Result<(), Box<rhai::EvalAltResult>> {
+        let span = tracing::info_span!("copy_files");
+        let _guard = span.enter();
+        for path in paths {
+            self.executer
+                .copy_file(Path::new(&path.to_string()))
+                .map_err(|err| {
+                    Box::new(rhai::EvalAltResult::ErrorSystem(
+                        "copy_files".to_string(),
+                        err.into(),
+                    ))
+                })?;
+        }
+
+        Ok(())
+    }
+
+    /// Copies an entire directory from the specified path.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the directory copy operation fails.
+    pub fn copy_dir(&mut self, path: &str) -> Result<(), Box<rhai::EvalAltResult>> {
+        let span = tracing::info_span!("copy_dir", path);
+        let _guard = span.enter();
+        self.executer.copy_dir(Path::new(path)).map_err(|err| {
+            Box::new(rhai::EvalAltResult::ErrorSystem(
+                "copy_dir".to_string(),
+                err.into(),
+            ))
+        })
+    }
+
+    /// Copies list of directories from the specified path.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the directory copy operation fails.
+    pub fn copy_dirs(&mut self, paths: rhai::Array) -> Result<(), Box<rhai::EvalAltResult>> {
+        let span = tracing::info_span!("copy_dirs");
+        let _guard = span.enter();
+        for path in paths {
+            self.executer
+                .copy_dir(Path::new(&path.to_string()))
+                .map_err(|err| {
+                    Box::new(rhai::EvalAltResult::ErrorSystem(
+                        "copy_dirs".to_string(),
+                        err.into(),
+                    ))
+                })?;
+        }
+        Ok(())
+    }
+
+    /// Copies a template file from the specified path, applying settings.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the template copy operation fails.
+    pub fn copy_template(&mut self, path: &str) -> Result<(), Box<rhai::EvalAltResult>> {
+        let span = tracing::info_span!("copy_template", path);
+        let _guard = span.enter();
+        self.executer
+            .copy_template(Path::new(path), &self.settings)
+            .map_err(|err| {
+                Box::new(rhai::EvalAltResult::ErrorSystem(
+                    "copy_template".to_string(),
+                    err.into(),
+                ))
+            })
+    }
+
+    /// Copies an entire template directory from the specified path, applying settings.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the template directory copy operation fails.
+    pub fn copy_template_dir(&mut self, path: &str) -> Result<(), Box<rhai::EvalAltResult>> {
+        let span = tracing::info_span!("copy_template_dir", path);
+        let _guard = span.enter();
+        self.executer
+            .copy_template_dir(Path::new(path), &self.settings)
+            .map_err(|err| {
+                Box::new(rhai::EvalAltResult::ErrorSystem(
+                    "copy_template_dir".to_string(),
+                    err.into(),
+                ))
+            })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use executer::MockExecuter;
+    use mockall::predicate::*;
+
+    #[test]
+    pub fn can_copy_file() {
+        let mut executor = MockExecuter::new();
+
+        executor
+            .expect_copy_file()
+            .with(eq(Path::new("test.rs")))
+            .times(1)
+            .returning(|p| Ok(p.to_path_buf()));
+
+        let g = Generator::new(Arc::new(executor), settings::Settings::default());
+        let script_res = g.run_from_script(r#"gen.copy_file("test.rs");"#);
+
+        assert!(script_res.is_ok());
+    }
+
+    #[test]
+    pub fn can_copy_files() {
+        let mut executor = MockExecuter::new();
+
+        executor
+            .expect_copy_file()
+            .with(eq(Path::new(".gitignore")))
+            .times(1)
+            .returning(|p| Ok(p.to_path_buf()));
+
+        executor
+            .expect_copy_file()
+            .with(eq(Path::new(".rustfmt.toml")))
+            .times(1)
+            .returning(|p| Ok(p.to_path_buf()));
+
+        executor
+            .expect_copy_file()
+            .with(eq(Path::new("README.md")))
+            .times(1)
+            .returning(|p| Ok(p.to_path_buf()));
+
+        let g = Generator::new(Arc::new(executor), settings::Settings::default());
+        let script_res =
+            g.run_from_script(r#"gen.copy_files([".gitignore", ".rustfmt.toml", "README.md"]);"#);
+
+        assert!(script_res.is_ok());
+    }
+
+    #[test]
+    pub fn can_copy_dir() {
+        let mut executor = MockExecuter::new();
+
+        executor
+            .expect_copy_dir()
+            .with(eq(Path::new("test")))
+            .times(1)
+            .returning(|_| Ok(()));
+
+        let g = Generator::new(Arc::new(executor), settings::Settings::default());
+        let script_res = g.run_from_script(r#"gen.copy_dir("test");"#);
+
+        assert!(script_res.is_ok());
+    }
+
+    #[test]
+    pub fn can_copy_dirs() {
+        let mut executor = MockExecuter::new();
+
+        executor
+            .expect_copy_dir()
+            .with(eq(Path::new("src")))
+            .times(1)
+            .returning(|_| Ok(()));
+
+        executor
+            .expect_copy_dir()
+            .with(eq(Path::new("example")))
+            .times(1)
+            .returning(|_| Ok(()));
+
+        executor
+            .expect_copy_dir()
+            .with(eq(Path::new(".github")))
+            .times(1)
+            .returning(|_| Ok(()));
+
+        let g = Generator::new(Arc::new(executor), settings::Settings::default());
+        let script_res = g.run_from_script(r#"gen.copy_dirs(["src", "example", ".github"]);"#);
+
+        assert!(script_res.is_ok());
+    }
+
+    #[test]
+    pub fn can_copy_template() {
+        let mut executor = MockExecuter::new();
+
+        executor
+            .expect_copy_template()
+            .with(eq(Path::new("src/lib.rs.t")), always())
+            .times(1)
+            .returning(|_, _| Ok(()));
+
+        let g = Generator::new(Arc::new(executor), settings::Settings::default());
+        let script_res = g.run_from_script(r#"gen.copy_template("src/lib.rs.t");"#);
+
+        assert!(script_res.is_ok());
+    }
+
+    #[test]
+    pub fn can_copy_template_dir() {
+        let mut executor = MockExecuter::new();
+
+        executor
+            .expect_copy_template_dir()
+            .with(eq(Path::new("src/examples")), always())
+            .times(1)
+            .returning(|_, _| Ok(()));
+
+        let g = Generator::new(Arc::new(executor), settings::Settings::default());
+        let script_res = g.run_from_script(r#"gen.copy_template_dir("src/examples");"#);
+
+        assert!(script_res.is_ok());
+    }
+}
