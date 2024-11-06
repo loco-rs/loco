@@ -3,11 +3,11 @@
 {% set module_name = "m" ~  mig_ts ~ "_" ~ plural_snake -%}
 {% set model = name | plural | pascal_case -%}
 to: "migration/src/{{module_name}}.rs"
-skip_glob: "migration/src/*_{{plural_snake}}.rs"
+skip_glob: "migration/src/m????????_??????_{{plural_snake}}.rs"
 message: "Migration for `{{name}}` added! You can now apply it with `$ cargo loco db migrate`."
 injections:
 - into: "migration/src/lib.rs"
-  after: "inject-below"
+  before: "inject-above"
   content: "            Box::new({{module_name}}::Migration),"
 - into: "migration/src/lib.rs"
   before: "pub struct Migrator"
@@ -48,7 +48,7 @@ impl MigrationTrait for Migration {
                     {% for ref in references -%}
                     .foreign_key(
                         ForeignKey::create()
-                            .name("fk-{{plural_snake}}-{{ref.0 | plural}}")
+                            .name("fk-{{plural_snake}}-{{ref.1 | plural| snake_case}}")
                             .from({{model}}::Table, {{model}}::{{ref.1 | pascal_case}})
                             .to({{ref.0 | plural | pascal_case}}::Table, {{ref.0 | plural | pascal_case}}::Id)
                             .on_delete(ForeignKeyAction::Cascade)
@@ -78,8 +78,7 @@ enum {{model}} {
     {% endfor %}
 }
 
-
-{% for ref in references -%}
+{% for ref in references | unique(attribute="0") -%}
 #[derive(DeriveIden)]
 enum {{ref.0 | plural | pascal_case}} {
     Table,

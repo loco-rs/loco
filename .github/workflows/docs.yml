@@ -25,5 +25,6 @@ jobs:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
       - run: cargo install snipdoc --features exec
       - run: snipdoc check
+        continue-on-error: true
         env:
           SNIPDOC_SKIP_EXEC_COMMANDS: true

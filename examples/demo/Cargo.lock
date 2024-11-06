@@ -2570,7 +2570,7 @@ checksum = "9374ef4228402d4b7e403e5838cb880d9ee663314b0a900d5a6aabf0c213552e"
 
 [[package]]
 name = "loco-gen"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "chrono",
  "clap",
@@ -2586,7 +2586,7 @@ dependencies = [
 
 [[package]]
 name = "loco-rs"
-version = "0.12.0"
+version = "0.13.1"
 dependencies = [
  "argon2",
  "async-trait",

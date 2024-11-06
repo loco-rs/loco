@@ -1,0 +1,12 @@
+---
+source: src/controller/middleware/cors.rs
+expression: "(format!(\"access-control-allow-origin: {:?}\",\nresponse.headers().get(\"access-control-allow-origin\")),\nformat!(\"vary: {:?}\", response.headers().get(\"vary\")),\nformat!(\"access-control-allow-methods: {:?}\",\nresponse.headers().get(\"access-control-allow-methods\")),\nformat!(\"access-control-allow-headers: {:?}\",\nresponse.headers().get(\"access-control-allow-headers\")),\nformat!(\"allow: {:?}\", response.headers().get(\"allow\")),)"
+snapshot_kind: text
+---
+(
+    "access-control-allow-origin: Some(\"http://example.com\")",
+    "vary: Some(\"origin, access-control-request-method, access-control-request-headers\")",
+    "access-control-allow-methods: Some(\"*\")",
+    "access-control-allow-headers: Some(\"*\")",
+    "allow: Some(\"GET,HEAD\")",
+)
