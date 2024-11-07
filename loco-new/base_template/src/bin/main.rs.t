@@ -9,6 +9,6 @@ async fn main() -> loco_rs::Result<()> {
     {%- if settings.db %}
     cli::main::<App, Migrator>().await
     {%- else %}
-    cli::main::<App>().await    
+    cli::main::<App>().await
     {%- endif %}
 }

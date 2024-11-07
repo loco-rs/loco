@@ -48,3 +48,5 @@ insta = { version = "1.41.1", features = ["redactions", "yaml", "filters"] }
 rstest = { version = "0.23.0" }
 tree-fs = "0.2.0"
 mockall = "0.13.0"
+toml = "0.8.19"
+regex = "1.11.1"

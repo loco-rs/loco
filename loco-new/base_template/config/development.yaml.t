@@ -24,23 +24,23 @@ server:
   middlewares:
   {%- if settings.asset %}   
     {%- if settings.asset.kind == "server" %} 
-  static:
-    enable: true
-    must_exist: true
-    precompressed: false
-    folder:
-      uri: "/static"
-      path: "assets/static"
-    fallback: "assets/static/404.html"
+    static:
+      enable: true
+      must_exist: true
+      precompressed: false
+      folder:
+        uri: "/static"
+        path: "assets/static"
+      fallback: "assets/static/404.html"
   {%- elif settings.asset.kind == "client" %} 
-  static:
-    enable: true
-    must_exist: true
-    precompressed: false
-    folder:
-      uri: "/"
-      path: "frontend/dist"
-    fallback: "frontend/dist/index.html"
+    static:
+      enable: true
+      must_exist: true
+      precompressed: false
+      folder:
+        uri: "/"
+        path: "frontend/dist"
+      fallback: "frontend/dist/index.html"
   {%- endif -%}
   
   {%- endif -%}

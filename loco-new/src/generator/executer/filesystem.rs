@@ -21,6 +21,19 @@ impl FileSystem {
         }
     }
 
+    #[must_use]
+    pub fn with_template_engine(
+        from: &Path,
+        to: &Path,
+        template_engine: generator::template::Template,
+    ) -> Self {
+        Self {
+            source_dir: from.to_path_buf(),
+            target_dir: to.to_path_buf(),
+            template_engine,
+        }
+    }
+
     fn render_and_rename_template_file(
         &self,
         file_path: &Path,
@@ -136,14 +149,12 @@ mod tests {
 
     fn init_filesystem() -> FileSystem {
         let source_path = TreeBuilder::default()
-            .drop(true)
             .add("test/foo.txt", "bar")
             .add("test/bar.txt.t", "crate: {{settings.package_name}}")
             .create()
             .expect("Failed to create mock data");
 
         let copy_to = TreeBuilder::default()
-            .drop(true)
             .create()
             .expect("Failed to create mock data");
         FileSystem::new(&source_path.root, &copy_to.root)

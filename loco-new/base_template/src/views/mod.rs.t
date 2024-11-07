@@ -3,4 +3,3 @@ pub mod auth;
 {%- else -%} 
 pub mod home;
 {%- endif -%}
-

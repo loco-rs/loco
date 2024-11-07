@@ -24,23 +24,23 @@ server:
   middlewares:
   {%- if settings.asset %}   
     {%- if settings.asset.kind == "server" %} 
-  static:
-    enable: true
-    must_exist: true
-    precompressed: false
-    folder:
-      uri: "/static"
-      path: "assets/static"
-    fallback: "assets/static/404.html"
+    static:
+      enable: true
+      must_exist: true
+      precompressed: false
+      folder:
+        uri: "/static"
+        path: "assets/static"
+      fallback: "assets/static/404.html"
   {%- elif settings.asset.kind == "client" %} 
-  static:
-    enable: true
-    must_exist: true
-    precompressed: false
-    folder:
-      uri: "/"
-      path: "frontend/dist"
-    fallback: "frontend/dist/index.html"
+    static:
+      enable: true
+      must_exist: true
+      precompressed: false
+      folder:
+        uri: "/"
+        path: "frontend/dist"
+      fallback: "frontend/dist/index.html"
   {%- endif -%}
   
   {%- endif -%}
@@ -55,7 +55,7 @@ workers:
   #   - BackgroundAsync - Workers operate asynchronously in the background, processing tasks with async capabilities.
   mode: {{settings.background.kind}}
 
-# TODO:: only when background is BackgroundQueue
+  {% if settings.background.kind == "BackgroundQueue"%}
 # Queue Configuration
 queue:
   kind: Redis
@@ -63,7 +63,8 @@ queue:
   uri: {% raw %}{{{% endraw %} get_env(name="REDIS_URL", default="redis://127.0.0.1") {% raw %}}}{% endraw %}
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_flush: false
-{%- endif %}
+  {%- endif %}
+{%- endif -%}
 
 {%- if settings.mailer %}
 
