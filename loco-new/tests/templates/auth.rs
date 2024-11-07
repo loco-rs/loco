@@ -6,6 +6,8 @@ use rstest::rstest;
 
 pub fn run_generator(enable_auth: bool) -> TestGenerator {
     let settings = settings::Settings {
+        package_name: "loco-app-test".to_string(),
+        module_name: "loco_app_test".to_string(),
         auth: enable_auth,
         ..Default::default()
     };

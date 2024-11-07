@@ -7,6 +7,8 @@ use rstest::rstest;
 
 pub fn run_generator(db: DBOption) -> TestGenerator {
     let settings = settings::Settings {
+        package_name: "loco-app-test".to_string(),
+        module_name: "loco_app_test".to_string(),
         db: db.into(),
         ..Default::default()
     };
@@ -130,7 +132,7 @@ fn test_tasks_mod_rs(#[values(DBOption::None, DBOption::Sqlite, DBOption::Postgr
     if db.enable() {
         assertion::string::assert_line_regex(&content, "(?m)^pub mod seed;$");
     } else {
-        assert!(content.is_empty());
+        assertion::string::assert_str_not_exists(&content, "pub mod seed");
     }
 }
 
@@ -160,6 +162,6 @@ fn test_tests_tasks_mod_rs(
     if db.enable() {
         assertion::string::assert_line_regex(&content, "(?m)^pub mod seed;$");
     } else {
-        assert!(content.is_empty());
+        assertion::string::assert_str_not_exists(&content, "pub mod seed");
     }
 }

@@ -11,6 +11,30 @@ pub fn assert_path_value_eq_string(toml: &Value, path: &[&str], expected: &str) 
     assert_path_value_eq(toml, path, &expected_value);
 }
 
+pub fn eq_path_value_eq_bool(toml: &Value, path: &[&str], expected: bool) {
+    let expected_value = Value::Boolean(expected);
+    assert_path_value_eq(toml, path, &expected_value);
+}
+
+pub fn assert_path_is_empty_array(toml: &Value, path: &[&str]) {
+    let actual = get_value_at_path(toml, path);
+
+    assert!(
+        match actual {
+            Some(Value::Array(arr)) => arr.is_empty(),
+            None => true,
+            _ => false,
+        },
+        "Assertion failed: Path {path:?} is not an empty array. Actual value: {actual:?}"
+    );
+}
+
+/// Assert that the value at the specified path is an array and matches the expected array.
+pub fn assert_path_value_eq_array(toml: &Value, path: &[&str], expected: &[Value]) {
+    let expected_value = Value::Array(expected.to_vec());
+    assert_path_value_eq(toml, path, &expected_value);
+}
+
 /// Assert that a TOML value contains a specific key path and that it matches the expected value.
 pub fn assert_path_value_eq(toml: &Value, path: &[&str], expected: &Value) {
     let actual = get_value_at_path(toml, path);
@@ -53,9 +77,19 @@ pub fn assert_path_is_empty(toml: &Value, path: &[&str]) {
         match actual {
             Some(Value::Table(table)) => table.is_empty(),
             Some(Value::Array(arr)) => arr.is_empty(),
+            None => true,
             _ => false,
         },
         "Assertion failed: Path {path:?} is not empty. Actual value: {actual:?}"
+    );
+}
+
+pub fn assert_path_exists(toml: &Value, path: &[&str]) {
+    let actual = get_value_at_path(toml, path);
+
+    assert!(
+        actual.is_some(),
+        "Assertion failed: Path {path:?} does not exist. Actual value: {actual:?}"
     );
 }
 

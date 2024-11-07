@@ -12,9 +12,10 @@ mod asset;
 mod auth;
 mod background;
 mod db;
+mod features;
+mod initializers;
 mod mailer;
-// mod initializers;
-// mod module_name;
+mod module_name;
 
 pub struct TestGenerator {
     tree: tree_fs::Tree,
