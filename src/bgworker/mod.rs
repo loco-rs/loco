@@ -8,10 +8,15 @@ use tracing::{debug, error};
 pub mod pg;
 #[cfg(feature = "bg_redis")]
 pub mod skq;
+#[cfg(feature = "bg_sqlt")]
+pub mod sqlt;
 
 use crate::{
     app::AppContext,
-    config::{self, Config, PostgresQueueConfig, QueueConfig, RedisQueueConfig, WorkerMode},
+    config::{
+        self, Config, PostgresQueueConfig, QueueConfig, RedisQueueConfig, SqliteQueueConfig,
+        WorkerMode,
+    },
     Error, Result,
 };
 
@@ -28,6 +33,12 @@ pub enum Queue {
         pg::PgPool,
         std::sync::Arc<tokio::sync::Mutex<pg::TaskRegistry>>,
         pg::RunOpts,
+    ),
+    #[cfg(feature = "bg_sqlt")]
+    Sqlite(
+        sqlt::SqlitePool,
+        std::sync::Arc<tokio::sync::Mutex<sqlt::TaskRegistry>>,
+        sqlt::RunOpts,
     ),
     None,
 }
@@ -53,6 +64,18 @@ impl Queue {
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, _, _) => {
                 pg::enqueue(
+                    pool,
+                    &class,
+                    serde_json::to_value(args)?,
+                    chrono::Utc::now(),
+                    None,
+                )
+                .await
+                .map_err(Box::from)?;
+            }
+            #[cfg(feature = "bg_sqlt")]
+            Self::Sqlite(pool, _, _) => {
+                sqlt::enqueue(
                     pool,
                     &class,
                     serde_json::to_value(args)?,
@@ -91,6 +114,11 @@ impl Queue {
                 let mut r = registry.lock().await;
                 r.register_worker(W::class_name(), worker)?;
             }
+            #[cfg(feature = "bg_sqlt")]
+            Self::Sqlite(_, registry, _) => {
+                let mut r = registry.lock().await;
+                r.register_worker(W::class_name(), worker)?;
+            }
             _ => {}
         }
         Ok(())
@@ -110,6 +138,14 @@ impl Queue {
             }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, registry, run_opts) => {
+                //TODOQ: num workers to config
+                let handles = registry.lock().await.run(pool, run_opts);
+                for handle in handles {
+                    handle.await?;
+                }
+            }
+            #[cfg(feature = "bg_sqlt")]
+            Self::Sqlite(pool, registry, run_opts) => {
                 //TODOQ: num workers to config
                 let handles = registry.lock().await.run(pool, run_opts);
                 for handle in handles {
@@ -140,6 +176,10 @@ impl Queue {
             Self::Postgres(pool, _, _) => {
                 pg::initialize_database(pool).await.map_err(Box::from)?;
             }
+            #[cfg(feature = "bg_sqlt")]
+            Self::Sqlite(pool, _, _) => {
+                sqlt::initialize_database(pool).await.map_err(Box::from)?;
+            }
             _ => {}
         }
         Ok(())
@@ -160,6 +200,10 @@ impl Queue {
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, _, _) => {
                 pg::clear(pool).await.map_err(Box::from)?;
+            }
+            #[cfg(feature = "bg_sqlt")]
+            Self::Sqlite(pool, _, _) => {
+                sqlt::clear(pool).await.map_err(Box::from)?;
             }
             _ => {}
         }
@@ -182,6 +226,10 @@ impl Queue {
             Self::Postgres(pool, _, _) => {
                 pg::ping(pool).await.map_err(Box::from)?;
             }
+            #[cfg(feature = "bg_sqlt")]
+            Self::Sqlite(pool, _, _) => {
+                sqlt::ping(pool).await.map_err(Box::from)?;
+            }
             _ => {}
         }
         Ok(())
@@ -194,6 +242,8 @@ impl Queue {
             Self::Redis(_, _, _) => "redis queue".to_string(),
             #[cfg(feature = "bg_pg")]
             Self::Postgres(_, _, _) => "postgres queue".to_string(),
+            #[cfg(feature = "bg_sqlt")]
+            Self::Sqlite(_, _, _) => "sqlite queue".to_string(),
             _ => "no queue".to_string(),
         }
     }
@@ -286,6 +336,17 @@ pub async fn converge(queue: &Queue, config: &QueueConfig) -> Result<()> {
             num_workers: _,
             min_connections: _,
         })
+        | QueueConfig::Sqlite(SqliteQueueConfig {
+            dangerously_flush,
+            uri: _,
+            max_connections: _,
+            enable_logging: _,
+            connect_timeout: _,
+            idle_timeout: _,
+            poll_interval_sec: _,
+            num_workers: _,
+            min_connections: _,
+        })
         | QueueConfig::Redis(RedisQueueConfig {
             dangerously_flush,
             uri: _,
@@ -318,6 +379,10 @@ pub async fn create_queue_provider(config: &Config) -> Result<Option<Arc<Queue>>
                 #[cfg(feature = "bg_pg")]
                 config::QueueConfig::Postgres(qcfg) => {
                     Ok(Some(Arc::new(pg::create_provider(qcfg).await?)))
+                }
+                #[cfg(feature = "bg_sqlt")]
+                config::QueueConfig::Sqlite(qcfg) => {
+                    Ok(Some(Arc::new(sqlt::create_provider(qcfg).await?)))
                 }
 
                 #[allow(unreachable_patterns)]
