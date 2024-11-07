@@ -1,4 +1,4 @@
-/// SQLite based background job queue provider
+/// `SQLite` based background job queue provider
 use std::{collections::HashMap, future::Future, pin::Pin, sync::Arc, time::Duration};
 
 use chrono::{DateTime, Utc};
