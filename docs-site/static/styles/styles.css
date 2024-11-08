@@ -618,33 +618,28 @@ a.active {
 
 @media (min-width: 640px) {
   .container {
-    max-width: 640px;
+    max-width: calc(640px - 1rem);
   }
 }
 
 @media (min-width: 768px) {
   .container {
-    max-width: 768px;
+    max-width: calc(768px - 2rem);
   }
 }
 
 @media (min-width: 1024px) {
   .container {
-    max-width: 1024px;
+    max-width: calc(1024px - 6rem);
   }
 }
 
 @media (min-width: 1280px) {
   .container {
-    max-width: 1280px;
+    max-width: calc(1280px - 8rem);
   }
 }
 
-@media (min-width: 1536px) {
-  .container {
-    max-width: 1536px;
-  }
-}
 
 .prose {
   color: var(--tw-prose-body);
