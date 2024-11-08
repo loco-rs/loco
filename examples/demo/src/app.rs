@@ -16,7 +16,10 @@ use loco_rs::{
 };
 use migration::Migrator;
 use sea_orm::DatabaseConnection;
-use utoipa::OpenApi;
+use utoipa::{
+    openapi::security::{ApiKey, ApiKeyValue, SecurityScheme, HttpBuilder, HttpAuthScheme},
+    Modify, OpenApi,
+};
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_redoc::{Redoc, Servable};
 use utoipa_scalar::{Scalar, Servable as ScalarServable};
@@ -76,13 +79,40 @@ impl Hooks for App {
     }
 
     async fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
-        // Serveing the OpenAPI doc
+        // Serving the OpenAPI doc
         #[derive(OpenApi)]
-        #[openapi(info(
+        #[openapi(modifiers(&SecurityAddon),
+            info(
             title = "Loco Demo",
             description = "This app is a kitchensink for various capabilities and examples of the [Loco](https://loco.rs) project."
         ))]
         struct ApiDoc;
+
+        // TODO set the jwt token location
+        // let auth_location = ctx.config.auth.as_ref();
+
+        struct SecurityAddon;
+        impl Modify for SecurityAddon {
+            fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+                if let Some(components) = openapi.components.as_mut() {
+                    components.add_security_schemes_from_iter([
+                        (
+                            "jwt_token",
+                            SecurityScheme::Http(
+                                HttpBuilder::new()
+                                    .scheme(HttpAuthScheme::Bearer)
+                                    .bearer_format("JWT")
+                                    .build(),
+                            ),
+                        ),
+                        (
+                            "api_key",
+                            SecurityScheme::ApiKey(ApiKey::Header(ApiKeyValue::new("apikey"))),
+                        ),
+                    ]);
+                }
+            }
+        }
 
         let (_, api) = OpenApiRouter::with_openapi(ApiDoc::openapi())
             .merge(controllers::auth::api_routes())
