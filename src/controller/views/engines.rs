@@ -1,5 +1,16 @@
-use std::path::Path;
+use std::{
+    path::Path,
+    sync::{Arc, RwLock},
+    time::Duration,
+};
 
+use tower_livereload::LiveReloadLayer;
+
+use notify_debouncer_full::{
+    new_debouncer,
+    notify::{EventKind, RecommendedWatcher, RecursiveMode},
+    DebounceEventResult, Debouncer, FileIdMap,
+};
 use serde::Serialize;
 
 use crate::{controller::views::ViewRenderer, Error, Result};
@@ -7,8 +18,95 @@ use crate::{controller::views::ViewRenderer, Error, Result};
 const VIEWS_DIR: &str = "assets/views";
 
 #[derive(Clone, Debug)]
-pub struct TeraView {
+pub struct ReloadableTera {
+    #[cfg(debug_assertions)]
+    _debouncer: Arc<Debouncer<RecommendedWatcher, FileIdMap>>,
+
+    #[cfg(debug_assertions)]
+    pub tera: Arc<RwLock<tera::Tera>>,
+
+    // #[cfg(debug_assertions)]
+    // pub reload_layer: LiveReloadLayer,
+
+    #[cfg(not(debug_assertions))]
     pub tera: tera::Tera,
+}
+
+impl ReloadableTera {
+    pub fn new(root_path: &str, path_str: &str) -> Result<Self> {
+        let tera = tera::Tera::new(path_str)?;
+
+        #[cfg(debug_assertions)]
+        let (debouncer, tera) = {
+            let tera = Arc::new(RwLock::new(tera));
+            let debouncer =
+                Self::create_reload_debouncer(Duration::from_millis(500), tera.clone(), root_path);
+
+            (Arc::new(debouncer), tera)
+        };
+
+        Ok(Self {
+            #[cfg(debug_assertions)]
+            _debouncer: debouncer,
+            tera,
+        })
+    }
+
+    fn create_reload_debouncer(
+        delay: Duration,
+        tera: Arc<RwLock<tera::Tera>>,
+        root_path: &str,
+    ) -> Debouncer<RecommendedWatcher, FileIdMap> {
+        let mut debouncer =
+            new_debouncer(
+                delay,
+                None,
+                move |result: DebounceEventResult| match result {
+                    Ok(events) => events.iter().for_each(|event| match event.kind {
+                        EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) => {
+                            let mut write_lock =
+                                tera.write().expect("Failed to acquire tera write lock");
+
+                            write_lock.full_reload().expect("Failed to full reload");
+                        }
+                        _ => {}
+                    }),
+                    Err(errors) => errors.iter().for_each(|error| println!("{error:?}")),
+                },
+            )
+            .unwrap();
+
+        debouncer
+            .watch(root_path, RecursiveMode::Recursive)
+            .unwrap();
+
+        debouncer
+    }
+
+    #[cfg(debug_assertions)]
+    pub fn get(&self) -> std::sync::RwLockReadGuard<tera::Tera> {
+        self.tera.read().unwrap()
+    }
+
+    #[cfg(debug_assertions)]
+    pub fn get_mut(&mut self) -> std::sync::RwLockWriteGuard<tera::Tera> {
+        self.tera.write().unwrap()
+    }
+
+    #[cfg(not(debug_assertions))]
+    pub fn get(&self) -> &tera::Tera {
+        &self.tera
+    }
+
+    #[cfg(not(debug_assertions))]
+    pub fn get_mut(&mut self) -> &mut tera::Tera {
+        &mut self.tera
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct TeraView {
+    pub tera: ReloadableTera,
     pub default_context: tera::Context,
 }
 
@@ -35,13 +133,17 @@ impl TeraView {
             )));
         }
 
-        let tera = tera::Tera::new(
+        let tera = ReloadableTera::new(
+            path.as_ref()
+                .to_str()
+                .ok_or_else(|| Error::string("invalid blob"))?,
             path.as_ref()
                 .join("**")
                 .join("*.html")
                 .to_str()
                 .ok_or_else(|| Error::string("invalid blob"))?,
         )?;
+
         let ctx = tera::Context::default();
         Ok(Self {
             tera,
@@ -75,7 +177,9 @@ impl ViewRenderer for TeraView {
         }
         */
 
-        Ok(self.tera.render(key, &context)?)
+        let tera = self.tera.get();
+
+        Ok(tera.render(key, &context)?)
     }
 }
 
