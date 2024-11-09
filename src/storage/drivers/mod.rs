@@ -2,6 +2,8 @@ use std::path::Path;
 
 use async_trait::async_trait;
 use bytes::Bytes;
+use opendal::Reader;
+
 #[cfg(feature = "storage_aws_s3")]
 pub mod aws;
 #[cfg(feature = "storage_azure")]
@@ -11,7 +13,7 @@ pub mod gcp;
 pub mod local;
 pub mod mem;
 pub mod null;
-pub mod object_store_adapter;
+pub mod opendal_adapter;
 
 use super::StorageResult;
 
@@ -21,9 +23,24 @@ pub struct UploadResponse {
     pub version: Option<String>,
 }
 
-// TODO: need to properly abstract the object_store type in order to not
-// strongly depend on it
-pub type GetResponse = object_store::GetResult;
+/// TODO: Add more methods to `GetResponse` to read the content in different
+/// ways
+///
+/// For example, we can read a specific range of bytes from the stream.
+pub struct GetResponse {
+    stream: Reader,
+}
+
+impl GetResponse {
+    pub(crate) fn new(stream: Reader) -> Self {
+        Self { stream }
+    }
+
+    /// Read all content from the stream and return as `Bytes`.
+    pub async fn bytes(&self) -> StorageResult<Bytes> {
+        Ok(self.stream.read(..).await?.to_bytes())
+    }
+}
 
 #[async_trait]
 pub trait StoreDriver: Sync + Send {

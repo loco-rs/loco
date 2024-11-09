@@ -38,9 +38,9 @@ with-db = ["dep:sea-orm", "dep:sea-orm-migration", "loco-gen/with-db"]
 channels = ["dep:socketioxide"]
 # Storage features
 all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
-storage_aws_s3 = ["object_store/aws"]
-storage_azure = ["object_store/azure"]
-storage_gcp = ["object_store/gcp"]
+storage_aws_s3 = ["opendal/services-s3"]
+storage_azure = ["opendal/services-azblob"]
+storage_gcp = ["opendal/services-gcs"]
 # Cache feature
 cache_inmem = ["dep:moka"]
 bg_redis = ["dep:rusty-sidekiq", "dep:bb8"]
@@ -125,7 +125,7 @@ socketioxide = { version = "0.14.0", features = ["state"], optional = true }
 
 
 # File Upload
-object_store = { version = "0.11.0", default-features = false }
+opendal = { version = "0.50.2", default-features = false,features = ["services-memory","services-fs"] }
 
 # cache
 moka = { version = "0.12.7", features = ["sync"], optional = true }

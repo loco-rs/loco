@@ -282,7 +282,8 @@ async fn dequeue(client: &SqlitePool) -> Result<Option<Task>> {
 
     if let Some(task) = row {
         sqlx::query(
-            "UPDATE sqlt_loco_queue SET status = 'processing', updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            "UPDATE sqlt_loco_queue SET status = 'processing', updated_at = CURRENT_TIMESTAMP \
+             WHERE id = $1",
         )
         .bind(&task.id)
         .execute(&mut *tx)
@@ -325,7 +326,8 @@ async fn complete_task(
     if let Some(interval_ms) = interval_ms {
         let next_run_at = Utc::now() + chrono::Duration::milliseconds(interval_ms);
         sqlx::query(
-            "UPDATE sqlt_loco_queue SET status = 'queued', updated_at = CURRENT_TIMESTAMP, run_at = DATETIME($1) WHERE id = $2",
+            "UPDATE sqlt_loco_queue SET status = 'queued', updated_at = CURRENT_TIMESTAMP, run_at \
+             = DATETIME($1) WHERE id = $2",
         )
         .bind(next_run_at)
         .bind(task_id)
@@ -333,7 +335,8 @@ async fn complete_task(
         .await?;
     } else {
         sqlx::query(
-            "UPDATE sqlt_loco_queue SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            "UPDATE sqlt_loco_queue SET status = 'completed', updated_at = CURRENT_TIMESTAMP \
+             WHERE id = $1",
         )
         .bind(task_id)
         .execute(pool)
@@ -347,7 +350,8 @@ async fn fail_task(pool: &SqlitePool, task_id: &TaskId, error: &crate::Error) ->
     error!(err = msg, "failed task");
     let error_json = serde_json::json!({ "error": msg });
     sqlx::query(
-        "UPDATE sqlt_loco_queue SET status = 'failed', updated_at = CURRENT_TIMESTAMP, task_data = json_patch(task_data, $1) WHERE id = $2",
+        "UPDATE sqlt_loco_queue SET status = 'failed', updated_at = CURRENT_TIMESTAMP, task_data \
+         = json_patch(task_data, $1) WHERE id = $2",
     )
     .bind(error_json)
     .bind(task_id)

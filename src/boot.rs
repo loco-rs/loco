@@ -6,8 +6,7 @@ use std::path::PathBuf;
 use axum::Router;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
-use tokio::task::JoinHandle;
-use tokio::{select, signal};
+use tokio::{select, signal, task::JoinHandle};
 use tracing::{debug, error, info, warn};
 
 #[cfg(feature = "with-db")]
