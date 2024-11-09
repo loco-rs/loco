@@ -45,7 +45,7 @@ impl Default for Cors {
 }
 
 fn default_allow_origins() -> Vec<String> {
-    vec!["*".to_string()]
+    vec!["any".to_string()]
 }
 
 fn default_allow_headers() -> Vec<String> {
