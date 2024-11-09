@@ -23,6 +23,12 @@ Try [cargo watch](https://crates.io/crates/cargo-watch):
 $ cargo-watch -x check  -s 'cargo loco start'
 ```
 
+Or [bacon](https://github.com/Canop/bacon)
+
+```
+$ bacon run
+```
+
 </details>
 <br/>
 <details>
