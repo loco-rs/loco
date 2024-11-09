@@ -48,7 +48,7 @@ impl MigrationTrait for Migration {
                     {% for ref in references -%}
                     .foreign_key(
                         ForeignKey::create()
-                            .name("fk-{{plural_snake}}-{{ref.0 | plural}}")
+                            .name("fk-{{plural_snake}}-{{ref.1 | plural| snake_case}}")
                             .from({{model}}::Table, {{model}}::{{ref.1 | pascal_case}})
                             .to({{ref.0 | plural | pascal_case}}::Table, {{ref.0 | plural | pascal_case}}::Id)
                             .on_delete(ForeignKeyAction::Cascade)
@@ -78,8 +78,7 @@ enum {{model}} {
     {% endfor %}
 }
 
-
-{% for ref in references -%}
+{% for ref in references | unique(attribute="0") -%}
 #[derive(DeriveIden)]
 enum {{ref.0 | plural | pascal_case}} {
     Table,

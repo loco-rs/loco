@@ -46,7 +46,7 @@ pub fn generate(
             );
             continue;
         }
-        if ftype != "references" {
+        if ftype != "references" && !ftype.starts_with("references:") {
             let schema_type = mappings.rust_field(ftype.as_str()).ok_or_else(|| {
                 Error::Message(format!(
                     "type: {} not found. try any of: {:?}",
