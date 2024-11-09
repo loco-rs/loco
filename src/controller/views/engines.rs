@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{borrow::BorrowMut, fs, path::Path};
 
 use serde::Serialize;
 
@@ -8,7 +8,12 @@ const VIEWS_DIR: &str = "assets/views";
 
 #[derive(Clone, Debug)]
 pub struct TeraView {
+    #[cfg(debug_assertions)]
+    pub tera: std::sync::Arc<std::sync::Mutex<tera::Tera>>,
+
+    #[cfg(not(debug_assertions))]
     pub tera: tera::Tera,
+
     pub default_context: tera::Context,
 }
 
@@ -44,7 +49,10 @@ impl TeraView {
         )?;
         let ctx = tera::Context::default();
         Ok(Self {
-            tera,
+            #[cfg(debug_assertions)]
+            tera: std::sync::Arc::new(std::sync::Mutex::new(tera)),
+            #[cfg(not(debug_assertions))]
+            tera: tera,
             default_context: ctx,
         })
     }
@@ -74,8 +82,16 @@ impl ViewRenderer for TeraView {
             }
         }
         */
+        #[cfg(debug_assertions)]
+        tracing::debug!(key = key, "Tera rendering in non-optimized debug mode");
+        #[cfg(debug_assertions)]
+        return Ok(self.tera.lock().expect("lock").borrow_mut().render_str(
+            &fs::read_to_string(Path::new(VIEWS_DIR).join(key))?,
+            &context,
+        )?);
 
-        Ok(self.tera.render(key, &context)?)
+        #[cfg(not(debug_assertions))]
+        return Ok(self.tera.render(key, &context)?);
     }
 }
 
