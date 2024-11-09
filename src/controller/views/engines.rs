@@ -14,6 +14,9 @@ pub struct TeraView {
     #[cfg(not(debug_assertions))]
     pub tera: tera::Tera,
 
+    #[cfg(debug_assertions)]
+    pub view_dir: String,
+
     pub default_context: tera::Context,
 }
 
@@ -50,6 +53,8 @@ impl TeraView {
         let ctx = tera::Context::default();
         Ok(Self {
             #[cfg(debug_assertions)]
+            view_dir: path.as_ref().to_string_lossy().to_string(),
+            #[cfg(debug_assertions)]
             tera: std::sync::Arc::new(std::sync::Mutex::new(tera)),
             #[cfg(not(debug_assertions))]
             tera: tera,
@@ -69,7 +74,7 @@ impl ViewRenderer for TeraView {
         tracing::debug!(key = key, "Tera rendering in non-optimized debug mode");
         #[cfg(debug_assertions)]
         return Ok(self.tera.lock().expect("lock").borrow_mut().render_str(
-            &std::fs::read_to_string(Path::new(VIEWS_DIR).join(key))?,
+            &std::fs::read_to_string(Path::new(&self.view_dir).join(key))?,
             &context,
         )?);
 
