@@ -111,7 +111,7 @@ impl MiddlewareLayer for StaticAssets {
         Ok(app.nest_service(
             &self.folder.uri,
             if self.precompressed {
-                serve_dir.precompressed_gzip()
+                serve_dir.precompressed_br().precompressed_gzip()
             } else {
                 serve_dir
             },

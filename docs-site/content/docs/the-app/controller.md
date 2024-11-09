@@ -113,7 +113,7 @@ Note that by-design _sharing state between controllers and workers have no meani
 
 ### Shared state in tasks
 
-Tasks don't really have a value for shared state, as they have a similar life as any exec'd binary. The process fires up, boots, creates all resources needed (connects to db, etc.), performs the task logic, and then the 
+Tasks don't really have a value for shared state, as they have a similar life as any exec'd binary. The process fires up, boots, creates all resources needed (connects to db, etc.), performs the task logic, and then the
 
 ## Routes in Controllers
 
@@ -420,7 +420,7 @@ By default, Loco uses Bearer authentication for JWT. However, you can customize 
   auth:
     # JWT authentication
     jwt:
-      location: 
+      location:
         from: Cookie
         name: token
   ...
@@ -431,7 +431,7 @@ By default, Loco uses Bearer authentication for JWT. However, you can customize 
   auth:
     # JWT authentication
     jwt:
-      location: 
+      location:
         from: Query
         name: token
   ...
@@ -481,7 +481,7 @@ To disable the middleware edit the configuration as follows:
 ## Limit Payload
 
 Restricts the maximum allowed size for HTTP request payloads.
-The middleware by default is enabled and configured to 2MB. 
+The middleware by default is enabled and configured to 2MB.
 
 You can disable or customize this behavior in your config file. You can set a few options:
 
@@ -681,9 +681,10 @@ Doing so will compress each response and set `content-encoding` response header 
 ## Precompressed assets
 
 
-`Loco` leverages [ServeDir::precompressed_gzip](https://docs.rs/tower-http/latest/tower_http/services/struct.ServeDir.html#method.precompressed_gzip) to enable a `one click` solution of serving pre compressed assets.
+`Loco` leverages [ServeDir::precompressed_br](https://docs.rs/tower-http/latest/tower_http/services/struct.ServeDir.html#method.precompressed_br) and [ServeDir::precompressed_gzip](https://docs.rs/tower-http/latest/tower_http/services/struct.ServeDir.html#method.precompressed_gzip) to enable a `one click` solution of serving pre compressed assets.
 
-If a static assets exists on the disk as a `.gz` file, `Loco` will serve it instead of compressing it on the fly.
+If a static asset exists on disk as a `.br` file, `Loco` will serve it instead of compressing it on the fly.
+If the `Accept-Encoding` header does not allow brotli compression, precompressed asset serving will fallback to `.gzip`.
 
 ```yaml
 #...
@@ -695,7 +696,7 @@ middlewares:
 ```
 
 ## CORS
-This middleware enables Cross-Origin Resource Sharing (CORS) by allowing configurable origins, methods, and headers in HTTP requests. 
+This middleware enables Cross-Origin Resource Sharing (CORS) by allowing configurable origins, methods, and headers in HTTP requests.
 It can be tailored to fit various application requirements, supporting permissive CORS or specific rules as defined in the middleware configuration.
 
 ```yaml
@@ -855,7 +856,7 @@ impl PaginationResponse {
 ```
 
 
-# Testing 
+# Testing
 When testing controllers, the goal is to call the router's controller endpoint and verify the HTTP response, including the status code, response content, headers, and more.
 
 To initialize a test request, use `testing::request`, which prepares your app routers, providing the request instance and the application context.
