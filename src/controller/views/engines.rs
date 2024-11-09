@@ -74,7 +74,8 @@ impl ViewRenderer for TeraView {
         tracing::debug!(key = key, "Tera rendering in non-optimized debug mode");
         #[cfg(debug_assertions)]
         return Ok(self.tera.lock().expect("lock").borrow_mut().render_str(
-            &std::fs::read_to_string(Path::new(&self.view_dir).join(key))?,
+            &std::fs::read_to_string(Path::new(&self.view_dir).join(key))
+                .map_err(|_e| tera::Error::template_not_found(key))?,
             &context,
         )?);
 
