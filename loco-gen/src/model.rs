@@ -44,10 +44,10 @@ pub fn generate(
             columns.push((fkey.clone(), "integer"));
             // user, user_id
             references.push((fname.to_string(), fkey));
-        } else if ftype.starts_with("references:") {
+        } else if let Some(refname) = ftype.strip_prefix("references:") {
             let fkey = format!("{fname}_id");
             columns.push((fkey.clone(), "integer"));
-            references.push((ftype["references:".len()..].to_string(), fkey));
+            references.push((refname.to_string(), fkey));
         } else {
             let mappings = get_mappings();
             let schema_type = mappings.schema_field(ftype.as_str()).ok_or_else(|| {
