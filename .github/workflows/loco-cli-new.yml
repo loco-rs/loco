@@ -38,7 +38,7 @@ jobs:
         working-directory: ./loco-new
 
   test:
-    needs: [style]
+    # needs: [style]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
