@@ -8,16 +8,16 @@ use strum::{Display, EnumIter};
 )]
 pub enum Template {
     #[default]
-    #[strum(to_string = "lightweight-service (minimal, only controllers and views)")]
-    Lightweight,
-    #[strum(to_string = "Rest API (with DB and user auth)")]
-    RestApi,
     #[strum(to_string = "Saas App with server side rendering")]
     SaasServerSideRendering,
     #[strum(to_string = "Saas App with client side rendering")]
     SaasClientSideRendering,
-    #[strum(to_string = "Advance")]
-    Advance,
+    #[strum(to_string = "Rest API (with DB and user auth)")]
+    RestApi,
+    #[strum(to_string = "lightweight-service (minimal, only controllers and views)")]
+    Lightweight,
+    #[strum(to_string = "Advanced")]
+    Advanced,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -101,14 +101,14 @@ impl BackgroundOption {
     pub fn user_message(&self) -> Option<String> {
         match self {
             Self::Queue => Some(format!(
-            "{}: You've selected `{}` for your background worker configuration (you should have a \
-             Redis/valkey instance to connect to)",
-            "workers".underline(),
-            "queue".yellow()
-        )),
+                "{}: You've selected `{}` for your background worker configuration (you should \
+                 have a Redis/valkey instance to connect to)",
+                "workers".underline(),
+                "queue".yellow()
+            )),
             Self::Blocking => Some(format!(
                 "{}: You've selected `{}` for your background worker configuration. Your workers \
-             configuration will BLOCK REQUESTS until a task is done.",
+                 configuration will BLOCK REQUESTS until a task is done.",
                 "workers".underline(),
                 "blocking".yellow()
             )),
@@ -153,12 +153,12 @@ impl AssetsOption {
     pub fn user_message(&self) -> Option<String> {
         match self {
             Self::Clientside => Some(format!(
-            "{}: You've selected `{}` for your asset serving configuration.\n\nNext step, build \
-             your frontend:\n  $ cd {}\n  $ npm install && npm run build\n",
-            "assets".underline(),
-            "clientside".yellow(),
-            "frontend/".yellow()
-        )),
+                "{}: You've selected `{}` for your asset serving configuration.\n\nNext step, \
+                 build your frontend:\n  $ cd {}\n  $ npm install && npm run build\n",
+                "assets".underline(),
+                "clientside".yellow(),
+                "frontend/".yellow()
+            )),
             Self::Serverside | Self::None => None,
         }
     }

@@ -1,12 +1,13 @@
-//! This module provides interactive utilities for setting up application configurations
-//! based on user input.
+//! This module provides interactive utilities for setting up application
+//! configurations based on user input.
+
+use dialoguer::{theme::ColorfulTheme, Confirm, Input, Select};
+use strum::IntoEnumIterator;
 
 use crate::{
     wizard_opts::{self, AssetsOption, BackgroundOption, DBOption},
     Error,
 };
-use dialoguer::{theme::ColorfulTheme, Confirm, Input, Select};
-use strum::IntoEnumIterator;
 
 /// Holds the user's configuration selections.
 pub struct Selections {
@@ -32,8 +33,8 @@ impl Selections {
     }
 }
 
-/// Prompts the user to enter an application name, with optional pre-set name input.
-/// Validates the name to ensure compliance with required naming rules.
+/// Prompts the user to enter an application name, with optional pre-set name
+/// input. Validates the name to ensure compliance with required naming rules.
 /// Returns the validated name or an error if validation fails.
 ///
 /// # Errors
@@ -58,8 +59,9 @@ pub fn app_name(name: Option<String>) -> crate::Result<String> {
     }
 }
 
-/// Warns the user if the current directory is inside a Git repository and prompts
-/// them to confirm whether they wish to proceed. If declined, an error is returned.
+/// Warns the user if the current directory is inside a Git repository and
+/// prompts them to confirm whether they wish to proceed. If declined, an error
+/// is returned.
 ///
 /// # Errors
 /// when could not show user selection or user chose not continue
@@ -150,7 +152,7 @@ pub fn start(args: &wizard_opts::ArgsPlaceholder) -> crate::Result<Selections> {
             background: select_background(args)?,
             asset: AssetsOption::Clientside,
         }),
-        wizard_opts::Template::Advance => Ok(Selections {
+        wizard_opts::Template::Advanced => Ok(Selections {
             db: select_db(args)?,
             background: select_background(args)?,
             asset: select_asset(args)?,
@@ -158,7 +160,8 @@ pub fn start(args: &wizard_opts::ArgsPlaceholder) -> crate::Result<Selections> {
     }
 }
 
-/// Prompts the user to select a database option if none is provided in the arguments.
+/// Prompts the user to select a database option if none is provided in the
+/// arguments.
 fn select_db(args: &wizard_opts::ArgsPlaceholder) -> crate::Result<DBOption> {
     let dboption = if let Some(dboption) = args.db.clone() {
         dboption
@@ -171,7 +174,8 @@ fn select_db(args: &wizard_opts::ArgsPlaceholder) -> crate::Result<DBOption> {
     Ok(dboption)
 }
 
-/// Prompts the user to select a background worker option if none is provided in the arguments.
+/// Prompts the user to select a background worker option if none is provided in
+/// the arguments.
 fn select_background(args: &wizard_opts::ArgsPlaceholder) -> crate::Result<BackgroundOption> {
     let bgopt = if let Some(bgopt) = args.bg.clone() {
         bgopt
@@ -184,7 +188,8 @@ fn select_background(args: &wizard_opts::ArgsPlaceholder) -> crate::Result<Backg
     Ok(bgopt)
 }
 
-/// Prompts the user to select an asset configuration if none is provided in the arguments.
+/// Prompts the user to select an asset configuration if none is provided in the
+/// arguments.
 fn select_asset(args: &wizard_opts::ArgsPlaceholder) -> crate::Result<AssetsOption> {
     let assetopt = if let Some(assetopt) = args.assets.clone() {
         assetopt
