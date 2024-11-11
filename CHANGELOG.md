@@ -2,6 +2,66 @@
 
 ## Unreleased
 
+## v0.13.0
+
+* Added SQLite background job support [https://github.com/loco-rs/loco/pull/969](https://github.com/loco-rs/loco/pull/969)
+* Added automatic updating of `updated_at` on change [https://github.com/loco-rs/loco/pull/962](https://github.com/loco-rs/loco/pull/962)
+* fixed codegen injection point in migrations [https://github.com/loco-rs/loco/pull/952](https://github.com/loco-rs/loco/pull/952)
+
+**NOTE: update your migration listing module like so:**
+
+```rust
+// migrations/src/lib.rs
+  vec![
+      Box::new(m20220101_000001_users::Migration),
+      Box::new(m20231103_114510_notes::Migration),
+      Box::new(m20240416_071825_roles::Migration),
+      Box::new(m20240416_082115_users_roles::Migration),
+      // inject-above (do not remove this comment)
+  ]
+```
+
+Add the comment just before the closing array (`inject-above`)
+
+* Added ability to name references in [https://github.com/loco-rs/loco/pull/955](https://github.com/loco-rs/loco/pull/955):
+
+```sh
+$ generate scaffold posts title:string! content:string! written_by:references:users approved_by:references:users
+```
+
+* Added hot-reload like experience to Tera templates [https://github.com/loco-rs/loco/issues/977](https://github.com/loco-rs/loco/issues/977), in debug builds only.
+
+**NOTE: update your initializers `after_routes` like so:**
+
+```rust
+// src/initializers/view_engine.rs
+async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+    #[allow(unused_mut)]
+    let mut tera_engine = engines::TeraView::build()?;
+    if std::path::Path::new(I18N_DIR).exists() {
+        let arc = ArcLoader::builder(&I18N_DIR, unic_langid::langid!("en-US"))
+            .shared_resources(Some(&[I18N_SHARED.into()]))
+            .customize(|bundle| bundle.set_use_isolating(false))
+            .build()
+            .map_err(|e| Error::string(&e.to_string()))?;
+        #[cfg(debug_assertions)]
+        tera_engine
+            .tera
+            .lock()
+            .expect("lock")
+            .register_function("t", FluentLoader::new(arc));
+
+        #[cfg(not(debug_assertions))]
+        tera_engine
+            .tera
+            .register_function("t", FluentLoader::new(arc));
+        info!("locales loaded");
+    }
+
+    Ok(router.layer(Extension(ViewEngine::from(tera_engine))))
+}
+```
+
 * `loco doctor` now checks for app-specific minimum dependency versions. This should help in upgrades. `doctor` also supports "production only" checks which you can run in production with `loco doctor --production`. This, for example, will check your connections but will not check dependencies. [https://github.com/loco-rs/loco/pull/931](https://github.com/loco-rs/loco/pull/931)
 * Use a single loco-rs dep for a whole project. [https://github.com/loco-rs/loco/pull/927](https://github.com/loco-rs/loco/pull/927)
 * chore: fix generated testcase. [https://github.com/loco-rs/loco/pull/939](https://github.com/loco-rs/loco/pull/939)
