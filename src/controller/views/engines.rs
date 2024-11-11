@@ -8,7 +8,15 @@ const VIEWS_DIR: &str = "assets/views";
 
 #[derive(Clone, Debug)]
 pub struct TeraView {
+    #[cfg(debug_assertions)]
+    pub tera: std::sync::Arc<std::sync::Mutex<tera::Tera>>,
+
+    #[cfg(not(debug_assertions))]
     pub tera: tera::Tera,
+
+    #[cfg(debug_assertions)]
+    pub view_dir: String,
+
     pub default_context: tera::Context,
 }
 
@@ -44,7 +52,12 @@ impl TeraView {
         )?;
         let ctx = tera::Context::default();
         Ok(Self {
-            tera,
+            #[cfg(debug_assertions)]
+            view_dir: path.as_ref().to_string_lossy().to_string(),
+            #[cfg(debug_assertions)]
+            tera: std::sync::Arc::new(std::sync::Mutex::new(tera)),
+            #[cfg(not(debug_assertions))]
+            tera: tera,
             default_context: ctx,
         })
     }
@@ -52,30 +65,22 @@ impl TeraView {
 
 impl ViewRenderer for TeraView {
     fn render<S: Serialize>(&self, key: &str, data: S) -> Result<String> {
+        #[cfg(debug_assertions)]
+        use std::borrow::BorrowMut;
+
         let context = tera::Context::from_serialize(data)?;
 
-        // NOTE: this supports full reload of template for every render request.
-        // it means that you will see refreshed content without rebuild and rerun
-        // of the app.
-        // the code here is required, since Tera has no "build every time your render"
-        // mode, which would have been better.
-        // we minimize risk by flagging this in debug (development) builds only
-        // for now we leave this commented out, we propose people use `cargo-watch`
-        // we want to delay using un__safe as much as possible.
-        /*
         #[cfg(debug_assertions)]
-        {
-            let ptr = std::ptr::addr_of!(self.tera);
-            let mut_ptr = ptr.cast_mut();
-            // fix this keyword
-            un__safe {
-                let tera = &mut *mut_ptr;
-                tera.full_reload()?;
-            }
-        }
-        */
+        tracing::debug!(key = key, "Tera rendering in non-optimized debug mode");
+        #[cfg(debug_assertions)]
+        return Ok(self.tera.lock().expect("lock").borrow_mut().render_str(
+            &std::fs::read_to_string(Path::new(&self.view_dir).join(key))
+                .map_err(|_e| tera::Error::template_not_found(key))?,
+            &context,
+        )?);
 
-        Ok(self.tera.render(key, &context)?)
+        #[cfg(not(debug_assertions))]
+        return Ok(self.tera.render(key, &context)?);
     }
 }
 
