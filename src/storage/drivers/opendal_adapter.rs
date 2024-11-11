@@ -31,8 +31,7 @@ impl StoreDriver for OpendalAdapter {
     ///
     /// Returns a `StorageResult` with the result of the upload operation.
     async fn upload(&self, path: &Path, content: &Bytes) -> StorageResult<UploadResponse> {
-        let _ = self
-            .opendal_impl
+        self.opendal_impl
             .write(&path.display().to_string(), content.clone())
             .await?;
         // TODO: opendal will return the e_tag and version in the future

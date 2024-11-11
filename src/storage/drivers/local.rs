@@ -10,6 +10,10 @@ use crate::storage::{drivers::opendal_adapter::OpendalAdapter, StorageResult};
 /// use loco_rs::storage::drivers::local;
 /// let file_system_driver = local::new();
 /// ```
+///
+/// # Panics
+///
+/// Panics if the filesystem service built failed.
 #[must_use]
 pub fn new() -> Box<dyn StoreDriver> {
     let fs = Fs::default();

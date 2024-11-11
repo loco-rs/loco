@@ -10,6 +10,10 @@ use crate::storage::drivers::opendal_adapter::OpendalAdapter;
 /// use loco_rs::storage::drivers::mem;
 /// let mem_storage = mem::new();
 /// ```
+///
+/// # Panics
+///
+/// Panics if the memory service built failed.
 #[must_use]
 pub fn new() -> Box<dyn StoreDriver> {
     Box::new(OpendalAdapter::new(

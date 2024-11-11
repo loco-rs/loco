@@ -37,6 +37,10 @@ impl GetResponse {
     }
 
     /// Read all content from the stream and return as `Bytes`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `StorageError` with the reason for the failure.
     pub async fn bytes(&self) -> StorageResult<Bytes> {
         Ok(self.stream.read(..).await?.to_bytes())
     }
