@@ -163,10 +163,5 @@ pub fn routes() -> Routes {
 }
 
 pub fn api_routes() -> OpenApiRouter<AppContext> {
-    OpenApiRouter::new()
-        .routes(routes!(register))
-        .routes(routes!(verify))
-        .routes(routes!(login))
-        .routes(routes!(forgot))
-        .routes(routes!(reset))
+    OpenApiRouter::new().routes(routes!(register, verify, login, forgot, reset))
 }
