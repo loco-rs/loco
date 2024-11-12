@@ -36,6 +36,13 @@ cli = ["dep:clap"]
 testing = ["dep:axum-test"]
 with-db = ["dep:sea-orm", "dep:sea-orm-migration", "loco-gen/with-db"]
 channels = ["dep:socketioxide"]
+openapi = [
+    "dep:utoipa",
+    "dep:utoipa-axum",
+    "dep:utoipa-swagger-ui",
+    "dep:utoipa-redoc",
+    "dep:utoipa-scalar",
+]
 # Storage features
 all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
 storage_aws_s3 = ["object_store/aws"]
@@ -123,6 +130,15 @@ uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
 # A socket.io server implementation
 socketioxide = { version = "0.14.0", features = ["state"], optional = true }
 
+# OpenAPI
+utoipa = { version = "5.0.0", optional = true }
+utoipa-axum = { version = "0.1.0", optional = true }
+utoipa-swagger-ui = { version = "8.0", features = [
+    "axum",
+    "vendored",
+], optional = true }
+utoipa-redoc = { version = "5.0.0", features = ["axum"], optional = true }
+utoipa-scalar = { version = "0.2.0", features = ["axum"], optional = true }
 
 # File Upload
 object_store = { version = "0.11.0", default-features = false }

@@ -6,6 +6,19 @@ use std::{fmt, sync::OnceLock};
 
 use axum::Router as AXRouter;
 use regex::Regex;
+#[cfg(feature = "openapi")]
+use utoipa::{
+    openapi::security::{ApiKey, ApiKeyValue, HttpAuthScheme, HttpBuilder, SecurityScheme},
+    Modify, OpenApi,
+};
+#[cfg(feature = "openapi")]
+use utoipa_axum::{router::OpenApiRouter, routes};
+#[cfg(feature = "openapi")]
+use utoipa_redoc::{Redoc, Servable};
+#[cfg(feature = "openapi")]
+use utoipa_scalar::{Scalar, Servable as ScalarServable};
+#[cfg(feature = "openapi")]
+use utoipa_swagger_ui::SwaggerUi;
 
 #[cfg(feature = "channels")]
 use super::channels::AppChannels;
@@ -202,10 +215,29 @@ impl AppRoutes {
         // using the router directly, and ServiceBuilder has been reported to give
         // issues in compile times itself (https://github.com/rust-lang/crates.io/pull/7443).
         //
+        #[cfg(feature = "openapi")]
+        let mut api_router = {
+            #[derive(OpenApi)]
+            #[openapi(info(title = "API Documentation", description = "API Documentation"))]
+            struct ApiDoc;
+            OpenApiRouter::with_openapi(ApiDoc::openapi())
+        };
+
         for router in self.collect() {
             tracing::info!("{}", router.to_string());
-            app = app.route(&router.uri, router.method);
+            #[cfg(not(feature = "openapi"))]
+            {
+                app = app.route(&router.uri, router.method);
+            }
+            #[cfg(feature = "openapi")]
+            {
+                app = app.route(&router.uri, router.method.clone());
+                api_router = api_router.route(&router.uri, router.method);
+            }
         }
+
+        #[cfg(feature = "openapi")]
+        let (_, api) = api_router.split_for_parts();
 
         #[cfg(feature = "channels")]
         if let Some(channels) = self.channels.as_ref() {
