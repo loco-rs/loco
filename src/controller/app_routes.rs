@@ -234,6 +234,32 @@ impl AppRoutes {
         #[cfg(feature = "openapi")]
         let (_, api) = api_router.split_for_parts();
 
+        #[cfg(feature = "openapi")]
+        {
+            app = app.merge(Redoc::with_url(
+                ctx.config.server.openapi.redoc_url.clone(),
+                api.clone(),
+            ))
+        }
+
+        #[cfg(feature = "openapi")]
+        {
+            app = app.merge(Scalar::with_url(
+                ctx.config.server.openapi.scalar_url.clone(),
+                api.clone(),
+            ))
+        }
+
+        #[cfg(feature = "openapi")]
+        {
+            app = app.merge(
+                SwaggerUi::new(ctx.config.server.openapi.swagger.swagger_url.clone()).url(
+                    ctx.config.server.openapi.swagger.openapi_url.clone(),
+                    api.clone(),
+                ),
+            )
+        }
+
         #[cfg(feature = "channels")]
         if let Some(channels) = self.channels.as_ref() {
             tracing::info!("[Middleware] +channels");

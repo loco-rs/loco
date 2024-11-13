@@ -414,6 +414,9 @@ pub struct Server {
     /// logging, and error handling.
     #[serde(default)]
     pub middlewares: middleware::Config,
+    /// OpenAPI configuration
+    #[cfg(feature = "openapi")]
+    pub openapi: OpenAPI,
 }
 
 fn default_binding() -> String {
@@ -426,6 +429,29 @@ impl Server {
         format!("{}:{}", self.host, self.port)
     }
 }
+
+/// OpenAPI configuration
+#[cfg(feature = "openapi")]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct OpenAPI {
+    /// URL for where to host the redoc OpenAPI doc, example: /redoc
+    pub redoc_url: String,
+    /// URL for where to host the swagger OpenAPI doc, example: /scalar
+    pub scalar_url: String,
+    /// Swagger configuration
+    pub swagger: Swagger,
+}
+
+/// OpenAPI Swagger configuration
+#[cfg(feature = "openapi")]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Swagger {
+    /// URL for where to host the swagger OpenAPI doc, example: /swagger-ui
+    pub swagger_url: String,
+    /// URL for openapi.json, for example: /api-docs/openapi.json
+    pub openapi_url: String,
+}
+
 /// Background worker configuration
 /// Example (development):
 /// ```yaml
