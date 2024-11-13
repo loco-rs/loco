@@ -1,5 +1,7 @@
 //! Defines configurable application settings.
 
+use std::env;
+
 use heck::ToSnakeCase;
 use rhai::{CustomType, TypeBuilder};
 use serde::{Deserialize, Serialize};
@@ -7,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::{wizard, wizard_opts, LOCO_VERSION};
 
 /// Represents general application settings.
-#[derive(Serialize, Deserialize, Clone, Debug, Default, CustomType)]
+#[derive(Serialize, Deserialize, Clone, Debug, CustomType)]
 pub struct Settings {
     pub package_name: String,
     pub module_name: String,
@@ -79,8 +81,32 @@ impl Settings {
                 None
             },
             features,
-            loco_version_text: format!(r#"version = "{LOCO_VERSION}""#),
+            loco_version_text: get_loco_version_text(),
         }
+    }
+}
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            package_name: Default::default(),
+            module_name: Default::default(),
+            db: Default::default(),
+            background: Default::default(),
+            asset: Default::default(),
+            auth: Default::default(),
+            mailer: Default::default(),
+            initializers: Default::default(),
+            features: Default::default(),
+            loco_version_text: get_loco_version_text(),
+        }
+    }
+}
+
+fn get_loco_version_text() -> String {
+    if let Ok(path) = env::var("LOCO_DEV_MODE_PATH") {
+        format!(r#"version="*", path="{path}""#)
+    } else {
+        format!(r#"version = "{LOCO_VERSION}""#)
     }
 }
 
