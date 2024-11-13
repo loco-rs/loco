@@ -10,7 +10,7 @@ use duct::cmd;
 use loco::{
     generator::{executer, extract_default_template, Generator},
     settings::Settings,
-    wizard, wizard_opts, Result,
+    wizard, Result,
 };
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
@@ -41,15 +41,15 @@ enum Commands {
 
         /// DB Provider
         #[arg(long)]
-        db: Option<wizard_opts::DBOption>,
+        db: Option<wizard::DBOption>,
 
         /// Background worker configuration
         #[arg(long)]
-        bg: Option<wizard_opts::BackgroundOption>,
+        bg: Option<wizard::BackgroundOption>,
 
         /// Assets serving configuration
         #[arg(long)]
-        assets: Option<wizard_opts::AssetsOption>,
+        assets: Option<wizard::AssetsOption>,
 
         /// Allows create loco starter in target git repository
         #[arg(short, long)]
@@ -57,6 +57,7 @@ enum Commands {
     },
 }
 
+#[allow(clippy::cognitive_complexity)]
 fn main() -> Result<()> {
     let cli = Cli::parse();
     tracing_subscriber::fmt()
@@ -94,7 +95,7 @@ fn main() -> Result<()> {
                 tracing::debug!(dir = %to.display(), "creating application directory");
                 std::fs::create_dir_all(&to)?;
 
-                let args = wizard_opts::ArgsPlaceholder { db, bg, assets };
+                let args = wizard::ArgsPlaceholder { db, bg, assets };
                 let user_selection = wizard::start(&args)?;
 
                 let generator_tmp_folder = extract_default_template()?;

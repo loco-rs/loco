@@ -6,7 +6,10 @@ use heck::ToSnakeCase;
 use rhai::{CustomType, TypeBuilder};
 use serde::{Deserialize, Serialize};
 
-use crate::{wizard, wizard_opts, LOCO_VERSION};
+use crate::{
+    wizard::{self, AssetsOption, BackgroundOption, DBOption},
+    LOCO_VERSION,
+};
 
 /// Represents general application settings.
 #[derive(Serialize, Deserialize, Clone, Debug, CustomType)]
@@ -24,10 +27,10 @@ pub struct Settings {
     pub loco_version_text: String,
 }
 
-impl From<wizard_opts::DBOption> for Option<Db> {
-    fn from(db_option: wizard_opts::DBOption) -> Self {
+impl From<DBOption> for Option<Db> {
+    fn from(db_option: DBOption) -> Self {
         match db_option {
-            wizard_opts::DBOption::None => None,
+            DBOption::None => None,
             _ => Some(Db {
                 kind: db_option.clone(),
                 endpoint: db_option.endpoint_config().to_string(),
@@ -36,19 +39,19 @@ impl From<wizard_opts::DBOption> for Option<Db> {
     }
 }
 
-impl From<wizard_opts::BackgroundOption> for Option<Background> {
-    fn from(bg: wizard_opts::BackgroundOption) -> Self {
+impl From<BackgroundOption> for Option<Background> {
+    fn from(bg: BackgroundOption) -> Self {
         match bg {
-            wizard_opts::BackgroundOption::None => None,
+            BackgroundOption::None => None,
             _ => Some(Background { kind: bg }),
         }
     }
 }
 
-impl From<wizard_opts::AssetsOption> for Option<Asset> {
-    fn from(asset: wizard_opts::AssetsOption) -> Self {
+impl From<AssetsOption> for Option<Asset> {
+    fn from(asset: AssetsOption) -> Self {
         match asset {
-            wizard_opts::AssetsOption::None => None,
+            AssetsOption::None => None,
             _ => Some(Asset { kind: asset }),
         }
     }
@@ -89,6 +92,7 @@ impl Settings {
 }
 impl Default for Settings {
     fn default() -> Self {
+        #[allow(clippy::default_trait_access)]
         Self {
             package_name: Default::default(),
             module_name: Default::default(),
@@ -118,20 +122,20 @@ fn get_loco_version_text() -> String {
 /// Database configuration settings.
 #[derive(Serialize, Deserialize, Clone, Debug, Default, CustomType)]
 pub struct Db {
-    pub kind: wizard_opts::DBOption,
+    pub kind: DBOption,
     pub endpoint: String,
 }
 
 /// Background processing configuration.
 #[derive(Serialize, Deserialize, Clone, Debug, Default, CustomType)]
 pub struct Background {
-    pub kind: wizard_opts::BackgroundOption,
+    pub kind: BackgroundOption,
 }
 
 /// Asset configuration settings.
 #[derive(Serialize, Deserialize, Clone, Debug, Default, CustomType)]
 pub struct Asset {
-    pub kind: wizard_opts::AssetsOption,
+    pub kind: AssetsOption,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, CustomType)]

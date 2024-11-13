@@ -1,9 +1,8 @@
-use super::*;
-
-use crate::assertion;
-use loco::settings;
-use loco::wizard_opts::BackgroundOption;
+use loco::{settings, wizard::BackgroundOption};
 use rstest::rstest;
+
+use super::*;
+use crate::assertion;
 
 pub fn run_generator(background: BackgroundOption) -> TestGenerator {
     let settings = settings::Settings {

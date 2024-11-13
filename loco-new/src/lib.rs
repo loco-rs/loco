@@ -1,7 +1,6 @@
 pub mod generator;
 pub mod settings;
 pub mod wizard;
-pub mod wizard_opts;
 
 pub type Result<T> = std::result::Result<T, Error>;
 

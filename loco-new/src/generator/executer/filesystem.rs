@@ -136,6 +136,7 @@ impl Executer for FileSystem {
         self.render_and_rename_template_file(&copied_path, settings)
     }
 
+    #[allow(clippy::cognitive_complexity)]
     fn copy_template_dir(&self, directory_path: &Path, settings: &Settings) -> super::Result<()> {
         let source_path = self.source_dir.join(directory_path);
         let target_path = self.target_dir.join(directory_path);

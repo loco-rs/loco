@@ -1,9 +1,8 @@
-use super::*;
-
-use crate::assertion;
-use loco::settings;
-use loco::wizard_opts::DBOption;
+use loco::{settings, wizard::DBOption};
 use rstest::rstest;
+
+use super::*;
+use crate::assertion;
 
 pub fn run_generator(db: DBOption) -> TestGenerator {
     let settings = settings::Settings {

@@ -1,15 +1,15 @@
 //! This module defines a `Template` struct for handling template files.
-//! It includes methods to identify template files, render templates
-//! with injected settings, and modify file paths by stripping specific extensions.
 
-use crate::settings::Settings;
-use rand::{distributions::Alphanumeric, rngs::StdRng, Rng, SeedableRng};
-use std::sync::{Arc, Mutex};
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex},
 };
+
+use rand::{distributions::Alphanumeric, rngs::StdRng, Rng, SeedableRng};
 use tera::{Context, Tera};
+
+use crate::settings::Settings;
 
 const TEMPLATE_EXTENSION: &str = "t";
 
@@ -44,7 +44,8 @@ impl Template {
             rng: Arc::new(Mutex::new(rng)),
         }
     }
-    /// Checks if the provided file path has a ".t" extension, marking it as a template.
+    /// Checks if the provided file path has a ".t" extension, marking it as a
+    /// template.
     ///
     /// Returns `true` if the file has a ".t" extension, otherwise `false`.
     #[must_use]

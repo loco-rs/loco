@@ -1,7 +1,4 @@
-//! This module defines error handling and the [`Executer`] trait for file and
-//! template operations within the application. It includes custom error types
-//! for handling different failure scenarios, including file system and template
-//! processing errors.
+//! This module defines error handling and the [`Executer`] trait
 
 use crate::settings::Settings;
 mod filesystem;

@@ -1,7 +1,5 @@
 //! This module defines the `Generator` struct, which is responsible for
-//! executing scripted commands for file and template operations. It integrates
-//! with an executor to perform file manipulations and uses a scripting engine
-//! to run custom scripts based on application settings.
+//! executing scripted commands
 
 use std::path::{Path, PathBuf};
 pub mod executer;
@@ -112,6 +110,11 @@ impl Generator {
         Ok(())
     }
 
+    /// Creates a single file in the specified path.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file copy operation fails.
     pub fn create_file(
         &mut self,
         path: &str,

@@ -1,9 +1,8 @@
-use super::*;
-
-use crate::assertion;
-use loco::settings;
-use loco::wizard_opts::AssetsOption;
+use loco::{settings, wizard::AssetsOption};
 use rstest::rstest;
+
+use super::*;
+use crate::assertion;
 
 pub fn run_generator(asset: AssetsOption) -> TestGenerator {
     let settings = settings::Settings {
