@@ -1,19 +1,22 @@
-//! This module defines the `Generator` struct, which is responsible for executing
-//! scripted commands for file and template operations. It integrates with an
-//! executor to perform file manipulations and uses a scripting engine to run
-//! custom scripts based on application settings.
+//! This module defines the `Generator` struct, which is responsible for
+//! executing scripted commands for file and template operations. It integrates
+//! with an executor to perform file manipulations and uses a scripting engine
+//! to run custom scripts based on application settings.
 
 use std::path::{Path, PathBuf};
 pub mod executer;
 pub mod template;
-use crate::settings;
+use std::sync::Arc;
+
 use include_dir::{include_dir, Dir};
 use rhai::{Engine, Scope};
-use std::sync::Arc;
+
+use crate::settings;
 
 static APP_TEMPLATE: Dir<'_> = include_dir!("loco-new/base_template");
 
-/// Extracts a default template to a temporary directory for use by the application.
+/// Extracts a default template to a temporary directory for use by the
+/// application.
 ///
 /// # Errors
 /// when could not extract the the base template
@@ -29,8 +32,9 @@ pub fn extract_default_template() -> std::io::Result<PathBuf> {
     Ok(generator_tmp_folder)
 }
 
-/// The `Generator` struct provides functionality to execute scripted operations,
-/// such as copying files and templates, based on the current settings.
+/// The `Generator` struct provides functionality to execute scripted
+/// operations, such as copying files and templates, based on the current
+/// settings.
 #[derive(Clone)]
 pub struct Generator {
     pub executer: Arc<dyn executer::Executer>,
@@ -68,6 +72,7 @@ impl Generator {
             .build_type::<settings::Settings>()
             .build_type::<settings::Initializers>()
             .register_fn("copy_file", Self::copy_file)
+            .register_fn("create_file", Self::create_file)
             .register_fn("copy_files", Self::copy_files)
             .register_fn("copy_dir", Self::copy_dir)
             .register_fn("copy_dirs", Self::copy_dirs)
@@ -104,6 +109,25 @@ impl Generator {
                 err.into(),
             ))
         })?;
+        Ok(())
+    }
+
+    pub fn create_file(
+        &mut self,
+        path: &str,
+        content: &str,
+    ) -> Result<(), Box<rhai::EvalAltResult>> {
+        let span = tracing::info_span!("create_file", path);
+        let _guard = span.enter();
+
+        self.executer
+            .create_file(Path::new(path), content.to_string())
+            .map_err(|err| {
+                Box::new(rhai::EvalAltResult::ErrorSystem(
+                    "create_file".to_string(),
+                    err.into(),
+                ))
+            })?;
         Ok(())
     }
 
@@ -184,7 +208,8 @@ impl Generator {
             })
     }
 
-    /// Copies an entire template directory from the specified path, applying settings.
+    /// Copies an entire template directory from the specified path, applying
+    /// settings.
     ///
     /// # Errors
     ///
@@ -205,9 +230,10 @@ impl Generator {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use executer::MockExecuter;
     use mockall::predicate::*;
+
+    use super::*;
 
     #[test]
     pub fn can_copy_file() {

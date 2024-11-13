@@ -6,11 +6,12 @@
 use crate::settings::Settings;
 mod filesystem;
 mod inmem;
+use std::path::{Path, PathBuf};
+
 pub use filesystem::FileSystem;
 pub use inmem::Inmem;
 #[cfg(test)]
 use mockall::{automock, predicate::*};
-use std::path::{Path, PathBuf};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -41,29 +42,40 @@ pub trait Executer: Send + Sync {
     ///
     /// # Errors
     ///
-    /// Returns an error if the file cannot be copied, such as if the path is invalid
-    /// or if a file system error occurs.
+    /// Returns an error if the file cannot be copied, such as if the path is
+    /// invalid or if a file system error occurs.
     fn copy_file(&self, path: &Path) -> Result<PathBuf>;
+
+    /// Copies a single file from the specified path.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file cannot be copied, such as if the path is
+    /// invalid or if a file system error occurs.
+    fn create_file(&self, path: &Path, content: String) -> Result<PathBuf>;
 
     /// Copies an entire directory from the specified path.
     ///
     /// # Errors
     ///
-    /// Returns an error if the directory cannot be copied, such as if the path is invalid
-    /// or if a file system error occurs.
+    /// Returns an error if the directory cannot be copied, such as if the path
+    /// is invalid or if a file system error occurs.
     fn copy_dir(&self, path: &Path) -> Result<()>;
 
     /// Copies a template file from the specified path, applying settings.
     ///
     /// # Errors
     ///
-    /// Returns an error if the template cannot be copied or if any settings-related error occurs.
+    /// Returns an error if the template cannot be copied or if any
+    /// settings-related error occurs.
     fn copy_template(&self, path: &Path, data: &Settings) -> Result<()>;
 
-    /// Copies an entire template directory from the specified path, applying settings.
+    /// Copies an entire template directory from the specified path, applying
+    /// settings.
     ///
     /// # Errors
     ///
-    /// Returns an error if the template directory cannot be copied or if any settings-related error occurs.
+    /// Returns an error if the template directory cannot be copied or if any
+    /// settings-related error occurs.
     fn copy_template_dir(&self, path: &Path, data: &Settings) -> Result<()>;
 }

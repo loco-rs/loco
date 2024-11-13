@@ -1,7 +1,11 @@
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
+
 use super::Executer;
 use crate::{generator, settings::Settings};
-use std::path::{Path, PathBuf};
-use std::{collections::BTreeMap, sync::Mutex};
 
 pub struct Inmem {
     pub source_path: PathBuf,
@@ -43,6 +47,14 @@ impl Executer for Inmem {
             .unwrap()
             .insert(file_path.to_path_buf(), file_content);
         Ok(file_path.to_path_buf())
+    }
+
+    fn create_file(&self, path: &Path, content: String) -> super::Result<PathBuf> {
+        self.file_store
+            .lock()
+            .unwrap()
+            .insert(path.to_path_buf(), content);
+        Ok(path.to_path_buf())
     }
 
     fn copy_dir(&self, directory_path: &Path) -> super::Result<()> {

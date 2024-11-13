@@ -18,6 +18,7 @@ pub struct Settings {
     pub asset: Option<Asset>,
     pub auth: bool,
     pub mailer: bool,
+    pub clientside: bool,
     pub initializers: Option<Initializers>,
     pub features: Features,
     pub loco_version_text: String,
@@ -75,6 +76,7 @@ impl Settings {
             db: prompt_selection.db.clone().into(),
             background: prompt_selection.background.clone().into(),
             asset: prompt_selection.asset.clone().into(),
+            clientside: prompt_selection.asset.enable(),
             initializers: if prompt_selection.asset.enable() {
                 Some(Initializers { view_engine: true })
             } else {
@@ -95,6 +97,7 @@ impl Default for Settings {
             asset: Default::default(),
             auth: Default::default(),
             mailer: Default::default(),
+            clientside: Default::default(),
             initializers: Default::default(),
             features: Default::default(),
             loco_version_text: get_loco_version_text(),

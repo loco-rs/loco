@@ -105,3 +105,13 @@ if background {
 if asset {
     gen.copy_dir("assets");                         // Static assets directory
 }
+
+
+// =====================
+// Client side
+// =====================
+
+if settings.clientside {
+   gen.copy_dir("frontend");
+   gen.create_file("frontend/dist/index.html", "this is a placeholder. please run your frontend build (npm build)");
+}

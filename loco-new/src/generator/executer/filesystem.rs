@@ -1,8 +1,10 @@
+use std::path::{Path, PathBuf};
+
+use fs_extra::file::{move_file, write_all};
+use walkdir::WalkDir;
+
 use super::Executer;
 use crate::{generator, settings::Settings};
-use fs_extra::file::{move_file, write_all};
-use std::path::{Path, PathBuf};
-use walkdir::WalkDir;
 
 #[derive(Debug, Default, Clone)]
 pub struct FileSystem {
@@ -83,6 +85,28 @@ impl Executer for FileSystem {
         Ok(target_path)
     }
 
+    fn create_file(&self, path: &Path, content: String) -> super::Result<PathBuf> {
+        let target_path = self.target_dir.join(path);
+        if let Some(parent) = path.parent() {
+            fs_extra::dir::create_all(parent, false)?;
+        }
+
+        let span = tracing::info_span!("create_file", target_path = %target_path.display());
+        let _guard = span.enter();
+
+        tracing::debug!("starting file copy operation");
+
+        fs_extra::dir::create_all(target_path.parent().unwrap(), false).map_err(|error| {
+            tracing::debug!(error = %error, "error creating target parent directory");
+            error
+        })?;
+
+        fs_extra::file::write_all(&target_path, &content)?;
+        tracing::debug!("file created successfully");
+
+        Ok(target_path)
+    }
+
     fn copy_dir(&self, directory_path: &Path) -> super::Result<()> {
         let source_path = self.source_dir.join(directory_path);
         let target_path = self.target_dir.join(directory_path);
@@ -144,8 +168,9 @@ impl Executer for FileSystem {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tree_fs::TreeBuilder;
+
+    use super::*;
 
     fn init_filesystem() -> FileSystem {
         let source_path = TreeBuilder::default()
