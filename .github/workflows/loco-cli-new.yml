@@ -70,3 +70,5 @@ jobs:
         working-directory: ./loco-new
         env:
           LOCO_DEV_MODE_PATH: ${{ github.workspace }}
+          # NOTE NOTE NOTE: this is for optimizing build and may result in strange behavior
+          CARGO_TARGET_DIR: /tmp/shared-target
