@@ -216,12 +216,7 @@ impl AppRoutes {
         // issues in compile times itself (https://github.com/rust-lang/crates.io/pull/7443).
         //
         #[cfg(feature = "openapi")]
-        let mut api_router = {
-            #[derive(OpenApi)]
-            #[openapi(info(title = "API Documentation", description = "API Documentation"))]
-            struct ApiDoc;
-            OpenApiRouter::with_openapi(ApiDoc::openapi())
-        };
+        let mut api_router = OpenApiRouter::with_openapi(H::inital_openapi_spec(&ctx));
 
         for router in self.collect() {
             tracing::info!("{}", router.to_string());

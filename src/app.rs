@@ -219,6 +219,62 @@ pub trait Hooks: Send {
     /// This function allows users to perform any necessary cleanup or final
     /// actions before the application stops completely.
     async fn on_shutdown(_ctx: &AppContext) {}
+
+    /// Modify the OpenAPI spec before the routes are added, allowing you to edit (openapi::info)[https://docs.rs/utoipa/latest/utoipa/openapi/info/struct.Info.html]
+    /// # Examples
+    /// ```rust ignore
+    /// fn inital_openapi_spec() {
+    ///     #[derive(OpenApi)]
+    ///     #[openapi(info(
+    ///         title = "Loco Demo",
+    ///         description = "This app is a kitchensink for various capabilities and examples of the [Loco](https://loco.rs) project."
+    ///     ))]
+    ///     struct ApiDoc;
+    ///     ApiDoc::openapi()
+    /// }
+    /// ```
+    ///
+    /// With SecurityAddon
+    /// ```rust ignore
+    /// fn inital_openapi_spec() {
+    ///     #[derive(OpenApi)]
+    ///     #[openapi(modifiers(&SecurityAddon), info(
+    ///     title = "Loco Demo",
+    ///     description = "This app is a kitchensink for various capabilities and examples of the [Loco](https://loco.rs) project."
+    /// ))]
+    ///     struct ApiDoc;
+    ///
+    ///     // TODO set the jwt token location
+    ///     // let auth_location = ctx.config.auth.as_ref();
+    ///
+    ///     struct SecurityAddon;
+    ///     impl Modify for SecurityAddon {
+    ///         fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+    ///             if let Some(components) = openapi.components.as_mut() {
+    ///                 components.add_security_schemes_from_iter([
+    ///                     (
+    ///                         "jwt_token",
+    ///                         SecurityScheme::Http(
+    ///                             HttpBuilder::new()
+    ///                                 .scheme(HttpAuthScheme::Bearer)
+    ///                                 .bearer_format("JWT")
+    ///                                 .build(),
+    ///                         ),
+    ///                     ),
+    ///                     (
+    ///                         "api_key",
+    ///                         SecurityScheme::ApiKey(ApiKey::Header(ApiKeyValue::new("apikey"))),
+    ///                     ),
+    ///                 ]);
+    ///             }
+    ///         }
+    ///     }
+    ///     ApiDoc::openapi()
+    /// }
+    /// ```
+    #[cfg(feature = "openapi")]
+    #[must_use]
+    fn inital_openapi_spec(_ctx: &AppContext) -> utoipa::openapi::OpenApi;
 }
 
 /// An initializer.
