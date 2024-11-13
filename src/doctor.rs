@@ -18,8 +18,6 @@ const SEAORM_INSTALLED: &str = "SeaORM CLI is installed";
 const SEAORM_NOT_INSTALLED: &str = "SeaORM CLI was not found";
 const SEAORM_NOT_FIX: &str = r"To fix, run:
       $ cargo install sea-orm-cli";
-const DB_CONNECTION_FAILED: &str = "DB connection: fails";
-const DB_CONNECTION_SUCCESS: &str = "DB connection: success";
 const QUEUE_CONN_OK: &str = "queue connection: success";
 const QUEUE_CONN_FAILED: &str = "queue connection: failed";
 const QUEUE_NOT_CONFIGURED: &str = "queue not configured?";
@@ -179,29 +177,31 @@ pub fn check_deps() -> Result<Check> {
 /// Checks the database connection.
 #[cfg(feature = "with-db")]
 pub async fn check_db(config: &crate::config::Database) -> Check {
+    let db_connection_failed = "DB connection: fails";
+    let db_connection_success = "DB connection: success";
     match crate::db::connect(config).await {
         Ok(conn) => match conn.ping().await {
             Ok(()) => match crate::db::verify_access(&conn).await {
                 Ok(()) => Check {
                     status: CheckStatus::Ok,
-                    message: DB_CONNECTION_SUCCESS.to_string(),
+                    message: db_connection_success.to_string(),
                     description: None,
                 },
                 Err(err) => Check {
                     status: CheckStatus::NotOk,
-                    message: DB_CONNECTION_FAILED.to_string(),
+                    message: db_connection_failed.to_string(),
                     description: Some(err.to_string()),
                 },
             },
             Err(err) => Check {
                 status: CheckStatus::NotOk,
-                message: DB_CONNECTION_FAILED.to_string(),
+                message: db_connection_failed.to_string(),
                 description: Some(err.to_string()),
             },
         },
         Err(err) => Check {
             status: CheckStatus::NotOk,
-            message: DB_CONNECTION_FAILED.to_string(),
+            message: db_connection_failed.to_string(),
             description: Some(err.to_string()),
         },
     }
