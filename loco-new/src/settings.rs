@@ -103,11 +103,13 @@ impl Default for Settings {
 }
 
 fn get_loco_version_text() -> String {
-    if let Ok(path) = env::var("LOCO_DEV_MODE_PATH") {
-        format!(r#"version="*", path="{path}""#)
-    } else {
-        format!(r#"version = "{LOCO_VERSION}""#)
-    }
+    env::var("LOCO_DEV_MODE_PATH").map_or_else(
+        |_| format!(r#"version = "{LOCO_VERSION}""#),
+        |path| {
+            let path = path.replace('\\', "/");
+            format!(r#"version="*", path="{path}""#)
+        },
+    )
 }
 
 /// Database configuration settings.
