@@ -10,8 +10,8 @@ use semver::Version;
 
 use crate::{
     bgworker,
-    config::{self, Config, Database},
-    db, depcheck, Error, Result,
+    config::{self, Config},
+    depcheck, Error, Result,
 };
 
 const SEAORM_INSTALLED: &str = "SeaORM CLI is installed";
@@ -117,7 +117,12 @@ impl std::fmt::Display for Check {
 /// # Errors
 /// Error when one of the checks fail
 pub async fn run_all(config: &Config, production: bool) -> Result<BTreeMap<Resource, Check>> {
-    let mut checks = BTreeMap::from([(Resource::Database, check_db(&config.database).await)]);
+    let mut checks = BTreeMap::from(
+        #[cfg(feature = "with-db")]
+        [(Resource::Database, check_db(&config.database).await)],
+        #[cfg(not(feature = "with-db"))]
+        [],
+    );
 
     if config.workers.mode == config::WorkerMode::BackgroundQueue {
         checks.insert(Resource::Queue, check_queue(config).await);
@@ -172,10 +177,11 @@ pub fn check_deps() -> Result<Check> {
 }
 
 /// Checks the database connection.
-pub async fn check_db(config: &Database) -> Check {
-    match db::connect(config).await {
+#[cfg(feature = "with-db")]
+pub async fn check_db(config: &crate::config::Database) -> Check {
+    match crate::db::connect(config).await {
         Ok(conn) => match conn.ping().await {
-            Ok(()) => match db::verify_access(&conn).await {
+            Ok(()) => match crate::db::verify_access(&conn).await {
                 Ok(()) => Check {
                     status: CheckStatus::Ok,
                     message: DB_CONNECTION_SUCCESS.to_string(),

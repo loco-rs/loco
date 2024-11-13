@@ -22,7 +22,7 @@ rust-version.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["auth_jwt", "cli", "with-db", "cache_inmem", "bg_redis", "bg_pg"]
+default = ["auth_jwt", "cli", "cache_inmem", "with-db", "bg_redis", "bg_pg"]
 auth_jwt = ["dep:jsonwebtoken"]
 cli = ["dep:clap"]
 testing = ["dep:axum-test"]
@@ -128,6 +128,7 @@ english-to-cron = { version = "0.1.2" }
 # bg_pg: postgres workers
 sqlx = { version = "0.8.2", default-features = false, features = [
   "postgres",
+  "chrono",
 ], optional = true }
 ulid = { version = "1", optional = true }
 
