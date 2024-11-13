@@ -61,4 +61,4 @@ jobs:
         run: cargo test --all-features
         working-directory: ./loco-new
         env:
-          LOCO_DEV_MODE_PATH: ${{ github.workspace }}
+          LOCO_DEV_MODE_PATH: ${{ env.GITHUB_WORKSPACE }}
