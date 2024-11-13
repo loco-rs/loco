@@ -23,6 +23,15 @@ pub fn test_config() -> Config {
             host: "localhost".to_string(),
             ident: None,
             middlewares: middleware::Config::default(),
+            #[cfg(feature = "openapi")]
+            openapi: config::OpenAPI {
+                redoc_url: "/redoc".to_string(),
+                scalar_url: "/scalar".to_string(),
+                swagger: config::Swagger {
+                    swagger_url: "/swagger-ui".to_string(),
+                    openapi_url: "/api-docs/openapi.json".to_string(),
+                },
+            },
         },
         #[cfg(feature = "with-db")]
         database: config::Database {

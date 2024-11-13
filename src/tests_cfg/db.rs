@@ -4,6 +4,9 @@ use async_trait::async_trait;
 use sea_orm::DatabaseConnection;
 pub use sea_orm_migration::prelude::*;
 
+#[cfg(feature = "openapi")]
+use utoipa::OpenApi;
+
 #[cfg(feature = "channels")]
 use crate::controller::channels::AppChannels;
 use crate::{
@@ -125,5 +128,16 @@ impl Hooks for AppHook {
     #[allow(clippy::unimplemented)]
     fn register_channels(_ctx: &AppContext) -> AppChannels {
         unimplemented!();
+    }
+
+    #[cfg(feature = "openapi")]
+    fn inital_openapi_spec(_ctx: &AppContext) -> utoipa::openapi::OpenApi {
+        #[derive(OpenApi)]
+        #[openapi(info(
+            title = "Loco Demo",
+            description = "This app is a kitchensink for various capabilities and examples of the [Loco](https://loco.rs) project."
+        ))]
+        struct ApiDoc;
+        ApiDoc::openapi()
     }
 }
