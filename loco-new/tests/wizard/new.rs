@@ -61,7 +61,7 @@ fn new_from_wizard(
 
     let mut env_map: HashMap<_, _> = std::env::vars().collect();
     env_map.insert("RUSTFLAGS".into(), "-D warnings".into());
-    assert!(cmd!("cargo", "check")
+    assert!(cmd!("cargo", "check", "--quiet")
         .full_env(&env_map)
         // .stdout_null()
         // .stderr_null()
