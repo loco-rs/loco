@@ -4,7 +4,7 @@ use duct::cmd;
 use loco::{
     generator::{executer::FileSystem, Generator},
     settings, wizard,
-    wizard_opts::{AssetsOption, BackgroundOption, DBOption},
+    wizard::{AssetsOption, BackgroundOption, DBOption},
 };
 use rstest::rstest;
 use uuid::Uuid;
