@@ -1,12 +1,12 @@
-use duct::cmd;
-use std::process::exit;
 use std::{
+    env,
     path::{Path, PathBuf},
-    process::Command,
+    process::{exit, Command},
     sync::Arc,
 };
 
 use clap::{Parser, Subcommand};
+use duct::cmd;
 use loco::{
     generator::{executer, extract_default_template, Generator},
     settings::Settings,
@@ -107,7 +107,12 @@ fn main() -> Result<()> {
                 let executor =
                     executer::FileSystem::new(generator_tmp_folder.as_path(), to.as_path());
 
-                let settings = Settings::from_wizard(&app_name, &user_selection);
+                let mut settings = Settings::from_wizard(&app_name, &user_selection);
+
+                if let Ok(path) = env::var("LOCO_DEV_MODE_PATH") {
+                    println!("⚠️ NOTICE: working in dev mode, pointing to local Loco on '{path}'");
+                    settings.loco_version_text = format!(r#"version="*", path="{path}""#);
+                }
 
                 let res = match Generator::new(Arc::new(executor), settings).run() {
                     Ok(()) => {

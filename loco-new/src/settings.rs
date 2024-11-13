@@ -1,9 +1,10 @@
 //! Defines configurable application settings.
 
-use crate::{wizard, wizard_opts};
 use heck::ToSnakeCase;
 use rhai::{CustomType, TypeBuilder};
 use serde::{Deserialize, Serialize};
+
+use crate::{wizard, wizard_opts, LOCO_VERSION};
 
 /// Represents general application settings.
 #[derive(Serialize, Deserialize, Clone, Debug, Default, CustomType)]
@@ -17,6 +18,7 @@ pub struct Settings {
     pub mailer: bool,
     pub initializers: Option<Initializers>,
     pub features: Features,
+    pub loco_version_text: String,
 }
 
 impl From<wizard_opts::DBOption> for Option<Db> {
@@ -77,6 +79,7 @@ impl Settings {
                 None
             },
             features,
+            loco_version_text: format!(r#"version = "{LOCO_VERSION}""#),
         }
     }
 }

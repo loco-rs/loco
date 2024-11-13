@@ -5,11 +5,10 @@ on:
     branches:
       - master
     paths:
-      - 'loco-new/**'
+      - "loco-new/**"
   pull_request:
     paths:
-      - 'loco-new/**'
-
+      - "loco-new/**"
 
 env:
   RUST_TOOLCHAIN: stable
@@ -61,4 +60,5 @@ jobs:
       - name: Run cargo test
         run: cargo test --all-features
         working-directory: ./loco-new
- 
+        env:
+          LOCO_DEV_MODE_PATH: ${{ github.workspace }}

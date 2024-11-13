@@ -5,6 +5,9 @@ pub mod wizard_opts;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// Matching minimal Loco version
+pub const LOCO_VERSION: &str = "0.13";
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("{0}")]
