@@ -6,7 +6,6 @@ use loco::{
     settings, wizard,
     wizard::{AssetsOption, BackgroundOption, DBOption},
 };
-use rstest::rstest;
 use uuid::Uuid;
 
 struct TestDir {
@@ -30,8 +29,9 @@ impl Drop for TestDir {
     }
 }
 
-#[rstest]
-fn new_from_wizard(
+#[cfg(feature = "test-wizard")]
+#[rstest::rstest]
+fn test_all_combinations(
     #[values(DBOption::None, DBOption::Sqlite)] db: DBOption,
     #[values(
         BackgroundOption::Async,
@@ -43,6 +43,34 @@ fn new_from_wizard(
     #[values(AssetsOption::Serverside, AssetsOption::Clientside, AssetsOption::None)]
     asset: AssetsOption,
 ) {
+    test_combination(db, background, asset);
+}
+
+#[test]
+fn test_starter_combinations() {
+    // lightweight service
+    test_combination(DBOption::None, BackgroundOption::None, AssetsOption::None);
+    // REST API
+    test_combination(
+        DBOption::Sqlite,
+        BackgroundOption::Async,
+        AssetsOption::None,
+    );
+    // SaaS, serverside
+    test_combination(
+        DBOption::Sqlite,
+        BackgroundOption::Async,
+        AssetsOption::Serverside,
+    );
+    // SaaS, clientside
+    test_combination(
+        DBOption::Sqlite,
+        BackgroundOption::Async,
+        AssetsOption::Clientside,
+    );
+}
+
+fn test_combination(db: DBOption, background: BackgroundOption, asset: AssetsOption) {
     use std::collections::HashMap;
 
     let test_dir = TestDir::new();
