@@ -28,13 +28,18 @@ Create a starter:
 ```sh
 ❯ loco new
 ✔ ❯ App name? · myapp
-✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+✔ ❯ What would you like to build? · Saas App with client side rendering
 ✔ ❯ Select a DB Provider · Sqlite
 ✔ ❯ Select your background worker type · Async (in-process tokio async tasks)
-✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
 
 🚂 Loco app generated successfully in:
 myapp/
+
+- assets: You've selected `clientside` for your asset serving configuration.
+
+Next step, build your frontend:
+  $ cd frontend/
+  $ npm install && npm run build
 ```
 <!-- </snip> -->
 
