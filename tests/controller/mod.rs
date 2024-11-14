@@ -1,1 +1,2 @@
 mod middlewares;
+mod openapi;
