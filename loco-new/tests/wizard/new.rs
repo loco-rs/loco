@@ -46,6 +46,7 @@ fn test_all_combinations(
     test_combination(db, background, asset);
 }
 
+// when running locally set LOCO_DEV_MODE_PATH=<to local loco path>
 #[test]
 fn test_starter_combinations() {
     // lightweight service

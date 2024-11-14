@@ -38,6 +38,11 @@ fn bump_version_in_file(
 }
 
 pub fn bump_version(version: &str) -> Result<()> {
+    // XXX run tests with local loco:
+    // set LOCO_DEV_MODE_PATH=/<path-to>/projects/loco/
+    // and run the loco-new test suite
+    //
+
     // replace main versions
     let version_replacement = format!(r#"version = "{version}""#);
     bump_version_in_file("Cargo.toml", r"(?m)^version.*$", &version_replacement, true);

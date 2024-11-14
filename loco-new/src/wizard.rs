@@ -295,11 +295,13 @@ where
 /// when could not show user selection or user chose not continue
 pub fn start(args: &ArgsPlaceholder) -> crate::Result<Selections> {
     // user provided everything via flags so no need to prompt, just return
-    if args.db.is_some() && args.bg.is_some() && args.assets.is_some() {
+    if let (Some(db), Some(bg), Some(assets)) =
+        (args.db.clone(), args.bg.clone(), args.assets.clone())
+    {
         return Ok(Selections {
-            db: args.db.clone().unwrap(),
-            background: args.bg.clone().unwrap(),
-            asset: args.assets.clone().unwrap(),
+            db,
+            background: bg,
+            asset: assets,
         });
     }
 
