@@ -1,0 +1,9 @@
+---
+source: tests/controller/openapi.rs
+expression: "(res.status().to_string(), res.url().to_string(),\nres.text().await.unwrap().lines().find(|line|\nline.contains(\"<title>\")).map(|line|\n{\n    let start = line.find(\"<title>\").unwrap() + 7; let end =\n    line.find(\"</title>\").unwrap(); line[start..end].to_string()\n}).unwrap_or_default(),)"
+---
+(
+    "200 OK",
+    "http://localhost:5555/redoc",
+    "Redoc",
+)

@@ -48,7 +48,14 @@ async fn openapi(#[case] mut test_name: &str) {
         (
             res.status().to_string(),
             res.url().to_string(),
-            res.text().await.unwrap(),
+            res.text()
+                .await
+                .unwrap()
+                .lines()
+                .find(|line| line.contains("<title>"))
+                .and_then(|line| { line.split("<title>").nth(1)?.split("</title>").next() })
+                .unwrap_or_default()
+                .to_string(),
         )
     );
 
