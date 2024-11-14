@@ -61,3 +61,33 @@ async fn openapi(#[case] mut test_name: &str) {
 
     handle.abort();
 }
+
+#[tokio::test]
+#[serial]
+async fn openapi_json() {
+    configure_insta!();
+
+    let ctx: AppContext = tests_cfg::app::get_app_context().await;
+
+    let handle = infra_cfg::server::start_from_ctx(ctx).await;
+
+    let res = reqwest::Client::new()
+        .request(
+            reqwest::Method::GET,
+            infra_cfg::server::get_base_url() + "api-docs/openapi.json",
+        )
+        .send()
+        .await
+        .expect("valid response");
+
+    assert_debug_snapshot!(
+        "openapi_json",
+        (
+            res.status().to_string(),
+            res.url().to_string(),
+            res.text().await.unwrap(),
+        )
+    );
+
+    handle.abort();
+}
