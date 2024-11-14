@@ -57,4 +57,4 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --all-features --workspace --exclude loco-gen
+          args: --all-features --workspace --exclude loco-gen --exclude loco-new
