@@ -89,13 +89,24 @@ fn test_combination(db: DBOption, background: BackgroundOption, asset: AssetsOpt
 
     let mut env_map: HashMap<_, _> = std::env::vars().collect();
     env_map.insert("RUSTFLAGS".into(), "-D warnings".into());
-    assert!(cmd!("cargo", "check", "--quiet")
-        .full_env(&env_map)
-        // .stdout_null()
-        // .stderr_null()
-        .dir(test_dir.path.as_path())
-        .run()
-        .is_ok());
+    assert!(cmd!(
+        "cargo",
+        "clippy",
+        "--quiet",
+        "--",
+        "-W",
+        "clippy::pedantic",
+        "-W",
+        "clippy::nursery",
+        "-W",
+        "rust-2018-idioms"
+    )
+    .full_env(&env_map)
+    // .stdout_null()
+    // .stderr_null()
+    .dir(test_dir.path.as_path())
+    .run()
+    .is_ok());
 
     cmd!("cargo", "test")
         // .stdout_null()
