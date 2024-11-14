@@ -120,6 +120,7 @@ mod tests {
                     "async",
                     "--assets",
                     "serverside",
+                    "-a",
                 ])
                 .status()
                 .expect("cannot run command");
