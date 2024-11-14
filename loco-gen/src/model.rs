@@ -108,7 +108,7 @@ mod tests {
     where
         F: FnOnce(),
     {
-        testutil::with_temp_dir(|previous, current| {
+        testutil::with_temp_dir(|_previous, current| {
             let status = Command::new("loco")
                 .args([
                     "new",
