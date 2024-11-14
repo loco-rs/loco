@@ -28,6 +28,9 @@ pub struct Cors {
     /// Allow methods
     #[serde(default = "default_allow_methods")]
     pub allow_methods: Vec<String>,
+    /// Allow credentials
+    #[serde(default)]
+    pub allow_credentials: bool,
     /// Max age
     pub max_age: Option<u64>,
     // Vary headers
@@ -69,6 +72,7 @@ impl Cors {
             allow_headers: vec![],
             allow_methods: vec![],
             allow_origins: vec![],
+            allow_credentials: false,
             max_age: None,
             vary: vec![],
         }
@@ -131,6 +135,8 @@ impl Cors {
         if let Some(max_age) = self.max_age {
             cors = cors.max_age(Duration::from_secs(max_age));
         }
+
+        cors = cors.allow_credentials(self.allow_credentials);
 
         Ok(cors)
     }

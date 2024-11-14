@@ -46,6 +46,7 @@ Edit {{name}}: {% raw %}{{ item.id }}{% endraw %}
         {% endif -%} 
         </div>
     {% endfor -%}
+    </div>
     <div>
         <div class="mt-5">
             <button class=" text-xs py-3 px-6 rounded-lg bg-gray-900 text-white" type="submit">Submit</button>

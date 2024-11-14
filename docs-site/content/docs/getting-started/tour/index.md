@@ -94,7 +94,7 @@ We have a base SaaS app with user authentication generated for us. Let's make it
 
 <div class="infobox">
 
-You can choose between generating an `api`, `html` or `htmx` scaffold using the required `-k` flag.
+You can choose between generating an `api`, `html` or `htmx` scaffold using the respective `-api`, `--html`, and `--htmx` flags.
 </div>
 
 ```sh
@@ -142,9 +142,9 @@ listening on port 5150
 
 <div class="infobox"> 
 
-Depending on which `-k` option you chose, the steps for creating a scaffolded resource will change. With the `api` flag or the `htmx` flag you can use the below example. But with the `html` flag, it is recommended you do the post creation steps in your browser.
+Depending on which scaffold template option you chose (`-api`, `--html`, `--htmx`), the steps for creating a scaffolded resource will change. With the `--api` flag or the `--htmx` flag you can use the below example. But with the `--html` flag, it is recommended you do the post creation steps in your browser.
   
-If you want to use `curl` to test the `html` scaffold, you will need to send your requests with the Content-Type `application/x-www-form-urlencoded` and the body as `title=Your+Title&content=Your+Content` by default. This can be changed to allow `application/json` as a `Content-Type` in the code if desired.
+If you want to use `curl` to test the `--html` scaffold, you will need to send your requests with the Content-Type `application/x-www-form-urlencoded` and the body as `title=Your+Title&content=Your+Content` by default. This can be changed to allow `application/json` as a `Content-Type` in the code if desired.
 
 </div>
 
