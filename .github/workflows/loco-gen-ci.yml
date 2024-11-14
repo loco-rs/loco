@@ -62,7 +62,7 @@ jobs:
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
-        working-directory: ./loco-new
+        working-directory: ./loco-gen
         with:
           command: test
           args: --all-features
