@@ -1,5 +1,5 @@
 [workspace]
-members = ["xtask", "loco-gen", "loco"]
+members = ["xtask", "loco-gen", "loco-new"]
 exclude = ["starters"]
 
 [workspace.package]
