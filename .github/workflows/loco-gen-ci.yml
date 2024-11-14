@@ -62,3 +62,5 @@ jobs:
 
       - name: Run cargo test
         run: cargo test --all-features
+        env:
+          LOCO_DEV_MODE_PATH: ${{ github.workspace }}
