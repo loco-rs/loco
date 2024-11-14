@@ -61,8 +61,4 @@ jobs:
           cargo install --path ../loco-new
 
       - name: Run cargo test
-        uses: actions-rs/cargo@v1
-        working-directory: ./loco-gen
-        with:
-          command: test
-          args: --all-features
+        run: cargo test --all-features
