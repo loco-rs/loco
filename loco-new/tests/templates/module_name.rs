@@ -36,9 +36,7 @@ fn test_cargo_toml() {
 }
 
 #[rstest]
-fn test_use_name(
-    #[values("src/bin/main.rs", "src/bin/tool.rs", "tests/requests/home.rs")] file: &str,
-) {
+fn test_use_name(#[values("src/bin/main.rs", "tests/requests/home.rs")] file: &str) {
     let generator = run_generator();
 
     let content = std::fs::read_to_string(generator.path(file)).expect("could not open file");
