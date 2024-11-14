@@ -20,7 +20,7 @@ macro_rules! configure_insta {
 #[case("/swagger-ui")]
 #[tokio::test]
 #[serial]
-async fn openapi(#[case] test_name: &str) {
+async fn openapi(#[case] mut test_name: &str) {
     configure_insta!();
 
     let ctx: AppContext = tests_cfg::app::get_app_context().await;
@@ -33,19 +33,24 @@ async fn openapi(#[case] test_name: &str) {
 
     let handle = infra_cfg::server::start_from_ctx(ctx).await;
 
+    test_name = test_name.trim_start_matches("/");
     let res = reqwest::Client::new()
         .request(
-            reqwest::Method::OPTIONS,
+            reqwest::Method::GET,
             infra_cfg::server::get_base_url() + test_name,
         )
         .send()
         .await
-        .expect("valid response")
-        .text()
-        .await
-        .unwrap();
+        .expect("valid response");
 
-    assert_debug_snapshot!(format!("openapi_[{test_name}]"), res);
+    assert_debug_snapshot!(
+        format!("openapi_[{test_name}]"),
+        (
+            res.status().to_string(),
+            res.url().to_string(),
+            res.text().await.unwrap(),
+        )
+    );
 
     handle.abort();
 }
