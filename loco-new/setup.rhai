@@ -44,7 +44,7 @@ gen.copy_file("config/production.yaml");            // Production config
 // Database-Related Files
 // =====================
 if db {
-   gen.copy_dir("migration");                       // Database migrations directory
+   gen.copy_template_dir("migration");                       // Database migrations directory
    gen.copy_dir("src/models");                      // Models directory, copied if background enabled
    gen.copy_file("src/tasks/seed.rs");              // Task to seed database
    gen.copy_dir("src/fixtures");                    // Database fixtures directory
