@@ -11,7 +11,7 @@ use rhai::{Engine, Scope};
 
 use crate::settings;
 
-static APP_TEMPLATE: Dir<'_> = include_dir!("loco-new/base_template");
+static APP_TEMPLATE: Dir<'_> = include_dir!("base_template");
 
 /// Extracts a default template to a temporary directory for use by the
 /// application.
