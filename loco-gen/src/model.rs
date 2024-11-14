@@ -114,8 +114,6 @@ mod tests {
                     "new",
                     "-n",
                     app_name,
-                    "-t",
-                    "saas",
                     "--db",
                     "sqlite",
                     "--bg",
@@ -123,7 +121,6 @@ mod tests {
                     "--assets",
                     "serverside",
                 ])
-                .env("STARTERS_LOCAL_PATH", previous.join("../"))
                 .status()
                 .expect("cannot run command");
 
