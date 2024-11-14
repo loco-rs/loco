@@ -4,8 +4,10 @@
 // Copy core project structure files and directories that are fundamental
 // to the Rust environment, GitHub actions, and formatting settings.
 
-gen.copy_dirs([".cargo", ".github"]);
+gen.copy_dirs([".github"]);
 gen.copy_files([".gitignore", ".rustfmt.toml", "README.md"]);
+
+gen.copy_template_dir(".cargo");
 
 // =====================
 // Core Source Files
@@ -20,7 +22,12 @@ gen.copy_template("src/initializers/mod.rs.t");     // initializer module
 gen.copy_template("src/app.rs.t");                  // App root file
 gen.copy_template("src/lib.rs.t");                  // Library entry file
 gen.copy_template("Cargo.toml.t");                  // Project’s cargo configuration
-gen.copy_template_dir("src/bin");                   // Copies binary directory with templates
+
+// bin
+gen.copy_template("src/bin/main.rs.t");
+if windows {
+  gen.copy_template("src/bin/tool.rs.t");
+}
 
 
 // =====================

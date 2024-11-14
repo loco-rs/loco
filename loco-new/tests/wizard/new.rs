@@ -3,8 +3,9 @@ use std::{fs, path::PathBuf, sync::Arc};
 use duct::cmd;
 use loco::{
     generator::{executer::FileSystem, Generator},
-    settings, wizard,
-    wizard::{AssetsOption, BackgroundOption, DBOption},
+    settings,
+    wizard::{self, AssetsOption, BackgroundOption, DBOption},
+    OS,
 };
 use uuid::Uuid;
 
@@ -83,7 +84,8 @@ fn test_combination(db: DBOption, background: BackgroundOption, asset: AssetsOpt
         background,
         asset,
     };
-    let settings = settings::Settings::from_wizard("test-loco-template", &wizard_selection);
+    let settings =
+        settings::Settings::from_wizard("test-loco-template", &wizard_selection, OS::default());
 
     let res = Generator::new(Arc::new(executor), settings).run();
     assert!(res.is_ok());
