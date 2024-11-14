@@ -1,5 +1,5 @@
 [workspace]
-members = ["xtask", "loco-gen", "loco-new"]
+members = ["xtask", "loco-gen", "loco"]
 exclude = ["starters"]
 
 [workspace.package]
@@ -137,9 +137,9 @@ english-to-cron = { version = "0.1.2" }
 # bg_sqlt: sqlite workers
 # bg_pg: postgres workers
 sqlx = { version = "0.8.2", default-features = false, features = [
-  "postgres",
-  "chrono",
-   "sqlite",
+    "postgres",
+    "chrono",
+    "sqlite",
 ], optional = true }
 ulid = { version = "1", optional = true }
 
