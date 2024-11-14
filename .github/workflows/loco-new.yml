@@ -1,10 +1,14 @@
-name: "[loco-cli:ci]"
+name: "[loco-new:ci]"
 
 on:
   push:
     branches:
       - master
+    paths:
+      - "loco-new/**"
   pull_request:
+    paths:
+      - "loco-new/**"
 
 env:
   RUST_TOOLCHAIN: stable
@@ -27,13 +31,13 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all -- --check
-        working-directory: ./loco-cli
+        working-directory: ./loco-new
       - name: Run cargo clippy
         run: cargo clippy --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms
-        working-directory: ./loco-cli
+        working-directory: ./loco-new
 
   test:
-    needs: [style]
+    # needs: [style]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -53,8 +57,18 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
 
+      - name: Configure sccache
+        run: |
+          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.6
+
       - name: Run cargo test
-        run: cargo test --all-features --all
-        working-directory: ./loco-cli
+        run: cargo test --all-features -- --test-threads 1
+        working-directory: ./loco-new
         env:
-          LOCO_CI_MODE: 1
+          LOCO_DEV_MODE_PATH: ${{ github.workspace }}
+          # NOTE NOTE NOTE: this is for optimizing build and may result in strange behavior
+          CARGO_TARGET_DIR: /tmp/shared-target
