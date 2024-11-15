@@ -16,7 +16,7 @@ use axum::Router as AxumRouter;
 use crate::controller::channels::AppChannels;
 use crate::{
     bgworker::{self, Queue},
-    boot::{shutdown_signal, BootResult, StartMode},
+    boot::{shutdown_signal, BootResult, ServeParams, StartMode},
     cache::{self},
     config::{self, Config},
     controller::{
@@ -111,10 +111,10 @@ pub trait Hooks: Send {
     ///
     /// # Returns
     /// A Result indicating success () or an error if the server fails to start.
-    async fn serve(app: AxumRouter, ctx: &AppContext) -> Result<()> {
+    async fn serve(app: AxumRouter, ctx: &AppContext, serve_params: &ServeParams) -> Result<()> {
         let listener = tokio::net::TcpListener::bind(&format!(
             "{}:{}",
-            ctx.config.server.binding, ctx.config.server.port
+            serve_params.binding, serve_params.port
         ))
         .await?;
 
