@@ -4,7 +4,7 @@
 //! purposes, including cleaning up data patterns and bootstrapping the
 //! application for testing.
 
-use std::sync::OnceLock;
+use std::{net::SocketAddr, sync::OnceLock};
 
 use axum_test::{TestServer, TestServerConfig};
 #[cfg(feature = "with-db")]
@@ -221,8 +221,13 @@ where
         default_content_type: Some("application/json".to_string()),
         ..Default::default()
     };
-
-    let server = TestServer::new_with_config(boot.router.unwrap(), config).unwrap();
+    let server = TestServer::new_with_config(
+        boot.router
+            .unwrap()
+            .into_make_service_with_connect_info::<SocketAddr>(),
+        config,
+    )
+    .unwrap();
 
     callback(server, boot.app_context.clone()).await;
 }
