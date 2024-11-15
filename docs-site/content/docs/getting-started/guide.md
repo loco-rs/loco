@@ -189,7 +189,7 @@ cargo loco start
 Now, let's test it out:
 
 ```sh
-$ curl localhost:5150/guides
+$ curl localhost:5150/api/guides
 hello
 ```
 
@@ -439,7 +439,7 @@ $ cargo playground
 Now, let's insert one item:
 
 ```rust
-async fn main() -> loco_re::Result<()> {
+async fn main() -> loco_rs::Result<()> {
     let ctx = playground::<App>().await?;
 
     // add this:
