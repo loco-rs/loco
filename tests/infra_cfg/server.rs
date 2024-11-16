@@ -8,7 +8,7 @@
 
 use loco_rs::{boot, controller::AppRoutes, prelude::*, tests_cfg::db::AppHook};
 #[cfg(feature = "openapi")]
-use {serde::Serialize, utoipa::ToSchema};
+use {serde::Serialize, utoipa::ToSchema, utoipa_axum::routes};
 
 /// The port on which the test server will run.
 const TEST_PORT_SERVER: i32 = 5555;
@@ -89,7 +89,7 @@ pub async fn start_from_ctx(ctx: AppContext) -> tokio::task::JoinHandle<()> {
             Routes::new()
                 .add("/", get(get_action))
                 .add("/", post(post_action))
-                .add("/album", get(get_action_openapi)),
+                .add("/album", routes!(get_action_openapi)),
         )
         .to_router::<AppHook>(ctx.clone(), axum::Router::new())
         .expect("to router");

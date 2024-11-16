@@ -1,10 +1,13 @@
-use std::convert::Infallible;
+use std::{convert::Infallible, fmt};
 
 use axum::{extract::Request, response::IntoResponse, routing::Route};
 use tower::{Layer, Service};
+#[cfg(feature = "openapi")]
+use utoipa_axum::router::{UtoipaMethodRouter, UtoipaMethodRouterExt};
 
 use super::describe;
 use crate::app::AppContext;
+
 #[derive(Clone, Default, Debug)]
 pub struct Routes {
     pub prefix: Option<String>,
@@ -12,10 +15,17 @@ pub struct Routes {
     // pub version: Option<String>,
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone)]
+pub enum LocoMethodRouter {
+    Axum(axum::routing::MethodRouter<AppContext>),
+    #[cfg(feature = "openapi")]
+    Utoipa(UtoipaMethodRouter),
+}
+
+#[derive(Clone, Debug)]
 pub struct Handler {
     pub uri: String,
-    pub method: axum::routing::MethodRouter<AppContext>,
+    pub method: LocoMethodRouter,
     pub actions: Vec<axum::http::Method>,
 }
 
@@ -78,11 +88,17 @@ impl Routes {
     /// Routes::new().add("/_ping", get(ping));
     /// ````
     #[must_use]
-    pub fn add(mut self, uri: &str, method: axum::routing::MethodRouter<AppContext>) -> Self {
-        describe::method_action(&method);
+    pub fn add(mut self, uri: &str, method: impl Into<LocoMethodRouter>) -> Self {
+        let method = method.into();
+        let actions = match &method {
+            LocoMethodRouter::Axum(m) => describe::method_action(m),
+            #[cfg(feature = "openapi")]
+            LocoMethodRouter::Utoipa(m) => describe::method_action(&m.2),
+        };
+
         self.handlers.push(Handler {
             uri: uri.to_owned(),
-            actions: describe::method_action(&method),
+            actions,
             method,
         });
         self
@@ -154,5 +170,48 @@ impl Routes {
                 })
                 .collect(),
         }
+    }
+}
+
+impl fmt::Debug for LocoMethodRouter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Axum(router) => write!(f, "{:?}", router),
+            #[cfg(feature = "openapi")]
+            Self::Utoipa(router) => {
+                // Get the axum::routing::MethodRouter from the UtoipaMethodRouter wrapper
+                write!(f, "{:?}", router.2)
+            }
+        }
+    }
+}
+
+impl LocoMethodRouter {
+    pub fn layer<L>(self, layer: L) -> Self
+    where
+        L: Layer<Route> + Clone + Send + 'static,
+        L::Service: Service<Request> + Clone + Send + 'static,
+        <L::Service as Service<Request>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
+        <L::Service as Service<Request>>::Future: Send + 'static,
+    {
+        match self {
+            LocoMethodRouter::Axum(router) => LocoMethodRouter::Axum(router.layer(layer)),
+            #[cfg(feature = "openapi")]
+            LocoMethodRouter::Utoipa(router) => LocoMethodRouter::Utoipa(router.layer(layer)),
+        }
+    }
+}
+
+impl From<axum::routing::MethodRouter<AppContext>> for LocoMethodRouter {
+    fn from(router: axum::routing::MethodRouter<AppContext>) -> Self {
+        LocoMethodRouter::Axum(router)
+    }
+}
+
+#[cfg(feature = "openapi")]
+impl From<UtoipaMethodRouter> for LocoMethodRouter {
+    fn from(router: UtoipaMethodRouter) -> Self {
+        LocoMethodRouter::Utoipa(router)
     }
 }

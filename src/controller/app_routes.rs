@@ -2,9 +2,9 @@
 //! configuring routes in an Axum application. It allows you to define route
 //! prefixes, add routes, and configure middlewares for the application.
 
-use std::{fmt, sync::OnceLock};
+use std::{borrow::Borrow, fmt, sync::OnceLock};
 
-use axum::Router as AXRouter;
+use axum::{handler::Handler, Router as AXRouter};
 use regex::Regex;
 #[cfg(feature = "openapi")]
 use utoipa::{
@@ -12,7 +12,10 @@ use utoipa::{
     Modify, OpenApi,
 };
 #[cfg(feature = "openapi")]
-use utoipa_axum::{router::OpenApiRouter, routes};
+use utoipa_axum::{
+    router::{OpenApiRouter, UtoipaMethodRouterExt},
+    routes,
+};
 #[cfg(feature = "openapi")]
 use utoipa_redoc::{Redoc, Servable};
 #[cfg(feature = "openapi")]
@@ -22,6 +25,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 #[cfg(feature = "channels")]
 use super::channels::AppChannels;
+use super::routes::LocoMethodRouter;
 use crate::{
     app::{AppContext, Hooks},
     controller::{middleware::MiddlewareLayer, routes::Routes},
@@ -47,7 +51,7 @@ pub struct AppRoutes {
 pub struct ListRoutes {
     pub uri: String,
     pub actions: Vec<axum::http::Method>,
-    pub method: axum::routing::MethodRouter<AppContext>,
+    pub method: LocoMethodRouter,
 }
 
 impl fmt::Display for ListRoutes {
@@ -220,14 +224,15 @@ impl AppRoutes {
 
         for router in self.collect() {
             tracing::info!("{}", router.to_string());
-            #[cfg(not(feature = "openapi"))]
-            {
-                app = app.route(&router.uri, router.method);
-            }
-            #[cfg(feature = "openapi")]
-            {
-                app = app.route(&router.uri, router.method.clone());
-                api_router = api_router.route(&router.uri, router.method);
+            match router.method {
+                LocoMethodRouter::Axum(method) => {
+                    app = app.route(&router.uri, method);
+                }
+                #[cfg(feature = "openapi")]
+                LocoMethodRouter::Utoipa(method) => {
+                    app = app.route(&router.uri, method.2.clone().with_state::<AppContext>(()));
+                    api_router = api_router.routes(method.with_state::<AppContext>(()));
+                }
             }
         }
 
