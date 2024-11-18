@@ -23,7 +23,7 @@ tokio = { version = "1.33.0", default-features = false }
 async-trait = "0.1.74"
 tracing = "0.1.40"
 chrono = "0.4"
-validator = { version = "0.18" }
+validator = { version = "0.19" }
 sea-orm = { version = "1.1.0", features = [
   "sqlx-sqlite",
   "sqlx-postgres",
