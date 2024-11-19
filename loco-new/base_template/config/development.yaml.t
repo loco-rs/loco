@@ -16,6 +16,8 @@ logger:
 
 # Web server configuration
 server:
+  # Interface to bind to
+  binding: {{ get_env(name="NODE_BINDING", default="localhost") }}
   # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
   port: 5150
   # The UI hostname or IP address that mailers will point to.
