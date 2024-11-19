@@ -13,7 +13,7 @@ snippets:
     path: ./snipdoc.yml
   quick-installation-command:
     content: |-
-      cargo install loco-cli
+      cargo install loco
       cargo install sea-orm-cli # Only when DB is needed
     path: ./snipdoc.yml
   loco-cli-new-from-template:

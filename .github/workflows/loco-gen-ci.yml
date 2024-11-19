@@ -58,10 +58,9 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - run: |
-          cargo install --path ../loco-cli
+          cargo install --path ../loco-new
 
       - name: Run cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all-features
+        run: cargo test --all-features
+        env:
+          LOCO_DEV_MODE_PATH: ${{ github.workspace }}

@@ -51,7 +51,7 @@ You can follow this guide for a step-by-step "bottom up" learning, or you can ju
 
 <!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->
 ```sh
-cargo install loco-cli
+cargo install loco
 cargo install sea-orm-cli # Only when DB is needed
 ```
 <!-- </snip> -->

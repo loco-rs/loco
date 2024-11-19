@@ -18,11 +18,11 @@ flair =[]
 <br/>
 <br/>
 <br/>
-Let's create a blog backend on Loco in just a few minutes. First install `loco-cli` and `sea-orm-cli`:
+Let's create a blog backend on Loco in just a few minutes. First install `loco` and `sea-orm-cli`:
 
 <!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->
 ```sh
-cargo install loco-cli
+cargo install loco
 cargo install sea-orm-cli # Only when DB is needed
 ```
 <!-- </snip> -->
@@ -165,7 +165,7 @@ $ curl localhost:5150/posts
 
 For those counting -- the commands for creating a blog backend were:
 
-1. `cargo install loco-cli`
+1. `cargo install loco`
 2. `cargo install sea-orm-cli`
 3. `loco new`
 4. `cargo loco generate scaffold post title:string content:text --api`

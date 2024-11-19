@@ -108,22 +108,20 @@ mod tests {
     where
         F: FnOnce(),
     {
-        testutil::with_temp_dir(|previous, current| {
+        testutil::with_temp_dir(|_previous, current| {
             let status = Command::new("loco")
                 .args([
                     "new",
                     "-n",
                     app_name,
-                    "-t",
-                    "saas",
                     "--db",
                     "sqlite",
                     "--bg",
                     "async",
                     "--assets",
                     "serverside",
+                    "-a",
                 ])
-                .env("STARTERS_LOCAL_PATH", previous.join("../"))
                 .status()
                 .expect("cannot run command");
 

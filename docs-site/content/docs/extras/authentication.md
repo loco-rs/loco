@@ -25,7 +25,7 @@ The `auth` feature comes as a default with the library. If desired, you can turn
 
 ### Getting Started with a SaaS App
 
-Create your app using the [loco-cli](/docs/getting-started/tour) and select the `SaaS app (with DB and user auth)` option.
+Create your app using the [loco cli](/docs/getting-started/tour) and select the `SaaS app (with DB and user auth)` option.
 
 To explore the out-of-the-box auth controllers, run the following command:
 
@@ -177,7 +177,7 @@ async fn current(
 
 ### Creating new app
 
-For this time, let create your rest app using the [loco-cli](/docs/getting-started/tour) and select the `Rest app` option.
+For this time, let create your rest app using the [loco cli](/docs/getting-started/tour) and select the `Rest app` option.
 To create new app, run the following command and follow the instructions:
 
 ```sh

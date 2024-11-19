@@ -51,6 +51,17 @@ enum Commands {
 }
 #[allow(clippy::unnecessary_wraps)]
 fn main() -> eyre::Result<()> {
+    println!("");
+    println!("");
+    println!("!!!!!");
+    println!("!!!!! NOTE: `loco-cli` is now replaced with `loco` which is a much more powerful ");
+    println!("!!!!! and flexible new app creator for Loco. To install the new CLI run:");
+    println!("!!!!!");
+    println!("!!!!! $ cargo uninstall loco-cli && cargo install loco");
+    println!("!!!!!");
+    println!("");
+    println!("");
+    println!("");
     let cli = Cli::parse();
 
     tracing_subscriber::fmt()

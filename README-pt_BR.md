@@ -54,7 +54,7 @@ Para ver mais recursos do Loco, confira nosso [site de documentação](https://l
 ## Começando
 <!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->
 ```sh
-cargo install loco-cli
+cargo install loco
 cargo install sea-orm-cli # Only when DB is needed
 ```
 <!-- </snip> -->
