@@ -1,9 +1,8 @@
 ---
 source: src/controller/middleware/secure_headers.rs
-expression: res.headers()
+expression: response.headers()
 ---
 {
-    "content-length": "0",
     "content-security-policy": "default-src 'self' https:; font-src 'self' https: data:; img-src 'self' https: data:; object-src 'none'; script-src https:; style-src 'self' https: 'unsafe-inline'",
     "strict-transport-security": "max-age=631138519",
     "x-content-type-options": "nosniff",
@@ -12,4 +11,5 @@ expression: res.headers()
     "x-permitted-cross-domain-policies": "none",
     "x-xss-protection": "0",
     "new-header": "baz",
+    "content-length": "0",
 }
