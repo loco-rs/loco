@@ -2,20 +2,12 @@
 //! configuring routes in an Axum application. It allows you to define route
 //! prefixes, add routes, and configure middlewares for the application.
 
-use std::{borrow::Borrow, fmt, sync::OnceLock};
+use std::{fmt, sync::OnceLock};
 
-use axum::{handler::Handler, Router as AXRouter};
+use axum::Router as AXRouter;
 use regex::Regex;
 #[cfg(feature = "openapi")]
-use utoipa::{
-    openapi::security::{ApiKey, ApiKeyValue, HttpAuthScheme, HttpBuilder, SecurityScheme},
-    Modify, OpenApi,
-};
-#[cfg(feature = "openapi")]
-use utoipa_axum::{
-    router::{OpenApiRouter, UtoipaMethodRouterExt},
-    routes,
-};
+use utoipa_axum::router::{OpenApiRouter, UtoipaMethodRouterExt};
 #[cfg(feature = "openapi")]
 use utoipa_redoc::{Redoc, Servable};
 #[cfg(feature = "openapi")]
