@@ -220,7 +220,8 @@ impl AppRoutes {
         // issues in compile times itself (https://github.com/rust-lang/crates.io/pull/7443).
         //
         #[cfg(feature = "openapi")]
-        let mut api_router = OpenApiRouter::with_openapi(H::inital_openapi_spec(&ctx));
+        let mut api_router: OpenApiRouter<AppContext> =
+            OpenApiRouter::with_openapi(H::inital_openapi_spec(&ctx));
 
         for router in self.collect() {
             tracing::info!("{}", router.to_string());
@@ -230,8 +231,8 @@ impl AppRoutes {
                 }
                 #[cfg(feature = "openapi")]
                 LocoMethodRouter::Utoipa(method) => {
-                    app = app.route(&router.uri, method.2.clone().with_state::<AppContext>(()));
-                    api_router = api_router.routes(method.with_state::<AppContext>(()));
+                    app = app.route(&router.uri, method.2.clone());
+                    api_router = api_router.routes(method.with_state(ctx.clone()));
                 }
             }
         }

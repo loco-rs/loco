@@ -3,6 +3,8 @@ use std::sync::OnceLock;
 use axum::{http, routing::MethodRouter};
 use regex::Regex;
 
+use crate::app::AppContext;
+
 static DESCRIBE_METHOD_ACTION: OnceLock<Regex> = OnceLock::new();
 
 fn get_describe_method_action() -> &'static Regex {
@@ -14,7 +16,7 @@ fn get_describe_method_action() -> &'static Regex {
 /// Currently axum not exposed the action type of the router. for hold extra
 /// information about routers we need to convert the `method` to string and
 /// capture the details
-pub fn method_action<C>(method: &MethodRouter<C>) -> Vec<http::Method> {
+pub fn method_action(method: &MethodRouter<AppContext>) -> Vec<http::Method> {
     let method_str = format!("{method:?}");
 
     get_describe_method_action()

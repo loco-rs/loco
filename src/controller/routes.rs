@@ -1,6 +1,10 @@
 use std::{convert::Infallible, fmt};
 
-use axum::{extract::Request, response::IntoResponse, routing::Route};
+use axum::{
+    extract::Request,
+    response::IntoResponse,
+    routing::{MethodRouter, Route},
+};
 use tower::{Layer, Service};
 #[cfg(feature = "openapi")]
 use utoipa_axum::router::{UtoipaMethodRouter, UtoipaMethodRouterExt};
@@ -17,9 +21,9 @@ pub struct Routes {
 
 #[derive(Clone)]
 pub enum LocoMethodRouter {
-    Axum(axum::routing::MethodRouter<AppContext>),
+    Axum(MethodRouter<AppContext>),
     #[cfg(feature = "openapi")]
-    Utoipa(UtoipaMethodRouter),
+    Utoipa(UtoipaMethodRouter<AppContext>),
 }
 
 #[derive(Clone, Debug)]
@@ -203,15 +207,15 @@ impl LocoMethodRouter {
     }
 }
 
-impl From<axum::routing::MethodRouter<AppContext>> for LocoMethodRouter {
-    fn from(router: axum::routing::MethodRouter<AppContext>) -> Self {
+impl From<MethodRouter<AppContext>> for LocoMethodRouter {
+    fn from(router: MethodRouter<AppContext>) -> Self {
         LocoMethodRouter::Axum(router)
     }
 }
 
 #[cfg(feature = "openapi")]
-impl From<UtoipaMethodRouter> for LocoMethodRouter {
-    fn from(router: UtoipaMethodRouter) -> Self {
+impl From<UtoipaMethodRouter<AppContext>> for LocoMethodRouter {
+    fn from(router: UtoipaMethodRouter<AppContext>) -> Self {
         LocoMethodRouter::Utoipa(router)
     }
 }
