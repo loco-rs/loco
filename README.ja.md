@@ -47,7 +47,7 @@ Locoの詳細な機能については、[ドキュメントウェブサイト](h
 
 ## 始め方
 ```sh
-cargo install loco-cli
+cargo install loco
 cargo install sea-orm-cli # データベースが必要な場合のみ
 ```
 

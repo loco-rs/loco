@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use serde::Serialize;
-use tokio_util::sync::CancellationToken;
 use tracing::{debug, error};
 #[cfg(feature = "bg_pg")]
 pub mod pg;
@@ -26,7 +25,7 @@ pub enum Queue {
     Redis(
         bb8::Pool<sidekiq::RedisConnectionManager>,
         Arc<tokio::sync::Mutex<sidekiq::Processor>>,
-        CancellationToken,
+        tokio_util::sync::CancellationToken,
     ),
     #[cfg(feature = "bg_pg")]
     Postgres(
@@ -49,6 +48,7 @@ impl Queue {
     /// # Errors
     ///
     /// This function will return an error if fails
+    #[allow(unused_variables)]
     pub async fn enqueue<A: Serialize + Send + Sync>(
         &self,
         class: String,
@@ -95,6 +95,7 @@ impl Queue {
     /// # Errors
     ///
     /// This function will return an error if fails
+    #[allow(unused_variables)]
     pub async fn register<
         A: Serialize + Send + Sync + 'static + for<'de> serde::Deserialize<'de>,
         W: BackgroundWorker<A> + 'static,
