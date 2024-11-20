@@ -131,7 +131,7 @@ uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
 socketioxide = { version = "0.14.0", features = ["state"], optional = true }
 
 # OpenAPI
-utoipa = { version = "5.0.0", optional = true }
+utoipa = { version = "5.0.0", features = ["yaml"], optional = true }
 utoipa-axum = { version = "0.1.0", optional = true }
 utoipa-swagger-ui = { version = "8.0", features = [
     "axum",

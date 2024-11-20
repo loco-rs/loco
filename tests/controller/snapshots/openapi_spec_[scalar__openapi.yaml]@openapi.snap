@@ -1,0 +1,9 @@
+---
+source: tests/controller/openapi.rs
+expression: "(res.status().to_string(), res.url().to_string(), res.text().await.unwrap(),)"
+---
+(
+    "200 OK",
+    "http://localhost:5555/scalar/openapi.yaml",
+    "openapi: 3.1.0\ninfo:\n  title: Loco Demo\n  description: This app is a kitchensink for various capabilities and examples of the [Loco](https://loco.rs) project.\n  contact:\n    name: Dotan Nahum\n    email: dotan@rng0.io\n  license:\n    name: Apache-2.0\n  version: 0.13.0\npaths:\n  /album:\n    get:\n      operationId: get_action_openapi\n      responses:\n        '200':\n          description: Album found\n          content:\n            application/json:\n              schema:\n                $ref: '#/components/schemas/Album'\ncomponents:\n  schemas:\n    Album:\n      type: object\n      required:\n      - title\n      - rating\n      properties:\n        rating:\n          type: integer\n          format: int32\n          minimum: 0\n        title:\n          type: string\n",
+)

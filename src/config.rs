@@ -434,22 +434,52 @@ impl Server {
 #[cfg(feature = "openapi")]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct OpenAPI {
-    /// URL for where to host the redoc OpenAPI doc, example: /redoc
-    pub redoc_url: String,
-    /// URL for where to host the swagger OpenAPI doc, example: /scalar
-    pub scalar_url: String,
+    /// Redoc configuration
+    pub redoc: OpenAPIType,
+    /// Scalar configuration
+    pub scalar: OpenAPIType,
     /// Swagger configuration
-    pub swagger: Swagger,
+    pub swagger: OpenAPIType,
 }
 
-/// OpenAPI Swagger configuration
 #[cfg(feature = "openapi")]
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Swagger {
-    /// URL for where to host the swagger OpenAPI doc, example: /swagger-ui
-    pub swagger_url: String,
-    /// URL for openapi.json, for example: /api-docs/openapi.json
-    pub openapi_url: String,
+pub enum OpenAPIType {
+    Redoc {
+        /// URL for where to host the redoc OpenAPI doc, example: /redoc
+        url: String,
+        /// URL for openapi.json, for example: /openapi.json
+        spec_json_url: Option<String>,
+        /// URL for openapi.yaml, for example: /openapi.yaml
+        spec_yaml_url: Option<String>,
+    },
+    Scalar {
+        /// URL for where to host the swagger OpenAPI doc, example: /scalar
+        url: String,
+        /// URL for openapi.json, for example: /openapi.json
+        spec_json_url: Option<String>,
+        /// URL for openapi.yaml, for example: /openapi.yaml
+        spec_yaml_url: Option<String>,
+    },
+    Swagger {
+        /// URL for where to host the swagger OpenAPI doc, example: /swagger-ui
+        url: String,
+        /// URL for openapi.json, for example: /api-docs/openapi.json
+        spec_json_url: String,
+        /// URL for openapi.yaml, for example: /openapi.yaml
+        spec_yaml_url: Option<String>,
+    },
+}
+
+#[cfg(feature = "openapi")]
+impl OpenAPIType {
+    pub fn url(&self) -> &String {
+        match self {
+            OpenAPIType::Redoc { url, .. }
+            | OpenAPIType::Scalar { url, .. }
+            | OpenAPIType::Swagger { url, .. } => url,
+        }
+    }
 }
 
 /// Background worker configuration

@@ -4,8 +4,12 @@
 
 use std::{fmt, sync::OnceLock};
 
+#[cfg(feature = "openapi")]
+use axum::routing::get;
 use axum::Router as AXRouter;
 use regex::Regex;
+#[cfg(feature = "openapi")]
+use utoipa::openapi::OpenApi;
 #[cfg(feature = "openapi")]
 use utoipa_axum::router::{OpenApiRouter, UtoipaMethodRouterExt};
 #[cfg(feature = "openapi")]
@@ -18,8 +22,11 @@ use utoipa_swagger_ui::SwaggerUi;
 #[cfg(feature = "channels")]
 use super::channels::AppChannels;
 use super::routes::LocoMethodRouter;
+#[cfg(feature = "openapi")]
+use crate::controller::{format, Response};
 use crate::{
     app::{AppContext, Hooks},
+    config::OpenAPIType,
     controller::{middleware::MiddlewareLayer, routes::Routes},
     Result,
 };
@@ -28,6 +35,19 @@ static NORMALIZE_URL: OnceLock<Regex> = OnceLock::new();
 
 fn get_normalize_url() -> &'static Regex {
     NORMALIZE_URL.get_or_init(|| Regex::new(r"/+").unwrap())
+}
+
+#[cfg(feature = "openapi")]
+static OPENAPI_SPEC: OnceLock<OpenApi> = OnceLock::new();
+
+#[cfg(feature = "openapi")]
+fn set_openapi_spec(api: OpenApi) -> &'static OpenApi {
+    OPENAPI_SPEC.get_or_init(|| api)
+}
+
+#[cfg(feature = "openapi")]
+fn get_openapi_spec() -> &'static OpenApi {
+    OPENAPI_SPEC.get().unwrap()
 }
 
 /// Represents the routes of the application.
@@ -231,31 +251,46 @@ impl AppRoutes {
 
         #[cfg(feature = "openapi")]
         let (_, api) = api_router.split_for_parts();
+        #[cfg(feature = "openapi")]
+        set_openapi_spec(api);
 
         #[cfg(feature = "openapi")]
         {
-            app = app.merge(Redoc::with_url(
-                ctx.config.server.openapi.redoc_url.clone(),
-                api.clone(),
-            ))
+            if let OpenAPIType::Redoc {
+                url,
+                spec_json_url,
+                spec_yaml_url,
+            } = ctx.config.server.openapi.redoc.clone()
+            {
+                app = app.merge(Redoc::with_url(url, get_openapi_spec().clone()));
+                app = add_openapi_endpoints(app, spec_json_url, spec_yaml_url);
+            }
         }
 
         #[cfg(feature = "openapi")]
         {
-            app = app.merge(Scalar::with_url(
-                ctx.config.server.openapi.scalar_url.clone(),
-                api.clone(),
-            ))
+            if let OpenAPIType::Scalar {
+                url,
+                spec_json_url,
+                spec_yaml_url,
+            } = ctx.config.server.openapi.scalar.clone()
+            {
+                app = app.merge(Scalar::with_url(url, get_openapi_spec().clone()));
+                app = add_openapi_endpoints(app, spec_json_url, spec_yaml_url);
+            }
         }
 
         #[cfg(feature = "openapi")]
         {
-            app = app.merge(
-                SwaggerUi::new(ctx.config.server.openapi.swagger.swagger_url.clone()).url(
-                    ctx.config.server.openapi.swagger.openapi_url.clone(),
-                    api.clone(),
-                ),
-            )
+            if let OpenAPIType::Swagger {
+                url,
+                spec_json_url,
+                spec_yaml_url,
+            } = ctx.config.server.openapi.swagger.clone()
+            {
+                app = app.merge(SwaggerUi::new(url).url(spec_json_url, get_openapi_spec().clone()));
+                app = add_openapi_endpoints(app, None, spec_yaml_url);
+            }
         }
 
         #[cfg(feature = "channels")]
@@ -300,6 +335,31 @@ impl AppRoutes {
         let router = app.with_state(ctx);
         Ok(router)
     }
+}
+
+#[cfg(feature = "openapi")]
+async fn openapi_spec_json() -> Result<Response> {
+    format::json(get_openapi_spec())
+}
+
+#[cfg(feature = "openapi")]
+async fn openapi_spec_yaml() -> Result<Response> {
+    format::text(&get_openapi_spec().to_yaml()?)
+}
+
+#[cfg(feature = "openapi")]
+fn add_openapi_endpoints(
+    mut app: AXRouter<AppContext>,
+    json_url: Option<String>,
+    yaml_url: Option<String>,
+) -> AXRouter<AppContext> {
+    if let Some(json_url) = json_url {
+        app = app.route(&json_url, get(openapi_spec_json));
+    }
+    if let Some(yaml_url) = yaml_url {
+        app = app.route(&yaml_url, get(openapi_spec_yaml));
+    }
+    app
 }
 
 #[cfg(test)]

@@ -25,11 +25,20 @@ pub fn test_config() -> Config {
             middlewares: middleware::Config::default(),
             #[cfg(feature = "openapi")]
             openapi: config::OpenAPI {
-                redoc_url: "/redoc".to_string(),
-                scalar_url: "/scalar".to_string(),
-                swagger: config::Swagger {
-                    swagger_url: "/swagger-ui".to_string(),
-                    openapi_url: "/api-docs/openapi.json".to_string(),
+                redoc: config::OpenAPIType::Redoc {
+                    url: "/redoc".to_string(),
+                    spec_json_url: Some("/redoc/openapi.json".to_string()),
+                    spec_yaml_url: Some("/redoc/openapi.yaml".to_string()),
+                },
+                scalar: config::OpenAPIType::Scalar {
+                    url: "/scalar".to_string(),
+                    spec_json_url: Some("/scalar/openapi.json".to_string()),
+                    spec_yaml_url: Some("/scalar/openapi.yaml".to_string()),
+                },
+                swagger: config::OpenAPIType::Swagger {
+                    url: "/swagger-ui".to_string(),
+                    spec_json_url: "/api-docs/openapi.json".to_string(),
+                    spec_yaml_url: Some("/api-docs/openapi.yaml".to_string()),
                 },
             },
         },

@@ -63,11 +63,21 @@ server:
       # Set the value of the [`Access-Control-Max-Age`][mdn] header in seconds
       # max_age: 3600
   openapi:
-    redoc_url: "/redoc"
-    scalar_url: "/scalar"
+    redoc:
+      !Redoc
+        url: /redoc
+        spec_json_url: /redoc/openapi.json
+        spec_yaml_url: /redoc/openapi.yaml
+    scalar:
+      !Scalar
+        url: /scalar
+        spec_json_url: /scalar/openapi.json
+        spec_yaml_url: /scalar/openapi.yaml
     swagger:
-      swagger_url: "/swagger-ui"
-      openapi_url: "/api-docs/openapi.json"
+      !Swagger
+        url: /swagger-ui
+        spec_json_url: /api-docs/openapi.json
+        spec_yaml_url: /api-docs/openapi.yaml
 
 # Worker Configuration
 workers:
