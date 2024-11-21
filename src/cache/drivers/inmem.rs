@@ -2,9 +2,11 @@
 //!
 //! This module implements a cache driver using an in-memory cache.
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
 use moka::sync::Cache;
+use moka::Expiry;
 
 use super::CacheDriver;
 use crate::cache::CacheResult;
@@ -17,14 +19,17 @@ use crate::cache::CacheResult;
 /// A boxed [`CacheDriver`] instance.
 #[must_use]
 pub fn new() -> Box<dyn CacheDriver> {
-    let cache = Cache::builder().max_capacity(32 * 1024 * 1024).build();
+    let cache: Cache<String, (Expiration, String)> = Cache::builder()
+        .max_capacity(32 * 1024 * 1024)
+        .expire_after(InMemExpiry)
+        .build();
     Inmem::from(cache)
 }
 
 /// Represents the in-memory cache driver.
 #[derive(Debug)]
 pub struct Inmem {
-    cache: Cache<String, String>,
+    cache: Cache<String, (Expiration, String)>,
 }
 
 impl Inmem {
@@ -34,7 +39,7 @@ impl Inmem {
     ///
     /// A boxed [`CacheDriver`] instance.
     #[must_use]
-    pub fn from(cache: Cache<String, String>) -> Box<dyn CacheDriver> {
+    pub fn from(cache: Cache<String, (Expiration, String)>) -> Box<dyn CacheDriver> {
         Box::new(Self { cache })
     }
 }
@@ -56,7 +61,11 @@ impl CacheDriver for Inmem {
     ///
     /// Returns a `CacheError` if there is an error during the operation.
     async fn get(&self, key: &str) -> CacheResult<Option<String>> {
-        Ok(self.cache.get(key))
+        let result = self.cache.get(key);
+        match result {
+            None => Ok(None),
+            Some(v) => Ok(Some(v.1)),
+        }
     }
 
     /// Inserts a key-value pair into the cache.
@@ -65,8 +74,27 @@ impl CacheDriver for Inmem {
     ///
     /// Returns a `CacheError` if there is an error during the operation.
     async fn insert(&self, key: &str, value: &str) -> CacheResult<()> {
-        self.cache
-            .insert(key.to_string(), Arc::new(value).to_string());
+        self.cache.insert(
+            key.to_string(),
+            (Expiration::Never, Arc::new(value).to_string()),
+        );
+        Ok(())
+    }
+
+    /// Inserts a key-value pair into the cache that expires after the specified number of seconds.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`super::CacheError`] if there is an error during the
+    /// operation.
+    async fn insert_with_expiry(&self, key: &str, value: &str, seconds: u64) -> CacheResult<()> {
+        self.cache.insert(
+            key.to_string(),
+            (
+                Expiration::AfterSeconds(seconds),
+                Arc::new(value).to_string(),
+            ),
+        );
         Ok(())
     }
 
@@ -88,6 +116,35 @@ impl CacheDriver for Inmem {
     async fn clear(&self) -> CacheResult<()> {
         self.cache.invalidate_all();
         Ok(())
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Expiration {
+    Never,
+    AfterSeconds(u64),
+}
+
+impl Expiration {
+    #[must_use]
+    pub fn as_duration(&self) -> Option<Duration> {
+        match self {
+            Self::Never => None,
+            Self::AfterSeconds(s) => Some(Duration::from_secs(*s)),
+        }
+    }
+}
+
+pub struct InMemExpiry;
+
+impl Expiry<String, (Expiration, String)> for InMemExpiry {
+    fn expire_after_create(
+        &self,
+        _key: &String,
+        value: &(Expiration, String),
+        _current_time: Instant,
+    ) -> Option<Duration> {
+        value.0.as_duration()
     }
 }
 

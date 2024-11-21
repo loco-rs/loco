@@ -56,6 +56,17 @@ impl CacheDriver for Null {
         ))
     }
 
+    /// Inserts a key-value pair into the cache that expires after the specified number of seconds.
+    ///
+    /// # Errors
+    ///
+    /// Returns always error
+    async fn insert_with_expiry(&self, _key: &str, _value: &str, _seconds: u64) -> CacheResult<()> {
+        Err(CacheError::Any(
+            "Operation not supported by null cache".into(),
+        ))
+    }
+
     /// Removes a key-value pair from the cache.
     ///
     /// # Errors

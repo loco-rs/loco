@@ -87,6 +87,30 @@ impl Cache {
         self.driver.insert(key, value).await
     }
 
+    /// Inserts a key-value pair into the cache with an expiry in seconds.
+    ///
+    /// # Example
+    /// ```
+    /// use loco_rs::cache::{self, CacheResult};
+    ///
+    /// pub async fn insert() -> CacheResult<()> {
+    ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
+    ///     cache.insert_with_expiry("key", "value", 300).await
+    /// }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// A [`CacheResult`] indicating the success of the operation.
+    pub async fn insert_with_expiry(
+        &self,
+        key: &str,
+        value: &str,
+        seconds: u64,
+    ) -> CacheResult<()> {
+        self.driver.insert_with_expiry(key, value, seconds).await
+    }
+
     /// Retrieves the value associated with the given key from the cache,
     /// or inserts it if it does not exist, using the provided closure to
     /// generate the value.
@@ -117,6 +141,45 @@ impl Cache {
         } else {
             let value = f.await?;
             self.driver.insert(key, &value).await?;
+            Ok(value)
+        }
+    }
+
+    /// Retrieves the value associated with the given key from the cache,
+    /// or inserts it if it does not exist, using the provided closure to
+    /// generate the value.
+    ///
+    /// # Example
+    /// ```
+    /// use loco_rs::{app::AppContext};
+    /// use loco_rs::tests_cfg::app::*;
+    ///
+    /// pub async fn get_or_insert(){
+    ///    let app_ctx = get_app_context().await;
+    ///    let res = app_ctx.cache.get_or_insert_with_expiry("key", 300, async {
+    ///            Ok("value".to_string())
+    ///     }).await.unwrap();
+    ///    assert_eq!(res, "value");
+    /// }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// A [`LocoResult`] indicating the success of the operation.
+    pub async fn get_or_insert_with_expiry<F>(
+        &self,
+        key: &str,
+        seconds: u64,
+        f: F,
+    ) -> LocoResult<String>
+    where
+        F: Future<Output = LocoResult<String>> + Send,
+    {
+        if let Some(value) = self.driver.get(key).await? {
+            Ok(value)
+        } else {
+            let value = f.await?;
+            self.driver.insert_with_expiry(key, &value, seconds).await?;
             Ok(value)
         }
     }
