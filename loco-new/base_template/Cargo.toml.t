@@ -58,10 +58,12 @@ name = "{{settings.module_name}}-cli"
 path = "src/bin/main.rs"
 required-features = []
 
+{%- if settings.os == "windows" %}
 [[bin]]
 name = "tool"
 path = "src/bin/tool.rs"
 required-features = []
+{%- endif %}
 
 [dev-dependencies]
 loco-rs = { workspace = true, features = ["testing"] }

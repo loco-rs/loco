@@ -65,6 +65,9 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.6
 
+      - name: Install seaorm cli
+        run: cargo install sea-orm-cli
+
       - name: Run cargo test
         run: cargo test --all-features -- --test-threads 1
         working-directory: ./loco-new

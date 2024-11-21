@@ -101,6 +101,7 @@ fn test_src_bin_main_rs(
 }
 
 #[rstest]
+#[cfg(windows)]
 fn test_src_bin_tool_rs(
     #[values(DBOption::None, DBOption::Sqlite, DBOption::Postgres)] db: DBOption,
 ) {
