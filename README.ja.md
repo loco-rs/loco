@@ -14,7 +14,7 @@
 
  </div>
 
-[English](./README.md) · [中文](./README-zh_CN.md) · [Français](./README.fr.md) · [Portuguese (Brazil)](./README-pt_BR.md) ・ 日本語 · [한국어](./README.ko.md)
+English · [中文](./README-zh_CN.md) · [Français](./README.fr.md) · [Portuguese (Brazil)](./README-pt_BR.md) ・ 日本語 · [한국어](./README.ko.md) · [Русский](./README.ru.md)
 
 ## Locoとは？
 `Loco`はRailsに強くインスパイアされています。RailsとRustの両方を知っているなら、すぐに馴染むでしょう。Railsしか知らなく、Rustに新しい方でも、Locoは新鮮に感じるでしょう。Railsを知っているとは仮定していません。
