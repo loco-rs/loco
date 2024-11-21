@@ -10,7 +10,6 @@ mod depcheck;
 pub mod initializers;
 pub mod prelude;
 
-#[cfg(feature = "with-db")]
 pub mod doctor;
 
 #[cfg(feature = "with-db")]
