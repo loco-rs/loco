@@ -29,7 +29,7 @@ pub struct StaticAssets {
     /// Assets location
     #[serde(default = "default_folder_config")]
     pub folder: FolderConfig,
-    /// Fallback page for a case when no asset exists (404). Useful for SPA
+    /// Fallback page for a case when no asset exists. Useful for SPA
     /// (single page app) where routes are virtual.
     #[serde(default = "default_fallback")]
     pub fallback: String,
@@ -105,8 +105,8 @@ impl MiddlewareLayer for StaticAssets {
                 self.folder.path, self.fallback,
             )));
         }
-        let serve_dir =
-            ServeDir::new(&self.folder.path).not_found_service(ServeFile::new(&self.fallback));
+
+        let serve_dir = ServeDir::new(&self.folder.path).fallback(ServeFile::new(&self.fallback));
 
         Ok(app.nest_service(
             &self.folder.uri,

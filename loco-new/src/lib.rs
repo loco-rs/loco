@@ -1,3 +1,7 @@
+use clap::ValueEnum;
+use serde::{Deserialize, Serialize};
+use strum::Display;
+
 pub mod generator;
 pub mod settings;
 pub mod wizard;
@@ -31,4 +35,18 @@ impl Error {
     pub fn msg<S: Into<String>>(msg: S) -> Self {
         Self::Message(msg.into())
     }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Display, Default, PartialEq, Eq, ValueEnum)]
+pub enum OS {
+    #[cfg_attr(windows, default)]
+    #[serde(rename = "windows")]
+    Windows,
+
+    #[cfg_attr(unix, default)]
+    #[serde(rename = "linux")]
+    Linux,
+
+    #[serde(rename = "macos")]
+    Macos,
 }

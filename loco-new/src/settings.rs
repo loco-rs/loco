@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     wizard::{self, AssetsOption, BackgroundOption, DBOption},
-    LOCO_VERSION,
+    LOCO_VERSION, OS,
 };
 
 /// Represents general application settings.
@@ -25,6 +25,7 @@ pub struct Settings {
     pub initializers: Option<Initializers>,
     pub features: Features,
     pub loco_version_text: String,
+    pub os: OS,
 }
 
 impl From<DBOption> for Option<Db> {
@@ -60,7 +61,7 @@ impl From<AssetsOption> for Option<Asset> {
 impl Settings {
     /// Creates a new [`Settings`] instance based on prompt selections.
     #[must_use]
-    pub fn from_wizard(package_name: &str, prompt_selection: &wizard::Selections) -> Self {
+    pub fn from_wizard(package_name: &str, prompt_selection: &wizard::Selections, os: OS) -> Self {
         let features = if prompt_selection.db.enable() {
             Features::default()
         } else {
@@ -87,6 +88,7 @@ impl Settings {
             },
             features,
             loco_version_text: get_loco_version_text(),
+            os,
         }
     }
 }
@@ -105,6 +107,7 @@ impl Default for Settings {
             initializers: Default::default(),
             features: Default::default(),
             loco_version_text: get_loco_version_text(),
+            os: Default::default(),
         }
     }
 }
