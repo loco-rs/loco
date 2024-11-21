@@ -154,12 +154,13 @@ impl Cache {
     ///
     /// # Example
     /// ```
+    /// use std::time::Duration;
     /// use loco_rs::{app::AppContext};
     /// use loco_rs::tests_cfg::app::*;
     ///
     /// pub async fn get_or_insert(){
     ///    let app_ctx = get_app_context().await;
-    ///    let res = app_ctx.cache.get_or_insert_with_expiry("key", 300, async {
+    ///    let res = app_ctx.cache.get_or_insert_with_expiry("key", Duration::from_secs(300), async {
     ///            Ok("value".to_string())
     ///     }).await.unwrap();
     ///    assert_eq!(res, "value");
