@@ -1,0 +1,5 @@
+---
+source: loco-new/tests/templates/asset.rs
+expression: "content.get(\"dependencies\").unwrap()"
+---
+{ async-trait = "0.1.74", axum = "0.7.5", serde_json = "1", tracing = "0.1.40", unic-langid = "0.9.4", fluent-templates = { features = ["tera"], version = "0.8.0" }, loco-rs = { workspace = true }, serde = { features = ["derive"], version = "1" }, tokio = { default-features = false, features = ["rt-multi-thread"], version = "1.33.0" }, tracing-subscriber = { features = ["env-filter", "json"], version = "0.3.17" } }

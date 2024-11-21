@@ -16,7 +16,7 @@ To build a Rust app with [Axum session](https://crates.io/crates/axum_session), 
 Start by creating a new project and selecting the `SaaS app` template:
 
 ```sh
-$ cargo install loco-cli
+$ cargo install loco
 $ loco new
 ✔ ❯ App name? · myapp
 ? ❯ What would you like to build? ›
