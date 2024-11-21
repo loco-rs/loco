@@ -4,6 +4,7 @@
 //! framework is initialized. The primary purpose of this driver is to simplify
 //! the user workflow by avoiding the need for feature flags or optional cache
 //! driver configurations.
+use std::time::Duration;
 use async_trait::async_trait;
 
 use super::CacheDriver;
@@ -56,12 +57,13 @@ impl CacheDriver for Null {
         ))
     }
 
-    /// Inserts a key-value pair into the cache that expires after the specified number of seconds.
+    /// Inserts a key-value pair into the cache that expires after the
+    /// provided duration.
     ///
     /// # Errors
     ///
     /// Returns always error
-    async fn insert_with_expiry(&self, _key: &str, _value: &str, _seconds: u64) -> CacheResult<()> {
+    async fn insert_with_expiry(&self, _key: &str, _value: &str, _duration: Duration) -> CacheResult<()> {
         Err(CacheError::Any(
             "Operation not supported by null cache".into(),
         ))

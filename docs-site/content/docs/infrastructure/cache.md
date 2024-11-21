@@ -45,19 +45,19 @@ async fn after_context(ctx: AppContext) -> Result<AppContext> {
 All items are cached as &str values and keys.
 
 ```rust
+use std::time::Duration;
 use loco_rs::cache;
 
 async fn test_cache(ctx: AppContext) {
-    
+
     // insert an item into the cache
     ctx.cache.insert("key", "value").await;
-    
-    // insert an item into the cache that expires after x seconds
-    ctx.cache.insert_with_expiry("key", "value", 300).await;
-    
+
+    // insert an item into the cache that expires after a Duration
+    ctx.cache.insert_with_expiry("key", "value", Duration::from_secs(300)).await;
+
     // retrieve an item from cache
     let value = ctx.cache.get("key").await.unwrap();
-    
 }
 ```
 

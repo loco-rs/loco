@@ -87,11 +87,11 @@ impl CacheDriver for Inmem {
     ///
     /// Returns a [`super::CacheError`] if there is an error during the
     /// operation.
-    async fn insert_with_expiry(&self, key: &str, value: &str, seconds: u64) -> CacheResult<()> {
+    async fn insert_with_expiry(&self, key: &str, value: &str, duration: Duration) -> CacheResult<()> {
         self.cache.insert(
             key.to_string(),
             (
-                Expiration::AfterSeconds(seconds),
+                Expiration::AfterDuration(duration),
                 Arc::new(value).to_string(),
             ),
         );
@@ -122,7 +122,7 @@ impl CacheDriver for Inmem {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Expiration {
     Never,
-    AfterSeconds(u64),
+    AfterDuration(Duration),
 }
 
 impl Expiration {
@@ -130,7 +130,7 @@ impl Expiration {
     pub fn as_duration(&self) -> Option<Duration> {
         match self {
             Self::Never => None,
-            Self::AfterSeconds(s) => Some(Duration::from_secs(*s)),
+            Self::AfterDuration(d) => Some(*d),
         }
     }
 }

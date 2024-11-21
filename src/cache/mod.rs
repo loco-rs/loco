@@ -4,6 +4,7 @@
 pub mod drivers;
 
 use std::future::Future;
+use std::time::Duration;
 
 use self::drivers::CacheDriver;
 use crate::Result as LocoResult;
@@ -87,15 +88,17 @@ impl Cache {
         self.driver.insert(key, value).await
     }
 
-    /// Inserts a key-value pair into the cache with an expiry in seconds.
+    /// Inserts a key-value pair into the cache with an expiry after
+    /// the provided duration.
     ///
     /// # Example
     /// ```
+    /// use std::time::Duration;
     /// use loco_rs::cache::{self, CacheResult};
     ///
     /// pub async fn insert() -> CacheResult<()> {
     ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
-    ///     cache.insert_with_expiry("key", "value", 300).await
+    ///     cache.insert_with_expiry("key", "value", Duration::from_secs(300)).await
     /// }
     /// ```
     ///
@@ -106,9 +109,9 @@ impl Cache {
         &self,
         key: &str,
         value: &str,
-        seconds: u64,
+        duration: Duration,
     ) -> CacheResult<()> {
-        self.driver.insert_with_expiry(key, value, seconds).await
+        self.driver.insert_with_expiry(key, value, duration).await
     }
 
     /// Retrieves the value associated with the given key from the cache,
@@ -146,8 +149,8 @@ impl Cache {
     }
 
     /// Retrieves the value associated with the given key from the cache,
-    /// or inserts it if it does not exist, using the provided closure to
-    /// generate the value.
+    /// or inserts it (with expiry after provided duration) if it does not exist,
+    /// using the provided closure to generate the value.
     ///
     /// # Example
     /// ```
@@ -169,7 +172,7 @@ impl Cache {
     pub async fn get_or_insert_with_expiry<F>(
         &self,
         key: &str,
-        seconds: u64,
+        duration: Duration,
         f: F,
     ) -> LocoResult<String>
     where
@@ -179,7 +182,7 @@ impl Cache {
             Ok(value)
         } else {
             let value = f.await?;
-            self.driver.insert_with_expiry(key, &value, seconds).await?;
+            self.driver.insert_with_expiry(key, &value, duration).await?;
             Ok(value)
         }
     }
