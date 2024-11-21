@@ -65,13 +65,18 @@ Now you can create your new app (choose "SaaS app" for built-in authentication).
 ```sh
 ❯ loco new
 ✔ ❯ App name? · myapp
-✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+✔ ❯ What would you like to build? · Saas App with client side rendering
 ✔ ❯ Select a DB Provider · Sqlite
 ✔ ❯ Select your background worker type · Async (in-process tokio async tasks)
-✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
 
 🚂 Loco app generated successfully in:
 myapp/
+
+- assets: You've selected `clientside` for your asset serving configuration.
+
+Next step, build your frontend:
+  $ cd frontend/
+  $ npm install && npm run build
 ```
 <!-- </snip> -->
 
@@ -163,7 +168,7 @@ pub async fn index(State(_ctx): State<AppContext>) -> Result<Response> {
 
 pub fn routes() -> Routes {
     Routes::new()
-        .prefix("guides/")
+        .prefix("api/guides/")
         .add("/", get(index))
 }
 ```
@@ -189,7 +194,7 @@ cargo loco start
 Now, let's test it out:
 
 ```sh
-$ curl localhost:5150/guides
+$ curl localhost:5150/api/guides
 hello
 ```
 
@@ -281,7 +286,7 @@ $
 ```
 
 <div class="infobox">
-The <em>SaaS Starter</em> keeps routes under <code>/api</code> because it is client-side ready. <br/>
+The <em>SaaS Starter</em> keeps routes under <code>/api</code> because it is client-side ready and we are using the <code>--api</code> option in scaffolding. <br/>
 When using client-side routing like React Router, we want to separate backend routes from client routes: the browser will use <code>/home</code> but not <code>/api/home</code> which is the backend route, and you can call <code>/api/home</code> from the client with no worries. Nevertheless, the routes: <code>/_health</code> and <code>/_ping</code> are exceptions, they stay at the root.
 </div>
 
@@ -439,7 +444,7 @@ $ cargo playground
 Now, let's insert one item:
 
 ```rust
-async fn main() -> loco_re::Result<()> {
+async fn main() -> loco_rs::Result<()> {
     let ctx = playground::<App>().await?;
 
     // add this:
@@ -489,7 +494,7 @@ pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
 }
 
 pub fn routes() -> Routes {
-    Routes::new().prefix("articles").add("/", get(list))
+    Routes::new().prefix("api/articles").add("/", get(list))
 }
 ```
 
@@ -504,7 +509,7 @@ cargo loco start
 And make a request:
 
 ```sh
-$ curl localhost:5150/articles
+$ curl localhost:5150/api/articles
 [{"created_at":"...","updated_at":"...","id":1,"title":"how to build apps in 3 steps","content":"use Loco: https://loco.rs"}]
 ```
 
@@ -577,7 +582,7 @@ pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Resu
 
 pub fn routes() -> Routes {
     Routes::new()
-        .prefix("articles")
+        .prefix("api/articles")
         .add("/", get(list))
         .add("/", post(add))
         .add("/:id", get(get_one))
@@ -614,14 +619,14 @@ Add a new article:
 $ curl -X POST -H "Content-Type: application/json" -d '{
   "title": "Your Title",
   "content": "Your Content xxx"
-}' localhost:5150/articles
+}' localhost:5150/api/articles
 {"created_at":"...","updated_at":"...","id":2,"title":"Your Title","content":"Your Content xxx"}
 ```
 
 Get a list:
 
 ```sh
-$ curl localhost:5150/articles
+$ curl localhost:5150/api/articles
 [{"created_at":"...","updated_at":"...","id":1,"title":"how to build apps in 3 steps","content":"use Loco: https://loco.rs"},{"created_at":"...","updated_at":"...","id":2,"title":"Your Title","content":"Your Content xxx"}
 ```
 
@@ -669,7 +674,7 @@ In `src/controllers/comments.rs`, remove unneeded routes and functions:
 ```rust
 pub fn routes() -> Routes {
     Routes::new()
-        .prefix("comments")
+        .prefix("api/comments")
         .add("/", post(add))
         // .add("/", get(list))
         // .add("/:id", get(get_one))
@@ -741,14 +746,14 @@ Add a comment to Article `1`:
 $ curl -X POST -H "Content-Type: application/json" -d '{
   "content": "this rocks",
   "article_id": 1
-}' localhost:5150/comments
+}' localhost:5150/api/comments
 {"created_at":"...","updated_at":"...","id":4,"content":"this rocks","article_id":1}
 ```
 
 And, fetch the relation:
 
 ```sh
-$ curl localhost:5150/articles/1/comments
+$ curl localhost:5150/api/articles/1/comments
 [{"created_at":"...","updated_at":"...","id":4,"content":"this rocks","article_id":1}]
 ```
 
