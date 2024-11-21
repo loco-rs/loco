@@ -2,10 +2,11 @@ use std::path::Path;
 
 use async_trait::async_trait;
 use bytes::Bytes;
+use futures_util::SinkExt;
 use opendal::{layers::RetryLayer, Operator};
 
 use super::{GetResponse, StoreDriver, UploadResponse};
-use crate::storage::StorageResult;
+use crate::storage::{StorageError, StorageResult};
 
 pub struct OpendalAdapter {
     opendal_impl: Operator,
@@ -70,17 +71,31 @@ impl StoreDriver for OpendalAdapter {
     /// Renames or moves the content from one path to another in the object
     /// store.
     ///
+    /// # Behavior
+    ///
+    /// Fallback to copy and delete source if the storage does not support rename.
+    ///
     /// # Errors
     ///
     /// Returns a `StorageResult` indicating the success of the rename/move
     /// operation.
     async fn rename(&self, from: &Path, to: &Path) -> StorageResult<()> {
-        let from = from.display().to_string();
-        let to = to.display().to_string();
-        Ok(self.opendal_impl.rename(&from, &to).await?)
+        if self.opendal_impl.info().full_capability().rename {
+            let from = from.display().to_string();
+            let to = to.display().to_string();
+            Ok(self.opendal_impl.rename(&from, &to).await?)
+        } else {
+            self.copy(&from, &to).await?;
+            self.delete(from).await?;
+            Ok(())
+        }
     }
 
     /// Copies the content from one path to another in the object store.
+    ///
+    /// # Behavior
+    ///
+    /// Fallback to read from source and write into dest if the storage does not support copy.
     ///
     /// # Errors
     ///
@@ -88,7 +103,26 @@ impl StoreDriver for OpendalAdapter {
     async fn copy(&self, from: &Path, to: &Path) -> StorageResult<()> {
         let from = from.display().to_string();
         let to = to.display().to_string();
-        Ok(self.opendal_impl.copy(&from, &to).await?)
+        if self.opendal_impl.info().full_capability().copy {
+            Ok(self.opendal_impl.copy(&from, &to).await?)
+        } else {
+            let mut reader = self
+                .opendal_impl
+                .reader(&from)
+                .await?
+                .into_bytes_stream(..)
+                .await?;
+            let mut writer = self.opendal_impl.writer(&to).await?.into_bytes_sink();
+            writer
+                .send_all(&mut reader)
+                .await
+                .map_err(|err| StorageError::Any(Box::new(err)))?;
+            writer
+                .close()
+                .await
+                .map_err(|err| StorageError::Any(Box::new(err)))?;
+            Ok(())
+        }
     }
 
     /// Checks if the content exists at the specified path in the object store.
