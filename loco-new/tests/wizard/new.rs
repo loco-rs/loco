@@ -3,8 +3,9 @@ use std::{fs, path::PathBuf, sync::Arc};
 use duct::cmd;
 use loco::{
     generator::{executer::FileSystem, Generator},
-    settings, wizard,
-    wizard::{AssetsOption, BackgroundOption, DBOption},
+    settings,
+    wizard::{self, AssetsOption, BackgroundOption, DBOption},
+    OS,
 };
 use uuid::Uuid;
 
@@ -43,35 +44,48 @@ fn test_all_combinations(
     #[values(AssetsOption::Serverside, AssetsOption::Clientside, AssetsOption::None)]
     asset: AssetsOption,
 ) {
-    test_combination(db, background, asset);
+    test_combination(db, background, asset, false);
 }
 
 // when running locally set LOCO_DEV_MODE_PATH=<to local loco path>
 #[test]
 fn test_starter_combinations() {
     // lightweight service
-    test_combination(DBOption::None, BackgroundOption::None, AssetsOption::None);
+    test_combination(
+        DBOption::None,
+        BackgroundOption::None,
+        AssetsOption::None,
+        false,
+    );
     // REST API
     test_combination(
         DBOption::Sqlite,
         BackgroundOption::Async,
         AssetsOption::None,
+        true,
     );
     // SaaS, serverside
     test_combination(
         DBOption::Sqlite,
         BackgroundOption::Async,
         AssetsOption::Serverside,
+        true,
     );
     // SaaS, clientside
     test_combination(
         DBOption::Sqlite,
         BackgroundOption::Async,
         AssetsOption::Clientside,
+        true,
     );
 }
 
-fn test_combination(db: DBOption, background: BackgroundOption, asset: AssetsOption) {
+fn test_combination(
+    db: DBOption,
+    background: BackgroundOption,
+    asset: AssetsOption,
+    scaffold: bool,
+) {
     use std::collections::HashMap;
 
     let test_dir = TestDir::new();
@@ -83,7 +97,8 @@ fn test_combination(db: DBOption, background: BackgroundOption, asset: AssetsOpt
         background,
         asset,
     };
-    let settings = settings::Settings::from_wizard("test-loco-template", &wizard_selection);
+    let settings =
+        settings::Settings::from_wizard("test-loco-template", &wizard_selection, OS::default());
 
     let res = Generator::new(Arc::new(executor), settings).run();
     assert!(res.is_ok());
@@ -116,4 +131,27 @@ fn test_combination(db: DBOption, background: BackgroundOption, asset: AssetsOpt
         .dir(test_dir.path.as_path())
         .run()
         .expect("run test");
+
+    if scaffold {
+        cmd!(
+            "cargo",
+            "loco",
+            "g",
+            "scaffold",
+            "movie",
+            "title:string",
+            "--htmx"
+        )
+        .full_env(&env_map)
+        .dir(test_dir.path.as_path())
+        .run()
+        .expect("scaffold");
+        cmd!("cargo", "test")
+            // .stdout_null()
+            // .stderr_null()
+            .full_env(&env_map)
+            .dir(test_dir.path.as_path())
+            .run()
+            .expect("test after scaffold");
+    }
 }

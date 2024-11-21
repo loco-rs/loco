@@ -444,7 +444,7 @@ $ cargo playground
 Now, let's insert one item:
 
 ```rust
-async fn main() -> loco_re::Result<()> {
+async fn main() -> loco_rs::Result<()> {
     let ctx = playground::<App>().await?;
 
     // add this:
