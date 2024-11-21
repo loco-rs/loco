@@ -16,7 +16,7 @@ use crate::storage::{drivers::opendal_adapter::OpendalAdapter, StorageResult};
 /// Panics if the filesystem service built failed.
 #[must_use]
 pub fn new() -> Box<dyn StoreDriver> {
-    let fs = Fs::default();
+    let fs = Fs::default().root("/");
     Box::new(OpendalAdapter::new(
         Operator::new(fs)
             .expect("fs service should build with success")
