@@ -7,6 +7,8 @@ pub use sea_orm_migration::prelude::*;
 #[cfg(feature = "openapi")]
 use utoipa::OpenApi;
 
+#[cfg(feature = "openapi")]
+use crate::auth::openapi::{set_jwt_location, SecurityAddon};
 #[cfg(feature = "channels")]
 use crate::controller::channels::AppChannels;
 use crate::{
@@ -131,12 +133,17 @@ impl Hooks for AppHook {
     }
 
     #[cfg(feature = "openapi")]
-    fn inital_openapi_spec(_ctx: &AppContext) -> utoipa::openapi::OpenApi {
+    fn inital_openapi_spec(ctx: &AppContext) -> utoipa::openapi::OpenApi {
+        set_jwt_location(ctx);
+
         #[derive(OpenApi)]
-        #[openapi(info(
-            title = "Loco Demo",
-            description = "This app is a kitchensink for various capabilities and examples of the [Loco](https://loco.rs) project."
-        ))]
+        #[openapi(
+            modifiers(&SecurityAddon),
+            info(
+                title = "Loco Demo",
+                description = "This app is a kitchensink for various capabilities and examples of the [Loco](https://loco.rs) project."
+            )
+        )]
         struct ApiDoc;
         ApiDoc::openapi()
     }
