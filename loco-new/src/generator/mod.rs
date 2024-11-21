@@ -9,7 +9,7 @@ use std::sync::Arc;
 use include_dir::{include_dir, Dir};
 use rhai::{Engine, Scope};
 
-use crate::settings;
+use crate::{settings, OS};
 
 static APP_TEMPLATE: Dir<'_> = include_dir!("base_template");
 
@@ -87,6 +87,7 @@ impl Generator {
         scope.push("background", self.settings.background.is_some());
         scope.push("initializers", self.settings.initializers.is_some());
         scope.push("asset", self.settings.asset.is_some());
+        scope.push("windows", self.settings.os == OS::Windows);
 
         engine.run_with_scope(&mut scope, script)?;
         Ok(())
