@@ -87,7 +87,12 @@ impl CacheDriver for Inmem {
     ///
     /// Returns a [`super::CacheError`] if there is an error during the
     /// operation.
-    async fn insert_with_expiry(&self, key: &str, value: &str, duration: Duration) -> CacheResult<()> {
+    async fn insert_with_expiry(
+        &self,
+        key: &str,
+        value: &str,
+        duration: Duration,
+    ) -> CacheResult<()> {
         self.cache.insert(
             key.to_string(),
             (

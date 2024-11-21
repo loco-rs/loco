@@ -182,7 +182,9 @@ impl Cache {
             Ok(value)
         } else {
             let value = f.await?;
-            self.driver.insert_with_expiry(key, &value, duration).await?;
+            self.driver
+                .insert_with_expiry(key, &value, duration)
+                .await?;
             Ok(value)
         }
     }
