@@ -236,6 +236,49 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn cors_options() {
+        let mut middleware = Cors::empty();
+        middleware.allow_origins = vec![
+            "http://localhost:8080".to_string(),
+            "http://example.com".to_string(),
+        ];
+
+        let app = Router::new().route("/", get(|| async {}));
+        let app = middleware
+            .apply(app)
+            .expect("apply middleware")
+            .with_state(tests_cfg::app::get_app_context().await);
+
+        let req = Request::builder()
+            .uri("/")
+            .header("Origin", "http://example.com")
+            .method(Method::OPTIONS)
+            .body(Body::empty())
+            .expect("request");
+
+        let response = app.oneshot(req).await.expect("valid response");
+
+        assert_debug_snapshot!(
+            format!("cors_OPTIONS_[allow_origins]"),
+            (
+                format!(
+                    "access-control-allow-origin: {:?}",
+                    response.headers().get("access-control-allow-origin")
+                ),
+                format!("vary: {:?}", response.headers().get("vary")),
+                format!(
+                    "access-control-allow-methods: {:?}",
+                    response.headers().get("access-control-allow-methods")
+                ),
+                format!(
+                    "access-control-allow-headers: {:?}",
+                    response.headers().get("access-control-allow-headers")
+                ),
+                format!("allow: {:?}", response.headers().get("allow")),
+            )
+        );
+    }
     #[test]
     fn should_be_disabled() {
         let middleware = Cors::default();
