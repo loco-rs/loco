@@ -98,6 +98,7 @@ impl Hooks for App {
         {%- if settings.db %}
         tasks.register(tasks::seed::SeedData);
         {%- endif %}
+        // tasks-inject (do not remove)
     }
 
     {%- if settings.db %}
