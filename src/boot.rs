@@ -6,8 +6,7 @@ use std::path::PathBuf;
 use axum::Router;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
-use tokio::task::JoinHandle;
-use tokio::{select, signal};
+use tokio::{select, signal, task::JoinHandle};
 use tracing::{debug, error, info, warn};
 
 #[cfg(feature = "with-db")]
@@ -85,7 +84,7 @@ pub async fn start<H: Hooks>(
 
     match (router, run_worker) {
         (Some(router), false) => {
-            H::serve(router, &app_context).await?;
+            H::serve(router, &app_context, &server_config).await?;
         }
         (Some(router), true) => {
             let handle = if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
@@ -94,7 +93,7 @@ pub async fn start<H: Hooks>(
                 None
             };
 
-            H::serve(router, &app_context).await?;
+            H::serve(router, &app_context, &server_config).await?;
 
             if let Some(handle) = handle {
                 shutdown_and_await_queue_worker(&app_context, handle).await?;
