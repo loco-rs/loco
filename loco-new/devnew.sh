@@ -1,1 +1,1 @@
-LOCO_DEV_MODE_PATH=../../ loco new
+LOCO_DEV_MODE_PATH=../../ cargo run -- new
