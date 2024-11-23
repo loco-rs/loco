@@ -34,8 +34,10 @@ async fn panic(#[case] enable: bool) {
     ctx.config.server.middlewares.catch_panic =
         Some(middleware::catch_panic::CatchPanic { enable });
 
-    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
-    let res = reqwest::get(infra_cfg::server::get_base_url()).await;
+    let port = infra_cfg::server::get_available_port().await;
+    let handle =
+        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port.clone())).await;
+    let res = reqwest::get(infra_cfg::server::get_base_url_port(port)).await;
 
     if enable {
         let res = res.expect("valid response");
@@ -64,10 +66,12 @@ async fn etag(#[case] enable: bool) {
 
     ctx.config.server.middlewares.etag = Some(middleware::etag::Etag { enable });
 
-    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
+    let port = infra_cfg::server::get_available_port().await;
+    let handle =
+        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port.clone())).await;
 
     let res = reqwest::Client::new()
-        .get(infra_cfg::server::get_base_url())
+        .get(infra_cfg::server::get_base_url_port(port))
         .header("if-none-match", "loco-etag")
         .send()
         .await
@@ -100,10 +104,12 @@ async fn remote_ip(#[case] enable: bool, #[case] expected: &str) {
         trusted_proxies: Some(vec!["192.1.1.1/8".to_string()]),
     });
 
-    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
+    let port = infra_cfg::server::get_available_port().await;
+    let handle =
+        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port.clone())).await;
 
     let res = reqwest::Client::new()
-        .get(infra_cfg::server::get_base_url())
+        .get(infra_cfg::server::get_base_url_port(port))
         .header(
             "x-forwarded-for",
             reqwest::header::HeaderValue::from_static("51.50.51.50,192.1.1.1"),
@@ -134,9 +140,11 @@ async fn timeout(#[case] enable: bool) {
     ctx.config.server.middlewares.timeout_request =
         Some(middleware::timeout::TimeOut { enable, timeout: 2 });
 
-    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
+    let port = infra_cfg::server::get_available_port().await;
+    let handle =
+        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port.clone())).await;
 
-    let res = reqwest::get(infra_cfg::server::get_base_url())
+    let res = reqwest::get(infra_cfg::server::get_base_url_port(port))
         .await
         .expect("response");
 
@@ -183,10 +191,14 @@ async fn cors(
 
     ctx.config.server.middlewares.cors = Some(middleware);
 
-    let handle = infra_cfg::server::start_from_ctx(ctx).await;
+    let port = infra_cfg::server::get_available_port().await;
+    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port.clone())).await;
 
     let res = reqwest::Client::new()
-        .request(reqwest::Method::OPTIONS, infra_cfg::server::get_base_url())
+        .request(
+            reqwest::Method::OPTIONS,
+            infra_cfg::server::get_base_url_port(port),
+        )
         .send()
         .await
         .expect("valid response");
@@ -229,10 +241,14 @@ async fn limit_payload(#[case] enable: bool) {
         body_limit: 0x1B,
     });
 
-    let handle = infra_cfg::server::start_from_ctx(ctx).await;
+    let port = infra_cfg::server::get_available_port().await;
+    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port.clone())).await;
 
     let res = reqwest::Client::new()
-        .request(reqwest::Method::POST, infra_cfg::server::get_base_url())
+        .request(
+            reqwest::Method::POST,
+            infra_cfg::server::get_base_url_port(port),
+        )
         .body("send body".repeat(100))
         .send()
         .await
@@ -279,20 +295,27 @@ async fn static_assets() {
         precompressed: false,
     });
 
-    let handle = infra_cfg::server::start_from_ctx(ctx).await;
+    let port = infra_cfg::server::get_available_port().await;
+    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port.clone())).await;
 
-    let get_static_html = reqwest::get("http://localhost:5555/static/static.html")
-        .await
-        .expect("valid response");
+    let get_static_html = reqwest::get(format!(
+        "{}static/static.html",
+        infra_cfg::server::get_base_url_port(port)
+    ))
+    .await
+    .expect("valid response");
 
     assert_eq!(
         get_static_html.text().await.expect("text response"),
         "<h1>static content</h1>".to_string()
     );
 
-    let get_fallback = reqwest::get("http://localhost:5555/static/logo.png")
-        .await
-        .expect("valid response");
+    let get_fallback = reqwest::get(format!(
+        "{}static/logo.png",
+        infra_cfg::server::get_base_url_port(port)
+    ))
+    .await
+    .expect("valid response");
 
     assert_eq!(
         get_fallback.text().await.expect("text response"),
@@ -327,10 +350,14 @@ async fn secure_headers(
         },
     );
 
-    let handle = infra_cfg::server::start_from_ctx(ctx).await;
+    let port = infra_cfg::server::get_available_port().await;
+    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port.clone())).await;
 
     let res = reqwest::Client::new()
-        .request(reqwest::Method::POST, infra_cfg::server::get_base_url())
+        .request(
+            reqwest::Method::POST,
+            infra_cfg::server::get_base_url_port(port),
+        )
         .send()
         .await
         .expect("response");
@@ -402,11 +429,15 @@ async fn fallback(
 
     ctx.config.server.middlewares.fallback = Some(fallback_config);
 
-    let handle = infra_cfg::server::start_from_ctx(ctx).await;
+    let port = infra_cfg::server::get_available_port().await;
+    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port.clone())).await;
 
-    let res = reqwest::get(format!("{}not-found", infra_cfg::server::get_base_url()))
-        .await
-        .expect("valid response");
+    let res = reqwest::get(format!(
+        "{}not-found",
+        infra_cfg::server::get_base_url_port(port)
+    ))
+    .await
+    .expect("valid response");
 
     if let Some(code) = code {
         assert_eq!(res.status(), code);
@@ -438,9 +469,10 @@ async fn powered_by_header(#[case] ident: Option<String>) {
 
     ctx.config.server.ident.clone_from(&ident);
 
-    let handle = infra_cfg::server::start_from_ctx(ctx).await;
+    let port = infra_cfg::server::get_available_port().await;
+    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port.clone())).await;
 
-    let res = reqwest::get(infra_cfg::server::get_base_url())
+    let res = reqwest::get(infra_cfg::server::get_base_url_port(port))
         .await
         .expect("valid response");
 
