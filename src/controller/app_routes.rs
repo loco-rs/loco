@@ -22,13 +22,15 @@ use utoipa_swagger_ui::SwaggerUi;
 #[cfg(feature = "channels")]
 use super::channels::AppChannels;
 use super::routes::LocoMethodRouter;
-#[cfg(feature = "openapi")]
-use crate::controller::{format, Response};
 use crate::{
     app::{AppContext, Hooks},
-    config::OpenAPIType,
     controller::{middleware::MiddlewareLayer, routes::Routes},
     Result,
+};
+#[cfg(feature = "openapi")]
+use crate::{
+    config::OpenAPIType,
+    controller::{format, Response},
 };
 
 static NORMALIZE_URL: OnceLock<Regex> = OnceLock::new();
