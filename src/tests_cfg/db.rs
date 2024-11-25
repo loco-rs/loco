@@ -4,8 +4,6 @@ use async_trait::async_trait;
 use sea_orm::DatabaseConnection;
 pub use sea_orm_migration::prelude::*;
 
-#[cfg(feature = "channels")]
-use crate::controller::channels::AppChannels;
 use crate::{
     app::{AppContext, Hooks, Initializer},
     bgworker::Queue,
@@ -119,11 +117,5 @@ impl Hooks for AppHook {
 
     async fn seed(_db: &DatabaseConnection, _base: &Path) -> Result<()> {
         Ok(())
-    }
-
-    #[cfg(feature = "channels")]
-    #[allow(clippy::unimplemented)]
-    fn register_channels(_ctx: &AppContext) -> AppChannels {
-        unimplemented!();
     }
 }

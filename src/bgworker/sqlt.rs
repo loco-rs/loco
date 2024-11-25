@@ -193,13 +193,13 @@ pub async fn initialize_database(pool: &SqlitePool) -> Result<()> {
                 updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
-            CREATE TABLE IF NOT EXISTS aquire_queue_write_lock (
+            CREATE TABLE IF NOT EXISTS sqlt_loco_queue_lock (
                 id INTEGER PRIMARY KEY CHECK (id = 1),
                 is_locked BOOLEAN NOT NULL DEFAULT FALSE,
                 locked_at TIMESTAMP NULL
             );
 
-            INSERT OR IGNORE INTO aquire_queue_write_lock (id, is_locked) VALUES (1, FALSE);
+            INSERT OR IGNORE INTO sqlt_loco_queue_lock (id, is_locked) VALUES (1, FALSE);
 
             CREATE INDEX IF NOT EXISTS idx_sqlt_queue_status_run_at ON sqlt_loco_queue(status, run_at);
             ",
@@ -245,7 +245,7 @@ async fn dequeue(client: &SqlitePool) -> Result<Option<Task>> {
     let mut tx = client.begin().await?;
 
     let acquired_write_lock = sqlx::query(
-        "UPDATE aquire_queue_write_lock SET
+        "UPDATE sqlt_loco_queue_lock SET
             is_locked = TRUE,
             locked_at = CURRENT_TIMESTAMP
         WHERE id = 1 AND is_locked = FALSE",
@@ -282,7 +282,8 @@ async fn dequeue(client: &SqlitePool) -> Result<Option<Task>> {
 
     if let Some(task) = row {
         sqlx::query(
-            "UPDATE sqlt_loco_queue SET status = 'processing', updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            "UPDATE sqlt_loco_queue SET status = 'processing', updated_at = CURRENT_TIMESTAMP \
+             WHERE id = $1",
         )
         .bind(&task.id)
         .execute(&mut *tx)
@@ -290,7 +291,7 @@ async fn dequeue(client: &SqlitePool) -> Result<Option<Task>> {
 
         // Release the write lock
         sqlx::query(
-            "UPDATE aquire_queue_write_lock
+            "UPDATE sqlt_loco_queue_lock 
               SET is_locked = FALSE,
                   locked_at = NULL
               WHERE id = 1",
@@ -304,7 +305,7 @@ async fn dequeue(client: &SqlitePool) -> Result<Option<Task>> {
     } else {
         // Release the write lock, no task found
         sqlx::query(
-            "UPDATE aquire_queue_write_lock
+            "UPDATE sqlt_loco_queue_lock 
               SET is_locked = FALSE,
                   locked_at = NULL
               WHERE id = 1",
@@ -325,7 +326,8 @@ async fn complete_task(
     if let Some(interval_ms) = interval_ms {
         let next_run_at = Utc::now() + chrono::Duration::milliseconds(interval_ms);
         sqlx::query(
-            "UPDATE sqlt_loco_queue SET status = 'queued', updated_at = CURRENT_TIMESTAMP, run_at = DATETIME($1) WHERE id = $2",
+            "UPDATE sqlt_loco_queue SET status = 'queued', updated_at = CURRENT_TIMESTAMP, run_at \
+             = DATETIME($1) WHERE id = $2",
         )
         .bind(next_run_at)
         .bind(task_id)
@@ -333,7 +335,8 @@ async fn complete_task(
         .await?;
     } else {
         sqlx::query(
-            "UPDATE sqlt_loco_queue SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            "UPDATE sqlt_loco_queue SET status = 'completed', updated_at = CURRENT_TIMESTAMP \
+             WHERE id = $1",
         )
         .bind(task_id)
         .execute(pool)
@@ -347,7 +350,8 @@ async fn fail_task(pool: &SqlitePool, task_id: &TaskId, error: &crate::Error) ->
     error!(err = msg, "failed task");
     let error_json = serde_json::json!({ "error": msg });
     sqlx::query(
-        "UPDATE sqlt_loco_queue SET status = 'failed', updated_at = CURRENT_TIMESTAMP, task_data = json_patch(task_data, $1) WHERE id = $2",
+        "UPDATE sqlt_loco_queue SET status = 'failed', updated_at = CURRENT_TIMESTAMP, task_data \
+         = json_patch(task_data, $1) WHERE id = $2",
     )
     .bind(error_json)
     .bind(task_id)

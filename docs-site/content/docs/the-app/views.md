@@ -301,3 +301,10 @@ impl Hooks for App {
     }
     // ...
 ```
+
+### Tera Built-ins
+
+Loco includes Tera with its [built-ins](https://keats.github.io/tera/docs/#built-ins) functions. In addition, Loco introduces the following custom built-in functions:
+
+To see Loco built-in function:
+* [numbers](https://docs.rs/loco-rs/latest/loco_rs/controller/views/tera_builtins/filters/number/index.html)
