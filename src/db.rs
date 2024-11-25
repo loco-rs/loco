@@ -229,6 +229,8 @@ pub async fn reset<M: MigratorTrait>(db: &DatabaseConnection) -> Result<(), sea_
     migrate::<M>(db).await
 }
 
+use sea_orm::EntityName;
+use serde_json::Value;
 /// Seed the database with data from a specified file.
 /// Seeds open the file path and insert all file content into the DB.
 ///
@@ -239,25 +241,76 @@ pub async fn reset<M: MigratorTrait>(db: &DatabaseConnection) -> Result<(), sea_
 /// Returns a [`AppResult`] if could not render the path content into
 /// [`Vec<serde_json::Value>`] or could not inset the vector to DB.
 #[allow(clippy::type_repetition_in_bounds)]
-pub async fn seed<A>(db: &DatabaseConnection, path: &str) -> AppResult<()>
+pub async fn seed<A>(db: &DatabaseConnection, path: &str) -> crate::Result<()>
 where
     <<A as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<A>,
     for<'de> <<A as ActiveModelTrait>::Entity as EntityTrait>::Model: serde::de::Deserialize<'de>,
-    A: sea_orm::ActiveModelTrait + Send + Sync,
-    sea_orm::Insert<A>: Send + Sync, // Add this Send bound
+    A: ActiveModelTrait + Send + Sync,
+    sea_orm::Insert<A>: Send + Sync,
+    <A as ActiveModelTrait>::Entity: EntityName,
 {
-    let seed_data: Vec<serde_json::Value> = serde_yaml::from_reader(File::open(path)?)?;
+    // Deserialize YAML file into a vector of JSON values
+    let seed_data: Vec<Value> = serde_yaml::from_reader(File::open(path)?)?;
 
+    // Insert each row
     for row in seed_data {
-        let model = <A as ActiveModelTrait>::from_json(row)?;
-        <A as ActiveModelTrait>::Entity::insert(model)
-            .exec(db)
-            .await?;
+        let model = A::from_json(row)?;
+        A::Entity::insert(model).exec(db).await?;
     }
+
+    // Get the table name from the entity
+    let table_name = A::Entity::default().table_name().to_string();
+
+    // Get the database backend
+    let db_backend = db.get_database_backend();
+
+    // Reset auto-increment
+    reset_autoincrement(db_backend, &table_name, db).await?;
 
     Ok(())
 }
 
+/// Function to reset auto-increment
+/// # Errors
+/// Returns error if it fails
+pub async fn reset_autoincrement(
+    db_backend: DatabaseBackend,
+    table_name: &str,
+    db: &DatabaseConnection,
+) -> crate::Result<()> {
+    match db_backend {
+        DatabaseBackend::Postgres => {
+            let query_str = format!(
+                "SELECT setval(pg_get_serial_sequence('{table_name}', 'id'), COALESCE(MAX(id), 0) \
+                 + 1, false) FROM {table_name}"
+            );
+            db.execute(Statement::from_sql_and_values(
+                DatabaseBackend::Postgres,
+                &query_str,
+                vec![],
+            ))
+            .await?;
+        }
+        DatabaseBackend::Sqlite => {
+            let query_str = format!(
+                "UPDATE sqlite_sequence SET seq = (SELECT MAX(id) FROM {table_name}) WHERE name = \
+                 '{table_name}'"
+            );
+            db.execute(Statement::from_sql_and_values(
+                DatabaseBackend::Sqlite,
+                &query_str,
+                vec![],
+            ))
+            .await?;
+        }
+        DatabaseBackend::MySql => {
+            return Err(Error::Message(
+                "Unsupported database backend: MySQL".to_string(),
+            ))
+        }
+    }
+    Ok(())
+}
 /// Generate entity model.
 /// This function using sea-orm-cli.
 ///
