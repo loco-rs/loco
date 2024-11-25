@@ -8,8 +8,6 @@
 //!
 //! ```rust
 //! use async_trait::async_trait;
-//! #[cfg(feature = "channels")]
-//! use loco_rs::controller::channels::AppChannels;
 //! use loco_rs::{
 //!    app::{AppContext, Hooks},
 //!    boot::{create_app, BootResult, StartMode},
@@ -49,13 +47,6 @@
 //!          create_app::<Self, Migrator>(mode, environment).await
 //!     }
 //!     
-//!     #[cfg(feature = "channels")]
-//!    /// Only when `channels` feature is enabled
-//!    fn register_channels(_ctx: &AppContext) -> AppChannels {
-//!        let channels = AppChannels::default();
-//!        //channels.register.ns("/", channels::application::on_connect);
-//!        channels
-//!    }
 //!     async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {
 //!         Ok(())
 //!     }
@@ -87,8 +78,6 @@ use crate::{errors::Error, Result};
 
 mod app_routes;
 mod backtrace;
-#[cfg(feature = "channels")]
-pub mod channels;
 mod describe;
 pub mod format;
 #[cfg(feature = "with-db")]

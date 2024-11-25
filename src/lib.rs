@@ -41,11 +41,9 @@ pub mod testing;
 #[cfg(feature = "testing")]
 pub use axum_test::TestServer;
 pub mod storage;
-pub mod validation;
-#[cfg(feature = "channels")]
-pub use socketioxide;
 #[cfg(feature = "testing")]
 pub mod tests_cfg;
+pub mod validation;
 pub use validator;
 
 /// Application results options list
