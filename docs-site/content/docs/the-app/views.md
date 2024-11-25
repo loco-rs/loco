@@ -301,3 +301,26 @@ impl Hooks for App {
     }
     // ...
 ```
+
+### Tera Built-ins
+
+Loco includes Tera with its [built-ins](https://keats.github.io/tera/docs/#built-ins) functions. In addition, Loco introduces the following custom built-in functions:
+
+#### number with delimiter
+Formats a numeric value by adding commas as thousands separators, making large numbers easier to read.
+
+***Example:*** {{1000 | number_with_delimiter}}
+
+#### number to human size
+Converts a numeric value (representing bytes) into a human-readable size string with the appropriate unit (e.g., KB, MB, GB).
+
+***Example:*** {{70691577 | number_to_human_size}}
+
+
+#### Number to percentage
+Converts a numeric value into a formatted percentage string.
+
+***Example:*** {{100 | number_to_percentage}}
+***Example:*** {{100 | number_to_percentage(format='%n %')}}
+
+
