@@ -23,6 +23,12 @@ use crate::{
 };
 
 pub static EXTRACT_DB_NAME: OnceLock<Regex> = OnceLock::new();
+const IGNORED_TABLES: &[&str] = &[
+    "seaql_migrations",
+    "pg_loco_queue",
+    "sqlt_loco_queue",
+    "sqlt_loco_queue_lock",
+];
 
 fn get_extract_db_name() -> &'static Regex {
     EXTRACT_DB_NAME.get_or_init(|| Regex::new(r"/([^/]+)$").unwrap())
@@ -330,7 +336,9 @@ pub async fn entities<M: MigratorTrait>(ctx: &AppContext) -> AppResult<String> {
         "--output-dir",
         "src/models/_entities",
         "--database-url",
-        &ctx.config.database.uri
+        &ctx.config.database.uri,
+        "--ignore-tables",
+        IGNORED_TABLES.join(","),
     )
     .stderr_to_stdout()
     .run()
