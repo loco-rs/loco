@@ -321,6 +321,7 @@ Converts a numeric value (representing bytes) into a human-readable size string 
 Converts a numeric value into a formatted percentage string.
 
 ***Example:*** {{100 | number_to_percentage}}
+
 ***Example:*** {{100 | number_to_percentage(format='%n %')}}
 
 
