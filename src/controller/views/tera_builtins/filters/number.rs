@@ -7,14 +7,18 @@ use thousands::Separable;
 
 /// Formats a numeric value by adding commas as thousands separators.
 ///
+///
+/// # Examples:
+///
+/// ```ignore
+/// {{1000 | number_with_delimiter}}
+/// ```
+///
 /// # Errors
 ///
 /// If the `value` is not a numeric value, the function will return the original
 /// value as a string without any error.
-pub fn number_with_delimiter<S: ::std::hash::BuildHasher>(
-    value: &Value,
-    _: &HashMap<String, Value, S>,
-) -> Result<Value> {
+pub fn number_with_delimiter(value: &Value, _: &HashMap<String, Value>) -> Result<Value> {
     match value {
         Value::Number(number) => Ok(Value::String(number.separate_with_commas())),
         _ => Ok(value.clone()),
@@ -23,14 +27,17 @@ pub fn number_with_delimiter<S: ::std::hash::BuildHasher>(
 
 /// Converts a numeric value (in bytes) into a human-readable size string with appropriate units.
 ///
+/// # Examples:
+///
+/// ```ignore
+/// {{70691577 | number_to_human_size}}
+/// ```
+///
 /// # Errors
 ///
 /// If the `value` is not a numeric value, the function will return the original
 /// value as a string without any error.
-pub fn number_to_human_size<S: ::std::hash::BuildHasher>(
-    value: &Value,
-    _: &HashMap<String, Value, S>,
-) -> Result<Value> {
+pub fn number_to_human_size(value: &Value, _: &HashMap<String, Value>) -> Result<Value> {
     Byte::from_str(value.to_string()).map_or_else(
         |_| Ok(value.clone()),
         |byte_unit| {
@@ -42,6 +49,13 @@ pub fn number_to_human_size<S: ::std::hash::BuildHasher>(
 }
 
 /// Converts a numeric value into a formatted percentage string.
+///
+/// # Examples:
+///
+/// ```ignore
+/// {{100 | number_to_percentage}}
+/// {{100 | number_to_percentage(format='%n %')}}
+/// ```
 ///
 /// # Errors
 ///
