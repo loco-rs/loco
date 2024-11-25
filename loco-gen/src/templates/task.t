@@ -8,7 +8,7 @@ injections:
   append: true
   content: "pub mod {{ file_name }};"
 - into: src/app.rs
-  above: "// tasks-inject"
+  before: "// tasks-inject"
   content: "        tasks.register(tasks::{{file_name}}::{{module_name}});"
 ---
 use loco_rs::prelude::*;
