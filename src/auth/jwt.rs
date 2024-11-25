@@ -18,7 +18,7 @@ const JWT_ALGORITHM: Algorithm = Algorithm::HS512;
 pub struct UserClaims {
     pub pid: String,
     exp: u64,
-    claims: Option<Value>,
+    pub claims: Option<Value>,
 }
 
 /// Represents the JWT configuration and operations.

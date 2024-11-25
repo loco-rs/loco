@@ -11,7 +11,7 @@
 
  </div>
 
-[English](./README.md) · 中文 · [Français](./README.fr.md) · [Portuguese (Brazil)](./README-pt_BR.md) ・ [日本語](./README.ja.md)
+[English](./README.md) · 中文 · [Français](./README.fr.md) · [Portuguese (Brazil)](./README-pt_BR.md) ・ [日本語](./README.ja.md) · [한국어](./README.ko.md) · [Русский](./README.ru.md)
 
 Loco 是一个用 Rust 编写的 Web 框架，类似于 Rails。Loco 提供快速构建 Web 应用的功能，并且允许创建自定义任务，可以通过 CLI 运行。
 
@@ -27,7 +27,7 @@ Loco 是一个用 Rust 编写的 Web 框架，类似于 Rails。Loco 提供快�
 通过 Cargo 安装 Loco:
 
 ```sh
-cargo install loco-cli
+cargo install loco
 ```
 
 ## 快速开始
