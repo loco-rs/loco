@@ -97,7 +97,7 @@ mailer:
 # Database Configuration
 database:
   # Database connection URI
-  uri: {% raw %}{{{% endraw %} get_env(name="DATABASE_URL", default="{{settings.db.endpoint}}") {% raw %}}}{% endraw %}
+  uri: {% raw %}{{{% endraw %} get_env(name="DATABASE_URL", default="{{settings.db.endpoint | replace(from='NAME', to=settings.package_name) | replace(from='ENV', to='development')}}") {% raw %}}}{% endraw %}
   # When enabled, the sql query will be logged.
   enable_logging: false
   # Set the timeout duration when acquiring a connection.
