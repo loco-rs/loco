@@ -27,5 +27,5 @@ dialoguer = "0.11"
 duct = "0.13"
 
 [dev-dependencies]
-tempfile = "3"
+tree-fs = { version = "0.2.1" }
 syn = { version = "2", features = ["full"] }
