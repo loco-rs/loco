@@ -2602,7 +2602,7 @@ dependencies = [
 
 [[package]]
 name = "loco-gen"
-version = "0.13.0"
+version = "0.13.2"
 dependencies = [
  "chrono",
  "clap",
@@ -2618,7 +2618,7 @@ dependencies = [
 
 [[package]]
 name = "loco-rs"
-version = "0.13.1"
+version = "0.13.2"
 dependencies = [
  "argon2",
  "async-trait",
@@ -2661,6 +2661,7 @@ dependencies = [
  "sqlx",
  "tera",
  "thiserror",
+ "thousands",
  "tokio",
  "tokio-cron-scheduler",
  "tokio-util",
@@ -3802,9 +3803,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.15"
+version = "0.23.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fbb44d7acc4e873d613422379f69f237a1b141928c02f6bc6ccfddddc2d7993"
+checksum = "9c9cc1d47e243d655ace55ed38201c19ae02c148ae56412ab8750e8f0166ab7f"
 dependencies = [
  "log",
  "once_cell",
@@ -4898,6 +4899,12 @@ dependencies = [
  "quote",
  "syn 2.0.66",
 ]
+
+[[package]]
+name = "thousands"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3bf63baf9f5039dadc247375c29eb13706706cfde997d0330d05aa63a77d8820"
 
 [[package]]
 name = "thread_local"
