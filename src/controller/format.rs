@@ -452,6 +452,7 @@ mod tests {
     #[tokio::test]
     async fn view_response() {
         let yaml_content = r"
+        drop: true
         files:
         - path: template/test.html
           content: |-
@@ -459,7 +460,7 @@ mod tests {
         ";
 
         let tree_res = tree_fs::from_yaml_str(yaml_content).unwrap();
-        let v = TeraView::from_custom_dir(&tree_res).unwrap();
+        let v = TeraView::from_custom_dir(&tree_res.root).unwrap();
 
         assert_debug_snapshot!(view(&v, "template/none.html", serde_json::json!({})));
         let response = view(&v, "template/test.html", serde_json::json!({"foo": "loco"})).unwrap();
@@ -547,6 +548,7 @@ mod tests {
     #[tokio::test]
     async fn builder_view_response() {
         let yaml_content = r"
+        drop: true
         files:
         - path: template/test.html
           content: |-
@@ -554,7 +556,7 @@ mod tests {
         ";
 
         let tree_res = tree_fs::from_yaml_str(yaml_content).unwrap();
-        let v = TeraView::from_custom_dir(&tree_res).unwrap();
+        let v = TeraView::from_custom_dir(&tree_res.root).unwrap();
 
         assert_debug_snapshot!(view(&v, "template/none.html", serde_json::json!({})));
         let response = render()

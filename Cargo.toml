@@ -181,16 +181,10 @@ features = [
 features = ["testing"]
 
 [dev-dependencies]
-cargo_metadata = "0.18.1"
 loco-rs = { path = ".", features = ["testing"] }
 rstest = "0.21.0"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
-tree-fs = { version = "0.1.0" }
+tree-fs = { version = "0.2.1" }
 reqwest = { version = "0.12.7" }
 serial_test = "3.1.1"
 tower = { workspace = true, features = ["util"] }
-
-# generator tests
-tempfile = "3"
-duct_sh = { version = "0.13.7" }
-syn = { version = "2", features = ["full"] }

@@ -253,7 +253,8 @@ async fn static_assets() {
     configure_insta!();
 
     let base_static_assets_path = PathBuf::from("assets").join("static");
-    let static_asset_path = tree_fs::Tree::default()
+    let static_asset_path = tree_fs::TreeBuilder::default()
+        .drop(true)
         .add(
             base_static_assets_path.join("404.html"),
             "<h1>404 not found</h1>",
@@ -266,7 +267,7 @@ async fn static_assets() {
         .expect("create static tree file");
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
-    let base_static_path = static_asset_path.join(base_static_assets_path);
+    let base_static_path = static_asset_path.root.join(base_static_assets_path);
     ctx.config.server.middlewares.static_assets = Some(middleware::static_assets::StaticAssets {
         enable: true,
         must_exist: true,
@@ -367,16 +368,16 @@ async fn fallback(
 ) {
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
-    let file = if file {
+    let maybe_file = if file {
         Some(
-            tree_fs::Tree::default()
+            tree_fs::TreeBuilder::default()
+                .drop(true)
                 .add(
                     PathBuf::from("static_content.html"),
                     "<h1>fallback response</h1>",
                 )
                 .create()
-                .unwrap()
-                .join("static_content.html"),
+                .unwrap(),
         )
     } else {
         None
@@ -384,7 +385,13 @@ async fn fallback(
 
     let mut fallback_config = middleware::fallback::Fallback {
         enable: true,
-        file: file.clone().map(|f| f.display().to_string()),
+        file: maybe_file.as_ref().map(|tree_fs| {
+            tree_fs
+                .root
+                .join("static_content.html")
+                .display()
+                .to_string()
+        }),
         not_found: not_found.clone(),
         ..Default::default()
     };
@@ -408,7 +415,7 @@ async fn fallback(
     }
 
     let response_text = res.text().await.expect("response text");
-    if file.is_some() {
+    if maybe_file.is_some() {
         assert_eq!(response_text, "<h1>fallback response</h1>".to_string());
     }
 
