@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## v0.13.1
+## v0.13.2
 
 * static fallback now returns 200 and not 404 [https://github.com/loco-rs/loco/pull/991](https://github.com/loco-rs/loco/pull/991)
 * cache system now has expiry [https://github.com/loco-rs/loco/pull/1006](https://github.com/loco-rs/loco/pull/1006)
