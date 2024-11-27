@@ -84,7 +84,7 @@ pub async fn start<H: Hooks>(
 
     match (router, run_worker) {
         (Some(router), false) => {
-            H::serve(router, &app_context).await?;
+            H::serve(router, &app_context, &server_config).await?;
         }
         (Some(router), true) => {
             let handle = if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
@@ -93,7 +93,7 @@ pub async fn start<H: Hooks>(
                 None
             };
 
-            H::serve(router, &app_context).await?;
+            H::serve(router, &app_context, &server_config).await?;
 
             if let Some(handle) = handle {
                 shutdown_and_await_queue_worker(&app_context, handle).await?;

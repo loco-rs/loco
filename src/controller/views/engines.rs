@@ -2,6 +2,7 @@ use std::path::Path;
 
 use serde::Serialize;
 
+use super::tera_builtins;
 use crate::{controller::views::ViewRenderer, Error, Result};
 
 const VIEWS_DIR: &str = "assets/views";
@@ -43,13 +44,14 @@ impl TeraView {
             )));
         }
 
-        let tera = tera::Tera::new(
+        let mut tera = tera::Tera::new(
             path.as_ref()
                 .join("**")
                 .join("*.html")
                 .to_str()
                 .ok_or_else(|| Error::string("invalid blob"))?,
         )?;
+        tera_builtins::filters::register_filters(&mut tera);
         let ctx = tera::Context::default();
         Ok(Self {
             #[cfg(debug_assertions)]
@@ -93,6 +95,7 @@ mod tests {
     #[test]
     fn can_render_view() {
         let yaml_content = r"
+        drop: true
         files:
         - path: template/test.html
           content: |-
@@ -103,7 +106,7 @@ mod tests {
         ";
 
         let tree_res = tree_fs::from_yaml_str(yaml_content).unwrap();
-        let v = TeraView::from_custom_dir(&tree_res).unwrap();
+        let v = TeraView::from_custom_dir(&tree_res.root).unwrap();
 
         assert_eq!(
             v.render("template/test.html", json!({"foo": "foo-txt"}))

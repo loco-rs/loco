@@ -71,8 +71,8 @@ impl DBOption {
     #[must_use]
     pub const fn endpoint_config(&self) -> &str {
         match self {
-            Self::Sqlite => "sqlite://loco_app.sqlite?mode=rwc",
-            Self::Postgres => "postgres://loco:loco@localhost:5432/loco_app",
+            Self::Sqlite => "sqlite://NAME_ENV.sqlite?mode=rwc",
+            Self::Postgres => "postgres://loco:loco@localhost:5432/NAME_ENV",
             Self::None => "",
         }
     }

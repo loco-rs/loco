@@ -1,6 +1,7 @@
 ---
-source: loco-new/tests/templates/db.rs
+source: tests/templates/db.rs
 expression: "std::fs::read_to_string(generator.path(\"src/app.rs\")).expect(\"could not open file\")"
+snapshot_kind: text
 ---
 use std::path::Path;
 use async_trait::async_trait;
@@ -59,6 +60,7 @@ impl Hooks for App {
     }
     fn register_tasks(tasks: &mut Tasks) {
         tasks.register(tasks::seed::SeedData);
+        // tasks-inject (do not remove)
     }
     async fn truncate(db: &DatabaseConnection) -> Result<()> {
         truncate_table(db, users::Entity).await?;

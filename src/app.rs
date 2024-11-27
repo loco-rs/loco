@@ -12,11 +12,9 @@ use std::{net::SocketAddr, sync::Arc};
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
 
-#[cfg(feature = "channels")]
-use crate::controller::channels::AppChannels;
 use crate::{
     bgworker::{self, Queue},
-    boot::{shutdown_signal, BootResult, StartMode},
+    boot::{shutdown_signal, BootResult, ServeParams, StartMode},
     cache::{self},
     config::{self, Config},
     controller::{
@@ -111,10 +109,10 @@ pub trait Hooks: Send {
     ///
     /// # Returns
     /// A Result indicating success () or an error if the server fails to start.
-    async fn serve(app: AxumRouter, ctx: &AppContext) -> Result<()> {
+    async fn serve(app: AxumRouter, ctx: &AppContext, serve_params: &ServeParams) -> Result<()> {
         let listener = tokio::net::TcpListener::bind(&format!(
             "{}:{}",
-            ctx.config.server.binding, ctx.config.server.port
+            serve_params.binding, serve_params.port
         ))
         .await?;
 
@@ -191,10 +189,6 @@ pub trait Hooks: Send {
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
         Ok(ctx)
     }
-
-    #[cfg(feature = "channels")]
-    /// Register channels endpoints to the application routers
-    fn register_channels(_ctx: &AppContext) -> AppChannels;
 
     /// Connects custom workers to the application using the provided
     /// [`Processor`] and [`AppContext`].

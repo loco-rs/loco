@@ -193,13 +193,13 @@ pub async fn initialize_database(pool: &SqlitePool) -> Result<()> {
                 updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
-            CREATE TABLE IF NOT EXISTS aquire_queue_write_lock (
+            CREATE TABLE IF NOT EXISTS sqlt_loco_queue_lock (
                 id INTEGER PRIMARY KEY CHECK (id = 1),
                 is_locked BOOLEAN NOT NULL DEFAULT FALSE,
                 locked_at TIMESTAMP NULL
             );
 
-            INSERT OR IGNORE INTO aquire_queue_write_lock (id, is_locked) VALUES (1, FALSE);
+            INSERT OR IGNORE INTO sqlt_loco_queue_lock (id, is_locked) VALUES (1, FALSE);
 
             CREATE INDEX IF NOT EXISTS idx_sqlt_queue_status_run_at ON sqlt_loco_queue(status, run_at);
             ",
@@ -245,7 +245,7 @@ async fn dequeue(client: &SqlitePool) -> Result<Option<Task>> {
     let mut tx = client.begin().await?;
 
     let acquired_write_lock = sqlx::query(
-        "UPDATE aquire_queue_write_lock SET
+        "UPDATE sqlt_loco_queue_lock SET
             is_locked = TRUE,
             locked_at = CURRENT_TIMESTAMP
         WHERE id = 1 AND is_locked = FALSE",
@@ -291,7 +291,7 @@ async fn dequeue(client: &SqlitePool) -> Result<Option<Task>> {
 
         // Release the write lock
         sqlx::query(
-            "UPDATE aquire_queue_write_lock
+            "UPDATE sqlt_loco_queue_lock 
               SET is_locked = FALSE,
                   locked_at = NULL
               WHERE id = 1",
@@ -305,7 +305,7 @@ async fn dequeue(client: &SqlitePool) -> Result<Option<Task>> {
     } else {
         // Release the write lock, no task found
         sqlx::query(
-            "UPDATE aquire_queue_write_lock
+            "UPDATE sqlt_loco_queue_lock 
               SET is_locked = FALSE,
                   locked_at = NULL
               WHERE id = 1",
