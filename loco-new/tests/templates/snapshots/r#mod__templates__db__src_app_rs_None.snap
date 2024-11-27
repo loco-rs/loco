@@ -1,6 +1,7 @@
 ---
-source: loco-new/tests/templates/db.rs
+source: tests/templates/db.rs
 expression: "std::fs::read_to_string(generator.path(\"src/app.rs\")).expect(\"could not open file\")"
+snapshot_kind: text
 ---
 use async_trait::async_trait;
 use loco_rs::{
@@ -51,5 +52,6 @@ impl Hooks for App {
         Ok(())
     }
     fn register_tasks(_tasks: &mut Tasks) {
+        // tasks-inject (do not remove)
     }
 }
