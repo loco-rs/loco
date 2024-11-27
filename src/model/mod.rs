@@ -26,6 +26,7 @@ pub enum ModelError {
     #[error("{errors:?}")]
     ModelValidation { errors: ModelValidation },
 
+    #[cfg(feature = "auth_jwt")]
     #[error("jwt error")]
     Jwt(#[from] jsonwebtoken::errors::Error),
 
