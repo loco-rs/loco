@@ -21,7 +21,10 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use crate::{
     app::{AppContext, Hooks},
-    controller::{middleware::MiddlewareLayer, routes::Routes},
+    controller::{
+        middleware::MiddlewareLayer,
+        routes::{LocoMethodRouter, Routes},
+    },
     Result,
 };
 #[cfg(feature = "openapi")]
