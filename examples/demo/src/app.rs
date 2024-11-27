@@ -98,6 +98,7 @@ impl Hooks for App {
         tasks.register(tasks::user_report::UserReport);
         tasks.register(tasks::seed::SeedData);
         tasks.register(tasks::foo::Foo);
+        // tasks-inject (do not remove)
     }
 
     async fn truncate(db: &DatabaseConnection) -> Result<()> {

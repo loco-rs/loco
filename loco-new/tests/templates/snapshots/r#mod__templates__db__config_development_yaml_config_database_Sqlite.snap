@@ -1,12 +1,13 @@
 ---
-source: loco-new/tests/templates/db.rs
-expression: "format!(\"{:#?}\",\n    assertion::yaml::get_value_at_path(&content, &[\"database\"]).unwrap())"
+source: tests/templates/db.rs
+expression: "format!(\"{:#?}\",\nassertion::yaml::get_value_at_path(&content, &[\"database\"]).unwrap())"
+snapshot_kind: text
 ---
 Mapping {
     "uri": Mapping {
         Mapping {
             "get_env(name=\"DATABASE_URL\"": Null,
-            "default=\"sqlite://loco_app.sqlite?mode=rwc\")": Null,
+            "default=\"sqlite://loco-app-test_development.sqlite?mode=rwc\")": Null,
         }: Null,
     },
     "enable_logging": Bool(false),

@@ -12,8 +12,6 @@ use std::{net::SocketAddr, sync::Arc};
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
 
-#[cfg(feature = "channels")]
-use crate::controller::channels::AppChannels;
 use crate::{
     bgworker::{self, Queue},
     boot::{shutdown_signal, BootResult, ServeParams, StartMode},
@@ -191,10 +189,6 @@ pub trait Hooks: Send {
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
         Ok(ctx)
     }
-
-    #[cfg(feature = "channels")]
-    /// Register channels endpoints to the application routers
-    fn register_channels(_ctx: &AppContext) -> AppChannels;
 
     /// Connects custom workers to the application using the provided
     /// [`Processor`] and [`AppContext`].

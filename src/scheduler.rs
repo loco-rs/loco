@@ -453,21 +453,22 @@ mod tests {
     pub async fn can_run() {
         let mut scheduler = get_scheduler_from_config().unwrap();
 
-        let path = tree_fs::Tree::default()
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
             .add("scheduler.txt", "")
             .add("scheduler2.txt", "")
             .create()
             .unwrap();
 
         assert_eq!(
-            std::fs::read_to_string(path.join("scheduler.txt"))
+            std::fs::read_to_string(tree_fs.root.join("scheduler.txt"))
                 .unwrap()
                 .lines()
                 .count(),
             0
         );
         assert_eq!(
-            std::fs::read_to_string(path.join("scheduler2.txt"))
+            std::fs::read_to_string(tree_fs.root.join("scheduler2.txt"))
                 .unwrap()
                 .lines()
                 .count(),
@@ -478,7 +479,10 @@ mod tests {
             (
                 "test".to_string(),
                 Job {
-                    run: format!("echo loco >> {}", path.join("scheduler.txt").display()),
+                    run: format!(
+                        "echo loco >> {}",
+                        tree_fs.root.join("scheduler.txt").display()
+                    ),
                     shell: true,
                     cron: "run every 1 second".to_string(),
                     tags: None,
@@ -488,7 +492,10 @@ mod tests {
             (
                 "test_2".to_string(),
                 Job {
-                    run: format!("echo loco >> {}", path.join("scheduler2.txt").display()),
+                    run: format!(
+                        "echo loco >> {}",
+                        tree_fs.root.join("scheduler2.txt").display()
+                    ),
                     shell: true,
                     cron: "* * * * * ? *".to_string(),
                     tags: None,
@@ -505,14 +512,14 @@ mod tests {
         handle.abort();
 
         assert!(
-            std::fs::read_to_string(path.join("scheduler.txt"))
+            std::fs::read_to_string(tree_fs.root.join("scheduler.txt"))
                 .unwrap()
                 .lines()
                 .count()
                 >= 4
         );
         assert!(
-            std::fs::read_to_string(path.join("scheduler2.txt"))
+            std::fs::read_to_string(tree_fs.root.join("scheduler2.txt"))
                 .unwrap()
                 .lines()
                 .count()

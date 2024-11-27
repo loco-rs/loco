@@ -6,11 +6,8 @@ pub use sea_orm_migration::prelude::*;
 
 #[cfg(feature = "openapi")]
 use utoipa::OpenApi;
-
 #[cfg(feature = "openapi")]
 use crate::auth::openapi::{set_jwt_location, SecurityAddon};
-#[cfg(feature = "channels")]
-use crate::controller::channels::AppChannels;
 use crate::{
     app::{AppContext, Hooks, Initializer},
     bgworker::Queue,
@@ -124,12 +121,6 @@ impl Hooks for AppHook {
 
     async fn seed(_db: &DatabaseConnection, _base: &Path) -> Result<()> {
         Ok(())
-    }
-
-    #[cfg(feature = "channels")]
-    #[allow(clippy::unimplemented)]
-    fn register_channels(_ctx: &AppContext) -> AppChannels {
-        unimplemented!();
     }
 
     #[cfg(feature = "openapi")]

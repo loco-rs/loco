@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+## v0.13.2
+
+* static fallback now returns 200 and not 404 [https://github.com/loco-rs/loco/pull/991](https://github.com/loco-rs/loco/pull/991)
+* cache system now has expiry [https://github.com/loco-rs/loco/pull/1006](https://github.com/loco-rs/loco/pull/1006)
+* fixed: http interface binding [https://github.com/loco-rs/loco/pull/1007](https://github.com/loco-rs/loco/pull/1007)
+* JWT claims now editable and public [https://github.com/loco-rs/loco/issues/988](https://github.com/loco-rs/loco/issues/988)
+* CORS now not enabled in dev mode to avoid friction [https://github.com/loco-rs/loco/pull/1009](https://github.com/loco-rs/loco/pull/1009)
+* fixed: task code generation now injects in all cases [https://github.com/loco-rs/loco/pull/1012](https://github.com/loco-rs/loco/pull/1012)
+
+**BREAKING**
+In your `app.rs` add the following injection comment at the bottom:
+
+```rust
+fn register_tasks(tasks: &mut Tasks) {
+    tasks.register(tasks::user_report::UserReport);
+    tasks.register(tasks::seed::SeedData);
+    tasks.register(tasks::foo::Foo);
+    // tasks-inject (do not remove)
+}
+```
+* fix: seeding now sets autoincrement fields in the relevant DBs [https://github.com/loco-rs/loco/pull/1014](https://github.com/loco-rs/loco/pull/1014)
+* fix: avoid generating entities from queue tables when the queue backend is database based [https://github.com/loco-rs/loco/issues/1013](https://github.com/loco-rs/loco/issues/1013)
+* removed: channels moved to an initializer [https://github.com/loco-rs/loco/issues/892](https://github.com/loco-rs/loco/issues/892)
+**BREAKING**
+See how this looks like in [https://github.com/loco-rs/chat-rooms](https://github.com/loco-rs/chat-rooms)
+
 ## v0.13.0
 
 * Added SQLite background job support [https://github.com/loco-rs/loco/pull/969](https://github.com/loco-rs/loco/pull/969)
