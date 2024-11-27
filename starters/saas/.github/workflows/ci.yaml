@@ -23,8 +23,8 @@ jobs:
         uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
-          components: rustfmt
+          toolchain: nightly
+          components: clippy, rustfmt
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
         with:
@@ -58,7 +58,7 @@ jobs:
 
     permissions:
       contents: read
-    
+
     services:
       redis:
         image: redis
@@ -99,4 +99,3 @@ jobs:
         env:
           REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres_test
-          
