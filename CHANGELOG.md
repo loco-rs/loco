@@ -2,6 +2,34 @@
 
 ## Unreleased
 
+* fix: guard jwt error behind feature flag. [https://github.com/loco-rs/loco/pull/1032](https://github.com/loco-rs/loco/pull/1032)
+* fix: logger file_appender not using the seperated format setting. [https://github.com/loco-rs/loco/pull/1036](https://github.com/loco-rs/loco/pull/1036)
+* seed cli command. [https://github.com/loco-rs/loco/pull/1046](https://github.com/loco-rs/loco/pull/1046)
+* Updated validator to 0.19. [https://github.com/loco-rs/loco/pull/993](https://github.com/loco-rs/loco/pull/993)
+* Testing helpers: simplified function calls + adding html selector. [https://github.com/loco-rs/loco/pull/1047](https://github.com/loco-rs/loco/pull/1047)
+  ### Breaking Changes
+  #### Updated Import Paths
+  The testing module import path has been updated. To adapt your code, update imports from:
+  ```rust
+  use loco_rs::testing;
+  ```
+  to:
+  ```rust
+  use testing::prelude::*;
+  ```
+  #### Simplified Function Calls
+  Function calls within the testing module no longer require the testing:: prefix. Update your code accordingly. For example:
+  
+  Before:
+  ```rust
+  let boot = testing::boot_test::<App>().await.unwrap();
+  ```
+
+  After:
+  ```rust
+  let boot = boot_test::<App>().await.unwrap();
+  ```
+
 ## v0.13.2
 
 * static fallback now returns 200 and not 404 [https://github.com/loco-rs/loco/pull/991](https://github.com/loco-rs/loco/pull/991)

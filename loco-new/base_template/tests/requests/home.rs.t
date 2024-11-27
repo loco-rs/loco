@@ -1,4 +1,4 @@
-use loco_rs::testing;
+use loco_rs::testing::prelude::*;
 use {{settings.module_name}}::app::App;
 use serial_test::serial;
 
@@ -6,7 +6,7 @@ use serial_test::serial;
 #[serial]
 async fn can_get_home() {
 
-    testing::request::<App, _, _>(|request, _ctx| async move {
+    request::<App, _, _>(|request, _ctx| async move {
         let res = request.get("/api").await;
 
         assert_eq!(res.status_code(), 200);

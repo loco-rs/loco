@@ -1,12 +1,13 @@
 //! # In-Memory Cache Driver
 //!
 //! This module implements a cache driver using an in-memory cache.
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use async_trait::async_trait;
-use moka::sync::Cache;
-use moka::Expiry;
+use moka::{sync::Cache, Expiry};
 
 use super::CacheDriver;
 use crate::cache::CacheResult;
@@ -81,7 +82,8 @@ impl CacheDriver for Inmem {
         Ok(())
     }
 
-    /// Inserts a key-value pair into the cache that expires after the specified number of seconds.
+    /// Inserts a key-value pair into the cache that expires after the specified
+    /// number of seconds.
     ///
     /// # Errors
     ///

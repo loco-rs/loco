@@ -1,7 +1,6 @@
 ---
 source: tests/templates/db.rs
 expression: "std::fs::read_to_string(generator.path(\"src/app.rs\")).expect(\"could not open file\")"
-snapshot_kind: text
 ---
 use std::path::Path;
 use async_trait::async_trait;
@@ -19,6 +18,7 @@ use loco_rs::{
 use migration::Migrator;
 use sea_orm::DatabaseConnection;
 
+#[allow(unused_imports)]
 use crate::{
     controllers
     ,tasks
@@ -58,8 +58,9 @@ impl Hooks for App {
     async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {
         Ok(())
     }
+
+    #[allow(unused_variables)]
     fn register_tasks(tasks: &mut Tasks) {
-        tasks.register(tasks::seed::SeedData);
         // tasks-inject (do not remove)
     }
     async fn truncate(db: &DatabaseConnection) -> Result<()> {

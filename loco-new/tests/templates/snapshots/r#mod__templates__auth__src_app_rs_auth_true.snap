@@ -1,7 +1,6 @@
 ---
 source: tests/templates/auth.rs
 expression: "std::fs::read_to_string(generator.path(\"src/app.rs\")).expect(\"could not open file\")"
-snapshot_kind: text
 ---
 use async_trait::async_trait;
 use loco_rs::{
@@ -15,6 +14,7 @@ use loco_rs::{
     Result,
 };
 
+#[allow(unused_imports)]
 use crate::{
     controllers,
 };
@@ -51,7 +51,9 @@ impl Hooks for App {
     async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {
         Ok(())
     }
-    fn register_tasks(_tasks: &mut Tasks) {
+
+    #[allow(unused_variables)]
+    fn register_tasks(tasks: &mut Tasks) {
         // tasks-inject (do not remove)
     }
 }
