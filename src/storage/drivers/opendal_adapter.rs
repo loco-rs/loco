@@ -85,7 +85,7 @@ impl StoreDriver for OpendalAdapter {
             let to = to.display().to_string();
             Ok(self.opendal_impl.rename(&from, &to).await?)
         } else {
-            self.copy(&from, &to).await?;
+            self.copy(from, to).await?;
             self.delete(from).await?;
             Ok(())
         }
