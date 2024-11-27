@@ -71,7 +71,10 @@ pub fn with_credentials(
 #[cfg(test)]
 #[must_use]
 pub fn with_failure() -> Box<dyn StoreDriver> {
-    let s3 = S3::default().bucket("loco-test").region("ap-south-1");
+    let s3 = S3::default()
+        .bucket("loco-test")
+        .region("ap-south-1")
+        .disable_ec2_metadata();
 
     Box::new(OpendalAdapter::new(Operator::new(s3).unwrap().finish()))
 }
