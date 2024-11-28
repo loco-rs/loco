@@ -4,20 +4,20 @@
 
 use std::{fmt, sync::OnceLock};
 
-#[cfg(feature = "openapi")]
-use axum::routing::get;
 use axum::Router as AXRouter;
 use regex::Regex;
-#[cfg(feature = "openapi")]
-use utoipa::openapi::OpenApi;
-#[cfg(feature = "openapi")]
-use utoipa_axum::router::{OpenApiRouter, UtoipaMethodRouterExt};
-#[cfg(feature = "openapi")]
+#[cfg(feature = "openapi_redoc")]
 use utoipa_redoc::{Redoc, Servable};
-#[cfg(feature = "openapi")]
+#[cfg(feature = "openapi_scalar")]
 use utoipa_scalar::{Scalar, Servable as ScalarServable};
-#[cfg(feature = "openapi")]
+#[cfg(feature = "openapi_swagger")]
 use utoipa_swagger_ui::SwaggerUi;
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
+use utoipa_axum::router::{OpenApiRouter, UtoipaMethodRouterExt};
 
 use crate::{
     app::{AppContext, Hooks},
@@ -27,29 +27,20 @@ use crate::{
     },
     Result,
 };
-#[cfg(feature = "openapi")]
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
 use crate::{
     config::OpenAPIType,
-    controller::{format, Response},
+    controller::openapi,
 };
 
 static NORMALIZE_URL: OnceLock<Regex> = OnceLock::new();
 
 fn get_normalize_url() -> &'static Regex {
     NORMALIZE_URL.get_or_init(|| Regex::new(r"/+").unwrap())
-}
-
-#[cfg(feature = "openapi")]
-static OPENAPI_SPEC: OnceLock<OpenApi> = OnceLock::new();
-
-#[cfg(feature = "openapi")]
-fn set_openapi_spec(api: OpenApi) -> &'static OpenApi {
-    OPENAPI_SPEC.get_or_init(|| api)
-}
-
-#[cfg(feature = "openapi")]
-fn get_openapi_spec() -> &'static OpenApi {
-    OPENAPI_SPEC.get().unwrap()
 }
 
 /// Represents the routes of the application.
@@ -222,7 +213,11 @@ impl AppRoutes {
         // using the router directly, and ServiceBuilder has been reported to give
         // issues in compile times itself (https://github.com/rust-lang/crates.io/pull/7443).
         //
-        #[cfg(feature = "openapi")]
+        #[cfg(any(
+            feature = "openapi_swagger",
+            feature = "openapi_redoc",
+            feature = "openapi_scalar"
+        ))]
         let mut api_router: OpenApiRouter<AppContext> =
             OpenApiRouter::with_openapi(H::inital_openapi_spec(&ctx));
 
@@ -232,7 +227,11 @@ impl AppRoutes {
                 LocoMethodRouter::Axum(method) => {
                     app = app.route(&router.uri, method);
                 }
-                #[cfg(feature = "openapi")]
+                #[cfg(any(
+                    feature = "openapi_swagger",
+                    feature = "openapi_redoc",
+                    feature = "openapi_scalar"
+                ))]
                 LocoMethodRouter::Utoipa(method) => {
                     app = app.route(&router.uri, method.2.clone());
                     api_router = api_router.routes(method.with_state(ctx.clone()));
@@ -240,12 +239,20 @@ impl AppRoutes {
             }
         }
 
-        #[cfg(feature = "openapi")]
+        #[cfg(any(
+            feature = "openapi_swagger",
+            feature = "openapi_redoc",
+            feature = "openapi_scalar"
+        ))]
         let (_, api) = api_router.split_for_parts();
-        #[cfg(feature = "openapi")]
-        set_openapi_spec(api);
+        #[cfg(any(
+            feature = "openapi_swagger",
+            feature = "openapi_redoc",
+            feature = "openapi_scalar"
+        ))]
+        openapi::set_openapi_spec(api);
 
-        #[cfg(feature = "openapi")]
+        #[cfg(feature = "openapi_redoc")]
         {
             if let OpenAPIType::Redoc {
                 url,
@@ -253,12 +260,12 @@ impl AppRoutes {
                 spec_yaml_url,
             } = ctx.config.server.openapi.redoc.clone()
             {
-                app = app.merge(Redoc::with_url(url, get_openapi_spec().clone()));
-                app = add_openapi_endpoints(app, spec_json_url, spec_yaml_url);
+                app = app.merge(Redoc::with_url(url, openapi::get_openapi_spec().clone()));
+                app = openapi::add_openapi_endpoints(app, spec_json_url, spec_yaml_url);
             }
         }
 
-        #[cfg(feature = "openapi")]
+        #[cfg(feature = "openapi_scalar")]
         {
             if let OpenAPIType::Scalar {
                 url,
@@ -266,12 +273,12 @@ impl AppRoutes {
                 spec_yaml_url,
             } = ctx.config.server.openapi.scalar.clone()
             {
-                app = app.merge(Scalar::with_url(url, get_openapi_spec().clone()));
-                app = add_openapi_endpoints(app, spec_json_url, spec_yaml_url);
+                app = app.merge(Scalar::with_url(url, openapi::get_openapi_spec().clone()));
+                app = openapi::add_openapi_endpoints(app, spec_json_url, spec_yaml_url);
             }
         }
 
-        #[cfg(feature = "openapi")]
+        #[cfg(feature = "openapi_swagger")]
         {
             if let OpenAPIType::Swagger {
                 url,
@@ -279,8 +286,10 @@ impl AppRoutes {
                 spec_yaml_url,
             } = ctx.config.server.openapi.swagger.clone()
             {
-                app = app.merge(SwaggerUi::new(url).url(spec_json_url, get_openapi_spec().clone()));
-                app = add_openapi_endpoints(app, None, spec_yaml_url);
+                app = app.merge(
+                    SwaggerUi::new(url).url(spec_json_url, openapi::get_openapi_spec().clone()),
+                );
+                app = openapi::add_openapi_endpoints(app, None, spec_yaml_url);
             }
         }
 
@@ -292,31 +301,6 @@ impl AppRoutes {
         let router = app.with_state(ctx);
         Ok(router)
     }
-}
-
-#[cfg(feature = "openapi")]
-async fn openapi_spec_json() -> Result<Response> {
-    format::json(get_openapi_spec())
-}
-
-#[cfg(feature = "openapi")]
-async fn openapi_spec_yaml() -> Result<Response> {
-    format::text(&get_openapi_spec().to_yaml()?)
-}
-
-#[cfg(feature = "openapi")]
-fn add_openapi_endpoints(
-    mut app: AXRouter<AppContext>,
-    json_url: Option<String>,
-    yaml_url: Option<String>,
-) -> AXRouter<AppContext> {
-    if let Some(json_url) = json_url {
-        app = app.route(&json_url, get(openapi_spec_json));
-    }
-    if let Some(yaml_url) = yaml_url {
-        app = app.route(&yaml_url, get(openapi_spec_yaml));
-    }
-    app
 }
 
 #[cfg(test)]

@@ -1,3 +1,3 @@
 mod middlewares;
-#[cfg(feature = "openapi")]
+#[cfg(feature = "all_openapi")]
 mod openapi;

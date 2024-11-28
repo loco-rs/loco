@@ -415,7 +415,11 @@ pub struct Server {
     #[serde(default)]
     pub middlewares: middleware::Config,
     /// OpenAPI configuration
-    #[cfg(feature = "openapi")]
+    #[cfg(any(
+        feature = "openapi_swagger",
+        feature = "openapi_redoc",
+        feature = "openapi_scalar"
+    ))]
     pub openapi: OpenAPI,
 }
 
@@ -431,7 +435,11 @@ impl Server {
 }
 
 /// OpenAPI configuration
-#[cfg(feature = "openapi")]
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct OpenAPI {
     /// Redoc configuration
@@ -442,7 +450,11 @@ pub struct OpenAPI {
     pub swagger: OpenAPIType,
 }
 
-#[cfg(feature = "openapi")]
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum OpenAPIType {
     Redoc {
@@ -471,7 +483,11 @@ pub enum OpenAPIType {
     },
 }
 
-#[cfg(feature = "openapi")]
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
 impl OpenAPIType {
     pub fn url(&self) -> &String {
         match self {

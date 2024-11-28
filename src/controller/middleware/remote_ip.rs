@@ -151,7 +151,7 @@ fn maybe_get_forwarded(
 
     let forwarded = xffs.join(",");
 
-    return forwarded
+    forwarded
         .split(',')
         .map(str::trim)
         .map(str::parse)
@@ -179,7 +179,7 @@ fn maybe_get_forwarded(
         > The first trustworthy X-Forwarded-For IP address may belong to an untrusted intermediate
         > proxy rather than the actual client computer, but it is the only IP suitable for security uses.
         */
-        .next_back();
+        .next_back()
 }
 
 #[derive(Copy, Clone, Debug)]

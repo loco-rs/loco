@@ -35,13 +35,11 @@ auth_jwt = ["dep:jsonwebtoken"]
 cli = ["dep:clap"]
 testing = ["dep:axum-test"]
 with-db = ["dep:sea-orm", "dep:sea-orm-migration", "loco-gen/with-db"]
-openapi = [
-    "dep:utoipa",
-    "dep:utoipa-axum",
-    "dep:utoipa-swagger-ui",
-    "dep:utoipa-redoc",
-    "dep:utoipa-scalar",
-]
+# OpenAPI features
+all_openapi = ["openapi_swagger", "openapi_redoc", "openapi_scalar"]
+openapi_swagger = ["dep:utoipa", "dep:utoipa-axum", "dep:utoipa-swagger-ui"]
+openapi_redoc = ["dep:utoipa", "dep:utoipa-axum", "dep:utoipa-redoc"]
+openapi_scalar = ["dep:utoipa", "dep:utoipa-axum", "dep:utoipa-scalar"]
 # Storage features
 all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
 storage_aws_s3 = ["object_store/aws"]

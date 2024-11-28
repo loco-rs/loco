@@ -6,7 +6,11 @@ use axum::{
     routing::{MethodRouter, Route},
 };
 use tower::{Layer, Service};
-#[cfg(feature = "openapi")]
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
 use utoipa_axum::router::{UtoipaMethodRouter, UtoipaMethodRouterExt};
 
 use super::describe;
@@ -22,7 +26,11 @@ pub struct Routes {
 #[derive(Clone)]
 pub enum LocoMethodRouter {
     Axum(MethodRouter<AppContext>),
-    #[cfg(feature = "openapi")]
+    #[cfg(any(
+        feature = "openapi_swagger",
+        feature = "openapi_redoc",
+        feature = "openapi_scalar"
+    ))]
     Utoipa(UtoipaMethodRouter<AppContext>),
 }
 
@@ -61,7 +69,6 @@ impl Routes {
     ///     format::json(Health { ok: true })
     /// }
     /// Routes::at("status").add("/_ping", get(ping));
-    ///    
     /// ````
     #[must_use]
     pub fn at(prefix: &str) -> Self {
@@ -96,7 +103,11 @@ impl Routes {
         let method = method.into();
         let actions = match &method {
             LocoMethodRouter::Axum(m) => describe::method_action(m),
-            #[cfg(feature = "openapi")]
+            #[cfg(any(
+                feature = "openapi_swagger",
+                feature = "openapi_redoc",
+                feature = "openapi_scalar"
+            ))]
             LocoMethodRouter::Utoipa(m) => describe::method_action(&m.2),
         };
 
@@ -181,7 +192,11 @@ impl fmt::Debug for LocoMethodRouter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Axum(router) => write!(f, "{:?}", router),
-            #[cfg(feature = "openapi")]
+            #[cfg(any(
+                feature = "openapi_swagger",
+                feature = "openapi_redoc",
+                feature = "openapi_scalar"
+            ))]
             Self::Utoipa(router) => {
                 // Get the axum::routing::MethodRouter from the UtoipaMethodRouter wrapper
                 write!(f, "{:?}", router.2)
@@ -201,7 +216,11 @@ impl LocoMethodRouter {
     {
         match self {
             LocoMethodRouter::Axum(router) => LocoMethodRouter::Axum(router.layer(layer)),
-            #[cfg(feature = "openapi")]
+            #[cfg(any(
+                feature = "openapi_swagger",
+                feature = "openapi_redoc",
+                feature = "openapi_scalar"
+            ))]
             LocoMethodRouter::Utoipa(router) => LocoMethodRouter::Utoipa(router.layer(layer)),
         }
     }
@@ -213,7 +232,11 @@ impl From<MethodRouter<AppContext>> for LocoMethodRouter {
     }
 }
 
-#[cfg(feature = "openapi")]
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
 impl From<UtoipaMethodRouter<AppContext>> for LocoMethodRouter {
     fn from(router: UtoipaMethodRouter<AppContext>) -> Self {
         LocoMethodRouter::Utoipa(router)

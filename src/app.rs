@@ -245,7 +245,11 @@ pub trait Hooks: Send {
     ///     ApiDoc::openapi()
     /// }
     /// ```
-    #[cfg(feature = "openapi")]
+    #[cfg(any(
+        feature = "openapi_swagger",
+        feature = "openapi_redoc",
+        feature = "openapi_scalar"
+    ))]
     #[must_use]
     fn inital_openapi_spec(_ctx: &AppContext) -> utoipa::openapi::OpenApi;
 }

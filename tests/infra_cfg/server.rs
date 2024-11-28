@@ -7,7 +7,7 @@
 //! hardcoded ports and bindings.
 
 use loco_rs::{boot, controller::AppRoutes, prelude::*, tests_cfg::db::AppHook};
-#[cfg(feature = "openapi")]
+#[cfg(feature = "all_openapi")]
 use {serde::Serialize, utoipa::ToSchema, utoipa_axum::routes};
 
 /// The port on which the test server will run.
@@ -31,14 +31,14 @@ async fn post_action(_body: axum::body::Bytes) -> Result<Response> {
     format::render().text("text response")
 }
 
-#[cfg(feature = "openapi")]
+#[cfg(feature = "all_openapi")]
 #[derive(Serialize, Debug, ToSchema)]
 pub struct Album {
     title: String,
     rating: u32,
 }
 
-#[cfg(feature = "openapi")]
+#[cfg(feature = "all_openapi")]
 #[utoipa::path(
     get,
     path = "/album",
@@ -81,11 +81,11 @@ pub async fn start_from_boot(boot_result: boot::BootResult) -> tokio::task::Join
 pub async fn start_from_ctx(ctx: AppContext) -> tokio::task::JoinHandle<()> {
     let app_router = AppRoutes::empty()
         .add_route(
-            #[cfg(not(feature = "openapi"))]
+            #[cfg(not(feature = "all_openapi"))]
             Routes::new()
                 .add("/", get(get_action))
                 .add("/", post(post_action)),
-            #[cfg(feature = "openapi")]
+            #[cfg(feature = "all_openapi")]
             Routes::new()
                 .add("/", get(get_action))
                 .add("/", post(post_action))
