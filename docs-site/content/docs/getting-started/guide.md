@@ -584,7 +584,7 @@ pub fn routes() -> Routes {
         .add("/", post(add))
         .add("/:id", get(get_one))
         .add("/:id", delete(remove))
-        .add("/:id", post(update))
+        .add("/:id", patch(update))
 }
 ```
 
@@ -676,7 +676,7 @@ pub fn routes() -> Routes {
         // .add("/", get(list))
         // .add("/:id", get(get_one))
         // .add("/:id", delete(remove))
-        // .add("/:id", post(update))
+        // .add("/:id", patch(update))
 }
 ```
 
