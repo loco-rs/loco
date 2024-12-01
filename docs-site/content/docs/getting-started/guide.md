@@ -550,9 +550,7 @@ pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
 }
 
 pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Response> {
-    let mut item = ActiveModel {
-        ..Default::default()
-    };
+    let mut item: ActiveModel = Default::default();
     params.update(&mut item);
     let item = item.insert(&ctx.db).await?;
     format::json(item)
@@ -855,9 +853,7 @@ Go back to `src/controllers/comments.rs` and take a look at the `add` function:
 
 ```rust
 pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Response> {
-    let mut item = ActiveModel {
-        ..Default::default()
-    };
+    let mut item: ActiveModel = Default::default();
     params.update(&mut item);
     let item = item.insert(&ctx.db).await?;
     format::json(item)
@@ -872,16 +868,14 @@ async fn add(
     State(ctx): State<AppContext>,
     Json(params): Json<Params>,
 ) -> Result<Response> {
-  // we only want to make sure it exists
-  let _current_user = crate::models::users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
+    // we only want to make sure it exists
+    let _current_user = crate::models::users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
 
-  // next, update
-  // homework/bonus: make a comment _actually_ belong to user (user_id)
-  let mut item = ActiveModel {
-      ..Default::default()
-  };
-  params.update(&mut item);
-  let item = item.insert(&ctx.db).await?;
-  format::json(item)
+    // next, update
+    // homework/bonus: make a comment _actually_ belong to user (user_id)
+    let mut item: ActiveModel = Default::default();
+    params.update(&mut item);
+    let item = item.insert(&ctx.db).await?;
+    format::json(item)
 }
 ```
