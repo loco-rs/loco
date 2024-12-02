@@ -384,7 +384,8 @@ enum DbCommands {
         /// Specifies specific tables to dump.
         #[arg(long, value_delimiter = ',')]
         dump_tables: Option<Vec<String>>,
-        /// Specifies the folder containing seed files (defaults to 'src/fixtures').
+        /// Specifies the folder containing seed files (defaults to
+        /// 'src/fixtures').
         #[arg(long, default_value = "src/fixtures")]
         from: PathBuf,
     },

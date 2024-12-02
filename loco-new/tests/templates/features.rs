@@ -1,7 +1,7 @@
-use super::*;
-
-use crate::assertion;
 use loco::settings;
+
+use super::*;
+use crate::assertion;
 
 pub fn run_generator(default_features: bool, names: &[&str]) -> TestGenerator {
     let settings = settings::Settings {

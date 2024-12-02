@@ -4,8 +4,9 @@
 //! framework is initialized. The primary purpose of this driver is to simplify
 //! the user workflow by avoiding the need for feature flags or optional cache
 //! driver configurations.
-use async_trait::async_trait;
 use std::time::Duration;
+
+use async_trait::async_trait;
 
 use super::CacheDriver;
 use crate::cache::{CacheError, CacheResult};

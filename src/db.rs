@@ -3,9 +3,9 @@
 //! This module defines functions and operations related to the application's
 //! database interactions.
 
-use chrono::{DateTime, Utc};
 use std::{collections::HashMap, fs::File, io::Write, path::Path, sync::OnceLock, time::Duration};
 
+use chrono::{DateTime, Utc};
 use duct::cmd;
 use fs_err as fs;
 use regex::Regex;
@@ -482,7 +482,8 @@ async fn create_postgres_database(
 ///
 /// # Errors
 ///
-/// Returns an error if the operation fails for any reason, such as an unsupported database backend or a query execution issue.
+/// Returns an error if the operation fails for any reason, such as an
+/// unsupported database backend or a query execution issue.
 pub async fn get_tables(db: &DatabaseConnection) -> AppResult<Vec<String>> {
     let query = match db.get_database_backend() {
         DatabaseBackend::MySql => {
@@ -530,10 +531,12 @@ pub async fn get_tables(db: &DatabaseConnection) -> AppResult<Vec<String>> {
 /// Dumps the contents of specified database tables into YAML files.
 ///
 /// # Errors
-/// This function retrieves data from all tables in the database, filters them if `only_tables` is provided,
-/// and writes each table's content to a separate YAML file in the specified directory.
+/// This function retrieves data from all tables in the database, filters them
+/// if `only_tables` is provided, and writes each table's content to a separate
+/// YAML file in the specified directory.
 ///
-/// Returns an error if the operation fails for any reason or could not save the content into a file.
+/// Returns an error if the operation fails for any reason or could not save the
+/// content into a file.
 pub async fn dump_tables(
     db: &DatabaseConnection,
     to: &Path,
