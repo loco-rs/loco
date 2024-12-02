@@ -6,18 +6,18 @@ use std::{fmt, sync::OnceLock};
 
 use axum::Router as AXRouter;
 use regex::Regex;
-#[cfg(feature = "openapi_redoc")]
-use utoipa_redoc::{Redoc, Servable};
-#[cfg(feature = "openapi_scalar")]
-use utoipa_scalar::{Scalar, Servable as ScalarServable};
-#[cfg(feature = "openapi_swagger")]
-use utoipa_swagger_ui::SwaggerUi;
 #[cfg(any(
     feature = "openapi_swagger",
     feature = "openapi_redoc",
     feature = "openapi_scalar"
 ))]
 use utoipa_axum::router::{OpenApiRouter, UtoipaMethodRouterExt};
+#[cfg(feature = "openapi_redoc")]
+use utoipa_redoc::{Redoc, Servable};
+#[cfg(feature = "openapi_scalar")]
+use utoipa_scalar::{Scalar, Servable as ScalarServable};
+#[cfg(feature = "openapi_swagger")]
+use utoipa_swagger_ui::SwaggerUi;
 
 use crate::{
     app::{AppContext, Hooks},
@@ -32,10 +32,7 @@ use crate::{
     feature = "openapi_redoc",
     feature = "openapi_scalar"
 ))]
-use crate::{
-    config::OpenAPIType,
-    controller::openapi,
-};
+use crate::{config::OpenAPIType, controller::openapi};
 
 static NORMALIZE_URL: OnceLock<Regex> = OnceLock::new();
 
@@ -244,13 +241,10 @@ impl AppRoutes {
             feature = "openapi_redoc",
             feature = "openapi_scalar"
         ))]
-        let (_, api) = api_router.split_for_parts();
-        #[cfg(any(
-            feature = "openapi_swagger",
-            feature = "openapi_redoc",
-            feature = "openapi_scalar"
-        ))]
-        openapi::set_openapi_spec(api);
+        {
+            let (_, api) = api_router.split_for_parts();
+            openapi::set_openapi_spec(api);
+        }
 
         #[cfg(feature = "openapi_redoc")]
         {

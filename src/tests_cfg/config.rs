@@ -23,7 +23,11 @@ pub fn test_config() -> Config {
             host: "localhost".to_string(),
             ident: None,
             middlewares: middleware::Config::default(),
-            #[cfg(feature = "all_openapi")]
+            #[cfg(any(
+                feature = "openapi_swagger",
+                feature = "openapi_redoc",
+                feature = "openapi_scalar"
+            ))]
             openapi: config::OpenAPI {
                 redoc: config::OpenAPIType::Redoc {
                     url: "/redoc".to_string(),

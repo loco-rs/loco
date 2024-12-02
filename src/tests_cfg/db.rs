@@ -3,10 +3,18 @@ use std::path::Path;
 use async_trait::async_trait;
 use sea_orm::DatabaseConnection;
 pub use sea_orm_migration::prelude::*;
-#[cfg(feature = "all_openapi")]
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
 use utoipa::OpenApi;
 
-#[cfg(feature = "all_openapi")]
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
 use crate::auth::openapi::{set_jwt_location_ctx, SecurityAddon};
 use crate::{
     app::{AppContext, Hooks, Initializer},
@@ -123,7 +131,11 @@ impl Hooks for AppHook {
         Ok(())
     }
 
-    #[cfg(feature = "all_openapi")]
+    #[cfg(any(
+        feature = "openapi_swagger",
+        feature = "openapi_redoc",
+        feature = "openapi_scalar"
+    ))]
     fn inital_openapi_spec(ctx: &AppContext) -> utoipa::openapi::OpenApi {
         set_jwt_location_ctx(ctx);
 

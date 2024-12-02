@@ -29,12 +29,16 @@ impl OpenAPITrait for OpenAPIType {
 }
 
 #[rstest]
-#[case("/redoc")]
-#[case("/scalar")]
-#[case("/swagger-ui")]
+#[cfg_attr(feature = "openapi_swagger", case("/swagger-ui"))]
+#[cfg_attr(feature = "openapi_redoc", case("/redoc"))]
+#[cfg_attr(feature = "openapi_scalar", case("/scalar"))]
+#[case("")]
 #[tokio::test]
 #[serial]
 async fn openapi(#[case] mut test_name: &str) {
+    if test_name.is_empty() {
+        return;
+    }
     configure_insta!();
 
     let ctx: AppContext = tests_cfg::app::get_app_context().await;
@@ -77,15 +81,28 @@ async fn openapi(#[case] mut test_name: &str) {
 }
 
 #[rstest]
-#[case("redoc/openapi.json")]
-#[case("scalar/openapi.json")]
-#[case("api-docs/openapi.json")]
-#[case("redoc/openapi.yaml")]
-#[case("scalar/openapi.yaml")]
-#[case("api-docs/openapi.yaml")]
+#[cfg_attr(
+    feature = "openapi_swagger",
+    case("api-docs/openapi.json"),
+    case("api-docs/openapi.yaml")
+)]
+#[cfg_attr(
+    feature = "openapi_redoc",
+    case("redoc/openapi.json"),
+    case("redoc/openapi.yaml")
+)]
+#[cfg_attr(
+    feature = "openapi_scalar",
+    case("scalar/openapi.json"),
+    case("scalar/openapi.yaml")
+)]
+#[case("")]
 #[tokio::test]
 #[serial]
 async fn openapi_spec(#[case] test_name: &str) {
+    if test_name.is_empty() {
+        return;
+    }
     configure_insta!();
 
     let ctx: AppContext = tests_cfg::app::get_app_context().await;

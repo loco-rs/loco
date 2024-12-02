@@ -1,3 +1,7 @@
 mod middlewares;
-#[cfg(feature = "all_openapi")]
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
 mod openapi;

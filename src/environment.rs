@@ -131,7 +131,11 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(feature = "all_openapi"))]
+    #[cfg(not(any(
+        feature = "openapi_swagger",
+        feature = "openapi_redoc",
+        feature = "openapi_scalar"
+    )))]
     fn test_from_folder() {
         let config = Environment::Development.load_from_folder(Path::new("examples/demo/config"));
         assert!(config.is_ok());
