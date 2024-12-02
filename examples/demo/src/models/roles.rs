@@ -1,5 +1,4 @@
 use loco_rs::prelude::*;
-use sea_orm::entity::prelude::*;
 
 pub use super::_entities::roles::{self, ActiveModel, Entity, Model};
 use crate::models::{_entities::sea_orm_active_enums::RolesName, users, users_roles};
