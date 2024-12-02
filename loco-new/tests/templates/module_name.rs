@@ -46,12 +46,7 @@ fn test_use_name(#[values("src/bin/main.rs", "tests/requests/home.rs")] file: &s
 
 #[rstest]
 fn test_use_name_with_db(
-    #[values(
-        "tests/models/users.rs",
-        "tests/requests/prepare_data.rs",
-        "tests/tasks/seed.rs"
-    )]
-    file: &str,
+    #[values("tests/models/users.rs", "tests/requests/prepare_data.rs")] file: &str,
 ) {
     let generator = super::db::run_generator(DBOption::Sqlite);
 

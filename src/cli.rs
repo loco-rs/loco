@@ -373,6 +373,21 @@ enum DbCommands {
     Entities,
     /// Truncate data in tables (without dropping)
     Truncate,
+    /// Seed your database with initial data or dump tables to files.
+    Seed {
+        /// Clears all data in the database before seeding.
+        #[arg(short, long)]
+        reset: bool,
+        /// Dumps all database tables to files.
+        #[arg(short, long)]
+        dump: bool,
+        /// Specifies specific tables to dump.
+        #[arg(long, value_delimiter = ',')]
+        dump_tables: Option<Vec<String>>,
+        /// Specifies the folder containing seed files (defaults to 'src/fixtures').
+        #[arg(long, default_value = "src/fixtures")]
+        from: PathBuf,
+    },
 }
 
 impl From<DbCommands> for RunDbCommand {
@@ -384,6 +399,17 @@ impl From<DbCommands> for RunDbCommand {
             DbCommands::Status => Self::Status,
             DbCommands::Entities => Self::Entities,
             DbCommands::Truncate => Self::Truncate,
+            DbCommands::Seed {
+                reset,
+                from,
+                dump,
+                dump_tables,
+            } => Self::Seed {
+                reset,
+                from,
+                dump,
+                dump_tables,
+            },
             DbCommands::Create => {
                 unreachable!("Create db should't handled in the global db commands")
             }

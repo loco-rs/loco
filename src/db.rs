@@ -3,7 +3,8 @@
 //! This module defines functions and operations related to the application's
 //! database interactions.
 
-use std::{collections::HashMap, fs::File, path::Path, sync::OnceLock, time::Duration};
+use chrono::{DateTime, Utc};
+use std::{collections::HashMap, fs::File, io::Write, path::Path, sync::OnceLock, time::Duration};
 
 use duct::cmd;
 use fs_err as fs;
@@ -473,5 +474,168 @@ async fn create_postgres_database(
         query,
     ))
     .await?;
+    Ok(())
+}
+
+/// Retrieves a list of table names from the database.
+///
+///
+/// # Errors
+///
+/// Returns an error if the operation fails for any reason, such as an unsupported database backend or a query execution issue.
+pub async fn get_tables(db: &DatabaseConnection) -> AppResult<Vec<String>> {
+    let query = match db.get_database_backend() {
+        DatabaseBackend::MySql => {
+            return Err(Error::Message(
+                "Unsupported database backend: MySQL".to_string(),
+            ))
+        }
+        DatabaseBackend::Postgres => {
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+        }
+        DatabaseBackend::Sqlite => {
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+        }
+    };
+
+    let result = db
+        .query_all(Statement::from_string(
+            db.get_database_backend(),
+            query.to_string(),
+        ))
+        .await?;
+
+    Ok(result
+        .into_iter()
+        .filter_map(|row| {
+            let col = match db.get_database_backend() {
+                sea_orm::DatabaseBackend::MySql | sea_orm::DatabaseBackend::Postgres => {
+                    "table_name"
+                }
+                sea_orm::DatabaseBackend::Sqlite => "name",
+            };
+
+            if let Ok(table_name) = row.try_get::<String>("", col) {
+                if IGNORED_TABLES.contains(&table_name.as_str()) {
+                    return None;
+                }
+                Some(table_name)
+            } else {
+                None
+            }
+        })
+        .collect())
+}
+
+/// Dumps the contents of specified database tables into YAML files.
+///
+/// # Errors
+/// This function retrieves data from all tables in the database, filters them if `only_tables` is provided,
+/// and writes each table's content to a separate YAML file in the specified directory.
+///
+/// Returns an error if the operation fails for any reason or could not save the content into a file.
+pub async fn dump_tables(
+    db: &DatabaseConnection,
+    to: &Path,
+    only_tables: Option<Vec<String>>,
+) -> AppResult<()> {
+    tracing::debug!("getting tables from the database");
+
+    let tables = get_tables(db).await?;
+    tracing::info!(tables = ?tables, "found tables");
+
+    for table in tables {
+        if let Some(ref only_tables) = only_tables {
+            if !only_tables.contains(&table) {
+                tracing::info!(table, "skipping table as it is not in the specified list");
+                continue;
+            }
+        }
+
+        tracing::info!(table, "get table data");
+
+        let data_query = format!("SELECT * FROM {table}");
+        let data_result = db
+            .query_all(Statement::from_string(
+                db.get_database_backend(),
+                data_query,
+            ))
+            .await?;
+
+        tracing::info!(
+            table,
+            rows_fetched = data_result.len(),
+            "fetched rows from table"
+        );
+
+        let mut table_data: Vec<HashMap<String, serde_json::Value>> = Vec::new();
+
+        for row in data_result {
+            let mut row_data: HashMap<String, serde_json::Value> = HashMap::new();
+
+            for col_name in row.column_names() {
+                let value_result = row
+                    .try_get::<String>("", &col_name)
+                    .map(serde_json::Value::String)
+                    .or_else(|_| {
+                        row.try_get::<i8>("", &col_name)
+                            .map(serde_json::Value::from)
+                    })
+                    .or_else(|_| {
+                        row.try_get::<i16>("", &col_name)
+                            .map(serde_json::Value::from)
+                    })
+                    .or_else(|_| {
+                        row.try_get::<i32>("", &col_name)
+                            .map(serde_json::Value::from)
+                    })
+                    .or_else(|_| {
+                        row.try_get::<i64>("", &col_name)
+                            .map(serde_json::Value::from)
+                    })
+                    .or_else(|_| {
+                        row.try_get::<f32>("", &col_name)
+                            .map(serde_json::Value::from)
+                    })
+                    .or_else(|_| {
+                        row.try_get::<f64>("", &col_name)
+                            .map(serde_json::Value::from)
+                    })
+                    .or_else(|_| {
+                        row.try_get::<uuid::Uuid>("", &col_name)
+                            .map(|v| serde_json::Value::String(v.to_string()))
+                    })
+                    .or_else(|_| {
+                        row.try_get::<DateTime<Utc>>("", &col_name)
+                            .map(|v| serde_json::Value::String(v.to_rfc3339()))
+                    })
+                    .or_else(|_| {
+                        row.try_get::<serde_json::Value>("", &col_name)
+                            .map(serde_json::Value::from)
+                    })
+                    .or_else(|_| {
+                        row.try_get::<bool>("", &col_name)
+                            .map(serde_json::Value::Bool)
+                    })
+                    .ok();
+
+                if let Some(value) = value_result {
+                    row_data.insert(col_name, value);
+                }
+            }
+            table_data.push(row_data);
+        }
+
+        let data = serde_yaml::to_string(&table_data)?;
+
+        let file_db_content_path = to.join(format!("{table}.yaml"));
+
+        let mut file = File::create(&file_db_content_path)?;
+        file.write_all(data.as_bytes())?;
+        tracing::info!(table, file_db_content_path = %file_db_content_path.display(), "table data written to YAML file");
+    }
+
+    tracing::info!("dumping tables process completed successfully");
+
     Ok(())
 }
