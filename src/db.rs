@@ -7,7 +7,7 @@ use std::{collections::HashMap, fs::File, io::Write, path::Path, sync::OnceLock,
 
 use chrono::{DateTime, Utc};
 use duct::cmd;
-use fs_err as fs;
+use fs_err::{self as fs, create_dir_all};
 use regex::Regex;
 use sea_orm::{
     ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
@@ -557,11 +557,10 @@ pub async fn dump_tables(
 
         tracing::info!(table, "get table data");
 
-        let data_query = format!("SELECT * FROM {table}");
         let data_result = db
             .query_all(Statement::from_string(
                 db.get_database_backend(),
-                data_query,
+                format!(r#"SELECT * FROM "{table}""#),
             ))
             .await?;
 
@@ -572,6 +571,11 @@ pub async fn dump_tables(
         );
 
         let mut table_data: Vec<HashMap<String, serde_json::Value>> = Vec::new();
+
+        if !to.exists() {
+            tracing::info!("the specified dump folder does not exist. creating the folder now");
+            create_dir_all(to)?;
+        }
 
         for row in data_result {
             let mut row_data: HashMap<String, serde_json::Value> = HashMap::new();
