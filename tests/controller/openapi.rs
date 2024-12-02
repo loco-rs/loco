@@ -1,6 +1,6 @@
 use insta::assert_debug_snapshot;
 use loco_rs::{
-    config::{Auth, JWTLocation, JWT},
+    config::{Auth, JWTLocation, OpenAPIType, JWT},
     prelude::*,
     tests_cfg,
 };
@@ -16,6 +16,20 @@ macro_rules! configure_insta {
         settings.set_snapshot_suffix("openapi");
         let _guard = settings.bind_to_scope();
     };
+}
+
+trait OpenAPITrait {
+    fn url(&self) -> &String;
+}
+
+impl OpenAPITrait for OpenAPIType {
+    fn url(&self) -> &String {
+        match self {
+            OpenAPIType::Redoc { url, .. }
+            | OpenAPIType::Scalar { url, .. }
+            | OpenAPIType::Swagger { url, .. } => url,
+        }
+    }
 }
 
 #[rstest]

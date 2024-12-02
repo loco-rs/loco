@@ -483,21 +483,6 @@ pub enum OpenAPIType {
     },
 }
 
-#[cfg(any(
-    feature = "openapi_swagger",
-    feature = "openapi_redoc",
-    feature = "openapi_scalar"
-))]
-impl OpenAPIType {
-    pub fn url(&self) -> &String {
-        match self {
-            OpenAPIType::Redoc { url, .. }
-            | OpenAPIType::Scalar { url, .. }
-            | OpenAPIType::Swagger { url, .. } => url,
-        }
-    }
-}
-
 /// Background worker configuration
 /// Example (development):
 /// ```yaml
