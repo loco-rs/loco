@@ -1,7 +1,8 @@
 #![allow(clippy::implicit_hasher)]
+use std::collections::HashMap;
+
 use byte_unit::Byte;
 use serde_json::value::Value;
-use std::collections::HashMap;
 use tera::Result;
 use thousands::Separable;
 
@@ -25,7 +26,8 @@ pub fn number_with_delimiter(value: &Value, _: &HashMap<String, Value>) -> Resul
     }
 }
 
-/// Converts a numeric value (in bytes) into a human-readable size string with appropriate units.
+/// Converts a numeric value (in bytes) into a human-readable size string with
+/// appropriate units.
 ///
 /// # Examples:
 ///
@@ -77,9 +79,10 @@ pub fn number_to_percentage(value: &Value, options: &HashMap<String, Value>) -> 
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use rstest::rstest;
     use serde_json::json;
-    use std::collections::HashMap;
 
     use super::*;
 

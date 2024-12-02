@@ -51,9 +51,8 @@ gen.copy_file("config/production.yaml");            // Production config
 // Database-Related Files
 // =====================
 if db {
-   gen.copy_template_dir("migration");                       // Database migrations directory
+   gen.copy_template_dir("migration");              // Database migrations directory
    gen.copy_dir("src/models");                      // Models directory, copied if background enabled
-   gen.copy_file("src/tasks/seed.rs");              // Task to seed database
    gen.copy_dir("src/fixtures");                    // Database fixtures directory
    gen.copy_template("examples/playground.rs.t");   // Example playground template with DB setup
 
@@ -61,7 +60,6 @@ if db {
    gen.copy_file("tests/models/mod.rs");            // Models tests root
    gen.copy_dir("tests/models/snapshots");          // Test snapshots for models
    gen.copy_template("tests/models/users.rs.t");    // User model test template
-   gen.copy_template("tests/tasks/seed.rs.t");      // Seed tasks test template
    gen.copy_template("tests/requests/prepare_data.rs.t"); // Data preparation template
 }
 
