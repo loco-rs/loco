@@ -1,4 +1,5 @@
 use std::sync::OnceLock;
+
 use utoipa::{
     openapi::security::{ApiKey, ApiKeyValue, HttpAuthScheme, HttpBuilder, SecurityScheme},
     Modify,
@@ -8,16 +9,22 @@ use crate::{app::AppContext, config::JWTLocation};
 
 static JWT_LOCATION: OnceLock<JWTLocation> = OnceLock::new();
 
-pub fn set_jwt_location(ctx: &AppContext) -> &'static JWTLocation {
-    JWT_LOCATION.get_or_init(|| {
-        ctx.config
-            .auth
-            .as_ref()
-            .and_then(|auth| auth.jwt.as_ref())
-            .and_then(|jwt| jwt.location.as_ref())
-            .unwrap_or(&JWTLocation::Bearer)
-            .clone()
-    })
+pub fn get_jwt_location_from_ctx(ctx: &AppContext) -> JWTLocation {
+    ctx.config
+        .auth
+        .as_ref()
+        .and_then(|auth| auth.jwt.as_ref())
+        .and_then(|jwt| jwt.location.as_ref())
+        .unwrap_or(&JWTLocation::Bearer)
+        .clone()
+}
+
+pub fn set_jwt_location_ctx(ctx: &AppContext) -> &'static JWTLocation {
+    set_jwt_location(get_jwt_location_from_ctx(ctx))
+}
+
+pub fn set_jwt_location(jwt_location: JWTLocation) -> &'static JWTLocation {
+    JWT_LOCATION.get_or_init(|| jwt_location)
 }
 
 fn get_jwt_location() -> &'static JWTLocation {

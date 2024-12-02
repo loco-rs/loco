@@ -7,7 +7,7 @@ pub use sea_orm_migration::prelude::*;
 use utoipa::OpenApi;
 
 #[cfg(feature = "all_openapi")]
-use crate::auth::openapi::{set_jwt_location, SecurityAddon};
+use crate::auth::openapi::{set_jwt_location_ctx, SecurityAddon};
 use crate::{
     app::{AppContext, Hooks, Initializer},
     bgworker::Queue,
@@ -125,7 +125,7 @@ impl Hooks for AppHook {
 
     #[cfg(feature = "all_openapi")]
     fn inital_openapi_spec(ctx: &AppContext) -> utoipa::openapi::OpenApi {
-        set_jwt_location(ctx);
+        set_jwt_location_ctx(ctx);
 
         #[derive(OpenApi)]
         #[openapi(

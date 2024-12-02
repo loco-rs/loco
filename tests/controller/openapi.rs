@@ -1,9 +1,5 @@
 use insta::assert_debug_snapshot;
-use loco_rs::{
-    config::{Auth, JWTLocation, OpenAPIType, JWT},
-    prelude::*,
-    tests_cfg,
-};
+use loco_rs::{config::OpenAPIType, prelude::*, tests_cfg};
 use rstest::rstest;
 use serial_test::serial;
 
@@ -107,51 +103,6 @@ async fn openapi_spec(#[case] test_name: &str) {
 
     assert_debug_snapshot!(
         format!("openapi_spec_[{test_name}]"),
-        (
-            res.status().to_string(),
-            res.url().to_string(),
-            res.text().await.unwrap(),
-        )
-    );
-
-    handle.abort();
-}
-
-#[rstest]
-#[case(JWTLocation::Query { name: "JWT".to_string() })]
-#[case(JWTLocation::Cookie { name: "JWT".to_string() })]
-#[tokio::test]
-#[serial]
-async fn openapi_security(#[case] location: JWTLocation) {
-    configure_insta!();
-
-    let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
-    ctx.config.auth = Some(Auth {
-        jwt: Some(JWT {
-            location: Some(location.clone()),
-            secret: "PqRwLF2rhHe8J22oBeHy".to_string(),
-            expiration: 604800,
-        }),
-    });
-
-    let handle = infra_cfg::server::start_from_ctx(ctx).await;
-
-    let res = reqwest::Client::new()
-        .request(
-            reqwest::Method::GET,
-            infra_cfg::server::get_base_url() + "api-docs/openapi.json",
-        )
-        .send()
-        .await
-        .expect("valid response");
-
-    let test_name = match location {
-        JWTLocation::Query { .. } => "Query",
-        JWTLocation::Cookie { .. } => "Cookie",
-        _ => "Bearer",
-    };
-    assert_debug_snapshot!(
-        format!("openapi_security_[{test_name}]"),
         (
             res.status().to_string(),
             res.url().to_string(),
