@@ -21,12 +21,12 @@ use crate::{
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
-/// use loco_rs::testing;
+/// use loco_rs::testing::prelude::*;
 /// use migration::Migrator;
 ///
 /// #[tokio::test]
 /// async fn test_create_user() {
-///     let boot = testing::boot_test::<App, Migrator>().await;
+///     let boot = boot_test::<App, Migrator>().await;
 ///
 ///     /// .....
 ///     assert!(false)
@@ -51,16 +51,16 @@ pub async fn boot_test<H: Hooks>() -> Result<BootResult> {
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
-/// use loco_rs::testing;
+/// use loco_rs::testing::prelude::*;
 ///
 ///     #[tokio::test]
 /// #[serial]
 /// async fn can_register() {
-///     testing::request::<App, _, _>(|request, ctx| async move {
+///     request::<App, _, _>(|request, ctx| async move {
 ///         let response = request.post("/auth/register").json(&serde_json::json!({})).await;
 ///
 ///         with_settings!({
-///             filters => testing::cleanup_user_model()
+///             filters => cleanup_user_model()
 ///         }, {
 ///             assert_debug_snapshot!(response);
 ///         });

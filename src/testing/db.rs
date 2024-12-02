@@ -15,13 +15,13 @@ use crate::{app::Hooks, Result};
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
-/// use loco_rs::testing;
+/// use loco_rs::testing::prelude::*;
 /// use migration::Migrator;
 ///
 /// #[tokio::test]
 /// async fn test_create_user() {
-///     let boot = testing::boot_test::<App, Migrator>().await;
-///     testing::seed::<App>(&boot.app_context.db).await.unwrap();
+///     let boot = boot_test::<App, Migrator>().await;
+///     seed::<App>(&boot.app_context.db).await.unwrap();
 ///
 ///     /// .....
 ///     assert!(false)
