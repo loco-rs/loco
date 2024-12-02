@@ -199,11 +199,13 @@ Here's an example of how the test should be structured:
 
 
 ```rust
+use loco_rs::testing::prelude::*;
+
 #[tokio::test]
 #[serial]
 async fn test_run_report_worker_worker() {
     // Set up the test environment
-    let boot = testing::boot_test::<App, Migrator>().await.unwrap();
+    let boot = boot_test::<App, Migrator>().await.unwrap();
 
     // Execute the worker in 'ForegroundBlocking' mode, preventing it from running asynchronously
     assert!(
