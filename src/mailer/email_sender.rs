@@ -93,7 +93,8 @@ impl EmailSender {
     ///
     /// # Errors
     ///
-    /// When email doesn't send successfully or has an error to build the message
+    /// When email doesn't send successfully or has an error to build the
+    /// message
     pub async fn mail(&self, email: &Email) -> Result<()> {
         let content = MultiPart::alternative_plain_html(email.text.clone(), email.html.clone());
         let mut builder = Message::builder()
