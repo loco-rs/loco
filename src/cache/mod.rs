@@ -3,8 +3,7 @@
 //! This module provides a generic cache interface for various cache drivers.
 pub mod drivers;
 
-use std::future::Future;
-use std::time::Duration;
+use std::{future::Future, time::Duration};
 
 use self::drivers::CacheDriver;
 use crate::Result as LocoResult;
@@ -149,8 +148,8 @@ impl Cache {
     }
 
     /// Retrieves the value associated with the given key from the cache,
-    /// or inserts it (with expiry after provided duration) if it does not exist,
-    /// using the provided closure to generate the value.
+    /// or inserts it (with expiry after provided duration) if it does not
+    /// exist, using the provided closure to generate the value.
     ///
     /// # Example
     /// ```

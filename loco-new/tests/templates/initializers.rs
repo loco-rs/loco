@@ -1,8 +1,8 @@
-use super::*;
-
-use crate::assertion;
 use loco::settings;
 use rstest::rstest;
+
+use super::*;
+use crate::assertion;
 
 pub fn run_generator(initializers: Option<settings::Initializers>) -> TestGenerator {
     let settings = settings::Settings {

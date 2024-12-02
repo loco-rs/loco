@@ -144,7 +144,11 @@ pub fn init<H: Hooks>(config: &config::Logger) {
                 let (non_blocking_file_appender, work_guard) =
                     tracing_appender::non_blocking(file_appender);
                 NONBLOCKING_WORK_GUARD_KEEP.set(work_guard).unwrap();
-                init_layer(non_blocking_file_appender, &file_appender_config.format, false)
+                init_layer(
+                    non_blocking_file_appender,
+                    &file_appender_config.format,
+                    false,
+                )
             } else {
                 init_layer(file_appender, &file_appender_config.format, false)
             };
