@@ -23,6 +23,7 @@ use migration::Migrator;
 use sea_orm::DatabaseConnection;
 {%- endif %}
 
+#[allow(unused_imports)]
 use crate::{
     controllers
     {%- if settings.initializers -%}
@@ -89,15 +90,9 @@ impl Hooks for App {
         {%- endif %}
         Ok(())
     }
-    
-    {%- if settings.db %}
+
+    #[allow(unused_variables)]
     fn register_tasks(tasks: &mut Tasks) {
-    {%- else %}
-    fn register_tasks(_tasks: &mut Tasks) {
-    {%- endif %}     
-        {%- if settings.db %}
-        tasks.register(tasks::seed::SeedData);
-        {%- endif %}
         // tasks-inject (do not remove)
     }
 

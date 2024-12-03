@@ -572,12 +572,14 @@ impl Task for SeedData {
 2. In your test section, follow the example below:
 
 ```rust
+use loco_rs::testing::prelude::*;
+
 #[tokio::test]
 #[serial]
 async fn handle_create_with_password_with_duplicate() {
 
-    let boot = testing::boot_test::<App, Migrator>().await;
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    let boot = boot_test::<App, Migrator>().await;
+    seed::<App>(&boot.app_context.db).await.unwrap();
     assert!(get_user_by_id(1).ok());
 }
 ```
@@ -695,11 +697,13 @@ If you used the generator to crate a model migration, you should also have an au
 A typical test contains everything you need to set up test data, boot the app, and reset the database automatically before the testing code runs. It looks like this:
 
 ```rust
+use loco_rs::testing::prelude::*;
+
 async fn can_find_by_pid() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App, Migrator>().await;
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    let boot = boot_test::<App, Migrator>().await;
+    seed::<App>(&boot.app_context.db).await.unwrap();
 
     let existing_user =
         Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111").await;
@@ -747,13 +751,15 @@ impl Hooks for App {
 ## Seeding
 
 ```rust
+use loco_rs::testing::prelude::*;
+
 #[tokio::test]
 #[serial]
 async fn is_user_exists() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App, Migrator>().await;
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    let boot = boot_test::<App, Migrator>().await;
+    seed::<App>(&boot.app_context.db).await.unwrap();
     assert!(get_user_by_id(1).ok());
 
 }
@@ -770,14 +776,15 @@ Example using [insta](https://crates.io/crates/insta) for snapshots.
 in the following example you can use `cleanup_user_model` which clean all user model data.
 
 ```rust
+use loco_rs::testing::prelude::*;
 
 #[tokio::test]
 #[serial]
 async fn can_create_user() {
-    testing::request::<App, Migrator, _, _>(|request, _ctx| async move {
+    request::<App, Migrator, _, _>(|request, _ctx| async move {
         // create user test
         with_settings!({
-            filters => testing::cleanup_user_model()
+            filters => cleanup_user_model()
         }, {
             assert_debug_snapshot!(current_user_request.text());
         });
