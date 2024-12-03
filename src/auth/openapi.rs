@@ -33,6 +33,7 @@ fn get_jwt_location() -> &'static JWTLocation {
 
 pub struct SecurityAddon;
 
+/// Adds security to the OpenAPI doc, using the JWT location in the config
 impl Modify for SecurityAddon {
     fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
         if let Some(components) = openapi.components.as_mut() {

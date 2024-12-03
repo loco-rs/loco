@@ -97,7 +97,36 @@ impl Routes {
     ///     format::json(Health { ok: true })
     /// }
     /// Routes::new().add("/_ping", get(ping));
-    /// ````
+    /// ```
+    ///
+    /// ## Adding a endpoint, and add it to the OpenAPI documentation
+    /// ```rust ignore
+    /// use loco_rs::prelude::*;
+    /// use serde::Serialize;
+    /// use utoipa::ToSchema;
+    /// use utoipa_axum::routes;
+    ///
+    /// #[derive(Serialize, ToSchema)]
+    /// struct Health {
+    ///   pub ok: bool,
+    /// }
+    ///
+    /// /// Ping
+    /// ///
+    /// /// This endpoint is used to check the health of the service.
+    /// #[utoipa::path(
+    ///     get,
+    ///     tag = "Health",
+    ///     path = "/_ping",
+    ///     responses(
+    ///         (status = 200, body = Health),
+    ///     ),
+    /// )]
+    /// async fn ping() -> Result<Response> {
+    ///     format::json(Health { ok: true })
+    /// }
+    /// Routes::new().add("/_ping", routes!(ping));
+    /// ```
     #[must_use]
     pub fn add(mut self, uri: &str, method: impl Into<LocoMethodRouter>) -> Self {
         let method = method.into();

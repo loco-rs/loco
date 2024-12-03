@@ -443,10 +443,29 @@ impl Server {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct OpenAPI {
     /// Redoc configuration
+    /// Example:
+    /// ```yaml
+    /// redoc:
+    ///   !Redoc
+    ///     url: /redoc
+    /// ```
     pub redoc: OpenAPIType,
     /// Scalar configuration
+    /// Example:
+    /// ```yaml
+    /// scalar:
+    ///   !Scalar
+    ///     url: /scalar
+    /// ```
     pub scalar: OpenAPIType,
     /// Swagger configuration
+    /// Example:
+    /// ```yaml
+    /// swagger:
+    ///  !Swagger
+    ///    url: /swagger
+    ///    spec_json_url: /openapi.json
+    /// ```
     pub swagger: OpenAPIType,
 }
 
@@ -458,7 +477,7 @@ pub struct OpenAPI {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum OpenAPIType {
     Redoc {
-        /// URL for where to host the redoc OpenAPI doc, example: /redoc
+        /// URL for where to host the redoc OpenAPI spec, example: /redoc
         url: String,
         /// URL for openapi.json, for example: /openapi.json
         spec_json_url: Option<String>,
@@ -466,7 +485,7 @@ pub enum OpenAPIType {
         spec_yaml_url: Option<String>,
     },
     Scalar {
-        /// URL for where to host the swagger OpenAPI doc, example: /scalar
+        /// URL for where to host the swagger OpenAPI spec, example: /scalar
         url: String,
         /// URL for openapi.json, for example: /openapi.json
         spec_json_url: Option<String>,
@@ -474,7 +493,7 @@ pub enum OpenAPIType {
         spec_yaml_url: Option<String>,
     },
     Swagger {
-        /// URL for where to host the swagger OpenAPI doc, example: /swagger-ui
+        /// URL for where to host the swagger OpenAPI spec, example: /swagger-ui
         url: String,
         /// URL for openapi.json, for example: /api-docs/openapi.json
         spec_json_url: String,

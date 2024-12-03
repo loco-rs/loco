@@ -5,10 +5,7 @@ use utoipa::openapi::OpenApi;
 
 use crate::{
     app::AppContext,
-    controller::{
-        format,
-        Response,
-    },
+    controller::{format, Response},
     Result,
 };
 
@@ -22,14 +19,17 @@ pub fn get_openapi_spec() -> &'static OpenApi {
     OPENAPI_SPEC.get().unwrap()
 }
 
+/// Axum handler that returns the OpenAPI spec as JSON
 pub async fn openapi_spec_json() -> Result<Response> {
     format::json(get_openapi_spec())
 }
 
+/// Axum handler that returns the OpenAPI spec as YAML
 pub async fn openapi_spec_yaml() -> Result<Response> {
     format::text(&get_openapi_spec().to_yaml()?)
 }
 
+/// Adds the OpenAPI endpoints the app router
 pub fn add_openapi_endpoints(
     mut app: AXRouter<AppContext>,
     json_url: Option<String>,

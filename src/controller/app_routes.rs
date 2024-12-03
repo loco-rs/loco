@@ -242,10 +242,12 @@ impl AppRoutes {
             feature = "openapi_scalar"
         ))]
         {
+            // Collect the OpenAPI spec
             let (_, api) = api_router.split_for_parts();
             openapi::set_openapi_spec(api);
         }
 
+        // Serve the OpenAPI spec using the enabled OpenAPI visualizers
         #[cfg(feature = "openapi_redoc")]
         {
             if let OpenAPIType::Redoc {
