@@ -99,7 +99,7 @@ impl Routes {
     /// Routes::new().add("/_ping", get(ping));
     /// ```
     ///
-    /// ## Adding a endpoint, and add it to the OpenAPI documentation
+    /// ## Adding a endpoint, and add it to the `OpenAPI` documentation
     /// ```rust ignore
     /// use loco_rs::prelude::*;
     /// use serde::Serialize;
@@ -220,7 +220,7 @@ impl Routes {
 impl fmt::Debug for LocoMethodRouter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Axum(router) => write!(f, "{:?}", router),
+            Self::Axum(router) => write!(f, "{router:?}"),
             #[cfg(any(
                 feature = "openapi_swagger",
                 feature = "openapi_redoc",
@@ -244,7 +244,7 @@ impl LocoMethodRouter {
         <L::Service as Service<Request>>::Future: Send + 'static,
     {
         match self {
-            LocoMethodRouter::Axum(router) => LocoMethodRouter::Axum(router.layer(layer)),
+            Self::Axum(router) => Self::Axum(router.layer(layer)),
             #[cfg(any(
                 feature = "openapi_swagger",
                 feature = "openapi_redoc",
@@ -257,7 +257,7 @@ impl LocoMethodRouter {
 
 impl From<MethodRouter<AppContext>> for LocoMethodRouter {
     fn from(router: MethodRouter<AppContext>) -> Self {
-        LocoMethodRouter::Axum(router)
+        Self::Axum(router)
     }
 }
 
