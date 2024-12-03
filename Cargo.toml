@@ -33,7 +33,7 @@ default = [
 ]
 auth_jwt = ["dep:jsonwebtoken"]
 cli = ["dep:clap"]
-testing = ["dep:axum-test"]
+testing = ["dep:axum-test", "dep:scraper"]
 with-db = ["dep:sea-orm", "dep:sea-orm-migration", "loco-gen/with-db"]
 # Storage features
 all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
@@ -142,6 +142,8 @@ ulid = { version = "1", optional = true }
 # bg_redis: redis workers
 rusty-sidekiq = { version = "0.11.0", default-features = false, optional = true }
 bb8 = { version = "0.8.1", optional = true }
+
+scraper = { version = "0.21.0", optional = true }
 
 [workspace.dependencies]
 
