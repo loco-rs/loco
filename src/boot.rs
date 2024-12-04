@@ -241,6 +241,13 @@ pub enum RunDbCommand {
     /// Truncate tables, by executing the implementation in [`Hooks::seed`]
     /// (without dropping).
     Truncate,
+    /// Seed database.
+    Seed {
+        reset: bool,
+        from: PathBuf,
+        dump: bool,
+        dump_tables: Option<Vec<String>>,
+    },
 }
 
 #[cfg(feature = "with-db")]
@@ -279,6 +286,23 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
         RunDbCommand::Truncate => {
             tracing::warn!("truncate:");
             H::truncate(&app_context.db).await?;
+        }
+        RunDbCommand::Seed {
+            reset,
+            from,
+            dump,
+            dump_tables,
+        } => {
+            tracing::warn!(reset = reset, from = %from.display(), "seed:");
+
+            if dump || dump_tables.is_some() {
+                db::dump_tables(&app_context.db, from.as_path(), dump_tables).await?;
+            } else {
+                if reset {
+                    db::reset::<M>(&app_context.db).await?;
+                }
+                db::run_app_seed::<H>(&app_context.db, &from).await?;
+            }
         }
     }
     Ok(())

@@ -9,8 +9,7 @@ injections:
   content: "pub mod {{ name |  snake_case }};"
 ---
 use {{pkg_name}}::app::App;
-use loco_rs::prelude::*;
-use loco_rs::testing;
+use loco_rs::{bgworker::BackgroundWorker, testing::prelude::*};
 
 use {{pkg_name}}::workers::{{module_name}}::{{struct_name}}Worker;
 use {{pkg_name}}::workers::{{module_name}}::{{struct_name}}WorkerArgs;
@@ -20,7 +19,7 @@ use serial_test::serial;
 #[tokio::test]
 #[serial]
 async fn test_run_{{module_name}}_worker() {
-    let boot = testing::boot_test::<App>().await.unwrap();
+    let boot = boot_test::<App>().await.unwrap();
 
     // Execute the worker ensuring that it operates in 'ForegroundBlocking' mode, which prevents the addition of your worker to the background
     assert!(
