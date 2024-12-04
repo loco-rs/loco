@@ -74,6 +74,7 @@ pub fn with_failure() -> Box<dyn StoreDriver> {
     let s3 = S3::default()
         .bucket("loco-test")
         .region("ap-south-1")
+        .allow_anonymous()
         .disable_ec2_metadata();
 
     Box::new(OpendalAdapter::new(Operator::new(s3).unwrap().finish()))
