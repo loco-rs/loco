@@ -400,7 +400,7 @@ fn fix_entities() -> AppResult<()> {
                 &new_file,
                 format!(
                     r"use sea_orm::entity::prelude::*;
-use super::_entities::{module}::{{ActiveModel, Entity}};
+pub use super::_entities::{module}::{{ActiveModel, Entity}};
 pub type {module_pascal} = Entity;
 
 #[async_trait::async_trait]
