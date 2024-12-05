@@ -23,6 +23,7 @@ pub mod request_id;
 pub mod secure_headers;
 pub mod static_assets;
 pub mod timeout;
+pub mod cookie_size;
 
 use axum::Router as AXRouter;
 use limit_payload::LimitPayload;
@@ -232,4 +233,8 @@ pub struct Config {
     /// Request context
     #[serde(default)]
     pub request_context: Option<request_context::RequestContextMiddlewareConfig>,
+
+    /// Cookie size
+    #[serde(default)]
+    pub cookie_size: Option<cookie_size::CookieSize>,
 }

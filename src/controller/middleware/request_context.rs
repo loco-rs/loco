@@ -7,10 +7,7 @@ use tower_sessions::{
 };
 
 use crate::{
-    app::AppContext,
-    controller::middleware::MiddlewareLayer,
-    request_context::{layer::RequestContextLayer, CustomSessionStore},
-    Result,
+    app::AppContext, controller::middleware::MiddlewareLayer, request_context::{layer::RequestContextLayer, RequestContextError, TowerSessionStore}, Error, Result
 };
 
 /// Request context configuration
@@ -93,9 +90,9 @@ impl Default for SessionCookieConfig {
         Self {
             name: " __loco_session".to_string(),
             http_only: true,
-            same_site: SameSite::default(),
-            expiry: None,
-            secure: false,
+            same_site: SameSite::Strict,
+            expiry: Some(3600),
+            secure: true,
             path: "/".to_string(),
             domain: None,
         }
@@ -104,13 +101,13 @@ impl Default for SessionCookieConfig {
 
 impl Default for RequestContextSession {
     fn default() -> Self {
-        // Generate a private key for the cookie session
+        // If the session secret key is not configured in the environment config
+        // file, generate a private key for the cookie session and panic.
         let private_key = Key::generate().master().to_vec();
-        tracing::info!(
-            "[Middleware] Generating private key for cookie session: {:?}",
+        panic!(
+            "Session secret key must be explicitly configured in your environment config file: {:?}",
             private_key
-        );
-        Self::Cookie { private_key }
+        )
     }
 }
 
@@ -122,11 +119,11 @@ impl Default for SameSite {
 
 pub struct RequestContextMiddleware {
     config: RequestContextMiddlewareConfig,
-    store: Option<CustomSessionStore>,
+    store: Option<TowerSessionStore>,
 }
 
 impl RequestContextMiddleware {
-    pub fn new(config: RequestContextMiddlewareConfig, store: Option<CustomSessionStore>) -> Self {
+    pub fn new(config: RequestContextMiddlewareConfig, store: Option<TowerSessionStore>) -> Self {
         Self { config, store }
     }
 }
@@ -170,6 +167,11 @@ impl RequestContextMiddleware {
         match &self.config.session_store {
             RequestContextSession::Cookie { private_key } => {
                 tracing::info!("[Middleware] Adding request context");
+                if private_key.len() < 64 {
+                    return Err(RequestContextError::ConfigurationError(
+                        "Session private key must be at least 64 bytes long".into()
+                    ).into());
+                }
                 let layer = Self::get_cookie_request_context_middleware(
                     private_key,
                     &self.config.session_store,
@@ -194,9 +196,9 @@ impl RequestContextMiddleware {
     }
 
     fn add_request_context_config_tower(
-        mut layer: SessionManagerLayer<CustomSessionStore>,
+        mut layer: SessionManagerLayer<TowerSessionStore>,
         config: &SessionCookieConfig,
-    ) -> SessionManagerLayer<CustomSessionStore> {
+    ) -> SessionManagerLayer<TowerSessionStore> {
         layer = layer.with_name(config.name.to_string());
         if config.http_only {
             layer = layer.with_http_only(true);

@@ -47,7 +47,6 @@ pub use socketioxide;
 pub mod request_context;
 #[cfg(feature = "testing")]
 pub mod tests_cfg;
-pub mod validation;
 pub use validator;
 
 /// Application results options list

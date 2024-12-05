@@ -23,7 +23,7 @@ use crate::{
     },
     environment::Environment,
     mailer::EmailSender,
-    request_context::CustomSessionStore,
+    request_context::TowerSessionStore,
     storage::Storage,
     task::Tasks,
     Result,
@@ -54,7 +54,7 @@ pub struct AppContext {
     // Cache instance for the application
     pub cache: Arc<cache::Cache>,
     /// Request context session store
-    pub session_store: Option<CustomSessionStore>,
+    pub session_store: Option<TowerSessionStore>,
 }
 
 /// A trait that defines hooks for customizing and extending the behavior of a

@@ -28,8 +28,8 @@ use crate::{
 #[derive(thiserror::Error, Debug)]
 pub enum RequestContextError {
     /// Configuration error
-    #[error("Configuration error")]
-    ConfigurationError,
+    #[error("Configuration error: {0}")]
+    ConfigurationError(String),
     // Convert Signed private cookie jar error
     #[error("Signed private cookie jar error: {0}")]
     SignedPrivateCookieJarError(#[from] driver::cookie::SignedPrivateCookieJarError),
@@ -78,11 +78,11 @@ impl RequestContextStore {
 
 /// Defines a `CustomSessionStore` struct to hold a `SessionStore`
 #[derive(Debug, Clone)]
-pub struct CustomSessionStore {
+pub struct TowerSessionStore {
     inner: Arc<dyn SessionStore + Send + Sync>,
 }
 
-impl CustomSessionStore {
+impl TowerSessionStore {
     #[must_use]
     pub fn new<S>(inner: S) -> Self
     where
@@ -94,7 +94,7 @@ impl CustomSessionStore {
     }
 }
 #[async_trait]
-impl SessionStore for CustomSessionStore {
+impl SessionStore for TowerSessionStore {
     async fn create(
         &self,
         session_record: &mut Record,
