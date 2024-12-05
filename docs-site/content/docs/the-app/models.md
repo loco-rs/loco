@@ -124,7 +124,7 @@ When a model is added via migration, the following default fields are provided:
 - `created_at` (ts!): This is a timestamp indicating when your model was created.
 - `updated_at` (ts!): This is a timestamp indicating when your model was updated.
 
-These fields are ignored if you provide them in your migration command. In addition, `create_at` and `update_at` fields are also ignored if provided.
+These fields are ignored if you provide them in your migration command.
 
 For schema data types, you can use the following mapping to understand the schema:
 
@@ -172,6 +172,8 @@ For schema data types, you can use the following mapping to understand the schem
 ```
 
 Using `user:references` uses the special `references` type, which will create a relationship between a `post` and a `user`, adding a `user_id` reference field to the `posts` table.
+
+Using `aproved_by:references:users` uses the special `references:<table>` type, which will create a relationship between a `post` and a `user`, adding a `aproved_by` reference field to the `posts` table.
 
 You can generate an empty model:
 
@@ -228,20 +230,21 @@ cargo loco db down 2
 
 ### Verbs, singular and plural
 
-* **references**: use **singular** for the table name, and a `:references` type. `user:references` (references `Users`), `vote:references` (references `Votes`)
-* **column names**: anything you like. Prefer `snake_case`
+* **references**: use **singular** for the table name, and a `:references` type. `user:references` (references `Users`), `vote:references` (references `Votes`). `:references:<table>` is also available `departing_train:references:trains` (references `Trains`).
+* **column names**: anything you like. Prefer `snake_case`.
 * **table names**: **plural, snake case**. `users`, `draft_posts`.
-* **migration names**: anything that can be a file name, prefer snake case. `create_table_users`, `add_vote_id_to_movies`
-* **model names**: generated automatically for you. Usually the generated name is pascal case, plural. `Users`, `UsersVotes`
+* **migration names**: anything that can be a file name, prefer snake case. `create_table_users`, `add_vote_id_to_movies`.
+* **model names**: generated automatically for you. Usually the generated name is pascal case, plural. `Users`, `UsersVotes`.
  
 Here are some examples showcasing the naming conventions:
 
 ```sh
-$ cargo loco generate model movies long_title:string user:references
+$ cargo loco generate model movies long_title:string added_by:references:users director:references
 ```
 
 * model name in plural: `movies`
-* reference user is in singular: `user:references`
+* refecence director is in singular: `director:references`
+* reference added_by is in singular, the referenced model is a model and is plural: `added_by:references:users`
 * column name in snake case: `long_title:string`
 
 ### Naming migrations
@@ -569,12 +572,14 @@ impl Task for SeedData {
 2. In your test section, follow the example below:
 
 ```rust
+use loco_rs::testing::prelude::*;
+
 #[tokio::test]
 #[serial]
 async fn handle_create_with_password_with_duplicate() {
 
-    let boot = testing::boot_test::<App, Migrator>().await;
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    let boot = boot_test::<App, Migrator>().await;
+    seed::<App>(&boot.app_context.db).await.unwrap();
     assert!(get_user_by_id(1).ok());
 }
 ```
@@ -692,11 +697,13 @@ If you used the generator to crate a model migration, you should also have an au
 A typical test contains everything you need to set up test data, boot the app, and reset the database automatically before the testing code runs. It looks like this:
 
 ```rust
+use loco_rs::testing::prelude::*;
+
 async fn can_find_by_pid() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App, Migrator>().await;
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    let boot = boot_test::<App, Migrator>().await;
+    seed::<App>(&boot.app_context.db).await.unwrap();
 
     let existing_user =
         Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111").await;
@@ -744,13 +751,15 @@ impl Hooks for App {
 ## Seeding
 
 ```rust
+use loco_rs::testing::prelude::*;
+
 #[tokio::test]
 #[serial]
 async fn is_user_exists() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App, Migrator>().await;
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    let boot = boot_test::<App, Migrator>().await;
+    seed::<App>(&boot.app_context.db).await.unwrap();
     assert!(get_user_by_id(1).ok());
 
 }
@@ -767,14 +776,15 @@ Example using [insta](https://crates.io/crates/insta) for snapshots.
 in the following example you can use `cleanup_user_model` which clean all user model data.
 
 ```rust
+use loco_rs::testing::prelude::*;
 
 #[tokio::test]
 #[serial]
 async fn can_create_user() {
-    testing::request::<App, Migrator, _, _>(|request, _ctx| async move {
+    request::<App, Migrator, _, _>(|request, _ctx| async move {
         // create user test
         with_settings!({
-            filters => testing::cleanup_user_model()
+            filters => cleanup_user_model()
         }, {
             assert_debug_snapshot!(current_user_request.text());
         });

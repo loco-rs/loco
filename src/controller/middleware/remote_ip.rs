@@ -129,7 +129,7 @@ impl MiddlewareLayer for RemoteIpMiddleware {
 // implementation reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
 fn maybe_get_forwarded(
     headers: &HeaderMap,
-    trusted_proxies: &Option<Vec<IpNetwork>>,
+    trusted_proxies: Option<&Vec<IpNetwork>>,
 ) -> Option<IpAddr> {
     /*
     > There may be multiple X-Forwarded-For headers present in a request. The IP addresses in these headers must be treated as a single list,
@@ -151,7 +151,7 @@ fn maybe_get_forwarded(
 
     let forwarded = xffs.join(",");
 
-    return forwarded
+    forwarded
         .split(',')
         .map(str::trim)
         .map(str::parse)
@@ -163,9 +163,7 @@ fn maybe_get_forwarded(
         */
         .filter(|ip| {
             // trusted proxies provided REPLACES our default local proxies
-            let proxies = trusted_proxies
-                .as_ref()
-                .unwrap_or_else(|| get_local_trusted_proxies());
+            let proxies = trusted_proxies.unwrap_or_else(|| get_local_trusted_proxies());
             !proxies
                 .iter()
                 .any(|trusted_proxy| trusted_proxy.contains(*ip))
@@ -179,7 +177,7 @@ fn maybe_get_forwarded(
         > The first trustworthy X-Forwarded-For IP address may belong to an untrusted intermediate
         > proxy rather than the actual client computer, but it is the only IP suitable for security uses.
         */
-        .next_back();
+        .next_back()
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -279,7 +277,7 @@ where
 
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
         let layer = self.layer.clone();
-        let xff_ip = maybe_get_forwarded(req.headers(), &layer.trusted_proxies);
+        let xff_ip = maybe_get_forwarded(req.headers(), layer.trusted_proxies.as_ref());
         let remote_ip = xff_ip.map_or_else(
             || {
                 let ip = req
@@ -329,21 +327,21 @@ mod tests {
 
     #[test]
     pub fn test_parsing() {
-        let res = maybe_get_forwarded(&xff(""), &None);
+        let res = maybe_get_forwarded(&xff(""), None);
         assert_debug_snapshot!(res);
-        let res = maybe_get_forwarded(&xff("foobar"), &None);
+        let res = maybe_get_forwarded(&xff("foobar"), None);
         assert_debug_snapshot!(res);
-        let res = maybe_get_forwarded(&xff("192.1.1.1"), &None);
+        let res = maybe_get_forwarded(&xff("192.1.1.1"), None);
         assert_debug_snapshot!(res);
-        let res = maybe_get_forwarded(&xff("51.50.51.50,10.0.0.1,192.168.1.1"), &None);
+        let res = maybe_get_forwarded(&xff("51.50.51.50,10.0.0.1,192.168.1.1"), None);
         assert_debug_snapshot!(res);
-        let res = maybe_get_forwarded(&xff("19.84.19.84,192.168.0.1"), &None);
+        let res = maybe_get_forwarded(&xff("19.84.19.84,192.168.0.1"), None);
         assert_debug_snapshot!(res);
-        let res = maybe_get_forwarded(&xff("b51.50.51.50b,/10.0.0.1-,192.168.1.1"), &None);
+        let res = maybe_get_forwarded(&xff("b51.50.51.50b,/10.0.0.1-,192.168.1.1"), None);
         assert_debug_snapshot!(res);
         let res = maybe_get_forwarded(
             &xff("51.50.51.50,192.1.1.1"),
-            &Some(vec![IpNetwork::from_str("192.1.1.1/8").unwrap()]),
+            Some(&vec![IpNetwork::from_str("192.1.1.1/8").unwrap()]),
         );
         assert_debug_snapshot!(res);
 
@@ -351,7 +349,7 @@ mod tests {
         // remote IP and not skipped
         let res = maybe_get_forwarded(
             &xff("51.50.51.50,192.168.1.1"),
-            &Some(vec![IpNetwork::from_str("192.1.1.1/16").unwrap()]),
+            Some(&vec![IpNetwork::from_str("192.1.1.1/16").unwrap()]),
         );
         assert_debug_snapshot!(res);
     }

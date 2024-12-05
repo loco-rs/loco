@@ -7,8 +7,7 @@ use axum::Router;
 use colored::Colorize;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
-use tokio::task::JoinHandle;
-use tokio::{select, signal};
+use tokio::{select, signal, task::JoinHandle};
 use tracing::{debug, error, info, warn};
 
 #[cfg(feature = "with-db")]
@@ -86,7 +85,7 @@ pub async fn start<H: Hooks>(
 
     match (router, run_worker) {
         (Some(router), false) => {
-            H::serve(router, &app_context).await?;
+            H::serve(router, &app_context, &server_config).await?;
         }
         (Some(router), true) => {
             let handle = if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
@@ -95,7 +94,7 @@ pub async fn start<H: Hooks>(
                 None
             };
 
-            H::serve(router, &app_context).await?;
+            H::serve(router, &app_context, &server_config).await?;
 
             if let Some(handle) = handle {
                 shutdown_and_await_queue_worker(&app_context, handle).await?;
@@ -243,6 +242,13 @@ pub enum RunDbCommand {
     /// Truncate tables, by executing the implementation in [`Hooks::seed`]
     /// (without dropping).
     Truncate,
+    /// Seed database.
+    Seed {
+        reset: bool,
+        from: PathBuf,
+        dump: bool,
+        dump_tables: Option<Vec<String>>,
+    },
 }
 
 #[cfg(feature = "with-db")]
@@ -281,6 +287,23 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
         RunDbCommand::Truncate => {
             tracing::warn!("truncate:");
             H::truncate(&app_context.db).await?;
+        }
+        RunDbCommand::Seed {
+            reset,
+            from,
+            dump,
+            dump_tables,
+        } => {
+            tracing::warn!(reset = reset, from = %from.display(), "seed:");
+
+            if dump || dump_tables.is_some() {
+                db::dump_tables(&app_context.db, from.as_path(), dump_tables).await?;
+            } else {
+                if reset {
+                    db::reset::<M>(&app_context.db).await?;
+                }
+                db::run_app_seed::<H>(&app_context.db, &from).await?;
+            }
         }
     }
     Ok(())

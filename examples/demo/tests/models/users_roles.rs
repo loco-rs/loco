@@ -2,8 +2,8 @@ use demo_app::{
     app::App,
     models::{roles, sea_orm_active_enums, users, users::RegisterParams, users_roles},
 };
-use loco_rs::{prelude::*, testing};
-use sea_orm::{ColumnTrait, DatabaseConnection};
+use loco_rs::prelude::*;
+use sea_orm::ColumnTrait;
 use serial_test::serial;
 macro_rules! configure_insta {
     ($($expr:expr),*) => {
@@ -19,7 +19,7 @@ macro_rules! configure_insta {
 async fn can_connect_user_to_user_role() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App>().await.unwrap();
+    let boot = boot_test::<App>().await.unwrap();
     let new_user: Result<users::Model, ModelError> = users::Model::create_with_password(
         &boot.app_context.db,
         &RegisterParams {
@@ -61,7 +61,7 @@ async fn can_connect_user_to_user_role() {
 async fn can_connect_user_to_admin_role() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App>().await.unwrap();
+    let boot = boot_test::<App>().await.unwrap();
     let new_user: Result<users::Model, ModelError> = users::Model::create_with_password(
         &boot.app_context.db,
         &RegisterParams {

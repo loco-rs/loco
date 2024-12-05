@@ -40,6 +40,7 @@ Commands:
   status    Migration status
   entities  Generate entity .rs files from database schema
   truncate  Truncate data in tables (without dropping)
+  seed      Seed your database with initial data or dump tables to files
   help      Print this message or the help of the given subcommand(s)
 
 Options:
@@ -134,7 +135,7 @@ $ demo_app-cli doctor
 ✅ DB connection: success
 ✅ redis queue: queue connection: success
 ✅ Dependencies
-
+✅ Loco version: latest
 
 ```
 

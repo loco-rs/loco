@@ -42,9 +42,8 @@ impl RunResults {
 pub fn all_resources(base_dir: &Path) -> Result<Vec<RunResults>> {
     let mut result = vec![];
     result.push(run(base_dir).expect("loco lib mast be tested"));
-    result.extend(run_all_in_folder(&base_dir.join(utils::FOLDER_EXAMPLES))?);
-    result.extend(run_all_in_folder(&base_dir.join(utils::FOLDER_STARTERS))?);
-    result.extend(run_all_in_folder(&base_dir.join(utils::FOLDER_LOCO_CLI))?);
+    result.extend(run_all_in_folder(&base_dir.join("examples"))?);
+    result.extend(run_all_in_folder(&base_dir.join("loco-new"))?);
 
     Ok(result)
 }
@@ -78,7 +77,7 @@ pub fn run(dir: &Path) -> Option<RunResults> {
             path: dir.to_path_buf(),
             fmt: cargo_fmt(dir).is_ok(),
             clippy: cargo_clippy(dir).is_ok(),
-            test: cargo_test(dir).is_ok(),
+            test: cargo_test(dir, false).is_ok(),
         })
     } else {
         None
@@ -86,17 +85,23 @@ pub fn run(dir: &Path) -> Option<RunResults> {
 }
 
 /// Run cargo test on the given directory.
-fn cargo_test(dir: &Path) -> Result<Output> {
+pub fn cargo_test(dir: &Path, serial: bool) -> Result<Output> {
+    let mut params = FMT_TEST.to_vec();
+    if serial {
+        params.push("--");
+        params.push("--test-threads");
+        params.push("1");
+    }
     println!(
         "Running `cargo {}` in folder {}",
-        FMT_TEST.join(" "),
+        params.join(" "),
         dir.display()
     );
-    Ok(cmd("cargo", FMT_TEST.as_slice()).dir(dir).run()?)
+    Ok(cmd("cargo", params.as_slice()).dir(dir).run()?)
 }
 
 /// Run cargo fmt on the given directory.
-fn cargo_fmt(dir: &Path) -> Result<Output> {
+pub fn cargo_fmt(dir: &Path) -> Result<Output> {
     println!(
         "Running `cargo {}` in folder {}",
         FMT_ARGS.join(" "),
@@ -106,7 +111,7 @@ fn cargo_fmt(dir: &Path) -> Result<Output> {
 }
 
 /// Run cargo clippy on the given directory.
-fn cargo_clippy(dir: &Path) -> Result<Output> {
+pub fn cargo_clippy(dir: &Path) -> Result<Output> {
     println!(
         "Running `cargo {}` in folder {}",
         FMT_CLIPPY.join(" "),

@@ -88,7 +88,7 @@ pub fn default_middleware_stack(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer
         ),
         // CORS middleware with a default if none
         Box::new(middlewares.cors.clone().unwrap_or_else(|| cors::Cors {
-            enable: true,
+            enable: false,
             ..Default::default()
         })),
         // Catch Panic middleware with a default if none

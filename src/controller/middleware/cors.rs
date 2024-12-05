@@ -28,6 +28,9 @@ pub struct Cors {
     /// Allow methods
     #[serde(default = "default_allow_methods")]
     pub allow_methods: Vec<String>,
+    /// Allow credentials
+    #[serde(default)]
+    pub allow_credentials: bool,
     /// Max age
     pub max_age: Option<u64>,
     // Vary headers
@@ -69,6 +72,7 @@ impl Cors {
             allow_headers: vec![],
             allow_methods: vec![],
             allow_origins: vec![],
+            allow_credentials: false,
             max_age: None,
             vary: vec![],
         }
@@ -131,6 +135,8 @@ impl Cors {
         if let Some(max_age) = self.max_age {
             cors = cors.max_age(Duration::from_secs(max_age));
         }
+
+        cors = cors.allow_credentials(self.allow_credentials);
 
         Ok(cors)
     }
@@ -230,6 +236,49 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn cors_options() {
+        let mut middleware = Cors::empty();
+        middleware.allow_origins = vec![
+            "http://localhost:8080".to_string(),
+            "http://example.com".to_string(),
+        ];
+
+        let app = Router::new().route("/", get(|| async {}));
+        let app = middleware
+            .apply(app)
+            .expect("apply middleware")
+            .with_state(tests_cfg::app::get_app_context().await);
+
+        let req = Request::builder()
+            .uri("/")
+            .header("Origin", "http://example.com")
+            .method(Method::OPTIONS)
+            .body(Body::empty())
+            .expect("request");
+
+        let response = app.oneshot(req).await.expect("valid response");
+
+        assert_debug_snapshot!(
+            format!("cors_OPTIONS_[allow_origins]"),
+            (
+                format!(
+                    "access-control-allow-origin: {:?}",
+                    response.headers().get("access-control-allow-origin")
+                ),
+                format!("vary: {:?}", response.headers().get("vary")),
+                format!(
+                    "access-control-allow-methods: {:?}",
+                    response.headers().get("access-control-allow-methods")
+                ),
+                format!(
+                    "access-control-allow-headers: {:?}",
+                    response.headers().get("access-control-allow-headers")
+                ),
+                format!("allow: {:?}", response.headers().get("allow")),
+            )
+        );
+    }
     #[test]
     fn should_be_disabled() {
         let middleware = Cors::default();

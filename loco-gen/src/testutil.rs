@@ -11,7 +11,6 @@ use std::{
 };
 
 use regex::Regex;
-use tempfile::tempdir;
 
 // Define the custom struct to encapsulate file content
 pub struct FileContent {
@@ -249,8 +248,8 @@ where
     let previous = env::current_dir()?; // Get the current directory
     println!("Current directory: {previous:?}");
 
-    let temp_dir = tempdir()?; // Create a temporary directory
-    let current = temp_dir.path();
+    let tree_fs = tree_fs::TreeBuilder::default().drop(true).create()?; // Create a temporary directory
+    let current = &tree_fs.root;
 
     println!("Temporary directory: {current:?}");
     env::set_current_dir(current)?; // Set the current directory to the temp directory

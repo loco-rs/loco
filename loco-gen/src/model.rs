@@ -43,7 +43,11 @@ pub fn generate(
             let fkey = format!("{fname}_id");
             columns.push((fkey.clone(), "integer"));
             // user, user_id
-            references.push((fname, fkey));
+            references.push((fname.to_string(), fkey));
+        } else if let Some(refname) = ftype.strip_prefix("references:") {
+            let fkey = format!("{fname}_id");
+            columns.push((fkey.clone(), "integer"));
+            references.push((refname.to_string(), fkey));
         } else {
             let mappings = get_mappings();
             let schema_type = mappings.schema_field(ftype.as_str()).ok_or_else(|| {
@@ -104,22 +108,20 @@ mod tests {
     where
         F: FnOnce(),
     {
-        testutil::with_temp_dir(|previous, current| {
+        testutil::with_temp_dir(|_previous, current| {
             let status = Command::new("loco")
                 .args([
                     "new",
                     "-n",
                     app_name,
-                    "-t",
-                    "saas",
                     "--db",
                     "sqlite",
                     "--bg",
                     "async",
                     "--assets",
                     "serverside",
+                    "-a",
                 ])
-                .env("STARTERS_LOCAL_PATH", previous.join("../"))
                 .status()
                 .expect("cannot run command");
 

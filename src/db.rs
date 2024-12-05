@@ -3,10 +3,11 @@
 //! This module defines functions and operations related to the application's
 //! database interactions.
 
-use std::{collections::HashMap, fs::File, path::Path, sync::OnceLock, time::Duration};
+use std::{collections::HashMap, fs::File, io::Write, path::Path, sync::OnceLock, time::Duration};
 
+use chrono::{DateTime, Utc};
 use duct::cmd;
-use fs_err as fs;
+use fs_err::{self as fs, create_dir_all};
 use regex::Regex;
 use sea_orm::{
     ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
@@ -23,6 +24,12 @@ use crate::{
 };
 
 pub static EXTRACT_DB_NAME: OnceLock<Regex> = OnceLock::new();
+const IGNORED_TABLES: &[&str] = &[
+    "seaql_migrations",
+    "pg_loco_queue",
+    "sqlt_loco_queue",
+    "sqlt_loco_queue_lock",
+];
 
 fn get_extract_db_name() -> &'static Regex {
     EXTRACT_DB_NAME.get_or_init(|| Regex::new(r"/([^/]+)$").unwrap())
@@ -229,6 +236,8 @@ pub async fn reset<M: MigratorTrait>(db: &DatabaseConnection) -> Result<(), sea_
     migrate::<M>(db).await
 }
 
+use sea_orm::EntityName;
+use serde_json::Value;
 /// Seed the database with data from a specified file.
 /// Seeds open the file path and insert all file content into the DB.
 ///
@@ -239,25 +248,76 @@ pub async fn reset<M: MigratorTrait>(db: &DatabaseConnection) -> Result<(), sea_
 /// Returns a [`AppResult`] if could not render the path content into
 /// [`Vec<serde_json::Value>`] or could not inset the vector to DB.
 #[allow(clippy::type_repetition_in_bounds)]
-pub async fn seed<A>(db: &DatabaseConnection, path: &str) -> AppResult<()>
+pub async fn seed<A>(db: &DatabaseConnection, path: &str) -> crate::Result<()>
 where
     <<A as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<A>,
     for<'de> <<A as ActiveModelTrait>::Entity as EntityTrait>::Model: serde::de::Deserialize<'de>,
-    A: sea_orm::ActiveModelTrait + Send + Sync,
-    sea_orm::Insert<A>: Send + Sync, // Add this Send bound
+    A: ActiveModelTrait + Send + Sync,
+    sea_orm::Insert<A>: Send + Sync,
+    <A as ActiveModelTrait>::Entity: EntityName,
 {
-    let seed_data: Vec<serde_json::Value> = serde_yaml::from_reader(File::open(path)?)?;
+    // Deserialize YAML file into a vector of JSON values
+    let seed_data: Vec<Value> = serde_yaml::from_reader(File::open(path)?)?;
 
+    // Insert each row
     for row in seed_data {
-        let model = <A as ActiveModelTrait>::from_json(row)?;
-        <A as ActiveModelTrait>::Entity::insert(model)
-            .exec(db)
-            .await?;
+        let model = A::from_json(row)?;
+        A::Entity::insert(model).exec(db).await?;
     }
+
+    // Get the table name from the entity
+    let table_name = A::Entity::default().table_name().to_string();
+
+    // Get the database backend
+    let db_backend = db.get_database_backend();
+
+    // Reset auto-increment
+    reset_autoincrement(db_backend, &table_name, db).await?;
 
     Ok(())
 }
 
+/// Function to reset auto-increment
+/// # Errors
+/// Returns error if it fails
+pub async fn reset_autoincrement(
+    db_backend: DatabaseBackend,
+    table_name: &str,
+    db: &DatabaseConnection,
+) -> crate::Result<()> {
+    match db_backend {
+        DatabaseBackend::Postgres => {
+            let query_str = format!(
+                "SELECT setval(pg_get_serial_sequence('{table_name}', 'id'), COALESCE(MAX(id), 0) \
+                 + 1, false) FROM {table_name}"
+            );
+            db.execute(Statement::from_sql_and_values(
+                DatabaseBackend::Postgres,
+                &query_str,
+                vec![],
+            ))
+            .await?;
+        }
+        DatabaseBackend::Sqlite => {
+            let query_str = format!(
+                "UPDATE sqlite_sequence SET seq = (SELECT MAX(id) FROM {table_name}) WHERE name = \
+                 '{table_name}'"
+            );
+            db.execute(Statement::from_sql_and_values(
+                DatabaseBackend::Sqlite,
+                &query_str,
+                vec![],
+            ))
+            .await?;
+        }
+        DatabaseBackend::MySql => {
+            return Err(Error::Message(
+                "Unsupported database backend: MySQL".to_string(),
+            ))
+        }
+    }
+    Ok(())
+}
 /// Generate entity model.
 /// This function using sea-orm-cli.
 ///
@@ -277,7 +337,9 @@ pub async fn entities<M: MigratorTrait>(ctx: &AppContext) -> AppResult<String> {
         "--output-dir",
         "src/models/_entities",
         "--database-url",
-        &ctx.config.database.uri
+        &ctx.config.database.uri,
+        "--ignore-tables",
+        IGNORED_TABLES.join(","),
     )
     .stderr_to_stdout()
     .run()
@@ -338,11 +400,25 @@ fn fix_entities() -> AppResult<()> {
                 &new_file,
                 format!(
                     r"use sea_orm::entity::prelude::*;
-use super::_entities::{module}::{{ActiveModel, Entity}};
+pub use super::_entities::{module}::{{ActiveModel, Entity}};
 pub type {module_pascal} = Entity;
 
+#[async_trait::async_trait]
 impl ActiveModelBehavior for ActiveModel {{
     // extend activemodel below (keep comment for generators)
+
+    async fn before_save<C>(self, _db: &C, insert: bool) -> std::result::Result<Self, DbErr>
+    where
+        C: ConnectionTrait,
+    {{
+        if !insert && self.updated_at.is_unchanged() {{
+            let mut this = self;
+            this.updated_at = sea_orm::ActiveValue::Set(chrono::Utc::now().into());
+            Ok(this)
+        }} else {{
+            Ok(self)
+        }}
+    }}
 }}
 "
                 ),
@@ -398,5 +474,175 @@ async fn create_postgres_database(
         query,
     ))
     .await?;
+    Ok(())
+}
+
+/// Retrieves a list of table names from the database.
+///
+///
+/// # Errors
+///
+/// Returns an error if the operation fails for any reason, such as an
+/// unsupported database backend or a query execution issue.
+pub async fn get_tables(db: &DatabaseConnection) -> AppResult<Vec<String>> {
+    let query = match db.get_database_backend() {
+        DatabaseBackend::MySql => {
+            return Err(Error::Message(
+                "Unsupported database backend: MySQL".to_string(),
+            ))
+        }
+        DatabaseBackend::Postgres => {
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+        }
+        DatabaseBackend::Sqlite => {
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+        }
+    };
+
+    let result = db
+        .query_all(Statement::from_string(
+            db.get_database_backend(),
+            query.to_string(),
+        ))
+        .await?;
+
+    Ok(result
+        .into_iter()
+        .filter_map(|row| {
+            let col = match db.get_database_backend() {
+                sea_orm::DatabaseBackend::MySql | sea_orm::DatabaseBackend::Postgres => {
+                    "table_name"
+                }
+                sea_orm::DatabaseBackend::Sqlite => "name",
+            };
+
+            if let Ok(table_name) = row.try_get::<String>("", col) {
+                if IGNORED_TABLES.contains(&table_name.as_str()) {
+                    return None;
+                }
+                Some(table_name)
+            } else {
+                None
+            }
+        })
+        .collect())
+}
+
+/// Dumps the contents of specified database tables into YAML files.
+///
+/// # Errors
+/// This function retrieves data from all tables in the database, filters them
+/// if `only_tables` is provided, and writes each table's content to a separate
+/// YAML file in the specified directory.
+///
+/// Returns an error if the operation fails for any reason or could not save the
+/// content into a file.
+pub async fn dump_tables(
+    db: &DatabaseConnection,
+    to: &Path,
+    only_tables: Option<Vec<String>>,
+) -> AppResult<()> {
+    tracing::debug!("getting tables from the database");
+
+    let tables = get_tables(db).await?;
+    tracing::info!(tables = ?tables, "found tables");
+
+    for table in tables {
+        if let Some(ref only_tables) = only_tables {
+            if !only_tables.contains(&table) {
+                tracing::info!(table, "skipping table as it is not in the specified list");
+                continue;
+            }
+        }
+
+        tracing::info!(table, "get table data");
+
+        let data_result = db
+            .query_all(Statement::from_string(
+                db.get_database_backend(),
+                format!(r#"SELECT * FROM "{table}""#),
+            ))
+            .await?;
+
+        tracing::info!(
+            table,
+            rows_fetched = data_result.len(),
+            "fetched rows from table"
+        );
+
+        let mut table_data: Vec<HashMap<String, serde_json::Value>> = Vec::new();
+
+        if !to.exists() {
+            tracing::info!("the specified dump folder does not exist. creating the folder now");
+            create_dir_all(to)?;
+        }
+
+        for row in data_result {
+            let mut row_data: HashMap<String, serde_json::Value> = HashMap::new();
+
+            for col_name in row.column_names() {
+                let value_result = row
+                    .try_get::<String>("", &col_name)
+                    .map(serde_json::Value::String)
+                    .or_else(|_| {
+                        row.try_get::<i8>("", &col_name)
+                            .map(serde_json::Value::from)
+                    })
+                    .or_else(|_| {
+                        row.try_get::<i16>("", &col_name)
+                            .map(serde_json::Value::from)
+                    })
+                    .or_else(|_| {
+                        row.try_get::<i32>("", &col_name)
+                            .map(serde_json::Value::from)
+                    })
+                    .or_else(|_| {
+                        row.try_get::<i64>("", &col_name)
+                            .map(serde_json::Value::from)
+                    })
+                    .or_else(|_| {
+                        row.try_get::<f32>("", &col_name)
+                            .map(serde_json::Value::from)
+                    })
+                    .or_else(|_| {
+                        row.try_get::<f64>("", &col_name)
+                            .map(serde_json::Value::from)
+                    })
+                    .or_else(|_| {
+                        row.try_get::<uuid::Uuid>("", &col_name)
+                            .map(|v| serde_json::Value::String(v.to_string()))
+                    })
+                    .or_else(|_| {
+                        row.try_get::<DateTime<Utc>>("", &col_name)
+                            .map(|v| serde_json::Value::String(v.to_rfc3339()))
+                    })
+                    .or_else(|_| {
+                        row.try_get::<serde_json::Value>("", &col_name)
+                            .map(serde_json::Value::from)
+                    })
+                    .or_else(|_| {
+                        row.try_get::<bool>("", &col_name)
+                            .map(serde_json::Value::Bool)
+                    })
+                    .ok();
+
+                if let Some(value) = value_result {
+                    row_data.insert(col_name, value);
+                }
+            }
+            table_data.push(row_data);
+        }
+
+        let data = serde_yaml::to_string(&table_data)?;
+
+        let file_db_content_path = to.join(format!("{table}.yaml"));
+
+        let mut file = File::create(&file_db_content_path)?;
+        file.write_all(data.as_bytes())?;
+        tracing::info!(table, file_db_content_path = %file_db_content_path.display(), "table data written to YAML file");
+    }
+
+    tracing::info!("dumping tables process completed successfully");
+
     Ok(())
 }
