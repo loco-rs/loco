@@ -22,8 +22,8 @@ server:
   host: http://localhost
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
   middlewares:
-  {%- if settings.asset %}   
-    {%- if settings.asset.kind == "server" %} 
+  {%- if settings.asset %}
+    {%- if settings.asset.kind == "server" %}
     static:
       enable: true
       must_exist: true
@@ -32,7 +32,7 @@ server:
         uri: "/static"
         path: "assets/static"
       fallback: "assets/static/404.html"
-  {%- elif settings.asset.kind == "client" %} 
+  {%- elif settings.asset.kind == "client" %}
     static:
       enable: true
       must_exist: true
@@ -42,9 +42,9 @@ server:
         path: "frontend/dist"
       fallback: "frontend/dist/index.html"
   {%- endif -%}
-  
+
   {%- endif -%}
-   
+
 {%- if settings.background%}
 
 # Worker Configuration
@@ -83,6 +83,8 @@ mailer:
     # auth:
     #   user:
     #   password:
+    # Override the SMTP hello name (default is the machine's hostname)
+    # hello_name:
 {%- endif %}
 
 # Initializers Configuration
