@@ -12,6 +12,43 @@
 <!DOCTYPE html>
 <html lang="{{ config.extra.language_code | default(value=" en-US") }}" >
 <head>
+      {# Site title #}
+      {% set current_path = current_path | default(value="/") %}
+      {% if current_path == "/" %}
+      <title>
+          {{ config.title | default(value="Home") }}
+      </title>
+
+      {% else %}
+      <title>
+          {% if page.title %} {{ page.title ~ " - Loco.rs" }}
+          {% elif section.title %} {{ section.title ~ " - Loco.rs" }}
+          {% elif config.title %} {{ config.title }}
+          {% else %} Post  ~ " - Loco.rs" {% endif %}
+      </title>
+
+        {% if not page_has_og_title %}
+            <meta property="og:title" content="{% if page.title -%}{{ page.title }}{% elif config.title -%}{{ config.title }}{% else -%}Post{% endif -%}" />
+        {% endif %}
+     {% endif %}
+
+     {% if not page_has_og_description %}
+         {% if page.description %}
+             <meta property="og:description" content="{{ page.description }}" />
+         {% elif config.description %}
+             <meta property="og:description" content="{{ config.description }}" />
+         {% endif %}
+     {% endif %}
+
+     {% if not page_has_description %}
+         {% if page.description %}
+             <meta name="description" content="{{ page.description }}" />
+         {% elif config.description %}
+             <meta name="description" content="{{ config.description }}" />
+         {% endif %}
+    {% endif %}
+
+
   <meta charset="utf-8">
   <meta http-equiv="x-ua-compatible" content="ie=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
