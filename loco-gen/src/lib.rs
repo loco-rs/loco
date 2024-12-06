@@ -15,30 +15,27 @@ mod scaffold;
 mod testutil;
 use std::{str::FromStr, sync::OnceLock};
 
-const CONTROLLER_T: &str = include_str!("templates/controller.t");
-const CONTROLLER_TEST_T: &str = include_str!("templates/request_test.t");
+const MAILER_T: &str = include_str!("templates/mailer/mailer.t");
+const MAILER_SUB_T: &str = include_str!("templates/mailer/subject.t");
+const MAILER_TEXT_T: &str = include_str!("templates/mailer/text.t");
+const MAILER_HTML_T: &str = include_str!("templates/mailer/html.t");
 
-const MAILER_T: &str = include_str!("templates/mailer.t");
-const MAILER_SUB_T: &str = include_str!("templates/mailer_sub.t");
-const MAILER_TEXT_T: &str = include_str!("templates/mailer_text.t");
-const MAILER_HTML_T: &str = include_str!("templates/mailer_html.t");
+const MIGRATION_T: &str = include_str!("templates/migration/migration.t");
 
-const MIGRATION_T: &str = include_str!("templates/migration.t");
+const TASK_T: &str = include_str!("templates/task/task.t");
+const TASK_TEST_T: &str = include_str!("templates/task/test.t");
 
-const TASK_T: &str = include_str!("templates/task.t");
-const TASK_TEST_T: &str = include_str!("templates/task_test.t");
+const SCHEDULER_T: &str = include_str!("templates/scheduler/scheduler.t");
 
-const SCHEDULER_T: &str = include_str!("templates/scheduler.t");
-
-const WORKER_T: &str = include_str!("templates/worker.t");
-const WORKER_TEST_T: &str = include_str!("templates/worker_test.t");
+const WORKER_T: &str = include_str!("templates/worker/worker.t");
+const WORKER_TEST_T: &str = include_str!("templates/worker/test.t");
 
 // Deployment templates
-const DEPLOYMENT_DOCKER_T: &str = include_str!("templates/deployment_docker.t");
-const DEPLOYMENT_DOCKER_IGNORE_T: &str = include_str!("templates/deployment_docker_ignore.t");
-const DEPLOYMENT_SHUTTLE_T: &str = include_str!("templates/deployment_shuttle.t");
-const DEPLOYMENT_SHUTTLE_CONFIG_T: &str = include_str!("templates/deployment_shuttle_config.t");
-const DEPLOYMENT_NGINX_T: &str = include_str!("templates/deployment_nginx.t");
+const DEPLOYMENT_DOCKER_T: &str = include_str!("templates/deployment/docker/docker.t");
+const DEPLOYMENT_DOCKER_IGNORE_T: &str = include_str!("templates/deployment/docker/ignore.t");
+const DEPLOYMENT_SHUTTLE_T: &str = include_str!("templates/deployment/shuttle/shuttle.t");
+const DEPLOYMENT_SHUTTLE_CONFIG_T: &str = include_str!("templates/deployment/shuttle/config.t");
+const DEPLOYMENT_NGINX_T: &str = include_str!("templates/deployment/nginx/nginx.t");
 
 const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.46.0";
 
