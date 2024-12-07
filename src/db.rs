@@ -3,8 +3,6 @@
 //! This module defines functions and operations related to the application's
 //! database interactions.
 
-use std::{collections::HashMap, fs::File, io::Write, path::Path, sync::OnceLock, time::Duration};
-
 use chrono::{DateTime, Utc};
 use duct::cmd;
 use fs_err::{self as fs, create_dir_all};
@@ -14,6 +12,8 @@ use sea_orm::{
     DatabaseConnection, DbConn, EntityTrait, IntoActiveModel, Statement,
 };
 use sea_orm_migration::MigratorTrait;
+use std::future::Future;
+use std::{collections::HashMap, fs::File, io::Write, path::Path, sync::OnceLock, time::Duration};
 use tracing::info;
 
 use super::Result as AppResult;
@@ -33,6 +33,16 @@ const IGNORED_TABLES: &[&str] = &[
 
 fn get_extract_db_name() -> &'static Regex {
     EXTRACT_DB_NAME.get_or_init(|| Regex::new(r"/([^/]+)$").unwrap())
+}
+
+/// A trait for seeding the database with initial data.
+/// Seeders should be kept in `src/seeders`.
+pub trait Seeder: Send + Sync {
+    /// The unique name of the seeder.
+    fn name(&self) -> String;
+
+    /// Seeds the database with initial data.
+    fn seed(&self, db: &DatabaseConnection) -> impl Future<Output = AppResult<()>>;
 }
 
 #[derive(Default, Clone, Debug)]
@@ -275,6 +285,15 @@ where
     reset_autoincrement(db_backend, &table_name, db).await?;
 
     Ok(())
+}
+
+/// Seed the database with the given Seeder.
+///
+/// # Errors
+///
+/// Returns an error if the seeder fails.
+pub async fn seed_via_seeder(db: &DatabaseConnection, seeder: &impl Seeder) -> crate::Result<()> {
+    seeder.seed(db).await
 }
 
 /// Function to reset auto-increment
