@@ -31,7 +31,7 @@ jobs:
 
       - name: install 'loco new'
         run: |
-          cargo install --path ../loco-new
+          cargo install --path ./loco-new
 
       - name: create myapp
         run: |
