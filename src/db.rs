@@ -42,7 +42,7 @@ pub trait Seeder: Send + Sync {
     fn name(&self) -> String;
 
     /// Seeds the database with initial data.
-    fn seed(&self, db: &DatabaseConnection) -> impl Future<Output = AppResult<()>>;
+    fn seed(&self, db: &DatabaseConnection) -> impl Future<Output = AppResult<()>> + Send + Sync;
 }
 
 #[derive(Default, Clone, Debug)]
