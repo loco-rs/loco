@@ -11,7 +11,7 @@ env:
   TOOLCHAIN_PROFILE: minimal
 
 jobs:
-  test:
+  g-deploy-docker:
     runs-on: ubuntu-latest
 
     permissions:
@@ -31,7 +31,7 @@ jobs:
 
       - name: install 'loco new'
         run: |
-          cargo install loco
+          cargo install --path ../loco-new
 
       - name: create myapp
         run: |
