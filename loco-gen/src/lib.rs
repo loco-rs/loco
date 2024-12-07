@@ -134,6 +134,7 @@ impl FromStr for DeploymentKind {
         match s.to_lowercase().as_str() {
             "docker" => Ok(Self::Docker),
             "shuttle" => Ok(Self::Shuttle),
+            "ngnix" => Ok(Self::Nginx),
             _ => Err(()),
         }
     }
