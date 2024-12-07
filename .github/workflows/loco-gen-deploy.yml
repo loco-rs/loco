@@ -17,30 +17,6 @@ jobs:
     permissions:
       contents: read
 
-    services:
-      redis:
-        image: redis
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - "6379:6379"
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_DB: postgres_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - "5432:5432"
-        # Set health checks to wait until postgres has started
-        options: --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4
@@ -53,10 +29,16 @@ jobs:
       - name: Install seaorm cli
         run: cargo install sea-orm-cli
 
+      - name: install 'loco new'
+        run: |
+          cargo install --path ./loco-new
+
+      - name: install 'loco new'
+        run: |
+          loco new -n myapp --db sqlite --bg async --assets serverside -a
+
       - name:
-        run: cargo run -- generate deployment && docker build -t demo .
-        working-directory: ./examples/demo
+        run: cargo loco generate deployment && docker build -t demo .
+        working-directory: ./myapp
         env:
           LOCO_DEPLOYMENT_KIND: docker
-          REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres_test
