@@ -444,6 +444,12 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
     let cli = Playground::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
+    let config = environment.load()?;
+
+    if !H::init_logger(&config, &environment)? {
+        logger::init::<H>(&config.logger);
+    }
+
     let app_context = create_context::<H>(&environment).await?;
     Ok(app_context)
 }
