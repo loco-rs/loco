@@ -115,7 +115,7 @@ impl Hooks for AppHook {
         Ok(())
     }
 
-    async fn seed(_db: &DatabaseConnection, _base: &Path) -> Result<()> {
+    async fn seed(_ctx: &AppContext, _base: &Path) -> Result<()> {
         Ok(())
     }
 }

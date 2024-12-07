@@ -61,7 +61,7 @@ async fn handle_create_with_password_with_duplicate() {
     configure_insta!();
 
     let boot = testing::boot_test::<App>().await.unwrap();
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    testing::seed::<App>(&boot.app_context).await.unwrap();
 
     let new_user: Result<Model, ModelError> = Model::create_with_password(
         &boot.app_context.db,
@@ -81,7 +81,7 @@ async fn can_find_by_email() {
     configure_insta!();
 
     let boot = testing::boot_test::<App>().await.unwrap();
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    testing::seed::<App>(&boot.app_context).await.unwrap();
 
     let existing_user = Model::find_by_email(&boot.app_context.db, "user1@example.com").await;
     let non_existing_user_results =
@@ -97,7 +97,7 @@ async fn can_find_by_pid() {
     configure_insta!();
 
     let boot = testing::boot_test::<App>().await.unwrap();
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    testing::seed::<App>(&boot.app_context).await.unwrap();
 
     let existing_user =
         Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111").await;
@@ -114,7 +114,7 @@ async fn can_verification_token() {
     configure_insta!();
 
     let boot = testing::boot_test::<App>().await.unwrap();
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    testing::seed::<App>(&boot.app_context).await.unwrap();
 
     let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
         .await
@@ -143,7 +143,7 @@ async fn can_set_forgot_password_sent() {
     configure_insta!();
 
     let boot = testing::boot_test::<App>().await.unwrap();
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    testing::seed::<App>(&boot.app_context).await.unwrap();
 
     let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
         .await
@@ -172,7 +172,7 @@ async fn can_verified() {
     configure_insta!();
 
     let boot = testing::boot_test::<App>().await.unwrap();
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    testing::seed::<App>(&boot.app_context).await.unwrap();
 
     let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
         .await
@@ -199,7 +199,7 @@ async fn can_reset_password() {
     configure_insta!();
 
     let boot = testing::boot_test::<App>().await.unwrap();
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    testing::seed::<App>(&boot.app_context).await.unwrap();
 
     let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
         .await

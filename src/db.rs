@@ -42,7 +42,7 @@ pub trait Seeder: Send + Sync {
     fn name(&self) -> String;
 
     /// Seeds the database with initial data.
-    fn seed(&self, db: &DatabaseConnection) -> impl Future<Output = AppResult<()>> + Send + Sync;
+    fn seed(&self, db: &AppContext) -> impl Future<Output = AppResult<()>> + Send + Sync;
 }
 
 #[derive(Default, Clone, Debug)]
@@ -292,8 +292,8 @@ where
 /// # Errors
 ///
 /// Returns an error if the seeder fails.
-pub async fn seed_via_seeder(db: &DatabaseConnection, seeder: &impl Seeder) -> crate::Result<()> {
-    seeder.seed(db).await
+pub async fn seed_via_seeder(ctx: &AppContext, seeder: &impl Seeder) -> crate::Result<()> {
+    seeder.seed(ctx).await
 }
 
 /// Function to reset auto-increment
@@ -471,7 +471,7 @@ where
 /// # Errors
 ///
 /// when seed process is fails
-pub async fn run_app_seed<H: Hooks>(db: &DatabaseConnection, path: &Path) -> AppResult<()> {
+pub async fn run_app_seed<H: Hooks>(db: &AppContext, path: &Path) -> AppResult<()> {
     H::seed(db, path).await
 }
 

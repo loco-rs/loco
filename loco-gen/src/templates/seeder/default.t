@@ -9,7 +9,7 @@ impl Seeder for {{struct_name}}Seeder {
         "{{struct_name}}Seeder".to_string()
     }
 
-    async fn seed(&self, conn: &DatabaseConnection) -> AppResult<()> {
+    async fn seed(&self, ctx: &AppContext) -> AppResult<()> {
         todo!()
     }
 }
