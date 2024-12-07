@@ -11,8 +11,11 @@ mod controller;
 mod model;
 #[cfg(feature = "with-db")]
 mod scaffold;
+#[cfg(feature = "with-db")]
+mod seeder;
 #[cfg(test)]
 mod testutil;
+
 use std::{str::FromStr, sync::OnceLock};
 
 const MAILER_T: &str = include_str!("templates/mailer/mailer.t");
@@ -171,6 +174,11 @@ pub enum Component {
         // k
         kind: ScaffoldKind,
     },
+    #[cfg(feature = "with-db")]
+    Seeder {
+        /// Name of the thing to generate
+        name: String,
+    },
     Controller {
         /// Name of the thing to generate
         name: String,
@@ -245,6 +253,10 @@ pub fn generate(component: Component, appinfo: &AppInfo) -> Result<()> {
             let vars =
                 json!({ "name": name, "ts": chrono::Utc::now(), "pkg_name": appinfo.app_name});
             rrgen.generate(MIGRATION_T, &vars)?;
+        }
+        #[cfg(feature = "with-db")]
+        Component::Seeder { name } => {
+            seeder::generate(&rrgen, name.as_str())?;
         }
         Component::Controller {
             name,
