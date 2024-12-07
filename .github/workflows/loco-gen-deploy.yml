@@ -31,9 +31,9 @@ jobs:
 
       - name: install 'loco new'
         run: |
-          cargo install --path ./loco-new
+          cargo install loco
 
-      - name: install 'loco new'
+      - name: create myapp
         run: |
           loco new -n myapp --db sqlite --bg async --assets serverside -a
 
