@@ -1,6 +1,7 @@
-use object_store::memory::InMemory;
+use opendal::{services::Memory, Operator};
 
-use super::{object_store_adapter::ObjectStoreAdapter, StoreDriver};
+use super::StoreDriver;
+use crate::storage::drivers::opendal_adapter::OpendalAdapter;
 
 /// Create new in-memory storage.
 ///
@@ -9,7 +10,15 @@ use super::{object_store_adapter::ObjectStoreAdapter, StoreDriver};
 /// use loco_rs::storage::drivers::mem;
 /// let mem_storage = mem::new();
 /// ```
+///
+/// # Panics
+///
+/// Panics if the memory service built failed.
 #[must_use]
 pub fn new() -> Box<dyn StoreDriver> {
-    Box::new(ObjectStoreAdapter::new(Box::new(InMemory::new())))
+    Box::new(OpendalAdapter::new(
+        Operator::new(Memory::default())
+            .expect("memory service must build with success")
+            .finish(),
+    ))
 }
