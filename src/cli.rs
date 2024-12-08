@@ -498,7 +498,7 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
     let config = environment.load()?;
 
     if !H::init_logger(&config, &environment)? {
-        logger::init::<H>(&config.logger);
+        logger::init::<H>(&config.logger)?;
     }
 
     let app_context = create_context::<H>(&environment).await?;
@@ -542,7 +542,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
     let config = environment.load()?;
 
     if !H::init_logger(&config, &environment)? {
-        logger::init::<H>(&config.logger);
+        logger::init::<H>(&config.logger)?;
     }
 
     let task_span = create_root_span(&environment);
@@ -688,7 +688,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
     let config = environment.load()?;
 
     if !H::init_logger(&config, &environment)? {
-        logger::init::<H>(&config.logger);
+        logger::init::<H>(&config.logger)?;
     }
 
     let task_span = create_root_span(&environment);
