@@ -500,6 +500,8 @@ pub struct SmtpMailer {
     pub secure: bool,
     /// Auth SMTP server
     pub auth: Option<MailerAuth>,
+    /// Optional EHLO client ID instead of hostname
+    pub hello_name: Option<String>,
 }
 
 /// Authentication details for the mailer
