@@ -75,6 +75,7 @@ const MODULE_WHITELIST: &[&str] = &[
     "tower_http",
     "sqlx::query",
     "sidekiq",
+    "playground",
 ];
 
 // Keep nonblocking file appender work guard
