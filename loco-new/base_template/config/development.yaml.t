@@ -16,6 +16,8 @@ logger:
 
 # Web server configuration
 server:
+  # Interface to bind to
+  binding: {{ get_env(name="NODE_BINDING", default="localhost") }}
   # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
   port: {{ get_env(name="PORT", default="5150") }}
   # Binding for the server (which interface to bind to)
