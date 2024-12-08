@@ -423,7 +423,7 @@ mod test {
     ) -> Result<HeaderMap, SignedPrivateCookieJarError> {
         let headers = HeaderMap::new();
         let jar = SignedPrivateCookieJar::new(&headers, private_key.clone());
-        assert!(jar.into_cookie_map(&config)?.is_empty());
+        assert!(jar.into_cookie_map(config)?.is_empty());
         Ok(headers)
     }
 

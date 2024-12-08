@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     config::{self, Config},
-    controller::middleware,
+    controller::middleware::{self, request_context},
     logger, scheduler,
 };
 
@@ -22,7 +22,16 @@ pub fn test_config() -> Config {
             port: 5555,
             host: "localhost".to_string(),
             ident: None,
-            middlewares: middleware::Config::default(),
+            middlewares: middleware::Config {
+                request_context: Some(request_context::RequestContextMiddlewareConfig {
+                    enable: true,
+                    session_config: request_context::SessionCookieConfig::default(),
+                    session_store: request_context::RequestContextSession::Cookie {
+                        private_key: vec![0; 64],
+                    },
+                }),
+                ..middleware::Config::default()
+            },
         },
         #[cfg(feature = "with-db")]
         database: config::Database {

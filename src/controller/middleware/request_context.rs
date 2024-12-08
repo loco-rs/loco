@@ -7,7 +7,10 @@ use tower_sessions::{
 };
 
 use crate::{
-    app::AppContext, controller::middleware::MiddlewareLayer, request_context::{layer::RequestContextLayer, RequestContextError, TowerSessionStore}, Error, Result
+    app::AppContext,
+    controller::middleware::MiddlewareLayer,
+    request_context::{layer::RequestContextLayer, RequestContextError, TowerSessionStore},
+    Result,
 };
 
 /// Request context configuration
@@ -105,7 +108,8 @@ impl Default for RequestContextSession {
         // file, generate a private key for the cookie session and panic.
         let private_key = Key::generate().master().to_vec();
         panic!(
-            "Session secret key must be explicitly configured in your environment config file: {:?}",
+            "Session secret key must be explicitly configured in your environment config file: \
+             {:?}",
             private_key
         )
     }
@@ -136,7 +140,7 @@ impl MiddlewareLayer for RequestContextMiddleware {
 
     /// Returns whether the middleware is enabled or not.
     fn is_enabled(&self) -> bool {
-        true
+        self.config.enable
     }
 
     /// Returns middleware config.
@@ -169,8 +173,9 @@ impl RequestContextMiddleware {
                 tracing::info!("[Middleware] Adding request context");
                 if private_key.len() < 64 {
                     return Err(RequestContextError::ConfigurationError(
-                        "Session private key must be at least 64 bytes long".into()
-                    ).into());
+                        "Session private key must be at least 64 bytes long".into(),
+                    )
+                    .into());
                 }
                 let layer = Self::get_cookie_request_context_middleware(
                     private_key,
@@ -236,5 +241,127 @@ impl RequestContextMiddleware {
             session_cookie_config.clone(),
         );
         Ok(RequestContextLayer::new(store))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::{
+        body::Body,
+        http::{Method, Request, StatusCode},
+        response::{IntoResponse, Response},
+        routing::{get, post},
+        Extension, Router,
+    };
+    use tower::ServiceExt;
+
+    use super::*;
+    use crate::{controller::middleware::request_id, request_context::RequestContext, tests_cfg};
+    const REQUEST_CONTEXT_DATA_KEY: &str = "alan";
+    pub async fn create_request_context(mut req: RequestContext) -> Result<Response> {
+        let data = "turing".to_string();
+        req.insert(REQUEST_CONTEXT_DATA_KEY, data.clone()).await?;
+
+        Ok(data.into_response())
+    }
+
+    pub async fn get_request_context(req: Extension<RequestContext>) -> Result<Response> {
+        let data = req
+            .get::<String>(REQUEST_CONTEXT_DATA_KEY)
+            .await?
+            .unwrap_or_default();
+        println!("data: {:?}", data);
+
+        Ok(data.into_response())
+    }
+
+    #[tokio::test]
+    async fn test_request_context_middleware() {
+        let middleware_config = RequestContextMiddlewareConfig {
+            enable: true,
+            session_config: SessionCookieConfig {
+                name: "test_session".to_string(),
+                http_only: true,
+                secure: false, // For testing
+                same_site: SameSite::Lax,
+                expiry: Some(3600),
+                path: "/".to_string(),
+                domain: None,
+            },
+            session_store: RequestContextSession::Cookie {
+                private_key: vec![
+                    219, 25, 129, 200, 66, 52, 72, 66, 249, 60, 206, 40, 77, 150, 2, 8, 30, 192,
+                    221, 5, 243, 74, 17, 172, 109, 96, 218, 46, 235, 118, 131, 150, 224, 205, 55,
+                    147, 45, 151, 245, 23, 250, 48, 133, 115, 105, 252, 193, 15, 162, 167, 77, 189,
+                    169, 91, 205, 172, 120, 254, 136, 111, 167, 161, 255, 107,
+                ],
+            },
+        };
+        // Need to apply LocoRequestId middleware before RequestContextMiddleware
+        let request_id_middleware = request_id::RequestId { enable: true };
+        // RequestContextMiddleware must be applied after LocoRequestId middleware
+        let request_context_middleware = RequestContextMiddleware::new(middleware_config, None);
+        let app = Router::new()
+            .route("/request_context", post(create_request_context))
+            .route("/request_context", get(get_request_context));
+
+        let app = request_context_middleware
+            .apply(app)
+            .expect("apply middleware")
+            .with_state(tests_cfg::app::get_app_context().await);
+        let app = request_id_middleware
+            .apply(app)
+            .expect("apply request_id middleware")
+            .with_state(tests_cfg::app::get_app_context().await);
+
+        let req = Request::builder()
+            .uri("/request_context")
+            .method(Method::POST)
+            .body(Body::empty())
+            .expect("request");
+
+        let response = app.clone().oneshot(req).await.expect("response");
+        assert_eq!(response.status(), StatusCode::OK);
+
+        // Verify session cookie is set
+        let cookie_header = response
+            .headers()
+            .get("set-cookie")
+            .expect("cookie header should be present");
+
+        let cookie_str = cookie_header.to_str().expect("valid cookie string");
+        assert!(cookie_str.contains("test_session="));
+        assert!(cookie_str.contains("HttpOnly"));
+        assert!(cookie_str.contains("Path=/"));
+        assert!(cookie_str.contains("SameSite=Lax"));
+
+        // Verify session cookie is retrieved
+        let req = Request::builder()
+            .uri("/request_context")
+            .header("Cookie", cookie_str)
+            .method(Method::GET)
+            .body(Body::empty())
+            .expect("request");
+
+        let response = app.oneshot(req).await.expect("response");
+        assert_eq!(response.status(), StatusCode::OK);
+        let response_body = response.into_body();
+        let bytes = axum::body::to_bytes(response_body, usize::MAX)
+            .await
+            .unwrap();
+        assert_eq!(bytes, "turing");
+    }
+
+    #[test]
+    fn test_middleware_disabled() {
+        let middleware = RequestContextMiddlewareConfig {
+            enable: false,
+            session_config: SessionCookieConfig::default(),
+            session_store: RequestContextSession::Cookie {
+                private_key: vec![0; 64],
+            },
+        };
+        let middleware = RequestContextMiddleware::new(middleware, None);
+        assert!(!middleware.is_enabled());
     }
 }

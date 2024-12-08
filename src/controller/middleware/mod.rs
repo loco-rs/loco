@@ -10,6 +10,7 @@
 pub mod auth;
 pub mod catch_panic;
 pub mod compression;
+pub mod cookie_size;
 pub mod cors;
 pub mod etag;
 pub mod fallback;
@@ -23,7 +24,6 @@ pub mod request_id;
 pub mod secure_headers;
 pub mod static_assets;
 pub mod timeout;
-pub mod cookie_size;
 
 use axum::Router as AXRouter;
 use limit_payload::LimitPayload;

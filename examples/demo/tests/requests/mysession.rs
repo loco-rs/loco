@@ -1,7 +1,7 @@
 use axum::http::HeaderName;
 use demo_app::app::App;
-use loco_rs::testing;
 use serial_test::serial;
+use loco_rs::testing::prelude::*;
 
 macro_rules! configure_insta {
     ($($expr:expr),*) => {
@@ -16,7 +16,7 @@ macro_rules! configure_insta {
 #[serial]
 async fn set_request_context_data() {
     configure_insta!();
-    testing::request::<App, _, _>(|request, _ctx| async move {
+    request::<App, _, _>(|request, _ctx| async move {
         let response = request.post("/mysession/request_context").await;
 
         // Get Cookie from response header
@@ -32,7 +32,7 @@ async fn set_request_context_data() {
 #[serial]
 async fn get_request_context_without_setting_data() {
     configure_insta!();
-    testing::request::<App, _, _>(|request, _ctx| async move {
+    request::<App, _, _>(|request, _ctx| async move {
         let response = request.get("/mysession/request_context").await;
         // Get response body
         assert_eq!(response.status_code(), 200);
@@ -45,7 +45,7 @@ async fn get_request_context_without_setting_data() {
 #[serial]
 async fn get_request_context_with_setting_data() {
     configure_insta!();
-    testing::request::<App, _, _>(|request, _ctx| async move {
+    request::<App, _, _>(|request, _ctx| async move {
         let response = request.post("/mysession/request_context").await;
         // Get Cookie from response header
         let headers = response.headers();

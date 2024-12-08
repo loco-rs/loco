@@ -92,6 +92,7 @@ where
                             .into_cookie_map(&store.session_cookie_config.clone())
                             .map_err(|e| {
                                 tracing::error!(error=?e, "Failed to extract data from cookie jar");
+
                                 let err: crate::Error =
                                     RequestContextError::SignedPrivateCookieJarError(e).into();
                                 err

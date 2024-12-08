@@ -82,19 +82,21 @@ where
         let cookies = request.headers().get_all(header::COOKIE);
         let total_size: usize = cookies.iter().map(|c| c.len()).sum();
         let span = tracing::info_span!("CookieSizeMiddleware::call");
+        let max_size = self.max_size;
+
         // Because the inner service can panic until ready, we need to ensure we only
         // use the ready service.
         //
         // See: https://docs.rs/tower/latest/tower/trait.Service.html#be-careful-when-cloning-inner-services
         let clone = self.inner.clone();
         let mut inner = std::mem::replace(&mut self.inner, clone);
-        let error_msg = format!(
-            "Cookie size {} exceeds maximum allowed size of {} bytes",
-            total_size, self.max_size
-        );
         Box::pin(
             async move {
-                if total_size > self.max_size {
+                if total_size > max_size {
+                    let error_msg = format!(
+                        "Cookie size {} exceeds maximum allowed size of {} bytes",
+                        total_size, max_size
+                    );
                     return Ok(Error::BadRequest(error_msg).into_response());
                 }
                 let response = inner.call(request).await?;
@@ -161,7 +163,7 @@ mod tests {
             .body(Body::empty())
             .expect("request");
 
-        let response = app.oneshot(req).await.expect("response");
+        let response = app.clone().oneshot(req).await.expect("response");
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
         // Test with acceptable cookie size
