@@ -2,7 +2,7 @@
 use axum_extra::extract::cookie::Cookie;
 use loco_rs::prelude::*;
 use serde::Serialize;
-use utoipa::{openapi, OpenApi, ToSchema};
+use utoipa::{OpenApi, ToSchema};
 
 #[derive(Serialize)]
 pub struct Health {

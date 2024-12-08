@@ -58,7 +58,7 @@
 //!         Ok(())
 //!     }
 //!
-//!     async fn seed(db: &DatabaseConnection, base: &Path) -> Result<()> {
+//!     async fn seed(db: &AppContext, base: &Path) -> Result<()> {
 //!         Ok(())
 //!     }
 //! }

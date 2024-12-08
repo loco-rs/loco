@@ -207,7 +207,7 @@ pub trait Hooks: Send {
 
     /// Seeds the database with initial data.
     #[cfg(feature = "with-db")]
-    async fn seed(db: &DatabaseConnection, path: &Path) -> Result<()>;
+    async fn seed(db: &AppContext, path: &Path) -> Result<()>;
 
     /// Called when the application is shutting down.
     /// This function allows users to perform any necessary cleanup or final

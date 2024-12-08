@@ -7,9 +7,8 @@ use duct::cmd;
 use regex::Regex;
 
 use crate::{
-    ci::{self, cargo_clippy, cargo_fmt, cargo_test},
-    errors::{Error, Result},
-    out,
+    ci::{cargo_clippy, cargo_fmt},
+    errors::Result,
 };
 
 fn bump_version_in_file(
