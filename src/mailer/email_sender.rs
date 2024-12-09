@@ -3,8 +3,9 @@
 //! sending emails with options like sender, recipient, subject, and content.
 
 use lettre::{
-    message::MultiPart, transport::smtp::authentication::Credentials, AsyncTransport, Message,
-    Tokio1Executor, Transport,
+    message::MultiPart,
+    transport::smtp::{authentication::Credentials, extension::ClientId},
+    AsyncTransport, Message, Tokio1Executor, Transport,
 };
 use tracing::error;
 
@@ -58,6 +59,10 @@ impl EmailSender {
         if let Some(auth) = config.auth.as_ref() {
             email_builder = email_builder
                 .credentials(Credentials::new(auth.user.clone(), auth.password.clone()));
+        }
+
+        if let Some(hello_name) = config.hello_name.as_ref() {
+            email_builder = email_builder.hello_name(ClientId::Domain(hello_name.clone()));
         }
 
         Ok(Self {
