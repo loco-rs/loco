@@ -1,0 +1,156 @@
+---
+source: src/bgworker/pg.rs
+expression: table_info
+---
+[
+    TableInfo {
+        table_schema: Some(
+            "public",
+        ),
+        column_name: Some(
+            "updated_at",
+        ),
+        column_default: Some(
+            "now()",
+        ),
+        is_nullable: Some(
+            "NO",
+        ),
+        data_type: Some(
+            "timestamp with time zone",
+        ),
+        is_updatable: Some(
+            "YES",
+        ),
+    },
+    TableInfo {
+        table_schema: Some(
+            "public",
+        ),
+        column_name: Some(
+            "run_at",
+        ),
+        column_default: None,
+        is_nullable: Some(
+            "NO",
+        ),
+        data_type: Some(
+            "timestamp with time zone",
+        ),
+        is_updatable: Some(
+            "YES",
+        ),
+    },
+    TableInfo {
+        table_schema: Some(
+            "public",
+        ),
+        column_name: Some(
+            "interval",
+        ),
+        column_default: None,
+        is_nullable: Some(
+            "YES",
+        ),
+        data_type: Some(
+            "bigint",
+        ),
+        is_updatable: Some(
+            "YES",
+        ),
+    },
+    TableInfo {
+        table_schema: Some(
+            "public",
+        ),
+        column_name: Some(
+            "created_at",
+        ),
+        column_default: Some(
+            "now()",
+        ),
+        is_nullable: Some(
+            "NO",
+        ),
+        data_type: Some(
+            "timestamp with time zone",
+        ),
+        is_updatable: Some(
+            "YES",
+        ),
+    },
+    TableInfo {
+        table_schema: Some(
+            "public",
+        ),
+        column_name: Some(
+            "task_data",
+        ),
+        column_default: None,
+        is_nullable: Some(
+            "NO",
+        ),
+        data_type: Some(
+            "jsonb",
+        ),
+        is_updatable: Some(
+            "YES",
+        ),
+    },
+    TableInfo {
+        table_schema: Some(
+            "public",
+        ),
+        column_name: Some(
+            "name",
+        ),
+        column_default: None,
+        is_nullable: Some(
+            "NO",
+        ),
+        data_type: Some(
+            "character varying",
+        ),
+        is_updatable: Some(
+            "YES",
+        ),
+    },
+    TableInfo {
+        table_schema: Some(
+            "public",
+        ),
+        column_name: Some(
+            "id",
+        ),
+        column_default: None,
+        is_nullable: Some(
+            "NO",
+        ),
+        data_type: Some(
+            "character varying",
+        ),
+        is_updatable: Some(
+            "YES",
+        ),
+    },
+    TableInfo {
+        table_schema: Some(
+            "public",
+        ),
+        column_name: Some(
+            "status",
+        ),
+        column_default: Some(
+            "'queued'::character varying",
+        ),
+        is_nullable: Some(
+            "NO",
+        ),
+        data_type: Some(
+            "character varying",
+        ),
+        is_updatable: Some(
+            "YES",
+        ),
+    },
+]

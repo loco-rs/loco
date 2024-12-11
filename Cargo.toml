@@ -45,6 +45,8 @@ cache_inmem = ["dep:moka"]
 bg_redis = ["dep:rusty-sidekiq", "dep:bb8"]
 bg_pg = ["dep:sqlx", "dep:ulid"]
 bg_sqlt = ["dep:sqlx", "dep:ulid"]
+## Testing feature flags
+integration_test = []
 
 [dependencies]
 loco-gen = { version = "0.13.2", path = "./loco-gen" }
@@ -190,3 +192,10 @@ tree-fs = { version = "0.2.1" }
 reqwest = { version = "0.12.7" }
 serial_test = "3.1.1"
 tower = { workspace = true, features = ["util"] }
+sqlx = { version = "0.8.2", default-features = false, features = [
+    "macros",
+    "json",
+    "postgres",
+    "chrono",
+    "sqlite",
+] }

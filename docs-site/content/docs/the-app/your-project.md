@@ -48,7 +48,28 @@ cargo loco --help
 
 <!-- <snip id="exec-help-command" inject_from="yaml" action="exec" template="sh"> -->
 ```sh
-cd ./examples/demo && cargo loco --help
+The one-person framework for Rust
+
+Usage: demo_app-cli [OPTIONS] <COMMAND>
+
+Commands:
+  start       Start an app
+  db          Perform DB operations
+  routes      Describe all application endpoints
+  middleware  Describe all application middlewares
+  task        Run a custom task
+  jobs        Managing jobs queue
+  scheduler   Run the scheduler
+  generate    code generation creates a set of files and code templates based on a predefined set of rules
+  doctor      Validate and diagnose configurations
+  version     Display the app version
+  watch       Watch and restart the app
+  help        Print this message or the help of the given subcommand(s)
+
+Options:
+  -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
+  -h, --help                       Print help
+  -V, --version                    Print version
 ```
 <!-- </snip> -->
 
@@ -119,7 +140,22 @@ Scaffolding is an efficient and speedy method for generating key components of a
 See scaffold command:
 <!-- <snip id="scaffold-help-command" inject_from="yaml" action="exec" template="sh"> -->
 ```sh
-cd ./examples/demo && cargo loco generate scaffold --help
+Generates a CRUD scaffold, model and controller
+
+Usage: demo_app-cli generate scaffold [OPTIONS] <NAME> [FIELDS]...
+
+Arguments:
+  <NAME>       Name of the thing to generate
+  [FIELDS]...  Model fields, eg. title:string hits:int
+
+Options:
+  -k, --kind <KIND>                The kind of scaffold to generate [possible values: api, html, htmx]
+      --htmx                       Use HTMX scaffold
+      --html                       Use HTML scaffold
+      --api                        Use API scaffold
+  -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
+  -h, --help                       Print help
+  -V, --version                    Print version
 ```
 <!-- </snip> -->
 
