@@ -260,7 +260,7 @@ impl Queue {
     ///
     /// This function will return an error if fails
     pub async fn ping(&self) -> Result<()> {
-        tracing::trace!("job queue ping requested");
+        tracing::debug!("job queue ping requested");
         match self {
             #[cfg(feature = "bg_redis")]
             Self::Redis(pool, _, _) => {
