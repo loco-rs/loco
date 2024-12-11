@@ -11,6 +11,7 @@ Commands:
   routes      Describe all application endpoints
   middleware  Describe all application middlewares
   task        Run a custom task
+  jobs        Managing jobs queue
   scheduler   Run the scheduler
   generate    code generation creates a set of files and code templates based on a predefined set of rules
   doctor      Validate and diagnose configurations
