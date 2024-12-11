@@ -722,7 +722,7 @@ middlewares:
 
 `Loco` also allow us to apply [layers](https://docs.rs/tower/latest/tower/trait.Layer.html) to specific handlers or
 routes.
-For more information on handler and route based middleware, refer to the [middleware](/docs/the-app/middlewares)
+For more information on handler and route based middleware, refer to the [middleware](/docs/the-app/controller/#middleware)
 documentation.
 
 

@@ -16,4 +16,4 @@ id = "ieGeihxLGC8"
 
 Reference material for this episode:
 
-* Loco.rs docs: [Mailers](https://loco.rs/docs/the-app/mailers/)
+* Loco.rs docs: [Mailers](https://loco.rs/docs/processing/mailers/)

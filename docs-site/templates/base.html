@@ -12,18 +12,74 @@
 <!DOCTYPE html>
 <html lang="{{ config.extra.language_code | default(value=" en-US") }}" >
 <head>
+     {% if page.extra.meta %}
+         <!-- the meta data config goes here  -->
+         {% for data in page.extra.meta %}
+             <meta
+                 {% for key, value in data%}
+                     {% if key == "property" and value == "og:title"%}
+                         {% set_global page_has_og_title = true -%}
+                     {% endif %}
+                     {% if key == "property" and value == "og:description"%}
+                         {% set_global page_has_og_description = true -%}
+                     {% endif %}
+                     {% if key == "name" and value == "description"%}
+                         {% set_global page_has_description = true -%}
+                     {% endif %}
+                     {{ key }}="{{ value }}"
+                {% endfor %}
+            />
+        {% endfor %}
+    {% endif %}
+
+    {# Site title #}
+    {% set current_path = current_path | default(value="/") %}
+    {% if current_path == "/" %}
+      <title>
+          {{ config.title | default(value="Home") }}
+      </title>
+
+    {% else %}
+      <title>
+          {% if page.title %} {{ page.title ~ " - Loco.rs" }}
+          {% elif section.title %} {{ section.title ~ " - Loco.rs" }}
+          {% elif config.title %} {{ config.title }}
+          {% else %} Post  ~ " - Loco.rs" {% endif %}
+      </title>
+
+      {% if not page_has_og_title %}
+          <meta property="og:title" content="{% if page.title -%}{{ page.title }}{% elif config.title -%}{{ config.title }}{% else -%}Post{% endif %} - Loco.rs" />
+          <meta property="og:title" content="{% if page.title -%}{{ page.title }}{% elif config.title -%}{{ config.title }}{% else -%}Post{% endif %} - Loco.rs">  
+          <meta name="twitter:title" content="{% if page.title -%}{{ page.title }}{% elif config.title -%}{{ config.title }}{% else -%}Post{% endif %} - Loco.rs"> 
+      {% endif %}
+    {% endif %}
+
+
+     {% if not page_has_og_description %}
+         {% if page.description %}
+             <meta property="og:description" content="{{ page.description }}" />
+         {% elif config.description %}
+             <meta property="og:description" content="{{ config.description }}" />
+         {% endif %}
+     {% endif %}
+
+     {% if not page_has_description %}
+         {% if page.description %}
+             <meta name="description" content="{{ page.description }}" />
+         {% elif config.description %}
+             <meta name="description" content="{{ config.description }}" />
+         {% endif %}
+    {% endif %}
+
+
   <meta charset="utf-8">
   <meta http-equiv="x-ua-compatible" content="ie=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <meta property="description" content="Loco.rs is like Ruby on Rails for Rust. Use it to quickly build and deploy Rust based apps from zero to production."> 
-  <meta property="og:description" content="Loco.rs is like Ruby on Rails for Rust. Use it to quickly build and deploy Rust based apps from zero to production."> 
-  <meta property="og:title" content="Loco.rs - Rust Web Framework">  
-  <meta property="og:description" content="Loco.rs is like Ruby on Rails for Rust. Use it to quickly build and deploy Rust based apps from zero to production."> 
+
   <meta property="og:image" content="https://loco.rs/apple-touch-icon@x4.png">
 
   <meta name="twitter:card" content="summary_large_image"> 
-  <meta name="twitter:title" content="Loco.rs - Rust Web Framework"> 
   <meta name="twitter:description" content="Loco.rs is like Ruby on Rails for Rust. Use it to quickly build and deploy Rust based apps from zero to production.">
   <meta name="twitter:image" content="https://loco.rs/apple-touch-icon@x4.png">
   
