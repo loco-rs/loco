@@ -296,9 +296,9 @@ Here is a detailed description of the interface (listening, etc.) parameters und
 
 * `port:` as the name says, for changing ports, mostly when behind a load balancer, etc.
 
-* `binding:` for changing what the IP interface "binds" to, mostly, when you are behind a load balancer like `ngnix` you bind to a local address (when the LB is also there). However you can also bind to "world" (`0.0.0.0`). You can set the binding: field via config, or via the CLI (using the `-b` flag) -- which is what Rails is doing.
+* `binding:` for changing what the IP interface "binds" to, mostly, when you are behind a load balancer like `nginx` you bind to a local address (when the LB is also there). However, you can also bind to "world" (`0.0.0.0`). You can set the binding: field via config, or via the CLI (using the `-b` flag) -- which is what Rails is doing.
 
-* `host:` - for "visibility" use cases or out-of-band use cases. For example, some times you want to display the current server host (in terms of domain name, etc.), which serves for visibility. And some times, as in the case of emails -- your server address is "out of band", meaning when I open my gmail account and I have your email -- I have to click what looks like your external address or visible address (official domain name, etc), and not an internal "host" address which is what may be the wrong thing to do (imagine an email link pointing to "http://127.0.0.1/account/verify")
+* `host:` - for "visibility" use cases or out-of-band use cases. For example, sometimes you want to display the current server host (in terms of domain name, etc.), which serves for visibility. And sometimes, as in the case of emails -- your server address is "out of band", meaning when I open my gmail account and I have your email -- I have to click what looks like your external address or visible address (official domain name, etc), and not an internal "host" address which is what may be the wrong thing to do (imagine an email link pointing to "http://127.0.0.1/account/verify")
 
 
 
