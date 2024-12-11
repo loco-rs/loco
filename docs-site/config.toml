@@ -1,7 +1,7 @@
 # The URL the site will be built for
 base_url = "https://loco.rs"
-title = "Loco"
-description = "Loco is a productivity-first web and service framework in Rust"
+title = "Loco.rs - Productivity-first Rust Fullstack Web Framework"
+description = "Loco.rs is like Ruby on Rails for Rust. Use it to quickly build and deploy Rust based apps from zero to production."
 
 
 # Whether to automatically compile all Sass files in the sass directory

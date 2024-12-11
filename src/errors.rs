@@ -149,6 +149,12 @@ pub enum Error {
     VersionCheck(#[from] depcheck::VersionCheckError),
 
     #[error(transparent)]
+    RequestError(#[from] reqwest::Error),
+
+    #[error(transparent)]
+    SemVer(#[from] semver::Error),
+
+    #[error(transparent)]
     Any(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
