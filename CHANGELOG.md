@@ -29,6 +29,8 @@
   ```rust
   let boot = boot_test::<App>().await.unwrap();
   ```
+* implement commands to manage background jobs. [https://github.com/loco-rs/loco/pull/1071](https://github.com/loco-rs/loco/pull/1071)
+
 
 ## v0.13.2
 
