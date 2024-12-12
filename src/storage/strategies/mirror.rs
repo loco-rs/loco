@@ -231,12 +231,7 @@ impl MirrorStrategy {
         path: &Path,
     ) -> StorageResult<Bytes> {
         let store = storage.as_store_err(store_name)?;
-        store
-            .get(path)
-            .await?
-            .bytes()
-            .await
-            .map_err(StorageError::Store)
+        store.get(path).await?.bytes().await
     }
 }
 
