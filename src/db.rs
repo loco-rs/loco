@@ -19,7 +19,7 @@ use tracing::info;
 use super::Result as AppResult;
 use crate::{
     app::{AppContext, Hooks},
-    config, doctor,
+    config, doctor, env_vars,
     errors::Error,
 };
 
@@ -470,8 +470,7 @@ async fn create_postgres_database(
     db_name: &str,
     db: &DatabaseConnection,
 ) -> Result<(), sea_orm::DbErr> {
-    let with_options =
-        std::env::var("LOCO_POSTGRES_DB_OPTIONS").unwrap_or_else(|_| "ENCODING='UTF8'".to_string());
+    let with_options = env_vars::get_or_default(env_vars::POSTGRES_DB_OPTIONS, "ENCODING='UTF8'");
 
     let query = format!("CREATE DATABASE {db_name} WITH {with_options}");
     tracing::info!(query, "creating postgres database");
