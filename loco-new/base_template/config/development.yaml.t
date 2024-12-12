@@ -7,7 +7,7 @@ logger:
   # Enable pretty backtrace (sets RUST_BACKTRACE=1)
   pretty_backtrace: true
   # Log level, options: trace, debug, info, warn or error.
-  level: debug
+  level: {{ get_env(name="LOG_LEVEL", default="debug") }}
   # Define the logging format. options: compact, pretty or json
   format: compact
   # By default the logger has filtering only logs that came from your code or logs that came from `loco` framework. to see all third party libraries
@@ -17,13 +17,15 @@ logger:
 # Web server configuration
 server:
   # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
-  port: 5150
+  port: {{ get_env(name="PORT", default="5150") }}
+  # Binding for the server (which interface to bind to)
+  binding: {{ get_env(name="BINDING", default="localhost") }}
   # The UI hostname or IP address that mailers will point to.
   host: http://localhost
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
   middlewares:
-  {%- if settings.asset %}   
-    {%- if settings.asset.kind == "server" %} 
+  {%- if settings.asset %}
+    {%- if settings.asset.kind == "server" %}
     static:
       enable: true
       must_exist: true
@@ -32,7 +34,7 @@ server:
         uri: "/static"
         path: "assets/static"
       fallback: "assets/static/404.html"
-  {%- elif settings.asset.kind == "client" %} 
+  {%- elif settings.asset.kind == "client" %}
     static:
       enable: true
       must_exist: true
@@ -42,9 +44,9 @@ server:
         path: "frontend/dist"
       fallback: "frontend/dist/index.html"
   {%- endif -%}
-  
+
   {%- endif -%}
-   
+
 {%- if settings.background%}
 
 # Worker Configuration
@@ -83,6 +85,8 @@ mailer:
     # auth:
     #   user:
     #   password:
+    # Override the SMTP hello name (default is the machine's hostname)
+    # hello_name:
 {%- endif %}
 
 # Initializers Configuration
@@ -99,7 +103,7 @@ database:
   # Database connection URI
   uri: {% raw %}{{{% endraw %} get_env(name="DATABASE_URL", default="{{settings.db.endpoint | replace(from='NAME', to=settings.package_name) | replace(from='ENV', to='development')}}") {% raw %}}}{% endraw %}
   # When enabled, the sql query will be logged.
-  enable_logging: false
+  enable_logging: {{ get_env(name="DB_LOGGING", default="false") }}
   # Set the timeout duration when acquiring a connection.
   connect_timeout: {% raw %}{{{% endraw %} get_env(name="DB_CONNECT_TIMEOUT", default="500") {% raw %}}}{% endraw %}
   # Set the idle duration before closing a connection.
