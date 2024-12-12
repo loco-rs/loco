@@ -101,6 +101,8 @@ $ demo_app-cli routes --environment test
 [GET] /mylayer/echo
 [GET] /mylayer/user
 [GET] /mysession
+[POST] /mysession/request_context
+[GET] /mysession/request_context
 [GET] /notes
 [POST] /notes
 [GET] /notes/:id

@@ -245,6 +245,15 @@ pub struct RedisQueueConfig {
     pub num_workers: u32,
 }
 
+/// Redis Configuration
+///
+/// Example (development):
+/// ```yaml
+/// # config/development.yaml
+/// redis:
+///   uri: redis://127.0.0.1/
+///   dangerously_flush: false
+/// ```
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PostgresQueueConfig {
     pub uri: String,
