@@ -132,7 +132,7 @@ pub enum Error {
     #[error(transparent)]
     Redis(#[from] sidekiq::redis_rs::RedisError),
 
-    #[cfg(feature = "bg_pg")]
+    #[cfg(any(feature = "bg_pg", feature = "bg_sqlt"))]
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
 

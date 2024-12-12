@@ -138,3 +138,9 @@ snippets:
   cli-middleware-list:
     content: cargo loco middleware --config
     path: ./snipdoc.yml
+  jobs-help-command:
+    content: cd ./examples/demo && cargo loco jobs --help
+    path: ./snipdoc.yml
+  seed-help-command:
+    content: cd ./examples/demo && cargo loco db seed --help
+    path: ./snipdoc.yml
