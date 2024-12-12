@@ -8,6 +8,7 @@ description = "Loco new app generator"
 license = "Apache-2.0"
 homepage = "https://docs.rs/loco"
 documentation = "https://docs.rs/loco"
+readme = "README.md"
 authors = ["Dotan Nahum <dotan@rng0.io>", "Elad Kaplan <kaplan.elad@gmail.com>"]
 include = ["src/**", "base_template/**", "Cargo.toml", "setup.rhai"]
 
