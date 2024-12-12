@@ -446,11 +446,27 @@ impl Entity {{}}
 /// # Errors
 ///
 /// Returns a [`AppResult`] if an error occurs during truncate the given table
-pub async fn truncate_table<T>(db: &DatabaseConnection, _: T) -> Result<(), sea_orm::DbErr>
+pub async fn truncate_table<T>(db: &DatabaseConnection, entity: T) -> Result<(), sea_orm::DbErr>
 where
     T: EntityTrait,
 {
-    T::delete_many().exec(db).await?;
+    match db {
+        DatabaseConnection::SqlxPostgresPoolConnection(_) => {
+            let query = sea_orm::sea_query::Table::truncate()
+                .table(entity.table_ref())
+                .build(sea_orm::sea_query::PostgresQueryBuilder)
+                .to_owned() + " RESTART IDENTITY";
+            tracing::info!(query, "truncating postgres table");
+            db.execute(Statement::from_string(
+                DatabaseBackend::Postgres,
+                query,
+            ))
+            .await?;
+        }
+        _ => {
+            T::delete_many().exec(db).await?;
+        }
+    }
     Ok(())
 }
 
