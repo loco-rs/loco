@@ -37,7 +37,7 @@ async fn can_get_or_insert() {
     configure_insta!();
 
     request::<App, _, _>(|request, ctx| async move {
-        seed::<App>(&ctx.db).await.unwrap();
+        seed::<App>(&ctx).await.unwrap();
         let response = request.get("/cache/get_or_insert").await;
         assert_eq!(response.text(), "user1");
 

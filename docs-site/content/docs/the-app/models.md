@@ -516,8 +516,8 @@ Integrate your seed into the app's Hook implementations by following these steps
 impl Hooks for App {
     // Other implementations...
 
-    async fn seed(db: &DatabaseConnection, base: &Path) -> Result<()> {
-        db::seed::<users::ActiveModel>(db, &base.join("users.yaml").display().to_string()).await?;
+    async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
+        db::seed::<users::ActiveModel>(&ctx.db, &base.join("users.yaml").display().to_string()).await?;
         Ok(())
     }
 }
@@ -579,7 +579,7 @@ use loco_rs::testing::prelude::*;
 async fn handle_create_with_password_with_duplicate() {
 
     let boot = boot_test::<App, Migrator>().await;
-    seed::<App>(&boot.app_context.db).await.unwrap();
+    seed::<App>(&boot.app_context).await.unwrap();
     assert!(get_user_by_id(1).ok());
 }
 ```
@@ -703,7 +703,7 @@ async fn can_find_by_pid() {
     configure_insta!();
 
     let boot = boot_test::<App, Migrator>().await;
-    seed::<App>(&boot.app_context.db).await.unwrap();
+    seed::<App>(&boot.app_context).await.unwrap();
 
     let existing_user =
         Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111").await;
@@ -759,7 +759,7 @@ async fn is_user_exists() {
     configure_insta!();
 
     let boot = boot_test::<App, Migrator>().await;
-    seed::<App>(&boot.app_context.db).await.unwrap();
+    seed::<App>(&boot.app_context).await.unwrap();
     assert!(get_user_by_id(1).ok());
 
 }
