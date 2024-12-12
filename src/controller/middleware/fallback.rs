@@ -11,6 +11,7 @@ use tower_http::services::ServeFile;
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 
+#[derive(Debug)]
 pub struct StatusCodeWrapper(pub StatusCode);
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

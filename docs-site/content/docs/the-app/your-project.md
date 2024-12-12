@@ -23,13 +23,18 @@ Create your starter app:
 ```sh
 ❯ loco new
 ✔ ❯ App name? · myapp
-✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+✔ ❯ What would you like to build? · Saas App with client side rendering
 ✔ ❯ Select a DB Provider · Sqlite
 ✔ ❯ Select your background worker type · Async (in-process tokio async tasks)
-✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
 
 🚂 Loco app generated successfully in:
 myapp/
+
+- assets: You've selected `clientside` for your asset serving configuration.
+
+Next step, build your frontend:
+  $ cd frontend/
+  $ npm install && npm run build
 ```
 <!-- </snip> -->
 
@@ -43,27 +48,7 @@ cargo loco --help
 
 <!-- <snip id="exec-help-command" inject_from="yaml" action="exec" template="sh"> -->
 ```sh
-The one-person framework for Rust
-
-Usage: demo_app-cli [OPTIONS] <COMMAND>
-
-Commands:
-  start       Start an app
-  db          Perform DB operations
-  routes      Describe all application endpoints
-  middleware  Describe all application middlewares
-  task        Run a custom task
-  scheduler   Run the scheduler
-  generate    code generation creates a set of files and code templates based on a predefined set of rules
-  doctor      Validate and diagnose configurations
-  version     Display the app version
-  watch       Watch and restart the app
-  help        Print this message or the help of the given subcommand(s)
-
-Options:
-  -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
-  -h, --help                       Print help
-  -V, --version                    Print version
+cd ./examples/demo && cargo loco --help
 ```
 <!-- </snip> -->
 
@@ -134,29 +119,14 @@ Scaffolding is an efficient and speedy method for generating key components of a
 See scaffold command:
 <!-- <snip id="scaffold-help-command" inject_from="yaml" action="exec" template="sh"> -->
 ```sh
-Generates a CRUD scaffold, model and controller
-
-Usage: demo_app-cli generate scaffold [OPTIONS] <NAME> [FIELDS]...
-
-Arguments:
-  <NAME>       Name of the thing to generate
-  [FIELDS]...  Model fields, eg. title:string hits:int
-
-Options:
-  -k, --kind <KIND>                The kind of scaffold to generate [possible values: api, html, htmx]
-      --htmx                       Use HTMX scaffold
-      --html                       Use HTML scaffold
-      --api                        Use API scaffold
-  -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
-  -h, --help                       Print help
-  -V, --version                    Print version
+cd ./examples/demo && cargo loco generate scaffold --help
 ```
 <!-- </snip> -->
 
 You can begin by generating a scaffold for the Post resource, which will represent a single blog posting. To accomplish this, open your terminal and enter the following command:
 <!-- <snip id="scaffold-post-command" inject_from="yaml" template="sh"> -->
 ```sh
-cargo loco generate scaffold posts name:string title:string content:text
+cargo loco generate scaffold posts name:string title:string content:text --api
 ```
 <!-- </snip> -->
 
@@ -281,6 +251,20 @@ if let Some(settings) = &ctx.config.settings {
     println!("allow list: {:?}", settings.allow_list);
 }
 ```
+
+### Server
+
+
+
+Here is a detailed description of the interface (listening, etc.) parameters under `server:`:
+
+* `port:` as the name says, for changing ports, mostly when behind a load balancer, etc.
+
+* `binding:` for changing what the IP interface "binds" to, mostly, when you are behind a load balancer like `nginx` you bind to a local address (when the LB is also there). However, you can also bind to "world" (`0.0.0.0`). You can set the binding: field via config, or via the CLI (using the `-b` flag) -- which is what Rails is doing.
+
+* `host:` - for "visibility" use cases or out-of-band use cases. For example, sometimes you want to display the current server host (in terms of domain name, etc.), which serves for visibility. And sometimes, as in the case of emails -- your server address is "out of band", meaning when I open my gmail account and I have your email -- I have to click what looks like your external address or visible address (official domain name, etc), and not an internal "host" address which is what may be the wrong thing to do (imagine an email link pointing to "http://127.0.0.1/account/verify")
+
+
 
 ### Logger
 

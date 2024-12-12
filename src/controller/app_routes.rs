@@ -2,22 +2,21 @@
 //! configuring routes in an Axum application. It allows you to define route
 //! prefixes, add routes, and configure middlewares for the application.
 
-use std::fmt;
+use std::{fmt, sync::OnceLock};
 
 use axum::Router as AXRouter;
-use lazy_static::lazy_static;
 use regex::Regex;
 
-#[cfg(feature = "channels")]
-use super::channels::AppChannels;
 use crate::{
     app::{AppContext, Hooks},
     controller::{middleware::MiddlewareLayer, routes::Routes},
     Result,
 };
 
-lazy_static! {
-    static ref NORMALIZE_URL: Regex = Regex::new(r"/+").unwrap();
+static NORMALIZE_URL: OnceLock<Regex> = OnceLock::new();
+
+fn get_normalize_url() -> &'static Regex {
+    NORMALIZE_URL.get_or_init(|| Regex::new(r"/+").unwrap())
 }
 
 /// Represents the routes of the application.
@@ -25,10 +24,9 @@ lazy_static! {
 pub struct AppRoutes {
     prefix: Option<String>,
     routes: Vec<Routes>,
-    #[cfg(feature = "channels")]
-    channels: Option<AppChannels>,
 }
 
+#[derive(Debug)]
 pub struct ListRoutes {
     pub uri: String,
     pub actions: Vec<axum::http::Method>,
@@ -65,8 +63,6 @@ impl AppRoutes {
         Self {
             prefix: None,
             routes: vec![],
-            #[cfg(feature = "channels")]
-            channels: None,
         }
     }
 
@@ -90,7 +86,7 @@ impl AppRoutes {
                     parts.push(handler.uri.to_string());
                     let joined_parts = parts.join("/");
 
-                    let normalized = NORMALIZE_URL.replace_all(&joined_parts, "/");
+                    let normalized = get_normalize_url().replace_all(&joined_parts, "/");
                     let uri = if normalized == "/" {
                         normalized.to_string()
                     } else {
@@ -156,13 +152,6 @@ impl AppRoutes {
         self
     }
 
-    #[cfg(feature = "channels")]
-    #[must_use]
-    pub fn add_app_channels(mut self, channels: AppChannels) -> Self {
-        self.channels = Some(channels);
-        self
-    }
-
     #[must_use]
     pub fn middlewares<H: Hooks>(&self, ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer>> {
         H::middlewares(ctx)
@@ -203,40 +192,6 @@ impl AppRoutes {
         for router in self.collect() {
             tracing::info!("{}", router.to_string());
             app = app.route(&router.uri, router.method);
-        }
-
-        #[cfg(feature = "channels")]
-        if let Some(channels) = self.channels.as_ref() {
-            tracing::info!("[Middleware] +channels");
-            let channel_layer_app = tower::ServiceBuilder::new().layer(channels.layer.clone());
-            if ctx
-                .config
-                .server
-                .middlewares
-                .cors
-                .as_ref()
-                .is_some_and(super::middleware::MiddlewareLayer::is_enabled)
-            {
-                app = app.layer(
-                    tower::ServiceBuilder::new()
-                        .layer(
-                            ctx.config
-                                .server
-                                .middlewares
-                                .cors
-                                .clone()
-                                .unwrap_or_default()
-                                .cors()?,
-                        )
-                        .layer(channel_layer_app),
-                );
-            } else {
-                app = app.layer(
-                    tower::ServiceBuilder::new()
-                        .layer(tower_http::cors::CorsLayer::permissive())
-                        .layer(channel_layer_app),
-                );
-            }
         }
 
         let middlewares = self.middlewares::<H>(&ctx);

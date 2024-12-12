@@ -17,8 +17,8 @@ const JWT_ALGORITHM: Algorithm = Algorithm::HS512;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserClaims {
     pub pid: String,
-    exp: usize,
-    claims: Option<Value>,
+    exp: u64,
+    pub claims: Option<Value>,
 }
 
 /// Represents the JWT configuration and operations.
@@ -29,6 +29,7 @@ pub struct UserClaims {
 ///
 /// auth::jwt::JWT::new("PqRwLF2rhHe8J22oBeHy");
 /// ```
+#[derive(Debug)]
 pub struct JWT {
     secret: String,
     algorithm: Algorithm,
@@ -70,8 +71,7 @@ impl JWT {
         pid: String,
         claims: Option<Value>,
     ) -> JWTResult<String> {
-        #[allow(clippy::cast_possible_truncation)]
-        let exp = (get_current_timestamp() + expiration) as usize;
+        let exp = get_current_timestamp().saturating_add(*expiration);
 
         let claims = UserClaims { pid, exp, claims };
 

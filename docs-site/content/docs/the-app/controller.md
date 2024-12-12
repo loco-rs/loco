@@ -47,12 +47,7 @@ $ cargo loco routes
 [POST] /auth/register
 [POST] /auth/reset
 [POST] /auth/verify
-[GET] /notes/
-[POST] /notes/
-[GET] /notes/:id
-[DELETE] /notes/:id
-[POST] /notes/:id
-[GET] /user/current
+[GET] /auth/current
 ```
 
 This command will provide you with a comprehensive overview of the controllers currently registered in your system.
@@ -727,7 +722,7 @@ middlewares:
 
 `Loco` also allow us to apply [layers](https://docs.rs/tower/latest/tower/trait.Layer.html) to specific handlers or
 routes.
-For more information on handler and route based middleware, refer to the [middleware](/docs/the-app/middlewares)
+For more information on handler and route based middleware, refer to the [middleware](/docs/the-app/controller/#middleware)
 documentation.
 
 
@@ -767,6 +762,8 @@ impl Hooks for App {
 # Pagination
 
 In many scenarios, when querying data and returning responses to users, pagination is crucial. In `Loco`, we provide a straightforward method to paginate your data and maintain a consistent pagination response schema for your API responses.
+
+We assume you have a `notes` entity and/or scaffold (replace this with any entity you like).
 
 ## Using pagination
 
@@ -861,18 +858,19 @@ impl PaginationResponse {
 # Testing 
 When testing controllers, the goal is to call the router's controller endpoint and verify the HTTP response, including the status code, response content, headers, and more.
 
-To initialize a test request, use `testing::request`, which prepares your app routers, providing the request instance and the application context.
+To initialize a test request, use `use loco_rs::testing::prelude::*;`, which prepares your app routers, providing the request instance and the application context.
 
 In the following example, we have a POST endpoint that returns the data sent in the POST request.
 
 ```rust
+use loco_rs::testing::prelude::*;
 
 #[tokio::test]
 #[serial]
 async fn can_print_echo() {
     configure_insta!();
 
-    testing::request::<App, _, _>(|request, _ctx| async move {
+    request::<App, _, _>(|request, _ctx| async move {
         let response = request
             .post("/example")
             .json(&serde_json::json!({"site": "Loco"}))

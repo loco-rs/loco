@@ -2,6 +2,184 @@
 
 ## Unreleased
 
+* fix: guard jwt error behind feature flag. [https://github.com/loco-rs/loco/pull/1032](https://github.com/loco-rs/loco/pull/1032)
+* fix: logger file_appender not using the seperated format setting. [https://github.com/loco-rs/loco/pull/1036](https://github.com/loco-rs/loco/pull/1036)
+* seed cli command. [https://github.com/loco-rs/loco/pull/1046](https://github.com/loco-rs/loco/pull/1046)
+* Updated validator to 0.19. [https://github.com/loco-rs/loco/pull/993](https://github.com/loco-rs/loco/pull/993)
+* Testing helpers: simplified function calls + adding html selector. [https://github.com/loco-rs/loco/pull/1047](https://github.com/loco-rs/loco/pull/1047)
+  ### Breaking Changes
+  #### Updated Import Paths
+  The testing module import path has been updated. To adapt your code, update imports from:
+  ```rust
+  use loco_rs::testing;
+  ```
+  to:
+  ```rust
+  use testing::prelude::*;
+  ```
+  #### Simplified Function Calls
+  Function calls within the testing module no longer require the testing:: prefix. Update your code accordingly. For example:
+  
+  Before:
+  ```rust
+  let boot = testing::boot_test::<App>().await.unwrap();
+  ```
+
+  After:
+  ```rust
+  let boot = boot_test::<App>().await.unwrap();
+  ```
+
+## v0.13.2
+
+* static fallback now returns 200 and not 404 [https://github.com/loco-rs/loco/pull/991](https://github.com/loco-rs/loco/pull/991)
+* cache system now has expiry [https://github.com/loco-rs/loco/pull/1006](https://github.com/loco-rs/loco/pull/1006)
+* fixed: http interface binding [https://github.com/loco-rs/loco/pull/1007](https://github.com/loco-rs/loco/pull/1007)
+* JWT claims now editable and public [https://github.com/loco-rs/loco/issues/988](https://github.com/loco-rs/loco/issues/988)
+* CORS now not enabled in dev mode to avoid friction [https://github.com/loco-rs/loco/pull/1009](https://github.com/loco-rs/loco/pull/1009)
+* fixed: task code generation now injects in all cases [https://github.com/loco-rs/loco/pull/1012](https://github.com/loco-rs/loco/pull/1012)
+
+**BREAKING**
+In your `app.rs` add the following injection comment at the bottom:
+
+```rust
+fn register_tasks(tasks: &mut Tasks) {
+    tasks.register(tasks::user_report::UserReport);
+    tasks.register(tasks::seed::SeedData);
+    tasks.register(tasks::foo::Foo);
+    // tasks-inject (do not remove)
+}
+```
+* fix: seeding now sets autoincrement fields in the relevant DBs [https://github.com/loco-rs/loco/pull/1014](https://github.com/loco-rs/loco/pull/1014)
+* fix: avoid generating entities from queue tables when the queue backend is database based [https://github.com/loco-rs/loco/issues/1013](https://github.com/loco-rs/loco/issues/1013)
+* removed: channels moved to an initializer [https://github.com/loco-rs/loco/issues/892](https://github.com/loco-rs/loco/issues/892)
+**BREAKING**
+See how this looks like in [https://github.com/loco-rs/chat-rooms](https://github.com/loco-rs/chat-rooms)
+
+## v0.13.0
+
+* Added SQLite background job support [https://github.com/loco-rs/loco/pull/969](https://github.com/loco-rs/loco/pull/969)
+* Added automatic updating of `updated_at` on change [https://github.com/loco-rs/loco/pull/962](https://github.com/loco-rs/loco/pull/962)
+* fixed codegen injection point in migrations [https://github.com/loco-rs/loco/pull/952](https://github.com/loco-rs/loco/pull/952)
+
+**NOTE: update your migration listing module like so:**
+
+```rust
+// migrations/src/lib.rs
+  vec![
+      Box::new(m20220101_000001_users::Migration),
+      Box::new(m20231103_114510_notes::Migration),
+      Box::new(m20240416_071825_roles::Migration),
+      Box::new(m20240416_082115_users_roles::Migration),
+      // inject-above (do not remove this comment)
+  ]
+```
+
+Add the comment just before the closing array (`inject-above`)
+
+* Added ability to name references in [https://github.com/loco-rs/loco/pull/955](https://github.com/loco-rs/loco/pull/955):
+
+```sh
+$ generate scaffold posts title:string! content:string! written_by:references:users approved_by:references:users
+```
+
+* Added hot-reload like experience to Tera templates [https://github.com/loco-rs/loco/issues/977](https://github.com/loco-rs/loco/issues/977), in debug builds only.
+
+**NOTE: update your initializers `after_routes` like so:**
+
+```rust
+// src/initializers/view_engine.rs
+async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+    #[allow(unused_mut)]
+    let mut tera_engine = engines::TeraView::build()?;
+    if std::path::Path::new(I18N_DIR).exists() {
+        let arc = ArcLoader::builder(&I18N_DIR, unic_langid::langid!("en-US"))
+            .shared_resources(Some(&[I18N_SHARED.into()]))
+            .customize(|bundle| bundle.set_use_isolating(false))
+            .build()
+            .map_err(|e| Error::string(&e.to_string()))?;
+        #[cfg(debug_assertions)]
+        tera_engine
+            .tera
+            .lock()
+            .expect("lock")
+            .register_function("t", FluentLoader::new(arc));
+
+        #[cfg(not(debug_assertions))]
+        tera_engine
+            .tera
+            .register_function("t", FluentLoader::new(arc));
+        info!("locales loaded");
+    }
+
+    Ok(router.layer(Extension(ViewEngine::from(tera_engine))))
+}
+```
+
+* `loco doctor` now checks for app-specific minimum dependency versions. This should help in upgrades. `doctor` also supports "production only" checks which you can run in production with `loco doctor --production`. This, for example, will check your connections but will not check dependencies. [https://github.com/loco-rs/loco/pull/931](https://github.com/loco-rs/loco/pull/931)
+* Use a single loco-rs dep for a whole project. [https://github.com/loco-rs/loco/pull/927](https://github.com/loco-rs/loco/pull/927)
+* chore: fix generated testcase. [https://github.com/loco-rs/loco/pull/939](https://github.com/loco-rs/loco/pull/939)
+* chore: Correct cargo test message. [https://github.com/loco-rs/loco/pull/938](https://github.com/loco-rs/loco/pull/938)
+* Add relevant meta tags for better defaults. [https://github.com/loco-rs/loco/pull/943](https://github.com/loco-rs/loco/pull/943)
+* Update cli message with correct command. [https://github.com/loco-rs/loco/pull/942](https://github.com/loco-rs/loco/pull/942)
+* remove lazy_static. [https://github.com/loco-rs/loco/pull/941](https://github.com/loco-rs/loco/pull/941)
+* change update HTTP verb semantics to put+patch. [https://github.com/loco-rs/loco/pull/919](https://github.com/loco-rs/loco/pull/919)
+* Fixed HTML scaffold error. [https://github.com/loco-rs/loco/pull/960](https://github.com/loco-rs/loco/pull/960)
+* Scaffolded HTML update method should be POST. [https://github.com/loco-rs/loco/pull/963](https://github.com/loco-rs/loco/pull/963)
+
+## v0.12.0
+
+This release have been primarily about cleanups and simplification.
+
+Please update:
+
+* `loco-rs`
+* `loco-cli`
+
+Changes:
+
+* **generators (BREAKING)**: all prefixes in starters (e.g. `/api`) are now _local to each controller_, and generators will be prefix-aware (`--api` generator will add an `/api` prefix to controllers) [https://github.com/loco-rs/loco/pull/818](https://github.com/loco-rs/loco/pull/818)
+
+To migrate, please move prefixes from `app.rs` to each controller you use in `controllers/`, for example in `notes` controller:
+
+```rust
+Routes::new()
+    .prefix("api/notes")
+    .add("/", get(list))
+```
+
+* **starters**: removed `.devcontainer` which can now be found in [loco-devcontainer](https://github.com/loco-rs/loco-devcontainer)
+* **starters**: removed example `notes` scaffold (model, controllers, etc), and unified `user` and `auth` into a single file: `auth.rs`
+* **generators**: `scaffold` generator will now generate a CRUD with `PUT` and `PATCH` semantics for updating an entity [https://github.com/loco-rs/loco/issues/896](https://github.com/loco-rs/loco/issues/896)
+* **cleanup**: `loco-extras` was moved out of the repo, but we've incorporated `MultiDB` and `ExtraDB` from `extras` into `loco-rs` [https://github.com/loco-rs/loco/pull/917](https://github.com/loco-rs/loco/pull/917)
+
+* `cargo loco doctor` now checks for minimal required SeaORM CLI version
+* **BREAKING** Improved migration generator. If you have an existing migration project, add the following comment indicator to the top of the `vec` statement and right below the opening bracked like so in `migration/src/lib.rs`:
+```rust
+    fn migrations() -> Vec<Box<dyn MigrationTrait>> {
+        vec![
+            // inject-below (do not remove this comment)
+```
+
+## v0.11.0
+
+
+* Upgrade **SeaORM to v1.1.0**
+* Added OpenAPI example
+* Improve health route [https://github.com/loco-rs/loco/pull/851](https://github.com/loco-rs/loco/pull/851)
+* Add good pragmas to Sqlite [https://github.com/loco-rs/loco/pull/848](https://github.com/loco-rs/loco/pull/848)
+* Upgrade to rsbuild 1.0. [https://github.com/loco-rs/loco/pull/792](https://github.com/loco-rs/loco/pull/792)
+* Implements fmt::Debug to pub structs. [https://github.com/loco-rs/loco/pull/812](https://github.com/loco-rs/loco/pull/812)
+* Add num_workers config for sidekiq queue. [https://github.com/loco-rs/loco/pull/823](https://github.com/loco-rs/loco/pull/823)
+* Fix some comments in the starters and example code. [https://github.com/loco-rs/loco/pull/824](https://github.com/loco-rs/loco/pull/824)
+* Fix Y2038 bug for JWT on 32 bit platforms. [https://github.com/loco-rs/loco/pull/825](https://github.com/loco-rs/loco/pull/825)
+* Make App URL in Boot Banner Clickable. [https://github.com/loco-rs/loco/pull/826](https://github.com/loco-rs/loco/pull/826)
+* Add `--no-banner` flag to allow disabling the banner display. [https://github.com/loco-rs/loco/pull/839](https://github.com/loco-rs/loco/pull/839)
+* add on_shutdown hook. [https://github.com/loco-rs/loco/pull/842](https://github.com/loco-rs/loco/pull/842)
+
+
+## v0.10.1
+
 * `Format(respond_to): Format` extractor in controller can now be replaced with `respond_to: RespondTo` extractor for less typing.
 * When supplying data to views, you can now use `data!` instead of `serde_json::json!` for shorthand.
 * Refactor middlewares. [https://github.com/loco-rs/loco/pull/785](https://github.com/loco-rs/loco/pull/785). Middleware selection, configuration, and tweaking is MUCH more powerful and convenient now. You can keep the `middleware:` section empty or remove it now, see more in [the middleware docs](https://loco.rs/docs/the-app/controller/#middleware)

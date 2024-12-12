@@ -19,6 +19,7 @@ Loco provides the following options for background jobs:
 
 * Redis backed (powered by `sidekiq-rs`)
 * Postgres backed (own implementation)
+* SQLite backed (own implementation)
 * Tokio-async based (same-process, evented thread based background jobs)
 
 
@@ -57,8 +58,18 @@ Or a Postgres based queue backend:
 ```yaml
 queue:
   kind: Postgres
-  # Redis connection URI
+  # Postgres Queue connection URI
   uri: "{{ get_env(name="PGQ_URL", default="postgres://localhost:5432/mydb") }}"
+  dangerously_flush: false
+```
+
+Or a SQLite based queue backend:
+
+```yaml
+queue:
+  kind: Sqlite
+  # SQLite Queue connection URI
+  uri: "{{ get_env(name="SQLTQ_URL", default="sqlite://loco_development.sqlite?mode=rwc") }}"
   dangerously_flush: false
 ```
 
@@ -164,7 +175,7 @@ The worker generator creates a worker file associated with your app and generate
 
 In your `config/<environment>.yaml` you can specify the worker mode. BackgroundAsync and BackgroundQueue will process jobs in a non-blocking manner, while ForegroundBlocking will process jobs in a blocking manner.
 
-The main difference between BackgroundAsync and BackgroundQueue is that the latter will use Redis to store the jobs, while the former does not require Redis and will use async within the same process.
+The main difference between BackgroundAsync and BackgroundQueue is that the latter will use Redis/Postgres/SQLite to store the jobs, while the former does not require Redis/Postgres/SQLite and will use async in memory within the same process.
 
 ```yaml
 # Worker Configuration
@@ -188,11 +199,13 @@ Here's an example of how the test should be structured:
 
 
 ```rust
+use loco_rs::testing::prelude::*;
+
 #[tokio::test]
 #[serial]
 async fn test_run_report_worker_worker() {
     // Set up the test environment
-    let boot = testing::boot_test::<App, Migrator>().await.unwrap();
+    let boot = boot_test::<App, Migrator>().await.unwrap();
 
     // Execute the worker in 'ForegroundBlocking' mode, preventing it from running asynchronously
     assert!(

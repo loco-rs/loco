@@ -6,9 +6,10 @@ pub use self::errors::Error;
 
 mod banner;
 pub mod bgworker;
+mod depcheck;
+pub mod initializers;
 pub mod prelude;
 
-#[cfg(feature = "with-db")]
 pub mod doctor;
 
 #[cfg(feature = "with-db")]
@@ -30,7 +31,6 @@ pub mod config;
 pub mod controller;
 pub mod environment;
 pub mod errors;
-mod gen;
 pub mod hash;
 mod logger;
 pub mod mailer;
@@ -41,11 +41,9 @@ pub mod testing;
 #[cfg(feature = "testing")]
 pub use axum_test::TestServer;
 pub mod storage;
-pub mod validation;
-#[cfg(feature = "channels")]
-pub use socketioxide;
 #[cfg(feature = "testing")]
 pub mod tests_cfg;
+pub mod validation;
 pub use validator;
 
 /// Application results options list

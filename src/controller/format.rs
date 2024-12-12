@@ -55,7 +55,7 @@ use crate::{
 ///
 /// # Errors
 ///
-/// Currently this function did't return any error. this is for feature
+/// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn empty() -> Result<Response> {
     Ok(().into_response())
@@ -76,7 +76,7 @@ pub fn empty() -> Result<Response> {
 ///
 /// # Errors
 ///
-/// Currently this function did't return any error. this is for feature
+/// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn text(t: &str) -> Result<Response> {
     Ok(t.to_string().into_response())
@@ -105,7 +105,7 @@ pub fn text(t: &str) -> Result<Response> {
 ///
 /// # Errors
 ///
-/// Currently this function did't return any error. this is for feature
+/// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn json<T: Serialize>(t: T) -> Result<Response> {
     Ok(Json(t).into_response())
@@ -134,7 +134,7 @@ pub fn empty_json() -> Result<Response> {
 ///
 /// # Errors
 ///
-/// Currently this function did't return any error. this is for feature
+/// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn html(content: &str) -> Result<Response> {
     Ok(Html(content.to_string()).into_response())
@@ -154,7 +154,7 @@ pub fn html(content: &str) -> Result<Response> {
 ///
 /// # Errors
 ///
-/// Currently this function did't return any error. this is for feature
+/// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn redirect(to: &str) -> Result<Response> {
     Ok(Redirect::to(to).into_response())
@@ -186,6 +186,7 @@ where
     html(&views::template(template, data)?)
 }
 
+#[derive(Debug)]
 pub struct RenderBuilder {
     response: Builder,
 }
@@ -371,10 +372,11 @@ pub fn render() -> RenderBuilder {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-    use crate::{controller::views::engines::TeraView, prelude::*};
     use insta::assert_debug_snapshot;
     use tree_fs;
+
+    use super::*;
+    use crate::{controller::views::engines::TeraView, prelude::*};
 
     async fn response_body_to_string(response: hyper::Response<Body>) -> String {
         let bytes = axum::body::to_bytes(response.into_body(), 200)
@@ -450,6 +452,7 @@ mod tests {
     #[tokio::test]
     async fn view_response() {
         let yaml_content = r"
+        drop: true
         files:
         - path: template/test.html
           content: |-
@@ -457,7 +460,7 @@ mod tests {
         ";
 
         let tree_res = tree_fs::from_yaml_str(yaml_content).unwrap();
-        let v = TeraView::from_custom_dir(&tree_res).unwrap();
+        let v = TeraView::from_custom_dir(&tree_res.root).unwrap();
 
         assert_debug_snapshot!(view(&v, "template/none.html", serde_json::json!({})));
         let response = view(&v, "template/test.html", serde_json::json!({"foo": "loco"})).unwrap();
@@ -545,6 +548,7 @@ mod tests {
     #[tokio::test]
     async fn builder_view_response() {
         let yaml_content = r"
+        drop: true
         files:
         - path: template/test.html
           content: |-
@@ -552,7 +556,7 @@ mod tests {
         ";
 
         let tree_res = tree_fs::from_yaml_str(yaml_content).unwrap();
-        let v = TeraView::from_custom_dir(&tree_res).unwrap();
+        let v = TeraView::from_custom_dir(&tree_res.root).unwrap();
 
         assert_debug_snapshot!(view(&v, "template/none.html", serde_json::json!({})));
         let response = render()

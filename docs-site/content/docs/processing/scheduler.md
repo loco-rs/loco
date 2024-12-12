@@ -16,7 +16,7 @@ flair =[]
 +++
 
 
-Loco simplifies the traditional, often cumbersome `crontab` system, making it easier and more elegant to schedule cron jobs. The scheduler job can execute either a shell script command or run a registered [task](./task.md).
+Loco simplifies the traditional, often cumbersome `crontab` system, making it easier and more elegant to schedule cron jobs. The scheduler job can execute either a shell script command or run a registered [task](@/docs/processing/task.md).
 
 
 ## Setting Up
@@ -96,7 +96,7 @@ The scheduler configuration consists of the following elements:
         ```
     * `shell`: by default `false` meaning executing the the `run` value as a task. if `true` execute the `run` value as shell command
     * `run`: Cronjob command to run. 
-        * `Task:` The task name (with variables e.x `[TASK_NAME] KEY:VAl`. follow [here](./task.md) to see task arguments ). Note that the `shell` field should be false.
+        * `Task:` The task name (with variables e.x `[TASK_NAME] KEY:VAl`. follow [here](@/docs/processing/task.md) to see task arguments ). Note that the `shell` field should be false.
         * `Shell`: Run a shell command (e.x `"echo loco >> ./scheduler.txt"`). Note that the `shell` field should be true.
     * `tags` (Optional): A list of tags to categorize and manage the job.
     * `output` (Optional): Overrides the global `scheduler.output` for this job.
@@ -109,7 +109,7 @@ After setting up your jobs, you can verify the configuration to ensure everythin
 Run the following command to list the jobs from your scheduler file:
 <!-- <snip id="scheduler-list-from-file-command" inject_from="yaml"  template="sh"> -->
 ```sh
-cargo loco scheduler --path config/scheduler.yaml --list
+cargo loco scheduler --config config/scheduler.yaml --list
 ```
 <!-- </snip> -->
 

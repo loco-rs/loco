@@ -1,5 +1,5 @@
 [workspace]
-members = ["macros", "xtask", "loco-extras"]
+members = ["xtask", "loco-gen"]
 exclude = ["starters"]
 
 [workspace.package]
@@ -9,7 +9,7 @@ license = "Apache-2.0"
 
 [package]
 name = "loco-rs"
-version = "0.10.1"
+version = "0.13.2"
 description = "The one-person framework for Rust"
 homepage = "https://loco.rs/"
 documentation = "https://docs.rs/loco-rs"
@@ -22,12 +22,19 @@ rust-version.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["auth_jwt", "cli", "with-db", "cache_inmem", "bg_redis", "bg_pg"]
+default = [
+    "auth_jwt",
+    "cli",
+    "with-db",
+    "cache_inmem",
+    "bg_redis",
+    "bg_pg",
+    "bg_sqlt",
+]
 auth_jwt = ["dep:jsonwebtoken"]
 cli = ["dep:clap"]
-testing = ["dep:axum-test"]
-with-db = ["dep:sea-orm", "dep:sea-orm-migration"]
-channels = ["dep:socketioxide"]
+testing = ["dep:axum-test", "dep:scraper"]
+with-db = ["dep:sea-orm", "dep:sea-orm-migration", "loco-gen/with-db"]
 # Storage features
 all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
 storage_aws_s3 = ["object_store/aws"]
@@ -37,16 +44,25 @@ storage_gcp = ["object_store/gcp"]
 cache_inmem = ["dep:moka"]
 bg_redis = ["dep:rusty-sidekiq", "dep:bb8"]
 bg_pg = ["dep:sqlx", "dep:ulid"]
+bg_sqlt = ["dep:sqlx", "dep:ulid"]
 
 [dependencies]
+loco-gen = { version = "0.13.2", path = "./loco-gen" }
 backtrace_printer = { version = "1.3.0" }
 
 # cli
 clap = { version = "4.4.7", features = ["derive"], optional = true }
 colored = "2"
+reqwest = { version = "0.12.7", features = [
+    "charset",
+    "http2",
+    "json",
+    "macos-system-configuration",
+    "rustls-tls",
+], default-features = false }
 
 
-sea-orm = { version = "1.0.0", features = [
+sea-orm = { version = "1.1.0", features = [
     "sqlx-postgres",        # `DATABASE_DRIVER` feature
     "sqlx-sqlite",
     "runtime-tokio-rustls",
@@ -54,23 +70,25 @@ sea-orm = { version = "1.0.0", features = [
 ], optional = true }
 
 tokio = { version = "1.33.0", default-features = false }
+tokio-util = "0.7.10"
 # the rest
 
-serde = "1"
-serde_json = "1"
+serde = { workspace = true }
+serde_json = { workspace = true }
 serde_yaml = "0.9"
 serde_variant = "0.1.2"
+toml = "0.8"
 
 
 async-trait = { workspace = true }
 
 axum = { workspace = true }
 axum-extra = { version = "0.9", features = ["cookie"] }
-regex = "1"
-lazy_static = "1.4.0"
+regex = { workspace = true }
 fs-err = "2.11.0"
 # mailer
 tera = "1.19.1"
+thousands = "0.2.0"
 heck = "0.4.0"
 lettre = { version = "0.11.4", default-features = false, features = [
     "builder",
@@ -79,8 +97,8 @@ lettre = { version = "0.11.4", default-features = false, features = [
     "tokio1-rustls-tls",
 ] }
 include_dir = "0.7.3"
-thiserror = "1"
-tracing = "0.1.40"
+thiserror = { workspace = true }
+tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 tracing-appender = "0.2.3"
 
@@ -93,29 +111,21 @@ byte-unit = "4.0.19"
 argon2 = { version = "0.5.2", features = ["std"] }
 rand = { version = "0.8.5", features = ["std"] }
 jsonwebtoken = { version = "9.3.0", optional = true }
-validator = { version = "0.18.1", features = ["derive"] }
+validator = { version = "0.19.0", features = ["derive"] }
 futures-util = "0.3"
 tower = { workspace = true }
 hyper = "1.1"
 mime = "0.3"
 bytes = "1.1"
 ipnetwork = "0.20.0"
+semver = "1"
 
 axum-test = { version = "16.1.0", optional = true }
 
-# gen
-rrgen = "0.5.3"
-chrono = "0.4.31"
-cargo_metadata = "0.18.1"
-dialoguer = "0.11.0"
-
+chrono = { workspace = true }
 cfg-if = "1"
 
 uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
-
-# A socket.io server implementation
-socketioxide = { version = "0.14.0", features = ["state"], optional = true }
-
 
 # File Upload
 object_store = { version = "0.11.0", default-features = false }
@@ -127,17 +137,29 @@ moka = { version = "0.12.7", features = ["sync"], optional = true }
 tokio-cron-scheduler = { version = "0.11.0", features = ["signal"] }
 english-to-cron = { version = "0.1.2" }
 
+# bg_sqlt: sqlite workers
 # bg_pg: postgres workers
-sqlx = { version = "0.7", default-features = false, features = [
+sqlx = { version = "0.8.2", default-features = false, features = [
     "postgres",
+    "chrono",
+    "sqlite",
 ], optional = true }
 ulid = { version = "1", optional = true }
 
 # bg_redis: redis workers
-rusty-sidekiq = { version = "0.8.2", default-features = false, optional = true }
+rusty-sidekiq = { version = "0.11.0", default-features = false, optional = true }
 bb8 = { version = "0.8.1", optional = true }
 
+scraper = { version = "0.21.0", optional = true }
+
 [workspace.dependencies]
+
+chrono = { version = "0.4", features = ["serde"] }
+tracing = "0.1.40"
+regex = "1"
+thiserror = "1"
+serde = "1"
+serde_json = "1"
 async-trait = { version = "0.1.74" }
 axum = { version = "0.7.5", features = ["macros"] }
 tower = "0.4"
@@ -171,6 +193,7 @@ features = ["testing"]
 loco-rs = { path = ".", features = ["testing"] }
 rstest = "0.21.0"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
-tree-fs = { version = "0.1.0" }
+tree-fs = { version = "0.2.1" }
 reqwest = { version = "0.12.7" }
 serial_test = "3.1.1"
+tower = { workspace = true, features = ["util"] }

@@ -24,20 +24,21 @@ Notes:
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
+    sync::OnceLock,
 };
 
 use fs_err as fs;
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::info;
 
 use crate::{controller::middleware, environment::Environment, logger, scheduler, Error, Result};
 
-lazy_static! {
-    static ref DEFAULT_FOLDER: PathBuf = PathBuf::from("config");
-}
+static DEFAULT_FOLDER: OnceLock<PathBuf> = OnceLock::new();
 
+fn get_default_folder() -> &'static PathBuf {
+    DEFAULT_FOLDER.get_or_init(|| PathBuf::from("config"))
+}
 /// Main application configuration structure.
 ///
 /// This struct encapsulates various configuration settings. The configuration
@@ -226,6 +227,8 @@ pub enum QueueConfig {
     Redis(RedisQueueConfig),
     /// Postgres queue
     Postgres(PostgresQueueConfig),
+    /// Sqlite queue
+    Sqlite(SqliteQueueConfig),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -237,6 +240,9 @@ pub struct RedisQueueConfig {
     /// Custom queue names declaration. Useful to model priority queues.
     /// First queue in list is more important.
     pub queues: Option<Vec<String>>,
+
+    #[serde(default = "num_workers")]
+    pub num_workers: u32,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -264,7 +270,36 @@ pub struct PostgresQueueConfig {
     #[serde(default = "pgq_poll_interval")]
     pub poll_interval_sec: u32,
 
-    #[serde(default = "pgq_num_workers")]
+    #[serde(default = "num_workers")]
+    pub num_workers: u32,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SqliteQueueConfig {
+    pub uri: String,
+
+    #[serde(default)]
+    pub dangerously_flush: bool,
+
+    #[serde(default)]
+    pub enable_logging: bool,
+
+    #[serde(default = "db_max_conn")]
+    pub max_connections: u32,
+
+    #[serde(default = "db_min_conn")]
+    pub min_connections: u32,
+
+    #[serde(default = "db_connect_timeout")]
+    pub connect_timeout: u64,
+
+    #[serde(default = "db_idle_timeout")]
+    pub idle_timeout: u64,
+
+    #[serde(default = "sqlt_poll_interval")]
+    pub poll_interval_sec: u32,
+
+    #[serde(default = "num_workers")]
     pub num_workers: u32,
 }
 
@@ -288,7 +323,11 @@ fn pgq_poll_interval() -> u32 {
     1
 }
 
-fn pgq_num_workers() -> u32 {
+fn sqlt_poll_interval() -> u32 {
+    1
+}
+
+fn num_workers() -> u32 {
     2
 }
 
@@ -461,6 +500,8 @@ pub struct SmtpMailer {
     pub secure: bool,
     /// Auth SMTP server
     pub auth: Option<MailerAuth>,
+    /// Optional EHLO client ID instead of hostname
+    pub hello_name: Option<String>,
 }
 
 /// Authentication details for the mailer
@@ -493,7 +534,7 @@ impl Config {
     ///     Config::new(environment).expect("configuration loading")
     /// }
     pub fn new(env: &Environment) -> Result<Self> {
-        let config = Self::from_folder(env, DEFAULT_FOLDER.as_path())?;
+        let config = Self::from_folder(env, get_default_folder().as_path())?;
         Ok(config)
     }
 

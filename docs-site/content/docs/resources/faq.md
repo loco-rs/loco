@@ -4,7 +4,7 @@ description = "Answers to frequently asked questions."
 date = 2021-05-01T19:30:00+00:00
 updated = 2021-05-01T19:30:00+00:00
 draft = false
-weight = 1
+weight = 2
 sort_by = "weight"
 template = "docs/page.html"
 
@@ -21,6 +21,12 @@ Try [cargo watch](https://crates.io/crates/cargo-watch):
 
 ```
 $ cargo-watch -x check  -s 'cargo loco start'
+```
+
+Or [bacon](https://github.com/Canop/bacon)
+
+```
+$ bacon run
 ```
 
 </details>

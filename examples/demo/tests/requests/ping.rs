@@ -1,6 +1,6 @@
 use demo_app::app::App;
 use insta::assert_debug_snapshot;
-use loco_rs::testing;
+use loco_rs::testing::prelude::*;
 use rstest::rstest;
 
 // TODO: see how to dedup / extract this to app-local test utils
@@ -18,13 +18,11 @@ macro_rules! configure_insta {
 // removes trailing slashes from the request path.
 #[rstest]
 #[case("ping", "/_ping")]
-#[case("ping_with_trailing_slash", "/_ping/")]
-#[case("ping_with_multiple_trailing_slashes", "/_ping////")]
 #[tokio::test]
 async fn ping(#[case] test_name: &str, #[case] path: &str) {
     configure_insta!();
 
-    testing::request::<App, _, _>(|request, _ctx| async move {
+    request::<App, _, _>(|request, _ctx| async move {
         let response = request.get(path).await;
 
         assert_debug_snapshot!(test_name, (response.text(), response.status_code()));

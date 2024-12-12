@@ -7,10 +7,15 @@ use tracing::{debug, error};
 pub mod pg;
 #[cfg(feature = "bg_redis")]
 pub mod skq;
+#[cfg(feature = "bg_sqlt")]
+pub mod sqlt;
 
 use crate::{
     app::AppContext,
-    config::{self, Config, PostgresQueueConfig, QueueConfig, RedisQueueConfig, WorkerMode},
+    config::{
+        self, Config, PostgresQueueConfig, QueueConfig, RedisQueueConfig, SqliteQueueConfig,
+        WorkerMode,
+    },
     Error, Result,
 };
 
@@ -20,12 +25,19 @@ pub enum Queue {
     Redis(
         bb8::Pool<sidekiq::RedisConnectionManager>,
         Arc<tokio::sync::Mutex<sidekiq::Processor>>,
+        tokio_util::sync::CancellationToken,
     ),
     #[cfg(feature = "bg_pg")]
     Postgres(
         pg::PgPool,
         std::sync::Arc<tokio::sync::Mutex<pg::TaskRegistry>>,
         pg::RunOpts,
+    ),
+    #[cfg(feature = "bg_sqlt")]
+    Sqlite(
+        sqlt::SqlitePool,
+        std::sync::Arc<tokio::sync::Mutex<sqlt::TaskRegistry>>,
+        sqlt::RunOpts,
     ),
     None,
 }
@@ -36,6 +48,7 @@ impl Queue {
     /// # Errors
     ///
     /// This function will return an error if fails
+    #[allow(unused_variables)]
     pub async fn enqueue<A: Serialize + Send + Sync>(
         &self,
         class: String,
@@ -45,12 +58,24 @@ impl Queue {
         debug!(worker = class, "job enqueue");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _) => {
+            Self::Redis(pool, _, _) => {
                 skq::enqueue(pool, class, queue, args).await?;
             }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, _, _) => {
                 pg::enqueue(
+                    pool,
+                    &class,
+                    serde_json::to_value(args)?,
+                    chrono::Utc::now(),
+                    None,
+                )
+                .await
+                .map_err(Box::from)?;
+            }
+            #[cfg(feature = "bg_sqlt")]
+            Self::Sqlite(pool, _, _) => {
+                sqlt::enqueue(
                     pool,
                     &class,
                     serde_json::to_value(args)?,
@@ -70,6 +95,7 @@ impl Queue {
     /// # Errors
     ///
     /// This function will return an error if fails
+    #[allow(unused_variables)]
     pub async fn register<
         A: Serialize + Send + Sync + 'static + for<'de> serde::Deserialize<'de>,
         W: BackgroundWorker<A> + 'static,
@@ -80,12 +106,17 @@ impl Queue {
         debug!(worker = W::class_name(), "register worker");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, p) => {
+            Self::Redis(_, p, _) => {
                 let mut p = p.lock().await;
                 p.register(skq::SidekiqBackgroundWorker::new(worker));
             }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(_, registry, _) => {
+                let mut r = registry.lock().await;
+                r.register_worker(W::class_name(), worker)?;
+            }
+            #[cfg(feature = "bg_sqlt")]
+            Self::Sqlite(_, registry, _) => {
                 let mut r = registry.lock().await;
                 r.register_worker(W::class_name(), worker)?;
             }
@@ -103,11 +134,19 @@ impl Queue {
         debug!("running background jobs");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, p) => {
+            Self::Redis(_, p, _) => {
                 p.lock().await.clone().run().await;
             }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, registry, run_opts) => {
+                //TODOQ: num workers to config
+                let handles = registry.lock().await.run(pool, run_opts);
+                for handle in handles {
+                    handle.await?;
+                }
+            }
+            #[cfg(feature = "bg_sqlt")]
+            Self::Sqlite(pool, registry, run_opts) => {
                 //TODOQ: num workers to config
                 let handles = registry.lock().await.run(pool, run_opts);
                 for handle in handles {
@@ -133,10 +172,14 @@ impl Queue {
         debug!("workers setup");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _) => {}
+            Self::Redis(_, _, _) => {}
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, _, _) => {
                 pg::initialize_database(pool).await.map_err(Box::from)?;
+            }
+            #[cfg(feature = "bg_sqlt")]
+            Self::Sqlite(pool, _, _) => {
+                sqlt::initialize_database(pool).await.map_err(Box::from)?;
             }
             _ => {}
         }
@@ -152,12 +195,16 @@ impl Queue {
         debug!("clearing job queues");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _) => {
+            Self::Redis(pool, _, _) => {
                 skq::clear(pool).await?;
             }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, _, _) => {
                 pg::clear(pool).await.map_err(Box::from)?;
+            }
+            #[cfg(feature = "bg_sqlt")]
+            Self::Sqlite(pool, _, _) => {
+                sqlt::clear(pool).await.map_err(Box::from)?;
             }
             _ => {}
         }
@@ -173,12 +220,16 @@ impl Queue {
         debug!("job queue ping requested");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _) => {
+            Self::Redis(pool, _, _) => {
                 skq::ping(pool).await?;
             }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, _, _) => {
                 pg::ping(pool).await.map_err(Box::from)?;
+            }
+            #[cfg(feature = "bg_sqlt")]
+            Self::Sqlite(pool, _, _) => {
+                sqlt::ping(pool).await.map_err(Box::from)?;
             }
             _ => {}
         }
@@ -189,11 +240,28 @@ impl Queue {
     pub fn describe(&self) -> String {
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _) => "redis queue".to_string(),
+            Self::Redis(_, _, _) => "redis queue".to_string(),
             #[cfg(feature = "bg_pg")]
             Self::Postgres(_, _, _) => "postgres queue".to_string(),
+            #[cfg(feature = "bg_sqlt")]
+            Self::Sqlite(_, _, _) => "sqlite queue".to_string(),
             _ => "no queue".to_string(),
         }
+    }
+
+    /// # Errors
+    ///
+    /// Does not currently return an error, but the postgres or other future
+    /// queue implementations might, so using Result here as return type.
+    pub fn shutdown(&self) -> Result<()> {
+        println!("waiting for running jobs to finish...");
+        match self {
+            #[cfg(feature = "bg_redis")]
+            Self::Redis(_, _, cancellation_token) => cancellation_token.cancel(),
+            _ => {}
+        }
+
+        Ok(())
     }
 }
 
@@ -269,10 +337,22 @@ pub async fn converge(queue: &Queue, config: &QueueConfig) -> Result<()> {
             num_workers: _,
             min_connections: _,
         })
+        | QueueConfig::Sqlite(SqliteQueueConfig {
+            dangerously_flush,
+            uri: _,
+            max_connections: _,
+            enable_logging: _,
+            connect_timeout: _,
+            idle_timeout: _,
+            poll_interval_sec: _,
+            num_workers: _,
+            min_connections: _,
+        })
         | QueueConfig::Redis(RedisQueueConfig {
             dangerously_flush,
             uri: _,
             queues: _,
+            num_workers: _,
         }) => {
             if *dangerously_flush {
                 queue.clear().await?;
@@ -300,6 +380,10 @@ pub async fn create_queue_provider(config: &Config) -> Result<Option<Arc<Queue>>
                 #[cfg(feature = "bg_pg")]
                 config::QueueConfig::Postgres(qcfg) => {
                     Ok(Some(Arc::new(pg::create_provider(qcfg).await?)))
+                }
+                #[cfg(feature = "bg_sqlt")]
+                config::QueueConfig::Sqlite(qcfg) => {
+                    Ok(Some(Arc::new(sqlt::create_provider(qcfg).await?)))
                 }
 
                 #[allow(unreachable_patterns)]

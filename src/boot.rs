@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use axum::Router;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
+use tokio::{select, signal, task::JoinHandle};
 use tracing::{debug, error, info, warn};
 
 #[cfg(feature = "with-db")]
@@ -14,7 +15,7 @@ use crate::{
     app::{AppContext, Hooks},
     banner::print_banner,
     bgworker, cache,
-    config::{self},
+    config::{self, WorkerMode},
     controller::ListRoutes,
     environment::Environment,
     errors::Error,
@@ -27,6 +28,7 @@ use crate::{
 };
 
 /// Represents the application startup mode.
+#[derive(Debug)]
 pub enum StartMode {
     /// Run the application as a server only. when running web server only,
     /// workers job will not handle.
@@ -36,6 +38,7 @@ pub enum StartMode {
     /// Pulling job worker and execute them
     WorkerOnly,
 }
+
 pub struct BootResult {
     /// Application Context
     pub app_context: AppContext,
@@ -46,6 +49,7 @@ pub struct BootResult {
 }
 
 /// Configuration structure for serving an application.
+#[derive(Debug)]
 pub struct ServeParams {
     /// The port number on which the server will listen for incoming
     /// connections.
@@ -63,8 +67,14 @@ pub struct ServeParams {
 /// # Errors
 ///
 /// When could not initialize the application.
-pub async fn start<H: Hooks>(boot: BootResult, server_config: ServeParams) -> Result<()> {
-    print_banner(&boot, &server_config);
+pub async fn start<H: Hooks>(
+    boot: BootResult,
+    server_config: ServeParams,
+    no_banner: bool,
+) -> Result<()> {
+    if !no_banner {
+        print_banner(&boot, &server_config);
+    }
 
     let BootResult {
         router,
@@ -74,36 +84,71 @@ pub async fn start<H: Hooks>(boot: BootResult, server_config: ServeParams) -> Re
 
     match (router, run_worker) {
         (Some(router), false) => {
-            H::serve(router, server_config).await?;
+            H::serve(router, &app_context, &server_config).await?;
         }
         (Some(router), true) => {
-            tokio::spawn(async move {
-                debug!("note: worker is run in-process (tokio spawn)");
-                if let Some(queue) = &app_context.queue_provider {
-                    let res = queue.run().await;
-                    if res.is_err() {
-                        error!(
-                            err = res.unwrap_err().to_string(),
-                            "error while running worker"
-                        );
-                    }
-                } else {
-                    error!(
-                        err = Error::QueueProviderMissing.to_string(),
-                        "cannot start worker"
-                    );
-                }
-            });
-            H::serve(router, server_config).await?;
+            let handle = if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
+                Some(start_queue_worker(&app_context)?)
+            } else {
+                None
+            };
+
+            H::serve(router, &app_context, &server_config).await?;
+
+            if let Some(handle) = handle {
+                shutdown_and_await_queue_worker(&app_context, handle).await?;
+            }
         }
         (None, true) => {
-            if let Some(queue) = &app_context.queue_provider {
-                queue.run().await?;
+            let handle = if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
+                Some(start_queue_worker(&app_context)?)
             } else {
-                return Err(Error::QueueProviderMissing);
+                None
+            };
+
+            shutdown_signal().await;
+
+            if let Some(handle) = handle {
+                shutdown_and_await_queue_worker(&app_context, handle).await?;
             }
         }
         _ => {}
+    }
+    Ok(())
+}
+
+fn start_queue_worker(app_context: &AppContext) -> Result<JoinHandle<()>> {
+    debug!("note: worker is run in-process (tokio spawn)");
+
+    if let Some(queue) = &app_context.queue_provider {
+        let cloned_queue = queue.clone();
+        let handle = tokio::spawn(async move {
+            let res = cloned_queue.run().await;
+            if res.is_err() {
+                error!(
+                    err = res.unwrap_err().to_string(),
+                    "error while running worker"
+                );
+            }
+        });
+        return Ok(handle);
+    }
+
+    Err(Error::QueueProviderMissing)
+}
+
+async fn shutdown_and_await_queue_worker(
+    app_context: &AppContext,
+    handle: JoinHandle<()>,
+) -> Result<(), Error> {
+    if let Some(queue) = &app_context.queue_provider {
+        queue.shutdown()?;
+    }
+
+    println!("press ctrl-c again to force quit");
+    select! {
+        _ = handle => {}
+        () = shutdown_signal() => {}
     }
     Ok(())
 }
@@ -196,6 +241,13 @@ pub enum RunDbCommand {
     /// Truncate tables, by executing the implementation in [`Hooks::seed`]
     /// (without dropping).
     Truncate,
+    /// Seed database.
+    Seed {
+        reset: bool,
+        from: PathBuf,
+        dump: bool,
+        dump_tables: Option<Vec<String>>,
+    },
 }
 
 #[cfg(feature = "with-db")]
@@ -234,6 +286,23 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
         RunDbCommand::Truncate => {
             tracing::warn!("truncate:");
             H::truncate(&app_context.db).await?;
+        }
+        RunDbCommand::Seed {
+            reset,
+            from,
+            dump,
+            dump_tables,
+        } => {
+            tracing::warn!(reset = reset, from = %from.display(), "seed:");
+
+            if dump || dump_tables.is_some() {
+                db::dump_tables(&app_context.db, from.as_path(), dump_tables).await?;
+            } else {
+                if reset {
+                    db::reset::<M>(&app_context.db).await?;
+                }
+                db::run_app_seed::<H>(&app_context.db, &from).await?;
+            }
         }
     }
     Ok(())
@@ -364,20 +433,52 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
 }
 
 async fn register_workers<H: Hooks>(app_context: &AppContext) -> Result<()> {
-    if let Some(queue) = &app_context.queue_provider {
-        queue.register(MailerWorker::build(app_context)).await?;
-        H::connect_workers(app_context, queue).await?;
-    } else {
-        return Err(Error::QueueProviderMissing);
-    }
+    if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
+        if let Some(queue) = &app_context.queue_provider {
+            queue.register(MailerWorker::build(app_context)).await?;
+            H::connect_workers(app_context, queue).await?;
+        } else {
+            return Err(Error::QueueProviderMissing);
+        }
 
-    debug!("done registering workers and queues");
+        debug!("done registering workers and queues");
+    }
     Ok(())
 }
 
 #[must_use]
 pub fn list_endpoints<H: Hooks>(ctx: &AppContext) -> Vec<ListRoutes> {
     H::routes(ctx).collect()
+}
+
+/// Waits for a shutdown signal, either via Ctrl+C or termination signal.
+///
+/// # Panics
+///
+/// This function will panic if it fails to install the signal handlers for
+/// Ctrl+C or the terminate signal on Unix-based systems.
+pub async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        () = ctrl_c => {},
+        () = terminate => {},
+    }
 }
 
 pub struct MiddlewareInfo {

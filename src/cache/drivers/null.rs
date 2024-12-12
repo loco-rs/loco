@@ -4,12 +4,15 @@
 //! framework is initialized. The primary purpose of this driver is to simplify
 //! the user workflow by avoiding the need for feature flags or optional cache
 //! driver configurations.
+use std::time::Duration;
+
 use async_trait::async_trait;
 
 use super::CacheDriver;
 use crate::cache::{CacheError, CacheResult};
 
 /// Represents the in-memory cache driver.
+#[derive(Debug)]
 pub struct Null {}
 
 /// Creates a new null cache instance
@@ -50,6 +53,23 @@ impl CacheDriver for Null {
     ///
     /// Returns always error
     async fn insert(&self, _key: &str, _value: &str) -> CacheResult<()> {
+        Err(CacheError::Any(
+            "Operation not supported by null cache".into(),
+        ))
+    }
+
+    /// Inserts a key-value pair into the cache that expires after the
+    /// provided duration.
+    ///
+    /// # Errors
+    ///
+    /// Returns always error
+    async fn insert_with_expiry(
+        &self,
+        _key: &str,
+        _value: &str,
+        _duration: Duration,
+    ) -> CacheResult<()> {
         Err(CacheError::Any(
             "Operation not supported by null cache".into(),
         ))

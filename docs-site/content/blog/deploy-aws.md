@@ -18,7 +18,7 @@ In this article, we will explore how to deploy a Rust app built with [loco](http
 ````sh
 
 ```sh
-$ cargo install loco-cli
+$ cargo install loco
 $ loco new
 ✔ ❯ App name? · myapp
 ? ❯ What would you like to build? ›

@@ -28,7 +28,7 @@ use bytes::Bytes;
 use crate::storage::{strategies::StorageStrategy, Storage, StorageError, StorageResult};
 
 /// Enum representing the failure mode for the [`BackupStrategy`].
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum FailureMode {
     /// Fail if any secondary storage backend encounters an error.
     BackupAll,

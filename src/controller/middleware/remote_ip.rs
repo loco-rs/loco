@@ -13,6 +13,7 @@ use std::{
     iter::Iterator,
     net::{IpAddr, SocketAddr},
     str::FromStr,
+    sync::OnceLock,
     task::{Context, Poll},
 };
 
@@ -27,28 +28,30 @@ use axum::{
 use futures_util::future::BoxFuture;
 use hyper::HeaderMap;
 use ipnetwork::IpNetwork;
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use tower::{Layer, Service};
 use tracing::error;
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
 
-lazy_static! {
-// matching what Rails does is probably a smart idea:
-// https://github.com/rails/rails/blob/main/actionpack/lib/action_dispatch/middleware/remote_ip.rb#L40
-static ref LOCAL_TRUSTED_PROXIES: Vec<IpNetwork> =  [
-        "127.0.0.0/8",    // localhost IPv4 range, per RFC-3330
-        "::1",            // localhost IPv6
-        "fc00::/7",       // private IPv6 range fc00::/7
-        "10.0.0.0/8",     // private IPv4 range 10.x.x.x
-        "172.16.0.0/12",  // private IPv4 range 172.16.0.0 .. 172.31.255.255
-        "192.168.0.0/16"
-    ]
-    .iter()
-    .map(|ip| IpNetwork::from_str(ip).unwrap())
-    .collect();
+static LOCAL_TRUSTED_PROXIES: OnceLock<Vec<IpNetwork>> = OnceLock::new();
+
+fn get_local_trusted_proxies() -> &'static Vec<IpNetwork> {
+    LOCAL_TRUSTED_PROXIES.get_or_init(|| {
+        [
+            "127.0.0.0/8",   // localhost IPv4 range, per RFC-3330
+            "::1",           // localhost IPv6
+            "fc00::/7",      // private IPv6 range fc00::/7
+            "10.0.0.0/8",    // private IPv4 range 10.x.x.x
+            "172.16.0.0/12", // private IPv4 range 172.16.0.0 .. 172.31.255.255
+            "192.168.0.0/16",
+        ]
+        .iter()
+        .map(|ip| IpNetwork::from_str(ip).unwrap())
+        .collect()
+    })
 }
+
 const X_FORWARDED_FOR: &str = "X-Forwarded-For";
 
 ///
@@ -126,7 +129,7 @@ impl MiddlewareLayer for RemoteIpMiddleware {
 // implementation reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
 fn maybe_get_forwarded(
     headers: &HeaderMap,
-    trusted_proxies: &Option<Vec<IpNetwork>>,
+    trusted_proxies: Option<&Vec<IpNetwork>>,
 ) -> Option<IpAddr> {
     /*
     > There may be multiple X-Forwarded-For headers present in a request. The IP addresses in these headers must be treated as a single list,
@@ -148,7 +151,7 @@ fn maybe_get_forwarded(
 
     let forwarded = xffs.join(",");
 
-    return forwarded
+    forwarded
         .split(',')
         .map(str::trim)
         .map(str::parse)
@@ -160,7 +163,7 @@ fn maybe_get_forwarded(
         */
         .filter(|ip| {
             // trusted proxies provided REPLACES our default local proxies
-            let proxies = trusted_proxies.as_ref().unwrap_or(&LOCAL_TRUSTED_PROXIES);
+            let proxies = trusted_proxies.unwrap_or_else(|| get_local_trusted_proxies());
             !proxies
                 .iter()
                 .any(|trusted_proxy| trusted_proxy.contains(*ip))
@@ -174,7 +177,7 @@ fn maybe_get_forwarded(
         > The first trustworthy X-Forwarded-For IP address may belong to an untrusted intermediate
         > proxy rather than the actual client computer, but it is the only IP suitable for security uses.
         */
-        .next_back();
+        .next_back()
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -207,7 +210,7 @@ impl fmt::Display for RemoteIP {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct RemoteIPLayer {
     trusted_proxies: Option<Vec<IpNetwork>>,
 }
@@ -252,7 +255,7 @@ impl<S> Layer<S> for RemoteIPLayer {
 }
 
 /// Remote IP Detection Middleware
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[must_use]
 pub struct RemoteIPMiddleware<S> {
     inner: S,
@@ -274,7 +277,7 @@ where
 
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
         let layer = self.layer.clone();
-        let xff_ip = maybe_get_forwarded(req.headers(), &layer.trusted_proxies);
+        let xff_ip = maybe_get_forwarded(req.headers(), layer.trusted_proxies.as_ref());
         let remote_ip = xff_ip.map_or_else(
             || {
                 let ip = req
@@ -324,21 +327,21 @@ mod tests {
 
     #[test]
     pub fn test_parsing() {
-        let res = maybe_get_forwarded(&xff(""), &None);
+        let res = maybe_get_forwarded(&xff(""), None);
         assert_debug_snapshot!(res);
-        let res = maybe_get_forwarded(&xff("foobar"), &None);
+        let res = maybe_get_forwarded(&xff("foobar"), None);
         assert_debug_snapshot!(res);
-        let res = maybe_get_forwarded(&xff("192.1.1.1"), &None);
+        let res = maybe_get_forwarded(&xff("192.1.1.1"), None);
         assert_debug_snapshot!(res);
-        let res = maybe_get_forwarded(&xff("51.50.51.50,10.0.0.1,192.168.1.1"), &None);
+        let res = maybe_get_forwarded(&xff("51.50.51.50,10.0.0.1,192.168.1.1"), None);
         assert_debug_snapshot!(res);
-        let res = maybe_get_forwarded(&xff("19.84.19.84,192.168.0.1"), &None);
+        let res = maybe_get_forwarded(&xff("19.84.19.84,192.168.0.1"), None);
         assert_debug_snapshot!(res);
-        let res = maybe_get_forwarded(&xff("b51.50.51.50b,/10.0.0.1-,192.168.1.1"), &None);
+        let res = maybe_get_forwarded(&xff("b51.50.51.50b,/10.0.0.1-,192.168.1.1"), None);
         assert_debug_snapshot!(res);
         let res = maybe_get_forwarded(
             &xff("51.50.51.50,192.1.1.1"),
-            &Some(vec![IpNetwork::from_str("192.1.1.1/8").unwrap()]),
+            Some(&vec![IpNetwork::from_str("192.1.1.1/8").unwrap()]),
         );
         assert_debug_snapshot!(res);
 
@@ -346,7 +349,7 @@ mod tests {
         // remote IP and not skipped
         let res = maybe_get_forwarded(
             &xff("51.50.51.50,192.168.1.1"),
-            &Some(vec![IpNetwork::from_str("192.1.1.1/16").unwrap()]),
+            Some(&vec![IpNetwork::from_str("192.1.1.1/16").unwrap()]),
         );
         assert_debug_snapshot!(res);
     }
