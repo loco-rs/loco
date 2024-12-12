@@ -24,9 +24,10 @@ cfg_if::cfg_if! {
     } else {}
 }
 
-use std::path::PathBuf;
+use std::{collections::BTreeMap, path::PathBuf};
 
 use clap::{ArgAction, Parser, Subcommand};
+use colored::Colorize;
 use duct::cmd;
 use loco_gen::{Component, ScaffoldKind};
 
@@ -790,9 +791,102 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
 
 fn show_list_endpoints<H: Hooks>(ctx: &AppContext) {
     let mut routes = list_endpoints::<H>(ctx);
-    routes.sort_by(|a, b| a.uri.cmp(&b.uri));
+
+    // Sort first by path, then ensure HTTP methods are in a consistent order
+    routes.sort_by(|a, b| {
+        let method_priority = |actions: &[_]| match actions
+            .first()
+            .map(ToString::to_string)
+            .unwrap_or_default()
+            .as_str()
+        {
+            "GET" => 0,
+            "POST" => 1,
+            "PUT" => 2,
+            "PATCH" => 3,
+            "DELETE" => 4,
+            _ => 5,
+        };
+
+        let a_priority = method_priority(&a.actions);
+        let b_priority = method_priority(&b.actions);
+
+        a.uri.cmp(&b.uri).then(a_priority.cmp(&b_priority))
+    });
+
+    // Group routes by their first path segment and full path
+    let mut path_groups: BTreeMap<String, BTreeMap<String, Vec<String>>> = BTreeMap::new();
+
     for router in routes {
-        println!("{router}");
+        let path = router.uri.trim_start_matches('/');
+        let segments: Vec<&str> = path.split('/').collect();
+        let root = (*segments.first().unwrap_or(&"")).to_string();
+
+        let actions_str = router
+            .actions
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(",");
+
+        path_groups
+            .entry(root)
+            .or_default()
+            .entry(router.uri.to_string())
+            .or_default()
+            .push(actions_str);
+    }
+
+    // Print tree structure
+    for (root, paths) in path_groups {
+        println!("/{}", root.bold());
+        let paths_count = paths.len();
+        let mut path_idx = 0;
+
+        for (path, methods) in paths {
+            path_idx += 1;
+            let is_last_path = path_idx == paths_count;
+            let is_group = methods.len() > 1;
+
+            // Print first method
+            let prefix = if is_last_path && !is_group {
+                "  └─ "
+            } else {
+                "  ├─ "
+            };
+            let colored_method = color_method(&methods[0]);
+            println!("{prefix}{colored_method}\t{path}");
+
+            // Print additional methods in group
+            if is_group {
+                for (i, method) in methods[1..].iter().enumerate() {
+                    let is_last_in_group = i == methods.len() - 2;
+                    let group_prefix = if is_last_path && is_last_in_group {
+                        "  └─ "
+                    } else {
+                        "  │  "
+                    };
+                    let colored_method = color_method(method);
+                    println!("{group_prefix}{colored_method}\t{path}");
+                }
+
+                // Add spacing between groups if not the last path
+                if !is_last_path {
+                    println!("  │");
+                }
+            }
+        }
+    }
+}
+
+fn color_method(method: &str) -> String {
+    match method {
+        "GET" => method.green().to_string(),
+        "POST" => method.blue().to_string(),
+        "PUT" => method.yellow().to_string(),
+        "PATCH" => method.magenta().to_string(),
+        "DELETE" => method.red().to_string(),
+        _ => method.to_string(),
     }
 }
 

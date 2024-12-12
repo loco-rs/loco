@@ -54,12 +54,19 @@ Just clone the project and run `cargo test`.
 You can see how we test in [.github/workflows](.github/workflows/)
 
 #### Snapshots
-To update/create a snapshots we are using [insta](https://github.com/mitsuhiko/insta). all you need to do is install insta (cargo install cargo-insta) and run the following command:
+We use [insta](https://github.com/mitsuhiko/insta) for snapshot testing, which helps us detect changes in output formats and behavior. To work with snapshots:
+
+1. Install the insta CLI tool:
+```sh
+cargo install cargo-insta
 ```
+
+2. Run tests and review/update snapshots:
+```sh
 cargo insta test --review
 ```
 
-In case of cli changes we snapshot the binary commands. in case of changes run the following command yo update the CLI snapshot
+For CLI-related changes, we maintain separate snapshots of binary command outputs. To update these CLI snapshots:
 ```sh
 LOCO_CI_MODE=true TRYCMD=overwrite cargo test
 ```
