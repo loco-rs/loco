@@ -403,6 +403,7 @@ impl Queue {
             Self::Sqlite(pool, _, _) => {
                 sqlt::clear_jobs_older_than(pool, age_days, Some(status)).await
             }
+            #[cfg(feature = "bg_redis")]
             Self::Redis(_, _, _) => {
                 tracing::error!("clear jobs for redis provider not implemented");
                 Err(Error::string("clear jobs not supported for redis provider"))

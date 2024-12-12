@@ -1,7 +1,8 @@
+#[cfg(any(feature = "bg_pg", feature = "bg_sqlt"))]
+use crate::bgworker;
 use std::path::PathBuf;
 
-use crate::bgworker;
-
+#[cfg(feature = "bg_pg")]
 /// # Panics
 ///
 /// This function will panic if it fails to prepare or insert the seed data, causing the tests to fail quickly
@@ -36,6 +37,7 @@ pub async fn postgres_seed_data(pool: &sqlx::PgPool) {
     }
 }
 
+#[cfg(feature = "bg_sqlt")]
 /// # Panics
 ///
 /// This function will panic if it fails to prepare or insert the seed data, causing the tests to fail quickly

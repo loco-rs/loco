@@ -106,6 +106,7 @@ enum Commands {
         #[clap(value_parser = parse_key_val::<String,String>)]
         params: Vec<(String, String)>,
     },
+    #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
     /// Managing jobs queue.
     Jobs {
         #[command(subcommand)]
@@ -424,6 +425,7 @@ impl From<DbCommands> for RunDbCommand {
     }
 }
 
+#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
 #[derive(Subcommand)]
 enum JobsCommands {
     /// Cancels jobs with the specified names, setting their status to
@@ -572,6 +574,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                 run_db::<H, M>(&app_context, command.into()).await?;
             }
         }
+        #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
         Commands::Jobs { command } => handle_job_command::<H>(command, &environment).await?,
         Commands::Routes {} => {
             let app_context = create_context::<H>(&environment).await?;
@@ -738,6 +741,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             let app_context = create_context::<H>(&environment).await?;
             run_task::<H>(&app_context, name.as_ref(), &vars).await?;
         }
+        #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
         Commands::Jobs { command } => handle_job_command::<H>(command, &environment).await?,
         Commands::Scheduler {
             name,
@@ -796,6 +800,7 @@ fn create_root_span(environment: &Environment) -> tracing::Span {
     tracing::span!(tracing::Level::DEBUG, "app", environment = %environment)
 }
 
+#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
 async fn handle_job_command<H: Hooks>(
     command: JobsCommands,
     environment: &Environment,
