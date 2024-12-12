@@ -310,18 +310,22 @@ impl Queue {
     async fn get_jobs(
         &self,
         status: Option<&Vec<JobStatus>>,
-        age: Option<i64>,
+        age_days: Option<i64>,
     ) -> Result<serde_json::Value> {
-        tracing::debug!(status = ?status, age = ?age, "getting jobs");
+        tracing::debug!(status = ?status, age_days = ?age_days, "getting jobs");
         let jobs = match self {
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, _, _) => {
-                let jobs = pg::get_jobs(pool, status, age).await.map_err(Box::from)?;
+                let jobs = pg::get_jobs(pool, status, age_days)
+                    .await
+                    .map_err(Box::from)?;
                 serde_json::to_value(jobs)?
             }
             #[cfg(feature = "bg_sqlt")]
             Self::Sqlite(pool, _, _) => {
-                let jobs = sqlt::get_jobs(pool, status, age).await.map_err(Box::from)?;
+                let jobs = sqlt::get_jobs(pool, status, age_days)
+                    .await
+                    .map_err(Box::from)?;
 
                 serde_json::to_value(jobs)?
             }
@@ -383,14 +387,22 @@ impl Queue {
     /// - If the Redis provider is selected, it will return an error stating that clearing jobs is not supported.
     /// - Any error in the underlying provider's job clearing logic will propagate from the respective function.
     ///
-    pub async fn clear_jobs_older_than(&self, age: i64, status: &Vec<JobStatus>) -> Result<()> {
-        tracing::debug!(age = age, status = ?status, "cancel jobs with age");
+    pub async fn clear_jobs_older_than(
+        &self,
+        age_days: i64,
+        status: &Vec<JobStatus>,
+    ) -> Result<()> {
+        tracing::debug!(age_days = age_days, status = ?status, "cancel jobs with age");
 
         match self {
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => pg::clear_jobs_older_than(pool, age, Some(status)).await,
+            Self::Postgres(pool, _, _) => {
+                pg::clear_jobs_older_than(pool, age_days, Some(status)).await
+            }
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => sqlt::clear_jobs_older_than(pool, age, Some(status)).await,
+            Self::Sqlite(pool, _, _) => {
+                sqlt::clear_jobs_older_than(pool, age_days, Some(status)).await
+            }
             Self::Redis(_, _, _) => {
                 tracing::error!("clear jobs for redis provider not implemented");
                 Err(Error::string("clear jobs not supported for redis provider"))
@@ -446,9 +458,9 @@ impl Queue {
         &self,
         path: &Path,
         status: Option<&Vec<JobStatus>>,
-        age: Option<i64>,
+        age_days: Option<i64>,
     ) -> Result<PathBuf> {
-        tracing::debug!(path = %path.display(), status = ?status, age = ?age, "dumping jobs");
+        tracing::debug!(path = %path.display(), status = ?status, age_days = ?age_days, "dumping jobs");
 
         if !path.exists() {
             tracing::debug!(path = %path.display(), "folder not exists, creating...");
@@ -460,7 +472,7 @@ impl Queue {
             chrono::Utc::now().format("%Y-%m-%d-%H-%M-%S")
         ));
 
-        let jobs = self.get_jobs(status, age).await?;
+        let jobs = self.get_jobs(status, age_days).await?;
 
         let data = serde_yaml::to_string(&jobs)?;
         let mut file = File::create(&dump_file)?;

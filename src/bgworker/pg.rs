@@ -365,14 +365,14 @@ pub async fn clear_by_status(pool: &PgPool, status: Vec<JobStatus>) -> Result<()
 /// This function will return an error if it fails
 pub async fn clear_jobs_older_than(
     pool: &PgPool,
-    age: i64,
+    age_days: i64,
     status: Option<&Vec<JobStatus>>,
 ) -> Result<()> {
     let mut query_builder = sqlx::query_builder::QueryBuilder::<sqlx::Postgres>::new(
         "DELETE FROM pg_loco_queue WHERE created_at < NOW() - INTERVAL '1 day' * ",
     );
 
-    query_builder.push_bind(age);
+    query_builder.push_bind(age_days);
 
     if let Some(status_list) = status {
         if !status_list.is_empty() {
@@ -416,7 +416,7 @@ pub async fn ping(pool: &PgPool) -> Result<()> {
 pub async fn get_jobs(
     pool: &PgPool,
     status: Option<&Vec<JobStatus>>,
-    age: Option<i64>,
+    age_days: Option<i64>,
 ) -> Result<Vec<Job>, sqlx::Error> {
     let mut query = String::from("SELECT * FROM pg_loco_queue where true");
 
@@ -429,9 +429,9 @@ pub async fn get_jobs(
         query.push_str(&format!(" AND status in ({status_in})"));
     }
 
-    if let Some(age) = age {
+    if let Some(age_days) = age_days {
         query.push_str(&format!(
-            "AND created_at <= NOW() - INTERVAL '1 day' * {age}"
+            "AND created_at <= NOW() - INTERVAL '1 day' * {age_days}"
         ));
     }
 

@@ -429,10 +429,10 @@ pub async fn clear_by_status(pool: &SqlitePool, status: Vec<JobStatus>) -> Resul
 /// This function will return an error if it fails
 pub async fn clear_jobs_older_than(
     pool: &SqlitePool,
-    age: i64,
+    age_days: i64,
     status: Option<&Vec<JobStatus>>,
 ) -> Result<()> {
-    let cutoff_date = Utc::now() - chrono::Duration::days(age);
+    let cutoff_date = Utc::now() - chrono::Duration::days(age_days);
     let threshold_date = cutoff_date.format("%+").to_string();
 
     let mut query_builder =
@@ -504,7 +504,7 @@ pub async fn create_provider(qcfg: &SqliteQueueConfig) -> Result<Queue> {
 pub async fn get_jobs(
     pool: &SqlitePool,
     status: Option<&Vec<JobStatus>>,
-    age: Option<i64>,
+    age_days: Option<i64>,
 ) -> Result<Vec<Job>> {
     let mut query = String::from("SELECT * FROM sqlt_loco_queue WHERE 1 = 1 ");
 
@@ -517,8 +517,8 @@ pub async fn get_jobs(
         query.push_str(&format!("AND status IN ({status_in}) "));
     }
 
-    if let Some(age) = age {
-        let cutoff_date = Utc::now() - chrono::Duration::days(age);
+    if let Some(age_days) = age_days {
+        let cutoff_date = Utc::now() - chrono::Duration::days(age_days);
         let threshold_date = cutoff_date.format("%+").to_string();
         query.push_str(&format!("AND created_at <= '{threshold_date}' "));
     }
