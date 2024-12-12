@@ -563,6 +563,6 @@ mod tests {
             select(html, ".some-class"),
             vec!["<div class=\"some-class\">Some content here</div>"]
         );
-        assert_eq!(select(html, "ul"), vec!["Some content here"]);
+        assert_eq!(select(html, "ul"), vec!["<ul id=\"posts\">\n                <li>Post 1</li>\n                <li>Post 2</li>\n                <li>Post 3</li>\n            </ul>"]);
     }
 }
