@@ -1,0 +1,22 @@
+---
+source: src/bgworker/sqlt.rs
+expression: jobs
+---
+[
+    Job {
+        id: "<REDACTED>",
+        name: "PasswordChangeNotification",
+        data: Object {
+            "user_id": Number(1),
+        },
+        status: Queued,
+        run_at: <REDACTED>,
+        interval: None,
+        created_at: Some(
+            <REDACTED>,
+        ),
+        updated_at: Some(
+            <REDACTED>,
+        ),
+    },
+]

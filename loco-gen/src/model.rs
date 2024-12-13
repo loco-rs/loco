@@ -8,8 +8,8 @@ use serde_json::json;
 use super::{Error, Result};
 use crate::get_mappings;
 
-const MODEL_T: &str = include_str!("templates/model.t");
-const MODEL_TEST_T: &str = include_str!("templates/model_test.t");
+const MODEL_T: &str = include_str!("templates/model/model.t");
+const MODEL_TEST_T: &str = include_str!("templates/model/test.t");
 
 use super::{collect_messages, AppInfo};
 
