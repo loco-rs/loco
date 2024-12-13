@@ -273,14 +273,14 @@ pub fn assert_count(html: &str, selector: &str, expected_count: usize) {
 ///         </ul>  
 ///       </body>
 ///   </html>"#;
-/// assert_collect_text(html, "ul#posts li", &["Post 1", "Post 2", "Post 3"]);
+/// assert_css_eq_list(html, "ul#posts li", &["Post 1", "Post 2", "Post 3"]);
 /// ```
 ///
 /// # Panics
 ///
 /// This function will panic if the text content of the elements does not match
 /// the expected values.
-pub fn assert_collect_text(html: &str, selector: &str, expected_texts: &[&str]) {
+pub fn assert_css_eq_list(html: &str, selector: &str, expected_texts: &[&str]) {
     let document = Html::parse_document(html);
     let parsed_selector = Selector::parse(selector).unwrap();
 
@@ -293,6 +293,39 @@ pub fn assert_collect_text(html: &str, selector: &str, expected_texts: &[&str]) 
         collected_texts, expected_texts,
         "Expected texts {expected_texts:?}, but found {collected_texts:?}."
     );
+}
+
+/// Parses the given HTML string and selects the elements matching the specified CSS selector.
+///
+/// # Examples
+///
+/// ```rust
+/// use loco_rs::testing::prelude::*;
+///
+/// let html = r#"
+///     <html>
+///         <body>
+///             <div class="item">Item 1</div>
+///             <div class="item">Item 2</div>
+///             <div class="item">Item 3</div>
+///         </body>
+///     </html>
+/// "#;
+/// let items = select(html, ".item");
+/// assert_eq!(items, vec!["<div class=\"item\">Item 1</div>", "<div class=\"item\">Item 2</div>", "<div class=\"item\">Item 3</div>"]);
+/// ```
+///
+/// # Panics
+///
+/// This function will panic when could not pase the selector
+#[must_use]
+pub fn select(html: &str, selector: &str) -> Vec<String> {
+    let document = Html::parse_document(html);
+    let parsed_selector = Selector::parse(selector).unwrap();
+    document
+        .select(&parsed_selector)
+        .map(|element| element.html())
+        .collect()
 }
 
 // Test cases
@@ -475,12 +508,12 @@ mod tests {
     }
 
     #[test]
-    fn test_assert_collect_text() {
+    fn test_assert_css_eq_list() {
         let html = setup_test_html();
-        assert_collect_text(html, "ul#posts li", &["Post 1", "Post 2", "Post 3"]);
+        assert_css_eq_list(html, "ul#posts li", &["Post 1", "Post 2", "Post 3"]);
 
         let result = std::panic::catch_unwind(|| {
-            assert_collect_text(html, "ul#posts li", &["Post 1", "Post 2", "Wrong Post"]);
+            assert_css_eq_list(html, "ul#posts li", &["Post 1", "Post 2", "Wrong Post"]);
         });
 
         assert!(result.is_err());
@@ -497,9 +530,9 @@ mod tests {
     }
 
     #[test]
-    fn test_assert_collect_text_table() {
+    fn test_assert_css_eq_list_table() {
         let html = setup_test_html();
-        assert_collect_text(
+        assert_css_eq_list(
             html,
             "table tr td",
             &[
@@ -508,7 +541,7 @@ mod tests {
         );
 
         let result = std::panic::catch_unwind(|| {
-            assert_collect_text(html, "table#posts_t tr td", &["Post 1", "Post 2", "Post 3"]);
+            assert_css_eq_list(html, "table#posts_t tr td", &["Post 1", "Post 2", "Post 3"]);
         });
 
         assert!(result.is_err());
@@ -521,5 +554,15 @@ mod tests {
                   3\"]"
             );
         }
+    }
+
+    #[test]
+    fn test_select() {
+        let html = setup_test_html();
+        assert_eq!(
+            select(html, ".some-class"),
+            vec!["<div class=\"some-class\">Some content here</div>"]
+        );
+        assert_eq!(select(html, "ul"), vec!["<ul id=\"posts\">\n                <li>Post 1</li>\n                <li>Post 2</li>\n                <li>Post 3</li>\n            </ul>"]);
     }
 }

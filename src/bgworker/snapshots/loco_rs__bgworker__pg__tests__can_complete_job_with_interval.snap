@@ -1,0 +1,22 @@
+---
+source: src/bgworker/pg.rs
+expression: after_complete_job
+---
+Job {
+    id: "<REDACTED>",
+    name: "PasswordChangeNotification",
+    data: Object {
+        "change_time": String("<REDACTED>"),
+        "email": String("user12@example.com"),
+        "user_id": Number(134),
+    },
+    status: Queued,
+    run_at: <REDACTED>,
+    interval: None,
+    created_at: Some(
+        <REDACTED>,
+    ),
+    updated_at: Some(
+        <REDACTED>,
+    ),
+}

@@ -1,0 +1,76 @@
+---
+source: src/bgworker/sqlt.rs
+expression: table_info
+---
+[
+    TableInfo {
+        cid: 0,
+        name: "id",
+        _type: "TEXT",
+        notnull: true,
+        dflt_value: None,
+        pk: false,
+    },
+    TableInfo {
+        cid: 1,
+        name: "name",
+        _type: "TEXT",
+        notnull: true,
+        dflt_value: None,
+        pk: false,
+    },
+    TableInfo {
+        cid: 2,
+        name: "task_data",
+        _type: "JSON",
+        notnull: true,
+        dflt_value: None,
+        pk: false,
+    },
+    TableInfo {
+        cid: 3,
+        name: "status",
+        _type: "TEXT",
+        notnull: true,
+        dflt_value: Some(
+            "'queued'",
+        ),
+        pk: false,
+    },
+    TableInfo {
+        cid: 4,
+        name: "run_at",
+        _type: "TIMESTAMP",
+        notnull: true,
+        dflt_value: None,
+        pk: false,
+    },
+    TableInfo {
+        cid: 5,
+        name: "interval",
+        _type: "INTEGER",
+        notnull: false,
+        dflt_value: None,
+        pk: false,
+    },
+    TableInfo {
+        cid: 6,
+        name: "created_at",
+        _type: "TIMESTAMP",
+        notnull: true,
+        dflt_value: Some(
+            "CURRENT_TIMESTAMP",
+        ),
+        pk: false,
+    },
+    TableInfo {
+        cid: 7,
+        name: "updated_at",
+        _type: "TIMESTAMP",
+        notnull: true,
+        dflt_value: Some(
+            "CURRENT_TIMESTAMP",
+        ),
+        pk: false,
+    },
+]
