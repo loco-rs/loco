@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* feat: `cargo loco routes` will now pretty-print routes
 * fix: guard jwt error behind feature flag. [https://github.com/loco-rs/loco/pull/1032](https://github.com/loco-rs/loco/pull/1032)
 * fix: logger file_appender not using the seperated format setting. [https://github.com/loco-rs/loco/pull/1036](https://github.com/loco-rs/loco/pull/1036)
 * seed cli command. [https://github.com/loco-rs/loco/pull/1046](https://github.com/loco-rs/loco/pull/1046)
@@ -29,6 +30,8 @@
   ```rust
   let boot = boot_test::<App>().await.unwrap();
   ```
+* implement commands to manage background jobs. [https://github.com/loco-rs/loco/pull/1071](https://github.com/loco-rs/loco/pull/1071)
+
 
 ## v0.13.2
 
