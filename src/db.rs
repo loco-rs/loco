@@ -280,7 +280,7 @@ where
 /// Checks if the specified table has an 'id' column.
 ///
 /// This function checks if the specified table has an 'id' column, which is a
-/// common primary key column. It supports Postgres, SQLite, and MySQL database
+/// common primary key column. It supports `Postgres`, `SQLite`, and `MySQL` database
 /// backends.
 ///
 /// # Arguments
