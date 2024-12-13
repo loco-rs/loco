@@ -32,7 +32,7 @@ mod env_vars;
 pub mod environment;
 pub mod errors;
 pub mod hash;
-mod logger;
+pub mod logger;
 pub mod mailer;
 pub mod scheduler;
 pub mod task;
