@@ -759,6 +759,119 @@ impl Hooks for App {
 }
 ```
 
+# OpenAPI Integration Setup
+The Loco OpenAPI integration is generated using [`Utopia`](https://github.com/juhaku/utoipa)
+
+## `Cargo.toml` features flages
+Edit your `Cargo.toml` file and add one or multiple of the following features flages:
+- `swagger-ui`
+- `redoc`
+- `scalar`
+- `all_openapi`
+
+```toml
+loco-rs = { version = "0.13", features = ["scalar"] }
+```
+
+## Configuration
+Add the corresponding OpenAPI visualizer to the config file
+```yaml
+#...
+server:
+  ...
+  openapi:
+    redoc:
+      !Redoc
+        url: /redoc
+        # spec_json_url: /redoc/openapi.json
+        # spec_yaml_url: /redoc/openapi.yaml
+    scalar:
+      !Scalar
+        url: /scalar
+        # spec_json_url: /scalar/openapi.json
+        # spec_yaml_url: /scalar/openapi.yaml
+    swagger:
+      !Swagger
+        url: /swagger-ui
+        spec_json_url: /api-docs/openapi.json # spec_json_url is required for swagger-ui
+        # spec_yaml_url: /api-docs/openapi.yaml
+```
+## Inital OpenAPI Spec
+Modifies the OpenAPI spec before the routes are added, allowing you to edit [openapi::info](https://docs.rs/utoipa/latest/utoipa/openapi/info/struct.Info.html)
+
+```rust
+// src/app.rs
+use utoipa::OpenApi;
+use loco_rs::auth::openapi::{set_jwt_location_ctx, SecurityAddon};
+
+impl Hooks for App {
+    #...
+    fn inital_openapi_spec(ctx: &AppContext) -> utoipa::openapi::OpenApi {
+        set_jwt_location_ctx(ctx);
+
+        #[derive(OpenApi)]
+        #[openapi(
+            modifiers(&SecurityAddon),
+            info(
+                title = "Loco Demo",
+                description = "This app is a kitchensink for various capabilities and examples of the [Loco](https://loco.rs) project."
+            )
+        )]
+        struct ApiDoc;
+        ApiDoc::openapi()
+    }
+```
+
+## Generating the OpenAPI spec for a route
+Only routes that are annotated with `utoipa::path` will be included in the OpenAPI spec.
+
+```rust
+#[utoipa::path(
+    get,
+    path = "/album",
+    responses(
+        (status = 200, description = "Album found", body = Album),
+    ),
+)]
+async fn get_action_openapi() -> Result<Response> {
+    format::json(Album {
+        title: "VH II".to_string(),
+        rating: 10,
+    })
+}
+```
+
+Make sure to add `#[derive(ToSchema)]` on any struct that included in `utoipa::path`.
+```rust
+use utoipa::ToSchema;
+
+#[derive(Serialize, Debug, ToSchema)]
+pub struct Album {
+    title: String,
+    rating: u32,
+}
+```
+
+## Adding routes to the OpenAPI spec visualizer
+Swap the `axum::routing::MethodFilter` to `routes!`
+### Before
+```rust
+Routes::new()
+    .add("/album", get(get_action_openapi)),
+```
+### After
+```rust
+use utoipa_axum::routes;
+
+Routes::new()
+    .add("/album", routes!(get_action_openapi)),
+```
+### Note: do not add multiple routes inside the `routes!` macro
+```rust
+Routes::new()
+    .add("/album", routes!(get_action_1_do_not_do_this, get_action_2_do_not_do_this)),
+```
+
 # Pagination
 
 In many scenarios, when querying data and returning responses to users, pagination is crucial. In `Loco`, we provide a straightforward method to paginate your data and maintain a consistent pagination response schema for your API responses.

@@ -214,7 +214,7 @@ pub trait Hooks: Send {
     /// actions before the application stops completely.
     async fn on_shutdown(_ctx: &AppContext) {}
 
-    /// Modify the OpenAPI spec before the routes are added, allowing you to edit (openapi::info)[https://docs.rs/utoipa/latest/utoipa/openapi/info/struct.Info.html]
+    /// Modifies the OpenAPI spec before the routes are added, allowing you to edit [openapi::info](https://docs.rs/utoipa/latest/utoipa/openapi/info/struct.Info.html)
     /// # Examples
     /// ```rust ignore
     /// fn inital_openapi_spec(_ctx: &AppContext) -> utoipa::openapi::OpenApi {
