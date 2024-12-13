@@ -526,44 +526,31 @@ impl Hooks for App {
 
 This implementation ensures that the seed is executed when the seed function is called. Adjust the specifics based on your application's structure and requirements.
 
-## Running seeds
+## Managing Seed via CLI
 
-The seed process is not executed automatically. You can trigger the seed process either through a task or during testing.
+- **Reset the Database**  
+  Clear all existing data before importing seed files. This is useful when you want to start with a fresh database state, ensuring no old data remains.
+- **Dump Database Tables to Files**  
+  Export the contents of your database tables to files. This feature allows you to back up the current state of your database or prepare data for reuse across environments.
 
-### Using a Task
+To access the seed commands, use the following CLI structure:
+<!-- <snip id="seed-help-command" inject_from="yaml" action="exec" template="sh"> -->
+```sh
+Seed your database with initial data or dump tables to files
 
-1. Create a seeding task by following the instructions in the [Task Documentation](@/docs/processing/task.md).
-2. Configure the task to execute the `seed` function, as demonstrated in the example below:
+Usage: demo_app-cli db seed [OPTIONS]
 
-```rust
-use std::collections::BTreeMap;
-
-use async_trait::async_trait;
-use loco_rs::{
-    app::AppContext,
-    db,
-    task::{Task, TaskInfo},
-    Result,
-};
-use sea_orm::EntityTrait;
-
-use crate::{app::App, models::_entities::users};
-
-pub struct SeedData;
-#[async_trait]
-impl Task for SeedData {
-    fn task(&self) -> TaskInfo {
-        TaskInfo {
-            name: "seed".to_string(),
-            detail: "Seeding data".to_string(),
-        }
-    }
-    async fn run(&self, app_context: &AppContext, vars: &BTreeMap<String, String>) -> Result<()> {
-        let path = std::path::Path::new("src/fixtures");
-        db::run_app_seed::<App>(&app_context.db, path).await
-    }
-}
+Options:
+  -r, --reset                      Clears all data in the database before seeding
+  -d, --dump                       Dumps all database tables to files
+      --dump-tables <DUMP_TABLES>  Specifies specific tables to dump
+      --from <FROM>                Specifies the folder containing seed files (defaults to 'src/fixtures') [default: src/fixtures]
+  -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
+  -h, --help                       Print help
+  -V, --version                    Print version
 ```
+<!-- </snip> -->
+
 
 ### Using a Test
 
