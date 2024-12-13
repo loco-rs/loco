@@ -301,7 +301,7 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
                 if reset {
                     db::reset::<M>(&app_context.db).await?;
                 }
-                db::run_app_seed::<H>(&app_context.db, &from).await?;
+                db::run_app_seed::<H>(app_context, &from).await?;
             }
         }
     }
