@@ -21,14 +21,14 @@ pub mod schema;
 mod tera;
 
 pub mod app;
-#[cfg(feature = "cli")]
-pub mod cli;
-
 pub mod auth;
 pub mod boot;
 pub mod cache;
+#[cfg(feature = "cli")]
+pub mod cli;
 pub mod config;
 pub mod controller;
+mod env_vars;
 pub mod environment;
 pub mod errors;
 pub mod hash;
