@@ -87,43 +87,55 @@ user_report                   [output a user report]
 
 ```console
 $ demo_app-cli routes --environment test
-[GET] /_health
-[GET] /_ping
-[POST] /auth/forgot
-[POST] /auth/login
-[POST] /auth/register
-[POST] /auth/reset
-[POST] /auth/verify
-[GET] /cache
-[GET] /cache/get_or_insert
-[POST] /cache/insert
-[GET] /mylayer/admin
-[GET] /mylayer/echo
-[GET] /mylayer/user
-[GET] /mysession
-[GET] /notes
-[POST] /notes
-[GET] /notes/:id
-[DELETE] /notes/:id
-[POST] /notes/:id
-[GET] /response/album
-[GET] /response/empty
-[GET] /response/empty_json
-[GET] /response/etag
-[GET] /response/html
-[GET] /response/json
-[GET] /response/redirect
-[GET] /response/render_with_status_code
-[GET] /response/set_cookie
-[GET] /response/text
-[POST] /upload/file
-[POST] /user/convert/admin
-[POST] /user/convert/user
-[GET] /user/current
-[GET] /user/current_api_key
-[GET] /view-engine/hello
-[GET] /view-engine/home
-[GET] /view-engine/simple
+/_health
+  └─ GET	/_health
+/_ping
+  └─ GET	/_ping
+/auth
+  ├─ POST	/auth/forgot
+  ├─ POST	/auth/login
+  ├─ POST	/auth/register
+  ├─ POST	/auth/reset
+  └─ POST	/auth/verify
+/cache
+  ├─ GET	/cache
+  ├─ GET	/cache/get_or_insert
+  └─ POST	/cache/insert
+/mylayer
+  ├─ GET	/mylayer/admin
+  ├─ GET	/mylayer/echo
+  └─ GET	/mylayer/user
+/mysession
+  └─ GET	/mysession
+/notes
+  ├─ GET	/notes
+  │  POST	/notes
+  │
+  ├─ GET	/notes/:id
+  │  POST	/notes/:id
+  └─ DELETE	/notes/:id
+/response
+  ├─ GET	/response/album
+  ├─ GET	/response/empty
+  ├─ GET	/response/empty_json
+  ├─ GET	/response/etag
+  ├─ GET	/response/html
+  ├─ GET	/response/json
+  ├─ GET	/response/redirect
+  ├─ GET	/response/render_with_status_code
+  ├─ GET	/response/set_cookie
+  └─ GET	/response/text
+/upload
+  └─ POST	/upload/file
+/user
+  ├─ POST	/user/convert/admin
+  ├─ POST	/user/convert/user
+  ├─ GET	/user/current
+  └─ GET	/user/current_api_key
+/view-engine
+  ├─ GET	/view-engine/hello
+  ├─ GET	/view-engine/home
+  └─ GET	/view-engine/simple
 
 ```
 
