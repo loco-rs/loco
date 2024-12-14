@@ -797,7 +797,7 @@ server:
         # spec_yaml_url: /api-docs/openapi.yaml
 ```
 ## Inital OpenAPI Spec
-Modifies the OpenAPI spec before the routes are added, allowing you to edit [openapi::info](https://docs.rs/utoipa/latest/utoipa/openapi/info/struct.Info.html)
+Modifies the OpenAPI spec before the routes are added, allowing you to edit [`openapi::info`](https://docs.rs/utoipa/latest/utoipa/openapi/info/struct.Info.html)
 
 ```rust
 // src/app.rs
@@ -823,7 +823,7 @@ impl Hooks for App {
 ```
 
 ## Generating the OpenAPI spec for a route
-Only routes that are annotated with `utoipa::path` will be included in the OpenAPI spec.
+Only routes that are annotated with [`utoipa::path`](https://docs.rs/utoipa/latest/utoipa/attr.path.html) will be included in the OpenAPI spec.
 
 ```rust
 #[utoipa::path(
@@ -841,7 +841,7 @@ async fn get_action_openapi() -> Result<Response> {
 }
 ```
 
-Make sure to add `#[derive(ToSchema)]` on any struct that included in `utoipa::path`.
+Make sure to add `#[derive(ToSchema)]` on any struct that included in [`utoipa::path`](https://docs.rs/utoipa/latest/utoipa/attr.path.html).
 ```rust
 use utoipa::ToSchema;
 
@@ -850,6 +850,23 @@ pub struct Album {
     title: String,
     rating: u32,
 }
+```
+
+If `modifiers(&SecurityAddon)` is set in `inital_openapi_spec`, you can document the per route security in `utoipa::path`:
+- `security(("jwt_token" = []))`
+- `security(("api_key" = []))`
+- or leave blank to remove security from the route `security(())`
+
+Example:
+```rust
+#[utoipa::path(
+    get,
+    path = "/album",
+    security(("jwt_token" = [])),
+    responses(
+        (status = 200, description = "Album found", body = Album),
+    ),
+)]
 ```
 
 ## Adding routes to the OpenAPI spec visualizer
