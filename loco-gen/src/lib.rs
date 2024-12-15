@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 mod controller;
+#[cfg(feature = "with-db")]
 mod infer;
+#[cfg(feature = "with-db")]
 mod migration;
 #[cfg(feature = "with-db")]
 mod model;
