@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 mod controller;
+mod infer;
+mod migration;
 #[cfg(feature = "with-db")]
 mod model;
 #[cfg(feature = "with-db")]
@@ -19,8 +21,6 @@ const MAILER_T: &str = include_str!("templates/mailer/mailer.t");
 const MAILER_SUB_T: &str = include_str!("templates/mailer/subject.t");
 const MAILER_TEXT_T: &str = include_str!("templates/mailer/text.t");
 const MAILER_HTML_T: &str = include_str!("templates/mailer/html.t");
-
-const MIGRATION_T: &str = include_str!("templates/migration/migration.t");
 
 const TASK_T: &str = include_str!("templates/task/task.t");
 const TASK_TEST_T: &str = include_str!("templates/task/test.t");
@@ -151,14 +151,14 @@ pub enum Component {
 
         /// Model fields, eg. title:string hits:int
         fields: Vec<(String, String)>,
-
-        /// Generate migration code and stop, don't run the migration
-        migration_only: bool,
     },
     #[cfg(feature = "with-db")]
     Migration {
         /// Name of the migration file
         name: String,
+
+        /// Params fields, eg. title:string hits:int
+        fields: Vec<(String, String)>,
     },
     #[cfg(feature = "with-db")]
     Scaffold {
@@ -222,15 +222,10 @@ pub fn generate(component: Component, appinfo: &AppInfo) -> Result<()> {
      */
     match component {
         #[cfg(feature = "with-db")]
-        Component::Model {
-            name,
-            link,
-            fields,
-            migration_only,
-        } => {
+        Component::Model { name, link, fields } => {
             println!(
                 "{}",
-                model::generate(&rrgen, &name, link, migration_only, &fields, appinfo)?
+                model::generate(&rrgen, &name, link, &fields, appinfo)?
             );
         }
         #[cfg(feature = "with-db")]
@@ -241,10 +236,8 @@ pub fn generate(component: Component, appinfo: &AppInfo) -> Result<()> {
             );
         }
         #[cfg(feature = "with-db")]
-        Component::Migration { name } => {
-            let vars =
-                json!({ "name": name, "ts": chrono::Utc::now(), "pkg_name": appinfo.app_name});
-            rrgen.generate(MIGRATION_T, &vars)?;
+        Component::Migration { name, fields } => {
+            migration::generate(&rrgen, &name, &fields, appinfo)?;
         }
         Component::Controller {
             name,
