@@ -216,3 +216,67 @@ async fn can_get_current_user() {
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+async fn can_auth_with_magic_link() {
+    configure_insta!();
+    request::<App, _, _>(|request, ctx| async move {
+        seed::<App>(&ctx.db).await.unwrap();
+
+        let payload = serde_json::json!({
+            "email": "user1@example.com",
+        });
+        let response = request.post("/api/auth/magic-link").json(&payload).await;
+         assert_eq!(response.status_code(), 200, "Magic link request should succeed");
+
+        let deliveries = ctx.mailer.unwrap().deliveries();
+        assert_eq!(deliveries.count, 1, "Exactly one email should be sent");
+
+        let redact_token = format!("([a-zA-Z0-9]{% raw %}{{{}}}{% endraw %})", users::MAGIC_LINK_LENGTH);
+        with_settings!({
+             filters => {
+                 let mut combined_filters = cleanup_email().clone();
+                combined_filters.extend(vec![(redact_token.as_str(), "[REDACT_TOKEN]")]);
+                combined_filters
+            }
+        }, {
+            assert_debug_snapshot!(deliveries.messages.first().expect("first message").replace("=\r\n", ""));
+
+        });
+
+        let user = users::Model::find_by_email(&ctx.db, "user1@example.com")
+            .await
+            .expect("User should be found");
+
+        let magic_link_token = user.magic_link_token
+            .expect("Magic link token should be generated");
+        let magic_link_response = request.get(&format!("/api/auth/magic-link/{magic_link_token}")).await;
+        assert_eq!(magic_link_response.status_code(), 200, "Magic link authentication should succeed");
+
+        with_settings!({
+            filters => cleanup_user_model()
+        }, {
+            assert_debug_snapshot!(magic_link_response.text());
+        });
+
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn can_reject_invalid_magic_link_token() {
+    configure_insta!();
+    request::<App, _, _>(|request, ctx| async move {
+        seed::<App>(&ctx.db).await.unwrap();
+
+        let magic_link_response = request.get("/api/auth/magic-link/invalid-token").await;
+        assert_eq!(
+            magic_link_response.status_code(),
+            401,
+            "Magic link authentication should be rejected"
+        );
+    })
+    .await;
+}

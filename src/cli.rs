@@ -26,13 +26,14 @@ cfg_if::cfg_if! {
 
 use std::path::PathBuf;
 
+#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+use crate::bgworker::JobStatus;
 use clap::{ArgAction, Parser, Subcommand};
 use duct::cmd;
 use loco_gen::{Component, ScaffoldKind};
 
 use crate::{
     app::{AppContext, Hooks},
-    bgworker::JobStatus,
     boot::{
         create_app, create_context, list_endpoints, list_middlewares, run_scheduler, run_task,
         start, RunDbCommand, ServeParams, StartMode,

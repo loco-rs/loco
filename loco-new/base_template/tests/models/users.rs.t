@@ -1,3 +1,4 @@
+use chrono::{offset::Local, Duration};
 use insta::assert_debug_snapshot;
 use loco_rs::{model::ModelError, testing::prelude::*};
 use {{settings.module_name}}::{
@@ -219,5 +220,72 @@ async fn can_reset_password() {
             .await
             .unwrap()
             .verify_password("new-password")
+    );
+}
+
+#[tokio::test]
+#[serial]
+async fn magic_link() {
+    let boot = boot_test::<App>().await.unwrap();
+    seed::<App>(&boot.app_context.db).await.unwrap();
+
+    let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
+        .await
+        .unwrap();
+
+    assert!(
+        user.magic_link_token.is_none(),
+        "Magic link token should be initially unset"
+    );
+    assert!(
+        user.magic_link_expiration.is_none(),
+        "Magic link expiration should be initially unset"
+    );
+
+    let create_result = user
+        .into_active_model()
+        .create_magic_link(&boot.app_context.db)
+        .await;
+
+    assert!(
+        create_result.is_ok(),
+        "Failed to create magic link: {:?}",
+        create_result.unwrap_err()
+    );
+
+    let updated_user =
+        Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
+            .await
+            .expect("Failed to refetch user after magic link creation");
+
+    assert!(
+        updated_user.magic_link_token.is_some(),
+        "Magic link token should be set after creation"
+    );
+
+    let magic_link_token = updated_user.magic_link_token.unwrap();
+    assert_eq!(
+        magic_link_token.len(),
+        users::MAGIC_LINK_LENGTH as usize,
+        "Magic link token length does not match expected length"
+    );
+
+    assert!(
+        updated_user.magic_link_expiration.is_some(),
+        "Magic link expiration should be set after creation"
+    );
+
+    let now = Local::now();
+    let should_expired_at = now + Duration::minutes(users::MAGIC_LINK_EXPIRATION_MIN.into());
+    let actual_expiration = updated_user.magic_link_expiration.unwrap();
+
+    assert!(
+        actual_expiration >= now,
+        "Magic link expiration should be in the future or now"
+    );
+
+    assert!(
+        actual_expiration <= should_expired_at,
+        "Magic link expiration exceeds expected maximum expiration time"
     );
 }

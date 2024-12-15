@@ -70,6 +70,7 @@ queue:
 
 # Mailer Configuration.
 mailer:
+  stub: true
   # SMTP mailer configuration.
   smtp:
     # Enable/Disable smtp mailer.
