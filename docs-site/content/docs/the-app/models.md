@@ -193,7 +193,7 @@ $ cargo loco generate model posts title:string! content:text
 Other than using the model generator, you drive your schema by *creating migrations*.
 
 ```
-$ cargo loco generate <name of migration> [name:type, name:type ...]
+$ cargo loco generate migration <name of migration> [name:type, name:type ...]
 ```
 
 This creates a migration in the root of your project in `migration/`.
