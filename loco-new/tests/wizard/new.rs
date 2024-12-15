@@ -124,6 +124,14 @@ fn test_combination(
     .run()
     .is_ok());
 
+    assert!(cmd!("cat", "config/test.yaml",)
+        .full_env(&env_map)
+        // .stdout_null()
+        // .stderr_null()
+        .dir(test_dir.path.as_path())
+        .run()
+        .is_ok());
+
     cmd!("cargo", "test")
         // .stdout_null()
         // .stderr_null()
