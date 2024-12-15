@@ -53,7 +53,7 @@ workers:
   #   - BackgroundQueue - Workers operate asynchronously in the background, processing queued.
   #   - ForegroundBlocking - Workers operate in the foreground and block until tasks are completed.
   #   - BackgroundAsync - Workers operate asynchronously in the background, processing tasks with async capabilities.
-  mode: {{settings.background.kind}}
+  mode: ForegroundBlocking
 
   {% if settings.background.kind == "BackgroundQueue"%}
 # Queue Configuration

@@ -46,6 +46,17 @@ jobs:
     permissions:
       contents: read
 
+    services:
+      redis:
+        image: redis
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - "6379:6379"
+
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4
@@ -75,3 +86,4 @@ jobs:
           LOCO_DEV_MODE_PATH: ${{ github.workspace }}
           # NOTE NOTE NOTE: this is for optimizing build and may result in strange behavior
           CARGO_TARGET_DIR: /tmp/shared-target
+          REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
