@@ -139,6 +139,6 @@ impl StoreDriver for OpendalAdapter {
     /// after the test suites are refactored.
     async fn exists(&self, path: &Path) -> StorageResult<bool> {
         let path = path.display().to_string();
-        Ok(self.opendal_impl.exists(&path).await.is_ok())
+        Ok(self.opendal_impl.exists(&path).await.unwrap_or(false))
     }
 }
