@@ -69,11 +69,13 @@ async fn can_login_with_verify(#[case] test_name: &str, #[case] password: &str) 
         });
 
         //Creating a new user
-        _ = request
+        let register_response = request
             .post("/api/auth/register")
             .json(&register_payload)
             .await;
 
+        assert_eq!(register_response.status_code(), 200, "Register request should succeed");
+        
         let user = users::Model::find_by_email(&ctx.db, email).await.unwrap();
         let verify_payload = serde_json::json!({
             "token": user.email_verification_token,
@@ -90,11 +92,15 @@ async fn can_login_with_verify(#[case] test_name: &str, #[case] password: &str) 
             .await;
 
         // Make sure email_verified_at is set
-        assert!(users::Model::find_by_email(&ctx.db, email)
+        let user = users::Model::find_by_email(&ctx.db, email)
             .await
-            .unwrap()
-            .email_verified_at
-            .is_some());
+            .expect("Failed to find user by email");
+
+        assert!(
+            user.email_verified_at.is_some(),
+            "Expected the email to be verified, but it was not. User: {:?}",
+            user
+        );
 
         with_settings!({
             filters => cleanup_user_model()
@@ -120,13 +126,15 @@ async fn can_login_without_verify() {
         });
 
         //Creating a new user
-        _ = request
+        let register_response = request
             .post("/api/auth/register")
             .json(&register_payload)
             .await;
 
+        assert_eq!(register_response.status_code(), 200, "Register request should succeed");
+
         //verify user request
-        let response = request
+        let login_response = request
             .post("/api/auth/login")
             .json(&serde_json::json!({
                 "email": email,
@@ -134,10 +142,12 @@ async fn can_login_without_verify() {
             }))
             .await;
 
+        assert_eq!(login_response.status_code(), 200, "Login request should succeed");
+
         with_settings!({
             filters => cleanup_user_model()
         }, {
-            assert_debug_snapshot!((response.status_code(), response.text()));
+            assert_debug_snapshot!(login_response.text());
         });
     })
     .await;
@@ -154,13 +164,21 @@ async fn can_reset_password() {
         let forgot_payload = serde_json::json!({
             "email": login_data.user.email,
         });
-        _ = request.post("/api/auth/forgot").json(&forgot_payload).await;
+        let forget_response = request.post("/api/auth/forgot").json(&forgot_payload).await;
+        assert_eq!(forget_response.status_code(), 200, "Forget request should succeed");
 
         let user = users::Model::find_by_email(&ctx.db, &login_data.user.email)
             .await
-            .unwrap();
-        assert!(user.reset_token.is_some());
-        assert!(user.reset_sent_at.is_some());
+            .expect("Failed to find user by email");
+
+        assert!(
+            user.reset_token.is_some(),
+            "Expected reset_token to be set, but it was None. User: {user:?}"
+        );
+        assert!(
+            user.reset_sent_at.is_some(),
+            "Expected reset_sent_at to be set, but it was None. User: {user:?}"
+        );
 
         let new_password = "new-password";
         let reset_payload = serde_json::json!({
@@ -169,6 +187,7 @@ async fn can_reset_password() {
         });
 
         let reset_response = request.post("/api/auth/reset").json(&reset_payload).await;
+        assert_eq!(reset_response.status_code(), 200, "Reset password request should succeed");
 
         let user = users::Model::find_by_email(&ctx.db, &user.email)
             .await
@@ -177,9 +196,9 @@ async fn can_reset_password() {
         assert!(user.reset_token.is_none());
         assert!(user.reset_sent_at.is_none());
 
-        assert_debug_snapshot!((reset_response.status_code(), reset_response.text()));
+        assert_debug_snapshot!(reset_response.text());
 
-        let response = request
+        let login_response = request
             .post("/api/auth/login")
             .json(&serde_json::json!({
                 "email": user.email,
@@ -187,7 +206,7 @@ async fn can_reset_password() {
             }))
             .await;
 
-        assert_eq!(response.status_code(), 200);
+        assert_eq!(login_response.status_code(), 200, "Login request should succeed");
 
         let deliveries = ctx.mailer.unwrap().deliveries();
         assert_eq!(deliveries.count, 2, "Exactly one email should be sent");
@@ -214,6 +233,8 @@ async fn can_get_current_user() {
             .add_header(auth_key, auth_value)
             .await;
 
+        assert_eq!(response.status_code(), 200, "Current request should succeed");
+
         with_settings!({
             filters => cleanup_user_model()
         }, {
@@ -234,7 +255,7 @@ async fn can_auth_with_magic_link() {
             "email": "user1@example.com",
         });
         let response = request.post("/api/auth/magic-link").json(&payload).await;
-         assert_eq!(response.status_code(), 200, "Magic link request should succeed");
+        assert_eq!(response.status_code(), 200, "Magic link request should succeed");
 
         let deliveries = ctx.mailer.unwrap().deliveries();
         assert_eq!(deliveries.count, 1, "Exactly one email should be sent");

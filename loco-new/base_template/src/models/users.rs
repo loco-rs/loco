@@ -30,7 +30,7 @@ pub struct Validator {
     pub email: String,
 }
 
-impl Validatable for super::_entities::users::ActiveModel {
+impl Validatable for ActiveModel {
     fn validator(&self) -> Box<dyn Validate> {
         Box::new(Validator {
             name: self.name.as_ref().to_owned(),
@@ -58,7 +58,7 @@ impl ActiveModelBehavior for super::_entities::users::ActiveModel {
 }
 
 #[async_trait]
-impl Authenticable for super::_entities::users::Model {
+impl Authenticable for Model {
     async fn find_by_api_key(db: &DatabaseConnection, api_key: &str) -> ModelResult<Self> {
         let user = users::Entity::find()
             .filter(
@@ -76,7 +76,7 @@ impl Authenticable for super::_entities::users::Model {
     }
 }
 
-impl super::_entities::users::Model {
+impl Model {
     /// finds a user by the provided email
     ///
     /// # Errors
@@ -263,7 +263,7 @@ impl super::_entities::users::Model {
     }
 }
 
-impl super::_entities::users::ActiveModel {
+impl ActiveModel {
     /// Sets the email verification information for the user and
     /// updates it in the database.
     ///
