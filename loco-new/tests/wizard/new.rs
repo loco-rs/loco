@@ -78,6 +78,13 @@ fn test_starter_combinations() {
         AssetsOption::Clientside,
         true,
     );
+    // test only DB
+    test_combination(
+        DBOption::Sqlite,
+        BackgroundOption::None,
+        AssetsOption::None,
+        true,
+    );
 }
 
 fn test_combination(
