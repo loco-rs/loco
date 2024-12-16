@@ -233,15 +233,15 @@ async fn can_auth_with_magic_link() {
         let deliveries = ctx.mailer.unwrap().deliveries();
         assert_eq!(deliveries.count, 1, "Exactly one email should be sent");
 
-        let redact_token = format!("([a-zA-Z0-9]{% raw %}{{{}}}{% endraw %})", users::MAGIC_LINK_LENGTH);
+        let redact_token = format!("[a-zA-Z0-9]{% raw %}{{{}}}{% endraw %}", users::MAGIC_LINK_LENGTH);
         with_settings!({
              filters => {
                  let mut combined_filters = cleanup_email().clone();
-                combined_filters.extend(vec![(redact_token.as_str(), "[REDACT_TOKEN]")]);
+                combined_filters.extend(vec![(r"(\\r\\n|=\\r\\n)", ""), (redact_token.as_str(), "[REDACT_TOKEN]") ]);
                 combined_filters
             }
         }, {
-            assert_debug_snapshot!(deliveries.messages.first().expect("first message").replace("=\r\n", ""));
+            assert_debug_snapshot!(deliveries.messages);
 
         });
 

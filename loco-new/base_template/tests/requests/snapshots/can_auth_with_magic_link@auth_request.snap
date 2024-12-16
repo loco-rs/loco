@@ -1,5 +1,7 @@
 ---
 source: tests/requests/auth.rs
-expression: "deliveries.messages.first().expect(\"first message\").replace(\"=\\r\\n\", \"\")"
+expression: deliveries.messages
 ---
-"From: System <system@example.com>\r\nTo: user1@example.com\r\nSubject: Magic link =?utf-8?b?ZXhhbXBsZQo=?MIME-Version: 1.0\r\nDate: DATE\r\nContent-Type: multipart/alternative;\r\n boundary=\"IDENTIFIER\"\r\n\r\n--IDENTIFIER\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: 7bit\r\n\r\nMagic link with this link: \r\nhttp://localhost:5150/api/auth/magic-link/[REDACT_TOKEN]\r\n--IDENTIFIER\r\nContent-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n;<html>\r\n<body>\r\n<p>Magic link example:</p>\r\n<a href=3D\"http://localhost:5150/api/auth/magic-link/[REDACT_TOKEN]\">\r\nVerify Your Account\r\n</a>\r\n</body>\r\n</html>\r\n\r\n--IDENTIFIER--\r\n"
+[
+    "From: System <system@example.com>To: user1@example.comSubject: Magic link =?utf-8?b?ZXhhbXBsZQo=?MIME-Version: 1.0Date: DATEContent-Type: multipart/alternative; boundary=\"IDENTIFIER\"--IDENTIFIERContent-Type: text/plain; charset=utf-8Content-Transfer-Encoding: 7bitMagic link with this link: http://localhost:5150/api/auth/magic-link/[REDACT_TOKEN]--IDENTIFIERContent-Type: text/html; charset=utf-8Content-Transfer-Encoding: quoted-printable;<html><body><p>Magic link example:</p><a href=3D\"http://localhost:5150/api/auth/magic-link/[REDACT_TOKEN]\">Verify Your Account</a></body></html>--IDENTIFIER--",
+]
