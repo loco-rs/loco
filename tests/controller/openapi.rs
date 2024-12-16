@@ -123,6 +123,7 @@ async fn openapi_spec(#[case] test_name: &str) {
         (
             res.status().to_string(),
             res.url().to_string(),
+            res.headers().get("content-type").unwrap().to_owned(),
             res.text().await.unwrap(),
         )
     );
