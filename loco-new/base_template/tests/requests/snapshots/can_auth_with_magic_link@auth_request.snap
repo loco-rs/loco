@@ -1,7 +1,5 @@
 ---
 source: tests/requests/auth.rs
-expression: deliveries.messages
+expression: magic_link_response.text()
 ---
-[
-    "From: System <system@example.com>To: user1@example.comSubject: Magic link =?utf-8?b?ZXhhbXBsZQo=?MIME-Version: 1.0Date: DATEContent-Type: multipart/alternative; boundary=\"IDENTIFIER\"--IDENTIFIERContent-Type: text/plain; charset=utf-8Content-Transfer-Encoding: 7bitMagic link with this link: http://localhost:5150/api/auth/magic-link/[REDACT_TOKEN]--IDENTIFIERContent-Type: text/html; charset=utf-8Content-Transfer-Encoding: quoted-printable;<html><body><p>Magic link example:</p><a href=3D\"http://localhost:5150/api/auth/magic-link/[REDACT_TOKEN]\">Verify Your Account</a></body></html>--IDENTIFIER--",
-]
+"{\"token\":\"TOKEN\",\"pid\":\"PID\",\"name\":\"user1\",\"is_verified\":false}"
