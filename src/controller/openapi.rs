@@ -26,7 +26,7 @@ pub async fn openapi_spec_json() -> Result<Response> {
 
 /// Axum handler that returns the OpenAPI spec as YAML
 pub async fn openapi_spec_yaml() -> Result<Response> {
-    format::text(&get_openapi_spec().to_yaml()?)
+    format::yaml(&get_openapi_spec().to_yaml()?)
 }
 
 /// Adds the OpenAPI endpoints the app router
