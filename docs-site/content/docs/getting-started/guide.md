@@ -798,6 +798,8 @@ use loco_rs::task::Vars;
 
 use crate::models::users;
 
+pub struct UserReport;
+
 #[async_trait]
 impl Task for UserReport {
     fn task(&self) -> TaskInfo {
