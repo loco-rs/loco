@@ -20,9 +20,16 @@ cfg_if::cfg_if! {
         use crate::doctor;
         use crate::boot::{run_db};
         use crate::db;
-        use std::process::exit;
     } else {}
 }
+
+#[cfg(any(
+    feature = "bg_redis",
+    feature = "bg_pg",
+    feature = "bg_sqlt",
+    feature = "with-db"
+))]
+use std::process::exit;
 
 use std::{collections::BTreeMap, path::PathBuf};
 
