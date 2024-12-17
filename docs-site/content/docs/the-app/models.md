@@ -526,44 +526,31 @@ impl Hooks for App {
 
 This implementation ensures that the seed is executed when the seed function is called. Adjust the specifics based on your application's structure and requirements.
 
-## Running seeds
+## Managing Seed via CLI
 
-The seed process is not executed automatically. You can trigger the seed process either through a task or during testing.
+- **Reset the Database**  
+  Clear all existing data before importing seed files. This is useful when you want to start with a fresh database state, ensuring no old data remains.
+- **Dump Database Tables to Files**  
+  Export the contents of your database tables to files. This feature allows you to back up the current state of your database or prepare data for reuse across environments.
 
-### Using a Task
+To access the seed commands, use the following CLI structure:
+<!-- <snip id="seed-help-command" inject_from="yaml" action="exec" template="sh"> -->
+```sh
+Seed your database with initial data or dump tables to files
 
-1. Create a seeding task by following the instructions in the [Task Documentation](@/docs/processing/task.md).
-2. Configure the task to execute the `seed` function, as demonstrated in the example below:
+Usage: demo_app-cli db seed [OPTIONS]
 
-```rust
-use std::collections::BTreeMap;
-
-use async_trait::async_trait;
-use loco_rs::{
-    app::AppContext,
-    db,
-    task::{Task, TaskInfo},
-    Result,
-};
-use sea_orm::EntityTrait;
-
-use crate::{app::App, models::_entities::users};
-
-pub struct SeedData;
-#[async_trait]
-impl Task for SeedData {
-    fn task(&self) -> TaskInfo {
-        TaskInfo {
-            name: "seed".to_string(),
-            detail: "Seeding data".to_string(),
-        }
-    }
-    async fn run(&self, app_context: &AppContext, vars: &BTreeMap<String, String>) -> Result<()> {
-        let path = std::path::Path::new("src/fixtures");
-        db::run_app_seed::<App>(&app_context.db, path).await
-    }
-}
+Options:
+  -r, --reset                      Clears all data in the database before seeding
+  -d, --dump                       Dumps all database tables to files
+      --dump-tables <DUMP_TABLES>  Specifies specific tables to dump
+      --from <FROM>                Specifies the folder containing seed files (defaults to 'src/fixtures') [default: src/fixtures]
+  -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
+  -h, --help                       Print help
+  -V, --version                    Print version
 ```
+<!-- </snip> -->
+
 
 ### Using a Test
 
@@ -572,12 +559,14 @@ impl Task for SeedData {
 2. In your test section, follow the example below:
 
 ```rust
+use loco_rs::testing::prelude::*;
+
 #[tokio::test]
 #[serial]
 async fn handle_create_with_password_with_duplicate() {
 
-    let boot = testing::boot_test::<App, Migrator>().await;
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    let boot = boot_test::<App, Migrator>().await;
+    seed::<App>(&boot.app_context.db).await.unwrap();
     assert!(get_user_by_id(1).ok());
 }
 ```
@@ -695,11 +684,13 @@ If you used the generator to crate a model migration, you should also have an au
 A typical test contains everything you need to set up test data, boot the app, and reset the database automatically before the testing code runs. It looks like this:
 
 ```rust
+use loco_rs::testing::prelude::*;
+
 async fn can_find_by_pid() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App, Migrator>().await;
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    let boot = boot_test::<App, Migrator>().await;
+    seed::<App>(&boot.app_context.db).await.unwrap();
 
     let existing_user =
         Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111").await;
@@ -747,13 +738,15 @@ impl Hooks for App {
 ## Seeding
 
 ```rust
+use loco_rs::testing::prelude::*;
+
 #[tokio::test]
 #[serial]
 async fn is_user_exists() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App, Migrator>().await;
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    let boot = boot_test::<App, Migrator>().await;
+    seed::<App>(&boot.app_context.db).await.unwrap();
     assert!(get_user_by_id(1).ok());
 
 }
@@ -770,14 +763,15 @@ Example using [insta](https://crates.io/crates/insta) for snapshots.
 in the following example you can use `cleanup_user_model` which clean all user model data.
 
 ```rust
+use loco_rs::testing::prelude::*;
 
 #[tokio::test]
 #[serial]
 async fn can_create_user() {
-    testing::request::<App, Migrator, _, _>(|request, _ctx| async move {
+    request::<App, Migrator, _, _>(|request, _ctx| async move {
         // create user test
         with_settings!({
-            filters => testing::cleanup_user_model()
+            filters => cleanup_user_model()
         }, {
             assert_debug_snapshot!(current_user_request.text());
         });

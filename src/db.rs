@@ -19,7 +19,7 @@ use tracing::info;
 use super::Result as AppResult;
 use crate::{
     app::{AppContext, Hooks},
-    config, doctor,
+    config, doctor, env_vars,
     errors::Error,
 };
 
@@ -277,6 +277,111 @@ where
     Ok(())
 }
 
+/// Checks if the specified table has an 'id' column.
+///
+/// This function checks if the specified table has an 'id' column, which is a
+/// common primary key column. It supports `Postgres`, `SQLite`, and `MySQL` database
+/// backends.
+///
+/// # Arguments
+///
+/// - `db`: A reference to the `DatabaseConnection`.
+/// - `db_backend`: A reference to the `DatabaseBackend`.
+/// - `table_name`: The name of the table to check.
+///
+/// # Returns
+///
+/// A `Result` containing a `bool` indicating whether the table has an 'id'
+/// column.
+async fn has_id_column(
+    db: &DatabaseConnection,
+    db_backend: &DatabaseBackend,
+    table_name: &str,
+) -> crate::Result<bool> {
+    // First check if 'id' column exists
+    let result = match db_backend {
+        DatabaseBackend::Postgres => {
+            let query = format!(
+                "SELECT EXISTS (
+              SELECT 1 
+              FROM information_schema.columns 
+              WHERE table_name = '{table_name}' 
+              AND column_name = 'id'
+          )"
+            );
+            let result = db
+                .query_one(Statement::from_string(DatabaseBackend::Postgres, query))
+                .await?;
+            result.map_or(false, |row| {
+                row.try_get::<bool>("", "exists").unwrap_or(false)
+            })
+        }
+        DatabaseBackend::Sqlite => {
+            let query = format!(
+                "SELECT COUNT(*) as count 
+          FROM pragma_table_info('{table_name}') 
+          WHERE name = 'id'"
+            );
+            let result = db
+                .query_one(Statement::from_string(DatabaseBackend::Sqlite, query))
+                .await?;
+            result.map_or(false, |row| {
+                row.try_get::<i32>("", "count").unwrap_or(0) > 0
+            })
+        }
+        DatabaseBackend::MySql => {
+            return Err(Error::Message(
+                "Unsupported database backend: MySQL".to_string(),
+            ))
+        }
+    };
+
+    Ok(result)
+}
+
+/// Checks whether the specified table has an auto-increment 'id' column.
+///
+/// # Returns
+///
+/// A `Result` containing a `bool` indicating whether the table has an
+/// auto-increment 'id' column.
+async fn is_auto_increment(
+    db: &DatabaseConnection,
+    db_backend: &DatabaseBackend,
+    table_name: &str,
+) -> crate::Result<bool> {
+    let result = match db_backend {
+        DatabaseBackend::Postgres => {
+            let query = format!(
+                "SELECT pg_get_serial_sequence('{table_name}', 'id') IS NOT NULL as is_serial"
+            );
+            let result = db
+                .query_one(Statement::from_string(DatabaseBackend::Postgres, query))
+                .await?;
+            result.map_or(false, |row| {
+                row.try_get::<bool>("", "is_serial").unwrap_or(false)
+            })
+        }
+        DatabaseBackend::Sqlite => {
+            let query =
+                format!("SELECT sql FROM sqlite_master WHERE type='table' AND name='{table_name}'");
+            let result = db
+                .query_one(Statement::from_string(DatabaseBackend::Sqlite, query))
+                .await?;
+            result.map_or(false, |row| {
+                row.try_get::<String>("", "sql")
+                    .map_or(false, |sql| sql.to_lowercase().contains("autoincrement"))
+            })
+        }
+        DatabaseBackend::MySql => {
+            return Err(Error::Message(
+                "Unsupported database backend: MySQL".to_string(),
+            ))
+        }
+    };
+    Ok(result)
+}
+
 /// Function to reset auto-increment
 /// # Errors
 /// Returns error if it fails
@@ -285,6 +390,17 @@ pub async fn reset_autoincrement(
     table_name: &str,
     db: &DatabaseConnection,
 ) -> crate::Result<()> {
+    // Check if 'id' column exists
+    let has_id_column = has_id_column(db, &db_backend, table_name).await?;
+    if !has_id_column {
+        return Ok(());
+    }
+    // Check if 'id' column is auto-increment
+    let is_auto_increment = is_auto_increment(db, &db_backend, table_name).await?;
+    if !is_auto_increment {
+        return Ok(());
+    }
+
     match db_backend {
         DatabaseBackend::Postgres => {
             let query_str = format!(
@@ -400,13 +516,11 @@ fn fix_entities() -> AppResult<()> {
                 &new_file,
                 format!(
                     r"use sea_orm::entity::prelude::*;
-use super::_entities::{module}::{{ActiveModel, Entity}};
+pub use super::_entities::{module}::{{ActiveModel, Model, Entity}};
 pub type {module_pascal} = Entity;
 
 #[async_trait::async_trait]
 impl ActiveModelBehavior for ActiveModel {{
-    // extend activemodel below (keep comment for generators)
-
     async fn before_save<C>(self, _db: &C, insert: bool) -> std::result::Result<Self, DbErr>
     where
         C: ConnectionTrait,
@@ -420,6 +534,15 @@ impl ActiveModelBehavior for ActiveModel {{
         }}
     }}
 }}
+
+// implement your read-oriented logic here
+impl Model {{}}
+
+// implement your write-oriented logic here
+impl ActiveModel {{}}
+
+// implement your custom finders, selectors oriented logic here
+impl Entity {{}}
 "
                 ),
             )?;
@@ -479,8 +602,7 @@ async fn create_postgres_database(
     db_name: &str,
     db: &DatabaseConnection,
 ) -> Result<(), sea_orm::DbErr> {
-    let with_options =
-        std::env::var("LOCO_POSTGRES_DB_OPTIONS").unwrap_or_else(|_| "ENCODING='UTF8'".to_string());
+    let with_options = env_vars::get_or_default(env_vars::POSTGRES_DB_OPTIONS, "ENCODING='UTF8'");
 
     let query = format!("CREATE DATABASE {db_name} WITH {with_options}");
     tracing::info!(query, "creating postgres database");

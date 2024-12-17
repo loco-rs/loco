@@ -218,18 +218,19 @@ Test Description:
 - Retrieve the mailer instance from the context and call the deliveries() function, which contains information about the number of sent emails and their content.
 
 ```rust
+use loco_rs::testing::prelude::*;
 
 #[tokio::test]
 #[serial]
 async fn can_register() {
     configure_insta!();
 
-    testing::request::<App, Migrator, _, _>(|request, ctx| async move {
+    request::<App, Migrator, _, _>(|request, ctx| async move {
         // Create a request for user registration.
 
         // Now you can call the context mailer and use the deliveries function.
         with_settings!({
-            filters => testing::cleanup_email()
+            filters => cleanup_email()
         }, {
             assert_debug_snapshot!(ctx.mailer.unwrap().deliveries());
         });

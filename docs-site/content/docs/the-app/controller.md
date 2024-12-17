@@ -722,7 +722,7 @@ middlewares:
 
 `Loco` also allow us to apply [layers](https://docs.rs/tower/latest/tower/trait.Layer.html) to specific handlers or
 routes.
-For more information on handler and route based middleware, refer to the [middleware](/docs/the-app/middlewares)
+For more information on handler and route based middleware, refer to the [middleware](/docs/the-app/controller/#middleware)
 documentation.
 
 
@@ -858,18 +858,19 @@ impl PaginationResponse {
 # Testing 
 When testing controllers, the goal is to call the router's controller endpoint and verify the HTTP response, including the status code, response content, headers, and more.
 
-To initialize a test request, use `testing::request`, which prepares your app routers, providing the request instance and the application context.
+To initialize a test request, use `use loco_rs::testing::prelude::*;`, which prepares your app routers, providing the request instance and the application context.
 
 In the following example, we have a POST endpoint that returns the data sent in the POST request.
 
 ```rust
+use loco_rs::testing::prelude::*;
 
 #[tokio::test]
 #[serial]
 async fn can_print_echo() {
     configure_insta!();
 
-    testing::request::<App, _, _>(|request, _ctx| async move {
+    request::<App, _, _>(|request, _ctx| async move {
         let response = request
             .post("/example")
             .json(&serde_json::json!({"site": "Loco"}))

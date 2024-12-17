@@ -1,9 +1,8 @@
 use demo_app::{
     app::App,
-    models::{roles, sea_orm_active_enums, users, users::RegisterParams, users_roles},
+    models::{roles, sea_orm_active_enums, users, users::RegisterParams},
 };
-use loco_rs::{prelude::*, testing};
-use sea_orm::DatabaseConnection;
+use loco_rs::testing::prelude::*;
 use serial_test::serial;
 
 macro_rules! configure_insta {
@@ -20,8 +19,8 @@ macro_rules! configure_insta {
 async fn can_add_user_to_admin() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App>().await.unwrap();
-    let new_user: Result<users::Model, ModelError> = users::Model::create_with_password(
+    let boot = boot_test::<App>().await.unwrap();
+    let new_user = users::Model::create_with_password(
         &boot.app_context.db,
         &RegisterParams {
             email: "user1@example.com".to_string(),
@@ -29,8 +28,8 @@ async fn can_add_user_to_admin() {
             name: "framework".to_string(),
         },
     )
-    .await;
-    let new_user = new_user.unwrap();
+    .await
+    .unwrap();
     let role = roles::Model::add_user_to_admin_role(&boot.app_context.db, &new_user)
         .await
         .unwrap();
@@ -42,8 +41,8 @@ async fn can_add_user_to_admin() {
 async fn can_add_user_to_user() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App>().await.unwrap();
-    let new_user: Result<users::Model, ModelError> = users::Model::create_with_password(
+    let boot = boot_test::<App>().await.unwrap();
+    let new_user = users::Model::create_with_password(
         &boot.app_context.db,
         &RegisterParams {
             email: "user1@example.com".to_string(),
@@ -51,8 +50,8 @@ async fn can_add_user_to_user() {
             name: "framework".to_string(),
         },
     )
-    .await;
-    let new_user = new_user.unwrap();
+    .await
+    .unwrap();
     let role = roles::Model::add_user_to_user_role(&boot.app_context.db, &new_user)
         .await
         .unwrap();
@@ -64,8 +63,8 @@ async fn can_add_user_to_user() {
 async fn can_convert_between_user_and_admin() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App>().await.unwrap();
-    let new_user: Result<users::Model, ModelError> = users::Model::create_with_password(
+    let boot = boot_test::<App>().await.unwrap();
+    let new_user = users::Model::create_with_password(
         &boot.app_context.db,
         &RegisterParams {
             email: "user1@example.com".to_string(),
@@ -73,8 +72,8 @@ async fn can_convert_between_user_and_admin() {
             name: "framework".to_string(),
         },
     )
-    .await;
-    let new_user = new_user.unwrap();
+    .await
+    .unwrap();
     let role = roles::Model::add_user_to_user_role(&boot.app_context.db, &new_user)
         .await
         .unwrap();
@@ -94,8 +93,8 @@ async fn can_convert_between_user_and_admin() {
 async fn can_find_user_roles() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App>().await.unwrap();
-    let new_user: Result<users::Model, ModelError> = users::Model::create_with_password(
+    let boot = boot_test::<App>().await.unwrap();
+    let new_user = users::Model::create_with_password(
         &boot.app_context.db,
         &RegisterParams {
             email: "user1@example.com".to_string(),
@@ -103,8 +102,8 @@ async fn can_find_user_roles() {
             name: "framework".to_string(),
         },
     )
-    .await;
-    let new_user = new_user.unwrap();
+    .await
+    .unwrap();
     let role = roles::Model::add_user_to_user_role(&boot.app_context.db, &new_user)
         .await
         .unwrap();
@@ -131,8 +130,8 @@ async fn can_find_user_roles() {
 async fn cannot_find_user_before_conversation() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App>().await.unwrap();
-    let new_user: Result<users::Model, ModelError> = users::Model::create_with_password(
+    let boot = boot_test::<App>().await.unwrap();
+    let new_user = users::Model::create_with_password(
         &boot.app_context.db,
         &RegisterParams {
             email: "user1@example.com".to_string(),
@@ -140,8 +139,8 @@ async fn cannot_find_user_before_conversation() {
             name: "framework".to_string(),
         },
     )
-    .await;
-    let new_user = new_user.unwrap();
+    .await
+    .unwrap();
     let role = roles::Model::find_by_user(&boot.app_context.db, &new_user).await;
     assert!(role.is_err());
 }
