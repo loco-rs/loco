@@ -16,7 +16,7 @@ use loco_rs::{
 
 #[allow(unused_imports)]
 use crate::{
-    controllers,
+    controllers ,tasks
 };
 
 pub struct App;

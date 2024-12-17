@@ -27,7 +27,7 @@ pub use crate::{
     app::{AppContext, Initializer},
     bgworker::{BackgroundWorker, Queue},
     controller::{
-        format,
+        bad_request, format,
         middleware::{
             format::{Format, RespondTo},
             remote_ip::RemoteIP,

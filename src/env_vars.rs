@@ -3,6 +3,7 @@
 //! fetching environment variables, ensuring that keys are easily accessible
 //! from a single location in the codebase.
 
+#[cfg(feature = "with-db")]
 /// The key for `PostgreSQL` database options environment variable.
 pub const POSTGRES_DB_OPTIONS: &str = "LOCO_POSTGRES_DB_OPTIONS";
 /// The key for the application's environment (e.g., development, production).
@@ -19,6 +20,7 @@ pub fn get(key: &str) -> Result<String, std::env::VarError> {
     std::env::var(key)
 }
 
+#[allow(dead_code)]
 /// Retrieves the value of the given environment variable, or returns a default value if the variable is not set.
 pub fn get_or_default(key: &str, default: &str) -> String {
     get(key).unwrap_or_else(|_| default.to_string())

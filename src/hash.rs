@@ -1,9 +1,9 @@
+use crate::{Error, Result};
 use argon2::{
     password_hash::SaltString, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier,
     Version,
 };
-
-use crate::{Error, Result};
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
 /// Hashes a plain text password and returns the hashed result.
 ///
@@ -57,6 +57,26 @@ pub fn verify_password(pass: &str, hashed_password: &str) -> bool {
     arg2.verify_password(pass.as_bytes(), &hash).is_ok()
 }
 
+/// Generates a random alphanumeric string of the specified length.
+///
+/// # Example
+///
+/// ```rust
+/// use loco_rs::hash;
+///
+/// let rand_str = hash::random_string(10);
+/// assert_eq!(rand_str.len(), 10);
+/// assert_ne!(rand_str, hash::random_string(10));
+///
+/// ```
+pub fn random_string(length: usize) -> String {
+    thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(length)
+        .map(char::from)
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -69,5 +89,15 @@ mod tests {
         let hash_pass = hash_password(pass).unwrap();
 
         assert!(verify_password(pass, &hash_pass));
+    }
+
+    #[test]
+    fn can_random_string() {
+        let random_length = 32;
+        let first = random_string(random_length);
+        assert_eq!(first.len(), random_length);
+        let second: String = random_string(random_length);
+        assert_eq!(second.len(), random_length);
+        assert_ne!(first, second);
     }
 }

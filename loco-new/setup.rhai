@@ -51,16 +51,34 @@ gen.copy_file("config/production.yaml");            // Production config
 // Database-Related Files
 // =====================
 if db {
-   gen.copy_template_dir("migration");              // Database migrations directory
-   gen.copy_dir("src/models");                      // Models directory, copied if background enabled
-   gen.copy_dir("src/fixtures");                    // Database fixtures directory
-   gen.copy_template("examples/playground.rs.t");   // Example playground template with DB setup
+   // Database migrations configuration and setup
+    gen.copy_template("migration/Cargo.toml.t");                  // Database migrations Cargo configuration
+    gen.copy_template("migration/src/lib.rs.t");                  // Database migrations library
 
-   // Test modules related to database models
-   gen.copy_file("tests/models/mod.rs");            // Models tests root
-   gen.copy_dir("tests/models/snapshots");          // Test snapshots for models
-   gen.copy_template("tests/models/users.rs.t");    // User model test template
-   gen.copy_template("tests/requests/prepare_data.rs.t"); // Data preparation template
+    // Entity modules for database models
+    gen.copy_template("src/models/_entities/mod.rs.t");            // Root module for database entities
+    gen.copy_template("src/models/_entities/prelude.rs.t");            // Root module for database entities
+    gen.copy_template("src/models/mod.rs.t");            // Root module for database entities
+
+    // Test modules related to database models
+    gen.copy_template("tests/models/mod.rs.t");                   // Models tests root module
+
+    if (settings.auth) {
+        // Authentication-related models and migrations
+        gen.copy_file("migration/src/m20220101_000001_users.rs");  // Users migration file
+        gen.copy_file("src/models/_entities/users.rs");             // Users entity definition
+        gen.copy_file("src/models/users.rs");                      // Users model logic
+
+        // Fixtures and test setup for authentication
+        gen.copy_dir("src/fixtures");                              // Database fixtures directory
+
+        // Test modules related to user models
+        gen.copy_dir("tests/models/snapshots");                    // Test snapshots for models
+        gen.copy_template("tests/models/users.rs.t");              // User model test template
+        gen.copy_template("tests/requests/prepare_data.rs.t");     // Data preparation template for tests
+    }
+   
+   gen.copy_template("examples/playground.rs.t");                 // Example playground template with DB setup
 }
 
 // =====================

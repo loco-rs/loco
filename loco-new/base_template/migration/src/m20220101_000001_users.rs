@@ -21,6 +21,8 @@ impl MigrationTrait for Migration {
                 Users::EmailVerificationSentAt,
             ))
             .col(timestamp_with_time_zone_null(Users::EmailVerifiedAt))
+            .col(string_null(Users::MagicLinkToken))
+            .col(timestamp_with_time_zone_null(Users::MagicLinkExpiration))
             .to_owned();
         manager.create_table(table).await?;
         Ok(())
@@ -47,4 +49,6 @@ pub enum Users {
     EmailVerificationToken,
     EmailVerificationSentAt,
     EmailVerifiedAt,
+    MagicLinkToken,
+    MagicLinkExpiration,
 }

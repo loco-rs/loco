@@ -20,12 +20,21 @@ cfg_if::cfg_if! {
         use crate::doctor;
         use crate::boot::{run_db};
         use crate::db;
-        use std::process::exit;
     } else {}
 }
 
+#[cfg(any(
+    feature = "bg_redis",
+    feature = "bg_pg",
+    feature = "bg_sqlt",
+    feature = "with-db"
+))]
+use std::process::exit;
+
 use std::{collections::BTreeMap, path::PathBuf};
 
+#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+use crate::bgworker::JobStatus;
 use clap::{ArgAction, Parser, Subcommand};
 use colored::Colorize;
 use duct::cmd;
@@ -33,7 +42,6 @@ use loco_gen::{Component, ScaffoldKind};
 
 use crate::{
     app::{AppContext, Hooks},
-    bgworker::JobStatus,
     boot::{
         create_app, create_context, list_endpoints, list_middlewares, run_scheduler, run_task,
         start, RunDbCommand, ServeParams, StartMode,
