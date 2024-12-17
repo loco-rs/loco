@@ -14,6 +14,7 @@ path = "src/lib.rs"
 
 [dependencies]
 
+cruet = "0.14.0"
 rrgen = "0.5.3"
 serde = { workspace = true }
 serde_json = { workspace = true }
