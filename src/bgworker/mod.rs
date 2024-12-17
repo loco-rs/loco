@@ -313,13 +313,13 @@ impl Queue {
         age_days: Option<i64>,
     ) -> Result<serde_json::Value> {
         tracing::debug!(status = ?status, age_days = ?age_days, "getting jobs");
-        let jobs = match self {
+        match self {
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, _, _) => {
                 let jobs = pg::get_jobs(pool, status, age_days)
                     .await
                     .map_err(Box::from)?;
-                serde_json::to_value(jobs)?
+                Ok(serde_json::to_value(jobs)?)
             }
             #[cfg(feature = "bg_sqlt")]
             Self::Sqlite(pool, _, _) => {
@@ -327,25 +327,23 @@ impl Queue {
                     .await
                     .map_err(Box::from)?;
 
-                serde_json::to_value(jobs)?
+                Ok(serde_json::to_value(jobs)?)
             }
             #[cfg(feature = "bg_redis")]
             Self::Redis(_, _, _) => {
                 tracing::error!("getting jobs for redis provider not implemented");
-                return Err(Error::string(
+                Err(Error::string(
                     "getting jobs not supported for redis provider",
-                ));
+                ))
             }
             Self::None => {
                 tracing::error!(
                     "no queue provider is configured: compile with at least one queue provider \
                      feature"
                 );
-                return Err(Error::string("provider not configure"));
+                Err(Error::string("provider not configure"))
             }
-        };
-
-        Ok(jobs)
+        }
     }
 
     /// Cancels jobs based on the given job name for the configured queue provider.
