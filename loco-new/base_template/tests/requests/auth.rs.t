@@ -292,6 +292,25 @@ async fn can_auth_with_magic_link() {
 
 #[tokio::test]
 #[serial]
+async fn can_reject_invalid_email() {
+    configure_insta!();
+    request::<App, _, _>(|request, _ctx| async move {
+        let invalid_email = "user1@temp-mail.com";
+        let payload = serde_json::json!({
+            "email": invalid_email,
+        });
+        let response = request.post("/api/auth/magic-link").json(&payload).await;
+        assert_eq!(
+            response.status_code(),
+            400,
+            "Expected request with invalid email '{invalid_email}' to be blocked, but it was allowed."
+        );
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
 async fn can_reject_invalid_magic_link_token() {
     configure_insta!();
     request::<App, _, _>(|request, ctx| async move {
