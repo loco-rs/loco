@@ -198,10 +198,6 @@ impl IntoResponse for Error {
                 StatusCode::NOT_FOUND,
                 ErrorDetail::new("not_found", "Resource was not found"),
             ),
-            Self::InternalServerError => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                ErrorDetail::new("internal_server_error", "Internal Server Error"),
-            ),
             Self::Unauthorized(err) => {
                 tracing::warn!(err);
                 (
@@ -221,9 +217,13 @@ impl IntoResponse for Error {
                     ErrorDetail::with_reason("Bad Request"),
                 )
             }
-            _ => (
+            Self::BadRequest(err) => (
                 StatusCode::BAD_REQUEST,
-                ErrorDetail::with_reason("Bad Request"),
+                ErrorDetail::new("Bad Request", &err),
+            ),
+            _ => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorDetail::new("internal_server_error", "Internal Server Error"),
             ),
         };
 
