@@ -80,7 +80,6 @@ impl Queue {
                     &class,
                     serde_json::to_value(args)?,
                     chrono::Utc::now(),
-                    None,
                 )
                 .await
                 .map_err(Box::from)?;

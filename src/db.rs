@@ -23,12 +23,7 @@ use crate::{
 };
 
 pub static EXTRACT_DB_NAME: OnceLock<Regex> = OnceLock::new();
-const IGNORED_TABLES: &[&str] = &[
-    "seaql_migrations",
-    "pg_loco_queue",
-    "sqlt_loco_queue",
-    "sqlt_loco_queue_lock",
-];
+const IGNORED_TABLES: &[&str] = &["seaql_migrations", "pg_loco_queue"];
 
 fn get_extract_db_name() -> &'static Regex {
     EXTRACT_DB_NAME.get_or_init(|| Regex::new(r"/([^/]+)$").unwrap())

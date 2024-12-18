@@ -143,6 +143,14 @@ ulid = { version = "1", optional = true }
 rusty-sidekiq = { version = "0.11.0", default-features = false, optional = true }
 bb8 = { version = "0.8.1", optional = true }
 
+# apalis
+apalis = { git = "https://github.com/geofmureithi/apalis.git", branch = "chore/api-improvements", features = [
+    "limit",
+] }
+apalis-sql = { git = "https://github.com/geofmureithi/apalis.git", branch = "chore/api-improvements", features = [
+    "sqlite",
+] }
+
 [workspace.dependencies]
 
 chrono = { version = "0.4", features = ["serde"] }
@@ -153,7 +161,7 @@ serde = "1"
 serde_json = "1"
 async-trait = { version = "0.1.74" }
 axum = { version = "0.7.5", features = ["macros"] }
-tower = "0.4"
+tower = { version = "0.5", features = ["util"] }
 tower-http = { version = "0.6.1", features = [
     "trace",
     "catch-panic",
