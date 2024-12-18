@@ -219,10 +219,14 @@ impl IntoResponse for Error {
                     StatusCode::BAD_REQUEST,
                     ErrorDetail::with_reason("Bad Request"),
                 )
-            }
-            _ => (
+            },
+            Self::BadRequest => (
                 StatusCode::BAD_REQUEST,
                 ErrorDetail::with_reason("Bad Request"),
+            ),
+            _ => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorDetail::new("internal_server_error", "Internal Server Error"),
             ),
         };
 
