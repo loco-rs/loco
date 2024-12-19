@@ -70,11 +70,12 @@ pub struct Job {
     #[serde(default)]
     pub shell: bool,
     #[serde(rename = "schedule")]
+    #[rustfmt::skip]
     /// The cron expression defining the job's schedule.
     ///
     /// The format is as follows:
     /// sec   min   hour   day of month   month   day of week   year
-    /// * *     *      *              *       *             *
+    /// *     *     *      *              *       *             *
     pub cron: String,
     /// Tags for tagging the job.
     pub tags: Option<Vec<String>>,
