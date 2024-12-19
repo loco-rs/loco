@@ -4,7 +4,6 @@ use axum::http::StatusCode;
 use insta::assert_debug_snapshot;
 use loco_rs::{controller::middleware, prelude::*, tests_cfg};
 use rstest::rstest;
-use serial_test::serial;
 
 use crate::infra_cfg;
 
@@ -21,7 +20,6 @@ macro_rules! configure_insta {
 #[case(true)]
 #[case(false)]
 #[tokio::test]
-#[serial]
 async fn panic(#[case] enable: bool) {
     configure_insta!();
 
@@ -56,7 +54,6 @@ async fn panic(#[case] enable: bool) {
 #[case(true)]
 #[case(false)]
 #[tokio::test]
-#[serial]
 async fn etag(#[case] enable: bool) {
     async fn action() -> Result<Response> {
         format::render().etag("loco-etag")?.text("content")
@@ -90,7 +87,6 @@ async fn etag(#[case] enable: bool) {
 #[case(true, "remote: 51.50.51.50")]
 #[case(false, "--")]
 #[tokio::test]
-#[serial]
 async fn remote_ip(#[case] enable: bool, #[case] expected: &str) {
     #[allow(clippy::items_after_statements)]
     async fn action(remote_ip: RemoteIP) -> Result<Response> {
@@ -127,7 +123,6 @@ async fn remote_ip(#[case] enable: bool, #[case] expected: &str) {
 #[case(true)]
 #[case(false)]
 #[tokio::test]
-#[serial]
 async fn timeout(#[case] enable: bool) {
     #[allow(clippy::items_after_statements)]
     async fn action() -> Result<Response> {
@@ -164,7 +159,6 @@ async fn timeout(#[case] enable: bool) {
 #[case(true, "with_max_age", None, None, Some(20))]
 #[case(false, "disabled", None, None, None)]
 #[tokio::test]
-#[serial]
 async fn cors(
     #[case] enable: bool,
     #[case] test_name: &str,
@@ -230,7 +224,6 @@ async fn cors(
 #[case(true)]
 #[case(false)]
 #[tokio::test]
-#[serial]
 async fn limit_payload(#[case] enable: bool) {
     configure_insta!();
 
@@ -264,7 +257,6 @@ async fn limit_payload(#[case] enable: bool) {
 }
 
 #[tokio::test]
-#[serial]
 async fn static_assets() {
     configure_insta!();
 
@@ -333,7 +325,6 @@ async fn static_assets() {
         "default-src 'self' https".to_string(),
     )])))]
 #[tokio::test]
-#[serial]
 async fn secure_headers(
     #[case] preset: Option<String>,
     #[case] overrides: Option<BTreeMap<String, String>>,
@@ -387,7 +378,6 @@ async fn secure_headers(
 #[case(None, true, None)]
 #[case(None, false, Some("text fallback response".to_string()))]
 #[tokio::test]
-#[serial]
 async fn fallback(
     #[case] code: Option<StatusCode>,
     #[case] file: bool,
@@ -461,7 +451,6 @@ async fn fallback(
 #[case(None)]
 #[case(Some("custom".to_string()))]
 #[tokio::test]
-#[serial]
 async fn powered_by_header(#[case] ident: Option<String>) {
     configure_insta!();
 
