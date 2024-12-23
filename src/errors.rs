@@ -57,6 +57,9 @@ pub enum Error {
     Tera(#[from] tera::Error),
 
     #[error(transparent)]
+    Anyhow(#[from] anyhow::Error),
+
+    #[error(transparent)]
     JSON(serde_json::Error),
 
     #[error(transparent)]
