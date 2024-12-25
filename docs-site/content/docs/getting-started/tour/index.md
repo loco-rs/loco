@@ -33,23 +33,23 @@ cargo install sea-orm-cli # DBが必要な場合のみ
 <!-- <snip id="loco-cli-new-from-template" inject_from="yaml" template="sh"> -->
 ```sh
 ❯ loco new
-✔ ❯ アプリ名は？ · myapp
-✔ ❯ 何を作成しますか？ · クライアントサイドレンダリングのSaaSアプリ
-✔ ❯ DBプロバイダーを選択 · Sqlite
-✔ ❯ バックグラウンドワーカータイプを選択 · Async (プロセス内のtokio非同期タスク)
+✔ ❯ App name? · myapp
+✔ ❯ What would you like to build? · Saas App with client side rendering
+✔ ❯ Select a DB Provider · Sqlite
+✔ ❯ Select your background worker type · Async (in-process tokio async tasks)
 
-🚂 Locoアプリが正常に生成されました：
+🚂 Loco app generated successfully in:
 myapp/
 
-- assets: あなたは`clientside`をアセットサービング設定として選択しました。
+- assets: You've selected `clientside` for your asset serving configuration.
 
-次のステップは、フロントエンドをビルドすることです：
+Next step, build your frontend:
   $ cd frontend/
   $ npm install && npm run build
 ```
 <!-- </snip> -->
 
-あなたは以下を持つことになります：
+ここでは以下の設定を行います：
 
 * `sqlite`をデータベースとして使用します。データベースプロバイダーについては、_models_セクションの[Sqlite vs Postgres](@/docs/the-app/models.md#sqlite-vs-postgres)を参照してください。
 * `async`をバックグラウンドワーカーとして使用します。ワーカーの設定については、_workers_セクションの[async vs queue](@/docs/processing/workers.md#async-vs-queue)を参照してください。
@@ -92,7 +92,7 @@ listening on port 5150
 
 ## CRUD APIの追加
 
-私たちはユーザー認証が生成された基本的なSaaSアプリを持っています。`post`を追加して、完全なCRUD APIを`scaffold`を使用して作成しましょう：
+Locoでは、ユーザー認証付きの基本的なSaasアプリを作ることができます。`post`を追加して、完全なCRUD APIを`scaffold`を使用して作成しましょう：
 
 <div class="infobox">
 それぞれの`-api`、`--html`、および`--htmx`フラグを使用して、`api`、`html`、または`htmx`のスキャフォールドを生成できます。
