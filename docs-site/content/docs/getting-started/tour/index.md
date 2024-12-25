@@ -1,5 +1,5 @@
 +++
-title = "A Quick Tour"
+title = "クイックツアー"
 date = 2021-05-01T08:00:00+00:00
 updated = 2021-05-01T08:00:00+00:00
 draft = false
@@ -18,17 +18,17 @@ flair =[]
 <br/>
 <br/>
 <br/>
-Let's create a blog backend on Loco in just a few minutes. First install `loco` and `sea-orm-cli`:
+Locoで数分でブログバックエンドを作成しましょう。まず、`loco`と`sea-orm-cli`をインストールします：
 
 <!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->
 ```sh
 cargo install loco
-cargo install sea-orm-cli # Only when DB is needed
+cargo install sea-orm-cli # DBが必要な場合のみ
 ```
 <!-- </snip> -->
 
 
- Now you can create your new app (choose "`SaaS` app"). Select SaaS app with client side rendering:
+次に、新しいアプリを作成できます（「`SaaS`アプリ」を選択）。クライアントサイドレンダリングのSaaSアプリを選択します：
 
 <!-- <snip id="loco-cli-new-from-template" inject_from="yaml" template="sh"> -->
 ```sh
@@ -49,18 +49,16 @@ Next step, build your frontend:
 ```
 <!-- </snip> -->
 
-You'll have:
+ここでは以下の設定を行います：
 
-* `sqlite` for database. Learn about database providers in [Sqlite vs Postgres](@/docs/the-app/models.md#sqlite-vs-postgres) in the _models_ section.
-* `async` for background workers. Learn about workers configuration [async vs queue](@/docs/processing/workers.md#async-vs-queue) in the _workers_ section.
-* client-side asset serving configuration. This means your backend will serve as API and will also serve your static client-side content.
+* `sqlite`をデータベースとして使用します。データベースプロバイダーについては、_models_セクションの[Sqlite vs Postgres](@/docs/the-app/models.md#sqlite-vs-postgres)を参照してください。
+* `async`をバックグラウンドワーカーとして使用します。ワーカーの設定については、_workers_セクションの[async vs queue](@/docs/processing/workers.md#async-vs-queue)を参照してください。
+* クライアントサイドアセットのサービング設定。これは、バックエンドがAPIとして機能し、静的なクライアントサイドコンテンツも提供することを意味します。
 
-
-Now `cd` into your `myapp` and start your app by running `cargo loco start`:
- 
+次に、`myapp`に`cd`して、`cargo loco start`を実行してアプリを開始します：
  
  <div class="infobox">
- If you have the client-side asset serving option configured, make sure you build your frontend before starting the server. This can be done by changing into the frontend directory (`cd frontend`) and running `pnpm install` and `pnpm build`.
+ クライアントサイドアセットサービングオプションが設定されている場合、サーバーを開始する前にフロントエンドをビルドすることを確認してください。これは、フロントエンドディレクトリに移動（`cd frontend`）し、`pnpm install`と`pnpm build`を実行することで行えます。
  </div>
 
 <!-- <snip id="starting-the-server-command-with-output" inject_from="yaml" template="sh"> -->
@@ -89,20 +87,18 @@ listening on port 5150
 
 
 <div class="infobox">
-You don't have to run things through `cargo` but in development it's highly
-recommended. If you build `--release`, your binary contains everything
-including your code and `cargo` or Rust is not needed. 
+`cargo`を通して実行する必要はありませんが、開発中は強く推奨されます。`--release`をビルドすると、バイナリにはコードや`cargo`、Rustが含まれます。
 </div>
 
-## Adding a CRUD API
+## CRUD APIの追加
 
-We have a base SaaS app with user authentication generated for us. Let's make it a blog backend by adding a `post` and a full CRUD API using `scaffold`:
+Locoでは、ユーザー認証付きの基本的なSaasアプリを作ることができます。`post`を追加して、完全なCRUD APIを`scaffold`を使用して作成しましょう：
 
 <div class="infobox">
-You can choose between generating an `api`, `html` or `htmx` scaffold using the respective `-api`, `--html`, and `--htmx` flags.
+それぞれの`-api`、`--html`、および`--htmx`フラグを使用して、`api`、`html`、または`htmx`のスキャフォールドを生成できます。
 </div>
 
-Because we're building a backend with a client-side codebase for the client, we'll build an API using `--api`:
+クライアント向けのクライアントサイドコードベースを持つバックエンドを構築しているので、`--api`を使用してAPIを構築します：
 
 ```sh
 $ cargo loco generate scaffold post title:string content:text --api
@@ -114,15 +110,15 @@ injected: "src/controllers/mod.rs"
 injected: "src/app.rs"
 added: "tests/requests/post.rs"
 injected: "tests/requests/mod.rs"
-* Migration for `post` added! You can now apply it with `$ cargo loco db migrate`.
-* A test for model `posts` was added. Run with `cargo test`.
-* Controller `post` was added successfully.
-* Tests for controller `post` was added successfully. Run `cargo test`.
+* `post`のマイグレーションが追加されました！ `$ cargo loco db migrate`で適用できます。
+* モデル`posts`のテストが追加されました。`cargo test`で実行します。
+* コントローラー`post`が正常に追加されました。
+* コントローラー`post`のテストが正常に追加されました。`cargo test`を実行します。
 ```
 
-Your database have been migrated and model, entities, and a full CRUD controller have been generated automatically.
+データベースがマイグレーションされ、モデル、エンティティ、および完全なCRUDコントローラーが自動的に生成されました。
 
-Start your app again:
+再度アプリを開始します：
 <!-- <snip id="starting-the-server-command-with-output" inject_from="yaml" template="sh"> -->
 ```sh
 $ cargo loco start
@@ -148,12 +144,12 @@ listening on port 5150
 <!-- </snip> -->
 
 <div class="infobox"> 
-Depending on which scaffold template option you chose (`-api`, `--html`, `--htmx`), the steps for creating a scaffolded resource will change. With the `--api` flag or the `--htmx` flag you can use the below example. But with the `--html` flag, it is recommended you do the post creation steps in your browser.
+どのスキャフォールドテンプレートオプションを選択したかによって（`-api`、`--html`、`--htmx`）、スキャフォールドリソースの作成手順が変わります。`--api`フラグまたは`--htmx`フラグを使用すると、以下の例を使用できます。しかし、`--html`フラグを使用する場合は、ブラウザで投稿作成手順を行うことを推奨します。
   
-If you want to use `curl` to test the `--html` scaffold, you will need to send your requests with the Content-Type `application/x-www-form-urlencoded` and the body as `title=Your+Title&content=Your+Content` by default. This can be changed to allow `application/json` as a `Content-Type` in the code if desired.
+`curl`を使用して`--html`スキャフォールドをテストしたい場合は、リクエストを`Content-Type: application/x-www-form-urlencoded`で送信し、ボディはデフォルトで`title=Your+Title&content=Your+Content`とする必要があります。必要に応じて、コード内で`Content-Type`を`application/json`に変更できます。
 </div>
 
-Next, try adding a `post` with `curl`:
+次に、`curl`を使用して`post`を追加してみましょう：
 
 ```sh
 $ curl -X POST -H "Content-Type: application/json" -d '{
@@ -162,28 +158,28 @@ $ curl -X POST -H "Content-Type: application/json" -d '{
 }' localhost:5150/api/posts
 ```
 
-You can list your posts:
+投稿をリストできます：
 
 ```sh
 $ curl localhost:5150/api/posts
 ```
 
-For those counting -- the commands for creating a blog backend were:
+ブログバックエンドを作成するためのコマンドは次のとおりです：
 
 1. `cargo install loco`
 2. `cargo install sea-orm-cli`
 3. `loco new`
 4. `cargo loco generate scaffold post title:string content:text --api`
 
-Done! enjoy your ride with `loco` 🚂
+完了です！`loco`と一緒に楽しんでください 🚂
 
-## Checking Out SaaS Authentication
+## SaaS認証の確認
 
-Your generated app contains a fully working authentication suite, based on JWTs.
+生成されたアプリには、JWTに基づく完全に機能する認証スイートが含まれています。
 
-### Registering a New User
+### 新しいユーザーの登録
 
-The `/api/auth/register` endpoint creates a new user in the database with an `email_verification_token` for account verification. A welcome email is sent to the user with a verification link.
+`/api/auth/register`エンドポイントは、アカウント確認のための`email_verification_token`を持つ新しいユーザーをデータベースに作成します。確認リンク付きのウェルカムメールがユーザーに送信されます。
 
 ```sh
 $ curl --location 'localhost:5150/api/auth/register' \
@@ -195,11 +191,11 @@ $ curl --location 'localhost:5150/api/auth/register' \
      }'
 ```
 
-For security reasons, if the user is already registered, no new user is created, and a 200 status is returned without exposing user email details.
+セキュリティ上の理由から、ユーザーがすでに登録されている場合、新しいユーザーは作成されず、ユーザーのメール詳細を公開せずに200ステータスが返されます。
 
-### Login
+### ログイン
 
-After registering a new user, use the following request to log in:
+新しいユーザーを登録した後、次のリクエストを使用してログインします：
 
 ```sh
 $ curl --location 'localhost:5150/api/auth/login' \
@@ -210,23 +206,23 @@ $ curl --location 'localhost:5150/api/auth/login' \
      }'
 ```
 
-The response includes a JWT token for authentication, user ID, name, and verification status.
+レスポンスには、認証用のJWTトークン、ユーザーID、名前、および確認ステータスが含まれます。
 
 ```sh
 {
     "token": "...",
     "pid": "2b20f998-b11e-4aeb-96d7-beca7671abda",
     "name": "Loco user",
-    "claims": null
+    "claims": null,
     "is_verified": false
 }
 ```
 
-In your client-side app, you save this JWT token and make following requests with it using _bearer token_ (see below) in order for those to be authenticated.
+クライアントサイドアプリでは、このJWTトークンを保存し、次のリクエストを行う際に_ベアラートークン_（下記参照）を使用して認証を行います。
 
-### Get current user
+### 現在のユーザーを取得
 
-This endpoint is protected by auth middleware. We will use the token we got earlier to perform a request with the _bearer token_ technique (replace `TOKEN` with the JWT token you got earlier):
+このエンドポイントは認証ミドルウェアによって保護されています。以前に取得したトークンを使用して、_ベアラートークン_技術でリクエストを実行します（`TOKEN`を以前に取得したJWTトークンに置き換えます）：
 
 ```sh
 $ curl --location --request GET 'localhost:5150/api/auth/current' \
@@ -234,6 +230,6 @@ $ curl --location --request GET 'localhost:5150/api/auth/current' \
      --header 'Authorization: Bearer TOKEN'
 ```
 
-That should be your first authenticated request!.
+これが最初の認証リクエストになります！
 
-Check out the source code for `controllers/auth.rs` to see how to use the authentication middleware in your own controllers.
+`controllers/auth.rs`のソースコードを確認して、自分のコントローラーで認証ミドルウェアをどのように使用するかを確認してください。
