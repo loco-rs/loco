@@ -22,31 +22,33 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+      {% for column in columns -%}
         manager
             .alter_table(
                 alter({{tbl_enum}}::Table)
-                  {% for column in columns -%}
                   {% if column.1 == "decimal_len_null" or column.1 == "decimal_len" -%}
                   .add_column({{column.1}}({{tbl_enum}}::{{column.0 | pascal_case }}, 16, 4))
                   {% else -%}
                   .add_column({{column.1}}({{tbl_enum}}::{{column.0 | pascal_case}}))
                   {% endif -%}
-                  {% endfor -%}
                   .to_owned(),
             )
-            .await
+            .await?;
+      {% endfor -%}
+      Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+      {% for column in columns -%}
         manager
             .alter_table(
               alter({{tbl_enum}}::Table)
-                {% for column in columns -%}
                 .drop_column({{tbl_enum}}::{{column.0 | pascal_case}})
-                {% endfor -%}
                 .to_owned()
             )
-            .await
+            .await?;
+      {% endfor -%}
+      Ok(())
     }
 }
 

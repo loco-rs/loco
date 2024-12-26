@@ -6,9 +6,11 @@ on:
       - master
     paths:
       - "loco-new/**"
+      - "loco-gen/**"
   pull_request:
     paths:
       - "loco-new/**"
+      - "loco-gen/**"
 
 env:
   RUST_TOOLCHAIN: stable
