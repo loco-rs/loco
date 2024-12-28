@@ -20,12 +20,21 @@ cfg_if::cfg_if! {
         use crate::doctor;
         use crate::boot::{run_db};
         use crate::db;
-        use std::process::exit;
     } else {}
 }
 
+#[cfg(any(
+    feature = "bg_redis",
+    feature = "bg_pg",
+    feature = "bg_sqlt",
+    feature = "with-db"
+))]
+use std::process::exit;
+
 use std::{collections::BTreeMap, path::PathBuf};
 
+#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+use crate::bgworker::JobStatus;
 use clap::{ArgAction, Parser, Subcommand};
 use colored::Colorize;
 use duct::cmd;
@@ -33,7 +42,6 @@ use loco_gen::{Component, ScaffoldKind};
 
 use crate::{
     app::{AppContext, Hooks},
-    bgworker::JobStatus,
     boot::{
         create_app, create_context, list_endpoints, list_middlewares, run_scheduler, run_task,
         start, RunDbCommand, ServeParams, StartMode,
@@ -175,10 +183,6 @@ enum ComponentArg {
         #[arg(short, long, action)]
         link: bool,
 
-        /// Generate migration code only. Don't run the migration automatically.
-        #[arg(short, long, action)]
-        migration_only: bool,
-
         /// Model fields, eg. title:string hits:int
         #[clap(value_parser = parse_key_val::<String,String>)]
         fields: Vec<(String, String)>,
@@ -188,6 +192,9 @@ enum ComponentArg {
     Migration {
         /// Name of the migration to generate
         name: String,
+        /// Table fields, eg. title:string hits:int
+        #[clap(value_parser = parse_key_val::<String,String>)]
+        fields: Vec<(String, String)>,
     },
     #[cfg(feature = "with-db")]
     /// Generates a CRUD scaffold, model and controller
@@ -264,19 +271,9 @@ impl ComponentArg {
     fn into_gen_component(self, config: &Config) -> crate::Result<Component> {
         match self {
             #[cfg(feature = "with-db")]
-            Self::Model {
-                name,
-                link,
-                migration_only,
-                fields,
-            } => Ok(Component::Model {
-                name,
-                link,
-                migration_only,
-                fields,
-            }),
+            Self::Model { name, link, fields } => Ok(Component::Model { name, link, fields }),
             #[cfg(feature = "with-db")]
-            Self::Migration { name } => Ok(Component::Migration { name }),
+            Self::Migration { name, fields } => Ok(Component::Migration { name, fields }),
             #[cfg(feature = "with-db")]
             Self::Scaffold {
                 name,
@@ -440,7 +437,8 @@ enum JobsCommands {
     Tidy {},
     /// Deletes jobs based on their age in days.
     Purge {
-        /// Deletes jobs with errors or cancelled, older than the specified maximum age in days.
+        /// Deletes jobs with errors or cancelled, older than the specified
+        /// maximum age in days.
         #[arg(long, default_value_t = 90)]
         max_age: i64,
         /// Limits the jobs being saved to those with specific criteria like

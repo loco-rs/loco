@@ -9,6 +9,7 @@ use loco_rs::{
         Queue},
     boot::{create_app, BootResult, StartMode},
     controller::AppRoutes,
+    db::{self, truncate_table},
     environment::Environment,
     task::Tasks,
     Result,
@@ -16,7 +17,8 @@ use loco_rs::{
 
 #[allow(unused_imports)]
 use crate::{
-    controllers,
+    controllers ,tasks
+    , models::_entities::users
 };
 
 pub struct App;

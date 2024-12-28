@@ -11,7 +11,7 @@ use loco_rs::{
         Queue},
     boot::{create_app, BootResult, StartMode},
     controller::AppRoutes,
-    {%- if settings.db %}
+    {%- if settings.auth %}
     db::{self, truncate_table},
     {%- endif %}
     environment::Environment,
@@ -25,17 +25,16 @@ use sea_orm::DatabaseConnection;
 
 #[allow(unused_imports)]
 use crate::{
-    controllers
+    controllers ,tasks
     {%- if settings.initializers -%}
     , initializers
     {%- endif %} 
-    {%- if settings.db %}
-    ,tasks
+    {%- if settings.auth %}
     , models::_entities::users
     {%- endif %}
     {%- if settings.background %}
     , workers::downloader::DownloadWorker
-    {%- endif %},
+    {%- endif %}
 };
 
 pub struct App;
@@ -97,13 +96,26 @@ impl Hooks for App {
     }
 
     {%- if settings.db %}
+
+    {%- if settings.auth %}
     async fn truncate(db: &DatabaseConnection) -> Result<()> {
+    {%- else %}
+    async fn truncate(_db: &DatabaseConnection) -> Result<()> {
+    {%- endif %} 
+        {%- if settings.auth %}
         truncate_table(db, users::Entity).await?;
+        {%- endif %}
         Ok(())
     }
 
+    {%- if settings.auth %}
     async fn seed(db: &DatabaseConnection, base: &Path) -> Result<()> {
+    {%- else %} 
+    async fn seed(_db: &DatabaseConnection, _base: &Path) -> Result<()> {
+    {%- endif %} 
+        {%- if settings.auth %}
         db::seed::<users::ActiveModel>(db, &base.join("users.yaml").display().to_string()).await?;
+        {%- endif %}
         Ok(())
     }
     {%- endif %}

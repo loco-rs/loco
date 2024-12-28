@@ -34,7 +34,7 @@ pub fn generate(
     // - scaffold is never a link table
     // - never run with migration_only, because the controllers will refer to the
     //   models. the models only arrive after migration and entities sync.
-    let model_messages = model::generate(rrgen, name, false, false, fields, appinfo)?;
+    let model_messages = model::generate(rrgen, name, false, fields, appinfo)?;
     let mappings = get_mappings();
 
     let mut columns = Vec::new();
