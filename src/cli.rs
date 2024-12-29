@@ -994,7 +994,10 @@ fn handle_generate_command<H: Hooks>(
                 if copied_files.is_empty() {
                     println!("{}", "No templates were found to copy.".red());
                 } else {
-                    println!("The following templates were successfully copied:");
+                    println!(
+                        "{}",
+                        "The following templates were successfully copied:".green()
+                    );
                     for f in copied_files {
                         println!(" * {}", f.display());
                     }
