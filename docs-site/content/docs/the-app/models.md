@@ -173,7 +173,7 @@ For schema data types, you can use the following mapping to understand the schem
 
 Using `user:references` uses the special `references` type, which will create a relationship between a `post` and a `user`, adding a `user_id` reference field to the `posts` table.
 
-Using `aproved_by:references:users` uses the special `references:<table>` type, which will create a relationship between a `post` and a `user`, adding a `aproved_by` reference field to the `posts` table.
+Using `approved_by:references:users` uses the special `references:<table>` type, which will create a relationship between a `post` and a `user`, adding a `approved_by` reference field to the `posts` table.
 
 You can generate an empty model:
 
