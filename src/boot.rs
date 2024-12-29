@@ -199,9 +199,6 @@ pub async fn run_scheduler<H: Hooks>(
     tag: Option<String>,
     list: bool,
 ) -> Result<()> {
-    let mut tasks = Tasks::default();
-    H::register_tasks(&mut tasks);
-
     let task_span = tracing::span!(tracing::Level::DEBUG, "scheduler_jobs");
     let _guard = task_span.enter();
 
