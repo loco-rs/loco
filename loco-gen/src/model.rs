@@ -1,7 +1,7 @@
-use crate::{get_mappings, render_template, AppInfo, Error, Result};
+use crate::{get_mappings, render_template, AppInfo, Error, GenerateResults, Result};
 use chrono::Utc;
 use duct::cmd;
-use rrgen::{GenResult, RRgen};
+use rrgen::RRgen;
 use serde_json::json;
 use std::path::Path;
 use std::{collections::HashMap, env::current_dir};
@@ -59,7 +59,7 @@ pub fn generate(
     is_link: bool,
     fields: &[(String, String)],
     appinfo: &AppInfo,
-) -> Result<Vec<GenResult>> {
+) -> Result<GenerateResults> {
     let pkg_name: &str = &appinfo.app_name;
     let ts = Utc::now();
 

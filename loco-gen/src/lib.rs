@@ -6,6 +6,7 @@ pub use rrgen::{GenResult, RRgen};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 mod controller;
+use colored::Colorize;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -25,6 +26,11 @@ pub mod template;
 #[cfg(test)]
 mod testutil;
 
+#[derive(Debug)]
+pub struct GenerateResults {
+    rrgen: Vec<rrgen::GenResult>,
+    local_templates: Vec<PathBuf>,
+}
 const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.46.0";
 
 const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
@@ -202,11 +208,7 @@ pub struct AppInfo {
 /// # Errors
 ///
 /// This function will return an error if it fails
-pub fn generate(
-    rrgen: &RRgen,
-    component: Component,
-    appinfo: &AppInfo,
-) -> Result<Vec<rrgen::GenResult>> {
+pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Result<GenerateResults> {
     /*
     (1)
     XXX: remove hooks generic from child generator, materialize it here and pass it
@@ -287,10 +289,11 @@ pub fn generate(
     Ok(get_result)
 }
 
-fn render_template(rrgen: &RRgen, template: &Path, vars: &Value) -> Result<Vec<GenResult>> {
+fn render_template(rrgen: &RRgen, template: &Path, vars: &Value) -> Result<GenerateResults> {
     let template_files = template::collect_files_from_path(template)?;
 
     let mut gen_result = vec![];
+    let mut local_templates = vec![];
     for template in template_files {
         let custom_template = Path::new(template::DEFAULT_LOCAL_TEMPLATE).join(template.path());
 
@@ -300,6 +303,7 @@ fn render_template(rrgen: &RRgen, template: &Path, vars: &Value) -> Result<Vec<G
                 err
             })?;
             gen_result.push(rrgen.generate(&content, vars)?);
+            local_templates.push(custom_template);
         } else {
             let content = template.contents_utf8().ok_or(Error::Message(format!(
                 "could not get template content: {}",
@@ -309,18 +313,31 @@ fn render_template(rrgen: &RRgen, template: &Path, vars: &Value) -> Result<Vec<G
         };
     }
 
-    Ok(gen_result)
+    Ok(GenerateResults {
+        rrgen: gen_result,
+        local_templates,
+    })
 }
 
 #[must_use]
-pub fn collect_messages(results: &Vec<GenResult>) -> String {
+pub fn collect_messages(results: &GenerateResults) -> String {
     let mut messages = String::new();
-    for res in results {
+    for res in &results.rrgen {
         if let rrgen::GenResult::Generated {
             message: Some(message),
         } = res
         {
             messages.push_str(&format!("* {message}\n"));
+        }
+    }
+
+    if !results.local_templates.is_empty() {
+        messages.push_str(&format!(
+            "{}",
+            "\n\nThe following templates were sourced from the local templates:\n".green()
+        ));
+        for f in &results.local_templates {
+            messages.push_str(&format!("* {}\n", f.display()));
         }
     }
     messages
@@ -334,7 +351,7 @@ pub fn collect_messages(results: &Vec<GenResult>) -> String {
 ///
 /// # Errors
 /// when could not copy the given template path
-pub fn copy_template(path: &Path, to: &Path) -> Result<()> {
+pub fn copy_template(path: &Path, to: &Path) -> Result<Vec<PathBuf>> {
     let copy_template_path = if path == Path::new("/") || path == Path::new(".") {
         None
     } else if !template::exists(path) {
@@ -351,6 +368,7 @@ pub fn copy_template(path: &Path, to: &Path) -> Result<()> {
         template::collect_files()
     };
 
+    let mut copied_files = vec![];
     for f in copy_files {
         let copy_to = to.join(f.path());
         if copy_to.exists() {
@@ -377,8 +395,9 @@ pub fn copy_template(path: &Path, to: &Path) -> Result<()> {
             template = %copy_to.display(),
             "copy template successfully"
         );
+        copied_files.push(copy_to);
     }
-    Ok(())
+    Ok(copied_files)
 }
 
 #[cfg(test)]

@@ -1,6 +1,8 @@
-use crate::{infer, model::get_columns_and_references, render_template, AppInfo, Result};
+use crate::{
+    infer, model::get_columns_and_references, render_template, AppInfo, GenerateResults, Result,
+};
 use chrono::Utc;
-use rrgen::{GenResult, RRgen};
+use rrgen::RRgen;
 use serde_json::json;
 use std::path::Path;
 
@@ -14,7 +16,7 @@ pub fn generate(
     name: &str,
     fields: &[(String, String)],
     appinfo: &AppInfo,
-) -> Result<Vec<GenResult>> {
+) -> Result<GenerateResults> {
     let pkg_name: &str = &appinfo.app_name;
     let ts = Utc::now();
 

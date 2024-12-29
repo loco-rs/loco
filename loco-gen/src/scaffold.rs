@@ -1,5 +1,7 @@
-use crate::{get_mappings, model, render_template, AppInfo, Error, Result, ScaffoldKind};
-use rrgen::{GenResult, RRgen};
+use crate::{
+    get_mappings, model, render_template, AppInfo, Error, GenerateResults, Result, ScaffoldKind,
+};
+use rrgen::RRgen;
 use serde_json::json;
 use std::path::Path;
 
@@ -9,7 +11,7 @@ pub fn generate(
     fields: &[(String, String)],
     kind: &ScaffoldKind,
     appinfo: &AppInfo,
-) -> Result<Vec<GenResult>> {
+) -> Result<GenerateResults> {
     // - scaffold is never a link table
     // - never run with migration_only, because the controllers will refer to the
     //   models. the models only arrive after migration and entities sync.
@@ -39,13 +41,19 @@ pub fn generate(
     let vars = json!({"name": name, "columns": columns, "pkg_name": appinfo.app_name});
     match kind {
         ScaffoldKind::Api => {
-            gen_result.extend(render_template(rrgen, Path::new("scaffold/api"), &vars)?);
+            let res = render_template(rrgen, Path::new("scaffold/api"), &vars)?;
+            gen_result.rrgen.extend(res.rrgen);
+            gen_result.local_templates.extend(res.local_templates);
         }
         ScaffoldKind::Html => {
-            gen_result.extend(render_template(rrgen, Path::new("scaffold/html"), &vars)?);
+            let res = render_template(rrgen, Path::new("scaffold/html"), &vars)?;
+            gen_result.rrgen.extend(res.rrgen);
+            gen_result.local_templates.extend(res.local_templates);
         }
         ScaffoldKind::Htmx => {
-            gen_result.extend(render_template(rrgen, Path::new("scaffold/htmx"), &vars)?);
+            let res = render_template(rrgen, Path::new("scaffold/htmx"), &vars)?;
+            gen_result.rrgen.extend(res.rrgen);
+            gen_result.local_templates.extend(res.local_templates);
         }
     }
     Ok(gen_result)

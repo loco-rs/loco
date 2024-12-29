@@ -976,21 +976,30 @@ fn handle_generate_command<H: Hooks>(
             // ignoring the `--info` flag.
             (None, true | false) => {
                 let templates = loco_gen::template::collect();
-                println!("{}", format_templates(templates));
+                println!("{}", format_templates_as_tree(templates));
             }
             // If a template path is provided and `--info` is enabled,
             // display the templates from the specified path.
             (Some(path), true) => {
                 let templates = loco_gen::template::collect_files_path(Path::new(&path)).unwrap();
-                println!("{}", format_templates(templates));
+                println!("{}", format_templates_as_tree(templates));
             }
             // If a template path is provided and `--info` is disabled,
             // copy the template to the default local template path.
-            (Some(path), false) => loco_gen::copy_template(
-                Path::new(&path),
-                Path::new(loco_gen::template::DEFAULT_LOCAL_TEMPLATE),
-            )
-            .unwrap(),
+            (Some(path), false) => {
+                let copied_files = loco_gen::copy_template(
+                    Path::new(&path),
+                    Path::new(loco_gen::template::DEFAULT_LOCAL_TEMPLATE),
+                )?;
+                if copied_files.is_empty() {
+                    println!("{}", "No templates were found to copy.".red());
+                } else {
+                    println!("The following templates were successfully copied:");
+                    for f in copied_files {
+                        println!(" * {}", f.display());
+                    }
+                }
+            }
         }
     } else {
         let get_result = loco_gen::generate(
@@ -1007,17 +1016,16 @@ fn handle_generate_command<H: Hooks>(
 }
 
 #[must_use]
-pub fn format_templates(paths: Vec<PathBuf>) -> String {
+pub fn format_templates_as_tree(paths: Vec<PathBuf>) -> String {
     let mut categories: BTreeMap<String, BTreeMap<String, Vec<PathBuf>>> = BTreeMap::new();
 
     for path in paths {
         if let Some(parent) = path.parent() {
-            let mut components = parent.components();
+            let parent_str = parent.to_string_lossy().to_string();
+            let mut components = parent_str.split('/');
             if let Some(top_level) = components.next() {
-                let top_key = top_level.as_os_str().to_string_lossy().to_string();
-                let sub_key = components
-                    .next()
-                    .map_or_else(String::new, |c| c.as_os_str().to_string_lossy().to_string());
+                let top_key = top_level.to_string();
+                let sub_key = components.next().unwrap_or("").to_string();
 
                 categories
                     .entry(top_key)
@@ -1031,23 +1039,33 @@ pub fn format_templates(paths: Vec<PathBuf>) -> String {
 
     let mut output = String::new();
     output.push_str("Available templates and directories to copy:\n\n");
+
     for (top_level, sub_categories) in &categories {
+        output.push_str(&format!("{top_level}\n"));
+
         for (sub_category, paths) in sub_categories {
-            if sub_category.is_empty() {
-                output.push_str(&format!("{}:\n", top_level.to_uppercase().green(),));
-            } else {
-                output.push_str(&format!(
-                    "{} {}:\n",
-                    top_level.to_uppercase().green(),
-                    sub_category.to_uppercase().green(),
-                ));
+            if !sub_category.is_empty() {
+                output.push_str(&format!(" └── {sub_category}\n"));
             }
 
             for path in paths {
-                output.push_str(&format!("  {}\n", path.display()));
+                output.push_str(&format!(
+                    "   └── {}\n",
+                    path.file_name().unwrap_or_default().to_string_lossy()
+                ));
             }
-            output.push('\n');
         }
     }
+
+    output.push_str(&format!("\n\n{}\n\n", "Usage Examples:".bold().green()));
+    output.push_str(&format!("{}", "Override a Specific File:\n".bold()));
+    output.push_str(" * cargo loco generate override scaffold/api/controller.t\n");
+    output.push_str(" * cargo loco generate override migration/add_columns.t\n");
+    output.push_str(&format!("{}", "\nOverride All Files in a Folder:\n".bold()));
+    output.push_str(" * cargo loco generate override scaffold/htmx\n");
+    output.push_str(" * cargo loco generate override task");
+    output.push_str(&format!("{}", "\nOverride All templates:\n".bold()));
+    output.push_str(" * cargo loco generate override .\n");
+
     output
 }
