@@ -76,14 +76,7 @@ pub fn default_middleware_stack(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer
 
     vec![
         // Limit Payload middleware with a default if none
-        Box::new(
-            middlewares
-                .limit_payload
-                .clone()
-                .unwrap_or_else(|| LimitPayload {
-                    ..Default::default()
-                }),
-        ),
+        Box::new(middlewares.limit_payload.clone().unwrap_or_default()),
         // CORS middleware with a default if none
         Box::new(middlewares.cors.clone().unwrap_or_else(|| cors::Cors {
             enable: false,
