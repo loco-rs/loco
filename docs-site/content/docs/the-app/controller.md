@@ -270,7 +270,7 @@ This is the stack in `development` mode:
 ```sh
 $ cargo loco middleware --config
 
-limit_payload          {"enable":true,"body_limit":2000000}
+limit_payload          {"body_limit":{"Limit":1000000}}
 cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
 catch_panic            {"enable":true}
 etag                   {"enable":true}
@@ -295,7 +295,7 @@ Take what ever is enabled, and use `enable: false` with the relevant field. If `
 server:
   middlewares:
     limit_payload:
-      enable: false
+      body_limit: disable 
     cors:
       enable: false
     catch_panic:
@@ -317,7 +317,6 @@ $ cargo loco middleware --config
 powered_by             {"ident":"loco.rs"}
 
 
-limit_payload          (disabled)
 cors                   (disabled)
 catch_panic            (disabled)
 etag                   (disabled)
@@ -354,7 +353,7 @@ The result:
 ```sh
 $ cargo loco middleware --config
 
-limit_payload          {"enable":true,"body_limit":2000000}
+limit_payload          {"body_limit":{"Limit":1000000}}
 cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
 catch_panic            {"enable":true}
 etag                   {"enable":true}
@@ -372,7 +371,6 @@ Let's change the request body limit to `5mb`. When overriding a middleware confi
 ```yaml
   middlewares:
     limit_payload:
-      enable: true
       body_limit: 5mb
 ```
 
@@ -381,7 +379,7 @@ The result:
 ```sh
 $ cargo loco middleware --config
 
-limit_payload          {"enable":true,"body_limit":5000000}
+limit_payload          {"body_limit":{"Limit":5000000}}
 cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
 catch_panic            {"enable":true}
 etag                   {"enable":true}
@@ -480,17 +478,25 @@ To disable the middleware edit the configuration as follows:
 
 ## Limit Payload
 
-Restricts the maximum allowed size for HTTP request payloads.
-The middleware by default is enabled and configured to 2MB. 
+The Limit Payload middleware restricts the maximum allowed size for HTTP request payloads. By default, it is enabled and configured with a 2MB limit.
 
-You can disable or customize this behavior in your config file. You can set a few options:
+You can customize or disable this behavior through your configuration file.
 
+### Set a custom limit
 ```yaml
 #...
   middlewares:
     limit_payload:
-      enable: true
       body_limit: 5mb
+```
+
+### Disable payload size limitation
+To remove the restriction entirely, set `body_limit` to `disable`:
+```yaml
+#...
+  middlewares:
+    limit_payload:
+      body_limit: disable
 ```
 
 ##### Usage

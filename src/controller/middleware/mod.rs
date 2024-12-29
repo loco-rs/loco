@@ -81,7 +81,6 @@ pub fn default_middleware_stack(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer
                 .limit_payload
                 .clone()
                 .unwrap_or_else(|| LimitPayload {
-                    enable: true,
                     ..Default::default()
                 }),
         ),
