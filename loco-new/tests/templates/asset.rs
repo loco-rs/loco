@@ -92,3 +92,47 @@ fn test_cargo_toml(
         content.get("dependencies").unwrap()
     );
 }
+
+#[rstest]
+fn test_github_ci_yaml(
+    #[values(".github/workflows/ci.yaml")] ci_file: &str,
+) {
+    let generator: TestGenerator = run_generator(AssetsOption::Clientside);
+    let content = assertion::yaml::load(generator.path(ci_file));
+
+    assertion::yaml::assert_path_is_object(&content, &["jobs", "test", "steps"]);
+
+    let expected: serde_yaml::Value = serde_yaml::from_str(
+        r"
+- name: Checkout the code
+  uses: actions/checkout@v4
+- uses: dtolnay/rust-toolchain@stable
+  with:
+    toolchain: ${{ env.RUST_TOOLCHAIN }}
+- name: Setup node
+  uses: actions/setup-node@v3
+  with:
+    node-version: ${{matrix.node-version}}
+    registry-url: https://registry.npmjs.org
+- name: Build frontend
+  run: npm install && npm run build
+  working-directory: ./frontend
+- name: Setup Rust cache
+  uses: Swatinem/rust-cache@v2
+- name: Run cargo test
+  uses: actions-rs/cargo@v1
+  with:
+    command: test
+    args: --all-features --all
+  env:
+    REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
+    DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres_test
+",
+    )
+        .unwrap();
+    assertion::yaml::assert_path_value_eq(
+        &content,
+        &["jobs", "test", "steps"],
+        &expected,
+    );
+}

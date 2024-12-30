@@ -89,6 +89,18 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
+      {%- if settings.asset %}
+      {%- if settings.asset.kind == "client" %}
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{matrix.node-version}}
+          registry-url: https://registry.npmjs.org
+      - name: Build frontend
+        run: npm install && npm run build
+        working-directory: ./frontend
+      {%- endif -%}
+      {%- endif -%}
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
       - name: Run cargo test
