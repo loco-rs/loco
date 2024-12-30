@@ -203,7 +203,7 @@ impl ColType {
 
 ///
 /// Create a table.
-/// ```no_run
+/// ```ignore
 /// create_table(m, "movies", vec![
 ///     ("title", ColType::String)
 /// ],
@@ -229,7 +229,7 @@ pub async fn create_table(
 
 ///
 /// Create a join table. A join table has a composite primary key.
-/// ```no_run
+/// ```ignore
 /// create_join_table(m, "movies", vec![
 ///     ("title", ColType::String)
 /// ],
@@ -330,7 +330,7 @@ fn reference_id(totbl: &str) -> String {
 ///
 /// Add a column to a table with a column type.
 ///
-/// ```no_run
+/// ```ignore
 /// add_column(m, "movies", "title", ColType::String).await;
 /// ```
 /// # Errors
@@ -354,7 +354,7 @@ pub async fn add_column(
 ///
 /// Drop a column from a table.
 ///
-/// ```no_run
+/// ```ignore
 /// drop_column(m, "movies", "title").await;
 /// ```
 /// # Errors
@@ -372,7 +372,7 @@ pub async fn remove_column(m: &SchemaManager<'_>, table: &str, name: &str) -> Re
 
 ///
 /// Adds a reference. Reads "movies belongs-to users":
-/// ```no_run
+/// ```ignore
 /// add_reference(m, "movies", "users").await;
 /// ```
 ///
@@ -422,7 +422,7 @@ pub async fn add_reference(
 
 ///
 /// Removes a reference by constructing its name from the table names.
-/// ```no_run
+/// ```ignore
 /// remove_reference(m, "movies", "users").await;
 /// ```
 ///
@@ -459,7 +459,7 @@ pub async fn remove_reference(
 
 ///
 /// Drop a table
-/// ```no_run
+/// ```ignore
 /// drop_table(m, "movies").await;
 /// ```
 ///
