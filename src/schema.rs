@@ -202,6 +202,7 @@ impl ColType {
 }
 
 ///
+/// Create a table.
 /// ```rust
 /// create_table(m, "movies", vec![
 ///     ("title", ColType::String)
@@ -227,6 +228,7 @@ pub async fn create_table(
 }
 
 ///
+/// Create a join table. A join table has a composite primary key.
 /// ```rust
 /// create_join_table(m, "movies", vec![
 ///     ("title", ColType::String)
@@ -259,11 +261,19 @@ async fn create_table_impl(
     let mut stmt = table_auto_tz(Alias::new(&nz_table));
     if is_join {
         let mut idx = Index::create();
-        idx.name("idx-{{plural_snake}}-refs-pk")
+        idx.name(format!("idx-{nz_table}-refs-pk"))
             .table(Alias::new(&nz_table));
 
-        for (name, _) in cols {
-            idx.col(Alias::new(*name));
+        for (from_tbl, ref_name) in refs {
+            let nz_from_table = normalize_table(from_tbl);
+            // in movies, user:references, creates a `user_id` field or what ever in
+            // `ref_name` if given
+            let nz_ref_name = if ref_name.is_empty() {
+                reference_id(&nz_from_table)
+            } else {
+                (*ref_name).to_string()
+            };
+            idx.col(Alias::new(nz_ref_name));
         }
         stmt.primary_key(&mut idx);
     } else {
@@ -278,15 +288,15 @@ async fn create_table_impl(
     // users, None
     // user, admin_id
     for (from_tbl, ref_name) in refs {
+        let nz_from_table = normalize_table(from_tbl);
         // in movies, user:references, creates a `user_id` field or what ever in
         // `ref_name` if given
         let nz_ref_name = if ref_name.is_empty() {
-            reference_id(&nz_table)
+            reference_id(&nz_from_table)
         } else {
             (*ref_name).to_string()
         };
         // user -> users
-        let nz_from_table = normalize_table(from_tbl);
 
         // create user_id in movies
         stmt.col(ColType::Integer.to_def(Alias::new(&nz_ref_name)));
@@ -318,6 +328,8 @@ fn reference_id(totbl: &str) -> String {
 }
 
 ///
+/// Add a column to a table with a column type.
+///
 /// ```rust
 /// add_column(m, "movies", "title", ColType::String).await;
 /// ```
@@ -340,6 +352,8 @@ pub async fn add_column(
 }
 
 ///
+/// Drop a column from a table.
+///
 /// ```rust
 /// drop_column(m, "movies", "title").await;
 /// ```
@@ -357,7 +371,7 @@ pub async fn remove_column(m: &SchemaManager<'_>, table: &str, name: &str) -> Re
 }
 
 ///
-/// Reads "movies belongs-to users":
+/// Adds a reference. Reads "movies belongs-to users":
 /// ```rust
 /// add_reference(m, "movies", "users").await;
 /// ```
@@ -407,9 +421,9 @@ pub async fn add_reference(
 }
 
 ///
-/// Reads "movies belongs-to users":
+/// Removes a reference by constructing its name from the table names.
 /// ```rust
-/// add_reference(m, "movies", "users").await;
+/// remove_reference(m, "movies", "users").await;
 /// ```
 ///
 /// # Errors
@@ -443,6 +457,14 @@ pub async fn remove_reference(
     Ok(())
 }
 
+///
+/// Drop a table
+/// ```rust
+/// drop_table(m, "movies").await;
+/// ```
+///
+/// # Errors
+/// fails when it fails
 pub async fn drop_table(m: &SchemaManager<'_>, table: &str) -> Result<(), DbErr> {
     let nz_table = normalize_table(table);
     m.drop_table(Table::drop().table(Alias::new(nz_table)).to_owned())

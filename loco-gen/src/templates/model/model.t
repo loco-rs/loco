@@ -14,7 +14,7 @@ injections:
   content: "mod {{module_name}};"
 ---
 use loco_rs::schema::*;
-use sea_orm_migration::{prelude::*, schema::*};
+use sea_orm_migration::prelude::*;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
