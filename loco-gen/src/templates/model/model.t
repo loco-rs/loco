@@ -13,7 +13,7 @@ injections:
   before: "pub struct Migrator"
   content: "mod {{module_name}};"
 ---
-use loco_rs::schema::table_auto_tz;
+use loco_rs::schema::*;
 use sea_orm_migration::{prelude::*, schema::*};
 
 #[derive(DeriveMigrationName)]
@@ -21,68 +21,22 @@ pub struct Migration;
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
-    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .create_table(
-                table_auto_tz({{model}}::Table)
-                    {% if is_link -%}
-                    .primary_key(
-                        Index::create()
-                            .name("idx-{{plural_snake}}-refs-pk")
-                            .table({{model}}::Table)
-                            {% for ref in references -%}
-                            .col({{model}}::{{ref.1 | pascal_case}})
-                            {% endfor -%}
-                            ,
-                    )
-                    {% else -%}
-                    .col(pk_auto({{model}}::Id))
-                    {% endif -%}
-                    {% for column in columns -%}
-                    {% if column.1 == "decimal_len_null" or column.1 == "decimal_len" -%}
-                    .col({{column.1}}({{model}}::{{column.0 | pascal_case }}, 16, 4))
-                    {% else -%}
-                    .col({{column.1}}({{model}}::{{column.0 | pascal_case}}))
-                    {% endif -%}
-                    {% endfor -%}
-                    {% for ref in references -%}
-                    .foreign_key(
-                        ForeignKey::create()
-                            .name("fk-{{plural_snake}}-{{ref.1 | plural| snake_case}}")
-                            .from({{model}}::Table, {{model}}::{{ref.1 | pascal_case}})
-                            .to({{ref.0 | plural | pascal_case}}::Table, {{ref.0 | plural | pascal_case}}::Id)
-                            .on_delete(ForeignKeyAction::Cascade)
-                            .on_update(ForeignKeyAction::Cascade),
-                    )
-                    {% endfor -%}
-                    .to_owned(),
-            )
-            .await
+    async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        create_table(m, "{{plural_snake}}",
+            &[
+            {% for column in columns -%}
+            ("{{column.0}}", ColType::{{column.1}}),
+            {% endfor -%}
+            ],
+            &[
+            {% for ref in references -%}
+            ("{{ref.0}}", "{{ref.1}}"),
+            {% endfor -%}
+            ]
+        ).await
     }
 
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .drop_table(Table::drop().table({{model}}::Table).to_owned())
-            .await
+    async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        drop_table(m, "{{plural_snake}}").await
     }
 }
-
-#[derive(DeriveIden)]
-enum {{model}} {
-    Table,
-    {% if is_link == false -%}
-    Id,
-    {% endif -%}
-    {% for column in columns -%}
-    {{column.0 | pascal_case}},
-    {% endfor %}
-}
-
-{% for ref in references | unique(attribute="0") -%}
-#[derive(DeriveIden)]
-enum {{ref.0 | plural | pascal_case}} {
-    Table,
-    Id,
-}
-{% endfor -%}
-

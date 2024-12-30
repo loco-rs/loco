@@ -72,6 +72,7 @@ struct FieldType {
     name: String,
     rust: Option<String>,
     schema: Option<String>,
+    col_type: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -90,6 +91,12 @@ impl Mappings {
             .iter()
             .find(|f| f.name == field)
             .and_then(|f| f.schema.as_ref())
+    }
+    pub fn col_type_field(&self, field: &str) -> Option<&String> {
+        self.field_types
+            .iter()
+            .find(|f| f.name == field)
+            .and_then(|f| f.col_type.as_ref())
     }
     pub fn schema_fields(&self) -> Vec<&String> {
         self.field_types

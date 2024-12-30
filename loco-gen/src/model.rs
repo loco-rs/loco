@@ -37,24 +37,21 @@ pub fn get_columns_and_references(
             continue;
         }
         if ftype == "references" {
-            let fkey = format!("{fname}_id");
-            columns.push((fkey.clone(), "integer".to_string()));
-            // user, user_id
-            references.push((fname.to_string(), fkey));
+            // (users, "")
+            references.push((fname.to_string(), String::new()));
         } else if let Some(refname) = ftype.strip_prefix("references:") {
-            let fkey = format!("{fname}_id");
-            columns.push((fkey.clone(), "integer".to_string()));
-            references.push((refname.to_string(), fkey));
+            references.push((fname.to_string(), refname.to_string()));
         } else {
             let mappings = get_mappings();
-            let schema_type = mappings.schema_field(ftype.as_str()).ok_or_else(|| {
+            let col_type = mappings.col_type_field(ftype.as_str()).ok_or_else(|| {
                 Error::Message(format!(
                     "type: {} not found. try any of: {:?}",
                     ftype,
                     mappings.schema_fields()
                 ))
             })?;
-            columns.push((fname.to_string(), schema_type.to_string()));
+            /// XXX coltypes with parameters??
+            columns.push((fname.to_string(), col_type.to_string()));
         }
     }
     Ok((columns, references))
