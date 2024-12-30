@@ -2,7 +2,7 @@ use heck::ToSnakeCase;
 use sea_orm::{
     sea_query::{
         Alias, ColumnDef, Expr, Index, IntoIden, PgInterval, Table, TableAlterStatement,
-        TableCreateStatement, TableDropStatement, TableForeignKey,
+        TableCreateStatement, TableForeignKey,
     },
     DbErr, ForeignKeyAction,
 };

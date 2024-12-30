@@ -160,13 +160,15 @@
       "name": "decimal_len",
       "rust": "Option<Decimal>",
       "schema": "decimal_len_null",
-      "col_type": "DecimalLenNull"
+      "col_type": "DecimalLenNull",
+      "arity":2
     },
     {
       "name": "decimal_len!",
       "rust": "Decimal",
       "schema": "decimal_len",
-      "col_type": "DecimalLen"
+      "col_type": "DecimalLen",
+      "arity":2
     },
     {
       "name": "bool",
