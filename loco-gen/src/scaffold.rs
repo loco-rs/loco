@@ -41,18 +41,18 @@ pub fn generate(
             }
             crate::infer::FieldType::Type(ftype) => {
                 let mappings = get_mappings();
-                let col_type = mappings.col_type_field(ftype.as_str()).ok_or_else(|| {
+                let rust_type = mappings.rust_field(ftype.as_str()).ok_or_else(|| {
                     Error::Message(format!(
                         "type: `{}` not found. try any of: {:?}",
                         ftype,
                         mappings.schema_fields()
                     ))
                 })?;
-                columns.push((fname.to_string(), col_type.to_string()));
+                columns.push((fname.to_string(), rust_type.to_string()));
             }
             crate::infer::FieldType::TypeWithParameters(ftype, params) => {
                 let mappings = get_mappings();
-                let col_type = mappings.col_type_field(ftype.as_str()).ok_or_else(|| {
+                let rust_type = mappings.rust_field(ftype.as_str()).ok_or_else(|| {
                     Error::Message(format!(
                         "type: `{}` not found. try any of: {:?}",
                         ftype,
@@ -69,10 +69,7 @@ pub fn generate(
                     )));
                 }
 
-                columns.push((
-                    fname.to_string(),
-                    format!("{}({})", col_type, params.join(",")),
-                ));
+                columns.push((fname.to_string(), rust_type.to_string()));
             }
         }
     }
