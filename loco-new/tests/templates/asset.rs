@@ -100,8 +100,7 @@ fn test_github_ci_yaml(
 ) {
     let generator: TestGenerator = run_generator(asset.clone());
     let content =
-        std::fs::read_to_string(generator.path(".github").join("workflows").join("ci.yaml"))
-            .expect("could not open file");
+        assertion::string::load(generator.path(".github").join("workflows").join("ci.yaml"));
 
     let frontend_section = r"      - name: Setup node
         uses: actions/setup-node@v4
@@ -115,8 +114,10 @@ fn test_github_ci_yaml(
 
     match asset {
         AssetsOption::Serverside | AssetsOption::None => {
-            assert!(!content.contains(frontend_section));
+            assertion::string::assert_not_contains(&content, frontend_section);
         }
-        AssetsOption::Clientside => assert!(content.contains(frontend_section)),
+        AssetsOption::Clientside => {
+            assertion::string::assert_contains(&content, frontend_section);
+        }
     }
 }
