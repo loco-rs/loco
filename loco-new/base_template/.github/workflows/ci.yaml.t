@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          toolchain: ${% raw %}{{ env.RUST_TOOLCHAIN }}{% endraw %}
           components: rustfmt
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          toolchain: ${% raw %}{{ env.RUST_TOOLCHAIN }}{% endraw %}
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
       - name: Run cargo clippy
@@ -88,19 +88,19 @@ jobs:
         uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          toolchain: ${% raw %}{{ env.RUST_TOOLCHAIN }}{% endraw %}
+    
       {%- if settings.asset %}
       {%- if settings.asset.kind == "client" %}
       - name: Setup node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: ${{matrix.node-version}}
-          registry-url: https://registry.npmjs.org
+          node-version: ${% raw %}{{matrix.node-version}}{% endraw %}
       - name: Build frontend
         run: npm install && npm run build
         working-directory: ./frontend
       {%- endif -%}
-      {%- endif -%}
+      {%- endif %}
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
       - name: Run cargo test
@@ -109,6 +109,6 @@ jobs:
           command: test
           args: --all-features --all
         env:
-          REDIS_URL: redis://localhost:${{job.services.redis.ports[6379]}}
+          REDIS_URL: redis://localhost:${% raw %}{{job.services.redis.ports[6379]}}{% endraw %}
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres_test
           
