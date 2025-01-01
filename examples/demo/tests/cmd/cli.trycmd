@@ -106,7 +106,9 @@ $ demo_app-cli routes --environment test
   ├─ GET	/mylayer/echo
   └─ GET	/mylayer/user
 /mysession
-  └─ GET	/mysession
+  ├─ GET	/mysession
+  ├─ GET	/mysession/request_context
+  └─ POST	/mysession/request_context
 /notes
   ├─ GET	/notes
   │  POST	/notes
