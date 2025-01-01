@@ -20,13 +20,23 @@ cfg_if::cfg_if! {
         use crate::doctor;
         use crate::boot::{run_db};
         use crate::db;
-        use std::process::exit;
     } else {}
 }
 
-use std::path::PathBuf;
+#[cfg(any(
+    feature = "bg_redis",
+    feature = "bg_pg",
+    feature = "bg_sqlt",
+    feature = "with-db"
+))]
+use std::process::exit;
 
+use std::{collections::BTreeMap, path::PathBuf};
+
+#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+use crate::bgworker::JobStatus;
 use clap::{ArgAction, Parser, Subcommand};
+use colored::Colorize;
 use duct::cmd;
 use loco_gen::{Component, ScaffoldKind};
 
@@ -105,6 +115,12 @@ enum Commands {
         #[clap(value_parser = parse_key_val::<String,String>)]
         params: Vec<(String, String)>,
     },
+    #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+    /// Managing jobs queue.
+    Jobs {
+        #[command(subcommand)]
+        command: JobsCommands,
+    },
     /// Run the scheduler
     Scheduler {
         /// Run a specific job by its name.
@@ -167,10 +183,6 @@ enum ComponentArg {
         #[arg(short, long, action)]
         link: bool,
 
-        /// Generate migration code only. Don't run the migration automatically.
-        #[arg(short, long, action)]
-        migration_only: bool,
-
         /// Model fields, eg. title:string hits:int
         #[clap(value_parser = parse_key_val::<String,String>)]
         fields: Vec<(String, String)>,
@@ -180,6 +192,9 @@ enum ComponentArg {
     Migration {
         /// Name of the migration to generate
         name: String,
+        /// Table fields, eg. title:string hits:int
+        #[clap(value_parser = parse_key_val::<String,String>)]
+        fields: Vec<(String, String)>,
     },
     #[cfg(feature = "with-db")]
     /// Generates a CRUD scaffold, model and controller
@@ -256,19 +271,9 @@ impl ComponentArg {
     fn into_gen_component(self, config: &Config) -> crate::Result<Component> {
         match self {
             #[cfg(feature = "with-db")]
-            Self::Model {
-                name,
-                link,
-                migration_only,
-                fields,
-            } => Ok(Component::Model {
-                name,
-                link,
-                migration_only,
-                fields,
-            }),
+            Self::Model { name, link, fields } => Ok(Component::Model { name, link, fields }),
             #[cfg(feature = "with-db")]
-            Self::Migration { name } => Ok(Component::Migration { name }),
+            Self::Migration { name, fields } => Ok(Component::Migration { name, fields }),
             #[cfg(feature = "with-db")]
             Self::Scaffold {
                 name,
@@ -418,6 +423,50 @@ impl From<DbCommands> for RunDbCommand {
     }
 }
 
+#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+#[derive(Subcommand)]
+enum JobsCommands {
+    /// Cancels jobs with the specified names, setting their status to
+    /// `cancelled`.
+    Cancel {
+        /// Names of jobs to cancel.
+        #[arg(long)]
+        name: String,
+    },
+    /// Deletes jobs that are either completed or cancelled.
+    Tidy {},
+    /// Deletes jobs based on their age in days.
+    Purge {
+        /// Deletes jobs with errors or cancelled, older than the specified
+        /// maximum age in days.
+        #[arg(long, default_value_t = 90)]
+        max_age: i64,
+        /// Limits the jobs being saved to those with specific criteria like
+        /// completed or queued.
+        #[arg(long, use_value_delimiter = true)]
+        status: Option<Vec<JobStatus>>,
+        /// Saves the details of jobs into a file before deleting them.
+        #[arg(long)]
+        dump: Option<PathBuf>,
+    },
+    /// Saves the details of all jobs to files in the specified folder.
+    Dump {
+        /// Limits the jobs being saved to those with specific criteria like
+        /// completed or queued.
+        #[arg(long, use_value_delimiter = true)]
+        status: Option<Vec<JobStatus>>,
+        /// Folder to save the job files (default: current directory).
+        #[arg(short, long, default_value = ".")]
+        folder: PathBuf,
+    },
+    /// Imports jobs from a file.
+    Import {
+        /// Path to the file containing job details to import.
+        #[arg(short, long)]
+        file: PathBuf,
+    },
+}
+
 /// Parse a single key-value pair
 fn parse_key_val<T, U>(
     s: &str,
@@ -443,6 +492,12 @@ where
 pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
     let cli = Playground::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
+
+    let config = environment.load()?;
+
+    if !H::init_logger(&config, &environment)? {
+        logger::init::<H>(&config.logger)?;
+    }
 
     let app_context = create_context::<H>(&environment).await?;
     Ok(app_context)
@@ -485,7 +540,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
     let config = environment.load()?;
 
     if !H::init_logger(&config, &environment)? {
-        logger::init::<H>(&config.logger);
+        logger::init::<H>(&config.logger)?;
     }
 
     let task_span = create_root_span(&environment);
@@ -524,6 +579,8 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                 run_db::<H, M>(&app_context, command.into()).await?;
             }
         }
+        #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+        Commands::Jobs { command } => handle_job_command::<H>(command, &environment).await?,
         Commands::Routes {} => {
             let app_context = create_context::<H>(&environment).await?;
             show_list_endpoints::<H>(&app_context);
@@ -629,7 +686,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
     let config = environment.load()?;
 
     if !H::init_logger(&config, &environment)? {
-        logger::init::<H>(&config.logger);
+        logger::init::<H>(&config.logger)?;
     }
 
     let task_span = create_root_span(&environment);
@@ -689,6 +746,8 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             let app_context = create_context::<H>(&environment).await?;
             run_task::<H>(&app_context, name.as_ref(), &vars).await?;
         }
+        #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+        Commands::Jobs { command } => handle_job_command::<H>(command, &environment).await?,
         Commands::Scheduler {
             name,
             config,
@@ -736,12 +795,162 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
 
 fn show_list_endpoints<H: Hooks>(ctx: &AppContext) {
     let mut routes = list_endpoints::<H>(ctx);
-    routes.sort_by(|a, b| a.uri.cmp(&b.uri));
+
+    // Sort first by path, then ensure HTTP methods are in a consistent order
+    routes.sort_by(|a, b| {
+        let method_priority = |actions: &[_]| match actions
+            .first()
+            .map(ToString::to_string)
+            .unwrap_or_default()
+            .as_str()
+        {
+            "GET" => 0,
+            "POST" => 1,
+            "PUT" => 2,
+            "PATCH" => 3,
+            "DELETE" => 4,
+            _ => 5,
+        };
+
+        let a_priority = method_priority(&a.actions);
+        let b_priority = method_priority(&b.actions);
+
+        a.uri.cmp(&b.uri).then(a_priority.cmp(&b_priority))
+    });
+
+    // Group routes by their first path segment and full path
+    let mut path_groups: BTreeMap<String, BTreeMap<String, Vec<String>>> = BTreeMap::new();
+
     for router in routes {
-        println!("{router}");
+        let path = router.uri.trim_start_matches('/');
+        let segments: Vec<&str> = path.split('/').collect();
+        let root = (*segments.first().unwrap_or(&"")).to_string();
+
+        let actions_str = router
+            .actions
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(",");
+
+        path_groups
+            .entry(root)
+            .or_default()
+            .entry(router.uri.to_string())
+            .or_default()
+            .push(actions_str);
+    }
+
+    // Print tree structure
+    for (root, paths) in path_groups {
+        println!("/{}", root.bold());
+        let paths_count = paths.len();
+        let mut path_idx = 0;
+
+        for (path, methods) in paths {
+            path_idx += 1;
+            let is_last_path = path_idx == paths_count;
+            let is_group = methods.len() > 1;
+
+            // Print first method
+            let prefix = if is_last_path && !is_group {
+                "  └─ "
+            } else {
+                "  ├─ "
+            };
+            let colored_method = color_method(&methods[0]);
+            println!("{prefix}{colored_method}\t{path}");
+
+            // Print additional methods in group
+            if is_group {
+                for (i, method) in methods[1..].iter().enumerate() {
+                    let is_last_in_group = i == methods.len() - 2;
+                    let group_prefix = if is_last_path && is_last_in_group {
+                        "  └─ "
+                    } else {
+                        "  │  "
+                    };
+                    let colored_method = color_method(method);
+                    println!("{group_prefix}{colored_method}\t{path}");
+                }
+
+                // Add spacing between groups if not the last path
+                if !is_last_path {
+                    println!("  │");
+                }
+            }
+        }
+    }
+}
+
+fn color_method(method: &str) -> String {
+    match method {
+        "GET" => method.green().to_string(),
+        "POST" => method.blue().to_string(),
+        "PUT" => method.yellow().to_string(),
+        "PATCH" => method.magenta().to_string(),
+        "DELETE" => method.red().to_string(),
+        _ => method.to_string(),
     }
 }
 
 fn create_root_span(environment: &Environment) -> tracing::Span {
     tracing::span!(tracing::Level::DEBUG, "app", environment = %environment)
+}
+
+#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+async fn handle_job_command<H: Hooks>(
+    command: JobsCommands,
+    environment: &Environment,
+) -> crate::Result<()> {
+    let app_context = create_context::<H>(environment).await?;
+    let queue = app_context.queue_provider.map_or_else(
+        || {
+            println!("queue not configured");
+            exit(1);
+        },
+        |queue_provider| queue_provider,
+    );
+
+    match &command {
+        JobsCommands::Cancel { name } => queue.cancel_jobs(name).await,
+        JobsCommands::Tidy {} => {
+            queue
+                .clear_by_status(vec![JobStatus::Completed, JobStatus::Cancelled])
+                .await
+        }
+        JobsCommands::Purge {
+            max_age,
+            status,
+            dump,
+        } => {
+            let status = status.as_ref().map_or_else(
+                || {
+                    vec![
+                        JobStatus::Failed,
+                        JobStatus::Cancelled,
+                        JobStatus::Queued,
+                        JobStatus::Completed,
+                    ]
+                },
+                std::clone::Clone::clone,
+            );
+
+            if let Some(path) = dump {
+                let dump_path = queue
+                    .dump(path.as_path(), Some(&status), Some(*max_age))
+                    .await?;
+
+                println!("Jobs successfully dumped to: {}", dump_path.display());
+            }
+
+            queue.clear_jobs_older_than(*max_age, &status).await
+        }
+        JobsCommands::Dump { status, folder } => {
+            let dump_path = queue.dump(folder.as_path(), status.as_ref(), None).await?;
+            println!("Jobs successfully dumped to: {}", dump_path.display());
+            Ok(())
+        }
+        JobsCommands::Import { file } => queue.import(file.as_path()).await,
+    }
 }

@@ -60,7 +60,7 @@ fn test_config_file_queue(
 
 #[rstest]
 fn test_config_file_workers(
-    #[values("config/development.yaml", "config/test.yaml")] config_file: &str,
+    #[values("config/development.yaml")] config_file: &str,
     #[values(
         BackgroundOption::None,
         BackgroundOption::Async,
@@ -85,6 +85,51 @@ fn test_config_file_workers(
                 &content,
                 &["workers", "mode"],
                 "BackgroundQueue",
+            );
+        }
+        BackgroundOption::Blocking => {
+            assertion::yaml::assert_path_value_eq_string(
+                &content,
+                &["workers", "mode"],
+                "ForegroundBlocking",
+            );
+        }
+        BackgroundOption::None => {
+            assertion::yaml::assert_path_is_empty(&content, &["workers"]);
+        }
+    };
+
+    if background.enable() {
+        assertion::yaml::assert_path_key_count(&content, &["workers"], 1);
+    }
+}
+
+#[rstest]
+fn test_config_file_workers_tests(
+    #[values(
+        BackgroundOption::None,
+        BackgroundOption::Async,
+        BackgroundOption::Queue,
+        BackgroundOption::Blocking
+    )]
+    background: BackgroundOption,
+) {
+    let generator = run_generator(background.clone());
+    let content = assertion::yaml::load(generator.path("config/test.yaml"));
+
+    match background {
+        BackgroundOption::Async => {
+            assertion::yaml::assert_path_value_eq_string(
+                &content,
+                &["workers", "mode"],
+                "ForegroundBlocking",
+            );
+        }
+        BackgroundOption::Queue => {
+            assertion::yaml::assert_path_value_eq_string(
+                &content,
+                &["workers", "mode"],
+                "ForegroundBlocking",
             );
         }
         BackgroundOption::Blocking => {

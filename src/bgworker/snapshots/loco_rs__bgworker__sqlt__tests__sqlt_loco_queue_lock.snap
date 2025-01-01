@@ -1,0 +1,32 @@
+---
+source: src/bgworker/sqlt.rs
+expression: table_info
+---
+[
+    TableInfo {
+        cid: 0,
+        name: "id",
+        _type: "INTEGER",
+        notnull: false,
+        dflt_value: None,
+        pk: true,
+    },
+    TableInfo {
+        cid: 1,
+        name: "is_locked",
+        _type: "BOOLEAN",
+        notnull: true,
+        dflt_value: Some(
+            "FALSE",
+        ),
+        pk: false,
+    },
+    TableInfo {
+        cid: 2,
+        name: "locked_at",
+        _type: "TIMESTAMP",
+        notnull: false,
+        dflt_value: None,
+        pk: false,
+    },
+]

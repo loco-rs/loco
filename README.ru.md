@@ -6,7 +6,7 @@
 
    <h3>
    <!-- <snip id="description" inject_from="yaml"> -->
-🚂 *Loco* - Rust on Rails.
+🚂 Loco is Rust on Rails.
 <!--</snip> -->
    </h3>
 
@@ -45,7 +45,7 @@
 <!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->
 ```sh
 cargo install loco
-cargo install sea-orm-cli # Для работы с базами данных
+cargo install sea-orm-cli # Only when DB is needed
 ```
 <!-- </snip> -->
 
@@ -56,13 +56,18 @@ cargo install sea-orm-cli # Для работы с базами данных
 ```sh
 ❯ loco new
 ✔ ❯ App name? · myapp
-✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+✔ ❯ What would you like to build? · Saas App with client side rendering
 ✔ ❯ Select a DB Provider · Sqlite
 ✔ ❯ Select your background worker type · Async (in-process tokio async tasks)
-✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
 
 🚂 Loco app generated successfully in:
 myapp/
+
+- assets: You've selected `clientside` for your asset serving configuration.
+
+Next step, build your frontend:
+  $ cd frontend/
+  $ npm install && npm run build
 ```
 <!-- </snip> -->
 

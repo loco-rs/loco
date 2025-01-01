@@ -39,7 +39,7 @@ $ cargo loco routes
 [POST] /api/auth/register
 [POST] /api/auth/reset
 [POST] /api/auth/verify
-[GET] /api/user/current
+[GET] /api/auth/current
  .
  .
  .
@@ -144,7 +144,7 @@ curl --location '127.0.0.1:5150/api/auth/reset' \
 This endpoint is protected by auth middleware.
 
 ```sh
-curl --location --request GET '127.0.0.1:5150/api/user/current' \
+curl --location --request GET '127.0.0.1:5150/api/auth/current' \
      --header 'Content-Type: application/json' \
      --header 'Authorization: Bearer TOKEN'
 ```
@@ -196,7 +196,7 @@ $ cargo loco routes
 [POST] /api/auth/register
 [POST] /api/auth/reset
 [POST] /api/auth/verify
-[GET] /api/user/current
+[GET] /api/auth/current
  .
  .
  .

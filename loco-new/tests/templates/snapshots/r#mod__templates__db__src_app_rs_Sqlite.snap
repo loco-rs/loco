@@ -10,7 +10,6 @@ use loco_rs::{
         Queue},
     boot::{create_app, BootResult, StartMode},
     controller::AppRoutes,
-    db::{self, truncate_table},
     environment::Environment,
     task::Tasks,
     Result,
@@ -20,9 +19,7 @@ use sea_orm::DatabaseConnection;
 
 #[allow(unused_imports)]
 use crate::{
-    controllers
-    ,tasks
-    , models::_entities::users,
+    controllers ,tasks
 };
 
 pub struct App;
@@ -63,13 +60,10 @@ impl Hooks for App {
     fn register_tasks(tasks: &mut Tasks) {
         // tasks-inject (do not remove)
     }
-    async fn truncate(db: &DatabaseConnection) -> Result<()> {
-        truncate_table(db, users::Entity).await?;
+    async fn truncate(_db: &DatabaseConnection) -> Result<()> {
         Ok(())
-    }
-
-    async fn seed(db: &DatabaseConnection, base: &Path) -> Result<()> {
-        db::seed::<users::ActiveModel>(db, &base.join("users.yaml").display().to_string()).await?;
+    } 
+    async fn seed(_db: &DatabaseConnection, _base: &Path) -> Result<()> {
         Ok(())
     }
 }

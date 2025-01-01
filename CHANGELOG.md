@@ -2,10 +2,14 @@
 
 ## Unreleased
 
+* feat: smart migration generator. you can now generate migration based on naming them for creating a table, adding columns, references, join tables and more. [https://github.com/loco-rs/loco/pull/1086](https://github.com/loco-rs/loco/pull/1086)
+* feat: `cargo loco routes` will now pretty-print routes
 * fix: guard jwt error behind feature flag. [https://github.com/loco-rs/loco/pull/1032](https://github.com/loco-rs/loco/pull/1032)
 * fix: logger file_appender not using the seperated format setting. [https://github.com/loco-rs/loco/pull/1036](https://github.com/loco-rs/loco/pull/1036)
 * seed cli command. [https://github.com/loco-rs/loco/pull/1046](https://github.com/loco-rs/loco/pull/1046)
 * Updated validator to 0.19. [https://github.com/loco-rs/loco/pull/993](https://github.com/loco-rs/loco/pull/993)
+  ### Breaking Changes
+  Bump validator to 0.19 in your local `Cargo.toml`
 * Testing helpers: simplified function calls + adding html selector. [https://github.com/loco-rs/loco/pull/1047](https://github.com/loco-rs/loco/pull/1047)
   ### Breaking Changes
   #### Updated Import Paths
@@ -29,6 +33,15 @@
   ```rust
   let boot = boot_test::<App>().await.unwrap();
   ```
+* implement commands to manage background jobs. [https://github.com/loco-rs/loco/pull/1071](https://github.com/loco-rs/loco/pull/1071)
+* magic link. [https://github.com/loco-rs/loco/pull/1085](https://github.com/loco-rs/loco/pull/1085)
+* infer migration. [https://github.com/loco-rs/loco/pull/1086](https://github.com/loco-rs/loco/pull/1086)
+* Remove unnecessary calls to 'register_tasks' functions in scheduler. [https://github.com/loco-rs/loco/pull/1100](https://github.com/loco-rs/loco/pull/1100)
+* implement commands to manage background jobs. [https://github.com/loco-rs/loco/pull/1071](https://github.com/loco-rs/loco/pull/1071)
+* expose hello_name for SMTP client config. [https://github.com/loco-rs/loco/pull/1057](https://github.com/loco-rs/loco/pull/1057)
+* use reqwest with rustls rather than openssl. [https://github.com/loco-rs/loco/pull/1058](https://github.com/loco-rs/loco/pull/1058)
+* more flexible config, take more values from ENV. [https://github.com/loco-rs/loco/pull/1058](https://github.com/loco-rs/loco/pull/1058)
+
 
 ## v0.13.2
 
