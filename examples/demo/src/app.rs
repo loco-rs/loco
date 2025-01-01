@@ -13,6 +13,7 @@ use loco_rs::{
     task::Tasks,
     Result,
 };
+use loco_rs::request_context::TowerSessionStore;
 use migration::Migrator;
 use sea_orm::DatabaseConnection;
 
@@ -23,6 +24,7 @@ use crate::{
     tasks,
     workers::downloader::DownloadWorker,
 };
+use tower_sessions::MemoryStore;
 
 pub struct App;
 #[async_trait]
@@ -83,6 +85,7 @@ impl Hooks for App {
         Ok(AppContext {
             storage: Storage::single(store).into(),
             cache: cache::Cache::new(cache::drivers::inmem::new()).into(),
+            session_store: Some(TowerSessionStore::new(MemoryStore::default())),
             ..ctx
         })
 

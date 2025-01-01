@@ -170,7 +170,6 @@ impl RequestContextMiddleware {
         // Add the request context middleware
         match &self.config.session_store {
             RequestContextSession::Cookie { private_key } => {
-                tracing::info!("[Middleware] Adding request context");
                 if private_key.len() < 64 {
                     return Err(RequestContextError::ConfigurationError(
                         "Session private key must be at least 64 bytes long".into(),
@@ -186,7 +185,11 @@ impl RequestContextMiddleware {
             }
             RequestContextSession::Tower => match self.store.as_ref() {
                 Some(session_store) => {
-                    tracing::info!("[Middleware] Adding request context");
+                    let layer = Self::get_tower_request_context_middleware(
+                        &self.config.session_store,
+                        &self.config.session_config,
+                    )?;
+                    app = app.layer(layer);
                     let layer = SessionManagerLayer::new(session_store.to_owned());
                     let layer =
                         Self::add_request_context_config_tower(layer, &self.config.session_config);
@@ -237,6 +240,18 @@ impl RequestContextMiddleware {
         })?;
         let store = crate::request_context::RequestContextStore::new(
             private_key,
+            session_config.clone(),
+            session_cookie_config.clone(),
+        );
+        Ok(RequestContextLayer::new(store))
+    }
+    fn get_tower_request_context_middleware(
+        session_config: &RequestContextSession,
+        session_cookie_config: &SessionCookieConfig,
+    ) -> Result<RequestContextLayer> {
+        let key = Key::generate(); // Random generated since it is not used
+        let store = crate::request_context::RequestContextStore::new(
+            key,
             session_config.clone(),
             session_cookie_config.clone(),
         );

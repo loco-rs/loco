@@ -136,7 +136,7 @@ object_store = { version = "0.11.0", default-features = false }
 moka = { version = "0.12.7", features = ["sync"], optional = true }
 
 # sessions
-tower-sessions = "0.12"
+tower-sessions = "0.13"
 
 # Scheduler
 tokio-cron-scheduler = { version = "0.11.0", features = ["signal"] }

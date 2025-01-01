@@ -38,7 +38,7 @@ pub async fn create_request_context(mut req: RequestContext) -> Result<Response>
 ///
 /// This function will return an error if result fails
 #[debug_handler]
-pub async fn get_request_context(mut req: Extension<RequestContext>) -> Result<Response> {
+pub async fn get_request_context(req: Extension<RequestContext>) -> Result<Response> {
     let data = req
         .get::<String>(REQUEST_CONTEXT_DATA_KEY)
         .await?
