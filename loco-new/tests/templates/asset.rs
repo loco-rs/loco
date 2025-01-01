@@ -92,3 +92,32 @@ fn test_cargo_toml(
         content.get("dependencies").unwrap()
     );
 }
+
+#[rstest]
+fn test_github_ci_yaml(
+    #[values(AssetsOption::None, AssetsOption::Serverside, AssetsOption::Clientside)]
+    asset: AssetsOption,
+) {
+    let generator: TestGenerator = run_generator(asset.clone());
+    let content =
+        assertion::string::load(generator.path(".github").join("workflows").join("ci.yaml"));
+
+    let frontend_section = r"      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{matrix.node-version}}
+      - name: Build frontend
+        run: npm install && npm run build
+        working-directory: ./frontend
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2";
+
+    match asset {
+        AssetsOption::Serverside | AssetsOption::None => {
+            assertion::string::assert_not_contains(&content, frontend_section);
+        }
+        AssetsOption::Clientside => {
+            assertion::string::assert_contains(&content, frontend_section);
+        }
+    }
+}
