@@ -39,7 +39,7 @@ const DEPLOYMENT_SHUTTLE_T: &str = include_str!("templates/deployment/shuttle/sh
 const DEPLOYMENT_SHUTTLE_CONFIG_T: &str = include_str!("templates/deployment/shuttle/config.t");
 const DEPLOYMENT_NGINX_T: &str = include_str!("templates/deployment/nginx/nginx.t");
 
-const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.46.0";
+const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.49.0";
 
 const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
     ("Docker", DeploymentKind::Docker),
