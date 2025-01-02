@@ -51,10 +51,27 @@ pub async fn get_request_context(req: Extension<RequestContext>) -> Result<Respo
     Ok(data.into_response())
 }
 
+
+/// Remove a request context
+///
+/// # Errors
+///
+/// This function will return an error if result fails
+#[debug_handler]
+pub async fn remove_request_context(mut req: RequestContext) -> Result<Response> {
+   let data =  req.remove::<String>(REQUEST_CONTEXT_DATA_KEY).await?;
+    tracing::info!(
+        "Request Context data removed - Key: {:?}, Value: {:?}",
+        REQUEST_CONTEXT_DATA_KEY, data
+    );
+    Ok(format::empty()?)
+}
+
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("mysession")
         .add("/", get(get_session))
         .add("/request_context", post(create_request_context))
         .add("/request_context", get(get_request_context))
+        .add("/request_context", delete(remove_request_context))
 }

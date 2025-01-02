@@ -68,3 +68,39 @@ async fn get_request_context_with_setting_data() {
     })
     .await;
 }
+
+#[tokio::test]
+#[serial]
+async fn remove_request_context_data() {
+    configure_insta!();
+    request::<App, _, _>(|request, _ctx| async move {
+        let response = request.post("/mysession/request_context").await;
+        // Get Cookie from response header
+        let headers = response.headers();
+        let cookie = headers.get("set-cookie");
+        assert_eq!(response.status_code(), 200);
+        assert_eq!(response.text(), "turing");
+        assert!(cookie.is_some());
+        let response = request
+            .get("/mysession/request_context")
+            .add_header(
+                "cookie".parse::<HeaderName>().unwrap(),
+                cookie.unwrap().clone(),
+            )
+            .await;
+        // Get response body
+        assert_eq!(response.status_code(), 200);
+        assert_eq!(response.text(), "turing");
+        let response = request
+            .delete("/mysession/request_context")
+            .add_header(
+                "cookie".parse::<HeaderName>().unwrap(),
+                cookie.unwrap().clone(),
+            )
+            .await;
+        // Get response body
+        assert_eq!(response.status_code(), 200);
+        assert_eq!(response.text(), "");
+    })
+        .await;
+}

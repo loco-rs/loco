@@ -79,7 +79,8 @@ impl Driver {
         }
     }
 
-    /// Clears the session.
+    /// Clears the session but not the session store. (Tower)
+    /// Clear the session map. (Cookie)
     pub async fn clear(&mut self) {
         match self {
             Self::CookieMap(cookie_map) => {
@@ -88,6 +89,38 @@ impl Driver {
             Self::TowerSession(session) => {
                 session.clear().await;
             }
+        }
+    }
+
+    /// Tower - Flush the session store.
+    /// Cookie - Clear the session map.
+    ///
+    /// # Returns
+    /// * `()`
+    ///
+    /// # Errors
+    /// [`DriverError`] - When the session store fails to flush
+    pub async fn flush(&mut self) -> Result<(), DriverError> {
+        match self {
+            Self::CookieMap(cookie_map) => {
+                cookie_map.lock().await.clear();
+                Ok(())
+            }
+            Self::TowerSession(session) => {
+                Ok(session.flush().await?)
+            }
+        }
+    }
+
+    /// Check if the key exists in the session.
+    /// # Arguments
+    /// * `key` - The key to check
+    /// # Returns
+    /// * `bool` - True if the key exists, otherwise false
+    pub async fn exists(&self, key: &str) -> Result<bool, DriverError> {
+        match self {
+            Self::CookieMap(cookie_map) => Ok(cookie_map.lock().await.exists(key)),
+            Self::TowerSession(session) =>  Ok(session.get_value(key).await?.is_some()),
         }
     }
 }
@@ -223,5 +256,63 @@ mod test {
         driver.clear().await;
         let value: Option<String> = driver.get("test").await.expect("Failed to get value");
         assert_eq!(value, None);
+    }
+
+    #[tokio::test]
+    async fn test_driver_flush() -> Result<(), DriverError> {
+        let hash_map = HashMap::new();
+        let mut driver = Driver::CookieMap(Arc::new(Mutex::new(CookieMap::new(hash_map))));
+        driver
+            .insert("test", "test")
+            .await
+            .expect("Failed to insert value");
+        let value: Option<String> = driver.get("test").await.expect("Failed to get value");
+        assert_eq!(value, Some("test".to_string()));
+        driver.flush().await?;
+        let value: Option<String> = driver.get("test").await.expect("Failed to get value");
+        assert_eq!(value, None);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_driver_flush_tower_session() -> Result<(), DriverError> {
+        let session = create_session();
+        let mut driver = Driver::TowerSession(session);
+        driver
+            .insert("test", "test")
+            .await
+            .expect("Failed to insert value");
+        let value: Option<String> = driver.get("test").await.expect("Failed to get value");
+        assert_eq!(value, Some("test".to_string()));
+        driver.flush().await?;
+        let value: Option<String> = driver.get("test").await.expect("Failed to get value");
+        assert_eq!(value, None);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_driver_value_exist() -> Result<(), DriverError> {
+        let hash_map = HashMap::new();
+        let mut driver = Driver::CookieMap(Arc::new(Mutex::new(CookieMap::new(hash_map))));
+        driver
+            .insert("test", "test")
+            .await
+            .expect("Failed to insert value");
+        assert!(driver.exists("test").await?);
+        assert!(!driver.exists("test2").await?);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_driver_value_exist_tower_session() -> Result<(), DriverError> {
+        let session = create_session();
+        let mut driver = Driver::TowerSession(session);
+        driver
+            .insert("test", "test")
+            .await
+            .expect("Failed to insert value");
+        assert!(driver.exists("test").await?);
+        assert!(!driver.exists("test2").await?);
+        Ok(())
     }
 }

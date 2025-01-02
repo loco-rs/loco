@@ -113,6 +113,11 @@ impl CookieMap {
     pub fn clear(&mut self) {
         self.0.clear();
     }
+    
+    /// Return if key exists
+    pub fn exists(&self, key: &str) -> bool {
+        self.0.contains_key(key)
+    }
 }
 
 impl Default for CookieMap {
