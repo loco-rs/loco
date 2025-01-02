@@ -1,0 +1,53 @@
+---
+source: loco-gen/tests/templates/migration.rs
+expression: "fs::read_to_string(&migration_file).expect(\"Failed to read the migration file\")"
+---
+use loco_rs::schema::table_auto_tz;
+use sea_orm_migration::{prelude::*, schema::*};
+
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .create_table(
+                table_auto_tz(Movies::Table)
+                    .col(pk_auto(Movies::Id))
+                    .col(string_null(Movies::Title))
+                    .col(integer(Movies::UserId))
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk-movies-user_ids")
+                            .from(Movies::Table, Movies::UserId)
+                            .to(Users::Table, Users::Id)
+                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_update(ForeignKeyAction::Cascade),
+                    )
+                    .to_owned(),
+            )
+            .await
+    }
+
+    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .drop_table(Table::drop().table(Movies::Table).to_owned())
+            .await
+    }
+}
+
+#[derive(DeriveIden)]
+enum Movies {
+    Table,
+    Id,
+    Title,
+    UserId,
+    
+}
+
+#[derive(DeriveIden)]
+enum Users {
+    Table,
+    Id,
+}

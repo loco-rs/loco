@@ -1,20 +1,10 @@
+use crate::{
+    infer, model::get_columns_and_references, render_template, AppInfo, GenerateResults, Result,
+};
 use chrono::Utc;
 use rrgen::RRgen;
 use serde_json::json;
-
-use super::Result;
-use crate::{
-    infer,
-    model::{get_columns_and_references, MODEL_T},
-};
-
-const MIGRATION_T: &str = include_str!("templates/migration/empty.t");
-const ADD_COLS_T: &str = include_str!("templates/migration/add_columns.t");
-const ADD_REFS_T: &str = include_str!("templates/migration/add_references.t");
-const REMOVE_COLS_T: &str = include_str!("templates/migration/remove_columns.t");
-const JOIN_TABLE_T: &str = include_str!("templates/migration/join_table.t");
-
-use super::{collect_messages, AppInfo};
+use std::path::Path;
 
 /// skipping some fields from the generated models.
 /// For example, the `created_at` and `updated_at` fields are automatically
@@ -26,32 +16,32 @@ pub fn generate(
     name: &str,
     fields: &[(String, String)],
     appinfo: &AppInfo,
-) -> Result<String> {
+) -> Result<GenerateResults> {
     let pkg_name: &str = &appinfo.app_name;
     let ts = Utc::now();
 
     let res = infer::guess_migration_type(name);
-    let migration_gen = match res {
+    match res {
         // NOTE: re-uses the 'new model' migration template!
         infer::MigrationType::CreateTable { table } => {
             let (columns, references) = get_columns_and_references(fields)?;
             let vars = json!({"name": table, "ts": ts, "pkg_name": pkg_name, "is_link": false, "columns": columns, "references": references});
-            rrgen.generate(MODEL_T, &vars)?
+            render_template(rrgen, Path::new("model/model.t"), &vars)
         }
         infer::MigrationType::AddColumns { table } => {
             let (columns, references) = get_columns_and_references(fields)?;
             let vars = json!({"name": name, "table": table, "ts": ts, "pkg_name": pkg_name, "is_link": false, "columns": columns, "references": references});
-            rrgen.generate(ADD_COLS_T, &vars)?
+            render_template(rrgen, Path::new("migration/add_columns.t"), &vars)
         }
         infer::MigrationType::RemoveColumns { table } => {
             let (columns, _references) = get_columns_and_references(fields)?;
             let vars = json!({"name": name, "table": table, "ts": ts, "pkg_name": pkg_name, "columns": columns});
-            rrgen.generate(REMOVE_COLS_T, &vars)?
+            render_template(rrgen, Path::new("migration/remove_columns.t"), &vars)
         }
         infer::MigrationType::AddReference { table } => {
             let (columns, references) = get_columns_and_references(fields)?;
             let vars = json!({"name": name, "table": table, "ts": ts, "pkg_name": pkg_name, "columns": columns, "references": references});
-            rrgen.generate(ADD_REFS_T, &vars)?
+            render_template(rrgen, Path::new("migration/add_references.t"), &vars)
         }
         infer::MigrationType::CreateJoinTable { table_a, table_b } => {
             let mut tables = [table_a.clone(), table_b.clone()];
@@ -62,14 +52,11 @@ pub fn generate(
                 (table_b, "references".to_string()),
             ])?;
             let vars = json!({"name": name, "table": table, "ts": ts, "pkg_name": pkg_name, "columns": columns, "references": references});
-            rrgen.generate(JOIN_TABLE_T, &vars)?
+            render_template(rrgen, Path::new("migration/join_table.t"), &vars)
         }
         infer::MigrationType::Empty => {
             let vars = json!({"name": name, "ts": ts, "pkg_name": pkg_name});
-            rrgen.generate(MIGRATION_T, &vars)?
+            render_template(rrgen, Path::new("migration/empty.t"), &vars)
         }
-    };
-
-    let messages = collect_messages(vec![migration_gen]);
-    Ok(messages)
+    }
 }
