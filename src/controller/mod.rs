@@ -42,11 +42,11 @@
 //!         AppRoutes::with_default_routes()
 //!             // .add_route(controllers::notes::routes())
 //!     }
-//!     
+//!
 //!     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult>{
 //!          create_app::<Self, Migrator>(mode, environment).await
 //!     }
-//!     
+//!
 //!     async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {
 //!         Ok(())
 //!     }
@@ -83,6 +83,12 @@ pub mod format;
 #[cfg(feature = "with-db")]
 mod health;
 pub mod middleware;
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
+mod openapi;
 mod ping;
 mod routes;
 pub mod views;
