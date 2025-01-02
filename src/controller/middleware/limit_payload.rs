@@ -1,9 +1,8 @@
-//! Limit Payload Middleware
+//! # Limit Payload Middleware
 //!
-//! This middleware restricts the maximum allowed size for HTTP request
-//! payloads. It is configurable based on the [`LimitPayloadMiddleware`]
-//! settings in the application's middleware configuration. The middleware sets
-//! a limit on the request body size using Axum's `DefaultBodyLimit` layer.
+//! This middleware restricts the maximum allowed size for HTTP request payloads.
+//! It ensures that incoming HTTP requests do not exceed a specified payload size,
+//! which helps protect the application from overly large requests that could affect performance.
 //!
 //! # Note
 //!
@@ -16,28 +15,31 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 
+/// Middleware configuration for limiting payload size.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LimitPayload {
-    #[serde(default)]
-    pub enable: bool,
-    #[serde(deserialize_with = "deserialize_body_limit")]
-    #[serde(default = "default_body_limit")]
+    #[serde(
+        default = "default_body_limit",
+        deserialize_with = "deserialize_body_limit"
+    )]
     pub body_limit: usize,
 }
 
 impl Default for LimitPayload {
+    /// Provides the default configuration for the middleware.
     fn default() -> Self {
         Self {
-            enable: false,
             body_limit: default_body_limit(),
         }
     }
 }
 
+/// Returns the default body limit in bytes (50MB).
 fn default_body_limit() -> usize {
-    2_000_000
+    50_000_000
 }
 
+/// Custom deserialization for `body_limit`, allowing human-readable formats.
 fn deserialize_body_limit<'de, D>(deserializer: D) -> Result<usize, D::Error>
 where
     D: Deserializer<'de>,
@@ -57,7 +59,7 @@ impl MiddlewareLayer for LimitPayload {
 
     /// Returns whether the middleware is enabled or not
     fn is_enabled(&self) -> bool {
-        self.enable
+        true
     }
 
     fn config(&self) -> serde_json::Result<serde_json::Value> {
