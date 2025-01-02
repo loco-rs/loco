@@ -42,7 +42,11 @@ fn can_generate_docker(
 "
     );
     assert_snapshot!(
-        format!("generate[docker_file_[{fallback_file:?}]_[{asset_folder:?}]]"),
+        format!(
+            "generate[docker_file_[{}]_[{}]]",
+            fallback_file.as_ref().map_or("None", |f| f.as_str()),
+            asset_folder.as_ref().map_or("None", |a| a.as_str())
+        ),
         fs::read_to_string(tree_fs.root.join("dockerfile")).expect("dockerfile missing")
     );
 
