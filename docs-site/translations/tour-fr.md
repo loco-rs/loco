@@ -205,7 +205,7 @@ Dans votre application côté client, vous enregistrez ce jeton JWT et effectuez
 Ce point de terminaison est protégé par un middleware d'authentification. Nous utiliserons le jeton que nous avons obtenu précédemment pour effectuer une requête avec la technique _bearer token_ (remplacez `TOKEN` par le jeton JWT que vous avez obtenu précédemment):
 
 ```sh
-$ curl --location --request GET '127.0.0.1:5150/api/user/current' \
+$ curl --location --request GET '127.0.0.1:5150/api/auth/current' \
      --header 'Content-Type: application/json' \
      --header 'Authorization: Bearer TOKEN'
 ```
