@@ -215,17 +215,19 @@ async fn cors(
 }
 
 #[rstest]
-#[case(middleware::limit_payload::DefaultBodyLimitKind::Limit(0x1B))]
-#[case(middleware::limit_payload::DefaultBodyLimitKind::Disable)]
+#[case(Some(1))]
+#[case(None)]
 #[tokio::test]
 #[serial]
-async fn limit_payload(#[case] limit: middleware::limit_payload::DefaultBodyLimitKind) {
+async fn limit_payload(#[case] limit: Option<usize>) {
     configure_insta!();
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
-    ctx.config.server.middlewares.limit_payload =
-        Some(middleware::limit_payload::LimitPayload { body_limit: limit });
+    ctx.config.server.middlewares.limit_payload = limit.map_or_else(
+        || Some(middleware::limit_payload::LimitPayload::default()),
+        |limit| Some(middleware::limit_payload::LimitPayload { body_limit: limit }),
+    );
 
     let handle = infra_cfg::server::start_from_ctx(ctx).await;
 
@@ -236,13 +238,10 @@ async fn limit_payload(#[case] limit: middleware::limit_payload::DefaultBodyLimi
         .await
         .expect("valid response");
 
-    match limit {
-        middleware::limit_payload::DefaultBodyLimitKind::Disable => {
-            assert_eq!(res.status(), StatusCode::OK);
-        }
-        middleware::limit_payload::DefaultBodyLimitKind::Limit(_) => {
-            assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
-        }
+    if limit.is_some() {
+        assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    } else {
+        assert_eq!(res.status(), StatusCode::OK);
     }
 
     handle.abort();
