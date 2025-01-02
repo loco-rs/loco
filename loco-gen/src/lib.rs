@@ -322,6 +322,7 @@ fn render_template(rrgen: &RRgen, template: &Path, vars: &Value) -> Result<Gener
 #[must_use]
 pub fn collect_messages(results: &GenerateResults) -> String {
     let mut messages = String::new();
+
     for res in &results.rrgen {
         if let rrgen::GenResult::Generated {
             message: Some(message),
@@ -334,7 +335,7 @@ pub fn collect_messages(results: &GenerateResults) -> String {
     if !results.local_templates.is_empty() {
         messages.push_str(&format!(
             "{}",
-            "\n\nThe following templates were sourced from the local templates:\n".green()
+            "\nThe following templates were sourced from the local templates:\n".green()
         ));
         for f in &results.local_templates {
             messages.push_str(&format!("* {}\n", f.display()));

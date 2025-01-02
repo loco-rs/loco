@@ -68,30 +68,32 @@ pub fn generate(
     let vars = json!({"name": name, "ts": ts, "pkg_name": pkg_name, "is_link": is_link, "columns": columns, "references": references});
     let gen_result = render_template(rrgen, Path::new("model"), &vars)?;
 
-    // generate the model files by migrating and re-running seaorm
-    let cwd = current_dir()?;
-    let env_map: HashMap<_, _> = std::env::vars().collect();
+    if std::env::var("SKIP_MIGRATION").is_err() {
+        // generate the model files by migrating and re-running seaorm
+        let cwd = current_dir()?;
+        let env_map: HashMap<_, _> = std::env::vars().collect();
 
-    let _ = cmd!("cargo", "loco-tool", "db", "migrate",)
-        .stderr_to_stdout()
-        .dir(cwd.as_path())
-        .full_env(&env_map)
-        .run()
-        .map_err(|err| {
-            Error::Message(format!(
-                "failed to run loco db migration. error details: `{err}`",
-            ))
-        })?;
-    let _ = cmd!("cargo", "loco-tool", "db", "entities",)
-        .stderr_to_stdout()
-        .dir(cwd.as_path())
-        .full_env(&env_map)
-        .run()
-        .map_err(|err| {
-            Error::Message(format!(
-                "failed to run loco db entities. error details: `{err}`",
-            ))
-        })?;
+        let _ = cmd!("cargo", "loco-tool", "db", "migrate",)
+            .stderr_to_stdout()
+            .dir(cwd.as_path())
+            .full_env(&env_map)
+            .run()
+            .map_err(|err| {
+                Error::Message(format!(
+                    "failed to run loco db migration. error details: `{err}`",
+                ))
+            })?;
+        let _ = cmd!("cargo", "loco-tool", "db", "entities",)
+            .stderr_to_stdout()
+            .dir(cwd.as_path())
+            .full_env(&env_map)
+            .run()
+            .map_err(|err| {
+                Error::Message(format!(
+                    "failed to run loco db entities. error details: `{err}`",
+                ))
+            })?;
+    }
 
     Ok(gen_result)
 }

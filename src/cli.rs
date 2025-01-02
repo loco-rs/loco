@@ -1044,11 +1044,11 @@ pub fn format_templates_as_tree(paths: Vec<PathBuf>) -> String {
     output.push_str("Available templates and directories to copy:\n\n");
 
     for (top_level, sub_categories) in &categories {
-        output.push_str(&format!("{top_level}\n"));
+        output.push_str(&format!("{}", format!("{top_level}\n").yellow()));
 
         for (sub_category, paths) in sub_categories {
             if !sub_category.is_empty() {
-                output.push_str(&format!(" └── {sub_category}\n"));
+                output.push_str(&format!("{}", format!(" └── {sub_category}\n").yellow()));
             }
 
             for path in paths {
@@ -1062,13 +1062,32 @@ pub fn format_templates_as_tree(paths: Vec<PathBuf>) -> String {
 
     output.push_str(&format!("\n\n{}\n\n", "Usage Examples:".bold().green()));
     output.push_str(&format!("{}", "Override a Specific File:\n".bold()));
-    output.push_str(" * cargo loco generate override scaffold/api/controller.t\n");
-    output.push_str(" * cargo loco generate override migration/add_columns.t\n");
-    output.push_str(&format!("{}", "\nOverride All Files in a Folder:\n".bold()));
-    output.push_str(" * cargo loco generate override scaffold/htmx\n");
-    output.push_str(" * cargo loco generate override task");
-    output.push_str(&format!("{}", "\nOverride All templates:\n".bold()));
-    output.push_str(" * cargo loco generate override .\n");
+    output.push_str(&format!(
+        " * cargo loco generate override {}\n",
+        "scaffold/api/controller.t".yellow()
+    ));
+    output.push_str(&format!(
+        " * cargo loco generate override {}",
+        "migration/add_columns.t".yellow()
+    ));
+    output.push_str(&format!(
+        "{}",
+        "\n\nOverride All Files in a Folder:\n".bold()
+    ));
+    output.push_str(&format!(
+        " * cargo loco generate override {}\n",
+        "scaffold/htmx".yellow()
+    ));
+    output.push_str(&format!(
+        " * cargo loco generate override {}",
+        "task".yellow()
+    ));
+    // output.push_str(" * cargo loco generate override task");
+    output.push_str(&format!("{}", "\n\nOverride All templates:\n".bold()));
+    output.push_str(&format!(
+        " * cargo loco generate override {}\n",
+        ".".yellow()
+    ));
 
     output
 }
