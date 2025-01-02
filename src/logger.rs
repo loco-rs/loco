@@ -76,6 +76,7 @@ const MODULE_WHITELIST: &[&str] = &[
     "sqlx::query",
     "sidekiq",
     "playground",
+    "loco_gen",
 ];
 
 // Keep nonblocking file appender work guard

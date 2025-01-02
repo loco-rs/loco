@@ -30,15 +30,17 @@ cfg_if::cfg_if! {
     feature = "with-db"
 ))]
 use std::process::exit;
-
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+};
 
 #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
 use crate::bgworker::JobStatus;
 use clap::{ArgAction, Parser, Subcommand};
 use colored::Colorize;
 use duct::cmd;
-use loco_gen::{Component, ScaffoldKind};
+use loco_gen::{Component, DeploymentKind, ScaffoldKind};
 
 use crate::{
     app::{AppContext, Hooks},
@@ -264,7 +266,21 @@ enum ComponentArg {
         name: String,
     },
     /// Generate a deployment infrastructure
-    Deployment {},
+    Deployment {
+        // deployment kind.
+        #[clap(long, value_enum)]
+        kind: DeploymentKind,
+    },
+
+    /// Override templates and allows you to take control of them. You can always go back when deleting the local template.
+    Override {
+        /// The path to a specific template or directory to copy.
+        template_path: Option<String>,
+
+        /// Show available templates to copy under the specified directory without actually coping them.
+        #[arg(long, action)]
+        info: bool,
+    },
 }
 
 impl ComponentArg {
@@ -331,7 +347,7 @@ impl ComponentArg {
             Self::Scheduler {} => Ok(Component::Scheduler {}),
             Self::Worker { name } => Ok(Component::Worker { name }),
             Self::Mailer { name } => Ok(Component::Mailer { name }),
-            Self::Deployment {} => {
+            Self::Deployment { kind } => {
                 let copy_asset_folder = &config
                     .server
                     .middlewares
@@ -347,12 +363,19 @@ impl ComponentArg {
                     .map(|a| a.fallback);
 
                 Ok(Component::Deployment {
+                    kind,
                     asset_folder: copy_asset_folder.clone(),
                     fallback_file: fallback_file.clone(),
                     host: config.server.host.clone(),
                     port: config.server.port,
                 })
             }
+            Self::Override {
+                template_path: _,
+                info: _,
+            } => Err(crate::Error::string(
+                "Error: Override could not be generated.",
+            )),
         }
     }
 }
@@ -531,9 +554,6 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::cognitive_complexity)]
 pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
-    use colored::Colorize;
-    use loco_gen::AppInfo;
-
     let cli: Cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
@@ -619,12 +639,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             run_scheduler::<H>(&app_context, config.as_ref(), name, tag, list).await?;
         }
         Commands::Generate { component } => {
-            loco_gen::generate(
-                component.into_gen_component(&config)?,
-                &AppInfo {
-                    app_name: H::app_name().to_string(),
-                },
-            )?;
+            handle_generate_command::<H>(component, &config)?;
         }
         Commands::Doctor {
             config: config_arg,
@@ -677,9 +692,6 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
 
 #[cfg(not(feature = "with-db"))]
 pub async fn main<H: Hooks>() -> crate::Result<()> {
-    use colored::Colorize;
-    use loco_gen::AppInfo;
-
     let cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
@@ -758,12 +770,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             run_scheduler::<H>(&app_context, config.as_ref(), name, tag, list).await?;
         }
         Commands::Generate { component } => {
-            loco_gen::generate(
-                component.into_gen_component(&config)?,
-                &AppInfo {
-                    app_name: H::app_name().to_string(),
-                },
-            )?;
+            handle_generate_command::<H>(component, &config)?;
         }
         Commands::Version {} => {
             println!("{}", H::app_version(),);
@@ -953,4 +960,134 @@ async fn handle_job_command<H: Hooks>(
         }
         JobsCommands::Import { file } => queue.import(file.as_path()).await,
     }
+}
+
+fn handle_generate_command<H: Hooks>(
+    component: ComponentArg,
+    config: &Config,
+) -> crate::Result<()> {
+    if let ComponentArg::Override {
+        template_path,
+        info,
+    } = component
+    {
+        match (template_path, info) {
+            // If no template path is provided, display the available templates,
+            // ignoring the `--info` flag.
+            (None, true | false) => {
+                let templates = loco_gen::template::collect();
+                println!("{}", format_templates_as_tree(templates));
+            }
+            // If a template path is provided and `--info` is enabled,
+            // display the templates from the specified path.
+            (Some(path), true) => {
+                let templates = loco_gen::template::collect_files_path(Path::new(&path)).unwrap();
+                println!("{}", format_templates_as_tree(templates));
+            }
+            // If a template path is provided and `--info` is disabled,
+            // copy the template to the default local template path.
+            (Some(path), false) => {
+                let copied_files = loco_gen::copy_template(
+                    Path::new(&path),
+                    Path::new(loco_gen::template::DEFAULT_LOCAL_TEMPLATE),
+                )?;
+                if copied_files.is_empty() {
+                    println!("{}", "No templates were found to copy.".red());
+                } else {
+                    println!(
+                        "{}",
+                        "The following templates were successfully copied:".green()
+                    );
+                    for f in copied_files {
+                        println!(" * {}", f.display());
+                    }
+                }
+            }
+        }
+    } else {
+        let get_result = loco_gen::generate(
+            &loco_gen::RRgen::default(),
+            component.into_gen_component(config)?,
+            &loco_gen::AppInfo {
+                app_name: H::app_name().to_string(),
+            },
+        )?;
+        let messages = loco_gen::collect_messages(&get_result);
+        println!("{messages}");
+    };
+    Ok(())
+}
+
+#[must_use]
+pub fn format_templates_as_tree(paths: Vec<PathBuf>) -> String {
+    let mut categories: BTreeMap<String, BTreeMap<String, Vec<PathBuf>>> = BTreeMap::new();
+
+    for path in paths {
+        if let Some(parent) = path.parent() {
+            let parent_str = parent.to_string_lossy().to_string();
+            let mut components = parent_str.split('/');
+            if let Some(top_level) = components.next() {
+                let top_key = top_level.to_string();
+                let sub_key = components.next().unwrap_or("").to_string();
+
+                categories
+                    .entry(top_key)
+                    .or_default()
+                    .entry(sub_key)
+                    .or_default()
+                    .push(path);
+            }
+        }
+    }
+
+    let mut output = String::new();
+    output.push_str("Available templates and directories to copy:\n\n");
+
+    for (top_level, sub_categories) in &categories {
+        output.push_str(&format!("{}", format!("{top_level}\n").yellow()));
+
+        for (sub_category, paths) in sub_categories {
+            if !sub_category.is_empty() {
+                output.push_str(&format!("{}", format!(" └── {sub_category}\n").yellow()));
+            }
+
+            for path in paths {
+                output.push_str(&format!(
+                    "   └── {}\n",
+                    path.file_name().unwrap_or_default().to_string_lossy()
+                ));
+            }
+        }
+    }
+
+    output.push_str(&format!("\n\n{}\n\n", "Usage Examples:".bold().green()));
+    output.push_str(&format!("{}", "Override a Specific File:\n".bold()));
+    output.push_str(&format!(
+        " * cargo loco generate override {}\n",
+        "scaffold/api/controller.t".yellow()
+    ));
+    output.push_str(&format!(
+        " * cargo loco generate override {}",
+        "migration/add_columns.t".yellow()
+    ));
+    output.push_str(&format!(
+        "{}",
+        "\n\nOverride All Files in a Folder:\n".bold()
+    ));
+    output.push_str(&format!(
+        " * cargo loco generate override {}\n",
+        "scaffold/htmx".yellow()
+    ));
+    output.push_str(&format!(
+        " * cargo loco generate override {}",
+        "task".yellow()
+    ));
+    // output.push_str(" * cargo loco generate override task");
+    output.push_str(&format!("{}", "\n\nOverride All templates:\n".bold()));
+    output.push_str(&format!(
+        " * cargo loco generate override {}\n",
+        ".".yellow()
+    ));
+
+    output
 }

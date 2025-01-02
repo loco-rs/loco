@@ -1,0 +1,29 @@
+---
+source: loco-gen/tests/templates/scaffold.rs
+expression: "fs::read_to_string(views_path.join(format!(\"{view}.html\"))).expect(\"view file missing\")"
+---
+{% extends "base.html" %}
+
+{% block title %}
+Create movie
+{% endblock title %}
+
+{% block content %}
+<h1>Create new movie</h1>
+<div class="mb-10">
+    <form action="/movies" method="post">
+        <div class="mb-5">
+        <div>
+            <label>title</label>
+            <br />
+            <input id="title" name="title" type="text" value=""/>
+            </div>
+        </div>
+        <div>
+            <button class=" text-xs py-3 px-6 rounded-lg bg-gray-900 text-white" type="submit">Submit</button>
+        </div>
+    </form>
+<br />
+<a href="/movies">Back to movies</a>
+</div>
+{% endblock content %}
