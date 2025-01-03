@@ -48,7 +48,7 @@ pub fn generate(
                         mappings.schema_fields()
                     ))
                 })?;
-                columns.push((fname.to_string(), rust_type.to_string()));
+                columns.push((fname.to_string(), rust_type.to_string(), ftype));
             }
             crate::infer::FieldType::TypeWithParameters(ftype, params) => {
                 let mappings = get_mappings();
@@ -69,7 +69,7 @@ pub fn generate(
                     )));
                 }
 
-                columns.push((fname.to_string(), rust_type.to_string()));
+                columns.push((fname.to_string(), rust_type.to_string(), ftype));
             }
         }
     }
