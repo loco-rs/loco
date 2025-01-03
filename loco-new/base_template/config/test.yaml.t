@@ -53,7 +53,7 @@ workers:
   #   - BackgroundQueue - Workers operate asynchronously in the background, processing queued.
   #   - ForegroundBlocking - Workers operate in the foreground and block until tasks are completed.
   #   - BackgroundAsync - Workers operate asynchronously in the background, processing tasks with async capabilities.
-  mode: {{settings.background.kind}}
+  mode: ForegroundBlocking
 
   {% if settings.background.kind == "BackgroundQueue"%}
 # Queue Configuration
@@ -70,6 +70,7 @@ queue:
 
 # Mailer Configuration.
 mailer:
+  stub: true
   # SMTP mailer configuration.
   smtp:
     # Enable/Disable smtp mailer.
@@ -113,7 +114,7 @@ database:
   # Truncate database when application loaded. This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_truncate: true
   # Recreating schema when application loaded.  This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
-  dangerously_recreate: false
+  dangerously_recreate: true
 {%- endif %}
 
 {%- if settings.auth %}

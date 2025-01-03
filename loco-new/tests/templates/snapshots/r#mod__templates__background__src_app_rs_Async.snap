@@ -17,8 +17,8 @@ use loco_rs::{
 
 #[allow(unused_imports)]
 use crate::{
-    controllers
-    , workers::downloader::DownloadWorker,
+    controllers ,tasks
+    , workers::downloader::DownloadWorker
 };
 
 pub struct App;

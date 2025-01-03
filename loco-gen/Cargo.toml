@@ -14,18 +14,22 @@ path = "src/lib.rs"
 
 [dependencies]
 
-rrgen = "0.5.3"
+cruet = "0.14.0"
+rrgen = "0.5.5"
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 regex = { workspace = true }
 tracing = { workspace = true }
 chrono = { workspace = true }
+colored = { workspace = true }
 
 clap = { version = "4.4.7", features = ["derive"] }
-dialoguer = "0.11"
 duct = "0.13"
+include_dir = { version = "0.7.4" }
 
 [dev-dependencies]
 tree-fs = { version = "0.2.1" }
 syn = { version = "2", features = ["full"] }
+insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
+rstest = "0.23.0"
