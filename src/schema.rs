@@ -448,13 +448,19 @@ pub async fn add_reference(
                     .to_owned(),
             )
             .await?;
-            m.alter_table(
-                alter(Alias::new(&nz_fromtbl))
-                    // add fk on movies#user_id
-                    .add_foreign_key(&fk)
-                    .to_owned(),
-            )
-            .await?;
+            // Per Rails 5.2, adding FK to existing table does nothing because
+            // sqlite will not allow it. FK in sqlite are applied only on table
+            // creation. more: https://www.bigbinary.com/blog/rails-6-adds-add_foreign_key-and-remove_foreign_key-for-sqlite3
+            // we comment it below leaving it for academic purposes.
+            /*
+                m.alter_table(
+                    alter(Alias::new(&nz_fromtbl))
+                        // add fk on movies#user_id
+                        .add_foreign_key(&fk)
+                        .to_owned(),
+                )
+                .await?;
+            */
         }
     }
     Ok(())
