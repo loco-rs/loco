@@ -169,7 +169,7 @@ async fn current(auth: auth::JWT, State(ctx): State<AppContext>) -> Result<Respo
 ///    For security and to avoid exposing whether an email exists, the response always returns 200, even if the email is invalid.
 ///
 /// 2. **Click the Magic Link**:  
-///    The user clicks the link (/magic-link/:token), which validates the token and its expiration.  
+///    The user clicks the link (/magic-link/{token}), which validates the token and its expiration.  
 ///    If valid, the server generates a JWT and responds with a [`LoginResponse`].  
 ///    If invalid or expired, an unauthorized response is returned.
 ///
@@ -232,5 +232,5 @@ pub fn routes() -> Routes {
         .add("/reset", post(reset))
         .add("/current", get(current))
         .add("/magic-link", post(magic_link))
-        .add("/magic-link/:token", get(magic_link_verify))
+        .add("/magic-link/{token}", get(magic_link_verify))
 }

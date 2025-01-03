@@ -123,8 +123,8 @@ pub fn routes() -> Routes {
         .add("/", get(list))
         .add("/", post(add))
         .add("new", get(new))
-        .add(":id", get(show))
-        .add(":id/edit", get(edit))
-        .add(":id", delete(remove))
-        .add(":id", post(update))
+        .add("{id}", get(show))
+        .add("{id}/edit", get(edit))
+        .add("{id}", delete(remove))
+        .add("{id}", post(update))
 }

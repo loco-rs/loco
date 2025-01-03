@@ -17,7 +17,6 @@ use std::{
     task::{Context, Poll},
 };
 
-use async_trait::async_trait;
 use axum::{
     body::Body,
     extract::{ConnectInfo, FromRequestParts, Request},
@@ -187,7 +186,6 @@ pub enum RemoteIP {
     None,
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for RemoteIP
 where
     S: Send + Sync,

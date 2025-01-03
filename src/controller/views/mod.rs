@@ -1,5 +1,5 @@
 pub mod engines;
-use axum::{async_trait, extract::FromRequestParts, http::request::Parts, Extension};
+use axum::{extract::FromRequestParts, http::request::Parts, Extension};
 use serde::Serialize;
 pub mod tera_builtins;
 use crate::Result;
@@ -56,7 +56,6 @@ impl<E> From<E> for ViewEngine<E> {
     }
 }
 
-#[async_trait]
 impl<S, E> FromRequestParts<S> for ViewEngine<E>
 where
     S: Send + Sync,
