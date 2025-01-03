@@ -77,10 +77,9 @@ async fn can_login_with_verify(#[case] test_name: &str, #[case] password: &str) 
         assert_eq!(register_response.status_code(), 200, "Register request should succeed");
         
         let user = users::Model::find_by_email(&ctx.db, email).await.unwrap();
-        let verify_payload = serde_json::json!({
-            "token": user.email_verification_token,
-        });
-        request.post("/api/auth/verify").json(&verify_payload).await;
+        let email_verification_token = user.email_verification_token
+                    .expect("Email verification token should be generated");
+        request.get(&format!("/api/auth/verify/{email_verification_token}")).await;
 
         //verify user request
         let response = request
