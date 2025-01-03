@@ -1,6 +1,7 @@
 ---
 source: loco-gen/tests/templates/migration.rs
 expression: "fs::read_to_string(&migration_file).expect(\"Failed to read the migration file\")"
+snapshot_kind: text
 ---
 use loco_rs::schema::*;
 use sea_orm_migration::prelude::*;
@@ -10,51 +11,15 @@ pub struct Migration;
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
-    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-      manager
-            .alter_table(
-                alter(Users::Table)
-                  
-                  .drop_column(Users::Name)
-                  
-                  .to_owned(),
-            )
-            .await?;
-      manager
-            .alter_table(
-                alter(Users::Table)
-                  
-                  .drop_column(Users::Age)
-                  
-                  .to_owned(),
-            )
-            .await?;
-      Ok(())
+    async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        remove_column(m, "users", "name").await?;
+        remove_column(m, "users", "age").await?;
+        Ok(())
     }
 
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-      manager
-            .alter_table(
-                alter(Users::Table)
-                  .add_column(string_null(Users::Name))
-                  .to_owned(),
-            )
-            .await?;
-      manager
-            .alter_table(
-                alter(Users::Table)
-                  .add_column(integer_null(Users::Age))
-                  .to_owned(),
-            )
-            .await?;
-      Ok(())
+    async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        add_column(m, "users", "name", ColType::StringNull).await?;
+        add_column(m, "users", "age", ColType::IntegerNull).await?;
+        Ok(())
     }
-}
-
-#[derive(DeriveIden)]
-enum Users {
-    Table,
-    Name,
-    Age,
-    
 }
