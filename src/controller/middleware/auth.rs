@@ -77,9 +77,7 @@ where
                     user,
                 })
             }
-            Err(_err) => {
-                return Err(Error::Unauthorized("token is not valid".to_string()));
-            }
+            Err(_err) => Err(Error::Unauthorized("token is not valid".to_string())),
         }
     }
 }
@@ -110,9 +108,7 @@ where
             Ok(claims) => Ok(Self {
                 claims: claims.claims,
             }),
-            Err(_err) => {
-                return Err(Error::Unauthorized("token is not valid".to_string()));
-            }
+            Err(_err) => Err(Error::Unauthorized("token is not valid".to_string())),
         }
     }
 }
