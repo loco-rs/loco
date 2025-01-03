@@ -33,5 +33,4 @@ impl MigrationTrait for Migration {
         add_column(m, "{{plural_snake}}", "{{column.0}}", ColType::{{column.1}}).await?;
         {% endfor -%}
         Ok(())
-    }
 }

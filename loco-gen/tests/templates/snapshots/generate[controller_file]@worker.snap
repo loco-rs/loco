@@ -1,0 +1,26 @@
+---
+source: loco-gen/tests/templates/worker.rs
+expression: "fs::read_to_string(worker_path.join(\"register_email.rs\")).expect(\"Failed to read generated worker file: register_email.rs\")"
+---
+use serde::{Deserialize, Serialize};
+use loco_rs::prelude::*;
+
+pub struct Worker {
+    pub ctx: AppContext,
+}
+
+#[derive(Deserialize, Debug, Serialize)]
+pub struct WorkerArgs {
+}
+
+#[async_trait]
+impl BackgroundWorker<WorkerArgs> for Worker {
+    fn build(ctx: &AppContext) -> Self {
+        Self { ctx: ctx.clone() }
+    }
+    async fn perform(&self, _args: WorkerArgs) -> Result<()> {
+        println!("=================RegisterEmail=======================");
+        // TODO: Some actual work goes here...
+        Ok(())
+    }
+}

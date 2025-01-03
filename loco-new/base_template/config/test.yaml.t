@@ -114,7 +114,7 @@ database:
   # Truncate database when application loaded. This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_truncate: true
   # Recreating schema when application loaded.  This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
-  dangerously_recreate: false
+  dangerously_recreate: true
 {%- endif %}
 
 {%- if settings.auth %}

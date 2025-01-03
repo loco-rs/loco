@@ -1,0 +1,72 @@
+---
+source: loco-gen/tests/templates/migration.rs
+expression: "fs::read_to_string(&migration_file).expect(\"Failed to read the migration file\")"
+---
+use loco_rs::schema::table_auto_tz;
+use sea_orm_migration::{prelude::*, schema::*};
+
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .create_table(
+                table_auto_tz(GroupUsers::Table)
+                    .primary_key(
+                        Index::create()
+                            .name("idx-create_join_table_users_and_groups-refs-pk")
+                            .table(GroupUsers::Table)
+                            .col(GroupUsers::UserId)
+                            .col(GroupUsers::GroupId)
+                            ,
+                    )
+                    .col(integer(GroupUsers::UserId))
+                    .col(integer(GroupUsers::GroupId))
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk-create_join_table_users_and_groups-user_ids")
+                            .from(GroupUsers::Table, GroupUsers::UserId)
+                            .to(Users::Table, Users::Id)
+                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_update(ForeignKeyAction::Cascade),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk-create_join_table_users_and_groups-group_ids")
+                            .from(GroupUsers::Table, GroupUsers::GroupId)
+                            .to(Groups::Table, Groups::Id)
+                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_update(ForeignKeyAction::Cascade),
+                    )
+                    .to_owned(),
+            )
+            .await
+    }
+
+    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .drop_table(Table::drop().table(GroupUsers::Table).to_owned())
+            .await
+    }
+}
+
+#[derive(DeriveIden)]
+enum GroupUsers {
+    Table,
+    UserId,
+    GroupId,
+    
+}
+
+#[derive(DeriveIden)]
+enum Users {
+    Table,
+    Id,
+}
+#[derive(DeriveIden)]
+enum Groups {
+    Table,
+    Id,
+}
