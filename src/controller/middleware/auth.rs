@@ -21,7 +21,6 @@
 //! ```
 use std::collections::HashMap;
 
-use async_trait::async_trait;
 use axum::{
     extract::{FromRef, FromRequestParts, Query},
     http::{request::Parts, HeaderMap},
@@ -53,7 +52,6 @@ pub struct JWTWithUser<T: Authenticable> {
 }
 
 // Implement the FromRequestParts trait for the Auth struct
-#[async_trait]
 impl<S, T> FromRequestParts<S> for JWTWithUser<T>
 where
     AppContext: FromRef<S>,
@@ -94,7 +92,6 @@ pub struct JWT {
 }
 
 // Implement the FromRequestParts trait for the Auth struct
-#[async_trait]
 impl<S> FromRequestParts<S> for JWT
 where
     AppContext: FromRef<S>,
@@ -203,7 +200,6 @@ pub struct ApiToken<T: Authenticable> {
     pub user: T,
 }
 
-#[async_trait]
 // Implementing the `FromRequestParts` trait for `ApiToken` to enable extracting
 // it from the request.
 impl<S, T> FromRequestParts<S> for ApiToken<T>

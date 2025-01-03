@@ -232,5 +232,5 @@ pub fn routes() -> Routes {
         .add("/reset", post(reset))
         .add("/current", get(current))
         .add("/magic-link", post(magic_link))
-        .add("/magic-link/:token", get(magic_link_verify))
+        .add("/magic-link/{token}", get(magic_link_verify))
 }
