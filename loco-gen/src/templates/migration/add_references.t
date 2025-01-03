@@ -27,7 +27,7 @@ impl MigrationTrait for Migration {
         {% endfor -%}
 
         {% for ref in references -%}
-        add_reference(m, "{{plural_snake}}", "{{column.0}}", "{{column.1}}").await?;
+        add_reference(m, "{{plural_snake}}", "{{ref.0}}", "{{ref.1}}").await?;
         {% endfor -%}
 
         Ok(())
@@ -35,7 +35,7 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
         {% for ref in references -%}
-        remove_reference(m, "{{plural_snake}}", "{{column.0}}", "{{column.1}}").await?;
+        remove_reference(m, "{{plural_snake}}", "{{ref.0}}", "{{ref.1}}").await?;
         {% endfor -%}
 
         {% for column in columns -%}

@@ -1,6 +1,7 @@
 ---
 source: loco-gen/tests/templates/migration.rs
 expression: "fs::read_to_string(&migration_file).expect(\"Failed to read the migration file\")"
+snapshot_kind: text
 ---
 use loco_rs::schema::*;
 use sea_orm_migration::prelude::*;
@@ -10,47 +11,12 @@ pub struct Migration;
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
-    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .alter_table(
-                alter(Posts::Table)
-                  .add_column(integer(Posts::UserId))
-                  .add_foreign_key(
-                      TableForeignKey::new()
-                          .name("fk-posts-users")
-                          .from_tbl(Posts::Table)
-                          .from_col(Posts::UserId)
-                          .to_tbl(Users::Table)
-                          .to_col(Users::Id)
-                          .on_delete(ForeignKeyAction::Cascade)
-                          .on_update(ForeignKeyAction::Cascade),
-                  )
-                  .to_owned(),
-            )
-            .await
+    async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        add_reference(m, "posts", "user", "").await?;
+        Ok(())
     }
 
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .alter_table(
-              alter(Posts::Table)
-                .drop_foreign_key(Alias::new("fk-posts-users"))
-                .drop_column(Posts::UserId)
-                .to_owned()
-            )
-            .await
-    }
-}
-
-#[derive(DeriveIden)]
-enum Posts {
-    Table,
-    UserId,
-    
-}
-
-#[derive(DeriveIden)]
-enum Users {
-    Table,
-    Id,
+    async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        remove_reference(m, "posts", "user", "").await?;
+        }
 }
