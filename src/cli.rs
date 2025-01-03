@@ -30,18 +30,19 @@ cfg_if::cfg_if! {
     feature = "with-db"
 ))]
 use std::process::exit;
+
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
 };
 
-#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
-use crate::bgworker::JobStatus;
 use clap::{ArgAction, Parser, Subcommand};
 use colored::Colorize;
 use duct::cmd;
 use loco_gen::{Component, DeploymentKind, ScaffoldKind};
 
+#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+use crate::bgworker::JobStatus;
 use crate::{
     app::{AppContext, Hooks},
     boot::{
@@ -417,6 +418,8 @@ enum DbCommands {
         #[arg(long, default_value = "src/fixtures")]
         from: PathBuf,
     },
+    /// Dump database schema
+    Schema,
 }
 
 impl From<DbCommands> for RunDbCommand {
@@ -442,6 +445,7 @@ impl From<DbCommands> for RunDbCommand {
             DbCommands::Create => {
                 unreachable!("Create db should't handled in the global db commands")
             }
+            DbCommands::Schema => Self::Schema,
         }
     }
 }

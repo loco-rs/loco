@@ -310,7 +310,92 @@ $ cargo loco generate model movies long_title:string added_by:references:users d
 
 
 
-### Migration Definition
+### Authoring migrations
+
+To use the migrations DSL, make sure you have the following `loco_rs::schema::*` import and SeaORM `prelude`.
+
+```rust
+use loco_rs::schema::*;
+use sea_orm_migration::prelude::*;
+```
+
+Then, create a struct:
+
+```rust
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+```
+
+And then implement your migration (see below).
+
+**Create a table**
+
+Create a table, provide two arrays: (1) columns (2) references.
+
+Leave references empty to not create any reference fields.
+
+```rust
+impl MigrationTrait for Migration {
+    async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        create_table(
+            m,
+            "posts",
+            &[
+                ("title", ColType::StringNull),
+                ("content", ColType::StringNull),
+            ],
+            &[],
+        )
+        .await
+    }
+
+    async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        drop_table(m, "posts").await
+    }
+}
+```
+
+**Create a join table**
+
+Provide the references to the second array argument. Use an empty string `""` to indicate you want us to generate a reference column name for you (e.g. a `user` reference will imply connecting the `users` table through a `user_id` column in `group_users`).
+
+Provide a non-empty string to indicate a specific name for the reference column name.
+
+```rust
+impl MigrationTrait for Migration {
+    async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        create_join_table(m, "group_users", &[], &[("user", ""), ("group", "")]).await
+    }
+
+    async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        drop_table(m, "group_users").await
+    }
+}
+```
+
+**Add a column**
+
+Add a single column. You can use as many such statements as you like in a single migration (to add multiple columns).
+
+
+```rust
+impl MigrationTrait for Migration {
+    async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        add_column(m, "users", "amount", ColType::DecimalLenNull(24,8)).await?;
+        Ok(())
+    }
+
+    async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        remove_column(m, "users", "amount").await?;
+        Ok(())
+    }
+}
+```
+
+
+### Authoring advanced migrations
+
+Using the `manager` directly lets you access more advanced operations while authoring your migrations.
 
 **Add a column**
 

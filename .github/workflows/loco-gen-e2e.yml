@@ -188,8 +188,8 @@ jobs:
               double:double! \
               decimal_null:decimal \
               decimal:decimal! \
-              decimal_len_null:decimal_len \
-              decimal_len:decimal_len! \
+              decimal_len_null:decimal_len:8:24 \
+              decimal_len:decimal_len!:8:24 \
               boolean_null:bool \
               boolean:bool! \
               timestamp_with_time_zone_null:tstz \
@@ -241,8 +241,8 @@ jobs:
               double:double! \
               decimal_null:decimal \
               decimal:decimal! \
-              decimal_len_null:decimal_len \
-              decimal_len:decimal_len! \
+              decimal_len_null:decimal_len:8:24 \
+              decimal_len:decimal_len!:8:24 \
               boolean_null:bool \
               boolean:bool! \
               timestamp_with_time_zone_null:tstz \
