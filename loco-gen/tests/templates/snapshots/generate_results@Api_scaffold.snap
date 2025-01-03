@@ -1,0 +1,8 @@
+---
+source: loco-gen/tests/templates/scaffold.rs
+expression: collect_messages(&gen_result)
+---
+* Migration for `movie` added! You can now apply it with `$ cargo loco db migrate`.
+* A test for model `Movies` was added. Run with `cargo test`.
+* Controller `Movie` was added successfully.
+* Tests for controller `Movie` was added successfully. Run `cargo test`.

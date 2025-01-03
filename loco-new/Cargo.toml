@@ -50,7 +50,7 @@ uuid = { version = "1.11.0", features = ["v4", "fast-rng"] }
 serde_yaml = { version = "0.9" }
 insta = { version = "1.41.1", features = ["redactions", "yaml", "filters"] }
 rstest = { version = "0.23.0" }
-tree-fs = "0.2.0"
+tree-fs = "0.2.1"
 mockall = "0.13.0"
 toml = "0.8.19"
 regex = "1.11.1"

@@ -1,17 +1,10 @@
-use std::{collections::HashMap, env::current_dir};
-
+use crate::{get_mappings, render_template, AppInfo, Error, GenerateResults, Result};
 use chrono::Utc;
 use duct::cmd;
 use rrgen::RRgen;
 use serde_json::json;
-
-use super::{Error, Result};
-use crate::get_mappings;
-
-pub const MODEL_T: &str = include_str!("templates/model/model.t");
-const MODEL_TEST_T: &str = include_str!("templates/model/test.t");
-
-use super::{collect_messages, AppInfo};
+use std::path::Path;
+use std::{collections::HashMap, env::current_dir};
 
 /// skipping some fields from the generated models.
 /// For example, the `created_at` and `updated_at` fields are automatically
@@ -59,113 +52,48 @@ pub fn get_columns_and_references(
     }
     Ok((columns, references))
 }
+
 pub fn generate(
     rrgen: &RRgen,
     name: &str,
     is_link: bool,
     fields: &[(String, String)],
     appinfo: &AppInfo,
-) -> Result<String> {
+) -> Result<GenerateResults> {
     let pkg_name: &str = &appinfo.app_name;
     let ts = Utc::now();
 
     let (columns, references) = get_columns_and_references(fields)?;
 
     let vars = json!({"name": name, "ts": ts, "pkg_name": pkg_name, "is_link": is_link, "columns": columns, "references": references});
-    let res1 = rrgen.generate(MODEL_T, &vars)?;
-    let res2 = rrgen.generate(MODEL_TEST_T, &vars)?;
+    let gen_result = render_template(rrgen, Path::new("model"), &vars)?;
 
-    // generate the model files by migrating and re-running seaorm
-    let cwd = current_dir()?;
-    let env_map: HashMap<_, _> = std::env::vars().collect();
+    if std::env::var("SKIP_MIGRATION").is_err() {
+        // generate the model files by migrating and re-running seaorm
+        let cwd = current_dir()?;
+        let env_map: HashMap<_, _> = std::env::vars().collect();
 
-    let _ = cmd!("cargo", "loco-tool", "db", "migrate",)
-        .stderr_to_stdout()
-        .dir(cwd.as_path())
-        .full_env(&env_map)
-        .run()
-        .map_err(|err| {
-            Error::Message(format!(
-                "failed to run loco db migration. error details: `{err}`",
-            ))
-        })?;
-    let _ = cmd!("cargo", "loco-tool", "db", "entities",)
-        .stderr_to_stdout()
-        .dir(cwd.as_path())
-        .full_env(&env_map)
-        .run()
-        .map_err(|err| {
-            Error::Message(format!(
-                "failed to run loco db entities. error details: `{err}`",
-            ))
-        })?;
-
-    let messages = collect_messages(vec![res1, res2]);
-    Ok(messages)
-}
-
-#[cfg(test)]
-mod tests {
-    use std::{env, process::Command};
-
-    use crate::{
-        testutil::{self, assert_cargo_check, assert_file, assert_single_file_match},
-        AppInfo,
-    };
-
-    fn with_new_app<F>(app_name: &str, f: F)
-    where
-        F: FnOnce(),
-    {
-        testutil::with_temp_dir(|_previous, current| {
-            let status = Command::new("loco")
-                .args([
-                    "new",
-                    "-n",
-                    app_name,
-                    "--db",
-                    "sqlite",
-                    "--bg",
-                    "async",
-                    "--assets",
-                    "serverside",
-                    "-a",
-                ])
-                .status()
-                .expect("cannot run command");
-
-            assert!(status.success(), "Command failed: loco new -n {app_name}");
-            env::set_current_dir(current.join(app_name))
-                .expect("Failed to change directory to app");
-            f(); // Execute the provided closure
-        })
-        .expect("temp dir setup");
+        let _ = cmd!("cargo", "loco-tool", "db", "migrate",)
+            .stderr_to_stdout()
+            .dir(cwd.as_path())
+            .full_env(&env_map)
+            .run()
+            .map_err(|err| {
+                Error::Message(format!(
+                    "failed to run loco db migration. error details: `{err}`",
+                ))
+            })?;
+        let _ = cmd!("cargo", "loco-tool", "db", "entities",)
+            .stderr_to_stdout()
+            .dir(cwd.as_path())
+            .full_env(&env_map)
+            .run()
+            .map_err(|err| {
+                Error::Message(format!(
+                    "failed to run loco db entities. error details: `{err}`",
+                ))
+            })?;
     }
 
-    #[test]
-    fn test_can_generate_model() {
-        let rrgen = rrgen::RRgen::default();
-        with_new_app("saas", || {
-            super::generate(
-                &rrgen,
-                "movies",
-                false,
-                &[("title".to_string(), "string".to_string())],
-                &AppInfo {
-                    app_name: "saas".to_string(),
-                },
-            )
-            .expect("generate");
-            assert_file("migration/src/lib.rs", |content| {
-                content.assert_syntax();
-                content.assert_regex_match("_movies::Migration");
-            });
-            let migration = assert_single_file_match("migration/src", ".*_movies.rs$");
-            assert_file(migration.to_str().unwrap(), |content| {
-                content.assert_syntax();
-                content.assert_regex_match("Title");
-            });
-            assert_cargo_check();
-        });
-    }
+    Ok(gen_result)
 }
