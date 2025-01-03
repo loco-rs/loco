@@ -112,9 +112,9 @@ $ demo_app-cli routes --environment test
   ├─ GET	/notes
   │  POST	/notes
   │
-  ├─ GET	/notes/:id
-  │  POST	/notes/:id
-  └─ DELETE	/notes/:id
+  ├─ GET	/notes/{id}
+  │  POST	/notes/{id}
+  └─ DELETE	/notes/{id}
 /response
   ├─ GET	/response/album
   ├─ GET	/response/empty
