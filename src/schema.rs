@@ -412,29 +412,51 @@ pub async fn add_reference(
     } else {
         refname.to_string()
     };
-    // from movies to users -> movies#user_id to users#id
-    m.alter_table(
-        alter(Alias::new(&nz_fromtbl))
-            // add movies#user_id (the user_id column is new)
-            .add_column(ColType::Integer.to_def(Alias::new(&nz_ref_name))) // XXX fix, totbl_id
-            // add fk on movies#user_id
-            .add_foreign_key(
-                &TableForeignKey::new()
-                    // fk-movies-user_id-to-users
-                    .name(format!("fk-{nz_fromtbl}-{nz_ref_name}-to-{nz_totbl}"))
-                    // from movies#user_id
-                    .from_tbl(Alias::new(nz_fromtbl))
-                    .from_col(Alias::new(&nz_ref_name)) // xxx fix
-                    // to users#id
-                    .to_tbl(Alias::new(nz_totbl))
-                    .to_col(Alias::new("id"))
-                    .on_delete(ForeignKeyAction::Cascade)
-                    .on_update(ForeignKeyAction::Cascade)
+    let bk = m.get_database_backend();
+    let col = ColType::Integer.to_def(Alias::new(&nz_ref_name));
+    let fk = TableForeignKey::new()
+        // fk-movies-user_id-to-users
+        .name(format!("fk-{nz_fromtbl}-{nz_ref_name}-to-{nz_totbl}"))
+        // from movies#user_id
+        .from_tbl(Alias::new(&nz_fromtbl))
+        .from_col(Alias::new(&nz_ref_name)) // xxx fix
+        // to users#id
+        .to_tbl(Alias::new(nz_totbl))
+        .to_col(Alias::new("id"))
+        .on_delete(ForeignKeyAction::Cascade)
+        .on_update(ForeignKeyAction::Cascade)
+        .to_owned();
+    match bk {
+        sea_orm::DatabaseBackend::MySql | sea_orm::DatabaseBackend::Postgres => {
+            // from movies to users -> movies#user_id to users#id
+            m.alter_table(
+                alter(Alias::new(&nz_fromtbl))
+                    // add movies#user_id (the user_id column is new)
+                    .add_column(col.clone()) // XXX fix, totbl_id
+                    // add fk on movies#user_id
+                    .add_foreign_key(&fk)
                     .to_owned(),
             )
-            .to_owned(),
-    )
-    .await?;
+            .await?;
+        }
+        sea_orm::DatabaseBackend::Sqlite => {
+            // from movies to users -> movies#user_id to users#id
+            m.alter_table(
+                alter(Alias::new(&nz_fromtbl))
+                    // add movies#user_id (the user_id column is new)
+                    .add_column(col.clone()) // XXX fix, totbl_id
+                    .to_owned(),
+            )
+            .await?;
+            m.alter_table(
+                alter(Alias::new(&nz_fromtbl))
+                    // add fk on movies#user_id
+                    .add_foreign_key(&fk)
+                    .to_owned(),
+            )
+            .await?;
+        }
+    }
     Ok(())
 }
 
