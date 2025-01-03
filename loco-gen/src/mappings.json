@@ -52,37 +52,37 @@
       "name": "tiny_int",
       "rust": "Option<i16>",
       "schema": "tiny_integer_null",
-      "col_type": "IntegerNull"
+      "col_type": "TinyIntegerNull"
     },
     {
       "name": "tiny_int!",
       "rust": "i16",
       "schema": "tiny_integer",
-      "col_type": "Integer"
+      "col_type": "TinyInteger"
     },
     {
       "name": "tiny_int^",
       "rust": "i16",
       "schema": "tiny_integer_uniq",
-      "col_type": "IntegerUniq"
+      "col_type": "TinyIntegerUniq"
     },
     {
       "name": "small_int",
       "rust": "Option<i16>",
       "schema": "small_integer_null",
-      "col_type": "IntegerNull"
+      "col_type": "SmallIntegerNull"
     },
     {
       "name": "small_int!",
       "rust": "i16",
       "schema": "small_integer",
-      "col_type": "Integer"
+      "col_type": "SmallInteger"
     },
     {
       "name": "small_int^",
       "rust": "i16",
       "schema": "small_integer_uniq",
-      "col_type": "IntegerUniq"
+      "col_type": "SmallIntegerUniq"
     },
     {
       "name": "int",
@@ -106,19 +106,19 @@
       "name": "big_int",
       "rust": "Option<i64>",
       "schema": "big_integer_null",
-      "col_type": "IntegerNull"
+      "col_type": "BigIntegerNull"
     },
     {
       "name": "big_int!",
       "rust": "i64",
       "schema": "big_integer",
-      "col_type": "Integer"
+      "col_type": "BigInteger"
     },
     {
       "name": "big_int^",
       "rust": "i64",
       "schema": "big_integer_uniq",
-      "col_type": "IntegerUniq"
+      "col_type": "BigIntegerUniq"
     },
     {
       "name": "float",
@@ -186,13 +186,13 @@
       "name": "tstz",
       "rust": "Option<DateTimeWithTimeZone>",
       "schema": "timestamp_with_time_zone_null",
-      "col_type": "TimestampNull"
+      "col_type": "TimestampWithTimeZoneNull"
     },
     {
       "name": "tstz!",
       "rust": "DateTimeWithTimeZone",
       "schema": "timestamp_with_time_zone",
-      "col_type": "Timestamp"
+      "col_type": "TimestampWithTimeZone"
     },
     {
       "name": "date",
@@ -222,49 +222,49 @@
       "name": "json",
       "rust": "Option<serde_json::Value>",
       "schema": "json_null",
-      "col_type": "BinaryNull"
+      "col_type": "JsonNull"
     },
     {
       "name": "json!",
       "rust": "serde_json::Value",
       "schema": "json",
-      "col_type": "Binary"
+      "col_type": "Json"
     },
     {
       "name": "jsonb",
       "rust": "Option<serde_json::Value>",
       "schema": "json_binary_null",
-      "col_type": "BinaryNull"
+      "col_type": "JsonBinaryNull"
     },
     {
       "name": "jsonb!",
       "rust": "serde_json::Value",
       "schema": "json_binary",
-      "col_type": "Binary"
+      "col_type": "JsonBinary"
     },
     {
       "name": "blob",
       "rust": "Option<Vec<u8>>",
       "schema": "blob_null",
-      "col_type": "BinaryNull"
+      "col_type": "BlobNull"
     },
     {
       "name": "blob!",
       "rust": "Vec<u8>",
       "schema": "blob",
-      "col_type": "Binary"
+      "col_type": "Blob"
     },
     {
       "name": "money",
       "rust": "Option<Decimal>",
       "schema": "money_null",
-      "col_type": "DecimalNull"
+      "col_type": "MoneyNull"
     },
     {
       "name": "money!",
       "rust": "Decimal",
       "schema": "money",
-      "col_type": "Decimal"
+      "col_type": "Money"
     }
   ]
 }
