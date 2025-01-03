@@ -490,16 +490,26 @@ pub async fn remove_reference(
     } else {
         refname.to_string()
     };
-    // from movies to users -> movies#user_id to users#id
-    m.alter_table(
-        alter(Alias::new(&nz_fromtbl))
-            .drop_foreign_key(
-                // fk-movies-user_id-to-users
-                Alias::new(format!("fk-{nz_fromtbl}-{nz_ref_name}-to-{nz_totbl}")),
+    let bk = m.get_database_backend();
+    match bk {
+        sea_orm::DatabaseBackend::MySql | sea_orm::DatabaseBackend::Postgres => {
+            // from movies to users -> movies#user_id to users#id
+            m.alter_table(
+                alter(Alias::new(&nz_fromtbl))
+                    .drop_foreign_key(
+                        // fk-movies-user_id-to-users
+                        Alias::new(format!("fk-{nz_fromtbl}-{nz_ref_name}-to-{nz_totbl}")),
+                    )
+                    .to_owned(),
             )
-            .to_owned(),
-    )
-    .await?;
+            .await?;
+        }
+        sea_orm::DatabaseBackend::Sqlite => {
+            // Per Rails 5.2, removing FK on existing table does nothing because
+            // sqlite will not allow it.
+            // more: https://www.bigbinary.com/blog/rails-6-adds-add_foreign_key-and-remove_foreign_key-for-sqlite3
+        }
+    }
     Ok(())
 }
 
