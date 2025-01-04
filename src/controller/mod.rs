@@ -193,6 +193,11 @@ impl IntoResponse for Error {
         }
 
         let public_facing_error = match self {
+            Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, ErrorDetail::with_reason(msg)),
+            Self::Message(msg) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorDetail::with_reason(msg),
+            ),
             Self::NotFound => (
                 StatusCode::NOT_FOUND,
                 ErrorDetail::new("not_found", "Resource was not found"),
