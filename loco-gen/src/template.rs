@@ -1,6 +1,8 @@
-use crate::{Error, Result};
-use include_dir::{include_dir, Dir, DirEntry, File};
 use std::path::{Path, PathBuf};
+
+use include_dir::{include_dir, Dir, DirEntry, File};
+
+use crate::{Error, Result};
 
 static TEMPLATES: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/templates");
 pub const DEFAULT_LOCAL_TEMPLATE: &str = ".loco-templates";
@@ -24,7 +26,8 @@ pub fn exists(path: &Path) -> bool {
     TEMPLATES.get_entry(path).is_some()
 }
 
-/// Determines whether a given path should be ignored based on the ignored paths list.
+/// Determines whether a given path should be ignored based on the ignored paths
+/// list.
 #[must_use]
 fn is_path_ignored(path: &Path, ignored_paths: &[&Path]) -> bool {
     ignored_paths
@@ -80,7 +83,8 @@ pub fn collect_files_from_path(path: &Path) -> Result<Vec<&File<'_>>> {
     )
 }
 
-/// Recursively collects all file paths from a directory, skipping ignored paths.
+/// Recursively collects all file paths from a directory, skipping ignored
+/// paths.
 fn collect_files_path_recursively(dir: &Dir<'_>) -> Vec<PathBuf> {
     let mut file_paths = Vec::new();
 
@@ -116,8 +120,9 @@ fn collect_files_recursively<'a>(dir: &'a Dir<'a>) -> Vec<&'a File<'a>> {
 
 #[cfg(test)]
 pub mod tests {
-    use super::*;
     use std::path::Path;
+
+    use super::*;
 
     pub fn find_first_dir() -> &'static Dir<'static> {
         TEMPLATES.dirs().next().expect("first folder")

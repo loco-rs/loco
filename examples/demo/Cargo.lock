@@ -974,7 +974,6 @@ dependencies = [
  "encode_unicode",
  "lazy_static",
  "libc",
- "unicode-width",
  "windows-sys 0.52.0",
 ]
 
@@ -1313,19 +1312,6 @@ name = "deunicode"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "339544cc9e2c4dc3fc7149fd630c5f22263a4fdf18a98afd0075784968b5cf00"
-
-[[package]]
-name = "dialoguer"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "658bce805d770f407bc62102fca7c2c64ceef2fbcb2b8bd19d2765ce093980de"
-dependencies = [
- "console",
- "shell-words",
- "tempfile",
- "thiserror 1.0.69",
- "zeroize",
-]
 
 [[package]]
 name = "diff"
@@ -2698,9 +2684,10 @@ version = "0.13.2"
 dependencies = [
  "chrono",
  "clap",
+ "colored",
  "cruet 0.14.0",
- "dialoguer",
  "duct",
+ "include_dir",
  "regex",
  "rrgen",
  "serde",
@@ -3892,9 +3879,9 @@ dependencies = [
 
 [[package]]
 name = "rrgen"
-version = "0.5.3"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e40013551787f9f535e7dbc8dafc164591d941aeae48881a385d8b0393dd45f6"
+checksum = "18e27f5f254d89b0b5b76445442e5c935b63a566ee5a735c9d877ca2029b4ce9"
 dependencies = [
  "cruet 0.13.3",
  "fs-err",
@@ -4150,6 +4137,7 @@ dependencies = [
  "ego-tree",
  "getopts",
  "html5ever",
+ "indexmap",
  "precomputed-hash",
  "selectors",
  "tendril",
@@ -4541,12 +4529,6 @@ dependencies = [
  "libc",
  "windows-sys 0.59.0",
 ]
-
-[[package]]
-name = "shell-words"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24188a676b6ae68c3b2cb3a01be17fbf7240ce009799bb56d5b1409051e78fde"
 
 [[package]]
 name = "shlex"

@@ -346,13 +346,16 @@ impl Queue {
         }
     }
 
-    /// Cancels jobs based on the given job name for the configured queue provider.
+    /// Cancels jobs based on the given job name for the configured queue
+    /// provider.
     ///
     /// # Errors
-    /// - If no queue provider is configured, it will return an error indicating the lack of configuration.
-    /// - If the Redis provider is selected, it will return an error stating that cancellation is not supported.
-    /// - Any error in the underlying provider's cancellation logic will propagate from the respective function.
-    ///
+    /// - If no queue provider is configured, it will return an error indicating
+    ///   the lack of configuration.
+    /// - If the Redis provider is selected, it will return an error stating
+    ///   that cancellation is not supported.
+    /// - Any error in the underlying provider's cancellation logic will
+    ///   propagate from the respective function.
     pub async fn cancel_jobs(&self, job_name: &str) -> Result<()> {
         tracing::debug!(job_name = ?job_name, "cancel jobs");
 
@@ -378,13 +381,16 @@ impl Queue {
         }
     }
 
-    /// Clears jobs older than a specified number of days for the configured queue provider.
+    /// Clears jobs older than a specified number of days for the configured
+    /// queue provider.
     ///
     /// # Errors
-    /// - If no queue provider is configured, it will return an error indicating the lack of configuration.
-    /// - If the Redis provider is selected, it will return an error stating that clearing jobs is not supported.
-    /// - Any error in the underlying provider's job clearing logic will propagate from the respective function.
-    ///
+    /// - If no queue provider is configured, it will return an error indicating
+    ///   the lack of configuration.
+    /// - If the Redis provider is selected, it will return an error stating
+    ///   that clearing jobs is not supported.
+    /// - Any error in the underlying provider's job clearing logic will
+    ///   propagate from the respective function.
     pub async fn clear_jobs_older_than(
         &self,
         age_days: i64,
@@ -419,9 +425,12 @@ impl Queue {
     /// Clears jobs based on their status for the configured queue provider.
     ///
     /// # Errors
-    /// - If no queue provider is configured, it will return an error indicating the lack of configuration.
-    /// - If the Redis provider is selected, it will return an error stating that clearing jobs is not supported.
-    /// - Any error in the underlying provider's job clearing logic will propagate from the respective function.
+    /// - If no queue provider is configured, it will return an error indicating
+    ///   the lack of configuration.
+    /// - If the Redis provider is selected, it will return an error stating
+    ///   that clearing jobs is not supported.
+    /// - Any error in the underlying provider's job clearing logic will
+    ///   propagate from the respective function.
     pub async fn clear_by_status(&self, status: Vec<JobStatus>) -> Result<()> {
         tracing::debug!(status = ?status, "clear jobs by status");
         match self {
@@ -446,12 +455,13 @@ impl Queue {
 
     /// Dumps the list of jobs to a YAML file at the specified path.
     ///
-    /// This function retrieves jobs from the queue, optionally filtered by their status, and
-    /// writes the job data to a YAML file.
+    /// This function retrieves jobs from the queue, optionally filtered by
+    /// their status, and writes the job data to a YAML file.
     ///
     /// # Errors
     /// - If the specified path cannot be created, an error will be returned.
-    /// - If the job retrieval or YAML serialization fails, an error will be returned.
+    /// - If the job retrieval or YAML serialization fails, an error will be
+    ///   returned.
     /// - If there is an issue creating the dump file, an error will be returned
     pub async fn dump(
         &self,
@@ -482,14 +492,16 @@ impl Queue {
 
     /// Imports jobs from a YAML file into the configured queue provider.
     ///
-    /// This function reads job data from a YAML file located at the specified `path` and imports
-    /// the jobs into the queue.
+    /// This function reads job data from a YAML file located at the specified
+    /// `path` and imports the jobs into the queue.
     ///
     /// # Errors
-    /// - If there is an issue opening or reading the YAML file, an error will be returned.
-    /// - If the queue provider is Redis or none, an error will be returned indicating the lack of support.
-    /// - If any issues occur while enqueuing the jobs, the function will return an error.
-    ///
+    /// - If there is an issue opening or reading the YAML file, an error will
+    ///   be returned.
+    /// - If the queue provider is Redis or none, an error will be returned
+    ///   indicating the lack of support.
+    /// - If any issues occur while enqueuing the jobs, the function will return
+    ///   an error.
     pub async fn import(&self, path: &Path) -> Result<()> {
         tracing::debug!(path = %path.display(), "import jobs");
 

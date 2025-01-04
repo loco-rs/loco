@@ -1,10 +1,11 @@
-use crate::{get_mappings, render_template, AppInfo, Error, GenerateResults, Result};
+use std::{collections::HashMap, env::current_dir, path::Path};
+
 use chrono::Utc;
 use duct::cmd;
 use rrgen::RRgen;
 use serde_json::json;
-use std::path::Path;
-use std::{collections::HashMap, env::current_dir};
+
+use crate::{get_mappings, render_template, AppInfo, Error, GenerateResults, Result};
 
 /// skipping some fields from the generated models.
 /// For example, the `created_at` and `updated_at` fields are automatically

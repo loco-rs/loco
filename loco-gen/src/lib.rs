@@ -6,13 +6,14 @@ pub use rrgen::{GenResult, RRgen};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 mod controller;
-use colored::Colorize;
 use std::{
     fs,
     path::{Path, PathBuf},
     str::FromStr,
     sync::OnceLock,
 };
+
+use colored::Colorize;
 
 #[cfg(feature = "with-db")]
 mod infer;
@@ -346,9 +347,10 @@ pub fn collect_messages(results: &GenerateResults) -> String {
 
 /// Copies template files to a specified destination directory.
 ///
-/// This function copies files from the specified template path to the destination directory.
-/// If the specified path is `/` or `.`, it copies all files from the templates directory.
-/// If the path does not exist in the templates, it returns an error.
+/// This function copies files from the specified template path to the
+/// destination directory. If the specified path is `/` or `.`, it copies all
+/// files from the templates directory. If the path does not exist in the
+/// templates, it returns an error.
 ///
 /// # Errors
 /// when could not copy the given template path
@@ -403,8 +405,9 @@ pub fn copy_template(path: &Path, to: &Path) -> Result<Vec<PathBuf>> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::path::Path;
+
+    use super::*;
 
     #[test]
     fn test_template_not_found() {

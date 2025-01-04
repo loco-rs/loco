@@ -9,13 +9,14 @@ use loco_rs::{
     db::{self, truncate_table},
     environment::Environment,
     prelude::*,
+    request_context::TowerSessionStore,
     storage::{self, Storage},
     task::Tasks,
     Result,
 };
-use loco_rs::request_context::TowerSessionStore;
 use migration::Migrator;
 use sea_orm::DatabaseConnection;
+use tower_sessions::MemoryStore;
 
 use crate::{
     controllers::{self, middlewares},
@@ -24,7 +25,6 @@ use crate::{
     tasks,
     workers::downloader::DownloadWorker,
 };
-use tower_sessions::MemoryStore;
 
 pub struct App;
 #[async_trait]

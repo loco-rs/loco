@@ -156,9 +156,9 @@ impl RequestContext {
     /// * `value` - The value to store
     /// # Errors
     /// * [`CookieMapError`] - When the value is unable to be serialized
-    /// * [`TowerSessionError`] - When the value is unable to be serialized or if
-    ///   the session has not been hydrated and loading from the store fails, we
-    ///   fail with `Error::Store`
+    /// * [`TowerSessionError`] - When the value is unable to be serialized or
+    ///   if the session has not been hydrated and loading from the store fails,
+    ///   we fail with `Error::Store`
     pub async fn insert<T>(&mut self, key: &str, value: T) -> Result<(), RequestContextError>
     where
         T: serde::Serialize + Send + Sync,
@@ -227,7 +227,10 @@ impl RequestContext {
     /// # Errors
     /// * [`TowerSessionError`] - When the session store fails to flush
     pub async fn flush(&mut self) -> Result<(), RequestContextError> {
-        self.driver.flush().await.map_err(RequestContextError::DriverError)
+        self.driver
+            .flush()
+            .await
+            .map_err(RequestContextError::DriverError)
     }
 }
 

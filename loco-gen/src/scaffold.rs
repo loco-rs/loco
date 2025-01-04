@@ -1,9 +1,11 @@
+use std::path::Path;
+
+use rrgen::RRgen;
+use serde_json::json;
+
 use crate::{
     get_mappings, model, render_template, AppInfo, Error, GenerateResults, Result, ScaffoldKind,
 };
-use rrgen::RRgen;
-use serde_json::json;
-use std::path::Path;
 
 pub fn generate(
     rrgen: &RRgen,

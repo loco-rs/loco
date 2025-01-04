@@ -35,13 +35,13 @@ use std::{
     path::{Path, PathBuf},
 };
 
-#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
-use crate::bgworker::JobStatus;
 use clap::{ArgAction, Parser, Subcommand};
 use colored::Colorize;
 use duct::cmd;
 use loco_gen::{Component, DeploymentKind, ScaffoldKind};
 
+#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+use crate::bgworker::JobStatus;
 use crate::{
     app::{AppContext, Hooks},
     boot::{
@@ -272,12 +272,14 @@ enum ComponentArg {
         kind: DeploymentKind,
     },
 
-    /// Override templates and allows you to take control of them. You can always go back when deleting the local template.
+    /// Override templates and allows you to take control of them. You can
+    /// always go back when deleting the local template.
     Override {
         /// The path to a specific template or directory to copy.
         template_path: Option<String>,
 
-        /// Show available templates to copy under the specified directory without actually coping them.
+        /// Show available templates to copy under the specified directory
+        /// without actually coping them.
         #[arg(long, action)]
         info: bool,
     },

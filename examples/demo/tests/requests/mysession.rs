@@ -1,7 +1,7 @@
 use axum::http::HeaderName;
 use demo_app::app::App;
-use serial_test::serial;
 use loco_rs::testing::prelude::*;
+use serial_test::serial;
 
 macro_rules! configure_insta {
     ($($expr:expr),*) => {
@@ -102,5 +102,5 @@ async fn remove_request_context_data() {
         assert_eq!(response.status_code(), 200);
         assert_eq!(response.text(), "");
     })
-        .await;
+    .await;
 }

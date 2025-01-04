@@ -106,9 +106,7 @@ impl Driver {
                 cookie_map.lock().await.clear();
                 Ok(())
             }
-            Self::TowerSession(session) => {
-                Ok(session.flush().await?)
-            }
+            Self::TowerSession(session) => Ok(session.flush().await?),
         }
     }
 
@@ -120,7 +118,7 @@ impl Driver {
     pub async fn exists(&self, key: &str) -> Result<bool, DriverError> {
         match self {
             Self::CookieMap(cookie_map) => Ok(cookie_map.lock().await.exists(key)),
-            Self::TowerSession(session) =>  Ok(session.get_value(key).await?.is_some()),
+            Self::TowerSession(session) => Ok(session.get_value(key).await?.is_some()),
         }
     }
 }
