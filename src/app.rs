@@ -13,19 +13,10 @@ use async_trait::async_trait;
 use axum::Router as AxumRouter;
 
 use crate::{
-    bgworker::{self, Queue},
-    boot::{shutdown_signal, BootResult, ServeParams, StartMode},
-    cache::{self},
-    config::{self, Config},
-    controller::{
+    bgworker::{self, Queue}, boot::{shutdown_signal, BootResult, ServeParams, StartMode}, cache::{self}, config::{self, load_config_from_folder, Config}, controller::{
         middleware::{self, MiddlewareLayer},
         AppRoutes,
-    },
-    environment::Environment,
-    mailer::EmailSender,
-    storage::Storage,
-    task::Tasks,
-    Result,
+    }, mailer::EmailSender, storage::Storage, task::Tasks, Result
 };
 
 /// Represents the application context for a web server.
@@ -38,7 +29,7 @@ use crate::{
 #[allow(clippy::module_name_repetitions)]
 pub struct AppContext {
     /// The environment in which the application is running.
-    pub environment: Environment,
+    pub environment: String,
     #[cfg(feature = "with-db")]
     /// A database connection used by the application.
     pub db: DatabaseConnection,
@@ -77,6 +68,10 @@ pub trait Hooks: Send {
     /// ```
     fn app_name() -> &'static str;
 
+    async fn load_config(environment: &str) -> Result<Config> {
+        load_config_from_folder(environment).await
+    }
+
     /// Initializes and boots the application based on the specified mode and
     /// environment.
     ///
@@ -102,7 +97,7 @@ pub trait Hooks: Send {
     ///
     /// # Errors
     /// Could not boot the application
-    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult>;
+    async fn boot(mode: StartMode, environment: Config) -> Result<BootResult>;
 
     /// Start serving the Axum web application on the specified address and
     /// port.
@@ -138,7 +133,7 @@ pub trait Hooks: Send {
     ///
     /// # Errors
     /// If fails returns an error
-    fn init_logger(_config: &config::Config, _env: &Environment) -> Result<bool> {
+    fn init_logger(_config: &config::Config, _env: &str) -> Result<bool> {
         Ok(false)
     }
 

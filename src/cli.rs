@@ -49,7 +49,7 @@ use crate::{
         start, RunDbCommand, ServeParams, StartMode,
     },
     config::Config,
-    environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
+    environment::{resolve_from_env, DEFAULT_ENVIRONMENT},
     logger, task, Error,
 };
 #[derive(Parser)]
@@ -555,9 +555,9 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
 #[allow(clippy::cognitive_complexity)]
 pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
     let cli: Cli = Cli::parse();
-    let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
+    let environment: String = cli.environment.unwrap_or_else(resolve_from_env).into();
 
-    let config = environment.load()?;
+    let config = H::load_config(&environment).await?;
 
     if !H::init_logger(&config, &environment)? {
         logger::init::<H>(&config.logger)?;
@@ -593,20 +593,20 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         #[cfg(feature = "with-db")]
         Commands::Db { command } => {
             if matches!(command, DbCommands::Create) {
-                db::create(&environment.load()?.database.uri).await?;
+                db::create(&config.database.uri).await?;
             } else {
-                let app_context = create_context::<H>(&environment).await?;
+                let app_context = create_context::<H>(&config).await?;
                 run_db::<H, M>(&app_context, command.into()).await?;
             }
         }
         #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
         Commands::Jobs { command } => handle_job_command::<H>(command, &environment).await?,
         Commands::Routes {} => {
-            let app_context = create_context::<H>(&environment).await?;
+            let app_context = create_context::<H>(&config).await?;
             show_list_endpoints::<H>(&app_context);
         }
         Commands::Middleware { config } => {
-            let app_context = create_context::<H>(&environment).await?;
+            let app_context = create_context::<H>(&config).await?;
             let middlewares = list_middlewares::<H>(&app_context);
             for middleware in middlewares.iter().filter(|m| m.enabled) {
                 println!(
@@ -626,7 +626,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         }
         Commands::Task { name, params } => {
             let vars = task::Vars::from_cli_args(params);
-            let app_context = create_context::<H>(&environment).await?;
+            let app_context = create_context::<H>(&config).await?;
             run_task::<H>(&app_context, name.as_ref(), &vars).await?;
         }
         Commands::Scheduler {
@@ -635,7 +635,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             tag,
             list,
         } => {
-            let app_context = create_context::<H>(&environment).await?;
+            let app_context = create_context::<H>(config).await?;
             run_scheduler::<H>(&app_context, config.as_ref(), name, tag, list).await?;
         }
         Commands::Generate { component } => {

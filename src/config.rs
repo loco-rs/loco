@@ -23,28 +23,65 @@ Notes:
 ***/
 use std::{
     collections::BTreeMap,
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::OnceLock,
 };
 
-use fs_err as fs;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::info;
 
-use crate::{controller::middleware, environment::Environment, logger, scheduler, Error, Result};
+use crate::{controller::middleware, env_vars, logger, scheduler, Error, Result};
 
 static DEFAULT_FOLDER: OnceLock<PathBuf> = OnceLock::new();
 
 fn get_default_folder() -> &'static PathBuf {
     DEFAULT_FOLDER.get_or_init(|| PathBuf::from("config"))
 }
+
+fn get_config_path() -> PathBuf {
+  match env_vars::get(env_vars::CONFIG_FOLDER) {
+    Ok(path) => PathBuf::from(path),
+    Err(_) => PathBuf::from(get_default_folder()),
+  }
+}
+
+
+    pub async fn load_config_from_folder(env: &str) -> Result<Config> {
+
+        let path = get_config_path();
+
+        // by order of precedence
+        let files = [
+            path.join(format!("{env}.local.yaml")),
+            path.join(format!("{env}.yaml")),
+        ];
+
+        let selected_path = files.iter().find(|p| p.exists()).ok_or_else(|| {
+            Error::Message(format!(
+                "no configuration file found in folder: {}",
+                path.display()
+            ))
+        })?;
+
+        info!(selected_path =? selected_path, "loading environment from");
+
+        let content = tokio::fs::read_to_string(selected_path).await?;
+        let rendered = crate::tera::render_string(&content, &json!({}))?;
+
+        serde_yaml::from_str(&rendered)
+            .map_err(|err| Error::YAMLFile(err, selected_path.to_string_lossy().to_string()))
+    }
+
+
+
 /// Main application configuration structure.
 ///
 /// This struct encapsulates various configuration settings. The configuration
 /// can be customized through YAML files for different environments.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
+    pub environment: String,
     pub logger: Logger,
     pub server: Server,
     #[cfg(feature = "with-db")]
@@ -514,73 +551,6 @@ pub struct MailerAuth {
 }
 
 impl Config {
-    /// Creates a new configuration instance based on the specified environment.
-    ///
-    /// # Errors
-    ///
-    /// Returns error when could not convert the give path to
-    /// [`Config`] struct.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use loco_rs::{
-    ///     config::Config,
-    ///     environment::Environment,
-    /// };
-    ///
-    /// #[tokio::main]
-    /// async fn load(environment: &Environment) -> Config {
-    ///     Config::new(environment).expect("configuration loading")
-    /// }
-    pub fn new(env: &Environment) -> Result<Self> {
-        let config = Self::from_folder(env, get_default_folder().as_path())?;
-        Ok(config)
-    }
-
-    /// Loads configuration settings from a folder for the specified
-    /// environment.
-    ///
-    /// # Errors
-    /// Returns error when could not convert the give path to
-    /// [`Config`] struct.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use loco_rs::{
-    ///     config::Config,
-    ///     environment::Environment,
-    /// };
-    /// use std::path::PathBuf;
-    ///
-    /// #[tokio::main]
-    /// async fn load(environment: &Environment) -> Config{
-    ///     Config::from_folder(environment, &PathBuf::from("config")).expect("configuration loading")
-    /// }
-    pub fn from_folder(env: &Environment, path: &Path) -> Result<Self> {
-        // by order of precedence
-        let files = [
-            path.join(format!("{env}.local.yaml")),
-            path.join(format!("{env}.yaml")),
-        ];
-
-        let selected_path = files.iter().find(|p| p.exists()).ok_or_else(|| {
-            Error::Message(format!(
-                "no configuration file found in folder: {}",
-                path.display()
-            ))
-        })?;
-
-        info!(selected_path =? selected_path, "loading environment from");
-
-        let content = fs::read_to_string(selected_path)?;
-        let rendered = crate::tera::render_string(&content, &json!({}))?;
-
-        serde_yaml::from_str(&rendered)
-            .map_err(|err| Error::YAMLFile(err, selected_path.to_string_lossy().to_string()))
-    }
-
     /// Get a reference to the JWT configuration.
     ///
     /// # Errors

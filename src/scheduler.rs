@@ -13,7 +13,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tokio_cron_scheduler::{JobScheduler, JobSchedulerError};
 
-use crate::{app::Hooks, environment::Environment, task::Tasks};
+use crate::{app::Hooks, task::Tasks};
 
 static RE_IS_CRON_SYNTAX: OnceLock<Regex> = OnceLock::new();
 
@@ -118,7 +118,7 @@ pub struct Scheduler {
     pub jobs: HashMap<String, Job>,
     binary_path: PathBuf,
     default_output: Output,
-    environment: Environment,
+    environment: String,
 }
 
 /// Specification used to filter all scheduler job with the given Spec.
@@ -148,7 +148,7 @@ pub struct JobDescription {
     /// The output setting for the job.
     pub output: Output,
     /// The environment in which the job will run.
-    pub environment: Environment,
+    pub environment: String,
 }
 
 impl Job {
@@ -158,7 +158,7 @@ impl Job {
         &self,
         binary_path: &Path,
         default_output: &Output,
-        environment: &Environment,
+        environment: &str,
     ) -> JobDescription {
         let command = if self.shell {
             self.run.to_string()
@@ -177,7 +177,7 @@ impl Job {
                 .output
                 .clone()
                 .unwrap_or_else(|| default_output.clone()),
-            environment: environment.clone(),
+            environment: environment.to_string(),
         }
     }
 }

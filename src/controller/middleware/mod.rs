@@ -27,7 +27,7 @@ use axum::Router as AXRouter;
 use limit_payload::LimitPayload;
 use serde::{Deserialize, Serialize};
 
-use crate::{app::AppContext, environment::Environment, Result};
+use crate::{app::AppContext, Result};
 
 /// Trait representing the behavior of middleware components in the application.
 /// When implementing a new middleware, make sure to go over this checklist:

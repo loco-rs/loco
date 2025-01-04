@@ -15,9 +15,8 @@ use crate::{
     app::{AppContext, Hooks},
     banner::print_banner,
     bgworker, cache,
-    config::{self, WorkerMode},
+    config::{self, Config, WorkerMode},
     controller::ListRoutes,
-    environment::Environment,
     errors::Error,
     mailer::{EmailSender, MailerWorker},
     prelude::BackgroundWorker,
@@ -310,9 +309,7 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
 ///
 /// # Errors
 /// When has an error to create DB connection.
-pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppContext> {
-    let config = environment.load()?;
-
+pub async fn create_context<H: Hooks>(config: &Config) -> Result<AppContext> {
     if config.logger.pretty_backtrace {
         std::env::set_var("RUST_BACKTRACE", "1");
         warn!(
@@ -331,13 +328,13 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
 
     let queue_provider = bgworker::create_queue_provider(&config).await?;
     let ctx = AppContext {
-        environment: environment.clone(),
+        environment: config.environment.clone(),
         #[cfg(feature = "with-db")]
         db,
         queue_provider,
         storage: Storage::single(storage::drivers::null::new()).into(),
         cache: cache::Cache::new(cache::drivers::null::new()).into(),
-        config,
+        config: config.clone(),
         mailer,
     };
 
@@ -352,9 +349,9 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
 /// When could not create the application
 pub async fn create_app<H: Hooks, M: MigratorTrait>(
     mode: StartMode,
-    environment: &Environment,
+    config: &Config,
 ) -> Result<BootResult> {
-    let app_context = create_context::<H>(environment).await?;
+    let app_context = create_context::<H>(config).await?;
     db::converge::<H, M>(&app_context.db, &app_context.config.database).await?;
 
     if let (Some(queue), Some(config)) = (&app_context.queue_provider, &app_context.config.queue) {

@@ -14,7 +14,6 @@ use tower_http::{add_extension::AddExtensionLayer, trace::TraceLayer};
 use crate::{
     app::AppContext,
     controller::middleware::{request_id::LocoRequestId, MiddlewareLayer},
-    environment::Environment,
     Result,
 };
 
@@ -28,16 +27,16 @@ pub struct Config {
 #[derive(Serialize, Debug)]
 pub struct Middleware {
     config: Config,
-    environment: Environment,
+    environment: String,
 }
 
 /// Creates a new instance of [`Middleware`] by cloning the [`Config`]
 /// configuration.
 #[must_use]
-pub fn new(config: &Config, environment: &Environment) -> Middleware {
+pub fn new(config: &Config, environment: &str) -> Middleware {
     Middleware {
         config: config.clone(),
-        environment: environment.clone(),
+        environment: environment.to_string(),
     }
 }
 
@@ -67,9 +66,10 @@ impl MiddlewareLayer for Middleware {
     /// request-specific details like method, URI, version, user agent, and
     /// request ID, then create a tracing span for the request.
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+        let env = self.environment.clone();
         Ok(app
             .layer(
-                TraceLayer::new_for_http().make_span_with(|request: &http::Request<_>| {
+                TraceLayer::new_for_http().make_span_with(move |request: &http::Request<_>| {
                     let ext = request.extensions();
                     let request_id = ext
                         .get::<LocoRequestId>()
@@ -79,19 +79,13 @@ impl MiddlewareLayer for Middleware {
                         .get(axum::http::header::USER_AGENT)
                         .map_or("", |h| h.to_str().unwrap_or(""));
 
-                    let env: String = request
-                        .extensions()
-                        .get::<Environment>()
-                        .map(std::string::ToString::to_string)
-                        .unwrap_or_default();
-
                     tracing::error_span!(
                         "http-request",
                         "http.method" = tracing::field::display(request.method()),
                         "http.uri" = tracing::field::display(request.uri()),
                         "http.version" = tracing::field::debug(request.version()),
                         "http.user_agent" = tracing::field::display(user_agent),
-                        "environment" = tracing::field::display(env),
+                        "environment" = tracing::field::display(env.clone()),
                         request_id = tracing::field::display(request_id),
                     )
                 }),
