@@ -109,8 +109,7 @@ impl Default for RequestContextSession {
         let private_key = Key::generate().master().to_vec();
         panic!(
             "Session secret key must be explicitly configured in your environment config file: \
-             {:?}",
-            private_key
+             {private_key:?}"
         )
     }
 }
@@ -127,6 +126,7 @@ pub struct RequestContextMiddleware {
 }
 
 impl RequestContextMiddleware {
+    #[must_use]
     pub fn new(config: RequestContextMiddlewareConfig, store: Option<TowerSessionStore>) -> Self {
         Self { config, store }
     }
@@ -188,7 +188,7 @@ impl RequestContextMiddleware {
                     let layer = Self::get_tower_request_context_middleware(
                         &self.config.session_store,
                         &self.config.session_config,
-                    )?;
+                    );
                     app = app.layer(layer);
                     let layer = SessionManagerLayer::new(session_store.to_owned());
                     let layer =
@@ -248,14 +248,14 @@ impl RequestContextMiddleware {
     fn get_tower_request_context_middleware(
         session_config: &RequestContextSession,
         session_cookie_config: &SessionCookieConfig,
-    ) -> Result<RequestContextLayer> {
+    ) -> RequestContextLayer {
         let key = Key::generate(); // Random generated since it is not used
         let store = crate::request_context::RequestContextStore::new(
             key,
             session_config.clone(),
             session_cookie_config.clone(),
         );
-        Ok(RequestContextLayer::new(store))
+        RequestContextLayer::new(store)
     }
 }
 

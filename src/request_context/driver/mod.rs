@@ -115,6 +115,8 @@ impl Driver {
     /// * `key` - The key to check
     /// # Returns
     /// * `bool` - True if the key exists, otherwise false
+    /// # Errors
+    /// * `DriverError` - If there is an error while checking the key
     pub async fn exists(&self, key: &str) -> Result<bool, DriverError> {
         match self {
             Self::CookieMap(cookie_map) => Ok(cookie_map.lock().await.exists(key)),

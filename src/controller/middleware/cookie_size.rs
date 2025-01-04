@@ -80,7 +80,7 @@ where
 
     fn call(&mut self, request: Request<Body>) -> Self::Future {
         let cookies = request.headers().get_all(header::COOKIE);
-        let total_size: usize = cookies.iter().map(|c| c.len()).sum();
+        let total_size: usize = cookies.iter().map(axum::http::HeaderValue::len).sum();
         let span = tracing::info_span!("CookieSizeMiddleware::call");
         let max_size = self.max_size;
 
@@ -94,8 +94,7 @@ where
             async move {
                 if total_size > max_size {
                     let error_msg = format!(
-                        "Cookie size {} exceeds maximum allowed size of {} bytes",
-                        total_size, max_size
+                        "Cookie size {total_size} exceeds maximum allowed size of {max_size} bytes",
                     );
                     return Ok(Error::BadRequest(error_msg).into_response());
                 }

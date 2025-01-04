@@ -84,10 +84,18 @@ where
                 };
                 match store.session_config {
                     middleware::request_context::RequestContextSession::Cookie { .. } => {
-                        let jar = SignedPrivateCookieJar::new(
+                        let jar = match SignedPrivateCookieJar::new(
                             request.headers(),
                             store.private_key.clone(),
-                        );
+                        ) {
+                            Ok(jar) => jar,
+                            Err(e) => {
+                                tracing::error!(error=?e, "Failed to create signed private cookie jar");
+                                let err: crate::Error =
+                                    RequestContextError::SignedPrivateCookieJarError(e).into();
+                                return Ok(err.into_response());
+                            }
+                        };
                         let cookie_map = jar
                             .into_cookie_map(&store.session_cookie_config.clone())
                             .map_err(|e| {
