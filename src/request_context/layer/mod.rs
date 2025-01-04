@@ -67,7 +67,7 @@ where
 
     fn call(&mut self, mut request: Request) -> Self::Future {
         let store = self.store.clone();
-        let span = tracing::info_span!("RequestContextService::call");
+        let span = tracing::debug_span!("RequestContextService::call");
         // Because the inner service can panic until ready, we need to ensure we only
         // use the ready service.
         //

@@ -38,7 +38,7 @@ pub async fn create_request_context(mut req: RequestContext) -> Result<Response>
 ///
 /// This function will return an error if result fails
 #[debug_handler]
-pub async fn get_request_context(req: Extension<RequestContext>) -> Result<Response> {
+pub async fn get_request_context(req: RequestContext) -> Result<Response> {
     let data = req
         .get::<String>(REQUEST_CONTEXT_DATA_KEY)
         .await?
@@ -59,7 +59,7 @@ pub async fn get_request_context(req: Extension<RequestContext>) -> Result<Respo
 /// This function will return an error if result fails
 #[debug_handler]
 pub async fn remove_request_context(mut req: RequestContext) -> Result<Response> {
-   let data =  req.remove::<String>(REQUEST_CONTEXT_DATA_KEY).await?;
+   let data =  req.remove::<String>(REQUEST_CONTEXT_DATA_KEY).await?.unwrap_or_default();
     tracing::info!(
         "Request Context data removed - Key: {:?}, Value: {:?}",
         REQUEST_CONTEXT_DATA_KEY, data

@@ -115,12 +115,12 @@ impl SessionStore for TowerSessionStore {
     }
 }
 
-/// Defines a `RequestContext` struct that holds a `LocoRequestId` and a
-/// `Driver`.
+/// Defines a `RequestContext` struct that holds a [`LocoRequestId`] and a
+/// [`Driver`].
 ///
 /// # Fields
-/// - `LocoRequestId` - The request id for the request context.
-/// - `Driver` - The driver for the request context.
+/// - [`LocoRequestId`] - The request id for the request context.
+/// - [`Driver`] - The driver for the request context.
 #[derive(Debug, Clone)]
 pub struct RequestContext {
     request_id: LocoRequestId,
@@ -131,11 +131,11 @@ impl RequestContext {
     /// Create a new instance of the `RequestContext`.
     ///
     /// # Arguments
-    /// - `LocoRequestId` - The request id for the request context.
-    /// - `Driver` - The driver for the request context.
+    /// - [`LocoRequestId`] - The request id for the request context.
+    /// - [`Driver`] - The driver for the request context.
     ///
     /// # Return
-    /// - `Self` - The new instance of the `RequestContext`.
+    /// - [`Self`] - The new instance of the [`RequestContext`].
     #[must_use]
     pub fn new(request_id: LocoRequestId, driver: Driver) -> Self {
         Self { request_id, driver }
@@ -155,8 +155,8 @@ impl RequestContext {
     /// * `key` - The key to store the value
     /// * `value` - The value to store
     /// # Errors
-    /// * `CookieMapError` - When the value is unable to be serialized
-    /// * `TowerSessionError` - When the value is unable to be serialized or if
+    /// * [`CookieMapError`] - When the value is unable to be serialized
+    /// * [`TowerSessionError`] - When the value is unable to be serialized or if
     ///   the session has not been hydrated and loading from the store fails, we
     ///   fail with `Error::Store`
     pub async fn insert<T>(&mut self, key: &str, value: T) -> Result<(), RequestContextError>
@@ -173,10 +173,10 @@ impl RequestContext {
     /// # Arguments
     /// * `key` - The key to get the value from
     /// # Returns
-    /// * `Option<T>` - The value if it exists
+    /// * [`Option<T>`] - The value if it exists
     /// # Errors
-    /// * `CookieMapError` - When the value is unable to be deserialized
-    /// * `TowerSessionError` - When the value is unable to be deserialized or
+    /// * [`CookieMapError`] - When the value is unable to be deserialized
+    /// * [`TowerSessionError`] - When the value is unable to be deserialized or
     ///   if the session has not been hydrated and loading from the store fails,
     ///   we fail with `Error::Store`
     pub async fn get<T: DeserializeOwned>(
@@ -195,11 +195,11 @@ impl RequestContext {
     /// * `key` - The key to remove from the session
     ///
     /// # Return
-    /// * `Option<T>` - The value if it exists
+    /// * [`Option<T>`] - The value if it exists
     ///
     /// # Errors
-    /// * `CookieMapError` - When the value is unable to be deserialized
-    /// * `TowerSessionError` - When the value is unable to be deserialized or
+    /// * [`CookieMapError`] - When the value is unable to be deserialized
+    /// * [`TowerSessionError`] - When the value is unable to be deserialized or
     ///   if the session has not been hydrated and loading from the store fails,
     ///   we fail with `Error::Store`
     pub async fn remove<T: DeserializeOwned>(
@@ -212,9 +212,22 @@ impl RequestContext {
             .map_err(RequestContextError::DriverError)
     }
 
-    /// Clears the session.
+    /// Tower - Clears the session but not the session store.
+    /// Cookie - Clear the session map.
     pub async fn clear(&mut self) {
         self.driver.clear().await;
+    }
+
+    /// Tower - Flush the session store.
+    /// Cookie - Clear the session map.
+    ///
+    /// # Returns
+    /// * `()`
+    ///
+    /// # Errors
+    /// * [`TowerSessionError`] - When the session store fails to flush
+    pub async fn flush(&mut self) -> Result<(), RequestContextError> {
+        self.driver.flush().await.map_err(RequestContextError::DriverError)
     }
 }
 

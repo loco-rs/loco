@@ -79,8 +79,8 @@ impl Driver {
         }
     }
 
-    /// Clears the session but not the session store. (Tower)
-    /// Clear the session map. (Cookie)
+    /// Tower - Clears the session but not the session store.
+    /// Cookie - Clear the session map.
     pub async fn clear(&mut self) {
         match self {
             Self::CookieMap(cookie_map) => {

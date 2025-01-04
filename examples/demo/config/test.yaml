@@ -54,7 +54,7 @@ server:
     request_context:
       enable: true
       session_config:
-        name: session
+        name: "__loco_session"
         http_only: true
         same_site:
           type: Lax
