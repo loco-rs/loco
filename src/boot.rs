@@ -4,7 +4,6 @@
 use std::path::PathBuf;
 
 use axum::Router;
-use colored::Colorize;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
 use tokio::{select, signal, task::JoinHandle};

@@ -312,9 +312,8 @@ async fn has_id_column(
             let result = db
                 .query_one(Statement::from_string(DatabaseBackend::Postgres, query))
                 .await?;
-            result.map_or(false, |row| {
-                row.try_get::<bool>("", "exists").unwrap_or(false)
-            })
+
+            result.is_some_and(|row| row.try_get::<bool>("", "exists").unwrap_or(false))
         }
         DatabaseBackend::Sqlite => {
             let query = format!(
@@ -325,7 +324,7 @@ async fn has_id_column(
             let result = db
                 .query_one(Statement::from_string(DatabaseBackend::Sqlite, query))
                 .await?;
-            result.map_or(false, |row| {
+            result.is_some_and( |row| {
                 row.try_get::<i32>("", "count").unwrap_or(0) > 0
             })
         }
@@ -358,7 +357,7 @@ async fn is_auto_increment(
             let result = db
                 .query_one(Statement::from_string(DatabaseBackend::Postgres, query))
                 .await?;
-            result.map_or(false, |row| {
+            result.is_some_and(|row| {
                 row.try_get::<bool>("", "is_serial").unwrap_or(false)
             })
         }
@@ -368,9 +367,8 @@ async fn is_auto_increment(
             let result = db
                 .query_one(Statement::from_string(DatabaseBackend::Sqlite, query))
                 .await?;
-            result.map_or(false, |row| {
-                row.try_get::<String>("", "sql")
-                    .map_or(false, |sql| sql.to_lowercase().contains("autoincrement"))
+            result.is_some_and(|row| {
+                row.try_get::<String>("", "sql").is_ok_and(|sql| sql.to_lowercase().contains("autoincrement"))
             })
         }
         DatabaseBackend::MySql => {
@@ -740,7 +738,6 @@ pub async fn dump_tables(
                     })
                     .or_else(|_| {
                         row.try_get::<serde_json::Value>("", &col_name)
-                            .map(serde_json::Value::from)
                     })
                     .or_else(|_| {
                         row.try_get::<bool>("", &col_name)
