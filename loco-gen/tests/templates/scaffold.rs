@@ -1,9 +1,11 @@
-use super::utils::{guess_file_by_time, APP_ROUTS, MIGRATION_SRC_LIB};
+use std::fs;
+
 use insta::{assert_snapshot, with_settings};
 use loco_gen::{collect_messages, generate, AppInfo, Component, ScaffoldKind};
 use rrgen::RRgen;
 use rstest::rstest;
-use std::fs;
+
+use super::utils::{guess_file_by_time, APP_ROUTS, MIGRATION_SRC_LIB};
 
 #[rstest]
 #[case(ScaffoldKind::Api)]
@@ -134,4 +136,5 @@ fn can_generate(#[case] kind: ScaffoldKind) {
     }
 }
 
-// thread 'templates::scaffold::can_generate::case_1' panicked at loco-gen/tests/templates/scaffold.rs:48:6:
+// thread 'templates::scaffold::can_generate::case_1' panicked at
+// loco-gen/tests/templates/scaffold.rs:48:6:

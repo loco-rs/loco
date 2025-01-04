@@ -43,6 +43,8 @@ tower = "0.4.13"
 futures-util = "0.3.30"
 utoipa = "4.2.3"
 
+tower-sessions = { version = "0.13" }
+
 [[bin]]
 name = "demo_app-cli"
 path = "src/bin/main.rs"

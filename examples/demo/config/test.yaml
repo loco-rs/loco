@@ -51,6 +51,22 @@ server:
       enable: true
     cors:
       enable: true
+    request_context:
+      enable: true
+      session_config:
+        name: "__loco_session"
+        http_only: true
+        same_site:
+          type: Lax
+        expiry: 3600
+        secure: false
+        path: /
+      # domain: ""
+      session_store:
+        type: Tower
+      #  type: Cookie
+      #  value:
+      #    private_key: [ 219, 25, 129, 200, 66, 52, 72, 66, 249, 60, 206, 40, 77, 150, 2, 8, 30, 192, 221, 5, 243, 74, 17, 172, 109, 96, 218, 46, 235, 118, 131, 150, 224, 205, 55, 147, 45, 151, 245, 23, 250, 48, 133, 115, 105, 252, 193, 15, 162, 167, 77, 189, 169, 91, 205, 172, 120, 254, 136, 111, 167, 161, 255, 107 ]
       # Set the value of the [`Access-Control-Allow-Origin`][mdn] header
       # allow_origins:
       #   - https://loco.rs

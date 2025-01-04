@@ -9,12 +9,14 @@ use loco_rs::{
     db::{self, truncate_table},
     environment::Environment,
     prelude::*,
+    request_context::TowerSessionStore,
     storage::{self, Storage},
     task::Tasks,
     Result,
 };
 use migration::Migrator;
 use sea_orm::DatabaseConnection;
+use tower_sessions::MemoryStore;
 
 use crate::{
     controllers::{self, middlewares},
@@ -83,6 +85,7 @@ impl Hooks for App {
         Ok(AppContext {
             storage: Storage::single(store).into(),
             cache: cache::Cache::new(cache::drivers::inmem::new()).into(),
+            session_store: Some(TowerSessionStore::new(MemoryStore::default())),
             ..ctx
         })
 

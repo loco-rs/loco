@@ -10,6 +10,7 @@
 pub mod auth;
 pub mod catch_panic;
 pub mod compression;
+pub mod cookie_size;
 pub mod cors;
 pub mod etag;
 pub mod fallback;
@@ -18,6 +19,7 @@ pub mod limit_payload;
 pub mod logger;
 pub mod powered_by;
 pub mod remote_ip;
+pub mod request_context;
 pub mod request_id;
 pub mod secure_headers;
 pub mod static_assets;
@@ -121,6 +123,19 @@ pub fn default_middleware_stack(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer
                 .clone()
                 .unwrap_or_else(|| compression::Compression { enable: false }),
         ),
+        // Request Context Middleware with a default if none
+        Box::new(request_context::RequestContextMiddleware::new(
+            ctx.config
+                .server
+                .middlewares
+                .request_context
+                .clone()
+                .unwrap_or_else(|| request_context::RequestContextMiddlewareConfig {
+                    enable: true,
+                    ..Default::default()
+                }),
+            ctx.session_store.clone(),
+        )),
         // Timeout Request middleware with a default if none
         Box::new(
             middlewares
@@ -214,4 +229,12 @@ pub struct Config {
 
     /// Request ID
     pub request_id: Option<request_id::RequestId>,
+
+    /// Request context
+    #[serde(default)]
+    pub request_context: Option<request_context::RequestContextMiddlewareConfig>,
+
+    /// Cookie size
+    #[serde(default)]
+    pub cookie_size: Option<cookie_size::CookieSize>,
 }

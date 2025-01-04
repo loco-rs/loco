@@ -1,10 +1,12 @@
-use crate::{
-    infer, model::get_columns_and_references, render_template, AppInfo, GenerateResults, Result,
-};
+use std::path::Path;
+
 use chrono::Utc;
 use rrgen::RRgen;
 use serde_json::json;
-use std::path::Path;
+
+use crate::{
+    infer, model::get_columns_and_references, render_template, AppInfo, GenerateResults, Result,
+};
 
 /// skipping some fields from the generated models.
 /// For example, the `created_at` and `updated_at` fields are automatically

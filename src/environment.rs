@@ -12,11 +12,13 @@
 //!  let config = environment.load().expect("failed to load environment");
 //! }
 //! ```
-use super::config::Config;
-use crate::{env_vars, Result};
+use std::{path::Path, str::FromStr};
+
 use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
-use std::{path::Path, str::FromStr};
+
+use super::config::Config;
+use crate::{env_vars, Result};
 
 pub const DEFAULT_ENVIRONMENT: &str = "development";
 pub const LOCO_ENV: &str = "LOCO_ENV";
