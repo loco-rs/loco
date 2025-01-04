@@ -21,11 +21,6 @@ fn get_allow_email_domain_re() -> &'static Regex {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct VerifyParams {
-    pub token: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
 pub struct ForgotParams {
     pub email: String,
 }
@@ -77,9 +72,9 @@ async fn register(
 #[debug_handler]
 async fn verify(
     State(ctx): State<AppContext>,
-    Json(params): Json<VerifyParams>,
+    Path(token): Path<String>,
 ) -> Result<Response> {
-    let user = users::Model::find_by_verification_token(&ctx.db, &params.token).await?;
+    let user = users::Model::find_by_verification_token(&ctx.db, &token).await?;
 
     if user.email_verified_at.is_some() {
         tracing::info!(pid = user.pid.to_string(), "user already verified");
@@ -226,7 +221,7 @@ pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/auth")
         .add("/register", post(register))
-        .add("/verify", post(verify))
+        .add("/verify/:token", get(verify))
         .add("/login", post(login))
         .add("/forgot", post(forgot))
         .add("/reset", post(reset))
