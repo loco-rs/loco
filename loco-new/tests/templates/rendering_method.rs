@@ -4,9 +4,9 @@ use rstest::rstest;
 use super::*;
 use crate::assertion;
 
-pub fn run_generator(asset: RenderingMethodOption) -> TestGenerator {
+pub fn run_generator(rendering_method: RenderingMethodOption) -> TestGenerator {
     let settings = settings::Settings {
-        asset: asset.into(),
+        asset: rendering_method.into(),
         ..Default::default()
     };
 
@@ -81,13 +81,13 @@ static:
 #[rstest]
 fn test_cargo_toml(
     #[values(RenderingMethodOption::None, RenderingMethodOption::Serverside, RenderingMethodOption::Clientside)]
-    asset: RenderingMethodOption,
+    rendering_method: RenderingMethodOption,
 ) {
-    let generator = run_generator(asset.clone());
+    let generator = run_generator(rendering_method.clone());
     let content = assertion::toml::load(generator.path("Cargo.toml"));
 
     insta::assert_snapshot!(
-        format!("cargo_dependencies_{:?}", asset),
+        format!("cargo_dependencies_{:?}", rendering_method),
         content.get("dependencies").unwrap()
     );
 }
@@ -95,9 +95,9 @@ fn test_cargo_toml(
 #[rstest]
 fn test_github_ci_yaml(
     #[values(RenderingMethodOption::None, RenderingMethodOption::Serverside, RenderingMethodOption::Clientside)]
-    asset: RenderingMethodOption,
+    rendering_method: RenderingMethodOption,
 ) {
-    let generator: TestGenerator = run_generator(asset.clone());
+    let generator: TestGenerator = run_generator(rendering_method.clone());
     let content =
         assertion::string::load(generator.path(".github").join("workflows").join("ci.yaml"));
 
@@ -111,7 +111,7 @@ fn test_github_ci_yaml(
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2";
 
-    match asset {
+    match rendering_method {
         RenderingMethodOption::Serverside | RenderingMethodOption::None => {
             assertion::string::assert_not_contains(&content, frontend_section);
         }
