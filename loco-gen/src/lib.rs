@@ -6,13 +6,14 @@ pub use rrgen::{GenResult, RRgen};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 mod controller;
-use colored::Colorize;
 use std::{
     fs,
     path::{Path, PathBuf},
     str::FromStr,
     sync::OnceLock,
 };
+
+use colored::Colorize;
 
 #[cfg(feature = "with-db")]
 mod infer;
@@ -72,34 +73,39 @@ struct FieldType {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Mappings {
+pub struct Mappings {
     field_types: Vec<FieldType>,
 }
 impl Mappings {
+    #[must_use]
     pub fn rust_field(&self, field: &str) -> Option<&String> {
         self.field_types
             .iter()
             .find(|f| f.name == field)
             .and_then(|f| f.rust.as_ref())
     }
+    #[must_use]
     pub fn schema_field(&self, field: &str) -> Option<&String> {
         self.field_types
             .iter()
             .find(|f| f.name == field)
             .and_then(|f| f.schema.as_ref())
     }
+    #[must_use]
     pub fn col_type_field(&self, field: &str) -> Option<&String> {
         self.field_types
             .iter()
             .find(|f| f.name == field)
             .and_then(|f| f.col_type.as_ref())
     }
+    #[must_use]
     pub fn col_type_arity(&self, field: &str) -> Option<usize> {
         self.field_types
             .iter()
             .find(|f| f.name == field)
             .map(|f| f.arity)
     }
+    #[must_use]
     pub fn schema_fields(&self) -> Vec<&String> {
         self.field_types
             .iter()
@@ -107,6 +113,7 @@ impl Mappings {
             .map(|f| &f.name)
             .collect::<Vec<_>>()
     }
+    #[must_use]
     pub fn rust_fields(&self) -> Vec<&String> {
         self.field_types
             .iter()
@@ -114,11 +121,21 @@ impl Mappings {
             .map(|f| &f.name)
             .collect::<Vec<_>>()
     }
+
+    #[must_use]
+    pub fn all_names(&self) -> Vec<&String> {
+        self.field_types.iter().map(|f| &f.name).collect::<Vec<_>>()
+    }
 }
 
 static MAPPINGS: OnceLock<Mappings> = OnceLock::new();
 
-fn get_mappings() -> &'static Mappings {
+/// Get type mapping for generation
+///
+/// # Panics
+///
+/// Panics if loading fails
+pub fn get_mappings() -> &'static Mappings {
     MAPPINGS.get_or_init(|| {
         let json_data = include_str!("./mappings.json");
         serde_json::from_str(json_data).expect("JSON was not well-formatted")
@@ -361,9 +378,10 @@ pub fn collect_messages(results: &GenerateResults) -> String {
 
 /// Copies template files to a specified destination directory.
 ///
-/// This function copies files from the specified template path to the destination directory.
-/// If the specified path is `/` or `.`, it copies all files from the templates directory.
-/// If the path does not exist in the templates, it returns an error.
+/// This function copies files from the specified template path to the
+/// destination directory. If the specified path is `/` or `.`, it copies all
+/// files from the templates directory. If the path does not exist in the
+/// templates, it returns an error.
 ///
 /// # Errors
 /// when could not copy the given template path
@@ -418,8 +436,9 @@ pub fn copy_template(path: &Path, to: &Path) -> Result<Vec<PathBuf>> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::path::Path;
+
+    use super::*;
 
     #[test]
     fn test_template_not_found() {
