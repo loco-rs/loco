@@ -30,6 +30,7 @@ cfg_if::cfg_if! {
     feature = "with-db"
 ))]
 use std::process::exit;
+
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
@@ -419,6 +420,8 @@ enum DbCommands {
         #[arg(long, default_value = "src/fixtures")]
         from: PathBuf,
     },
+    /// Dump database schema
+    Schema,
 }
 
 impl From<DbCommands> for RunDbCommand {
@@ -444,6 +447,7 @@ impl From<DbCommands> for RunDbCommand {
             DbCommands::Create => {
                 unreachable!("Create db should't handled in the global db commands")
             }
+            DbCommands::Schema => Self::Schema,
         }
     }
 }

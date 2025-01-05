@@ -5,7 +5,9 @@ use duct::cmd;
 use rrgen::RRgen;
 use serde_json::json;
 
-use crate::{get_mappings, render_template, AppInfo, Error, GenerateResults, Result};
+use crate::{
+    get_mappings, infer::parse_field_type, render_template, AppInfo, Error, GenerateResults, Result,
+};
 
 /// skipping some fields from the generated models.
 /// For example, the `created_at` and `updated_at` fields are automatically
@@ -30,25 +32,50 @@ pub fn get_columns_and_references(
             );
             continue;
         }
-        if ftype == "references" {
-            let fkey = format!("{fname}_id");
-            columns.push((fkey.clone(), "integer".to_string()));
-            // user, user_id
-            references.push((fname.to_string(), fkey));
-        } else if let Some(refname) = ftype.strip_prefix("references:") {
-            let fkey = format!("{fname}_id");
-            columns.push((fkey.clone(), "integer".to_string()));
-            references.push((refname.to_string(), fkey));
-        } else {
-            let mappings = get_mappings();
-            let schema_type = mappings.schema_field(ftype.as_str()).ok_or_else(|| {
-                Error::Message(format!(
-                    "type: {} not found. try any of: {:?}",
-                    ftype,
-                    mappings.schema_fields()
-                ))
-            })?;
-            columns.push((fname.to_string(), schema_type.to_string()));
+        let field_type = parse_field_type(ftype)?;
+        match field_type {
+            crate::infer::FieldType::Reference => {
+                // (users, "")
+                references.push((fname.to_string(), String::new()));
+            }
+            crate::infer::FieldType::ReferenceWithCustomField(refname) => {
+                references.push((fname.to_string(), refname.clone()));
+            }
+            crate::infer::FieldType::Type(ftype) => {
+                let mappings = get_mappings();
+                let col_type = mappings.col_type_field(ftype.as_str()).ok_or_else(|| {
+                    Error::Message(format!(
+                        "type: `{}` not found. try any of: {:?}",
+                        ftype,
+                        mappings.schema_fields()
+                    ))
+                })?;
+                columns.push((fname.to_string(), col_type.to_string()));
+            }
+            crate::infer::FieldType::TypeWithParameters(ftype, params) => {
+                let mappings = get_mappings();
+                let col_type = mappings.col_type_field(ftype.as_str()).ok_or_else(|| {
+                    Error::Message(format!(
+                        "type: `{}` not found. try any of: {:?}",
+                        ftype,
+                        mappings.schema_fields()
+                    ))
+                })?;
+                let arity = mappings.col_type_arity(ftype.as_str()).unwrap_or_default();
+                if params.len() != arity {
+                    return Err(Error::Message(format!(
+                        "type: `{ftype}` requires specifying {arity} parameters, but only {} were \
+                         given (`{}`).",
+                        params.len(),
+                        params.join(",")
+                    )));
+                }
+
+                columns.push((
+                    fname.to_string(),
+                    format!("{}({})", col_type, params.join(",")),
+                ));
+            }
         }
     }
     Ok((columns, references))

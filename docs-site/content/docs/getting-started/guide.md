@@ -582,9 +582,9 @@ pub fn routes() -> Routes {
         .prefix("api/articles")
         .add("/", get(list))
         .add("/", post(add))
-        .add("/:id", get(get_one))
-        .add("/:id", delete(remove))
-        .add("/:id", patch(update))
+        .add("/{id}", get(get_one))
+        .add("/{id}", delete(remove))
+        .add("/{id}", patch(update))
 }
 ```
 
@@ -674,9 +674,9 @@ pub fn routes() -> Routes {
         .prefix("api/comments")
         .add("/", post(add))
         // .add("/", get(list))
-        // .add("/:id", get(get_one))
-        // .add("/:id", delete(remove))
-        // .add("/:id", patch(update))
+        // .add("/{id}", get(get_one))
+        // .add("/{id}", delete(remove))
+        // .add("/{id}", patch(update))
 }
 ```
 
@@ -702,7 +702,7 @@ Now we need to fetch a relation in `src/controllers/articles.rs`. Add the follow
 pub fn routes() -> Routes {
   // ..
   // ..
-  .add("/:id/comments", get(comments))
+  .add("/{id}/comments", get(comments))
 }
 ```
 

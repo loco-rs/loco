@@ -26,7 +26,7 @@ tokio = { version = "1.33.0", default-features = false, features = [
   "rt-multi-thread",
 ] }
 async-trait = { version = "0.1.74" }
-axum = { version = "0.7.5" }
+axum = { version = "0.8.1" }
 tracing = { version = "0.1.40" }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
 regex = { version = "1.11.1" }

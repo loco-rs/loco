@@ -4,7 +4,8 @@ use rrgen::RRgen;
 use serde_json::json;
 
 use crate::{
-    get_mappings, model, render_template, AppInfo, Error, GenerateResults, Result, ScaffoldKind,
+    get_mappings, infer::parse_field_type, model, render_template, AppInfo, Error, GenerateResults,
+    Result, ScaffoldKind,
 };
 
 pub fn generate(
@@ -18,7 +19,6 @@ pub fn generate(
     // - never run with migration_only, because the controllers will refer to the
     //   models. the models only arrive after migration and entities sync.
     let mut gen_result = model::generate(rrgen, name, false, fields, appinfo)?;
-    let mappings = get_mappings();
 
     let mut columns = Vec::new();
     for (fname, ftype) in fields {
@@ -29,17 +29,51 @@ pub fn generate(
             );
             continue;
         }
-        if ftype != "references" && !ftype.starts_with("references:") {
-            let schema_type = mappings.rust_field(ftype.as_str()).ok_or_else(|| {
-                Error::Message(format!(
-                    "type: {} not found. try any of: {:?}",
-                    ftype,
-                    mappings.rust_fields()
-                ))
-            })?;
-            columns.push((fname.to_string(), schema_type.as_str(), ftype));
+
+        let field_type = parse_field_type(ftype)?;
+        match field_type {
+            crate::infer::FieldType::Reference => {
+                // (users, "")
+                //references.push((fname.to_string(), String::new()));
+            }
+            crate::infer::FieldType::ReferenceWithCustomField(_refname) => {
+                //references.push((fname.to_string(), refname.clone()));
+            }
+            crate::infer::FieldType::Type(ftype) => {
+                let mappings = get_mappings();
+                let rust_type = mappings.rust_field(ftype.as_str()).ok_or_else(|| {
+                    Error::Message(format!(
+                        "type: `{}` not found. try any of: {:?}",
+                        ftype,
+                        mappings.schema_fields()
+                    ))
+                })?;
+                columns.push((fname.to_string(), rust_type.to_string(), ftype));
+            }
+            crate::infer::FieldType::TypeWithParameters(ftype, params) => {
+                let mappings = get_mappings();
+                let rust_type = mappings.rust_field(ftype.as_str()).ok_or_else(|| {
+                    Error::Message(format!(
+                        "type: `{}` not found. try any of: {:?}",
+                        ftype,
+                        mappings.schema_fields()
+                    ))
+                })?;
+                let arity = mappings.col_type_arity(ftype.as_str()).unwrap_or_default();
+                if params.len() != arity {
+                    return Err(Error::Message(format!(
+                        "type: `{ftype}` requires specifying {arity} parameters, but only {} were \
+                         given (`{}`).",
+                        params.len(),
+                        params.join(",")
+                    )));
+                }
+
+                columns.push((fname.to_string(), rust_type.to_string(), ftype));
+            }
         }
     }
+
     let vars = json!({"name": name, "columns": columns, "pkg_name": appinfo.app_name});
     match kind {
         ScaffoldKind::Api => {
