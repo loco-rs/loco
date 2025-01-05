@@ -1,6 +1,6 @@
 #![allow(clippy::unused_async)]
 
-use axum::{debug_handler, Extension};
+use axum::debug_handler;
 use axum_session::{Session, SessionNullPool};
 use loco_rs::{prelude::*, request_context::RequestContext};
 

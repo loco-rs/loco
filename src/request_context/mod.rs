@@ -234,7 +234,6 @@ impl RequestContext {
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for RequestContext
 where
     S: Send + Sync,

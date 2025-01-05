@@ -30,7 +30,6 @@ cfg_if::cfg_if! {
     feature = "with-db"
 ))]
 use std::process::exit;
-
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
