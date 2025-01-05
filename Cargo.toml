@@ -132,7 +132,10 @@ cfg-if = "1"
 uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
 
 # File Upload
-opendal = { version = "0.50.2", default-features = false,features = ["services-memory","services-fs"] }
+opendal = { version = "0.50.2", default-features = false, features = [
+    "services-memory",
+    "services-fs",
+] }
 
 # cache
 moka = { version = "0.12.7", features = ["sync"], optional = true }

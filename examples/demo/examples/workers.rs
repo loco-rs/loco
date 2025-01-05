@@ -8,8 +8,10 @@ use migration::Migrator;
 #[tokio::main]
 async fn main() -> loco_rs::Result<()> {
     let environment: Environment = resolve_from_env().into();
+    let config = environment.load()?;
 
-    let boot_result = create_app::<App, Migrator>(StartMode::WorkerOnly, &environment).await?;
+    let boot_result =
+        create_app::<App, Migrator>(StartMode::WorkerOnly, &environment, config).await?;
     let serve_params = ServeParams {
         port: boot_result.app_context.config.server.port,
         binding: boot_result.app_context.config.server.binding.to_string(),

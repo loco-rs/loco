@@ -159,24 +159,3 @@ $ demo_app-cli doctor
 $ LOCO_ENV=test demo_app-cli db reset
 
 ```
-
-```console 
-$ LOCO_ENV=teste2e demo_app-cli db migrate
-[..][0m [32m INFO[0m [1mapp[0m: [2mloco_rs::config[0m[2m:[0m loading environment from [3mselected_path[0m[2m=[0m"config/teste2e.yaml" [2m[3menvironment[0m[2m=[0mteste2e[0m
-[..][0m [33m WARN[0m [1mapp[0m: [2mloco_rs::boot[0m[2m:[0m migrate: [2m[3menvironment[0m[2m=[0mteste2e[0m
-[..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m Applying all pending migrations [2m[3menvironment[0m[2m=[0mteste2e[0m
-[..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m No pending migrations [2m[3menvironment[0m[2m=[0mteste2e[0m
-
-```
-
-```console 
-$ LOCO_ENV=teste2e demo_app-cli db status
-[..][0m [32m INFO[0m [1mapp[0m: [2mloco_rs::config[0m[2m:[0m loading environment from [3mselected_path[0m[2m=[0m"config/teste2e.yaml" [2m[3menvironment[0m[2m=[0mteste2e[0m
-[..][0m [33m WARN[0m [1mapp[0m: [2mloco_rs::boot[0m[2m:[0m status: [2m[3menvironment[0m[2m=[0mteste2e[0m
-[..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m Checking migration status [2m[3menvironment[0m[2m=[0mteste2e[0m
-[..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m Migration 'm20220101_000001_users'... Applied [2m[3menvironment[0m[2m=[0mteste2e[0m
-[..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m Migration 'm20231103_114510_notes'... Applied [2m[3menvironment[0m[2m=[0mteste2e[0m
-[..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m Migration 'm20240416_071825_roles'... Applied [2m[3menvironment[0m[2m=[0mteste2e[0m
-[..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m Migration 'm20240416_082115_users_roles'... Applied [2m[3menvironment[0m[2m=[0mteste2e[0m
-
-```
