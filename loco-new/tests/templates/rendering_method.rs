@@ -14,7 +14,7 @@ pub fn run_generator(asset: RenderingMethodOption) -> TestGenerator {
 }
 
 #[rstest]
-fn test_config_file_middleware_when_asset_empty(
+fn test_config_file_middleware_when_rendering_method_empty(
     #[values("config/development.yaml", "config/test.yaml")] config_file: &str,
 ) {
     let generator: TestGenerator = run_generator(RenderingMethodOption::None);
@@ -24,7 +24,7 @@ fn test_config_file_middleware_when_asset_empty(
 }
 
 #[rstest]
-fn test_config_file_middleware_asset_server(
+fn test_config_file_middleware_when_rendering_method_server_side(
     #[values("config/development.yaml", "config/test.yaml")] config_file: &str,
 ) {
     let generator: TestGenerator = run_generator(RenderingMethodOption::Serverside);
@@ -52,7 +52,7 @@ fallback: assets/static/404.html
 }
 
 #[rstest]
-fn test_config_file_middleware_asset_client(
+fn test_config_file_middleware_when_rendering_method_client_side(
     #[values("config/development.yaml", "config/test.yaml")] config_file: &str,
 ) {
     let generator: TestGenerator = run_generator(RenderingMethodOption::Clientside);
