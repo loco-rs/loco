@@ -41,6 +41,13 @@
 * expose hello_name for SMTP client config. [https://github.com/loco-rs/loco/pull/1057](https://github.com/loco-rs/loco/pull/1057)
 * use reqwest with rustls rather than openssl. [https://github.com/loco-rs/loco/pull/1058](https://github.com/loco-rs/loco/pull/1058)
 * more flexible config, take more values from ENV. [https://github.com/loco-rs/loco/pull/1058](https://github.com/loco-rs/loco/pull/1058)
+* refactor: Use opendal to replace object_store. [https://github.com/loco-rs/loco/pull/897](https://github.com/loco-rs/loco/pull/897)
+* allow override loco template. [https://github.com/loco-rs/loco/pull/1102](https://github.com/loco-rs/loco/pull/1102)
+* support custom config folder. [https://github.com/loco-rs/loco/pull/1081](https://github.com/loco-rs/loco/pull/1081)
+* feat: upgrade to Axum 8. [https://github.com/loco-rs/loco/pull/1130](https://github.com/loco-rs/loco/pull/1130)
+* create load config hook. [https://github.com/loco-rs/loco/pull/1143](https://github.com/loco-rs/loco/pull/1143)
+* initial impl new migration dsl. [https://github.com/loco-rs/loco/pull/1125](https://github.com/loco-rs/loco/pull/1125)
+* allow disable limit_payload middleware. [https://github.com/loco-rs/loco/pull/1113](https://github.com/loco-rs/loco/pull/1113)
 
 
 ## v0.13.2

@@ -88,7 +88,7 @@ impl Executer for FileSystem {
     fn create_file(&self, path: &Path, content: String) -> super::Result<PathBuf> {
         let target_path = self.target_dir.join(path);
         if let Some(parent) = path.parent() {
-            fs_extra::dir::create_all(parent, false)?;
+            fs_extra::dir::create_all(self.target_dir.join(parent), false)?;
         }
 
         let span = tracing::info_span!("create_file", target_path = %target_path.display());
