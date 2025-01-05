@@ -41,6 +41,9 @@
 * expose hello_name for SMTP client config. [https://github.com/loco-rs/loco/pull/1057](https://github.com/loco-rs/loco/pull/1057)
 * use reqwest with rustls rather than openssl. [https://github.com/loco-rs/loco/pull/1058](https://github.com/loco-rs/loco/pull/1058)
 * more flexible config, take more values from ENV. [https://github.com/loco-rs/loco/pull/1058](https://github.com/loco-rs/loco/pull/1058)
+* refactor: Use opendal to replace object_store. [https://github.com/loco-rs/loco/pull/897](https://github.com/loco-rs/loco/pull/897)
+* allow override loco template. [https://github.com/loco-rs/loco/pull/1102](https://github.com/loco-rs/loco/pull/1102)
+* support custom config folder. [https://github.com/loco-rs/loco/pull/1081](https://github.com/loco-rs/loco/pull/1081)
 
 
 ## v0.13.2
