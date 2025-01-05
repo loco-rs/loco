@@ -18,10 +18,10 @@ fn test_all_combinations(
         BackgroundOption::None
     )]
     background: BackgroundOption,
-    #[values(AssetsOption::Serverside, AssetsOption::Clientside, AssetsOption::None)]
-    asset: RenderingMethodOption,
+    #[values(RenderingMethodOption::Serverside, RenderingMethodOption::Clientside, RenderingMethodOption::None)]
+    rendering_method: RenderingMethodOption,
 ) {
-    test_combination(db, background, asset, false);
+    test_combination(db, background, rendering_method, false);
 }
 
 // when running locally set LOCO_DEV_MODE_PATH=<to local loco path>
@@ -67,7 +67,7 @@ fn test_starter_combinations() {
 fn test_combination(
     db: DBOption,
     background: BackgroundOption,
-    asset: RenderingMethodOption,
+    rendering_method: RenderingMethodOption,
     test_generator: bool,
 ) {
     let test_dir = tree_fs::TreeBuilder::default().drop(true);
@@ -77,7 +77,7 @@ fn test_combination(
     let wizard_selection = wizard::Selections {
         db: db.clone(),
         background: background.clone(),
-        rendering_method: asset,
+        rendering_method,
     };
     let settings =
         settings::Settings::from_wizard("test-loco-template", &wizard_selection, OS::default());
