@@ -87,22 +87,23 @@ pub trait Hooks: Send {
     ///
     /// With DB:
     /// ```rust,ignore
-    /// async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
-    ///     create_app::<Self, Migrator>(mode, environment).await
+    /// async fn boot(mode: StartMode, environment: &str, config: Config) -> Result<BootResult> {
+    ///     create_app::<Self, Migrator>(mode, environment, config).await
     /// }
     /// ````
     ///
     /// Without DB:
     /// ```rust,ignore
-    /// async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
-    ///     create_app::<Self>(mode, environment).await
+    /// async fn boot(mode: StartMode, environment: &str, config: Config) -> Result<BootResult> {
+    ///     create_app::<Self>(mode, environment, config).await
     /// }
     /// ````
     ///
     ///
     /// # Errors
     /// Could not boot the application
-    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult>;
+    async fn boot(mode: StartMode, environment: &Environment, config: Config)
+        -> Result<BootResult>;
 
     /// Start serving the Axum web application on the specified address and
     /// port.
@@ -140,6 +141,14 @@ pub trait Hooks: Send {
     /// If fails returns an error
     fn init_logger(_config: &config::Config, _env: &Environment) -> Result<bool> {
         Ok(false)
+    }
+
+    /// Loads the configuration settings for the application based on the given environment.
+    ///
+    /// This function is responsible for retrieving the configuration for the application
+    /// based on the current environment.
+    async fn load_config(env: &Environment) -> Result<Config> {
+        env.load()
     }
 
     /// Returns the initial Axum router for the application, allowing the user

@@ -4,6 +4,7 @@ use kalosm::language::{Llama, LlamaSource};
 use loco_rs::{
     app::{AppContext, Hooks},
     boot::{create_app, BootResult, StartMode},
+    config::Config,
     controller::AppRoutes,
     environment::Environment,
     prelude::*,
@@ -20,8 +21,12 @@ impl Hooks for App {
         env!("CARGO_CRATE_NAME")
     }
 
-    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
-        create_app::<Self>(mode, environment).await
+    async fn boot(
+        mode: StartMode,
+        environment: &Environment,
+        config: Config,
+    ) -> Result<BootResult> {
+        create_app::<Self>(mode, environment, config).await
     }
 
     async fn before_run(_ctx: &AppContext) -> Result<()> {
