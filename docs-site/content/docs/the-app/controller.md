@@ -488,6 +488,15 @@ You can customize or disable this behavior through your configuration file.
       body_limit: 5mb
 ```
 
+### Disable payload size limitation
+To remove the restriction entirely, set `body_limit` to `disable`:
+```yaml
+#...
+  middlewares:
+    limit_payload:
+      body_limit: disable
+```
+
 
 ##### Usage
 In your controller parameters, use `axum::body::Bytes`.

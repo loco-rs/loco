@@ -1,8 +1,9 @@
-//! # Limit Payload Middleware
+//! Limit Payload Middleware
 //!
-//! This middleware restricts the maximum allowed size for HTTP request payloads.
-//! It ensures that incoming HTTP requests do not exceed a specified payload size,
-//! which helps protect the application from overly large requests that could affect performance.
+//! This middleware restricts the maximum allowed size for HTTP request
+//! payloads. It is configurable based on the [`LimitPayloadMiddleware`]
+//! settings in the application's middleware configuration. The middleware sets
+//! a limit on the request body size using Axum's `DefaultBodyLimit` layer.
 //!
 //! # Note
 //!
@@ -15,18 +16,22 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 
-/// Middleware configuration for limiting payload size.
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+pub enum DefaultBodyLimitKind {
+    Disable,
+    Limit(usize),
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LimitPayload {
     #[serde(
         default = "default_body_limit",
         deserialize_with = "deserialize_body_limit"
     )]
-    pub body_limit: usize,
+    pub body_limit: DefaultBodyLimitKind,
 }
 
 impl Default for LimitPayload {
-    /// Provides the default configuration for the middleware.
     fn default() -> Self {
         Self {
             body_limit: default_body_limit(),
@@ -34,23 +39,27 @@ impl Default for LimitPayload {
     }
 }
 
-/// Returns the default body limit in bytes (50MB).
-fn default_body_limit() -> usize {
-    50_000_000
+/// Returns the default body limit in bytes (2MB).
+fn default_body_limit() -> DefaultBodyLimitKind {
+    DefaultBodyLimitKind::Limit(2_000_000)
 }
 
-/// Custom deserialization for `body_limit`, allowing human-readable formats.
-fn deserialize_body_limit<'de, D>(deserializer: D) -> Result<usize, D::Error>
+fn deserialize_body_limit<'de, D>(deserializer: D) -> Result<DefaultBodyLimitKind, D::Error>
 where
     D: Deserializer<'de>,
 {
-    Ok(
-        byte_unit::Byte::from_str(String::deserialize(deserializer)?)
-            .map_err(|err| serde::de::Error::custom(err.to_string()))?
-            .get_bytes() as usize,
-    )
-}
+    let s: String = String::deserialize(deserializer)?;
 
+    match s.as_str() {
+        "disable" => Ok(DefaultBodyLimitKind::Disable),
+        limit => {
+            let bytes = byte_unit::Byte::from_str(limit)
+                .map_err(|err| serde::de::Error::custom(err.to_string()))?
+                .get_bytes();
+            Ok(DefaultBodyLimitKind::Limit(bytes as usize))
+        }
+    }
+}
 impl MiddlewareLayer for LimitPayload {
     /// Returns the name of the middleware
     fn name(&self) -> &'static str {
@@ -69,6 +78,11 @@ impl MiddlewareLayer for LimitPayload {
     /// Applies the payload limit middleware to the application router by adding
     /// a `DefaultBodyLimit` layer.
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
-        Ok(app.layer(axum::extract::DefaultBodyLimit::max(self.body_limit)))
+        let body_limit_layer = match self.body_limit {
+            DefaultBodyLimitKind::Disable => axum::extract::DefaultBodyLimit::disable(),
+            DefaultBodyLimitKind::Limit(limit) => axum::extract::DefaultBodyLimit::max(limit),
+        };
+
+        Ok(app.layer(body_limit_layer))
     }
 }
