@@ -221,7 +221,7 @@ pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/auth")
         .add("/register", post(register))
-        .add("/verify/:token", get(verify))
+        .add("/verify/{token}", get(verify))
         .add("/login", post(login))
         .add("/forgot", post(forgot))
         .add("/reset", post(reset))
