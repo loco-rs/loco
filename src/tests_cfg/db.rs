@@ -8,6 +8,7 @@ use crate::{
     app::{AppContext, Hooks, Initializer},
     bgworker::Queue,
     boot::{create_app, BootResult, StartMode},
+    config::Config,
     controller::AppRoutes,
     environment::Environment,
     task::Tasks,
@@ -98,8 +99,12 @@ impl Hooks for AppHook {
         AppRoutes::with_default_routes()
     }
 
-    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
-        create_app::<Self, Migrator>(mode, environment).await
+    async fn boot(
+        mode: StartMode,
+        environment: &Environment,
+        config: Config,
+    ) -> Result<BootResult> {
+        create_app::<Self, Migrator>(mode, environment, config).await
     }
 
     async fn connect_workers(_ctx: &AppContext, _q: &Queue) -> Result<()> {
