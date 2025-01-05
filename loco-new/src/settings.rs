@@ -50,10 +50,10 @@ impl From<BackgroundOption> for Option<Background> {
 }
 
 impl From<RenderingMethodOption> for Option<RenderingMethod> {
-    fn from(asset: RenderingMethodOption) -> Self {
-        match asset {
+    fn from(rendering_method: RenderingMethodOption) -> Self {
+        match rendering_method {
             RenderingMethodOption::None => None,
-            _ => Some(RenderingMethod { kind: asset }),
+            _ => Some(RenderingMethod { kind: rendering_method }),
         }
     }
 }

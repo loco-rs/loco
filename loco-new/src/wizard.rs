@@ -14,9 +14,9 @@ use crate::Error;
 )]
 pub enum Template {
     #[default]
-    #[strum(to_string = "Saas App with server side rendering")]
+    #[strum(to_string = "Saas App with server-side rendering")]
     SaasServerSideRendering,
-    #[strum(to_string = "Saas App with client side rendering")]
+    #[strum(to_string = "Saas App with client-side rendering")]
     SaasClientSideRendering,
     #[strum(to_string = "Rest API (with DB and user auth)")]
     RestApi,
@@ -32,8 +32,8 @@ pub enum OptionsList {
     DB,
     #[serde(rename = "bg")]
     Background,
-    #[serde(rename = "assets")]
-    Assets,
+    #[serde(rename = "rendering_method")]
+    RenderingMethod,
 }
 
 #[derive(
@@ -159,10 +159,11 @@ impl RenderingMethodOption {
     pub fn user_message(&self) -> Option<String> {
         match self {
             Self::Clientside => Some(format!(
-                "{}: You've selected `{}` for your asset serving configuration.\n\nNext step, \
-                 build your frontend:\n  $ cd {}\n  $ npm install && npm run build\n",
-                "assets".underline(),
-                "clientside".yellow(),
+                "{}: You've selected `{}` as your frontend rendering method.\n\n\
+                 To build your frontend, please run the following commands:\n\
+                  $ cd {}\n  $ npm install && npm run build\n",
+                "Rendering method".underline(),
+                "client-side rendering".yellow(),
                 "frontend/".yellow()
             )),
             Self::Serverside | Self::None => None,
@@ -295,13 +296,13 @@ where
 /// when could not show user selection or user chose not continue
 pub fn start(args: &ArgsPlaceholder) -> crate::Result<Selections> {
     // user provided everything via flags so no need to prompt, just return
-    if let (Some(db), Some(bg), Some(assets)) =
+    if let (Some(db), Some(bg), Some(rendering_method)) =
         (args.db.clone(), args.bg.clone(), args.rendering_method.clone())
     {
         return Ok(Selections {
             db,
             background: bg,
-            rendering_method: assets,
+            rendering_method,
         });
     }
 
@@ -340,7 +341,7 @@ pub fn start(args: &ArgsPlaceholder) -> crate::Result<Selections> {
             Ok(Selections {
                 db,
                 background: select_background(args, background_options.as_ref())?,
-                rendering_method: select_asset(args)?,
+                rendering_method: select_rendering_method(args)?,
             })
         }
     }
@@ -378,16 +379,16 @@ fn select_background(
     Ok(bgopt)
 }
 
-/// Prompts the user to select an asset configuration if none is provided in the
+/// Prompts the user to select frontend rendering method if none is provided in the
 /// arguments.
-fn select_asset(args: &ArgsPlaceholder) -> crate::Result<RenderingMethodOption> {
-    let assetopt = if let Some(assetopt) = args.rendering_method.clone() {
-        assetopt
+fn select_rendering_method(args: &ArgsPlaceholder) -> crate::Result<RenderingMethodOption> {
+    let rendering_method_opt = if let Some(rendering_method_opt) = args.rendering_method.clone() {
+        rendering_method_opt
     } else {
         select_option(
-            "❯ Select an asset serving configuration",
+            "❯ Select a frontend rendering method",
             &RenderingMethodOption::iter().collect::<Vec<_>>(),
         )?
     };
-    Ok(assetopt)
+    Ok(rendering_method_opt)
 }
