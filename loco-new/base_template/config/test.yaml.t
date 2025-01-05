@@ -22,8 +22,8 @@ server:
   host: http://localhost
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
   middlewares:
-  {%- if settings.asset %}   
-    {%- if settings.asset.kind == "server" %} 
+  {%- if settings.rendering_method %}
+    {%- if settings.rendering_method.kind == "server" %}
     static:
       enable: true
       must_exist: true
@@ -32,8 +32,7 @@ server:
         uri: "/static"
         path: "assets/static"
       fallback: "assets/static/404.html"
-  {%- elif settings.asset.kind == "client" %} 
-    fallback:
+  {%- elif settings.rendering_method.kind == "client" %}fallback:
       enable: false
     static:
       enable: true

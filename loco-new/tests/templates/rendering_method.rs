@@ -6,7 +6,7 @@ use crate::assertion;
 
 pub fn run_generator(rendering_method: RenderingMethodOption) -> TestGenerator {
     let settings = settings::Settings {
-        asset: rendering_method.into(),
+        rendering_method: rendering_method.into(),
         ..Default::default()
     };
 

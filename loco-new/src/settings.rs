@@ -18,7 +18,7 @@ pub struct Settings {
     pub module_name: String,
     pub db: Option<Db>,
     pub background: Option<Background>,
-    pub asset: Option<RenderingMethod>,
+    pub rendering_method: Option<RenderingMethod>,
     pub auth: bool,
     pub mailer: bool,
     pub clientside: bool,
@@ -79,7 +79,7 @@ impl Settings {
             mailer: prompt_selection.db.enable() && prompt_selection.background.enable(),
             db: prompt_selection.db.clone().into(),
             background: prompt_selection.background.clone().into(),
-            asset: prompt_selection.rendering_method.clone().into(),
+            rendering_method: prompt_selection.rendering_method.clone().into(),
             clientside: prompt_selection.rendering_method.enable(),
             initializers: if prompt_selection.rendering_method.enable() {
                 Some(Initializers { view_engine: true })
@@ -100,7 +100,7 @@ impl Default for Settings {
             module_name: Default::default(),
             db: Default::default(),
             background: Default::default(),
-            asset: Default::default(),
+            rendering_method: Default::default(),
             auth: Default::default(),
             mailer: Default::default(),
             clientside: Default::default(),
