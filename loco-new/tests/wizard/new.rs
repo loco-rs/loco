@@ -2,7 +2,7 @@ use duct::cmd;
 use loco::{
     generator::{executer::FileSystem, Generator},
     settings,
-    wizard::{self, AssetsOption, BackgroundOption, DBOption},
+    wizard::{self, RenderingMethodOption, BackgroundOption, DBOption},
     OS,
 };
 use std::{collections::HashMap, path::PathBuf, process::Output, sync::Arc};
@@ -19,7 +19,7 @@ fn test_all_combinations(
     )]
     background: BackgroundOption,
     #[values(AssetsOption::Serverside, AssetsOption::Clientside, AssetsOption::None)]
-    asset: AssetsOption,
+    asset: RenderingMethodOption,
 ) {
     test_combination(db, background, asset, false);
 }
@@ -31,35 +31,35 @@ fn test_starter_combinations() {
     test_combination(
         DBOption::None,
         BackgroundOption::None,
-        AssetsOption::None,
+        RenderingMethodOption::None,
         true,
     );
     // REST API
     test_combination(
         DBOption::Sqlite,
         BackgroundOption::Async,
-        AssetsOption::None,
+        RenderingMethodOption::None,
         true,
     );
     // SaaS, serverside
     test_combination(
         DBOption::Sqlite,
         BackgroundOption::Async,
-        AssetsOption::Serverside,
+        RenderingMethodOption::Serverside,
         true,
     );
     // SaaS, clientside
     test_combination(
         DBOption::Sqlite,
         BackgroundOption::Async,
-        AssetsOption::Clientside,
+        RenderingMethodOption::Clientside,
         true,
     );
     // test only DB
     test_combination(
         DBOption::Sqlite,
         BackgroundOption::None,
-        AssetsOption::None,
+        RenderingMethodOption::None,
         true,
     );
 }
@@ -67,7 +67,7 @@ fn test_starter_combinations() {
 fn test_combination(
     db: DBOption,
     background: BackgroundOption,
-    asset: AssetsOption,
+    asset: RenderingMethodOption,
     test_generator: bool,
 ) {
     let test_dir = tree_fs::TreeBuilder::default().drop(true);

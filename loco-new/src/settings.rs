@@ -7,7 +7,7 @@ use rhai::{CustomType, TypeBuilder};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    wizard::{self, AssetsOption, BackgroundOption, DBOption},
+    wizard::{self, RenderingMethodOption, BackgroundOption, DBOption},
     LOCO_VERSION, OS,
 };
 
@@ -49,10 +49,10 @@ impl From<BackgroundOption> for Option<Background> {
     }
 }
 
-impl From<AssetsOption> for Option<Asset> {
-    fn from(asset: AssetsOption) -> Self {
+impl From<RenderingMethodOption> for Option<Asset> {
+    fn from(asset: RenderingMethodOption) -> Self {
         match asset {
-            AssetsOption::None => None,
+            RenderingMethodOption::None => None,
             _ => Some(Asset { kind: asset }),
         }
     }
@@ -138,7 +138,7 @@ pub struct Background {
 /// Asset configuration settings.
 #[derive(Serialize, Deserialize, Clone, Debug, Default, CustomType)]
 pub struct Asset {
-    pub kind: AssetsOption,
+    pub kind: RenderingMethodOption,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, CustomType)]

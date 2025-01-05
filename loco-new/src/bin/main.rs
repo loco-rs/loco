@@ -49,7 +49,7 @@ enum Commands {
 
         /// Assets serving configuration
         #[arg(long)]
-        assets: Option<wizard::AssetsOption>,
+        assets: Option<wizard::RenderingMethodOption>,
 
         /// Create the starter in target git repository
         #[arg(short, long)]

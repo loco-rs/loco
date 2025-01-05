@@ -136,12 +136,12 @@ impl BackgroundOption {
 #[derive(
     Debug, Clone, Deserialize, Serialize, EnumIter, Display, Default, PartialEq, Eq, ValueEnum,
 )]
-pub enum AssetsOption {
+pub enum RenderingMethodOption {
     #[default]
-    #[strum(to_string = "Server (configures server-rendered views)")]
+    #[strum(to_string = "Server (configures server-side rendering)")]
     #[serde(rename = "server")]
     Serverside,
-    #[strum(to_string = "Client (configures assets for frontend serving)")]
+    #[strum(to_string = "Client (configures client-side rendering)")]
     #[serde(rename = "client")]
     Clientside,
     #[strum(to_string = "None")]
@@ -149,7 +149,7 @@ pub enum AssetsOption {
     None,
 }
 
-impl AssetsOption {
+impl RenderingMethodOption {
     #[must_use]
     pub const fn enable(&self) -> bool {
         !matches!(self, Self::None)
@@ -175,14 +175,14 @@ impl AssetsOption {
 pub struct ArgsPlaceholder {
     pub db: Option<DBOption>,
     pub bg: Option<BackgroundOption>,
-    pub assets: Option<AssetsOption>,
+    pub assets: Option<RenderingMethodOption>,
 }
 
 /// Holds the user's configuration selections.
 pub struct Selections {
     pub db: DBOption,
     pub background: BackgroundOption,
-    pub asset: AssetsOption,
+    pub asset: RenderingMethodOption,
 }
 
 impl Selections {
@@ -314,22 +314,22 @@ pub fn start(args: &ArgsPlaceholder) -> crate::Result<Selections> {
         Template::Lightweight => Ok(Selections {
             db: DBOption::None,
             background: BackgroundOption::None,
-            asset: AssetsOption::None,
+            asset: RenderingMethodOption::None,
         }),
         Template::RestApi => Ok(Selections {
             db: select_db(args)?,
             background: select_background(args, None)?,
-            asset: AssetsOption::None,
+            asset: RenderingMethodOption::None,
         }),
         Template::SaasServerSideRendering => Ok(Selections {
             db: select_db(args)?,
             background: select_background(args, None)?,
-            asset: AssetsOption::Serverside,
+            asset: RenderingMethodOption::Serverside,
         }),
         Template::SaasClientSideRendering => Ok(Selections {
             db: select_db(args)?,
             background: select_background(args, None)?,
-            asset: AssetsOption::Clientside,
+            asset: RenderingMethodOption::Clientside,
         }),
         Template::Advanced => {
             let db = select_db(args)?;
@@ -380,13 +380,13 @@ fn select_background(
 
 /// Prompts the user to select an asset configuration if none is provided in the
 /// arguments.
-fn select_asset(args: &ArgsPlaceholder) -> crate::Result<AssetsOption> {
+fn select_asset(args: &ArgsPlaceholder) -> crate::Result<RenderingMethodOption> {
     let assetopt = if let Some(assetopt) = args.assets.clone() {
         assetopt
     } else {
         select_option(
             "❯ Select an asset serving configuration",
-            &AssetsOption::iter().collect::<Vec<_>>(),
+            &RenderingMethodOption::iter().collect::<Vec<_>>(),
         )?
     };
     Ok(assetopt)
