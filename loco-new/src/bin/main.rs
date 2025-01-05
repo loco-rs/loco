@@ -47,9 +47,9 @@ enum Commands {
         #[arg(long)]
         bg: Option<wizard::BackgroundOption>,
 
-        /// Assets serving configuration
+        /// Frontend rendering method configuration
         #[arg(long)]
-        assets: Option<wizard::RenderingMethodOption>,
+        rendering_method: Option<wizard::RenderingMethodOption>,
 
         /// Create the starter in target git repository
         #[arg(short, long)]
@@ -82,12 +82,12 @@ fn main() -> Result<()> {
             path,
             db,
             bg,
-            assets,
+            rendering_method,
             name,
             allow_in_git_repo,
             os,
         } => {
-            tracing::debug!(path = ?path, db = ?db, bg=?bg, assets=?assets,name=?name, allow_in_git_repo=allow_in_git_repo, os=?os, "CLI options");
+            tracing::debug!(path = ?path, db = ?db, bg=?bg, rendering_method=?rendering_method,name=?name, allow_in_git_repo=allow_in_git_repo, os=?os, "CLI options");
             if !allow_in_git_repo && is_a_git_repo(path.as_path()).unwrap_or(false) {
                 tracing::debug!("the target directory is a Git repository");
                 wizard::warn_if_in_git_repo()?;
@@ -106,7 +106,7 @@ fn main() -> Result<()> {
                 tracing::debug!(dir = %to.display(), "creating application directory");
                 std::fs::create_dir_all(&to)?;
 
-                let args = wizard::ArgsPlaceholder { db, bg, rendering_method: assets };
+                let args = wizard::ArgsPlaceholder { db, bg, rendering_method };
                 let user_selection = wizard::start(&args)?;
 
                 let generator_tmp_folder = extract_default_template()?;
