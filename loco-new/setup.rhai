@@ -125,7 +125,7 @@ if background {
 // =====================
 // Adds asset directory if assets are configured in the app.
 
-if asset {
+if rendering_method {
     gen.copy_dir("assets");                         // Static assets directory
 }
 

@@ -86,7 +86,7 @@ impl Generator {
         scope.push("db", self.settings.db.is_some());
         scope.push("background", self.settings.background.is_some());
         scope.push("initializers", self.settings.initializers.is_some());
-        scope.push("asset", self.settings.rendering_method.is_some());
+        scope.push("rendering_method", self.settings.rendering_method.is_some());
         scope.push("windows", self.settings.os == OS::Windows);
 
         engine.run_with_scope(&mut scope, script)?;
