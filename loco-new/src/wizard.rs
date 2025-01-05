@@ -175,7 +175,7 @@ impl RenderingMethodOption {
 pub struct ArgsPlaceholder {
     pub db: Option<DBOption>,
     pub bg: Option<BackgroundOption>,
-    pub assets: Option<RenderingMethodOption>,
+    pub rendering_method: Option<RenderingMethodOption>,
 }
 
 /// Holds the user's configuration selections.
@@ -296,7 +296,7 @@ where
 pub fn start(args: &ArgsPlaceholder) -> crate::Result<Selections> {
     // user provided everything via flags so no need to prompt, just return
     if let (Some(db), Some(bg), Some(assets)) =
-        (args.db.clone(), args.bg.clone(), args.assets.clone())
+        (args.db.clone(), args.bg.clone(), args.rendering_method.clone())
     {
         return Ok(Selections {
             db,
@@ -381,7 +381,7 @@ fn select_background(
 /// Prompts the user to select an asset configuration if none is provided in the
 /// arguments.
 fn select_asset(args: &ArgsPlaceholder) -> crate::Result<RenderingMethodOption> {
-    let assetopt = if let Some(assetopt) = args.assets.clone() {
+    let assetopt = if let Some(assetopt) = args.rendering_method.clone() {
         assetopt
     } else {
         select_option(
