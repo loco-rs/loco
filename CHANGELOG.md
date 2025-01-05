@@ -44,6 +44,9 @@
 * refactor: Use opendal to replace object_store. [https://github.com/loco-rs/loco/pull/897](https://github.com/loco-rs/loco/pull/897)
 * allow override loco template. [https://github.com/loco-rs/loco/pull/1102](https://github.com/loco-rs/loco/pull/1102)
 * support custom config folder. [https://github.com/loco-rs/loco/pull/1081](https://github.com/loco-rs/loco/pull/1081)
+* feat: upgrade to Axum 8. [https://github.com/loco-rs/loco/pull/1130](https://github.com/loco-rs/loco/pull/1130)
+* create load config hook. [https://github.com/loco-rs/loco/pull/1143](https://github.com/loco-rs/loco/pull/1143)
+* initial impl new migration dsl. [https://github.com/loco-rs/loco/pull/1125](https://github.com/loco-rs/loco/pull/1125)
 
 
 ## v0.13.2
