@@ -47,6 +47,7 @@
 * feat: upgrade to Axum 8. [https://github.com/loco-rs/loco/pull/1130](https://github.com/loco-rs/loco/pull/1130)
 * create load config hook. [https://github.com/loco-rs/loco/pull/1143](https://github.com/loco-rs/loco/pull/1143)
 * initial impl new migration dsl. [https://github.com/loco-rs/loco/pull/1125](https://github.com/loco-rs/loco/pull/1125)
+* allow disable limit_payload middleware. [https://github.com/loco-rs/loco/pull/1113](https://github.com/loco-rs/loco/pull/1113)
 
 
 ## v0.13.2
