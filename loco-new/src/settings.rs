@@ -18,7 +18,7 @@ pub struct Settings {
     pub module_name: String,
     pub db: Option<Db>,
     pub background: Option<Background>,
-    pub asset: Option<Asset>,
+    pub asset: Option<RenderingMethod>,
     pub auth: bool,
     pub mailer: bool,
     pub clientside: bool,
@@ -49,11 +49,11 @@ impl From<BackgroundOption> for Option<Background> {
     }
 }
 
-impl From<RenderingMethodOption> for Option<Asset> {
+impl From<RenderingMethodOption> for Option<RenderingMethod> {
     fn from(asset: RenderingMethodOption) -> Self {
         match asset {
             RenderingMethodOption::None => None,
-            _ => Some(Asset { kind: asset }),
+            _ => Some(RenderingMethod { kind: asset }),
         }
     }
 }
@@ -135,9 +135,9 @@ pub struct Background {
     pub kind: BackgroundOption,
 }
 
-/// Asset configuration settings.
+/// Rendering method configuration.
 #[derive(Serialize, Deserialize, Clone, Debug, Default, CustomType)]
-pub struct Asset {
+pub struct RenderingMethod {
     pub kind: RenderingMethodOption,
 }
 
