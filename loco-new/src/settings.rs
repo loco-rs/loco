@@ -79,9 +79,9 @@ impl Settings {
             mailer: prompt_selection.db.enable() && prompt_selection.background.enable(),
             db: prompt_selection.db.clone().into(),
             background: prompt_selection.background.clone().into(),
-            asset: prompt_selection.asset.clone().into(),
-            clientside: prompt_selection.asset.enable(),
-            initializers: if prompt_selection.asset.enable() {
+            asset: prompt_selection.rendering_method.clone().into(),
+            clientside: prompt_selection.rendering_method.enable(),
+            initializers: if prompt_selection.rendering_method.enable() {
                 Some(Initializers { view_engine: true })
             } else {
                 None

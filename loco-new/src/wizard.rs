@@ -182,7 +182,7 @@ pub struct ArgsPlaceholder {
 pub struct Selections {
     pub db: DBOption,
     pub background: BackgroundOption,
-    pub asset: RenderingMethodOption,
+    pub rendering_method: RenderingMethodOption,
 }
 
 impl Selections {
@@ -195,7 +195,7 @@ impl Selections {
         if let Some(m) = self.background.user_message() {
             res.push(m);
         }
-        if let Some(m) = self.asset.user_message() {
+        if let Some(m) = self.rendering_method.user_message() {
             res.push(m);
         }
         res
@@ -301,7 +301,7 @@ pub fn start(args: &ArgsPlaceholder) -> crate::Result<Selections> {
         return Ok(Selections {
             db,
             background: bg,
-            asset: assets,
+            rendering_method: assets,
         });
     }
 
@@ -314,22 +314,22 @@ pub fn start(args: &ArgsPlaceholder) -> crate::Result<Selections> {
         Template::Lightweight => Ok(Selections {
             db: DBOption::None,
             background: BackgroundOption::None,
-            asset: RenderingMethodOption::None,
+            rendering_method: RenderingMethodOption::None,
         }),
         Template::RestApi => Ok(Selections {
             db: select_db(args)?,
             background: select_background(args, None)?,
-            asset: RenderingMethodOption::None,
+            rendering_method: RenderingMethodOption::None,
         }),
         Template::SaasServerSideRendering => Ok(Selections {
             db: select_db(args)?,
             background: select_background(args, None)?,
-            asset: RenderingMethodOption::Serverside,
+            rendering_method: RenderingMethodOption::Serverside,
         }),
         Template::SaasClientSideRendering => Ok(Selections {
             db: select_db(args)?,
             background: select_background(args, None)?,
-            asset: RenderingMethodOption::Clientside,
+            rendering_method: RenderingMethodOption::Clientside,
         }),
         Template::Advanced => {
             let db = select_db(args)?;
@@ -340,7 +340,7 @@ pub fn start(args: &ArgsPlaceholder) -> crate::Result<Selections> {
             Ok(Selections {
                 db,
                 background: select_background(args, background_options.as_ref())?,
-                asset: select_asset(args)?,
+                rendering_method: select_asset(args)?,
             })
         }
     }

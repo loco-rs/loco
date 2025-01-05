@@ -77,7 +77,7 @@ fn test_combination(
     let wizard_selection = wizard::Selections {
         db: db.clone(),
         background: background.clone(),
-        asset,
+        rendering_method: asset,
     };
     let settings =
         settings::Settings::from_wizard("test-loco-template", &wizard_selection, OS::default());
