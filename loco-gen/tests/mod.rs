@@ -1,1 +1,2 @@
+mod db;
 mod templates;

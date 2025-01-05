@@ -1,5 +1,5 @@
 //! Detect a content type and format and responds accordingly
-use axum::{async_trait, extract::FromRequestParts, http::request::Parts};
+use axum::{extract::FromRequestParts, http::request::Parts};
 use hyper::{
     header::{ACCEPT, CONTENT_TYPE},
     HeaderMap,
@@ -46,7 +46,6 @@ pub fn get_respond_to(headers: &HeaderMap) -> RespondTo {
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for Format
 where
     S: Send + Sync,
@@ -58,7 +57,6 @@ where
     }
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for RespondTo
 where
     S: Send + Sync,

@@ -246,6 +246,8 @@ pub enum RunDbCommand {
         dump: bool,
         dump_tables: Option<Vec<String>>,
     },
+    /// Dump database schema
+    Schema,
 }
 
 #[cfg(feature = "with-db")]
@@ -301,6 +303,10 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
                 }
                 db::run_app_seed::<H>(&app_context.db, &from).await?;
             }
+        }
+        RunDbCommand::Schema => {
+            db::dump_schema(app_context, "schema_dump.json").await?;
+            println!("Database schema dumped to 'schema_dump.json'");
         }
     }
     Ok(())
