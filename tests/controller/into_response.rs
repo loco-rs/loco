@@ -55,8 +55,7 @@ async fn internal_server_error() {
     let res_json: serde_json::Value = serde_json::from_str(&res_text).expect("Valid JSON response");
 
     let expected_json = serde_json::json!({
-        "error": "internal_server_error",
-        "description": "Internal Server Error"
+        "error": "Internal Server Error",
     });
 
     assert_eq!(res_json, expected_json);
