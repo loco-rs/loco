@@ -230,7 +230,14 @@ enum ComponentArg {
 
   - Create an empty migration:
       $ cargo loco g migration FixUsersTable
-      # Creates a blank migration file for custom edits to the 'users' table.", "Examples:".bold().underline()))]
+      # Creates a blank migration file for custom edits to the 'users' table.
+
+After running the migration, follow these steps to complete the process:
+  - Apply the migration:
+    $ cargo loco db migrate
+  - Generate the model entities:
+    $ cargo loco db entities
+", "Examples:".bold().underline()))]
     Migration {
         /// Name of the migration to generate
         name: String,
