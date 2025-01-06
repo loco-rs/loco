@@ -123,8 +123,7 @@ bytes = "1.1"
 ipnetwork = "0.20.0"
 semver = "1"
 
-# axum-test = { version = "16.4.1", optional = true }
-axum-test = { git = "https://github.com/JosephLenton/axum-test", branch = "feat-axum-8", optional = true }
+axum-test = { version = "17.0.1", optional = true }
 
 chrono = { workspace = true }
 cfg-if = "1"
