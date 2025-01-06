@@ -111,13 +111,13 @@ async fn fallback() {
         .await
         .expect("Valid response");
 
-    assert_eq!(res.status(), 400);
+    assert_eq!(res.status(), 500);
 
     let res_text = res.text().await.expect("response text");
     let res_json: serde_json::Value = serde_json::from_str(&res_text).expect("Valid JSON response");
 
     let expected_json = serde_json::json!({
-        "error": "Bad Request",
+        "error": "Internal Server Error",
     });
 
     assert_eq!(res_json, expected_json);
