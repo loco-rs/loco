@@ -21,7 +21,7 @@ Ok(
         claims: UserClaims {
             pid: "pid",
             exp: EXP,
-            claims: None,
+            claims: {},
         },
     },
 )

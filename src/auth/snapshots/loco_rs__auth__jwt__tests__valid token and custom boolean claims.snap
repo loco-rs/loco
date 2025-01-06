@@ -22,7 +22,7 @@ Ok(
             pid: "pid",
             exp: EXP,
             claims: {
-                "custom": String("claim"),
+                "custom": Bool(true),
             },
         },
     },

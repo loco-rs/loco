@@ -22,7 +22,15 @@ Ok(
             pid: "pid",
             exp: EXP,
             claims: {
-                "custom": String("claim"),
+                "level1": Object {
+                    "level2": Object {
+                        "level3": Array [
+                            Number(1),
+                            Number(2),
+                            Number(3),
+                        ],
+                    },
+                },
             },
         },
     },

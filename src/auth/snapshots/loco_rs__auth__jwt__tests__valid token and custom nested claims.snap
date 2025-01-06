@@ -22,7 +22,11 @@ Ok(
             pid: "pid",
             exp: EXP,
             claims: {
-                "custom": String("claim"),
+                "level1": Object {
+                    "level2": Object {
+                        "level3": String("claim"),
+                    },
+                },
             },
         },
     },

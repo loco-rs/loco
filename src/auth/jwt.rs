@@ -2,13 +2,12 @@
 //!
 //! This module provides functionality for working with JSON Web Tokens (JWTs)
 //! and password hashing.
-
 use jsonwebtoken::{
     decode, encode, errors::Result as JWTResult, get_current_timestamp, Algorithm, DecodingKey,
     EncodingKey, Header, TokenData, Validation,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 /// Represents the default JWT algorithm used by the [`JWT`] struct.
 const JWT_ALGORITHM: Algorithm = Algorithm::HS512;
@@ -18,7 +17,13 @@ const JWT_ALGORITHM: Algorithm = Algorithm::HS512;
 pub struct UserClaims {
     pub pid: String,
     exp: u64,
-    pub claims: Option<Value>,
+    #[serde(default, flatten)]
+    // TODO: should we wrap this in an Option? `Option<Map<String, Value>>`
+    // so we can use `auth::jwt::JWT::new("PqRwLF2rhHe8J22oBeHy").generate_token(&604800, "PID".to_string(), None);
+    // TODO: serde_json::Map or std::collections::HashMap?
+    // TODO: is it ok to use a generic Map<String, Value> here? Or should we let the user specify their desired typed claim and
+    // use generics to serialize/deserialize it?
+    pub claims: Map<String, Value>,
 }
 
 /// Represents the JWT configuration and operations.
@@ -61,17 +66,18 @@ impl JWT {
     ///
     /// # Example
     /// ```rust
+    /// use serde_json::Map;
     /// use loco_rs::auth;
     ///
-    /// auth::jwt::JWT::new("PqRwLF2rhHe8J22oBeHy").generate_token(&604800, "PID".to_string(), None);
+    /// auth::jwt::JWT::new("PqRwLF2rhHe8J22oBeHy").generate_token(604800, "PID".to_string(), Map::new());
     /// ```
     pub fn generate_token(
         &self,
-        expiration: &u64,
+        expiration: u64,
         pid: String,
-        claims: Option<Value>,
+        claims: Map<String, Value>,
     ) -> JWTResult<String> {
-        let exp = get_current_timestamp().saturating_add(*expiration);
+        let exp = get_current_timestamp().saturating_add(expiration);
 
         let claims = UserClaims { pid, exp, claims };
 
@@ -119,18 +125,22 @@ mod tests {
     use super::*;
 
     #[rstest]
-    #[case("valid token", 60, None)]
-    #[case("token expired", 1, None)]
-    #[case("valid token and custom claims", 60, Some(json!({})))]
-    #[tokio::test]
-    async fn can_generate_token(
+    #[case("valid token", 60, Map::new())]
+    #[case("token expired", 1, Map::new())]
+    #[case("valid token and custom string claims", 60, json!({ "custom": "claim",}).as_object().unwrap().clone())]
+    #[case("valid token and custom boolean claims",60, json!({ "custom": true,}).as_object().unwrap().clone())]
+    #[case("valid token and custom nested claims",60, json!({ "level1": { "level2": { "level3": "claim" } } }).as_object().unwrap().clone())]
+    #[case("valid token and custom array claims",60, json!({ "array": [1, 2, 3] }).as_object().unwrap().clone())]
+    #[case("valid token and custom nested array claims",60, json!({ "level1": { "level2": { "level3": [1, 2, 3] } } }).as_object().unwrap().clone())]
+    fn can_generate_token(
         #[case] test_name: &str,
         #[case] expiration: u64,
-        #[case] claims: Option<Value>,
+        #[case] claims: Map<String, Value>,
     ) {
         let jwt = JWT::new("PqRwLF2rhHe8J22oBeHy");
+
         let token = jwt
-            .generate_token(&expiration, "pid".to_string(), claims)
+            .generate_token(expiration, "pid".to_string(), claims)
             .unwrap();
 
         std::thread::sleep(std::time::Duration::from_secs(3));
@@ -140,4 +150,120 @@ mod tests {
             assert_debug_snapshot!(test_name, jwt.validate(&token));
         });
     }
+
+    #[test]
+    fn serialize_user_claims_without_custom_claims() {
+        let user_claims = UserClaims {
+            pid: "pid".to_string(),
+            exp: 60,
+            claims: Map::new(),
+        };
+
+        let expected_value = json!({
+            "pid" : "pid",
+            "exp": 60
+        });
+        assert_eq!(expected_value, serde_json::to_value(user_claims).unwrap());
+    }
+
+    #[test]
+    fn serialize_user_claims_with_custom_string_claims() {
+        let claims = json!({ "custom": "claim",}).as_object().unwrap().clone();
+        let user_claims = UserClaims {
+            pid: "pid".to_string(),
+            exp: 60,
+            claims,
+        };
+
+        let expected_value = json!({
+            "pid" : "pid",
+            "exp": 60,
+            "custom": "claim"
+        });
+        assert_eq!(expected_value, serde_json::to_value(user_claims).unwrap());
+    }
+
+    #[test]
+    fn serialize_user_claims_with_custom_boolean_claims() {
+        let claims = json!({ "custom": true,}).as_object().unwrap().clone();
+        let user_claims = UserClaims {
+            pid: "pid".to_string(),
+            exp: 60,
+            claims,
+        };
+
+        let expected_value = json!({
+            "pid" : "pid",
+            "exp": 60,
+            "custom": true
+        });
+        assert_eq!(expected_value, serde_json::to_value(user_claims).unwrap());
+    }
+
+    #[test]
+    fn serialize_user_claims_with_custom_nested_claims() {
+        let claims = json!({ "level1": { "level2": { "level3": "claim" } } })
+            .as_object()
+            .unwrap()
+            .clone();
+        let user_claims = UserClaims {
+            pid: "pid".to_string(),
+            exp: 60,
+            claims,
+        };
+
+        let expected_value = json!({
+            "pid" : "pid",
+            "exp": 60,
+            "level1": {
+                "level2": {
+                    "level3": "claim"
+                }
+            }
+        });
+        assert_eq!(expected_value, serde_json::to_value(user_claims).unwrap());
+    }
+
+    #[test]
+    fn serialize_user_claims_with_custom_array_claims() {
+        let claims = json!({ "array": [1, 2, 3] }).as_object().unwrap().clone();
+        let user_claims = UserClaims {
+            pid: "pid".to_string(),
+            exp: 60,
+            claims,
+        };
+
+        let expected_value = json!({
+            "pid" : "pid",
+            "exp": 60,
+            "array": [1, 2, 3]
+        });
+        assert_eq!(expected_value, serde_json::to_value(user_claims).unwrap());
+    }
+
+    #[test]
+    fn serialize_user_claims_with_custom_nested_array_claims() {
+        let claims = json!({ "level1": { "level2": { "level3": [1, 2, 3] } } })
+            .as_object()
+            .unwrap()
+            .clone();
+        let user_claims = UserClaims {
+            pid: "pid".to_string(),
+            exp: 60,
+            claims,
+        };
+
+        let expected_value = json!({
+            "pid" : "pid",
+            "exp": 60,
+            "level1": {
+                "level2": {
+                    "level3": [1, 2, 3]
+                }
+            }
+        });
+        assert_eq!(expected_value, serde_json::to_value(user_claims).unwrap());
+    }
+
+    // TODO: repeat these tests but with deserialize
 }
