@@ -109,7 +109,7 @@ pub async fn get_one(
 pub fn routes() -> Routes {
     Routes::new()
       .prefix("notes")
-      .add("/:id", get(get_one))
+      .add("/{id}", get(get_one))
 }
 ```
 '''

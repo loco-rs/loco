@@ -90,12 +90,7 @@ impl StorageStrategy for BackupStrategy {
     /// Downloads content only from primary storage backend.
     async fn download(&self, storage: &Storage, path: &Path) -> StorageResult<Bytes> {
         let store = storage.as_store_err(&self.primary)?;
-        Ok(store
-            .get(path)
-            .await?
-            .bytes()
-            .await
-            .map_err(StorageError::Store)?)
+        Ok(store.get(path).await?.bytes().await?)
     }
 
     /// Deletes content from the primary and, if configured, secondary storage

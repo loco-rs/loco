@@ -5,6 +5,7 @@ use loco_rs::{
     app::{AppContext, Hooks, Initializer},
     boot::{create_app, BootResult, StartMode},
     cache,
+    config::Config,
     controller::AppRoutes,
     db::{self, truncate_table},
     environment::Environment,
@@ -69,8 +70,12 @@ impl Hooks for App {
             .add_route(controllers::cache::routes())
     }
 
-    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
-        create_app::<Self, Migrator>(mode, environment).await
+    async fn boot(
+        mode: StartMode,
+        environment: &Environment,
+        config: Config,
+    ) -> Result<BootResult> {
+        create_app::<Self, Migrator>(mode, environment, config).await
     }
 
     async fn after_context(ctx: AppContext) -> Result<AppContext> {

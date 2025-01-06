@@ -30,18 +30,19 @@ cfg_if::cfg_if! {
     feature = "with-db"
 ))]
 use std::process::exit;
+
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
 };
 
-#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
-use crate::bgworker::JobStatus;
 use clap::{ArgAction, Parser, Subcommand};
 use colored::Colorize;
 use duct::cmd;
 use loco_gen::{Component, DeploymentKind, ScaffoldKind};
 
+#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+use crate::bgworker::JobStatus;
 use crate::{
     app::{AppContext, Hooks},
     boot::{
@@ -105,8 +106,8 @@ enum Commands {
     /// Describe all application middlewares
     Middleware {
         // print out the middleware configurations.
-        #[arg(short, long, action)]
-        config: bool,
+        #[arg(short = 'c', long = "config", action)]
+        show_config: bool,
     },
     /// Run a custom task
     #[clap(alias("t"))]
@@ -134,8 +135,8 @@ enum Commands {
         /// Specify a path to a dedicated scheduler configuration file. by
         /// default load schedulers job setting from environment config.
         #[clap(value_parser)]
-        #[arg(short, long, action)]
-        config: Option<PathBuf>,
+        #[arg(short = 'c', long = "config", action)]
+        config_path: Option<PathBuf>,
         /// Show all configured jobs
         #[arg(short, long, action)]
         list: bool,
@@ -417,6 +418,8 @@ enum DbCommands {
         #[arg(long, default_value = "src/fixtures")]
         from: PathBuf,
     },
+    /// Dump database schema
+    Schema,
 }
 
 impl From<DbCommands> for RunDbCommand {
@@ -442,6 +445,7 @@ impl From<DbCommands> for RunDbCommand {
             DbCommands::Create => {
                 unreachable!("Create db should't handled in the global db commands")
             }
+            DbCommands::Schema => Self::Schema,
         }
     }
 }
@@ -516,13 +520,13 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
     let cli = Playground::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
-    let config = environment.load()?;
+    let config = H::load_config(&environment).await?;
 
     if !H::init_logger(&config, &environment)? {
         logger::init::<H>(&config.logger)?;
     }
 
-    let app_context = create_context::<H>(&environment).await?;
+    let app_context = create_context::<H>(&environment, config).await?;
     Ok(app_context)
 }
 
@@ -557,7 +561,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
     let cli: Cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
-    let config = environment.load()?;
+    let config = H::load_config(&environment).await?;
 
     if !H::init_logger(&config, &environment)? {
         logger::init::<H>(&config.logger)?;
@@ -582,7 +586,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                 StartMode::ServerOnly
             };
 
-            let boot_result = create_app::<H, M>(start_mode, &environment).await?;
+            let boot_result = create_app::<H, M>(start_mode, &environment, config).await?;
             let serve_params = ServeParams {
                 port: port.map_or(boot_result.app_context.config.server.port, |p| p),
                 binding: binding
@@ -593,26 +597,28 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         #[cfg(feature = "with-db")]
         Commands::Db { command } => {
             if matches!(command, DbCommands::Create) {
-                db::create(&environment.load()?.database.uri).await?;
+                db::create(&config.database.uri).await?;
             } else {
-                let app_context = create_context::<H>(&environment).await?;
+                let app_context = create_context::<H>(&environment, config).await?;
                 run_db::<H, M>(&app_context, command.into()).await?;
             }
         }
         #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
-        Commands::Jobs { command } => handle_job_command::<H>(command, &environment).await?,
+        Commands::Jobs { command } => {
+            handle_job_command::<H>(command, &environment, config).await?;
+        }
         Commands::Routes {} => {
-            let app_context = create_context::<H>(&environment).await?;
+            let app_context = create_context::<H>(&environment, config).await?;
             show_list_endpoints::<H>(&app_context);
         }
-        Commands::Middleware { config } => {
-            let app_context = create_context::<H>(&environment).await?;
+        Commands::Middleware { show_config } => {
+            let app_context = create_context::<H>(&environment, config).await?;
             let middlewares = list_middlewares::<H>(&app_context);
             for middleware in middlewares.iter().filter(|m| m.enabled) {
                 println!(
                     "{:<22} {}",
                     middleware.id.bold(),
-                    if config {
+                    if show_config {
                         middleware.detail.as_str()
                     } else {
                         ""
@@ -626,17 +632,17 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         }
         Commands::Task { name, params } => {
             let vars = task::Vars::from_cli_args(params);
-            let app_context = create_context::<H>(&environment).await?;
+            let app_context = create_context::<H>(&environment, config).await?;
             run_task::<H>(&app_context, name.as_ref(), &vars).await?;
         }
         Commands::Scheduler {
             name,
-            config,
+            config_path,
             tag,
             list,
         } => {
-            let app_context = create_context::<H>(&environment).await?;
-            run_scheduler::<H>(&app_context, config.as_ref(), name, tag, list).await?;
+            let app_context = create_context::<H>(&environment, config).await?;
+            run_scheduler::<H>(&app_context, config_path.as_ref(), name, tag, list).await?;
         }
         Commands::Generate { component } => {
             handle_generate_command::<H>(component, &config)?;
@@ -695,7 +701,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
     let cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
-    let config = environment.load()?;
+    let config = H::load_config(&environment).await?;
 
     if !H::init_logger(&config, &environment)? {
         logger::init::<H>(&config.logger)?;
@@ -720,7 +726,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
                 StartMode::ServerOnly
             };
 
-            let boot_result = create_app::<H>(start_mode, &environment).await?;
+            let boot_result = create_app::<H>(start_mode, &environment, config).await?;
             let serve_params = ServeParams {
                 port: port.map_or(boot_result.app_context.config.server.port, |p| p),
                 binding: binding.map_or(
@@ -731,17 +737,17 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             start::<H>(boot_result, serve_params, no_banner).await?;
         }
         Commands::Routes {} => {
-            let app_context = create_context::<H>(&environment).await?;
+            let app_context = create_context::<H>(&environment, config).await?;
             show_list_endpoints::<H>(&app_context)
         }
-        Commands::Middleware { config } => {
-            let app_context = create_context::<H>(&environment).await?;
+        Commands::Middleware { show_config } => {
+            let app_context = create_context::<H>(&environment, config).await?;
             let middlewares = list_middlewares::<H>(&app_context);
             for middleware in middlewares.iter().filter(|m| m.enabled) {
                 println!(
                     "{:<22} {}",
                     middleware.id.bold(),
-                    if config {
+                    if show_config {
                         middleware.detail.as_str()
                     } else {
                         ""
@@ -755,19 +761,21 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
         }
         Commands::Task { name, params } => {
             let vars = task::Vars::from_cli_args(params);
-            let app_context = create_context::<H>(&environment).await?;
+            let app_context = create_context::<H>(&environment, config).await?;
             run_task::<H>(&app_context, name.as_ref(), &vars).await?;
         }
         #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
-        Commands::Jobs { command } => handle_job_command::<H>(command, &environment).await?,
+        Commands::Jobs { command } => {
+            handle_job_command::<H>(command, &environment, config).await?
+        }
         Commands::Scheduler {
             name,
-            config,
+            config_path,
             tag,
             list,
         } => {
-            let app_context = create_context::<H>(&environment).await?;
-            run_scheduler::<H>(&app_context, config.as_ref(), name, tag, list).await?;
+            let app_context = create_context::<H>(&environment, config).await?;
+            run_scheduler::<H>(&app_context, config_path.as_ref(), name, tag, list).await?;
         }
         Commands::Generate { component } => {
             handle_generate_command::<H>(component, &config)?;
@@ -909,8 +917,9 @@ fn create_root_span(environment: &Environment) -> tracing::Span {
 async fn handle_job_command<H: Hooks>(
     command: JobsCommands,
     environment: &Environment,
+    config: Config,
 ) -> crate::Result<()> {
-    let app_context = create_context::<H>(environment).await?;
+    let app_context = create_context::<H>(environment, config).await?;
     let queue = app_context.queue_provider.map_or_else(
         || {
             println!("queue not configured");

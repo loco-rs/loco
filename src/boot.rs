@@ -15,6 +15,7 @@ use crate::{
     app::{AppContext, Hooks},
     banner::print_banner,
     bgworker, cache,
+    config::Config,
     config::{self, WorkerMode},
     controller::ListRoutes,
     environment::Environment,
@@ -245,6 +246,8 @@ pub enum RunDbCommand {
         dump: bool,
         dump_tables: Option<Vec<String>>,
     },
+    /// Dump database schema
+    Schema,
 }
 
 #[cfg(feature = "with-db")]
@@ -301,6 +304,10 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
                 db::run_app_seed::<H>(&app_context.db, &from).await?;
             }
         }
+        RunDbCommand::Schema => {
+            db::dump_schema(app_context, "schema_dump.json").await?;
+            println!("Database schema dumped to 'schema_dump.json'");
+        }
     }
     Ok(())
 }
@@ -310,9 +317,10 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
 ///
 /// # Errors
 /// When has an error to create DB connection.
-pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppContext> {
-    let config = environment.load()?;
-
+pub async fn create_context<H: Hooks>(
+    environment: &Environment,
+    config: Config,
+) -> Result<AppContext> {
     if config.logger.pretty_backtrace {
         std::env::set_var("RUST_BACKTRACE", "1");
         warn!(
@@ -353,8 +361,9 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
 pub async fn create_app<H: Hooks, M: MigratorTrait>(
     mode: StartMode,
     environment: &Environment,
+    config: Config,
 ) -> Result<BootResult> {
-    let app_context = create_context::<H>(environment).await?;
+    let app_context = create_context::<H>(environment, config).await?;
     db::converge::<H, M>(&app_context.db, &app_context.config.database).await?;
 
     if let (Some(queue), Some(config)) = (&app_context.queue_provider, &app_context.config.queue) {
@@ -368,8 +377,9 @@ pub async fn create_app<H: Hooks, M: MigratorTrait>(
 pub async fn create_app<H: Hooks>(
     mode: StartMode,
     environment: &Environment,
+    config: Config,
 ) -> Result<BootResult> {
-    let app_context = create_context::<H>(environment).await?;
+    let app_context = create_context::<H>(environment, config).await?;
 
     if let (Some(queue), Some(config)) = (&app_context.queue_provider, &app_context.config.queue) {
         bgworker::converge(queue, config).await?;

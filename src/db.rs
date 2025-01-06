@@ -11,7 +11,7 @@ use fs_err::{self as fs, create_dir_all};
 use regex::Regex;
 use sea_orm::{
     ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
-    DatabaseConnection, DbConn, EntityTrait, IntoActiveModel, Statement,
+    DatabaseConnection, DbBackend, DbConn, DbErr, EntityTrait, IntoActiveModel, Statement,
 };
 use sea_orm_migration::MigratorTrait;
 use tracing::info;
@@ -237,7 +237,7 @@ pub async fn reset<M: MigratorTrait>(db: &DatabaseConnection) -> Result<(), sea_
 }
 
 use sea_orm::EntityName;
-use serde_json::Value;
+use serde_json::{json, Value};
 /// Seed the database with data from a specified file.
 /// Seeds open the file path and insert all file content into the DB.
 ///
@@ -280,8 +280,8 @@ where
 /// Checks if the specified table has an 'id' column.
 ///
 /// This function checks if the specified table has an 'id' column, which is a
-/// common primary key column. It supports `Postgres`, `SQLite`, and `MySQL` database
-/// backends.
+/// common primary key column. It supports `Postgres`, `SQLite`, and `MySQL`
+/// database backends.
 ///
 /// # Arguments
 ///
@@ -766,5 +766,82 @@ pub async fn dump_tables(
 
     tracing::info!("dumping tables process completed successfully");
 
+    Ok(())
+}
+
+/// dumps the db schema into file.
+///
+/// # Errors
+/// Fails with IO / sql fails
+pub async fn dump_schema(ctx: &AppContext, fname: &str) -> crate::Result<()> {
+    let db = &ctx.db;
+
+    // Match the database backend and fetch schema info
+    let schema_info = match db.get_database_backend() {
+        DbBackend::Postgres => {
+            let query = r"
+                SELECT table_name, column_name, data_type
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                ORDER BY table_name, ordinal_position;
+            ";
+            let stmt = Statement::from_string(DbBackend::Postgres, query.to_owned());
+            let rows = db.query_all(stmt).await?;
+            rows.into_iter()
+                .map(|row| {
+                    // Wrap the closure in a Result to handle errors properly
+                    Ok(json!({
+                        "table": row.try_get::<String>("", "table_name")?,
+                        "column": row.try_get::<String>("", "column_name")?,
+                        "type": row.try_get::<String>("", "data_type")?,
+                    }))
+                })
+                .collect::<Result<Vec<serde_json::Value>, DbErr>>()? // Specify error type explicitly
+        }
+        DbBackend::MySql => {
+            let query = r"
+                SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                ORDER BY TABLE_NAME, ORDINAL_POSITION;
+            ";
+            let stmt = Statement::from_string(DbBackend::MySql, query.to_owned());
+            let rows = db.query_all(stmt).await?;
+            rows.into_iter()
+                .map(|row| {
+                    // Wrap the closure in a Result to handle errors properly
+                    Ok(json!({
+                        "table": row.try_get::<String>("", "TABLE_NAME")?,
+                        "column": row.try_get::<String>("", "COLUMN_NAME")?,
+                        "type": row.try_get::<String>("", "COLUMN_TYPE")?,
+                    }))
+                })
+                .collect::<Result<Vec<serde_json::Value>, DbErr>>()? // Specify error type explicitly
+        }
+        DbBackend::Sqlite => {
+            let query = r"
+                SELECT name AS table_name, sql AS table_sql
+                FROM sqlite_master
+                WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+                ORDER BY name;
+            ";
+            let stmt = Statement::from_string(DbBackend::Sqlite, query.to_owned());
+            let rows = db.query_all(stmt).await?;
+            rows.into_iter()
+                .map(|row| {
+                    // Wrap the closure in a Result to handle errors properly
+                    Ok(json!({
+                        "table": row.try_get::<String>("", "table_name")?,
+                        "sql": row.try_get::<String>("", "table_sql")?,
+                    }))
+                })
+                .collect::<Result<Vec<serde_json::Value>, DbErr>>()? // Specify error type explicitly
+        }
+    };
+    // Serialize schema info to JSON format
+    let schema_json = serde_json::to_string_pretty(&schema_info)?;
+
+    // Save the schema to a file
+    std::fs::write(fname, schema_json)?;
     Ok(())
 }
