@@ -1,4 +1,4 @@
-## Blessed depdenencies maintenance and `loco doctor`
+## Blessed dependencies maintenance and `loco doctor`
 
 Loco contain a few major and "blessed" dependencies, these appear **both** in an app that was generated at the surface level in their `Cargo.toml` and in the core Loco framework.
 
