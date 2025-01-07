@@ -170,8 +170,10 @@ async fn cors(
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
-    let mut middleware = Cors::empty();
-    middleware.enable = enable;
+    let mut middleware = Cors {
+        enable,
+        ..Default::default()
+    };
 
     if let Some(allow_headers) = allow_headers {
         middleware.allow_headers = allow_headers;
