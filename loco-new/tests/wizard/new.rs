@@ -189,7 +189,6 @@ fn test_combination(
             tester.run_generate_migration(&vec![
                 "CreatePosts",
                 "title:string",
-                "user:references",
                 "movies:references",
             ]);
 
@@ -208,10 +207,7 @@ fn test_combination(
             ]);
 
             // Generate AddUserRefToPosts migration
-            // TODO:: not working on sqlite.
-            //  - thread 'main' panicked at 'Sqlite doesn't support multiple alter options'
-            //  - Sqlite does not support modification of foreign key constraints to existing
-            // tester.run_generate_migration(&vec!["AddUserRefToPosts", "movies:references"]);
+            tester.run_generate_migration(&vec!["AddUserRefToPosts", "users:references"]);
 
             // Generate CreateJoinTableUsersAndGroups migration
             tester.run_generate_migration(&vec!["CreateJoinTableUsersAndGroups", "count:int"]);

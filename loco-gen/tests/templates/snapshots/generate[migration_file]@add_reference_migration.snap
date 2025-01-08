@@ -18,5 +18,6 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
         remove_reference(m, "posts", "user", "").await?;
-        }
+        Ok(())
+    }
 }
