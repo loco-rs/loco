@@ -1,7 +1,6 @@
 use std::path::Path;
 
 use async_trait::async_trait;
-use sea_orm::DatabaseConnection;
 pub use sea_orm_migration::prelude::*;
 
 use crate::{
@@ -116,11 +115,11 @@ impl Hooks for AppHook {
         tasks.register(super::task::ParseArgs);
     }
 
-    async fn truncate(_db: &DatabaseConnection) -> Result<()> {
+    async fn truncate(_ctx: &AppContext) -> Result<()> {
         Ok(())
     }
 
-    async fn seed(_db: &DatabaseConnection, _base: &Path) -> Result<()> {
+    async fn seed(_ctx: &AppContext, _base: &Path) -> Result<()> {
         Ok(())
     }
 }

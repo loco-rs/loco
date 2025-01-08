@@ -248,7 +248,7 @@ async fn can_get_current_user() {
 async fn can_auth_with_magic_link() {
     configure_insta!();
     request::<App, _, _>(|request, ctx| async move {
-        seed::<App>(&ctx.db).await.unwrap();
+        seed::<App>(&ctx).await.unwrap();
 
         let payload = serde_json::json!({
             "email": "user1@example.com",
@@ -313,7 +313,7 @@ async fn can_reject_invalid_email() {
 async fn can_reject_invalid_magic_link_token() {
     configure_insta!();
     request::<App, _, _>(|request, ctx| async move {
-        seed::<App>(&ctx.db).await.unwrap();
+        seed::<App>(&ctx).await.unwrap();
 
         let magic_link_response = request.get("/api/auth/magic-link/invalid-token").await;
         assert_eq!(
