@@ -125,18 +125,23 @@ mod tests {
     use super::*;
 
     #[rstest]
-    #[case("valid token", 60, Map::new())]
-    #[case("token expired", 1, Map::new())]
-    #[case("valid token and custom string claims", 60, json!({ "custom": "claim",}).as_object().unwrap().clone())]
-    #[case("valid token and custom boolean claims",60, json!({ "custom": true,}).as_object().unwrap().clone())]
-    #[case("valid token and custom nested claims",60, json!({ "level1": { "level2": { "level3": "claim" } } }).as_object().unwrap().clone())]
-    #[case("valid token and custom array claims",60, json!({ "array": [1, 2, 3] }).as_object().unwrap().clone())]
-    #[case("valid token and custom nested array claims",60, json!({ "level1": { "level2": { "level3": [1, 2, 3] } } }).as_object().unwrap().clone())]
+    #[case("valid token", 60, json!({}))]
+    #[case("token expired", 1, json!({}))]
+    #[case("valid token and custom string claims", 60, json!({ "custom": "claim",}))]
+    #[case("valid token and custom boolean claims",60, json!({ "custom": true,}))]
+    #[case("valid token and custom number claims",60, json!({ "custom": 123,}))]
+    #[case("valid token and custom nested claims",60, json!({ "level1": { "level2": { "level3": "claim" } } }))]
+    #[case("valid token and custom array claims",60, json!({ "array": [1, 2, 3] }))]
+    #[case("valid token and custom nested array claims",60, json!({ "level1": { "level2": { "level3": [1, 2, 3] } } }))]
     fn can_generate_token(
         #[case] test_name: &str,
         #[case] expiration: u64,
-        #[case] claims: Map<String, Value>,
+        #[case] json_claims: Value,
     ) {
+        let claims = json_claims
+            .as_object()
+            .expect("case input claims must be an object")
+            .clone();
         let jwt = JWT::new("PqRwLF2rhHe8J22oBeHy");
 
         let token = jwt
@@ -151,261 +156,72 @@ mod tests {
         });
     }
 
-    #[test]
-    fn serialize_user_claims_without_custom_claims() {
-        let user_claims = UserClaims {
-            pid: "pid".to_string(),
-            exp: 60,
-            claims: Map::new(),
-        };
-
-        let expected_value = json!({
-            "pid" : "pid",
-            "exp": 60
-        });
-        assert_eq!(expected_value, serde_json::to_value(user_claims).unwrap());
-    }
-
-    #[test]
-    fn serialize_user_claims_with_custom_string_claims() {
-        let claims = json!({ "custom": "claim",}).as_object().unwrap().clone();
-        let user_claims = UserClaims {
-            pid: "pid".to_string(),
-            exp: 60,
-            claims,
-        };
-
-        let expected_value = json!({
-            "pid" : "pid",
-            "exp": 60,
-            "custom": "claim"
-        });
-        assert_eq!(expected_value, serde_json::to_value(user_claims).unwrap());
-    }
-
-    #[test]
-    fn serialize_user_claims_with_custom_boolean_claims() {
-        let claims = json!({ "custom": true,}).as_object().unwrap().clone();
-        let user_claims = UserClaims {
-            pid: "pid".to_string(),
-            exp: 60,
-            claims,
-        };
-
-        let expected_value = json!({
-            "pid" : "pid",
-            "exp": 60,
-            "custom": true
-        });
-        assert_eq!(expected_value, serde_json::to_value(user_claims).unwrap());
-    }
-
-    #[test]
-    fn serialize_user_claims_with_custom_nested_claims() {
-        let claims = json!({ "level1": { "level2": { "level3": "claim" } } })
+    #[rstest]
+    #[case::without_custom_claims(json!({}))]
+    #[case::with_custom_string_claims(json!({ "custom": "claim",}))]
+    #[case::with_custom_boolean_claims(json!({ "custom": true,}))]
+    #[case::with_custom_number_claims(json!({ "custom": 123,}))]
+    #[case::with_custom_nested_claims(json!({ "level1": { "level2": { "level3": "claim" } } }))]
+    #[case::with_custom_array_claims(json!({ "array": [1, 2, 3] }))]
+    #[case::with_custom_nested_array_claims(json!({ "level1": { "level2": { "level3": [1, 2, 3] } } }))]
+    // we use `Value` to reduce code duplicity in the case inputs
+    fn serialize_user_claims(#[case] json_claims: Value) {
+        let claims = json_claims
             .as_object()
-            .unwrap()
+            .expect("case input claims must be an object")
             .clone();
         let user_claims = UserClaims {
             pid: "pid".to_string(),
             exp: 60,
+            claims: claims.clone(),
+        };
+
+        let mut expected_map = Map::new();
+        expected_map.insert("pid".to_string(), "pid".into());
+        expected_map.insert("exp".to_string(), 60.into());
+        // we add the claims in a flattened way
+        expected_map.extend(claims);
+        let expected_value = Value::from(expected_map);
+
+        // We check between `Value` instead of `String` to avoid key ordering issues when serializing.
+        // It is because `expected_value` has all the keys in alphabetical order, as the `Value` serialization ensures that.
+        // But when serializing `user_claims`, first the `pid` and `exp` fields are serialized (in that order),
+        // and then the claims are serialized in alfabetic order. So, the resulting JSON string from the `user_claims` serialization
+        // may have the `pid` and `exp` fields unordered which differs from the `Value` serialization.
+        assert_eq!(expected_value, serde_json::to_value(&user_claims).unwrap());
+    }
+
+    #[rstest]
+    #[case::without_custom_claims(json!({}))]
+    #[case::with_custom_string_claims(json!({ "custom": "claim",}))]
+    #[case::with_custom_boolean_claims(json!({ "custom": true,}))]
+    #[case::with_custom_number_claims(json!({ "custom": 123,}))]
+    #[case::with_custom_nested_claims(json!({ "level1": { "level2": { "level3": "claim" } } }))]
+    #[case::with_custom_array_claims(json!({ "array": [1, 2, 3] }))]
+    #[case::with_custom_nested_array_claims(json!({ "level1": { "level2": { "level3": [1, 2, 3] } } }))]
+    // we use `Value` to reduce code duplicity in the case inputs
+    fn deserialize_user_claims(#[case] json_claims: Value) {
+        let claims = json_claims
+            .as_object()
+            .expect("case input claims must be an object")
+            .clone();
+
+        let mut input_claims = Map::new();
+        input_claims.insert("pid".to_string(), "pid".into());
+        input_claims.insert("exp".to_string(), 60.into());
+        // we add the claims in a flattened way
+        input_claims.extend(claims.clone());
+        let input_json = Value::from(input_claims).to_string();
+
+        let expected_user_claims = UserClaims {
+            pid: "pid".to_string(),
+            exp: 60,
             claims,
         };
 
-        let expected_value = json!({
-            "pid" : "pid",
-            "exp": 60,
-            "level1": {
-                "level2": {
-                    "level3": "claim"
-                }
-            }
-        });
-        assert_eq!(expected_value, serde_json::to_value(user_claims).unwrap());
-    }
-
-    #[test]
-    fn serialize_user_claims_with_custom_array_claims() {
-        let claims = json!({ "array": [1, 2, 3] }).as_object().unwrap().clone();
-        let user_claims = UserClaims {
-            pid: "pid".to_string(),
-            exp: 60,
-            claims,
-        };
-
-        let expected_value = json!({
-            "pid" : "pid",
-            "exp": 60,
-            "array": [1, 2, 3]
-        });
-        assert_eq!(expected_value, serde_json::to_value(user_claims).unwrap());
-    }
-
-    #[test]
-    fn serialize_user_claims_with_custom_nested_array_claims() {
-        let claims = json!({ "level1": { "level2": { "level3": [1, 2, 3] } } })
-            .as_object()
-            .unwrap()
-            .clone();
-        let user_claims = UserClaims {
-            pid: "pid".to_string(),
-            exp: 60,
-            claims,
-        };
-
-        let expected_value = json!({
-            "pid" : "pid",
-            "exp": 60,
-            "level1": {
-                "level2": {
-                    "level3": [1, 2, 3]
-                }
-            }
-        });
-        assert_eq!(expected_value, serde_json::to_value(user_claims).unwrap());
-    }
-
-    #[test]
-    fn deserialize_user_claims_without_custom_claims() {
-        let json_claims = json!({
-            "pid" : "pid",
-            "exp": 60
-        })
-        .to_string();
-
-        let expected_user_claims = UserClaims {
-            pid: "pid".to_string(),
-            exp: 60,
-            claims: Map::new(),
-        };
-
         assert_eq!(
             expected_user_claims,
-            serde_json::from_str(&json_claims).unwrap()
-        );
-    }
-
-    #[test]
-    fn deserialize_user_claims_with_custom_string_claims() {
-        let json_claims = json!({
-            "pid" : "pid",
-            "exp": 60,
-            "custom": "claim"
-        })
-        .to_string();
-
-        let expected_claims = json!({ "custom": "claim",}).as_object().unwrap().clone();
-        let expected_user_claims = UserClaims {
-            pid: "pid".to_string(),
-            exp: 60,
-            claims: expected_claims,
-        };
-
-        assert_eq!(
-            expected_user_claims,
-            serde_json::from_str(&json_claims).unwrap()
-        );
-    }
-
-    #[test]
-    fn deserialize_user_claims_with_custom_boolean_claims() {
-        let json_claims = json!({
-            "pid" : "pid",
-            "exp": 60,
-            "custom": true
-        })
-        .to_string();
-
-        let expected_claims = json!({ "custom": true,}).as_object().unwrap().clone();
-        let expected_user_claims = UserClaims {
-            pid: "pid".to_string(),
-            exp: 60,
-            claims: expected_claims,
-        };
-
-        assert_eq!(
-            expected_user_claims,
-            serde_json::from_str(&json_claims).unwrap()
-        );
-    }
-
-    #[test]
-    fn deserialize_user_claims_with_custom_nested_claims() {
-        let json_claims = json!({
-            "pid" : "pid",
-            "exp": 60,
-            "level1": {
-                "level2": {
-                    "level3": "claim"
-                }
-            }
-        })
-        .to_string();
-
-        let expected_claims = json!({ "level1": { "level2": { "level3": "claim" } } })
-            .as_object()
-            .unwrap()
-            .clone();
-        let expected_user_claims = UserClaims {
-            pid: "pid".to_string(),
-            exp: 60,
-            claims: expected_claims,
-        };
-
-        assert_eq!(
-            expected_user_claims,
-            serde_json::from_str(&json_claims).unwrap()
-        );
-    }
-
-    #[test]
-    fn deserialize_user_claims_with_custom_array_claims() {
-        let json_claims = json!({
-            "pid" : "pid",
-            "exp": 60,
-            "array": [1, 2, 3]
-        })
-        .to_string();
-
-        let expected_claims = json!({ "array": [1, 2, 3] }).as_object().unwrap().clone();
-        let expected_user_claims = UserClaims {
-            pid: "pid".to_string(),
-            exp: 60,
-            claims: expected_claims,
-        };
-
-        assert_eq!(
-            expected_user_claims,
-            serde_json::from_str(&json_claims).unwrap()
-        );
-    }
-
-    #[test]
-    fn deserialize_user_claims_with_custom_nested_array_claims() {
-        let json_claims = json!({
-            "pid" : "pid",
-            "exp": 60,
-            "level1": {
-                "level2": {
-                    "level3": [1, 2, 3]
-                }
-            }
-        })
-        .to_string();
-
-        let expected_claims = json!({ "level1": { "level2": { "level3": [1, 2, 3] } } })
-            .as_object()
-            .unwrap()
-            .clone();
-        let expected_user_claims = UserClaims {
-            pid: "pid".to_string(),
-            exp: 60,
-            claims: expected_claims,
-        };
-
-        assert_eq!(
-            expected_user_claims,
-            serde_json::from_str(&json_claims).unwrap()
+            serde_json::from_str(&input_json).unwrap()
         );
     }
 }
