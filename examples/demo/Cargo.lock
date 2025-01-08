@@ -508,8 +508,9 @@ dependencies = [
 
 [[package]]
 name = "axum-test"
-version = "17.0.0"
-source = "git+https://github.com/JosephLenton/axum-test?branch=feat-axum-8#dd7da71c4979317d603dc7dad9bacad46ec8377a"
+version = "17.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53f1009889890a439cbf67a4071a2593d027c65209da4faeac5582f28ca9e6c3"
 dependencies = [
  "anyhow",
  "assert-json-diff",
