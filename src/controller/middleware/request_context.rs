@@ -108,8 +108,13 @@ impl Default for RequestContextSession {
         // file, generate a private key for the cookie session and panic.
         let private_key = Key::generate().master().to_vec();
         panic!(
-            "Session secret key must be explicitly configured in your environment config file: \
-             {private_key:?}"
+            "Session secret key must be explicitly configured in your environment config file:
+             request_context:
+               session_store:
+                 type: Cookie
+                 value:
+                   private_key: {private_key:?}
+             "
         )
     }
 }
