@@ -1,6 +1,7 @@
-use sea_orm::DatabaseConnection;
-
-use crate::{app::Hooks, Result};
+use crate::{
+    app::{AppContext, Hooks},
+    Result,
+};
 
 /// Seeds data into the database.
 ///
@@ -21,13 +22,13 @@ use crate::{app::Hooks, Result};
 /// #[tokio::test]
 /// async fn test_create_user() {
 ///     let boot = boot_test::<App, Migrator>().await;
-///     seed::<App>(&boot.app_context.db).await.unwrap();
+///     seed::<App>(&boot.app_context).await.unwrap();
 ///
 ///     /// .....
 ///     assert!(false)
 /// }
 /// ```
-pub async fn seed<H: Hooks>(db: &DatabaseConnection) -> Result<()> {
+pub async fn seed<H: Hooks>(ctx: &AppContext) -> Result<()> {
     let path = std::path::Path::new("src/fixtures");
-    H::seed(db, path).await
+    H::seed(ctx, path).await
 }

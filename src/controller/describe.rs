@@ -8,7 +8,7 @@ use crate::app::AppContext;
 static DESCRIBE_METHOD_ACTION: OnceLock<Regex> = OnceLock::new();
 
 fn get_describe_method_action() -> &'static Regex {
-    DESCRIBE_METHOD_ACTION.get_or_init(|| Regex::new(r"\b(\w+):\s*BoxedHandler\b").unwrap())
+    DESCRIBE_METHOD_ACTION.get_or_init(|| Regex::new(r"\b(\w+):\s*(BoxedHandler|Route)\b").unwrap())
 }
 
 /// Extract the allow list method actions from [`MethodRouter`].
