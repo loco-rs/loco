@@ -1,0 +1,28 @@
+---
+source: loco-gen/tests/templates/scaffold.rs
+expression: "fs::read_to_string(views_path.join(format!(\"{view}.html\"))).expect(\"view file missing\")"
+---
+{% extends "base.html" %}
+
+{% block title %}
+List of movie
+{% endblock title %}
+
+{% block content %}
+<h1>movies</h1>
+<div class="mb-10">
+{% for item in items %}
+    <div class="mb-5">
+        <div>
+            
+            <label><b>{{"title" | capitalize }}:</b> {{item.title}}</label>
+            </div>
+        <a href="/movies/{{ item.id }}/edit">Edit</a>
+        <a href="/movies/{{ item.id }}">View</a>
+    </div>
+{% endfor %}
+<br />
+<br />
+<a href="/movies/new">New movie</a>
+</div>
+{% endblock content %}

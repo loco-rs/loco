@@ -75,8 +75,8 @@ impl Settings {
         Self {
             package_name: package_name.to_string(),
             module_name: package_name.to_snake_case(),
-            auth: prompt_selection.db.enable(),
-            mailer: prompt_selection.db.enable(),
+            auth: prompt_selection.db.enable() && prompt_selection.background.enable(),
+            mailer: prompt_selection.db.enable() && prompt_selection.background.enable(),
             db: prompt_selection.db.clone().into(),
             background: prompt_selection.background.clone().into(),
             asset: prompt_selection.asset.clone().into(),

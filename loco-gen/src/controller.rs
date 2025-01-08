@@ -1,18 +1,8 @@
+use super::{AppInfo, GenerateResults, Result};
+use crate as gen;
 use rrgen::RRgen;
 use serde_json::json;
-
-use crate as gen;
-
-const API_CONTROLLER_CONTROLLER_T: &str = include_str!("templates/controller/api/controller.t");
-const API_CONTROLLER_TEST_T: &str = include_str!("templates/controller/api/test.t");
-
-const HTMX_CONTROLLER_CONTROLLER_T: &str = include_str!("templates/controller/htmx/controller.t");
-const HTMX_VIEW_T: &str = include_str!("templates/controller/htmx/view.t");
-
-const HTML_CONTROLLER_CONTROLLER_T: &str = include_str!("templates/controller/html/controller.t");
-const HTML_VIEW_T: &str = include_str!("templates/controller/html/view.t");
-
-use super::{collect_messages, AppInfo, Result};
+use std::path::Path;
 
 pub fn generate(
     rrgen: &RRgen,
@@ -20,34 +10,31 @@ pub fn generate(
     actions: &[String],
     kind: &gen::ScaffoldKind,
     appinfo: &AppInfo,
-) -> Result<String> {
+) -> Result<GenerateResults> {
     let vars = json!({"name": name, "actions": actions, "pkg_name": appinfo.app_name});
     match kind {
-        gen::ScaffoldKind::Api => {
-            let res1 = rrgen.generate(API_CONTROLLER_CONTROLLER_T, &vars)?;
-            let res2 = rrgen.generate(API_CONTROLLER_TEST_T, &vars)?;
-            let messages = collect_messages(vec![res1, res2]);
-            Ok(messages)
-        }
+        gen::ScaffoldKind::Api => gen::render_template(rrgen, Path::new("controller/api"), &vars),
         gen::ScaffoldKind::Html => {
-            let mut messages = Vec::new();
-            let res = rrgen.generate(HTML_CONTROLLER_CONTROLLER_T, &vars)?;
-            messages.push(res);
+            let mut gen_result =
+                gen::render_template(rrgen, Path::new("controller/html/controller.t"), &vars)?;
             for action in actions {
                 let vars = json!({"name": name, "action": action, "pkg_name": appinfo.app_name});
-                messages.push(rrgen.generate(HTML_VIEW_T, &vars)?);
+                let res = gen::render_template(rrgen, Path::new("controller/html/view.t"), &vars)?;
+                gen_result.rrgen.extend(res.rrgen);
+                gen_result.local_templates.extend(res.local_templates);
             }
-            Ok(collect_messages(messages))
+            Ok(gen_result)
         }
         gen::ScaffoldKind::Htmx => {
-            let mut messages = Vec::new();
-            let res = rrgen.generate(HTMX_CONTROLLER_CONTROLLER_T, &vars)?;
-            messages.push(res);
+            let mut gen_result =
+                gen::render_template(rrgen, Path::new("controller/htmx/controller.t"), &vars)?;
             for action in actions {
                 let vars = json!({"name": name, "action": action, "pkg_name": appinfo.app_name});
-                messages.push(rrgen.generate(HTMX_VIEW_T, &vars)?);
+                let res = gen::render_template(rrgen, Path::new("controller/htmx/view.t"), &vars)?;
+                gen_result.rrgen.extend(res.rrgen);
+                gen_result.local_templates.extend(res.local_templates);
             }
-            Ok(collect_messages(messages))
+            Ok(gen_result)
         }
     }
 }

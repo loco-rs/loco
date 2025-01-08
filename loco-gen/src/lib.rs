@@ -2,41 +2,35 @@
 // TODO: should be more properly aligned with extracting out the db-related gen
 // code and then feature toggling it
 #![allow(dead_code)]
-use rrgen::{GenResult, RRgen};
+pub use rrgen::{GenResult, RRgen};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-
+use serde_json::{json, Value};
 mod controller;
+use colored::Colorize;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    str::FromStr,
+    sync::OnceLock,
+};
+
+#[cfg(feature = "with-db")]
+mod infer;
+#[cfg(feature = "with-db")]
+mod migration;
 #[cfg(feature = "with-db")]
 mod model;
 #[cfg(feature = "with-db")]
 mod scaffold;
+pub mod template;
 #[cfg(test)]
 mod testutil;
-use std::{str::FromStr, sync::OnceLock};
 
-const MAILER_T: &str = include_str!("templates/mailer/mailer.t");
-const MAILER_SUB_T: &str = include_str!("templates/mailer/subject.t");
-const MAILER_TEXT_T: &str = include_str!("templates/mailer/text.t");
-const MAILER_HTML_T: &str = include_str!("templates/mailer/html.t");
-
-const MIGRATION_T: &str = include_str!("templates/migration/migration.t");
-
-const TASK_T: &str = include_str!("templates/task/task.t");
-const TASK_TEST_T: &str = include_str!("templates/task/test.t");
-
-const SCHEDULER_T: &str = include_str!("templates/scheduler/scheduler.t");
-
-const WORKER_T: &str = include_str!("templates/worker/worker.t");
-const WORKER_TEST_T: &str = include_str!("templates/worker/test.t");
-
-// Deployment templates
-const DEPLOYMENT_DOCKER_T: &str = include_str!("templates/deployment/docker/docker.t");
-const DEPLOYMENT_DOCKER_IGNORE_T: &str = include_str!("templates/deployment/docker/ignore.t");
-const DEPLOYMENT_SHUTTLE_T: &str = include_str!("templates/deployment/shuttle/shuttle.t");
-const DEPLOYMENT_SHUTTLE_CONFIG_T: &str = include_str!("templates/deployment/shuttle/config.t");
-const DEPLOYMENT_NGINX_T: &str = include_str!("templates/deployment/nginx/nginx.t");
-
+#[derive(Debug)]
+pub struct GenerateResults {
+    rrgen: Vec<rrgen::GenResult>,
+    local_templates: Vec<PathBuf>,
+}
 const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.46.0";
 
 const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
@@ -49,6 +43,8 @@ const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
 pub enum Error {
     #[error("{0}")]
     Message(String),
+    #[error("template {} not found", path.display())]
+    TemplateNotFound { path: PathBuf },
     #[error(transparent)]
     RRgen(#[from] rrgen::Error),
     #[error(transparent)]
@@ -70,6 +66,9 @@ struct FieldType {
     name: String,
     rust: Option<String>,
     schema: Option<String>,
+    col_type: Option<String>,
+    #[serde(default)]
+    arity: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -88,6 +87,18 @@ impl Mappings {
             .iter()
             .find(|f| f.name == field)
             .and_then(|f| f.schema.as_ref())
+    }
+    pub fn col_type_field(&self, field: &str) -> Option<&String> {
+        self.field_types
+            .iter()
+            .find(|f| f.name == field)
+            .and_then(|f| f.col_type.as_ref())
+    }
+    pub fn col_type_arity(&self, field: &str) -> Option<usize> {
+        self.field_types
+            .iter()
+            .find(|f| f.name == field)
+            .map(|f| f.arity)
     }
     pub fn schema_fields(&self) -> Vec<&String> {
         self.field_types
@@ -121,7 +132,7 @@ pub enum ScaffoldKind {
     Htmx,
 }
 
-#[derive(Debug, Clone)]
+#[derive(clap::ValueEnum, Debug, Clone)]
 pub enum DeploymentKind {
     Docker,
     Shuttle,
@@ -134,6 +145,7 @@ impl FromStr for DeploymentKind {
         match s.to_lowercase().as_str() {
             "docker" => Ok(Self::Docker),
             "shuttle" => Ok(Self::Shuttle),
+            "nginx" => Ok(Self::Nginx),
             _ => Err(()),
         }
     }
@@ -151,14 +163,14 @@ pub enum Component {
 
         /// Model fields, eg. title:string hits:int
         fields: Vec<(String, String)>,
-
-        /// Generate migration code and stop, don't run the migration
-        migration_only: bool,
     },
     #[cfg(feature = "with-db")]
     Migration {
         /// Name of the migration file
         name: String,
+
+        /// Params fields, eg. title:string hits:int
+        fields: Vec<(String, String)>,
     },
     #[cfg(feature = "with-db")]
     Scaffold {
@@ -195,6 +207,7 @@ pub enum Component {
         name: String,
     },
     Deployment {
+        kind: DeploymentKind,
         fallback_file: Option<String>,
         asset_folder: Option<String>,
         host: String,
@@ -210,9 +223,7 @@ pub struct AppInfo {
 /// # Errors
 ///
 /// This function will return an error if it fails
-#[allow(clippy::too_many_lines)]
-pub fn generate(component: Component, appinfo: &AppInfo) -> Result<()> {
-    let rrgen = RRgen::default();
+pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Result<GenerateResults> {
     /*
     (1)
     XXX: remove hooks generic from child generator, materialize it here and pass it
@@ -220,113 +231,114 @@ pub fn generate(component: Component, appinfo: &AppInfo) -> Result<()> {
          this will allow us to test without an app instance
     (2) proceed to test individual generators
      */
-    match component {
+    let get_result = match component {
         #[cfg(feature = "with-db")]
-        Component::Model {
-            name,
-            link,
-            fields,
-            migration_only,
-        } => {
-            println!(
-                "{}",
-                model::generate(&rrgen, &name, link, migration_only, &fields, appinfo)?
-            );
+        Component::Model { name, link, fields } => {
+            model::generate(rrgen, &name, link, &fields, appinfo)?
         }
         #[cfg(feature = "with-db")]
         Component::Scaffold { name, fields, kind } => {
-            println!(
-                "{}",
-                scaffold::generate(&rrgen, &name, &fields, &kind, appinfo)?
-            );
+            scaffold::generate(rrgen, &name, &fields, &kind, appinfo)?
         }
         #[cfg(feature = "with-db")]
-        Component::Migration { name } => {
-            let vars =
-                json!({ "name": name, "ts": chrono::Utc::now(), "pkg_name": appinfo.app_name});
-            rrgen.generate(MIGRATION_T, &vars)?;
+        Component::Migration { name, fields } => {
+            migration::generate(rrgen, &name, &fields, appinfo)?
         }
         Component::Controller {
             name,
             actions,
             kind,
-        } => {
-            println!(
-                "{}",
-                controller::generate(&rrgen, &name, &actions, &kind, appinfo)?
-            );
-        }
+        } => controller::generate(rrgen, &name, &actions, &kind, appinfo)?,
         Component::Task { name } => {
             let vars = json!({"name": name, "pkg_name": appinfo.app_name});
-            rrgen.generate(TASK_T, &vars)?;
-            rrgen.generate(TASK_TEST_T, &vars)?;
+            render_template(rrgen, Path::new("task"), &vars)?
         }
         Component::Scheduler {} => {
             let vars = json!({"pkg_name": appinfo.app_name});
-            rrgen.generate(SCHEDULER_T, &vars)?;
+            render_template(rrgen, Path::new("scheduler"), &vars)?
         }
         Component::Worker { name } => {
             let vars = json!({"name": name, "pkg_name": appinfo.app_name});
-            rrgen.generate(WORKER_T, &vars)?;
-            rrgen.generate(WORKER_TEST_T, &vars)?;
+            render_template(rrgen, Path::new("worker"), &vars)?
         }
         Component::Mailer { name } => {
             let vars = json!({ "name": name });
-            rrgen.generate(MAILER_T, &vars)?;
-            rrgen.generate(MAILER_SUB_T, &vars)?;
-            rrgen.generate(MAILER_TEXT_T, &vars)?;
-            rrgen.generate(MAILER_HTML_T, &vars)?;
+            render_template(rrgen, Path::new("mailer"), &vars)?
         }
         Component::Deployment {
+            kind,
             fallback_file,
             asset_folder,
             host,
             port,
-        } => {
-            let deployment_kind = match std::env::var("LOCO_DEPLOYMENT_KIND") {
-                Ok(kind) => kind
-                    .parse::<DeploymentKind>()
-                    .map_err(|_e| Error::Message(format!("deployment {kind} not supported")))?,
-                Err(_err) => prompt_deployment_selection().map_err(Box::from)?,
-            };
-
-            match deployment_kind {
-                DeploymentKind::Docker => {
-                    let vars = json!({
-                        "pkg_name": appinfo.app_name,
-                        "copy_asset_folder": asset_folder.unwrap_or_default(),
-                        "fallback_file": fallback_file.unwrap_or_default()
-                    });
-                    rrgen.generate(DEPLOYMENT_DOCKER_T, &vars)?;
-                    rrgen.generate(DEPLOYMENT_DOCKER_IGNORE_T, &vars)?;
-                }
-                DeploymentKind::Shuttle => {
-                    let vars = json!({
-                        "pkg_name": appinfo.app_name,
-                        "shuttle_runtime_version": DEPLOYMENT_SHUTTLE_RUNTIME_VERSION,
-                        "with_db": cfg!(feature = "with-db")
-                    });
-                    rrgen.generate(DEPLOYMENT_SHUTTLE_T, &vars)?;
-                    rrgen.generate(DEPLOYMENT_SHUTTLE_CONFIG_T, &vars)?;
-                }
-                DeploymentKind::Nginx => {
-                    let host = host.replace("http://", "").replace("https://", "");
-                    let vars = json!({
-                        "pkg_name": appinfo.app_name,
-                        "domain": host,
-                        "port": port
-                    });
-                    rrgen.generate(DEPLOYMENT_NGINX_T, &vars)?;
-                }
+        } => match kind {
+            DeploymentKind::Docker => {
+                let vars = json!({
+                    "pkg_name": appinfo.app_name,
+                    "copy_asset_folder": asset_folder.unwrap_or_default(),
+                    "fallback_file": fallback_file.unwrap_or_default()
+                });
+                render_template(rrgen, Path::new("deployment/docker"), &vars)?
             }
-        }
-    }
-    Ok(())
+            DeploymentKind::Shuttle => {
+                let vars = json!({
+                    "pkg_name": appinfo.app_name,
+                    "shuttle_runtime_version": DEPLOYMENT_SHUTTLE_RUNTIME_VERSION,
+                    "with_db": cfg!(feature = "with-db")
+                });
+
+                render_template(rrgen, Path::new("deployment/shuttle"), &vars)?
+            }
+            DeploymentKind::Nginx => {
+                let host = host.replace("http://", "").replace("https://", "");
+                let vars = json!({
+                    "pkg_name": appinfo.app_name,
+                    "domain": host,
+                    "port": port
+                });
+                render_template(rrgen, Path::new("deployment/nginx"), &vars)?
+            }
+        },
+    };
+
+    Ok(get_result)
 }
 
-fn collect_messages(results: Vec<GenResult>) -> String {
+fn render_template(rrgen: &RRgen, template: &Path, vars: &Value) -> Result<GenerateResults> {
+    let template_files = template::collect_files_from_path(template)?;
+
+    let mut gen_result = vec![];
+    let mut local_templates = vec![];
+    for template in template_files {
+        let custom_template = Path::new(template::DEFAULT_LOCAL_TEMPLATE).join(template.path());
+
+        if custom_template.exists() {
+            let content = fs::read_to_string(&custom_template).map_err(|err| {
+                tracing::error!(custom_template = %custom_template.display(), "could not read custom template");
+                err
+            })?;
+            gen_result.push(rrgen.generate(&content, vars)?);
+            local_templates.push(custom_template);
+        } else {
+            let content = template.contents_utf8().ok_or(Error::Message(format!(
+                "could not get template content: {}",
+                template.path().display()
+            )))?;
+            gen_result.push(rrgen.generate(content, vars)?);
+        };
+    }
+
+    Ok(GenerateResults {
+        rrgen: gen_result,
+        local_templates,
+    })
+}
+
+#[must_use]
+pub fn collect_messages(results: &GenerateResults) -> String {
     let mut messages = String::new();
-    for res in results {
+
+    for res in &results.rrgen {
         if let rrgen::GenResult::Generated {
             message: Some(message),
         } = res
@@ -334,19 +346,140 @@ fn collect_messages(results: Vec<GenResult>) -> String {
             messages.push_str(&format!("* {message}\n"));
         }
     }
+
+    if !results.local_templates.is_empty() {
+        messages.push_str(&format!(
+            "{}",
+            "\nThe following templates were sourced from the local templates:\n".green()
+        ));
+        for f in &results.local_templates {
+            messages.push_str(&format!("* {}\n", f.display()));
+        }
+    }
     messages
 }
-use dialoguer::{theme::ColorfulTheme, Select};
 
-fn prompt_deployment_selection() -> Result<DeploymentKind> {
-    let options: Vec<String> = DEPLOYMENT_OPTIONS.iter().map(|t| t.0.to_string()).collect();
+/// Copies template files to a specified destination directory.
+///
+/// This function copies files from the specified template path to the destination directory.
+/// If the specified path is `/` or `.`, it copies all files from the templates directory.
+/// If the path does not exist in the templates, it returns an error.
+///
+/// # Errors
+/// when could not copy the given template path
+pub fn copy_template(path: &Path, to: &Path) -> Result<Vec<PathBuf>> {
+    let copy_template_path = if path == Path::new("/") || path == Path::new(".") {
+        None
+    } else if !template::exists(path) {
+        return Err(Error::TemplateNotFound {
+            path: path.to_path_buf(),
+        });
+    } else {
+        Some(path)
+    };
 
-    let selection = Select::with_theme(&ColorfulTheme::default())
-        .with_prompt("❯ Choose your deployment")
-        .items(&options)
-        .default(0)
-        .interact()
-        .map_err(Error::msg)?;
+    let copy_files = if let Some(path) = copy_template_path {
+        template::collect_files_from_path(path)?
+    } else {
+        template::collect_files()
+    };
 
-    Ok(DEPLOYMENT_OPTIONS[selection].1.clone())
+    let mut copied_files = vec![];
+    for f in copy_files {
+        let copy_to = to.join(f.path());
+        if copy_to.exists() {
+            tracing::debug!(
+                template_file = %copy_to.display(),
+                "skipping copy template file. already exists"
+            );
+            continue;
+        }
+        match copy_to.parent() {
+            Some(parent) => {
+                fs::create_dir_all(parent)?;
+            }
+            None => {
+                return Err(Error::Message(format!(
+                    "could not get parent folder of {}",
+                    copy_to.display()
+                )))
+            }
+        }
+
+        fs::write(&copy_to, f.contents())?;
+        tracing::trace!(
+            template = %copy_to.display(),
+            "copy template successfully"
+        );
+        copied_files.push(copy_to);
+    }
+    Ok(copied_files)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn test_template_not_found() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp file");
+        let path = Path::new("nonexistent-template");
+
+        let result = copy_template(path, tree_fs.root.as_path());
+        assert!(result.is_err());
+        if let Err(Error::TemplateNotFound { path: p }) = result {
+            assert_eq!(p, path.to_path_buf());
+        } else {
+            panic!("Expected TemplateNotFound error");
+        }
+    }
+
+    #[test]
+    fn test_copy_template_valid_folder_template() {
+        let temp_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("Failed to create temporary file system");
+
+        let template_dir = template::tests::find_first_dir();
+
+        let copy_result = copy_template(template_dir.path(), temp_fs.root.as_path());
+        assert!(
+            copy_result.is_ok(),
+            "Failed to copy template from directory {:?}",
+            template_dir.path()
+        );
+
+        let template_files = template::collect_files_from_path(template_dir.path())
+            .expect("Failed to collect files from the template directory");
+
+        assert!(
+            !template_files.is_empty(),
+            "No files found in the template directory"
+        );
+
+        for template_file in template_files {
+            let copy_file_path = temp_fs.root.join(template_file.path());
+
+            assert!(
+                copy_file_path.exists(),
+                "Copy file does not exist: {copy_file_path:?}"
+            );
+
+            let copy_content =
+                fs::read_to_string(&copy_file_path).expect("Failed to read coped file content");
+
+            assert_eq!(
+                template_file
+                    .contents_utf8()
+                    .expect("Failed to get template file content"),
+                copy_content,
+                "Content mismatch in file: {copy_file_path:?}"
+            );
+        }
+    }
 }

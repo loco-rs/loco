@@ -38,8 +38,8 @@ $ cargo loco routes
 [POST] /api/auth/login
 [POST] /api/auth/register
 [POST] /api/auth/reset
-[POST] /api/auth/verify
-[GET] /api/user/current
+[GET] /api/auth/verify
+[GET] /api/auth/current
  .
  .
  .
@@ -101,11 +101,8 @@ Upon user registration, an email with a verification link is sent. Visiting this
 #### Example Curl request:
 
 ```sh
-curl --location '127.0.0.1:5150/api/auth/verify' \
-     --header 'Content-Type: application/json' \
-     --data '{
-         "token": "TOKEN"
-     }'
+curl --location --request GET '127.0.0.1:5150/api/auth/verify/TOKEN' \
+     --header 'Content-Type: application/json'
 ```
 
 ### Reset Password Flow
@@ -144,7 +141,7 @@ curl --location '127.0.0.1:5150/api/auth/reset' \
 This endpoint is protected by auth middleware.
 
 ```sh
-curl --location --request GET '127.0.0.1:5150/api/user/current' \
+curl --location --request GET '127.0.0.1:5150/api/auth/current' \
      --header 'Content-Type: application/json' \
      --header 'Authorization: Bearer TOKEN'
 ```
@@ -195,8 +192,8 @@ $ cargo loco routes
 [POST] /api/auth/login
 [POST] /api/auth/register
 [POST] /api/auth/reset
-[POST] /api/auth/verify
-[GET] /api/user/current
+[GET] /api/auth/verify
+[GET] /api/auth/current
  .
  .
  .

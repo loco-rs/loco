@@ -256,7 +256,8 @@ Here's an example for a dummy "Hello" view engine. It's a view engine that alway
 
 ```rust
 // src/initializers/hello_view_engine.rs
-use axum::{async_trait, Extension, Router as AxumRouter};
+use axum::{Extension, Router as AxumRouter};
+use async_trait::async_trait;
 use loco_rs::{
     app::{AppContext, Initializer},
     controller::views::{ViewEngine, ViewRenderer},

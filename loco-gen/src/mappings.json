@@ -3,222 +3,268 @@
     {
       "name": "uuid",
       "rust": "Uuid",
-      "schema": "uuid_uniq"
+      "schema": "uuid_uniq",
+      "col_type": "UuidUniq"
     },
     {
       "name": "uuid_col",
       "rust": "Option<Uuid>",
-      "schema": "uuid_null"
+      "schema": "uuid_null",
+      "col_type": "UuidNull"
     },
     {
       "name": "uuid_col!",
       "rust": "Uuid",
-      "schema": "uuid"
+      "schema": "uuid",
+      "col_type": "Uuid"
     },
     {
       "name": "string",
       "rust": "Option<String>",
-      "schema": "string_null"
+      "schema": "string_null",
+      "col_type": "StringNull"
     },
     {
       "name": "string!",
       "rust": "String",
-      "schema": "string"
+      "schema": "string",
+      "col_type": "String"
     },
     {
       "name": "string^",
       "rust": "String",
-      "schema": "string_uniq"
+      "schema": "string_uniq",
+      "col_type": "StringUniq"
     },
     {
       "name": "text",
       "rust": "Option<String>",
-      "schema": "text_null"
+      "schema": "text_null",
+      "col_type": "TextNull"
     },
     {
       "name": "text!",
       "rust": "String",
-      "schema": "text"
+      "schema": "text",
+      "col_type": "Text"
     },
     {
       "name": "tiny_int",
       "rust": "Option<i16>",
-      "schema": "tiny_integer_null"
+      "schema": "tiny_integer_null",
+      "col_type": "TinyIntegerNull"
     },
     {
       "name": "tiny_int!",
       "rust": "i16",
-      "schema": "tiny_integer"
+      "schema": "tiny_integer",
+      "col_type": "TinyInteger"
     },
     {
       "name": "tiny_int^",
       "rust": "i16",
-      "schema": "tiny_integer_uniq"
+      "schema": "tiny_integer_uniq",
+      "col_type": "TinyIntegerUniq"
     },
     {
       "name": "small_int",
       "rust": "Option<i16>",
-      "schema": "small_integer_null"
+      "schema": "small_integer_null",
+      "col_type": "SmallIntegerNull"
     },
     {
       "name": "small_int!",
       "rust": "i16",
-      "schema": "small_integer"
+      "schema": "small_integer",
+      "col_type": "SmallInteger"
     },
     {
       "name": "small_int^",
       "rust": "i16",
-      "schema": "small_integer_uniq"
+      "schema": "small_integer_uniq",
+      "col_type": "SmallIntegerUniq"
     },
     {
       "name": "int",
       "rust": "Option<i32>",
-      "schema": "integer_null"
+      "schema": "integer_null",
+      "col_type": "IntegerNull"
     },
     {
       "name": "int!",
       "rust": "i32",
-      "schema": "integer"
+      "schema": "integer",
+      "col_type": "Integer"
     },
     {
       "name": "int^",
       "rust": "i32",
-      "schema": "integer_uniq"
+      "schema": "integer_uniq",
+      "col_type": "IntegerUniq"
     },
     {
       "name": "big_int",
       "rust": "Option<i64>",
-      "schema": "big_integer_null"
+      "schema": "big_integer_null",
+      "col_type": "BigIntegerNull"
     },
     {
       "name": "big_int!",
       "rust": "i64",
-      "schema": "big_integer"
+      "schema": "big_integer",
+      "col_type": "BigInteger"
     },
     {
       "name": "big_int^",
       "rust": "i64",
-      "schema": "big_integer_uniq"
+      "schema": "big_integer_uniq",
+      "col_type": "BigIntegerUniq"
     },
     {
       "name": "float",
       "rust": "Option<f32>",
-      "schema": "float_null"
+      "schema": "float_null",
+      "col_type": "FloatNull"
     },
     {
       "name": "float!",
       "rust": "f32",
-      "schema": "float"
+      "schema": "float",
+      "col_type": "Float"
     },
     {
       "name": "double",
       "rust": "Option<f64>",
-      "schema": "double_null"
+      "schema": "double_null",
+      "col_type": "DoubleNull"
     },
     {
       "name": "double!",
       "rust": "f64",
-      "schema": "double"
+      "schema": "double",
+      "col_type": "Double"
     },
     {
       "name": "decimal",
       "rust": "Option<Decimal>",
-      "schema": "decimal_null"
+      "schema": "decimal_null",
+      "col_type": "DecimalNull"
     },
     {
       "name": "decimal!",
       "rust": "Decimal",
-      "schema": "decimal"
+      "schema": "decimal",
+      "col_type": "Decimal"
     },
     {
       "name": "decimal_len",
       "rust": "Option<Decimal>",
-      "schema": "decimal_len_null"
+      "schema": "decimal_len_null",
+      "col_type": "DecimalLenNull",
+      "arity":2
     },
     {
       "name": "decimal_len!",
       "rust": "Decimal",
-      "schema": "decimal_len"
+      "schema": "decimal_len",
+      "col_type": "DecimalLen",
+      "arity":2
     },
     {
       "name": "bool",
       "rust": "Option<bool>",
-      "schema": "boolean_null"
+      "schema": "boolean_null",
+      "col_type": "BooleanNull"
     },
     {
       "name": "bool!",
       "rust": "bool",
-      "schema": "boolean"
+      "schema": "boolean",
+      "col_type": "Boolean"
     },
     {
       "name": "tstz",
       "rust": "Option<DateTimeWithTimeZone>",
-      "schema": "timestamp_with_time_zone_null"
+      "schema": "timestamp_with_time_zone_null",
+      "col_type": "TimestampWithTimeZoneNull"
     },
     {
       "name": "tstz!",
       "rust": "DateTimeWithTimeZone",
-      "schema": "timestamp_with_time_zone"
+      "schema": "timestamp_with_time_zone",
+      "col_type": "TimestampWithTimeZone"
     },
     {
       "name": "date",
       "rust": "Option<Date>",
-      "schema": "date_null"
+      "schema": "date_null",
+      "col_type": "DateNull"
     },
     {
       "name": "date!",
       "rust": "Date",
-      "schema": "date"
+      "schema": "date",
+      "col_type": "Date"
     },
     {
       "name": "ts",
       "rust": "Option<DateTime>",
-      "schema": "timestamp_null"
+      "schema": "timestamp_null",
+      "col_type": "TimestampNull"
     },
     {
       "name": "ts!",
       "rust": "DateTime",
-      "schema": "timestamp"
+      "schema": "timestamp",
+      "col_type": "Timestamp"
     },
     {
       "name": "json",
       "rust": "Option<serde_json::Value>",
-      "schema": "json_null"
+      "schema": "json_null",
+      "col_type": "JsonNull"
     },
     {
       "name": "json!",
       "rust": "serde_json::Value",
-      "schema": "json"
+      "schema": "json",
+      "col_type": "Json"
     },
     {
       "name": "jsonb",
       "rust": "Option<serde_json::Value>",
-      "schema": "json_binary_null"
+      "schema": "json_binary_null",
+      "col_type": "JsonBinaryNull"
     },
     {
       "name": "jsonb!",
       "rust": "serde_json::Value",
-      "schema": "json_binary"
+      "schema": "json_binary",
+      "col_type": "JsonBinary"
     },
     {
       "name": "blob",
       "rust": "Option<Vec<u8>>",
-      "schema": "blob_null"
+      "schema": "blob_null",
+      "col_type": "BlobNull"
     },
     {
       "name": "blob!",
       "rust": "Vec<u8>",
-      "schema": "blob"
+      "schema": "blob",
+      "col_type": "Blob"
     },
     {
       "name": "money",
       "rust": "Option<Decimal>",
-      "schema": "money_null"
+      "schema": "money_null",
+      "col_type": "MoneyNull"
     },
     {
       "name": "money!",
       "rust": "Decimal",
-      "schema": "money"
+      "schema": "money",
+      "col_type": "Money"
     }
   ]
 }
