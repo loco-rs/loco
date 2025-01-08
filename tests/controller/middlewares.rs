@@ -226,7 +226,6 @@ async fn cors(
 #[case(middleware::limit_payload::DefaultBodyLimitKind::Limit(0x1B))]
 #[case(middleware::limit_payload::DefaultBodyLimitKind::Disable)]
 #[tokio::test]
-#[serial]
 async fn limit_payload(#[case] limit: middleware::limit_payload::DefaultBodyLimitKind) {
     configure_insta!();
 
