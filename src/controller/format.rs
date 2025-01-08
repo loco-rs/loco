@@ -144,7 +144,9 @@ pub fn html(content: &str) -> Result<Response> {
 ///
 /// # Example:
 ///
-/// ```rust
+/// ```rust, ignore
+/// use loco_rs::prelude::*;
+///
 /// pub async fn openapi_spec_yaml() -> Result<Response> {
 ///     format::yaml(&get_openapi_spec().to_yaml()?)
 /// }
