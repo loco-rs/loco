@@ -223,7 +223,7 @@ impl IntoResponse for Error {
             ),
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                ErrorDetail::with_reason("Internal Server Error"),
+                ErrorDetail::new("internal_server_error", "Internal Server Error"),
             ),
         };
 
