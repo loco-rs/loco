@@ -187,9 +187,9 @@ enum ComponentArg {
       $ cargo loco g model posts title:string! content:text
 
   - Generate model with references:
-      $ cargo loco g model movies long_title:string added_by:references:users director:references
-      # reference director is in singular: director:references
-      # reference added_by is in singular, the referenced model is plural: added_by:references:users
+      $ cargo loco g model movies long_title:string director:references award:references:prize_id
+      # 'director:references' references the 'directors' table with 'director_id' on 'movies'
+      # 'award:references:prize_id' references the 'awards' table with 'prize_id' on 'movies'
 ",
     "Examples:".bold().underline()
 ))]
