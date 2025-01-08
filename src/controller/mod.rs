@@ -55,11 +55,11 @@
 //!
 //!     fn register_tasks(tasks: &mut Tasks) {}
 //!
-//!     async fn truncate(db: &DatabaseConnection) -> Result<()> {
+//!     async fn truncate(_ctx: &AppContext) -> Result<()> {
 //!         Ok(())
 //!     }
 //!
-//!     async fn seed(db: &DatabaseConnection, base: &Path) -> Result<()> {
+//!     async fn seed(_ctx: &AppContext, base: &Path) -> Result<()> {
 //!         Ok(())
 //!     }
 //! }

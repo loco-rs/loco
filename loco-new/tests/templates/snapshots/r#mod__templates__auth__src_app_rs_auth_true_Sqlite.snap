@@ -17,7 +17,6 @@ use loco_rs::{
     Result,
 };
 use migration::Migrator;
-use sea_orm::DatabaseConnection;
 
 #[allow(unused_imports)]
 use crate::{
@@ -63,12 +62,12 @@ impl Hooks for App {
     fn register_tasks(tasks: &mut Tasks) {
         // tasks-inject (do not remove)
     }
-    async fn truncate(db: &DatabaseConnection) -> Result<()> {
-        truncate_table(db, users::Entity).await?;
+    async fn truncate(ctx: &AppContext) -> Result<()> {
+        truncate_table(&ctx.db, users::Entity).await?;
         Ok(())
     }
-    async fn seed(db: &DatabaseConnection, base: &Path) -> Result<()> {
-        db::seed::<users::ActiveModel>(db, &base.join("users.yaml").display().to_string()).await?;
+    async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
+        db::seed::<users::ActiveModel>(&ctx.db, &base.join("users.yaml").display().to_string()).await?;
         Ok(())
     }
 }

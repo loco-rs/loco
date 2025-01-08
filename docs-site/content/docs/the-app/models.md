@@ -644,8 +644,8 @@ Integrate your seed into the app's Hook implementations by following these steps
 impl Hooks for App {
     // Other implementations...
 
-    async fn seed(db: &DatabaseConnection, base: &Path) -> Result<()> {
-        db::seed::<users::ActiveModel>(db, &base.join("users.yaml").display().to_string()).await?;
+    async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
+        db::seed::<users::ActiveModel>(&ctx.db, &base.join("users.yaml").display().to_string()).await?;
         Ok(())
     }
 }

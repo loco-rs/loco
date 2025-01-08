@@ -22,7 +22,7 @@ use crate::{
 /// #[tokio::test]
 /// async fn test_create_user() {
 ///     let boot = boot_test::<App, Migrator>().await;
-///     seed::<App>(&boot.app_context.db).await.unwrap();
+///     seed::<App>(&boot.app_context).await.unwrap();
 ///
 ///     /// .....
 ///     assert!(false)
