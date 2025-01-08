@@ -459,10 +459,10 @@ mod test {
     fn create_non_empty_header(
         private_key: &Key,
         map: HashMap<String, Value>,
-        config: SessionCookieConfig,
+        config: &SessionCookieConfig,
     ) -> Result<HeaderMap, SignedPrivateCookieJarError> {
         let cookie_map = CookieMap::new(map);
-        let jar = SignedPrivateCookieJar::from_cookie_map(private_key, cookie_map, &config)?;
+        let jar = SignedPrivateCookieJar::from_cookie_map(private_key, cookie_map, config)?;
         assert!(jar.is_some());
         let jar = jar.unwrap();
         let headers = signed_private_jar_to_headers(jar);
@@ -480,7 +480,7 @@ mod test {
         headers
     }
 
-    fn check_cookie_same_as_config(cookie: &Cookie, config: &SessionCookieConfig) -> bool {
+    fn check_cookie_same_as_config(cookie: &Cookie<'_>, config: &SessionCookieConfig) -> bool {
         let same_site = match config.same_site {
             SameSite::Strict => cookie::SameSite::Strict,
             SameSite::Lax => cookie::SameSite::Lax,
@@ -492,7 +492,7 @@ mod test {
         let same_site = cookie.same_site() == Some(same_site);
         let path = cookie.path() == Some(config.path.as_str());
         let domain = cookie.domain() == config.domain.as_deref();
-        let max_age = cookie.max_age() == config.expiry.map(|e| time::Duration::seconds(e as i64));
+        let max_age = cookie.max_age() == config.expiry.map(|e| time::Duration::seconds(i64::from(e)));
         // print out the cookie details if any check failed
 
         cookie.name() == config.name
@@ -554,7 +554,7 @@ mod test {
         let jar = SignedPrivateCookieJar::from_cookie_map(&private_key, cookie_map, &config)?;
         assert!(jar.is_some());
         let jar = jar.unwrap();
-        let cookie = jar.clone().get(config.name.as_str());
+        let cookie = jar.get(config.name.as_str());
         assert!(cookie.is_some());
         let cookie_map = jar.into_cookie_map(&config)?;
         assert_eq!(cookie_map.0, map);
@@ -567,7 +567,7 @@ mod test {
         let headers = HeaderMap::new();
         let config = create_not_secure_session_config();
         let jar = SignedPrivateCookieJar::new(&headers, private_key)?;
-        let cookie = jar.clone().get(config.name.as_str());
+        let cookie = jar.get(config.name.as_str());
         assert!(cookie.is_none());
         // Create new cookie map driver when there is no private cookie jar from request
         let cookie_map = jar.into_cookie_map(&config)?;
@@ -647,7 +647,7 @@ mod test {
         let jar = SignedPrivateCookieJar::from_cookie_map(&private_key, cookie_map, &config)?;
         assert!(jar.is_some());
         let jar = jar.unwrap();
-        let cookie = jar.clone().get(config.name.as_str());
+        let cookie = jar.get(config.name.as_str());
         assert!(cookie.is_some());
         assert!(check_cookie_same_as_config(&cookie.unwrap(), &config));
         Ok(())
@@ -677,7 +677,7 @@ mod test {
             SignedPrivateCookieJar::from_cookie_map(&private_key, cookie_map.clone(), &config)?;
         assert!(new_jar.is_some());
         let new_jar = new_jar.unwrap();
-        let cookie = new_jar.clone().get(config.name.as_str());
+        let cookie = new_jar.get(config.name.as_str());
         assert!(cookie.is_some());
         assert!(check_cookie_same_as_config(&cookie.unwrap(), &config));
 
@@ -719,8 +719,7 @@ mod test {
             SignedPrivateCookieJar::from_cookie_map(&private_key, cookie_map.clone(), &config)?;
         assert!(new_jar.is_some());
         let new_jar = new_jar.unwrap();
-        let cookie = new_jar.clone().get(config.name.as_str());
-        println!("{:?}", cookie);
+        let cookie = new_jar.get(config.name.as_str());
         assert!(cookie.is_some());
         assert!(check_cookie_same_as_config(&cookie.unwrap(), &config));
 
@@ -755,9 +754,9 @@ mod test {
             "foo".to_string(),
             serde_json::Value::String("bar".to_string()),
         );
-        let non_empty_header = create_non_empty_header(&private_key, map.clone(), config.clone())?;
+        let non_empty_header = create_non_empty_header(&private_key, map.clone(), &config)?;
         let jar = SignedPrivateCookieJar::new(&non_empty_header, private_key.clone())?;
-        let cookie = jar.clone().get(config.name.as_str());
+        let cookie = jar.get(config.name.as_str());
         assert!(cookie.is_some());
         assert!(check_cookie_same_as_config(&cookie.unwrap(), &config));
 
@@ -775,7 +774,7 @@ mod test {
             SignedPrivateCookieJar::from_cookie_map(&private_key, cookie_map.clone(), &config)?;
         assert!(new_jar.is_some());
         let new_jar = new_jar.unwrap();
-        let cookie = new_jar.clone().get(config.name.as_str());
+        let cookie = new_jar.get(config.name.as_str());
         assert!(cookie.is_some());
         assert!(check_cookie_same_as_config(&cookie.unwrap(), &config));
 
@@ -800,9 +799,9 @@ mod test {
             "foo".to_string(),
             serde_json::Value::String("bar".to_string()),
         );
-        let non_empty_header = create_non_empty_header(&private_key, map.clone(), config.clone())?;
+        let non_empty_header = create_non_empty_header(&private_key, map.clone(), &config)?;
         let jar = SignedPrivateCookieJar::new(&non_empty_header, private_key.clone())?;
-        let cookie = jar.clone().get(config.name.as_str());
+        let cookie = jar.get(config.name.as_str());
         assert!(cookie.is_some());
         assert!(check_cookie_same_as_config(&cookie.unwrap(), &config));
 
@@ -820,7 +819,7 @@ mod test {
             SignedPrivateCookieJar::from_cookie_map(&private_key, cookie_map.clone(), &config)?;
         assert!(new_jar.is_some());
         let new_jar = new_jar.unwrap();
-        let cookie = new_jar.clone().get(config.name.as_str());
+        let cookie = new_jar.get(config.name.as_str());
         assert!(cookie.is_some());
         assert!(check_cookie_same_as_config(&cookie.unwrap(), &config));
 
@@ -888,7 +887,7 @@ mod test {
             "foo".to_string(),
             serde_json::Value::String("bar".to_string()),
         );
-        let non_empty_header = create_non_empty_header(&private_key, map.clone(), config.clone())?;
+        let non_empty_header = create_non_empty_header(&private_key, map.clone(), &config)?;
         let jar = SignedPrivateCookieJar::new(&non_empty_header, private_key.clone())?;
         let cookie = jar.get(config.name.as_str());
         assert!(cookie.is_some());
@@ -923,7 +922,7 @@ mod test {
             serde_json::Value::String("bar".to_string()),
         );
         let non_empty_header =
-            create_non_empty_header(&private_key, map.clone(), create_secure_session_config())?;
+            create_non_empty_header(&private_key, map.clone(), &create_secure_session_config())?;
         let jar = SignedPrivateCookieJar::new(&non_empty_header, private_key.clone())?;
 
         // Turn into non-empty cookie map
