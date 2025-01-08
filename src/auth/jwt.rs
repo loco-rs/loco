@@ -170,25 +170,28 @@ mod tests {
             .as_object()
             .expect("case input claims must be an object")
             .clone();
-        let user_claims = UserClaims {
+        let input_user_claims = UserClaims {
             pid: "pid".to_string(),
             exp: 60,
             claims: claims.clone(),
         };
 
-        let mut expected_map = Map::new();
-        expected_map.insert("pid".to_string(), "pid".into());
-        expected_map.insert("exp".to_string(), 60.into());
+        let mut expected_claim = Map::new();
+        expected_claim.insert("pid".to_string(), "pid".into());
+        expected_claim.insert("exp".to_string(), 60.into());
         // we add the claims in a flattened way
-        expected_map.extend(claims);
-        let expected_value = Value::from(expected_map);
+        expected_claim.extend(claims);
+        let expected_value = Value::from(expected_claim);
 
         // We check between `Value` instead of `String` to avoid key ordering issues when serializing.
         // It is because `expected_value` has all the keys in alphabetical order, as the `Value` serialization ensures that.
-        // But when serializing `user_claims`, first the `pid` and `exp` fields are serialized (in that order),
-        // and then the claims are serialized in alfabetic order. So, the resulting JSON string from the `user_claims` serialization
+        // But when serializing `input_user_claims`, first the `pid` and `exp` fields are serialized (in that order),
+        // and then the claims are serialized in alfabetic order. So, the resulting JSON string from the `input_user_claims` serialization
         // may have the `pid` and `exp` fields unordered which differs from the `Value` serialization.
-        assert_eq!(expected_value, serde_json::to_value(&user_claims).unwrap());
+        assert_eq!(
+            expected_value,
+            serde_json::to_value(&input_user_claims).unwrap()
+        );
     }
 
     #[rstest]
