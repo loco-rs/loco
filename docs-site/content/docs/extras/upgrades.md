@@ -33,3 +33,49 @@ These are the major ones:
 * [SeaORM](https://www.sea-ql.org/SeaORM), [CHANGELOG](https://github.com/SeaQL/sea-orm/blob/master/CHANGELOG.md)
 * [Axum](https://github.com/tokio-rs/axum), [CHANGELOG](https://github.com/tokio-rs/axum/blob/main/axum/CHANGELOG.md)
 
+
+## Upgrade from 0.13.x to 0.14.x
+
+### Upgrading from Axum 0.7 to 0.8
+
+PR: [#1130](https://github.com/loco-rs/loco/pull/1130)
+The upgrade to Axum 0.8 introduces a breaking change. For more details, refer to the [announcement](https://tokio.rs/blog/2025-01-01-announcing-axum-0-8-0).
+#### Steps to Upgrade
+* In your `Cargo.toml`, update the Axum version from `0.7.5` to `0.8.1`.
+* Replace use `axum::async_trait`; with use `async_trait::async_trait;`. For more information, see [here](https://tokio.rs/blog/2025-01-01-announcing-axum-0-8-0#async_trait-removal).
+* The URL parameter syntax has changed. Refer to [this section](https://tokio.rs/blog/2025-01-01-announcing-axum-0-8-0#path-parameter-syntax-changes) for the updated syntax. The new path parameter format is:
+The path parameter syntax has changed from `/:single` and `/*many` to `/{single}` and `/{*many}`.
+
+
+### Extending the `boot` Function Hook
+PR: [#1143](https://github.com/loco-rs/loco/pull/1143)
+
+The `boot` hook function now accepts an additional Config parameter. The function signature has changed from:
+
+From 
+```rust
+async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
+     create_app::<Self, Migrator>(mode, environment).await
+}
+```
+To: 
+```rust
+async fn boot(mode: StartMode, environment: &Environment, config: Config) -> Result<BootResult> {
+     create_app::<Self, Migrator>(mode, environment, config).await
+}
+```
+Make sure to import the `Config` type as needed.
+
+### Upgrade Validator crate
+PR: [#993](https://github.com/loco-rs/loco/pull/993)
+
+Update the `validator` crate version in your `Cargo.toml`:
+
+From 
+```
+validator = { version = "0.18" }
+``` 
+To 
+```
+validator = { version = "0.19" }
+```
