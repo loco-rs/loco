@@ -21,11 +21,6 @@ fn get_allow_email_domain_re() -> &'static Regex {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct VerifyParams {
-    pub token: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
 pub struct ForgotParams {
     pub email: String,
 }
@@ -77,9 +72,9 @@ async fn register(
 #[debug_handler]
 async fn verify(
     State(ctx): State<AppContext>,
-    Json(params): Json<VerifyParams>,
+    Path(token): Path<String>,
 ) -> Result<Response> {
-    let user = users::Model::find_by_verification_token(&ctx.db, &params.token).await?;
+    let user = users::Model::find_by_verification_token(&ctx.db, &token).await?;
 
     if user.email_verified_at.is_some() {
         tracing::info!(pid = user.pid.to_string(), "user already verified");
@@ -169,7 +164,7 @@ async fn current(auth: auth::JWT, State(ctx): State<AppContext>) -> Result<Respo
 ///    For security and to avoid exposing whether an email exists, the response always returns 200, even if the email is invalid.
 ///
 /// 2. **Click the Magic Link**:  
-///    The user clicks the link (/magic-link/:token), which validates the token and its expiration.  
+///    The user clicks the link (/magic-link/{token}), which validates the token and its expiration.  
 ///    If valid, the server generates a JWT and responds with a [`LoginResponse`].  
 ///    If invalid or expired, an unauthorized response is returned.
 ///
@@ -226,11 +221,11 @@ pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/auth")
         .add("/register", post(register))
-        .add("/verify", post(verify))
+        .add("/verify/{token}", get(verify))
         .add("/login", post(login))
         .add("/forgot", post(forgot))
         .add("/reset", post(reset))
         .add("/current", get(current))
         .add("/magic-link", post(magic_link))
-        .add("/magic-link/:token", get(magic_link_verify))
+        .add("/magic-link/{token}", get(magic_link_verify))
 }

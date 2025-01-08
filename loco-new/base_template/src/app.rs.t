@@ -10,6 +10,7 @@ use loco_rs::{
         {%- endif %}
         Queue},
     boot::{create_app, BootResult, StartMode},
+    config::Config,
     controller::AppRoutes,
     {%- if settings.auth %}
     db::{self, truncate_table},
@@ -54,11 +55,11 @@ impl Hooks for App {
         )
     }
 
-    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
+    async fn boot(mode: StartMode, environment: &Environment, config: Config) -> Result<BootResult> {
         {%- if settings.db %}
-        create_app::<Self, Migrator>(mode, environment).await
+        create_app::<Self, Migrator>(mode, environment, config).await
         {% else %}
-        create_app::<Self>(mode, environment).await
+        create_app::<Self>(mode, environment, config).await
         {%- endif %}
     }
 

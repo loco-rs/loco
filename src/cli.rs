@@ -31,15 +31,18 @@ cfg_if::cfg_if! {
 ))]
 use std::process::exit;
 
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+};
 
-#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
-use crate::bgworker::JobStatus;
 use clap::{ArgAction, Parser, Subcommand};
 use colored::Colorize;
 use duct::cmd;
-use loco_gen::{Component, ScaffoldKind};
+use loco_gen::{Component, DeploymentKind, ScaffoldKind};
 
+#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+use crate::bgworker::JobStatus;
 use crate::{
     app::{AppContext, Hooks},
     boot::{
@@ -103,8 +106,8 @@ enum Commands {
     /// Describe all application middlewares
     Middleware {
         // print out the middleware configurations.
-        #[arg(short, long, action)]
-        config: bool,
+        #[arg(short = 'c', long = "config", action)]
+        show_config: bool,
     },
     /// Run a custom task
     #[clap(alias("t"))]
@@ -132,8 +135,8 @@ enum Commands {
         /// Specify a path to a dedicated scheduler configuration file. by
         /// default load schedulers job setting from environment config.
         #[clap(value_parser)]
-        #[arg(short, long, action)]
-        config: Option<PathBuf>,
+        #[arg(short = 'c', long = "config", action)]
+        config_path: Option<PathBuf>,
         /// Show all configured jobs
         #[arg(short, long, action)]
         list: bool,
@@ -264,7 +267,21 @@ enum ComponentArg {
         name: String,
     },
     /// Generate a deployment infrastructure
-    Deployment {},
+    Deployment {
+        // deployment kind.
+        #[clap(long, value_enum)]
+        kind: DeploymentKind,
+    },
+
+    /// Override templates and allows you to take control of them. You can always go back when deleting the local template.
+    Override {
+        /// The path to a specific template or directory to copy.
+        template_path: Option<String>,
+
+        /// Show available templates to copy under the specified directory without actually coping them.
+        #[arg(long, action)]
+        info: bool,
+    },
 }
 
 impl ComponentArg {
@@ -331,7 +348,7 @@ impl ComponentArg {
             Self::Scheduler {} => Ok(Component::Scheduler {}),
             Self::Worker { name } => Ok(Component::Worker { name }),
             Self::Mailer { name } => Ok(Component::Mailer { name }),
-            Self::Deployment {} => {
+            Self::Deployment { kind } => {
                 let copy_asset_folder = &config
                     .server
                     .middlewares
@@ -347,12 +364,19 @@ impl ComponentArg {
                     .map(|a| a.fallback);
 
                 Ok(Component::Deployment {
+                    kind,
                     asset_folder: copy_asset_folder.clone(),
                     fallback_file: fallback_file.clone(),
                     host: config.server.host.clone(),
                     port: config.server.port,
                 })
             }
+            Self::Override {
+                template_path: _,
+                info: _,
+            } => Err(crate::Error::string(
+                "Error: Override could not be generated.",
+            )),
         }
     }
 }
@@ -394,6 +418,8 @@ enum DbCommands {
         #[arg(long, default_value = "src/fixtures")]
         from: PathBuf,
     },
+    /// Dump database schema
+    Schema,
 }
 
 impl From<DbCommands> for RunDbCommand {
@@ -419,6 +445,7 @@ impl From<DbCommands> for RunDbCommand {
             DbCommands::Create => {
                 unreachable!("Create db should't handled in the global db commands")
             }
+            DbCommands::Schema => Self::Schema,
         }
     }
 }
@@ -493,13 +520,13 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
     let cli = Playground::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
-    let config = environment.load()?;
+    let config = H::load_config(&environment).await?;
 
     if !H::init_logger(&config, &environment)? {
         logger::init::<H>(&config.logger)?;
     }
 
-    let app_context = create_context::<H>(&environment).await?;
+    let app_context = create_context::<H>(&environment, config).await?;
     Ok(app_context)
 }
 
@@ -531,13 +558,10 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::cognitive_complexity)]
 pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
-    use colored::Colorize;
-    use loco_gen::AppInfo;
-
     let cli: Cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
-    let config = environment.load()?;
+    let config = H::load_config(&environment).await?;
 
     if !H::init_logger(&config, &environment)? {
         logger::init::<H>(&config.logger)?;
@@ -562,7 +586,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                 StartMode::ServerOnly
             };
 
-            let boot_result = create_app::<H, M>(start_mode, &environment).await?;
+            let boot_result = create_app::<H, M>(start_mode, &environment, config).await?;
             let serve_params = ServeParams {
                 port: port.map_or(boot_result.app_context.config.server.port, |p| p),
                 binding: binding
@@ -573,26 +597,28 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         #[cfg(feature = "with-db")]
         Commands::Db { command } => {
             if matches!(command, DbCommands::Create) {
-                db::create(&environment.load()?.database.uri).await?;
+                db::create(&config.database.uri).await?;
             } else {
-                let app_context = create_context::<H>(&environment).await?;
+                let app_context = create_context::<H>(&environment, config).await?;
                 run_db::<H, M>(&app_context, command.into()).await?;
             }
         }
         #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
-        Commands::Jobs { command } => handle_job_command::<H>(command, &environment).await?,
+        Commands::Jobs { command } => {
+            handle_job_command::<H>(command, &environment, config).await?;
+        }
         Commands::Routes {} => {
-            let app_context = create_context::<H>(&environment).await?;
+            let app_context = create_context::<H>(&environment, config).await?;
             show_list_endpoints::<H>(&app_context);
         }
-        Commands::Middleware { config } => {
-            let app_context = create_context::<H>(&environment).await?;
+        Commands::Middleware { show_config } => {
+            let app_context = create_context::<H>(&environment, config).await?;
             let middlewares = list_middlewares::<H>(&app_context);
             for middleware in middlewares.iter().filter(|m| m.enabled) {
                 println!(
                     "{:<22} {}",
                     middleware.id.bold(),
-                    if config {
+                    if show_config {
                         middleware.detail.as_str()
                     } else {
                         ""
@@ -606,25 +632,20 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         }
         Commands::Task { name, params } => {
             let vars = task::Vars::from_cli_args(params);
-            let app_context = create_context::<H>(&environment).await?;
+            let app_context = create_context::<H>(&environment, config).await?;
             run_task::<H>(&app_context, name.as_ref(), &vars).await?;
         }
         Commands::Scheduler {
             name,
-            config,
+            config_path,
             tag,
             list,
         } => {
-            let app_context = create_context::<H>(&environment).await?;
-            run_scheduler::<H>(&app_context, config.as_ref(), name, tag, list).await?;
+            let app_context = create_context::<H>(&environment, config).await?;
+            run_scheduler::<H>(&app_context, config_path.as_ref(), name, tag, list).await?;
         }
         Commands::Generate { component } => {
-            loco_gen::generate(
-                component.into_gen_component(&config)?,
-                &AppInfo {
-                    app_name: H::app_name().to_string(),
-                },
-            )?;
+            handle_generate_command::<H>(component, &config)?;
         }
         Commands::Doctor {
             config: config_arg,
@@ -677,13 +698,10 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
 
 #[cfg(not(feature = "with-db"))]
 pub async fn main<H: Hooks>() -> crate::Result<()> {
-    use colored::Colorize;
-    use loco_gen::AppInfo;
-
     let cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
 
-    let config = environment.load()?;
+    let config = H::load_config(&environment).await?;
 
     if !H::init_logger(&config, &environment)? {
         logger::init::<H>(&config.logger)?;
@@ -708,7 +726,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
                 StartMode::ServerOnly
             };
 
-            let boot_result = create_app::<H>(start_mode, &environment).await?;
+            let boot_result = create_app::<H>(start_mode, &environment, config).await?;
             let serve_params = ServeParams {
                 port: port.map_or(boot_result.app_context.config.server.port, |p| p),
                 binding: binding.map_or(
@@ -719,17 +737,17 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             start::<H>(boot_result, serve_params, no_banner).await?;
         }
         Commands::Routes {} => {
-            let app_context = create_context::<H>(&environment).await?;
+            let app_context = create_context::<H>(&environment, config).await?;
             show_list_endpoints::<H>(&app_context)
         }
-        Commands::Middleware { config } => {
-            let app_context = create_context::<H>(&environment).await?;
+        Commands::Middleware { show_config } => {
+            let app_context = create_context::<H>(&environment, config).await?;
             let middlewares = list_middlewares::<H>(&app_context);
             for middleware in middlewares.iter().filter(|m| m.enabled) {
                 println!(
                     "{:<22} {}",
                     middleware.id.bold(),
-                    if config {
+                    if show_config {
                         middleware.detail.as_str()
                     } else {
                         ""
@@ -743,27 +761,24 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
         }
         Commands::Task { name, params } => {
             let vars = task::Vars::from_cli_args(params);
-            let app_context = create_context::<H>(&environment).await?;
+            let app_context = create_context::<H>(&environment, config).await?;
             run_task::<H>(&app_context, name.as_ref(), &vars).await?;
         }
         #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
-        Commands::Jobs { command } => handle_job_command::<H>(command, &environment).await?,
+        Commands::Jobs { command } => {
+            handle_job_command::<H>(command, &environment, config).await?
+        }
         Commands::Scheduler {
             name,
-            config,
+            config_path,
             tag,
             list,
         } => {
-            let app_context = create_context::<H>(&environment).await?;
-            run_scheduler::<H>(&app_context, config.as_ref(), name, tag, list).await?;
+            let app_context = create_context::<H>(&environment, config).await?;
+            run_scheduler::<H>(&app_context, config_path.as_ref(), name, tag, list).await?;
         }
         Commands::Generate { component } => {
-            loco_gen::generate(
-                component.into_gen_component(&config)?,
-                &AppInfo {
-                    app_name: H::app_name().to_string(),
-                },
-            )?;
+            handle_generate_command::<H>(component, &config)?;
         }
         Commands::Version {} => {
             println!("{}", H::app_version(),);
@@ -902,8 +917,9 @@ fn create_root_span(environment: &Environment) -> tracing::Span {
 async fn handle_job_command<H: Hooks>(
     command: JobsCommands,
     environment: &Environment,
+    config: Config,
 ) -> crate::Result<()> {
-    let app_context = create_context::<H>(environment).await?;
+    let app_context = create_context::<H>(environment, config).await?;
     let queue = app_context.queue_provider.map_or_else(
         || {
             println!("queue not configured");
@@ -953,4 +969,134 @@ async fn handle_job_command<H: Hooks>(
         }
         JobsCommands::Import { file } => queue.import(file.as_path()).await,
     }
+}
+
+fn handle_generate_command<H: Hooks>(
+    component: ComponentArg,
+    config: &Config,
+) -> crate::Result<()> {
+    if let ComponentArg::Override {
+        template_path,
+        info,
+    } = component
+    {
+        match (template_path, info) {
+            // If no template path is provided, display the available templates,
+            // ignoring the `--info` flag.
+            (None, true | false) => {
+                let templates = loco_gen::template::collect();
+                println!("{}", format_templates_as_tree(templates));
+            }
+            // If a template path is provided and `--info` is enabled,
+            // display the templates from the specified path.
+            (Some(path), true) => {
+                let templates = loco_gen::template::collect_files_path(Path::new(&path)).unwrap();
+                println!("{}", format_templates_as_tree(templates));
+            }
+            // If a template path is provided and `--info` is disabled,
+            // copy the template to the default local template path.
+            (Some(path), false) => {
+                let copied_files = loco_gen::copy_template(
+                    Path::new(&path),
+                    Path::new(loco_gen::template::DEFAULT_LOCAL_TEMPLATE),
+                )?;
+                if copied_files.is_empty() {
+                    println!("{}", "No templates were found to copy.".red());
+                } else {
+                    println!(
+                        "{}",
+                        "The following templates were successfully copied:".green()
+                    );
+                    for f in copied_files {
+                        println!(" * {}", f.display());
+                    }
+                }
+            }
+        }
+    } else {
+        let get_result = loco_gen::generate(
+            &loco_gen::RRgen::default(),
+            component.into_gen_component(config)?,
+            &loco_gen::AppInfo {
+                app_name: H::app_name().to_string(),
+            },
+        )?;
+        let messages = loco_gen::collect_messages(&get_result);
+        println!("{messages}");
+    };
+    Ok(())
+}
+
+#[must_use]
+pub fn format_templates_as_tree(paths: Vec<PathBuf>) -> String {
+    let mut categories: BTreeMap<String, BTreeMap<String, Vec<PathBuf>>> = BTreeMap::new();
+
+    for path in paths {
+        if let Some(parent) = path.parent() {
+            let parent_str = parent.to_string_lossy().to_string();
+            let mut components = parent_str.split('/');
+            if let Some(top_level) = components.next() {
+                let top_key = top_level.to_string();
+                let sub_key = components.next().unwrap_or("").to_string();
+
+                categories
+                    .entry(top_key)
+                    .or_default()
+                    .entry(sub_key)
+                    .or_default()
+                    .push(path);
+            }
+        }
+    }
+
+    let mut output = String::new();
+    output.push_str("Available templates and directories to copy:\n\n");
+
+    for (top_level, sub_categories) in &categories {
+        output.push_str(&format!("{}", format!("{top_level}\n").yellow()));
+
+        for (sub_category, paths) in sub_categories {
+            if !sub_category.is_empty() {
+                output.push_str(&format!("{}", format!(" └── {sub_category}\n").yellow()));
+            }
+
+            for path in paths {
+                output.push_str(&format!(
+                    "   └── {}\n",
+                    path.file_name().unwrap_or_default().to_string_lossy()
+                ));
+            }
+        }
+    }
+
+    output.push_str(&format!("\n\n{}\n\n", "Usage Examples:".bold().green()));
+    output.push_str(&format!("{}", "Override a Specific File:\n".bold()));
+    output.push_str(&format!(
+        " * cargo loco generate override {}\n",
+        "scaffold/api/controller.t".yellow()
+    ));
+    output.push_str(&format!(
+        " * cargo loco generate override {}",
+        "migration/add_columns.t".yellow()
+    ));
+    output.push_str(&format!(
+        "{}",
+        "\n\nOverride All Files in a Folder:\n".bold()
+    ));
+    output.push_str(&format!(
+        " * cargo loco generate override {}\n",
+        "scaffold/htmx".yellow()
+    ));
+    output.push_str(&format!(
+        " * cargo loco generate override {}",
+        "task".yellow()
+    ));
+    // output.push_str(" * cargo loco generate override task");
+    output.push_str(&format!("{}", "\n\nOverride All templates:\n".bold()));
+    output.push_str(&format!(
+        " * cargo loco generate override {}\n",
+        ".".yellow()
+    ));
+
+    output
 }

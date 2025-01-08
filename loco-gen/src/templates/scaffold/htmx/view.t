@@ -12,7 +12,7 @@ use loco_rs::prelude::*;
 
 use crate::models::_entities::{{file_name | plural}};
 
-/// Render a list view of {{name | plural}}.
+/// Render a list view of `{{name | plural}}`.
 ///
 /// # Errors
 ///
@@ -21,7 +21,7 @@ pub fn list(v: &impl ViewRenderer, items: &Vec<{{file_name | plural}}::Model>) -
     format::render().view(v, "{{file_name}}/list.html", data!({"items": items}))
 }
 
-/// Render a single {{name}} view.
+/// Render a single `{{name}}` view.
 ///
 /// # Errors
 ///
@@ -30,7 +30,7 @@ pub fn show(v: &impl ViewRenderer, item: &{{file_name | plural}}::Model) -> Resu
     format::render().view(v, "{{file_name}}/show.html", data!({"item": item}))
 }
 
-/// Render a {{name }} create form.
+/// Render a `{{name}}` create form.
 ///
 /// # Errors
 ///
@@ -39,7 +39,7 @@ pub fn create(v: &impl ViewRenderer) -> Result<Response> {
     format::render().view(v, "{{file_name}}/create.html", data!({}))
 }
 
-/// Render a {{name}} edit form.
+/// Render a `{{name}}` edit form.
 ///
 /// # Errors
 ///

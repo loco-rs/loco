@@ -35,6 +35,8 @@ server:
         path: "assets/static"
       fallback: "assets/static/404.html"
   {%- elif settings.asset.kind == "client" %}
+    fallback:
+      enable: false
     static:
       enable: true
       must_exist: true

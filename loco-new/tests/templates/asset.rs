@@ -58,25 +58,24 @@ fn test_config_file_middleware_asset_client(
     let generator: TestGenerator = run_generator(AssetsOption::Clientside);
     let content = assertion::yaml::load(generator.path(config_file));
 
-    assertion::yaml::assert_path_is_object(&content, &["server", "middlewares", "static"]);
+    assertion::yaml::assert_path_is_object(&content, &["server", "middlewares"]);
 
     let expected: serde_yaml::Value = serde_yaml::from_str(
         r"
-enable: true
-must_exist: true
-precompressed: false
-folder:
-    uri: /
-    path: frontend/dist
-fallback: frontend/dist/index.html
+fallback:
+    enable: false
+static:
+    enable: true
+    must_exist: true
+    precompressed: false
+    folder:
+        uri: /
+        path: frontend/dist
+    fallback: frontend/dist/index.html
 ",
     )
     .unwrap();
-    assertion::yaml::assert_path_value_eq(
-        &content,
-        &["server", "middlewares", "static"],
-        &expected,
-    );
+    assertion::yaml::assert_path_value_eq(&content, &["server", "middlewares"], &expected);
 }
 
 #[rstest]
