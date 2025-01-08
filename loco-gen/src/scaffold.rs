@@ -91,6 +91,11 @@ pub fn generate(
             gen_result.rrgen.extend(res.rrgen);
             gen_result.local_templates.extend(res.local_templates);
         }
+        ScaffoldKind::OpenApi => {
+            let res = render_template(rrgen, Path::new("scaffold/openapi"), &vars)?;
+            gen_result.rrgen.extend(res.rrgen);
+            gen_result.local_templates.extend(res.local_templates);
+        }
     }
     Ok(gen_result)
 }

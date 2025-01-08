@@ -36,5 +36,6 @@ pub fn generate(
             }
             Ok(gen_result)
         }
+        gen::ScaffoldKind::OpenApi => gen::render_template(rrgen, Path::new("controller/openapi"), &vars),
     }
 }

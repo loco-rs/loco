@@ -9,6 +9,7 @@ use std::fs;
 #[case(ScaffoldKind::Api)]
 #[case(ScaffoldKind::Html)]
 #[case(ScaffoldKind::Htmx)]
+#[case(ScaffoldKind::OpenApi)]
 #[test]
 fn can_generate(#[case] kind: ScaffoldKind) {
     std::env::set_var("SKIP_MIGRATION", "");
@@ -131,6 +132,7 @@ fn can_generate(#[case] kind: ScaffoldKind) {
                 );
             }
         }
+        ScaffoldKind::OpenApi => (),
     }
 }
 
