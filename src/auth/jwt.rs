@@ -13,7 +13,7 @@ use serde_json::{Map, Value};
 const JWT_ALGORITHM: Algorithm = Algorithm::HS512;
 
 /// Represents the claims associated with a user JWT.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct UserClaims {
     pub pid: String,
     exp: u64,
@@ -265,5 +265,147 @@ mod tests {
         assert_eq!(expected_value, serde_json::to_value(user_claims).unwrap());
     }
 
-    // TODO: repeat these tests but with deserialize
+    #[test]
+    fn deserialize_user_claims_without_custom_claims() {
+        let json_claims = json!({
+            "pid" : "pid",
+            "exp": 60
+        })
+        .to_string();
+
+        let expected_user_claims = UserClaims {
+            pid: "pid".to_string(),
+            exp: 60,
+            claims: Map::new(),
+        };
+
+        assert_eq!(
+            expected_user_claims,
+            serde_json::from_str(&json_claims).unwrap()
+        );
+    }
+
+    #[test]
+    fn deserialize_user_claims_with_custom_string_claims() {
+        let json_claims = json!({
+            "pid" : "pid",
+            "exp": 60,
+            "custom": "claim"
+        })
+        .to_string();
+
+        let expected_claims = json!({ "custom": "claim",}).as_object().unwrap().clone();
+        let expected_user_claims = UserClaims {
+            pid: "pid".to_string(),
+            exp: 60,
+            claims: expected_claims,
+        };
+
+        assert_eq!(
+            expected_user_claims,
+            serde_json::from_str(&json_claims).unwrap()
+        );
+    }
+
+    #[test]
+    fn deserialize_user_claims_with_custom_boolean_claims() {
+        let json_claims = json!({
+            "pid" : "pid",
+            "exp": 60,
+            "custom": true
+        })
+        .to_string();
+
+        let expected_claims = json!({ "custom": true,}).as_object().unwrap().clone();
+        let expected_user_claims = UserClaims {
+            pid: "pid".to_string(),
+            exp: 60,
+            claims: expected_claims,
+        };
+
+        assert_eq!(
+            expected_user_claims,
+            serde_json::from_str(&json_claims).unwrap()
+        );
+    }
+
+    #[test]
+    fn deserialize_user_claims_with_custom_nested_claims() {
+        let json_claims = json!({
+            "pid" : "pid",
+            "exp": 60,
+            "level1": {
+                "level2": {
+                    "level3": "claim"
+                }
+            }
+        })
+        .to_string();
+
+        let expected_claims = json!({ "level1": { "level2": { "level3": "claim" } } })
+            .as_object()
+            .unwrap()
+            .clone();
+        let expected_user_claims = UserClaims {
+            pid: "pid".to_string(),
+            exp: 60,
+            claims: expected_claims,
+        };
+
+        assert_eq!(
+            expected_user_claims,
+            serde_json::from_str(&json_claims).unwrap()
+        );
+    }
+
+    #[test]
+    fn deserialize_user_claims_with_custom_array_claims() {
+        let json_claims = json!({
+            "pid" : "pid",
+            "exp": 60,
+            "array": [1, 2, 3]
+        })
+        .to_string();
+
+        let expected_claims = json!({ "array": [1, 2, 3] }).as_object().unwrap().clone();
+        let expected_user_claims = UserClaims {
+            pid: "pid".to_string(),
+            exp: 60,
+            claims: expected_claims,
+        };
+
+        assert_eq!(
+            expected_user_claims,
+            serde_json::from_str(&json_claims).unwrap()
+        );
+    }
+
+    #[test]
+    fn deserialize_user_claims_with_custom_nested_array_claims() {
+        let json_claims = json!({
+            "pid" : "pid",
+            "exp": 60,
+            "level1": {
+                "level2": {
+                    "level3": [1, 2, 3]
+                }
+            }
+        })
+        .to_string();
+
+        let expected_claims = json!({ "level1": { "level2": { "level3": [1, 2, 3] } } })
+            .as_object()
+            .unwrap()
+            .clone();
+        let expected_user_claims = UserClaims {
+            pid: "pid".to_string(),
+            exp: 60,
+            claims: expected_claims,
+        };
+
+        assert_eq!(
+            expected_user_claims,
+            serde_json::from_str(&json_claims).unwrap()
+        );
+    }
 }
