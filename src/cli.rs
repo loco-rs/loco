@@ -178,6 +178,21 @@ enum ComponentArg {
     #[cfg(feature = "with-db")]
     /// Generates a new model file for defining the data structure of your
     /// application, and test file logic.
+    #[command(after_help = format!(
+    "{}  
+  - Generate empty model:
+      $ cargo loco g model posts
+
+  - Generate model with fields:
+      $ cargo loco g model posts title:string! content:text
+
+  - Generate model with references:
+      $ cargo loco g model movies long_title:string director:references award:references:prize_id
+      # 'director:references' references the 'directors' table with 'director_id' on 'movies'
+      # 'award:references:prize_id' references the 'awards' table with 'prize_id' on 'movies'
+",
+    "Examples:".bold().underline()
+))]
     Model {
         /// Name of the thing to generate
         name: String,
@@ -192,15 +207,48 @@ enum ComponentArg {
     },
     #[cfg(feature = "with-db")]
     /// Generates a new migration file
+    #[command(after_help = format!("{}
+  - Create a new table:
+      $ cargo loco g migration CreatePosts title:string
+      # Creates a migration to add a 'posts' table with a 'title' column of type string.
+
+  - Add columns to an existing table:
+      $ cargo loco g migration AddNameAndAgeToUsers name:string age:int
+      # Adds 'name' (string) and 'age' (integer) columns to the 'users' table.
+
+  - Remove columns from a table:
+      $ cargo loco g migration RemoveNameAndAgeFromUsers name:string age:int
+      # Removes 'name' and 'age' columns from the 'users' table.
+
+  - Add a foreign key reference:
+      $ cargo loco g migration AddUserRefToPosts user:references
+      # Adds a reference to the 'users' table in the 'posts' table.
+
+  - Create a join table:
+      $ cargo loco g migration CreateJoinTableUsersAndGroups count:int
+      # Creates a join table 'users_groups' with an additional 'count' column.
+
+  - Create an empty migration:
+      $ cargo loco g migration FixUsersTable
+      # Creates a blank migration file for custom edits to the 'users' table.
+
+After running the migration, follow these steps to complete the process:
+  - Apply the migration:
+    $ cargo loco db migrate
+  - Generate the model entities:
+    $ cargo loco db entities
+", "Examples:".bold().underline()))]
     Migration {
         /// Name of the migration to generate
         name: String,
         /// Table fields, eg. title:string hits:int
-        #[clap(value_parser = parse_key_val::<String,String>)]
+        #[clap(value_parser = parse_key_val::<String,String>, )]
         fields: Vec<(String, String)>,
     },
     #[cfg(feature = "with-db")]
     /// Generates a CRUD scaffold, model and controller
+    #[command(after_help = format!("{}
+ $ cargo loco g model posts title:string! user:references --api", "Examples:".bold().underline()))]
     Scaffold {
         /// Name of the thing to generate
         name: String,
@@ -226,6 +274,16 @@ enum ComponentArg {
         api: bool,
     },
     /// Generate a new controller with the given controller name, and test file.
+    #[command(after_help = format!(
+    "{}  
+  - Generate an empty controller:
+      $ cargo loco generate controller posts --api
+
+  - Generate a controller with actions:
+      $ cargo loco generate controller posts --api list remove update
+",
+    "Examples:".bold().underline()
+))]
     Controller {
         /// Name of the thing to generate
         name: String,
@@ -274,6 +332,18 @@ enum ComponentArg {
     },
 
     /// Override templates and allows you to take control of them. You can always go back when deleting the local template.
+    #[command(after_help = format!("{}
+  - Override a Specific File:
+      * cargo loco generate override scaffold/api/controller.t
+      * cargo loco generate override migration/add_columns.t
+
+  - Override All Files in a Folder:
+      * cargo loco generate override scaffold/htmx
+      * cargo loco generate override task
+
+  - Override All templates:
+      * cargo loco generate override .
+", "Examples:".bold().underline()))]
     Override {
         /// The path to a specific template or directory to copy.
         template_path: Option<String>,
