@@ -41,5 +41,7 @@ impl MigrationTrait for Migration {
         {% for column in columns -%}
         remove_column(m, "{{plural_snake}}", "{{column.0}}").await?;
         {% endfor -%}
+        
+        Ok(())
     }
 }
