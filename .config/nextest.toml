@@ -1,6 +1,0 @@
-[test-groups]
-serial = { max-threads = 1 }
-
-[[profile.default.overrides]]
-filter = 'test(bgworker::)'
-test-group = 'serial'
