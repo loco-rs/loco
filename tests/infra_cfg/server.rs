@@ -26,8 +26,7 @@ pub fn get_base_url_port(port: i32) -> String {
     format!("http://{TEST_BINDING_SERVER}:{port}/")
 }
 
-/// Returns the base URL with a unique port number. Increments by 1
-/// starting from 59126
+/// Returns a unique port number. Usually increments by 1 starting from 59126
 pub async fn get_available_port() -> i32 {
     let addr = format!("{}:0", TEST_BINDING_SERVER);
     let listener = TcpListener::bind(addr)
