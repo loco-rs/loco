@@ -42,6 +42,7 @@ Commands:
   entities  Generate entity .rs files from database schema
   truncate  Truncate data in tables (without dropping)
   seed      Seed your database with initial data or dump tables to files
+  schema    Dump database schema
   help      Print this message or the help of the given subcommand(s)
 
 Options:
@@ -68,6 +69,7 @@ Commands:
   worker      Generate worker
   mailer      Generate mailer
   deployment  Generate a deployment infrastructure
+  override    Override templates and allows you to take control of them. You can always go back when deleting the local template
   help        Print this message or the help of the given subcommand(s)
 
 Options:
@@ -111,9 +113,9 @@ $ demo_app-cli routes --environment test
   ├─ GET	/notes
   │  POST	/notes
   │
-  ├─ GET	/notes/:id
-  │  POST	/notes/:id
-  └─ DELETE	/notes/:id
+  ├─ GET	/notes/{id}
+  │  POST	/notes/{id}
+  └─ DELETE	/notes/{id}
 /response
   ├─ GET	/response/album
   ├─ GET	/response/empty
@@ -152,26 +154,5 @@ $ demo_app-cli doctor
 
 ```console 
 $ LOCO_ENV=test demo_app-cli db reset
-
-```
-
-```console 
-$ LOCO_ENV=teste2e demo_app-cli db migrate
-[..][0m [32m INFO[0m [1mapp[0m: [2mloco_rs::config[0m[2m:[0m loading environment from [3mselected_path[0m[2m=[0m"config/teste2e.yaml" [2m[3menvironment[0m[2m=[0mteste2e[0m
-[..][0m [33m WARN[0m [1mapp[0m: [2mloco_rs::boot[0m[2m:[0m migrate: [2m[3menvironment[0m[2m=[0mteste2e[0m
-[..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m Applying all pending migrations [2m[3menvironment[0m[2m=[0mteste2e[0m
-[..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m No pending migrations [2m[3menvironment[0m[2m=[0mteste2e[0m
-
-```
-
-```console 
-$ LOCO_ENV=teste2e demo_app-cli db status
-[..][0m [32m INFO[0m [1mapp[0m: [2mloco_rs::config[0m[2m:[0m loading environment from [3mselected_path[0m[2m=[0m"config/teste2e.yaml" [2m[3menvironment[0m[2m=[0mteste2e[0m
-[..][0m [33m WARN[0m [1mapp[0m: [2mloco_rs::boot[0m[2m:[0m status: [2m[3menvironment[0m[2m=[0mteste2e[0m
-[..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m Checking migration status [2m[3menvironment[0m[2m=[0mteste2e[0m
-[..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m Migration 'm20220101_000001_users'... Applied [2m[3menvironment[0m[2m=[0mteste2e[0m
-[..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m Migration 'm20231103_114510_notes'... Applied [2m[3menvironment[0m[2m=[0mteste2e[0m
-[..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m Migration 'm20240416_071825_roles'... Applied [2m[3menvironment[0m[2m=[0mteste2e[0m
-[..][0m [32m INFO[0m [1mapp[0m: [2msea_orm_migration::migrator[0m[2m:[0m Migration 'm20240416_082115_users_roles'... Applied [2m[3menvironment[0m[2m=[0mteste2e[0m
 
 ```

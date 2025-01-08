@@ -19,6 +19,10 @@ static welcome: Dir<'_> = include_dir!("src/mailers/{{module_name}}/welcome");
 pub struct {{struct_name}} {}
 impl Mailer for {{struct_name}} {}
 impl {{struct_name}} {
+    /// Send an email
+    ///
+    /// # Errors
+    /// When email sending is failed
     pub async fn send_welcome(ctx: &AppContext, to: &str, msg: &str) -> Result<()> {
         Self::mail_template(
             ctx,

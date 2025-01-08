@@ -33,7 +33,8 @@ use crate::{
 /// }
 /// ```
 pub async fn boot_test<H: Hooks>() -> Result<BootResult> {
-    H::boot(boot::StartMode::ServerOnly, &Environment::Test).await
+    let config = H::load_config(&Environment::Test).await?;
+    H::boot(boot::StartMode::ServerOnly, &Environment::Test, config).await
 }
 
 #[allow(clippy::future_not_send)]

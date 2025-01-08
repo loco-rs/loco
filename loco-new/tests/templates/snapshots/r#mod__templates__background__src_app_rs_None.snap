@@ -8,6 +8,7 @@ use loco_rs::{
     bgworker::{
         Queue},
     boot::{create_app, BootResult, StartMode},
+    config::Config,
     controller::AppRoutes,
     environment::Environment,
     task::Tasks,
@@ -16,7 +17,7 @@ use loco_rs::{
 
 #[allow(unused_imports)]
 use crate::{
-    controllers,
+    controllers ,tasks
 };
 
 pub struct App;
@@ -36,8 +37,8 @@ impl Hooks for App {
         )
     }
 
-    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
-        create_app::<Self>(mode, environment).await
+    async fn boot(mode: StartMode, environment: &Environment, config: Config) -> Result<BootResult> {
+        create_app::<Self>(mode, environment, config).await
     }
 
     async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {

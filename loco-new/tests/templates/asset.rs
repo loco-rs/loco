@@ -58,25 +58,24 @@ fn test_config_file_middleware_asset_client(
     let generator: TestGenerator = run_generator(AssetsOption::Clientside);
     let content = assertion::yaml::load(generator.path(config_file));
 
-    assertion::yaml::assert_path_is_object(&content, &["server", "middlewares", "static"]);
+    assertion::yaml::assert_path_is_object(&content, &["server", "middlewares"]);
 
     let expected: serde_yaml::Value = serde_yaml::from_str(
         r"
-enable: true
-must_exist: true
-precompressed: false
-folder:
-    uri: /
-    path: frontend/dist
-fallback: frontend/dist/index.html
+fallback:
+    enable: false
+static:
+    enable: true
+    must_exist: true
+    precompressed: false
+    folder:
+        uri: /
+        path: frontend/dist
+    fallback: frontend/dist/index.html
 ",
     )
     .unwrap();
-    assertion::yaml::assert_path_value_eq(
-        &content,
-        &["server", "middlewares", "static"],
-        &expected,
-    );
+    assertion::yaml::assert_path_value_eq(&content, &["server", "middlewares"], &expected);
 }
 
 #[rstest]
@@ -91,4 +90,33 @@ fn test_cargo_toml(
         format!("cargo_dependencies_{:?}", asset),
         content.get("dependencies").unwrap()
     );
+}
+
+#[rstest]
+fn test_github_ci_yaml(
+    #[values(AssetsOption::None, AssetsOption::Serverside, AssetsOption::Clientside)]
+    asset: AssetsOption,
+) {
+    let generator: TestGenerator = run_generator(asset.clone());
+    let content =
+        assertion::string::load(generator.path(".github").join("workflows").join("ci.yaml"));
+
+    let frontend_section = r"      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{matrix.node-version}}
+      - name: Build frontend
+        run: npm install && npm run build
+        working-directory: ./frontend
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2";
+
+    match asset {
+        AssetsOption::Serverside | AssetsOption::None => {
+            assertion::string::assert_not_contains(&content, frontend_section);
+        }
+        AssetsOption::Clientside => {
+            assertion::string::assert_contains(&content, frontend_section);
+        }
+    }
 }

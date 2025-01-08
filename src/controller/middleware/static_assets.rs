@@ -108,13 +108,17 @@ impl MiddlewareLayer for StaticAssets {
 
         let serve_dir = ServeDir::new(&self.folder.path).fallback(ServeFile::new(&self.fallback));
 
-        Ok(app.nest_service(
-            &self.folder.uri,
-            if self.precompressed {
-                serve_dir.precompressed_gzip()
-            } else {
-                serve_dir
-            },
-        ))
+        if &self.folder.uri == "/" {
+            Ok(app.fallback_service(serve_dir))
+        } else {
+            Ok(app.nest_service(
+                &self.folder.uri,
+                if self.precompressed {
+                    serve_dir.precompressed_gzip()
+                } else {
+                    serve_dir
+                },
+            ))
+        }
     }
 }

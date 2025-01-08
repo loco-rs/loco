@@ -42,9 +42,9 @@ openapi_redoc = ["dep:utoipa", "dep:utoipa-axum", "dep:utoipa-redoc"]
 openapi_scalar = ["dep:utoipa", "dep:utoipa-axum", "dep:utoipa-scalar"]
 # Storage features
 all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
-storage_aws_s3 = ["object_store/aws"]
-storage_azure = ["object_store/azure"]
-storage_gcp = ["object_store/gcp"]
+storage_aws_s3 = ["opendal/services-s3"]
+storage_azure = ["opendal/services-azblob"]
+storage_gcp = ["opendal/services-gcs"]
 # Cache feature
 cache_inmem = ["dep:moka"]
 bg_redis = ["dep:rusty-sidekiq", "dep:bb8"]
@@ -59,7 +59,7 @@ backtrace_printer = { version = "1.3.0" }
 
 # cli
 clap = { version = "4.4.7", features = ["derive"], optional = true }
-colored = "2"
+colored = { workspace = true }
 reqwest = { version = "0.12.7", features = [
     "charset",
     "http2",
@@ -90,13 +90,14 @@ toml = "0.8"
 async-trait = { workspace = true }
 
 axum = { workspace = true }
-axum-extra = { version = "0.9", features = ["cookie"] }
+axum-extra = { version = "0.10", features = ["cookie"] }
 regex = { workspace = true }
 fs-err = "2.11.0"
 # mailer
 tera = "1.19.1"
 thousands = "0.2.0"
 heck = "0.4.0"
+cruet = "0.13.0"
 lettre = { version = "0.11.4", default-features = false, features = [
     "builder",
     "hostname",
@@ -127,7 +128,7 @@ bytes = "1.1"
 ipnetwork = "0.20.0"
 semver = "1"
 
-axum-test = { version = "16.1.0", optional = true }
+axum-test = { version = "17.0.1", optional = true }
 
 chrono = { workspace = true }
 cfg-if = "1"
@@ -145,7 +146,10 @@ utoipa-redoc = { version = "5.0.0", features = ["axum"], optional = true }
 utoipa-scalar = { version = "0.2.0", features = ["axum"], optional = true }
 
 # File Upload
-object_store = { version = "0.11.0", default-features = false }
+opendal = { version = "0.50.2", default-features = false, features = [
+    "services-memory",
+    "services-fs",
+] }
 
 # cache
 moka = { version = "0.12.7", features = ["sync"], optional = true }
@@ -167,10 +171,10 @@ ulid = { version = "1", optional = true }
 rusty-sidekiq = { version = "0.11.0", default-features = false, optional = true }
 bb8 = { version = "0.8.1", optional = true }
 
-scraper = { version = "0.21.0", optional = true }
+scraper = { version = "0.21.0", features = ["deterministic"], optional = true }
 
 [workspace.dependencies]
-
+colored = { version = "2" }
 chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1.40"
 regex = "1"
@@ -178,7 +182,7 @@ thiserror = "1"
 serde = "1"
 serde_json = "1"
 async-trait = { version = "0.1.74" }
-axum = { version = "0.7.5", features = ["macros"] }
+axum = { version = "0.8.1", features = ["macros"] }
 tower = "0.4"
 tower-http = { version = "0.6.1", features = [
     "trace",

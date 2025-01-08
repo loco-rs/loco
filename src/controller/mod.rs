@@ -11,6 +11,7 @@
 //! use loco_rs::{
 //!    app::{AppContext, Hooks},
 //!    boot::{create_app, BootResult, StartMode},
+//!    config::Config,
 //!    controller::AppRoutes,
 //!    prelude::*,
 //!    task::Tasks,
@@ -43,8 +44,8 @@
 //!             // .add_route(controllers::notes::routes())
 //!     }
 //!
-//!     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult>{
-//!          create_app::<Self, Migrator>(mode, environment).await
+//!     async fn boot(mode: StartMode, environment: &Environment, config: Config) -> Result<BootResult>{
+//!          create_app::<Self, Migrator>(mode, environment, config).await
 //!     }
 //!
 //!     async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {
