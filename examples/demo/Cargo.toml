@@ -59,4 +59,4 @@ rstest = "0.21.0"
 loco-rs = { path = "../../", version = "*", features = ["testing"] }
 trycmd = "0.14.19"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
-axum-test = { git = "https://github.com/JosephLenton/axum-test", branch = "feat-axum-8" }
+axum-test = { version = "17.0.1" }
