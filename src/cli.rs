@@ -330,7 +330,8 @@ After running the migration, follow these steps to complete the process:
         kind: DeploymentKind,
     },
 
-    /// Override templates and allows you to take control of them. You can always go back when deleting the local template.
+    /// Override templates and allows you to take control of them. You can
+    /// always go back when deleting the local template.
     #[command(after_help = format!("{}
   - Override a Specific File:
       * cargo loco generate override scaffold/api/controller.t

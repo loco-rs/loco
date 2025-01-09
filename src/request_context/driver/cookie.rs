@@ -492,7 +492,8 @@ mod test {
         let same_site = cookie.same_site() == Some(same_site);
         let path = cookie.path() == Some(config.path.as_str());
         let domain = cookie.domain() == config.domain.as_deref();
-        let max_age = cookie.max_age() == config.expiry.map(|e| time::Duration::seconds(i64::from(e)));
+        let max_age =
+            cookie.max_age() == config.expiry.map(|e| time::Duration::seconds(i64::from(e)));
         // print out the cookie details if any check failed
 
         cookie.name() == config.name

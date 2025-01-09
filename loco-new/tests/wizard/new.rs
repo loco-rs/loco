@@ -1,3 +1,5 @@
+use std::{collections::HashMap, path::PathBuf, process::Output, sync::Arc};
+
 use duct::cmd;
 use loco::{
     generator::{executer::FileSystem, Generator},
@@ -5,7 +7,6 @@ use loco::{
     wizard::{self, AssetsOption, BackgroundOption, DBOption},
     OS,
 };
-use std::{collections::HashMap, path::PathBuf, process::Output, sync::Arc};
 
 #[cfg(feature = "test-wizard")]
 #[rstest::rstest]

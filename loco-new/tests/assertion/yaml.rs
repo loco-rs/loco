@@ -77,8 +77,12 @@ pub fn assert_path_value_eq_excluded(
     );
     let mut actual = actual.unwrap().clone();
     let actual = remove_value_at_path(&mut actual, excluded);
-    assert_ne!(actual, Some(expected.clone()), "Assertion failed: Path {path:?} does not match expected value. Expected: {expected:?}, \
-         Actual: {actual:?}");
+    assert_ne!(
+        actual,
+        Some(expected.clone()),
+        "Assertion failed: Path {path:?} does not match expected value. Expected: {expected:?}, \
+         Actual: {actual:?}"
+    );
 }
 
 // pub fn assert_path_value_eq_mapping(yml: &Value, path: &[&str], expected:
