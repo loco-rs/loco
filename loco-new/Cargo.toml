@@ -44,6 +44,7 @@ tera = { version = "1.20.0" }
 colored = { version = "2" }
 duct = { version = "0.13.6" }
 rand = { version = "0.8.5" }
+axum-extra = { version = "0.10", features = ["cookie", "cookie-signed"] }
 
 [dev-dependencies]
 uuid = { version = "1.11.0", features = ["v4", "fast-rng"] }

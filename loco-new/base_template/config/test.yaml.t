@@ -22,6 +22,21 @@ server:
   host: http://localhost
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
   middlewares:
+    request_context:
+      enable: true
+      session_config:
+        name: "__loco_session"
+        http_only: true
+        same_site:
+          type: Lax
+        expiry: 3600
+        secure: false
+        path: /
+      # domain: ""
+      session_store:
+        type: Cookie
+        value: 
+          private_key: {{ settings.session_private_key }}
   {%- if settings.asset %}   
     {%- if settings.asset.kind == "server" %} 
     static:

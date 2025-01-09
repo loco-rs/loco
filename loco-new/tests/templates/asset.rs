@@ -14,16 +14,6 @@ pub fn run_generator(asset: AssetsOption) -> TestGenerator {
 }
 
 #[rstest]
-fn test_config_file_middleware_when_asset_empty(
-    #[values("config/development.yaml", "config/test.yaml")] config_file: &str,
-) {
-    let generator: TestGenerator = run_generator(AssetsOption::None);
-    let content = assertion::yaml::load(generator.path(config_file));
-
-    assertion::yaml::assert_path_is_empty(&content, &["server", "middlewares"]);
-}
-
-#[rstest]
 fn test_config_file_middleware_asset_server(
     #[values("config/development.yaml", "config/test.yaml")] config_file: &str,
 ) {
@@ -50,6 +40,46 @@ fallback: assets/static/404.html
         &expected,
     );
 }
+#[rstest]
+fn test_config_request_context_session_is_not_empty(
+    #[values("config/development.yaml", "config/test.yaml")] config_file: &str,
+) {
+    let generator: TestGenerator = run_generator(AssetsOption::Serverside);
+    let content = assertion::yaml::load(generator.path(config_file));
+    assertion::yaml::assert_path_is_object(&content, &["server", "middlewares", "request_context"]);
+    let expected: serde_yaml::Value = serde_yaml::from_str(
+        r#"
+enable: true
+session_config:
+  name: "__loco_session"
+  http_only: true
+  same_site:
+    type: Lax
+  expiry: 3600
+  secure: false
+  path: /
+# domain: ""
+session_store:
+type: Cookie
+value:
+    private_key: ""
+"#,
+    )
+    .unwrap();
+    assertion::yaml::assert_path_value_eq_excluded(
+        &content,
+        &["server", "middlewares", "request_context"],
+        &[
+            "server",
+            "middlewares",
+            "request_context",
+            "session_store",
+            "value",
+            "private_key",
+        ],
+        &expected,
+    );
+}
 
 #[rstest]
 fn test_config_file_middleware_asset_client(
@@ -61,7 +91,7 @@ fn test_config_file_middleware_asset_client(
     assertion::yaml::assert_path_is_object(&content, &["server", "middlewares"]);
 
     let expected: serde_yaml::Value = serde_yaml::from_str(
-        r"
+        r#"
 fallback:
     enable: false
 static:
@@ -72,10 +102,15 @@ static:
         uri: /
         path: frontend/dist
     fallback: frontend/dist/index.html
-",
+"#,
     )
     .unwrap();
-    assertion::yaml::assert_path_value_eq(&content, &["server", "middlewares"], &expected);
+    assertion::yaml::assert_path_value_eq_excluded(
+        &content,
+        &["server", "middlewares"],
+        &["server", "middlewares", "request_context"],
+        &expected,
+    );
 }
 
 #[rstest]

@@ -2,6 +2,7 @@
 
 use std::env;
 
+use axum_extra::extract::cookie::Key;
 use heck::ToSnakeCase;
 use rhai::{CustomType, TypeBuilder};
 use serde::{Deserialize, Serialize};
@@ -25,6 +26,7 @@ pub struct Settings {
     pub initializers: Option<Initializers>,
     pub features: Features,
     pub loco_version_text: String,
+    pub session_private_key: String,
     pub os: OS,
 }
 
@@ -88,6 +90,7 @@ impl Settings {
             },
             features,
             loco_version_text: get_loco_version_text(),
+            session_private_key: get_session_private_key(),
             os,
         }
     }
@@ -107,6 +110,7 @@ impl Default for Settings {
             initializers: Default::default(),
             features: Default::default(),
             loco_version_text: get_loco_version_text(),
+            session_private_key: get_session_private_key(),
             os: Default::default(),
         }
     }
@@ -120,6 +124,10 @@ fn get_loco_version_text() -> String {
             format!(r#"version="*", path="{path}""#)
         },
     )
+}
+
+fn get_session_private_key() -> String {
+    format!("{:?}", Key::generate().master().to_vec())
 }
 
 /// Database configuration settings.

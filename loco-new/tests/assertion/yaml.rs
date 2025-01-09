@@ -62,6 +62,25 @@ pub fn assert_path_value_eq(yml: &Value, path: &[&str], expected: &Value) {
     );
 }
 
+/// Assert that a YAML value contains a specific key path and that it matches
+/// the expected value, but excludes
+pub fn assert_path_value_eq_excluded(
+    yml: &Value,
+    path: &[&str],
+    excluded: &[&str],
+    expected: &Value,
+) {
+    let actual = get_value_at_path(yml, path);
+    assert!(
+        actual.is_some(),
+        "Path {path:?} not found in YAML structure"
+    );
+    let mut actual = actual.unwrap().clone();
+    let actual = remove_value_at_path(&mut actual, excluded);
+    assert_ne!(actual, Some(expected.clone()), "Assertion failed: Path {path:?} does not match expected value. Expected: {expected:?}, \
+         Actual: {actual:?}");
+}
+
 // pub fn assert_path_value_eq_mapping(yml: &Value, path: &[&str], expected:
 // &serde_yaml::Mapping) {     let actual = get_value_at_path(yml,
 // path).unwrap();     assert!(
@@ -122,6 +141,51 @@ pub fn assert_path_value_eq_mapping(yml: &Value, path: &[&str], expected: &serde
         "Assertion failed: Path {path:?} does not match expected mapping. Expected: \
          {expected:#?}, Actual: {actual:#?}"
     );
+}
+
+pub fn assert_path_value_not_exists(yml: &Value, path: &[&str]) {
+    let actual = get_value_at_path(yml, path);
+    assert!(
+        actual.is_none(),
+        "Assertion failed: Path {path:?} exists. Actual value: {actual:?}"
+    );
+}
+
+/// Internal helper function to remove a specific path from a YAML structure.
+pub fn remove_value_at_path(yml: &mut Value, path: &[&str]) -> Option<Value> {
+    // If there is no path, there's nothing to remove.
+    if path.is_empty() {
+        return None;
+    }
+
+    let mut current = yml;
+    for &key in &path[..path.len() - 1] {
+        match current {
+            Value::Mapping(map) => {
+                current = map.get_mut(&Value::String(key.to_string()))?;
+            }
+            Value::Sequence(seq) => {
+                let idx = key.parse::<usize>().ok()?;
+                current = seq.get_mut(idx)?;
+            }
+            // If we reach a non-Map or non-Sequence type, we can't proceed.
+            _ => return None,
+        }
+    }
+
+    let last_key = path[path.len() - 1];
+    match current {
+        Value::Mapping(map) => map.remove(&Value::String(last_key.to_string())),
+        Value::Sequence(seq) => {
+            let idx = last_key.parse::<usize>().ok()?;
+            if idx < seq.len() {
+                Some(seq.remove(idx))
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
 }
 
 /// Internal helper function to traverse a YAML structure and get the value at a
