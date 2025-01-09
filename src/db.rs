@@ -106,23 +106,23 @@ pub async fn verify_access(db: &DatabaseConnection) -> AppResult<()> {
 /// return an `AppError` variant representing different database operation
 /// failures.
 pub async fn converge<H: Hooks, M: MigratorTrait>(
-    db: &DatabaseConnection,
+    ctx: &AppContext,
     config: &config::Database,
 ) -> AppResult<()> {
     if config.dangerously_recreate {
         info!("recreating schema");
-        reset::<M>(db).await?;
+        reset::<M>(&ctx.db).await?;
         return Ok(());
     }
 
     if config.auto_migrate {
         info!("auto migrating");
-        migrate::<M>(db).await?;
+        migrate::<M>(&ctx.db).await?;
     }
 
     if config.dangerously_truncate {
         info!("truncating tables");
-        H::truncate(db).await?;
+        H::truncate(ctx).await?;
     }
     Ok(())
 }
@@ -570,8 +570,8 @@ where
 /// # Errors
 ///
 /// when seed process is fails
-pub async fn run_app_seed<H: Hooks>(db: &DatabaseConnection, path: &Path) -> AppResult<()> {
-    H::seed(db, path).await
+pub async fn run_app_seed<H: Hooks>(ctx: &AppContext, path: &Path) -> AppResult<()> {
+    H::seed(ctx, path).await
 }
 
 /// Create a Postgres database from the given db name.

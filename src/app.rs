@@ -216,11 +216,11 @@ pub trait Hooks: Send {
     /// Truncate can be useful when you want to truncate the database before any
     /// test.
     #[cfg(feature = "with-db")]
-    async fn truncate(db: &DatabaseConnection) -> Result<()>;
+    async fn truncate(_ctx: &AppContext) -> Result<()>;
 
     /// Seeds the database with initial data.
     #[cfg(feature = "with-db")]
-    async fn seed(db: &DatabaseConnection, path: &Path) -> Result<()>;
+    async fn seed(_ctx: &AppContext, path: &Path) -> Result<()>;
 
     /// Called when the application is shutting down.
     /// This function allows users to perform any necessary cleanup or final
