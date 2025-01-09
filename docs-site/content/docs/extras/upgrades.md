@@ -66,7 +66,7 @@ async fn boot(mode: StartMode, environment: &Environment, config: Config) -> Res
 ```
 Make sure to import the `Config` type as needed.
 
-### Upgrade Validator crate
+### Upgrade validator crate
 PR: [#993](https://github.com/loco-rs/loco/pull/993)
 
 Update the `validator` crate version in your `Cargo.toml`:
@@ -78,4 +78,46 @@ validator = { version = "0.18" }
 To 
 ```
 validator = { version = "0.19" }
+```
+
+### Extend truncate and seed hooks 
+PR: [#1158](https://github.com/loco-rs/loco/pull/1158)
+
+The `truncate` and `seed` functions now receive `AppContext` instead of `DatabaseConnection` as their argument.
+
+From 
+```rust
+async fn truncate(db: &DatabaseConnection) -> Result<()> {}
+async fn seed(db: &DatabaseConnection, base: &Path) -> Result<()> {}
+``` 
+To 
+```rust
+async fn truncate(ctx: &AppContext) -> Result<()> {}
+async fn seed(_ctx: &AppContext, base: &Path) -> Result<()> {}
+```
+
+Impact on Testing:
+
+Testing code involving the seed function must also be updated accordingly.
+
+from:
+```rust
+async fn load_page() {
+    request::<App, _, _>(|request, ctx| async move {
+        seed::<App>(&ctx.db).await.unwrap();
+        ...
+    })
+    .await;
+}
+```
+
+to 
+```rust
+async fn load_page() {
+    request::<App, _, _>(|request, ctx| async move {
+        seed::<App>(&ctx).await.unwrap();
+        ...
+    })
+    .await;
+}
 ```
