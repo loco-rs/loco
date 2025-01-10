@@ -7,8 +7,9 @@ pub mod template;
 use std::sync::Arc;
 
 use include_dir::{include_dir, Dir};
-use rhai::{Engine, Scope};
+use rhai::{export_module, exported_module, Engine, Scope};
 
+use crate::settings::Initializers;
 use crate::{settings, OS};
 
 static APP_TEMPLATE: Dir<'_> = include_dir!("base_template");
@@ -68,7 +69,8 @@ impl Generator {
         );
         engine
             .build_type::<settings::Settings>()
-            .build_type::<settings::Initializers>()
+            .register_type_with_name::<Option<Initializers>>("Option<Initializers>")
+            .register_static_module("Option<Initializers>", exported_module!(settings_initializers).into())
             .register_fn("copy_file", Self::copy_file)
             .register_fn("create_file", Self::create_file)
             .register_fn("copy_files", Self::copy_files)
@@ -85,7 +87,6 @@ impl Generator {
         // TODO:: move it as part of the settings?
         scope.push("db", self.settings.db.is_some());
         scope.push("background", self.settings.background.is_some());
-        scope.push("initializers", self.settings.initializers.is_some());
         scope.push("rendering_method", self.settings.rendering_method.is_some());
         scope.push("windows", self.settings.os == OS::Windows);
 
@@ -231,7 +232,17 @@ impl Generator {
             })
     }
 }
+#[export_module]
+mod settings_initializers {
+    use rhai::plugin::*;
+    use rhai::{Dynamic, Engine, EvalAltResult};
+    use crate::settings::Initializers;
 
+    #[rhai_fn(global, get = "view_engine", pure)]
+    pub fn view_engine(initializers: &mut Option<Initializers>) -> bool {
+        initializers.as_ref().map_or(false, |i| i.view_engine)
+    }
+}
 #[cfg(test)]
 mod tests {
     use executer::MockExecuter;

@@ -84,7 +84,7 @@ if db {
 // =====================
 // Initializers Support
 // =====================
-if initializers {
+if settings.initializers.view_engine {
    gen.copy_file("src/initializers/view_engine.rs"); // Template for view engine initializer
 }
 

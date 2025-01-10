@@ -26,7 +26,7 @@ use migration::Migrator;
 #[allow(unused_imports)]
 use crate::{
     controllers ,tasks
-    {%- if settings.initializers -%}
+    {%- if settings.initializers.view_engine -%}
     , initializers
     {%- endif %} 
     {%- if settings.auth %}

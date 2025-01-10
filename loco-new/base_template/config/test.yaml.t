@@ -32,7 +32,8 @@ server:
         uri: "/static"
         path: "assets/static"
       fallback: "assets/static/404.html"
-  {%- elif settings.rendering_method.kind == "client" %}fallback:
+  {%- elif settings.rendering_method.kind == "client" %}
+    fallback:
       enable: false
     static:
       enable: true
