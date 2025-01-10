@@ -91,7 +91,7 @@ fs-err = "2.11.0"
 # mailer
 tera = "1.19.1"
 thousands = "0.2.0"
-heck = "0.4.0"
+heck = { workspace = true }
 cruet = "0.13.0"
 lettre = { version = "0.11.4", default-features = false, features = [
     "builder",
@@ -179,6 +179,7 @@ tower-http = { version = "0.6.1", features = [
     "set-header",
     "compression-full",
 ] }
+heck = "0.4.0"
 
 [dependencies.sea-orm-migration]
 optional = true

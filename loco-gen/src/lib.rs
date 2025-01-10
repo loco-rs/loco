@@ -107,13 +107,6 @@ impl Mappings {
             .map(|f| &f.name)
             .collect::<Vec<_>>()
     }
-    pub fn rust_fields(&self) -> Vec<&String> {
-        self.field_types
-            .iter()
-            .filter(|f| f.rust.is_some())
-            .map(|f| &f.name)
-            .collect::<Vec<_>>()
-    }
 }
 
 static MAPPINGS: OnceLock<Mappings> = OnceLock::new();
