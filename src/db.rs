@@ -11,7 +11,7 @@ use fs_err::{self as fs, create_dir_all};
 use regex::Regex;
 use sea_orm::{
     ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
-    DatabaseConnection, DbConn, EntityTrait, IntoActiveModel, Statement,
+    DatabaseConnection, DbBackend, DbConn, DbErr, EntityTrait, IntoActiveModel, Statement,
 };
 use sea_orm_migration::MigratorTrait;
 use tracing::info;
@@ -19,7 +19,7 @@ use tracing::info;
 use super::Result as AppResult;
 use crate::{
     app::{AppContext, Hooks},
-    config, doctor,
+    config, doctor, env_vars,
     errors::Error,
 };
 
@@ -106,23 +106,23 @@ pub async fn verify_access(db: &DatabaseConnection) -> AppResult<()> {
 /// return an `AppError` variant representing different database operation
 /// failures.
 pub async fn converge<H: Hooks, M: MigratorTrait>(
-    db: &DatabaseConnection,
+    ctx: &AppContext,
     config: &config::Database,
 ) -> AppResult<()> {
     if config.dangerously_recreate {
         info!("recreating schema");
-        reset::<M>(db).await?;
+        reset::<M>(&ctx.db).await?;
         return Ok(());
     }
 
     if config.auto_migrate {
         info!("auto migrating");
-        migrate::<M>(db).await?;
+        migrate::<M>(&ctx.db).await?;
     }
 
     if config.dangerously_truncate {
         info!("truncating tables");
-        H::truncate(db).await?;
+        H::truncate(ctx).await?;
     }
     Ok(())
 }
@@ -237,7 +237,7 @@ pub async fn reset<M: MigratorTrait>(db: &DatabaseConnection) -> Result<(), sea_
 }
 
 use sea_orm::EntityName;
-use serde_json::Value;
+use serde_json::{json, Value};
 /// Seed the database with data from a specified file.
 /// Seeds open the file path and insert all file content into the DB.
 ///
@@ -277,6 +277,111 @@ where
     Ok(())
 }
 
+/// Checks if the specified table has an 'id' column.
+///
+/// This function checks if the specified table has an 'id' column, which is a
+/// common primary key column. It supports `Postgres`, `SQLite`, and `MySQL`
+/// database backends.
+///
+/// # Arguments
+///
+/// - `db`: A reference to the `DatabaseConnection`.
+/// - `db_backend`: A reference to the `DatabaseBackend`.
+/// - `table_name`: The name of the table to check.
+///
+/// # Returns
+///
+/// A `Result` containing a `bool` indicating whether the table has an 'id'
+/// column.
+async fn has_id_column(
+    db: &DatabaseConnection,
+    db_backend: &DatabaseBackend,
+    table_name: &str,
+) -> crate::Result<bool> {
+    // First check if 'id' column exists
+    let result = match db_backend {
+        DatabaseBackend::Postgres => {
+            let query = format!(
+                "SELECT EXISTS (
+              SELECT 1 
+              FROM information_schema.columns 
+              WHERE table_name = '{table_name}' 
+              AND column_name = 'id'
+          )"
+            );
+            let result = db
+                .query_one(Statement::from_string(DatabaseBackend::Postgres, query))
+                .await?;
+            result.map_or(false, |row| {
+                row.try_get::<bool>("", "exists").unwrap_or(false)
+            })
+        }
+        DatabaseBackend::Sqlite => {
+            let query = format!(
+                "SELECT COUNT(*) as count 
+          FROM pragma_table_info('{table_name}') 
+          WHERE name = 'id'"
+            );
+            let result = db
+                .query_one(Statement::from_string(DatabaseBackend::Sqlite, query))
+                .await?;
+            result.map_or(false, |row| {
+                row.try_get::<i32>("", "count").unwrap_or(0) > 0
+            })
+        }
+        DatabaseBackend::MySql => {
+            return Err(Error::Message(
+                "Unsupported database backend: MySQL".to_string(),
+            ))
+        }
+    };
+
+    Ok(result)
+}
+
+/// Checks whether the specified table has an auto-increment 'id' column.
+///
+/// # Returns
+///
+/// A `Result` containing a `bool` indicating whether the table has an
+/// auto-increment 'id' column.
+async fn is_auto_increment(
+    db: &DatabaseConnection,
+    db_backend: &DatabaseBackend,
+    table_name: &str,
+) -> crate::Result<bool> {
+    let result = match db_backend {
+        DatabaseBackend::Postgres => {
+            let query = format!(
+                "SELECT pg_get_serial_sequence('{table_name}', 'id') IS NOT NULL as is_serial"
+            );
+            let result = db
+                .query_one(Statement::from_string(DatabaseBackend::Postgres, query))
+                .await?;
+            result.map_or(false, |row| {
+                row.try_get::<bool>("", "is_serial").unwrap_or(false)
+            })
+        }
+        DatabaseBackend::Sqlite => {
+            let query =
+                format!("SELECT sql FROM sqlite_master WHERE type='table' AND name='{table_name}'");
+            let result = db
+                .query_one(Statement::from_string(DatabaseBackend::Sqlite, query))
+                .await?;
+            result.map_or(false, |row| {
+                row.try_get::<String>("", "sql")
+                    .map_or(false, |sql| sql.to_lowercase().contains("autoincrement"))
+            })
+        }
+        DatabaseBackend::MySql => {
+            return Err(Error::Message(
+                "Unsupported database backend: MySQL".to_string(),
+            ))
+        }
+    };
+    Ok(result)
+}
+
 /// Function to reset auto-increment
 /// # Errors
 /// Returns error if it fails
@@ -285,6 +390,17 @@ pub async fn reset_autoincrement(
     table_name: &str,
     db: &DatabaseConnection,
 ) -> crate::Result<()> {
+    // Check if 'id' column exists
+    let has_id_column = has_id_column(db, &db_backend, table_name).await?;
+    if !has_id_column {
+        return Ok(());
+    }
+    // Check if 'id' column is auto-increment
+    let is_auto_increment = is_auto_increment(db, &db_backend, table_name).await?;
+    if !is_auto_increment {
+        return Ok(());
+    }
+
     match db_backend {
         DatabaseBackend::Postgres => {
             let query_str = format!(
@@ -400,13 +516,11 @@ fn fix_entities() -> AppResult<()> {
                 &new_file,
                 format!(
                     r"use sea_orm::entity::prelude::*;
-pub use super::_entities::{module}::{{ActiveModel, Entity}};
+pub use super::_entities::{module}::{{ActiveModel, Model, Entity}};
 pub type {module_pascal} = Entity;
 
 #[async_trait::async_trait]
 impl ActiveModelBehavior for ActiveModel {{
-    // extend activemodel below (keep comment for generators)
-
     async fn before_save<C>(self, _db: &C, insert: bool) -> std::result::Result<Self, DbErr>
     where
         C: ConnectionTrait,
@@ -420,6 +534,15 @@ impl ActiveModelBehavior for ActiveModel {{
         }}
     }}
 }}
+
+// implement your read-oriented logic here
+impl Model {{}}
+
+// implement your write-oriented logic here
+impl ActiveModel {{}}
+
+// implement your custom finders, selectors oriented logic here
+impl Entity {{}}
 "
                 ),
             )?;
@@ -452,8 +575,8 @@ where
 /// # Errors
 ///
 /// when seed process is fails
-pub async fn run_app_seed<H: Hooks>(db: &DatabaseConnection, path: &Path) -> AppResult<()> {
-    H::seed(db, path).await
+pub async fn run_app_seed<H: Hooks>(ctx: &AppContext, path: &Path) -> AppResult<()> {
+    H::seed(ctx, path).await
 }
 
 /// Create a Postgres database from the given db name.
@@ -463,8 +586,7 @@ async fn create_postgres_database(
     db_name: &str,
     db: &DatabaseConnection,
 ) -> Result<(), sea_orm::DbErr> {
-    let with_options =
-        std::env::var("LOCO_POSTGRES_DB_OPTIONS").unwrap_or_else(|_| "ENCODING='UTF8'".to_string());
+    let with_options = env_vars::get_or_default(env_vars::POSTGRES_DB_OPTIONS, "ENCODING='UTF8'");
 
     let query = format!("CREATE DATABASE {db_name} WITH {with_options}");
     tracing::info!(query, "creating postgres database");
@@ -644,5 +766,82 @@ pub async fn dump_tables(
 
     tracing::info!("dumping tables process completed successfully");
 
+    Ok(())
+}
+
+/// dumps the db schema into file.
+///
+/// # Errors
+/// Fails with IO / sql fails
+pub async fn dump_schema(ctx: &AppContext, fname: &str) -> crate::Result<()> {
+    let db = &ctx.db;
+
+    // Match the database backend and fetch schema info
+    let schema_info = match db.get_database_backend() {
+        DbBackend::Postgres => {
+            let query = r"
+                SELECT table_name, column_name, data_type
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                ORDER BY table_name, ordinal_position;
+            ";
+            let stmt = Statement::from_string(DbBackend::Postgres, query.to_owned());
+            let rows = db.query_all(stmt).await?;
+            rows.into_iter()
+                .map(|row| {
+                    // Wrap the closure in a Result to handle errors properly
+                    Ok(json!({
+                        "table": row.try_get::<String>("", "table_name")?,
+                        "column": row.try_get::<String>("", "column_name")?,
+                        "type": row.try_get::<String>("", "data_type")?,
+                    }))
+                })
+                .collect::<Result<Vec<serde_json::Value>, DbErr>>()? // Specify error type explicitly
+        }
+        DbBackend::MySql => {
+            let query = r"
+                SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                ORDER BY TABLE_NAME, ORDINAL_POSITION;
+            ";
+            let stmt = Statement::from_string(DbBackend::MySql, query.to_owned());
+            let rows = db.query_all(stmt).await?;
+            rows.into_iter()
+                .map(|row| {
+                    // Wrap the closure in a Result to handle errors properly
+                    Ok(json!({
+                        "table": row.try_get::<String>("", "TABLE_NAME")?,
+                        "column": row.try_get::<String>("", "COLUMN_NAME")?,
+                        "type": row.try_get::<String>("", "COLUMN_TYPE")?,
+                    }))
+                })
+                .collect::<Result<Vec<serde_json::Value>, DbErr>>()? // Specify error type explicitly
+        }
+        DbBackend::Sqlite => {
+            let query = r"
+                SELECT name AS table_name, sql AS table_sql
+                FROM sqlite_master
+                WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+                ORDER BY name;
+            ";
+            let stmt = Statement::from_string(DbBackend::Sqlite, query.to_owned());
+            let rows = db.query_all(stmt).await?;
+            rows.into_iter()
+                .map(|row| {
+                    // Wrap the closure in a Result to handle errors properly
+                    Ok(json!({
+                        "table": row.try_get::<String>("", "table_name")?,
+                        "sql": row.try_get::<String>("", "table_sql")?,
+                    }))
+                })
+                .collect::<Result<Vec<serde_json::Value>, DbErr>>()? // Specify error type explicitly
+        }
+    };
+    // Serialize schema info to JSON format
+    let schema_json = serde_json::to_string_pretty(&schema_info)?;
+
+    // Save the schema to a file
+    std::fs::write(fname, schema_json)?;
     Ok(())
 }

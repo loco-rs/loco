@@ -11,6 +11,7 @@
 //! use loco_rs::{
 //!    app::{AppContext, Hooks},
 //!    boot::{create_app, BootResult, StartMode},
+//!    config::Config,
 //!    controller::AppRoutes,
 //!    prelude::*,
 //!    task::Tasks,
@@ -43,8 +44,8 @@
 //!             // .add_route(controllers::notes::routes())
 //!     }
 //!     
-//!     async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult>{
-//!          create_app::<Self, Migrator>(mode, environment).await
+//!     async fn boot(mode: StartMode, environment: &Environment, config: Config) -> Result<BootResult>{
+//!          create_app::<Self, Migrator>(mode, environment, config).await
 //!     }
 //!     
 //!     async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {
@@ -54,11 +55,11 @@
 //!
 //!     fn register_tasks(tasks: &mut Tasks) {}
 //!
-//!     async fn truncate(db: &DatabaseConnection) -> Result<()> {
+//!     async fn truncate(_ctx: &AppContext) -> Result<()> {
 //!         Ok(())
 //!     }
 //!
-//!     async fn seed(db: &DatabaseConnection, base: &Path) -> Result<()> {
+//!     async fn seed(_ctx: &AppContext, base: &Path) -> Result<()> {
 //!         Ok(())
 //!     }
 //! }
@@ -197,10 +198,6 @@ impl IntoResponse for Error {
                 StatusCode::NOT_FOUND,
                 ErrorDetail::new("not_found", "Resource was not found"),
             ),
-            Self::InternalServerError => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                ErrorDetail::new("internal_server_error", "Internal Server Error"),
-            ),
             Self::Unauthorized(err) => {
                 tracing::warn!(err);
                 (
@@ -220,9 +217,13 @@ impl IntoResponse for Error {
                     ErrorDetail::with_reason("Bad Request"),
                 )
             }
-            _ => (
+            Self::BadRequest(err) => (
                 StatusCode::BAD_REQUEST,
-                ErrorDetail::with_reason("Bad Request"),
+                ErrorDetail::new("Bad Request", &err),
+            ),
+            _ => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorDetail::new("internal_server_error", "Internal Server Error"),
             ),
         };
 

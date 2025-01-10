@@ -1,0 +1,20 @@
+---
+source: src/bgworker/pg.rs
+expression: job_after_dequeue
+---
+Job {
+    id: "<REDACTED>",
+    name: "PasswordChangeNotification",
+    data: Object {
+        "user_id": Number(1),
+    },
+    status: Processing,
+    run_at: <REDACTED>,
+    interval: None,
+    created_at: Some(
+        <REDACTED>,
+    ),
+    updated_at: Some(
+        <REDACTED>,
+    ),
+}

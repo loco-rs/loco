@@ -9,20 +9,17 @@ use loco_rs::{
     bgworker::{
         Queue},
     boot::{create_app, BootResult, StartMode},
+    config::Config,
     controller::AppRoutes,
-    db::{self, truncate_table},
     environment::Environment,
     task::Tasks,
     Result,
 };
 use migration::Migrator;
-use sea_orm::DatabaseConnection;
 
 #[allow(unused_imports)]
 use crate::{
-    controllers
-    ,tasks
-    , models::_entities::users,
+    controllers ,tasks
 };
 
 pub struct App;
@@ -42,8 +39,8 @@ impl Hooks for App {
         )
     }
 
-    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
-        create_app::<Self, Migrator>(mode, environment).await
+    async fn boot(mode: StartMode, environment: &Environment, config: Config) -> Result<BootResult> {
+        create_app::<Self, Migrator>(mode, environment, config).await
         
     }
 
@@ -63,13 +60,10 @@ impl Hooks for App {
     fn register_tasks(tasks: &mut Tasks) {
         // tasks-inject (do not remove)
     }
-    async fn truncate(db: &DatabaseConnection) -> Result<()> {
-        truncate_table(db, users::Entity).await?;
+    async fn truncate(_ctx: &AppContext) -> Result<()> {
         Ok(())
-    }
-
-    async fn seed(db: &DatabaseConnection, base: &Path) -> Result<()> {
-        db::seed::<users::ActiveModel>(db, &base.join("users.yaml").display().to_string()).await?;
+    } 
+    async fn seed(_ctx: &AppContext, _base: &Path) -> Result<()> {
         Ok(())
     }
 }

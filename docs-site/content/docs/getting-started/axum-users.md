@@ -45,7 +45,6 @@ In Loco you:
 server:
   middlewares:
     limit_payload:
-      enable: true
       body_limit: 5mb
   # .. more middleware below ..
 ```

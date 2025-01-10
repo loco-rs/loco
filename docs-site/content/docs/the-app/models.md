@@ -111,9 +111,9 @@ impl super::_entities::users::ActiveModel {
 
 # Crafting models
 
-## Migrations
+## The model generator
 
-To add a new model _you have to use a migration_.
+To add a new model the model generator creates a migration, runs it, and then triggers an entities sync from your database schema which will hydrate and create your model entities.
 
 ```
 $ cargo loco generate model posts title:string! content:text user:references
@@ -173,7 +173,7 @@ For schema data types, you can use the following mapping to understand the schem
 
 Using `user:references` uses the special `references` type, which will create a relationship between a `post` and a `user`, adding a `user_id` reference field to the `posts` table.
 
-Using `aproved_by:references:users` uses the special `references:<table>` type, which will create a relationship between a `post` and a `user`, adding a `aproved_by` reference field to the `posts` table.
+Using `approved_by:references:users` uses the special `references:<table>` type, which will create a relationship between a `post` and a `user`, adding a `approved_by` reference field to the `posts` table.
 
 You can generate an empty model:
 
@@ -181,11 +181,6 @@ You can generate an empty model:
 $ cargo loco generate model posts
 ```
 
-You can generate an empty model **migration only** which means migrations will not run automatically:
-
-```
-$ cargo loco generate model --migration-only posts
-```
 
 Or a data model, without any references:
 
@@ -193,8 +188,17 @@ Or a data model, without any references:
 $ cargo loco generate model posts title:string! content:text
 ```
 
+## Migrations
+
+Other than using the model generator, you drive your schema by *creating migrations*.
+
+```
+$ cargo loco generate migration <name of migration> [name:type, name:type ...]
+```
+
 This creates a migration in the root of your project in `migration/`.
-You can now apply it:
+
+You can apply it:
 
 ```
 $ cargo loco db migrate
@@ -209,6 +213,63 @@ $ cargo loco db entities
 Loco is a migration-first framework, similar to Rails. Which means that when you want to add models, data fields, or model oriented changes - you start with a migration that describes it, and then you apply the migration to get back generated entities in `model/_entities`.
 
 This enforces _everything-as-code_, _reproducibility_ and _atomicity_, where no knowledge of the schema goes missing. 
+
+**Naming the migration is important**, the type of migration that is being generated is inferred from the migration name.
+
+### Create a new table
+
+* Name template: `Create___`
+* Example: `CreatePosts`
+
+```
+$ cargo loco g migration CreatePosts title:string content:string
+```
+
+### Add columns
+
+* Name template: `Add___To___`
+* Example: `AddNameAndAgeToUsers` (the string `NameAndAge` does not matter, you specify columns individually, however `Users` does matter because this will be the name of the table)
+
+```
+$ cargo loco g migration AddNameAndAgeToUsers name:string age:int
+```
+
+### Remove columns
+
+* Name template: `Remove___From___`
+* Example: `RemoveNameAndAgeFromUsers` (same note exists as in _add columns_)
+
+```
+$ cargo logo g migration RemoveNameAndAgeFromUsers name:string age:int
+```
+
+### Add references
+
+* Name template: `Add___RefTo___`
+* Example: `AddUserRefToPosts` (`User` does not matter, as you specify one or many references individually, `Posts` does matter as it will be the table name in the migration)
+
+```
+$ cargo loco g migration AddUserRefToPosts user:references
+```
+
+### Create a join table
+
+* Name template: `CreateJoinTable___And___` (supported between 2 tables)
+* Example: `CreateJoinTableUsersAndGroups`
+
+```
+$ cargo loco g migration CreateJoinTableUsersAndGroups count:int
+```
+
+You can also add some state columns regarding the relationship (such as `count` here).
+
+### Create an empty migration
+
+Use any descriptive name for a migration that does not fall into one of the above patterns to create an empty migration.
+
+```
+$ cargo loco g migration FixUsersTable
+```
 
 ### Down Migrations
 
@@ -247,27 +308,96 @@ $ cargo loco generate model movies long_title:string added_by:references:users d
 * reference added_by is in singular, the referenced model is a model and is plural: `added_by:references:users`
 * column name in snake case: `long_title:string`
 
-### Naming migrations
 
-There are no rules for how to name migrations, but here's a few guidelines to keep your migration stack readable as a list of files:
 
-* `<table>` - create a table, plural, `movies`
-* `add_<table>_<field>` - add a column, `add_users_email`
-* `index_<table>_<field>` - add an index, `index_users_email`
-* `alter_` - change a schema, `alter_users`
-* `delete_<table>_<field>` - remove a column, `delete_users_email`
-* `data_fix_` - fix some data, using entity queries or raw SQL, `data_fix_users_timezone_issue_315`
+### Authoring migrations
 
-Example:
+To use the migrations DSL, make sure you have the following `loco_rs::schema::*` import and SeaORM `prelude`.
 
-```sh
-$ cargo loco generate migration add_users_email
+```rust
+use loco_rs::schema::*;
+use sea_orm_migration::prelude::*;
+```
+
+Then, create a struct:
+
+```rust
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+```
+
+And then implement your migration (see below).
+
+**Create a table**
+
+Create a table, provide two arrays: (1) columns (2) references.
+
+Leave references empty to not create any reference fields.
+
+```rust
+impl MigrationTrait for Migration {
+    async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        create_table(
+            m,
+            "posts",
+            &[
+                ("title", ColType::StringNull),
+                ("content", ColType::StringNull),
+            ],
+            &[],
+        )
+        .await
+    }
+
+    async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        drop_table(m, "posts").await
+    }
+}
+```
+
+**Create a join table**
+
+Provide the references to the second array argument. Use an empty string `""` to indicate you want us to generate a reference column name for you (e.g. a `user` reference will imply connecting the `users` table through a `user_id` column in `group_users`).
+
+Provide a non-empty string to indicate a specific name for the reference column name.
+
+```rust
+impl MigrationTrait for Migration {
+    async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        create_join_table(m, "group_users", &[], &[("user", ""), ("group", "")]).await
+    }
+
+    async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        drop_table(m, "group_users").await
+    }
+}
+```
+
+**Add a column**
+
+Add a single column. You can use as many such statements as you like in a single migration (to add multiple columns).
+
+
+```rust
+impl MigrationTrait for Migration {
+    async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        add_column(m, "users", "amount", ColType::DecimalLenNull(24,8)).await?;
+        Ok(())
+    }
+
+    async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        remove_column(m, "users", "amount").await?;
+        Ok(())
+    }
+}
 ```
 
 
-### Add or remove a column
+### Authoring advanced migrations
 
-Adding a column:
+Using the `manager` directly lets you access more advanced operations while authoring your migrations.
+
+**Add a column**
 
 ```rust
   manager
@@ -280,7 +410,7 @@ Adding a column:
     .await
 ```
 
-Dropping a column:
+**Drop a column**
 
 ```rust
   manager
@@ -293,8 +423,7 @@ Dropping a column:
     .await
 ```
 
-### Add index
-
+**Add index**
 
 You can copy some of this code for adding an index
 
@@ -310,8 +439,7 @@ You can copy some of this code for adding an index
     .await;
 ```
 
-### Create a data fix
-
+**Create a data fix**
 
 Creating a data fix in a migration is easy - just use SQL statements as you like:
 
@@ -516,8 +644,8 @@ Integrate your seed into the app's Hook implementations by following these steps
 impl Hooks for App {
     // Other implementations...
 
-    async fn seed(db: &DatabaseConnection, base: &Path) -> Result<()> {
-        db::seed::<users::ActiveModel>(db, &base.join("users.yaml").display().to_string()).await?;
+    async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
+        db::seed::<users::ActiveModel>(&ctx.db, &base.join("users.yaml").display().to_string()).await?;
         Ok(())
     }
 }
@@ -526,44 +654,31 @@ impl Hooks for App {
 
 This implementation ensures that the seed is executed when the seed function is called. Adjust the specifics based on your application's structure and requirements.
 
-## Running seeds
+## Managing Seed via CLI
 
-The seed process is not executed automatically. You can trigger the seed process either through a task or during testing.
+- **Reset the Database**  
+  Clear all existing data before importing seed files. This is useful when you want to start with a fresh database state, ensuring no old data remains.
+- **Dump Database Tables to Files**  
+  Export the contents of your database tables to files. This feature allows you to back up the current state of your database or prepare data for reuse across environments.
 
-### Using a Task
+To access the seed commands, use the following CLI structure:
+<!-- <snip id="seed-help-command" inject_from="yaml" action="exec" template="sh"> -->
+```sh
+Seed your database with initial data or dump tables to files
 
-1. Create a seeding task by following the instructions in the [Task Documentation](@/docs/processing/task.md).
-2. Configure the task to execute the `seed` function, as demonstrated in the example below:
+Usage: demo_app-cli db seed [OPTIONS]
 
-```rust
-use std::collections::BTreeMap;
-
-use async_trait::async_trait;
-use loco_rs::{
-    app::AppContext,
-    db,
-    task::{Task, TaskInfo},
-    Result,
-};
-use sea_orm::EntityTrait;
-
-use crate::{app::App, models::_entities::users};
-
-pub struct SeedData;
-#[async_trait]
-impl Task for SeedData {
-    fn task(&self) -> TaskInfo {
-        TaskInfo {
-            name: "seed".to_string(),
-            detail: "Seeding data".to_string(),
-        }
-    }
-    async fn run(&self, app_context: &AppContext, vars: &BTreeMap<String, String>) -> Result<()> {
-        let path = std::path::Path::new("src/fixtures");
-        db::run_app_seed::<App>(&app_context.db, path).await
-    }
-}
+Options:
+  -r, --reset                      Clears all data in the database before seeding
+  -d, --dump                       Dumps all database tables to files
+      --dump-tables <DUMP_TABLES>  Specifies specific tables to dump
+      --from <FROM>                Specifies the folder containing seed files (defaults to 'src/fixtures') [default: src/fixtures]
+  -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
+  -h, --help                       Print help
+  -V, --version                    Print version
 ```
+<!-- </snip> -->
+
 
 ### Using a Test
 
@@ -579,7 +694,7 @@ use loco_rs::testing::prelude::*;
 async fn handle_create_with_password_with_duplicate() {
 
     let boot = boot_test::<App, Migrator>().await;
-    seed::<App>(&boot.app_context.db).await.unwrap();
+    seed::<App>(&boot.app_context).await.unwrap();
     assert!(get_user_by_id(1).ok());
 }
 ```
@@ -703,7 +818,7 @@ async fn can_find_by_pid() {
     configure_insta!();
 
     let boot = boot_test::<App, Migrator>().await;
-    seed::<App>(&boot.app_context.db).await.unwrap();
+    seed::<App>(&boot.app_context).await.unwrap();
 
     let existing_user =
         Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111").await;
@@ -740,8 +855,8 @@ pub struct App;
 #[async_trait]
 impl Hooks for App {
     //...
-    async fn truncate(db: &DatabaseConnection) -> Result<()> {
-        // truncate_table(db, users::Entity).await?;
+    async fn truncate(ctx: &AppContext) -> Result<()> {
+        // truncate_table(&ctx.db, users::Entity).await?;
         Ok(())
     }
 
@@ -759,7 +874,7 @@ async fn is_user_exists() {
     configure_insta!();
 
     let boot = boot_test::<App, Migrator>().await;
-    seed::<App>(&boot.app_context.db).await.unwrap();
+    seed::<App>(&boot.app_context).await.unwrap();
     assert!(get_user_by_id(1).ok());
 
 }

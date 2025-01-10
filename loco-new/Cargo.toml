@@ -2,12 +2,13 @@
 
 [package]
 name = "loco"
-version = "0.13.3"
+version = "0.14.0"
 edition = "2021"
 description = "Loco new app generator"
 license = "Apache-2.0"
 homepage = "https://docs.rs/loco"
 documentation = "https://docs.rs/loco"
+readme = "README.md"
 authors = ["Dotan Nahum <dotan@rng0.io>", "Elad Kaplan <kaplan.elad@gmail.com>"]
 include = ["src/**", "base_template/**", "Cargo.toml", "setup.rhai"]
 
@@ -49,7 +50,7 @@ uuid = { version = "1.11.0", features = ["v4", "fast-rng"] }
 serde_yaml = { version = "0.9" }
 insta = { version = "1.41.1", features = ["redactions", "yaml", "filters"] }
 rstest = { version = "0.23.0" }
-tree-fs = "0.2.0"
+tree-fs = "0.2.1"
 mockall = "0.13.0"
 toml = "0.8.19"
 regex = "1.11.1"
