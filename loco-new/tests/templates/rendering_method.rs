@@ -80,7 +80,11 @@ static:
 
 #[rstest]
 fn test_cargo_toml(
-    #[values(RenderingMethodOption::None, RenderingMethodOption::Serverside, RenderingMethodOption::Clientside)]
+    #[values(
+        RenderingMethodOption::None,
+        RenderingMethodOption::Serverside,
+        RenderingMethodOption::Clientside
+    )]
     rendering_method: RenderingMethodOption,
 ) {
     let generator = run_generator(rendering_method.clone());
@@ -94,7 +98,11 @@ fn test_cargo_toml(
 
 #[rstest]
 fn test_github_ci_yaml(
-    #[values(RenderingMethodOption::None, RenderingMethodOption::Serverside, RenderingMethodOption::Clientside)]
+    #[values(
+        RenderingMethodOption::None,
+        RenderingMethodOption::Serverside,
+        RenderingMethodOption::Clientside
+    )]
     rendering_method: RenderingMethodOption,
 ) {
     let generator: TestGenerator = run_generator(rendering_method.clone());

@@ -106,7 +106,11 @@ fn main() -> Result<()> {
                 tracing::debug!(dir = %to.display(), "creating application directory");
                 std::fs::create_dir_all(&to)?;
 
-                let args = wizard::ArgsPlaceholder { db, bg, rendering_method };
+                let args = wizard::ArgsPlaceholder {
+                    db,
+                    bg,
+                    rendering_method,
+                };
                 let user_selection = wizard::start(&args)?;
 
                 let generator_tmp_folder = extract_default_template()?;

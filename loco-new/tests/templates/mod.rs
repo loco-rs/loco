@@ -9,7 +9,6 @@ use loco::{
 };
 use rand::{rngs::StdRng, SeedableRng};
 
-
 mod auth;
 mod background;
 mod db;

@@ -1,11 +1,12 @@
+use std::{collections::HashMap, path::PathBuf, process::Output, sync::Arc};
+
 use duct::cmd;
 use loco::{
     generator::{executer::FileSystem, Generator},
     settings,
-    wizard::{self, RenderingMethodOption, BackgroundOption, DBOption},
+    wizard::{self, BackgroundOption, DBOption, RenderingMethodOption},
     OS,
 };
-use std::{collections::HashMap, path::PathBuf, process::Output, sync::Arc};
 
 #[cfg(feature = "test-wizard")]
 #[rstest::rstest]
@@ -18,7 +19,11 @@ fn test_all_combinations(
         BackgroundOption::None
     )]
     background: BackgroundOption,
-    #[values(RenderingMethodOption::Serverside, RenderingMethodOption::Clientside, RenderingMethodOption::None)]
+    #[values(
+        RenderingMethodOption::Serverside,
+        RenderingMethodOption::Clientside,
+        RenderingMethodOption::None
+    )]
     rendering_method: RenderingMethodOption,
 ) {
     test_combination(db, background, rendering_method, false);

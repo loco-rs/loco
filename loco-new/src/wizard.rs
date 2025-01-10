@@ -154,10 +154,9 @@ impl RenderingMethodOption {
     pub fn user_message(&self) -> Option<String> {
         match self {
             Self::Clientside => Some(format!(
-                "{}: You've selected `{}` as your frontend rendering method.\n\n\
-                 To build your frontend, please run the following commands:\n\
-                  $ cd {}\n\
-                  $ npm install && npm run build\n",
+                "{}: You've selected `{}` as your frontend rendering method.\n\nTo build your \
+                 frontend, please run the following commands:\n$ cd {}\n$ npm install && npm run \
+                 build\n",
                 "Rendering method".underline(),
                 "client-side rendering".yellow(),
                 "frontend/".yellow()
@@ -377,8 +376,8 @@ fn select_background(
     Ok(bgopt)
 }
 
-/// Prompts the user to select frontend rendering method if none is provided in the
-/// arguments.
+/// Prompts the user to select frontend rendering method if none is provided in
+/// the arguments.
 fn select_rendering_method(args: &ArgsPlaceholder) -> crate::Result<RenderingMethodOption> {
     let rendering_method_opt = if let Some(rendering_method_opt) = args.rendering_method.clone() {
         rendering_method_opt

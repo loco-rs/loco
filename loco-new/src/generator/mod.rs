@@ -9,8 +9,11 @@ use std::sync::Arc;
 use include_dir::{include_dir, Dir};
 use rhai::{export_module, exported_module, Engine, Scope};
 
-use crate::settings::{Initializers, RenderingMethod};
-use crate::{settings, OS};
+use crate::{
+    settings,
+    settings::{Initializers, RenderingMethod},
+    OS,
+};
 
 static APP_TEMPLATE: Dir<'_> = include_dir!("base_template");
 
@@ -237,10 +240,9 @@ impl Generator {
 }
 #[export_module]
 mod rhai_settings_extensions {
-    use crate::settings::Initializers;
-    use crate::wizard::RenderingMethodOption;
-    use rhai::plugin::*;
-    use rhai::Dynamic;
+    use rhai::{plugin::*, Dynamic};
+
+    use crate::{settings::Initializers, wizard::RenderingMethodOption};
     #[rhai_fn(global, get = "view_engine", pure)]
     pub fn view_engine(initializers: &mut Option<Initializers>) -> bool {
         initializers.as_ref().map_or(false, |i| i.view_engine)

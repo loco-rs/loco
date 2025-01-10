@@ -83,14 +83,13 @@ impl Settings {
         } else {
             None
         };
-        
-        
+
         // we only need to copy the asset folder for serverside rendering
         let assets = matches!(
             prompt_selection.rendering_method,
             RenderingMethodOption::Serverside
         );
-        
+
         Self {
             package_name: package_name.to_string(),
             module_name: package_name.to_snake_case(),
