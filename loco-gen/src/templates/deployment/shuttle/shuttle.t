@@ -17,7 +17,7 @@ injections:
 - into: Cargo.toml
   after: \[dependencies\]
   content: |
-    shuttle-axum = "{{shuttle_runtime_version}}"
+    shuttle-axum = { version = "{{shuttle_runtime_version}}", default-features = false, features = ["axum-0-7"] }
     shuttle-runtime = { version = "{{shuttle_runtime_version}}", default-features = false }
     {% if with_db -%}
     shuttle-shared-db = { version = "{{shuttle_runtime_version}}", features = ["postgres"] }
