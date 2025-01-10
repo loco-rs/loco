@@ -85,7 +85,7 @@ pub fn get_columns_and_references(
                         }?;
 
                         format!(
-                            r#"{}(ArrayColType::{})"#,
+                            r"{}(ArrayColType::{})",
                             col_type,
                             array_kind.to_upper_camel_case()
                         )
