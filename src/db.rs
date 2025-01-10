@@ -312,9 +312,7 @@ async fn has_id_column(
             let result = db
                 .query_one(Statement::from_string(DatabaseBackend::Postgres, query))
                 .await?;
-            result.map_or(false, |row| {
-                row.try_get::<bool>("", "exists").unwrap_or(false)
-            })
+            result.is_some_and(|row| row.try_get::<bool>("", "exists").unwrap_or(false))
         }
         DatabaseBackend::Sqlite => {
             let query = format!(
@@ -325,9 +323,7 @@ async fn has_id_column(
             let result = db
                 .query_one(Statement::from_string(DatabaseBackend::Sqlite, query))
                 .await?;
-            result.map_or(false, |row| {
-                row.try_get::<i32>("", "count").unwrap_or(0) > 0
-            })
+            result.is_some_and(|row| row.try_get::<i32>("", "count").unwrap_or(0) > 0)
         }
         DatabaseBackend::MySql => {
             return Err(Error::Message(
@@ -358,9 +354,7 @@ async fn is_auto_increment(
             let result = db
                 .query_one(Statement::from_string(DatabaseBackend::Postgres, query))
                 .await?;
-            result.map_or(false, |row| {
-                row.try_get::<bool>("", "is_serial").unwrap_or(false)
-            })
+            result.is_some_and(|row| row.try_get::<bool>("", "is_serial").unwrap_or(false))
         }
         DatabaseBackend::Sqlite => {
             let query =
@@ -368,9 +362,9 @@ async fn is_auto_increment(
             let result = db
                 .query_one(Statement::from_string(DatabaseBackend::Sqlite, query))
                 .await?;
-            result.map_or(false, |row| {
+            result.is_some_and(|row| {
                 row.try_get::<String>("", "sql")
-                    .map_or(false, |sql| sql.to_lowercase().contains("autoincrement"))
+                    .is_ok_and(|sql| sql.to_lowercase().contains("autoincrement"))
             })
         }
         DatabaseBackend::MySql => {
