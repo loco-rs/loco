@@ -71,7 +71,10 @@ impl Generator {
             .build_type::<settings::Settings>()
             .register_type_with_name::<Option<Initializers>>("Option<Initializers>")
             .register_type_with_name::<Option<RenderingMethod>>("Option<RenderingMethod>")
-            .register_static_module("rhai_settings_extensions", exported_module!(rhai_settings_extensions).into())
+            .register_static_module(
+                "rhai_settings_extensions",
+                exported_module!(rhai_settings_extensions).into(),
+            )
             .register_fn("copy_file", Self::copy_file)
             .register_fn("create_file", Self::create_file)
             .register_fn("copy_files", Self::copy_files)
@@ -234,23 +237,29 @@ impl Generator {
 }
 #[export_module]
 mod rhai_settings_extensions {
-    use rhai::plugin::*;
-    use rhai::Dynamic;
     use crate::settings::Initializers;
     use crate::wizard::RenderingMethodOption;
+    use rhai::plugin::*;
+    use rhai::Dynamic;
     #[rhai_fn(global, get = "view_engine", pure)]
     pub fn view_engine(initializers: &mut Option<Initializers>) -> bool {
         initializers.as_ref().map_or(false, |i| i.view_engine)
     }
 
     #[rhai_fn(global, get = "client_side", pure)]
-    pub fn client_side(rendering_method: &mut Option<crate::settings::RenderingMethod>) -> bool {
-        rendering_method.as_ref().map_or(false, |r| matches!(r.kind, RenderingMethodOption::Clientside))
+    pub fn client_side(rendering_method: &mut Option<RenderingMethod>) -> bool {
+        rendering_method.as_ref().map_or(false, |r| {
+            matches!(r.kind, RenderingMethodOption::Clientside)
+        })
+    }
+
+    #[rhai_fn(global, get = "server_side", pure)]
+    pub fn server_side(rendering_method: &mut Option<RenderingMethod>) -> bool {
+        rendering_method.as_ref().map_or(false, |r| {
+            matches!(r.kind, RenderingMethodOption::Serverside)
+        })
     }
 }
-
-
-
 
 #[cfg(test)]
 mod tests {

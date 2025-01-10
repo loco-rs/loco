@@ -47,11 +47,13 @@ uuid = { version = "1.6.0", features = ["v4"] }
 include_dir = { version = "0.7" }
 {%- endif %}
 
-{%- if settings.rendering_method %}
+{%- if settings.rendering_method.kind %}
+{%- if settings.rendering_method.kind == "server" %}
 # view engine i18n
 fluent-templates = { version = "0.8.0", features = ["tera"] }
 unic-langid = { version = "0.9.4" }
 # /view engine
+{%- endif %}
 {%- endif %}
 
 [[bin]]
