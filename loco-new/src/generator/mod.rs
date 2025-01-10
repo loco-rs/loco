@@ -1,17 +1,21 @@
 //! This module defines the `Generator` struct, which is responsible for
 //! executing scripted commands
 
-use std::path::{Path, PathBuf};
 pub mod executer;
 pub mod template;
-use std::sync::Arc;
+
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use include_dir::{include_dir, Dir};
-use rhai::{export_module, exported_module, Engine, Scope};
+use rhai::{export_module, exported_module, plugin::*, Dynamic, Engine, Scope};
 
 use crate::{
     settings,
     settings::{Initializers, RenderingMethod},
+    wizard::RenderingMethodOption,
     OS,
 };
 
@@ -240,9 +244,7 @@ impl Generator {
 }
 #[export_module]
 mod rhai_settings_extensions {
-    use rhai::{plugin::*, Dynamic};
 
-    use crate::{settings::Initializers, wizard::RenderingMethodOption};
     #[rhai_fn(global, get = "view_engine", pure)]
     pub fn view_engine(initializers: &mut Option<Initializers>) -> bool {
         initializers.as_ref().map_or(false, |i| i.view_engine)
