@@ -151,17 +151,13 @@ pub enum RenderingMethodOption {
 
 impl RenderingMethodOption {
     #[must_use]
-    pub const fn enable(&self) -> bool {
-        !matches!(self, Self::None)
-    }
-
-    #[must_use]
     pub fn user_message(&self) -> Option<String> {
         match self {
             Self::Clientside => Some(format!(
                 "{}: You've selected `{}` as your frontend rendering method.\n\n\
                  To build your frontend, please run the following commands:\n\
-                  $ cd {}\n  $ npm install && npm run build\n",
+                  $ cd {}\n\
+                  $ npm install && npm run build\n",
                 "Rendering method".underline(),
                 "client-side rendering".yellow(),
                 "frontend/".yellow()
@@ -296,9 +292,11 @@ where
 /// when could not show user selection or user chose not continue
 pub fn start(args: &ArgsPlaceholder) -> crate::Result<Selections> {
     // user provided everything via flags so no need to prompt, just return
-    if let (Some(db), Some(bg), Some(rendering_method)) =
-        (args.db.clone(), args.bg.clone(), args.rendering_method.clone())
-    {
+    if let (Some(db), Some(bg), Some(rendering_method)) = (
+        args.db.clone(),
+        args.bg.clone(),
+        args.rendering_method.clone(),
+    ) {
         return Ok(Selections {
             db,
             background: bg,

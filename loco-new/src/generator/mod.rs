@@ -9,7 +9,7 @@ use std::sync::Arc;
 use include_dir::{include_dir, Dir};
 use rhai::{export_module, exported_module, Engine, Scope};
 
-use crate::settings::Initializers;
+use crate::settings::{Initializers, RenderingMethod};
 use crate::{settings, OS};
 
 static APP_TEMPLATE: Dir<'_> = include_dir!("base_template");
@@ -70,7 +70,8 @@ impl Generator {
         engine
             .build_type::<settings::Settings>()
             .register_type_with_name::<Option<Initializers>>("Option<Initializers>")
-            .register_static_module("Option<Initializers>", exported_module!(settings_initializers).into())
+            .register_type_with_name::<Option<RenderingMethod>>("Option<RenderingMethod>")
+            .register_static_module("rhai_settings_extensions", exported_module!(rhai_settings_extensions).into())
             .register_fn("copy_file", Self::copy_file)
             .register_fn("create_file", Self::create_file)
             .register_fn("copy_files", Self::copy_files)
@@ -87,7 +88,6 @@ impl Generator {
         // TODO:: move it as part of the settings?
         scope.push("db", self.settings.db.is_some());
         scope.push("background", self.settings.background.is_some());
-        scope.push("rendering_method", self.settings.rendering_method.is_some());
         scope.push("windows", self.settings.os == OS::Windows);
 
         engine.run_with_scope(&mut scope, script)?;
@@ -233,16 +233,25 @@ impl Generator {
     }
 }
 #[export_module]
-mod settings_initializers {
+mod rhai_settings_extensions {
     use rhai::plugin::*;
-    use rhai::{Dynamic, Engine, EvalAltResult};
+    use rhai::Dynamic;
     use crate::settings::Initializers;
-
+    use crate::wizard::RenderingMethodOption;
     #[rhai_fn(global, get = "view_engine", pure)]
     pub fn view_engine(initializers: &mut Option<Initializers>) -> bool {
         initializers.as_ref().map_or(false, |i| i.view_engine)
     }
+
+    #[rhai_fn(global, get = "client_side", pure)]
+    pub fn client_side(rendering_method: &mut Option<crate::settings::RenderingMethod>) -> bool {
+        rendering_method.as_ref().map_or(false, |r| matches!(r.kind, RenderingMethodOption::Clientside))
+    }
 }
+
+
+
+
 #[cfg(test)]
 mod tests {
     use executer::MockExecuter;

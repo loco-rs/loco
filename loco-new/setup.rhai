@@ -125,7 +125,7 @@ if background {
 // =====================
 // Adds asset directory if assets are configured in the app.
 
-if rendering_method {
+if settings.assets {
     gen.copy_dir("assets");                         // Static assets directory
 }
 
@@ -134,7 +134,7 @@ if rendering_method {
 // Client side
 // =====================
 
-if settings.clientside {
+if settings.rendering_method.client_side {
    gen.copy_dir("frontend");
    gen.create_file("frontend/dist/index.html", "this is a placeholder. please run your frontend build (npm build)");
 }

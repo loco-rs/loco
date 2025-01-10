@@ -19,9 +19,9 @@ pub struct Settings {
     pub db: Option<Db>,
     pub background: Option<Background>,
     pub rendering_method: Option<RenderingMethod>,
+    pub assets: bool,
     pub auth: bool,
     pub mailer: bool,
-    pub clientside: bool,
     pub initializers: Option<Initializers>,
     pub features: Features,
     pub loco_version_text: String,
@@ -74,7 +74,7 @@ impl Settings {
             features
         };
 
-        // we only need the view engine initializer if we are using serverside rendering
+        // we only need the view engine initializer for serverside rendering
         let initializers = if matches!(
             prompt_selection.rendering_method,
             RenderingMethodOption::Serverside
@@ -83,15 +83,23 @@ impl Settings {
         } else {
             None
         };
+        
+        
+        // we only need to copy the asset folder for serverside rendering
+        let assets = matches!(
+            prompt_selection.rendering_method,
+            RenderingMethodOption::Serverside
+        );
+        
         Self {
             package_name: package_name.to_string(),
             module_name: package_name.to_snake_case(),
+            assets,
             auth: prompt_selection.db.enable() && prompt_selection.background.enable(),
             mailer: prompt_selection.db.enable() && prompt_selection.background.enable(),
             db: prompt_selection.db.clone().into(),
             background: prompt_selection.background.clone().into(),
             rendering_method: prompt_selection.rendering_method.clone().into(),
-            clientside: prompt_selection.rendering_method.enable(),
             initializers,
             features,
             loco_version_text: get_loco_version_text(),
@@ -108,9 +116,9 @@ impl Default for Settings {
             db: Default::default(),
             background: Default::default(),
             rendering_method: Default::default(),
+            assets: Default::default(),
             auth: Default::default(),
             mailer: Default::default(),
-            clientside: Default::default(),
             initializers: Default::default(),
             features: Default::default(),
             loco_version_text: get_loco_version_text(),
