@@ -242,14 +242,19 @@ impl Generator {
             })
     }
 }
+
+/// This module provides extensions to the Rhai scripting language to access
+/// the inner fields of the [Settings] struct in a more ergonomic way.
 #[export_module]
 mod rhai_settings_extensions {
 
+    /// Gives the script access to `settings.initializers.view_engine`.
     #[rhai_fn(global, get = "view_engine", pure)]
     pub fn view_engine(initializers: &mut Option<Initializers>) -> bool {
         initializers.as_ref().map_or(false, |i| i.view_engine)
     }
 
+    /// Gives the script access to `settings.rendering_method.client_side`.
     #[rhai_fn(global, get = "client_side", pure)]
     pub fn client_side(rendering_method: &mut Option<RenderingMethod>) -> bool {
         rendering_method.as_ref().map_or(false, |r| {
@@ -257,6 +262,7 @@ mod rhai_settings_extensions {
         })
     }
 
+    /// Gives the script access to `settings.rendering_method.server_side`.
     #[rhai_fn(global, get = "server_side", pure)]
     pub fn server_side(rendering_method: &mut Option<RenderingMethod>) -> bool {
         rendering_method.as_ref().map_or(false, |r| {

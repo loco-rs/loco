@@ -18,7 +18,9 @@ pub struct Settings {
     pub module_name: String,
     pub db: Option<Db>,
     pub background: Option<Background>,
+    /// Frontend rendering method configuration
     pub rendering_method: Option<RenderingMethod>,
+    /// Copy the asset folder to the new project
     pub assets: bool,
     pub auth: bool,
     pub mailer: bool,
