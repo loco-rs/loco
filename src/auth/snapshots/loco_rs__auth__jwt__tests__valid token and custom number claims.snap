@@ -1,6 +1,5 @@
 ---
 source: src/auth/jwt.rs
-assertion_line: 155
 expression: jwt.validate(&token)
 ---
 Ok(
