@@ -139,6 +139,7 @@ async fn custom_error() {
             controller::ErrorDetail {
                 error: Some("Payload Too Large".to_string()),
                 description: Some("413 Payload Too Large".to_string()),
+                errors: None,
             },
         ))
     }

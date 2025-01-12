@@ -80,6 +80,7 @@ use crate::{errors::Error, Result};
 mod app_routes;
 mod backtrace;
 mod describe;
+pub mod extractor;
 pub mod format;
 #[cfg(feature = "with-db")]
 mod health;
@@ -138,6 +139,8 @@ pub struct ErrorDetail {
     pub error: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub errors: Option<serde_json::Value>,
 }
 
 impl ErrorDetail {
@@ -147,6 +150,7 @@ impl ErrorDetail {
         Self {
             error: Some(error.into()),
             description: Some(description.into()),
+            errors: None,
         }
     }
 
@@ -156,6 +160,7 @@ impl ErrorDetail {
         Self {
             error: Some(error.into()),
             description: None,
+            errors: None,
         }
     }
 }
@@ -227,6 +232,24 @@ impl IntoResponse for Error {
                 (err.status(), ErrorDetail::with_reason("Bad Request"))
             }
 
+            Self::ValidationError(ref errors) => serde_json::to_value(errors).map_or_else(
+                |_| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        ErrorDetail::new("internal_server_error", "Internal Server Error"),
+                    )
+                },
+                |errors| {
+                    (
+                        StatusCode::BAD_REQUEST,
+                        ErrorDetail {
+                            error: None,
+                            description: None,
+                            errors: Some(errors),
+                        },
+                    )
+                },
+            ),
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ErrorDetail::new("internal_server_error", "Internal Server Error"),
