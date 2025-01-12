@@ -172,6 +172,7 @@ impl<T: Serialize> IntoResponse for Json<T> {
 
 impl IntoResponse for Error {
     /// Convert an `Error` into an HTTP response.
+    #[allow(clippy::cognitive_complexity)]
     fn into_response(self) -> Response {
         match &self {
             Self::WithBacktrace {
