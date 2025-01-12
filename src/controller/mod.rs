@@ -146,10 +146,11 @@ pub struct ErrorDetail {
 impl ErrorDetail {
     /// Create a new `ErrorDetail` with the specified error and description.
     #[must_use]
-    pub fn new<T: Into<String>>(error: T, description: T) -> Self {
+    pub fn new<T: Into<String> + AsRef<str>>(error: T, description: T) -> Self {
+        let description = (!description.as_ref().is_empty()).then(|| description.into());
         Self {
             error: Some(error.into()),
-            description: Some(description.into()),
+            description,
             errors: None,
         }
     }

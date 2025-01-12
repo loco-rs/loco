@@ -19,7 +19,7 @@ pub use sea_orm::{
 // sugar for controller views to use `data!({"item": ..})` instead of `json!`
 pub use serde_json::json as data;
 
-pub use crate::controller::extractor::validate::JsonValidate;
+pub use crate::controller::extractor::validate::{JsonValidate, JsonValidateWithMessage};
 #[cfg(all(feature = "auth_jwt", feature = "with-db"))]
 pub use crate::controller::middleware::auth;
 #[cfg(feature = "with-db")]
