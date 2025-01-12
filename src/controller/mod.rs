@@ -172,6 +172,7 @@ impl<T: Serialize> IntoResponse for Json<T> {
 
 impl IntoResponse for Error {
     /// Convert an `Error` into an HTTP response.
+    #[allow(clippy::cognitive_complexity)]
     fn into_response(self) -> Response {
         match &self {
             Self::WithBacktrace {
@@ -221,6 +222,11 @@ impl IntoResponse for Error {
                 StatusCode::BAD_REQUEST,
                 ErrorDetail::new("Bad Request", &err),
             ),
+            Self::JsonRejection(err) => {
+                tracing::debug!(err = err.body_text(), "json rejection");
+                (err.status(), ErrorDetail::with_reason("Bad Request"))
+            }
+
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ErrorDetail::new("internal_server_error", "Internal Server Error"),
