@@ -1,5 +1,6 @@
 use crate::infra_cfg;
 use loco_rs::{controller, prelude::*, tests_cfg};
+use serde::{Deserialize, Serialize};
 use serial_test::serial;
 
 #[tokio::test]
@@ -156,6 +157,46 @@ async fn custom_error() {
     let expected_json = serde_json::json!({
         "error": "Payload Too Large",
         "description": "413 Payload Too Large"
+    });
+
+    assert_eq!(res_json, expected_json);
+
+    handle.abort();
+}
+
+#[tokio::test]
+#[serial]
+async fn json_rejection() {
+    let ctx = tests_cfg::app::get_app_context().await;
+
+    #[allow(clippy::items_after_statements)]
+    #[derive(Debug, Deserialize, Serialize)]
+    pub struct Data {
+        pub email: String,
+    }
+
+    #[allow(clippy::items_after_statements)]
+    async fn action(Json(_params): Json<Data>) -> Result<Response> {
+        format::json(())
+    }
+
+    let handle = infra_cfg::server::start_with_route(ctx, "/", post(action)).await;
+
+    let client = reqwest::Client::new();
+    let res = client
+        .post(infra_cfg::server::get_base_url())
+        .json(&serde_json::json!({}))
+        .send()
+        .await
+        .expect("Valid response");
+
+    assert_eq!(res.status(), 422);
+
+    let res_text = res.text().await.expect("response text");
+    let res_json: serde_json::Value = serde_json::from_str(&res_text).expect("Valid JSON response");
+
+    let expected_json = serde_json::json!({
+        "error": "Bad Request",
     });
 
     assert_eq!(res_json, expected_json);

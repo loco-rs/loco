@@ -221,6 +221,11 @@ impl IntoResponse for Error {
                 StatusCode::BAD_REQUEST,
                 ErrorDetail::new("Bad Request", &err),
             ),
+            Self::JsonRejection(err) => {
+                tracing::debug!(err = err.body_text(), "json rejection");
+                (err.status(), ErrorDetail::with_reason("Bad Request"))
+            }
+
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ErrorDetail::new("internal_server_error", "Internal Server Error"),
