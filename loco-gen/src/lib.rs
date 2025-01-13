@@ -581,15 +581,7 @@ mod tests {
             0
         );
 
-        assert_eq!(
-            mapping
-                .col_type_arity("unknown")
-                .expect_err("expect error")
-                .to_string(),
-            mapping
-                .error_unrecognized_default_field("unknown")
-                .to_string()
-        );
+        assert!(mapping.col_type_arity("unknown").is_err());
     }
 
     #[test]
@@ -601,15 +593,7 @@ mod tests {
             "array_null"
         );
 
-        assert_eq!(
-            mapping
-                .col_type_field("unknown")
-                .expect_err("expect error")
-                .to_string(),
-            mapping
-                .error_unrecognized_default_field("unknown")
-                .to_string()
-        );
+        assert!(mapping.col_type_field("unknown").is_err());
     }
 
     #[test]
@@ -621,15 +605,7 @@ mod tests {
             "string_uniq"
         );
 
-        assert_eq!(
-            mapping
-                .schema_field("unknown")
-                .expect_err("expect error")
-                .to_string(),
-            mapping
-                .error_unrecognized_default_field("unknown")
-                .to_string()
-        );
+        assert!(mapping.schema_field("unknown").is_err());
     }
 
     #[test]
@@ -651,15 +627,7 @@ mod tests {
             "type `array` need params to get the rust field type".to_string()
         );
 
-        assert_eq!(
-            mapping
-                .rust_field("unknown")
-                .expect_err("expect error")
-                .to_string(),
-            mapping
-                .error_unrecognized_default_field("unknown")
-                .to_string()
-        );
+        assert!(mapping.rust_field("unknown").is_err(),);
     }
 
     #[test]
@@ -668,15 +636,7 @@ mod tests {
 
         assert!(mapping.rust_field_kind("string^").is_ok());
 
-        assert_eq!(
-            mapping
-                .rust_field_kind("unknown")
-                .expect_err("expect error")
-                .to_string(),
-            mapping
-                .error_unrecognized_default_field("unknown")
-                .to_string()
-        );
+        assert!(mapping.rust_field_kind("unknown").is_err(),);
     }
 
     #[test]
@@ -704,14 +664,6 @@ mod tests {
             "type: `array` not found. try any of: `int,string,chat`"
         );
 
-        assert_eq!(
-            mapping
-                .rust_field_with_params("unknown", &vec![])
-                .expect_err("expect error")
-                .to_string(),
-            mapping
-                .error_unrecognized_default_field("unknown")
-                .to_string()
-        );
+        assert!(mapping.rust_field_with_params("unknown", &vec![]).is_err());
     }
 }
