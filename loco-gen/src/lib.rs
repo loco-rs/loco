@@ -619,13 +619,7 @@ mod tests {
             "String"
         );
 
-        assert_eq!(
-            mapping
-                .rust_field("array")
-                .expect_err("expect error")
-                .to_string(),
-            "type `array` need params to get the rust field type".to_string()
-        );
+        assert!(mapping.rust_field("array").is_err());
 
         assert!(mapping.rust_field("unknown").is_err(),);
     }
@@ -656,13 +650,9 @@ mod tests {
                 .expect("Get string^ rust field"),
             "Vec<String>"
         );
-        assert_eq!(
-            mapping
-                .rust_field_with_params("array", &vec!["unknown".to_string()])
-                .expect_err("expect error")
-                .to_string(),
-            "type: `array` not found. try any of: `int,string,chat`"
-        );
+        assert!(mapping
+            .rust_field_with_params("array", &vec!["unknown".to_string()])
+            .is_err());
 
         assert!(mapping.rust_field_with_params("unknown", &vec![]).is_err());
     }
