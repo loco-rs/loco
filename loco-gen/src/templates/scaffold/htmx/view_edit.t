@@ -43,6 +43,22 @@ Edit {{name}}: {% raw %}{{ item.id }}{% endraw %}
         <textarea id="{{column.0}}" name="{{column.0}}" type="text">{% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}</textarea>
         {% elif column.2 == "json!" or column.2 == "jsonb!" -%}
         <textarea id="{{column.0}}" name="{{column.0}}" type="text" required>{% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}</textarea>
+        {% elif column.2 == "array!" or column.2 == "array^" -%}
+         <div id="{{column.0}}-inputs"> 
+               {% raw %}{%{% endraw %} for data in item.{{column.0}} {% raw %}-%}{% endraw %}
+                    <input name="{{column.0}}[]" value="{% raw %}{{data}}{% endraw %}" class="mb-2" type="text" required />
+                 {% raw %}{% endfor -%}{% endraw %}
+          </div>
+          <button type="button" class="text-xs py-1 px-3 rounded-lg bg-gray-900 text-white add-more"
+                    data-group="{{column.0}}">Add More</button>
+        {% elif column.2 == "array"  -%}
+         <div id="{{column.0}}-inputs">
+              {% raw %}{%{% endraw %} for data in item.{{column.0}} {% raw %}-%}{% endraw %}
+                    <input name="{{column.0}}[]" value="{% raw %}{{data}}{% endraw %}" class="mb-2" type="text" />
+                {% raw %}{% endfor -%}{% endraw %}
+         </div>
+          <button type="button" class="text-xs py-1 px-3 rounded-lg bg-gray-900 text-white add-more"
+                    data-group="{{column.0}}">Add More</button>
         {% endif -%} 
         </div>
     {% endfor -%}
@@ -71,16 +87,30 @@ Edit {{name}}: {% raw %}{{ item.id }}{% endraw %}
         },
         encodeParameters: function (xhr, parameters, elt) {
             const json = {};
+            // Handle individual field inputs
             for (const [key, value] of Object.entries(parameters)) {
-                const inputType = elt.querySelector(`[name=${key}]`).type;
+                const inputType = elt.querySelector(`[name="${key}"]`).type;
                 if (inputType === 'number') {
                     json[key] = parseFloat(value);
                 } else if (inputType === 'checkbox') {
-                    json[key] = elt.querySelector(`[name=${key}]`).checked;
+                    json[key] = elt.querySelector(`[name="${key}"]`).checked;
                 } else {
                     json[key] = value;
                 }
             }
+
+            // Handle array inputs dynamically based on the name
+            elt.querySelectorAll('[name]').forEach(input => {
+                if (input.name.endsWith('[]')) {
+                    const group = input.name.split('[')[0]; // Extract group name
+
+                    if (!json[group]) {
+                        json[group] = [];
+                    }
+                    json[group].push(input.value);
+                }
+            });
+
             return JSON.stringify(json);
         }
     })
@@ -97,5 +127,19 @@ Edit {{name}}: {% raw %}{{ item.id }}{% endraw %}
             xhr.send();
         }
     }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.add-more').forEach(button => {
+            button.addEventListener('click', function () {
+                const group = this.getAttribute('data-group');
+                const container = document.getElementById(`${group}-inputs`);
+                const newInput = document.createElement('input');
+                newInput.type = 'text';
+                newInput.name = `${group}[]`;
+                newInput.placeholder = `Enter another ${group} value`;
+                container.appendChild(newInput);
+            });
+        });
+    });
 </script>
 {% raw %}{% endblock js %}{% endraw %}
