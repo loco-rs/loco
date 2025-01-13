@@ -85,9 +85,9 @@ struct Mappings {
 }
 impl Mappings {
     fn error_unrecognized_default_field(&self, field: &str) -> Error {
-        Self::error_unrecognized(field, self.schema_fields())
+        Self::error_unrecognized(field, &self.schema_fields())
     }
-    fn error_unrecognized(field: &str, allow_fields: Vec<&String>) -> Error {
+    fn error_unrecognized(field: &str, allow_fields: &[&String]) -> Error {
         Error::Message(format!(
             "type: `{}` not found. try any of: `{}`",
             field,
@@ -103,9 +103,10 @@ impl Mappings {
             "array" | "array^" | "array!" => {
                 if let RustType::Map(ref map) = self.rust_field_kind(field)? {
                     if let [single] = params.as_slice() {
+                        let keys: Vec<&String> = map.keys().collect();
                         Ok(map
                             .get(single)
-                            .ok_or_else(|| Self::error_unrecognized(field, map.keys().collect()))?)
+                            .ok_or_else(|| Self::error_unrecognized(field, &keys))?)
                     } else {
                         Err(self.error_unrecognized_default_field(field))
                     }
