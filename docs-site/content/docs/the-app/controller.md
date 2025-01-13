@@ -764,6 +764,70 @@ impl Hooks for App {
 }
 ```
 
+# Request Validation
+`JsonValidate` extractor simplifies input [validation](https://github.com/Keats/validator) by integrating with the validator crate. Here's an example of how to validate incoming request data:
+
+### Define Your Validation Rules
+```rust
+use axum::debug_handler;
+use loco_rs::prelude::*;
+use serde::Deserialize;
+use validator::Validate;
+
+#[derive(Debug, Deserialize, Validate)]
+pub struct DataParams {
+    #[validate(length(min = 5, message = "custom message"))]
+    pub name: String,
+    #[validate(email)]
+    pub email: String,
+}
+```
+### Create a Handler with Validation
+```rust
+use axum::debug_handler;
+use loco_rs::prelude::*;
+
+#[debug_handler]
+pub async fn index(
+    State(_ctx): State<AppContext>,
+    JsonValidate(params): JsonValidate<DataParams>,
+) -> Result<Response> {
+    format::empty()
+}
+```
+Using the `JsonValidate` extractor, Loco automatically performs validation on the DataParams struct:
+* If validation passes, the handler continues execution with params.
+* If validation fails, a 400 Bad Request response is returned.
+
+### Returning Validation Errors as JSON
+If you'd like to return validation errors in a structured JSON format, use `JsonValidateWithMessage` instead of `JsonValidate`. The response format will look like this:
+
+```json
+{
+  "errors": {
+    "email": [
+      {
+        "code": "email",
+        "message": null,
+        "params": {
+          "value": "ad"
+        }
+      }
+    ],
+    "name": [
+      {
+        "code": "length",
+        "message": "custom message",
+        "params": {
+          "min": 5,
+          "value": "d"
+        }
+      }
+    ]
+  }
+}
+```  
+
 # Pagination
 
 In many scenarios, when querying data and returning responses to users, pagination is crucial. In `Loco`, we provide a straightforward method to paginate your data and maintain a consistent pagination response schema for your API responses.
