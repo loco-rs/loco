@@ -231,10 +231,7 @@ mod tests {
             let mappings = get_mappings();
             assert_eq!(
                 err.to_string(),
-                format!(
-                    "type: `` not found. try any of: {:?}",
-                    mappings.schema_fields()
-                )
+                mappings.error_unrecognized_default_field("").to_string()
             );
         } else {
             panic!("Expected Err, but got Ok: {res:?}");
