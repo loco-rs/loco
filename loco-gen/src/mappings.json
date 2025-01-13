@@ -432,22 +432,52 @@
       "arity": 1
     },
     {
-      "name": "array",
-      "rust": "Option<Vec<String>>",
-      "schema": "array",
-      "col_type": "array_null",
-      "arity": 1
-    },
-    {
       "name": "array!",
-      "rust": "Option<Vec<String>>",
+      "rust": {
+        "string": "Vec<String>",
+        "char": "Vec<String>",
+        "text": "Vec<String>",
+        "float": "Vec<f32>",
+        "int": "Vec<i32>",
+        "small_int": "Vec<i16>",
+        "big_int": "Vec<i64>",
+        "double": "Vec<f64>",
+        "bool": "Vec<bool>"
+      },
       "schema": "array",
       "col_type": "array",
       "arity": 1
     },
     {
+      "name": "array",
+      "rust": {
+        "string": "Option<Vec<String>>",
+        "char": "Option<Vec<String>>",
+        "text": "Option<Vec<String>>",
+        "float": "Option<Vec<f32>>",
+        "int": "Option<Vec<i32>>",
+        "small_int": "Option<Vec<i16>>",
+        "big_int": "Option<Vec<i64>>",
+        "double": "Option<Vec<f64>>",
+        "bool": "Option<Vec<bool>>"
+      },
+      "schema": "array",
+      "col_type": "array_null",
+      "arity": 1
+    },
+    {
       "name": "array^",
-      "rust": "Option<Vec<String>>",
+      "rust": {
+        "string": "Vec<String>",
+        "char": "Vec<String>",
+        "text": "Vec<String>",
+        "float": "Vec<f32>",
+        "int": "Vec<i32>",
+        "small_int": "Vec<i16>",
+        "big_int": "Vec<i64>",
+        "double": "Vec<f64>",
+        "bool": "Vec<bool>"
+      },
       "schema": "array",
       "col_type": "array_uniq",
       "arity": 1

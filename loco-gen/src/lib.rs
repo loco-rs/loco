@@ -8,6 +8,7 @@ use serde_json::{json, Value};
 mod controller;
 use colored::Colorize;
 use std::{
+    collections::HashMap,
     fs,
     path::{Path, PathBuf},
     str::FromStr,
@@ -64,11 +65,18 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Serialize, Deserialize, Debug)]
 struct FieldType {
     name: String,
-    rust: Option<String>,
-    schema: Option<String>,
-    col_type: Option<String>,
+    rust: RustType,
+    schema: String,
+    col_type: String,
     #[serde(default)]
     arity: usize,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+enum RustType {
+    String(String),
+    Map(HashMap<String, String>),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -76,36 +84,86 @@ struct Mappings {
     field_types: Vec<FieldType>,
 }
 impl Mappings {
-    pub fn rust_field(&self, field: &str) -> Option<&String> {
+    fn error_unrecognized_default_field(&self, field: &str) -> Error {
+        Self::error_unrecognized(field, self.schema_fields())
+    }
+    fn error_unrecognized(field: &str, allow_fields: Vec<&String>) -> Error {
+        Error::Message(format!(
+            "type: `{}` not found. try any of: `{}`",
+            field,
+            allow_fields
+                .iter()
+                .map(|&s| s.to_string())
+                .collect::<Vec<String>>()
+                .join(",")
+        ))
+    }
+    pub fn rust_field_with_params(&self, field: &str, params: &Vec<String>) -> Result<&str> {
+        match field {
+            "array" | "array^" | "array!" => {
+                if let RustType::Map(ref map) = self.rust_field_kind(field)? {
+                    if let [single] = params.as_slice() {
+                        Ok(map
+                            .get(single)
+                            .ok_or_else(|| Self::error_unrecognized(field, map.keys().collect()))?)
+                    } else {
+                        Err(self.error_unrecognized_default_field(field))
+                    }
+                } else {
+                    panic!("array field should configured as array")
+                }
+            }
+
+            _ => self.rust_field(field),
+        }
+    }
+
+    pub fn rust_field_kind(&self, field: &str) -> Result<&RustType> {
         self.field_types
             .iter()
             .find(|f| f.name == field)
-            .and_then(|f| f.rust.as_ref())
+            .map(|f| &f.rust)
+            .ok_or_else(|| self.error_unrecognized_default_field(field))
     }
-    pub fn schema_field(&self, field: &str) -> Option<&String> {
+
+    pub fn rust_field(&self, field: &str) -> Result<&str> {
         self.field_types
             .iter()
             .find(|f| f.name == field)
-            .and_then(|f| f.schema.as_ref())
+            .map(|f| &f.rust)
+            .ok_or_else(|| self.error_unrecognized_default_field(field))
+            .and_then(|rust_type| match rust_type {
+                RustType::String(s) => Ok(s),
+                RustType::Map(_) => Err(Error::Message(format!(
+                    "type `{field}` need params to get the rust field type"
+                ))),
+            })
+            .map(std::string::String::as_str)
     }
-    pub fn col_type_field(&self, field: &str) -> Option<&String> {
+
+    pub fn schema_field(&self, field: &str) -> Result<&str> {
         self.field_types
             .iter()
             .find(|f| f.name == field)
-            .and_then(|f| f.col_type.as_ref())
+            .map(|f| f.schema.as_str())
+            .ok_or_else(|| self.error_unrecognized_default_field(field))
     }
-    pub fn col_type_arity(&self, field: &str) -> Option<usize> {
+    pub fn col_type_field(&self, field: &str) -> Result<&str> {
+        self.field_types
+            .iter()
+            .find(|f| f.name == field)
+            .map(|f| f.col_type.as_str())
+            .ok_or_else(|| self.error_unrecognized_default_field(field))
+    }
+    pub fn col_type_arity(&self, field: &str) -> Result<usize> {
         self.field_types
             .iter()
             .find(|f| f.name == field)
             .map(|f| f.arity)
+            .ok_or_else(|| self.error_unrecognized_default_field(field))
     }
     pub fn schema_fields(&self) -> Vec<&String> {
-        self.field_types
-            .iter()
-            .filter(|f| f.schema.is_some())
-            .map(|f| &f.name)
-            .collect::<Vec<_>>()
+        self.field_types.iter().map(|f| &f.name).collect::<Vec<_>>()
     }
 }
 
@@ -474,5 +532,185 @@ mod tests {
                 "Content mismatch in file: {copy_file_path:?}"
             );
         }
+    }
+
+    fn test_mapping() -> Mappings {
+        Mappings {
+            field_types: vec![
+                FieldType {
+                    name: "array".to_string(),
+                    rust: RustType::Map(HashMap::from([
+                        ("string".to_string(), "Vec<String>".to_string()),
+                        ("chat".to_string(), "Vec<String>".to_string()),
+                        ("int".to_string(), "Vec<i32>".to_string()),
+                    ])),
+                    schema: "array".to_string(),
+                    col_type: "array_null".to_string(),
+                    arity: 1,
+                },
+                FieldType {
+                    name: "string^".to_string(),
+                    rust: RustType::String("String".to_string()),
+                    schema: "string_uniq".to_string(),
+                    col_type: "StringUniq".to_string(),
+                    arity: 0,
+                },
+            ],
+        }
+    }
+
+    #[test]
+    fn can_get_schema_fields_from_mapping() {
+        let mapping = test_mapping();
+        assert_eq!(
+            mapping.schema_fields(),
+            Vec::from([&"array".to_string(), &"string^".to_string()])
+        );
+    }
+
+    #[test]
+    fn can_get_col_type_arity_from_mapping() {
+        let mapping = test_mapping();
+
+        assert_eq!(mapping.col_type_arity("array").expect("Get array arity"), 1);
+        assert_eq!(
+            mapping
+                .col_type_arity("string^")
+                .expect("Get string^ arity"),
+            0
+        );
+
+        assert_eq!(
+            mapping
+                .col_type_arity("unknown")
+                .expect_err("expect error")
+                .to_string(),
+            mapping
+                .error_unrecognized_default_field("unknown")
+                .to_string()
+        );
+    }
+
+    #[test]
+    fn can_get_col_type_field_from_mapping() {
+        let mapping = test_mapping();
+
+        assert_eq!(
+            mapping.col_type_field("array").expect("Get array field"),
+            "array_null"
+        );
+
+        assert_eq!(
+            mapping
+                .col_type_field("unknown")
+                .expect_err("expect error")
+                .to_string(),
+            mapping
+                .error_unrecognized_default_field("unknown")
+                .to_string()
+        );
+    }
+
+    #[test]
+    fn can_get_schema_field_from_mapping() {
+        let mapping = test_mapping();
+
+        assert_eq!(
+            mapping.schema_field("string^").expect("Get string^ schema"),
+            "string_uniq"
+        );
+
+        assert_eq!(
+            mapping
+                .schema_field("unknown")
+                .expect_err("expect error")
+                .to_string(),
+            mapping
+                .error_unrecognized_default_field("unknown")
+                .to_string()
+        );
+    }
+
+    #[test]
+    fn can_get_rust_field_from_mapping() {
+        let mapping = test_mapping();
+
+        assert_eq!(
+            mapping
+                .rust_field("string^")
+                .expect("Get string^ rust field"),
+            "String"
+        );
+
+        assert_eq!(
+            mapping
+                .rust_field("array")
+                .expect_err("expect error")
+                .to_string(),
+            "type `array` need params to get the rust field type".to_string()
+        );
+
+        assert_eq!(
+            mapping
+                .rust_field("unknown")
+                .expect_err("expect error")
+                .to_string(),
+            mapping
+                .error_unrecognized_default_field("unknown")
+                .to_string()
+        );
+    }
+
+    #[test]
+    fn can_get_rust_field_kind_from_mapping() {
+        let mapping = test_mapping();
+
+        assert!(mapping.rust_field_kind("string^").is_ok());
+
+        assert_eq!(
+            mapping
+                .rust_field_kind("unknown")
+                .expect_err("expect error")
+                .to_string(),
+            mapping
+                .error_unrecognized_default_field("unknown")
+                .to_string()
+        );
+    }
+
+    #[test]
+    fn can_get_rust_field_with_params_from_mapping() {
+        let mapping = test_mapping();
+
+        assert_eq!(
+            mapping
+                .rust_field_with_params("string^", &vec!["string".to_string()])
+                .expect("Get string^ rust field"),
+            "String"
+        );
+
+        assert_eq!(
+            mapping
+                .rust_field_with_params("array", &vec!["string".to_string()])
+                .expect("Get string^ rust field"),
+            "Vec<String>"
+        );
+        assert_eq!(
+            mapping
+                .rust_field_with_params("array", &vec!["unknown".to_string()])
+                .expect_err("expect error")
+                .to_string(),
+            "type: `array` not found. try any of: `int,string,chat`"
+        );
+
+        assert_eq!(
+            mapping
+                .rust_field_with_params("unknown", &vec![])
+                .expect_err("expect error")
+                .to_string(),
+            mapping
+                .error_unrecognized_default_field("unknown")
+                .to_string()
+        );
     }
 }
