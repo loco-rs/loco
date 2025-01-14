@@ -5,6 +5,10 @@
 * fix: bump shuttle to 0.51.0. [https://github.com/loco-rs/loco/pull/1169](https://github.com/loco-rs/loco/pull/1169)
 * Return 422 status code for JSON rejection errors. [https://github.com/loco-rs/loco/pull/1173](https://github.com/loco-rs/loco/pull/1173)
 * Address clippy warnings for Rust stable 1.84. [https://github.com/loco-rs/loco/pull/1168](https://github.com/loco-rs/loco/pull/1168)
+* Bump shuttle to 0.51.0. [https://github.com/loco-rs/loco/pull/1169](https://github.com/loco-rs/loco/pull/1169)
+* return 422 status code for JSON rejection errors. [https://github.com/loco-rs/loco/pull/1173](https://github.com/loco-rs/loco/pull/1173)
+* return json validation details response. [https://github.com/loco-rs/loco/pull/1174](https://github.com/loco-rs/loco/pull/1174)
+* fix example command after generating schedule. [https://github.com/loco-rs/loco/pull/1176](https://github.com/loco-rs/loco/pull/1176)
 
 
 ## v0.14
