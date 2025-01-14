@@ -43,16 +43,30 @@ Edit movie: {{ item.id }}
         },
         encodeParameters: function (xhr, parameters, elt) {
             const json = {};
+            // Handle individual field inputs
             for (const [key, value] of Object.entries(parameters)) {
-                const inputType = elt.querySelector(`[name=${key}]`).type;
+                const inputType = elt.querySelector(`[name="${key}"]`).type;
                 if (inputType === 'number') {
                     json[key] = parseFloat(value);
                 } else if (inputType === 'checkbox') {
-                    json[key] = elt.querySelector(`[name=${key}]`).checked;
+                    json[key] = elt.querySelector(`[name="${key}"]`).checked;
                 } else {
                     json[key] = value;
                 }
             }
+
+            // Handle array inputs dynamically based on the name
+            elt.querySelectorAll('[name]').forEach(input => {
+                if (input.name.endsWith('[]')) {
+                    const group = input.name.split('[')[0]; // Extract group name
+
+                    if (!json[group]) {
+                        json[group] = [];
+                    }
+                    json[group].push(input.value);
+                }
+            });
+
             return JSON.stringify(json);
         }
     })
@@ -69,5 +83,19 @@ Edit movie: {{ item.id }}
             xhr.send();
         }
     }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.add-more').forEach(button => {
+            button.addEventListener('click', function () {
+                const group = this.getAttribute('data-group');
+                const container = document.getElementById(`${group}-inputs`);
+                const newInput = document.createElement('input');
+                newInput.type = 'text';
+                newInput.name = `${group}[]`;
+                newInput.placeholder = `Enter another ${group} value`;
+                container.appendChild(newInput);
+            });
+        });
+    });
 </script>
 {% endblock js %}

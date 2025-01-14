@@ -74,13 +74,12 @@ Create {{file_name}}
         },
         encodeParameters: function (xhr, parameters, elt) {
             const json = {};
-            // Handle individual field inputs
             for (const [key, value] of Object.entries(parameters)) {
-                const inputType = elt.querySelector(`[name="${key}"]`).type;
+                const inputType = elt.querySelector(`[name=${key}]`).type;
                 if (inputType === 'number') {
                     json[key] = parseFloat(value);
                 } else if (inputType === 'checkbox') {
-                    json[key] = elt.querySelector(`[name="${key}"]`).checked;
+                    json[key] = elt.querySelector(`[name=${key}]`).checked;
                 } else {
                     json[key] = value;
                 }
