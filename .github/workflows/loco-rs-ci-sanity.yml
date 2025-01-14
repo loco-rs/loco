@@ -49,13 +49,12 @@ jobs:
       - name: Install seaorm cli
         run: cargo install sea-orm-cli
         
-      - run: cargo install --path ../loco-new
+      - run: cargo install --path loco-new
       
       - run: |
           loco new -n myappdb --db sqlite --bg async --assets serverside -a
           cd myappdb
           cargo check
-        
         env:
           LOCO_DEV_MODE_PATH: ${{ github.workspace }}
           
