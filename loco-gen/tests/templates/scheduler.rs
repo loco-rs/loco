@@ -31,7 +31,7 @@ fn can_generate() {
 
     assert_eq!(
         collect_messages(&gen_result),
-        r"* A Scheduler job configuration was added successfully. Run with `cargo loco run scheduler --list`.
+        r"* A Scheduler job configuration was added successfully. Run with `cargo loco scheduler --list`.
 "
     );
 
