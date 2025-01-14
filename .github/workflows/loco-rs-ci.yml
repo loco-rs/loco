@@ -38,7 +38,7 @@ jobs:
           args: --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms
 
   check:
-    needs: [check]
+    needs: [style]
     runs-on: ubuntu-latest
 
     permissions:
@@ -56,7 +56,6 @@ jobs:
         with:
           tool: cargo-hack
       - run: cargo hack check --each-feature 
-
 
   test:
     needs: [check, style]
