@@ -156,6 +156,12 @@ pub enum Error {
 
     #[error(transparent)]
     Any(#[from] Box<dyn std::error::Error + Send + Sync>),
+
+    #[error(transparent)]
+    ValidationError(#[from] validator::ValidationErrors),
+
+    #[error(transparent)]
+    AxumFormRejection(#[from] axum::extract::rejection::FormRejection),
 }
 
 impl Error {

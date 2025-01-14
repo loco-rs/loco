@@ -102,7 +102,7 @@ lettre = { version = "0.11.4", default-features = false, features = [
 include_dir = "0.7.3"
 thiserror = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.16", features = ["env-filter", "json"] }
 tracing-appender = "0.2.3"
 
 duct = { version = "0.13.6" }
@@ -146,6 +146,7 @@ english-to-cron = { version = "0.1.2" }
 # bg_sqlt: sqlite workers
 # bg_pg: postgres workers
 sqlx = { version = "0.8.2", default-features = false, features = [
+    "json",
     "postgres",
     "chrono",
     "sqlite",
