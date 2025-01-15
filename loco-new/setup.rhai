@@ -84,7 +84,7 @@ if db {
 // =====================
 // Initializers Support
 // =====================
-if initializers {
+if settings.initializers.view_engine {
    gen.copy_file("src/initializers/view_engine.rs"); // Template for view engine initializer
 }
 
@@ -125,7 +125,7 @@ if background {
 // =====================
 // Adds asset directory if assets are configured in the app.
 
-if asset {
+if settings.assets {
     gen.copy_dir("assets");                         // Static assets directory
 }
 
@@ -134,7 +134,7 @@ if asset {
 // Client side
 // =====================
 
-if settings.clientside {
+if settings.rendering_method.client_side {
    gen.copy_dir("frontend");
    gen.create_file("frontend/dist/index.html", "this is a placeholder. please run your frontend build (npm build)");
 }

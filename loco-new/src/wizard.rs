@@ -14,9 +14,9 @@ use crate::Error;
 )]
 pub enum Template {
     #[default]
-    #[strum(to_string = "Saas App with server side rendering")]
+    #[strum(to_string = "Saas App with server-side rendering")]
     SaasServerSideRendering,
-    #[strum(to_string = "Saas App with client side rendering")]
+    #[strum(to_string = "Saas App with client-side rendering")]
     SaasClientSideRendering,
     #[strum(to_string = "Rest API (with DB and user auth)")]
     RestApi,
@@ -32,8 +32,8 @@ pub enum OptionsList {
     DB,
     #[serde(rename = "bg")]
     Background,
-    #[serde(rename = "assets")]
-    Assets,
+    #[serde(rename = "rendering_method")]
+    RenderingMethod,
 }
 
 #[derive(
@@ -136,12 +136,12 @@ impl BackgroundOption {
 #[derive(
     Debug, Clone, Deserialize, Serialize, EnumIter, Display, Default, PartialEq, Eq, ValueEnum,
 )]
-pub enum AssetsOption {
+pub enum RenderingMethodOption {
     #[default]
-    #[strum(to_string = "Server (configures server-rendered views)")]
+    #[strum(to_string = "Server (configures server-side rendering)")]
     #[serde(rename = "server")]
     Serverside,
-    #[strum(to_string = "Client (configures assets for frontend serving)")]
+    #[strum(to_string = "Client (configures client-side rendering)")]
     #[serde(rename = "client")]
     Clientside,
     #[strum(to_string = "None")]
@@ -149,20 +149,16 @@ pub enum AssetsOption {
     None,
 }
 
-impl AssetsOption {
-    #[must_use]
-    pub const fn enable(&self) -> bool {
-        !matches!(self, Self::None)
-    }
-
+impl RenderingMethodOption {
     #[must_use]
     pub fn user_message(&self) -> Option<String> {
         match self {
             Self::Clientside => Some(format!(
-                "{}: You've selected `{}` for your asset serving configuration.\n\nNext step, \
-                 build your frontend:\n  $ cd {}\n  $ npm install && npm run build\n",
-                "assets".underline(),
-                "clientside".yellow(),
+                "{}: You've selected `{}` as your frontend rendering method.\n\nTo build your \
+                 frontend, please run the following commands:\n$ cd {}\n$ npm install && npm run \
+                 build\n",
+                "Rendering method".underline(),
+                "client-side rendering".yellow(),
                 "frontend/".yellow()
             )),
             Self::Serverside | Self::None => None,
@@ -175,14 +171,14 @@ impl AssetsOption {
 pub struct ArgsPlaceholder {
     pub db: Option<DBOption>,
     pub bg: Option<BackgroundOption>,
-    pub assets: Option<AssetsOption>,
+    pub rendering_method: Option<RenderingMethodOption>,
 }
 
 /// Holds the user's configuration selections.
 pub struct Selections {
     pub db: DBOption,
     pub background: BackgroundOption,
-    pub asset: AssetsOption,
+    pub rendering_method: RenderingMethodOption,
 }
 
 impl Selections {
@@ -195,7 +191,7 @@ impl Selections {
         if let Some(m) = self.background.user_message() {
             res.push(m);
         }
-        if let Some(m) = self.asset.user_message() {
+        if let Some(m) = self.rendering_method.user_message() {
             res.push(m);
         }
         res
@@ -295,13 +291,15 @@ where
 /// when could not show user selection or user chose not continue
 pub fn start(args: &ArgsPlaceholder) -> crate::Result<Selections> {
     // user provided everything via flags so no need to prompt, just return
-    if let (Some(db), Some(bg), Some(assets)) =
-        (args.db.clone(), args.bg.clone(), args.assets.clone())
-    {
+    if let (Some(db), Some(bg), Some(rendering_method)) = (
+        args.db.clone(),
+        args.bg.clone(),
+        args.rendering_method.clone(),
+    ) {
         return Ok(Selections {
             db,
             background: bg,
-            asset: assets,
+            rendering_method,
         });
     }
 
@@ -314,22 +312,22 @@ pub fn start(args: &ArgsPlaceholder) -> crate::Result<Selections> {
         Template::Lightweight => Ok(Selections {
             db: DBOption::None,
             background: BackgroundOption::None,
-            asset: AssetsOption::None,
+            rendering_method: RenderingMethodOption::None,
         }),
         Template::RestApi => Ok(Selections {
             db: select_db(args)?,
             background: select_background(args, None)?,
-            asset: AssetsOption::None,
+            rendering_method: RenderingMethodOption::None,
         }),
         Template::SaasServerSideRendering => Ok(Selections {
             db: select_db(args)?,
             background: select_background(args, None)?,
-            asset: AssetsOption::Serverside,
+            rendering_method: RenderingMethodOption::Serverside,
         }),
         Template::SaasClientSideRendering => Ok(Selections {
             db: select_db(args)?,
             background: select_background(args, None)?,
-            asset: AssetsOption::Clientside,
+            rendering_method: RenderingMethodOption::Clientside,
         }),
         Template::Advanced => {
             let db = select_db(args)?;
@@ -340,7 +338,7 @@ pub fn start(args: &ArgsPlaceholder) -> crate::Result<Selections> {
             Ok(Selections {
                 db,
                 background: select_background(args, background_options.as_ref())?,
-                asset: select_asset(args)?,
+                rendering_method: select_rendering_method(args)?,
             })
         }
     }
@@ -378,16 +376,16 @@ fn select_background(
     Ok(bgopt)
 }
 
-/// Prompts the user to select an asset configuration if none is provided in the
-/// arguments.
-fn select_asset(args: &ArgsPlaceholder) -> crate::Result<AssetsOption> {
-    let assetopt = if let Some(assetopt) = args.assets.clone() {
-        assetopt
+/// Prompts the user to select frontend rendering method if none is provided in
+/// the arguments.
+fn select_rendering_method(args: &ArgsPlaceholder) -> crate::Result<RenderingMethodOption> {
+    let rendering_method_opt = if let Some(rendering_method_opt) = args.rendering_method.clone() {
+        rendering_method_opt
     } else {
         select_option(
-            "❯ Select an asset serving configuration",
-            &AssetsOption::iter().collect::<Vec<_>>(),
+            "❯ Select a frontend rendering method",
+            &RenderingMethodOption::iter().collect::<Vec<_>>(),
         )?
     };
-    Ok(assetopt)
+    Ok(rendering_method_opt)
 }

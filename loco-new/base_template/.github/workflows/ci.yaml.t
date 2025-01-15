@@ -90,8 +90,8 @@ jobs:
         with:
           toolchain: ${% raw %}{{ env.RUST_TOOLCHAIN }}{% endraw %}
     
-      {%- if settings.asset %}
-      {%- if settings.asset.kind == "client" %}
+      {%- if settings.rendering_method %}
+      {%- if settings.rendering_method.kind == "client" %}
       - name: Setup node
         uses: actions/setup-node@v4
         with:

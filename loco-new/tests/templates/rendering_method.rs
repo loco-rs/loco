@@ -1,12 +1,12 @@
-use loco::{settings, wizard::AssetsOption};
+use loco::{settings, wizard::RenderingMethodOption};
 use rstest::rstest;
 
 use super::*;
 use crate::assertion;
 
-pub fn run_generator(asset: AssetsOption) -> TestGenerator {
+pub fn run_generator(rendering_method: RenderingMethodOption) -> TestGenerator {
     let settings = settings::Settings {
-        asset: asset.into(),
+        rendering_method: rendering_method.into(),
         ..Default::default()
     };
 
@@ -14,20 +14,20 @@ pub fn run_generator(asset: AssetsOption) -> TestGenerator {
 }
 
 #[rstest]
-fn test_config_file_middleware_when_asset_empty(
+fn test_config_file_middleware_when_rendering_method_empty(
     #[values("config/development.yaml", "config/test.yaml")] config_file: &str,
 ) {
-    let generator: TestGenerator = run_generator(AssetsOption::None);
+    let generator: TestGenerator = run_generator(RenderingMethodOption::None);
     let content = assertion::yaml::load(generator.path(config_file));
 
     assertion::yaml::assert_path_is_empty(&content, &["server", "middlewares"]);
 }
 
 #[rstest]
-fn test_config_file_middleware_asset_server(
+fn test_config_file_middleware_when_rendering_method_server_side(
     #[values("config/development.yaml", "config/test.yaml")] config_file: &str,
 ) {
-    let generator: TestGenerator = run_generator(AssetsOption::Serverside);
+    let generator: TestGenerator = run_generator(RenderingMethodOption::Serverside);
     let content = assertion::yaml::load(generator.path(config_file));
 
     assertion::yaml::assert_path_is_object(&content, &["server", "middlewares", "static"]);
@@ -52,10 +52,10 @@ fallback: assets/static/404.html
 }
 
 #[rstest]
-fn test_config_file_middleware_asset_client(
+fn test_config_file_middleware_when_rendering_method_client_side(
     #[values("config/development.yaml", "config/test.yaml")] config_file: &str,
 ) {
-    let generator: TestGenerator = run_generator(AssetsOption::Clientside);
+    let generator: TestGenerator = run_generator(RenderingMethodOption::Clientside);
     let content = assertion::yaml::load(generator.path(config_file));
 
     assertion::yaml::assert_path_is_object(&content, &["server", "middlewares"]);
@@ -80,24 +80,32 @@ static:
 
 #[rstest]
 fn test_cargo_toml(
-    #[values(AssetsOption::None, AssetsOption::Serverside, AssetsOption::Clientside)]
-    asset: AssetsOption,
+    #[values(
+        RenderingMethodOption::None,
+        RenderingMethodOption::Serverside,
+        RenderingMethodOption::Clientside
+    )]
+    rendering_method: RenderingMethodOption,
 ) {
-    let generator = run_generator(asset.clone());
+    let generator = run_generator(rendering_method.clone());
     let content = assertion::toml::load(generator.path("Cargo.toml"));
 
     insta::assert_snapshot!(
-        format!("cargo_dependencies_{:?}", asset),
+        format!("cargo_dependencies_{:?}", rendering_method),
         content.get("dependencies").unwrap()
     );
 }
 
 #[rstest]
 fn test_github_ci_yaml(
-    #[values(AssetsOption::None, AssetsOption::Serverside, AssetsOption::Clientside)]
-    asset: AssetsOption,
+    #[values(
+        RenderingMethodOption::None,
+        RenderingMethodOption::Serverside,
+        RenderingMethodOption::Clientside
+    )]
+    rendering_method: RenderingMethodOption,
 ) {
-    let generator: TestGenerator = run_generator(asset.clone());
+    let generator: TestGenerator = run_generator(rendering_method.clone());
     let content =
         assertion::string::load(generator.path(".github").join("workflows").join("ci.yaml"));
 
@@ -111,11 +119,11 @@ fn test_github_ci_yaml(
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2";
 
-    match asset {
-        AssetsOption::Serverside | AssetsOption::None => {
+    match rendering_method {
+        RenderingMethodOption::Serverside | RenderingMethodOption::None => {
             assertion::string::assert_not_contains(&content, frontend_section);
         }
-        AssetsOption::Clientside => {
+        RenderingMethodOption::Clientside => {
             assertion::string::assert_contains(&content, frontend_section);
         }
     }

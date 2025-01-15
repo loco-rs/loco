@@ -7,7 +7,7 @@ use rhai::{CustomType, TypeBuilder};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    wizard::{self, AssetsOption, BackgroundOption, DBOption},
+    wizard::{self, BackgroundOption, DBOption, RenderingMethodOption},
     LOCO_VERSION, OS,
 };
 
@@ -18,10 +18,12 @@ pub struct Settings {
     pub module_name: String,
     pub db: Option<Db>,
     pub background: Option<Background>,
-    pub asset: Option<Asset>,
+    /// Frontend rendering method configuration
+    pub rendering_method: Option<RenderingMethod>,
+    /// Copy the asset folder to the new project
+    pub assets: bool,
     pub auth: bool,
     pub mailer: bool,
-    pub clientside: bool,
     pub initializers: Option<Initializers>,
     pub features: Features,
     pub loco_version_text: String,
@@ -49,11 +51,13 @@ impl From<BackgroundOption> for Option<Background> {
     }
 }
 
-impl From<AssetsOption> for Option<Asset> {
-    fn from(asset: AssetsOption) -> Self {
-        match asset {
-            AssetsOption::None => None,
-            _ => Some(Asset { kind: asset }),
+impl From<RenderingMethodOption> for Option<RenderingMethod> {
+    fn from(rendering_method: RenderingMethodOption) -> Self {
+        match rendering_method {
+            RenderingMethodOption::None => None,
+            _ => Some(RenderingMethod {
+                kind: rendering_method,
+            }),
         }
     }
 }
@@ -72,20 +76,32 @@ impl Settings {
             features
         };
 
+        // we only need the view engine initializer for serverside rendering
+        let initializers = if matches!(
+            prompt_selection.rendering_method,
+            RenderingMethodOption::Serverside
+        ) {
+            Some(Initializers { view_engine: true })
+        } else {
+            None
+        };
+
+        // we only need to copy the asset folder for serverside rendering
+        let assets = matches!(
+            prompt_selection.rendering_method,
+            RenderingMethodOption::Serverside
+        );
+
         Self {
             package_name: package_name.to_string(),
             module_name: package_name.to_snake_case(),
+            assets,
             auth: prompt_selection.db.enable() && prompt_selection.background.enable(),
             mailer: prompt_selection.db.enable() && prompt_selection.background.enable(),
             db: prompt_selection.db.clone().into(),
             background: prompt_selection.background.clone().into(),
-            asset: prompt_selection.asset.clone().into(),
-            clientside: prompt_selection.asset.enable(),
-            initializers: if prompt_selection.asset.enable() {
-                Some(Initializers { view_engine: true })
-            } else {
-                None
-            },
+            rendering_method: prompt_selection.rendering_method.clone().into(),
+            initializers,
             features,
             loco_version_text: get_loco_version_text(),
             os,
@@ -100,10 +116,10 @@ impl Default for Settings {
             module_name: Default::default(),
             db: Default::default(),
             background: Default::default(),
-            asset: Default::default(),
+            rendering_method: Default::default(),
+            assets: Default::default(),
             auth: Default::default(),
             mailer: Default::default(),
-            clientside: Default::default(),
             initializers: Default::default(),
             features: Default::default(),
             loco_version_text: get_loco_version_text(),
@@ -135,10 +151,10 @@ pub struct Background {
     pub kind: BackgroundOption,
 }
 
-/// Asset configuration settings.
+/// Rendering method configuration.
 #[derive(Serialize, Deserialize, Clone, Debug, Default, CustomType)]
-pub struct Asset {
-    pub kind: AssetsOption,
+pub struct RenderingMethod {
+    pub kind: RenderingMethodOption,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, CustomType)]

@@ -1,15 +1,23 @@
 //! This module defines the `Generator` struct, which is responsible for
 //! executing scripted commands
 
-use std::path::{Path, PathBuf};
 pub mod executer;
 pub mod template;
-use std::sync::Arc;
+
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use include_dir::{include_dir, Dir};
-use rhai::{Engine, Scope};
+use rhai::{export_module, exported_module, plugin::*, Dynamic, Engine, Scope};
 
-use crate::{settings, OS};
+use crate::{
+    settings,
+    settings::{Initializers, RenderingMethod},
+    wizard::RenderingMethodOption,
+    OS,
+};
 
 static APP_TEMPLATE: Dir<'_> = include_dir!("base_template");
 
@@ -68,7 +76,12 @@ impl Generator {
         );
         engine
             .build_type::<settings::Settings>()
-            .build_type::<settings::Initializers>()
+            .register_type_with_name::<Option<Initializers>>("Option<Initializers>")
+            .register_type_with_name::<Option<RenderingMethod>>("Option<RenderingMethod>")
+            .register_static_module(
+                "rhai_settings_extensions",
+                exported_module!(rhai_settings_extensions).into(),
+            )
             .register_fn("copy_file", Self::copy_file)
             .register_fn("create_file", Self::create_file)
             .register_fn("copy_files", Self::copy_files)
@@ -85,8 +98,6 @@ impl Generator {
         // TODO:: move it as part of the settings?
         scope.push("db", self.settings.db.is_some());
         scope.push("background", self.settings.background.is_some());
-        scope.push("initializers", self.settings.initializers.is_some());
-        scope.push("asset", self.settings.asset.is_some());
         scope.push("windows", self.settings.os == OS::Windows);
 
         engine.run_with_scope(&mut scope, script)?;
@@ -229,6 +240,34 @@ impl Generator {
                     err.into(),
                 ))
             })
+    }
+}
+
+/// This module provides extensions to the Rhai scripting language to access
+/// the inner fields of the [Settings] struct in a more ergonomic way.
+#[export_module]
+mod rhai_settings_extensions {
+
+    /// Gives the script access to `settings.initializers.view_engine`.
+    #[rhai_fn(global, get = "view_engine", pure)]
+    pub fn view_engine(initializers: &mut Option<Initializers>) -> bool {
+        initializers.as_ref().map_or(false, |i| i.view_engine)
+    }
+
+    /// Gives the script access to `settings.rendering_method.client_side`.
+    #[rhai_fn(global, get = "client_side", pure)]
+    pub fn client_side(rendering_method: &mut Option<RenderingMethod>) -> bool {
+        rendering_method.as_ref().map_or(false, |r| {
+            matches!(r.kind, RenderingMethodOption::Clientside)
+        })
+    }
+
+    /// Gives the script access to `settings.rendering_method.server_side`.
+    #[rhai_fn(global, get = "server_side", pure)]
+    pub fn server_side(rendering_method: &mut Option<RenderingMethod>) -> bool {
+        rendering_method.as_ref().map_or(false, |r| {
+            matches!(r.kind, RenderingMethodOption::Serverside)
+        })
     }
 }
 
