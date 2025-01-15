@@ -31,7 +31,7 @@ pub struct GenerateResults {
     rrgen: Vec<rrgen::GenResult>,
     local_templates: Vec<PathBuf>,
 }
-const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.46.0";
+const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.51.0";
 
 const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
     ("Docker", DeploymentKind::Docker),
