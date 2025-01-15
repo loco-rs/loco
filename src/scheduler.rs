@@ -6,12 +6,13 @@ use std::{
     fmt, io,
     path::{Path, PathBuf},
     sync::OnceLock,
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tokio_cron_scheduler::{JobScheduler, JobSchedulerError};
+use uuid::Uuid;
 
 use crate::{app::Hooks, environment::Environment, task::Tasks};
 
@@ -309,6 +310,23 @@ impl Scheduler {
                 })?
             };
 
+            if self.run_on_start.contains(job_name) {
+                let job_description = job_description.clone();
+                let job_name = job_name.to_string();
+                sched
+                    .add(tokio_cron_scheduler::Job::new_one_shot_async(
+                        Duration::from_secs(0),
+                        move |uuid, _l| {
+                            let job_description = job_description.clone();
+                            let job_name = job_name.clone();
+                            Box::pin(async move {
+                                execute_job(job_name.as_str(), uuid, &job_description);
+                            })
+                        },
+                    )?)
+                    .await?;
+            }
+
             let job_name = job_name.to_string();
             sched
                 .add(tokio_cron_scheduler::Job::new_async(
@@ -317,30 +335,7 @@ impl Scheduler {
                         let job_description = job_description.clone();
                         let job_name = job_name.to_string();
                         Box::pin(async move {
-                            let task_span = tracing::span!(
-                                tracing::Level::DEBUG,
-                                "run_job",
-                                job_name,
-                                job_id = ?uuid,
-                            );
-                            let start = Instant::now();
-                            let _guard = task_span.enter();
-                            match job_description.run() {
-                                Ok(output) => {
-                                    tracing::debug!(
-                                        duration = ?start.elapsed(),
-                                        status_code = output.status.code(),
-                                        "execute scheduler job finished"
-                                    );
-                                }
-                                Err(err) => {
-                                    tracing::error!(
-                                        duration = ?start.elapsed(),
-                                        error = %err,
-                                        "failed to execute scheduler job in sub process"
-                                    );
-                                }
-                            };
+                            execute_job(job_name.as_str(), uuid, &job_description);
                         })
                     },
                 )?)
@@ -354,30 +349,33 @@ impl Scheduler {
 
         Ok(())
     }
+}
 
-    /// Runs every task that is configured to run at start without scheduling them.
-    pub fn run_on_start(&self) {
-        for job_name in &self.run_on_start {
-            if let Some(job) = self.jobs.get(job_name) {
-                let job_description =
-                    job.prepare_command(&self.binary_path, &self.default_output, &self.environment);
-                match job_description.run() {
-                    Ok(output) => {
-                        tracing::info!(
-                            status_code = output.status.code(),
-                            "Executed job on start: {}",
-                            job_name
-                        );
-                    }
-                    Err(err) => {
-                        tracing::error!(error = %err, "Failed to execute job on start: {}", job_name);
-                    }
-                }
-            } else {
-                tracing::warn!("Job not found in run_on_start: {}", job_name);
-            }
+fn execute_job(job_name: &str, uuid: Uuid, job_description: &JobDescription) {
+    let task_span = tracing::span!(
+        tracing::Level::DEBUG,
+        "run_job",
+        job_name,
+        job_id = ?uuid,
+    );
+    let start = Instant::now();
+    let _guard = task_span.enter();
+    match job_description.run() {
+        Ok(output) => {
+            tracing::debug!(
+                duration = ?start.elapsed(),
+                status_code = output.status.code(),
+                "execute scheduler job finished"
+            );
         }
-    }
+        Err(err) => {
+            tracing::error!(
+                duration = ?start.elapsed(),
+                error = %err,
+                "failed to execute scheduler job in sub process"
+            );
+        }
+    };
 }
 
 #[cfg(test)]
@@ -484,6 +482,7 @@ mod tests {
             .drop(true)
             .add("scheduler.txt", "")
             .add("scheduler2.txt", "")
+            .add("scheduler3.txt", "")
             .create()
             .unwrap();
 
@@ -496,6 +495,13 @@ mod tests {
         );
         assert_eq!(
             std::fs::read_to_string(tree_fs.root.join("scheduler2.txt"))
+                .unwrap()
+                .lines()
+                .count(),
+            0
+        );
+        assert_eq!(
+            std::fs::read_to_string(tree_fs.root.join("scheduler3.txt"))
                 .unwrap()
                 .lines()
                 .count(),
@@ -529,7 +535,21 @@ mod tests {
                     output: None,
                 },
             ),
+            (
+                "test_3".to_string(),
+                Job {
+                    run: format!(
+                        "echo loco >> {}",
+                        tree_fs.root.join("scheduler3.txt").display()
+                    ),
+                    shell: true,
+                    cron: "0 0 * * * * *".to_string(),
+                    tags: None,
+                    output: None,
+                },
+            ),
         ]);
+        scheduler.run_on_start = vec!["test_3".to_string()];
 
         let handle = tokio::spawn(async move {
             scheduler.run().await.unwrap();
@@ -552,45 +572,8 @@ mod tests {
                 .count()
                 >= 4
         );
-    }
-
-    #[tokio::test]
-    async fn test_run_on_start() {
-        let tree_fs = tree_fs::TreeBuilder::default()
-            .drop(true)
-            .add("scheduler.txt", "")
-            .create()
-            .unwrap();
-
-        let environment = Environment::Development;
-
-        let job = Job {
-            run: format!(
-                "echo loco >> {}",
-                tree_fs.root.join("scheduler.txt").display()
-            ),
-            shell: true,
-            cron: "0 0 * * *".to_string(),
-            tags: None,
-            output: None,
-        };
-
-        const JOB_NAME: &str = "test_job";
-        let mut jobs = HashMap::new();
-        jobs.insert(JOB_NAME.to_string(), job);
-
-        let scheduler = Scheduler {
-            jobs,
-            run_on_start: vec![JOB_NAME.to_string()],
-            binary_path: PathBuf::from("/usr/bin"),
-            default_output: Output::STDOUT,
-            environment,
-        };
-
-        scheduler.run_on_start();
-
         assert!(
-            std::fs::read_to_string(tree_fs.root.join("scheduler.txt"))
+            std::fs::read_to_string(tree_fs.root.join("scheduler3.txt"))
                 .unwrap()
                 .lines()
                 .count()

@@ -219,8 +219,6 @@ pub async fn run_scheduler<H: Hooks>(
         println!("{scheduler}");
         Ok(())
     } else {
-        scheduler.run_on_start();
-
         Ok(scheduler.run().await?)
     }
 }
