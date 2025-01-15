@@ -355,7 +355,8 @@ impl Scheduler {
         Ok(())
     }
 
-    pub async fn run_on_start(&self) -> Result<()> {
+    /// Runs every task that is configured to run at start without scheduling them.
+    pub fn run_on_start(&self) {
         for job_name in &self.run_on_start {
             if let Some(job) = self.jobs.get(job_name) {
                 let job_description =
@@ -376,8 +377,6 @@ impl Scheduler {
                 tracing::warn!("Job not found in run_on_start: {}", job_name);
             }
         }
-
-        Ok(())
     }
 }
 
@@ -588,9 +587,8 @@ mod tests {
             environment,
         };
 
-        let result = scheduler.run_on_start().await;
+        scheduler.run_on_start();
 
-        assert!(result.is_ok());
         assert!(
             std::fs::read_to_string(tree_fs.root.join("scheduler.txt"))
                 .unwrap()
