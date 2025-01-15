@@ -54,7 +54,13 @@ pub mod model {
     feature = "openapi_redoc",
     feature = "openapi_scalar"
 ))]
-pub use utoipa::{path, OpenApi, ToSchema};
+pub use utoipa;
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
+pub use utoipa::{openapi::*, path, schema, OpenApi, ToSchema};
 #[cfg(any(
     feature = "openapi_swagger",
     feature = "openapi_redoc",
