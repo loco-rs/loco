@@ -44,9 +44,38 @@ async fn openapi(#[case] mut test_name: &str) {
     let ctx: AppContext = tests_cfg::app::get_app_context().await;
 
     match test_name {
-        "/redoc" => assert_eq!(ctx.config.server.openapi.redoc.url(), test_name),
-        "/scalar" => assert_eq!(ctx.config.server.openapi.scalar.url(), test_name),
-        _ => assert_eq!(ctx.config.server.openapi.swagger.url(), test_name),
+        "/redoc" => {
+            assert_eq!(
+                ctx.config
+                    .server
+                    .openapi
+                    .redoc
+                    .clone()
+                    .expect("redoc url is missing in test config")
+                    .url(),
+                test_name
+            )
+        }
+        "/scalar" => assert_eq!(
+            ctx.config
+                .server
+                .openapi
+                .scalar
+                .clone()
+                .expect("scalar url is missing in test config")
+                .url(),
+            test_name
+        ),
+        _ => assert_eq!(
+            ctx.config
+                .server
+                .openapi
+                .swagger
+                .clone()
+                .expect("swagger url is missing in test config")
+                .url(),
+            test_name
+        ),
     }
 
     let handle = infra_cfg::server::start_from_ctx(ctx).await;

@@ -250,11 +250,11 @@ impl AppRoutes {
         // Serve the OpenAPI spec using the enabled OpenAPI visualizers
         #[cfg(feature = "openapi_redoc")]
         {
-            if let OpenAPIType::Redoc {
+            if let Some(OpenAPIType::Redoc {
                 url,
                 spec_json_url,
                 spec_yaml_url,
-            } = ctx.config.server.openapi.redoc.clone()
+            }) = ctx.config.server.openapi.redoc.clone()
             {
                 app = app.merge(Redoc::with_url(url, openapi::get_openapi_spec().clone()));
                 app = openapi::add_openapi_endpoints(app, spec_json_url, spec_yaml_url);
@@ -263,11 +263,11 @@ impl AppRoutes {
 
         #[cfg(feature = "openapi_scalar")]
         {
-            if let OpenAPIType::Scalar {
+            if let Some(OpenAPIType::Scalar {
                 url,
                 spec_json_url,
                 spec_yaml_url,
-            } = ctx.config.server.openapi.scalar.clone()
+            }) = ctx.config.server.openapi.scalar.clone()
             {
                 app = app.merge(Scalar::with_url(url, openapi::get_openapi_spec().clone()));
                 app = openapi::add_openapi_endpoints(app, spec_json_url, spec_yaml_url);
@@ -276,11 +276,11 @@ impl AppRoutes {
 
         #[cfg(feature = "openapi_swagger")]
         {
-            if let OpenAPIType::Swagger {
+            if let Some(OpenAPIType::Swagger {
                 url,
                 spec_json_url,
                 spec_yaml_url,
-            } = ctx.config.server.openapi.swagger.clone()
+            }) = ctx.config.server.openapi.swagger.clone()
             {
                 app = app.merge(
                     SwaggerUi::new(url).url(spec_json_url, openapi::get_openapi_spec().clone()),

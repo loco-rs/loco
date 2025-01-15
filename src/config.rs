@@ -449,7 +449,7 @@ pub struct OpenAPI {
     ///   !Redoc
     ///     url: /redoc
     /// ```
-    pub redoc: OpenAPIType,
+    pub redoc: Option<OpenAPIType>,
     /// Scalar configuration
     /// Example:
     /// ```yaml
@@ -457,7 +457,7 @@ pub struct OpenAPI {
     ///   !Scalar
     ///     url: /scalar
     /// ```
-    pub scalar: OpenAPIType,
+    pub scalar: Option<OpenAPIType>,
     /// Swagger configuration
     /// Example:
     /// ```yaml
@@ -466,7 +466,7 @@ pub struct OpenAPI {
     ///    url: /swagger
     ///    spec_json_url: /openapi.json
     /// ```
-    pub swagger: OpenAPIType,
+    pub swagger: Option<OpenAPIType>,
 }
 
 #[cfg(any(

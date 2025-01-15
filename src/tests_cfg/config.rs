@@ -29,21 +29,21 @@ pub fn test_config() -> Config {
                 feature = "openapi_scalar"
             ))]
             openapi: config::OpenAPI {
-                redoc: config::OpenAPIType::Redoc {
+                redoc: Some(config::OpenAPIType::Redoc {
                     url: "/redoc".to_string(),
                     spec_json_url: Some("/redoc/openapi.json".to_string()),
                     spec_yaml_url: Some("/redoc/openapi.yaml".to_string()),
-                },
-                scalar: config::OpenAPIType::Scalar {
+                }),
+                scalar: Some(config::OpenAPIType::Scalar {
                     url: "/scalar".to_string(),
                     spec_json_url: Some("/scalar/openapi.json".to_string()),
                     spec_yaml_url: Some("/scalar/openapi.yaml".to_string()),
-                },
-                swagger: config::OpenAPIType::Swagger {
+                }),
+                swagger: Some(config::OpenAPIType::Swagger {
                     url: "/swagger-ui".to_string(),
                     spec_json_url: "/api-docs/openapi.json".to_string(),
                     spec_yaml_url: Some("/api-docs/openapi.yaml".to_string()),
-                },
+                }),
             },
         },
         #[cfg(feature = "with-db")]
