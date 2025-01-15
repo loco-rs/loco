@@ -28,7 +28,7 @@ pub fn set_jwt_location(jwt_location: JWTLocation) -> &'static JWTLocation {
 }
 
 fn get_jwt_location() -> &'static JWTLocation {
-    JWT_LOCATION.get().unwrap()
+    JWT_LOCATION.get().unwrap_or(&JWTLocation::Bearer)
 }
 
 pub struct SecurityAddon;
