@@ -4,7 +4,11 @@ on:
   push:
     branches:
       - master
+    paths:
+      - "loco-gen/**"
   pull_request:
+    paths:
+      - "loco-gen/**"
 
 env:
   RUST_TOOLCHAIN: stable

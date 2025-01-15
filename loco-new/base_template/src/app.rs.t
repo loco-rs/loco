@@ -21,7 +21,6 @@ use loco_rs::{
 };
 {%- if settings.db %}
 use migration::Migrator;
-use sea_orm::DatabaseConnection;
 {%- endif %}
 
 #[allow(unused_imports)]
@@ -99,23 +98,23 @@ impl Hooks for App {
     {%- if settings.db %}
 
     {%- if settings.auth %}
-    async fn truncate(db: &DatabaseConnection) -> Result<()> {
+    async fn truncate(ctx: &AppContext) -> Result<()> {
     {%- else %}
-    async fn truncate(_db: &DatabaseConnection) -> Result<()> {
+    async fn truncate(_ctx: &AppContext) -> Result<()> {
     {%- endif %} 
         {%- if settings.auth %}
-        truncate_table(db, users::Entity).await?;
+        truncate_table(&ctx.db, users::Entity).await?;
         {%- endif %}
         Ok(())
     }
 
     {%- if settings.auth %}
-    async fn seed(db: &DatabaseConnection, base: &Path) -> Result<()> {
+    async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
     {%- else %} 
-    async fn seed(_db: &DatabaseConnection, _base: &Path) -> Result<()> {
+    async fn seed(_ctx: &AppContext, _base: &Path) -> Result<()> {
     {%- endif %} 
         {%- if settings.auth %}
-        db::seed::<users::ActiveModel>(db, &base.join("users.yaml").display().to_string()).await?;
+        db::seed::<users::ActiveModel>(&ctx.db, &base.join("users.yaml").display().to_string()).await?;
         {%- endif %}
         Ok(())
     }

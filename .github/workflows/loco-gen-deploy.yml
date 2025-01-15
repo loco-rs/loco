@@ -1,0 +1,43 @@
+name: "[loco-gen-deploy]"
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+env:
+  RUST_TOOLCHAIN: stable
+  TOOLCHAIN_PROFILE: minimal
+
+jobs:
+  g-deploy-docker:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install seaorm cli
+        run: cargo install sea-orm-cli
+
+      - name: install 'loco new'
+        run: |
+          cargo install --path ./loco-new
+
+      - name: create myapp
+        run: |
+          loco new -n myapp --db sqlite --bg async --assets serverside -a
+
+      - name:
+        run: cargo loco generate deployment --kind docker && docker build -t demo .
+        working-directory: ./myapp
+

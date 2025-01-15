@@ -285,7 +285,7 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
         }
         RunDbCommand::Truncate => {
             tracing::warn!("truncate:");
-            H::truncate(&app_context.db).await?;
+            H::truncate(app_context).await?;
         }
         RunDbCommand::Seed {
             reset,
@@ -301,7 +301,7 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
                 if reset {
                     db::reset::<M>(&app_context.db).await?;
                 }
-                db::run_app_seed::<H>(&app_context.db, &from).await?;
+                db::run_app_seed::<H>(app_context, &from).await?;
             }
         }
         RunDbCommand::Schema => {
@@ -364,7 +364,7 @@ pub async fn create_app<H: Hooks, M: MigratorTrait>(
     config: Config,
 ) -> Result<BootResult> {
     let app_context = create_context::<H>(environment, config).await?;
-    db::converge::<H, M>(&app_context.db, &app_context.config.database).await?;
+    db::converge::<H, M>(&app_context, &app_context.config.database).await?;
 
     if let (Some(queue), Some(config)) = (&app_context.queue_provider, &app_context.config.queue) {
         bgworker::converge(queue, config).await?;

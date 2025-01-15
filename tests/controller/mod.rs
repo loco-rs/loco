@@ -6,3 +6,4 @@ mod middlewares;
     feature = "openapi_scalar"
 ))]
 mod openapi;
+mod validation_extractor;

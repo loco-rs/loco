@@ -99,3 +99,73 @@ fn can_generate_nginx() {
             .expect("nginx config missing")
     );
 }
+
+#[test]
+fn can_generate_shuttle() {
+    let mut settings = insta::Settings::clone_current();
+    settings.set_prepend_module_to_snapshot(false);
+    settings.set_snapshot_suffix("deployment");
+    let _guard = settings.bind_to_scope();
+
+    let component = Component::Deployment {
+        kind: DeploymentKind::Shuttle,
+        fallback_file: None,
+        asset_folder: None,
+        host: "localhost".to_string(),
+        port: 8080,
+    };
+
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add(
+            ".cargo/config.toml",
+            r#"[alias]
+loco = "run --"
+loco-tool = "run --"
+
+playground = "run --example playground"
+"#,
+        )
+        .add(
+            "Cargo.toml",
+            r"
+[dependencies]
+
+[dev-dependencies]
+
+",
+        )
+        .create()
+        .unwrap();
+    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+
+    let gen_result = generate(
+        &rrgen,
+        component,
+        &AppInfo {
+            app_name: "tester".to_string(),
+        },
+    )
+    .expect("Generation failed");
+
+    assert_eq!(
+        collect_messages(&gen_result),
+        r"* Shuttle.toml file created successfully
+* Shuttle deployment ready do use
+"
+    );
+    assert_snapshot!(
+        "generate[shuttle.rs]",
+        fs::read_to_string(tree_fs.root.join("src").join("bin").join("shuttle.rs"))
+            .expect("shuttle rs missing")
+    );
+    assert_snapshot!(
+        "inject[.config_toml]",
+        fs::read_to_string(tree_fs.root.join(".cargo").join("config.toml"))
+            .expect(".cargo/config.toml not exists")
+    );
+    assert_snapshot!(
+        "inject[cargo_toml]",
+        fs::read_to_string(tree_fs.root.join("Cargo.toml")).expect("cargo.toml not exists")
+    );
+}
