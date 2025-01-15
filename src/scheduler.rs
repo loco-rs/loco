@@ -58,6 +58,8 @@ pub struct Config {
     /// The default output setting for the jobs.
     #[serde(default)]
     pub output: Output,
+    #[serde(default)]
+    pub run_on_start: Vec<String>,
 }
 
 /// Representing a single job in the scheduler.
@@ -116,6 +118,7 @@ impl fmt::Display for Scheduler {
 #[derive(Clone, Debug)]
 pub struct Scheduler {
     pub jobs: HashMap<String, Job>,
+    pub run_on_start: Vec<String>,
     binary_path: PathBuf,
     default_output: Output,
     environment: Environment,
@@ -252,6 +255,7 @@ impl Scheduler {
 
         Ok(Self {
             jobs,
+            run_on_start: data.run_on_start.clone(),
             binary_path: std::env::current_exe()?,
             default_output: data.output.clone(),
             environment: environment.clone(),
@@ -350,11 +354,35 @@ impl Scheduler {
 
         Ok(())
     }
+
+    pub async fn run_on_start(&self) -> Result<()> {
+        for job_name in &self.run_on_start {
+            if let Some(job) = self.jobs.get(job_name) {
+                let job_description =
+                    job.prepare_command(&self.binary_path, &self.default_output, &self.environment);
+                match job_description.run() {
+                    Ok(output) => {
+                        tracing::info!(
+                            status_code = output.status.code(),
+                            "Executed job on start: {}",
+                            job_name
+                        );
+                    }
+                    Err(err) => {
+                        tracing::error!(error = %err, "Failed to execute job on start: {}", job_name);
+                    }
+                }
+            } else {
+                tracing::warn!("Job not found in run_on_start: {}", job_name);
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
-
     use insta::assert_debug_snapshot;
     use rstest::rstest;
     use tests_cfg::db::AppHook;
@@ -524,6 +552,51 @@ mod tests {
                 .lines()
                 .count()
                 >= 4
+        );
+    }
+
+    #[tokio::test]
+    async fn test_run_on_start() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .add("scheduler.txt", "")
+            .create()
+            .unwrap();
+
+        let environment = Environment::Development;
+
+        let job = Job {
+            run: format!(
+                "echo loco >> {}",
+                tree_fs.root.join("scheduler.txt").display()
+            ),
+            shell: true,
+            cron: "0 0 * * *".to_string(),
+            tags: None,
+            output: None,
+        };
+
+        const JOB_NAME: &str = "test_job";
+        let mut jobs = HashMap::new();
+        jobs.insert(JOB_NAME.to_string(), job);
+
+        let scheduler = Scheduler {
+            jobs,
+            run_on_start: vec![JOB_NAME.to_string()],
+            binary_path: PathBuf::from("/usr/bin"),
+            default_output: Output::STDOUT,
+            environment,
+        };
+
+        let result = scheduler.run_on_start().await;
+
+        assert!(result.is_ok());
+        assert!(
+            std::fs::read_to_string(tree_fs.root.join("scheduler.txt"))
+                .unwrap()
+                .lines()
+                .count()
+                >= 1
         );
     }
 }
