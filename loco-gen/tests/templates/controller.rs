@@ -9,6 +9,7 @@ use std::fs;
 #[case(ScaffoldKind::Api)]
 #[case(ScaffoldKind::Html)]
 #[case(ScaffoldKind::Htmx)]
+#[case(ScaffoldKind::OpenApi)]
 #[test]
 fn can_generate(#[case] kind: ScaffoldKind) {
     let actions = vec!["GET".to_string(), "POST".to_string()];
@@ -59,7 +60,7 @@ fn can_generate(#[case] kind: ScaffoldKind) {
             .expect("app.rs injection failed")
     );
 
-    if matches!(kind, ScaffoldKind::Api) {
+    if matches!(kind, ScaffoldKind::Api | ScaffoldKind::OpenApi) {
         let test_controllers_path = tree_fs.root.join("tests").join("requests");
         assert_snapshot!(
             "generate[tests_controller_mod_rs]",

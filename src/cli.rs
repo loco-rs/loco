@@ -306,6 +306,9 @@ After running the migration, follow these steps to complete the process:
         /// Use API controller actions
         #[clap(long, group = "scaffold_kind_group")]
         api: bool,
+
+        #[clap(long, group = "scaffold_kind_group")]
+        openapi: bool,
     },
     /// Generate a Task based on the given name
     Task {
@@ -380,7 +383,7 @@ impl ComponentArg {
                     ScaffoldKind::Api
                 } else {
                     return Err(crate::Error::string(
-                        "Error: One of `kind`, `htmx`, `html`, or `api` must be specified.",
+                        "Error: One of `kind`, `htmx`, `html`, `api`, or `openapi` must be specified.",
                     ));
                 };
 
@@ -393,6 +396,7 @@ impl ComponentArg {
                 htmx,
                 html,
                 api,
+                openapi,
             } => {
                 let kind = if let Some(kind) = kind {
                     kind
@@ -402,9 +406,11 @@ impl ComponentArg {
                     ScaffoldKind::Html
                 } else if api {
                     ScaffoldKind::Api
+                } else if openapi {
+                    ScaffoldKind::OpenApi
                 } else {
                     return Err(crate::Error::string(
-                        "Error: One of `kind`, `htmx`, `html`, or `api` must be specified.",
+                        "Error: One of `kind`, `htmx`, `html`, `api`, or `openapi` must be specified.",
                     ));
                 };
 
