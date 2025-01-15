@@ -31,7 +31,7 @@ Create movie
     htmx.defineExtension('submitjson', {
         onEvent: function (name, evt) {
             if (name === "htmx:configRequest") {
-                evt.detail.headers['Content-Type'] = "application/json"
+                evt.detail.headers['Content-Type'] = "application/json";
             }
         },
         encodeParameters: function (xhr, parameters, elt) {
@@ -46,8 +46,34 @@ Create movie
                     json[key] = value;
                 }
             }
+
+            elt.querySelectorAll('[name]').forEach(input => {
+                if (input.name.endsWith('[]')) {
+                    const group = input.name.split('[')[0]; // Extract group name
+
+                    if (!json[group]) {
+                        json[group] = [];
+                    }
+                    json[group].push(input.value);
+                }
+            });
+
             return JSON.stringify(json);
         }
-    })
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.add-more').forEach(button => {
+            button.addEventListener('click', function () {
+                const group = this.getAttribute('data-group');
+                const container = document.getElementById(`${group}-inputs`);
+                const newInput = document.createElement('input');
+                newInput.type = 'text';
+                newInput.name = `${group}[]`;
+                newInput.placeholder = `Enter another ${group} value`;
+                container.appendChild(newInput);
+            });
+        });
+    });
 </script>
 {% endblock js %}

@@ -23,6 +23,7 @@ regex = { workspace = true }
 tracing = { workspace = true }
 chrono = { workspace = true }
 colored = { workspace = true }
+heck = { workspace = true }
 
 clap = { version = "4.4.7", features = ["derive"] }
 duct = "0.13"

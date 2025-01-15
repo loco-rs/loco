@@ -49,6 +49,60 @@
       "col_type": "Text"
     },
     {
+      "name": "tiny_unsigned",
+      "rust": "Option<i16>",
+      "schema": "tiny_unsigned_null",
+      "col_type": "TinyUnsignedNull"
+    },
+    {
+      "name": "tiny_unsigned!",
+      "rust": "i16",
+      "schema": "tiny_unsigned",
+      "col_type": "TinyUnsigned"
+    },
+    {
+      "name": "tiny_unsigned^",
+      "rust": "i16",
+      "schema": "tiny_unsigned_uniq",
+      "col_type": "TinyUnsignedUniq"
+    },
+    {
+      "name": "small_unsigned",
+      "rust": "Option<i16>",
+      "schema": "small_unsigned_null",
+      "col_type": "SmallUnsignedNull"
+    },
+    {
+      "name": "small_unsigned!",
+      "rust": "i16",
+      "schema": "small_unsigned",
+      "col_type": "SmallUnsigned"
+    },
+    {
+      "name": "small_unsigned^",
+      "rust": "i16",
+      "schema": "small_unsigned_uniq",
+      "col_type": "SmallUnsignedUniq"
+    },
+    {
+      "name": "big_unsigned",
+      "rust": "Option<i64>",
+      "schema": "big_unsigned_null",
+      "col_type": "BigUnsignedNull"
+    },
+    {
+      "name": "big_unsigned!",
+      "rust": "i64",
+      "schema": "big_unsigned",
+      "col_type": "BigUnsigned"
+    },
+    {
+      "name": "big_unsigned^",
+      "rust": "i64",
+      "schema": "big_unsigned_uniq",
+      "col_type": "BigUnsignedUniq"
+    },
+    {
       "name": "tiny_int",
       "rust": "Option<i16>",
       "schema": "tiny_integer_null",
@@ -161,14 +215,14 @@
       "rust": "Option<Decimal>",
       "schema": "decimal_len_null",
       "col_type": "DecimalLenNull",
-      "arity":2
+      "arity": 2
     },
     {
       "name": "decimal_len!",
       "rust": "Decimal",
       "schema": "decimal_len",
       "col_type": "DecimalLen",
-      "arity":2
+      "arity": 2
     },
     {
       "name": "bool",
@@ -205,6 +259,30 @@
       "rust": "Date",
       "schema": "date",
       "col_type": "Date"
+    },
+    {
+      "name": "date^",
+      "rust": "Date",
+      "schema": "date_uniq",
+      "col_type": "DateUniq"
+    },
+    {
+      "name": "date_time",
+      "rust": "Option<DateTime>",
+      "schema": "date_time_null",
+      "col_type": "DateTimeNull"
+    },
+    {
+      "name": "date_time!",
+      "rust": "DateTime",
+      "schema": "date_time",
+      "col_type": "DateTime"
+    },
+    {
+      "name": "date_time^",
+      "rust": "DateTime",
+      "schema": "date_time_uniq",
+      "col_type": "DateTimeUniq"
     },
     {
       "name": "ts",
@@ -265,6 +343,144 @@
       "rust": "Decimal",
       "schema": "money",
       "col_type": "Money"
+    },
+    {
+      "name": "money^",
+      "rust": "Decimal",
+      "schema": "money_uniq",
+      "col_type": "MoneyUniq"
+    },
+    {
+      "name": "unsigned!",
+      "rust": "i32",
+      "schema": "unsigned",
+      "col_type": "Unsigned"
+    },
+    {
+      "name": "unsigned",
+      "rust": "Option<i32>",
+      "schema": "unsigned_null",
+      "col_type": "UnsignedNull"
+    },
+    {
+      "name": "unsigned^",
+      "rust": "i32",
+      "schema": "unsigned_uniq",
+      "col_type": "UnsignedUniq"
+    },
+    {
+      "name": "binary_len!",
+      "rust": "Vec<u8>",
+      "schema": "binary_len",
+      "col_type": "BinaryLen",
+      "arity": 1
+    },
+    {
+      "name": "binary_len",
+      "rust": "Option<Vec<u8>>",
+      "schema": "binary_len_null",
+      "col_type": "BinaryLenNull",
+      "arity": 1
+    },
+    {
+      "name": "binary_len^",
+      "rust": "Vec<u8>",
+      "schema": "binary_len_uniq",
+      "col_type": "BinaryLenUniq",
+      "arity": 1
+    },
+    {
+      "name": "var_binary!",
+      "rust": "Vec<u8>",
+      "schema": "var_binary",
+      "col_type": "VarBinary",
+      "arity": 1
+    },
+    {
+      "name": "var_binary",
+      "rust": "Option<Vec<u8>>",
+      "schema": "var_binary_null",
+      "col_type": "VarBinaryNull",
+      "arity": 1
+    },
+    {
+      "name": "var_binary^",
+      "rust": "Vec<u8>",
+      "schema": "var_binary_uniq",
+      "col_type": "VarBinaryUniq",
+      "arity": 1
+    },
+    {
+      "name": "varbit_len!",
+      "rust": "Vec<u8>",
+      "schema": "varbit",
+      "col_type": "VarBitLen",
+      "arity": 1
+    },
+    {
+      "name": "varbit_len",
+      "rust": "Option<Vec<u8>>",
+      "schema": "varbit_null",
+      "col_type": "VarBitLenNull",
+      "arity": 1
+    },
+    {
+      "name": "varbit_len^",
+      "rust": "Vec<u8>",
+      "schema": "varbit_uniq",
+      "col_type": "VarBitLenUniq",
+      "arity": 1
+    },
+    {
+      "name": "array!",
+      "rust": {
+        "string": "Vec<String>",
+        "char": "Vec<String>",
+        "text": "Vec<String>",
+        "float": "Vec<f32>",
+        "int": "Vec<i32>",
+        "small_int": "Vec<i16>",
+        "big_int": "Vec<i64>",
+        "double": "Vec<f64>",
+        "bool": "Vec<bool>"
+      },
+      "schema": "array",
+      "col_type": "array",
+      "arity": 1
+    },
+    {
+      "name": "array",
+      "rust": {
+        "string": "Option<Vec<String>>",
+        "char": "Option<Vec<String>>",
+        "text": "Option<Vec<String>>",
+        "float": "Option<Vec<f32>>",
+        "int": "Option<Vec<i32>>",
+        "small_int": "Option<Vec<i16>>",
+        "big_int": "Option<Vec<i64>>",
+        "double": "Option<Vec<f64>>",
+        "bool": "Option<Vec<bool>>"
+      },
+      "schema": "array",
+      "col_type": "array_null",
+      "arity": 1
+    },
+    {
+      "name": "array^",
+      "rust": {
+        "string": "Vec<String>",
+        "char": "Vec<String>",
+        "text": "Vec<String>",
+        "float": "Vec<f32>",
+        "int": "Vec<i32>",
+        "small_int": "Vec<i16>",
+        "big_int": "Vec<i64>",
+        "double": "Vec<f64>",
+        "bool": "Vec<bool>"
+      },
+      "schema": "array",
+      "col_type": "array_uniq",
+      "arity": 1
     }
   ]
 }

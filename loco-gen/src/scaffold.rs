@@ -41,24 +41,12 @@ pub fn generate(
             }
             crate::infer::FieldType::Type(ftype) => {
                 let mappings = get_mappings();
-                let rust_type = mappings.rust_field(ftype.as_str()).ok_or_else(|| {
-                    Error::Message(format!(
-                        "type: `{}` not found. try any of: {:?}",
-                        ftype,
-                        mappings.schema_fields()
-                    ))
-                })?;
+                let rust_type = mappings.rust_field(ftype.as_str())?;
                 columns.push((fname.to_string(), rust_type.to_string(), ftype));
             }
             crate::infer::FieldType::TypeWithParameters(ftype, params) => {
                 let mappings = get_mappings();
-                let rust_type = mappings.rust_field(ftype.as_str()).ok_or_else(|| {
-                    Error::Message(format!(
-                        "type: `{}` not found. try any of: {:?}",
-                        ftype,
-                        mappings.schema_fields()
-                    ))
-                })?;
+                let rust_type = mappings.rust_field_with_params(ftype.as_str(), &params)?;
                 let arity = mappings.col_type_arity(ftype.as_str()).unwrap_or_default();
                 if params.len() != arity {
                     return Err(Error::Message(format!(
