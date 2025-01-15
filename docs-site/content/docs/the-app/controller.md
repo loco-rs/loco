@@ -113,7 +113,7 @@ Note that by-design _sharing state between controllers and workers have no meani
 
 ### Shared state in tasks
 
-Tasks don't really have a value for shared state, as they have a similar life as any exec'd binary. The process fires up, boots, creates all resources needed (connects to db, etc.), performs the task logic, and then the 
+Tasks don't really have a value for shared state, as they have a similar life as any exec'd binary. The process fires up, boots, creates all resources needed (connects to db, etc.), performs the task logic, and then the
 
 ## Routes in Controllers
 
@@ -416,7 +416,7 @@ By default, Loco uses Bearer authentication for JWT. However, you can customize 
   auth:
     # JWT authentication
     jwt:
-      location: 
+      location:
         from: Cookie
         name: token
   ...
@@ -427,7 +427,7 @@ By default, Loco uses Bearer authentication for JWT. However, you can customize 
   auth:
     # JWT authentication
     jwt:
-      location: 
+      location:
         from: Query
         name: token
   ...
@@ -700,7 +700,7 @@ middlewares:
 ```
 
 ## CORS
-This middleware enables Cross-Origin Resource Sharing (CORS) by allowing configurable origins, methods, and headers in HTTP requests. 
+This middleware enables Cross-Origin Resource Sharing (CORS) by allowing configurable origins, methods, and headers in HTTP requests.
 It can be tailored to fit various application requirements, supporting permissive CORS or specific rules as defined in the middleware configuration.
 
 ```yaml
@@ -765,17 +765,20 @@ impl Hooks for App {
 ```
 
 # OpenAPI Integration Setup
-The Loco OpenAPI integration is generated using [`Utopia`](https://github.com/juhaku/utoipa)
+The Loco OpenAPI integration is generated using [`Utoipa`](https://github.com/juhaku/utoipa)
 
 ## `Cargo.toml` features flages
 Edit your `Cargo.toml` file and add one or multiple of the following features flages:
-- `swagger-ui`
-- `redoc`
-- `scalar`
+- `openapi_swagger`
+- `openapi_redoc`
+- `openapi_scalar`
 - `all_openapi`
 
 ```toml
-loco-rs = { version = "0.13", features = ["scalar"] }
+[workspace.dependencies]
+loco-rs = { version = "0.14", features = [
+    "openapi_scalar",
+] }
 ```
 
 ## Configuration
@@ -806,7 +809,6 @@ Modifies the OpenAPI spec before the routes are added, allowing you to edit [`op
 
 ```rust
 // src/app.rs
-use utoipa::OpenApi;
 use loco_rs::auth::openapi::{set_jwt_location_ctx, SecurityAddon};
 
 impl Hooks for App {
@@ -848,8 +850,6 @@ async fn get_action_openapi() -> Result<Response> {
 
 Make sure to add `#[derive(ToSchema)]` on any struct that included in [`utoipa::path`](https://docs.rs/utoipa/latest/utoipa/attr.path.html).
 ```rust
-use utoipa::ToSchema;
-
 #[derive(Serialize, Debug, ToSchema)]
 pub struct Album {
     title: String,
@@ -883,8 +883,6 @@ Routes::new()
 ```
 ### After
 ```rust
-use utoipa_axum::routes;
-
 Routes::new()
     .add("/album", routes!(get_action_openapi)),
 ```
@@ -990,7 +988,7 @@ impl PaginationResponse {
 ```
 
 
-# Testing 
+# Testing
 When testing controllers, the goal is to call the router's controller endpoint and verify the HTTP response, including the status code, response content, headers, and more.
 
 To initialize a test request, use `use loco_rs::testing::prelude::*;`, which prepares your app routers, providing the request instance and the application context.

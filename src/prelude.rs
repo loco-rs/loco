@@ -48,5 +48,18 @@ pub use crate::{
 pub mod model {
     pub use crate::model::query;
 }
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
+pub use utoipa::{path, OpenApi, ToSchema};
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
+pub use utoipa_axum::routes;
+
 #[cfg(feature = "testing")]
 pub use crate::testing::prelude::*;
