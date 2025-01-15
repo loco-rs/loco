@@ -6,12 +6,13 @@ use std::{
     fmt, io,
     path::{Path, PathBuf},
     sync::OnceLock,
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tokio_cron_scheduler::{JobScheduler, JobSchedulerError};
+use uuid::Uuid;
 
 use crate::{app::Hooks, environment::Environment, task::Tasks};
 
@@ -58,6 +59,8 @@ pub struct Config {
     /// The default output setting for the jobs.
     #[serde(default)]
     pub output: Output,
+    #[serde(default)]
+    pub run_on_start: Vec<String>,
 }
 
 /// Representing a single job in the scheduler.
@@ -116,6 +119,7 @@ impl fmt::Display for Scheduler {
 #[derive(Clone, Debug)]
 pub struct Scheduler {
     pub jobs: HashMap<String, Job>,
+    pub run_on_start: Vec<String>,
     binary_path: PathBuf,
     default_output: Output,
     environment: Environment,
@@ -252,6 +256,7 @@ impl Scheduler {
 
         Ok(Self {
             jobs,
+            run_on_start: data.run_on_start.clone(),
             binary_path: std::env::current_exe()?,
             default_output: data.output.clone(),
             environment: environment.clone(),
@@ -305,6 +310,23 @@ impl Scheduler {
                 })?
             };
 
+            if self.run_on_start.contains(job_name) {
+                let job_description = job_description.clone();
+                let job_name = job_name.to_string();
+                sched
+                    .add(tokio_cron_scheduler::Job::new_one_shot_async(
+                        Duration::from_secs(0),
+                        move |uuid, _l| {
+                            let job_description = job_description.clone();
+                            let job_name = job_name.clone();
+                            Box::pin(async move {
+                                execute_job(job_name.as_str(), uuid, &job_description);
+                            })
+                        },
+                    )?)
+                    .await?;
+            }
+
             let job_name = job_name.to_string();
             sched
                 .add(tokio_cron_scheduler::Job::new_async(
@@ -313,30 +335,7 @@ impl Scheduler {
                         let job_description = job_description.clone();
                         let job_name = job_name.to_string();
                         Box::pin(async move {
-                            let task_span = tracing::span!(
-                                tracing::Level::DEBUG,
-                                "run_job",
-                                job_name,
-                                job_id = ?uuid,
-                            );
-                            let start = Instant::now();
-                            let _guard = task_span.enter();
-                            match job_description.run() {
-                                Ok(output) => {
-                                    tracing::debug!(
-                                        duration = ?start.elapsed(),
-                                        status_code = output.status.code(),
-                                        "execute scheduler job finished"
-                                    );
-                                }
-                                Err(err) => {
-                                    tracing::error!(
-                                        duration = ?start.elapsed(),
-                                        error = %err,
-                                        "failed to execute scheduler job in sub process"
-                                    );
-                                }
-                            };
+                            execute_job(job_name.as_str(), uuid, &job_description);
                         })
                     },
                 )?)
@@ -352,9 +351,35 @@ impl Scheduler {
     }
 }
 
+fn execute_job(job_name: &str, uuid: Uuid, job_description: &JobDescription) {
+    let task_span = tracing::span!(
+        tracing::Level::DEBUG,
+        "run_job",
+        job_name,
+        job_id = ?uuid,
+    );
+    let start = Instant::now();
+    let _guard = task_span.enter();
+    match job_description.run() {
+        Ok(output) => {
+            tracing::debug!(
+                duration = ?start.elapsed(),
+                status_code = output.status.code(),
+                "execute scheduler job finished"
+            );
+        }
+        Err(err) => {
+            tracing::error!(
+                duration = ?start.elapsed(),
+                error = %err,
+                "failed to execute scheduler job in sub process"
+            );
+        }
+    };
+}
+
 #[cfg(test)]
 mod tests {
-
     use insta::assert_debug_snapshot;
     use rstest::rstest;
     use tests_cfg::db::AppHook;
@@ -457,6 +482,7 @@ mod tests {
             .drop(true)
             .add("scheduler.txt", "")
             .add("scheduler2.txt", "")
+            .add("scheduler3.txt", "")
             .create()
             .unwrap();
 
@@ -469,6 +495,13 @@ mod tests {
         );
         assert_eq!(
             std::fs::read_to_string(tree_fs.root.join("scheduler2.txt"))
+                .unwrap()
+                .lines()
+                .count(),
+            0
+        );
+        assert_eq!(
+            std::fs::read_to_string(tree_fs.root.join("scheduler3.txt"))
                 .unwrap()
                 .lines()
                 .count(),
@@ -502,7 +535,21 @@ mod tests {
                     output: None,
                 },
             ),
+            (
+                "test_3".to_string(),
+                Job {
+                    run: format!(
+                        "echo loco >> {}",
+                        tree_fs.root.join("scheduler3.txt").display()
+                    ),
+                    shell: true,
+                    cron: "0 0 * * * * *".to_string(),
+                    tags: None,
+                    output: None,
+                },
+            ),
         ]);
+        scheduler.run_on_start = vec!["test_3".to_string()];
 
         let handle = tokio::spawn(async move {
             scheduler.run().await.unwrap();
@@ -524,6 +571,13 @@ mod tests {
                 .lines()
                 .count()
                 >= 4
+        );
+        assert!(
+            std::fs::read_to_string(tree_fs.root.join("scheduler3.txt"))
+                .unwrap()
+                .lines()
+                .count()
+                >= 1
         );
     }
 }

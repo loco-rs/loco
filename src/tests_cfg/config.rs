@@ -58,6 +58,7 @@ pub fn test_config() -> Config {
             )]),
 
             output: scheduler::Output::STDOUT,
+            run_on_start: vec![],
         }),
     }
 }
