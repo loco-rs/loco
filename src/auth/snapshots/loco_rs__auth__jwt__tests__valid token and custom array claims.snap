@@ -21,7 +21,13 @@ Ok(
         claims: UserClaims {
             pid: "pid",
             exp: EXP,
-            claims: {},
+            claims: {
+                "array": Array [
+                    Number(1),
+                    Number(2),
+                    Number(3),
+                ],
+            },
         },
     },
 )
