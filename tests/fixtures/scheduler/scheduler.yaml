@@ -18,8 +18,6 @@ jobs:
     run: "echo \"Does this run on start?\" >> ./run_on_start.txt "
     shell: true
     schedule: "every 24 hours"
+    run_on_start: true
     tags:
       - start
-
-run_on_start:
-  - run_on_start_task

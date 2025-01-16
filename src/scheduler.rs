@@ -59,8 +59,6 @@ pub struct Config {
     /// The default output setting for the jobs.
     #[serde(default)]
     pub output: Output,
-    #[serde(default)]
-    pub run_on_start: Vec<String>,
 }
 
 /// Representing a single job in the scheduler.
@@ -72,6 +70,8 @@ pub struct Job {
     pub run: String,
     #[serde(default)]
     pub shell: bool,
+    #[serde(default)]
+    pub run_on_start: bool,
     #[serde(rename = "schedule")]
     /// The cron expression defining the job's schedule.
     ///
@@ -89,7 +89,7 @@ impl fmt::Display for Scheduler {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(
             f,
-            "#      job_name        schedule               tags               run"
+            "#      job_name       run_on_start      schedule               tags               run"
         )?;
 
         let mut job_names: Vec<&String> = self.jobs.keys().collect();
@@ -99,9 +99,10 @@ impl fmt::Display for Scheduler {
             if let Some(job) = self.jobs.get(job_name) {
                 writeln!(
                     f,
-                    "{:<6} {:<15} {:<22} {:<18} {:?}",
+                    "{:<6} {:<15} {:<12} {:<22} {:<18} {:?}",
                     index + 1,
                     job_name,
+                    job.run_on_start,
                     job.cron,
                     job.tags
                         .as_ref()
@@ -119,7 +120,6 @@ impl fmt::Display for Scheduler {
 #[derive(Clone, Debug)]
 pub struct Scheduler {
     pub jobs: HashMap<String, Job>,
-    pub run_on_start: Vec<String>,
     binary_path: PathBuf,
     default_output: Output,
     environment: Environment,
@@ -256,7 +256,6 @@ impl Scheduler {
 
         Ok(Self {
             jobs,
-            run_on_start: data.run_on_start.clone(),
             binary_path: std::env::current_exe()?,
             default_output: data.output.clone(),
             environment: environment.clone(),
@@ -310,7 +309,7 @@ impl Scheduler {
                 })?
             };
 
-            if self.run_on_start.contains(job_name) {
+            if job.run_on_start {
                 let job_description = job_description.clone();
                 let job_name = job_name.to_string();
                 sched
@@ -458,6 +457,7 @@ mod tests {
         let job = Job {
             run: run.to_string(),
             shell,
+            run_on_start: false,
             cron: "*/5 * * * * *".to_string(),
             tags: None,
             output: None,
@@ -517,6 +517,7 @@ mod tests {
                         tree_fs.root.join("scheduler.txt").display()
                     ),
                     shell: true,
+                    run_on_start: false,
                     cron: "run every 1 second".to_string(),
                     tags: None,
                     output: None,
@@ -530,6 +531,7 @@ mod tests {
                         tree_fs.root.join("scheduler2.txt").display()
                     ),
                     shell: true,
+                    run_on_start: false,
                     cron: "* * * * * ? *".to_string(),
                     tags: None,
                     output: None,
@@ -543,13 +545,13 @@ mod tests {
                         tree_fs.root.join("scheduler3.txt").display()
                     ),
                     shell: true,
+                    run_on_start: true,
                     cron: "0 0 * * * * *".to_string(),
                     tags: None,
                     output: None,
                 },
             ),
         ]);
-        scheduler.run_on_start = vec!["test_3".to_string()];
 
         let handle = tokio::spawn(async move {
             scheduler.run().await.unwrap();
@@ -572,12 +574,12 @@ mod tests {
                 .count()
                 >= 4
         );
-        assert!(
+        assert_eq!(
             std::fs::read_to_string(tree_fs.root.join("scheduler3.txt"))
                 .unwrap()
                 .lines()
-                .count()
-                >= 1
+                .count(),
+            1
         );
     }
 }
