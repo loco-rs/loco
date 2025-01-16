@@ -195,10 +195,10 @@ tower-http = { version = "0.6.1", features = [
 
 # OpenAPI
 utoipa = { version = "5.0.0", features = ["yaml"] }
-utoipa-axum = { version = "0.1.0" }
-utoipa-swagger-ui = { version = "8.0", features = ["axum", "vendored"] }
-utoipa-redoc = { version = "5.0.0", features = ["axum"] }
-utoipa-scalar = { version = "0.2.0", features = ["axum"] }
+utoipa-axum = { version = "0.2.0" }
+utoipa-swagger-ui = { version = "9.0", features = ["axum", "vendored"] }
+utoipa-redoc = { version = "6.0.0", features = ["axum"] }
+utoipa-scalar = { version = "0.3.0", features = ["axum"] }
 
 [dependencies.sea-orm-migration]
 optional = true
