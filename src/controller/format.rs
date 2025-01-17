@@ -20,6 +20,7 @@
 //!    format::json(Health { ok: true })
 //! }
 //! ```
+use std::convert::TryInto;
 
 use axum::{
     body::Body,
@@ -350,10 +351,23 @@ impl RenderBuilder {
     ///
     /// This function will return an error if IO fails
     pub fn redirect(self, to: &str) -> Result<Response> {
+        self.redirect_with_header_key(header::LOCATION, to)
+    }
+
+    /// Finalizes the HTTP response and redirects to a specified location using a dynamic header key.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if IO fails
+    pub fn redirect_with_header_key<K>(self, key: K, to: &str) -> Result<Response>
+    where
+        K: TryInto<HeaderName>,
+        <K as TryInto<HeaderName>>::Error: Into<axum::http::Error>,
+    {
         Ok(self
             .response
             .status(StatusCode::SEE_OTHER)
-            .header(header::LOCATION, to)
+            .header(key, to)
             .body(Body::empty())?)
     }
 }
@@ -601,6 +615,16 @@ mod tests {
     #[tokio::test]
     async fn builder_redirect_response() {
         let response = render().redirect("https://loco.rs").unwrap();
+
+        assert_debug_snapshot!(response);
+        assert_eq!(response_body_to_string(response).await, String::new());
+    }
+
+    #[tokio::test]
+    async fn builder_redirect_with_custom_header_response() {
+        let response = render()
+            .redirect_with_header_key("HX-Redirect", "https://loco.rs")
+            .unwrap();
 
         assert_debug_snapshot!(response);
         assert_eq!(response_body_to_string(response).await, String::new());
