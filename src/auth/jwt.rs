@@ -18,11 +18,6 @@ pub struct UserClaims {
     pub pid: String,
     exp: u64,
     #[serde(default, flatten)]
-    // TODO: should we wrap this in an Option? `Option<Map<String, Value>>`
-    // so we can use `auth::jwt::JWT::new("PqRwLF2rhHe8J22oBeHy").generate_token(&604800, "PID".to_string(), None);
-    // TODO: serde_json::Map or std::collections::HashMap?
-    // TODO: is it ok to use a generic Map<String, Value> here? Or should we let the user specify their desired typed claim and
-    // use generics to serialize/deserialize it?
     pub claims: Map<String, Value>,
 }
 
