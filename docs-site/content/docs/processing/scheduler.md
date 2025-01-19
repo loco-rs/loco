@@ -56,6 +56,7 @@ scheduler:
     run_task:
       run: "foo"
       schedule: "at 10:00 am"
+      run_on_start: true
 
     list_if_users:
       run: "user_report"
@@ -94,6 +95,7 @@ The scheduler configuration consists of the following elements:
         sec   min   hour   day of month   month   day of week   year
         *     *     *      *              *       *             *
         ```
+  * `run_on_start`: By default, `false`. If set to `true`, the job will also run at the start of the scheduler.
     * `shell`: by default `false` meaning executing the the `run` value as a task. if `true` execute the `run` value as shell command
     * `run`: Cronjob command to run. 
         * `Task:` The task name (with variables e.x `[TASK_NAME] KEY:VAl`. follow [here](@/docs/processing/task.md) to see task arguments ). Note that the `shell` field should be false.
