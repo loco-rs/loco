@@ -435,8 +435,6 @@
       "name": "array!",
       "rust": {
         "string": "Vec<String>",
-        "char": "Vec<String>",
-        "text": "Vec<String>",
         "float": "Vec<f32>",
         "int": "Vec<i32>",
         "small_int": "Vec<i16>",
@@ -452,8 +450,6 @@
       "name": "array",
       "rust": {
         "string": "Option<Vec<String>>",
-        "char": "Option<Vec<String>>",
-        "text": "Option<Vec<String>>",
         "float": "Option<Vec<f32>>",
         "int": "Option<Vec<i32>>",
         "small_int": "Option<Vec<i16>>",
@@ -469,8 +465,6 @@
       "name": "array^",
       "rust": {
         "string": "Vec<String>",
-        "char": "Vec<String>",
-        "text": "Vec<String>",
         "float": "Vec<f32>",
         "int": "Vec<i32>",
         "small_int": "Vec<i16>",
