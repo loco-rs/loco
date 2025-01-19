@@ -6,13 +6,14 @@ pub use rrgen::{GenResult, RRgen};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 mod controller;
-use colored::Colorize;
 use std::{
     fs,
     path::{Path, PathBuf},
     str::FromStr,
     sync::OnceLock,
 };
+
+use colored::Colorize;
 
 #[cfg(feature = "with-db")]
 mod infer;
@@ -37,6 +38,7 @@ const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
     ("Docker", DeploymentKind::Docker),
     ("Shuttle", DeploymentKind::Shuttle),
     ("Nginx", DeploymentKind::Nginx),
+    ("Kamal", DeploymentKind::Kamal),
 ];
 
 #[derive(thiserror::Error, Debug)]
@@ -137,6 +139,7 @@ pub enum DeploymentKind {
     Docker,
     Shuttle,
     Nginx,
+    Kamal,
 }
 impl FromStr for DeploymentKind {
     type Err = ();
@@ -146,6 +149,7 @@ impl FromStr for DeploymentKind {
             "docker" => Ok(Self::Docker),
             "shuttle" => Ok(Self::Shuttle),
             "nginx" => Ok(Self::Nginx),
+            "kamal" => Ok(Self::Kamal),
             _ => Err(()),
         }
     }
@@ -210,6 +214,9 @@ pub enum Component {
         kind: DeploymentKind,
         fallback_file: Option<String>,
         asset_folder: Option<String>,
+        sqlite: bool,
+        postgres: bool,
+        background_queue: bool,
         host: String,
         port: i32,
     },
@@ -269,6 +276,9 @@ pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Resul
             kind,
             fallback_file,
             asset_folder,
+            sqlite,
+            postgres,
+            background_queue,
             host,
             port,
         } => match kind {
@@ -297,6 +307,17 @@ pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Resul
                     "port": port
                 });
                 render_template(rrgen, Path::new("deployment/nginx"), &vars)?
+            }
+            DeploymentKind::Kamal => {
+                let vars = json!({
+                    "pkg_name": appinfo.app_name,
+                    "copy_asset_folder": asset_folder.unwrap_or_default(),
+                    "fallback_file": fallback_file.unwrap_or_default(),
+                    "sqlite": sqlite,
+                    "postgres": postgres,
+                    "background_queue": background_queue
+                });
+                render_template(rrgen, Path::new("deployment/kamal"), &vars)?
             }
         },
     };
@@ -361,9 +382,10 @@ pub fn collect_messages(results: &GenerateResults) -> String {
 
 /// Copies template files to a specified destination directory.
 ///
-/// This function copies files from the specified template path to the destination directory.
-/// If the specified path is `/` or `.`, it copies all files from the templates directory.
-/// If the path does not exist in the templates, it returns an error.
+/// This function copies files from the specified template path to the
+/// destination directory. If the specified path is `/` or `.`, it copies all
+/// files from the templates directory. If the path does not exist in the
+/// templates, it returns an error.
 ///
 /// # Errors
 /// when could not copy the given template path
@@ -418,8 +440,9 @@ pub fn copy_template(path: &Path, to: &Path) -> Result<Vec<PathBuf>> {
 
 #[cfg(test)]
 mod tests {
+    use std::{io::Cursor, path::Path};
+
     use super::*;
-    use std::path::Path;
 
     #[test]
     fn test_template_not_found() {

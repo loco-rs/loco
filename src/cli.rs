@@ -53,6 +53,8 @@ use crate::{
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     logger, task, Error,
 };
+use crate::config::WorkerMode;
+
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
@@ -439,6 +441,9 @@ impl ComponentArg {
                     fallback_file: fallback_file.clone(),
                     host: config.server.host.clone(),
                     port: config.server.port,
+                    background_queue: config.workers.mode == WorkerMode::BackgroundQueue,
+                    postgres: config.database.uri.contains("postgres://"),
+                    sqlite: config.database.uri.contains("sqlite://"),
                 })
             }
             Self::Override {

@@ -19,6 +19,9 @@ fn can_generate_docker(
         asset_folder: asset_folder.clone(),
         host: "localhost".to_string(),
         port: 8080,
+        sqlite: false,
+        postgres: false,
+        background_queue: false,
     };
 
     let tree_fs = tree_fs::TreeBuilder::default().drop(true).create().unwrap();
@@ -74,6 +77,9 @@ fn can_generate_nginx() {
         asset_folder: None,
         host: "localhost".to_string(),
         port: 8080,
+        sqlite: false,
+        postgres: false,
+        background_queue: false,
     };
 
     let tree_fs = tree_fs::TreeBuilder::default().drop(true).create().unwrap();
@@ -113,6 +119,9 @@ fn can_generate_shuttle() {
         asset_folder: None,
         host: "localhost".to_string(),
         port: 8080,
+        sqlite: false,
+        postgres: false,
+        background_queue: false,
     };
 
     let tree_fs = tree_fs::TreeBuilder::default()
@@ -167,5 +176,59 @@ playground = "run --example playground"
     assert_snapshot!(
         "inject[cargo_toml]",
         fs::read_to_string(tree_fs.root.join("Cargo.toml")).expect("cargo.toml not exists")
+    );
+}
+#[test]
+fn can_generate_kamal() {
+    let mut settings = insta::Settings::clone_current();
+    settings.set_prepend_module_to_snapshot(false);
+    settings.set_snapshot_suffix("deployment");
+    let _guard = settings.bind_to_scope();
+
+    let component = Component::Deployment {
+        kind: DeploymentKind::Kamal,
+        fallback_file: Some("404.html".to_string()),
+        asset_folder: Some("assets".to_string()),
+        host: "localhost".to_string(),
+        port: 8080,
+        sqlite: false,
+        postgres: false,
+        background_queue: false,
+    };
+
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .create()
+        .unwrap();
+    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+
+    let gen_result = generate(
+        &rrgen,
+        component,
+        &AppInfo {
+            app_name: "tester".to_string(),
+        },
+    )
+        .expect("Generation failed");
+
+    assert_eq!(
+        collect_messages(&gen_result),
+        r"* Dockerfile generated successfully.
+* Deploy configuration generated successfully.
+"
+    );
+
+    // Assert the generated Dockerfile content
+    assert_snapshot!(
+        "generate[kamal_dockerfile]",
+        fs::read_to_string(tree_fs.root.join("Dockerfile"))
+            .expect("Dockerfile missing")
+    );
+
+    // Assert the generated deploy.yml content
+    assert_snapshot!(
+        "generate[kamal_deploy_yml]",
+        fs::read_to_string(tree_fs.root.join("config").join("deploy.yml"))
+            .expect("deploy.yml missing")
     );
 }
