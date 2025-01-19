@@ -51,6 +51,7 @@ pub fn test_config() -> Config {
                 scheduler::Job {
                     run: "echo loco".to_string(),
                     shell: true,
+                    run_on_start: false,
                     cron: "*/5 * * * * *".to_string(),
                     tags: Some(vec!["base".to_string()]),
                     output: None,
