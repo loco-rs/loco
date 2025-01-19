@@ -1,0 +1,12 @@
+---
+source: loco-gen/tests/templates/deployment.rs
+expression: "fs::read_to_string(tree_fs.root.join(\"config\").join(\"development.yaml\")).expect(\"development.yaml missing\")"
+---
+# Web server configuration
+server:
+  # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
+  port: 5150
+  # Expose Server on all interfaces
+  binding: 0.0.0.0
+  # The UI hostname or IP address that mailers will point to.
+  host: http://localhost

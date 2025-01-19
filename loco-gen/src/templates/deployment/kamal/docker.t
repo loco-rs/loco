@@ -1,6 +1,12 @@
 to: "Dockerfile"
 skip_exists: true
 message: "Dockerfile generated successfully."
+
+injections:
+- into: config/development.yaml
+  after: "  port: 5150"
+  content: "  # Expose Server on all interfaces\n  binding: 0.0.0.0"
+  
 ---
 
 FROM rust:1.84-slim as builder
