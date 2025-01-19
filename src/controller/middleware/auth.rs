@@ -103,6 +103,9 @@ where
 }
 
 /// extract a [JWT] token from request parts, using a non-mutable reference to the [Parts]
+///
+/// # Errors
+/// Return an error when JWT token not configured or when the token is not valid
 pub fn extract_jwt_from_request_parts<S>(parts: &Parts, state: &S) -> Result<JWT, Error>
 where
     AppContext: FromRef<S>,
