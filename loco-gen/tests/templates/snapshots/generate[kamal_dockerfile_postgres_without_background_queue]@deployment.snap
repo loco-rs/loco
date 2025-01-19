@@ -1,0 +1,36 @@
+---
+source: loco-gen/tests/templates/deployment.rs
+expression: "fs::read_to_string(tree_fs.root.join(\"Dockerfile\")).expect(\"Dockerfile missing\")"
+---
+FROM rust:1.84-slim as builder
+
+WORKDIR /usr/src/
+
+COPY . .
+
+RUN cargo build --release
+
+FROM debian:bookworm-slim
+# Install required system dependencies
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libpq-dev \
+    libssl-dev \
+    curl \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Install sea-orm-cli
+RUN cargo install sea-orm-cli
+WORKDIR /usr/app
+COPY --from=builder /usr/src/assets /usr/app/assets
+COPY --from=builder /usr/src/assets/views /usr/app/assets/views
+COPY --from=builder /usr/src/404.html /usr/app/404.html
+COPY --from=builder /usr/src/config /usr/app/config
+COPY --from=builder /usr/src/target/release/tester-cli /usr/app/tester-cli
+
+ENTRYPOINT ["/usr/app/tester-cli","start"]

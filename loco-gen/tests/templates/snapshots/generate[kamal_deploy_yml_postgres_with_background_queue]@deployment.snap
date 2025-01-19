@@ -1,13 +1,12 @@
-to: "config/deploy.yml"
-skip_exists: true
-message: "Deploy file generated successfully."
 ---
-
+source: loco-gen/tests/templates/deployment.rs
+expression: "fs::read_to_string(tree_fs.root.join(\"config\").join(\"deploy.yml\")).expect(\"deploy.yml missing\")"
+---
 # Name of your application. Used to uniquely configure containers.
-service: {{pkg_name}}
+service: tester
 
 # Name of the container image.
-image: docker_username/{{pkg_name}}
+image: docker_username/tester
 
 # Deploy to these servers.
 servers:
@@ -55,18 +54,14 @@ builder:
 #     DB_HOST: 192.168.0.2
 #   secret:
 #     - RAILS_MASTER_KEY
-{% if postgres or background_queue %}
+
 env:
   clear:
-{% endif -%}
-  {%- if background_queue %}
-    REDIS_URL: "redis://{{pkg_name}}-redis"
-  {%- endif %}
-  {%- if postgres %}
+
+    REDIS_URL: "redis://tester-redis"
   secret:
     - DATABASE_URL
     - POSTGRES_PASSWORD
-  {%- endif %}
 
 # Aliases are triggered with "bin/kamal <alias>". You can overwrite arguments on invocation:
 # "bin/kamal logs -r job" will tail logs from the first server in the job section.
@@ -83,14 +78,6 @@ env:
 #
 # volumes:
 #   - "app_storage:/app/storage"
-{% if sqlite -%}
-# Use a persistent database volume.
-volumes:
-# /var/lib/docker/volumes/data/_data
-  - "data:/usr/app"
-{% endif -%}
-
-
 # Bridge fingerprinted assets, like JS and CSS, between versions to avoid
 # hitting 404 on in-flight requests. Combines all files from new and old
 # version inside the asset_path.
@@ -127,10 +114,9 @@ volumes:
 #     directories:
 #       - data:/data
 
-{% if postgres or background_queue %}
+
 accessories:
-{% endif -%}
-{%- if postgres %}
+
   db:
     image: postgres:16
     host: server_ip_address
@@ -138,17 +124,15 @@ accessories:
     env:
       clear:
         POSTGRES_USER: loco
-        POSTGRES_DB: {{pkg_name}}_production
+        POSTGRES_DB: tester_production
       secret:
         - POSTGRES_PASSWORD
     directories:
       - data:/var/lib/postgresql/data
-{% endif %}
-{%- if background_queue %}
+
   redis:
     image: valkey/valkey:8
     host: server_ip_address
     port: "127.0.0.1:6379:6379"
     directories:
       - data:/data
-{% endif %}

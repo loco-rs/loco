@@ -1,7 +1,8 @@
+use std::fs;
+
 use insta::assert_snapshot;
 use loco_gen::{collect_messages, generate, AppInfo, Component, DeploymentKind};
 use rrgen::RRgen;
-use std::fs;
 
 #[rstest::rstest]
 fn can_generate_docker(
@@ -179,7 +180,125 @@ playground = "run --example playground"
     );
 }
 #[test]
-fn can_generate_kamal() {
+fn can_generate_kamal_sqlite_without_background_queue() {
+    let mut settings = insta::Settings::clone_current();
+    settings.set_prepend_module_to_snapshot(false);
+    settings.set_snapshot_suffix("deployment");
+    let _guard = settings.bind_to_scope();
+
+    let component = Component::Deployment {
+        kind: DeploymentKind::Kamal,
+        fallback_file: Some("404.html".to_string()),
+        asset_folder: Some("assets".to_string()),
+        host: "localhost".to_string(),
+        port: 8080,
+        sqlite: true,
+        postgres: false,
+        background_queue: false,
+    };
+
+    let tree_fs = tree_fs::TreeBuilder::default().drop(true).create().unwrap();
+    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+
+    let gen_result = generate(
+        &rrgen,
+        component,
+        &AppInfo {
+            app_name: "tester".to_string(),
+        },
+    )
+    .expect("Generation failed");
+
+    assert_eq!(
+        collect_messages(&gen_result),
+        r"* Deploy file generated successfully.
+* Dockerfile generated successfully.
+* Secrets file generated successfully.
+"
+    );
+
+    // Assert the generated Dockerfile content
+    assert_snapshot!(
+        "generate[kamal_dockerfile_sqlite]",
+        fs::read_to_string(tree_fs.root.join("Dockerfile")).expect("Dockerfile missing")
+    );
+
+    // Assert the generated deploy.yml content
+    assert_snapshot!(
+        "generate[kamal_deploy_yml_sqlite]",
+        fs::read_to_string(tree_fs.root.join("config").join("deploy.yml"))
+            .expect("deploy.yml missing")
+    );
+
+    // Assert the generated secrets file content
+    assert_snapshot!(
+        "generate[kamal_secrets_sqlite]",
+        fs::read_to_string(tree_fs.root.join(".kamal").join("secrets"))
+            .expect("secrets file missing")
+    );
+}
+
+#[test]
+fn can_generate_kamal_sqlite_with_background_queue() {
+    let mut settings = insta::Settings::clone_current();
+    settings.set_prepend_module_to_snapshot(false);
+    settings.set_snapshot_suffix("deployment");
+    let _guard = settings.bind_to_scope();
+
+    let component = Component::Deployment {
+        kind: DeploymentKind::Kamal,
+        fallback_file: Some("404.html".to_string()),
+        asset_folder: Some("assets".to_string()),
+        host: "localhost".to_string(),
+        port: 8080,
+        sqlite: true,
+        postgres: false,
+        background_queue: true,
+    };
+
+    let tree_fs = tree_fs::TreeBuilder::default().drop(true).create().unwrap();
+    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+
+    let gen_result = generate(
+        &rrgen,
+        component,
+        &AppInfo {
+            app_name: "tester".to_string(),
+        },
+    )
+    .expect("Generation failed");
+
+    assert_eq!(
+        collect_messages(&gen_result),
+        r"* Deploy file generated successfully.
+* Dockerfile generated successfully.
+* Secrets file generated successfully.
+"
+    );
+
+    // Assert the generated Dockerfile content
+    assert_snapshot!(
+        "generate[kamal_dockerfile_sqlite_with_background_queue]",
+        fs::read_to_string(tree_fs.root.join("Dockerfile")).expect("Dockerfile missing")
+    );
+
+    // Assert the generated deploy.yml content
+    assert_snapshot!(
+        "generate[kamal_deploy_yml_sqlite_with_background_queue]",
+        fs::read_to_string(tree_fs.root.join("config").join("deploy.yml"))
+            .expect("deploy.yml missing")
+    );
+
+    // Assert the generated secrets file content
+    assert_snapshot!(
+        "generate[kamal_secrets_sqlite_with_background_queue]",
+        fs::read_to_string(tree_fs.root.join(".kamal").join("secrets"))
+            .expect("secrets file missing")
+    );
+}
+
+#[test]
+fn can_generate_kamal_postgres_without_background_queue() {
     let mut settings = insta::Settings::clone_current();
     settings.set_prepend_module_to_snapshot(false);
     settings.set_snapshot_suffix("deployment");
@@ -192,14 +311,11 @@ fn can_generate_kamal() {
         host: "localhost".to_string(),
         port: 8080,
         sqlite: false,
-        postgres: false,
+        postgres: true,
         background_queue: false,
     };
 
-    let tree_fs = tree_fs::TreeBuilder::default()
-        .drop(true)
-        .create()
-        .unwrap();
+    let tree_fs = tree_fs::TreeBuilder::default().drop(true).create().unwrap();
     let rrgen = RRgen::with_working_dir(&tree_fs.root);
 
     let gen_result = generate(
@@ -209,26 +325,92 @@ fn can_generate_kamal() {
             app_name: "tester".to_string(),
         },
     )
-        .expect("Generation failed");
+    .expect("Generation failed");
 
     assert_eq!(
         collect_messages(&gen_result),
-        r"* Dockerfile generated successfully.
-* Deploy configuration generated successfully.
+        r"* Deploy file generated successfully.
+* Dockerfile generated successfully.
+* Secrets file generated successfully.
 "
     );
 
     // Assert the generated Dockerfile content
     assert_snapshot!(
-        "generate[kamal_dockerfile]",
-        fs::read_to_string(tree_fs.root.join("Dockerfile"))
-            .expect("Dockerfile missing")
+        "generate[kamal_dockerfile_postgres_without_background_queue]",
+        fs::read_to_string(tree_fs.root.join("Dockerfile")).expect("Dockerfile missing")
     );
 
     // Assert the generated deploy.yml content
     assert_snapshot!(
-        "generate[kamal_deploy_yml]",
+        "generate[kamal_deploy_yml_postgres_without_background_queue]",
         fs::read_to_string(tree_fs.root.join("config").join("deploy.yml"))
             .expect("deploy.yml missing")
+    );
+
+    // Assert the generated secrets file content
+    assert_snapshot!(
+        "generate[kamal_secrets_postgres_without_background_queue]",
+        fs::read_to_string(tree_fs.root.join(".kamal").join("secrets"))
+            .expect("secrets file missing")
+    );
+}
+
+#[test]
+fn can_generate_kamal_postgres_with_background_queue() {
+    let mut settings = insta::Settings::clone_current();
+    settings.set_prepend_module_to_snapshot(false);
+    settings.set_snapshot_suffix("deployment");
+    let _guard = settings.bind_to_scope();
+
+    let component = Component::Deployment {
+        kind: DeploymentKind::Kamal,
+        fallback_file: Some("404.html".to_string()),
+        asset_folder: Some("assets".to_string()),
+        host: "localhost".to_string(),
+        port: 8080,
+        sqlite: false,
+        postgres: true,
+        background_queue: true,
+    };
+
+    let tree_fs = tree_fs::TreeBuilder::default().drop(true).create().unwrap();
+    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+
+    let gen_result = generate(
+        &rrgen,
+        component,
+        &AppInfo {
+            app_name: "tester".to_string(),
+        },
+    )
+    .expect("Generation failed");
+
+    assert_eq!(
+        collect_messages(&gen_result),
+        r"* Deploy file generated successfully.
+* Dockerfile generated successfully.
+* Secrets file generated successfully.
+"
+    );
+
+    // Assert the generated Dockerfile content
+    assert_snapshot!(
+        "generate[kamal_dockerfile_postgres_with_background_queue]",
+        fs::read_to_string(tree_fs.root.join("Dockerfile")).expect("Dockerfile missing")
+    );
+
+    // Assert the generated deploy.yml content
+    assert_snapshot!(
+        "generate[kamal_deploy_yml_postgres_with_background_queue]",
+        fs::read_to_string(tree_fs.root.join("config").join("deploy.yml"))
+            .expect("deploy.yml missing")
+    );
+
+    // Assert the generated secrets file content
+    assert_snapshot!(
+        "generate[kamal_secrets_postgres_with_background_queue]",
+        fs::read_to_string(tree_fs.root.join(".kamal").join("secrets"))
+            .expect("secrets file missing")
     );
 }
