@@ -47,7 +47,7 @@ builder:
   arch: amd64
   # Pass in additional build args needed for your Dockerfile.
   # args:
-
+  dockerfile: dockerfile
 # Inject ENV variables into containers (secrets come from .kamal/secrets).
 #
 # env:
