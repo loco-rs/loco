@@ -151,6 +151,8 @@ Now, run the Loco server again and you should see frontend app serving via Loco
 $ cargo loco start
 ```
 
+If you see the default fallback page, you have to disable the fallback middleware.
+
 # Developing the UI
 
 Install `react-router-dom`, `react-query` and `axios`
