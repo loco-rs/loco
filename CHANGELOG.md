@@ -12,6 +12,7 @@
 * Fixed independent features. [https://github.com/loco-rs/loco/pull/1177](https://github.com/loco-rs/loco/pull/1177)
 * Custom response header for redirect. [https://github.com/loco-rs/loco/pull/1186](https://github.com/loco-rs/loco/pull/1186)
 * Added run_on_start feature to scheduler. [https://github.com/loco-rs/loco/pull/1184](https://github.com/loco-rs/loco/pull/1184)
+* feat: public jwt extractor from non-mutable reference to parts. [https://github.com/loco-rs/loco/pull/1190](https://github.com/loco-rs/loco/pull/1190)
 
 
 ## v0.14
