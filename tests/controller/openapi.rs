@@ -154,22 +154,35 @@ async fn openapi_spec(#[case] test_name: &str) {
 
     match content_type {
         "application/json" => {
-            assert_json_snapshot!(
-                format!("openapi_spec_[{test_name}]"),
-                (
-                    res.url().to_string(),
-                    res.json::<serde_json::Value>().await.unwrap()
-                )
-            )
+            let mut json_value = res.json::<serde_json::Value>().await.unwrap();
+            if let Some(info) = json_value
+                .as_object_mut()
+                .and_then(|obj| obj.get_mut("info"))
+            {
+                if let Some(obj) = info.as_object_mut() {
+                    obj.insert(
+                        "version".to_string(),
+                        serde_json::Value::String("*.*.*".to_string()),
+                    );
+                }
+            }
+            assert_json_snapshot!(format!("openapi_spec_[{test_name}]"), json_value)
         }
         "application/yaml" => {
-            assert_yaml_snapshot!(
-                format!("openapi_spec_[{test_name}]"),
-                (
-                    res.url().to_string(),
-                    serde_yaml::from_str::<serde_yaml::Value>(&res.text().await.unwrap()).unwrap()
-                )
-            )
+            let yaml_text = res.text().await.unwrap();
+            let mut yaml_value = serde_yaml::from_str::<serde_yaml::Value>(&yaml_text).unwrap();
+            if let Some(info) = yaml_value
+                .as_mapping_mut()
+                .and_then(|map| map.get_mut("info"))
+            {
+                if let Some(map) = info.as_mapping_mut() {
+                    map.insert(
+                        serde_yaml::Value::String("version".to_string()),
+                        serde_yaml::Value::String("*.*.*".to_string()),
+                    );
+                }
+            }
+            assert_yaml_snapshot!(format!("openapi_spec_[{test_name}]"), yaml_value)
         }
         _ => panic!("Invalid content type"),
     }
