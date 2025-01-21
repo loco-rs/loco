@@ -185,11 +185,13 @@ async fn json_rejection() {
         format::json(())
     }
 
-    let handle = infra_cfg::server::start_with_route(ctx, "/", post(action)).await;
+    let port = infra_cfg::server::get_available_port().await;
+    let handle =
+        infra_cfg::server::start_with_route(ctx, "/", post(action), Some(port.clone())).await;
 
     let client = reqwest::Client::new();
     let res = client
-        .post(infra_cfg::server::get_base_url())
+        .post(infra_cfg::server::get_base_url_port(port))
         .json(&serde_json::json!({}))
         .send()
         .await
