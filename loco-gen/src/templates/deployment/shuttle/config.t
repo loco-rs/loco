@@ -2,4 +2,12 @@ to: "Shuttle.toml"
 skip_exists: true
 message: "Shuttle.toml file created successfully"
 ---
-name = "{{pkg_name}}"
+[deploy]
+include = [
+    "config/production.yaml"
+]
+
+[build]
+assets = [
+    "config/production.yaml"
+]

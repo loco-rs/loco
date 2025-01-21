@@ -55,11 +55,11 @@
 //!
 //!     fn register_tasks(tasks: &mut Tasks) {}
 //!
-//!     async fn truncate(db: &DatabaseConnection) -> Result<()> {
+//!     async fn truncate(_ctx: &AppContext) -> Result<()> {
 //!         Ok(())
 //!     }
 //!
-//!     async fn seed(db: &DatabaseConnection, base: &Path) -> Result<()> {
+//!     async fn seed(_ctx: &AppContext, base: &Path) -> Result<()> {
 //!         Ok(())
 //!     }
 //! }
@@ -80,6 +80,7 @@ use crate::{errors::Error, Result};
 mod app_routes;
 mod backtrace;
 mod describe;
+pub mod extractor;
 pub mod format;
 #[cfg(feature = "with-db")]
 mod health;
@@ -138,15 +139,19 @@ pub struct ErrorDetail {
     pub error: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub errors: Option<serde_json::Value>,
 }
 
 impl ErrorDetail {
     /// Create a new `ErrorDetail` with the specified error and description.
     #[must_use]
-    pub fn new<T: Into<String>>(error: T, description: T) -> Self {
+    pub fn new<T: Into<String> + AsRef<str>>(error: T, description: T) -> Self {
+        let description = (!description.as_ref().is_empty()).then(|| description.into());
         Self {
             error: Some(error.into()),
-            description: Some(description.into()),
+            description,
+            errors: None,
         }
     }
 
@@ -156,6 +161,7 @@ impl ErrorDetail {
         Self {
             error: Some(error.into()),
             description: None,
+            errors: None,
         }
     }
 }
@@ -172,6 +178,7 @@ impl<T: Serialize> IntoResponse for Json<T> {
 
 impl IntoResponse for Error {
     /// Convert an `Error` into an HTTP response.
+    #[allow(clippy::cognitive_complexity)]
     fn into_response(self) -> Response {
         match &self {
             Self::WithBacktrace {
@@ -198,10 +205,6 @@ impl IntoResponse for Error {
                 StatusCode::NOT_FOUND,
                 ErrorDetail::new("not_found", "Resource was not found"),
             ),
-            Self::InternalServerError => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                ErrorDetail::new("internal_server_error", "Internal Server Error"),
-            ),
             Self::Unauthorized(err) => {
                 tracing::warn!(err);
                 (
@@ -221,9 +224,36 @@ impl IntoResponse for Error {
                     ErrorDetail::with_reason("Bad Request"),
                 )
             }
-            _ => (
+            Self::BadRequest(err) => (
                 StatusCode::BAD_REQUEST,
-                ErrorDetail::with_reason("Bad Request"),
+                ErrorDetail::new("Bad Request", &err),
+            ),
+            Self::JsonRejection(err) => {
+                tracing::debug!(err = err.body_text(), "json rejection");
+                (err.status(), ErrorDetail::with_reason("Bad Request"))
+            }
+
+            Self::ValidationError(ref errors) => serde_json::to_value(errors).map_or_else(
+                |_| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        ErrorDetail::new("internal_server_error", "Internal Server Error"),
+                    )
+                },
+                |errors| {
+                    (
+                        StatusCode::BAD_REQUEST,
+                        ErrorDetail {
+                            error: None,
+                            description: None,
+                            errors: Some(errors),
+                        },
+                    )
+                },
+            ),
+            _ => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorDetail::new("internal_server_error", "Internal Server Error"),
             ),
         };
 

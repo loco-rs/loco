@@ -151,6 +151,9 @@ fn test_combination(
         // Generate deployment nginx
         tester.run_generate(&vec!["deployment", "--kind", "docker"]);
 
+        // Generate deployment shuttle
+        tester.run_generate(&vec!["deployment", "--kind", "shuttle"]);
+
         if db.enable() {
             // Generate Model
             if !settings.auth {

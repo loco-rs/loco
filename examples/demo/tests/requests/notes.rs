@@ -27,7 +27,7 @@ async fn can_get_notes(#[case] test_name: &str, #[case] params: serde_json::Valu
     configure_insta!();
 
     request::<App, _, _>(|request, ctx| async move {
-        seed::<App>(&ctx.db).await.unwrap();
+        seed::<App>(&ctx).await.unwrap();
 
         let notes = request.get("notes").add_query_params(params).await;
 
@@ -80,7 +80,7 @@ async fn can_get_note() {
     configure_insta!();
 
     request::<App, _, _>(|request, ctx| async move {
-        seed::<App>(&ctx.db).await.unwrap();
+        seed::<App>(&ctx).await.unwrap();
 
         let add_note_request = request.get("/notes/1").await;
 
@@ -105,7 +105,7 @@ async fn can_delete_note() {
     configure_insta!();
 
     request::<App, _, _>(|request, ctx| async move {
-        seed::<App>(&ctx.db).await.unwrap();
+        seed::<App>(&ctx).await.unwrap();
 
         let count_before_delete = Entity::find().all(&ctx.db).await.unwrap().len();
         let delete_note_request = request.delete("/notes/1").await;

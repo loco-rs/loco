@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+
+## v0.14.1
+
+* Fix: bump shuttle to 0.51.0. [https://github.com/loco-rs/loco/pull/1169](https://github.com/loco-rs/loco/pull/1169)
+* Return 422 status code for JSON rejection errors. [https://github.com/loco-rs/loco/pull/1173](https://github.com/loco-rs/loco/pull/1173)
+* Address clippy warnings for Rust stable 1.84. [https://github.com/loco-rs/loco/pull/1168](https://github.com/loco-rs/loco/pull/1168)
+* Bump shuttle to 0.51.0. [https://github.com/loco-rs/loco/pull/1169](https://github.com/loco-rs/loco/pull/1169)
+* Return 422 status code for JSON rejection errors. [https://github.com/loco-rs/loco/pull/1173](https://github.com/loco-rs/loco/pull/1173)
+* Return json validation details response. [https://github.com/loco-rs/loco/pull/1174](https://github.com/loco-rs/loco/pull/1174)
+* Fix example command after generating schedule. [https://github.com/loco-rs/loco/pull/1176](https://github.com/loco-rs/loco/pull/1176)
+* Fixed independent features. [https://github.com/loco-rs/loco/pull/1177](https://github.com/loco-rs/loco/pull/1177)
+* Custom response header for redirect. [https://github.com/loco-rs/loco/pull/1186](https://github.com/loco-rs/loco/pull/1186)
+* Added run_on_start feature to scheduler. [https://github.com/loco-rs/loco/pull/1184](https://github.com/loco-rs/loco/pull/1184)
+* feat: public jwt extractor from non-mutable reference to parts. [https://github.com/loco-rs/loco/pull/1190](https://github.com/loco-rs/loco/pull/1190)
+
+
+## v0.14
+
 * feat: smart migration generator. you can now generate migration based on naming them for creating a table, adding columns, references, join tables and more. [https://github.com/loco-rs/loco/pull/1086](https://github.com/loco-rs/loco/pull/1086)
 * feat: `cargo loco routes` will now pretty-print routes
 * fix: guard jwt error behind feature flag. [https://github.com/loco-rs/loco/pull/1032](https://github.com/loco-rs/loco/pull/1032)
