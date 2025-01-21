@@ -1,4 +1,4 @@
-use insta::assert_debug_snapshot;
+use insta::{assert_debug_snapshot, assert_json_snapshot, assert_yaml_snapshot};
 use loco_rs::{config::OpenAPIType, prelude::*, tests_cfg};
 use rstest::rstest;
 use serial_test::serial;
@@ -147,15 +147,32 @@ async fn openapi_spec(#[case] test_name: &str) {
         .await
         .expect("valid response");
 
-    assert_debug_snapshot!(
-        format!("openapi_spec_[{test_name}]"),
-        (
-            res.status().to_string(),
-            res.url().to_string(),
-            res.headers().get("content-type").unwrap().to_owned(),
-            res.text().await.unwrap(),
-        )
-    );
+    let status = res.status();
+    assert_eq!(status, 200);
+
+    let content_type = res.headers().get("content-type").unwrap().to_str().unwrap();
+
+    match content_type {
+        "application/json" => {
+            assert_json_snapshot!(
+                format!("openapi_spec_[{test_name}]"),
+                (
+                    res.url().to_string(),
+                    res.json::<serde_json::Value>().await.unwrap()
+                )
+            )
+        }
+        "application/yaml" => {
+            assert_yaml_snapshot!(
+                format!("openapi_spec_[{test_name}]"),
+                (
+                    res.url().to_string(),
+                    serde_yaml::from_str::<serde_yaml::Value>(&res.text().await.unwrap()).unwrap()
+                )
+            )
+        }
+        _ => panic!("Invalid content type"),
+    }
 
     handle.abort();
 }
