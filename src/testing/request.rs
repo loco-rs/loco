@@ -1,13 +1,45 @@
 use std::net::SocketAddr;
 
 use axum_test::{TestServer, TestServerConfig};
+use tokio::net::TcpListener;
 
 use crate::{
     app::{AppContext, Hooks},
     boot::{self, BootResult},
+    config::Server,
     environment::Environment,
     Result,
 };
+
+/// The port on which the test server will run.
+pub const TEST_PORT_SERVER: i32 = 5555;
+
+/// The hostname to which the test server binds.
+pub const TEST_BINDING_SERVER: &str = "localhost";
+
+/// Constructs and returns the base URL used for the test server.
+#[allow(dead_code)]
+pub fn get_base_url() -> String {
+    format!("http://{TEST_BINDING_SERVER}:{TEST_PORT_SERVER}/")
+}
+
+/// Constructs and returns the base URL used for the test server.
+pub fn get_base_url_port(port: i32) -> String {
+    format!("http://{TEST_BINDING_SERVER}:{port}/")
+}
+
+/// Returns a unique port number. Usually increments by 1 starting from 59126
+pub async fn get_available_port() -> i32 {
+    let addr = format!("{}:0", TEST_BINDING_SERVER);
+    let listener = TcpListener::bind(addr)
+        .await
+        .expect("Failed to bind to address");
+    let port = listener
+        .local_addr()
+        .expect("Failed to get local address")
+        .port() as i32;
+    port
+}
 
 /// Bootstraps test application with test environment hard coded.
 ///
@@ -34,6 +66,40 @@ use crate::{
 /// ```
 pub async fn boot_test<H: Hooks>() -> Result<BootResult> {
     let config = H::load_config(&Environment::Test).await?;
+    H::boot(boot::StartMode::ServerOnly, &Environment::Test, config).await
+}
+
+/// Bootstraps test application with test environment hard coded,
+/// and with a unique port.
+///
+/// # Errors
+/// when could not bootstrap the test environment
+///
+/// # Example
+///
+/// The provided example demonstrates how to boot the test case with the
+/// application context, and a with a unique port.
+///
+/// ```rust,ignore
+/// use myapp::app::App;
+/// use loco_rs::testing::prelude::*;
+/// use migration::Migrator;
+///
+/// #[tokio::test]
+/// async fn test_create_user() {
+///     let port = get_available_port().await;
+///     let boot = boot_test_unique_port::<App, Migrator>(Some(port)).await;
+///
+///     /// .....
+///     assert!(false)
+/// }
+pub async fn boot_test_unique_port<H: Hooks>(port: Option<i32>) -> Result<BootResult> {
+    let mut config = H::load_config(&Environment::Test).await?;
+    config.server = Server {
+        port: port.unwrap_or(TEST_PORT_SERVER),
+        binding: TEST_BINDING_SERVER.to_string(),
+        ..config.server
+    };
     H::boot(boot::StartMode::ServerOnly, &Environment::Test, config).await
 }
 

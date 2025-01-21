@@ -28,7 +28,7 @@ async fn simple_validation(JsonValidate(_params): JsonValidate<Data>) -> Result<
 async fn can_validation_with_response() {
     let ctx = tests_cfg::app::get_app_context().await;
 
-    let port = infra_cfg::server::get_available_port().await;
+    let port = get_available_port().await;
     let handle = infra_cfg::server::start_with_route(
         ctx,
         "/",
@@ -39,7 +39,7 @@ async fn can_validation_with_response() {
 
     let client = reqwest::Client::new();
     let res = client
-        .post(infra_cfg::server::get_base_url_port(port))
+        .post(get_base_url_port(port))
         .json(&serde_json::json!({"name": "test", "email": "invalid"}))
         .send()
         .await
@@ -68,14 +68,14 @@ async fn can_validation_with_response() {
 async fn can_validation_without_response() {
     let ctx = tests_cfg::app::get_app_context().await;
 
-    let port = infra_cfg::server::get_available_port().await;
+    let port = get_available_port().await;
     let handle =
         infra_cfg::server::start_with_route(ctx, "/", post(simple_validation), Some(port.clone()))
             .await;
 
     let client = reqwest::Client::new();
     let res = client
-        .post(infra_cfg::server::get_base_url_port(port))
+        .post(get_base_url_port(port))
         .json(&serde_json::json!({"name": "test", "email": "invalid"}))
         .send()
         .await

@@ -12,11 +12,11 @@ async fn not_found() {
         controller::not_found()
     }
 
-    let port = infra_cfg::server::get_available_port().await;
+    let port = get_available_port().await;
     let handle =
         infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port.clone())).await;
 
-    let res = reqwest::get(infra_cfg::server::get_base_url_port(port))
+    let res = reqwest::get(get_base_url_port(port))
         .await
         .expect("Valid response");
 
@@ -44,11 +44,11 @@ async fn internal_server_error() {
         Err(Error::InternalServerError)
     }
 
-    let port = infra_cfg::server::get_available_port().await;
+    let port = get_available_port().await;
     let handle =
         infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port.clone())).await;
 
-    let res = reqwest::get(infra_cfg::server::get_base_url_port(port))
+    let res = reqwest::get(get_base_url_port(port))
         .await
         .expect("Valid response");
 
@@ -76,11 +76,11 @@ async fn unauthorized() {
         controller::unauthorized("user not unauthorized")
     }
 
-    let port = infra_cfg::server::get_available_port().await;
+    let port = get_available_port().await;
     let handle =
         infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port.clone())).await;
 
-    let res = reqwest::get(infra_cfg::server::get_base_url_port(port))
+    let res = reqwest::get(get_base_url_port(port))
         .await
         .expect("Valid response");
 
@@ -108,11 +108,11 @@ async fn fallback() {
         Err(Error::Message(String::new()))
     }
 
-    let port = infra_cfg::server::get_available_port().await;
+    let port = get_available_port().await;
     let handle =
         infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port.clone())).await;
 
-    let res = reqwest::get(infra_cfg::server::get_base_url_port(port))
+    let res = reqwest::get(get_base_url_port(port))
         .await
         .expect("Valid response");
 
@@ -147,11 +147,11 @@ async fn custom_error() {
         ))
     }
 
-    let port = infra_cfg::server::get_available_port().await;
+    let port = get_available_port().await;
     let handle =
         infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port.clone())).await;
 
-    let res = reqwest::get(infra_cfg::server::get_base_url_port(port))
+    let res = reqwest::get(get_base_url_port(port))
         .await
         .expect("Valid response");
 
@@ -185,13 +185,13 @@ async fn json_rejection() {
         format::json(())
     }
 
-    let port = infra_cfg::server::get_available_port().await;
+    let port = get_available_port().await;
     let handle =
         infra_cfg::server::start_with_route(ctx, "/", post(action), Some(port.clone())).await;
 
     let client = reqwest::Client::new();
     let res = client
-        .post(infra_cfg::server::get_base_url_port(port))
+        .post(get_base_url_port(port))
         .json(&serde_json::json!({}))
         .send()
         .await
