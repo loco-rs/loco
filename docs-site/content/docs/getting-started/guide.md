@@ -104,7 +104,7 @@ Here's a rundown of what Loco creates for you by default:
 
 Let's get some responses quickly. For this, we need to start up the server.
 
-You can now switch to to `myapp`:
+You can now switch to `myapp`:
 
 ```sh
 $ cd myapp
