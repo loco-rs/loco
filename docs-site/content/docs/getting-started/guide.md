@@ -201,7 +201,7 @@ Loco has powerful generators, which will make you 10x productive and drive your 
 
 If you'd like to be entertained for a moment, let's "learn the hard way" and add a new controller manually as well.
 
-Add a file called `home.rs`, and `pub mod home;` it in `mod.rs`:
+Add a file called `home.rs`, and line `pub mod home;` in `mod.rs`:
 
 ```
 src/
