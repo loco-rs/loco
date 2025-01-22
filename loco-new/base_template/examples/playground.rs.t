@@ -6,7 +6,7 @@ use {{settings.module_name}}::app::App;
 async fn main() -> loco_rs::Result<()> {
     let _ctx = playground::<App>().await?;
 
-    // let active_model: articles::ActiveModel = ActiveModel {
+    // let active_model: articles::ActiveModel = articles::ActiveModel {
     //     title: Set(Some("how to build apps in 3 steps".to_string())),
     //     content: Set(Some("use Loco: https://loco.rs".to_string())),
     //     ..Default::default()
