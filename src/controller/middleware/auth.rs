@@ -98,18 +98,30 @@ where
     type Rejection = Error;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
-        let ctx: AppContext = AppContext::from_ref(state); // change to ctx
+        extract_jwt_from_request_parts(parts, state)
+    }
+}
 
-        let token = extract_token(get_jwt_from_config(&ctx)?, parts)?;
+/// extract a [JWT] token from request parts, using a non-mutable reference to the [Parts]
+///
+/// # Errors
+/// Return an error when JWT token not configured or when the token is not valid
+pub fn extract_jwt_from_request_parts<S>(parts: &Parts, state: &S) -> Result<JWT, Error>
+where
+    AppContext: FromRef<S>,
+    S: Send + Sync,
+{
+    let ctx: AppContext = AppContext::from_ref(state); // change to ctx
 
-        let jwt_secret = ctx.config.get_jwt_config()?;
+    let token = extract_token(get_jwt_from_config(&ctx)?, parts)?;
 
-        match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
-            Ok(claims) => Ok(Self {
-                claims: claims.claims,
-            }),
-            Err(_err) => Err(Error::Unauthorized("token is not valid".to_string())),
-        }
+    let jwt_secret = ctx.config.get_jwt_config()?;
+
+    match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
+        Ok(claims) => Ok(JWT {
+            claims: claims.claims,
+        }),
+        Err(_err) => Err(Error::Unauthorized("token is not valid".to_string())),
     }
 }
 
