@@ -41,7 +41,7 @@ Loco is a Web or API framework for Rust. It's also a productivity suite for deve
 - **Fat models, slim controllers**. Models should contain most of your logic and business implementation, controllers should just be a lightweight router that understands HTTP and moves parameters around.
 - **Command line driven** to keep your momentum and flow. Generate stuff over copying and pasting or coding from scratch.
 - **Every task is "infrastructure-ready"**, just plug in your code and wire it in: controllers, models, views, tasks, background jobs, mailers, and more.
-- **Convention over configuration**: decisions are already done for you -- the folder structure matter, configuration shape and values matter, and the way an app is wired matter to how an app operates and for you do be the most effective.
+- **Convention over configuration**: decisions are already done for you -- the folder structure matter, configuration shape and values matter, and the way an app is wired matter to how an app operates and for you to be the most effective.
 
 ## Creating a New Loco App
 
