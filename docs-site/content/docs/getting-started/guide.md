@@ -840,9 +840,9 @@ args: Vars { cli: {"var1": "val1", "var2": "val2"} }
 ------------------------
 done: 0 users
 ```
-If you have not added an user before, the report will be empty.
+If you have not added a user before, the report will be empty.
 
-To add an user check out chapter [Registering a New User](/docs/getting-started/tour/#registering-a-new-user) of [A Quick Tour with Loco](/docs/getting-started/tour/).
+To add a user check out chapter [Registering a New User](/docs/getting-started/tour/#registering-a-new-user) of [A Quick Tour with Loco](/docs/getting-started/tour/).
 
 Remember: this is environmental, so you write the task once, and then execute in development or production as you wish. Tasks are compiled into the main app binary.
 
