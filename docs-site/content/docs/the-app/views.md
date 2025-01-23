@@ -230,6 +230,13 @@ In your templates you can refer to static resources in this way:
 <img src="/static/image.png"/>
 ```
 
+However, for the static middleware to work, ensure that the default fallback is disabled:
+
+```yaml
+fallback:
+  enable: false
+```
+
 
 ### Customizing the Tera view engine
 
