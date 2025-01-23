@@ -17,6 +17,8 @@ pub struct PagerMeta {
     pub page_size: u64,
     #[serde(rename(serialize = "total_pages"))]
     pub total_pages: u64,
+    #[serde(rename(serialize = "total_items"))]
+    pub total_items: u64,
 }
 
 impl<T> Pager<T> {

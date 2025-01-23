@@ -42,6 +42,7 @@ impl PaginationResponse {
                 page: pagination_query.page,
                 page_size: pagination_query.page_size,
                 total_pages: data.total_pages,
+                total_items: data.total_items,
             },
         }
     }

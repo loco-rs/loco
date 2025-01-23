@@ -78,6 +78,7 @@ where
 pub struct PageResponse<T> {
     pub page: Vec<T>,
     pub total_pages: u64,
+    pub total_items: u64,
 }
 
 use crate::Result as LocoResult;
@@ -163,10 +164,14 @@ where
     };
 
     let query = entity.paginate(db, pagination_query.page_size);
-    let total_pages = query.num_pages().await?;
+    let total_pages_and_items = query.num_items_and_pages().await?;
     let page: Vec<<E as EntityTrait>::Model> = query.fetch_page(page).await?;
 
-    let paginated_response = PageResponse { page, total_pages };
+    let paginated_response = PageResponse {
+        page,
+        total_pages: total_pages_and_items.number_of_pages,
+        total_items: total_pages_and_items.number_of_items,
+    };
 
     Ok(paginated_response)
 }
@@ -211,8 +216,12 @@ where
     };
 
     let query = selector.paginate(db, pagination_query.page_size);
-    let total_pages = query.num_pages().await?;
+    let total_pages_and_items = query.num_items_and_pages().await?;
     let page = query.fetch_page(page).await?;
 
-    Ok(PageResponse { page, total_pages })
+    Ok(PageResponse {
+        page,
+        total_pages: total_pages_and_items.number_of_pages,
+        total_items: total_pages_and_items.number_of_items,
+    })
 }
