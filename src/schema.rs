@@ -168,10 +168,8 @@ pub enum ArrayColType {
     String,
     Float,
     Int,
-    SmallInt,
-    BigInt,
     Double,
-    Boolean,
+    Bool,
 }
 
 impl ColType {
@@ -198,10 +196,8 @@ impl ColType {
             ArrayColType::String => ColumnType::string(None),
             ArrayColType::Float => ColumnType::Float,
             ArrayColType::Int => ColumnType::Integer,
-            ArrayColType::SmallInt => ColumnType::SmallInteger,
-            ArrayColType::BigInt => ColumnType::BigInteger,
             ArrayColType::Double => ColumnType::Double,
-            ArrayColType::Boolean => ColumnType::Boolean,
+            ArrayColType::Bool => ColumnType::Boolean,
         }
     }
 }

@@ -89,7 +89,7 @@ axum-extra = { version = "0.10", features = ["cookie"] }
 regex = { workspace = true }
 fs-err = "2.11.0"
 # mailer
-tera = "1.19.1"
+tera = { workspace = true }
 thousands = "0.2.0"
 heck = { workspace = true }
 cruet = "0.13.0"
@@ -160,6 +160,7 @@ bb8 = { version = "0.8.1", optional = true }
 scraper = { version = "0.21.0", features = ["deterministic"], optional = true }
 
 [workspace.dependencies]
+tera = { version = "1.19.1" }
 colored = { version = "2" }
 chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1.40"

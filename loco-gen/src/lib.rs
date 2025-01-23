@@ -24,6 +24,7 @@ mod model;
 #[cfg(feature = "with-db")]
 mod scaffold;
 pub mod template;
+mod template_engine;
 #[cfg(test)]
 mod testutil;
 
@@ -268,6 +269,11 @@ pub enum Component {
 }
 pub struct AppInfo {
     pub app_name: String,
+}
+
+#[must_use]
+pub fn new_generator() -> RRgen {
+    RRgen::default().add_template_engine(template_engine::new())
 }
 
 /// Generate a component

@@ -1,19 +1,19 @@
 {
   "field_types": [
     {
-      "name": "uuid",
+      "name": "uuid^",
       "rust": "Uuid",
       "schema": "uuid_uniq",
       "col_type": "UuidUniq"
     },
     {
-      "name": "uuid_col",
+      "name": "uuid",
       "rust": "Option<Uuid>",
       "schema": "uuid_null",
       "col_type": "UuidNull"
     },
     {
-      "name": "uuid_col!",
+      "name": "uuid!",
       "rust": "Uuid",
       "schema": "uuid",
       "col_type": "Uuid"
@@ -286,13 +286,13 @@
     },
     {
       "name": "ts",
-      "rust": "Option<DateTime>",
+      "rust": "Option<DateTimeUtc>",
       "schema": "timestamp_null",
       "col_type": "TimestampNull"
     },
     {
       "name": "ts!",
-      "rust": "DateTime",
+      "rust": "DateTimeUtc",
       "schema": "timestamp",
       "col_type": "Timestamp"
     },
@@ -434,13 +434,11 @@
     {
       "name": "array!",
       "rust": {
-        "string": "Vec<String>",
-        "float": "Vec<f32>",
-        "int": "Vec<i32>",
-        "small_int": "Vec<i16>",
-        "big_int": "Vec<i64>",
-        "double": "Vec<f64>",
-        "bool": "Vec<bool>"
+        "string": "Option<Vec<String>>",
+        "float": "Option<Vec<f32>>",
+        "int": "Option<Vec<i32>>",
+        "double": "Option<Vec<f64>>",
+        "bool": "Option<Vec<bool>>"
       },
       "schema": "array",
       "col_type": "array",
@@ -452,8 +450,6 @@
         "string": "Option<Vec<String>>",
         "float": "Option<Vec<f32>>",
         "int": "Option<Vec<i32>>",
-        "small_int": "Option<Vec<i16>>",
-        "big_int": "Option<Vec<i64>>",
         "double": "Option<Vec<f64>>",
         "bool": "Option<Vec<bool>>"
       },
@@ -464,13 +460,11 @@
     {
       "name": "array^",
       "rust": {
-        "string": "Vec<String>",
-        "float": "Vec<f32>",
-        "int": "Vec<i32>",
-        "small_int": "Vec<i16>",
-        "big_int": "Vec<i64>",
-        "double": "Vec<f64>",
-        "bool": "Vec<bool>"
+        "string": "Option<Vec<String>>",
+        "float": "Option<Vec<f32>>",
+        "int": "Option<Vec<i32>>",
+        "double": "Option<Vec<f64>>",
+        "bool": "Option<Vec<bool>>"
       },
       "schema": "array",
       "col_type": "array_uniq",
