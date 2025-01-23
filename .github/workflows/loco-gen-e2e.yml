@@ -220,8 +220,8 @@ jobs:
         run: |
           cargo run -- generate scaffold --api room \
               uuid_uniq:uuid \
-              uuid_null:uuid_col \
-              uuid:uuid_col! \
+              uuid_null:uuid \
+              uuid:uuid! \
               string_null:string \
               string:string! \
               string_uniq:string^ \

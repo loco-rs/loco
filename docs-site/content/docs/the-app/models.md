@@ -129,9 +129,9 @@ These fields are ignored if you provide them in your migration command.
 For schema data types, you can use the following mapping to understand the schema:
 
 ```rust
-("uuid", "uuid_uniq"),
-("uuid_col", "uuid_null"),
-("uuid_col!", "uuid"),
+("uuid^", "uuid_uniq"),
+("uuid", "uuid_null"),
+("uuid!", "uuid"),
 ("string", "string_null"),
 ("string!", "string"),
 ("string^", "string_uniq"),
