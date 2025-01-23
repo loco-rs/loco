@@ -219,7 +219,6 @@ impl super::_entities::users::Model {
     pub fn generate_jwt(&self, secret: &str, expiration: u64) -> ModelResult<String> {
         let mut claims = Map::new();
         claims.insert("Role".to_string(), "Administrator".into());
-```?
         Ok(jwt::JWT::new(secret).generate_token(expiration, self.pid.to_string(), claims)?)
     }
 }
