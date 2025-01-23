@@ -212,4 +212,5 @@ sqlx = { version = "0.8.2", default-features = false, features = [
     "postgres",
     "chrono",
     "sqlite",
+    "migrate",
 ] }
