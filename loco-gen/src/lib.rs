@@ -24,7 +24,7 @@ mod model;
 #[cfg(feature = "with-db")]
 mod scaffold;
 pub mod template;
-mod template_engine;
+pub mod template_engine;
 #[cfg(test)]
 mod testutil;
 
