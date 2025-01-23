@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use tera::{Tera, Value};
 
+#[must_use]
 pub fn new() -> Tera {
     let mut tera = Tera::default();
     tera.register_function("render_form_field", FormField);
