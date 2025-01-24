@@ -8,7 +8,8 @@ use std::{
 
 use async_trait::async_trait;
 use moka::{sync::Cache, Expiry};
-
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use super::CacheDriver;
 use crate::cache::CacheResult;
 
@@ -61,7 +62,7 @@ impl CacheDriver for Inmem {
     /// # Errors
     ///
     /// Returns a `CacheError` if there is an error during the operation.
-    async fn get(&self, key: &str) -> CacheResult<Option<String>> {
+    async fn get<T: DeserializeOwned>(&self, key: &str) -> CacheResult<Option<T>> {
         let result = self.cache.get(key);
         match result {
             None => Ok(None),
@@ -74,7 +75,7 @@ impl CacheDriver for Inmem {
     /// # Errors
     ///
     /// Returns a `CacheError` if there is an error during the operation.
-    async fn insert(&self, key: &str, value: &str) -> CacheResult<()> {
+    async fn insert<T: Serialize>(&self, key: &str, value: &T) -> CacheResult<()> {
         self.cache.insert(
             key.to_string(),
             (Expiration::Never, Arc::new(value).to_string()),
@@ -89,10 +90,10 @@ impl CacheDriver for Inmem {
     ///
     /// Returns a [`super::CacheError`] if there is an error during the
     /// operation.
-    async fn insert_with_expiry(
+    async fn insert_with_expiry<T: Serialize>(
         &self,
         key: &str,
-        value: &str,
+        value: &T,
         duration: Duration,
     ) -> CacheResult<()> {
         self.cache.insert(

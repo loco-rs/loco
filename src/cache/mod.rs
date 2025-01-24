@@ -4,7 +4,8 @@
 pub mod drivers;
 
 use std::{future::Future, time::Duration};
-
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use self::drivers::CacheDriver;
 use crate::Result as LocoResult;
 
@@ -64,7 +65,7 @@ impl Cache {
     /// # Errors
     /// A [`CacheResult`] containing an `Option` representing the retrieved
     /// value.
-    pub async fn get(&self, key: &str) -> CacheResult<Option<String>> {
+    pub async fn get<T: DeserializeOwned>(&self, key: &str) -> CacheResult<Option<T>> {
         self.driver.get(key).await
     }
 
@@ -83,7 +84,7 @@ impl Cache {
     /// # Errors
     ///
     /// A [`CacheResult`] indicating the success of the operation.
-    pub async fn insert(&self, key: &str, value: &str) -> CacheResult<()> {
+    pub async fn insert<T: Serialize>(&self, key: &str, value: &T) -> CacheResult<()> {
         self.driver.insert(key, value).await
     }
 
@@ -104,10 +105,10 @@ impl Cache {
     /// # Errors
     ///
     /// A [`CacheResult`] indicating the success of the operation.
-    pub async fn insert_with_expiry(
+    pub async fn insert_with_expiry<T: Serialize>(
         &self,
         key: &str,
-        value: &str,
+        value: &T,
         duration: Duration,
     ) -> CacheResult<()> {
         self.driver.insert_with_expiry(key, value, duration).await
@@ -134,9 +135,10 @@ impl Cache {
     /// # Errors
     ///
     /// A [`LocoResult`] indicating the success of the operation.
-    pub async fn get_or_insert<F>(&self, key: &str, f: F) -> LocoResult<String>
+    pub async fn get_or_insert<T, F>(&self, key: &str, f: F) -> LocoResult<T>
     where
-        F: Future<Output = LocoResult<String>> + Send,
+        T: Serialize + DeserializeOwned,
+        F: Future<Output = LocoResult<T>> + Send,
     {
         if let Some(value) = self.driver.get(key).await? {
             Ok(value)
@@ -169,22 +171,21 @@ impl Cache {
     /// # Errors
     ///
     /// A [`LocoResult`] indicating the success of the operation.
-    pub async fn get_or_insert_with_expiry<F>(
+    pub async fn get_or_insert_with_expiry<T, F>(
         &self,
         key: &str,
         duration: Duration,
         f: F,
-    ) -> LocoResult<String>
+    ) -> LocoResult<T>
     where
-        F: Future<Output = LocoResult<String>> + Send,
+        T: Serialize + DeserializeOwned,
+        F: Future<Output = LocoResult<T>> + Send,
     {
         if let Some(value) = self.driver.get(key).await? {
             Ok(value)
         } else {
             let value = f.await?;
-            self.driver
-                .insert_with_expiry(key, &value, duration)
-                .await?;
+            self.driver.insert_with_expiry(key, &value, duration).await?;
             Ok(value)
         }
     }

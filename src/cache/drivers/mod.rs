@@ -4,7 +4,8 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use super::CacheResult;
 
 #[cfg(feature = "cache_inmem")]
@@ -28,7 +29,7 @@ pub trait CacheDriver: Sync + Send {
     ///
     /// Returns a [`super::CacheError`] if there is an error during the
     /// operation.
-    async fn get(&self, key: &str) -> CacheResult<Option<String>>;
+    async fn get<T: DeserializeOwned>(&self, key: &str) -> CacheResult<Option<T>>;
 
     /// Inserts a key-value pair into the cache.
     ///
@@ -36,7 +37,7 @@ pub trait CacheDriver: Sync + Send {
     ///
     /// Returns a [`super::CacheError`] if there is an error during the
     /// operation.
-    async fn insert(&self, key: &str, value: &str) -> CacheResult<()>;
+    async fn insert<T: Serialize>(&self, key: &str, value: &T) -> CacheResult<()>;
 
     /// Inserts a key-value pair into the cache that expires after the
     /// specified duration.
@@ -45,10 +46,10 @@ pub trait CacheDriver: Sync + Send {
     ///
     /// Returns a [`super::CacheError`] if there is an error during the
     /// operation.
-    async fn insert_with_expiry(
+    async fn insert_with_expiry<T: Serialize>(
         &self,
         key: &str,
-        value: &str,
+        value: &T,
         duration: Duration,
     ) -> CacheResult<()>;
 
