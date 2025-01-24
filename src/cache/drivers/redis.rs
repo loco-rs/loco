@@ -8,12 +8,12 @@ use std::{
 
 use async_trait::async_trait;
 use bb8::Pool;
-use moka::{sync::Cache, Expiry};
+use bb8_redis::RedisConnectionManager;
+use redis::AsyncCommands;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use sidekiq::RedisConnectionManager;
 use super::CacheDriver;
-use crate::cache::CacheResult;
+use crate::cache::{CacheError, CacheResult};
 use crate::config::RedisCacheConfig;
 
 /// Creates a new instance of the in-memory cache driver, with a default Loco
@@ -23,17 +23,17 @@ use crate::config::RedisCacheConfig;
 ///
 /// A boxed [`CacheDriver`] instance.
 #[must_use]
-pub async fn new(config: &RedisCacheConfig) -> Box<dyn CacheDriver> {
-    let manager = RedisConnectionManager::new(config.uri.clone())?;
+pub async fn new(config: &RedisCacheConfig) -> CacheResult<Box<dyn CacheDriver>> {
+    let manager = RedisConnectionManager::new(config.uri.clone())
+        .map_err(|e| CacheError::Any(Box::new(e)))?;
     let redis = Pool::builder().build(manager).await?;
 
-    todo!()
+    Ok(Box::new(Redis { redis }))
 }
 
 /// Represents the in-memory cache driver.
-#[derive(Debug)]
 pub struct Redis {
-    cache: Cache<String, (Expiration, dyn Serialize)>,
+    redis: Pool<RedisConnectionManager>,
 }
 
 impl Redis {
@@ -56,7 +56,9 @@ impl CacheDriver for Redis {
     ///
     /// Returns a `CacheError` if there is an error during the operation.
     async fn contains_key(&self, key: &str) -> CacheResult<bool> {
-        Ok(self.cache.contains_key(key))
+        let mut connection = self.redis.get().await?;
+        Ok(connection.exists(key).await?)
+
     }
 
     /// Retrieves a value from the cache based on the provided key.
@@ -65,10 +67,16 @@ impl CacheDriver for Redis {
     ///
     /// Returns a `CacheError` if there is an error during the operation.
     async fn get<T: DeserializeOwned>(&self, key: &str) -> CacheResult<Option<T>> {
-        let result = self.cache.get(key);
-        match result {
+        let mut connection = self.redis.get().await?;
+        let data: Option<Vec<u8>> = connection.get(key).await?;
+
+        match data {
+            Some(bytes) => {
+                let value = rmp_serde::from_slice(&bytes)
+                    .map_err(|e| CacheError::Any(Box::new(e)))?;
+                Ok(Some(value))
+            }
             None => Ok(None),
-            Some(v) => Ok(Some(v.1)),
         }
     }
 
@@ -78,10 +86,10 @@ impl CacheDriver for Redis {
     ///
     /// Returns a `CacheError` if there is an error during the operation.
     async fn insert<T: Serialize>(&self, key: &str, value: &T) -> CacheResult<()> {
-        self.cache.insert(
-            key.to_string(),
-            (Expiration::Never, Arc::new(value).to_string()),
-        );
+        let mut connection = self.redis.get().await?;
+        let encoded = rmp_serde::to_vec(value)
+            .map_err(|e| CacheError::Any(Box::new(e)))?;
+        connection.set(key, encoded).await?;
         Ok(())
     }
 
@@ -98,13 +106,10 @@ impl CacheDriver for Redis {
         value: &T,
         duration: Duration,
     ) -> CacheResult<()> {
-        self.cache.insert(
-            key.to_string(),
-            (
-                Expiration::AfterDuration(duration),
-                Arc::new(value).to_string(),
-            ),
-        );
+        let mut connection = self.redis.get().await?;
+        let encoded = rmp_serde::to_vec(value)
+            .map_err(|e| CacheError::Any(Box::new(e)))?;
+        connection.set_ex(key, encoded, duration.as_secs() as usize).await?;
         Ok(())
     }
 
@@ -114,7 +119,8 @@ impl CacheDriver for Redis {
     ///
     /// Returns a `CacheError` if there is an error during the operation.
     async fn remove(&self, key: &str) -> CacheResult<()> {
-        self.cache.remove(key);
+        let mut connection = self.redis.get().await?;
+        connection.del(key);
         Ok(())
     }
 
@@ -124,7 +130,9 @@ impl CacheDriver for Redis {
     ///
     /// Returns a `CacheError` if there is an error during the operation.
     async fn clear(&self) -> CacheResult<()> {
-        self.cache.invalidate_all();
+        let mut connection = self.redis.get().await?;
+        connection.flushdb().await?;
+
         Ok(())
     }
 }
