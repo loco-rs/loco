@@ -1,18 +1,20 @@
-//! # In-Memory Cache Driver
+//! # Redis Cache Driver
 //!
-//! This module implements a cache driver using an in-memory cache.
+//! This module implements a cache driver using an redis cache.
 use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
 
 use async_trait::async_trait;
+use bb8::Pool;
 use moka::{sync::Cache, Expiry};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use sidekiq::RedisConnectionManager;
 use super::CacheDriver;
 use crate::cache::CacheResult;
-use crate::config::InMemCacheConfig;
+use crate::config::RedisCacheConfig;
 
 /// Creates a new instance of the in-memory cache driver, with a default Loco
 /// configuration.
@@ -21,22 +23,21 @@ use crate::config::InMemCacheConfig;
 ///
 /// A boxed [`CacheDriver`] instance.
 #[must_use]
-pub async fn new(config: &InMemCacheConfig) -> Box<dyn CacheDriver> {
-    let cache: Cache<String, (Expiration, String)> = Cache::builder()
-        .max_capacity(config.max_capacity)
-        .expire_after(InMemExpiry)
-        .build();
-    Inmem::from(cache)
+pub async fn new(config: &RedisCacheConfig) -> Box<dyn CacheDriver> {
+    let manager = RedisConnectionManager::new(config.uri.clone())?;
+    let redis = Pool::builder().build(manager).await?;
+
+    todo!()
 }
 
 /// Represents the in-memory cache driver.
 #[derive(Debug)]
-pub struct Inmem {
+pub struct Redis {
     cache: Cache<String, (Expiration, dyn Serialize)>,
 }
 
-impl Inmem {
-    /// Constructs a new [`Inmem`] instance from a given cache.
+impl Redis {
+    /// Constructs a new [`Redis`] instance from a given cache.
     ///
     /// # Returns
     ///
@@ -48,7 +49,7 @@ impl Inmem {
 }
 
 #[async_trait]
-impl CacheDriver for Inmem {
+impl CacheDriver for Redis {
     /// Checks if a key exists in the cache.
     ///
     /// # Errors
@@ -144,19 +145,6 @@ impl Expiration {
     }
 }
 
-pub struct InMemExpiry;
-
-impl Expiry<String, (Expiration, String)> for InMemExpiry {
-    fn expire_after_create(
-        &self,
-        _key: &String,
-        value: &(Expiration, String),
-        _current_time: Instant,
-    ) -> Option<Duration> {
-        value.0.as_duration()
-    }
-}
-
 #[cfg(test)]
 mod tests {
 
@@ -164,45 +152,21 @@ mod tests {
 
     #[tokio::test]
     async fn is_contains_key() {
-        let mem = new();
-        assert!(!mem.contains_key("key").await.unwrap());
-        assert!(mem.insert("key", "loco").await.is_ok());
-        assert!(mem.contains_key("key").await.unwrap());
+        todo!()
     }
 
     #[tokio::test]
     async fn can_get_key_value() {
-        let mem = new();
-        assert!(mem.insert("key", "loco").await.is_ok());
-        assert_eq!(mem.get("key").await.unwrap(), Some("loco".to_string()));
-
-        //try getting key that not exists
-        assert_eq!(mem.get("not-found").await.unwrap(), None);
+        todo!()
     }
 
     #[tokio::test]
     async fn can_remove_key() {
-        let mem = new();
-        assert!(mem.insert("key", "loco").await.is_ok());
-        assert!(mem.contains_key("key").await.unwrap());
-        mem.remove("key").await.unwrap();
-        assert!(!mem.contains_key("key").await.unwrap());
+        todo!()
     }
 
     #[tokio::test]
     async fn can_clear() {
-        let mem = new();
-
-        let keys = vec!["key", "key2", "key3"];
-        for key in &keys {
-            assert!(mem.insert(key, "loco").await.is_ok());
-        }
-        for key in &keys {
-            assert!(mem.contains_key(key).await.is_ok());
-        }
-        assert!(mem.clear().await.is_ok());
-        for key in &keys {
-            assert!(!mem.contains_key(key).await.unwrap());
-        }
+        todo!()
     }
 }

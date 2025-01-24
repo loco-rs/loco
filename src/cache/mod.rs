@@ -4,10 +4,14 @@
 pub mod drivers;
 
 use std::{future::Future, time::Duration};
+use std::sync::Arc;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use crate::bgworker::{pg, skq, sqlt, Queue};
+use crate::config::Config;
 use self::drivers::CacheDriver;
-use crate::Result as LocoResult;
+use crate::{config, Error, Result as LocoResult};
+use crate::cache::drivers::{inmem, redis};
 
 /// Errors related to cache operations
 #[derive(thiserror::Error, Debug)]
@@ -18,6 +22,29 @@ pub enum CacheError {
 }
 
 pub type CacheResult<T> = std::result::Result<T, CacheError>;
+
+/// Create a provider
+///
+/// # Errors
+///
+/// This function will return an error if fails to build
+#[allow(clippy::missing_panics_doc)]
+pub async fn create_cache_provider(config: &Config) -> crate::Result<Arc<Cache>> {
+    match &config.cache {
+        config::CacheConfig::Redis(config) => {
+            Ok(Arc::new(redis::new(config).await?))
+        }
+        config::CacheConfig::InMem(config) => {
+            Ok(Arc::new(inmem::new(config).await?))
+        }
+
+        #[allow(unreachable_patterns)]
+        _ => Err(Error::string(
+            "no cache provider feature was selected and compiled, but cache configuration \
+             is present",
+        )),
+    }
+}
 
 /// Represents a cache instance
 pub struct Cache {
