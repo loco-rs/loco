@@ -9,7 +9,7 @@ use std::{
 use async_trait::async_trait;
 use bb8::Pool;
 use bb8_redis::RedisConnectionManager;
-use redis::AsyncCommands;
+use redis::{cmd, AsyncCommands};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use super::CacheDriver;
@@ -28,7 +28,7 @@ pub async fn new(config: &RedisCacheConfig) -> CacheResult<Box<dyn CacheDriver>>
         .map_err(|e| CacheError::Any(Box::new(e)))?;
     let redis = Pool::builder().build(manager).await?;
 
-    Ok(Box::new(Redis { redis }))
+    Ok(Redis::from(redis))
 }
 
 /// Represents the in-memory cache driver.
@@ -43,8 +43,8 @@ impl Redis {
     ///
     /// A boxed [`CacheDriver`] instance.
     #[must_use]
-    pub fn from(cache: Cache<String, (Expiration, String)>) -> Box<dyn CacheDriver> {
-        Box::new(Self { cache })
+    pub fn from(redis: Pool<RedisConnectionManager>) -> Box<dyn CacheDriver> {
+        Box::new(Self { redis })
     }
 }
 
@@ -131,7 +131,7 @@ impl CacheDriver for Redis {
     /// Returns a `CacheError` if there is an error during the operation.
     async fn clear(&self) -> CacheResult<()> {
         let mut connection = self.redis.get().await?;
-        connection.flushdb().await?;
+        cmd("flushall").query(connection).await?;
 
         Ok(())
     }
