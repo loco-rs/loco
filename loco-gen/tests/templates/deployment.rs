@@ -224,8 +224,9 @@ server:
 
     assert_eq!(
         collect_messages(&gen_result),
-        r"* Deploy file generated successfully.
-* Dockerfile generated successfully.
+        r"* Dockerfile generated successfully.
+* Dockerignore generated successfully.
+* Deploy file generated successfully.
 * Secrets file generated successfully.
 "
     );
@@ -239,7 +240,13 @@ server:
     // Assert the generated Dockerfile content
     assert_snapshot!(
         "generate[kamal_dockerfile_sqlite]",
-        fs::read_to_string(tree_fs.root.join("Dockerfile")).expect("Dockerfile missing")
+        fs::read_to_string(tree_fs.root.join("dockerfile")).expect("Dockerfile missing")
+    );
+
+    // Assert the generated .dockerignore content
+    assert_snapshot!(
+        "generate[kamal_dockerignore_sqlite]",
+        fs::read_to_string(tree_fs.root.join(".dockerignore")).expect(".dockerignore missing")
     );
 
     // Assert the generated deploy.yml content
@@ -302,8 +309,9 @@ server:
 
     assert_eq!(
         collect_messages(&gen_result),
-        r"* Deploy file generated successfully.
-* Dockerfile generated successfully.
+        r"* Dockerfile generated successfully.
+* Dockerignore generated successfully.
+* Deploy file generated successfully.
 * Secrets file generated successfully.
 "
     );
@@ -312,10 +320,16 @@ server:
         fs::read_to_string(tree_fs.root.join("config").join("development.yaml"))
             .expect("development.yaml missing")
     );
-    // Assert the generated Dockerfile content
+    // Assert the generated dockerfile content
     assert_snapshot!(
         "generate[kamal_dockerfile_sqlite_with_background_queue]",
-        fs::read_to_string(tree_fs.root.join("Dockerfile")).expect("Dockerfile missing")
+        fs::read_to_string(tree_fs.root.join("dockerfile")).expect("Dockerfile missing")
+    );
+
+    // Assert the generated .dockerignore content
+    assert_snapshot!(
+        "generate[kamal_dockerignore_sqlite_with_background_queue]",
+        fs::read_to_string(tree_fs.root.join(".dockerignore")).expect(".dockerignore missing")
     );
 
     // Assert the generated deploy.yml content
@@ -378,8 +392,9 @@ server:
 
     assert_eq!(
         collect_messages(&gen_result),
-        r"* Deploy file generated successfully.
-* Dockerfile generated successfully.
+        r"* Dockerfile generated successfully.
+* Dockerignore generated successfully.
+* Deploy file generated successfully.
 * Secrets file generated successfully.
 "
     );
@@ -388,10 +403,16 @@ server:
         fs::read_to_string(tree_fs.root.join("config").join("development.yaml"))
             .expect("development.yaml missing")
     );
-    // Assert the generated Dockerfile content
+    // Assert the generated dockerfile content
     assert_snapshot!(
         "generate[kamal_dockerfile_postgres_without_background_queue]",
-        fs::read_to_string(tree_fs.root.join("Dockerfile")).expect("Dockerfile missing")
+        fs::read_to_string(tree_fs.root.join("dockerfile")).expect("Dockerfile missing")
+    );
+
+    // Assert the generated .dockerignore content
+    assert_snapshot!(
+        "generate[kamal_dockerignore_postgres_without_background_queue]",
+        fs::read_to_string(tree_fs.root.join(".dockerignore")).expect(".dockerignore missing")
     );
 
     // Assert the generated deploy.yml content
@@ -454,8 +475,9 @@ server:
 
     assert_eq!(
         collect_messages(&gen_result),
-        r"* Deploy file generated successfully.
-* Dockerfile generated successfully.
+        r"* Dockerfile generated successfully.
+* Dockerignore generated successfully.
+* Deploy file generated successfully.
 * Secrets file generated successfully.
 "
     );
@@ -464,10 +486,16 @@ server:
         fs::read_to_string(tree_fs.root.join("config").join("development.yaml"))
             .expect("development.yaml missing")
     );
-    // Assert the generated Dockerfile content
+    // Assert the generated dockerfile content
     assert_snapshot!(
         "generate[kamal_dockerfile_postgres_with_background_queue]",
-        fs::read_to_string(tree_fs.root.join("Dockerfile")).expect("Dockerfile missing")
+        fs::read_to_string(tree_fs.root.join("dockerfile")).expect("Dockerfile missing")
+    );
+
+    // Assert the generated .dockerignore content
+    assert_snapshot!(
+        "generate[kamal_dockerignore_postgres_with_background_queue]",
+        fs::read_to_string(tree_fs.root.join(".dockerignore")).expect(".dockerignore missing")
     );
 
     // Assert the generated deploy.yml content

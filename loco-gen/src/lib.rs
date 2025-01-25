@@ -317,7 +317,15 @@ pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Resul
                     "postgres": postgres,
                     "background_queue": background_queue
                 });
-                render_template(rrgen, Path::new("deployment/kamal"), &vars)?
+                // render the dockerfile template
+                let mut gen_result_docker =
+                    render_template(rrgen, Path::new("deployment/docker"), &vars)?;
+                // render the kamal template
+                let gen_result_kamal =
+                    render_template(rrgen, Path::new("deployment/kamal"), &vars)?;
+                // merge the results
+                gen_result_docker.rrgen.extend(gen_result_kamal.rrgen);
+                gen_result_docker
             }
         },
     };
