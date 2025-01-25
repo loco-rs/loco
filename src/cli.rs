@@ -30,7 +30,6 @@ cfg_if::cfg_if! {
     feature = "with-db"
 ))]
 use std::process::exit;
-
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
@@ -49,11 +48,10 @@ use crate::{
         create_app, create_context, list_endpoints, list_middlewares, run_scheduler, run_task,
         start, RunDbCommand, ServeParams, StartMode,
     },
-    config::Config,
+    config::{Config, WorkerMode},
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     logger, task, Error,
 };
-use crate::config::WorkerMode;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -333,7 +331,8 @@ After running the migration, follow these steps to complete the process:
         kind: DeploymentKind,
     },
 
-    /// Override templates and allows you to take control of them. You can always go back when deleting the local template.
+    /// Override templates and allows you to take control of them. You can
+    /// always go back when deleting the local template.
     #[command(after_help = format!("{}
   - Override a Specific File:
       * cargo loco generate override scaffold/api/controller.t
@@ -350,7 +349,8 @@ After running the migration, follow these steps to complete the process:
         /// The path to a specific template or directory to copy.
         template_path: Option<String>,
 
-        /// Show available templates to copy under the specified directory without actually coping them.
+        /// Show available templates to copy under the specified directory
+        /// without actually coping them.
         #[arg(long, action)]
         info: bool,
     },
@@ -434,7 +434,14 @@ impl ComponentArg {
                     .static_assets
                     .clone()
                     .map(|a| a.fallback);
-
+                #[cfg(feature = "with-db")]
+                let postgres = config.database.uri.contains("postgres://");
+                #[cfg(not(feature = "with-db"))]
+                let postgres = false;
+                #[cfg(feature = "with-db")]
+                let sqlite = config.database.uri.contains("sqlite://");
+                #[cfg(not(feature = "with-db"))]
+                let sqlite = false;
                 Ok(Component::Deployment {
                     kind,
                     asset_folder: copy_asset_folder.clone(),
@@ -442,8 +449,8 @@ impl ComponentArg {
                     host: config.server.host.clone(),
                     port: config.server.port,
                     background_queue: config.workers.mode == WorkerMode::BackgroundQueue,
-                    postgres: config.database.uri.contains("postgres://"),
-                    sqlite: config.database.uri.contains("sqlite://"),
+                    postgres,
+                    sqlite,
                 })
             }
             Self::Override {

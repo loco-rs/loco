@@ -143,10 +143,11 @@ pub trait Hooks: Send {
         Ok(false)
     }
 
-    /// Loads the configuration settings for the application based on the given environment.
+    /// Loads the configuration settings for the application based on the given
+    /// environment.
     ///
-    /// This function is responsible for retrieving the configuration for the application
-    /// based on the current environment.
+    /// This function is responsible for retrieving the configuration for the
+    /// application based on the current environment.
     async fn load_config(env: &Environment) -> Result<Config> {
         env.load()
     }

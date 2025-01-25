@@ -301,9 +301,9 @@ async fn fail_job(pool: &PgPool, id: &JobId, error: &crate::Error) -> Result<()>
 
 /// Cancels jobs in the `pg_loco_queue` table by their name.
 ///
-/// This function updates the status of all jobs with the given `name` and a status of
-/// [`JobStatus::Queued`] to [`JobStatus::Cancelled`]. The update also sets the `updated_at` timestamp to the
-/// current time.
+/// This function updates the status of all jobs with the given `name` and a
+/// status of [`JobStatus::Queued`] to [`JobStatus::Cancelled`]. The update also
+/// sets the `updated_at` timestamp to the current time.
 ///
 /// # Errors
 ///
@@ -334,9 +334,9 @@ pub async fn clear(pool: &PgPool) -> Result<()> {
 
 /// Deletes jobs from the `pg_loco_queue` table based on their status.
 ///
-/// This function removes all jobs with a status that matches any of the statuses provided
-/// in the `status` argument. The statuses are checked against the `status` column in the
-/// database, and any matching rows are deleted.
+/// This function removes all jobs with a status that matches any of the
+/// statuses provided in the `status` argument. The statuses are checked against
+/// the `status` column in the database, and any matching rows are deleted.
 ///
 /// # Errors
 ///
@@ -354,11 +354,12 @@ pub async fn clear_by_status(pool: &PgPool, status: Vec<JobStatus>) -> Result<()
     Ok(())
 }
 
-/// Deletes jobs from the `pg_loco_queue` table that are older than a specified number of days.
+/// Deletes jobs from the `pg_loco_queue` table that are older than a specified
+/// number of days.
 ///
-/// This function removes jobs that have a `created_at` timestamp older than the provided
-/// number of days. Additionally, if a `status` is provided, only jobs with a status matching
-/// one of the provided values will be deleted.
+/// This function removes jobs that have a `created_at` timestamp older than the
+/// provided number of days. Additionally, if a `status` is provided, only jobs
+/// with a status matching one of the provided values will be deleted.
 ///
 /// # Errors
 ///
@@ -441,13 +442,14 @@ pub async fn get_jobs(
 
 /// Converts a row from the database into a [`Job`] object.
 ///
-/// This function takes a row from the `Postgres` database and manually extracts the necessary
-/// fields to populate a [`Job`] object.
+/// This function takes a row from the `Postgres` database and manually extracts
+/// the necessary fields to populate a [`Job`] object.
 ///
-/// **Note:** This function manually extracts values from the database row instead of using
-/// the `FromRow` trait, which would require enabling the 'macros' feature in the dependencies.
-/// The decision to avoid `FromRow` is made to keep the build smaller and faster, as the 'macros'
-/// feature is unnecessary in the current dependency tree.
+/// **Note:** This function manually extracts values from the database row
+/// instead of using the `FromRow` trait, which would require enabling the
+/// 'macros' feature in the dependencies. The decision to avoid `FromRow` is
+/// made to keep the build smaller and faster, as the 'macros' feature is
+/// unnecessary in the current dependency tree.
 fn to_job(row: &PgRow) -> Result<Job> {
     Ok(Job {
         id: row.get("id"),

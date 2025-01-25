@@ -1,8 +1,9 @@
-use crate::infra_cfg;
 use loco_rs::{prelude::*, tests_cfg};
 use serde::{Deserialize, Serialize};
 use serial_test::serial;
 use validator::Validate;
+
+use crate::infra_cfg;
 
 #[derive(Debug, Deserialize, Serialize, Validate)]
 pub struct Data {

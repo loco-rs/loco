@@ -1,7 +1,8 @@
-use crate::infra_cfg;
 use loco_rs::{controller, prelude::*, tests_cfg};
 use serde::{Deserialize, Serialize};
 use serial_test::serial;
+
+use crate::infra_cfg;
 
 #[tokio::test]
 #[serial]

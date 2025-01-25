@@ -354,7 +354,8 @@ impl RenderBuilder {
         self.redirect_with_header_key(header::LOCATION, to)
     }
 
-    /// Finalizes the HTTP response and redirects to a specified location using a dynamic header key.
+    /// Finalizes the HTTP response and redirects to a specified location using
+    /// a dynamic header key.
     ///
     /// # Errors
     ///
