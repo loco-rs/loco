@@ -541,7 +541,7 @@ To disable the middleware edit the configuration as follows:
 
 ## Fallback
 
-When choosing the SaaS starter (or any starter that is not API-first), you get a default fallback behavior with the _Loco welcome screen_. This is a development-only mode where a `404` request shows you a nice and friendly page that tells you what happened and what to do next.
+When choosing the SaaS starter (or any starter that is not API-first), you get a default fallback behavior with the _Loco welcome screen_. This is a development-only mode where a `404` request shows you a nice and friendly page that tells you what happened and what to do next. This also takes preference over the static handler, so make sure to disable it if you want to have static content served.
 
 
 You can disable or customize this behavior in your `development.yaml` file. You can set a few options:
@@ -917,6 +917,7 @@ impl PaginationResponse {
                 page: pagination_query.page,
                 page_size: pagination_query.page_size,
                 total_pages: data.total_pages,
+                total_items: data.total_items,
             },
         }
     }
