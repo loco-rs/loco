@@ -1,8 +1,10 @@
-use super::utils::{guess_file_by_time, MIGRATION_SRC_LIB};
+use std::fs;
+
 use insta::{assert_snapshot, with_settings};
 use loco_gen::{collect_messages, generate, AppInfo, Component};
 use rrgen::RRgen;
-use std::fs;
+
+use super::utils::{guess_file_by_time, MIGRATION_SRC_LIB};
 
 macro_rules! configure_insta {
     () => {
