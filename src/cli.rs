@@ -35,6 +35,7 @@ use std::{collections::BTreeMap, path::PathBuf};
 use clap::{ArgAction, Parser, Subcommand};
 use colored::Colorize;
 use duct::cmd;
+use loco_gen::ScaffoldKind;
 
 #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
 use crate::bgworker::JobStatus;
@@ -372,19 +373,7 @@ impl ComponentArg {
                 html,
                 api,
             } => {
-                let kind = if let Some(kind) = kind {
-                    kind
-                } else if htmx {
-                    loco_gen::ScaffoldKind::Htmx
-                } else if html {
-                    loco_gen::ScaffoldKind::Html
-                } else if api {
-                    loco_gen::ScaffoldKind::Api
-                } else {
-                    return Err(crate::Error::string(
-                        "Error: One of `kind`, `htmx`, `html`, or `api` must be specified.",
-                    ));
-                };
+                let kind = Self::get_kind(kind, htmx, html, api)?;
 
                 Ok(loco_gen::Component::Scaffold { name, fields, kind })
             }
@@ -396,19 +385,7 @@ impl ComponentArg {
                 html,
                 api,
             } => {
-                let kind = if let Some(kind) = kind {
-                    kind
-                } else if htmx {
-                    loco_gen::ScaffoldKind::Htmx
-                } else if html {
-                    loco_gen::ScaffoldKind::Html
-                } else if api {
-                    loco_gen::ScaffoldKind::Api
-                } else {
-                    return Err(crate::Error::string(
-                        "Error: One of `kind`, `htmx`, `html`, or `api` must be specified.",
-                    ));
-                };
+                let kind = Self::get_kind(kind, htmx, html, api)?;
 
                 Ok(loco_gen::Component::Controller {
                     name,
@@ -461,6 +438,28 @@ impl ComponentArg {
                 "Error: Override could not be generated.",
             )),
         }
+    }
+    #[allow(clippy::similar_names)]
+    fn get_kind(
+        kind: Option<loco_gen::ScaffoldKind>,
+        htmx: bool,
+        html: bool,
+        api: bool,
+    ) -> Result<ScaffoldKind, Error> {
+        let kind = if let Some(kind) = kind {
+            kind
+        } else if htmx {
+            loco_gen::ScaffoldKind::Htmx
+        } else if html {
+            loco_gen::ScaffoldKind::Html
+        } else if api {
+            loco_gen::ScaffoldKind::Api
+        } else {
+            return Err(crate::Error::string(
+                "Error: One of `kind`, `htmx`, `html`, or `api` must be specified.",
+            ));
+        };
+        Ok(kind)
     }
 }
 
