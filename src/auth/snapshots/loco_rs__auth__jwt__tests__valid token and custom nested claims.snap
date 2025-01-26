@@ -21,7 +21,13 @@ Ok(
         claims: UserClaims {
             pid: "pid",
             exp: EXP,
-            claims: {},
+            claims: {
+                "level1": Object {
+                    "level2": Object {
+                        "level3": String("claim"),
+                    },
+                },
+            },
         },
     },
 )
