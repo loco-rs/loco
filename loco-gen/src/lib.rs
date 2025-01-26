@@ -24,7 +24,7 @@ mod model;
 #[cfg(feature = "with-db")]
 mod scaffold;
 pub mod template;
-pub mod template_engine;
+pub mod tera_ext;
 #[cfg(test)]
 mod testutil;
 
@@ -273,7 +273,7 @@ pub struct AppInfo {
 
 #[must_use]
 pub fn new_generator() -> RRgen {
-    RRgen::default().add_template_engine(template_engine::new())
+    RRgen::default().add_template_engine(tera_ext::new())
 }
 
 /// Generate a component
