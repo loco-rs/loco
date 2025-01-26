@@ -448,7 +448,8 @@ impl ComponentArg {
                     fallback_file: fallback_file.clone(),
                     host: config.server.host.clone(),
                     port: config.server.port,
-                    background_queue: config.workers.mode == WorkerMode::BackgroundQueue,
+                    background_queue: config.workers.mode
+                        == crate::config::WorkerMode::BackgroundQueue,
                     postgres,
                     sqlite,
                 })
