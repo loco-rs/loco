@@ -163,23 +163,25 @@ fn test_combination(
             }
             tester.run_generate(&vec!["model", "movies", "title:string", "user:references"]);
 
-            // Generate HTMX Scaffold
-            tester.run_generate(&vec![
-                "scaffold",
-                "movies_htmx",
-                "title:string",
-                "user:references",
-                "--htmx",
-            ]);
+            if asset.enable() {
+                // Generate HTMX Scaffold
+                tester.run_generate(&vec![
+                    "scaffold",
+                    "movies_htmx",
+                    "title:string",
+                    "user:references",
+                    "--htmx",
+                ]);
 
-            // Generate HTML Scaffold
-            tester.run_generate(&vec![
-                "scaffold",
-                "movies_html",
-                "title:string",
-                "user:references",
-                "--html",
-            ]);
+                // Generate HTML Scaffold
+                tester.run_generate(&vec![
+                    "scaffold",
+                    "movies_html",
+                    "title:string",
+                    "user:references",
+                    "--html",
+                ]);
+            }
 
             // Generate API Scaffold
             tester.run_generate(&vec![
