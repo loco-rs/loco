@@ -39,7 +39,7 @@ sea-orm = { version = "1.1.0", features = [
   "macros",
 ] }
 chrono = { version = "0.4" }
-validator = { version = "0.19" }
+validator = { version = "0.20" }
 uuid = { version = "1.6.0", features = ["v4"] }
 {%- endif %}
 
