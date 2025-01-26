@@ -286,13 +286,13 @@
     },
     {
       "name": "ts",
-      "rust": "Option<DateTimeUtc>",
+      "rust": "Option<chrono::DateTime<chrono::Utc>>",
       "schema": "timestamp_null",
       "col_type": "TimestampNull"
     },
     {
       "name": "ts!",
-      "rust": "DateTimeUtc",
+      "rust": "chrono::DateTime<chrono::Utc>",
       "schema": "timestamp",
       "col_type": "Timestamp"
     },

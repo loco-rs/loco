@@ -75,19 +75,20 @@ struct FieldType {
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
-enum RustType {
+pub enum RustType {
     String(String),
     Map(HashMap<String, String>),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Mappings {
+pub struct Mappings {
     field_types: Vec<FieldType>,
 }
 impl Mappings {
     fn error_unrecognized_default_field(&self, field: &str) -> Error {
-        Self::error_unrecognized(field, &self.schema_fields())
+        Self::error_unrecognized(field, &self.all_names())
     }
+
     fn error_unrecognized(field: &str, allow_fields: &[&String]) -> Error {
         Error::Message(format!(
             "type: `{}` not found. try any of: `{}`",
@@ -99,6 +100,12 @@ impl Mappings {
                 .join(",")
         ))
     }
+
+    /// Resolves the Rust type for a given field with optional parameters.
+    ///
+    /// # Errors
+    ///
+    /// if rust field not exists or invalid parameters
     pub fn rust_field_with_params(&self, field: &str, params: &Vec<String>) -> Result<&str> {
         match field {
             "array" | "array^" | "array!" => {
@@ -112,7 +119,9 @@ impl Mappings {
                         Err(self.error_unrecognized_default_field(field))
                     }
                 } else {
-                    panic!("array field should configured as array")
+                    Err(Error::Message(
+                        "array field should configured as array".to_owned(),
+                    ))
                 }
             }
 
@@ -120,6 +129,11 @@ impl Mappings {
         }
     }
 
+    /// Resolves the Rust type for a given field.
+    ///
+    /// # Errors
+    ///
+    /// When the given field not recognized
     pub fn rust_field_kind(&self, field: &str) -> Result<&RustType> {
         self.field_types
             .iter()
@@ -128,6 +142,11 @@ impl Mappings {
             .ok_or_else(|| self.error_unrecognized_default_field(field))
     }
 
+    /// Resolves the Rust type for a given field.
+    ///
+    /// # Errors
+    ///
+    /// When the given field not recognized
     pub fn rust_field(&self, field: &str) -> Result<&str> {
         self.field_types
             .iter()
@@ -143,6 +162,11 @@ impl Mappings {
             .map(std::string::String::as_str)
     }
 
+    /// Retrieves the schema field associated with the given field.
+    ///
+    /// # Errors
+    ///
+    /// When the given field not recognized
     pub fn schema_field(&self, field: &str) -> Result<&str> {
         self.field_types
             .iter()
@@ -150,6 +174,12 @@ impl Mappings {
             .map(|f| f.schema.as_str())
             .ok_or_else(|| self.error_unrecognized_default_field(field))
     }
+
+    /// Retrieves the column type field associated with the given field.
+    ///
+    /// # Errors
+    ///
+    /// When the given field not recognized
     pub fn col_type_field(&self, field: &str) -> Result<&str> {
         self.field_types
             .iter()
@@ -157,6 +187,12 @@ impl Mappings {
             .map(|f| f.col_type.as_str())
             .ok_or_else(|| self.error_unrecognized_default_field(field))
     }
+
+    /// Retrieves the column type arity associated with the given field.
+    ///
+    /// # Errors
+    ///
+    /// When the given field not recognized
     pub fn col_type_arity(&self, field: &str) -> Result<usize> {
         self.field_types
             .iter()
@@ -164,14 +200,21 @@ impl Mappings {
             .map(|f| f.arity)
             .ok_or_else(|| self.error_unrecognized_default_field(field))
     }
-    pub fn schema_fields(&self) -> Vec<&String> {
+
+    #[must_use]
+    pub fn all_names(&self) -> Vec<&String> {
         self.field_types.iter().map(|f| &f.name).collect::<Vec<_>>()
     }
 }
 
 static MAPPINGS: OnceLock<Mappings> = OnceLock::new();
 
-fn get_mappings() -> &'static Mappings {
+/// Get type mapping for generation
+///
+/// # Panics
+///
+/// Panics if loading fails
+pub fn get_mappings() -> &'static Mappings {
     MAPPINGS.get_or_init(|| {
         let json_data = include_str!("./mappings.json");
         serde_json::from_str(json_data).expect("JSON was not well-formatted")
@@ -419,9 +462,10 @@ pub fn collect_messages(results: &GenerateResults) -> String {
 
 /// Copies template files to a specified destination directory.
 ///
-/// This function copies files from the specified template path to the destination directory.
-/// If the specified path is `/` or `.`, it copies all files from the templates directory.
-/// If the path does not exist in the templates, it returns an error.
+/// This function copies files from the specified template path to the
+/// destination directory. If the specified path is `/` or `.`, it copies all
+/// files from the templates directory. If the path does not exist in the
+/// templates, it returns an error.
 ///
 /// # Errors
 /// when could not copy the given template path
@@ -567,10 +611,10 @@ mod tests {
     }
 
     #[test]
-    fn can_get_schema_fields_from_mapping() {
+    fn can_get_all_names_from_mapping() {
         let mapping = test_mapping();
         assert_eq!(
-            mapping.schema_fields(),
+            mapping.all_names(),
             Vec::from([&"array".to_string(), &"string^".to_string()])
         );
     }
