@@ -70,10 +70,7 @@ async fn register(
 /// Verify register user. if the user not verified his email, he can't login to
 /// the system.
 #[debug_handler]
-async fn verify(
-    State(ctx): State<AppContext>,
-    Path(token): Path<String>,
-) -> Result<Response> {
+async fn verify(State(ctx): State<AppContext>, Path(token): Path<String>) -> Result<Response> {
     let user = users::Model::find_by_verification_token(&ctx.db, &token).await?;
 
     if user.email_verified_at.is_some() {
@@ -143,7 +140,7 @@ async fn login(State(ctx): State<AppContext>, Json(params): Json<LoginParams>) -
     let jwt_secret = ctx.config.get_jwt_config()?;
 
     let token = user
-        .generate_jwt(&jwt_secret.secret, &jwt_secret.expiration)
+        .generate_jwt(&jwt_secret.secret, jwt_secret.expiration)
         .or_else(|_| unauthorized("unauthorized!"))?;
 
     format::json(LoginResponse::new(&user, &token))
@@ -158,14 +155,14 @@ async fn current(auth: auth::JWT, State(ctx): State<AppContext>) -> Result<Respo
 /// Magic link authentication provides a secure and passwordless way to log in to the application.
 ///
 /// # Flow
-/// 1. **Request a Magic Link**:  
-///    A registered user sends a POST request to `/magic-link` with their email.  
-///    If the email exists, a short-lived, one-time-use token is generated and sent to the user's email.  
+/// 1. **Request a Magic Link**:
+///    A registered user sends a POST request to `/magic-link` with their email.
+///    If the email exists, a short-lived, one-time-use token is generated and sent to the user's email.
 ///    For security and to avoid exposing whether an email exists, the response always returns 200, even if the email is invalid.
 ///
-/// 2. **Click the Magic Link**:  
-///    The user clicks the link (/magic-link/{token}), which validates the token and its expiration.  
-///    If valid, the server generates a JWT and responds with a [`LoginResponse`].  
+/// 2. **Click the Magic Link**:
+///    The user clicks the link (/magic-link/{token}), which validates the token and its expiration.
+///    If valid, the server generates a JWT and responds with a [`LoginResponse`].
 ///    If invalid or expired, an unauthorized response is returned.
 ///
 /// This flow enhances security by avoiding traditional passwords and providing a seamless login experience.
@@ -211,7 +208,7 @@ async fn magic_link_verify(
     let jwt_secret = ctx.config.get_jwt_config()?;
 
     let token = user
-        .generate_jwt(&jwt_secret.secret, &jwt_secret.expiration)
+        .generate_jwt(&jwt_secret.secret, jwt_secret.expiration)
         .or_else(|_| unauthorized("unauthorized!"))?;
 
     format::json(LoginResponse::new(&user, &token))
