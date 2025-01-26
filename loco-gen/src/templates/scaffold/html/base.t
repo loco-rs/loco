@@ -19,7 +19,6 @@ message: "Base template was added successfully."
 <body class="min-h-screen bg-background font-sans antialiased">
     <div class="relative flex min-h-screen flex-col bg-background">
         <div class="themes-wrapper bg-background">
-            <div style="--sidebar-width:16rem;--sidebar-width-icon:3rem" class="group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar">
                 <main class="relative flex min-h-svh flex-1 flex-col bg-background peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow">
                     <div class="flex flex-1 flex-col gap-4 p-5 pt-5">
                         <h1 class="scroll-m-20 text-3xl font-bold tracking-tight">
@@ -29,7 +28,6 @@ message: "Base template was added successfully."
                         {% endblock content %}{% endraw %}
                     </div>
                 </main>
-            </div>
         </div>
     </div>
   {% raw %}{% block js %}
