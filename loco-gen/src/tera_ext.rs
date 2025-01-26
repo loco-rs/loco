@@ -136,9 +136,7 @@ impl tera::Function for FormField {
                 Some((f64::MIN, f64::MAX)),
                 Some(r#"step="0.1""#),
             ),
-            "chrono::DateTime<chrono::Utc>"
-            | "Option<chrono::DateTime<chrono::Utc>>"
-            | "DateTimeWithTimeZone"
+            "DateTimeWithTimeZone"
             | "Option<DateTimeWithTimeZone>"
             | "DateTime"
             | "Option<DateTime>"

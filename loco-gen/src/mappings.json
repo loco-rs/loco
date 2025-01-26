@@ -55,24 +55,6 @@
       "col_type": "TextUniq"
     },
     {
-      "name": "tiny_unsigned",
-      "rust": "Option<i16>",
-      "schema": "tiny_unsigned_null",
-      "col_type": "TinyUnsignedNull"
-    },
-    {
-      "name": "tiny_unsigned!",
-      "rust": "i16",
-      "schema": "tiny_unsigned",
-      "col_type": "TinyUnsigned"
-    },
-    {
-      "name": "tiny_unsigned^",
-      "rust": "i16",
-      "schema": "tiny_unsigned_uniq",
-      "col_type": "TinyUnsignedUniq"
-    },
-    {
       "name": "small_unsigned",
       "rust": "Option<i16>",
       "schema": "small_unsigned_null",
@@ -107,24 +89,6 @@
       "rust": "i64",
       "schema": "big_unsigned_uniq",
       "col_type": "BigUnsignedUniq"
-    },
-    {
-      "name": "tiny_int",
-      "rust": "Option<i16>",
-      "schema": "tiny_integer_null",
-      "col_type": "TinyIntegerNull"
-    },
-    {
-      "name": "tiny_int!",
-      "rust": "i16",
-      "schema": "tiny_integer",
-      "col_type": "TinyInteger"
-    },
-    {
-      "name": "tiny_int^",
-      "rust": "i16",
-      "schema": "tiny_integer_uniq",
-      "col_type": "TinyIntegerUniq"
     },
     {
       "name": "small_int",
@@ -316,18 +280,6 @@
       "col_type": "DateTimeUniq"
     },
     {
-      "name": "ts",
-      "rust": "Option<chrono::DateTime<chrono::Utc>>",
-      "schema": "timestamp_null",
-      "col_type": "TimestampNull"
-    },
-    {
-      "name": "ts!",
-      "rust": "chrono::DateTime<chrono::Utc>",
-      "schema": "timestamp",
-      "col_type": "Timestamp"
-    },
-    {
       "name": "json",
       "rust": "Option<serde_json::Value>",
       "schema": "json_null",
@@ -338,12 +290,6 @@
       "rust": "serde_json::Value",
       "schema": "json",
       "col_type": "Json"
-    },
-    {
-      "name": "json^",
-      "rust": "serde_json::Value",
-      "schema": "json_uniq",
-      "col_type": "JsonUniq"
     },
     {
       "name": "jsonb",
@@ -457,27 +403,6 @@
       "rust": "Vec<u8>",
       "schema": "var_binary_uniq",
       "col_type": "VarBinaryUniq",
-      "arity": 1
-    },
-    {
-      "name": "varbit_len!",
-      "rust": "Vec<u8>",
-      "schema": "varbit",
-      "col_type": "VarBitLen",
-      "arity": 1
-    },
-    {
-      "name": "varbit_len",
-      "rust": "Option<Vec<u8>>",
-      "schema": "varbit_null",
-      "col_type": "VarBitLenNull",
-      "arity": 1
-    },
-    {
-      "name": "varbit_len^",
-      "rust": "Vec<u8>",
-      "schema": "varbit_uniq",
-      "col_type": "VarBitLenUniq",
       "arity": 1
     },
     {
