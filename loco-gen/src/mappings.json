@@ -49,6 +49,12 @@
       "col_type": "Text"
     },
     {
+      "name": "text^",
+      "rust": "String",
+      "schema": "text_uniq",
+      "col_type": "TextUniq"
+    },
+    {
       "name": "tiny_unsigned",
       "rust": "Option<i16>",
       "schema": "tiny_unsigned_null",
@@ -187,6 +193,12 @@
       "col_type": "Float"
     },
     {
+      "name": "float^",
+      "rust": "f32",
+      "schema": "float_uniq",
+      "col_type": "FloatUniq"
+    },
+    {
       "name": "double",
       "rust": "Option<f64>",
       "schema": "double_null",
@@ -197,6 +209,12 @@
       "rust": "f64",
       "schema": "double",
       "col_type": "Double"
+    },
+    {
+      "name": "double^",
+      "rust": "f64",
+      "schema": "double_uniq",
+      "col_type": "DoubleUniq"
     },
     {
       "name": "decimal",
@@ -211,6 +229,12 @@
       "col_type": "Decimal"
     },
     {
+      "name": "decimal^",
+      "rust": "Decimal",
+      "schema": "decimal_uniq",
+      "col_type": "DecimalUniq"
+    },
+    {
       "name": "decimal_len",
       "rust": "Option<Decimal>",
       "schema": "decimal_len_null",
@@ -222,6 +246,13 @@
       "rust": "Decimal",
       "schema": "decimal_len",
       "col_type": "DecimalLen",
+      "arity": 2
+    },
+    {
+      "name": "decimal_len^",
+      "rust": "Decimal",
+      "schema": "decimal_len_uniq",
+      "col_type": "DecimalLenUniq",
       "arity": 2
     },
     {
@@ -309,6 +340,12 @@
       "col_type": "Json"
     },
     {
+      "name": "json^",
+      "rust": "serde_json::Value",
+      "schema": "json_uniq",
+      "col_type": "JsonUniq"
+    },
+    {
       "name": "jsonb",
       "rust": "Option<serde_json::Value>",
       "schema": "json_binary_null",
@@ -321,6 +358,12 @@
       "col_type": "JsonBinary"
     },
     {
+      "name": "jsonb^",
+      "rust": "serde_json::Value",
+      "schema": "json_binary_uniq",
+      "col_type": "JsonBinaryUniq"
+    },
+    {
       "name": "blob",
       "rust": "Option<Vec<u8>>",
       "schema": "blob_null",
@@ -331,6 +374,12 @@
       "rust": "Vec<u8>",
       "schema": "blob",
       "col_type": "Blob"
+    },
+    {
+      "name": "blob^",
+      "rust": "Vec<u8>",
+      "schema": "blob_uniq",
+      "col_type": "BlobUniq"
     },
     {
       "name": "money",

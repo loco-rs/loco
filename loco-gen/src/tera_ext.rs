@@ -136,7 +136,9 @@ impl tera::Function for FormField {
                 Some((f64::MIN, f64::MAX)),
                 Some(r#"step="0.1""#),
             ),
-            "DateTimeWithTimeZone"
+            "chrono::DateTime<chrono::Utc>"
+            | "Option<chrono::DateTime<chrono::Utc>>"
+            | "DateTimeWithTimeZone"
             | "Option<DateTimeWithTimeZone>"
             | "DateTime"
             | "Option<DateTime>"
@@ -282,7 +284,6 @@ fn input_string(
     attr: Option<&str>,
 ) -> String {
     let attr = attr.unwrap_or_default();
-    println!("is_required: {is_required}");
     let required_value = if is_required { "required" } else { "" };
     format!(
         r#"<input class="{class}" id="{name}" name="{name}" type="text" value="{value}" {required_value} {attr}/>"#
