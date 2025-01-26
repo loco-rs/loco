@@ -1,6 +1,5 @@
 ---
 source: src/auth/jwt.rs
-assertion_line: 133
 expression: jwt.validate(&token)
 ---
 Ok(
@@ -22,9 +21,9 @@ Ok(
         claims: UserClaims {
             pid: "pid",
             exp: EXP,
-            claims: Some(
-                Object {},
-            ),
+            claims: {
+                "custom": String("claim"),
+            },
         },
     },
 )

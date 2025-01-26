@@ -33,7 +33,7 @@ fn get_min_dep_versions() -> &'static HashMap<&'static str, &'static str> {
 
         min_vers.insert("tokio", "1.33.0");
         min_vers.insert("sea-orm", "1.1.0");
-        min_vers.insert("validator", "0.19.0");
+        min_vers.insert("validator", "0.20.0");
         min_vers.insert("axum", "0.8.1");
 
         min_vers
