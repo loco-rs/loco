@@ -142,6 +142,7 @@ pub enum Error {
     #[error(transparent)]
     Cache(#[from] crate::cache::CacheError),
 
+    #[cfg(debug_assertions)]
     #[error(transparent)]
     Generators(#[from] loco_gen::Error),
 
