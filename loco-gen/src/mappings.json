@@ -50,19 +50,19 @@
     },
     {
       "name": "tiny_int",
-      "rust": "Option<i16>",
+      "rust": "Option<i8>",
       "schema": "tiny_integer_null",
       "col_type": "TinyIntegerNull"
     },
     {
       "name": "tiny_int!",
-      "rust": "i16",
+      "rust": "i8",
       "schema": "tiny_integer",
       "col_type": "TinyInteger"
     },
     {
       "name": "tiny_int^",
-      "rust": "i16",
+      "rust": "i8",
       "schema": "tiny_integer_uniq",
       "col_type": "TinyIntegerUniq"
     },
