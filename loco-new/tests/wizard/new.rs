@@ -77,7 +77,7 @@ fn test_combination(
     let wizard_selection = wizard::Selections {
         db: db.clone(),
         background: background.clone(),
-        asset,
+        asset: asset.clone(),
     };
     let settings =
         settings::Settings::from_wizard("test-loco-template", &wizard_selection, OS::default());
@@ -111,23 +111,25 @@ fn test_combination(
             "get_note",
         ]);
 
-        // Generate HTMX controller
-        tester.run_generate(&vec![
-            "controller",
-            "notes_htmx",
-            "--htmx",
-            "create_note",
-            "get_note",
-        ]);
+        if asset.enable() {
+            // Generate HTMX controller
+            tester.run_generate(&vec![
+                "controller",
+                "notes_htmx",
+                "--htmx",
+                "create_note",
+                "get_note",
+            ]);
 
-        // Generate HTML controller
-        tester.run_generate(&vec![
-            "controller",
-            "notes_html",
-            "--html",
-            "create_note",
-            "get_note",
-        ]);
+            // Generate HTML controller
+            tester.run_generate(&vec![
+                "controller",
+                "notes_html",
+                "--html",
+                "create_note",
+                "get_note",
+            ]);
+        }
 
         // Generate Task
         tester.run_generate(&vec!["task", "list_users"]);
