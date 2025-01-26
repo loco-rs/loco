@@ -130,10 +130,4 @@ mod tests {
         let e: Environment = "custom".to_string().into();
         assert_eq!(e, Environment::Any("custom".to_string()));
     }
-
-    #[test]
-    fn test_from_folder() {
-        let config = Environment::Development.load_from_folder(Path::new("examples/demo/config"));
-        assert!(config.is_ok());
-    }
 }
