@@ -29,12 +29,8 @@ fn can_generate_docker(
         .drop(true)
         .add(
             "config/development.yaml",
-            r#"# Web server configuration
-server:
-# Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
-port: 5150
-# The UI hostname or IP address that mailers will point to.
-host: http://localhost
+            r#"  # Binding for the server (which interface to bind to)
+  binding: {{ get_env(name="BINDING", default="localhost") }}
 "#,
         )
         .create()
@@ -214,12 +210,8 @@ fn can_generate_kamal_sqlite_without_background_queue() {
         .drop(true)
         .add(
             "config/development.yaml",
-            r#"# Web server configuration
-server:
-  # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
-  port: 5150
-  # The UI hostname or IP address that mailers will point to.
-  host: http://localhost
+            r#"  # Binding for the server (which interface to bind to)
+  binding: {{ get_env(name="BINDING", default="localhost") }}
 "#,
         )
         .create()
@@ -299,12 +291,8 @@ fn can_generate_kamal_sqlite_with_background_queue() {
         .drop(true)
         .add(
             "config/development.yaml",
-            r#"# Web server configuration
-server:
-  # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
-  port: 5150
-  # The UI hostname or IP address that mailers will point to.
-  host: http://localhost
+            r#"  # Binding for the server (which interface to bind to)
+  binding: {{ get_env(name="BINDING", default="localhost") }}
 "#,
         )
         .create()
@@ -382,12 +370,8 @@ fn can_generate_kamal_postgres_without_background_queue() {
         .drop(true)
         .add(
             "config/development.yaml",
-            r#"# Web server configuration
-server:
-  # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
-  port: 5150
-  # The UI hostname or IP address that mailers will point to.
-  host: http://localhost
+            r#"  # Binding for the server (which interface to bind to)
+  binding: {{ get_env(name="BINDING", default="localhost") }}
 "#,
         )
         .create()
@@ -465,12 +449,8 @@ fn can_generate_kamal_postgres_with_background_queue() {
         .drop(true)
         .add(
             "config/development.yaml",
-            r#"# Web server configuration
-server:
-  # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
-  port: 5150
-  # The UI hostname or IP address that mailers will point to.
-  host: http://localhost
+            r#"  # Binding for the server (which interface to bind to)
+  binding: {{ get_env(name="BINDING", default="localhost") }}
 "#,
         )
         .create()
