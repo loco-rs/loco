@@ -1,5 +1,4 @@
 use std::{
-    any::type_name,
     collections::HashMap,
     env::current_dir,
     fs::{self, read_to_string},
