@@ -36,8 +36,11 @@ jobs:
       - name: create myapp
         run: |
           loco new -n myapp --db sqlite --bg async --assets serverside -a
+        env:
+          LOCO_DEV_MODE_PATH: ${{ github.workspace }}
 
       - name:
         run: cargo loco generate deployment --kind docker && docker build -t demo .
         working-directory: ./myapp
+        
 
