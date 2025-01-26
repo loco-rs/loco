@@ -25,7 +25,20 @@ fn can_generate_docker(
         background_queue: false,
     };
 
-    let tree_fs = tree_fs::TreeBuilder::default().drop(true).create().unwrap();
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add(
+            "config/development.yaml",
+            r#"# Web server configuration
+server:
+# Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
+port: 5150
+# The UI hostname or IP address that mailers will point to.
+host: http://localhost
+"#,
+        )
+        .create()
+        .unwrap();
     let rrgen = RRgen::with_working_dir(&tree_fs.root);
 
     let gen_result = generate(
