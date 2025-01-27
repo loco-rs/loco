@@ -224,9 +224,9 @@ pub struct Database {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "kind")]
 pub enum CacheConfig {
-    /// Redis queue
+    /// In-memory cache
     InMem(InMemCacheConfig),
-    /// Postgres queue
+    /// Redis cache
     Redis(RedisCacheConfig),
 }
 

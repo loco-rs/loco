@@ -12,7 +12,6 @@ use crate::config::RedisCacheConfig;
 use async_trait::async_trait;
 use bb8::Pool;
 use bb8_redis::RedisConnectionManager;
-use opendal::services::Redis as RedisService;
 use opendal::Builder;
 use redis::{cmd, AsyncCommands};
 use serde::de::DeserializeOwned;
