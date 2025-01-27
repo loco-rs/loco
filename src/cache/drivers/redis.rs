@@ -6,15 +6,17 @@ use std::{
     time::{Duration, Instant},
 };
 
-use async_trait::async_trait;
-use bb8::Pool;
-use bb8_redis::RedisConnectionManager;
-use redis::{cmd, AsyncCommands};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
 use super::CacheDriver;
 use crate::cache::{CacheError, CacheResult};
 use crate::config::RedisCacheConfig;
+use async_trait::async_trait;
+use bb8::Pool;
+use bb8_redis::RedisConnectionManager;
+use opendal::services::Redis as RedisService;
+use opendal::Builder;
+use redis::{cmd, AsyncCommands};
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 /// Creates a new instance of the in-memory cache driver, with a default Loco
 /// configuration.
@@ -58,7 +60,6 @@ impl CacheDriver for Redis {
     async fn contains_key(&self, key: &str) -> CacheResult<bool> {
         let mut connection = self.redis.get().await?;
         Ok(connection.exists(key).await?)
-
     }
 
     /// Retrieves a value from the cache based on the provided key.
@@ -72,8 +73,8 @@ impl CacheDriver for Redis {
 
         match data {
             Some(bytes) => {
-                let value = rmp_serde::from_slice(&bytes)
-                    .map_err(|e| CacheError::Any(Box::new(e)))?;
+                let value =
+                    rmp_serde::from_slice(&bytes).map_err(|e| CacheError::Any(Box::new(e)))?;
                 Ok(Some(value))
             }
             None => Ok(None),
@@ -87,8 +88,7 @@ impl CacheDriver for Redis {
     /// Returns a `CacheError` if there is an error during the operation.
     async fn insert<T: Serialize>(&self, key: &str, value: &T) -> CacheResult<()> {
         let mut connection = self.redis.get().await?;
-        let encoded = rmp_serde::to_vec(value)
-            .map_err(|e| CacheError::Any(Box::new(e)))?;
+        let encoded = rmp_serde::to_vec(value).map_err(|e| CacheError::Any(Box::new(e)))?;
         connection.set(key, encoded).await?;
         Ok(())
     }
@@ -107,9 +107,10 @@ impl CacheDriver for Redis {
         duration: Duration,
     ) -> CacheResult<()> {
         let mut connection = self.redis.get().await?;
-        let encoded = rmp_serde::to_vec(value)
-            .map_err(|e| CacheError::Any(Box::new(e)))?;
-        connection.set_ex(key, encoded, duration.as_secs() as usize).await?;
+        let encoded = rmp_serde::to_vec(value).map_err(|e| CacheError::Any(Box::new(e)))?;
+        connection
+            .set_ex(key, encoded, duration.as_secs() as usize)
+            .await?;
         Ok(())
     }
 
@@ -134,22 +135,6 @@ impl CacheDriver for Redis {
         cmd("flushall").query(connection).await?;
 
         Ok(())
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Expiration {
-    Never,
-    AfterDuration(Duration),
-}
-
-impl Expiration {
-    #[must_use]
-    pub fn as_duration(&self) -> Option<Duration> {
-        match self {
-            Self::Never => None,
-            Self::AfterDuration(d) => Some(*d),
-        }
     }
 }
 

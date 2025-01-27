@@ -3,10 +3,10 @@
 //! This module defines traits and implementations for cache drivers.
 use std::time::Duration;
 
+use super::CacheResult;
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use super::CacheResult;
 
 #[cfg(feature = "cache_inmem")]
 pub mod inmem;

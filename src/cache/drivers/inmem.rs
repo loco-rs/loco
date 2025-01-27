@@ -6,13 +6,13 @@ use std::{
     time::{Duration, Instant},
 };
 
+use super::CacheDriver;
+use crate::cache::CacheResult;
+use crate::config::InMemCacheConfig;
 use async_trait::async_trait;
 use moka::{sync::Cache, Expiry};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use super::CacheDriver;
-use crate::cache::CacheResult;
-use crate::config::InMemCacheConfig;
 
 /// Creates a new instance of the in-memory cache driver, with a default Loco
 /// configuration.

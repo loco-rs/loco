@@ -3,15 +3,15 @@
 //! This module provides a generic cache interface for various cache drivers.
 pub mod drivers;
 
-use std::{future::Future, time::Duration};
-use std::sync::Arc;
+use self::drivers::CacheDriver;
+use crate::bgworker::{pg, skq, sqlt, Queue};
+use crate::cache::drivers::{inmem, redis};
+use crate::config::Config;
+use crate::{config, Error, Result as LocoResult};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use crate::bgworker::{pg, skq, sqlt, Queue};
-use crate::config::Config;
-use self::drivers::CacheDriver;
-use crate::{config, Error, Result as LocoResult};
-use crate::cache::drivers::{inmem, redis};
+use std::sync::Arc;
+use std::{future::Future, time::Duration};
 
 /// Errors related to cache operations
 #[derive(thiserror::Error, Debug)]
@@ -31,12 +31,8 @@ pub type CacheResult<T> = std::result::Result<T, CacheError>;
 #[allow(clippy::missing_panics_doc)]
 pub async fn create_cache_provider(config: &Config) -> crate::Result<Arc<Cache>> {
     match &config.cache {
-        config::CacheConfig::Redis(config) => {
-            Ok(Arc::new(redis::new(config).await?))
-        }
-        config::CacheConfig::InMem(config) => {
-            Ok(Arc::new(inmem::new(config).await?))
-        }
+        config::CacheConfig::Redis(config) => Ok(Arc::new(redis::new(config).await?)),
+        config::CacheConfig::InMem(config) => Ok(Arc::new(inmem::new(config).await?)),
 
         #[allow(unreachable_patterns)]
         _ => Err(Error::string(
@@ -212,7 +208,9 @@ impl Cache {
             Ok(value)
         } else {
             let value = f.await?;
-            self.driver.insert_with_expiry(key, &value, duration).await?;
+            self.driver
+                .insert_with_expiry(key, &value, duration)
+                .await?;
             Ok(value)
         }
     }
