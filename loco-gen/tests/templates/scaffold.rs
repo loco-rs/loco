@@ -1,6 +1,6 @@
 use super::utils::{guess_file_by_time, APP_ROUTS, MIGRATION_SRC_LIB};
 use insta::{assert_snapshot, with_settings};
-use loco_gen::{collect_messages, generate, AppInfo, Component, ScaffoldKind};
+use loco_gen::{collect_messages, generate, tera_ext, AppInfo, Component, ScaffoldKind};
 use rrgen::RRgen;
 use rstest::rstest;
 use std::fs;
@@ -37,7 +37,7 @@ fn can_generate(#[case] kind: ScaffoldKind) {
         .create()
         .unwrap();
 
-    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+    let rrgen = RRgen::with_working_dir(&tree_fs.root).add_template_engine(tera_ext::new());
 
     let gen_result = generate(
         &rrgen,

@@ -1,0 +1,14 @@
+---
+source: loco-gen/src/tera_ext.rs
+expression: "format!(\"Crete form\\n\\r{create_form}\\n\\rEdit Form\\n\\r{edit_form}\")"
+---
+Crete form
+<div class="space-y-2">
+    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for=":r2l:-form-item">small_unsigned^</label>
+    <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" min="-32768" max="32767" id="small_unsigned^" name="small_unsigned^" type="number" value="" required step="1" />
+</div>
+Edit Form
+<div class="space-y-2">
+    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for=":r2l:-form-item">small_unsigned^</label>
+    <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" min="-32768" max="32767" id="small_unsigned^" name="small_unsigned^" type="number" value="{{item.small_unsigned^}}" required step="1" />
+</div>

@@ -1093,7 +1093,7 @@ fn handle_generate_command<H: Hooks>(
         }
     } else {
         let get_result = loco_gen::generate(
-            &loco_gen::RRgen::default(),
+            &loco_gen::new_generator(),
             component.into_gen_component(config)?,
             &loco_gen::AppInfo {
                 app_name: H::app_name().to_string(),
