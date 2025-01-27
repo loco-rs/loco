@@ -15,7 +15,8 @@ path = "src/lib.rs"
 [dependencies]
 
 cruet = "0.14.0"
-rrgen = "0.5.5"
+# rrgen = "0.5.5"
+rrgen = { git = "https://github.com/jondot/rrgen" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
@@ -23,6 +24,8 @@ regex = { workspace = true }
 tracing = { workspace = true }
 chrono = { workspace = true }
 colored = { workspace = true }
+heck = { workspace = true }
+tera = { workspace = true }
 
 clap = { version = "4.4.7", features = ["derive"] }
 duct = "0.13"

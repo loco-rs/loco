@@ -1,0 +1,16 @@
+---
+source: loco-gen/src/tera_ext.rs
+expression: "format!(\"Crete form\\n\\r{create_form}\\n\\rEdit Form\\n\\r{edit_form}\")"
+---
+Crete form
+<div class="space-y-2">
+    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for=":r2l:-form-item">blob</label>
+    <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" id="blob" name="blob" value="" custom_type="blob" pattern="^[0-9]+(,[0-9]+)*$"  />
+    <p id=":rh:-form-item-description" class="text-[0.8rem] text-muted-foreground">e.g: 123,123,123 .</p>
+</div>
+Edit Form
+<div class="space-y-2">
+    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for=":r2l:-form-item">blob</label>
+    <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" id="blob" name="blob" value="{{item.blob}}" custom_type="blob" pattern="^[0-9]+(,[0-9]+)*$"  />
+    <p id=":rh:-form-item-description" class="text-[0.8rem] text-muted-foreground">e.g: 123,123,123 .</p>
+</div>

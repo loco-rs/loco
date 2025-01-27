@@ -8,8 +8,12 @@ expression: "fs::read_to_string(views_path.join(format!(\"{view}.html\"))).expec
 View movie: {{ item.id }}
 {% endblock title %}
 
+{% block page_title %}
+View movie: {{ item.id }}
+{% endblock page_title %}
+
+
 {% block content %}
-<h1>View movie: {{ item.id }}</h1>
 <div class="mb-10">
     <div>
     <label><b>{{"title" | capitalize }}:</b> {{item.title}}</label>
