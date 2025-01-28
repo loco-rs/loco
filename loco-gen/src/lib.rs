@@ -226,7 +226,6 @@ pub enum ScaffoldKind {
     Api,
     Html,
     Htmx,
-    OpenApi,
 }
 
 #[derive(clap::ValueEnum, Debug, Clone)]

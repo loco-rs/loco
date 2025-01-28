@@ -1,10 +1,8 @@
-use std::path::Path;
-
-use rrgen::RRgen;
-use serde_json::json;
-
 use super::{AppInfo, GenerateResults, Result};
 use crate as gen;
+use rrgen::RRgen;
+use serde_json::json;
+use std::path::Path;
 
 pub fn generate(
     rrgen: &RRgen,
@@ -37,9 +35,6 @@ pub fn generate(
                 gen_result.local_templates.extend(res.local_templates);
             }
             Ok(gen_result)
-        }
-        gen::ScaffoldKind::OpenApi => {
-            gen::render_template(rrgen, Path::new("controller/openapi"), &vars)
         }
     }
 }
