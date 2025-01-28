@@ -25,6 +25,7 @@ fn test_all_combinations(
 }
 
 // when running locally set LOCO_DEV_MODE_PATH=<to local loco path>
+#[cfg(not(feature = "test-wizard"))]
 #[test]
 fn test_starter_combinations() {
     // lightweight service
@@ -64,6 +65,7 @@ fn test_starter_combinations() {
     );
 }
 
+#[allow(clippy::too_many_lines)]
 fn test_combination(
     db: DBOption,
     background: BackgroundOption,
