@@ -7,8 +7,16 @@ pub mod template;
 use std::sync::Arc;
 
 use include_dir::{include_dir, Dir};
-use rhai::{Engine, Scope};
+use rhai::{
+    export_module, exported_module,
+    plugin::{
+        Dynamic, FnNamespace, FuncRegistration, Module, NativeCallContext, PluginFunc, RhaiResult,
+        TypeId,
+    },
+    Engine, Scope,
+};
 
+use crate::wizard::AssetsOption;
 use crate::{settings, OS};
 
 static APP_TEMPLATE: Dir<'_> = include_dir!("base_template");
@@ -68,7 +76,12 @@ impl Generator {
         );
         engine
             .build_type::<settings::Settings>()
-            .build_type::<settings::Initializers>()
+            .register_type_with_name::<Option<settings::Initializers>>("Option<Initializers>")
+            .register_type_with_name::<Option<settings::Asset>>("Option<settings::Asset>")
+            .register_static_module(
+                "rhai_settings_extensions",
+                exported_module!(rhai_settings_extensions).into(),
+            )
             .register_fn("copy_file", Self::copy_file)
             .register_fn("create_file", Self::create_file)
             .register_fn("copy_files", Self::copy_files)
@@ -229,6 +242,36 @@ impl Generator {
                     err.into(),
                 ))
             })
+    }
+}
+
+/// This module provides extensions to the [`rhai`] scripting language,
+/// enabling ergonomic access to specific.
+/// These extensions allow scripts to interact with internal settings
+/// in a controlled and expressive way.
+#[export_module]
+mod rhai_settings_extensions {
+
+    /// Retrieves the value of the `view_engine` field from the [`settings::Initializers`] struct.
+    #[rhai_fn(global, get = "view_engine", pure)]
+    pub fn view_engine(initializers: &mut Option<settings::Initializers>) -> bool {
+        initializers.as_ref().is_some_and(|i| i.view_engine)
+    }
+
+    /// Checks if the rendering method is set to client-side rendering.
+    #[rhai_fn(global, get = "is_client_side", pure)]
+    pub fn is_client_side(rendering_method: &mut Option<settings::Asset>) -> bool {
+        rendering_method
+            .as_ref()
+            .is_some_and(|r| matches!(r.kind, AssetsOption::Clientside))
+    }
+
+    /// Checks if the rendering method is set to server-side rendering.
+    #[rhai_fn(global, get = "is_server_side", pure)]
+    pub fn is_server_side(rendering_method: &mut Option<settings::Asset>) -> bool {
+        rendering_method
+            .as_ref()
+            .is_some_and(|r| matches!(r.kind, AssetsOption::Serverside))
     }
 }
 
