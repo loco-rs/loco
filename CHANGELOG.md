@@ -2,14 +2,25 @@
 
 ## Unreleased
 
-* fix: bump shuttle to 0.51.0. [https://github.com/loco-rs/loco/pull/1169](https://github.com/loco-rs/loco/pull/1169)
+* Added total_items to pagination view & response. [https://github.com/loco-rs/loco/pull/1197](https://github.com/loco-rs/loco/pull/1197)
+* flatten (de)serialization of custom user claims. [https://github.com/loco-rs/loco/pull/1159](https://github.com/loco-rs/loco/pull/1159)
+* Updated validator to 0.20. [https://github.com/loco-rs/loco/pull/1199](https://github.com/loco-rs/loco/pull/1199)
+* Scaffold v2. [https://github.com/loco-rs/loco/pull/1209](https://github.com/loco-rs/loco/pull/1209)
+
+
+## v0.14.1
+
+* Fix: bump shuttle to 0.51.0. [https://github.com/loco-rs/loco/pull/1169](https://github.com/loco-rs/loco/pull/1169)
 * Return 422 status code for JSON rejection errors. [https://github.com/loco-rs/loco/pull/1173](https://github.com/loco-rs/loco/pull/1173)
 * Address clippy warnings for Rust stable 1.84. [https://github.com/loco-rs/loco/pull/1168](https://github.com/loco-rs/loco/pull/1168)
 * Bump shuttle to 0.51.0. [https://github.com/loco-rs/loco/pull/1169](https://github.com/loco-rs/loco/pull/1169)
-* return 422 status code for JSON rejection errors. [https://github.com/loco-rs/loco/pull/1173](https://github.com/loco-rs/loco/pull/1173)
-* return json validation details response. [https://github.com/loco-rs/loco/pull/1174](https://github.com/loco-rs/loco/pull/1174)
-* fix example command after generating schedule. [https://github.com/loco-rs/loco/pull/1176](https://github.com/loco-rs/loco/pull/1176)
-* fixed independent features. [https://github.com/loco-rs/loco/pull/1177](https://github.com/loco-rs/loco/pull/1177)
+* Return 422 status code for JSON rejection errors. [https://github.com/loco-rs/loco/pull/1173](https://github.com/loco-rs/loco/pull/1173)
+* Return json validation details response. [https://github.com/loco-rs/loco/pull/1174](https://github.com/loco-rs/loco/pull/1174)
+* Fix example command after generating schedule. [https://github.com/loco-rs/loco/pull/1176](https://github.com/loco-rs/loco/pull/1176)
+* Fixed independent features. [https://github.com/loco-rs/loco/pull/1177](https://github.com/loco-rs/loco/pull/1177)
+* Custom response header for redirect. [https://github.com/loco-rs/loco/pull/1186](https://github.com/loco-rs/loco/pull/1186)
+* Added run_on_start feature to scheduler. [https://github.com/loco-rs/loco/pull/1184](https://github.com/loco-rs/loco/pull/1184)
+* feat: public jwt extractor from non-mutable reference to parts. [https://github.com/loco-rs/loco/pull/1190](https://github.com/loco-rs/loco/pull/1190)
 
 
 ## v0.14

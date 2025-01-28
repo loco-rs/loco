@@ -1,0 +1,16 @@
+---
+source: loco-gen/src/tera_ext.rs
+expression: "format!(\"Crete form\\n\\r{create_form}\\n\\rEdit Form\\n\\r{edit_form}\")"
+---
+Crete form
+<div class="space-y-2">
+    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for=":r2l:-form-item">uuid</label>
+    <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" id="uuid" name="uuid" type="text" value=""  pattern="[0-9A-Fa-f]{{8}}-[0-9A-Fa-f]{{4}}-[0-9A-Fa-f]{{4}}-[0-9A-Fa-f]{{4}}-[0-9A-Fa-f]{{12}}"/>
+    <p id=":rh:-form-item-description" class="text-[0.8rem] text-muted-foreground">e.g: 11111111-1111-1111-1111-111111111111..</p>
+</div>
+Edit Form
+<div class="space-y-2">
+    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for=":r2l:-form-item">uuid</label>
+    <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" id="uuid" name="uuid" type="text" value="{{item.uuid}}"  pattern="[0-9A-Fa-f]{{8}}-[0-9A-Fa-f]{{4}}-[0-9A-Fa-f]{{4}}-[0-9A-Fa-f]{{4}}-[0-9A-Fa-f]{{12}}"/>
+    <p id=":rh:-form-item-description" class="text-[0.8rem] text-muted-foreground">e.g: 11111111-1111-1111-1111-111111111111..</p>
+</div>

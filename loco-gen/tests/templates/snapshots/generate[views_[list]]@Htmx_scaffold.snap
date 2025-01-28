@@ -8,21 +8,69 @@ expression: "fs::read_to_string(views_path.join(format!(\"{view}.html\"))).expec
 List of movie
 {% endblock title %}
 
-{% block content %}
-<h1>movie</h1>
-<div class="mb-10">
-    {% for item in items %}
-    <div class="mb-5">
-            <div>
-                <label><b>{{"title" | capitalize }}:</b> {{item.title}}</label>
-                </div>
-            <a href="/movies/{{ item.id }}/edit">Edit</a>
-            <a href="/movies/{{ item.id }}">View</a>
-        </div>
-    {% endfor %}
+{% block page_title %}
+movie
+{% endblock page_title %}
 
-    <br />
-    <br />
-    <a href="/movies/new">New movie</a>
+{% block content %}
+<div class="mb-10">
+
+    {% if items %}
+
+    <div class="mb-5">
+        <div class="relative w-full overflow-auto">
+            <table class="w-full caption-bottom text-sm">
+                <thead class="[&amp;_tr]:border-b">
+                    <tr class="border-b transition-colors hover:bg-muted/50">
+                        <th class="h-10 px-2 text-left align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0 [&amp;>[role=checkbox]]:translate-y-[2px] w-[100px]">
+                            {{"title" | capitalize }}
+                        </th>
+                        <th class="h-10 px-2 text-left align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0 [&amp;>[role=checkbox]]:translate-y-[2px] w-[100px]">
+                           Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="[&amp;_tr:last-child]:border-0">
+                   {% for item in items %}
+                    <tr class="border-b transition-colors hover:bg-muted/50">
+                        <td
+                            class="p-2 align-middle  font-medium">
+                            {{item.title}}
+                        </td>
+                        <td>
+                            <a href="/movies/{{ item.id }}/edit">Edit</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    
+        <div class="flex">
+            <div class="ml-auto  p-4">
+                <a href="/movies/new"
+                    class="mt-5 bg-blue-500 text-white bg-primary-600 hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800">
+                    Create
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+
+    <div class="mt-10 flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-lg p-8 max-w-4xl w-full flex flex-col items-center">
+            <h3 class="font-bold text-lg">Nothing Here Yet</h3>
+            There are no records to display. Add a new record to get started!
+            <a href="/movies/new"
+            class="mt-5 bg-blue-500 text-white bg-primary-600 hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800">
+            Create
+        </a>
+        </div>
+    </div>
+   
+    {% endif %}
+
+    
 </div>
 {% endblock content %}

@@ -1,8 +1,0 @@
----
-source: tests/requests/notes.rs
-expression: "(notes.status_code(), notes.text())"
----
-(
-    200,
-    "{\"results\":[{\"id\":ID,\"title\":null,\"content\":\"content 1\"},{\"id\":ID,\"title\":\"Loco note 2\",\"content\":null},{\"id\":ID,\"title\":\"Loco note 3\",\"content\":\"content 3\"},{\"id\":ID,\"title\":\"Loco note 4\",\"content\":\"content 4\"},{\"id\":ID,\"title\":\"Loco note 5\",\"content\":\"content 5\"},{\"id\":ID,\"title\":\"Loco  6\",\"content\":\"content 6\"},{\"id\":ID,\"title\":\"Loco  7\",\"content\":\"content 7\"},{\"id\":ID,\"title\":\"Loco  8\",\"content\":\"content 8\"},{\"id\":ID,\"title\":\"Loco  9\",\"content\":\"content 9\"},{\"id\":ID,\"title\":\"Loco  10\",\"content\":\"content 10\"},{\"id\":ID,\"title\":\"Loco  11\",\"content\":\"content 11\"}],\"pagination\":{\"page\":1,\"page_size\":25,\"total_pages\":1}}",
-)

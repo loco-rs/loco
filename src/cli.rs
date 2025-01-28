@@ -30,16 +30,11 @@ cfg_if::cfg_if! {
     feature = "with-db"
 ))]
 use std::process::exit;
-
-use std::{
-    collections::BTreeMap,
-    path::{Path, PathBuf},
-};
+use std::{collections::BTreeMap, path::PathBuf};
 
 use clap::{ArgAction, Parser, Subcommand};
 use colored::Colorize;
 use duct::cmd;
-use loco_gen::{Component, DeploymentKind, ScaffoldKind};
 
 #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
 use crate::bgworker::JobStatus;
@@ -143,6 +138,7 @@ enum Commands {
     },
     /// code generation creates a set of files and code templates based on a
     /// predefined set of rules.
+    #[cfg(debug_assertions)]
     #[clap(alias("g"))]
     Generate {
         /// What to generate
@@ -173,13 +169,14 @@ enum Commands {
     },
 }
 
+#[cfg(debug_assertions)]
 #[derive(Subcommand)]
 enum ComponentArg {
     #[cfg(feature = "with-db")]
     /// Generates a new model file for defining the data structure of your
     /// application, and test file logic.
     #[command(after_help = format!(
-    "{}  
+    "{}
   - Generate empty model:
       $ cargo loco g model posts
 
@@ -259,7 +256,7 @@ After running the migration, follow these steps to complete the process:
 
         /// The kind of scaffold to generate
         #[clap(short, long, value_enum, group = "scaffold_kind_group")]
-        kind: Option<ScaffoldKind>,
+        kind: Option<loco_gen::ScaffoldKind>,
 
         /// Use HTMX scaffold
         #[clap(long, group = "scaffold_kind_group")]
@@ -275,7 +272,7 @@ After running the migration, follow these steps to complete the process:
     },
     /// Generate a new controller with the given controller name, and test file.
     #[command(after_help = format!(
-    "{}  
+    "{}
   - Generate an empty controller:
       $ cargo loco generate controller posts --api
 
@@ -293,7 +290,7 @@ After running the migration, follow these steps to complete the process:
 
         /// The kind of controller actions to generate
         #[clap(short, long, value_enum, group = "scaffold_kind_group")]
-        kind: Option<ScaffoldKind>,
+        kind: Option<loco_gen::ScaffoldKind>,
 
         /// Use HTMX controller actions
         #[clap(long, group = "scaffold_kind_group")]
@@ -331,10 +328,11 @@ After running the migration, follow these steps to complete the process:
     Deployment {
         // deployment kind.
         #[clap(long, value_enum)]
-        kind: DeploymentKind,
+        kind: loco_gen::DeploymentKind,
     },
 
-    /// Override templates and allows you to take control of them. You can always go back when deleting the local template.
+    /// Override templates and allows you to take control of them. You can
+    /// always go back when deleting the local template.
     #[command(after_help = format!("{}
   - Override a Specific File:
       * cargo loco generate override scaffold/api/controller.t
@@ -351,19 +349,23 @@ After running the migration, follow these steps to complete the process:
         /// The path to a specific template or directory to copy.
         template_path: Option<String>,
 
-        /// Show available templates to copy under the specified directory without actually coping them.
+        /// Show available templates to copy under the specified directory
+        /// without actually coping them.
         #[arg(long, action)]
         info: bool,
     },
 }
 
+#[cfg(debug_assertions)]
 impl ComponentArg {
-    fn into_gen_component(self, config: &Config) -> crate::Result<Component> {
+    fn into_gen_component(self, config: &Config) -> crate::Result<loco_gen::Component> {
         match self {
             #[cfg(feature = "with-db")]
-            Self::Model { name, link, fields } => Ok(Component::Model { name, link, fields }),
+            Self::Model { name, link, fields } => {
+                Ok(loco_gen::Component::Model { name, link, fields })
+            }
             #[cfg(feature = "with-db")]
-            Self::Migration { name, fields } => Ok(Component::Migration { name, fields }),
+            Self::Migration { name, fields } => Ok(loco_gen::Component::Migration { name, fields }),
             #[cfg(feature = "with-db")]
             Self::Scaffold {
                 name,
@@ -376,18 +378,19 @@ impl ComponentArg {
                 let kind = if let Some(kind) = kind {
                     kind
                 } else if htmx {
-                    ScaffoldKind::Htmx
+                    loco_gen::ScaffoldKind::Htmx
                 } else if html {
-                    ScaffoldKind::Html
+                    loco_gen::ScaffoldKind::Html
                 } else if api {
-                    ScaffoldKind::Api
+                    loco_gen::ScaffoldKind::Api
                 } else {
                     return Err(crate::Error::string(
-                        "Error: One of `kind`, `htmx`, `html`, `api`, or `openapi` must be specified.",
+                        "Error: One of `kind`, `htmx`, `html`, `api`, or `openapi` must be \
+                         specified.",
                     ));
                 };
 
-                Ok(Component::Scaffold { name, fields, kind })
+                Ok(loco_gen::Component::Scaffold { name, fields, kind })
             }
             Self::Controller {
                 name,
@@ -401,29 +404,30 @@ impl ComponentArg {
                 let kind = if let Some(kind) = kind {
                     kind
                 } else if htmx {
-                    ScaffoldKind::Htmx
+                    loco_gen::ScaffoldKind::Htmx
                 } else if html {
-                    ScaffoldKind::Html
+                    loco_gen::ScaffoldKind::Html
                 } else if api {
-                    ScaffoldKind::Api
+                    loco_gen::ScaffoldKind::Api
                 } else if openapi {
                     ScaffoldKind::OpenApi
                 } else {
                     return Err(crate::Error::string(
-                        "Error: One of `kind`, `htmx`, `html`, `api`, or `openapi` must be specified.",
+                        "Error: One of `kind`, `htmx`, `html`, `api`, or `openapi` must be \
+                         specified.",
                     ));
                 };
 
-                Ok(Component::Controller {
+                Ok(loco_gen::Component::Controller {
                     name,
                     actions,
                     kind,
                 })
             }
-            Self::Task { name } => Ok(Component::Task { name }),
-            Self::Scheduler {} => Ok(Component::Scheduler {}),
-            Self::Worker { name } => Ok(Component::Worker { name }),
-            Self::Mailer { name } => Ok(Component::Mailer { name }),
+            Self::Task { name } => Ok(loco_gen::Component::Task { name }),
+            Self::Scheduler {} => Ok(loco_gen::Component::Scheduler {}),
+            Self::Worker { name } => Ok(loco_gen::Component::Worker { name }),
+            Self::Mailer { name } => Ok(loco_gen::Component::Mailer { name }),
             Self::Deployment { kind } => {
                 let copy_asset_folder = &config
                     .server
@@ -439,7 +443,7 @@ impl ComponentArg {
                     .clone()
                     .map(|a| a.fallback);
 
-                Ok(Component::Deployment {
+                Ok(loco_gen::Component::Deployment {
                     kind,
                     asset_folder: copy_asset_folder.clone(),
                     fallback_file: fallback_file.clone(),
@@ -475,6 +479,7 @@ enum DbCommands {
     /// Migration status
     Status,
     /// Generate entity .rs files from database schema
+    #[cfg(debug_assertions)]
     Entities,
     /// Truncate data in tables (without dropping)
     Truncate,
@@ -505,6 +510,7 @@ impl From<DbCommands> for RunDbCommand {
             DbCommands::Down { steps } => Self::Down(steps),
             DbCommands::Reset => Self::Reset,
             DbCommands::Status => Self::Status,
+            #[cfg(debug_assertions)]
             DbCommands::Entities => Self::Entities,
             DbCommands::Truncate => Self::Truncate,
             DbCommands::Seed {
@@ -720,6 +726,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             let app_context = create_context::<H>(&environment, config).await?;
             run_scheduler::<H>(&app_context, config_path.as_ref(), name, tag, list).await?;
         }
+        #[cfg(debug_assertions)]
         Commands::Generate { component } => {
             handle_generate_command::<H>(component, &config)?;
         }
@@ -853,6 +860,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             let app_context = create_context::<H>(&environment, config).await?;
             run_scheduler::<H>(&app_context, config_path.as_ref(), name, tag, list).await?;
         }
+        #[cfg(debug_assertions)]
         Commands::Generate { component } => {
             handle_generate_command::<H>(component, &config)?;
         }
@@ -1047,10 +1055,12 @@ async fn handle_job_command<H: Hooks>(
     }
 }
 
+#[cfg(debug_assertions)]
 fn handle_generate_command<H: Hooks>(
     component: ComponentArg,
     config: &Config,
 ) -> crate::Result<()> {
+    use std::path::Path;
     if let ComponentArg::Override {
         template_path,
         info,
@@ -1091,7 +1101,7 @@ fn handle_generate_command<H: Hooks>(
         }
     } else {
         let get_result = loco_gen::generate(
-            &loco_gen::RRgen::default(),
+            &loco_gen::new_generator(),
             component.into_gen_component(config)?,
             &loco_gen::AppInfo {
                 app_name: H::app_name().to_string(),

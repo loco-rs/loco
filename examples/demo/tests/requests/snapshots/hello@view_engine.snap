@@ -1,8 +1,0 @@
----
-source: tests/requests/view_engine.rs
-expression: "(response.status_code(), response.text())"
----
-(
-    200,
-    "hello",
-)

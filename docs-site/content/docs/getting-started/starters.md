@@ -81,6 +81,8 @@ In your `config/development.yaml`, uncomment the server-side config, and comment
         uri: "/static"
         path: "assets/static"
       fallback: "assets/static/404.html"
+    fallback:
+      enable: false
     # client side app static config
     # static:
     #   enable: true
@@ -90,6 +92,8 @@ In your `config/development.yaml`, uncomment the server-side config, and comment
     #     uri: "/"
     #     path: "frontend/dist"
     #   fallback: "frontend/dist/index.html"
+    # fallback:
+    #   enable: false
 ```
 
 
