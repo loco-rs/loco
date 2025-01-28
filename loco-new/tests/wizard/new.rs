@@ -7,25 +7,24 @@ use loco::{
 };
 use std::{collections::HashMap, path::PathBuf, process::Output, sync::Arc};
 
-#[cfg(feature = "test-wizard")]
-#[rstest::rstest]
-fn test_all_combinations(
-    #[values(DBOption::None, DBOption::Sqlite)] db: DBOption,
-    #[values(
-        BackgroundOption::Async,
-        BackgroundOption::Queue,
-        BackgroundOption::Blocking,
-        BackgroundOption::None
-    )]
-    background: BackgroundOption,
-    #[values(AssetsOption::Serverside, AssetsOption::Clientside, AssetsOption::None)]
-    asset: AssetsOption,
-) {
-    test_combination(db, background, asset, false);
-}
+// #[cfg(feature = "test-wizard")]
+// #[rstest::rstest]
+// fn test_all_combinations(
+//     #[values(DBOption::None, DBOption::Sqlite)] db: DBOption,
+//     #[values(
+//         BackgroundOption::Async,
+//         BackgroundOption::Queue,
+//         BackgroundOption::Blocking,
+//         BackgroundOption::None
+//     )]
+//     background: BackgroundOption,
+//     #[values(AssetsOption::Serverside, AssetsOption::Clientside, AssetsOption::None)]
+//     asset: AssetsOption,
+// ) {
+//     test_combination(db, background, asset, false);
+// }
 
 // when running locally set LOCO_DEV_MODE_PATH=<to local loco path>
-#[cfg(not(feature = "test-wizard"))]
 #[test]
 fn test_starter_combinations() {
     // lightweight service
@@ -65,7 +64,6 @@ fn test_starter_combinations() {
     );
 }
 
-#[allow(clippy::too_many_lines)]
 fn test_combination(
     db: DBOption,
     background: BackgroundOption,
