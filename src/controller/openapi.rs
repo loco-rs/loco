@@ -19,17 +19,17 @@ pub fn get_openapi_spec() -> &'static OpenApi {
     OPENAPI_SPEC.get().unwrap()
 }
 
-/// Axum handler that returns the OpenAPI spec as JSON
+/// Axum handler that returns the `OpenAPI` spec as JSON
 pub async fn openapi_spec_json() -> Result<Response> {
     format::json(get_openapi_spec())
 }
 
-/// Axum handler that returns the OpenAPI spec as YAML
+/// Axum handler that returns the `OpenAPI` spec as YAML
 pub async fn openapi_spec_yaml() -> Result<Response> {
     format::yaml(&get_openapi_spec().to_yaml()?)
 }
 
-/// Adds the OpenAPI endpoints the app router
+/// Adds the `OpenAPI` endpoints the app router
 pub fn add_openapi_endpoints(
     mut app: AXRouter<AppContext>,
     json_url: Option<String>,

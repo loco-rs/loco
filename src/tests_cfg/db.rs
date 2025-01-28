@@ -141,8 +141,6 @@ impl Hooks for AppHook {
         feature = "openapi_scalar"
     ))]
     fn inital_openapi_spec(ctx: &AppContext) -> utoipa::openapi::OpenApi {
-        set_jwt_location_ctx(ctx);
-
         #[derive(OpenApi)]
         #[openapi(
             modifiers(&SecurityAddon),
@@ -152,6 +150,8 @@ impl Hooks for AppHook {
             )
         )]
         struct ApiDoc;
+        set_jwt_location_ctx(ctx);
+
         ApiDoc::openapi()
     }
 }

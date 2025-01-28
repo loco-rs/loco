@@ -9,6 +9,7 @@ use crate::{app::AppContext, config::JWTLocation};
 
 static JWT_LOCATION: OnceLock<Option<JWTLocation>> = OnceLock::new();
 
+#[must_use]
 pub fn get_jwt_location_from_ctx(ctx: &AppContext) -> JWTLocation {
     ctx.config
         .auth
@@ -19,21 +20,21 @@ pub fn get_jwt_location_from_ctx(ctx: &AppContext) -> JWTLocation {
         .clone()
 }
 
-pub fn set_jwt_location_ctx(ctx: &AppContext) -> &'static Option<JWTLocation> {
-    set_jwt_location(get_jwt_location_from_ctx(ctx))
+pub fn set_jwt_location_ctx(ctx: &AppContext) {
+    set_jwt_location(get_jwt_location_from_ctx(ctx));
 }
 
 pub fn set_jwt_location(jwt_location: JWTLocation) -> &'static Option<JWTLocation> {
     JWT_LOCATION.get_or_init(|| Some(jwt_location))
 }
 
-fn get_jwt_location() -> &'static Option<JWTLocation> {
-    JWT_LOCATION.get().unwrap_or(&None)
+fn get_jwt_location() -> Option<&'static JWTLocation> {
+    JWT_LOCATION.get().unwrap_or(&None).as_ref()
 }
 
 pub struct SecurityAddon;
 
-/// Adds security to the OpenAPI doc, using the JWT location in the config
+/// Adds security to the `OpenAPI` doc, using the JWT location in the config
 impl Modify for SecurityAddon {
     fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
         if let Some(jwt_location) = get_jwt_location() {

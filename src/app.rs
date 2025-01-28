@@ -240,8 +240,6 @@ pub trait Hooks: Send {
     /// With SecurityAddon
     /// ```rust ignore
     /// fn inital_openapi_spec(ctx: &AppContext) -> utoipa::openapi::OpenApi {
-    ///     set_jwt_location(ctx);
-    ///
     ///     #[derive(OpenApi)]
     ///     #[openapi(
     ///         modifiers(&SecurityAddon),
@@ -251,6 +249,8 @@ pub trait Hooks: Send {
     ///         )
     ///     )]
     ///     struct ApiDoc;
+    ///     set_jwt_location_ctx(ctx);
+    ///
     ///     ApiDoc::openapi()
     /// }
     /// ```

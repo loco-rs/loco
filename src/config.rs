@@ -414,7 +414,7 @@ pub struct Server {
     /// logging, and error handling.
     #[serde(default)]
     pub middlewares: middleware::Config,
-    /// OpenAPI configuration
+    /// `OpenAPI` configuration
     #[cfg(any(
         feature = "openapi_swagger",
         feature = "openapi_redoc",
@@ -434,7 +434,7 @@ impl Server {
     }
 }
 
-/// OpenAPI configuration
+/// `OpenAPI` configuration
 #[cfg(any(
     feature = "openapi_swagger",
     feature = "openapi_redoc",
@@ -477,7 +477,7 @@ pub struct OpenAPI {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum OpenAPIType {
     Redoc {
-        /// URL for where to host the redoc OpenAPI spec, example: /redoc
+        /// URL for where to host the redoc `OpenAPI` spec, example: /redoc
         url: String,
         /// URL for openapi.json, for example: /openapi.json
         spec_json_url: Option<String>,
@@ -485,7 +485,7 @@ pub enum OpenAPIType {
         spec_yaml_url: Option<String>,
     },
     Scalar {
-        /// URL for where to host the swagger OpenAPI spec, example: /scalar
+        /// URL for where to host the swagger `OpenAPI` spec, example: /scalar
         url: String,
         /// URL for openapi.json, for example: /openapi.json
         spec_json_url: Option<String>,
@@ -493,7 +493,8 @@ pub enum OpenAPIType {
         spec_yaml_url: Option<String>,
     },
     Swagger {
-        /// URL for where to host the swagger OpenAPI spec, example: /swagger-ui
+        /// URL for where to host the swagger `OpenAPI` spec, example:
+        /// /swagger-ui
         url: String,
         /// URL for openapi.json, for example: /api-docs/openapi.json
         spec_json_url: String,
