@@ -243,8 +243,8 @@ impl AppRoutes {
         ))]
         {
             // Collect the OpenAPI spec
-            let (_, api) = api_router.split_for_parts();
-            openapi::set_openapi_spec(api);
+            let (_, open_api_spec) = api_router.split_for_parts();
+            openapi::set_openapi_spec(open_api_spec);
         }
 
         // Serve the OpenAPI spec using the enabled OpenAPI visualizers

@@ -250,7 +250,7 @@ impl LocoMethodRouter {
                 feature = "openapi_redoc",
                 feature = "openapi_scalar"
             ))]
-            LocoMethodRouter::Utoipa(router) => LocoMethodRouter::Utoipa(router.layer(layer)),
+            Self::Utoipa(router) => Self::Utoipa(router.layer(layer)),
         }
     }
 }
@@ -268,6 +268,6 @@ impl From<MethodRouter<AppContext>> for LocoMethodRouter {
 ))]
 impl From<UtoipaMethodRouter<AppContext>> for LocoMethodRouter {
     fn from(router: UtoipaMethodRouter<AppContext>) -> Self {
-        LocoMethodRouter::Utoipa(router)
+        Self::Utoipa(router)
     }
 }

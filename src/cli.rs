@@ -410,7 +410,7 @@ impl ComponentArg {
                 } else if api {
                     loco_gen::ScaffoldKind::Api
                 } else if openapi {
-                    ScaffoldKind::OpenApi
+                    loco_gen::ScaffoldKind::OpenApi
                 } else {
                     return Err(crate::Error::string(
                         "Error: One of `kind`, `htmx`, `html`, `api`, or `openapi` must be \
