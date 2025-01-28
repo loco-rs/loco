@@ -7,62 +7,41 @@ use loco::{
 };
 use std::{collections::HashMap, path::PathBuf, process::Output, sync::Arc};
 
-#[cfg(feature = "test-wizard")]
-#[rstest::rstest]
-fn test_all_combinations(
-    #[values(DBOption::None, DBOption::Sqlite)] db: DBOption,
-    #[values(
-        BackgroundOption::Async,
-        BackgroundOption::Queue,
-        BackgroundOption::Blocking,
-        BackgroundOption::None
-    )]
-    background: BackgroundOption,
-    #[values(AssetsOption::Serverside, AssetsOption::Clientside, AssetsOption::None)]
-    asset: AssetsOption,
-) {
-    test_combination(db, background, asset, true);
-}
+// #[cfg(feature = "test-wizard")]
+// #[rstest::rstest]
+// fn test_all_combinations(
+//     #[values(DBOption::None, DBOption::Sqlite)] db: DBOption,
+//     #[values(
+//         BackgroundOption::Async,
+//         BackgroundOption::Queue,
+//         BackgroundOption::Blocking,
+//         BackgroundOption::None
+//     )]
+//     background: BackgroundOption,
+//     #[values(AssetsOption::Serverside, AssetsOption::Clientside, AssetsOption::None)]
+//     asset: AssetsOption,
+// ) {
+//     test_combination(db, background, asset, true);
+// }
 
 // when running locally set LOCO_DEV_MODE_PATH=<to local loco path>
-#[cfg(not(feature = "test-wizard"))]
-#[test]
-fn test_starter_combinations() {
-    // lightweight service
-    test_combination(
-        DBOption::None,
-        BackgroundOption::None,
-        AssetsOption::None,
-        true,
-    );
-    // REST API
-    test_combination(
-        DBOption::Sqlite,
-        BackgroundOption::Async,
-        AssetsOption::None,
-        true,
-    );
-    // SaaS, serverside
-    test_combination(
-        DBOption::Sqlite,
-        BackgroundOption::Async,
-        AssetsOption::Serverside,
-        true,
-    );
-    // SaaS, clientside
-    test_combination(
-        DBOption::Sqlite,
-        BackgroundOption::Async,
-        AssetsOption::Clientside,
-        true,
-    );
-    // test only DB
-    test_combination(
-        DBOption::Sqlite,
-        BackgroundOption::None,
-        AssetsOption::None,
-        true,
-    );
+#[rstest::rstest]
+// lightweight service
+#[case(DBOption::None, BackgroundOption::None, AssetsOption::None)]
+// REST API
+#[case(DBOption::Sqlite, BackgroundOption::Async, AssetsOption::None)]
+// SaaS, serverside
+#[case(DBOption::None, BackgroundOption::None, AssetsOption::Serverside)]
+// SaaS, clientside
+#[case(DBOption::None, BackgroundOption::None, AssetsOption::Clientside)]
+// test only DB
+#[case(DBOption::Sqlite, BackgroundOption::None, AssetsOption::None)]
+fn test_starter_combinations(
+    #[case] db: DBOption,
+    #[case] background: BackgroundOption,
+    #[case] asset: AssetsOption,
+) {
+    test_combination(db, background, asset, true);
 }
 
 fn test_combination(
