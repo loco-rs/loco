@@ -391,6 +391,23 @@ pub async fn clear_jobs_older_than(
     Ok(())
 }
 
+/// Change the status of jobs in the `pg_loco_queue` table.
+///
+/// This function changes the status of all jobs that currently have the `from` status
+/// to the new `to` status.
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub async fn change_status(pool: &PgPool, from: &JobStatus, to: &JobStatus) -> Result<()> {
+    sqlx::query("UPDATE pg_loco_queue SET status = $1, updated_at = NOW() WHERE status = $2")
+        .bind(to.to_string())
+        .bind(from.to_string())
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
 /// Ping system
 ///
 /// # Errors
@@ -886,6 +903,56 @@ mod tests {
             .expect("get jobs")
             .len(),
             2
+        );
+    }
+
+    #[sqlx::test]
+    async fn can_change_status(pool: PgPool) {
+        assert!(initialize_database(&pool).await.is_ok());
+
+        sqlx::query(
+            r"INSERT INTO pg_loco_queue (id, name, task_data, status, run_at,created_at, updated_at) VALUES
+             ('job1', 'Test Job 1', '{}', 'completed', NOW(), NOW() - INTERVAL '20days', NOW()),
+             ('job2', 'Test Job 2', '{}', 'failed', NOW(),NOW() - INTERVAL '15 days', NOW()),
+             ('job3', 'Test Job 3', '{}', 'completed', NOW(),NOW() - INTERVAL '5 days', NOW()),
+             ('job4', 'Test Job 3', '{}','cancelled', NOW(), NOW(), NOW())"
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        assert_eq!(
+            get_jobs(&pool, Some(&vec![JobStatus::Failed]), None)
+                .await
+                .expect("get jobs")
+                .len(),
+            1
+        );
+        assert_eq!(
+            get_jobs(&pool, Some(&vec![JobStatus::Queued]), None)
+                .await
+                .expect("get jobs")
+                .len(),
+            0
+        );
+
+        change_status(&pool, &JobStatus::Failed, &JobStatus::Queued)
+            .await
+            .expect("update jobs");
+
+        assert_eq!(
+            get_jobs(&pool, Some(&vec![JobStatus::Failed]), None)
+                .await
+                .expect("get jobs")
+                .len(),
+            0
+        );
+        assert_eq!(
+            get_jobs(&pool, Some(&vec![JobStatus::Queued]), None)
+                .await
+                .expect("get jobs")
+                .len(),
+            1
         );
     }
 }

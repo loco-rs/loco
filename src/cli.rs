@@ -566,6 +566,15 @@ enum JobsCommands {
         #[arg(short, long)]
         file: PathBuf,
     },
+    /// Change the status of jobs.
+    ChangeStatus {
+        /// Current status of the jobs to be updated.
+        #[arg(short, long)]
+        from: JobStatus,
+        /// New status to assign to the jobs.
+        #[arg(short, long)]
+        to: JobStatus,
+    },
 }
 
 /// Parse a single key-value pair
@@ -1044,6 +1053,7 @@ async fn handle_job_command<H: Hooks>(
             Ok(())
         }
         JobsCommands::Import { file } => queue.import(file.as_path()).await,
+        JobsCommands::ChangeStatus { from, to } => queue.change_status(from, to).await,
     }
 }
 

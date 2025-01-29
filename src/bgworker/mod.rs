@@ -444,6 +444,36 @@ impl Queue {
         }
     }
 
+    /// Change the status of jobs.
+    ///
+    /// # Errors
+    /// - If no queue provider is configured, it will return an error indicating the lack of configuration.
+    /// - If the Redis provider is selected, it will return an error stating that clearing jobs is not supported.
+    /// - Any error in the underlying provider's job clearing logic will propagate from the respective function.
+    pub async fn change_status(&self, from: &JobStatus, to: &JobStatus) -> Result<()> {
+        tracing::debug!(from = ?from,to = ?to,  "clear jobs by status");
+        match self {
+            #[cfg(feature = "bg_pg")]
+            Self::Postgres(pool, _, _) => pg::change_status(pool, from, to).await,
+            #[cfg(feature = "bg_sqlt")]
+            Self::Sqlite(pool, _, _) => sqlt::change_status(pool, from, to).await,
+            #[cfg(feature = "bg_redis")]
+            Self::Redis(_, _, _) => {
+                tracing::error!("Update status for redis provider not implemented");
+                Err(Error::string(
+                    "Update status not supported for redis provider",
+                ))
+            }
+            Self::None => {
+                tracing::error!(
+                    "no queue provider is configured: compile with at least one queue provider \
+                     feature"
+                );
+                Err(Error::string("provider not configure"))
+            }
+        }
+    }
+
     /// Dumps the list of jobs to a YAML file at the specified path.
     ///
     /// This function retrieves jobs from the queue, optionally filtered by their status, and
