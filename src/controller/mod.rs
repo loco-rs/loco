@@ -6,7 +6,7 @@
 //! implementing routes trait from [`crate::app::Hooks`] and adding your
 //! endpoints to your application
 //!
-//! ```rust
+//! ```rust, no_run
 //! use async_trait::async_trait;
 //! use loco_rs::{
 //!    app::{AppContext, Hooks},
@@ -20,6 +20,12 @@
 //! };
 //! use sea_orm::DatabaseConnection;
 //! use std::path::Path;
+//! #[cfg(any(
+//!     feature = "openapi_swagger",
+//!     feature = "openapi_redoc",
+//!     feature = "openapi_scalar"
+//! ))]
+//! use loco_rs::auth::openapi::{set_jwt_location_ctx, SecurityAddon};
 //!
 //! /// this code block should be taken from the sea_orm migration model.
 //! pub struct App;
@@ -61,6 +67,28 @@
 //!
 //!     async fn seed(_ctx: &AppContext, base: &Path) -> Result<()> {
 //!         Ok(())
+//!     }
+//!
+//!     #[cfg(any(
+//!         feature = "openapi_swagger",
+//!         feature = "openapi_redoc",
+//!         feature = "openapi_scalar"
+//!     ))]
+//!     fn inital_openapi_spec(ctx: &AppContext) -> utoipa::openapi::OpenApi {
+//!         set_jwt_location_ctx(ctx);
+//!
+//!         #[derive(OpenApi)]
+//!         #[openapi(
+//!             modifiers(&SecurityAddon),
+//!             info(
+//!                 title = "Loco Demo",
+//!                 description = "This app is a kitchensink for various capabilities and examples of the [Loco](https://loco.rs) project."
+//!             )
+//!         )]
+//!         struct ApiDoc;
+//!         set_jwt_location_ctx(ctx);
+//!
+//!         ApiDoc::openapi()
 //!     }
 //! }
 //! ```
