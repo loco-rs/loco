@@ -1,5 +1,5 @@
 //! This module provides utility functions for handling validation errors for
-//! structs. It useful if you want to validate model before inset to Database.
+//! structs. It useful if you want to validate model before insert to Database.
 //!
 //! # Example:
 //!
