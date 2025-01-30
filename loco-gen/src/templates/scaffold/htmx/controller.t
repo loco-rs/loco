@@ -73,8 +73,8 @@ pub async fn update(
     let item = load_item(&ctx, id).await?;
     let mut item = item.into_active_model();
     params.update(&mut item);
-    let item = item.update(&ctx.db).await?;
-    format::json(item)
+    let _ = item.update(&ctx.db).await?;
+    format::render().redirect_with_header_key("HX-Redirect", "/{{name | plural}}")
 }
 
 #[debug_handler]
@@ -99,7 +99,6 @@ pub async fn show(
 
 #[debug_handler]
 pub async fn add(
-    ViewEngine(v): ViewEngine<TeraView>,
     State(ctx): State<AppContext>,
     Json(params): Json<Params>,
 ) -> Result<Response> {
@@ -107,8 +106,8 @@ pub async fn add(
         ..Default::default()
     };
     params.update(&mut item);
-    let item = item.insert(&ctx.db).await?;
-    views::{{file_name}}::show(&v, &item)
+    let _ = item.insert(&ctx.db).await?;
+    format::render().redirect_with_header_key("HX-Redirect", "/{{name | plural}}")
 }
 
 #[debug_handler]

@@ -23,11 +23,11 @@ Notes:
 ***/
 use std::{
     collections::BTreeMap,
+    fs,
     path::{Path, PathBuf},
     sync::OnceLock,
 };
 
-use fs_err as fs;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::info;

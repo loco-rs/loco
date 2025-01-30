@@ -121,3 +121,44 @@ async fn load_page() {
     .await;
 }
 ```
+
+## Upgrade from 0.14.x to 0.15.x
+
+### Upgrade validator crate
+PR: [#1199](https://github.com/loco-rs/loco/pull/1199)
+
+Update the `validator` crate version in your `Cargo.toml`:
+
+From 
+```
+validator = { version = "0.19" }
+``` 
+To 
+```
+validator = { version = "0.20" }
+```
+
+### User claims
+
+PR: [#1159](https://github.com/loco-rs/loco/pull/1159)
+
+* Flattened (De)Serialization of Custom User Claims:
+The `claims` field in `UserClaims` has changed from `Option<Value>` to `Map<String, Value>`.
+
+* Mandatory Map Value in `generate_token` function:
+When calling `generate_token`, the `Map<String, Value>` argument is now required. If you are not using custom claims, pass an empty map (`serde_json::Map::new()`).
+
+* Updated generate_token Signature:
+The `generate_token` function now takes `expiration` as a value instead of a reference.
+
+
+### Pagination Response
+
+PR: [#1197](https://github.com/loco-rs/loco/pull/1197)
+
+
+The pagination response now includes the `total_items` field, providing the total number of items available.
+
+```JSON
+{"results":[],"pagination":{"page":0,"page_size":0,"total_pages":0,"total_items":0}}
+```

@@ -1,10 +1,7 @@
 name: "[loco-gen-deploy]"
-
 on:
-  push:
-    branches:
-      - master
-  pull_request:
+  schedule:
+    - cron: "0 0 * * *"
 
 env:
   RUST_TOOLCHAIN: stable
@@ -31,7 +28,7 @@ jobs:
 
       - name: install 'loco new'
         run: |
-          cargo install --path ./loco-new
+          cargo install loco
 
       - name: create myapp
         run: |

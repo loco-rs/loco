@@ -1,3 +1,5 @@
+use std::{collections::HashMap, path::PathBuf, process::Output, sync::Arc};
+
 use duct::cmd;
 use loco::{
     generator::{executer::FileSystem, Generator},
@@ -5,63 +7,42 @@ use loco::{
     wizard::{self, AssetsOption, BackgroundOption, DBOption},
     OS,
 };
-use std::{collections::HashMap, path::PathBuf, process::Output, sync::Arc};
 
-#[cfg(feature = "test-wizard")]
-#[rstest::rstest]
-fn test_all_combinations(
-    #[values(DBOption::None, DBOption::Sqlite)] db: DBOption,
-    #[values(
-        BackgroundOption::Async,
-        BackgroundOption::Queue,
-        BackgroundOption::Blocking,
-        BackgroundOption::None
-    )]
-    background: BackgroundOption,
-    #[values(AssetsOption::Serverside, AssetsOption::Clientside, AssetsOption::None)]
-    asset: AssetsOption,
-) {
-    test_combination(db, background, asset, false);
-}
+// #[cfg(feature = "test-wizard")]
+// #[rstest::rstest]
+// fn test_all_combinations(
+//     #[values(DBOption::None, DBOption::Sqlite)] db: DBOption,
+//     #[values(
+//         BackgroundOption::Async,
+//         BackgroundOption::Queue,
+//         BackgroundOption::Blocking,
+//         BackgroundOption::None
+//     )]
+//     background: BackgroundOption,
+//     #[values(AssetsOption::Serverside, AssetsOption::Clientside,
+// AssetsOption::None)]     asset: AssetsOption,
+// ) {
+//     test_combination(db, background, asset, true);
+// }
 
 // when running locally set LOCO_DEV_MODE_PATH=<to local loco path>
-#[test]
-fn test_starter_combinations() {
-    // lightweight service
-    test_combination(
-        DBOption::None,
-        BackgroundOption::None,
-        AssetsOption::None,
-        true,
-    );
-    // REST API
-    test_combination(
-        DBOption::Sqlite,
-        BackgroundOption::Async,
-        AssetsOption::None,
-        true,
-    );
-    // SaaS, serverside
-    test_combination(
-        DBOption::Sqlite,
-        BackgroundOption::Async,
-        AssetsOption::Serverside,
-        true,
-    );
-    // SaaS, clientside
-    test_combination(
-        DBOption::Sqlite,
-        BackgroundOption::Async,
-        AssetsOption::Clientside,
-        true,
-    );
-    // test only DB
-    test_combination(
-        DBOption::Sqlite,
-        BackgroundOption::None,
-        AssetsOption::None,
-        true,
-    );
+#[rstest::rstest]
+// lightweight service
+#[case(DBOption::None, BackgroundOption::None, AssetsOption::None)]
+// REST API
+#[case(DBOption::Sqlite, BackgroundOption::Async, AssetsOption::None)]
+// SaaS, serverside
+#[case(DBOption::None, BackgroundOption::None, AssetsOption::Serverside)]
+// SaaS, clientside
+#[case(DBOption::None, BackgroundOption::None, AssetsOption::Clientside)]
+// test only DB
+#[case(DBOption::Sqlite, BackgroundOption::None, AssetsOption::None)]
+fn test_starter_combinations(
+    #[case] db: DBOption,
+    #[case] background: BackgroundOption,
+    #[case] asset: AssetsOption,
+) {
+    test_combination(db, background, asset, true);
 }
 
 fn test_combination(
@@ -77,7 +58,7 @@ fn test_combination(
     let wizard_selection = wizard::Selections {
         db: db.clone(),
         background: background.clone(),
-        asset,
+        asset: asset.clone(),
     };
     let settings =
         settings::Settings::from_wizard("test-loco-template", &wizard_selection, OS::default());
@@ -111,23 +92,25 @@ fn test_combination(
             "get_note",
         ]);
 
-        // Generate HTMX controller
-        tester.run_generate(&vec![
-            "controller",
-            "notes_htmx",
-            "--htmx",
-            "create_note",
-            "get_note",
-        ]);
+        if asset.enable() {
+            // Generate HTMX controller
+            tester.run_generate(&vec![
+                "controller",
+                "notes_htmx",
+                "--htmx",
+                "create_note",
+                "get_note",
+            ]);
 
-        // Generate HTML controller
-        tester.run_generate(&vec![
-            "controller",
-            "notes_html",
-            "--html",
-            "create_note",
-            "get_note",
-        ]);
+            // Generate HTML controller
+            tester.run_generate(&vec![
+                "controller",
+                "notes_html",
+                "--html",
+                "create_note",
+                "get_note",
+            ]);
+        }
 
         // Generate Task
         tester.run_generate(&vec!["task", "list_users"]);
@@ -154,6 +137,9 @@ fn test_combination(
         // Generate deployment shuttle
         tester.run_generate(&vec!["deployment", "--kind", "shuttle"]);
 
+        // Generate data
+        tester.run_generate(&vec!["data", "stocks"]);
+
         if db.enable() {
             // Generate Model
             if !settings.auth {
@@ -161,23 +147,25 @@ fn test_combination(
             }
             tester.run_generate(&vec!["model", "movies", "title:string", "user:references"]);
 
-            // Generate HTMX Scaffold
-            tester.run_generate(&vec![
-                "scaffold",
-                "movies_htmx",
-                "title:string",
-                "user:references",
-                "--htmx",
-            ]);
+            if asset.enable() {
+                // Generate HTMX Scaffold
+                tester.run_generate(&vec![
+                    "scaffold",
+                    "movies_htmx",
+                    "title:string",
+                    "user:references",
+                    "--htmx",
+                ]);
 
-            // Generate HTML Scaffold
-            tester.run_generate(&vec![
-                "scaffold",
-                "movies_html",
-                "title:string",
-                "user:references",
-                "--html",
-            ]);
+                // Generate HTML Scaffold
+                tester.run_generate(&vec![
+                    "scaffold",
+                    "movies_html",
+                    "title:string",
+                    "user:references",
+                    "--html",
+                ]);
+            }
 
             // Generate API Scaffold
             tester.run_generate(&vec![

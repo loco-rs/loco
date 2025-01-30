@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+* chore: improve readability and performance by using map_err in Model. [https://github.com/loco-rs/loco/pull/1311](https://github.com/loco-rs/loco/pull/1311)
+* Allow testing the endpoint by passing a cookie.[https://github.com/loco-rs/loco/pull/1326](https://github.com/loco-rs/loco/pull/1326)
+
+## v0.15.0
+
+* Added total_items to pagination view & response. [https://github.com/loco-rs/loco/pull/1197](https://github.com/loco-rs/loco/pull/1197)
+* Flatten (de)serialization of custom user claims. [https://github.com/loco-rs/loco/pull/1159](https://github.com/loco-rs/loco/pull/1159)
+* Updated validator to 0.20. [https://github.com/loco-rs/loco/pull/1199](https://github.com/loco-rs/loco/pull/1199)
+* Scaffold v2. [https://github.com/loco-rs/loco/pull/1209](https://github.com/loco-rs/loco/pull/1209)
+* Fix generator Docker deployment to support both server-side and client-side rendering. [https://github.com/loco-rs/loco/pull/1227](https://github.com/loco-rs/loco/pull/1227)
+* Docs: num_workers worker configuration. [https://github.com/loco-rs/loco/pull/1242](https://github.com/loco-rs/loco/pull/1242)
+* Smoother model validations. [https://github.com/loco-rs/loco/pull/1233](https://github.com/loco-rs/loco/pull/1233)
+* Docs: num_workers worker configuration. [https://github.com/loco-rs/loco/pull/1242](https://github.com/loco-rs/loco/pull/1242)
+* Ignore SQLite WAL and SHM files and update Cargo watch crate docs. [https://github.com/loco-rs/loco/pull/1254](https://github.com/loco-rs/loco/pull/1254)
+* Remove fs-err crate. [https://github.com/loco-rs/loco/pull/1253](https://github.com/loco-rs/loco/pull/1253)
+* Allows to run scheduler as part of cargo loco start. [https://github.com/loco-rs/loco/pull/1247](https://github.com/loco-rs/loco/pull/1247)
+* Added prefix and route nesting to AppRoutes. [https://github.com/loco-rs/loco/pull/1241](https://github.com/loco-rs/loco/pull/1241)
+* Replace hyper crate with axum. [https://github.com/loco-rs/loco/pull/1258](https://github.com/loco-rs/loco/pull/1258)
+* Remove mime crate. [https://github.com/loco-rs/loco/pull/1256](https://github.com/loco-rs/loco/pull/1256)
+* Support async tests. [https://github.com/loco-rs/loco/pull/1237](https://github.com/loco-rs/loco/pull/1237)
+* Change job queue status from cli.  [https://github.com/loco-rs/loco/pull/1228](https://github.com/loco-rs/loco/pull/1228)
+* Handle panics in queue worker. [https://github.com/loco-rs/loco/pull/1274](https://github.com/loco-rs/loco/pull/1274)
+* Schema with defaults. [https://github.com/loco-rs/loco/pull/1273](https://github.com/loco-rs/loco/pull/1273)
+* Add data subsystem. [https://github.com/loco-rs/loco/pull/1267](https://github.com/loco-rs/loco/pull/1267)
+* Add "endpoint" arg to azure storage builder.[https://github.com/loco-rs/loco/pull/1317](https://github.com/loco-rs/loco/pull/1317)
+* Improve readability and performance by using  map_err in Model. [https://github.com/loco-rs/loco/pull/1311](https://github.com/loco-rs/loco/pull/1311)
+
 
 ## v0.14.1
 

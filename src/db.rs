@@ -3,11 +3,12 @@
 //! This module defines functions and operations related to the application's
 //! database interactions.
 
-use std::{collections::HashMap, fs::File, io::Write, path::Path, sync::OnceLock, time::Duration};
+use std::{
+    collections::HashMap, fs, fs::File, io::Write, path::Path, sync::OnceLock, time::Duration,
+};
 
 use chrono::{DateTime, Utc};
 use duct::cmd;
-use fs_err::{self as fs, create_dir_all};
 use regex::Regex;
 use sea_orm::{
     ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
@@ -31,8 +32,9 @@ const IGNORED_TABLES: &[&str] = &[
     "sqlt_loco_queue_lock",
 ];
 
-fn get_extract_db_name() -> &'static Regex {
-    EXTRACT_DB_NAME.get_or_init(|| Regex::new(r"/([^/]+)$").unwrap())
+fn re_extract_db_name() -> &'static Regex {
+    EXTRACT_DB_NAME
+        .get_or_init(|| Regex::new(r"/([^/]+?)(?:\?|$)").expect("Extract db regex is correct"))
 }
 
 #[derive(Default, Clone, Debug)]
@@ -166,6 +168,18 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
     Ok(db)
 }
 
+/// Extracts the database name from a given connection string.
+///
+/// # Errors
+///
+/// This function returns an error if the connection string does not match the
+/// expected format.
+pub fn extract_db_name(conn_str: &str) -> AppResult<&str> {
+    re_extract_db_name()
+        .captures(conn_str)
+        .and_then(|cap| cap.get(1).map(|db| db.as_str()))
+        .ok_or_else(|| Error::string("could extract db_name"))
+}
 ///  Create a new database. This functionality is currently exclusive to Postgre
 /// databases.
 ///
@@ -178,18 +192,11 @@ pub async fn create(db_uri: &str) -> AppResult<()> {
             "Only Postgres databases are supported for table creation",
         ));
     }
-    let db_name = get_extract_db_name()
-        .captures(db_uri)
-        .and_then(|cap| cap.get(1).map(|db| db.as_str()))
-        .ok_or_else(|| {
-            Error::string(
-                "The specified table name was not found in the given Postgre database URI",
-            )
-        })?;
+    let db_name = extract_db_name(db_uri).map_err(|_| {
+        Error::string("The specified table name was not found in the given Postgres database URI")
+    })?;
 
-    let conn = get_extract_db_name()
-        .replace(db_uri, "/postgres")
-        .to_string();
+    let conn = extract_db_name(db_uri)?.replace(db_uri, "/postgres");
     let db = Database::connect(conn).await?;
 
     Ok(create_postgres_database(db_name, &db).await?)
@@ -467,11 +474,17 @@ pub async fn entities<M: MigratorTrait>(ctx: &AppContext) -> AppResult<String> {
 // also we are generating an extension module from the get go
 fn fix_entities() -> AppResult<()> {
     let dir = fs::read_dir("src/models/_entities")?
-        .flatten()
-        .filter(|ent| {
-            ent.path().is_file() && ent.file_name() != "mod.rs" && ent.file_name() != "prelude.rs"
+        .filter_map(|ent| {
+            let ent = ent.unwrap();
+            if ent.path().is_file()
+                && ent.file_name() != "mod.rs"
+                && ent.file_name() != "prelude.rs"
+            {
+                Some(ent.path())
+            } else {
+                None
+            }
         })
-        .map(|ent| ent.path())
         .collect::<Vec<_>>();
 
     // remove activemodel impl from all generated entities, and make note to
@@ -690,7 +703,7 @@ pub async fn dump_tables(
 
         if !to.exists() {
             tracing::info!("the specified dump folder does not exist. creating the folder now");
-            create_dir_all(to)?;
+            fs::create_dir_all(to)?;
         }
 
         for row in data_result {
@@ -732,10 +745,7 @@ pub async fn dump_tables(
                         row.try_get::<DateTime<Utc>>("", &col_name)
                             .map(|v| serde_json::Value::String(v.to_rfc3339()))
                     })
-                    .or_else(|_| {
-                        row.try_get::<serde_json::Value>("", &col_name)
-                            .map(serde_json::Value::from)
-                    })
+                    .or_else(|_| row.try_get::<serde_json::Value>("", &col_name))
                     .or_else(|_| {
                         row.try_get::<bool>("", &col_name)
                             .map(serde_json::Value::Bool)

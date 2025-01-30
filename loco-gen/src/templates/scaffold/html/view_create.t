@@ -10,44 +10,17 @@ message: "{{file_name}} create view was added successfully."
 Create {{file_name}}
 {% raw %}{% endblock title %}{% endraw %}
 
+{% raw %}{% block page_title %}{% endraw %}
+Create new {{name}}
+{% raw %}{% endblock page_title %}{% endraw %}
+
 {% raw %}{% block content %}{% endraw %}
-<h1>Create new {{file_name}}</h1>
 <div class="mb-10">
-    <form action="/{{name | plural}}" method="post">
-        <div class="mb-5">
-        {% for column in columns -%}
-        <div>
-            <label>{{column.0}}</label>
-            <br />
-            {% if column.2 == "text" -%}
-            <textarea id="{{column.0}}" name="{{column.0}}" type="text" value="" rows="10" cols="50"></textarea>
-            {% elif column.2 == "string" -%}
-            <input id="{{column.0}}" name="{{column.0}}" type="text" value=""/>
-            {% elif column.2 == "string!" or column.2 == "string^" -%}
-            <input id="{{column.0}}" name="{{column.0}}" type="text" value="" required/>
-            {% elif column.2 == "int" or column.2 == "int!" or column.2 == "int^"-%}
-            <input id="{{column.0}}" name="{{column.0}}" type="number" required></input>
-            {% elif column.2 == "bool"-%}
-            <input id="{{column.0}}" name="{{column.0}}" type="checkbox" value="true"/>
-            {% elif column.2 == "bool!"-%}
-            <input id="{{column.0}}" name="{{column.0}}" type="checkbox" value="true" required/>
-            {% elif column.2 == "ts"-%}
-            <input id="{{column.0}}" name="{{column.0}}" type="text" value=""/>
-            {% elif column.2 == "ts!"-%}
-            <input id="{{column.0}}" name="{{column.0}}" type="text" value="" required/>
-            {% elif column.2 == "uuid"-%}
-            <input id="{{column.0}}" name="{{column.0}}" type="text" value=""/>
-            {% elif column.2 == "uuid!"-%}
-            <input id="{{column.0}}" name="{{column.0}}" type="text" value="" required/>
-            {% elif column.2 == "json" or column.2 == "jsonb" -%}
-            <textarea id="{{column.0}}" name="{{column.0}}" type="text" value="" rows="10" cols="50"></textarea/>
-            {% elif column.2 == "json!" or column.2 == "jsonb!" -%}
-            <textarea id="{{column.0}}" name="{{column.0}}" type="text" value="" required rows="10" cols="50"></textarea>
-            {% endif -%} 
-        </div>
+    <form action="/{{name | plural}}" method="post" class="flex-1 lg:max-w-2xl">
+    {% for column in columns -%}
+            {{ render_form_field(fname=column.0, rust_type=column.1, ftype=column.2)}}
         {% endfor -%}
-        </div>
-        <div>
+        <div class="mt-5">
             <button class=" text-xs py-3 px-6 rounded-lg bg-gray-900 text-white" type="submit">Submit</button>
         </div>
     </form>
@@ -55,3 +28,7 @@ Create {{file_name}}
 <a href="/{{name | plural}}">Back to {{name | plural}}</a>
 </div>
 {% raw %}{% endblock content %}{% endraw %}
+
+{% raw %}{% block js %}{% endraw %}
+
+{% raw %}{% endblock js %}{% endraw %}

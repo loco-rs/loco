@@ -15,8 +15,9 @@ gen.copy_template_dir(".cargo");
 gen.copy_template("src/controllers/mod.rs.t");      // Main controller module template
 gen.copy_template("src/views/mod.rs.t");            // Main views module template
 gen.copy_template("src/tasks/mod.rs.t");            // Main tasks module template
-
 gen.copy_template("src/initializers/mod.rs.t");     // initializer module
+gen.copy_template("src/data/mod.rs.t");             // data loaders module
+
 
 // Main application and library templates
 gen.copy_template("src/app.rs.t");                  // App root file
@@ -84,7 +85,7 @@ if db {
 // =====================
 // Initializers Support
 // =====================
-if initializers {
+if settings.initializers.view_engine {
    gen.copy_file("src/initializers/view_engine.rs"); // Template for view engine initializer
 }
 
@@ -121,20 +122,16 @@ if background {
 }
 
 // =====================
-// Asset Management
+// Server side
 // =====================
-// Adds asset directory if assets are configured in the app.
-
-if asset {
-    gen.copy_dir("assets");                         // Static assets directory
+if settings.asset.is_server_side {
+    gen.copy_dir("assets");                        // Static assets directory
 }
-
 
 // =====================
 // Client side
 // =====================
-
-if settings.clientside {
+if settings.asset.is_client_side {
    gen.copy_dir("frontend");
    gen.create_file("frontend/dist/index.html", "this is a placeholder. please run your frontend build (npm build)");
 }

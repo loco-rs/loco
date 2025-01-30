@@ -226,8 +226,11 @@ where
 #[cfg(test)]
 mod tests {
 
-    use axum::{routing::get, Router};
-    use hyper::{HeaderMap, Method};
+    use axum::{
+        http::{HeaderMap, Method},
+        routing::get,
+        Router,
+    };
     use insta::assert_debug_snapshot;
     use tower::ServiceExt;
 

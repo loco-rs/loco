@@ -1,6 +1,6 @@
 [package]
 name = "loco-gen"
-version = "0.14.1"
+version = "0.15.0"
 description = "Loco generators"
 license.workspace = true
 edition.workspace = true
@@ -15,7 +15,7 @@ path = "src/lib.rs"
 [dependencies]
 
 cruet = "0.14.0"
-rrgen = "0.5.5"
+rrgen = "0.5.6"
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
@@ -23,6 +23,8 @@ regex = { workspace = true }
 tracing = { workspace = true }
 chrono = { workspace = true }
 colored = { workspace = true }
+heck = { workspace = true }
+tera = { workspace = true }
 
 clap = { version = "4.4.7", features = ["derive"] }
 duct = "0.13"

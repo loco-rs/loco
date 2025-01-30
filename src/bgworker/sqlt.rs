@@ -1,7 +1,11 @@
 /// `SQLite` based background job queue provider
-use std::{collections::HashMap, future::Future, pin::Pin, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap, future::Future, panic::AssertUnwindSafe, pin::Pin, sync::Arc,
+    time::Duration,
+};
 
 use chrono::{DateTime, Utc};
+use futures_util::FutureExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 pub use sqlx::SqlitePool;
@@ -69,7 +73,21 @@ impl JobRegistry {
             Box::pin(async move {
                 let args = serde_json::from_value::<Args>(job_data);
                 match args {
-                    Ok(args) => w.perform(args).await,
+                    Ok(args) => {
+                        // Wrap the perform call in catch_unwind to handle panics
+                        match AssertUnwindSafe(w.perform(args)).catch_unwind().await {
+                            Ok(result) => result,
+                            Err(panic) => {
+                                let panic_msg = panic
+                                    .downcast_ref::<String>()
+                                    .map(String::as_str)
+                                    .or_else(|| panic.downcast_ref::<&str>().copied())
+                                    .unwrap_or("Unknown panic occurred");
+                                error!(err = panic_msg, "worker panicked");
+                                Err(Error::string(panic_msg))
+                            }
+                        }
+                    }
                     Err(err) => Err(err.into()),
                 }
             }) as Pin<Box<dyn Future<Output = Result<(), crate::Error>> + Send>>
@@ -414,6 +432,29 @@ pub async fn clear_by_status(pool: &SqlitePool, status: Vec<JobStatus>) -> Resul
     ))
     .execute(pool)
     .await?;
+
+    Ok(())
+}
+
+/// Requeues jobs from [`JobStatus::Processing`] to [`JobStatus::Queued`].
+///
+/// This function updates the status of all jobs that are currently in the [`JobStatus::Processing`] state
+/// to the [`JobStatus::Queued`] state, provided they have been updated more than the specified age (`age_minutes`).
+/// The jobs that meet the criteria will have their `updated_at` timestamp set to the current time.
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub async fn requeue(pool: &SqlitePool, age_minutes: &i64) -> Result<()> {
+    let query = format!(
+        "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE status = $2 AND updated_at <= DATETIME('now', '-{age_minutes} minute')"
+    );
+
+    sqlx::query(&query)
+        .bind(JobStatus::Queued.to_string())
+        .bind(JobStatus::Processing.to_string())
+        .execute(pool)
+        .await?;
 
     Ok(())
 }
@@ -1083,6 +1124,123 @@ mod tests {
             .expect("get jobs")
             .len(),
             2
+        );
+    }
+
+    #[tokio::test]
+    async fn can_requeue() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let pool = init(&tree_fs.root).await;
+
+        assert!(initialize_database(&pool).await.is_ok());
+        sqlx::query(
+            r"INSERT INTO sqlt_loco_queue (id, name, task_data, status,run_at, created_at, updated_at) VALUES
+            ('job1', 'Test Job 1', '{}', 'processing', CURRENT_TIMESTAMP,CURRENT_TIMESTAMP, DATETIME('now', '-20 minute')),
+            ('job2', 'Test Job 2', '{}', 'processing', CURRENT_TIMESTAMP,CURRENT_TIMESTAMP, DATETIME('now', '-5 minute')),
+            ('job3', 'Test Job 3', '{}', 'completed', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, DATETIME('now', '-5 minute')),
+            ('job4', 'Test Job 4', '{}', 'queued', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+            ('job5', 'Test Job 5', '{}', 'processing', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let jobs = get_all_jobs(&pool).await;
+
+        let processing_job_count = jobs
+            .iter()
+            .filter(|job| job.status == JobStatus::Processing)
+            .count();
+        let queued_job_count = jobs
+            .iter()
+            .filter(|job| job.status == JobStatus::Queued)
+            .count();
+
+        assert_eq!(processing_job_count, 3);
+        assert_eq!(queued_job_count, 1);
+        assert!(requeue(&pool, &10).await.is_ok());
+        let jobs = get_all_jobs(&pool).await;
+        let processing_job_count = jobs
+            .iter()
+            .filter(|job| job.status == JobStatus::Processing)
+            .count();
+        let queued_job_count = jobs
+            .iter()
+            .filter(|job| job.status == JobStatus::Queued)
+            .count();
+
+        assert_eq!(processing_job_count, 2);
+        assert_eq!(queued_job_count, 2);
+    }
+
+    #[tokio::test]
+    async fn can_handle_worker_panic() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let pool = init(&tree_fs.root).await;
+
+        assert!(initialize_database(&pool).await.is_ok());
+
+        let job_data: JobData = serde_json::json!(null);
+        let job_id = enqueue(&pool, "PanicJob", job_data, Utc::now(), None)
+            .await
+            .expect("Failed to enqueue job");
+
+        struct PanicWorker;
+        #[async_trait::async_trait]
+        impl BackgroundWorker<()> for PanicWorker {
+            fn build(_ctx: &crate::app::AppContext) -> Self {
+                Self
+            }
+            async fn perform(&self, _args: ()) -> crate::Result<()> {
+                panic!("intentional panic for testing");
+            }
+        }
+
+        let mut registry = JobRegistry::new();
+        assert!(registry
+            .register_worker("PanicJob".to_string(), PanicWorker)
+            .is_ok());
+
+        // Get the initial job state
+        let job = get_job(&pool, &job_id).await;
+        assert_eq!(job.status, JobStatus::Queued);
+
+        // Start the worker
+        let opts = RunOpts {
+            num_workers: 1,
+            poll_interval_sec: 1,
+        };
+        let handles = registry.run(&pool, &opts);
+
+        // Wait a bit for the worker to process the job
+        sleep(Duration::from_secs(1)).await;
+
+        // Stop the worker
+        for handle in handles {
+            handle.abort();
+        }
+
+        // Verify the job is marked as failed
+        let failed_job = get_job(&pool, &job_id).await;
+        assert_eq!(failed_job.status, JobStatus::Failed);
+
+        // Print and verify the error message stored in job data
+        println!("Job data: {:?}", failed_job.data);
+        let error_msg = failed_job
+            .data
+            .as_object()
+            .and_then(|obj| obj.get("error"))
+            .and_then(|v| v.as_str())
+            .expect("Expected error message in job data");
+        assert!(
+            error_msg.contains("intentional panic for testing"),
+            "Error message '{}' did not contain expected text",
+            error_msg
         );
     }
 }

@@ -4,7 +4,7 @@ use sea_orm::{
         Alias, ColumnDef, Expr, Index, IntoIden, PgInterval, Table, TableAlterStatement,
         TableCreateStatement, TableForeignKey,
     },
-    DbErr, ForeignKeyAction,
+    ColumnType, DbErr, ForeignKeyAction,
 };
 pub use sea_orm_migration::schema::*;
 use sea_orm_migration::{prelude::Iden, sea_query, SchemaManager};
@@ -20,7 +20,7 @@ pub fn alter<T: IntoIden + 'static>(name: T) -> TableAlterStatement {
     Table::alter().table(name).take()
 }
 
-/// Wrapping  table schema creation.
+/// Wrapping table schema creation.
 pub fn table_auto_tz<T>(name: T) -> TableCreateStatement
 where
     T: IntoIden + 'static,
@@ -43,7 +43,10 @@ pub fn timestamptz_null<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).timestamp_with_time_zone().take()
+    ColumnDef::new(name)
+        .timestamp_with_time_zone()
+        .null()
+        .take()
 }
 
 /// Create a non-nullable timestamptz column definition.
@@ -62,53 +65,78 @@ pub enum ColType {
     PkAuto,
     PkUuid,
     CharLen(u32),
+    CharLenWithDefault(u32, char),
     CharLenNull(u32),
     CharLenUniq(u32),
     Char,
+    CharWithDefault(char),
     CharNull,
     CharUniq,
     StringLen(u32),
+    StringLenWithDefault(u32, String),
     StringLenNull(u32),
     StringLenUniq(u32),
     String,
+    StringWithDefault(String),
     StringNull,
     StringUniq,
     Text,
+    TextWithDefault(String),
     TextNull,
     TextUniq,
     Integer,
+    IntegerWithDefault(i32),
     IntegerNull,
     IntegerUniq,
-    TinyInteger,
-    TinyIntegerNull,
-    TinyIntegerUniq,
+    Unsigned,
+    UnsignedWithDefault(u32),
+    UnsignedNull,
+    UnsignedUniq,
+    SmallUnsigned,
+    SmallUnsignedWithDefault(u16),
+    SmallUnsignedNull,
+    SmallUnsignedUniq,
+    BigUnsigned,
+    BigUnsignedWithDefault(u64),
+    BigUnsignedNull,
+    BigUnsignedUniq,
     SmallInteger,
+    SmallIntegerWithDefault(i16),
     SmallIntegerNull,
     SmallIntegerUniq,
     BigInteger,
+    BigIntegerWithDefault(i64),
     BigIntegerNull,
     BigIntegerUniq,
     Decimal,
+    DecimalWithDefault(f64),
     DecimalNull,
     DecimalUniq,
     DecimalLen(u32, u32),
+    DecimalLenWithDefault(u32, u32, f64),
     DecimalLenNull(u32, u32),
     DecimalLenUniq(u32, u32),
     Float,
+    FloatWithDefault(f32),
     FloatNull,
     FloatUniq,
     Double,
+    DoubleWithDefault(f64),
     DoubleNull,
     DoubleUniq,
     Boolean,
+    BooleanWithDefault(bool),
     BooleanNull,
-    Timestamp,
-    TimestampNull,
-    TimestampUniq,
     Date,
+    DateWithDefault(String),
     DateNull,
     DateUniq,
+    DateTime,
+    DateTimeWithDefault(String),
+    DateTimeNull,
+    DateTimeUniq,
     Time,
+    TimeWithDefault(String),
     TimeNull,
     TimeUniq,
     Interval(Option<PgInterval>, Option<u32>),
@@ -117,8 +145,14 @@ pub enum ColType {
     Binary,
     BinaryNull,
     BinaryUniq,
-    // Added variants based on the JSON
+    BinaryLen(u32),
+    BinaryLenNull(u32),
+    BinaryLenUniq(u32),
+    VarBinary(u32),
+    VarBinaryNull(u32),
+    VarBinaryUniq(u32),
     TimestampWithTimeZone,
+    TimestampWithTimeZoneWithDefault(String),
     TimestampWithTimeZoneNull,
     Json,
     JsonNull,
@@ -130,14 +164,60 @@ pub enum ColType {
     BlobNull,
     BlobUniq,
     Money,
+    MoneyWithDefault(f64),
     MoneyNull,
     MoneyUniq,
     Uuid,
     UuidNull,
     UuidUniq,
+    VarBitLen(u32),
+    VarBitLenNull(u32),
+    VarBitLenUniq(u32),
+    Array(ColumnType),
+    ArrayNull(ColumnType),
+    ArrayUniq(ColumnType),
+}
+
+pub enum ArrayColType {
+    String,
+    Float,
+    Int,
+    Double,
+    Bool,
 }
 
 impl ColType {
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn array(kind: ArrayColType) -> Self {
+        Self::Array(Self::array_col_type(&kind))
+    }
+
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn array_uniq(kind: ArrayColType) -> Self {
+        Self::ArrayUniq(Self::array_col_type(&kind))
+    }
+
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn array_null(kind: ArrayColType) -> Self {
+        Self::ArrayNull(Self::array_col_type(&kind))
+    }
+
+    fn array_col_type(kind: &ArrayColType) -> ColumnType {
+        match kind {
+            ArrayColType::String => ColumnType::string(None),
+            ArrayColType::Float => ColumnType::Float,
+            ArrayColType::Int => ColumnType::Integer,
+            ArrayColType::Double => ColumnType::Double,
+            ArrayColType::Bool => ColumnType::Boolean,
+        }
+    }
+}
+
+impl ColType {
+    #[allow(clippy::too_many_lines)]
     fn to_def(&self, name: impl IntoIden) -> ColumnDef {
         match self {
             Self::PkAuto => pk_auto(name),
@@ -160,9 +240,21 @@ impl ColType {
             Self::Integer => integer(name),
             Self::IntegerNull => integer_null(name),
             Self::IntegerUniq => integer_uniq(name),
-            Self::TinyInteger => tiny_integer(name),
-            Self::TinyIntegerNull => tiny_integer_null(name),
-            Self::TinyIntegerUniq => tiny_integer_uniq(name),
+            // Self::TinyInteger => tiny_integer(name),
+            // Self::TinyIntegerNull => tiny_integer_null(name),
+            // Self::TinyIntegerUniq => tiny_integer_uniq(name),
+            Self::Unsigned => unsigned(name),
+            Self::UnsignedNull => unsigned_null(name),
+            Self::UnsignedUniq => unsigned_uniq(name),
+            // Self::TinyUnsigned => tiny_unsigned(name),
+            // Self::TinyUnsignedNull => tiny_unsigned_null(name),
+            // Self::TinyUnsignedUniq => tiny_unsigned_uniq(name),
+            Self::SmallUnsigned => small_unsigned(name),
+            Self::SmallUnsignedNull => small_unsigned_null(name),
+            Self::SmallUnsignedUniq => small_unsigned_uniq(name),
+            Self::BigUnsigned => big_unsigned(name),
+            Self::BigUnsignedNull => big_unsigned_null(name),
+            Self::BigUnsignedUniq => big_unsigned_uniq(name),
             Self::SmallInteger => small_integer(name),
             Self::SmallIntegerNull => small_integer_null(name),
             Self::SmallIntegerUniq => small_integer_uniq(name),
@@ -183,12 +275,15 @@ impl ColType {
             Self::DoubleUniq => double_uniq(name),
             Self::Boolean => boolean(name),
             Self::BooleanNull => boolean_null(name),
-            Self::Timestamp => timestamp(name),
-            Self::TimestampNull => timestamp_null(name),
-            Self::TimestampUniq => timestamp_uniq(name),
+            // Self::Timestamp => timestamp(name),
+            // Self::TimestampNull => timestamp_null(name),
+            // Self::TimestampUniq => timestamp_uniq(name),
             Self::Date => date(name),
             Self::DateNull => date_null(name),
             Self::DateUniq => date_uniq(name),
+            Self::DateTime => date_time(name),
+            Self::DateTimeNull => date_time_null(name),
+            Self::DateTimeUniq => date_time_uniq(name),
             Self::Time => time(name),
             Self::TimeNull => time_null(name),
             Self::TimeUniq => time_uniq(name),
@@ -198,6 +293,12 @@ impl ColType {
             Self::Binary => binary(name),
             Self::BinaryNull => binary_null(name),
             Self::BinaryUniq => binary_uniq(name),
+            Self::BinaryLen(len) => binary_len(name, *len),
+            Self::BinaryLenNull(len) => binary_len_null(name, *len),
+            Self::BinaryLenUniq(len) => binary_len_uniq(name, *len),
+            Self::VarBinary(len) => var_binary(name, *len),
+            Self::VarBinaryNull(len) => var_binary_null(name, *len),
+            Self::VarBinaryUniq(len) => var_binary_uniq(name, *len),
             Self::TimestampWithTimeZone => timestamptz(name),
             Self::TimestampWithTimeZoneNull => timestamptz_null(name),
             Self::Json => json(name),
@@ -215,6 +316,36 @@ impl ColType {
             Self::Uuid => uuid(name),
             Self::UuidNull => uuid_null(name),
             Self::UuidUniq => uuid_uniq(name),
+            Self::VarBitLen(len) => varbit(name, *len),
+            Self::VarBitLenNull(len) => varbit_null(name, *len),
+            Self::VarBitLenUniq(len) => varbit_uniq(name, *len),
+            Self::Array(kind) => array(name, kind.clone()),
+            Self::ArrayNull(kind) => array_null(name, kind.clone()),
+            Self::ArrayUniq(kind) => array_uniq(name, kind.clone()),
+            // defaults
+            Self::MoneyWithDefault(v) => money(name).default(*v).take(),
+            Self::IntegerWithDefault(v) => integer(name).default(*v).take(),
+            Self::UnsignedWithDefault(v) => unsigned(name).default(*v).take(),
+            Self::SmallUnsignedWithDefault(v) => small_unsigned(name).default(*v).take(),
+            Self::BigUnsignedWithDefault(v) => big_unsigned(name).default(*v).take(),
+            Self::SmallIntegerWithDefault(v) => small_integer(name).default(*v).take(),
+            Self::BigIntegerWithDefault(v) => big_integer(name).default(*v).take(),
+            Self::DecimalWithDefault(v) => decimal(name).default(*v).take(),
+            Self::DecimalLenWithDefault(p, s, v) => decimal_len(name, *p, *s).default(*v).take(),
+            Self::FloatWithDefault(v) => float(name).default(*v).take(),
+            Self::DoubleWithDefault(v) => double(name).default(*v).take(),
+            Self::BooleanWithDefault(v) => boolean(name).default(*v).take(),
+            Self::DateWithDefault(v) => date(name).default(v.clone()).take(),
+            Self::DateTimeWithDefault(v) => date_time(name).default(v.clone()).take(),
+            Self::TimeWithDefault(v) => time(name).default(v.clone()).take(),
+            Self::TimestampWithTimeZoneWithDefault(v) => {
+                timestamptz(name).default(v.clone()).take()
+            }
+            Self::CharWithDefault(v) => char(name).default(*v).take(),
+            Self::CharLenWithDefault(len, v) => char_len(name, *len).default(*v).take(),
+            Self::StringWithDefault(v) => string(name).default(v.clone()).take(),
+            Self::StringLenWithDefault(len, v) => string_len(name, *len).default(v.clone()).take(),
+            Self::TextWithDefault(v) => text(name).default(v.clone()).take(),
         }
     }
 }
@@ -294,8 +425,6 @@ async fn create_table_impl(
             idx.col(Alias::new(nz_ref_name));
         }
         stmt.primary_key(&mut idx);
-    } else {
-        stmt.col(pk_auto(Alias::new("id")));
     }
 
     for (name, atype) in cols {

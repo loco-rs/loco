@@ -9,10 +9,16 @@
 use std::task::{Context, Poll};
 
 use axum::{
-    body::Body, extract::Request, http::StatusCode, response::Response, Router as AXRouter,
+    body::Body,
+    extract::Request,
+    http::{
+        header::{ETAG, IF_NONE_MATCH},
+        StatusCode,
+    },
+    response::Response,
+    Router as AXRouter,
 };
 use futures_util::future::BoxFuture;
-use hyper::header::{ETAG, IF_NONE_MATCH};
 use serde::{Deserialize, Serialize};
 use tower::{Layer, Service};
 
@@ -83,7 +89,7 @@ where
         let future = self.inner.call(request);
 
         let res_fut = async move {
-            let response = future.await.map_err(Into::into)?;
+            let response = future.await?;
             let etag_from_response = response.headers().get(ETAG).cloned();
             if let Some(etag_in_request) = ifnm {
                 if let Some(etag_from_response) = etag_from_response {

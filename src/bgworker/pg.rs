@@ -1,7 +1,11 @@
 /// Postgres based background job queue provider
-use std::{collections::HashMap, future::Future, pin::Pin, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap, future::Future, panic::AssertUnwindSafe, pin::Pin, sync::Arc,
+    time::Duration,
+};
 
 use chrono::{DateTime, Utc};
+use futures_util::FutureExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 pub use sqlx::PgPool;
@@ -69,7 +73,21 @@ impl JobRegistry {
             Box::pin(async move {
                 let args = serde_json::from_value::<Args>(job_data);
                 match args {
-                    Ok(args) => w.perform(args).await,
+                    Ok(args) => {
+                        // Wrap the perform call in catch_unwind to handle panics
+                        match AssertUnwindSafe(w.perform(args)).catch_unwind().await {
+                            Ok(result) => result,
+                            Err(panic) => {
+                                let panic_msg = panic
+                                    .downcast_ref::<String>()
+                                    .map(String::as_str)
+                                    .or_else(|| panic.downcast_ref::<&str>().copied())
+                                    .unwrap_or("Unknown panic occurred");
+                                error!(err = panic_msg, "worker panicked");
+                                Err(Error::string(panic_msg))
+                            }
+                        }
+                    }
                     Err(err) => Err(err.into()),
                 }
             }) as Pin<Box<dyn Future<Output = Result<(), crate::Error>> + Send>>
@@ -391,6 +409,31 @@ pub async fn clear_jobs_older_than(
     Ok(())
 }
 
+/// Requeues jobs from [`JobStatus::Processing`] to [`JobStatus::Queued`].
+///
+/// This function updates the status of all jobs that are currently in the [`JobStatus::Processing`] state
+/// to the [`JobStatus::Queued`] state, provided they have been updated more than the specified age (`age_minutes`).
+/// The jobs that meet the criteria will have their `updated_at` timestamp set to the current time.
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub async fn requeue(pool: &PgPool, age_minutes: &i64) -> Result<()> {
+    let interval = format!("{age_minutes} MINUTE");
+
+    let query = format!(
+        "UPDATE pg_loco_queue SET status = $1, updated_at = NOW() WHERE status = $2 AND updated_at <= NOW() - INTERVAL '{interval}'"
+    );
+
+    sqlx::query(&query)
+        .bind(JobStatus::Queued.to_string())
+        .bind(JobStatus::Processing.to_string())
+        .execute(pool)
+        .await?;
+
+    Ok(())
+}
+
 /// Ping system
 ///
 /// # Errors
@@ -490,13 +533,11 @@ pub async fn create_provider(qcfg: &PostgresQueueConfig) -> Result<Queue> {
 }
 
 #[cfg(all(test, feature = "integration_test"))]
-use serial_test::serial;
-#[cfg(all(test, feature = "integration_test"))]
 mod tests {
-
     use chrono::{NaiveDate, NaiveTime, TimeZone};
     use insta::{assert_debug_snapshot, with_settings};
     use sqlx::{query_as, FromRow};
+    use tokio::time::sleep;
 
     use super::*;
     use crate::tests_cfg;
@@ -521,29 +562,6 @@ mod tests {
         pub is_updatable: Option<String>,
     }
 
-    async fn init() -> PgPool {
-        let qcfg = PostgresQueueConfig {
-            uri: std::env::var("DATABASE_URL")
-                .expect("environment variable should be exists 'DATABASE_URL'"),
-            dangerously_flush: false,
-            enable_logging: false,
-            max_connections: 1,
-            min_connections: 1,
-            connect_timeout: 500,
-            idle_timeout: 500,
-            poll_interval_sec: 1,
-            num_workers: 1,
-        };
-
-        let pool = connect(&qcfg).await.unwrap();
-        sqlx::raw_sql("DROP TABLE IF EXISTS pg_loco_queue;")
-            .execute(&pool)
-            .await
-            .expect("drop table if exists");
-
-        pool
-    }
-
     async fn get_all_jobs(pool: &PgPool) -> Vec<Job> {
         sqlx::query("select * from pg_loco_queue")
             .fetch_all(pool)
@@ -564,11 +582,8 @@ mod tests {
             .expect("job not found")
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn can_initialize_database() {
-        let pool = init().await;
-
+    #[sqlx::test]
+    async fn can_initialize_database(pool: PgPool) {
         assert!(initialize_database(&pool).await.is_ok());
 
         let table_info: Vec<TableInfo> = query_as::<_, TableInfo>(
@@ -582,11 +597,8 @@ mod tests {
         assert_debug_snapshot!(table_info);
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn can_enqueue() {
-        let pool = init().await;
-
+    #[sqlx::test]
+    async fn can_enqueue(pool: PgPool) {
         assert!(initialize_database(&pool).await.is_ok());
 
         let jobs = get_all_jobs(&pool).await;
@@ -616,11 +628,8 @@ mod tests {
             });
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn can_dequeue() {
-        let pool = init().await;
-
+    #[sqlx::test]
+    async fn can_dequeue(pool: PgPool) {
         assert!(initialize_database(&pool).await.is_ok());
 
         let run_at = Utc.from_utc_datetime(
@@ -662,11 +671,8 @@ mod tests {
             });
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn can_complete_job_without_interval() {
-        let pool = init().await;
-
+    #[sqlx::test]
+    async fn can_complete_job_without_interval(pool: PgPool) {
         assert!(initialize_database(&pool).await.is_ok());
         tests_cfg::queue::postgres_seed_data(&pool).await;
 
@@ -680,11 +686,8 @@ mod tests {
         assert_eq!(job.status, JobStatus::Completed);
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn can_complete_job_with_interval() {
-        let pool = init().await;
-
+    #[sqlx::test]
+    async fn can_complete_job_with_interval(pool: PgPool) {
         assert!(initialize_database(&pool).await.is_ok());
         tests_cfg::queue::postgres_seed_data(&pool).await;
 
@@ -711,11 +714,8 @@ mod tests {
             });
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn can_fail_job() {
-        let pool = init().await;
-
+    #[sqlx::test]
+    async fn can_fail_job(pool: PgPool) {
         assert!(initialize_database(&pool).await.is_ok());
         tests_cfg::queue::postgres_seed_data(&pool).await;
 
@@ -741,11 +741,8 @@ mod tests {
             });
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn can_cancel_job_by_name() {
-        let pool = init().await;
-
+    #[sqlx::test]
+    async fn can_cancel_job_by_name(pool: PgPool) {
         assert!(initialize_database(&pool).await.is_ok());
         tests_cfg::queue::postgres_seed_data(&pool).await;
 
@@ -770,11 +767,8 @@ mod tests {
         assert_eq!(count_cancelled_jobs, 2);
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn can_clear() {
-        let pool = init().await;
-
+    #[sqlx::test]
+    async fn can_clear(pool: PgPool) {
         assert!(initialize_database(&pool).await.is_ok());
         tests_cfg::queue::postgres_seed_data(&pool).await;
 
@@ -794,11 +788,8 @@ mod tests {
         assert_eq!(job_count, 0);
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn can_clear_by_status() {
-        let pool = init().await;
-
+    #[sqlx::test]
+    async fn can_clear_by_status(pool: PgPool) {
         assert!(initialize_database(&pool).await.is_ok());
         tests_cfg::queue::postgres_seed_data(&pool).await;
 
@@ -840,11 +831,8 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn can_clear_jobs_older_than() {
-        let pool = init().await;
-
+    #[sqlx::test]
+    async fn can_clear_jobs_older_than(pool: PgPool) {
         assert!(initialize_database(&pool).await.is_ok());
 
         sqlx::query(
@@ -862,11 +850,8 @@ mod tests {
         assert_eq!(get_all_jobs(&pool).await.len(), 2);
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn can_clear_jobs_older_than_with_status() {
-        let pool = init().await;
-
+    #[sqlx::test]
+    async fn can_clear_jobs_older_than_with_status(pool: PgPool) {
         assert!(initialize_database(&pool).await.is_ok());
 
         sqlx::query(
@@ -892,11 +877,8 @@ mod tests {
         assert_eq!(get_all_jobs(&pool).await.len(), 3);
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn can_get_jobs() {
-        let pool = init().await;
-
+    #[sqlx::test]
+    async fn can_get_jobs(pool: PgPool) {
         assert!(initialize_database(&pool).await.is_ok());
         tests_cfg::queue::postgres_seed_data(&pool).await;
 
@@ -924,11 +906,8 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn can_get_jobs_with_age() {
-        let pool = init().await;
-
+    #[sqlx::test]
+    async fn can_get_jobs_with_age(pool: PgPool) {
         assert!(initialize_database(&pool).await.is_ok());
 
         sqlx::query(
@@ -951,6 +930,119 @@ mod tests {
             .expect("get jobs")
             .len(),
             2
+        );
+    }
+
+    #[sqlx::test]
+    async fn can_requeue(pool: PgPool) {
+        assert!(initialize_database(&pool).await.is_ok());
+
+        sqlx::query(
+            r"INSERT INTO pg_loco_queue (id, name, task_data, status, run_at,created_at, updated_at) VALUES
+             ('job1', 'Test Job 1', '{}', 'processing', NOW(),NOW(), NOW() - INTERVAL '20 minutes'),
+             ('job2', 'Test Job 2', '{}', 'processing', NOW(),NOW(), NOW() - INTERVAL '5 minutes'),
+             ('job3', 'Test Job 3', '{}', 'completed', NOW(),NOW(),NOW() - INTERVAL '5 minutes'),
+             ('job4', 'Test Job 4', '{}', 'queued', NOW(),NOW(), NOW()),
+             ('job4', 'Test Job 5', '{}', 'processing', NOW(), NOW(), NOW())"
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        assert_eq!(
+            get_jobs(&pool, Some(&vec![JobStatus::Processing]), None)
+                .await
+                .expect("get jobs")
+                .len(),
+            3
+        );
+        assert_eq!(
+            get_jobs(&pool, Some(&vec![JobStatus::Queued]), None)
+                .await
+                .expect("get jobs")
+                .len(),
+            1
+        );
+
+        requeue(&pool, &10).await.expect("update jobs");
+
+        assert_eq!(
+            get_jobs(&pool, Some(&vec![JobStatus::Processing]), None)
+                .await
+                .expect("get jobs")
+                .len(),
+            2
+        );
+        assert_eq!(
+            get_jobs(&pool, Some(&vec![JobStatus::Queued]), None)
+                .await
+                .expect("get jobs")
+                .len(),
+            2
+        );
+    }
+
+    #[sqlx::test]
+    async fn can_handle_worker_panic(pool: PgPool) {
+        assert!(initialize_database(&pool).await.is_ok());
+
+        let job_data: JobData = serde_json::json!(null);
+        let job_id = enqueue(&pool, "PanicJob", job_data, Utc::now(), None)
+            .await
+            .expect("Failed to enqueue job");
+
+        struct PanicWorker;
+        #[async_trait::async_trait]
+        impl BackgroundWorker<()> for PanicWorker {
+            fn build(_ctx: &crate::app::AppContext) -> Self {
+                Self
+            }
+            async fn perform(&self, _args: ()) -> crate::Result<()> {
+                panic!("intentional panic for testing");
+            }
+        }
+
+        let mut registry = JobRegistry::new();
+        assert!(registry
+            .register_worker("PanicJob".to_string(), PanicWorker)
+            .is_ok());
+
+        // Get the initial job state
+        let job = get_job(&pool, &job_id).await;
+        assert_eq!(job.status, JobStatus::Queued);
+
+        // Start the worker
+        let opts = RunOpts {
+            num_workers: 1,
+            poll_interval_sec: 1,
+        };
+        let handles = registry.run(&pool, &opts);
+
+        // Wait a bit for the worker to process the job
+        sleep(Duration::from_secs(1)).await;
+
+        // Stop the worker
+        for handle in handles {
+            handle.abort();
+        }
+
+        // Verify the job is marked as failed
+        let failed_job = get_job(&pool, &job_id).await;
+        assert_eq!(failed_job.status, JobStatus::Failed);
+
+        // Verify the error message stored in job data
+        let error_msg = failed_job
+            .data
+            .as_array()
+            .and_then(|arr| arr.get(1))
+            .and_then(|obj| obj.as_object())
+            .and_then(|obj| obj.get("error"))
+            .and_then(|v| v.as_str())
+            .expect("Expected error message in job data");
+        assert!(
+            error_msg.contains("intentional panic for testing"),
+            "Error message '{}' did not contain expected text",
+            error_msg
         );
     }
 }

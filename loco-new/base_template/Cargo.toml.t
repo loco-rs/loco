@@ -39,7 +39,7 @@ sea-orm = { version = "1.1.0", features = [
   "macros",
 ] }
 chrono = { version = "0.4" }
-validator = { version = "0.19" }
+validator = { version = "0.20" }
 uuid = { version = "1.6.0", features = ["v4"] }
 {%- endif %}
 
@@ -48,10 +48,13 @@ include_dir = { version = "0.7" }
 {%- endif %}
 
 {%- if settings.asset %}
+{%- if settings.asset.kind == "server" %}
 # view engine i18n
 fluent-templates = { version = "0.8.0", features = ["tera"] }
 unic-langid = { version = "0.9.4" }
 # /view engine
+{%- endif %}
+axum-extra = { version = "0.10", features = ["form"] }
 {%- endif %}
 
 [[bin]]

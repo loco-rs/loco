@@ -1,0 +1,32 @@
+---
+source: loco-gen/src/tera_ext.rs
+expression: "format!(\"Crete form\\n\\r{create_form}\\n\\rEdit Form\\n\\r{edit_form}\")"
+---
+Crete form
+<div class="space-y-2">
+    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for=":r2l:-form-item">array!</label>
+    <button type="button" class="text-xs py-1 px-3 rounded-lg bg-gray-900 text-white add-more" data-group="array!">Add More</button>
+    <div id="array!-inputs" class="space-y-2">
+    {% if item.array! %}
+        {% for val in item.array! %}
+            <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" min="-340282350000000000000000000000000000000" max="340282350000000000000000000000000000000" id="array!" name="array!" type="number" value="{{val}}" required custom_type="array" step="0.1" />
+        {% endfor -%}
+    {%- else -%}
+        <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" min="-340282350000000000000000000000000000000" max="340282350000000000000000000000000000000" id="array!" name="array!" type="number" value="" required custom_type="array" step="0.1" />
+    {%- endif -%}
+    </div>
+</div>
+Edit Form
+<div class="space-y-2">
+    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for=":r2l:-form-item">array!</label>
+    <button type="button" class="text-xs py-1 px-3 rounded-lg bg-gray-900 text-white add-more" data-group="array!">Add More</button>
+    <div id="array!-inputs" class="space-y-2">
+    {% if item.array! %}
+        {% for val in item.array! %}
+            <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" min="-340282350000000000000000000000000000000" max="340282350000000000000000000000000000000" id="array!" name="array!" type="number" value="{{val}}" required custom_type="array" step="0.1" />
+        {% endfor -%}
+    {%- else -%}
+        <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" min="-340282350000000000000000000000000000000" max="340282350000000000000000000000000000000" id="array!" name="array!" type="number" value="{{item.array!}}" required custom_type="array" step="0.1" />
+    {%- endif -%}
+    </div>
+</div>

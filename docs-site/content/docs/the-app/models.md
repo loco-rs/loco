@@ -129,20 +129,24 @@ These fields are ignored if you provide them in your migration command.
 For schema data types, you can use the following mapping to understand the schema:
 
 ```rust
-("uuid", "uuid_uniq"),
-("uuid_col", "uuid_null"),
-("uuid_col!", "uuid"),
+("uuid^", "uuid_uniq"),
+("uuid", "uuid_null"),
+("uuid!", "uuid"),
 ("string", "string_null"),
 ("string!", "string"),
 ("string^", "string_uniq"),
 ("text", "text_null"),
 ("text!", "text"),
-("tiny_integer", "tiny_integer_null"),
-("tiny_integer!", "tiny_integer"),
-("tiny_integer^", "tiny_integer_uniq"),
-("small_integer", "small_integer_null"),
-("small_integer!", "small_integer"),
-("small_integer^", "small_integer_uniq"),
+("text^", "text_uniq"),
+("small_unsigned^", "small_unsigned_uniq"),
+("small_unsigned", "small_unsigned_null"),
+("small_unsigned!", "small_unsigned"),
+("big_unsigned^", "big_unsigned"),
+("big_unsigned", "big_unsigned_null"),
+("big_unsigned!", "big_unsigned_uniq"),
+("small_int", "small_integer_null"),
+("small_int!", "small_integer"),
+("small_int^", "small_integer_uniq"),
 ("int", "integer_null"),
 ("int!", "integer"),
 ("int^", "integer_uniq"),
@@ -151,24 +155,47 @@ For schema data types, you can use the following mapping to understand the schem
 ("big_int^", "big_integer_uniq"),
 ("float", "float_null"),
 ("float!", "float"),
+("float^", "float_uniq"),
 ("double", "double_null"),
 ("double!", "double"),
+("double^", "double_uniq"),
 ("decimal", "decimal_null"),
 ("decimal!", "decimal"),
 ("decimal_len", "decimal_len_null"),
 ("decimal_len!", "decimal_len"),
+("decimal^", "decimal_uniq"),
 ("bool", "boolean_null"),
 ("bool!", "boolean"),
 ("tstz", "timestamp_with_time_zone_null"),
 ("tstz!", "timestamp_with_time_zone"),
 ("date", "date_null"),
 ("date!", "date"),
-("ts", "timestamp_null"),
-("ts!", "timestamp"),
+("date^", "date_uniq"),
+("date_time", "date_time_null"),
+("date_time!", "date_time"),
+("date_time^", "date_time_uniq"),
+("blob", "blob_null"),
+("blob!", "blob"),
+("blob^", "blob_uniq"),
 ("json", "json_null"),
 ("json!", "json"),
 ("jsonb", "json_binary_null"),
 ("jsonb!", "json_binary"),
+("jsonb^", "jsonb_uniq"),
+("money", "money_null"),
+("money!", "money"),
+("money^", "money_uniq"),
+("unsigned", "unsigned_null"),
+("unsigned!", "unsigned"),
+("unsigned^", "unsigned_uniq"),
+("binary_len", "binary_len_null"),
+("binary_len!", "binary_len"),
+("binary_len^", "binary_len_uniq"),
+("var_binary", "var_binary_null"),
+("var_binary!", "var_binary"),
+(" array", "array"),
+(" array!", "array"),
+(" array^", "array"),
 ```
 
 Using `user:references` uses the special `references` type, which will create a relationship between a `post` and a `user`, adding a `user_id` reference field to the `posts` table.
@@ -814,6 +841,8 @@ A typical test contains everything you need to set up test data, boot the app, a
 ```rust
 use loco_rs::testing::prelude::*;
 
+#[tokio::test]
+#[serial]
 async fn can_find_by_pid() {
     configure_insta!();
 
@@ -860,6 +889,22 @@ impl Hooks for App {
         Ok(())
     }
 
+}
+```
+
+## Async
+When writing async tests with database data, it's important to ensure that one test does not affect the data used by other tests. Since async tests can run concurrently on the same database dataset, this can lead to unstable test results.
+
+Instead of using `boot_test`, as described in the documentation for synchronous tests, use the `boot_test_with_create_db` function. This function generates a random database schema name and ensures that the tables are deleted once the test is completed.
+
+Note: If you cancel the test run midway (e.g., by pressing `Ctrl + C`), the cleanup process will not execute, and the database tables will remain. In such cases, you will need to manually remove them.
+
+```rust
+use loco_rs::testing::prelude::*;
+
+#[tokio::test]
+async fn boot_test_with_create_db() {
+    let boot = boot_test_with_create_db::<App, Migrator>().await;
 }
 ```
 

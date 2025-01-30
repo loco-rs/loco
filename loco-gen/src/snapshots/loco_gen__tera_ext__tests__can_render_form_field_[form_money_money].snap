@@ -1,0 +1,14 @@
+---
+source: loco-gen/src/tera_ext.rs
+expression: "format!(\"Crete form\\n\\r{create_form}\\n\\rEdit Form\\n\\r{edit_form}\")"
+---
+Crete form
+<div class="space-y-2">
+    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for=":r2l:-form-item">money</label>
+    <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" min="-79228162514264337593543950335" max="79228162514264337593543950335" id="money" name="money" type="number" value=""  step="0.1" />
+</div>
+Edit Form
+<div class="space-y-2">
+    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for=":r2l:-form-item">money</label>
+    <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" min="-79228162514264337593543950335" max="79228162514264337593543950335" id="money" name="money" type="number" value="{{item.money}}"  step="0.1" />
+</div>

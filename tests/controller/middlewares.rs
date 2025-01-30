@@ -278,9 +278,9 @@ async fn static_assets() {
         must_exist: true,
         folder: middleware::static_assets::FolderConfig {
             uri: "/static".to_string(),
-            path: base_static_path.display().to_string(),
+            path: base_static_path.clone(),
         },
-        fallback: base_static_path.join("404.html").display().to_string(),
+        fallback: base_static_path.join("404.html"),
         precompressed: false,
     });
 

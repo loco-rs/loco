@@ -52,6 +52,70 @@ $ cargo loco routes
 
 This command will provide you with a comprehensive overview of the controllers currently registered in your system.
 
+## AppRoutes
+
+`AppRoutes` is a core component of the `Loco` framework that helps you manage and organize your application's routes. It provides a convenient way to add, prefix, and collect routes from different controllers.
+
+### Features
+
+- **Add Routes**: Easily add routes from different controllers.
+- **Prefix Routes**: Apply a common prefix to a group of routes.
+- **Collect Routes**: Gather all routes into a single collection for further processing.
+
+### Examples
+
+#### Adding Routes
+
+You can add routes from different controllers to `AppRoutes`:
+
+```rust
+use loco_rs::controller::AppRoutes;
+use loco_rs::prelude::*;
+use axum::routing::get;
+
+fn routes(_ctx: &AppContext) -> AppRoutes {
+  AppRoutes::empty()
+          .add_route(Routes::new().add("/", get(home_handler)))
+          .add_route(Routes::new().add("/about", get(about_handler)))
+}
+```
+
+### Prefixing Routes
+
+Apply a common prefix to a group of routes:
+
+```rust
+use loco_rs::controller::AppRoutes;
+use loco_rs::prelude::*;
+use axum::routing::get;
+
+fn routes(_ctx: &AppContext) -> AppRoutes {
+    AppRoutes::empty()
+        .prefix("/api")
+        .add_route(Routes::new().add("/users", get(users_handler)))
+        .add_route(Routes::new().add("/posts", get(posts_handler)))
+}
+```
+
+### Nesting Routes
+
+AppRoutes allows you to nest routes, making it easier to organize and manage complex route hierarchies. 
+This is particularly useful when you have a set of related routes that share a common prefix.
+
+```rust
+ use loco_rs::controller::AppRoutes;
+use loco_rs::prelude::*;
+use axum::routing::get;
+
+fn routes(_ctx: &AppContext) -> AppRoutes {
+  let route = Routes::new().add("/", get(|| async { "notes" }));
+  AppRoutes::with_default_routes()
+        .prefix("api")
+        .add_route(controllers::auth::routes())
+        .nest_prefix("v1")
+        .nest_route("/notes", route)
+}
+```
 
 ## Adding state
 
@@ -202,7 +266,7 @@ pub async fn get_one(
             _ => format::json(item),
         },
         // we have an opinion how to render out validation errors, only in HTML content
-        Err(Error::Model(ModelError::ModelValidation { errors })) => match respond_to {
+        Err(Error::Model(ModelError::Validation(errors))) => match respond_to {
             RespondTo::Html => {
                 format::html(&format!("<html><body>errors: {errors:?}</body></html>"))
             }
@@ -541,7 +605,7 @@ To disable the middleware edit the configuration as follows:
 
 ## Fallback
 
-When choosing the SaaS starter (or any starter that is not API-first), you get a default fallback behavior with the _Loco welcome screen_. This is a development-only mode where a `404` request shows you a nice and friendly page that tells you what happened and what to do next.
+When choosing the SaaS starter (or any starter that is not API-first), you get a default fallback behavior with the _Loco welcome screen_. This is a development-only mode where a `404` request shows you a nice and friendly page that tells you what happened and what to do next. This also takes preference over the static handler, so make sure to disable it if you want to have static content served.
 
 
 You can disable or customize this behavior in your `development.yaml` file. You can set a few options:
@@ -917,6 +981,7 @@ impl PaginationResponse {
                 page: pagination_query.page,
                 page_size: pagination_query.page_size,
                 total_pages: data.total_pages,
+                total_items: data.total_items,
             },
         }
     }
@@ -953,3 +1018,32 @@ async fn can_print_echo() {
 
 As you can see initialize the testing request and using `request` instance calling /example endpoing.
 the request returns a `Response` instance with the status code and the response test
+
+
+## Async
+When writing async tests with database data, it's important to ensure that one test does not affect the data used by other tests. Since async tests can run concurrently on the same database dataset, this can lead to unstable test results.
+
+Instead of using `request`, as described in the documentation for synchronous tests, use the `request_with_create_db` function. This function generates a random database schema name and ensures that the tables are deleted once the test is completed.
+
+Note: If you cancel the test run midway (e.g., by pressing `Ctrl + C`), the cleanup process will not execute, and the database tables will remain. In such cases, you will need to manually remove them.
+
+```rust
+use loco_rs::testing::prelude::*;
+
+#[tokio::test]
+async fn can_print_echo() {
+    configure_insta!();
+
+    request_with_create_db::<App, _, _>(|request, _ctx| async move {
+        let response = request
+            .post("/example")
+            .json(&serde_json::json!({"site": "Loco"}))
+            .await;
+
+        assert_debug_snapshot!((response.status_code(), response.text()));
+    })
+    .await;
+}
+```
+
+

@@ -1,0 +1,14 @@
+---
+source: loco-gen/src/tera_ext.rs
+expression: "format!(\"Crete form\\n\\r{create_form}\\n\\rEdit Form\\n\\r{edit_form}\")"
+---
+Crete form
+<div class="space-y-2">
+    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for=":r2l:-form-item">bool</label>
+    <input class="flex rounded-md border border-input bg-transparent text-base shadow-sm md:text-sm" id="bool" name="bool" type="checkbox" value="true"   />
+</div>
+Edit Form
+<div class="space-y-2">
+    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for=":r2l:-form-item">bool</label>
+    <input class="flex rounded-md border border-input bg-transparent text-base shadow-sm md:text-sm" id="bool" name="bool" type="checkbox" value="true" {% if item.bool %}checked{%endif %}  />
+</div>

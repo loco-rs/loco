@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use chrono::{offset::Local, Duration};
 use loco_rs::{auth::jwt, hash, prelude::*};
 use serde::{Deserialize, Serialize};
+use serde_json::Map;
 use uuid::Uuid;
 
 pub use super::_entities::users::{self, ActiveModel, Entity, Model};
@@ -258,8 +259,10 @@ impl Model {
     /// # Errors
     ///
     /// when could not convert user claims to jwt token
-    pub fn generate_jwt(&self, secret: &str, expiration: &u64) -> ModelResult<String> {
-        Ok(jwt::JWT::new(secret).generate_token(expiration, self.pid.to_string(), None)?)
+    pub fn generate_jwt(&self, secret: &str, expiration: u64) -> ModelResult<String> {
+        jwt::JWT::new(secret)
+            .generate_token(expiration, self.pid.to_string(), Map::new())
+            .map_err(ModelError::from)
     }
 }
 
@@ -279,7 +282,7 @@ impl ActiveModel {
     ) -> ModelResult<Model> {
         self.email_verification_sent_at = ActiveValue::set(Some(Local::now().into()));
         self.email_verification_token = ActiveValue::Set(Some(Uuid::new_v4().to_string()));
-        Ok(self.update(db).await?)
+        self.update(db).await.map_err(ModelError::from)
     }
 
     /// Sets the information for a reset password request,
@@ -297,7 +300,7 @@ impl ActiveModel {
     pub async fn set_forgot_password_sent(mut self, db: &DatabaseConnection) -> ModelResult<Model> {
         self.reset_sent_at = ActiveValue::set(Some(Local::now().into()));
         self.reset_token = ActiveValue::Set(Some(Uuid::new_v4().to_string()));
-        Ok(self.update(db).await?)
+        self.update(db).await.map_err(ModelError::from)
     }
 
     /// Records the verification time when a user verifies their
@@ -311,7 +314,7 @@ impl ActiveModel {
     /// when has DB query error
     pub async fn verified(mut self, db: &DatabaseConnection) -> ModelResult<Model> {
         self.email_verified_at = ActiveValue::set(Some(Local::now().into()));
-        Ok(self.update(db).await?)
+        self.update(db).await.map_err(ModelError::from)
     }
 
     /// Resets the current user password with a new password and
@@ -332,7 +335,7 @@ impl ActiveModel {
             ActiveValue::set(hash::hash_password(password).map_err(|e| ModelError::Any(e.into()))?);
         self.reset_token = ActiveValue::Set(None);
         self.reset_sent_at = ActiveValue::Set(None);
-        Ok(self.update(db).await?)
+        self.update(db).await.map_err(ModelError::from)
     }
 
     /// Creates a magic link token for passwordless authentication.
@@ -348,7 +351,7 @@ impl ActiveModel {
 
         self.magic_link_token = ActiveValue::set(Some(random_str));
         self.magic_link_expiration = ActiveValue::set(Some(expired.into()));
-        Ok(self.update(db).await?)
+        self.update(db).await.map_err(ModelError::from)
     }
 
     /// Verifies and invalidates the magic link after successful authentication.
@@ -361,6 +364,6 @@ impl ActiveModel {
     pub async fn clear_magic_link(mut self, db: &DatabaseConnection) -> ModelResult<Model> {
         self.magic_link_token = ActiveValue::set(None);
         self.magic_link_expiration = ActiveValue::set(None);
-        Ok(self.update(db).await?)
+        self.update(db).await.map_err(ModelError::from)
     }
 }
