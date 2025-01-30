@@ -1,5 +1,13 @@
 use serde::{Deserialize, Serialize};
 
+#[cfg_attr(
+    any(
+        feature = "openapi_swagger",
+        feature = "openapi_redoc",
+        feature = "openapi_scalar"
+    ),
+    derive(utoipa::ToSchema)
+)]
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Pager<T> {
     #[serde(rename(serialize = "results"))]
@@ -9,6 +17,14 @@ pub struct Pager<T> {
     pub info: PagerMeta,
 }
 
+#[cfg_attr(
+    any(
+        feature = "openapi_swagger",
+        feature = "openapi_redoc",
+        feature = "openapi_scalar"
+    ),
+    derive(utoipa::ToSchema)
+)]
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PagerMeta {
     #[serde(rename(serialize = "page"))]
