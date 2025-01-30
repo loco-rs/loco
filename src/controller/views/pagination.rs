@@ -6,10 +6,10 @@ use serde::{Deserialize, Serialize};
         feature = "openapi_redoc",
         feature = "openapi_scalar"
     ),
-    derive(utoipa::ToSchema)
+    derive(utoipa::ToSchema, utoipa::IntoParams)
 )]
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Pager<T> {
+pub struct Pager<T: utoipa::ToSchema> {
     #[serde(rename(serialize = "results"))]
     pub results: T,
 
@@ -23,7 +23,7 @@ pub struct Pager<T> {
         feature = "openapi_redoc",
         feature = "openapi_scalar"
     ),
-    derive(utoipa::ToSchema)
+    derive(utoipa::ToSchema, utoipa::IntoParams)
 )]
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PagerMeta {
@@ -37,7 +37,7 @@ pub struct PagerMeta {
     pub total_items: u64,
 }
 
-impl<T> Pager<T> {
+impl<T: utoipa::ToSchema> Pager<T> {
     #[must_use]
     pub const fn new(results: T, meta: PagerMeta) -> Self {
         Self {
