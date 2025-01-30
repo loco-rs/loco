@@ -33,8 +33,7 @@ async fn panic(#[case] enable: bool) {
         Some(middleware::catch_panic::CatchPanic { enable });
 
     let port = get_available_port().await;
-    let handle =
-        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
     let res = reqwest::get(get_base_url_port(port)).await;
 
     if enable {
@@ -64,8 +63,7 @@ async fn etag(#[case] enable: bool) {
     ctx.config.server.middlewares.etag = Some(middleware::etag::Etag { enable });
 
     let port = get_available_port().await;
-    let handle =
-        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
 
     let res = reqwest::Client::new()
         .get(get_base_url_port(port))
@@ -101,8 +99,7 @@ async fn remote_ip(#[case] enable: bool, #[case] expected: &str) {
     });
 
     let port = get_available_port().await;
-    let handle =
-        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
 
     let res = reqwest::Client::new()
         .get(get_base_url_port(port))
@@ -136,8 +133,7 @@ async fn timeout(#[case] enable: bool) {
         Some(middleware::timeout::TimeOut { enable, timeout: 2 });
 
     let port = get_available_port().await;
-    let handle =
-        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
 
     let res = reqwest::get(get_base_url_port(port))
         .await
