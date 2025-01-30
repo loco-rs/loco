@@ -151,6 +151,10 @@ pub fn get_base_url_port(port: i32) -> String {
 }
 
 /// Returns a unique port number. Usually increments by 1 starting from 59126
+///
+/// # Panics
+///
+/// Will panic if binding to test server address fails or if getting the local address fails
 pub async fn get_available_port() -> i32 {
     let addr = format!("{TEST_BINDING_SERVER}:0");
     let listener = TcpListener::bind(addr)
