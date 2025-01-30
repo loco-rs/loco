@@ -139,27 +139,30 @@ pub const TEST_PORT_SERVER: i32 = 5555;
 pub const TEST_BINDING_SERVER: &str = "localhost";
 
 /// Constructs and returns the base URL used for the test server.
-#[allow(dead_code)]
+#[must_use]
 pub fn get_base_url() -> String {
     format!("http://{TEST_BINDING_SERVER}:{TEST_PORT_SERVER}/")
 }
 
 /// Constructs and returns the base URL used for the test server.
+#[must_use]
 pub fn get_base_url_port(port: i32) -> String {
     format!("http://{TEST_BINDING_SERVER}:{port}/")
 }
 
 /// Returns a unique port number. Usually increments by 1 starting from 59126
 pub async fn get_available_port() -> i32 {
-    let addr = format!("{}:0", TEST_BINDING_SERVER);
+    let addr = format!("{TEST_BINDING_SERVER}:0");
     let listener = TcpListener::bind(addr)
         .await
         .expect("Failed to bind to address");
-    let port = listener
-        .local_addr()
-        .expect("Failed to get local address")
-        .port() as i32;
-    port
+
+    i32::from(
+        listener
+            .local_addr()
+            .expect("Failed to get local address")
+            .port(),
+    )
 }
 
 /// Bootstraps test application with test environment hard coded.

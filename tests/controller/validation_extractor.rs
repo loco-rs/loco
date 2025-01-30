@@ -33,7 +33,7 @@ async fn can_validation_with_response() {
         ctx,
         "/",
         post(validation_with_response),
-        Some(port.clone()),
+        Some(port),
     )
     .await;
 
@@ -70,7 +70,7 @@ async fn can_validation_without_response() {
 
     let port = get_available_port().await;
     let handle =
-        infra_cfg::server::start_with_route(ctx, "/", post(simple_validation), Some(port.clone()))
+        infra_cfg::server::start_with_route(ctx, "/", post(simple_validation), Some(port))
             .await;
 
     let client = reqwest::Client::new();

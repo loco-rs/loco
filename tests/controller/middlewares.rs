@@ -34,7 +34,7 @@ async fn panic(#[case] enable: bool) {
 
     let port = get_available_port().await;
     let handle =
-        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port.clone())).await;
+        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
     let res = reqwest::get(get_base_url_port(port)).await;
 
     if enable {
@@ -65,7 +65,7 @@ async fn etag(#[case] enable: bool) {
 
     let port = get_available_port().await;
     let handle =
-        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port.clone())).await;
+        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
 
     let res = reqwest::Client::new()
         .get(get_base_url_port(port))
@@ -102,7 +102,7 @@ async fn remote_ip(#[case] enable: bool, #[case] expected: &str) {
 
     let port = get_available_port().await;
     let handle =
-        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port.clone())).await;
+        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
 
     let res = reqwest::Client::new()
         .get(get_base_url_port(port))
@@ -137,7 +137,7 @@ async fn timeout(#[case] enable: bool) {
 
     let port = get_available_port().await;
     let handle =
-        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port.clone())).await;
+        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
 
     let res = reqwest::get(get_base_url_port(port))
         .await
@@ -188,7 +188,7 @@ async fn cors(
     ctx.config.server.middlewares.cors = Some(middleware);
 
     let port = get_available_port().await;
-    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port.clone())).await;
+    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port)).await;
 
     let res = reqwest::Client::new()
         .request(reqwest::Method::OPTIONS, get_base_url_port(port))
@@ -232,7 +232,7 @@ async fn limit_payload(#[case] limit: middleware::limit_payload::DefaultBodyLimi
         Some(middleware::limit_payload::LimitPayload { body_limit: limit });
 
     let port = get_available_port().await;
-    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port.clone())).await;
+    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port)).await;
 
     let res = reqwest::Client::new()
         .request(reqwest::Method::POST, get_base_url_port(port))
@@ -285,7 +285,7 @@ async fn static_assets() {
     });
 
     let port = get_available_port().await;
-    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port.clone())).await;
+    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port)).await;
 
     let get_static_html = reqwest::get(format!("{}static/static.html", get_base_url_port(port)))
         .await
@@ -333,7 +333,7 @@ async fn secure_headers(
     );
 
     let port = get_available_port().await;
-    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port.clone())).await;
+    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port)).await;
 
     let res = reqwest::Client::new()
         .request(reqwest::Method::POST, get_base_url_port(port))
@@ -408,7 +408,7 @@ async fn fallback(
     ctx.config.server.middlewares.fallback = Some(fallback_config);
 
     let port = get_available_port().await;
-    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port.clone())).await;
+    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port)).await;
 
     let res = reqwest::get(format!("{}not-found", get_base_url_port(port)))
         .await
@@ -444,7 +444,7 @@ async fn powered_by_header(#[case] ident: Option<String>) {
     ctx.config.server.ident.clone_from(&ident);
 
     let port = get_available_port().await;
-    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port.clone())).await;
+    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port)).await;
 
     let res = reqwest::get(get_base_url_port(port))
         .await

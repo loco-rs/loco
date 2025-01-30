@@ -13,8 +13,7 @@ async fn not_found() {
     }
 
     let port = get_available_port().await;
-    let handle =
-        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port.clone())).await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
 
     let res = reqwest::get(get_base_url_port(port))
         .await
@@ -45,8 +44,7 @@ async fn internal_server_error() {
     }
 
     let port = get_available_port().await;
-    let handle =
-        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port.clone())).await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
 
     let res = reqwest::get(get_base_url_port(port))
         .await
@@ -77,8 +75,7 @@ async fn unauthorized() {
     }
 
     let port = get_available_port().await;
-    let handle =
-        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port.clone())).await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
 
     let res = reqwest::get(get_base_url_port(port))
         .await
@@ -109,8 +106,7 @@ async fn fallback() {
     }
 
     let port = get_available_port().await;
-    let handle =
-        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port.clone())).await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
 
     let res = reqwest::get(get_base_url_port(port))
         .await
@@ -148,8 +144,7 @@ async fn custom_error() {
     }
 
     let port = get_available_port().await;
-    let handle =
-        infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port.clone())).await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
 
     let res = reqwest::get(get_base_url_port(port))
         .await
@@ -186,8 +181,7 @@ async fn json_rejection() {
     }
 
     let port = get_available_port().await;
-    let handle =
-        infra_cfg::server::start_with_route(ctx, "/", post(action), Some(port.clone())).await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", post(action), Some(port)).await;
 
     let client = reqwest::Client::new();
     let res = client
