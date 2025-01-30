@@ -1,15 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-#[cfg_attr(
-    any(
-        feature = "openapi_swagger",
-        feature = "openapi_redoc",
-        feature = "openapi_scalar"
-    ),
-    derive(utoipa::ToSchema, utoipa::IntoParams)
-)]
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Pager<T: utoipa::ToSchema> {
+pub struct Pager<T> {
     #[serde(rename(serialize = "results"))]
     pub results: T,
 
@@ -17,14 +9,6 @@ pub struct Pager<T: utoipa::ToSchema> {
     pub info: PagerMeta,
 }
 
-#[cfg_attr(
-    any(
-        feature = "openapi_swagger",
-        feature = "openapi_redoc",
-        feature = "openapi_scalar"
-    ),
-    derive(utoipa::ToSchema, utoipa::IntoParams)
-)]
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PagerMeta {
     #[serde(rename(serialize = "page"))]
@@ -37,7 +21,7 @@ pub struct PagerMeta {
     pub total_items: u64,
 }
 
-impl<T: utoipa::ToSchema> Pager<T> {
+impl<T> Pager<T> {
     #[must_use]
     pub const fn new(results: T, meta: PagerMeta) -> Self {
         Self {

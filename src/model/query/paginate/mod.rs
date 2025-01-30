@@ -28,14 +28,6 @@ const fn default_page() -> u64 {
 ///     pub pagination: query::PaginationQuery,
 /// }
 /// ````
-#[cfg_attr(
-    any(
-        feature = "openapi_swagger",
-        feature = "openapi_redoc",
-        feature = "openapi_scalar"
-    ),
-    derive(utoipa::IntoParams)
-)]
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PaginationQuery {
     #[serde(
