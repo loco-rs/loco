@@ -11,7 +11,6 @@ use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
-    str::FromStr,
     sync::OnceLock,
 };
 
@@ -34,12 +33,6 @@ pub struct GenerateResults {
     local_templates: Vec<PathBuf>,
 }
 const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.51.0";
-
-const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
-    ("Docker", DeploymentKind::Docker),
-    ("Shuttle", DeploymentKind::Shuttle),
-    ("Nginx", DeploymentKind::Nginx),
-];
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -228,23 +221,19 @@ pub enum ScaffoldKind {
     Htmx,
 }
 
-#[derive(clap::ValueEnum, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub enum DeploymentKind {
-    Docker,
-    Shuttle,
-    Nginx,
-}
-impl FromStr for DeploymentKind {
-    type Err = ();
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "docker" => Ok(Self::Docker),
-            "shuttle" => Ok(Self::Shuttle),
-            "nginx" => Ok(Self::Nginx),
-            _ => Err(()),
-        }
-    }
+    Docker {
+        copy_paths: Vec<PathBuf>,
+        is_client_side_rendering: bool,
+    },
+    Shuttle {
+        runttime_version: Option<String>,
+    },
+    Nginx {
+        host: String,
+        port: i32,
+    },
 }
 
 #[derive(Debug)]
@@ -304,12 +293,9 @@ pub enum Component {
     },
     Deployment {
         kind: DeploymentKind,
-        fallback_file: Option<String>,
-        asset_folder: Option<String>,
-        host: String,
-        port: i32,
     },
 }
+
 pub struct AppInfo {
     pub app_name: String,
 }
@@ -366,31 +352,28 @@ pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Resul
             let vars = json!({ "name": name });
             render_template(rrgen, Path::new("mailer"), &vars)?
         }
-        Component::Deployment {
-            kind,
-            fallback_file,
-            asset_folder,
-            host,
-            port,
-        } => match kind {
-            DeploymentKind::Docker => {
+        Component::Deployment { kind } => match kind {
+            DeploymentKind::Docker {
+                copy_paths,
+                is_client_side_rendering,
+            } => {
                 let vars = json!({
                     "pkg_name": appinfo.app_name,
-                    "copy_asset_folder": asset_folder.unwrap_or_default(),
-                    "fallback_file": fallback_file.unwrap_or_default()
+                    "copy_paths": copy_paths,
+                    "is_client_side_rendering": is_client_side_rendering,
                 });
                 render_template(rrgen, Path::new("deployment/docker"), &vars)?
             }
-            DeploymentKind::Shuttle => {
+            DeploymentKind::Shuttle { runttime_version } => {
                 let vars = json!({
                     "pkg_name": appinfo.app_name,
-                    "shuttle_runtime_version": DEPLOYMENT_SHUTTLE_RUNTIME_VERSION,
+                    "shuttle_runtime_version": runttime_version.unwrap_or_else( || DEPLOYMENT_SHUTTLE_RUNTIME_VERSION.to_string()),
                     "with_db": cfg!(feature = "with-db")
                 });
 
                 render_template(rrgen, Path::new("deployment/shuttle"), &vars)?
             }
-            DeploymentKind::Nginx => {
+            DeploymentKind::Nginx { host, port } => {
                 let host = host.replace("http://", "").replace("https://", "");
                 let vars = json!({
                     "pkg_name": appinfo.app_name,
