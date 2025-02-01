@@ -135,6 +135,9 @@ fn test_combination(
 
         // Generate deployment shuttle
         tester.run_generate(&vec!["deployment", "--kind", "shuttle"]);
+        
+        // Generate deployment kamal
+        tester.run_generate(&vec!["deployment", "--kind", "kamal"]);
 
         if db.enable() {
             // Generate Model
