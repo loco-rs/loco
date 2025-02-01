@@ -16,8 +16,7 @@ use rhai::{
     Engine, Scope,
 };
 
-use crate::wizard::AssetsOption;
-use crate::{settings, OS};
+use crate::{settings, wizard::AssetsOption, OS};
 
 static APP_TEMPLATE: Dir<'_> = include_dir!("base_template");
 
@@ -252,7 +251,8 @@ impl Generator {
 #[export_module]
 mod rhai_settings_extensions {
 
-    /// Retrieves the value of the `view_engine` field from the [`settings::Initializers`] struct.
+    /// Retrieves the value of the `view_engine` field from the
+    /// [`settings::Initializers`] struct.
     #[rhai_fn(global, get = "view_engine", pure)]
     pub fn view_engine(initializers: &mut Option<settings::Initializers>) -> bool {
         initializers.as_ref().is_some_and(|i| i.view_engine)
