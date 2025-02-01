@@ -6,13 +6,14 @@ pub use rrgen::{GenResult, RRgen};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 mod controller;
-use colored::Colorize;
 use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
     sync::OnceLock,
 };
+
+use colored::Colorize;
 
 #[cfg(feature = "with-db")]
 mod infer;
@@ -33,7 +34,6 @@ pub struct GenerateResults {
     local_templates: Vec<PathBuf>,
 }
 const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.51.0";
-
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -240,8 +240,8 @@ pub enum DeploymentKind {
         is_client_side_rendering: bool,
         postgres: bool,
         sqlite: bool,
-        background_queue: bool
-    }
+        background_queue: bool,
+    },
 }
 
 #[derive(Debug)]
@@ -395,7 +395,7 @@ pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Resul
                 is_client_side_rendering,
                 postgres,
                 sqlite,
-                background_queue
+                background_queue,
             } => {
                 let vars = json!({
                      "pkg_name": appinfo.app_name,

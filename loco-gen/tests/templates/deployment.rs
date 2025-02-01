@@ -41,7 +41,7 @@ fn can_generate_docker(
             app_name: "tester".to_string(),
         },
     )
-        .expect("Generation failed");
+    .expect("Generation failed");
 
     assert_eq!(
         collect_messages(&gen_result),
@@ -93,7 +93,7 @@ fn can_generate_nginx() {
             app_name: "tester".to_string(),
         },
     )
-        .expect("Generation failed");
+    .expect("Generation failed");
 
     assert_eq!(
         collect_messages(&gen_result),
@@ -151,7 +151,7 @@ playground = "run --example playground"
             app_name: "tester".to_string(),
         },
     )
-        .expect("Generation failed");
+    .expect("Generation failed");
 
     assert_eq!(
         collect_messages(&gen_result),
@@ -210,7 +210,7 @@ fn can_generate_kamal_sqlite_without_background_queue() {
             app_name: "tester".to_string(),
         },
     )
-        .expect("Generation failed");
+    .expect("Generation failed");
 
     assert_eq!(
         collect_messages(&gen_result),
@@ -290,7 +290,7 @@ fn can_generate_kamal_sqlite_with_background_queue() {
             app_name: "tester".to_string(),
         },
     )
-        .expect("Generation failed");
+    .expect("Generation failed");
 
     assert_eq!(
         collect_messages(&gen_result),
@@ -368,7 +368,7 @@ fn can_generate_kamal_postgres_without_background_queue() {
             app_name: "tester".to_string(),
         },
     )
-        .expect("Generation failed");
+    .expect("Generation failed");
 
     assert_eq!(
         collect_messages(&gen_result),
@@ -446,7 +446,7 @@ fn can_generate_kamal_postgres_with_background_queue() {
             app_name: "tester".to_string(),
         },
     )
-        .expect("Generation failed");
+    .expect("Generation failed");
 
     assert_eq!(
         collect_messages(&gen_result),

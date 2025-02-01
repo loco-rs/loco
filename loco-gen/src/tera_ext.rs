@@ -9,7 +9,8 @@ pub fn new() -> Tera {
     tera
 }
 
-const DEFAULT_INPUT_CLASS: &str = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm";
+const DEFAULT_INPUT_CLASS: &str = "flex h-9 w-full rounded-md border border-input bg-transparent \
+                                   px-3 py-1 text-base shadow-sm md:text-sm";
 struct FormField;
 
 impl tera::Function for FormField {
@@ -322,10 +323,10 @@ fn input_description<S: AsRef<str>>(description: S) -> String {
 
 #[cfg(test)]
 pub mod tests {
-    use super::*;
-
-    use crate::get_mappings;
     use insta::assert_snapshot;
+
+    use super::*;
+    use crate::get_mappings;
 
     #[test]
     fn can_render_form_field() {

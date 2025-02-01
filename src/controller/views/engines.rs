@@ -1,8 +1,9 @@
 use std::path::{Path, PathBuf};
 
+use serde::Serialize;
+
 use super::tera_builtins;
 use crate::{controller::views::ViewRenderer, Error, Result};
-use serde::Serialize;
 
 pub static DEFAULT_ASSET_FOLDER: &str = "assets";
 
