@@ -46,6 +46,7 @@ use crate::{
         start, RunDbCommand, ServeParams, StartMode,
     },
     config::Config,
+    controller,
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     logger, task, Error,
 };
@@ -326,7 +327,7 @@ After running the migration, follow these steps to complete the process:
     Deployment {
         // deployment kind.
         #[clap(long, value_enum)]
-        kind: loco_gen::DeploymentKind,
+        kind: DeploymentKind,
     },
 
     /// Override templates and allows you to take control of them. You can
@@ -397,40 +398,7 @@ impl ComponentArg {
             Self::Scheduler {} => Ok(loco_gen::Component::Scheduler {}),
             Self::Worker { name } => Ok(loco_gen::Component::Worker { name }),
             Self::Mailer { name } => Ok(loco_gen::Component::Mailer { name }),
-            Self::Deployment { kind } => {
-                let copy_asset_folder = &config
-                    .server
-                    .middlewares
-                    .static_assets
-                    .clone()
-                    .map(|a| a.folder.path);
-
-                let fallback_file = &config
-                    .server
-                    .middlewares
-                    .static_assets
-                    .clone()
-                    .map(|a| a.fallback);
-                #[cfg(feature = "with-db")]
-                let postgres = config.database.uri.contains("postgres://");
-                #[cfg(not(feature = "with-db"))]
-                let postgres = false;
-                #[cfg(feature = "with-db")]
-                let sqlite = config.database.uri.contains("sqlite://");
-                #[cfg(not(feature = "with-db"))]
-                let sqlite = false;
-                Ok(loco_gen::Component::Deployment {
-                    kind,
-                    asset_folder: copy_asset_folder.clone(),
-                    fallback_file: fallback_file.clone(),
-                    host: config.server.host.clone(),
-                    port: config.server.port,
-                    background_queue: config.workers.mode
-                        == crate::config::WorkerMode::BackgroundQueue,
-                    postgres,
-                    sqlite,
-                })
-            }
+            Self::Deployment { kind } => Ok(kind.to_generator_component(config)),
             Self::Override {
                 template_path: _,
                 info: _,
@@ -531,6 +499,67 @@ impl From<DbCommands> for RunDbCommand {
             }
             DbCommands::Schema => Self::Schema,
         }
+    }
+}
+
+#[derive(clap::ValueEnum, Clone)]
+pub enum DeploymentKind {
+    Docker,
+    Shuttle,
+    Nginx,
+}
+
+impl DeploymentKind {
+    fn to_generator_component(&self, config: &Config) -> loco_gen::Component {
+        let kind = match self {
+            Self::Docker => {
+                let mut copy_paths = vec![];
+
+                if let Some(static_assets) = &config.server.middlewares.static_assets {
+                    let asset_folder =
+                        PathBuf::from(controller::views::engines::DEFAULT_ASSET_FOLDER);
+                    if asset_folder.exists() {
+                        copy_paths.push(asset_folder.clone());
+                    }
+                    if !static_assets.folder.path.starts_with(&asset_folder) {
+                        copy_paths.push(PathBuf::from(&static_assets.folder.path));
+                    }
+                    if !static_assets.fallback.starts_with(asset_folder) {
+                        copy_paths.push(PathBuf::from(&static_assets.fallback));
+                    }
+                }
+                #[cfg(feature = "with-db")]
+                let postgres = config.database.uri.contains("postgres://");
+                #[cfg(not(feature = "with-db"))]
+                let postgres = false;
+                #[cfg(feature = "with-db")]
+                let sqlite = config.database.uri.contains("sqlite://");
+                #[cfg(not(feature = "with-db"))]
+                let sqlite = false;
+
+
+                let is_client_side_rendering =
+                    PathBuf::from("frontend").join("package.json").exists();
+
+                loco_gen::DeploymentKind::Docker {
+                    copy_paths,
+                    is_client_side_rendering,
+
+                    background_queue: config.workers.mode
+                        == crate::config::WorkerMode::BackgroundQueue,
+                    postgres,
+                    sqlite,
+                }
+            }
+            Self::Shuttle => loco_gen::DeploymentKind::Shuttle {
+                runttime_version: None,
+            },
+            Self::Nginx => loco_gen::DeploymentKind::Nginx {
+                host: config.server.host.to_string(),
+                port: config.server.port,
+            },
+        };
+        loco_gen::Component::Deployment { kind }
     }
 }
 

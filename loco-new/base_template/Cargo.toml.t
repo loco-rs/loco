@@ -48,10 +48,12 @@ include_dir = { version = "0.7" }
 {%- endif %}
 
 {%- if settings.asset %}
+{%- if settings.asset.kind == "server" %}
 # view engine i18n
 fluent-templates = { version = "0.8.0", features = ["tera"] }
 unic-langid = { version = "0.9.4" }
 # /view engine
+{%- endif %}
 axum-extra = { version = "0.10", features = ["form"] }
 {%- endif %}
 
