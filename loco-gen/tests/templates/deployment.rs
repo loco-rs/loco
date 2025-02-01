@@ -1,7 +1,8 @@
+use std::{fs, path::PathBuf};
+
 use insta::assert_snapshot;
 use loco_gen::{collect_messages, generate, AppInfo, Component, DeploymentKind};
 use rrgen::RRgen;
-use std::{fs, path::PathBuf};
 
 #[rstest::rstest]
 fn can_generate_docker(
@@ -18,9 +19,6 @@ fn can_generate_docker(
         kind: DeploymentKind::Docker {
             copy_paths: copy_paths.clone(),
             is_client_side_rendering,
-            sqlite: false,
-            postgres: false,
-            background_queue: false,
         },
     };
 
@@ -43,7 +41,7 @@ fn can_generate_docker(
             app_name: "tester".to_string(),
         },
     )
-    .expect("Generation failed");
+        .expect("Generation failed");
 
     assert_eq!(
         collect_messages(&gen_result),
@@ -82,9 +80,6 @@ fn can_generate_nginx() {
         kind: DeploymentKind::Nginx {
             host: "localhost".to_string(),
             port: 8080,
-            sqlite: false,
-            postgres: false,
-            background_queue: false,
         },
     };
 
@@ -98,7 +93,7 @@ fn can_generate_nginx() {
             app_name: "tester".to_string(),
         },
     )
-    .expect("Generation failed");
+        .expect("Generation failed");
 
     assert_eq!(
         collect_messages(&gen_result),
@@ -156,7 +151,7 @@ playground = "run --example playground"
             app_name: "tester".to_string(),
         },
     )
-    .expect("Generation failed");
+        .expect("Generation failed");
 
     assert_eq!(
         collect_messages(&gen_result),
@@ -187,14 +182,13 @@ fn can_generate_kamal_sqlite_without_background_queue() {
     let _guard = settings.bind_to_scope();
 
     let component = Component::Deployment {
-        kind: DeploymentKind::Kamal,
-        fallback_file: Some("404.html".to_string()),
-        asset_folder: Some("assets".to_string()),
-        host: "localhost".to_string(),
-        port: 8080,
-        sqlite: true,
-        postgres: false,
-        background_queue: false,
+        kind: DeploymentKind::Kamal {
+            copy_paths: vec![std::path::PathBuf::from("404.html"), PathBuf::from("asset")],
+            is_client_side_rendering: false,
+            sqlite: true,
+            postgres: false,
+            background_queue: false,
+        },
     };
 
     let tree_fs = tree_fs::TreeBuilder::default()
@@ -216,7 +210,7 @@ fn can_generate_kamal_sqlite_without_background_queue() {
             app_name: "tester".to_string(),
         },
     )
-    .expect("Generation failed");
+        .expect("Generation failed");
 
     assert_eq!(
         collect_messages(&gen_result),
@@ -268,14 +262,13 @@ fn can_generate_kamal_sqlite_with_background_queue() {
     let _guard = settings.bind_to_scope();
 
     let component = Component::Deployment {
-        kind: DeploymentKind::Kamal,
-        fallback_file: Some("404.html".to_string()),
-        asset_folder: Some("assets".to_string()),
-        host: "localhost".to_string(),
-        port: 8080,
-        sqlite: true,
-        postgres: false,
-        background_queue: true,
+        kind: DeploymentKind::Kamal {
+            copy_paths: vec![std::path::PathBuf::from("404.html"), PathBuf::from("asset")],
+            is_client_side_rendering: false,
+            sqlite: true,
+            postgres: false,
+            background_queue: true,
+        },
     };
 
     let tree_fs = tree_fs::TreeBuilder::default()
@@ -297,7 +290,7 @@ fn can_generate_kamal_sqlite_with_background_queue() {
             app_name: "tester".to_string(),
         },
     )
-    .expect("Generation failed");
+        .expect("Generation failed");
 
     assert_eq!(
         collect_messages(&gen_result),
@@ -347,14 +340,13 @@ fn can_generate_kamal_postgres_without_background_queue() {
     let _guard = settings.bind_to_scope();
 
     let component = Component::Deployment {
-        kind: DeploymentKind::Kamal,
-        fallback_file: Some("404.html".to_string()),
-        asset_folder: Some("assets".to_string()),
-        host: "localhost".to_string(),
-        port: 8080,
-        sqlite: false,
-        postgres: true,
-        background_queue: false,
+        kind: DeploymentKind::Kamal {
+            copy_paths: vec![std::path::PathBuf::from("404.html"), PathBuf::from("asset")],
+            is_client_side_rendering: false,
+            sqlite: false,
+            postgres: true,
+            background_queue: false,
+        },
     };
 
     let tree_fs = tree_fs::TreeBuilder::default()
@@ -376,7 +368,7 @@ fn can_generate_kamal_postgres_without_background_queue() {
             app_name: "tester".to_string(),
         },
     )
-    .expect("Generation failed");
+        .expect("Generation failed");
 
     assert_eq!(
         collect_messages(&gen_result),
@@ -426,14 +418,13 @@ fn can_generate_kamal_postgres_with_background_queue() {
     let _guard = settings.bind_to_scope();
 
     let component = Component::Deployment {
-        kind: DeploymentKind::Kamal,
-        fallback_file: Some("404.html".to_string()),
-        asset_folder: Some("assets".to_string()),
-        host: "localhost".to_string(),
-        port: 8080,
-        sqlite: false,
-        postgres: true,
-        background_queue: true,
+        kind: DeploymentKind::Kamal {
+            copy_paths: vec![std::path::PathBuf::from("404.html"), PathBuf::from("asset")],
+            is_client_side_rendering: false,
+            sqlite: false,
+            postgres: true,
+            background_queue: true,
+        },
     };
 
     let tree_fs = tree_fs::TreeBuilder::default()
@@ -455,7 +446,7 @@ fn can_generate_kamal_postgres_with_background_queue() {
             app_name: "tester".to_string(),
         },
     )
-    .expect("Generation failed");
+        .expect("Generation failed");
 
     assert_eq!(
         collect_messages(&gen_result),

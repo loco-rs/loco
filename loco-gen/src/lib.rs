@@ -11,7 +11,6 @@ use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
-    str::FromStr,
     sync::OnceLock,
 };
 
@@ -35,12 +34,6 @@ pub struct GenerateResults {
 }
 const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.51.0";
 
-const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
-    ("Docker", DeploymentKind::Docker),
-    ("Shuttle", DeploymentKind::Shuttle),
-    ("Nginx", DeploymentKind::Nginx),
-    ("Kamal", DeploymentKind::Kamal),
-];
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -397,7 +390,13 @@ pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Resul
                 });
                 render_template(rrgen, Path::new("deployment/nginx"), &vars)?
             }
-            DeploymentKind::Kamal => {
+            DeploymentKind::Kamal {
+                copy_paths,
+                is_client_side_rendering,
+                postgres,
+                sqlite,
+                background_queue
+            } => {
                 let vars = json!({
                      "pkg_name": appinfo.app_name,
                     "copy_paths": copy_paths,
@@ -547,10 +546,9 @@ pub fn copy_template(path: &Path, to: &Path) -> Result<Vec<PathBuf>> {
 
 #[cfg(test)]
 mod tests {
-    use std::{io::Cursor, path::Path};
+    use std::path::Path;
 
     use super::*;
-    use std::path::Path;
 
     #[test]
     fn test_template_not_found() {

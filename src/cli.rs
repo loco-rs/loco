@@ -507,36 +507,30 @@ pub enum DeploymentKind {
     Docker,
     Shuttle,
     Nginx,
+    Kamal,
 }
 
 impl DeploymentKind {
+    fn copy_paths(config: &Config) -> Vec<PathBuf> {
+        let mut copy_paths = vec![];
+        if let Some(static_assets) = &config.server.middlewares.static_assets {
+            let asset_folder = PathBuf::from(controller::views::engines::DEFAULT_ASSET_FOLDER);
+            if asset_folder.exists() {
+                copy_paths.push(asset_folder.clone());
+            }
+            if !static_assets.folder.path.starts_with(&asset_folder) {
+                copy_paths.push(PathBuf::from(&static_assets.folder.path));
+            }
+            if !static_assets.fallback.starts_with(asset_folder) {
+                copy_paths.push(PathBuf::from(&static_assets.fallback));
+            }
+        }
+        copy_paths
+    }
     fn to_generator_component(&self, config: &Config) -> loco_gen::Component {
         let kind = match self {
             Self::Docker => {
-                let mut copy_paths = vec![];
-
-                if let Some(static_assets) = &config.server.middlewares.static_assets {
-                    let asset_folder =
-                        PathBuf::from(controller::views::engines::DEFAULT_ASSET_FOLDER);
-                    if asset_folder.exists() {
-                        copy_paths.push(asset_folder.clone());
-                    }
-                    if !static_assets.folder.path.starts_with(&asset_folder) {
-                        copy_paths.push(PathBuf::from(&static_assets.folder.path));
-                    }
-                    if !static_assets.fallback.starts_with(asset_folder) {
-                        copy_paths.push(PathBuf::from(&static_assets.fallback));
-                    }
-                }
-                #[cfg(feature = "with-db")]
-                let postgres = config.database.uri.contains("postgres://");
-                #[cfg(not(feature = "with-db"))]
-                let postgres = false;
-                #[cfg(feature = "with-db")]
-                let sqlite = config.database.uri.contains("sqlite://");
-                #[cfg(not(feature = "with-db"))]
-                let sqlite = false;
-
+                let copy_paths = Self::copy_paths(config);
 
                 let is_client_side_rendering =
                     PathBuf::from("frontend").join("package.json").exists();
@@ -544,11 +538,6 @@ impl DeploymentKind {
                 loco_gen::DeploymentKind::Docker {
                     copy_paths,
                     is_client_side_rendering,
-
-                    background_queue: config.workers.mode
-                        == crate::config::WorkerMode::BackgroundQueue,
-                    postgres,
-                    sqlite,
                 }
             }
             Self::Shuttle => loco_gen::DeploymentKind::Shuttle {
@@ -558,6 +547,27 @@ impl DeploymentKind {
                 host: config.server.host.to_string(),
                 port: config.server.port,
             },
+            Self::Kamal => {
+                let copy_paths = Self::copy_paths(config);
+                let is_client_side_rendering =
+                    PathBuf::from("frontend").join("package.json").exists();
+                #[cfg(feature = "with-db")]
+                let postgres = config.database.uri.contains("postgres://");
+                #[cfg(not(feature = "with-db"))]
+                let postgres = false;
+                #[cfg(feature = "with-db")]
+                let sqlite = config.database.uri.contains("sqlite://");
+                #[cfg(not(feature = "with-db"))]
+                let sqlite = false;
+                loco_gen::DeploymentKind::Kamal {
+                    copy_paths,
+                    is_client_side_rendering,
+                    background_queue: config.workers.mode
+                        == crate::config::WorkerMode::BackgroundQueue,
+                    postgres,
+                    sqlite,
+                }
+            }
         };
         loco_gen::Component::Deployment { kind }
     }
