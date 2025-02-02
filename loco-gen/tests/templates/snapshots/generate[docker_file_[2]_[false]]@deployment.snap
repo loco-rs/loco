@@ -14,7 +14,9 @@ FROM debian:bookworm-slim
 
 WORKDIR /usr/app
 
-COPY --from=builder /usr/src/config /usr/app/config
-COPY --from=builder /usr/src/target/release/tester-cli /usr/app/tester-cli
+COPY --from=builder /usr/src/404.html 404.html
+COPY --from=builder /usr/src/asset asset
+COPY --from=builder /usr/src/config config
+COPY --from=builder /usr/src/target/release/tester-cli tester-cli
 
 ENTRYPOINT ["/usr/app/tester-cli"]

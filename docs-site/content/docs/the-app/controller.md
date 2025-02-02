@@ -202,7 +202,7 @@ pub async fn get_one(
             _ => format::json(item),
         },
         // we have an opinion how to render out validation errors, only in HTML content
-        Err(Error::Model(ModelError::ModelValidation { errors })) => match respond_to {
+        Err(Error::Model(ModelError::Validation(errors))) => match respond_to {
             RespondTo::Html => {
                 format::html(&format!("<html><body>errors: {errors:?}</body></html>"))
             }

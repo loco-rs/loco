@@ -32,7 +32,7 @@ pub struct StaticAssets {
     /// Fallback page for a case when no asset exists. Useful for SPA
     /// (single page app) where routes are virtual.
     #[serde(default = "default_fallback")]
-    pub fallback: String,
+    pub fallback: PathBuf,
     /// Enable `precompressed_gzip`
     #[serde(default = "default_precompressed")]
     pub precompressed: bool,
@@ -52,14 +52,14 @@ fn default_precompressed() -> bool {
     false
 }
 
-fn default_fallback() -> String {
-    "assets/static/404.html".to_string()
+fn default_fallback() -> PathBuf {
+    PathBuf::from("assets").join("static").join("404.html")
 }
 
 fn default_folder_config() -> FolderConfig {
     FolderConfig {
         uri: "/static".to_string(),
-        path: "assets/static".to_string(),
+        path: PathBuf::from("assets/static"),
     }
 }
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
@@ -67,7 +67,7 @@ pub struct FolderConfig {
     /// Uri for the assets
     pub uri: String,
     /// Path for the assets
-    pub path: String,
+    pub path: PathBuf,
 }
 
 // Implement the MiddlewareTrait for your Middleware struct
@@ -96,13 +96,11 @@ impl MiddlewareLayer for StaticAssets {
     /// Before applying, it checks if the folder and fallback file exist. If
     /// either is missing, it returns an error.
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
-        if self.must_exist
-            && (!PathBuf::from(&self.folder.path).exists()
-                || !PathBuf::from(&self.fallback).exists())
-        {
+        if self.must_exist && (!&self.folder.path.exists() || !&self.fallback.exists()) {
             return Err(Error::Message(format!(
                 "one of the static path are not found, Folder `{}` fallback: `{}`",
-                self.folder.path, self.fallback,
+                self.folder.path.display(),
+                self.fallback.display(),
             )));
         }
 
