@@ -450,13 +450,13 @@ impl Queue {
     /// - If no queue provider is configured, it will return an error indicating the lack of configuration.
     /// - If the Redis provider is selected, it will return an error stating that clearing jobs is not supported.
     /// - Any error in the underlying provider's job clearing logic will propagate from the respective function.
-    pub async fn change_status(&self, from: &JobStatus, to: &JobStatus) -> Result<()> {
-        tracing::debug!(from = ?from,to = ?to,  "clear jobs by status");
+    pub async fn requeue(&self, from_age: &i64) -> Result<()> {
+        tracing::debug!(from_age = from_age, "requeue jobs");
         match self {
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => pg::change_status(pool, from, to).await,
+            Self::Postgres(pool, _, _) => pg::requeue(pool, from_age).await,
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => sqlt::change_status(pool, from, to).await,
+            Self::Sqlite(pool, _, _) => sqlt::requeue(pool, from_age).await,
             #[cfg(feature = "bg_redis")]
             Self::Redis(_, _, _) => {
                 tracing::error!("Update status for redis provider not implemented");

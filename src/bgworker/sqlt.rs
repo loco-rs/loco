@@ -426,14 +426,17 @@ pub async fn clear_by_status(pool: &SqlitePool, status: Vec<JobStatus>) -> Resul
 /// # Errors
 ///
 /// This function will return an error if it fails
-pub async fn change_status(pool: &SqlitePool, from: &JobStatus, to: &JobStatus) -> Result<()> {
-    sqlx::query(
-        "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE status = $2",
-    )
-    .bind(to.to_string())
-    .bind(from.to_string())
-    .execute(pool)
-    .await?;
+pub async fn requeue(pool: &SqlitePool, age_minutes: &i64) -> Result<()> {
+    let query = format!(
+        "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE status = $2 AND updated_at <= DATETIME('now', '-{age_minutes} minute')"
+    );
+
+    sqlx::query(&query)
+        .bind(JobStatus::Queued.to_string())
+        .bind(JobStatus::Processing.to_string())
+        .execute(pool)
+        .await?;
+
     Ok(())
 }
 
@@ -1106,7 +1109,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn can_change_status() {
+    async fn can_requeue() {
         let tree_fs = tree_fs::TreeBuilder::default()
             .drop(true)
             .create()
@@ -1114,7 +1117,31 @@ mod tests {
         let pool = init(&tree_fs.root).await;
 
         assert!(initialize_database(&pool).await.is_ok());
-        tests_cfg::queue::sqlite_seed_data(&pool).await;
+        sqlx::query(
+            r"INSERT INTO sqlt_loco_queue (id, name, task_data, status,run_at, created_at, updated_at) VALUES
+            ('job1', 'Test Job 1', '{}', 'processing', CURRENT_TIMESTAMP,CURRENT_TIMESTAMP, DATETIME('now', '-20 minute')),
+            ('job2', 'Test Job 2', '{}', 'processing', CURRENT_TIMESTAMP,CURRENT_TIMESTAMP, DATETIME('now', '-5 minute')),
+            ('job3', 'Test Job 3', '{}', 'completed', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, DATETIME('now', '-5 minute')),
+            ('job4', 'Test Job 4', '{}', 'queued', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+            ('job5', 'Test Job 5', '{}', 'processing', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let jobs = get_all_jobs(&pool).await;
+
+        let processing_job_count = jobs
+            .iter()
+            .filter(|job| job.status == JobStatus::Processing)
+            .count();
+        let queued_job_count = jobs
+            .iter()
+            .filter(|job| job.status == JobStatus::Queued)
+            .count();
+
+        assert_eq!(processing_job_count, 3);
+        assert_eq!(queued_job_count, 1);
+        assert!(requeue(&pool, &10).await.is_ok());
         let jobs = get_all_jobs(&pool).await;
         let processing_job_count = jobs
             .iter()
@@ -1125,24 +1152,7 @@ mod tests {
             .filter(|job| job.status == JobStatus::Queued)
             .count();
 
-        assert!(processing_job_count > 0);
-        assert_eq!(queued_job_count, 5);
-        assert!(
-            change_status(&pool, &JobStatus::Processing, &JobStatus::Queued)
-                .await
-                .is_ok()
-        );
-        let jobs = get_all_jobs(&pool).await;
-        let processing_job_count = jobs
-            .iter()
-            .filter(|job| job.status == JobStatus::Processing)
-            .count();
-        let queued_job_count = jobs
-            .iter()
-            .filter(|job| job.status == JobStatus::Queued)
-            .count();
-
-        assert_eq!(processing_job_count, 0);
-        assert_eq!(queued_job_count, 8);
+        assert_eq!(processing_job_count, 2);
+        assert_eq!(queued_job_count, 2);
     }
 }

@@ -592,14 +592,12 @@ enum JobsCommands {
         #[arg(short, long)]
         file: PathBuf,
     },
-    /// Change the status of jobs.
-    ChangeStatus {
-        /// Current status of the jobs to be updated.
-        #[arg(short, long)]
-        from: JobStatus,
-        /// New status to assign to the jobs.
-        #[arg(short, long)]
-        to: JobStatus,
+    /// Change `processing` status to `queue`.
+    Requeue {
+        /// Change `processing` jobs older than the specified
+        /// maximum age in minutes.
+        #[arg(long, default_value_t = 0)]
+        from_age: i64,
     },
 }
 
@@ -1079,7 +1077,7 @@ async fn handle_job_command<H: Hooks>(
             Ok(())
         }
         JobsCommands::Import { file } => queue.import(file.as_path()).await,
-        JobsCommands::ChangeStatus { from, to } => queue.change_status(from, to).await,
+        JobsCommands::Requeue { from_age } => queue.requeue(from_age).await,
     }
 }
 
