@@ -1,19 +1,26 @@
-use std::{net::SocketAddr, ops::Deref};
+use std::net::SocketAddr;
 
 use axum_test::{TestServer, TestServerConfig};
+
+#[cfg(feature = "with-db")]
+use crate::Error;
 
 use crate::{
     app::{AppContext, Hooks},
     boot::{self, BootResult},
     environment::Environment,
-    Error, Result,
+    Result,
 };
+#[cfg(feature = "with-db")]
+use std::ops::Deref;
 
+#[cfg(feature = "with-db")]
 pub struct BootResultWrapper {
     inner: BootResult,
     test_db: Box<dyn super::db::TestSupport>,
 }
 
+#[cfg(feature = "with-db")]
 impl BootResultWrapper {
     #[must_use]
     pub fn new(boot: BootResult, test_db: Box<dyn super::db::TestSupport>) -> Self {
@@ -24,6 +31,7 @@ impl BootResultWrapper {
     }
 }
 
+#[cfg(feature = "with-db")]
 impl Deref for BootResultWrapper {
     type Target = BootResult;
 
@@ -32,6 +40,7 @@ impl Deref for BootResultWrapper {
     }
 }
 
+#[cfg(feature = "with-db")]
 impl Drop for BootResultWrapper {
     fn drop(&mut self) {
         self.test_db.cleanup_db();
@@ -82,6 +91,7 @@ pub async fn boot_test<H: Hooks>() -> Result<BootResult> {
 ///
 /// # Errors
 /// when could not bootstrap the test environment
+#[cfg(feature = "with-db")]
 pub async fn boot_test_with_create_db<H: Hooks>() -> Result<BootResultWrapper> {
     let mut config = H::load_config(&Environment::Test).await?;
     let test_db = super::db::init_test_db_creation(&config.database.uri)?;
@@ -177,7 +187,7 @@ where
 /// When could not initialize the test request.this errors can be when could not
 /// initialize the test app
 #[allow(clippy::future_not_send)]
-#[allow(clippy::future_not_send)]
+#[cfg(feature = "with-db")]
 pub async fn request_with_create_db<H: Hooks, F, Fut>(callback: F)
 where
     F: FnOnce(TestServer, AppContext) -> Fut,
