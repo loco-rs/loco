@@ -5,14 +5,8 @@
 pub mod query;
 use async_trait::async_trait;
 use sea_orm::DatabaseConnection;
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize)]
-#[allow(clippy::module_name_repetitions)]
-pub struct ModelValidation {
-    pub code: String,
-    pub message: Option<String>,
-}
+use crate::validation::ModelValidationErrors;
 
 #[derive(thiserror::Error, Debug)]
 #[allow(clippy::module_name_repetitions)]
@@ -23,8 +17,8 @@ pub enum ModelError {
     #[error("Entity not found")]
     EntityNotFound,
 
-    #[error("{errors:?}")]
-    ModelValidation { errors: ModelValidation },
+    #[error(transparent)]
+    Validation(#[from] ModelValidationErrors),
 
     #[cfg(feature = "auth_jwt")]
     #[error("jwt error")]
