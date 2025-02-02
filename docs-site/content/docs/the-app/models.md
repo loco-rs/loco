@@ -841,6 +841,8 @@ A typical test contains everything you need to set up test data, boot the app, a
 ```rust
 use loco_rs::testing::prelude::*;
 
+#[tokio::test]
+#[serial]
 async fn can_find_by_pid() {
     configure_insta!();
 
@@ -887,6 +889,22 @@ impl Hooks for App {
         Ok(())
     }
 
+}
+```
+
+## Async
+When writing async tests with database data, it's important to ensure that one test does not affect the data used by other tests. Since async tests can run concurrently on the same database dataset, this can lead to unstable test results.
+
+Instead of using `boot_test`, as described in the documentation for synchronous tests, use the `boot_test_with_create_db` function. This function generates a random database schema name and ensures that the tables are deleted once the test is completed.
+
+Note: If you cancel the test run midway (e.g., by pressing `Ctrl + C`), the cleanup process will not execute, and the database tables will remain. In such cases, you will need to manually remove them.
+
+```rust
+use loco_rs::testing::prelude::*;
+
+#[tokio::test]
+async fn boot_test_with_create_db() {
+    let boot = boot_test_with_create_db::<App, Migrator>().await;
 }
 ```
 

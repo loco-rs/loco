@@ -954,3 +954,32 @@ async fn can_print_echo() {
 
 As you can see initialize the testing request and using `request` instance calling /example endpoing.
 the request returns a `Response` instance with the status code and the response test
+
+
+## Async
+When writing async tests with database data, it's important to ensure that one test does not affect the data used by other tests. Since async tests can run concurrently on the same database dataset, this can lead to unstable test results.
+
+Instead of using `request`, as described in the documentation for synchronous tests, use the `request_with_create_db` function. This function generates a random database schema name and ensures that the tables are deleted once the test is completed.
+
+Note: If you cancel the test run midway (e.g., by pressing `Ctrl + C`), the cleanup process will not execute, and the database tables will remain. In such cases, you will need to manually remove them.
+
+```rust
+use loco_rs::testing::prelude::*;
+
+#[tokio::test]
+async fn can_print_echo() {
+    configure_insta!();
+
+    request_with_create_db::<App, _, _>(|request, _ctx| async move {
+        let response = request
+            .post("/example")
+            .json(&serde_json::json!({"site": "Loco"}))
+            .await;
+
+        assert_debug_snapshot!((response.status_code(), response.text()));
+    })
+    .await;
+}
+```
+
+
