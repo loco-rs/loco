@@ -444,19 +444,19 @@ impl Queue {
         }
     }
 
-    /// Change the status of jobs.
+    /// Requeued job with the given minutes ages.
     ///
     /// # Errors
     /// - If no queue provider is configured, it will return an error indicating the lack of configuration.
     /// - If the Redis provider is selected, it will return an error stating that clearing jobs is not supported.
     /// - Any error in the underlying provider's job clearing logic will propagate from the respective function.
-    pub async fn requeue(&self, from_age: &i64) -> Result<()> {
-        tracing::debug!(from_age = from_age, "requeue jobs");
+    pub async fn requeue(&self, age_minutes: &i64) -> Result<()> {
+        tracing::debug!(age_minutes = age_minutes, "requeue jobs");
         match self {
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => pg::requeue(pool, from_age).await,
+            Self::Postgres(pool, _, _) => pg::requeue(pool, age_minutes).await,
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => sqlt::requeue(pool, from_age).await,
+            Self::Sqlite(pool, _, _) => sqlt::requeue(pool, age_minutes).await,
             #[cfg(feature = "bg_redis")]
             Self::Redis(_, _, _) => {
                 tracing::error!("Update status for redis provider not implemented");

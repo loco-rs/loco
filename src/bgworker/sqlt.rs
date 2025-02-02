@@ -418,10 +418,11 @@ pub async fn clear_by_status(pool: &SqlitePool, status: Vec<JobStatus>) -> Resul
     Ok(())
 }
 
-/// Change the status of jobs in the `sqlt_loco_queue` table.
+/// Requeues jobs from [`JobStatus::Processing`] to [`JobStatus::Queued`].
 ///
-/// This function changes the status of all jobs that currently have the `from` status
-/// to the new `to` status.
+/// This function updates the status of all jobs that are currently in the [`JobStatus::Processing`] state
+/// to the [`JobStatus::Queued`] state, provided they have been updated more than the specified age (`age_minutes`).
+/// The jobs that meet the criteria will have their `updated_at` timestamp set to the current time.
 ///
 /// # Errors
 ///

@@ -391,10 +391,11 @@ pub async fn clear_jobs_older_than(
     Ok(())
 }
 
-/// Change the status of jobs in the `pg_loco_queue` table.
+/// Requeues jobs from [`JobStatus::Processing`] to [`JobStatus::Queued`].
 ///
-/// This function changes the status of all jobs that currently have the `from` status
-/// to the new `to` status.
+/// This function updates the status of all jobs that are currently in the [`JobStatus::Processing`] state
+/// to the [`JobStatus::Queued`] state, provided they have been updated more than the specified age (`age_minutes`).
+/// The jobs that meet the criteria will have their `updated_at` timestamp set to the current time.
 ///
 /// # Errors
 ///
