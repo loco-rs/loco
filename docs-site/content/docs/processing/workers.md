@@ -48,9 +48,12 @@ Then, configure a Redis based queue backend:
 ```yaml
 queue:
   kind: Redis
-  # Redis connection URI
+  # Redis connection URI.
   uri: "{{ get_env(name="REDIS_URL", default="redis://127.0.0.1") }}"
+  # Dangerously flush all data.
   dangerously_flush: false
+  # represents the number of tasks a worker can handle simultaneously.
+  num_workers: 2
 ```
 
 Or a Postgres based queue backend:
@@ -58,9 +61,12 @@ Or a Postgres based queue backend:
 ```yaml
 queue:
   kind: Postgres
-  # Postgres Queue connection URI
+  # Postgres Queue connection URI.
   uri: "{{ get_env(name="PGQ_URL", default="postgres://localhost:5432/mydb") }}"
+  # Dangerously flush all data.
   dangerously_flush: false
+  # represents the number of tasks a worker can handle simultaneously.
+  num_workers: 2
 ```
 
 Or a SQLite based queue backend:
@@ -68,9 +74,13 @@ Or a SQLite based queue backend:
 ```yaml
 queue:
   kind: Sqlite
-  # SQLite Queue connection URI
-  uri: "{{ get_env(name="SQLTQ_URL", default="sqlite://loco_development.sqlite?mode=rwc") }}"
+  # SQLite Queue connection URI.
+  uri: "{{ get_env(name="SQLTQ_URL", default="sqlite://loco_development.sqlite?
+  mode=rwc") }}"
+  # Dangerously flush all data. 
   dangerously_flush: false
+  # represents the number of tasks a worker can handle simultaneously.
+  num_workers: 2
 ```
 
 ## Running the worker process
