@@ -177,6 +177,7 @@ impl AppRoutes {
     /// In the following example, you are adding `api` as a prefix and then nesting a route within it:
     ///
     /// ```rust, no_run
+    /// use axum::routing::get;
     /// use loco_rs::controller::{AppRoutes, Routes};
     ///
     /// let route = Routes::new().add("/notes", get(|| async { "notes" }));
@@ -204,6 +205,7 @@ impl AppRoutes {
     /// In the following example, you are adding `api` as a prefix and then nesting multiple routes within it:
     ///
     /// ```rust, no_run
+    /// use axum::routing::get;
     /// use loco_rs::controller::{AppRoutes, Routes};
     ///
     /// let routes = vec![
