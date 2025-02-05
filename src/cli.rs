@@ -821,6 +821,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
         Commands::Start {
             worker,
             server_and_worker,
+            all,
             binding,
             port,
             no_banner,
@@ -829,6 +830,8 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
                 StartMode::WorkerOnly
             } else if server_and_worker {
                 StartMode::ServerAndWorker
+            } else if all {
+                StartMode::All
             } else {
                 StartMode::ServerOnly
             };
