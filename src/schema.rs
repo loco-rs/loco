@@ -20,7 +20,7 @@ pub fn alter<T: IntoIden + 'static>(name: T) -> TableAlterStatement {
     Table::alter().table(name).take()
 }
 
-/// Wrapping  table schema creation.
+/// Wrapping table schema creation.
 pub fn table_auto_tz<T>(name: T) -> TableCreateStatement
 where
     T: IntoIden + 'static,

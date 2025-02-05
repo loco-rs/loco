@@ -1,5 +1,5 @@
 //! This module provides utility functions for handling validation errors for
-//! structs. It useful if you want to validate model before inset to Database.
+//! structs. It useful if you want to validate model before insert to Database.
 //!
 //! # Example:
 //!
@@ -38,11 +38,16 @@
 //! }
 //! ```
 
+use std::ops::{Deref, DerefMut};
+
 #[cfg(feature = "with-db")]
 use sea_orm::DbErr;
 use serde::{Deserialize, Serialize};
 use validator::{Validate, ValidationError, ValidationErrors};
 
+// this is a line-serialization type. it is used as an intermediate format
+// to hold validation error data when we transform from
+// validation::ValidationErrors to DbErr and encode all information in json.
 #[derive(Debug, Deserialize, Serialize)]
 #[allow(clippy::module_name_repetitions)]
 pub struct ModelValidationMessage {
@@ -73,8 +78,23 @@ pub fn is_valid_email(email: &str) -> Result<(), ValidationError> {
 /// in the trait, we MUST use `DbErr`, so we need to "hide" a _representation_
 /// of the error in `DbErr::Custom`, so that it can be unpacked later down the
 /// stream, in the central error response handler.
-#[derive(Debug)]
-pub struct ModelValidationErrors(pub ValidationErrors);
+#[derive(Debug, thiserror::Error)]
+#[error("Model validation failed: {0}")]
+pub struct ModelValidationErrors(ValidationErrors);
+
+impl Deref for ModelValidationErrors {
+    type Target = ValidationErrors;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for ModelValidationErrors {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 #[cfg(feature = "with-db")]
 impl From<ModelValidationErrors> for DbErr {
