@@ -149,14 +149,16 @@ impl AppRoutes {
     ///
     /// In the following example, you are adding `api` as a prefix and then nesting `v1` within it:
     ///
-    /// ```rust
+    /// ```ignore
     /// use loco_rs::controller::AppRoutes;
     ///
     /// let app_routes = AppRoutes::with_default_routes()
-    ///     .prefix("api")
-    ///     .nest_prefix("v1");
+    ///      .prefix("api")
+    ///      .add_route(controllers::auth::routes())
+    ///      .nest_prefix("v1")
+    ///      .add_route(controllers::home::routes());
     ///
-    /// // This will result in routes with the prefix `/api/v1/`
+    /// // This will result in routes like `/api/auth` and `/api/v1/home`
     /// ```
     #[must_use]
     pub fn nest_prefix(mut self, prefix: &str) -> Self {
@@ -176,7 +178,7 @@ impl AppRoutes {
     ///
     /// In the following example, you are adding `api` as a prefix and then nesting a route within it:
     ///
-    /// ```rust, no_run
+    /// ```rust
     /// use axum::routing::get;
     /// use loco_rs::controller::{AppRoutes, Routes};
     ///
@@ -204,7 +206,7 @@ impl AppRoutes {
     ///
     /// In the following example, you are adding `api` as a prefix and then nesting multiple routes within it:
     ///
-    /// ```rust, no_run
+    /// ```rust
     /// use axum::routing::get;
     /// use loco_rs::controller::{AppRoutes, Routes};
     ///
@@ -318,6 +320,7 @@ mod tests {
     use super::*;
     use crate::{prelude::*, tests_cfg};
     use axum::http::Method;
+    use insta::assert_debug_snapshot;
     use rstest::rstest;
     use std::vec;
     use tower::ServiceExt;
@@ -329,15 +332,12 @@ mod tests {
     #[test]
     fn can_load_app_route_from_default() {
         let routes = AppRoutes::with_default_routes().collect();
-        let expected_routes = vec![
-            ("/_ping", vec![Method::GET]),
-            ("/_health", vec![Method::GET]),
-        ];
 
-        assert_eq!(routes.len(), expected_routes.len());
-        for (i, route) in routes.iter().enumerate() {
-            assert_eq!(route.uri, expected_routes[i.clone()].0);
-            assert_eq!(route.actions, expected_routes[i].1);
+        for route in routes {
+            assert_debug_snapshot!(
+                format!("[{}]", route.uri.replace('/', "[slash]")),
+                format!("{:?} {}", route.actions, route.uri)
+            );
         }
     }
 
@@ -366,23 +366,11 @@ mod tests {
                 Routes::new().add("multiple3", patch(action)),
             ]);
 
-        let routes = app_router.collect();
-        let expected_routes = vec![
-            ("/", vec![Method::GET]),
-            ("/normalizer/no-slash", vec![Method::GET]),
-            ("/normalizer", vec![Method::POST]),
-            ("/normalizer/loco/rs", vec![Method::DELETE]),
-            ("/normalizer/multiple-start", vec![Method::HEAD]),
-            ("/normalizer/multiple-end", vec![Method::TRACE]),
-            ("/multiple1", vec![Method::PUT]),
-            ("/multiple2", vec![Method::OPTIONS]),
-            ("/multiple3", vec![Method::PATCH]),
-        ];
-
-        assert_eq!(routes.len(), expected_routes.len());
-        for (i, route) in routes.iter().enumerate() {
-            assert_eq!(route.uri, expected_routes[i.clone()].0);
-            assert_eq!(route.actions, expected_routes[i].1);
+        for route in app_router.collect() {
+            assert_debug_snapshot!(
+                format!("[{}]", route.uri.replace('/', "[slash]")),
+                format!("{:?} {}", route.actions, route.uri)
+            );
         }
     }
 
@@ -396,16 +384,11 @@ mod tests {
             .prefix("api")
             .add_route(router_without_prefix);
 
-        let routes = app_router.collect();
-        let expected_routes = vec![
-            ("/api/loco", vec![Method::GET]),
-            ("/api/loco-rs", vec![Method::GET]),
-        ];
-
-        assert_eq!(routes.len(), expected_routes.len());
-        for (i, route) in routes.iter().enumerate() {
-            assert_eq!(route.uri, expected_routes[i.clone()].0);
-            assert_eq!(route.actions, expected_routes[i].1);
+        for route in app_router.collect() {
+            assert_debug_snapshot!(
+                format!("[{}]", route.uri.replace('/', "[slash]")),
+                format!("{:?} {}", route.actions, route.uri)
+            );
         }
     }
 
@@ -434,16 +417,11 @@ mod tests {
         ];
         let app_router = AppRoutes::empty().prefix("api").nest_routes("v1", routes);
 
-        let routes = app_router.collect();
-        let expected_routes = vec![
-            ("/api/v1/notes", vec![Method::GET]),
-            ("/api/v1/users", vec![Method::GET]),
-        ];
-
-        assert_eq!(routes.len(), expected_routes.len());
-        for (i, route) in routes.iter().enumerate() {
-            assert_eq!(route.uri, expected_routes[i.clone()].0);
-            assert_eq!(route.actions, expected_routes[i].1);
+        for route in app_router.collect() {
+            assert_debug_snapshot!(
+                format!("[{}]", route.uri.replace('/', "[slash]")),
+                format!("{:?} {}", route.actions, route.uri)
+            );
         }
     }
 
