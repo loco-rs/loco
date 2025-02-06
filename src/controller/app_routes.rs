@@ -149,8 +149,9 @@ impl AppRoutes {
     ///
     /// In the following example, you are adding `api` as a prefix and then nesting `v1` within it:
     ///
-    /// ```ignore
+    /// ```rust
     /// use loco_rs::controller::AppRoutes;
+    /// use loco_rs::tests_cfg::*;
     ///
     /// let app_routes = AppRoutes::with_default_routes()
     ///      .prefix("api")
