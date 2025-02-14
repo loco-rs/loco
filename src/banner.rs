@@ -79,6 +79,10 @@ pub fn print_banner(boot_result: &BootResult, server_config: &ServeParams) {
         modes.push("worker".green());
         servingline.push(format!("worker is {}", "online".green()));
     }
+    if boot_result.run_scheduler {
+        modes.push("scheduler".green());
+        servingline.push(format!("scheduler is {}", "running".green()));
+    }
     if !modes.is_empty() {
         println!(
             "      modes: {}",
