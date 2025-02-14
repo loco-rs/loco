@@ -52,6 +52,70 @@ $ cargo loco routes
 
 This command will provide you with a comprehensive overview of the controllers currently registered in your system.
 
+## AppRoutes
+
+`AppRoutes` is a core component of the `Loco` framework that helps you manage and organize your application's routes. It provides a convenient way to add, prefix, and collect routes from different controllers.
+
+### Features
+
+- **Add Routes**: Easily add routes from different controllers.
+- **Prefix Routes**: Apply a common prefix to a group of routes.
+- **Collect Routes**: Gather all routes into a single collection for further processing.
+
+### Examples
+
+#### Adding Routes
+
+You can add routes from different controllers to `AppRoutes`:
+
+```rust
+use loco_rs::controller::AppRoutes;
+use loco_rs::prelude::*;
+use axum::routing::get;
+
+fn routes(_ctx: &AppContext) -> AppRoutes {
+  AppRoutes::empty()
+          .add_route(Routes::new().add("/", get(home_handler)))
+          .add_route(Routes::new().add("/about", get(about_handler)))
+}
+```
+
+### Prefixing Routes
+
+Apply a common prefix to a group of routes:
+
+```rust
+use loco_rs::controller::AppRoutes;
+use loco_rs::prelude::*;
+use axum::routing::get;
+
+fn routes(_ctx: &AppContext) -> AppRoutes {
+    AppRoutes::empty()
+        .prefix("/api")
+        .add_route(Routes::new().add("/users", get(users_handler)))
+        .add_route(Routes::new().add("/posts", get(posts_handler)))
+}
+```
+
+### Nesting Routes
+
+AppRoutes allows you to nest routes, making it easier to organize and manage complex route hierarchies. 
+This is particularly useful when you have a set of related routes that share a common prefix.
+
+```rust
+ use loco_rs::controller::AppRoutes;
+use loco_rs::prelude::*;
+use axum::routing::get;
+
+fn routes(_ctx: &AppContext) -> AppRoutes {
+  let route = Routes::new().add("/", get(|| async { "notes" }));
+  AppRoutes::with_default_routes()
+        .prefix("api")
+        .add_route(controllers::auth::routes())
+        .nest_prefix("v1")
+        .nest_route("/notes", route)
+}
+```
 
 ## Adding state
 

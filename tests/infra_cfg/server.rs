@@ -68,6 +68,7 @@ pub async fn start_from_ctx(ctx: AppContext) -> tokio::task::JoinHandle<()> {
         app_context: ctx,
         router: Some(app_router),
         run_worker: false,
+        run_scheduler: false,
     };
 
     start_from_boot(boot).await
@@ -89,6 +90,7 @@ pub async fn start_with_route(
         app_context: ctx,
         router: Some(app_router),
         run_worker: false,
+        run_scheduler: false,
     };
     start_from_boot(boot).await
 }

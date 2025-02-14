@@ -87,7 +87,6 @@ async-trait = { workspace = true }
 axum = { workspace = true }
 axum-extra = { version = "0.10", features = ["cookie"] }
 regex = { workspace = true }
-fs-err = "2.11.0"
 # mailer
 tera = { workspace = true }
 thousands = "0.2.0"
