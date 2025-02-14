@@ -1,5 +1,6 @@
 use std::{
     collections::{BTreeMap, HashMap},
+    fs,
     process::Command,
     sync::OnceLock,
 };
@@ -191,7 +192,7 @@ pub async fn run_all(config: &Config, production: bool) -> Result<BTreeMap<Resou
 /// # Errors
 /// Returns error if fails
 pub fn check_deps() -> Result<Check> {
-    let cargolock = fs_err::read_to_string("Cargo.lock")?;
+    let cargolock = fs::read_to_string("Cargo.lock")?;
 
     let crate_statuses =
         depcheck::check_crate_versions(&cargolock, get_min_dep_versions().clone())?;
