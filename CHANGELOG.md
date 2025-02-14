@@ -6,6 +6,9 @@
 * flatten (de)serialization of custom user claims. [https://github.com/loco-rs/loco/pull/1159](https://github.com/loco-rs/loco/pull/1159)
 * Updated validator to 0.20. [https://github.com/loco-rs/loco/pull/1199](https://github.com/loco-rs/loco/pull/1199)
 * Scaffold v2. [https://github.com/loco-rs/loco/pull/1209](https://github.com/loco-rs/loco/pull/1209)
+* Fix generator Docker deployment to support both server-side and client-side rendering. [https://github.com/loco-rs/loco/pull/1227](https://github.com/loco-rs/loco/pull/1227)
+* document num_workers worker configuration. [https://github.com/loco-rs/loco/pull/1242](https://github.com/loco-rs/loco/pull/1242)
+* smoother model validations. [https://github.com/loco-rs/loco/pull/1233](https://github.com/loco-rs/loco/pull/1233)
 
 
 ## v0.14.1
