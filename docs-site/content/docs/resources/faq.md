@@ -17,10 +17,10 @@ flair =[]
 <details>
 <summary>How can I automatically reload code?</summary>
 
-Try [cargo watch](https://crates.io/crates/cargo-watch):
+Try [cargo watchexec](https://crates.io/crates/watchexec):
 
 ```
-$ cargo-watch -x check  -s 'cargo loco start'
+$ watchexec --notify -r -- cargo loco start
 ```
 
 Or [bacon](https://github.com/Canop/bacon)
