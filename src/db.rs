@@ -3,11 +3,12 @@
 //! This module defines functions and operations related to the application's
 //! database interactions.
 
-use std::{collections::HashMap, fs::File, io::Write, path::Path, sync::OnceLock, time::Duration};
+use std::{
+    collections::HashMap, fs, fs::File, io::Write, path::Path, sync::OnceLock, time::Duration,
+};
 
 use chrono::{DateTime, Utc};
 use duct::cmd;
-use fs_err::{self as fs, create_dir_all};
 use regex::Regex;
 use sea_orm::{
     ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
@@ -472,11 +473,17 @@ pub async fn entities<M: MigratorTrait>(ctx: &AppContext) -> AppResult<String> {
 // also we are generating an extension module from the get go
 fn fix_entities() -> AppResult<()> {
     let dir = fs::read_dir("src/models/_entities")?
-        .flatten()
-        .filter(|ent| {
-            ent.path().is_file() && ent.file_name() != "mod.rs" && ent.file_name() != "prelude.rs"
+        .filter_map(|ent| {
+            let ent = ent.unwrap();
+            if ent.path().is_file()
+                && ent.file_name() != "mod.rs"
+                && ent.file_name() != "prelude.rs"
+            {
+                Some(ent.path())
+            } else {
+                None
+            }
         })
-        .map(|ent| ent.path())
         .collect::<Vec<_>>();
 
     // remove activemodel impl from all generated entities, and make note to
@@ -695,7 +702,7 @@ pub async fn dump_tables(
 
         if !to.exists() {
             tracing::info!("the specified dump folder does not exist. creating the folder now");
-            create_dir_all(to)?;
+            fs::create_dir_all(to)?;
         }
 
         for row in data_result {

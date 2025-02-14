@@ -1,5 +1,6 @@
 ---
 source: src/controller/app_routes.rs
+assertion_line: 370
 expression: "format!(\"{:?} {}\", route.actions, route.uri)"
 ---
 "[HEAD] /normalizer/multiple-start"

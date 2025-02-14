@@ -76,11 +76,14 @@ enum Commands {
     #[clap(alias("s"))]
     Start {
         /// start worker
-        #[arg(short, long, action)]
+        #[arg(short, long, action, conflicts_with_all = &["server_and_worker", "all"])]
         worker: bool,
-        /// start same-process server and worker
-        #[arg(short, long, action)]
+        /// Start the server and worker in the same process
+        #[arg(short, long, action, conflicts_with_all = &["worker", "all"])]
         server_and_worker: bool,
+        /// Start the server, worker, and scheduler in the same process
+        #[arg(short, long, action, conflicts_with_all = &["worker", "server_and_worker"])]
+        all: bool,
         /// server bind address
         #[arg(short, long, action)]
         binding: Option<String>,
@@ -674,6 +677,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         Commands::Start {
             worker,
             server_and_worker,
+            all,
             binding,
             port,
             no_banner,
@@ -682,6 +686,8 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                 StartMode::WorkerOnly
             } else if server_and_worker {
                 StartMode::ServerAndWorker
+            } else if all {
+                StartMode::All
             } else {
                 StartMode::ServerOnly
             };
@@ -815,6 +821,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
         Commands::Start {
             worker,
             server_and_worker,
+            all,
             binding,
             port,
             no_banner,
@@ -823,6 +830,8 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
                 StartMode::WorkerOnly
             } else if server_and_worker {
                 StartMode::ServerAndWorker
+            } else if all {
+                StartMode::All
             } else {
                 StartMode::ServerOnly
             };
