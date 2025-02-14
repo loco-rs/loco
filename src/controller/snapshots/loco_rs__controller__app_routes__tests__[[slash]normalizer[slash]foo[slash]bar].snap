@@ -1,5 +1,0 @@
----
-source: src/controller/app_routes.rs
-expression: "format!(\"{:?} {}\", route.actions, route.uri)"
----
-"[DELETE] /normalizer/foo/bar"

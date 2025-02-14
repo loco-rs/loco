@@ -1,5 +1,6 @@
 ---
 source: src/controller/app_routes.rs
+assertion_line: 421
 expression: "format!(\"{:?} {}\", route.actions, route.uri)"
 ---
-"[GET] /api/foo"
+"[GET] /api/v1/users"

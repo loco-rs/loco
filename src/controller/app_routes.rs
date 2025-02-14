@@ -38,7 +38,7 @@ impl fmt::Display for ListRoutes {
         let actions_str = self
             .actions
             .iter()
-            .map(std::string::ToString::to_string)
+            .map(ToString::to_string)
             .collect::<Vec<_>>()
             .join(",");
 
@@ -68,33 +68,31 @@ impl AppRoutes {
 
     #[must_use]
     pub fn collect(&self) -> Vec<ListRoutes> {
-        let base_url_prefix = self
-            .get_prefix()
-            // add a leading slash forcefully. Axum routes must start with a leading slash.
-            // if we have double leading slashes - it will get normalized into a single slash later
-            .map_or("/".to_string(), |url| format!("/{}", url.as_str()));
-
         self.get_routes()
             .iter()
             .flat_map(|controller| {
-                let mut uri_parts = vec![base_url_prefix.clone()];
-                if let Some(prefix) = controller.prefix.as_ref() {
-                    uri_parts.push(prefix.to_string());
-                }
+                let uri_parts = controller
+                    .prefix
+                    .as_ref()
+                    .map_or_else(Vec::new, |prefix| vec![prefix.to_string()]);
+
                 controller.handlers.iter().map(move |handler| {
                     let mut parts = uri_parts.clone();
                     parts.push(handler.uri.to_string());
                     let joined_parts = parts.join("/");
 
                     let normalized = get_normalize_url().replace_all(&joined_parts, "/");
-                    let uri = if normalized == "/" {
+                    let mut uri = if normalized == "/" {
                         normalized.to_string()
                     } else {
-                        normalized.strip_suffix('/').map_or_else(
-                            || normalized.to_string(),
-                            std::string::ToString::to_string,
-                        )
+                        normalized
+                            .strip_suffix('/')
+                            .map_or_else(|| normalized.to_string(), ToString::to_string)
                     };
+
+                    if !uri.starts_with('/') {
+                        uri.insert(0, '/');
+                    }
 
                     ListRoutes {
                         uri,
@@ -132,14 +130,127 @@ impl AppRoutes {
     /// ```
     #[must_use]
     pub fn prefix(mut self, prefix: &str) -> Self {
-        self.prefix = Some(prefix.to_string());
+        let mut prefix = prefix.to_owned();
+        if !prefix.ends_with('/') {
+            prefix.push('/');
+        }
+        if !prefix.starts_with('/') {
+            prefix.insert(0, '/');
+        }
+
+        self.prefix = Some(prefix);
+
+        self
+    }
+
+    /// Set a nested prefix for the routes. This prefix will be appended to any existing prefix.
+    ///
+    /// # Example
+    ///
+    /// In the following example, you are adding `api` as a prefix and then nesting `v1` within it:
+    ///
+    /// ```rust
+    /// use loco_rs::controller::AppRoutes;
+    /// use loco_rs::tests_cfg::*;
+    ///
+    /// let app_routes = AppRoutes::with_default_routes()
+    ///      .prefix("api")
+    ///      .add_route(controllers::auth::routes())
+    ///      .nest_prefix("v1")
+    ///      .add_route(controllers::home::routes());
+    ///
+    /// // This will result in routes like `/api/auth` and `/api/v1/home`
+    /// ```
+    #[must_use]
+    pub fn nest_prefix(mut self, prefix: &str) -> Self {
+        let prefix = self.prefix.as_ref().map_or_else(
+            || prefix.to_owned(),
+            |old_prefix| format!("{old_prefix}{prefix}"),
+        );
+        self = self.prefix(&prefix);
+
+        self
+    }
+
+    /// Set a nested route with a prefix. This route will be added with the specified prefix.
+    /// The prefix will only be applied to the routes given in this function.
+    ///
+    /// # Example
+    ///
+    /// In the following example, you are adding `api` as a prefix and then nesting a route within it:
+    ///
+    /// ```rust
+    /// use axum::routing::get;
+    /// use loco_rs::controller::{AppRoutes, Routes};
+    ///
+    /// let route = Routes::new().add("/notes", get(|| async { "notes" }));
+    /// let app_routes = AppRoutes::with_default_routes()
+    ///     .prefix("api")
+    ///     .nest_route("v1", route);
+    ///
+    /// // This will result in routes with the prefix `/api/v1/notes`
+    /// ```
+    #[must_use]
+    pub fn nest_route(mut self, prefix: &str, route: Routes) -> Self {
+        let old_prefix = self.prefix.clone();
+        self = self.nest_prefix(prefix);
+        self = self.add_route(route);
+        self.prefix = old_prefix;
+
+        self
+    }
+
+    /// Set multiple nested routes with a prefix. These routes will be added with the specified prefix.
+    /// The prefix will only be applied to the routes given in this function.
+    ///
+    /// # Example
+    ///
+    /// In the following example, you are adding `api` as a prefix and then nesting multiple routes within it:
+    ///
+    /// ```rust
+    /// use axum::routing::get;
+    /// use loco_rs::controller::{AppRoutes, Routes};
+    ///
+    /// let routes = vec![
+    ///     Routes::new().add("/notes", get(|| async { "notes" })),
+    ///     Routes::new().add("/users", get(|| async { "users" })),
+    /// ];
+    /// let app_routes = AppRoutes::with_default_routes()
+    ///     .prefix("api")
+    ///     .nest_routes("v1", routes);
+    ///
+    /// // This will result in routes with the prefix `/api/v1/notes` and `/api/v1/users`
+    /// ```
+    #[must_use]
+    pub fn nest_routes(mut self, prefix: &str, routes: Vec<Routes>) -> Self {
+        let old_prefix = self.prefix.clone();
+        self = self.nest_prefix(prefix);
+        self = self.add_routes(routes);
+        self.prefix = old_prefix;
+
         self
     }
 
     /// Add a single route.
     #[must_use]
-    pub fn add_route(mut self, route: Routes) -> Self {
+    pub fn add_route(mut self, mut route: Routes) -> Self {
+        let routes_prefix = {
+            if let Some(mut prefix) = self.prefix.clone() {
+                let routes_prefix = route.prefix.clone().unwrap_or_default();
+
+                prefix.push_str(routes_prefix.as_str());
+                Some(prefix)
+            } else {
+                route.prefix.clone()
+            }
+        };
+
+        if let Some(prefix) = routes_prefix {
+            route = route.prefix(prefix.as_str());
+        }
+
         self.routes.push(route);
+
         self
     }
 
@@ -147,8 +258,9 @@ impl AppRoutes {
     #[must_use]
     pub fn add_routes(mut self, mounts: Vec<Routes>) -> Self {
         for mount in mounts {
-            self.routes.push(mount);
+            self = self.add_route(mount);
         }
+
         self
     }
 
@@ -206,13 +318,13 @@ impl AppRoutes {
 
 #[cfg(test)]
 mod tests {
-
-    use insta::assert_debug_snapshot;
-    use rstest::rstest;
-    use tower::ServiceExt;
-
     use super::*;
     use crate::{prelude::*, tests_cfg};
+    use axum::http::Method;
+    use insta::assert_debug_snapshot;
+    use rstest::rstest;
+    use std::vec;
+    use tower::ServiceExt;
 
     async fn action() -> Result<Response> {
         format::json("loco")
@@ -220,7 +332,9 @@ mod tests {
 
     #[test]
     fn can_load_app_route_from_default() {
-        for route in AppRoutes::with_default_routes().collect() {
+        let routes = AppRoutes::with_default_routes().collect();
+
+        for route in routes {
             assert_debug_snapshot!(
                 format!("[{}]", route.uri.replace('/', "[slash]")),
                 format!("{:?} {}", route.actions, route.uri)
@@ -279,19 +393,52 @@ mod tests {
         }
     }
 
+    #[test]
+    fn can_nest_prefix() {
+        let app_router = AppRoutes::empty().prefix("api").nest_prefix("v1");
+
+        assert_eq!(app_router.get_prefix().unwrap(), "/api/v1/");
+    }
+
+    #[test]
+    fn can_nest_route() {
+        let route = Routes::new().add("/notes", get(action));
+        let app_router = AppRoutes::empty().prefix("api").nest_route("v1", route);
+
+        let routes = app_router.collect();
+        assert_eq!(routes.len(), 1);
+        assert_eq!(routes[0].uri, "/api/v1/notes");
+    }
+
+    #[test]
+    fn can_nest_routes() {
+        let routes = vec![
+            Routes::new().add("/notes", get(action)),
+            Routes::new().add("/users", get(action)),
+        ];
+        let app_router = AppRoutes::empty().prefix("api").nest_routes("v1", routes);
+
+        for route in app_router.collect() {
+            assert_debug_snapshot!(
+                format!("[{}]", route.uri.replace('/', "[slash]")),
+                format!("{:?} {}", route.actions, route.uri)
+            );
+        }
+    }
+
     #[rstest]
-    #[case(axum::http::Method::GET, get(action))]
-    #[case(axum::http::Method::POST, post(action))]
-    #[case(axum::http::Method::DELETE, delete(action))]
-    #[case(axum::http::Method::HEAD, head(action))]
-    #[case(axum::http::Method::OPTIONS, options(action))]
-    #[case(axum::http::Method::PATCH, patch(action))]
-    #[case(axum::http::Method::POST, post(action))]
-    #[case(axum::http::Method::PUT, put(action))]
-    #[case(axum::http::Method::TRACE, trace(action))]
+    #[case(Method::GET, get(action))]
+    #[case(Method::POST, post(action))]
+    #[case(Method::DELETE, delete(action))]
+    #[case(Method::HEAD, head(action))]
+    #[case(Method::OPTIONS, options(action))]
+    #[case(Method::PATCH, patch(action))]
+    #[case(Method::POST, post(action))]
+    #[case(Method::PUT, put(action))]
+    #[case(Method::TRACE, trace(action))]
     #[tokio::test]
     async fn can_request_method(
-        #[case] http_method: axum::http::Method,
+        #[case] http_method: Method,
         #[case] method: axum::routing::MethodRouter<AppContext>,
     ) {
         let router_without_prefix = Routes::new().add("/loco", method);
