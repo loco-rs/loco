@@ -269,7 +269,7 @@ impl RenderBuilder {
             .response
             .header(
                 header::CONTENT_TYPE,
-                HeaderValue::from_static(mime::TEXT_PLAIN_UTF_8.as_ref()),
+                HeaderValue::from_static("text/plain; charset=utf-8"),
             )
             .body(Body::from(content.to_string()))?)
     }
@@ -319,7 +319,7 @@ impl RenderBuilder {
             .response
             .header(
                 header::CONTENT_TYPE,
-                HeaderValue::from_static(mime::TEXT_HTML_UTF_8.as_ref()),
+                HeaderValue::from_static("text/html; charset=utf-8"),
             )
             .body(Body::from(content.to_string()))?)
     }
@@ -340,7 +340,7 @@ impl RenderBuilder {
             .response
             .header(
                 header::CONTENT_TYPE,
-                HeaderValue::from_static(mime::APPLICATION_JSON.as_ref()),
+                HeaderValue::from_static("application/json"),
             )
             .body(body)?)
     }
