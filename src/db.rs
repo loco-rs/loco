@@ -739,10 +739,7 @@ pub async fn dump_tables(
                         row.try_get::<DateTime<Utc>>("", &col_name)
                             .map(|v| serde_json::Value::String(v.to_rfc3339()))
                     })
-                    .or_else(|_| {
-                        row.try_get::<serde_json::Value>("", &col_name)
-                            .map(serde_json::Value::from)
-                    })
+                    .or_else(|_| row.try_get::<serde_json::Value>("", &col_name))
                     .or_else(|_| {
                         row.try_get::<bool>("", &col_name)
                             .map(serde_json::Value::Bool)

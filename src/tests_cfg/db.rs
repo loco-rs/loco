@@ -2,7 +2,19 @@ use std::path::Path;
 
 use async_trait::async_trait;
 pub use sea_orm_migration::prelude::*;
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
+use utoipa::OpenApi;
 
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
+use crate::auth::openapi::{set_jwt_location_ctx, SecurityAddon};
 use crate::{
     app::{AppContext, Hooks, Initializer},
     bgworker::Queue,
@@ -121,5 +133,25 @@ impl Hooks for AppHook {
 
     async fn seed(_ctx: &AppContext, _base: &Path) -> Result<()> {
         Ok(())
+    }
+
+    #[cfg(any(
+        feature = "openapi_swagger",
+        feature = "openapi_redoc",
+        feature = "openapi_scalar"
+    ))]
+    fn inital_openapi_spec(ctx: &AppContext) -> utoipa::openapi::OpenApi {
+        #[derive(OpenApi)]
+        #[openapi(
+            modifiers(&SecurityAddon),
+            info(
+                title = "Loco Demo",
+                description = "This app is a kitchensink for various capabilities and examples of the [Loco](https://loco.rs) project."
+            )
+        )]
+        struct ApiDoc;
+        set_jwt_location_ctx(ctx);
+
+        ApiDoc::openapi()
     }
 }

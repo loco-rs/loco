@@ -180,7 +180,7 @@ enum ComponentArg {
     /// Generates a new model file for defining the data structure of your
     /// application, and test file logic.
     #[command(after_help = format!(
-    "{}  
+    "{}
   - Generate empty model:
       $ cargo loco g model posts
 
@@ -276,7 +276,7 @@ After running the migration, follow these steps to complete the process:
     },
     /// Generate a new controller with the given controller name, and test file.
     #[command(after_help = format!(
-    "{}  
+    "{}
   - Generate an empty controller:
       $ cargo loco generate controller posts --api
 
