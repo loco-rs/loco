@@ -6,13 +6,14 @@ pub use rrgen::{GenResult, RRgen};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 mod controller;
-use colored::Colorize;
 use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
     sync::OnceLock,
 };
+
+use colored::Colorize;
 
 #[cfg(feature = "with-db")]
 mod infer;
@@ -234,6 +235,13 @@ pub enum DeploymentKind {
         host: String,
         port: i32,
     },
+    Kamal {
+        copy_paths: Vec<PathBuf>,
+        is_client_side_rendering: bool,
+        postgres: bool,
+        sqlite: bool,
+        background_queue: bool,
+    },
 }
 
 #[derive(Debug)]
@@ -382,6 +390,41 @@ pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Resul
                 });
                 render_template(rrgen, Path::new("deployment/nginx"), &vars)?
             }
+            DeploymentKind::Kamal {
+                copy_paths,
+                is_client_side_rendering,
+                postgres,
+                sqlite,
+                background_queue,
+            } => {
+                let vars = json!({
+                     "pkg_name": appinfo.app_name,
+                    "copy_paths": copy_paths,
+                    "is_client_side_rendering": is_client_side_rendering,
+                    "sqlite": sqlite,
+                    "postgres": postgres,
+                    "background_queue": background_queue
+                });
+                let config_deploy_yml = Path::new("config/deploy.yml");
+                let kamal_secrets = Path::new(".kamal/secrets");
+                if config_deploy_yml.exists() {
+                    tracing::info!("backing up config/deploy.yml to config/_deploy.yml");
+                    fs::rename(config_deploy_yml, Path::new("config/_deploy.yml"))?;
+                }
+                if kamal_secrets.exists() {
+                    tracing::info!("backing up kamal/secrets to kamal/_secrets");
+                    fs::rename(kamal_secrets, Path::new(".kamal/_secrets"))?;
+                }
+                // render the dockerfile template
+                let mut gen_result_docker =
+                    render_template(rrgen, Path::new("deployment/docker"), &vars)?;
+                // render the kamal template
+                let gen_result_kamal =
+                    render_template(rrgen, Path::new("deployment/kamal"), &vars)?;
+                // merge the results
+                gen_result_docker.rrgen.extend(gen_result_kamal.rrgen);
+                gen_result_docker
+            }
         },
     };
 
@@ -503,8 +546,9 @@ pub fn copy_template(path: &Path, to: &Path) -> Result<Vec<PathBuf>> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::path::Path;
+
+    use super::*;
 
     #[test]
     fn test_template_not_found() {

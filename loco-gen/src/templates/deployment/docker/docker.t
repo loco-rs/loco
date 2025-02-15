@@ -1,8 +1,19 @@
 to: "dockerfile"
 skip_exists: true
 message: "Dockerfile generated successfully."
+
+injections:
+- into: config/development.yaml
+  remove_lines: |
+    # Binding for the server (which interface to bind to)
+    binding: {{ get_env(name="BINDING", default="localhost") }}
+  content: |
+    |  # Binding for the server (which interface to bind to)
+    |  binding: {{ get_env(name="BINDING", default="0.0.0.0") }}
+
 ---
-FROM rust:1.83.0-slim as builder
+
+FROM rust:1.84-slim as builder
 
 WORKDIR /usr/src/
 
@@ -31,4 +42,4 @@ COPY --from=builder /usr/src/{{path}} {{path}}
 COPY --from=builder /usr/src/config config
 COPY --from=builder /usr/src/target/release/{{pkg_name}}-cli {{pkg_name}}-cli
 
-ENTRYPOINT ["/usr/app/{{pkg_name}}-cli"]
+ENTRYPOINT ["/usr/app/{{pkg_name}}-cli","start"]

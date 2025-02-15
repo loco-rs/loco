@@ -83,7 +83,7 @@ where
         let future = self.inner.call(request);
 
         let res_fut = async move {
-            let response = future.await.map_err(Into::into)?;
+            let response = future.await?;
             let etag_from_response = response.headers().get(ETAG).cloned();
             if let Some(etag_in_request) = ifnm {
                 if let Some(etag_from_response) = etag_from_response {

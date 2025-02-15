@@ -82,7 +82,8 @@ pub enum ColType {
     Unsigned,
     UnsignedNull,
     UnsignedUniq,
-    // Tiny fields are not supported due to differences in data types between PostgreSQL and SQLite:
+    // Tiny fields are not supported due to differences in data types between PostgreSQL and
+    // SQLite:
     //  * Postgres: i16
     //  * Sqlite: i8
     // TinyUnsigned,
@@ -94,7 +95,8 @@ pub enum ColType {
     BigUnsigned,
     BigUnsignedNull,
     BigUnsignedUniq,
-    // Tiny fields are not supported due to differences in data types between PostgreSQL and SQLite:
+    // Tiny fields are not supported due to differences in data types between PostgreSQL and
+    // SQLite:
     //  * Postgres: i16
     //  * Sqlite: i8
     // TinyInteger,
@@ -120,7 +122,8 @@ pub enum ColType {
     DoubleUniq,
     Boolean,
     BooleanNull,
-    // Timestamp fields are not supported due to differences in data types between PostgreSQL and SQLite:
+    // Timestamp fields are not supported due to differences in data types between PostgreSQL and
+    // SQLite:
     //  * Postgres: DateTime
     //  * Sqlite: DateTimeUtc
     // Timestamp,

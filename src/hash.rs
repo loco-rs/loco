@@ -1,9 +1,10 @@
-use crate::{Error, Result};
 use argon2::{
     password_hash::SaltString, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier,
     Version,
 };
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
+
+use crate::{Error, Result};
 
 /// Hashes a plain text password and returns the hashed result.
 ///
@@ -67,7 +68,6 @@ pub fn verify_password(pass: &str, hashed_password: &str) -> bool {
 /// let rand_str = hash::random_string(10);
 /// assert_eq!(rand_str.len(), 10);
 /// assert_ne!(rand_str, hash::random_string(10));
-///
 /// ```
 pub fn random_string(length: usize) -> String {
     thread_rng()

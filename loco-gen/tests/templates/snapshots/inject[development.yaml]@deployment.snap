@@ -1,0 +1,6 @@
+---
+source: loco-gen/tests/templates/deployment.rs
+expression: "fs::read_to_string(tree_fs.root.join(\"config\").join(\"development.yaml\")).expect(\"development.yaml missing\")"
+---
+  # Binding for the server (which interface to bind to)
+  binding: {{ get_env(name="BINDING", default="0.0.0.0") }}

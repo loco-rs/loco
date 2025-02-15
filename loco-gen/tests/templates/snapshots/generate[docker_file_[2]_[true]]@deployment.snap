@@ -2,7 +2,7 @@
 source: loco-gen/tests/templates/deployment.rs
 expression: "fs::read_to_string(tree_fs.root.join(\"dockerfile\")).expect(\"dockerfile missing\")"
 ---
-FROM rust:1.83.0-slim as builder
+FROM rust:1.84-slim as builder
 
 WORKDIR /usr/src/
 
@@ -27,4 +27,4 @@ COPY --from=builder /usr/src/asset asset
 COPY --from=builder /usr/src/config config
 COPY --from=builder /usr/src/target/release/tester-cli tester-cli
 
-ENTRYPOINT ["/usr/app/tester-cli"]
+ENTRYPOINT ["/usr/app/tester-cli","start"]

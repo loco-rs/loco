@@ -102,7 +102,8 @@ where
     }
 }
 
-/// extract a [JWT] token from request parts, using a non-mutable reference to the [Parts]
+/// extract a [JWT] token from request parts, using a non-mutable reference to
+/// the [Parts]
 ///
 /// # Errors
 /// Return an error when JWT token not configured or when the token is not valid
