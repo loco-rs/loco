@@ -104,7 +104,7 @@ tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.16", default-features = false, features = [
     "env-filter",
     "json",
-    "std",
+    "ansi",
 ] }
 tracing-appender = { version = "0.2.3", default-features = false }
 
