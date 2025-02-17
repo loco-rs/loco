@@ -1,8 +1,10 @@
 //! Detect a content type and format and responds accordingly
-use axum::{extract::FromRequestParts, http::request::Parts};
-use hyper::{
-    header::{ACCEPT, CONTENT_TYPE},
-    HeaderMap,
+use axum::{
+    extract::FromRequestParts,
+    http::{
+        header::{HeaderMap, ACCEPT, CONTENT_TYPE},
+        request::Parts,
+    },
 };
 use serde::{Deserialize, Serialize};
 
