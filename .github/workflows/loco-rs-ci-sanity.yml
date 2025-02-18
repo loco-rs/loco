@@ -59,8 +59,8 @@ jobs:
           LOCO_DEV_MODE_PATH: ${{ github.workspace }}
           
       - run: |
-          loco new -n myappnodb --db none --bg none --assets none -a
-          cd myappdb
+          loco new -n myapp --db none --bg none --assets none -a
+          cd myapp
           cargo check
         env:
           LOCO_DEV_MODE_PATH: ${{ github.workspace }}
