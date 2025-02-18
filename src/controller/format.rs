@@ -24,12 +24,11 @@ use std::convert::TryInto;
 
 use axum::{
     body::Body,
-    http::{response::Builder, HeaderName, HeaderValue},
+    http::{header, response::Builder, HeaderName, HeaderValue, StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
 };
 use axum_extra::extract::cookie::Cookie;
 use bytes::{BufMut, BytesMut};
-use hyper::{header, StatusCode};
 use serde::Serialize;
 use serde_json::json;
 
@@ -354,7 +353,8 @@ impl RenderBuilder {
         self.redirect_with_header_key(header::LOCATION, to)
     }
 
-    /// Finalizes the HTTP response and redirects to a specified location using a dynamic header key.
+    /// Finalizes the HTTP response and redirects to a specified location using
+    /// a dynamic header key.
     ///
     /// # Errors
     ///
@@ -386,29 +386,27 @@ pub fn render() -> RenderBuilder {
 #[cfg(test)]
 mod tests {
 
+    use axum::http::Response;
     use insta::assert_debug_snapshot;
     use tree_fs;
 
     use super::*;
     use crate::{controller::views::engines::TeraView, prelude::*};
 
-    async fn response_body_to_string(response: hyper::Response<Body>) -> String {
+    async fn response_body_to_string(response: Response<Body>) -> String {
         let bytes = axum::body::to_bytes(response.into_body(), 200)
             .await
             .unwrap();
         std::str::from_utf8(&bytes).unwrap().to_string()
     }
 
-    pub fn get_header_from_response(
-        response: &hyper::Response<Body>,
-        header: &str,
-    ) -> Option<String> {
+    pub fn get_header_from_response(response: &Response<Body>, header: &str) -> Option<String> {
         Some(response.headers().get(header)?.to_str().ok()?.to_string())
     }
 
     #[tokio::test]
     async fn empty_response_format() {
-        let response: hyper::Response<Body> = empty().unwrap();
+        let response: Response<Body> = empty().unwrap();
 
         assert_debug_snapshot!(response);
         assert_eq!(response_body_to_string(response).await, String::new());
