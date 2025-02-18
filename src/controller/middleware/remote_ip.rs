@@ -20,12 +20,11 @@ use std::{
 use axum::{
     body::Body,
     extract::{ConnectInfo, FromRequestParts, Request},
-    http::request::Parts,
+    http::{header::HeaderMap, request::Parts},
     response::Response,
     Router as AXRouter,
 };
 use futures_util::future::BoxFuture;
-use hyper::HeaderMap;
 use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use tower::{Layer, Service};
@@ -306,8 +305,7 @@ where
 mod tests {
     use std::str::FromStr;
 
-    use axum::http::{HeaderName, HeaderValue};
-    use hyper::HeaderMap;
+    use axum::http::{HeaderMap, HeaderName, HeaderValue};
     use insta::assert_debug_snapshot;
     use ipnetwork::IpNetwork;
 
