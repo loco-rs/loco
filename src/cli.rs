@@ -32,7 +32,7 @@ cfg_if::cfg_if! {
 use std::process::exit;
 use std::{collections::BTreeMap, path::PathBuf};
 
-use clap::{ArgAction, Parser, Subcommand};
+use clap::{ArgAction, Parser, Subcommand, ValueHint};
 use colored::Colorize;
 use duct::cmd;
 
@@ -134,7 +134,7 @@ enum Commands {
         /// Specify a path to a dedicated scheduler configuration file. by
         /// default load schedulers job setting from environment config.
         #[clap(value_parser)]
-        #[arg(short = 'c', long = "config", action)]
+        #[arg(short = 'c', long = "config", action, value_hint = ValueHint::FilePath)]
         config_path: Option<PathBuf>,
         /// Show all configured jobs
         #[arg(short, long, action)]

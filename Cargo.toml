@@ -101,8 +101,12 @@ lettre = { version = "0.11.4", default-features = false, features = [
 include_dir = "0.7.3"
 thiserror = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { version = "0.3.16", features = ["env-filter", "json"] }
-tracing-appender = "0.2.3"
+tracing-subscriber = { version = "0.3.16", default-features = false, features = [
+    "env-filter",
+    "json",
+    "ansi",
+] }
+tracing-appender = { version = "0.2.3", default-features = false }
 
 duct = { version = "0.13.6" }
 duct_sh = { version = "0.13.7" }
@@ -117,7 +121,6 @@ validator = { version = "0.20.0", features = ["derive"] }
 futures-util = "0.3"
 tower = { workspace = true }
 hyper = "1.1"
-mime = "0.3"
 bytes = "1.1"
 ipnetwork = "0.20.0"
 semver = "1"
