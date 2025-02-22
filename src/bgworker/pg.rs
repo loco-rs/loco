@@ -391,6 +391,31 @@ pub async fn clear_jobs_older_than(
     Ok(())
 }
 
+/// Requeues jobs from [`JobStatus::Processing`] to [`JobStatus::Queued`].
+///
+/// This function updates the status of all jobs that are currently in the [`JobStatus::Processing`] state
+/// to the [`JobStatus::Queued`] state, provided they have been updated more than the specified age (`age_minutes`).
+/// The jobs that meet the criteria will have their `updated_at` timestamp set to the current time.
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub async fn requeue(pool: &PgPool, age_minutes: &i64) -> Result<()> {
+    let interval = format!("{age_minutes} MINUTE");
+
+    let query = format!(
+        "UPDATE pg_loco_queue SET status = $1, updated_at = NOW() WHERE status = $2 AND updated_at <= NOW() - INTERVAL '{interval}'"
+    );
+
+    sqlx::query(&query)
+        .bind(JobStatus::Queued.to_string())
+        .bind(JobStatus::Processing.to_string())
+        .execute(pool)
+        .await?;
+
+    Ok(())
+}
+
 /// Ping system
 ///
 /// # Errors
@@ -885,6 +910,55 @@ mod tests {
             .await
             .expect("get jobs")
             .len(),
+            2
+        );
+    }
+
+    #[sqlx::test]
+    async fn can_requeue(pool: PgPool) {
+        assert!(initialize_database(&pool).await.is_ok());
+
+        sqlx::query(
+            r"INSERT INTO pg_loco_queue (id, name, task_data, status, run_at,created_at, updated_at) VALUES
+             ('job1', 'Test Job 1', '{}', 'processing', NOW(),NOW(), NOW() - INTERVAL '20 minutes'),
+             ('job2', 'Test Job 2', '{}', 'processing', NOW(),NOW(), NOW() - INTERVAL '5 minutes'),
+             ('job3', 'Test Job 3', '{}', 'completed', NOW(),NOW(),NOW() - INTERVAL '5 minutes'),
+             ('job4', 'Test Job 4', '{}', 'queued', NOW(),NOW(), NOW()),
+             ('job4', 'Test Job 5', '{}', 'processing', NOW(), NOW(), NOW())"
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        assert_eq!(
+            get_jobs(&pool, Some(&vec![JobStatus::Processing]), None)
+                .await
+                .expect("get jobs")
+                .len(),
+            3
+        );
+        assert_eq!(
+            get_jobs(&pool, Some(&vec![JobStatus::Queued]), None)
+                .await
+                .expect("get jobs")
+                .len(),
+            1
+        );
+
+        requeue(&pool, &10).await.expect("update jobs");
+
+        assert_eq!(
+            get_jobs(&pool, Some(&vec![JobStatus::Processing]), None)
+                .await
+                .expect("get jobs")
+                .len(),
+            2
+        );
+        assert_eq!(
+            get_jobs(&pool, Some(&vec![JobStatus::Queued]), None)
+                .await
+                .expect("get jobs")
+                .len(),
             2
         );
     }

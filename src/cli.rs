@@ -601,6 +601,13 @@ enum JobsCommands {
         #[arg(short, long)]
         file: PathBuf,
     },
+    /// Change `processing` status to `queue`.
+    Requeue {
+        /// Change `processing` jobs older than the specified
+        /// maximum age in minutes.
+        #[arg(long, default_value_t = 0)]
+        from_age: i64,
+    },
 }
 
 /// Parse a single key-value pair
@@ -1085,6 +1092,7 @@ async fn handle_job_command<H: Hooks>(
             Ok(())
         }
         JobsCommands::Import { file } => queue.import(file.as_path()).await,
+        JobsCommands::Requeue { from_age } => queue.requeue(from_age).await,
     }
 }
 
