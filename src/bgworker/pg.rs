@@ -1,7 +1,8 @@
 /// Postgres based background job queue provider
-use std::{collections::HashMap, future::Future, pin::Pin, sync::Arc, time::Duration};
+use std::{collections::HashMap, future::Future, panic::AssertUnwindSafe, pin::Pin, sync::Arc, time::Duration};
 
 use chrono::{DateTime, Utc};
+use futures_util::FutureExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 pub use sqlx::PgPool;
@@ -69,7 +70,21 @@ impl JobRegistry {
             Box::pin(async move {
                 let args = serde_json::from_value::<Args>(job_data);
                 match args {
-                    Ok(args) => w.perform(args).await,
+                    Ok(args) => {
+                        // Wrap the perform call in catch_unwind to handle panics
+                        match AssertUnwindSafe(w.perform(args)).catch_unwind().await {
+                            Ok(result) => result,
+                            Err(panic) => {
+                                let panic_msg = panic
+                                    .downcast_ref::<String>()
+                                    .map(|s| s.as_str())
+                                    .or_else(|| panic.downcast_ref::<&str>().copied())
+                                    .unwrap_or("Unknown panic occurred");
+                                error!(err = panic_msg, "worker panicked");
+                                Err(Error::string(panic_msg))
+                            }
+                        }
+                    }
                     Err(err) => Err(err.into()),
                 }
             }) as Pin<Box<dyn Future<Output = Result<(), crate::Error>> + Send>>
