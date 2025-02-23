@@ -1,5 +1,8 @@
 /// Postgres based background job queue provider
-use std::{collections::HashMap, future::Future, panic::AssertUnwindSafe, pin::Pin, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap, future::Future, panic::AssertUnwindSafe, pin::Pin, sync::Arc,
+    time::Duration,
+};
 
 use chrono::{DateTime, Utc};
 use futures_util::FutureExt;
