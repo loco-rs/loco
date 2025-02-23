@@ -51,7 +51,7 @@ where
             Err(panic) => {
                 let panic_msg = panic
                     .downcast_ref::<String>()
-                    .map(|s| s.as_str())
+                    .map(String::as_str)
                     .or_else(|| panic.downcast_ref::<&str>().copied())
                     .unwrap_or("Unknown panic occurred");
                 tracing::error!(err = panic_msg, "worker panicked");

@@ -80,7 +80,7 @@ impl JobRegistry {
                             Err(panic) => {
                                 let panic_msg = panic
                                     .downcast_ref::<String>()
-                                    .map(|s| s.as_str())
+                                    .map(String::as_str)
                                     .or_else(|| panic.downcast_ref::<&str>().copied())
                                     .unwrap_or("Unknown panic occurred");
                                 error!(err = panic_msg, "worker panicked");
@@ -1173,5 +1173,74 @@ mod tests {
 
         assert_eq!(processing_job_count, 2);
         assert_eq!(queued_job_count, 2);
+    }
+
+    #[tokio::test]
+    async fn can_handle_worker_panic() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let pool = init(&tree_fs.root).await;
+
+        assert!(initialize_database(&pool).await.is_ok());
+
+        let job_data: JobData = serde_json::json!(null);
+        let job_id = enqueue(&pool, "PanicJob", job_data, Utc::now(), None)
+            .await
+            .expect("Failed to enqueue job");
+
+        struct PanicWorker;
+        #[async_trait::async_trait]
+        impl BackgroundWorker<()> for PanicWorker {
+            fn build(_ctx: &crate::app::AppContext) -> Self {
+                Self
+            }
+            async fn perform(&self, _args: ()) -> crate::Result<()> {
+                panic!("intentional panic for testing");
+            }
+        }
+
+        let mut registry = JobRegistry::new();
+        assert!(registry
+            .register_worker("PanicJob".to_string(), PanicWorker)
+            .is_ok());
+
+        // Get the initial job state
+        let job = get_job(&pool, &job_id).await;
+        assert_eq!(job.status, JobStatus::Queued);
+
+        // Start the worker
+        let opts = RunOpts {
+            num_workers: 1,
+            poll_interval_sec: 1,
+        };
+        let handles = registry.run(&pool, &opts);
+
+        // Wait a bit for the worker to process the job
+        sleep(Duration::from_secs(1)).await;
+
+        // Stop the worker
+        for handle in handles {
+            handle.abort();
+        }
+
+        // Verify the job is marked as failed
+        let failed_job = get_job(&pool, &job_id).await;
+        assert_eq!(failed_job.status, JobStatus::Failed);
+
+        // Print and verify the error message stored in job data
+        println!("Job data: {:?}", failed_job.data);
+        let error_msg = failed_job
+            .data
+            .as_object()
+            .and_then(|obj| obj.get("error"))
+            .and_then(|v| v.as_str())
+            .expect("Expected error message in job data");
+        assert!(
+            error_msg.contains("intentional panic for testing"),
+            "Error message '{}' did not contain expected text",
+            error_msg
+        );
     }
 }
