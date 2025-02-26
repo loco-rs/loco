@@ -1,6 +1,7 @@
 pub mod app;
 pub mod controllers;
 pub mod initializers;
+pub mod data;
 {%- if settings.mailer %}
 pub mod mailers;
 {%- endif %}

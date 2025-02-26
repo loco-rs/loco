@@ -370,7 +370,7 @@ fn select_background(
         bgopt
     } else {
         let available_options = BackgroundOption::iter()
-            .filter(|opt| filters.as_ref().map_or(true, |f| !f.contains(opt)))
+            .filter(|opt| filters.as_ref().is_none_or(|f| !f.contains(opt)))
             .collect::<Vec<_>>();
 
         select_option("❯ Select your background worker type", &available_options)?
