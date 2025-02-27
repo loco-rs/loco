@@ -1,10 +1,21 @@
-use std::convert::Infallible;
+use std::{convert::Infallible, fmt};
 
-use axum::{extract::Request, response::IntoResponse, routing::Route};
+use axum::{
+    extract::Request,
+    response::IntoResponse,
+    routing::{MethodRouter, Route},
+};
 use tower::{Layer, Service};
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
+use utoipa_axum::router::{UtoipaMethodRouter, UtoipaMethodRouterExt};
 
 use super::describe;
 use crate::app::AppContext;
+
 #[derive(Clone, Default, Debug)]
 pub struct Routes {
     pub prefix: Option<String>,
@@ -12,10 +23,21 @@ pub struct Routes {
     // pub version: Option<String>,
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone)]
+pub enum LocoMethodRouter {
+    Axum(MethodRouter<AppContext>),
+    #[cfg(any(
+        feature = "openapi_swagger",
+        feature = "openapi_redoc",
+        feature = "openapi_scalar"
+    ))]
+    Utoipa(UtoipaMethodRouter<AppContext>),
+}
+
+#[derive(Clone, Debug)]
 pub struct Handler {
     pub uri: String,
-    pub method: axum::routing::MethodRouter<AppContext>,
+    pub method: LocoMethodRouter,
     pub actions: Vec<axum::http::Method>,
 }
 
@@ -47,7 +69,6 @@ impl Routes {
     ///     format::json(Health { ok: true })
     /// }
     /// Routes::at("status").add("/_ping", get(ping));
-    ///    
     /// ````
     #[must_use]
     pub fn at(prefix: &str) -> Self {
@@ -76,13 +97,52 @@ impl Routes {
     ///     format::json(Health { ok: true })
     /// }
     /// Routes::new().add("/_ping", get(ping));
-    /// ````
+    /// ```
+    ///
+    /// ## Adding a endpoint, and add it to the `OpenAPI` documentation
+    /// ```rust ignore
+    /// use loco_rs::prelude::*;
+    /// use serde::Serialize;
+    /// use utoipa::ToSchema;
+    /// use utoipa_axum::routes;
+    ///
+    /// #[derive(Serialize, ToSchema)]
+    /// struct Health {
+    ///   pub ok: bool,
+    /// }
+    ///
+    /// /// Ping
+    /// ///
+    /// /// This endpoint is used to check the health of the service.
+    /// #[utoipa::path(
+    ///     get,
+    ///     tag = "Health",
+    ///     path = "/_ping",
+    ///     responses(
+    ///         (status = 200, body = Health),
+    ///     ),
+    /// )]
+    /// async fn ping() -> Result<Response> {
+    ///     format::json(Health { ok: true })
+    /// }
+    /// Routes::new().add("/_ping", routes!(ping));
+    /// ```
     #[must_use]
-    pub fn add(mut self, uri: &str, method: axum::routing::MethodRouter<AppContext>) -> Self {
-        describe::method_action(&method);
+    pub fn add(mut self, uri: &str, method: impl Into<LocoMethodRouter>) -> Self {
+        let method = method.into();
+        let actions = match &method {
+            LocoMethodRouter::Axum(m) => describe::method_action(m),
+            #[cfg(any(
+                feature = "openapi_swagger",
+                feature = "openapi_redoc",
+                feature = "openapi_scalar"
+            ))]
+            LocoMethodRouter::Utoipa(m) => describe::method_action(&m.2),
+        };
+
         self.handlers.push(Handler {
             uri: uri.to_owned(),
-            actions: describe::method_action(&method),
+            actions,
             method,
         });
         self
@@ -154,5 +214,60 @@ impl Routes {
                 })
                 .collect(),
         }
+    }
+}
+
+impl fmt::Debug for LocoMethodRouter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Axum(router) => write!(f, "{router:?}"),
+            #[cfg(any(
+                feature = "openapi_swagger",
+                feature = "openapi_redoc",
+                feature = "openapi_scalar"
+            ))]
+            Self::Utoipa(router) => {
+                // Get the axum::routing::MethodRouter from the UtoipaMethodRouter wrapper
+                write!(f, "{:?}", router.2)
+            }
+        }
+    }
+}
+
+impl LocoMethodRouter {
+    pub fn layer<L>(self, layer: L) -> Self
+    where
+        L: Layer<Route> + Clone + Send + Sync + 'static,
+        L::Service: Service<Request> + Clone + Send + Sync + 'static,
+        <L::Service as Service<Request>>::Response: IntoResponse + 'static,
+        <L::Service as Service<Request>>::Error: Into<Infallible> + 'static,
+        <L::Service as Service<Request>>::Future: Send + 'static,
+    {
+        match self {
+            Self::Axum(router) => Self::Axum(router.layer(layer)),
+            #[cfg(any(
+                feature = "openapi_swagger",
+                feature = "openapi_redoc",
+                feature = "openapi_scalar"
+            ))]
+            Self::Utoipa(router) => Self::Utoipa(router.layer(layer)),
+        }
+    }
+}
+
+impl From<MethodRouter<AppContext>> for LocoMethodRouter {
+    fn from(router: MethodRouter<AppContext>) -> Self {
+        Self::Axum(router)
+    }
+}
+
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
+impl From<UtoipaMethodRouter<AppContext>> for LocoMethodRouter {
+    fn from(router: UtoipaMethodRouter<AppContext>) -> Self {
+        Self::Utoipa(router)
     }
 }

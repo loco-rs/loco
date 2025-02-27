@@ -1,0 +1,49 @@
+---
+source: tests/controller/openapi.rs
+expression: yaml_value
+---
+openapi: 3.1.0
+info:
+  title: Loco Demo
+  description: "This app is a kitchensink for various capabilities and examples of the [Loco](https://loco.rs) project."
+  contact:
+    name: Dotan Nahum
+    email: dotan@rng0.io
+  license:
+    name: Apache-2.0
+    identifier: Apache-2.0
+  version: "*.*.*"
+paths:
+  /album:
+    get:
+      operationId: get_action_openapi
+      responses:
+        "200":
+          description: Album found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Album"
+components:
+  schemas:
+    Album:
+      type: object
+      required:
+        - title
+        - rating
+      properties:
+        rating:
+          type: integer
+          format: int32
+          minimum: 0
+        title:
+          type: string
+  securitySchemes:
+    api_key:
+      type: apiKey
+      in: header
+      name: apikey
+    jwt_token:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
