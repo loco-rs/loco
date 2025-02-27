@@ -1,7 +1,11 @@
 /// Postgres based background job queue provider
-use std::{collections::HashMap, future::Future, pin::Pin, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap, future::Future, panic::AssertUnwindSafe, pin::Pin, sync::Arc,
+    time::Duration,
+};
 
 use chrono::{DateTime, Utc};
+use futures_util::FutureExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 pub use sqlx::PgPool;
@@ -69,7 +73,21 @@ impl JobRegistry {
             Box::pin(async move {
                 let args = serde_json::from_value::<Args>(job_data);
                 match args {
-                    Ok(args) => w.perform(args).await,
+                    Ok(args) => {
+                        // Wrap the perform call in catch_unwind to handle panics
+                        match AssertUnwindSafe(w.perform(args)).catch_unwind().await {
+                            Ok(result) => result,
+                            Err(panic) => {
+                                let panic_msg = panic
+                                    .downcast_ref::<String>()
+                                    .map(String::as_str)
+                                    .or_else(|| panic.downcast_ref::<&str>().copied())
+                                    .unwrap_or("Unknown panic occurred");
+                                error!(err = panic_msg, "worker panicked");
+                                Err(Error::string(panic_msg))
+                            }
+                        }
+                    }
                     Err(err) => Err(err.into()),
                 }
             }) as Pin<Box<dyn Future<Output = Result<(), crate::Error>> + Send>>
@@ -519,6 +537,7 @@ mod tests {
     use chrono::{NaiveDate, NaiveTime, TimeZone};
     use insta::{assert_debug_snapshot, with_settings};
     use sqlx::{query_as, FromRow};
+    use tokio::time::sleep;
 
     use super::*;
     use crate::tests_cfg;
@@ -960,6 +979,70 @@ mod tests {
                 .expect("get jobs")
                 .len(),
             2
+        );
+    }
+
+    #[sqlx::test]
+    async fn can_handle_worker_panic(pool: PgPool) {
+        assert!(initialize_database(&pool).await.is_ok());
+
+        let job_data: JobData = serde_json::json!(null);
+        let job_id = enqueue(&pool, "PanicJob", job_data, Utc::now(), None)
+            .await
+            .expect("Failed to enqueue job");
+
+        struct PanicWorker;
+        #[async_trait::async_trait]
+        impl BackgroundWorker<()> for PanicWorker {
+            fn build(_ctx: &crate::app::AppContext) -> Self {
+                Self
+            }
+            async fn perform(&self, _args: ()) -> crate::Result<()> {
+                panic!("intentional panic for testing");
+            }
+        }
+
+        let mut registry = JobRegistry::new();
+        assert!(registry
+            .register_worker("PanicJob".to_string(), PanicWorker)
+            .is_ok());
+
+        // Get the initial job state
+        let job = get_job(&pool, &job_id).await;
+        assert_eq!(job.status, JobStatus::Queued);
+
+        // Start the worker
+        let opts = RunOpts {
+            num_workers: 1,
+            poll_interval_sec: 1,
+        };
+        let handles = registry.run(&pool, &opts);
+
+        // Wait a bit for the worker to process the job
+        sleep(Duration::from_secs(1)).await;
+
+        // Stop the worker
+        for handle in handles {
+            handle.abort();
+        }
+
+        // Verify the job is marked as failed
+        let failed_job = get_job(&pool, &job_id).await;
+        assert_eq!(failed_job.status, JobStatus::Failed);
+
+        // Verify the error message stored in job data
+        let error_msg = failed_job
+            .data
+            .as_array()
+            .and_then(|arr| arr.get(1))
+            .and_then(|obj| obj.as_object())
+            .and_then(|obj| obj.get("error"))
+            .and_then(|v| v.as_str())
+            .expect("Expected error message in job data");
+        assert!(
+            error_msg.contains("intentional panic for testing"),
+            "Error message '{}' did not contain expected text",
+            error_msg
         );
     }
 }
