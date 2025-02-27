@@ -15,8 +15,9 @@ top = false
 flair =[]
 +++
 
-Tasks in `Loco` serve as ad-hoc functionalities to handle specific aspects of your application. Whether you need to fix data, send emails, delete a user, or update a customer order, creating a dedicated task for each scenario provides a flexible and efficient solution. While tasks require manual execution, the investment is worthwhile for several reasons:
+Tasks in `Loco` serve as ad-hoc functionalities to handle specific aspects of your application. Whether you need to fix data, send emails, delete a user, or update a customer order, creating a dedicated task for each scenario provides a flexible and efficient solution. You can run tasks manually or by [scheduling the task](@/docs/processing/scheduler.md).
 
+Creating tasks is worthwhile for several reasons:
 - **Automation of Manual Work:** Tasks automate manual processes, streamlining repetitive actions.
 - **Utilization of Familiar Components:** Leverage your app's models, libraries, and existing logic within tasks.
 - **Elimination of UI Development:** Tasks don't require building user interfaces, focusing solely on backend operations.
@@ -56,6 +57,23 @@ cargo loco task <TASK_NAME>
 ```
 <!-- </snip> -->
 
+### Running a Task with Parameters
+
+To pass parameters to a task, add a list of key:value to the command
+```sh
+[PARAMS]...  Task params (e.g. <`my_task`> foo:bar baz:qux)`
+```
+```sh
+cargo loco task <TASK_NAME> [PARAMS]...
+```
+
+Then use that value using [`cli_arg`](https://docs.rs/loco-rs/latest/loco_rs/task/struct.Vars.html#method.cli_arg) in the `run` method of the task
+```rust
+async fn run(&self, app_context: &AppContext, vars: &task::Vars) -> Result<()> {
+    let foo = vars.cli_arg("foo");
+    Ok(())
+}
+```
 
 ## Listing All Tasks
 
