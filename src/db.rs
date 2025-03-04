@@ -172,7 +172,8 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
 ///
 /// # Errors
 ///
-/// This function returns an error if the connection string does not match the expected format.
+/// This function returns an error if the connection string does not match the
+/// expected format.
 pub fn extract_db_name(conn_str: &str) -> AppResult<&str> {
     re_extract_db_name()
         .captures(conn_str)
@@ -744,10 +745,7 @@ pub async fn dump_tables(
                         row.try_get::<DateTime<Utc>>("", &col_name)
                             .map(|v| serde_json::Value::String(v.to_rfc3339()))
                     })
-                    .or_else(|_| {
-                        row.try_get::<serde_json::Value>("", &col_name)
-                            .map(serde_json::Value::from)
-                    })
+                    .or_else(|_| row.try_get::<serde_json::Value>("", &col_name))
                     .or_else(|_| {
                         row.try_get::<bool>("", &col_name)
                             .map(serde_json::Value::Bool)
