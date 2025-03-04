@@ -376,13 +376,14 @@ pub async fn create_context<H: Hooks>(
     };
 
     let queue_provider = bgworker::create_queue_provider(&config).await?;
+    let cache = cache::create_cache_provider(&config).await?;
     let ctx = AppContext {
         environment: environment.clone(),
         #[cfg(feature = "with-db")]
         db,
         queue_provider,
         storage: Storage::single(storage::drivers::null::new()).into(),
-        cache: cache::Cache::new(cache::drivers::null::new()).into(),
+        cache,
         config,
         mailer,
     };
