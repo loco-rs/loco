@@ -222,6 +222,45 @@ pub trait Hooks: Send {
     /// This function allows users to perform any necessary cleanup or final
     /// actions before the application stops completely.
     async fn on_shutdown(_ctx: &AppContext) {}
+
+    /// Modifies the OpenAPI spec before the routes are added, allowing you to edit [openapi::info](https://docs.rs/utoipa/latest/utoipa/openapi/info/struct.Info.html)
+    /// # Examples
+    /// ```rust ignore
+    /// fn inital_openapi_spec(_ctx: &AppContext) -> utoipa::openapi::OpenApi {
+    ///     #[derive(OpenApi)]
+    ///     #[openapi(info(
+    ///         title = "Loco Demo",
+    ///         description = "This app is a kitchensink for various capabilities and examples of the [Loco](https://loco.rs) project."
+    ///     ))]
+    ///     struct ApiDoc;
+    ///     ApiDoc::openapi()
+    /// }
+    /// ```
+    ///
+    /// With SecurityAddon
+    /// ```rust ignore
+    /// fn inital_openapi_spec(ctx: &AppContext) -> utoipa::openapi::OpenApi {
+    ///     #[derive(OpenApi)]
+    ///     #[openapi(
+    ///         modifiers(&SecurityAddon),
+    ///         info(
+    ///             title = "Loco Demo",
+    ///             description = "This app is a kitchensink for various capabilities and examples of the [Loco](https://loco.rs) project."
+    ///         )
+    ///     )]
+    ///     struct ApiDoc;
+    ///     set_jwt_location_ctx(ctx);
+    ///
+    ///     ApiDoc::openapi()
+    /// }
+    /// ```
+    #[cfg(any(
+        feature = "openapi_swagger",
+        feature = "openapi_redoc",
+        feature = "openapi_scalar"
+    ))]
+    #[must_use]
+    fn inital_openapi_spec(_ctx: &AppContext) -> utoipa::openapi::OpenApi;
 }
 
 /// An initializer.
