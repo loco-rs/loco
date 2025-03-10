@@ -6,11 +6,13 @@ use std::{
     time::{Duration, Instant},
 };
 
-use async_trait::async_trait;
-use moka::{sync::Cache, Expiry};
-
 use super::CacheDriver;
 use crate::cache::CacheResult;
+use crate::config::InMemCacheConfig;
+use async_trait::async_trait;
+use moka::{sync::Cache, Expiry};
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 /// Creates a new instance of the in-memory cache driver, with a default Loco
 /// configuration.
@@ -19,9 +21,9 @@ use crate::cache::CacheResult;
 ///
 /// A boxed [`CacheDriver`] instance.
 #[must_use]
-pub fn new() -> Box<dyn CacheDriver> {
+pub async fn new(config: &InMemCacheConfig) -> Box<dyn CacheDriver> {
     let cache: Cache<String, (Expiration, String)> = Cache::builder()
-        .max_capacity(32 * 1024 * 1024)
+        .max_capacity(config.max_capacity)
         .expire_after(InMemExpiry)
         .build();
     Inmem::from(cache)
@@ -30,7 +32,7 @@ pub fn new() -> Box<dyn CacheDriver> {
 /// Represents the in-memory cache driver.
 #[derive(Debug)]
 pub struct Inmem {
-    cache: Cache<String, (Expiration, String)>,
+    cache: Cache<String, (Expiration, dyn Serialize)>,
 }
 
 impl Inmem {
@@ -61,7 +63,7 @@ impl CacheDriver for Inmem {
     /// # Errors
     ///
     /// Returns a `CacheError` if there is an error during the operation.
-    async fn get(&self, key: &str) -> CacheResult<Option<String>> {
+    async fn get<T: DeserializeOwned>(&self, key: &str) -> CacheResult<Option<T>> {
         let result = self.cache.get(key);
         match result {
             None => Ok(None),
@@ -74,7 +76,7 @@ impl CacheDriver for Inmem {
     /// # Errors
     ///
     /// Returns a `CacheError` if there is an error during the operation.
-    async fn insert(&self, key: &str, value: &str) -> CacheResult<()> {
+    async fn insert<T: Serialize>(&self, key: &str, value: &T) -> CacheResult<()> {
         self.cache.insert(
             key.to_string(),
             (Expiration::Never, Arc::new(value).to_string()),
@@ -89,10 +91,10 @@ impl CacheDriver for Inmem {
     ///
     /// Returns a [`super::CacheError`] if there is an error during the
     /// operation.
-    async fn insert_with_expiry(
+    async fn insert_with_expiry<T: Serialize>(
         &self,
         key: &str,
-        value: &str,
+        value: &T,
         duration: Duration,
     ) -> CacheResult<()> {
         self.cache.insert(

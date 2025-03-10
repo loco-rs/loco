@@ -49,6 +49,7 @@ pub struct Config {
     pub server: Server,
     #[cfg(feature = "with-db")]
     pub database: Database,
+    pub cache: Option<CacheConfig>,
     pub queue: Option<QueueConfig>,
     pub auth: Option<Auth>,
     #[serde(default)]
@@ -218,6 +219,30 @@ pub struct Database {
     /// various things in development.
     #[serde(default)]
     pub dangerously_recreate: bool,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "kind")]
+pub enum CacheConfig {
+    /// In-memory cache
+    InMem(InMemCacheConfig),
+    /// Redis cache
+    Redis(RedisCacheConfig),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct InMemCacheConfig {
+    #[serde(default = "cache_in_mem_max_capacity")]
+    pub max_capacity: u64,
+}
+
+fn cache_in_mem_max_capacity() -> u64 {
+    32 * 1024 * 1024
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct RedisCacheConfig {
+    pub uri: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
