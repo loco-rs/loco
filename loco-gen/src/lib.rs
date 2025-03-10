@@ -6,13 +6,14 @@ pub use rrgen::{GenResult, RRgen};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 mod controller;
-use colored::Colorize;
 use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
     sync::OnceLock,
 };
+
+use colored::Colorize;
 
 #[cfg(feature = "with-db")]
 mod infer;
@@ -291,6 +292,10 @@ pub enum Component {
         /// Name of the thing to generate
         name: String,
     },
+    Data {
+        /// Name of the thing to generate
+        name: String,
+    },
     Deployment {
         kind: DeploymentKind,
     },
@@ -383,6 +388,10 @@ pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Resul
                 render_template(rrgen, Path::new("deployment/nginx"), &vars)?
             }
         },
+        Component::Data { name } => {
+            let vars = json!({ "name": name });
+            render_template(rrgen, Path::new("data"), &vars)?
+        }
     };
 
     Ok(get_result)
@@ -503,8 +512,9 @@ pub fn copy_template(path: &Path, to: &Path) -> Result<Vec<PathBuf>> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::path::Path;
+
+    use super::*;
 
     #[test]
     fn test_template_not_found() {
