@@ -237,12 +237,13 @@ mod tests {
 
     #[tokio::test]
     async fn cors_options() {
-        let mut middleware = Cors::default();
-        middleware.allow_origins = vec![
-            "http://localhost:8080".to_string(),
-            "http://example.com".to_string(),
-        ];
-
+        let middleware = Cors {
+            allow_origins: vec![
+                "http://localhost:8080".to_string(),
+                "http://example.com".to_string(),
+            ],
+            ..Cors::default()
+        };
         let app = Router::new().route("/", get(|| async {}));
         let app = middleware
             .apply(app)
