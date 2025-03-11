@@ -1,7 +1,8 @@
-use std::{marker::PhantomData, sync::Arc};
+use std::{marker::PhantomData, panic::AssertUnwindSafe, sync::Arc};
 
 use async_trait::async_trait;
 use bb8::Pool;
+use futures_util::FutureExt;
 use sidekiq::{Processor, ProcessorConfig, RedisConnectionManager};
 
 use super::{BackgroundWorker, Queue};
@@ -42,8 +43,21 @@ where
 
     async fn perform(&self, args: A) -> sidekiq::Result<()> {
         // Forward the perform call to the inner worker
-        let res = self.inner.perform(args).await;
-        res.map_err(|e| sidekiq::Error::Any(Box::from(e)))
+        match AssertUnwindSafe(self.inner.perform(args))
+            .catch_unwind()
+            .await
+        {
+            Ok(result) => result.map_err(|e| sidekiq::Error::Any(Box::from(e))),
+            Err(panic) => {
+                let panic_msg = panic
+                    .downcast_ref::<String>()
+                    .map(String::as_str)
+                    .or_else(|| panic.downcast_ref::<&str>().copied())
+                    .unwrap_or("Unknown panic occurred");
+                tracing::error!(err = panic_msg, "worker panicked");
+                Err(sidekiq::Error::Any(Box::from(panic_msg)))
+            }
+        }
     }
 }
 /// Clear tasks
