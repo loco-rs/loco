@@ -1,0 +1,72 @@
+---
+source: tests/controller/openapi.rs
+expression: json_value
+---
+{
+  "components": {
+    "schemas": {
+      "Album": {
+        "properties": {
+          "rating": {
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "rating"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "api_key": {
+        "in": "header",
+        "name": "apikey",
+        "type": "apiKey"
+      },
+      "jwt_token": {
+        "bearerFormat": "JWT",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "contact": {
+      "email": "dotan@rng0.io",
+      "name": "Dotan Nahum"
+    },
+    "description": "This app is a kitchensink for various capabilities and examples of the [Loco](https://loco.rs) project.",
+    "license": {
+      "identifier": "Apache-2.0",
+      "name": "Apache-2.0"
+    },
+    "title": "Loco Demo",
+    "version": "*.*.*"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/album": {
+      "get": {
+        "operationId": "get_action_openapi",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Album"
+                }
+              }
+            },
+            "description": "Album found"
+          }
+        }
+      }
+    }
+  }
+}

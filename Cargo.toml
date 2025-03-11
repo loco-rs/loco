@@ -35,6 +35,11 @@ auth_jwt = ["dep:jsonwebtoken"]
 cli = ["dep:clap"]
 testing = ["dep:axum-test", "dep:scraper"]
 with-db = ["dep:sea-orm", "dep:sea-orm-migration", "loco-gen/with-db"]
+# OpenAPI features
+all_openapi = ["openapi_swagger", "openapi_redoc", "openapi_scalar"]
+openapi_swagger = ["dep:utoipa", "dep:utoipa-axum", "dep:utoipa-swagger-ui"]
+openapi_redoc = ["dep:utoipa", "dep:utoipa-axum", "dep:utoipa-redoc"]
+openapi_scalar = ["dep:utoipa", "dep:utoipa-axum", "dep:utoipa-scalar"]
 # Storage features
 all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
 storage_aws_s3 = ["opendal/services-s3"]
@@ -132,6 +137,13 @@ cfg-if = "1"
 
 uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
 
+# OpenAPI
+utoipa = { workspace = true, optional = true }
+utoipa-axum = { workspace = true, optional = true }
+utoipa-swagger-ui = { workspace = true, optional = true }
+utoipa-redoc = { workspace = true, optional = true }
+utoipa-scalar = { workspace = true, optional = true }
+
 # File Upload
 opendal = { version = "0.50.2", default-features = false, features = [
     "services-memory",
@@ -185,6 +197,13 @@ tower-http = { version = "0.6.1", features = [
 ] }
 heck = "0.4.0"
 
+# OpenAPI
+utoipa = { version = "5.0.0", features = ["yaml"] }
+utoipa-axum = { version = "0.2.0" }
+utoipa-swagger-ui = { version = "9.0", features = ["axum", "vendored"] }
+utoipa-redoc = { version = "6.0.0", features = ["axum"] }
+utoipa-scalar = { version = "0.3.0", features = ["axum"] }
+
 [dependencies.sea-orm-migration]
 optional = true
 version = "1.0.0"
@@ -203,7 +222,12 @@ features = ["testing"]
 [dev-dependencies]
 loco-rs = { path = ".", features = ["testing"] }
 rstest = "0.21.0"
-insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
+insta = { version = "1.34.0", features = [
+    "redactions",
+    "yaml",
+    "json",
+    "filters",
+] }
 tree-fs = { version = "0.2.1" }
 reqwest = { version = "0.12.7" }
 serial_test = "3.1.1"

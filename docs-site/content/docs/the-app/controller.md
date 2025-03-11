@@ -177,7 +177,7 @@ Note that by-design _sharing state between controllers and workers have no meani
 
 ### Shared state in tasks
 
-Tasks don't really have a value for shared state, as they have a similar life as any exec'd binary. The process fires up, boots, creates all resources needed (connects to db, etc.), performs the task logic, and then the 
+Tasks don't really have a value for shared state, as they have a similar life as any exec'd binary. The process fires up, boots, creates all resources needed (connects to db, etc.), performs the task logic, and then the
 
 ## Routes in Controllers
 
@@ -480,7 +480,7 @@ By default, Loco uses Bearer authentication for JWT. However, you can customize 
   auth:
     # JWT authentication
     jwt:
-      location: 
+      location:
         from: Cookie
         name: token
   ...
@@ -491,7 +491,7 @@ By default, Loco uses Bearer authentication for JWT. However, you can customize 
   auth:
     # JWT authentication
     jwt:
-      location: 
+      location:
         from: Query
         name: token
   ...
@@ -764,7 +764,7 @@ middlewares:
 ```
 
 ## CORS
-This middleware enables Cross-Origin Resource Sharing (CORS) by allowing configurable origins, methods, and headers in HTTP requests. 
+This middleware enables Cross-Origin Resource Sharing (CORS) by allowing configurable origins, methods, and headers in HTTP requests.
 It can be tailored to fit various application requirements, supporting permissive CORS or specific rules as defined in the middleware configuration.
 
 ```yaml
@@ -826,6 +826,134 @@ impl Hooks for App {
             )
     }
 }
+```
+
+# OpenAPI Integration Setup
+The Loco OpenAPI integration is generated using [`Utoipa`](https://github.com/juhaku/utoipa)
+
+## `Cargo.toml` features flages
+Edit your `Cargo.toml` file and add one or multiple of the following features flages:
+- `openapi_swagger`
+- `openapi_redoc`
+- `openapi_scalar`
+- `all_openapi`
+
+```toml
+[workspace.dependencies]
+loco-rs = { version = "0.14", features = [
+    "openapi_scalar",
+] }
+```
+
+## Configuration
+Add the corresponding OpenAPI visualizer to the config file
+```yaml
+#...
+server:
+  ...
+  openapi:
+    redoc:
+      !Redoc
+        url: /redoc
+        # spec_json_url: /redoc/openapi.json
+        # spec_yaml_url: /redoc/openapi.yaml
+    scalar:
+      !Scalar
+        url: /scalar
+        # spec_json_url: /scalar/openapi.json
+        # spec_yaml_url: /scalar/openapi.yaml
+    swagger:
+      !Swagger
+        url: /swagger-ui
+        spec_json_url: /api-docs/openapi.json # spec_json_url is required for swagger-ui
+        # spec_yaml_url: /api-docs/openapi.yaml
+```
+## Inital OpenAPI Spec
+Modifies the OpenAPI spec before the routes are added, allowing you to edit [`openapi::info`](https://docs.rs/utoipa/latest/utoipa/openapi/info/struct.Info.html)
+
+```rust
+// src/app.rs
+use loco_rs::auth::openapi::{set_jwt_location_ctx, SecurityAddon};
+
+impl Hooks for App {
+    #...
+    fn inital_openapi_spec(ctx: &AppContext) -> utoipa::openapi::OpenApi {
+        #[derive(OpenApi)]
+        #[openapi(
+            modifiers(&SecurityAddon),
+            info(
+                title = "Loco Demo",
+                description = "This app is a kitchensink for various capabilities and examples of the [Loco](https://loco.rs) project."
+            )
+        )]
+        struct ApiDoc;
+        set_jwt_location_ctx(ctx);
+
+        ApiDoc::openapi()
+    }
+```
+
+## Generating the OpenAPI spec for a route
+Only routes that are annotated with [`utoipa::path`](https://docs.rs/utoipa/latest/utoipa/attr.path.html) will be included in the OpenAPI spec.
+
+```rust
+#[utoipa::path(
+    get,
+    path = "/album",
+    responses(
+        (status = 200, description = "Album found", body = Album),
+    ),
+)]
+async fn get_action_openapi() -> Result<Response> {
+    format::json(Album {
+        title: "VH II".to_string(),
+        rating: 10,
+    })
+}
+```
+
+Make sure to add `#[derive(ToSchema)]` on any struct that included in [`utoipa::path`](https://docs.rs/utoipa/latest/utoipa/attr.path.html).
+```rust
+#[derive(Serialize, Debug, ToSchema)]
+pub struct Album {
+    title: String,
+    rating: u32,
+}
+```
+
+If `modifiers(&SecurityAddon)` is set in `inital_openapi_spec`, you can document the per route security in `utoipa::path`:
+- `security(("jwt_token" = []))`
+- `security(("api_key" = []))`
+- or leave blank to remove security from the route `security(())`
+
+Example:
+```rust
+#[utoipa::path(
+    get,
+    path = "/album",
+    security(("jwt_token" = [])),
+    responses(
+        (status = 200, description = "Album found", body = Album),
+    ),
+)]
+```
+
+## Adding routes to the OpenAPI spec visualizer
+Swap the `axum::routing::MethodFilter` to `routes!`
+### Before
+```rust
+Routes::new()
+    .add("/album", get(get_action_openapi)),
+```
+### After
+```rust
+Routes::new()
+    .add("/album", routes!(get_action_openapi)),
+```
+### Note: do not add multiple routes inside the `routes!` macro
+```rust
+Routes::new()
+    .add("/album", routes!(get_action_1_do_not_do_this, get_action_2_do_not_do_this)),
 ```
 
 # Request Validation
@@ -890,7 +1018,7 @@ If you'd like to return validation errors in a structured JSON format, use `Json
     ]
   }
 }
-```  
+```
 
 # Pagination
 
@@ -989,7 +1117,7 @@ impl PaginationResponse {
 ```
 
 
-# Testing 
+# Testing
 When testing controllers, the goal is to call the router's controller endpoint and verify the HTTP response, including the status code, response content, headers, and more.
 
 To initialize a test request, use `use loco_rs::testing::prelude::*;`, which prepares your app routers, providing the request instance and the application context.
