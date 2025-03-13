@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 
 use axum_test::{TestServer, TestServerConfig};
+use tokio::net::TcpListener;
 
 #[cfg(feature = "with-db")]
 use crate::Error;
@@ -8,6 +9,7 @@ use crate::Error;
 use crate::{
     app::{AppContext, Hooks},
     boot::{self, BootResult},
+    config::Server,
     environment::Environment,
     Result,
 };
@@ -45,6 +47,43 @@ impl Drop for BootResultWrapper {
     fn drop(&mut self) {
         self.test_db.cleanup_db();
     }
+}
+
+/// The port on which the test server will run.
+pub const TEST_PORT_SERVER: i32 = 5555;
+
+/// The hostname to which the test server binds.
+pub const TEST_BINDING_SERVER: &str = "localhost";
+
+/// Constructs and returns the base URL used for the test server.
+#[must_use]
+pub fn get_base_url() -> String {
+    format!("http://{TEST_BINDING_SERVER}:{TEST_PORT_SERVER}/")
+}
+
+/// Constructs and returns the base URL used for the test server.
+#[must_use]
+pub fn get_base_url_port(port: i32) -> String {
+    format!("http://{TEST_BINDING_SERVER}:{port}/")
+}
+
+/// Returns a unique port number. Usually increments by 1 starting from 59126
+///
+/// # Panics
+///
+/// Will panic if binding to test server address fails or if getting the local address fails
+pub async fn get_available_port() -> i32 {
+    let addr = format!("{TEST_BINDING_SERVER}:0");
+    let listener = TcpListener::bind(addr)
+        .await
+        .expect("Failed to bind to address");
+
+    i32::from(
+        listener
+            .local_addr()
+            .expect("Failed to get local address")
+            .port(),
+    )
 }
 
 /// Bootstraps test application with test environment hard coded.
@@ -106,6 +145,40 @@ pub async fn boot_test_with_create_db<H: Hooks>() -> Result<BootResultWrapper> {
     };
 
     Ok(BootResultWrapper::new(boot, test_db))
+}
+
+/// Bootstraps test application with test environment hard coded,
+/// and with a unique port.
+///
+/// # Errors
+/// when could not bootstrap the test environment
+///
+/// # Example
+///
+/// The provided example demonstrates how to boot the test case with the
+/// application context, and a with a unique port.
+///
+/// ```rust,ignore
+/// use myapp::app::App;
+/// use loco_rs::testing::prelude::*;
+/// use migration::Migrator;
+///
+/// #[tokio::test]
+/// async fn test_create_user() {
+///     let port = get_available_port().await;
+///     let boot = boot_test_unique_port::<App, Migrator>(Some(port)).await;
+///
+///     /// .....
+///     assert!(false)
+/// }
+pub async fn boot_test_unique_port<H: Hooks>(port: Option<i32>) -> Result<BootResult> {
+    let mut config = H::load_config(&Environment::Test).await?;
+    config.server = Server {
+        port: port.unwrap_or(TEST_PORT_SERVER),
+        binding: TEST_BINDING_SERVER.to_string(),
+        ..config.server
+    };
+    H::boot(boot::StartMode::ServerOnly, &Environment::Test, config).await
 }
 
 #[allow(clippy::future_not_send)]
