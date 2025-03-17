@@ -137,6 +137,9 @@ fn test_combination(
         // Generate deployment shuttle
         tester.run_generate(&vec!["deployment", "--kind", "shuttle"]);
 
+        // Generate data
+        tester.run_generate(&vec!["data", "stocks"]);
+
         if db.enable() {
             // Generate Model
             if !settings.auth {
@@ -199,9 +202,6 @@ fn test_combination(
 
             // Generate CreateJoinTableUsersAndGroups migration
             tester.run_generate_migration(&vec!["CreateJoinTableUsersAndGroups", "count:int"]);
-
-            // Generate data
-            tester.run_generate(&vec!["data", "stocks"]);
         }
     }
 }
