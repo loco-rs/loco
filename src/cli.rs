@@ -325,6 +325,11 @@ After running the migration, follow these steps to complete the process:
         /// Name of the thing to generate
         name: String,
     },
+    /// Generate data loader
+    Data {
+        /// Name of the thing to generate
+        name: String,
+    },
     /// Generate a deployment infrastructure
     Deployment {
         // deployment kind.
@@ -424,6 +429,7 @@ impl ComponentArg {
             Self::Scheduler {} => Ok(loco_gen::Component::Scheduler {}),
             Self::Worker { name } => Ok(loco_gen::Component::Worker { name }),
             Self::Mailer { name } => Ok(loco_gen::Component::Mailer { name }),
+            Self::Data { name } => Ok(loco_gen::Component::Data { name }),
             Self::Deployment { kind } => Ok(kind.to_generator_component(config)),
             Self::Override {
                 template_path: _,
