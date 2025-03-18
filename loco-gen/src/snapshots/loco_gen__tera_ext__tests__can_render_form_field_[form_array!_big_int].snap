@@ -10,10 +10,10 @@ Create form
     <div id="array!-inputs" class="space-y-2">
     {% if item.array! %}
         {% for val in item.array! %}
-            <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" min="-2147483648" max="2147483647" id="array!" name="array!" type="number" value="{{val}}" required custom_type="array" />
+            <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" min="-9223372036854775808" max="9223372036854775807" id="array!" name="array!" type="number" value="{{val}}" required custom_type="array" />
         {% endfor -%}
     {%- else -%}
-        <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" min="-2147483648" max="2147483647" id="array!" name="array!" type="number" value="" required custom_type="array" />
+        <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" min="-9223372036854775808" max="9223372036854775807" id="array!" name="array!" type="number" value="" required custom_type="array" />
     {%- endif -%}
     </div>
 </div>
@@ -26,10 +26,10 @@ Edit Form
     <div id="array!-inputs" class="space-y-2">
     {% if item.array! %}
         {% for val in item.array! %}
-            <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" min="-2147483648" max="2147483647" id="array!" name="array!" type="number" value="{{val}}" required custom_type="array" />
+            <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" min="-9223372036854775808" max="9223372036854775807" id="array!" name="array!" type="number" value="{{val}}" required custom_type="array" />
         {% endfor -%}
     {%- else -%}
-        <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" min="-2147483648" max="2147483647" id="array!" name="array!" type="number" value="{{item.array!}}" required custom_type="array" />
+        <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" min="-9223372036854775808" max="9223372036854775807" id="array!" name="array!" type="number" value="{{item.array!}}" required custom_type="array" />
     {%- endif -%}
     </div>
 </div>
