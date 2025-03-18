@@ -261,7 +261,7 @@ The following example works for both JWT and API_KEY Authentication.
 ```rust
 // tests/requests/example.rs
 use loco_rs::testing::prelude::*;
-use crate::requests::prepare_data;
+use super::prepare_data;
 
 #[tokio::test]
 #[serial]
@@ -290,35 +290,4 @@ async fn can_get_current_user() {
     })
     .await;
 }
-```
-
-For a post requests, add a payload:
-``` diff
-  let response = request
--     .get("/example")
-+     .post("/example")
-      .add_header(auth_key, auth_value)
-+     .json(&serde_json::json!({"site": "Loco"}))
-      .await;
-```
-
-## Async Tests
-Instead of using request, as described in the documentation for synchronous tests, use the request_with_create_db function.
-```diff
-  // tests/requests/example.rs
-  use loco_rs::testing::prelude::*;
-  use crate::requests::prepare_data;
-
-  #[tokio::test]
-- #[serial]
-  async fn can_get_current_user() {
-      configure_insta!();
-
--     request::<App, _, _>(|request, ctx| async move {
-+     request_with_create_db::<App, _, _>(|request, ctx| async move {
-          // Initialize the user
-          // ...
-      })
-      .await;
-  }
 ```
