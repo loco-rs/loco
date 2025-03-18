@@ -409,8 +409,9 @@
       "name": "array!",
       "rust": {
         "string": "Option<Vec<String>>",
-        "float": "Option<Vec<f32>>",
         "int": "Option<Vec<i32>>",
+        "big_int": "Option<Vec<i64>>",
+        "float": "Option<Vec<f32>>",
         "double": "Option<Vec<f64>>",
         "bool": "Option<Vec<bool>>"
       },
@@ -422,8 +423,9 @@
       "name": "array",
       "rust": {
         "string": "Option<Vec<String>>",
-        "float": "Option<Vec<f32>>",
         "int": "Option<Vec<i32>>",
+        "big_int": "Option<Vec<i64>>",
+        "float": "Option<Vec<f32>>",
         "double": "Option<Vec<f64>>",
         "bool": "Option<Vec<bool>>"
       },
@@ -435,8 +437,9 @@
       "name": "array^",
       "rust": {
         "string": "Option<Vec<String>>",
-        "float": "Option<Vec<f32>>",
         "int": "Option<Vec<i32>>",
+        "big_int": "Option<Vec<i64>>",
+        "float": "Option<Vec<f32>>",
         "double": "Option<Vec<f64>>",
         "bool": "Option<Vec<bool>>"
       },

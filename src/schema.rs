@@ -177,8 +177,9 @@ pub enum ColType {
 
 pub enum ArrayColType {
     String,
-    Float,
     Int,
+    BigInt,
+    Float,
     Double,
     Bool,
 }
@@ -205,8 +206,9 @@ impl ColType {
     fn array_col_type(kind: &ArrayColType) -> ColumnType {
         match kind {
             ArrayColType::String => ColumnType::string(None),
-            ArrayColType::Float => ColumnType::Float,
             ArrayColType::Int => ColumnType::Integer,
+            ArrayColType::BigInt => ColumnType::BigInteger,
+            ArrayColType::Float => ColumnType::Float,
             ArrayColType::Double => ColumnType::Double,
             ArrayColType::Bool => ColumnType::Boolean,
         }
