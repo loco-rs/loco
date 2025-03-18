@@ -255,3 +255,70 @@ curl --location '127.0.0.1:5150/api/user/current-api' \
 ```
 
 If the `API_KEY` is valid, you will get the response with the user details.
+
+# Testing
+The following example works for both JWT and API_KEY Authentication.
+```rust
+// tests/requests/example.rs
+use loco_rs::testing::prelude::*;
+use crate::requests::prepare_data;
+
+#[tokio::test]
+#[serial]
+async fn can_get_current_user() {
+    configure_insta!();
+
+    request::<App, _, _>(|request, ctx| async move {
+        // Initialize the user
+        let user = prepare_data::init_user_login(&request, &ctx).await;
+        let (auth_key, auth_value) = prepare_data::auth_header(&user.token);
+
+        // Then add the key to the request, usually in the header
+        let response = request
+            .get("/example")
+            .add_header(auth_key, auth_value)
+            .await;
+
+        assert_eq!(
+            response.status_code(),
+            200,
+            "Current request should succeed"
+        );
+
+        // Shapshot
+        assert_debug_snapshot!((response.status_code(), response.text()));
+    })
+    .await;
+}
+```
+
+For a post requests, add a payload:
+``` diff
+  let response = request
+-     .get("/example")
++     .post("/example")
+      .add_header(auth_key, auth_value)
++     .json(&serde_json::json!({"site": "Loco"}))
+      .await;
+```
+
+## Async Tests
+Instead of using request, as described in the documentation for synchronous tests, use the request_with_create_db function.
+```diff
+  // tests/requests/example.rs
+  use loco_rs::testing::prelude::*;
+  use crate::requests::prepare_data;
+
+  #[tokio::test]
+- #[serial]
+  async fn can_get_current_user() {
+      configure_insta!();
+
+-     request::<App, _, _>(|request, ctx| async move {
++     request_with_create_db::<App, _, _>(|request, ctx| async move {
+          // Initialize the user
+          // ...
+      })
+      .await;
+  }
+```
