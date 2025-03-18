@@ -17,7 +17,10 @@
 * Replace hyper crate with axum. [https://github.com/loco-rs/loco/pull/1258](https://github.com/loco-rs/loco/pull/1258)
 * Remove mime crate. [https://github.com/loco-rs/loco/pull/1256](https://github.com/loco-rs/loco/pull/1256)
 * Support async tests. [https://github.com/loco-rs/loco/pull/1237](https://github.com/loco-rs/loco/pull/1237)
-* Change job queue status from cli. [https://github.com/loco-rs/loco/pull/1228](https://github.com/loco-rs/loco/pull/1228)
+* Change job queue status from cli.  [https://github.com/loco-rs/loco/pull/1228](https://github.com/loco-rs/loco/pull/1228)
+* handle panics in queue worker. [https://github.com/loco-rs/loco/pull/1274](https://github.com/loco-rs/loco/pull/1274)
+* schema with defaults. [https://github.com/loco-rs/loco/pull/1273](https://github.com/loco-rs/loco/pull/1273)
+* add data subsystem. [https://github.com/loco-rs/loco/pull/1267](https://github.com/loco-rs/loco/pull/1267)
 
 
 ## v0.14.1
