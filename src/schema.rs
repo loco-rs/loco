@@ -422,8 +422,6 @@ async fn create_table_impl(
             idx.col(Alias::new(nz_ref_name));
         }
         stmt.primary_key(&mut idx);
-    } else {
-        stmt.col(pk_auto(Alias::new("id")));
     }
 
     for (name, atype) in cols {
