@@ -1,6 +1,0 @@
-database:
-  uri: {{ get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/generator_test_test") }}
-  
-auth:
-  jwt:
-    secret: [..]

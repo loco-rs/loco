@@ -1,4 +1,0 @@
-[alias]
-loco = "run --"
-loco-tool = "run --bin tool --"
-playground = "run --example playground"
