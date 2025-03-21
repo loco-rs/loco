@@ -590,6 +590,13 @@ pub async fn add_reference(
                 .await?;
             */
         }
+        #[allow(unreachable_patterns)]
+        _ => {
+            return Err(DbErr::Custom(format!(
+                "Unsupported database backend: {}",
+                stringify!(db_backend)
+            )))
+        }
     }
     Ok(())
 }
@@ -636,6 +643,13 @@ pub async fn remove_reference(
             // Per Rails 5.2, removing FK on existing table does nothing because
             // sqlite will not allow it.
             // more: https://www.bigbinary.com/blog/rails-6-adds-add_foreign_key-and-remove_foreign_key-for-sqlite3
+        }
+        #[allow(unreachable_patterns)]
+        _ => {
+            return Err(DbErr::Custom(format!(
+                "Unsupported database backend: {}",
+                stringify!(db_backend)
+            )))
         }
     }
     Ok(())
