@@ -21,6 +21,8 @@
 * handle panics in queue worker. [https://github.com/loco-rs/loco/pull/1274](https://github.com/loco-rs/loco/pull/1274)
 * schema with defaults. [https://github.com/loco-rs/loco/pull/1273](https://github.com/loco-rs/loco/pull/1273)
 * add data subsystem. [https://github.com/loco-rs/loco/pull/1267](https://github.com/loco-rs/loco/pull/1267)
+* Add "endpoint" arg to azure storage builder.[https://github.com/loco-rs/loco/pull/1317](https://github.com/loco-rs/loco/pull/1317)
+* improve readability and performance by using  map_err in Model. [https://github.com/loco-rs/loco/pull/1311](https://github.com/loco-rs/loco/pull/1311)
 
 
 ## v0.14.1
