@@ -1,7 +1,0 @@
----
-source: src/generate.rs
-expression: "fs::read_to_string(tree_res.join(\"test.yaml\"))"
----
-Ok(
-    "secret = skip_jwt_token\n",
-)
