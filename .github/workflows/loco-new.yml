@@ -71,6 +71,7 @@ jobs:
         run: cargo install sea-orm-cli
 
       - name: Free Disk Space
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: false
