@@ -24,6 +24,9 @@ impl MigrationTrait for Migration {
     async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
         create_table(m, "{{plural_snake}}",
             &[
+            {% if columns | length > 0 %}
+            ("id", ColType::PkAuto),
+            {% endif %}
             {% for column in columns -%}
             ("{{column.0}}", ColType::{{column.1}}),
             {% endfor -%}
