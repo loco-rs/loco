@@ -43,7 +43,10 @@ pub fn timestamptz_null<T>(name: T) -> ColumnDef
 where
     T: IntoIden,
 {
-    ColumnDef::new(name).timestamp_with_time_zone().take()
+    ColumnDef::new(name)
+        .timestamp_with_time_zone()
+        .null()
+        .take()
 }
 
 /// Create a non-nullable timestamptz column definition.
@@ -422,6 +425,8 @@ async fn create_table_impl(
             idx.col(Alias::new(nz_ref_name));
         }
         stmt.primary_key(&mut idx);
+    } else {
+        stmt.col(pk_auto(Alias::new("id")));
     }
 
     for (name, atype) in cols {
