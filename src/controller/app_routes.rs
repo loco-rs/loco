@@ -6,12 +6,33 @@ use std::{fmt, sync::OnceLock};
 
 use axum::Router as AXRouter;
 use regex::Regex;
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
+use utoipa_axum::router::{OpenApiRouter, UtoipaMethodRouterExt};
+#[cfg(feature = "openapi_redoc")]
+use utoipa_redoc::{Redoc, Servable};
+#[cfg(feature = "openapi_scalar")]
+use utoipa_scalar::{Scalar, Servable as ScalarServable};
+#[cfg(feature = "openapi_swagger")]
+use utoipa_swagger_ui::SwaggerUi;
 
 use crate::{
     app::{AppContext, Hooks},
-    controller::{middleware::MiddlewareLayer, routes::Routes},
+    controller::{
+        middleware::MiddlewareLayer,
+        routes::{LocoMethodRouter, Routes},
+    },
     Result,
 };
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
+use crate::{config::OpenAPIType, controller::openapi};
 
 static NORMALIZE_URL: OnceLock<Regex> = OnceLock::new();
 
@@ -30,7 +51,7 @@ pub struct AppRoutes {
 pub struct ListRoutes {
     pub uri: String,
     pub actions: Vec<axum::http::Method>,
-    pub method: axum::routing::MethodRouter<AppContext>,
+    pub method: LocoMethodRouter,
 }
 
 impl fmt::Display for ListRoutes {
@@ -301,9 +322,83 @@ impl AppRoutes {
         // using the router directly, and ServiceBuilder has been reported to give
         // issues in compile times itself (https://github.com/rust-lang/crates.io/pull/7443).
         //
+        #[cfg(any(
+            feature = "openapi_swagger",
+            feature = "openapi_redoc",
+            feature = "openapi_scalar"
+        ))]
+        let mut api_router: OpenApiRouter<AppContext> =
+            OpenApiRouter::with_openapi(H::inital_openapi_spec(&ctx));
+
         for router in self.collect() {
             tracing::info!("{}", router.to_string());
-            app = app.route(&router.uri, router.method);
+            match router.method {
+                LocoMethodRouter::Axum(method) => {
+                    app = app.route(&router.uri, method);
+                }
+                #[cfg(any(
+                    feature = "openapi_swagger",
+                    feature = "openapi_redoc",
+                    feature = "openapi_scalar"
+                ))]
+                LocoMethodRouter::Utoipa(method) => {
+                    app = app.route(&router.uri, method.2.clone());
+                    api_router = api_router.routes(method.with_state(ctx.clone()));
+                }
+            }
+        }
+
+        #[cfg(any(
+            feature = "openapi_swagger",
+            feature = "openapi_redoc",
+            feature = "openapi_scalar"
+        ))]
+        {
+            // Collect the OpenAPI spec
+            let (_, open_api_spec) = api_router.split_for_parts();
+            openapi::set_openapi_spec(open_api_spec);
+        }
+
+        // Serve the OpenAPI spec using the enabled OpenAPI visualizers
+        #[cfg(feature = "openapi_redoc")]
+        {
+            if let Some(OpenAPIType::Redoc {
+                url,
+                spec_json_url,
+                spec_yaml_url,
+            }) = ctx.config.server.openapi.redoc.clone()
+            {
+                app = app.merge(Redoc::with_url(url, openapi::get_openapi_spec().clone()));
+                app = openapi::add_openapi_endpoints(app, spec_json_url, spec_yaml_url);
+            }
+        }
+
+        #[cfg(feature = "openapi_scalar")]
+        {
+            if let Some(OpenAPIType::Scalar {
+                url,
+                spec_json_url,
+                spec_yaml_url,
+            }) = ctx.config.server.openapi.scalar.clone()
+            {
+                app = app.merge(Scalar::with_url(url, openapi::get_openapi_spec().clone()));
+                app = openapi::add_openapi_endpoints(app, spec_json_url, spec_yaml_url);
+            }
+        }
+
+        #[cfg(feature = "openapi_swagger")]
+        {
+            if let Some(OpenAPIType::Swagger {
+                url,
+                spec_json_url,
+                spec_yaml_url,
+            }) = ctx.config.server.openapi.swagger.clone()
+            {
+                app = app.merge(
+                    SwaggerUi::new(url).url(spec_json_url, openapi::get_openapi_spec().clone()),
+                );
+                app = openapi::add_openapi_endpoints(app, None, spec_yaml_url);
+            }
         }
 
         let middlewares = self.middlewares::<H>(&ctx);
