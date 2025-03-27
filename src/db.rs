@@ -337,6 +337,13 @@ async fn has_id_column(
                 "Unsupported database backend: MySQL".to_string(),
             ))
         }
+        #[allow(unreachable_patterns)]
+        _ => {
+            return Err(Error::Message(format!(
+                "Unsupported database backend: {}",
+                stringify!(db_backend)
+            )))
+        }
     };
 
     Ok(result)
@@ -378,6 +385,13 @@ async fn is_auto_increment(
             return Err(Error::Message(
                 "Unsupported database backend: MySQL".to_string(),
             ))
+        }
+        #[allow(unreachable_patterns)]
+        _ => {
+            return Err(Error::Message(format!(
+                "Unsupported database backend: {}",
+                stringify!(db_backend)
+            )))
         }
     };
     Ok(result)
@@ -431,6 +445,13 @@ pub async fn reset_autoincrement(
             return Err(Error::Message(
                 "Unsupported database backend: MySQL".to_string(),
             ))
+        }
+        #[allow(unreachable_patterns)]
+        _ => {
+            return Err(Error::Message(format!(
+                "Unsupported database backend: {}",
+                stringify!(db_backend)
+            )))
         }
     }
     Ok(())
@@ -626,6 +647,13 @@ pub async fn get_tables(db: &DatabaseConnection) -> AppResult<Vec<String>> {
         DatabaseBackend::Sqlite => {
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
         }
+        #[allow(unreachable_patterns)]
+        _ => {
+            return Err(Error::Message(format!(
+                "Unsupported database backend: {}",
+                stringify!(db_backend)
+            )))
+        }
     };
 
     let result = db
@@ -643,6 +671,8 @@ pub async fn get_tables(db: &DatabaseConnection) -> AppResult<Vec<String>> {
                     "table_name"
                 }
                 sea_orm::DatabaseBackend::Sqlite => "name",
+                #[allow(unreachable_patterns)]
+                _ => unreachable!(),
             };
 
             if let Ok(table_name) = row.try_get::<String>("", col) {
@@ -840,6 +870,13 @@ pub async fn dump_schema(ctx: &AppContext, fname: &str) -> crate::Result<()> {
                     }))
                 })
                 .collect::<Result<Vec<serde_json::Value>, DbErr>>()? // Specify error type explicitly
+        }
+        #[allow(unreachable_patterns)]
+        _ => {
+            return Err(Error::Message(format!(
+                "Unsupported database backend: {}",
+                stringify!(db_backend)
+            )))
         }
     };
     // Serialize schema info to JSON format
