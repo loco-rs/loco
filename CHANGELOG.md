@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+* chore: improve readability and performance by using map_err in Model. [https://github.com/loco-rs/loco/pull/1311](https://github.com/loco-rs/loco/pull/1311)
+* Allow testing the endpoint by passing a cookie.[https://github.com/loco-rs/loco/pull/1326](https://github.com/loco-rs/loco/pull/1326)
+
 ## v0.15.0
 
 * Added total_items to pagination view & response. [https://github.com/loco-rs/loco/pull/1197](https://github.com/loco-rs/loco/pull/1197)
