@@ -70,6 +70,12 @@ jobs:
       - name: Install seaorm cli
         run: cargo install sea-orm-cli
 
+      - name: Free Disk Space
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+
       - name: Run cargo test
         run: cargo test --all-features -- --test-threads 1
         working-directory: ./loco-new
