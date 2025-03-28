@@ -162,3 +162,23 @@ The pagination response now includes the `total_items` field, providing the tota
 ```JSON
 {"results":[],"pagination":{"page":0,"page_size":0,"total_pages":0,"total_items":0}}
 ```
+
+### Explicit id in migrations
+
+PR: [#1268](https://github.com/loco-rs/loco/pull/1268)
+
+Migrations using `create_table` now require `("id", ColType::PkAuto)`, new migrations will have this field automatically added.
+
+```diff
+  async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        create_table(m, "movies",
+            &[
++           ("id", ColType::PkAuto),
+            ("title", ColType::StringNull),
+            ],
+            &[
+            ("user", ""),
+            ]
+        ).await
+    }
+```
