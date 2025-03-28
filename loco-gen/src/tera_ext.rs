@@ -9,7 +9,8 @@ pub fn new() -> Tera {
     tera
 }
 
-const DEFAULT_INPUT_CLASS: &str = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm";
+const DEFAULT_INPUT_CLASS: &str = "flex h-9 w-full rounded-md border border-input bg-transparent \
+                                   px-3 py-1 text-base shadow-sm md:text-sm";
 struct FormField;
 
 impl tera::Function for FormField {
@@ -238,6 +239,25 @@ impl tera::Function for FormField {
                 );
                 input_group(fname, &create_input, &edit_input)
             }
+            "Vec<i64>" | "Option<Vec<i64>>" => {
+                let edit_input = input_number(
+                    fname,
+                    "{{val}}",
+                    is_required,
+                    input_class,
+                    Some((i64::MIN, i64::MAX)),
+                    Some(r#"custom_type="array""#),
+                );
+                let create_input = input_number(
+                    fname,
+                    &value,
+                    is_required,
+                    input_class,
+                    Some((i64::MIN, i64::MAX)),
+                    Some(r#"custom_type="array""#),
+                );
+                input_group(fname, &create_input, &edit_input)
+            }
             "Vec<bool>" | "Option<Vec<bool>>" => String::new(),
             _ => {
                 return Err(tera::Error::msg(format!(
@@ -322,10 +342,10 @@ fn input_description<S: AsRef<str>>(description: S) -> String {
 
 #[cfg(test)]
 pub mod tests {
-    use super::*;
-
-    use crate::get_mappings;
     use insta::assert_snapshot;
+
+    use super::*;
+    use crate::get_mappings;
 
     #[test]
     fn can_render_form_field() {
