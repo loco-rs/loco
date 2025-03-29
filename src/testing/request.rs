@@ -140,12 +140,6 @@ pub const TEST_BINDING_SERVER: &str = "localhost";
 
 /// Constructs and returns the base URL used for the test server.
 #[must_use]
-pub fn get_base_url() -> String {
-    format!("http://{TEST_BINDING_SERVER}:{TEST_PORT_SERVER}/")
-}
-
-/// Constructs and returns the base URL used for the test server.
-#[must_use]
 pub fn get_base_url_port(port: i32) -> String {
     format!("http://{TEST_BINDING_SERVER}:{port}/")
 }
