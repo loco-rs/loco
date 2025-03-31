@@ -35,7 +35,7 @@ movie
                     <tr class="border-b transition-colors hover:bg-muted/50">
                         <td
                             class="p-2 align-middle  font-medium">
-                            {{item.title}}
+                            {{item.title | escape }}
                         </td>
                         <td>
                             <a href="/movies/{{ item.id }}/edit">Edit</a>

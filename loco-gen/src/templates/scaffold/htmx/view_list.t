@@ -40,7 +40,7 @@ List of {{file_name}}
                         {% for column in columns -%}
                           <td
                             class="p-2 align-middle  font-medium">
-                            {% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}
+                            {% raw %}{{item.{% endraw %}{{column.0}}{% raw %} | escape }}{% endraw %}
                         </td>
                         {% endfor -%}
                         <td>
