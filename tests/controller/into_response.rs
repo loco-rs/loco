@@ -1,10 +1,9 @@
-use crate::infra_cfg;
 use loco_rs::{controller, prelude::*, tests_cfg};
 use serde::{Deserialize, Serialize};
-use serial_test::serial;
+
+use crate::infra_cfg;
 
 #[tokio::test]
-#[serial]
 async fn not_found() {
     let ctx = tests_cfg::app::get_app_context().await;
 
@@ -13,9 +12,10 @@ async fn not_found() {
         controller::not_found()
     }
 
-    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
 
-    let res = reqwest::get(infra_cfg::server::get_base_url())
+    let res = reqwest::get(get_base_url_port(port))
         .await
         .expect("Valid response");
 
@@ -35,7 +35,6 @@ async fn not_found() {
 }
 
 #[tokio::test]
-#[serial]
 async fn internal_server_error() {
     let ctx = tests_cfg::app::get_app_context().await;
 
@@ -44,9 +43,10 @@ async fn internal_server_error() {
         Err(Error::InternalServerError)
     }
 
-    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
 
-    let res = reqwest::get(infra_cfg::server::get_base_url())
+    let res = reqwest::get(get_base_url_port(port))
         .await
         .expect("Valid response");
 
@@ -66,7 +66,6 @@ async fn internal_server_error() {
 }
 
 #[tokio::test]
-#[serial]
 async fn unauthorized() {
     let ctx = tests_cfg::app::get_app_context().await;
 
@@ -75,9 +74,10 @@ async fn unauthorized() {
         controller::unauthorized("user not unauthorized")
     }
 
-    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
 
-    let res = reqwest::get(infra_cfg::server::get_base_url())
+    let res = reqwest::get(get_base_url_port(port))
         .await
         .expect("Valid response");
 
@@ -97,7 +97,6 @@ async fn unauthorized() {
 }
 
 #[tokio::test]
-#[serial]
 async fn fallback() {
     let ctx = tests_cfg::app::get_app_context().await;
 
@@ -106,9 +105,10 @@ async fn fallback() {
         Err(Error::Message(String::new()))
     }
 
-    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
 
-    let res = reqwest::get(infra_cfg::server::get_base_url())
+    let res = reqwest::get(get_base_url_port(port))
         .await
         .expect("Valid response");
 
@@ -128,7 +128,6 @@ async fn fallback() {
 }
 
 #[tokio::test]
-#[serial]
 async fn custom_error() {
     let ctx = tests_cfg::app::get_app_context().await;
 
@@ -144,9 +143,10 @@ async fn custom_error() {
         ))
     }
 
-    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
 
-    let res = reqwest::get(infra_cfg::server::get_base_url())
+    let res = reqwest::get(get_base_url_port(port))
         .await
         .expect("Valid response");
 
@@ -166,7 +166,6 @@ async fn custom_error() {
 }
 
 #[tokio::test]
-#[serial]
 async fn json_rejection() {
     let ctx = tests_cfg::app::get_app_context().await;
 
@@ -181,11 +180,12 @@ async fn json_rejection() {
         format::json(())
     }
 
-    let handle = infra_cfg::server::start_with_route(ctx, "/", post(action)).await;
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", post(action), Some(port)).await;
 
     let client = reqwest::Client::new();
     let res = client
-        .post(infra_cfg::server::get_base_url())
+        .post(get_base_url_port(port))
         .json(&serde_json::json!({}))
         .send()
         .await
