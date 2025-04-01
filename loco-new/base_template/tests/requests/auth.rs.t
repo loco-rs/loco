@@ -112,6 +112,27 @@ async fn can_login_with_verify(#[case] test_name: &str, #[case] password: &str) 
 
 #[tokio::test]
 #[serial]
+async fn login_with_un_existing_email() {
+    configure_insta!();
+
+    request::<App, _, _>(|request, _ctx| async move {
+      
+        let login_response = request
+            .post("/api/auth/login")
+            .json(&serde_json::json!({
+                "email": "un_existing@loco.rs",
+                "password":  "1234"
+            }))
+            .await;
+
+        assert_eq!(login_response.status_code(), 401, "Login request should return 401");
+        login_response.assert_json(&serde_json::json!({"error": "unauthorized", "description": "You do not have permission to access this resource"}));
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
 async fn can_login_without_verify() {
     configure_insta!();
 
@@ -148,6 +169,26 @@ async fn can_login_without_verify() {
         }, {
             assert_debug_snapshot!(login_response.text());
         });
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn invalid_verification_token() {
+    configure_insta!();
+
+    request::<App, _, _>(|request, _ctx| async move {
+        let response = request
+            .get("/api/auth/verify/invalid-token")
+            .await;
+
+
+        assert_eq!(
+            response.status_code(),
+            401,
+            "Verify request should reject"
+        );
     })
     .await;
 }
