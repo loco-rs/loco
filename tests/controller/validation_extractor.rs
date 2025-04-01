@@ -1,6 +1,5 @@
 use loco_rs::{prelude::*, tests_cfg};
 use serde::{Deserialize, Serialize};
-use serial_test::serial;
 use validator::Validate;
 
 use crate::infra_cfg;
@@ -24,7 +23,6 @@ async fn simple_validation(JsonValidate(_params): JsonValidate<Data>) -> Result<
 }
 
 #[tokio::test]
-#[serial]
 async fn can_validation_with_response() {
     let ctx = tests_cfg::app::get_app_context().await;
 
@@ -60,7 +58,6 @@ async fn can_validation_with_response() {
 }
 
 #[tokio::test]
-#[serial]
 async fn can_validation_without_response() {
     let ctx = tests_cfg::app::get_app_context().await;
 
