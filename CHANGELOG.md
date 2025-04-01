@@ -6,6 +6,8 @@
 * Allow testing the controller by passing a cookie. [https://github.com/loco-rs/loco/pull/1326](https://github.com/loco-rs/loco/pull/1326)
 * Support BigInt in the scaffold Array. [https://github.com/loco-rs/loco/pull/1304](https://github.com/loco-rs/loco/pull/1304)
 * Add `escape` tera function to scaffold list template. [https://github.com/loco-rs/loco/pull/1337](https://github.com/loco-rs/loco/pull/1337)
+* Return a specific error when logging in with a non-existent email. [https://github.com/loco-rs/loco/pull/1336](https://github.com/loco-rs/loco/pull/1336)
+* Return a specific error when trying to verify with an invalid token. [https://github.com/loco-rs/loco/pull/1340](https://github.com/loco-rs/loco/pull/1340)
 
 ## v0.15.0
 
