@@ -151,6 +151,17 @@ Now, run the Loco server again and you should see frontend app serving via Loco
 $ cargo loco start
 ```
 
+If you see the default fallback page, you have to disable the fallback middleware. The default fallback takes priority over the static handler, so no static content will be served if it is enabled. You can disable it like so:
+
+```yaml
+server:
+  middlewares:
+    fallback:
+      enable: false
+    static:
+      ...
+```
+
 # Developing the UI
 
 Install `react-router-dom`, `react-query` and `axios`

@@ -10,7 +10,7 @@ use duct::cmd;
 use loco::{
     generator::{executer, extract_default_template, Generator},
     settings::Settings,
-    wizard, Result,
+    wizard, Result, OS,
 };
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
@@ -51,11 +51,20 @@ enum Commands {
         #[arg(long)]
         assets: Option<wizard::AssetsOption>,
 
-        /// Allows create loco starter in target git repository
+        /// Create the starter in target git repository
         #[arg(short, long)]
         allow_in_git_repo: bool,
+
+        /// Create a Unix (linux, mac) or Windows optimized starter
+        #[arg(long, default_value = DEFAULT_OS)]
+        os: OS,
     },
 }
+
+#[cfg(unix)]
+const DEFAULT_OS: &str = "linux";
+#[cfg(not(unix))]
+const DEFAULT_OS: &str = "windows";
 
 #[allow(clippy::cognitive_complexity)]
 fn main() -> Result<()> {
@@ -76,7 +85,9 @@ fn main() -> Result<()> {
             assets,
             name,
             allow_in_git_repo,
+            os,
         } => {
+            tracing::debug!(path = ?path, db = ?db, bg=?bg, assets=?assets,name=?name, allow_in_git_repo=allow_in_git_repo, os=?os, "CLI options");
             if !allow_in_git_repo && is_a_git_repo(path.as_path()).unwrap_or(false) {
                 tracing::debug!("the target directory is a Git repository");
                 wizard::warn_if_in_git_repo()?;
@@ -108,7 +119,7 @@ fn main() -> Result<()> {
                 let executor =
                     executer::FileSystem::new(generator_tmp_folder.as_path(), to.as_path());
 
-                let settings = Settings::from_wizard(&app_name, &user_selection);
+                let settings = Settings::from_wizard(&app_name, &user_selection, os);
 
                 if let Ok(path) = env::var("LOCO_DEV_MODE_PATH") {
                     println!("⚠️ NOTICE: working in dev mode, pointing to local Loco on '{path}'");

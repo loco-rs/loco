@@ -12,11 +12,9 @@ use std::{net::SocketAddr, sync::Arc};
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
 
-#[cfg(feature = "channels")]
-use crate::controller::channels::AppChannels;
 use crate::{
     bgworker::{self, Queue},
-    boot::{shutdown_signal, BootResult, StartMode},
+    boot::{shutdown_signal, BootResult, ServeParams, StartMode},
     cache::{self},
     config::{self, Config},
     controller::{
@@ -89,32 +87,33 @@ pub trait Hooks: Send {
     ///
     /// With DB:
     /// ```rust,ignore
-    /// async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
-    ///     create_app::<Self, Migrator>(mode, environment).await
+    /// async fn boot(mode: StartMode, environment: &str, config: Config) -> Result<BootResult> {
+    ///     create_app::<Self, Migrator>(mode, environment, config).await
     /// }
     /// ````
     ///
     /// Without DB:
     /// ```rust,ignore
-    /// async fn boot(mode: StartMode, environment: &str) -> Result<BootResult> {
-    ///     create_app::<Self>(mode, environment).await
+    /// async fn boot(mode: StartMode, environment: &str, config: Config) -> Result<BootResult> {
+    ///     create_app::<Self>(mode, environment, config).await
     /// }
     /// ````
     ///
     ///
     /// # Errors
     /// Could not boot the application
-    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult>;
+    async fn boot(mode: StartMode, environment: &Environment, config: Config)
+        -> Result<BootResult>;
 
     /// Start serving the Axum web application on the specified address and
     /// port.
     ///
     /// # Returns
     /// A Result indicating success () or an error if the server fails to start.
-    async fn serve(app: AxumRouter, ctx: &AppContext) -> Result<()> {
+    async fn serve(app: AxumRouter, ctx: &AppContext, serve_params: &ServeParams) -> Result<()> {
         let listener = tokio::net::TcpListener::bind(&format!(
             "{}:{}",
-            ctx.config.server.binding, ctx.config.server.port
+            serve_params.binding, serve_params.port
         ))
         .await?;
 
@@ -142,6 +141,14 @@ pub trait Hooks: Send {
     /// If fails returns an error
     fn init_logger(_config: &config::Config, _env: &Environment) -> Result<bool> {
         Ok(false)
+    }
+
+    /// Loads the configuration settings for the application based on the given environment.
+    ///
+    /// This function is responsible for retrieving the configuration for the application
+    /// based on the current environment.
+    async fn load_config(env: &Environment) -> Result<Config> {
+        env.load()
     }
 
     /// Returns the initial Axum router for the application, allowing the user
@@ -192,10 +199,6 @@ pub trait Hooks: Send {
         Ok(ctx)
     }
 
-    #[cfg(feature = "channels")]
-    /// Register channels endpoints to the application routers
-    fn register_channels(_ctx: &AppContext) -> AppChannels;
-
     /// Connects custom workers to the application using the provided
     /// [`Processor`] and [`AppContext`].
     async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()>;
@@ -209,11 +212,11 @@ pub trait Hooks: Send {
     /// Truncate can be useful when you want to truncate the database before any
     /// test.
     #[cfg(feature = "with-db")]
-    async fn truncate(db: &DatabaseConnection) -> Result<()>;
+    async fn truncate(_ctx: &AppContext) -> Result<()>;
 
     /// Seeds the database with initial data.
     #[cfg(feature = "with-db")]
-    async fn seed(db: &DatabaseConnection, path: &Path) -> Result<()>;
+    async fn seed(_ctx: &AppContext, path: &Path) -> Result<()>;
 
     /// Called when the application is shutting down.
     /// This function allows users to perform any necessary cleanup or final

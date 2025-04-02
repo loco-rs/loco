@@ -190,10 +190,12 @@ async fn upload_file(
 By testing file storage in your controller you can follow this example:
 
 ```rust
+use loco_rs::testing::prelude::*;
+
 #[tokio::test]
 #[serial]
 async fn can_register() {
-    testing::request::<App, _, _>(|request, ctx| async move {
+    request::<App, _, _>(|request, ctx| async move {
         let file_content = "loco file upload";
         let file_part = Part::bytes(file_content.as_bytes()).file_name("loco.txt");
 

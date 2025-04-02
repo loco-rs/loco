@@ -10,6 +10,7 @@ mod depcheck;
 pub mod initializers;
 pub mod prelude;
 
+pub mod data;
 pub mod doctor;
 
 #[cfg(feature = "with-db")]
@@ -21,18 +22,18 @@ pub mod schema;
 mod tera;
 
 pub mod app;
-#[cfg(feature = "cli")]
-pub mod cli;
-
 pub mod auth;
 pub mod boot;
 pub mod cache;
+#[cfg(feature = "cli")]
+pub mod cli;
 pub mod config;
 pub mod controller;
+mod env_vars;
 pub mod environment;
 pub mod errors;
 pub mod hash;
-mod logger;
+pub mod logger;
 pub mod mailer;
 pub mod scheduler;
 pub mod task;
@@ -41,11 +42,9 @@ pub mod testing;
 #[cfg(feature = "testing")]
 pub use axum_test::TestServer;
 pub mod storage;
-pub mod validation;
-#[cfg(feature = "channels")]
-pub use socketioxide;
 #[cfg(feature = "testing")]
 pub mod tests_cfg;
+pub mod validation;
 pub use validator;
 
 /// Application results options list

@@ -2,6 +2,129 @@
 
 ## Unreleased
 
+* chore: improve readability and performance by using map_err in Model. [https://github.com/loco-rs/loco/pull/1311](https://github.com/loco-rs/loco/pull/1311)
+* Allow testing the controller by passing a cookie. [https://github.com/loco-rs/loco/pull/1326](https://github.com/loco-rs/loco/pull/1326)
+* Support BigInt in the scaffold Array. [https://github.com/loco-rs/loco/pull/1304](https://github.com/loco-rs/loco/pull/1304)
+* Add `escape` tera function to scaffold list template. [https://github.com/loco-rs/loco/pull/1337](https://github.com/loco-rs/loco/pull/1337)
+* Return a specific error when logging in with a non-existent email. [https://github.com/loco-rs/loco/pull/1336](https://github.com/loco-rs/loco/pull/1336)
+* Return a specific error when trying to verify with an invalid token. [https://github.com/loco-rs/loco/pull/1340](https://github.com/loco-rs/loco/pull/1340)
+
+## v0.15.0
+
+* Added total_items to pagination view & response. [https://github.com/loco-rs/loco/pull/1197](https://github.com/loco-rs/loco/pull/1197)
+* Flatten (de)serialization of custom user claims. [https://github.com/loco-rs/loco/pull/1159](https://github.com/loco-rs/loco/pull/1159)
+* Updated validator to 0.20. [https://github.com/loco-rs/loco/pull/1199](https://github.com/loco-rs/loco/pull/1199)
+* Scaffold v2. [https://github.com/loco-rs/loco/pull/1209](https://github.com/loco-rs/loco/pull/1209)
+* Fix generator Docker deployment to support both server-side and client-side rendering. [https://github.com/loco-rs/loco/pull/1227](https://github.com/loco-rs/loco/pull/1227)
+* Docs: num_workers worker configuration. [https://github.com/loco-rs/loco/pull/1242](https://github.com/loco-rs/loco/pull/1242)
+* Smoother model validations. [https://github.com/loco-rs/loco/pull/1233](https://github.com/loco-rs/loco/pull/1233)
+* Docs: num_workers worker configuration. [https://github.com/loco-rs/loco/pull/1242](https://github.com/loco-rs/loco/pull/1242)
+* Ignore SQLite WAL and SHM files and update Cargo watch crate docs. [https://github.com/loco-rs/loco/pull/1254](https://github.com/loco-rs/loco/pull/1254)
+* Remove fs-err crate. [https://github.com/loco-rs/loco/pull/1253](https://github.com/loco-rs/loco/pull/1253)
+* Allows to run scheduler as part of cargo loco start. [https://github.com/loco-rs/loco/pull/1247](https://github.com/loco-rs/loco/pull/1247)
+* Added prefix and route nesting to AppRoutes. [https://github.com/loco-rs/loco/pull/1241](https://github.com/loco-rs/loco/pull/1241)
+* Replace hyper crate with axum. [https://github.com/loco-rs/loco/pull/1258](https://github.com/loco-rs/loco/pull/1258)
+* Remove mime crate. [https://github.com/loco-rs/loco/pull/1256](https://github.com/loco-rs/loco/pull/1256)
+* Support async tests. [https://github.com/loco-rs/loco/pull/1237](https://github.com/loco-rs/loco/pull/1237)
+* Change job queue status from cli.  [https://github.com/loco-rs/loco/pull/1228](https://github.com/loco-rs/loco/pull/1228)
+* Handle panics in queue worker. [https://github.com/loco-rs/loco/pull/1274](https://github.com/loco-rs/loco/pull/1274)
+* Schema with defaults. [https://github.com/loco-rs/loco/pull/1273](https://github.com/loco-rs/loco/pull/1273)
+* Add data subsystem. [https://github.com/loco-rs/loco/pull/1267](https://github.com/loco-rs/loco/pull/1267)
+* Add "endpoint" arg to azure storage builder.[https://github.com/loco-rs/loco/pull/1317](https://github.com/loco-rs/loco/pull/1317)
+* Improve readability and performance by using  map_err in Model. [https://github.com/loco-rs/loco/pull/1311](https://github.com/loco-rs/loco/pull/1311)
+
+
+## v0.14.1
+
+* Fix: bump shuttle to 0.51.0. [https://github.com/loco-rs/loco/pull/1169](https://github.com/loco-rs/loco/pull/1169)
+* Return 422 status code for JSON rejection errors. [https://github.com/loco-rs/loco/pull/1173](https://github.com/loco-rs/loco/pull/1173)
+* Address clippy warnings for Rust stable 1.84. [https://github.com/loco-rs/loco/pull/1168](https://github.com/loco-rs/loco/pull/1168)
+* Bump shuttle to 0.51.0. [https://github.com/loco-rs/loco/pull/1169](https://github.com/loco-rs/loco/pull/1169)
+* Return 422 status code for JSON rejection errors. [https://github.com/loco-rs/loco/pull/1173](https://github.com/loco-rs/loco/pull/1173)
+* Return json validation details response. [https://github.com/loco-rs/loco/pull/1174](https://github.com/loco-rs/loco/pull/1174)
+* Fix example command after generating schedule. [https://github.com/loco-rs/loco/pull/1176](https://github.com/loco-rs/loco/pull/1176)
+* Fixed independent features. [https://github.com/loco-rs/loco/pull/1177](https://github.com/loco-rs/loco/pull/1177)
+* Custom response header for redirect. [https://github.com/loco-rs/loco/pull/1186](https://github.com/loco-rs/loco/pull/1186)
+* Added run_on_start feature to scheduler. [https://github.com/loco-rs/loco/pull/1184](https://github.com/loco-rs/loco/pull/1184)
+* feat: public jwt extractor from non-mutable reference to parts. [https://github.com/loco-rs/loco/pull/1190](https://github.com/loco-rs/loco/pull/1190)
+
+
+## v0.14
+
+* feat: smart migration generator. you can now generate migration based on naming them for creating a table, adding columns, references, join tables and more. [https://github.com/loco-rs/loco/pull/1086](https://github.com/loco-rs/loco/pull/1086)
+* feat: `cargo loco routes` will now pretty-print routes
+* fix: guard jwt error behind feature flag. [https://github.com/loco-rs/loco/pull/1032](https://github.com/loco-rs/loco/pull/1032)
+* fix: logger file_appender not using the seperated format setting. [https://github.com/loco-rs/loco/pull/1036](https://github.com/loco-rs/loco/pull/1036)
+* seed cli command. [https://github.com/loco-rs/loco/pull/1046](https://github.com/loco-rs/loco/pull/1046)
+* Updated validator to 0.19. [https://github.com/loco-rs/loco/pull/993](https://github.com/loco-rs/loco/pull/993)
+  ### Breaking Changes
+  Bump validator to 0.19 in your local `Cargo.toml`
+* Testing helpers: simplified function calls + adding html selector. [https://github.com/loco-rs/loco/pull/1047](https://github.com/loco-rs/loco/pull/1047)
+  ### Breaking Changes
+  #### Updated Import Paths
+  The testing module import path has been updated. To adapt your code, update imports from:
+  ```rust
+  use loco_rs::testing;
+  ```
+  to:
+  ```rust
+  use testing::prelude::*;
+  ```
+  #### Simplified Function Calls
+  Function calls within the testing module no longer require the testing:: prefix. Update your code accordingly. For example:
+  
+  Before:
+  ```rust
+  let boot = testing::boot_test::<App>().await.unwrap();
+  ```
+
+  After:
+  ```rust
+  let boot = boot_test::<App>().await.unwrap();
+  ```
+* implement commands to manage background jobs. [https://github.com/loco-rs/loco/pull/1071](https://github.com/loco-rs/loco/pull/1071)
+* magic link. [https://github.com/loco-rs/loco/pull/1085](https://github.com/loco-rs/loco/pull/1085)
+* infer migration. [https://github.com/loco-rs/loco/pull/1086](https://github.com/loco-rs/loco/pull/1086)
+* Remove unnecessary calls to 'register_tasks' functions in scheduler. [https://github.com/loco-rs/loco/pull/1100](https://github.com/loco-rs/loco/pull/1100)
+* implement commands to manage background jobs. [https://github.com/loco-rs/loco/pull/1071](https://github.com/loco-rs/loco/pull/1071)
+* expose hello_name for SMTP client config. [https://github.com/loco-rs/loco/pull/1057](https://github.com/loco-rs/loco/pull/1057)
+* use reqwest with rustls rather than openssl. [https://github.com/loco-rs/loco/pull/1058](https://github.com/loco-rs/loco/pull/1058)
+* more flexible config, take more values from ENV. [https://github.com/loco-rs/loco/pull/1058](https://github.com/loco-rs/loco/pull/1058)
+* refactor: Use opendal to replace object_store. [https://github.com/loco-rs/loco/pull/897](https://github.com/loco-rs/loco/pull/897)
+* allow override loco template. [https://github.com/loco-rs/loco/pull/1102](https://github.com/loco-rs/loco/pull/1102)
+* support custom config folder. [https://github.com/loco-rs/loco/pull/1081](https://github.com/loco-rs/loco/pull/1081)
+* feat: upgrade to Axum 8. [https://github.com/loco-rs/loco/pull/1130](https://github.com/loco-rs/loco/pull/1130)
+* create load config hook. [https://github.com/loco-rs/loco/pull/1143](https://github.com/loco-rs/loco/pull/1143)
+* initial impl new migration dsl. [https://github.com/loco-rs/loco/pull/1125](https://github.com/loco-rs/loco/pull/1125)
+* allow disable limit_payload middleware. [https://github.com/loco-rs/loco/pull/1113](https://github.com/loco-rs/loco/pull/1113)
+
+
+## v0.13.2
+
+* static fallback now returns 200 and not 404 [https://github.com/loco-rs/loco/pull/991](https://github.com/loco-rs/loco/pull/991)
+* cache system now has expiry [https://github.com/loco-rs/loco/pull/1006](https://github.com/loco-rs/loco/pull/1006)
+* fixed: http interface binding [https://github.com/loco-rs/loco/pull/1007](https://github.com/loco-rs/loco/pull/1007)
+* JWT claims now editable and public [https://github.com/loco-rs/loco/issues/988](https://github.com/loco-rs/loco/issues/988)
+* CORS now not enabled in dev mode to avoid friction [https://github.com/loco-rs/loco/pull/1009](https://github.com/loco-rs/loco/pull/1009)
+* fixed: task code generation now injects in all cases [https://github.com/loco-rs/loco/pull/1012](https://github.com/loco-rs/loco/pull/1012)
+
+**BREAKING**
+In your `app.rs` add the following injection comment at the bottom:
+
+```rust
+fn register_tasks(tasks: &mut Tasks) {
+    tasks.register(tasks::user_report::UserReport);
+    tasks.register(tasks::seed::SeedData);
+    tasks.register(tasks::foo::Foo);
+    // tasks-inject (do not remove)
+}
+```
+* fix: seeding now sets autoincrement fields in the relevant DBs [https://github.com/loco-rs/loco/pull/1014](https://github.com/loco-rs/loco/pull/1014)
+* fix: avoid generating entities from queue tables when the queue backend is database based [https://github.com/loco-rs/loco/issues/1013](https://github.com/loco-rs/loco/issues/1013)
+* removed: channels moved to an initializer [https://github.com/loco-rs/loco/issues/892](https://github.com/loco-rs/loco/issues/892)
+**BREAKING**
+See how this looks like in [https://github.com/loco-rs/chat-rooms](https://github.com/loco-rs/chat-rooms)
+
 ## v0.13.0
 
 * Added SQLite background job support [https://github.com/loco-rs/loco/pull/969](https://github.com/loco-rs/loco/pull/969)

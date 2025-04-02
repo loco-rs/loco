@@ -1,12 +1,13 @@
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
+
 use loco::{
     generator::{self, executer::FileSystem, template},
     settings,
 };
 use rand::{rngs::StdRng, SeedableRng};
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-};
 
 mod asset;
 mod auth;

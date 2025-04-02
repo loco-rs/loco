@@ -101,6 +101,7 @@ fn test_src_bin_main_rs(
 }
 
 #[rstest]
+#[cfg(windows)]
 fn test_src_bin_tool_rs(
     #[values(DBOption::None, DBOption::Sqlite, DBOption::Postgres)] db: DBOption,
 ) {
@@ -122,20 +123,6 @@ fn test_src_bin_tool_rs(
 }
 
 #[rstest]
-fn test_tasks_mod_rs(#[values(DBOption::None, DBOption::Sqlite, DBOption::Postgres)] db: DBOption) {
-    let generator = run_generator(db.clone());
-
-    let content =
-        std::fs::read_to_string(generator.path("src/tasks/mod.rs")).expect("could not open file");
-
-    if db.enable() {
-        assertion::string::assert_line_regex(&content, "(?m)^pub mod seed;$");
-    } else {
-        assertion::string::assert_str_not_exists(&content, "pub mod seed");
-    }
-}
-
-#[rstest]
 fn test_tests_mod_rs(#[values(DBOption::None, DBOption::Sqlite, DBOption::Postgres)] db: DBOption) {
     let generator = run_generator(db.clone());
 
@@ -146,21 +133,5 @@ fn test_tests_mod_rs(#[values(DBOption::None, DBOption::Sqlite, DBOption::Postgr
         assertion::string::assert_line_regex(&content, "(?m)^mod models;$");
     } else {
         assertion::string::assert_str_not_exists(&content, "mod models;");
-    }
-}
-
-#[rstest]
-fn test_tests_tasks_mod_rs(
-    #[values(DBOption::None, DBOption::Sqlite, DBOption::Postgres)] db: DBOption,
-) {
-    let generator = run_generator(db.clone());
-
-    let content =
-        std::fs::read_to_string(generator.path("tests/tasks/mod.rs")).expect("could not open file");
-
-    if db.enable() {
-        assertion::string::assert_line_regex(&content, "(?m)^pub mod seed;$");
-    } else {
-        assertion::string::assert_str_not_exists(&content, "pub mod seed");
     }
 }

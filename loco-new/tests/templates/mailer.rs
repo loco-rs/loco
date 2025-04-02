@@ -1,8 +1,8 @@
-use super::*;
-
-use crate::assertion;
 use loco::settings;
 use rstest::rstest;
+
+use super::*;
+use crate::assertion;
 
 pub fn run_generator(enable_mailer: bool) -> TestGenerator {
     let settings = settings::Settings {
@@ -28,7 +28,13 @@ fn test_config_file_with_mailer(
 ) {
     let generator = run_generator(true);
     let content = assertion::yaml::load(generator.path(config_file));
-    assertion::yaml::assert_path_key_count(&content, &["mailer"], 1);
+    if config_file == "config/test.yaml" {
+        assertion::yaml::assert_path_key_count(&content, &["mailer"], 2);
+        assertion::yaml::assert_path_value_eq_bool(&content, &["mailer", "stub"], true);
+    } else {
+        assertion::yaml::assert_path_key_count(&content, &["mailer"], 1);
+    }
+
     assertion::yaml::assert_path_key_count(&content, &["mailer", "smtp"], 4);
     assertion::yaml::assert_path_value_eq_bool(&content, &["mailer", "smtp", "enable"], true);
     assertion::yaml::assert_path_value_eq_int(&content, &["mailer", "smtp", "port"], 1025);

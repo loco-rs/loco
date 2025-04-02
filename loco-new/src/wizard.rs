@@ -71,8 +71,8 @@ impl DBOption {
     #[must_use]
     pub const fn endpoint_config(&self) -> &str {
         match self {
-            Self::Sqlite => "sqlite://loco_app.sqlite?mode=rwc",
-            Self::Postgres => "postgres://loco:loco@localhost:5432/loco_app",
+            Self::Sqlite => "sqlite://NAME_ENV.sqlite?mode=rwc",
+            Self::Postgres => "postgres://loco:loco@localhost:5432/NAME_ENV",
             Self::None => "",
         }
     }
@@ -295,11 +295,13 @@ where
 /// when could not show user selection or user chose not continue
 pub fn start(args: &ArgsPlaceholder) -> crate::Result<Selections> {
     // user provided everything via flags so no need to prompt, just return
-    if args.db.is_some() && args.bg.is_some() && args.assets.is_some() {
+    if let (Some(db), Some(bg), Some(assets)) =
+        (args.db.clone(), args.bg.clone(), args.assets.clone())
+    {
         return Ok(Selections {
-            db: args.db.clone().unwrap(),
-            background: args.bg.clone().unwrap(),
-            asset: args.assets.clone().unwrap(),
+            db,
+            background: bg,
+            asset: assets,
         });
     }
 
@@ -316,24 +318,31 @@ pub fn start(args: &ArgsPlaceholder) -> crate::Result<Selections> {
         }),
         Template::RestApi => Ok(Selections {
             db: select_db(args)?,
-            background: select_background(args)?,
+            background: select_background(args, None)?,
             asset: AssetsOption::None,
         }),
         Template::SaasServerSideRendering => Ok(Selections {
             db: select_db(args)?,
-            background: select_background(args)?,
+            background: select_background(args, None)?,
             asset: AssetsOption::Serverside,
         }),
         Template::SaasClientSideRendering => Ok(Selections {
             db: select_db(args)?,
-            background: select_background(args)?,
+            background: select_background(args, None)?,
             asset: AssetsOption::Clientside,
         }),
-        Template::Advanced => Ok(Selections {
-            db: select_db(args)?,
-            background: select_background(args)?,
-            asset: select_asset(args)?,
-        }),
+        Template::Advanced => {
+            let db = select_db(args)?;
+            let background_options = match db {
+                DBOption::Sqlite | DBOption::Postgres => Some(vec![BackgroundOption::None]),
+                DBOption::None => None,
+            };
+            Ok(Selections {
+                db,
+                background: select_background(args, background_options.as_ref())?,
+                asset: select_asset(args)?,
+            })
+        }
     }
 }
 
@@ -353,14 +362,18 @@ fn select_db(args: &ArgsPlaceholder) -> crate::Result<DBOption> {
 
 /// Prompts the user to select a background worker option if none is provided in
 /// the arguments.
-fn select_background(args: &ArgsPlaceholder) -> crate::Result<BackgroundOption> {
+fn select_background(
+    args: &ArgsPlaceholder,
+    filters: Option<&Vec<BackgroundOption>>,
+) -> crate::Result<BackgroundOption> {
     let bgopt = if let Some(bgopt) = args.bg.clone() {
         bgopt
     } else {
-        select_option(
-            "❯ Select your background worker type",
-            &BackgroundOption::iter().collect::<Vec<_>>(),
-        )?
+        let available_options = BackgroundOption::iter()
+            .filter(|opt| filters.as_ref().is_none_or(|f| !f.contains(opt)))
+            .collect::<Vec<_>>();
+
+        select_option("❯ Select your background worker type", &available_options)?
     };
     Ok(bgopt)
 }

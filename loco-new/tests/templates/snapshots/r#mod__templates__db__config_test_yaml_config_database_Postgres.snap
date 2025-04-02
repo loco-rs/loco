@@ -1,12 +1,12 @@
 ---
-source: loco-new/tests/templates/db.rs
-expression: "format!(\"{:#?}\",\n    assertion::yaml::get_value_at_path(&content, &[\"database\"]).unwrap())"
+source: tests/templates/db.rs
+expression: "format!(\"{:#?}\",\nassertion::yaml::get_value_at_path(&content, &[\"database\"]).unwrap())"
 ---
 Mapping {
     "uri": Mapping {
         Mapping {
             "get_env(name=\"DATABASE_URL\"": Null,
-            "default=\"postgres://loco:loco@localhost:5432/loco_app\")": Null,
+            "default=\"postgres://loco:loco@localhost:5432/loco-app-test_test\")": Null,
         }: Null,
     },
     "enable_logging": Bool(false),
@@ -36,5 +36,5 @@ Mapping {
     },
     "auto_migrate": Bool(true),
     "dangerously_truncate": Bool(true),
-    "dangerously_recreate": Bool(false),
+    "dangerously_recreate": Bool(true),
 }

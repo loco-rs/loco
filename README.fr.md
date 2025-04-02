@@ -14,7 +14,7 @@
 
  </div>
 
-[English](./README.md) · [中文](./README-zh_CN.md) · Français · [Portuguese (Brazil)](./README-pt_BR.md) ・ [日本語](./README.ja.md)
+[English](./README.md) · [中文](./README-zh_CN.md) · Français · [Portuguese (Brazil)](./README-pt_BR.md) ・ [日本語](./README.ja.md) · [한국어](./README.ko.md) · [Русский](./README.ru.md)
 
 ## À propos de Loco
 `Loco` est fortement inspiré de Rails. Si vous connaissez Rails et Rust, vous vous sentirez chez vous. Si vous ne connaissez que Rails et que vous êtes nouveau sur Rust, vous trouverez Loco rafraîchissant. Nous ne supposons pas que vous connaissez Rails.
@@ -60,13 +60,18 @@ Vous pouvez maintenant créer votre nouvelle application (choisissez "`SaaS` app
 ```sh
 ❯ loco new
 ✔ ❯ App name? · myapp
-✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+✔ ❯ What would you like to build? · Saas App with client side rendering
 ✔ ❯ Select a DB Provider · Sqlite
 ✔ ❯ Select your background worker type · Async (in-process tokio async tasks)
-✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
 
 🚂 Loco app generated successfully in:
 myapp/
+
+- assets: You've selected `clientside` for your asset serving configuration.
+
+Next step, build your frontend:
+  $ cd frontend/
+  $ npm install && npm run build
 ```
 <!-- </snip> -->
 

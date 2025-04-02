@@ -16,7 +16,7 @@
 
  </div>
 
-[English](./README.md) · [中文](./README-zh_CN.md) · [Français](./README.fr.md) · Portuguese (Brazil) ・ [日本語](./README.ja.md)
+[English](./README.md) · [中文](./README-zh_CN.md) · [Français](./README.fr.md) · Portuguese (Brazil) ・ [日本語](./README.ja.md) · [한국어](./README.ko.md) · [Русский](./README.ru.md)
 
 
 ## O que é o Loco?
@@ -66,13 +66,18 @@ Agora você pode criar seu novo aplicativo (escolha "`SaaS` app").
 ```sh
 ❯ loco new
 ✔ ❯ App name? · myapp
-✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+✔ ❯ What would you like to build? · Saas App with client side rendering
 ✔ ❯ Select a DB Provider · Sqlite
 ✔ ❯ Select your background worker type · Async (in-process tokio async tasks)
-✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
 
 🚂 Loco app generated successfully in:
 myapp/
+
+- assets: You've selected `clientside` for your asset serving configuration.
+
+Next step, build your frontend:
+  $ cd frontend/
+  $ npm install && npm run build
 ```
 <!-- </snip> -->
 

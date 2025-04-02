@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     wizard::{self, AssetsOption, BackgroundOption, DBOption},
-    LOCO_VERSION,
+    LOCO_VERSION, OS,
 };
 
 /// Represents general application settings.
@@ -21,10 +21,10 @@ pub struct Settings {
     pub asset: Option<Asset>,
     pub auth: bool,
     pub mailer: bool,
-    pub clientside: bool,
     pub initializers: Option<Initializers>,
     pub features: Features,
     pub loco_version_text: String,
+    pub os: OS,
 }
 
 impl From<DBOption> for Option<Db> {
@@ -60,7 +60,7 @@ impl From<AssetsOption> for Option<Asset> {
 impl Settings {
     /// Creates a new [`Settings`] instance based on prompt selections.
     #[must_use]
-    pub fn from_wizard(package_name: &str, prompt_selection: &wizard::Selections) -> Self {
+    pub fn from_wizard(package_name: &str, prompt_selection: &wizard::Selections, os: OS) -> Self {
         let features = if prompt_selection.db.enable() {
             Features::default()
         } else {
@@ -74,19 +74,19 @@ impl Settings {
         Self {
             package_name: package_name.to_string(),
             module_name: package_name.to_snake_case(),
-            auth: prompt_selection.db.enable(),
-            mailer: prompt_selection.db.enable(),
+            auth: prompt_selection.db.enable() && prompt_selection.background.enable(),
+            mailer: prompt_selection.db.enable() && prompt_selection.background.enable(),
             db: prompt_selection.db.clone().into(),
             background: prompt_selection.background.clone().into(),
             asset: prompt_selection.asset.clone().into(),
-            clientside: prompt_selection.asset.enable(),
-            initializers: if prompt_selection.asset.enable() {
+            initializers: if prompt_selection.asset == AssetsOption::Serverside {
                 Some(Initializers { view_engine: true })
             } else {
                 None
             },
             features,
             loco_version_text: get_loco_version_text(),
+            os,
         }
     }
 }
@@ -101,10 +101,10 @@ impl Default for Settings {
             asset: Default::default(),
             auth: Default::default(),
             mailer: Default::default(),
-            clientside: Default::default(),
             initializers: Default::default(),
             features: Default::default(),
             loco_version_text: get_loco_version_text(),
+            os: Default::default(),
         }
     }
 }

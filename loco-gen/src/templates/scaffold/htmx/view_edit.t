@@ -10,92 +10,31 @@ message: "{{file_name}} edit view was added successfully."
 Edit {{name}}: {% raw %}{{ item.id }}{% endraw %}
 {% raw %}{% endblock title %}{% endraw %}
 
+{% raw %}{% block page_title %}{% endraw %}
+Edit {{name}}: {% raw %}{{ item.id }}{% endraw %}
+{% raw %}{% endblock page_title %}{% endraw %}
+
 {% raw %}{% block content %}{% endraw %}
-<h1>Edit {{name}}: {% raw %}{{ item.id }}{% endraw %}</h1>
 <div class="mb-10">
-    <form hx-put="/{{name | plural}}/{% raw %}{{ item.id }}{% endraw %}" hx-ext="submitjson" hx-target="#success-message">
-    <div class="mb-5">
-    {% for column in columns -%}
+    <div id="error-message" class="mt-4 text-sm text-red-600"></div>
+    <form hx-put="/{{name | plural}}/{% raw %}{{ item.id }}{% endraw %}" hx-ext="submitjson" hx-target="#success-message" class="flex-1 lg:max-w-2xl">
+        {% for column in columns -%}
+            {{ render_form_field(fname=column.0, rust_type=column.1, ftype=column.2, edit_form=true)}}
+        {% endfor -%}
         <div>
-        <label>{{column.0}}</label>
-        <br />
-        {% if column.2 == "text" -%}
-        <textarea id="{{column.0}}" name="{{column.0}}" type="text">{% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}</textarea>
-        {% elif column.2 == "string" -%}
-        <input id="{{column.0}}" name="{{column.0}}" type="text" value="{% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}"></input>
-        {% elif column.2 == "string!" or column.2 == "string^" -%}
-        <input id="{{column.0}}" name="{{column.0}}" type="text" value="{% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}" required></input>
-        {% elif column.2 == "int" or column.2 == "int!" or column.2 == "int^"-%}
-        <input id="{{column.0}}" name="{{column.0}}" type="number" required value="{% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}"></input>
-        {% elif column.2 == "bool"-%}
-        <input id="{{column.0}}" name="{{column.0}}" type="checkbox" value="true" {% raw %}{% if item.{% endraw %}{{column.0}}{% raw %} %}checked{%endif %}{% endraw %}></input>
-        {% elif column.2 == "bool!"-%}
-        <input id="{{column.0}}" name="{{column.0}}" type="checkbox" value="true" {% raw %}{% if item.{% endraw %}{{column.0}}{% raw %} %}checked{%endif %}{% endraw %} required></input>
-        {% elif column.2 == "ts"-%}
-        <input id="{{column.0}}" name="{{column.0}}" type="text" value="{% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}"></input>
-        {% elif column.2 == "ts!"-%}
-        <input id="{{column.0}}" name="{{column.0}}" type="text" value="{% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}" required></input>
-        {% elif column.2 == "uuid"-%}
-        <input id="{{column.0}}" name="{{column.0}}" type="text" value="{% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}"></input>
-        {% elif column.2 == "uuid!"-%}
-        <input id="{{column.0}}" name="{{column.0}}" type="text" value="{% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}" required></input>
-        {% elif column.2 == "json" or column.2 == "jsonb" -%}
-        <textarea id="{{column.0}}" name="{{column.0}}" type="text">{% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}</textarea>
-        {% elif column.2 == "json!" or column.2 == "jsonb!" -%}
-        <textarea id="{{column.0}}" name="{{column.0}}" type="text" required>{% raw %}{{item.{% endraw %}{{column.0}}{% raw %}}}{% endraw %}</textarea>
-        {% endif -%} 
+            <div class="mt-5">
+                <button class=" text-xs py-3 px-6 rounded-lg bg-gray-900 text-white" type="submit">Submit</button>
+                <button class="text-xs py-3 px-6 rounded-lg bg-red-600 text-white"
+                            onclick="confirmDelete(event, '/{{name | plural}}/{% raw %}{{ item.id }}{% endraw %}', '/{{name | plural}}' )">Delete</button>
+            </div>
         </div>
-    {% endfor -%}
-    </div>
-    <div>
-        <div class="mt-5">
-            <button class=" text-xs py-3 px-6 rounded-lg bg-gray-900 text-white" type="submit">Submit</button>
-            <button class="text-xs py-3 px-6 rounded-lg bg-red-600 text-white"
-                        onclick="confirmDelete(event)">Delete</button>
-        </div>
-    </div>
-</form>
-<div id="success-message" class="mt-4"></div>
-<br />
-<a href="/{{name | plural}}">Back to {{name}}</a>
+    </form>
+    <div id="success-message" class="mt-4"></div>
+    <br />
+    <a href="/{{name | plural}}">Back to {{name}}</a>
 </div>
 {% raw %}{% endblock content %}{% endraw %}
 
 {% raw %}{% block js %}{% endraw %}
-<script>
-    htmx.defineExtension('submitjson', {
-        onEvent: function (name, evt) {
-            if (name === "htmx:configRequest") {
-                evt.detail.headers['Content-Type'] = "application/json"
-            }
-        },
-        encodeParameters: function (xhr, parameters, elt) {
-            const json = {};
-            for (const [key, value] of Object.entries(parameters)) {
-                const inputType = elt.querySelector(`[name=${key}]`).type;
-                if (inputType === 'number') {
-                    json[key] = parseFloat(value);
-                } else if (inputType === 'checkbox') {
-                    json[key] = elt.querySelector(`[name=${key}]`).checked;
-                } else {
-                    json[key] = value;
-                }
-            }
-            return JSON.stringify(json);
-        }
-    })
-    function confirmDelete(event) {
-        event.preventDefault();
-        if (confirm("Are you sure you want to delete this item?")) {
-            var xhr = new XMLHttpRequest();
-            xhr.open("DELETE", "/{{name | plural}}/{% raw %}{{ item.id }}{% endraw %}", true);
-            xhr.onreadystatechange = function () {
-                if (xhr.readyState == 4 && xhr.status == 200) {
-                    window.location.href = "/{{name | plural}}";
-                }
-            };
-            xhr.send();
-        }
-    }
-</script>
+
 {% raw %}{% endblock js %}{% endraw %}

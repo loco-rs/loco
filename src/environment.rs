@@ -12,13 +12,11 @@
 //!  let config = environment.load().expect("failed to load environment");
 //! }
 //! ```
-use std::{path::Path, str::FromStr};
-
+use super::config::Config;
+use crate::{env_vars, Result};
 use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
-
-use super::config::Config;
-use crate::Result;
+use std::{path::Path, str::FromStr};
 
 pub const DEFAULT_ENVIRONMENT: &str = "development";
 pub const LOCO_ENV: &str = "LOCO_ENV";
@@ -33,9 +31,9 @@ impl From<String> for Environment {
 
 #[must_use]
 pub fn resolve_from_env() -> String {
-    std::env::var("LOCO_ENV")
-        .or_else(|_| std::env::var("RAILS_ENV"))
-        .or_else(|_| std::env::var("NODE_ENV"))
+    env_vars::get(env_vars::LOCO_ENV)
+        .or_else(|_| env_vars::get(env_vars::RAILS_ENV))
+        .or_else(|_| env_vars::get(env_vars::NODE_ENV))
         .unwrap_or_else(|_| DEFAULT_ENVIRONMENT.to_string())
 }
 
@@ -59,7 +57,10 @@ impl Environment {
     /// Returns error if an error occurs during loading
     /// configuration file an parse into [`Config`] struct.
     pub fn load(&self) -> Result<Config> {
-        Config::new(self)
+        env_vars::get(env_vars::CONFIG_FOLDER).map_or_else(
+            |_| Config::new(self),
+            |config_folder| self.load_from_folder(Path::new(&config_folder)),
+        )
     }
 
     /// Load environment variables from the given config path
@@ -128,11 +129,5 @@ mod tests {
         assert_eq!(e, Environment::Production);
         let e: Environment = "custom".to_string().into();
         assert_eq!(e, Environment::Any("custom".to_string()));
-    }
-
-    #[test]
-    fn test_from_folder() {
-        let config = Environment::Development.load_from_folder(Path::new("examples/demo/config"));
-        assert!(config.is_ok());
     }
 }

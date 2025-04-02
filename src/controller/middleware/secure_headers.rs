@@ -226,13 +226,25 @@ where
 #[cfg(test)]
 mod tests {
 
-    use axum::{routing::get, Router};
-    use hyper::Method;
+    use axum::{
+        http::{HeaderMap, Method},
+        routing::get,
+        Router,
+    };
     use insta::assert_debug_snapshot;
     use tower::ServiceExt;
 
     use super::*;
-
+    fn normalize_headers(headers: &HeaderMap) -> BTreeMap<String, String> {
+        headers
+            .iter()
+            .map(|(k, v)| {
+                let key = k.to_string();
+                let value = v.to_str().unwrap_or("").to_string();
+                (key, value)
+            })
+            .collect()
+    }
     #[tokio::test]
     async fn can_set_headers() {
         let config = SecureHeader {
@@ -250,7 +262,7 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         let response = app.oneshot(req).await.unwrap();
-        assert_debug_snapshot!(response.headers());
+        assert_debug_snapshot!(normalize_headers(response.headers()));
     }
 
     #[tokio::test]
@@ -274,7 +286,7 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         let response = app.oneshot(req).await.unwrap();
-        assert_debug_snapshot!(response.headers());
+        assert_debug_snapshot!(normalize_headers(response.headers()));
     }
 
     #[tokio::test]
@@ -290,6 +302,6 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         let response = app.oneshot(req).await.unwrap();
-        assert_debug_snapshot!(response.headers());
+        assert_debug_snapshot!(normalize_headers(response.headers()));
     }
 }

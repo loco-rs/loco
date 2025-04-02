@@ -21,7 +21,6 @@
 //! ```
 use std::collections::HashMap;
 
-use async_trait::async_trait;
 use axum::{
     extract::{FromRef, FromRequestParts, Query},
     http::{request::Parts, HeaderMap},
@@ -53,7 +52,6 @@ pub struct JWTWithUser<T: Authenticable> {
 }
 
 // Implement the FromRequestParts trait for the Auth struct
-#[async_trait]
 impl<S, T> FromRequestParts<S> for JWTWithUser<T>
 where
     AppContext: FromRef<S>,
@@ -79,9 +77,7 @@ where
                     user,
                 })
             }
-            Err(_err) => {
-                return Err(Error::Unauthorized("token is not valid".to_string()));
-            }
+            Err(_err) => Err(Error::Unauthorized("token is not valid".to_string())),
         }
     }
 }
@@ -94,7 +90,6 @@ pub struct JWT {
 }
 
 // Implement the FromRequestParts trait for the Auth struct
-#[async_trait]
 impl<S> FromRequestParts<S> for JWT
 where
     AppContext: FromRef<S>,
@@ -103,20 +98,30 @@ where
     type Rejection = Error;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
-        let ctx: AppContext = AppContext::from_ref(state); // change to ctx
+        extract_jwt_from_request_parts(parts, state)
+    }
+}
 
-        let token = extract_token(get_jwt_from_config(&ctx)?, parts)?;
+/// extract a [JWT] token from request parts, using a non-mutable reference to the [Parts]
+///
+/// # Errors
+/// Return an error when JWT token not configured or when the token is not valid
+pub fn extract_jwt_from_request_parts<S>(parts: &Parts, state: &S) -> Result<JWT, Error>
+where
+    AppContext: FromRef<S>,
+    S: Send + Sync,
+{
+    let ctx: AppContext = AppContext::from_ref(state); // change to ctx
 
-        let jwt_secret = ctx.config.get_jwt_config()?;
+    let token = extract_token(get_jwt_from_config(&ctx)?, parts)?;
 
-        match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
-            Ok(claims) => Ok(Self {
-                claims: claims.claims,
-            }),
-            Err(_err) => {
-                return Err(Error::Unauthorized("token is not valid".to_string()));
-            }
-        }
+    let jwt_secret = ctx.config.get_jwt_config()?;
+
+    match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
+        Ok(claims) => Ok(JWT {
+            claims: claims.claims,
+        }),
+        Err(_err) => Err(Error::Unauthorized("token is not valid".to_string())),
     }
 }
 
@@ -203,7 +208,6 @@ pub struct ApiToken<T: Authenticable> {
     pub user: T,
 }
 
-#[async_trait]
 // Implementing the `FromRequestParts` trait for `ApiToken` to enable extracting
 // it from the request.
 impl<S, T> FromRequestParts<S> for ApiToken<T>

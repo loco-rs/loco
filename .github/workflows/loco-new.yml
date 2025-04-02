@@ -6,9 +6,11 @@ on:
       - master
     paths:
       - "loco-new/**"
+      - "loco-gen/**"
   pull_request:
     paths:
       - "loco-new/**"
+      - "loco-gen/**"
 
 env:
   RUST_TOOLCHAIN: stable
@@ -63,7 +65,16 @@ jobs:
           echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
 
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.6
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Install seaorm cli
+        run: cargo install sea-orm-cli
+
+      - name: Free Disk Space
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
 
       - name: Run cargo test
         run: cargo test --all-features -- --test-threads 1

@@ -36,9 +36,7 @@ fn test_cargo_toml() {
 }
 
 #[rstest]
-fn test_use_name(
-    #[values("src/bin/main.rs", "src/bin/tool.rs", "tests/requests/home.rs")] file: &str,
-) {
+fn test_use_name(#[values("src/bin/main.rs", "tests/requests/home.rs")] file: &str) {
     let generator = run_generator();
 
     let content = std::fs::read_to_string(generator.path(file)).expect("could not open file");
@@ -48,14 +46,18 @@ fn test_use_name(
 
 #[rstest]
 fn test_use_name_with_db(
-    #[values(
-        "tests/models/users.rs",
-        "tests/requests/prepare_data.rs",
-        "tests/tasks/seed.rs"
-    )]
-    file: &str,
+    #[values("tests/models/users.rs", "tests/requests/prepare_data.rs")] file: &str,
 ) {
-    let generator = super::db::run_generator(DBOption::Sqlite);
+    let settings = settings::Settings {
+        package_name: "loco-app-test".to_string(),
+        module_name: "loco_app_test".to_string(),
+        db: DBOption::Sqlite.into(),
+        auth: true,
+        ..Default::default()
+    };
+
+    let generator = TestGenerator::generate(settings);
+    println!("{:#?}", generator.tree);
 
     let content = std::fs::read_to_string(generator.path(file)).expect("could not open file");
 
@@ -64,7 +66,7 @@ fn test_use_name_with_db(
 
 #[rstest]
 fn test_use_name_with_auth(#[values("tests/requests/auth.rs")] file: &str) {
-    let generator = super::auth::run_generator(true);
+    let generator = super::auth::run_generator(true, DBOption::None);
 
     let content = std::fs::read_to_string(generator.path(file)).expect("could not open file");
 

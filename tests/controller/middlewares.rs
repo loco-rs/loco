@@ -4,7 +4,6 @@ use axum::http::StatusCode;
 use insta::assert_debug_snapshot;
 use loco_rs::{controller::middleware, prelude::*, tests_cfg};
 use rstest::rstest;
-use serial_test::serial;
 
 use crate::infra_cfg;
 
@@ -21,7 +20,6 @@ macro_rules! configure_insta {
 #[case(true)]
 #[case(false)]
 #[tokio::test]
-#[serial]
 async fn panic(#[case] enable: bool) {
     configure_insta!();
 
@@ -34,8 +32,9 @@ async fn panic(#[case] enable: bool) {
     ctx.config.server.middlewares.catch_panic =
         Some(middleware::catch_panic::CatchPanic { enable });
 
-    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
-    let res = reqwest::get(infra_cfg::server::get_base_url()).await;
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
+    let res = reqwest::get(get_base_url_port(port)).await;
 
     if enable {
         let res = res.expect("valid response");
@@ -54,7 +53,6 @@ async fn panic(#[case] enable: bool) {
 #[case(true)]
 #[case(false)]
 #[tokio::test]
-#[serial]
 async fn etag(#[case] enable: bool) {
     async fn action() -> Result<Response> {
         format::render().etag("loco-etag")?.text("content")
@@ -64,10 +62,11 @@ async fn etag(#[case] enable: bool) {
 
     ctx.config.server.middlewares.etag = Some(middleware::etag::Etag { enable });
 
-    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
 
     let res = reqwest::Client::new()
-        .get(infra_cfg::server::get_base_url())
+        .get(get_base_url_port(port))
         .header("if-none-match", "loco-etag")
         .send()
         .await
@@ -86,7 +85,6 @@ async fn etag(#[case] enable: bool) {
 #[case(true, "remote: 51.50.51.50")]
 #[case(false, "--")]
 #[tokio::test]
-#[serial]
 async fn remote_ip(#[case] enable: bool, #[case] expected: &str) {
     #[allow(clippy::items_after_statements)]
     async fn action(remote_ip: RemoteIP) -> Result<Response> {
@@ -100,10 +98,11 @@ async fn remote_ip(#[case] enable: bool, #[case] expected: &str) {
         trusted_proxies: Some(vec!["192.1.1.1/8".to_string()]),
     });
 
-    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
 
     let res = reqwest::Client::new()
-        .get(infra_cfg::server::get_base_url())
+        .get(get_base_url_port(port))
         .header(
             "x-forwarded-for",
             reqwest::header::HeaderValue::from_static("51.50.51.50,192.1.1.1"),
@@ -121,7 +120,6 @@ async fn remote_ip(#[case] enable: bool, #[case] expected: &str) {
 #[case(true)]
 #[case(false)]
 #[tokio::test]
-#[serial]
 async fn timeout(#[case] enable: bool) {
     #[allow(clippy::items_after_statements)]
     async fn action() -> Result<Response> {
@@ -134,9 +132,10 @@ async fn timeout(#[case] enable: bool) {
     ctx.config.server.middlewares.timeout_request =
         Some(middleware::timeout::TimeOut { enable, timeout: 2 });
 
-    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action)).await;
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
 
-    let res = reqwest::get(infra_cfg::server::get_base_url())
+    let res = reqwest::get(get_base_url_port(port))
         .await
         .expect("response");
 
@@ -156,7 +155,6 @@ async fn timeout(#[case] enable: bool) {
 #[case(true, "with_max_age", None, None, Some(20))]
 #[case(false, "disabled", None, None, None)]
 #[tokio::test]
-#[serial]
 async fn cors(
     #[case] enable: bool,
     #[case] test_name: &str,
@@ -170,8 +168,10 @@ async fn cors(
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
-    let mut middleware = Cors::empty();
-    middleware.enable = enable;
+    let mut middleware = Cors {
+        enable,
+        ..Default::default()
+    };
 
     if let Some(allow_headers) = allow_headers {
         middleware.allow_headers = allow_headers;
@@ -183,10 +183,11 @@ async fn cors(
 
     ctx.config.server.middlewares.cors = Some(middleware);
 
-    let handle = infra_cfg::server::start_from_ctx(ctx).await;
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port)).await;
 
     let res = reqwest::Client::new()
-        .request(reqwest::Method::OPTIONS, infra_cfg::server::get_base_url())
+        .request(reqwest::Method::OPTIONS, get_base_url_port(port))
         .send()
         .await
         .expect("valid response");
@@ -215,45 +216,46 @@ async fn cors(
 }
 
 #[rstest]
-#[case(true)]
-#[case(false)]
+#[case(middleware::limit_payload::DefaultBodyLimitKind::Limit(0x1B))]
+#[case(middleware::limit_payload::DefaultBodyLimitKind::Disable)]
 #[tokio::test]
-#[serial]
-async fn limit_payload(#[case] enable: bool) {
+async fn limit_payload(#[case] limit: middleware::limit_payload::DefaultBodyLimitKind) {
     configure_insta!();
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
-    ctx.config.server.middlewares.limit_payload = Some(middleware::limit_payload::LimitPayload {
-        enable,
-        body_limit: 0x1B,
-    });
+    ctx.config.server.middlewares.limit_payload =
+        Some(middleware::limit_payload::LimitPayload { body_limit: limit });
 
-    let handle = infra_cfg::server::start_from_ctx(ctx).await;
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port)).await;
 
     let res = reqwest::Client::new()
-        .request(reqwest::Method::POST, infra_cfg::server::get_base_url())
+        .request(reqwest::Method::POST, get_base_url_port(port))
         .body("send body".repeat(100))
         .send()
         .await
         .expect("valid response");
 
-    if enable {
-        assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
-    } else {
-        assert_eq!(res.status(), StatusCode::OK);
+    match limit {
+        middleware::limit_payload::DefaultBodyLimitKind::Disable => {
+            assert_eq!(res.status(), StatusCode::OK);
+        }
+        middleware::limit_payload::DefaultBodyLimitKind::Limit(_) => {
+            assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
+        }
     }
 
     handle.abort();
 }
 
 #[tokio::test]
-#[serial]
 async fn static_assets() {
     configure_insta!();
 
     let base_static_assets_path = PathBuf::from("assets").join("static");
-    let static_asset_path = tree_fs::Tree::default()
+    let static_asset_path = tree_fs::TreeBuilder::default()
+        .drop(true)
         .add(
             base_static_assets_path.join("404.html"),
             "<h1>404 not found</h1>",
@@ -266,21 +268,22 @@ async fn static_assets() {
         .expect("create static tree file");
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
-    let base_static_path = static_asset_path.join(base_static_assets_path);
+    let base_static_path = static_asset_path.root.join(base_static_assets_path);
     ctx.config.server.middlewares.static_assets = Some(middleware::static_assets::StaticAssets {
         enable: true,
         must_exist: true,
         folder: middleware::static_assets::FolderConfig {
             uri: "/static".to_string(),
-            path: base_static_path.display().to_string(),
+            path: base_static_path.clone(),
         },
-        fallback: base_static_path.join("404.html").display().to_string(),
+        fallback: base_static_path.join("404.html"),
         precompressed: false,
     });
 
-    let handle = infra_cfg::server::start_from_ctx(ctx).await;
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port)).await;
 
-    let get_static_html = reqwest::get("http://localhost:5555/static/static.html")
+    let get_static_html = reqwest::get(format!("{}static/static.html", get_base_url_port(port)))
         .await
         .expect("valid response");
 
@@ -289,7 +292,7 @@ async fn static_assets() {
         "<h1>static content</h1>".to_string()
     );
 
-    let get_fallback = reqwest::get("http://localhost:5555/static/logo.png")
+    let get_fallback = reqwest::get(format!("{}static/logo.png", get_base_url_port(port)))
         .await
         .expect("valid response");
 
@@ -309,7 +312,6 @@ async fn static_assets() {
         "default-src 'self' https".to_string(),
     )])))]
 #[tokio::test]
-#[serial]
 async fn secure_headers(
     #[case] preset: Option<String>,
     #[case] overrides: Option<BTreeMap<String, String>>,
@@ -326,10 +328,11 @@ async fn secure_headers(
         },
     );
 
-    let handle = infra_cfg::server::start_from_ctx(ctx).await;
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port)).await;
 
     let res = reqwest::Client::new()
-        .request(reqwest::Method::POST, infra_cfg::server::get_base_url())
+        .request(reqwest::Method::POST, get_base_url_port(port))
         .send()
         .await
         .expect("response");
@@ -359,7 +362,6 @@ async fn secure_headers(
 #[case(None, true, None)]
 #[case(None, false, Some("text fallback response".to_string()))]
 #[tokio::test]
-#[serial]
 async fn fallback(
     #[case] code: Option<StatusCode>,
     #[case] file: bool,
@@ -367,16 +369,16 @@ async fn fallback(
 ) {
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
-    let file = if file {
+    let maybe_file = if file {
         Some(
-            tree_fs::Tree::default()
+            tree_fs::TreeBuilder::default()
+                .drop(true)
                 .add(
                     PathBuf::from("static_content.html"),
                     "<h1>fallback response</h1>",
                 )
                 .create()
-                .unwrap()
-                .join("static_content.html"),
+                .unwrap(),
         )
     } else {
         None
@@ -384,7 +386,13 @@ async fn fallback(
 
     let mut fallback_config = middleware::fallback::Fallback {
         enable: true,
-        file: file.clone().map(|f| f.display().to_string()),
+        file: maybe_file.as_ref().map(|tree_fs| {
+            tree_fs
+                .root
+                .join("static_content.html")
+                .display()
+                .to_string()
+        }),
         not_found: not_found.clone(),
         ..Default::default()
     };
@@ -395,9 +403,10 @@ async fn fallback(
 
     ctx.config.server.middlewares.fallback = Some(fallback_config);
 
-    let handle = infra_cfg::server::start_from_ctx(ctx).await;
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port)).await;
 
-    let res = reqwest::get(format!("{}not-found", infra_cfg::server::get_base_url()))
+    let res = reqwest::get(format!("{}not-found", get_base_url_port(port)))
         .await
         .expect("valid response");
 
@@ -408,7 +417,7 @@ async fn fallback(
     }
 
     let response_text = res.text().await.expect("response text");
-    if file.is_some() {
+    if maybe_file.is_some() {
         assert_eq!(response_text, "<h1>fallback response</h1>".to_string());
     }
 
@@ -423,7 +432,6 @@ async fn fallback(
 #[case(None)]
 #[case(Some("custom".to_string()))]
 #[tokio::test]
-#[serial]
 async fn powered_by_header(#[case] ident: Option<String>) {
     configure_insta!();
 
@@ -431,9 +439,10 @@ async fn powered_by_header(#[case] ident: Option<String>) {
 
     ctx.config.server.ident.clone_from(&ident);
 
-    let handle = infra_cfg::server::start_from_ctx(ctx).await;
+    let port = get_available_port().await;
+    let handle = infra_cfg::server::start_from_ctx(ctx, Some(port)).await;
 
-    let res = reqwest::get(infra_cfg::server::get_base_url())
+    let res = reqwest::get(get_base_url_port(port))
         .await
         .expect("valid response");
 

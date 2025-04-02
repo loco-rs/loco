@@ -17,5 +17,7 @@ Ok(
         email_verification_token: None,
         email_verification_sent_at: None,
         email_verified_at: None,
+        magic_link_token: None,
+        magic_link_expiration: None,
     },
 )

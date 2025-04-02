@@ -17,7 +17,7 @@ id = "485JlLA-T6U"
 
 Reference material for this episode:
 
-* Loco.rs docs: [routes in controllers](https://loco.rs/docs/the-app/task/)
-* The [SaaS starter](https://loco.rs/docs/starters/saas/)
-* The [REST API starter](https://loco.rs/docs/starters/rest-api/)
-* The [Lightweight starter](https://loco.rs/docs/starters/service/)
+* Loco.rs docs: [routes in controllers](https://loco.rs/docs/processing/task/)
+* The [SaaS starter](https://loco.rs/docs/getting-started/starters/#saas-starter)
+* The [REST API starter](https://loco.rs/docs/getting-started/starters/#rest-api-starter)
+* The [Lightweight starter](https://loco.rs/docs/getting-started/starters/#lightweight-service-starter)
