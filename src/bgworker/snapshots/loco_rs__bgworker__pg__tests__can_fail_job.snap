@@ -1,0 +1,23 @@
+---
+source: src/bgworker/pg.rs
+expression: after_fail_job
+---
+Job {
+    id: "<REDACTED>",
+    name: "SendInvoice",
+    data: Object {
+        "email": String("user13@example.com"),
+        "error": String("some error"),
+        "invoice_id": String("INV-2024-01"),
+        "user_id": Number(135),
+    },
+    status: Failed,
+    run_at: <REDACTED>,
+    interval: None,
+    created_at: Some(
+        <REDACTED>,
+    ),
+    updated_at: Some(
+        <REDACTED>,
+    ),
+}

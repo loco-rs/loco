@@ -47,16 +47,75 @@ $ cargo loco routes
 [POST] /auth/register
 [POST] /auth/reset
 [POST] /auth/verify
-[GET] /notes/
-[POST] /notes/
-[GET] /notes/:id
-[DELETE] /notes/:id
-[POST] /notes/:id
-[GET] /user/current
+[GET] /auth/current
 ```
 
 This command will provide you with a comprehensive overview of the controllers currently registered in your system.
 
+## AppRoutes
+
+`AppRoutes` is a core component of the `Loco` framework that helps you manage and organize your application's routes. It provides a convenient way to add, prefix, and collect routes from different controllers.
+
+### Features
+
+- **Add Routes**: Easily add routes from different controllers.
+- **Prefix Routes**: Apply a common prefix to a group of routes.
+- **Collect Routes**: Gather all routes into a single collection for further processing.
+
+### Examples
+
+#### Adding Routes
+
+You can add routes from different controllers to `AppRoutes`:
+
+```rust
+use loco_rs::controller::AppRoutes;
+use loco_rs::prelude::*;
+use axum::routing::get;
+
+fn routes(_ctx: &AppContext) -> AppRoutes {
+  AppRoutes::empty()
+          .add_route(Routes::new().add("/", get(home_handler)))
+          .add_route(Routes::new().add("/about", get(about_handler)))
+}
+```
+
+### Prefixing Routes
+
+Apply a common prefix to a group of routes:
+
+```rust
+use loco_rs::controller::AppRoutes;
+use loco_rs::prelude::*;
+use axum::routing::get;
+
+fn routes(_ctx: &AppContext) -> AppRoutes {
+    AppRoutes::empty()
+        .prefix("/api")
+        .add_route(Routes::new().add("/users", get(users_handler)))
+        .add_route(Routes::new().add("/posts", get(posts_handler)))
+}
+```
+
+### Nesting Routes
+
+AppRoutes allows you to nest routes, making it easier to organize and manage complex route hierarchies. 
+This is particularly useful when you have a set of related routes that share a common prefix.
+
+```rust
+ use loco_rs::controller::AppRoutes;
+use loco_rs::prelude::*;
+use axum::routing::get;
+
+fn routes(_ctx: &AppContext) -> AppRoutes {
+  let route = Routes::new().add("/", get(|| async { "notes" }));
+  AppRoutes::with_default_routes()
+        .prefix("api")
+        .add_route(controllers::auth::routes())
+        .nest_prefix("v1")
+        .nest_route("/notes", route)
+}
+```
 
 ## Adding state
 
@@ -207,7 +266,7 @@ pub async fn get_one(
             _ => format::json(item),
         },
         // we have an opinion how to render out validation errors, only in HTML content
-        Err(Error::Model(ModelError::ModelValidation { errors })) => match respond_to {
+        Err(Error::Model(ModelError::Validation(errors))) => match respond_to {
             RespondTo::Html => {
                 format::html(&format!("<html><body>errors: {errors:?}</body></html>"))
             }
@@ -261,12 +320,143 @@ impl Hooks for App {
 
 Loco comes with a set of built-in middleware out of the box. Some are enabled by default, while others need to be configured. Middleware registration is flexible and can be managed either through the `*.yaml` environment configuration or directly in the code.
 
+## The default stack
+
 You get all the enabled middlewares run the following command
 <!-- <snip id="cli-middleware-list" inject_from="yaml" template="sh"> -->
 ```sh
 cargo loco middleware --config
 ```
 <!-- </snip> -->
+
+This is the stack in `development` mode:
+
+```sh
+$ cargo loco middleware --config
+
+limit_payload          {"body_limit":{"Limit":1000000}}
+cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
+catch_panic            {"enable":true}
+etag                   {"enable":true}
+logger                 {"config":{"enable":true},"environment":"development"}
+request_id             {"enable":true}
+fallback               {"enable":true,"code":200,"file":null,"not_found":null}
+powered_by             {"ident":"loco.rs"}
+
+
+remote_ip              (disabled)
+compression            (disabled)
+timeout                (disabled)
+static_assets          (disabled)
+secure_headers         (disabled)
+```
+
+### Example: disable all middleware
+
+Take what ever is enabled, and use `enable: false` with the relevant field. If `middlewares:` section in `server` is missing, add it.
+
+```yaml
+server:
+  middlewares:
+    cors:
+      enable: false
+    catch_panic:
+      enable: false
+    etag:
+      enable: false
+    logger:
+      enable: false
+    request_id:
+      enable: false
+    fallback:
+      enable: false
+```
+
+The result:
+
+```sh
+$ cargo loco middleware --config
+powered_by             {"ident":"loco.rs"}
+
+
+cors                   (disabled)
+catch_panic            (disabled)
+etag                   (disabled)
+remote_ip              (disabled)
+compression            (disabled)
+timeout_request        (disabled)
+static                 (disabled)
+secure_headers         (disabled)
+logger                 (disabled)
+request_id             (disabled)
+fallback               (disabled)
+```
+
+You can control the `powered_by` middleware by changing the value for `server.ident`:
+
+```yaml
+server:
+    ident: my-server #(or empty string to disable)
+```
+
+### Example: add a non-default middleware
+
+Lets add the _Remote IP_ middleware to the stack. This is done just by configuration:
+
+```yaml
+server:
+  middlewares:
+    remote_ip:
+      enable: true
+```
+
+The result:
+
+```sh
+$ cargo loco middleware --config
+
+limit_payload          {"body_limit":{"Limit":1000000}}
+cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
+catch_panic            {"enable":true}
+etag                   {"enable":true}
+remote_ip              {"enable":true,"trusted_proxies":null}
+logger                 {"config":{"enable":true},"environment":"development"}
+request_id             {"enable":true}
+fallback               {"enable":true,"code":200,"file":null,"not_found":null}
+powered_by             {"ident":"loco.rs"}
+```
+
+### Example: change a configuration for an enabled middleware
+
+Let's change the request body limit to `5mb`. When overriding a middleware configuration, rememeber to keep an `enable: true`:
+
+```yaml
+  middlewares:
+    limit_payload:
+      body_limit: 5mb
+```
+
+The result:
+
+```sh
+$ cargo loco middleware --config
+
+limit_payload          {"body_limit":{"Limit":5000000}}
+cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
+catch_panic            {"enable":true}
+etag                   {"enable":true}
+logger                 {"config":{"enable":true},"environment":"development"}
+request_id             {"enable":true}
+fallback               {"enable":true,"code":200,"file":null,"not_found":null}
+powered_by             {"ident":"loco.rs"}
+
+
+remote_ip              (disabled)
+compression            (disabled)
+timeout_request        (disabled)
+static                 (disabled)
+secure_headers         (disabled)
+```
 
 ### Authentication
 In the `Loco` framework, middleware plays a crucial role in authentication. `Loco` supports various authentication methods, including JSON Web Token (JWT) and API Key authentication. This section outlines how to configure and use authentication middleware in your application.
@@ -350,18 +540,27 @@ To disable the middleware edit the configuration as follows:
 
 ## Limit Payload
 
-Restricts the maximum allowed size for HTTP request payloads.
-The middleware by default is enabled and configured to 2MB. 
+The Limit Payload middleware restricts the maximum allowed size for HTTP request payloads. By default, it is enabled and configured with a 2MB limit.
 
-You can disable or customize this behavior in your config file. You can set a few options:
+You can customize or disable this behavior through your configuration file.
 
+### Set a custom limit
 ```yaml
 #...
   middlewares:
     limit_payload:
-      enable: true
       body_limit: 5mb
 ```
+
+### Disable payload size limitation
+To remove the restriction entirely, set `body_limit` to `disable`:
+```yaml
+#...
+  middlewares:
+    limit_payload:
+      body_limit: disable
+```
+
 
 ##### Usage
 In your controller parameters, use `axum::body::Bytes`.
@@ -406,7 +605,7 @@ To disable the middleware edit the configuration as follows:
 
 ## Fallback
 
-When choosing the SaaS starter (or any starter that is not API-first), you get a default fallback behavior with the _Loco welcome screen_. This is a development-only mode where a `404` request shows you a nice and friendly page that tells you what happened and what to do next.
+When choosing the SaaS starter (or any starter that is not API-first), you get a default fallback behavior with the _Loco welcome screen_. This is a development-only mode where a `404` request shows you a nice and friendly page that tells you what happened and what to do next. This also takes preference over the static handler, so make sure to disable it if you want to have static content served.
 
 
 You can disable or customize this behavior in your `development.yaml` file. You can set a few options:
@@ -523,6 +722,16 @@ server:
         foo: bar
 ```
 
+To support `htmx`, You can add the following override, to allow some inline running of scripts:
+
+```yaml
+secure_headers:
+    preset: github
+    overrides:
+        # this allows you to use HTMX, and has unsafe-inline. Remove or consider in production
+        "Content-Security-Policy": "default-src 'self' https:; font-src 'self' https: data:; img-src 'self' https: data:; object-src 'none'; script-src 'unsafe-inline' 'self' https:; style-src 'self' https: 'unsafe-inline'"
+```
+
 ## Compression
 
 `Loco` leverages [CompressionLayer](https://docs.rs/tower-http/0.5.0/tower_http/compression/index.html) to enable a `one click` solution.
@@ -554,14 +763,7 @@ middlewares:
     precompressed: true
 ```
 
-## Handler and Route based middleware
-
-`Loco` also allow us to apply [layers](https://docs.rs/tower/latest/tower/trait.Layer.html) to specific handlers or
-routes.
-For more information on handler and route based middleware, refer to the [middleware](/docs/the-app/middlewares)
-documentation.
-
-## Cors
+## CORS
 This middleware enables Cross-Origin Resource Sharing (CORS) by allowing configurable origins, methods, and headers in HTTP requests. 
 It can be tailored to fit various application requirements, supporting permissive CORS or specific rules as defined in the middleware configuration.
 
@@ -584,6 +786,14 @@ middlewares:
     # max_age: 3600
 
 ```
+
+## Handler and Route based middleware
+
+`Loco` also allow us to apply [layers](https://docs.rs/tower/latest/tower/trait.Layer.html) to specific handlers or
+routes.
+For more information on handler and route based middleware, refer to the [middleware](/docs/the-app/controller/#middleware)
+documentation.
+
 
 ### Handler based middleware:
 
@@ -618,9 +828,75 @@ impl Hooks for App {
 }
 ```
 
+# Request Validation
+`JsonValidate` extractor simplifies input [validation](https://github.com/Keats/validator) by integrating with the validator crate. Here's an example of how to validate incoming request data:
+
+### Define Your Validation Rules
+```rust
+use axum::debug_handler;
+use loco_rs::prelude::*;
+use serde::Deserialize;
+use validator::Validate;
+
+#[derive(Debug, Deserialize, Validate)]
+pub struct DataParams {
+    #[validate(length(min = 5, message = "custom message"))]
+    pub name: String,
+    #[validate(email)]
+    pub email: String,
+}
+```
+### Create a Handler with Validation
+```rust
+use axum::debug_handler;
+use loco_rs::prelude::*;
+
+#[debug_handler]
+pub async fn index(
+    State(_ctx): State<AppContext>,
+    JsonValidate(params): JsonValidate<DataParams>,
+) -> Result<Response> {
+    format::empty()
+}
+```
+Using the `JsonValidate` extractor, Loco automatically performs validation on the DataParams struct:
+* If validation passes, the handler continues execution with params.
+* If validation fails, a 400 Bad Request response is returned.
+
+### Returning Validation Errors as JSON
+If you'd like to return validation errors in a structured JSON format, use `JsonValidateWithMessage` instead of `JsonValidate`. The response format will look like this:
+
+```json
+{
+  "errors": {
+    "email": [
+      {
+        "code": "email",
+        "message": null,
+        "params": {
+          "value": "ad"
+        }
+      }
+    ],
+    "name": [
+      {
+        "code": "length",
+        "message": "custom message",
+        "params": {
+          "min": 5,
+          "value": "d"
+        }
+      }
+    ]
+  }
+}
+```  
+
 # Pagination
 
 In many scenarios, when querying data and returning responses to users, pagination is crucial. In `Loco`, we provide a straightforward method to paginate your data and maintain a consistent pagination response schema for your API responses.
+
+We assume you have a `notes` entity and/or scaffold (replace this with any entity you like).
 
 ## Using pagination
 
@@ -705,6 +981,7 @@ impl PaginationResponse {
                 page: pagination_query.page,
                 page_size: pagination_query.page_size,
                 total_pages: data.total_pages,
+                total_items: data.total_items,
             },
         }
     }
@@ -715,18 +992,19 @@ impl PaginationResponse {
 # Testing 
 When testing controllers, the goal is to call the router's controller endpoint and verify the HTTP response, including the status code, response content, headers, and more.
 
-To initialize a test request, use `testing::request`, which prepares your app routers, providing the request instance and the application context.
+To initialize a test request, use `use loco_rs::testing::prelude::*;`, which prepares your app routers, providing the request instance and the application context.
 
 In the following example, we have a POST endpoint that returns the data sent in the POST request.
 
 ```rust
+use loco_rs::testing::prelude::*;
 
 #[tokio::test]
 #[serial]
 async fn can_print_echo() {
     configure_insta!();
 
-    testing::request::<App, _, _>(|request, _ctx| async move {
+    request::<App, _, _>(|request, _ctx| async move {
         let response = request
             .post("/example")
             .json(&serde_json::json!({"site": "Loco"}))
@@ -740,3 +1018,32 @@ async fn can_print_echo() {
 
 As you can see initialize the testing request and using `request` instance calling /example endpoing.
 the request returns a `Response` instance with the status code and the response test
+
+
+## Async
+When writing async tests with database data, it's important to ensure that one test does not affect the data used by other tests. Since async tests can run concurrently on the same database dataset, this can lead to unstable test results.
+
+Instead of using `request`, as described in the documentation for synchronous tests, use the `request_with_create_db` function. This function generates a random database schema name and ensures that the tables are deleted once the test is completed.
+
+Note: If you cancel the test run midway (e.g., by pressing `Ctrl + C`), the cleanup process will not execute, and the database tables will remain. In such cases, you will need to manually remove them.
+
+```rust
+use loco_rs::testing::prelude::*;
+
+#[tokio::test]
+async fn can_print_echo() {
+    configure_insta!();
+
+    request_with_create_db::<App, _, _>(|request, _ctx| async move {
+        let response = request
+            .post("/example")
+            .json(&serde_json::json!({"site": "Loco"}))
+            .await;
+
+        assert_debug_snapshot!((response.status_code(), response.text()));
+    })
+    .await;
+}
+```
+
+

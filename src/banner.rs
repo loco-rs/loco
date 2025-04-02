@@ -70,7 +70,7 @@ pub fn print_banner(boot_result: &BootResult, server_config: &ServeParams) {
     if boot_result.router.is_some() {
         modes.push("server".green());
         servingline.push(format!(
-            "listening on {}:{}",
+            "listening on http://{}:{}",
             server_config.binding.to_string().green(),
             server_config.port.to_string().green()
         ));
@@ -78,6 +78,10 @@ pub fn print_banner(boot_result: &BootResult, server_config: &ServeParams) {
     if boot_result.run_worker {
         modes.push("worker".green());
         servingline.push(format!("worker is {}", "online".green()));
+    }
+    if boot_result.run_scheduler {
+        modes.push("scheduler".green());
+        servingline.push(format!("scheduler is {}", "running".green()));
     }
     if !modes.is_empty() {
         println!(

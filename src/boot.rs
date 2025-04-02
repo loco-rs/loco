@@ -1,21 +1,26 @@
 //! # Application Bootstrapping and Logic
 //! This module contains functions and structures for bootstrapping and running
 //! your application.
-use std::path::PathBuf;
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
 use axum::Router;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
+use tokio::{select, signal, task::JoinHandle};
 use tracing::{debug, error, info, warn};
 
 #[cfg(feature = "with-db")]
 use crate::db;
 use crate::{
-    app::{AppContext, Hooks},
+    app::{AppContext, Hooks, Initializer},
     banner::print_banner,
     bgworker, cache,
-    config::{self},
+    config::{self, Config, WorkerMode},
     controller::ListRoutes,
+    env_vars,
     environment::Environment,
     errors::Error,
     mailer::{EmailSender, MailerWorker},
@@ -25,9 +30,9 @@ use crate::{
     task::{self, Tasks},
     Result,
 };
-use colored::Colorize;
 
 /// Represents the application startup mode.
+#[derive(Debug)]
 pub enum StartMode {
     /// Run the application as a server only. when running web server only,
     /// workers job will not handle.
@@ -36,7 +41,10 @@ pub enum StartMode {
     ServerAndWorker,
     /// Pulling job worker and execute them
     WorkerOnly,
+    /// Run the app with all available components in the same process.
+    All,
 }
+
 pub struct BootResult {
     /// Application Context
     pub app_context: AppContext,
@@ -44,9 +52,12 @@ pub struct BootResult {
     pub router: Option<Router>,
     /// worker processor
     pub run_worker: bool,
+    /// scheduler processor
+    pub run_scheduler: bool,
 }
 
 /// Configuration structure for serving an application.
+#[derive(Debug)]
 pub struct ServeParams {
     /// The port number on which the server will listen for incoming
     /// connections.
@@ -64,47 +75,102 @@ pub struct ServeParams {
 /// # Errors
 ///
 /// When could not initialize the application.
-pub async fn start<H: Hooks>(boot: BootResult, server_config: ServeParams) -> Result<()> {
-    print_banner(&boot, &server_config);
+pub async fn start<H: Hooks>(
+    boot: BootResult,
+    server_config: ServeParams,
+    no_banner: bool,
+) -> Result<()> {
+    if boot.run_scheduler {
+        let scheduler = scheduler::<H>(&boot.app_context, None, None, None)?;
+        tokio::spawn(async move {
+            let res = scheduler.run().await;
+            if res.is_err() {
+                error!(
+                    err = res.unwrap_err().to_string(),
+                    "error while running scheduler"
+                );
+            }
+        });
+    }
+
+    if !no_banner {
+        print_banner(&boot, &server_config);
+    }
 
     let BootResult {
         router,
         run_worker,
+        run_scheduler: _,
         app_context,
     } = boot;
 
     match (router, run_worker) {
         (Some(router), false) => {
-            H::serve(router, server_config).await?;
+            H::serve(router, &app_context, &server_config).await?;
         }
         (Some(router), true) => {
-            tokio::spawn(async move {
-                debug!("note: worker is run in-process (tokio spawn)");
-                if let Some(queue) = &app_context.queue_provider {
-                    let res = queue.run().await;
-                    if res.is_err() {
-                        error!(
-                            err = res.unwrap_err().to_string(),
-                            "error while running worker"
-                        );
-                    }
-                } else {
-                    error!(
-                        err = Error::QueueProviderMissing.to_string(),
-                        "cannot start worker"
-                    );
-                }
-            });
-            H::serve(router, server_config).await?;
+            let handle = if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
+                Some(start_queue_worker(&app_context)?)
+            } else {
+                None
+            };
+
+            H::serve(router, &app_context, &server_config).await?;
+
+            if let Some(handle) = handle {
+                shutdown_and_await_queue_worker(&app_context, handle).await?;
+            }
         }
         (None, true) => {
-            if let Some(queue) = &app_context.queue_provider {
-                queue.run().await?;
+            let handle = if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
+                Some(start_queue_worker(&app_context)?)
             } else {
-                return Err(Error::QueueProviderMissing);
+                None
+            };
+
+            shutdown_signal().await;
+
+            if let Some(handle) = handle {
+                shutdown_and_await_queue_worker(&app_context, handle).await?;
             }
         }
         _ => {}
+    }
+    Ok(())
+}
+
+fn start_queue_worker(app_context: &AppContext) -> Result<JoinHandle<()>> {
+    debug!("note: worker is run in-process (tokio spawn)");
+
+    if let Some(queue) = &app_context.queue_provider {
+        let cloned_queue = queue.clone();
+        let handle = tokio::spawn(async move {
+            let res = cloned_queue.run().await;
+            if res.is_err() {
+                error!(
+                    err = res.unwrap_err().to_string(),
+                    "error while running worker"
+                );
+            }
+        });
+        return Ok(handle);
+    }
+
+    Err(Error::QueueProviderMissing)
+}
+
+async fn shutdown_and_await_queue_worker(
+    app_context: &AppContext,
+    handle: JoinHandle<()>,
+) -> Result<(), Error> {
+    if let Some(queue) = &app_context.queue_provider {
+        queue.shutdown()?;
+    }
+
+    println!("press ctrl-c again to force quit");
+    select! {
+        _ = handle => {}
+        () = shutdown_signal() => {}
     }
     Ok(())
 }
@@ -135,6 +201,34 @@ pub async fn run_task<H: Hooks>(
     Ok(())
 }
 
+/// Initializes a new scheduler instance based on the provided configuration and context.
+fn scheduler<H: Hooks>(
+    app_context: &AppContext,
+    config: Option<&PathBuf>,
+    name: Option<String>,
+    tag: Option<String>,
+) -> Result<Scheduler> {
+    let env_config_path = env::var(env_vars::SCHEDULER_CONFIG).ok();
+
+    let config_path: Option<&Path> = config.map_or_else(
+        || env_config_path.as_deref().map(Path::new),
+        |path| Some(path.as_path()),
+    );
+
+    let scheduler = match config_path {
+        Some(path) => Scheduler::from_config::<H>(path, &app_context.environment)?,
+        None => {
+            if let Some(config) = &app_context.config.scheduler {
+                Scheduler::new::<H>(config, &app_context.environment)?
+            } else {
+                return Err(Error::Scheduler(scheduler::Error::Empty));
+            }
+        }
+    };
+
+    Ok(scheduler.by_spec(&scheduler::Spec { name, tag }))
+}
+
 /// Runs the scheduler with the given configuration and context. in case if list
 /// args is true prints scheduler job configuration
 ///
@@ -155,24 +249,10 @@ pub async fn run_scheduler<H: Hooks>(
     tag: Option<String>,
     list: bool,
 ) -> Result<()> {
-    let mut tasks = Tasks::default();
-    H::register_tasks(&mut tasks);
-
     let task_span = tracing::span!(tracing::Level::DEBUG, "scheduler_jobs");
     let _guard = task_span.enter();
 
-    let scheduler = match config {
-        Some(path) => Scheduler::from_config::<H>(path, &app_context.environment)?,
-        None => {
-            if let Some(config) = &app_context.config.scheduler {
-                Scheduler::new::<H>(config, &app_context.environment)?
-            } else {
-                return Err(Error::Scheduler(scheduler::Error::Empty));
-            }
-        }
-    };
-
-    let scheduler = scheduler.by_spec(&scheduler::Spec { name, tag });
+    let scheduler = scheduler::<H>(app_context, config, name, tag)?;
     if list {
         println!("{scheduler}");
         Ok(())
@@ -197,6 +277,15 @@ pub enum RunDbCommand {
     /// Truncate tables, by executing the implementation in [`Hooks::seed`]
     /// (without dropping).
     Truncate,
+    /// Seed database.
+    Seed {
+        reset: bool,
+        from: PathBuf,
+        dump: bool,
+        dump_tables: Option<Vec<String>>,
+    },
+    /// Dump database schema
+    Schema,
 }
 
 #[cfg(feature = "with-db")]
@@ -234,7 +323,28 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
         }
         RunDbCommand::Truncate => {
             tracing::warn!("truncate:");
-            H::truncate(&app_context.db).await?;
+            H::truncate(app_context).await?;
+        }
+        RunDbCommand::Seed {
+            reset,
+            from,
+            dump,
+            dump_tables,
+        } => {
+            tracing::warn!(reset = reset, from = %from.display(), "seed:");
+
+            if dump || dump_tables.is_some() {
+                db::dump_tables(&app_context.db, from.as_path(), dump_tables).await?;
+            } else {
+                if reset {
+                    db::reset::<M>(&app_context.db).await?;
+                }
+                db::run_app_seed::<H>(app_context, &from).await?;
+            }
+        }
+        RunDbCommand::Schema => {
+            db::dump_schema(app_context, "schema_dump.json").await?;
+            println!("Database schema dumped to 'schema_dump.json'");
         }
     }
     Ok(())
@@ -245,9 +355,10 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
 ///
 /// # Errors
 /// When has an error to create DB connection.
-pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppContext> {
-    let config = environment.load()?;
-
+pub async fn create_context<H: Hooks>(
+    environment: &Environment,
+    config: Config,
+) -> Result<AppContext> {
     if config.logger.pretty_backtrace {
         std::env::set_var("RUST_BACKTRACE", "1");
         warn!(
@@ -288,9 +399,10 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
 pub async fn create_app<H: Hooks, M: MigratorTrait>(
     mode: StartMode,
     environment: &Environment,
+    config: Config,
 ) -> Result<BootResult> {
-    let app_context = create_context::<H>(environment).await?;
-    db::converge::<H, M>(&app_context.db, &app_context.config.database).await?;
+    let app_context = create_context::<H>(environment, config).await?;
+    db::converge::<H, M>(&app_context, &app_context.config.database).await?;
 
     if let (Some(queue), Some(config)) = (&app_context.queue_provider, &app_context.config.queue) {
         bgworker::converge(queue, config).await?;
@@ -303,8 +415,9 @@ pub async fn create_app<H: Hooks, M: MigratorTrait>(
 pub async fn create_app<H: Hooks>(
     mode: StartMode,
     environment: &Environment,
+    config: Config,
 ) -> Result<BootResult> {
-    let app_context = create_context::<H>(environment).await?;
+    let app_context = create_context::<H>(environment, config).await?;
 
     if let (Some(queue), Some(config)) = (&app_context.queue_provider, &app_context.config.queue) {
         bgworker::converge(queue, config).await?;
@@ -320,37 +433,44 @@ pub async fn create_app<H: Hooks>(
 pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Result<BootResult> {
     H::before_run(&app_context).await?;
     let initializers = H::initializers(&app_context).await?;
-    info!(initializers = ?initializers.iter().map(|init| init.name()).collect::<Vec<_>>().join(","), "initializers loaded");
+
+    info!(
+        initializers = ?initializers.iter().map(|init| init.name()).collect::<Vec<_>>().join(","),
+        "initializers loaded"
+    );
+
     for initializer in &initializers {
         initializer.before_run(&app_context).await?;
     }
+
     match mode {
         StartMode::ServerOnly => {
-            let app = H::before_routes(&app_context).await?;
-            let app = H::routes(&app_context).to_router::<H>(app_context.clone(), app)?;
-            let mut router = H::after_routes(app, &app_context).await?;
-            for initializer in &initializers {
-                router = initializer.after_routes(router, &app_context).await?;
-            }
-
+            let router = setup_routes::<H>(&app_context, &initializers).await?;
             Ok(BootResult {
                 app_context,
                 router: Some(router),
                 run_worker: false,
+                run_scheduler: false,
             })
         }
         StartMode::ServerAndWorker => {
             register_workers::<H>(&app_context).await?;
-            let app = H::before_routes(&app_context).await?;
-            let app = H::routes(&app_context).to_router::<H>(app_context.clone(), app)?;
-            let mut router = H::after_routes(app, &app_context).await?;
-            for initializer in &initializers {
-                router = initializer.after_routes(router, &app_context).await?;
-            }
+            let router = setup_routes::<H>(&app_context, &initializers).await?;
             Ok(BootResult {
                 app_context,
                 router: Some(router),
                 run_worker: true,
+                run_scheduler: false,
+            })
+        }
+        StartMode::All => {
+            register_workers::<H>(&app_context).await?;
+            let router = setup_routes::<H>(&app_context, &initializers).await?;
+            Ok(BootResult {
+                app_context,
+                router: Some(router),
+                run_worker: true,
+                run_scheduler: true,
             })
         }
         StartMode::WorkerOnly => {
@@ -359,20 +479,39 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
                 app_context,
                 router: None,
                 run_worker: true,
+                run_scheduler: false,
             })
         }
     }
 }
 
-async fn register_workers<H: Hooks>(app_context: &AppContext) -> Result<()> {
-    if let Some(queue) = &app_context.queue_provider {
-        queue.register(MailerWorker::build(app_context)).await?;
-        H::connect_workers(app_context, queue).await?;
-    } else {
-        return Err(Error::QueueProviderMissing);
+/// Sets up the application's routes based on the provided initializers and hooks.
+async fn setup_routes<H: Hooks>(
+    app_context: &AppContext,
+    initializers: &[Box<dyn Initializer>],
+) -> Result<Router> {
+    let app = H::before_routes(app_context).await?;
+    let app = H::routes(app_context).to_router::<H>(app_context.clone(), app)?;
+    let mut router = H::after_routes(app, app_context).await?;
+
+    for initializer in initializers {
+        router = initializer.after_routes(router, app_context).await?;
     }
 
-    debug!("done registering workers and queues");
+    Ok(router)
+}
+
+async fn register_workers<H: Hooks>(app_context: &AppContext) -> Result<()> {
+    if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
+        if let Some(queue) = &app_context.queue_provider {
+            queue.register(MailerWorker::build(app_context)).await?;
+            H::connect_workers(app_context, queue).await?;
+        } else {
+            return Err(Error::QueueProviderMissing);
+        }
+
+        debug!("done registering workers and queues");
+    }
     Ok(())
 }
 
@@ -381,23 +520,52 @@ pub fn list_endpoints<H: Hooks>(ctx: &AppContext) -> Vec<ListRoutes> {
     H::routes(ctx).collect()
 }
 
+/// Waits for a shutdown signal, either via Ctrl+C or termination signal.
+///
+/// # Panics
+///
+/// This function will panic if it fails to install the signal handlers for
+/// Ctrl+C or the terminate signal on Unix-based systems.
+pub async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        () = ctrl_c => {},
+        () = terminate => {},
+    }
+}
+
+pub struct MiddlewareInfo {
+    pub id: String,
+    pub enabled: bool,
+    pub detail: String,
+}
+
 #[must_use]
-pub fn list_middlewares<H: Hooks>(ctx: &AppContext, with_config: bool) -> Vec<String> {
-    H::routes(ctx)
-        .middlewares::<H>(ctx)
+pub fn list_middlewares<H: Hooks>(ctx: &AppContext) -> Vec<MiddlewareInfo> {
+    H::middlewares(ctx)
         .iter()
-        .map(|m| {
-            let text = heck::AsSnakeCase(m.name()).to_string().bold();
-            if with_config {
-                format!(
-                    "{text:<22} {}",
-                    serde_json::to_string(&m.config().unwrap_or_default()).unwrap_or_default()
-                )
-            } else {
-                format!("{text}")
-            }
+        .map(|m| MiddlewareInfo {
+            id: m.name().to_string(),
+            enabled: m.is_enabled(),
+            detail: m.config().unwrap_or_default().to_string(),
         })
-        .collect::<Vec<String>>()
+        .collect::<Vec<_>>()
 }
 
 /// Initializes an [`EmailSender`] based on the mailer configuration settings

@@ -1,4 +1,5 @@
 //! Middleware to generate or ensure a unique request ID for every request.
+//!
 //! The request ID is stored in the `x-request-id` header, and it is either
 //! generated or sanitized if already present in the request.
 //!
@@ -8,7 +9,6 @@
 use axum::{
     extract::Request, http::HeaderValue, middleware::Next, response::Response, Router as AXRouter,
 };
-use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -18,19 +18,17 @@ use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 const X_REQUEST_ID: &str = "x-request-id";
 const MAX_LEN: usize = 255;
 
-lazy_static! {
-    static ref ID_CLEANUP: Regex = Regex::new(r"[^\w\-@]").unwrap();
-}
+use std::sync::OnceLock;
 
+static ID_CLEANUP: OnceLock<Regex> = OnceLock::new();
+
+fn get_id_cleanup() -> &'static Regex {
+    ID_CLEANUP.get_or_init(|| Regex::new(r"[^\w\-@]").unwrap())
+}
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RequestId {
-    enable: bool,
-}
-
-impl Default for RequestId {
-    fn default() -> Self {
-        Self { enable: true }
-    }
+    #[serde(default)]
+    pub enable: bool,
 }
 
 impl MiddlewareLayer for RequestId {
@@ -101,7 +99,7 @@ fn make_request_id(maybe_request_id: Option<HeaderValue>) -> String {
         .and_then(|hdr| {
             // see: https://github.com/rails/rails/blob/main/actionpack/lib/action_dispatch/middleware/request_id.rb#L39
             let id: Option<String> = hdr.to_str().ok().map(|s| {
-                ID_CLEANUP
+                get_id_cleanup()
                     .replace_all(s, "")
                     .chars()
                     .take(MAX_LEN)

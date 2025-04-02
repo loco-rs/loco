@@ -111,9 +111,9 @@ impl super::_entities::users::ActiveModel {
 
 # Crafting models
 
-## Migrations
+## The model generator
 
-To add a new model _you have to use a migration_.
+To add a new model the model generator creates a migration, runs it, and then triggers an entities sync from your database schema which will hydrate and create your model entities.
 
 ```
 $ cargo loco generate model posts title:string! content:text user:references
@@ -124,25 +124,29 @@ When a model is added via migration, the following default fields are provided:
 - `created_at` (ts!): This is a timestamp indicating when your model was created.
 - `updated_at` (ts!): This is a timestamp indicating when your model was updated.
 
-These fields are ignored if you provide them in your migration command. In addition, `create_at` and `update_at` fields are also ignored if provided.
+These fields are ignored if you provide them in your migration command.
 
 For schema data types, you can use the following mapping to understand the schema:
 
 ```rust
-("uuid", "uuid_uniq"),
-("uuid_col", "uuid_null"),
-("uuid_col!", "uuid"),
+("uuid^", "uuid_uniq"),
+("uuid", "uuid_null"),
+("uuid!", "uuid"),
 ("string", "string_null"),
 ("string!", "string"),
 ("string^", "string_uniq"),
 ("text", "text_null"),
 ("text!", "text"),
-("tiny_integer", "tiny_integer_null"),
-("tiny_integer!", "tiny_integer"),
-("tiny_integer^", "tiny_integer_uniq"),
-("small_integer", "small_integer_null"),
-("small_integer!", "small_integer"),
-("small_integer^", "small_integer_uniq"),
+("text^", "text_uniq"),
+("small_unsigned^", "small_unsigned_uniq"),
+("small_unsigned", "small_unsigned_null"),
+("small_unsigned!", "small_unsigned"),
+("big_unsigned^", "big_unsigned"),
+("big_unsigned", "big_unsigned_null"),
+("big_unsigned!", "big_unsigned_uniq"),
+("small_int", "small_integer_null"),
+("small_int!", "small_integer"),
+("small_int^", "small_integer_uniq"),
 ("int", "integer_null"),
 ("int!", "integer"),
 ("int^", "integer_uniq"),
@@ -151,27 +155,52 @@ For schema data types, you can use the following mapping to understand the schem
 ("big_int^", "big_integer_uniq"),
 ("float", "float_null"),
 ("float!", "float"),
+("float^", "float_uniq"),
 ("double", "double_null"),
 ("double!", "double"),
+("double^", "double_uniq"),
 ("decimal", "decimal_null"),
 ("decimal!", "decimal"),
 ("decimal_len", "decimal_len_null"),
 ("decimal_len!", "decimal_len"),
+("decimal^", "decimal_uniq"),
 ("bool", "boolean_null"),
 ("bool!", "boolean"),
 ("tstz", "timestamp_with_time_zone_null"),
 ("tstz!", "timestamp_with_time_zone"),
 ("date", "date_null"),
 ("date!", "date"),
-("ts", "timestamp_null"),
-("ts!", "timestamp"),
+("date^", "date_uniq"),
+("date_time", "date_time_null"),
+("date_time!", "date_time"),
+("date_time^", "date_time_uniq"),
+("blob", "blob_null"),
+("blob!", "blob"),
+("blob^", "blob_uniq"),
 ("json", "json_null"),
 ("json!", "json"),
 ("jsonb", "json_binary_null"),
 ("jsonb!", "json_binary"),
+("jsonb^", "jsonb_uniq"),
+("money", "money_null"),
+("money!", "money"),
+("money^", "money_uniq"),
+("unsigned", "unsigned_null"),
+("unsigned!", "unsigned"),
+("unsigned^", "unsigned_uniq"),
+("binary_len", "binary_len_null"),
+("binary_len!", "binary_len"),
+("binary_len^", "binary_len_uniq"),
+("var_binary", "var_binary_null"),
+("var_binary!", "var_binary"),
+(" array", "array"),
+(" array!", "array"),
+(" array^", "array"),
 ```
 
 Using `user:references` uses the special `references` type, which will create a relationship between a `post` and a `user`, adding a `user_id` reference field to the `posts` table.
+
+Using `approved_by:references:users` uses the special `references:<table>` type, which will create a relationship between a `post` and a `user`, adding a `approved_by` reference field to the `posts` table.
 
 You can generate an empty model:
 
@@ -179,11 +208,6 @@ You can generate an empty model:
 $ cargo loco generate model posts
 ```
 
-You can generate an empty model **migration only** which means migrations will not run automatically:
-
-```
-$ cargo loco generate model --migration-only posts
-```
 
 Or a data model, without any references:
 
@@ -191,8 +215,17 @@ Or a data model, without any references:
 $ cargo loco generate model posts title:string! content:text
 ```
 
+## Migrations
+
+Other than using the model generator, you drive your schema by *creating migrations*.
+
+```
+$ cargo loco generate migration <name of migration> [name:type, name:type ...]
+```
+
 This creates a migration in the root of your project in `migration/`.
-You can now apply it:
+
+You can apply it:
 
 ```
 $ cargo loco db migrate
@@ -207,6 +240,63 @@ $ cargo loco db entities
 Loco is a migration-first framework, similar to Rails. Which means that when you want to add models, data fields, or model oriented changes - you start with a migration that describes it, and then you apply the migration to get back generated entities in `model/_entities`.
 
 This enforces _everything-as-code_, _reproducibility_ and _atomicity_, where no knowledge of the schema goes missing. 
+
+**Naming the migration is important**, the type of migration that is being generated is inferred from the migration name.
+
+### Create a new table
+
+* Name template: `Create___`
+* Example: `CreatePosts`
+
+```
+$ cargo loco g migration CreatePosts title:string content:string
+```
+
+### Add columns
+
+* Name template: `Add___To___`
+* Example: `AddNameAndAgeToUsers` (the string `NameAndAge` does not matter, you specify columns individually, however `Users` does matter because this will be the name of the table)
+
+```
+$ cargo loco g migration AddNameAndAgeToUsers name:string age:int
+```
+
+### Remove columns
+
+* Name template: `Remove___From___`
+* Example: `RemoveNameAndAgeFromUsers` (same note exists as in _add columns_)
+
+```
+$ cargo logo g migration RemoveNameAndAgeFromUsers name:string age:int
+```
+
+### Add references
+
+* Name template: `Add___RefTo___`
+* Example: `AddUserRefToPosts` (`User` does not matter, as you specify one or many references individually, `Posts` does matter as it will be the table name in the migration)
+
+```
+$ cargo loco g migration AddUserRefToPosts user:references
+```
+
+### Create a join table
+
+* Name template: `CreateJoinTable___And___` (supported between 2 tables)
+* Example: `CreateJoinTableUsersAndGroups`
+
+```
+$ cargo loco g migration CreateJoinTableUsersAndGroups count:int
+```
+
+You can also add some state columns regarding the relationship (such as `count` here).
+
+### Create an empty migration
+
+Use any descriptive name for a migration that does not fall into one of the above patterns to create an empty migration.
+
+```
+$ cargo loco g migration FixUsersTable
+```
 
 ### Down Migrations
 
@@ -228,43 +318,113 @@ cargo loco db down 2
 
 ### Verbs, singular and plural
 
-* **references**: use **singular** for the table name, and a `:references` type. `user:references` (references `Users`), `vote:references` (references `Votes`)
-* **column names**: anything you like. Prefer `snake_case`
+* **references**: use **singular** for the table name, and a `:references` type. `user:references` (references `Users`), `vote:references` (references `Votes`). `:references:<table>` is also available `departing_train:references:trains` (references `Trains`).
+* **column names**: anything you like. Prefer `snake_case`.
 * **table names**: **plural, snake case**. `users`, `draft_posts`.
-* **migration names**: anything that can be a file name, prefer snake case. `create_table_users`, `add_vote_id_to_movies`
-* **model names**: generated automatically for you. Usually the generated name is pascal case, plural. `Users`, `UsersVotes`
+* **migration names**: anything that can be a file name, prefer snake case. `create_table_users`, `add_vote_id_to_movies`.
+* **model names**: generated automatically for you. Usually the generated name is pascal case, plural. `Users`, `UsersVotes`.
  
 Here are some examples showcasing the naming conventions:
 
 ```sh
-$ cargo loco generate model movies long_title:string user:references
+$ cargo loco generate model movies long_title:string added_by:references:users director:references
 ```
 
 * model name in plural: `movies`
-* reference user is in singular: `user:references`
+* refecence director is in singular: `director:references`
+* reference added_by is in singular, the referenced model is a model and is plural: `added_by:references:users`
 * column name in snake case: `long_title:string`
 
-### Naming migrations
 
-There are no rules for how to name migrations, but here's a few guidelines to keep your migration stack readable as a list of files:
 
-* `<table>` - create a table, plural, `movies`
-* `add_<table>_<field>` - add a column, `add_users_email`
-* `index_<table>_<field>` - add an index, `index_users_email`
-* `alter_` - change a schema, `alter_users`
-* `delete_<table>_<field>` - remove a column, `delete_users_email`
-* `data_fix_` - fix some data, using entity queries or raw SQL, `data_fix_users_timezone_issue_315`
+### Authoring migrations
 
-Example:
+To use the migrations DSL, make sure you have the following `loco_rs::schema::*` import and SeaORM `prelude`.
 
-```sh
-$ cargo loco generate migration add_users_email
+```rust
+use loco_rs::schema::*;
+use sea_orm_migration::prelude::*;
+```
+
+Then, create a struct:
+
+```rust
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+```
+
+And then implement your migration (see below).
+
+**Create a table**
+
+Create a table, provide two arrays: (1) columns (2) references.
+
+Leave references empty to not create any reference fields.
+
+```rust
+impl MigrationTrait for Migration {
+    async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        create_table(
+            m,
+            "posts",
+            &[
+                ("title", ColType::StringNull),
+                ("content", ColType::StringNull),
+            ],
+            &[],
+        )
+        .await
+    }
+
+    async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        drop_table(m, "posts").await
+    }
+}
+```
+
+**Create a join table**
+
+Provide the references to the second array argument. Use an empty string `""` to indicate you want us to generate a reference column name for you (e.g. a `user` reference will imply connecting the `users` table through a `user_id` column in `group_users`).
+
+Provide a non-empty string to indicate a specific name for the reference column name.
+
+```rust
+impl MigrationTrait for Migration {
+    async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        create_join_table(m, "group_users", &[], &[("user", ""), ("group", "")]).await
+    }
+
+    async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        drop_table(m, "group_users").await
+    }
+}
+```
+
+**Add a column**
+
+Add a single column. You can use as many such statements as you like in a single migration (to add multiple columns).
+
+
+```rust
+impl MigrationTrait for Migration {
+    async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        add_column(m, "users", "amount", ColType::DecimalLenNull(24,8)).await?;
+        Ok(())
+    }
+
+    async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        remove_column(m, "users", "amount").await?;
+        Ok(())
+    }
+}
 ```
 
 
-### Add or remove a column
+### Authoring advanced migrations
 
-Adding a column:
+Using the `manager` directly lets you access more advanced operations while authoring your migrations.
+
+**Add a column**
 
 ```rust
   manager
@@ -277,7 +437,7 @@ Adding a column:
     .await
 ```
 
-Dropping a column:
+**Drop a column**
 
 ```rust
   manager
@@ -290,8 +450,7 @@ Dropping a column:
     .await
 ```
 
-### Add index
-
+**Add index**
 
 You can copy some of this code for adding an index
 
@@ -307,8 +466,7 @@ You can copy some of this code for adding an index
     .await;
 ```
 
-### Create a data fix
-
+**Create a data fix**
 
 Creating a data fix in a migration is easy - just use SQL statements as you like:
 
@@ -342,7 +500,7 @@ We use the [validator](https://docs.rs/validator) library under the hood. First,
 pub struct Validator {
     #[validate(length(min = 2, message = "Name must be at least 2 characters long."))]
     pub name: String,
-    #[validate(custom = "validation::is_valid_email")]
+    #[validate(custom(function = "validation::is_valid_email"))]
     pub email: String,
 }
 
@@ -393,7 +551,6 @@ $ cargo loco generate model --link users_votes user:references movie:references 
     ..
     ..
 Writing src/models/_entities/movies.rs
-Writing src/models/_entities/notes.rs
 Writing src/models/_entities/users.rs
 Writing src/models/_entities/mod.rs
 Writing src/models/_entities/prelude.rs
@@ -514,8 +671,8 @@ Integrate your seed into the app's Hook implementations by following these steps
 impl Hooks for App {
     // Other implementations...
 
-    async fn seed(db: &DatabaseConnection, base: &Path) -> Result<()> {
-        db::seed::<users::ActiveModel>(db, &base.join("users.yaml").display().to_string()).await?;
+    async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
+        db::seed::<users::ActiveModel>(&ctx.db, &base.join("users.yaml").display().to_string()).await?;
         Ok(())
     }
 }
@@ -524,44 +681,31 @@ impl Hooks for App {
 
 This implementation ensures that the seed is executed when the seed function is called. Adjust the specifics based on your application's structure and requirements.
 
-## Running seeds
+## Managing Seed via CLI
 
-The seed process is not executed automatically. You can trigger the seed process either through a task or during testing.
+- **Reset the Database**  
+  Clear all existing data before importing seed files. This is useful when you want to start with a fresh database state, ensuring no old data remains.
+- **Dump Database Tables to Files**  
+  Export the contents of your database tables to files. This feature allows you to back up the current state of your database or prepare data for reuse across environments.
 
-### Using a Task
+To access the seed commands, use the following CLI structure:
+<!-- <snip id="seed-help-command" inject_from="yaml" action="exec" template="sh"> -->
+```sh
+Seed your database with initial data or dump tables to files
 
-1. Create a seeding task by following the instructions in the [Task Documentation](@/docs/processing/task.md).
-2. Configure the task to execute the `seed` function, as demonstrated in the example below:
+Usage: demo_app-cli db seed [OPTIONS]
 
-```rust
-use std::collections::BTreeMap;
-
-use async_trait::async_trait;
-use loco_rs::{
-    app::AppContext,
-    db,
-    task::{Task, TaskInfo},
-    Result,
-};
-use sea_orm::EntityTrait;
-
-use crate::{app::App, models::_entities::users};
-
-pub struct SeedData;
-#[async_trait]
-impl Task for SeedData {
-    fn task(&self) -> TaskInfo {
-        TaskInfo {
-            name: "seed".to_string(),
-            detail: "Seeding data".to_string(),
-        }
-    }
-    async fn run(&self, app_context: &AppContext, vars: &BTreeMap<String, String>) -> Result<()> {
-        let path = std::path::Path::new("src/fixtures");
-        db::run_app_seed::<App>(&app_context.db, path).await
-    }
-}
+Options:
+  -r, --reset                      Clears all data in the database before seeding
+  -d, --dump                       Dumps all database tables to files
+      --dump-tables <DUMP_TABLES>  Specifies specific tables to dump
+      --from <FROM>                Specifies the folder containing seed files (defaults to 'src/fixtures') [default: src/fixtures]
+  -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
+  -h, --help                       Print help
+  -V, --version                    Print version
 ```
+<!-- </snip> -->
+
 
 ### Using a Test
 
@@ -570,12 +714,14 @@ impl Task for SeedData {
 2. In your test section, follow the example below:
 
 ```rust
+use loco_rs::testing::prelude::*;
+
 #[tokio::test]
 #[serial]
 async fn handle_create_with_password_with_duplicate() {
 
-    let boot = testing::boot_test::<App, Migrator>().await;
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    let boot = boot_test::<App, Migrator>().await;
+    seed::<App>(&boot.app_context).await.unwrap();
     assert!(get_user_by_id(1).ok());
 }
 ```
@@ -583,6 +729,8 @@ async fn handle_create_with_password_with_duplicate() {
 # Multi-DB
 
 `Loco` enables you to work with more than one database and share instances across your application.
+
+## Extra DB
 
 To set up an additional database, begin with database connections and configuration. The recommended approach is to navigate to your configuration file and add the following under [settings](@/docs/the-app/your-project.md#settings):
 
@@ -601,17 +749,13 @@ settings:
 ```
 
 
-After configuring the database, import [loco-extras](https://crates.io/crates/loco-extras) and enable the `initializer-extra-db` feature in your Cargo.toml:
-```toml
-loco-extras = { version = "*", features = ["initializer-extra-db"] }
-```
 
-Next load this [initializer](@/docs/extras/pluggability.md#initializers) into `initializers` hook like this example
+Load this [initializer](@/docs/extras/pluggability.md#initializers) into `initializers` hook like this example
 
 ```rs
 async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
         let  initializers: Vec<Box<dyn Initializer>> = vec![
-            Box::new(loco_extras::initializers::extra_db::ExtraDbInitializer),
+            Box::new(loco_rs::initializers::extra_db::ExtraDbInitializer),
         ];
 
         Ok(initializers)
@@ -632,14 +776,9 @@ pub async fn list(
 }
 ```
 
-## Configuring
+## Multi-DB (multi-tenant)
 
-To connect more than two different databases, load the feature `initializer-multi-db` in [loco-extras](https://crates.io/crates/loco-extras):
-```toml
-loco-extras = { version = "*", features = ["initializer-multi-db"] }
-```
-
-The database configuration should look like this:
+To connect more than two different databases, the database configuration should look like this:
 ```yaml
 settings:
   multi_db: 
@@ -670,14 +809,13 @@ Next load this [initializer](@/docs/extras/pluggability.md#initializers) into `i
 ```rs
 async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
         let  initializers: Vec<Box<dyn Initializer>> = vec![
-            Box::new(loco_extras::initializers::multi_db::MultiDbInitializer),
+            Box::new(loco_rs::initializers::multi_db::MultiDbInitializer),
         ];
 
         Ok(initializers)
     }
 ```
 
-## Using in controllers
 Now, you can use the multiple databases in your controller:
 
 ```rust
@@ -701,11 +839,15 @@ If you used the generator to crate a model migration, you should also have an au
 A typical test contains everything you need to set up test data, boot the app, and reset the database automatically before the testing code runs. It looks like this:
 
 ```rust
+use loco_rs::testing::prelude::*;
+
+#[tokio::test]
+#[serial]
 async fn can_find_by_pid() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App, Migrator>().await;
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    let boot = boot_test::<App, Migrator>().await;
+    seed::<App>(&boot.app_context).await.unwrap();
 
     let existing_user =
         Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111").await;
@@ -742,25 +884,42 @@ pub struct App;
 #[async_trait]
 impl Hooks for App {
     //...
-    async fn truncate(db: &DatabaseConnection) -> Result<()> {
-        // truncate_table(db, users::Entity).await?;
-        // truncate_table(db, notes::Entity).await?;
+    async fn truncate(ctx: &AppContext) -> Result<()> {
+        // truncate_table(&ctx.db, users::Entity).await?;
         Ok(())
     }
 
 }
 ```
 
+## Async
+When writing async tests with database data, it's important to ensure that one test does not affect the data used by other tests. Since async tests can run concurrently on the same database dataset, this can lead to unstable test results.
+
+Instead of using `boot_test`, as described in the documentation for synchronous tests, use the `boot_test_with_create_db` function. This function generates a random database schema name and ensures that the tables are deleted once the test is completed.
+
+Note: If you cancel the test run midway (e.g., by pressing `Ctrl + C`), the cleanup process will not execute, and the database tables will remain. In such cases, you will need to manually remove them.
+
+```rust
+use loco_rs::testing::prelude::*;
+
+#[tokio::test]
+async fn boot_test_with_create_db() {
+    let boot = boot_test_with_create_db::<App, Migrator>().await;
+}
+```
+
 ## Seeding
 
 ```rust
+use loco_rs::testing::prelude::*;
+
 #[tokio::test]
 #[serial]
 async fn is_user_exists() {
     configure_insta!();
 
-    let boot = testing::boot_test::<App, Migrator>().await;
-    testing::seed::<App>(&boot.app_context.db).await.unwrap();
+    let boot = boot_test::<App, Migrator>().await;
+    seed::<App>(&boot.app_context).await.unwrap();
     assert!(get_user_by_id(1).ok());
 
 }
@@ -777,14 +936,15 @@ Example using [insta](https://crates.io/crates/insta) for snapshots.
 in the following example you can use `cleanup_user_model` which clean all user model data.
 
 ```rust
+use loco_rs::testing::prelude::*;
 
 #[tokio::test]
 #[serial]
 async fn can_create_user() {
-    testing::request::<App, Migrator, _, _>(|request, _ctx| async move {
+    request::<App, Migrator, _, _>(|request, _ctx| async move {
         // create user test
         with_settings!({
-            filters => testing::cleanup_user_model()
+            filters => cleanup_user_model()
         }, {
             assert_debug_snapshot!(current_user_request.text());
         });

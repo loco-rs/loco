@@ -1,27 +1,99 @@
-use std::{collections::BTreeMap, process::Command};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fs,
+    process::Command,
+    sync::OnceLock,
+};
+
+use colored::Colorize;
+use regex::Regex;
+use semver::Version;
+use serde::Deserialize;
 
 use crate::{
     bgworker,
-    config::{self, Config, Database},
-    db, Error, Result,
+    config::{self, Config},
+    depcheck, Error, Result,
 };
 
 const SEAORM_INSTALLED: &str = "SeaORM CLI is installed";
 const SEAORM_NOT_INSTALLED: &str = "SeaORM CLI was not found";
 const SEAORM_NOT_FIX: &str = r"To fix, run:
       $ cargo install sea-orm-cli";
-const DB_CONNECTION_FAILED: &str = "DB connection: fails";
-const DB_CONNECTION_SUCCESS: &str = "DB connection: success";
 const QUEUE_CONN_OK: &str = "queue connection: success";
 const QUEUE_CONN_FAILED: &str = "queue connection: failed";
 const QUEUE_NOT_CONFIGURED: &str = "queue not configured?";
 
+// versions health
+const MIN_SEAORMCLI_VER: &str = "1.1.0";
+static MIN_DEP_VERSIONS: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+
+fn get_min_dep_versions() -> &'static HashMap<&'static str, &'static str> {
+    MIN_DEP_VERSIONS.get_or_init(|| {
+        let mut min_vers = HashMap::new();
+
+        min_vers.insert("tokio", "1.33.0");
+        min_vers.insert("sea-orm", "1.1.0");
+        min_vers.insert("validator", "0.20.0");
+        min_vers.insert("axum", "0.8.1");
+
+        min_vers
+    })
+}
+
+#[derive(Deserialize)]
+struct CrateResponse {
+    #[serde(rename = "crate")]
+    krate: CrateInfo,
+}
+
+#[derive(Deserialize)]
+struct CrateInfo {
+    max_version: String,
+}
+
+/// .Check latest crate version in crates.io
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub async fn check_cratesio_version(
+    crate_name: &str,
+    current_version: &str,
+) -> Result<Option<String>> {
+    // Construct the URL for the crates.io API
+    let url = format!("https://crates.io/api/v1/crates/{crate_name}");
+
+    let client = reqwest::Client::new();
+    // Fetch crate information
+    let response = client
+        .get(&url)
+        .header("User-Agent", "Loco-Version-Check/1.0")
+        .send()
+        .await?
+        .json::<CrateResponse>()
+        .await?;
+
+    // Parse versions
+    let current = Version::parse(current_version)?;
+    let latest = Version::parse(&response.krate.max_version)?;
+
+    // Compare versions
+    if latest > current {
+        Ok(Some(response.krate.max_version))
+    } else {
+        Ok(None)
+    }
+}
+
 /// Represents different resources that can be checked.
-#[derive(PartialOrd, PartialEq, Eq, Ord)]
+#[derive(PartialOrd, PartialEq, Eq, Ord, Debug)]
 pub enum Resource {
     SeaOrmCLI,
     Database,
-    Redis,
+    Queue,
+    Deps,
+    PublishedLocoVersion,
 }
 
 /// Represents the status of a resource check.
@@ -88,44 +160,100 @@ impl std::fmt::Display for Check {
 }
 
 /// Runs checks for all configured resources.
-pub async fn run_all(config: &Config) -> BTreeMap<Resource, Check> {
-    let mut checks = BTreeMap::from([
-        (Resource::SeaOrmCLI, check_seaorm_cli()),
-        (Resource::Database, check_db(&config.database).await),
-    ]);
+/// # Errors
+/// Error when one of the checks fail
+pub async fn run_all(config: &Config, production: bool) -> Result<BTreeMap<Resource, Check>> {
+    let mut checks = BTreeMap::from(
+        #[cfg(feature = "with-db")]
+        [(Resource::Database, check_db(&config.database).await)],
+        #[cfg(not(feature = "with-db"))]
+        [],
+    );
 
     if config.workers.mode == config::WorkerMode::BackgroundQueue {
-        checks.insert(Resource::Redis, check_queue(config).await);
+        checks.insert(Resource::Queue, check_queue(config).await);
     }
 
-    checks
+    if !production {
+        checks.insert(Resource::Deps, check_deps()?);
+        checks.insert(Resource::SeaOrmCLI, check_seaorm_cli()?);
+        checks.insert(
+            Resource::PublishedLocoVersion,
+            check_published_loco_version().await?,
+        );
+    }
+
+    Ok(checks)
+}
+
+/// Checks "blessed" / major dependencies in a Loco app Cargo.toml, and
+/// recommend to update.
+/// Only if a dep exists, we check it against a min version
+/// # Errors
+/// Returns error if fails
+pub fn check_deps() -> Result<Check> {
+    let cargolock = fs::read_to_string("Cargo.lock")?;
+
+    let crate_statuses =
+        depcheck::check_crate_versions(&cargolock, get_min_dep_versions().clone())?;
+    let mut report = String::new();
+    report.push_str("Dependencies");
+    let mut all_ok = true;
+
+    for status in &crate_statuses {
+        if let depcheck::VersionStatus::Invalid {
+            version,
+            min_version,
+        } = &status.status
+        {
+            report.push_str(&format!(
+                "\n     {}: version {} does not meet minimum version {}",
+                status.crate_name.yellow(),
+                version.red(),
+                min_version.green()
+            ));
+            all_ok = false;
+        }
+    }
+    Ok(Check {
+        status: if all_ok {
+            CheckStatus::Ok
+        } else {
+            CheckStatus::NotOk
+        },
+        message: report,
+        description: None,
+    })
 }
 
 /// Checks the database connection.
-pub async fn check_db(config: &Database) -> Check {
-    match db::connect(config).await {
+#[cfg(feature = "with-db")]
+pub async fn check_db(config: &crate::config::Database) -> Check {
+    let db_connection_failed = "DB connection: fails";
+    let db_connection_success = "DB connection: success";
+    match crate::db::connect(config).await {
         Ok(conn) => match conn.ping().await {
-            Ok(()) => match db::verify_access(&conn).await {
+            Ok(()) => match crate::db::verify_access(&conn).await {
                 Ok(()) => Check {
                     status: CheckStatus::Ok,
-                    message: DB_CONNECTION_SUCCESS.to_string(),
+                    message: db_connection_success.to_string(),
                     description: None,
                 },
                 Err(err) => Check {
                     status: CheckStatus::NotOk,
-                    message: DB_CONNECTION_FAILED.to_string(),
+                    message: db_connection_failed.to_string(),
                     description: Some(err.to_string()),
                 },
             },
             Err(err) => Check {
                 status: CheckStatus::NotOk,
-                message: DB_CONNECTION_FAILED.to_string(),
+                message: db_connection_failed.to_string(),
                 description: Some(err.to_string()),
             },
         },
         Err(err) => Check {
             status: CheckStatus::NotOk,
-            message: DB_CONNECTION_FAILED.to_string(),
+            message: db_connection_failed.to_string(),
             description: Some(err.to_string()),
         },
     }
@@ -156,18 +284,78 @@ pub async fn check_queue(config: &Config) -> Check {
 }
 
 /// Checks the presence and version of `SeaORM` CLI.
-#[must_use]
-pub fn check_seaorm_cli() -> Check {
+/// # Panics
+/// On illegal regex
+/// # Errors
+/// Fails when cannot check version
+pub fn check_seaorm_cli() -> Result<Check> {
     match Command::new("sea-orm-cli").arg("--version").output() {
-        Ok(_) => Check {
-            status: CheckStatus::Ok,
-            message: SEAORM_INSTALLED.to_string(),
-            description: None,
-        },
-        Err(_) => Check {
+        Ok(out) => {
+            let input = String::from_utf8_lossy(&out.stdout);
+            // Extract the version from the input string
+            let re = Regex::new(r"(\d+\.\d+\.\d+)").unwrap();
+
+            let version_str = re
+                .captures(&input)
+                .and_then(|caps| caps.get(0))
+                .map(|m| m.as_str())
+                .ok_or("SeaORM CLI version not found")
+                .map_err(Box::from)?;
+
+            // Parse the extracted version using semver
+            let version = Version::parse(version_str).map_err(Box::from)?;
+
+            // Parse the minimum version for comparison
+            let min_version = Version::parse(MIN_SEAORMCLI_VER).map_err(Box::from)?;
+
+            // Compare the extracted version with the minimum version
+            if version >= min_version {
+                Ok(Check {
+                    status: CheckStatus::Ok,
+                    message: SEAORM_INSTALLED.to_string(),
+                    description: None,
+                })
+            } else {
+                Ok(Check {
+                    status: CheckStatus::NotOk,
+                    message: format!(
+                        "SeaORM CLI minimal version is `{min_version}` (you have `{version}`). \
+                         Run `cargo install sea-orm-cli` to update."
+                    ),
+                    description: Some(SEAORM_NOT_FIX.to_string()),
+                })
+            }
+        }
+        Err(_) => Ok(Check {
             status: CheckStatus::NotOk,
             message: SEAORM_NOT_INSTALLED.to_string(),
             description: Some(SEAORM_NOT_FIX.to_string()),
-        },
+        }),
+    }
+}
+
+/// Check for the latest Loco version
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub async fn check_published_loco_version() -> Result<Check> {
+    let compiled_version = env!("CARGO_PKG_VERSION");
+    match check_cratesio_version("loco-rs", compiled_version).await {
+        Ok(Some(v)) => Ok(Check {
+            status: CheckStatus::NotOk,
+            message: format!("Loco version: `{compiled_version}`, latest version: `{v}`"),
+            description: Some("It is recommended to upgrade your main Loco version.".to_string()),
+        }),
+        Ok(None) => Ok(Check {
+            status: CheckStatus::Ok,
+            message: "Loco version: latest".to_string(),
+            description: None,
+        }),
+        Err(e) => Ok(Check {
+            status: CheckStatus::NotOk,
+            message: format!("Checking Loco version failed: {e}"),
+            description: None,
+        }),
     }
 }

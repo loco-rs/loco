@@ -17,7 +17,7 @@ Simplify your project setup with Loco's predefined boilerplates, designed to mak
 
 <!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->
 ```sh
-cargo install loco-cli
+cargo install loco
 cargo install sea-orm-cli # Only when DB is needed
 ```
 <!-- </snip> -->
@@ -28,13 +28,18 @@ Create a starter:
 ```sh
 ❯ loco new
 ✔ ❯ App name? · myapp
-✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+✔ ❯ What would you like to build? · Saas App with client side rendering
 ✔ ❯ Select a DB Provider · Sqlite
-✔ ❯ Select your background worker type · Async (in-process tokyo async tasks)
-✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
+✔ ❯ Select your background worker type · Async (in-process tokio async tasks)
 
 🚂 Loco app generated successfully in:
 myapp/
+
+- assets: You've selected `clientside` for your asset serving configuration.
+
+Next step, build your frontend:
+  $ cd frontend/
+  $ npm install && npm run build
 ```
 <!-- </snip> -->
 
@@ -76,6 +81,8 @@ In your `config/development.yaml`, uncomment the server-side config, and comment
         uri: "/static"
         path: "assets/static"
       fallback: "assets/static/404.html"
+    fallback:
+      enable: false
     # client side app static config
     # static:
     #   enable: true
@@ -85,6 +92,8 @@ In your `config/development.yaml`, uncomment the server-side config, and comment
     #     uri: "/"
     #     path: "frontend/dist"
     #   fallback: "frontend/dist/index.html"
+    # fallback:
+    #   enable: false
 ```
 
 

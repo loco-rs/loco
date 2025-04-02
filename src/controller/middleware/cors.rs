@@ -1,19 +1,23 @@
 //! Configurable and Flexible CORS Middleware
 //!
 //! This middleware enables Cross-Origin Resource Sharing (CORS) by allowing
-//! configurable origins, methods, and headers in HTTP requests. It can be tailored
-//! to fit various application requirements, supporting permissive CORS or
-//! specific rules as defined in the middleware configuration.
+//! configurable origins, methods, and headers in HTTP requests. It can be
+//! tailored to fit various application requirements, supporting permissive CORS
+//! or specific rules as defined in the middleware configuration.
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
+use std::time::Duration;
+
 use axum::Router as AXRouter;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
-use tower_http::cors;
+use serde_json::json;
+use tower_http::cors::{self, Any};
+
+use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 
 /// CORS middleware configuration
-#[derive(Default, Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Cors {
+    #[serde(default)]
     pub enable: bool,
     /// Allow origins
     #[serde(default = "default_allow_origins")]
@@ -24,6 +28,9 @@ pub struct Cors {
     /// Allow methods
     #[serde(default = "default_allow_methods")]
     pub allow_methods: Vec<String>,
+    /// Allow credentials
+    #[serde(default)]
+    pub allow_credentials: bool,
     /// Max age
     pub max_age: Option<u64>,
     // Vary headers
@@ -32,7 +39,7 @@ pub struct Cors {
 }
 
 fn default_allow_origins() -> Vec<String> {
-    vec!["any".to_string()]
+    vec!["*".to_string()]
 }
 
 fn default_allow_headers() -> Vec<String> {
@@ -51,6 +58,12 @@ fn default_vary_headers() -> Vec<String> {
     ]
 }
 
+impl Default for Cors {
+    fn default() -> Self {
+        serde_json::from_value(json!({})).unwrap()
+    }
+}
+
 impl Cors {
     /// Creates cors layer
     ///
@@ -58,45 +71,56 @@ impl Cors {
     ///
     /// This function returns an error in the following cases:
     ///
-    /// - If any of the provided origins in `allow_origins` cannot be parsed as a valid URI,
-    ///   the function will return a parsing error.
-    /// - If any of the provided headers in `allow_headers` cannot be parsed as valid HTTP headers,
-    ///   the function will return a parsing error.
-    /// - If any of the provided methods in `allow_methods` cannot be parsed as valid HTTP methods,
-    ///   the function will return a parsing error.
+    /// - If any of the provided origins in `allow_origins` cannot be parsed as
+    ///   a valid URI, the function will return a parsing error.
+    /// - If any of the provided headers in `allow_headers` cannot be parsed as
+    ///   valid HTTP headers, the function will return a parsing error.
+    /// - If any of the provided methods in `allow_methods` cannot be parsed as
+    ///   valid HTTP methods, the function will return a parsing error.
     ///
-    /// In all of these cases, the error returned will be the result of the `parse` method
-    /// of the corresponding type.
+    /// In all of these cases, the error returned will be the result of the
+    /// `parse` method of the corresponding type.
     pub fn cors(&self) -> Result<cors::CorsLayer> {
-        let mut cors: cors::CorsLayer = cors::CorsLayer::permissive();
-
-        let mut list = vec![];
+        let mut cors: cors::CorsLayer = cors::CorsLayer::new();
 
         // testing CORS, assuming https://example.com in the allow list:
         // $ curl -v --request OPTIONS 'localhost:5150/api/_ping' -H 'Origin: https://example.com' -H 'Acces
         // look for '< access-control-allow-origin: https://example.com' in response.
         // if it doesn't appear (test with a bogus domain), it is not allowed.
-        for origin in &self.allow_origins {
-            list.push(origin.parse()?);
-        }
-        if !list.is_empty() {
-            cors = cors.allow_origin(list);
-        }
-
-        let mut list = vec![];
-        for header in &self.allow_headers {
-            list.push(header.parse()?);
-        }
-        if !list.is_empty() {
-            cors = cors.allow_headers(list);
+        if self.allow_origins == default_allow_origins() {
+            cors = cors.allow_origin(Any);
+        } else {
+            let mut list = vec![];
+            for origin in &self.allow_origins {
+                list.push(origin.parse()?);
+            }
+            if !list.is_empty() {
+                cors = cors.allow_origin(list);
+            }
         }
 
-        let mut list = vec![];
-        for method in &self.allow_methods {
-            list.push(method.parse()?);
+        if self.allow_headers == default_allow_headers() {
+            cors = cors.allow_headers(Any);
+        } else {
+            let mut list = vec![];
+            for header in &self.allow_headers {
+                list.push(header.parse()?);
+            }
+            if !list.is_empty() {
+                cors = cors.allow_headers(list);
+            }
         }
-        if !list.is_empty() {
-            cors = cors.allow_methods(list);
+
+        if self.allow_methods == default_allow_methods() {
+            cors = cors.allow_methods(Any);
+        } else {
+            let mut list = vec![];
+            for method in &self.allow_methods {
+                list.push(method.parse()?);
+            }
+            if !list.is_empty() {
+                cors = cors.allow_methods(list);
+            }
         }
 
         let mut list = vec![];
@@ -110,6 +134,8 @@ impl Cors {
         if let Some(max_age) = self.max_age {
             cors = cors.max_age(Duration::from_secs(max_age));
         }
+
+        cors = cors.allow_credentials(self.allow_credentials);
 
         Ok(cors)
     }
@@ -139,8 +165,6 @@ impl MiddlewareLayer for Cors {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-    use crate::tests_cfg;
     use axum::{
         body::Body,
         http::{Method, Request},
@@ -150,6 +174,9 @@ mod tests {
     use insta::assert_debug_snapshot;
     use rstest::rstest;
     use tower::ServiceExt;
+
+    use super::*;
+    use crate::tests_cfg;
 
     #[rstest]
     #[case("default", None, None, None)]
@@ -208,6 +235,50 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn cors_options() {
+        let middleware = Cors {
+            allow_origins: vec![
+                "http://localhost:8080".to_string(),
+                "http://example.com".to_string(),
+            ],
+            ..Cors::default()
+        };
+        let app = Router::new().route("/", get(|| async {}));
+        let app = middleware
+            .apply(app)
+            .expect("apply middleware")
+            .with_state(tests_cfg::app::get_app_context().await);
+
+        let req = Request::builder()
+            .uri("/")
+            .header("Origin", "http://example.com")
+            .method(Method::OPTIONS)
+            .body(Body::empty())
+            .expect("request");
+
+        let response = app.oneshot(req).await.expect("valid response");
+
+        assert_debug_snapshot!(
+            format!("cors_OPTIONS_[allow_origins]"),
+            (
+                format!(
+                    "access-control-allow-origin: {:?}",
+                    response.headers().get("access-control-allow-origin")
+                ),
+                format!("vary: {:?}", response.headers().get("vary")),
+                format!(
+                    "access-control-allow-methods: {:?}",
+                    response.headers().get("access-control-allow-methods")
+                ),
+                format!(
+                    "access-control-allow-headers: {:?}",
+                    response.headers().get("access-control-allow-headers")
+                ),
+                format!("allow: {:?}", response.headers().get("allow")),
+            )
+        );
+    }
     #[test]
     fn should_be_disabled() {
         let middleware = Cors::default();

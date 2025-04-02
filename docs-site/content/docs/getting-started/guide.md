@@ -41,17 +41,17 @@ Loco is a Web or API framework for Rust. It's also a productivity suite for deve
 - **Fat models, slim controllers**. Models should contain most of your logic and business implementation, controllers should just be a lightweight router that understands HTTP and moves parameters around.
 - **Command line driven** to keep your momentum and flow. Generate stuff over copying and pasting or coding from scratch.
 - **Every task is "infrastructure-ready"**, just plug in your code and wire it in: controllers, models, views, tasks, background jobs, mailers, and more.
-- **Convention over configuration**: decisions are already done for you -- the folder structure matter, configuration shape and values matter, and the way an app is wired matter to how an app operates and for you do be the most effective.
+- **Convention over configuration**: decisions are already done for you -- the folder structure matter, configuration shape and values matter, and the way an app is wired matter to how an app operates and for you to be the most effective.
 
 ## Creating a New Loco App
 
-You can follow this guide for a step-by-step "bottom up" learning, or you can jump and go with the [tour](./tour.md) instead for a quicker "top down" intro.
+You can follow this guide for a step-by-step "bottom up" learning, or you can jump and go with the [tour](@/docs/getting-started/tour/index.md) instead for a quicker "top down" intro.
 
 ### Installing
 
 <!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->
 ```sh
-cargo install loco-cli
+cargo install loco
 cargo install sea-orm-cli # Only when DB is needed
 ```
 <!-- </snip> -->
@@ -65,13 +65,18 @@ Now you can create your new app (choose "SaaS app" for built-in authentication).
 ```sh
 ❯ loco new
 ✔ ❯ App name? · myapp
-✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+✔ ❯ What would you like to build? · Saas App with client side rendering
 ✔ ❯ Select a DB Provider · Sqlite
-✔ ❯ Select your background worker type · Async (in-process tokyo async tasks)
-✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
+✔ ❯ Select your background worker type · Async (in-process tokio async tasks)
 
 🚂 Loco app generated successfully in:
 myapp/
+
+- assets: You've selected `clientside` for your asset serving configuration.
+
+Next step, build your frontend:
+  $ cd frontend/
+  $ npm install && npm run build
 ```
 <!-- </snip> -->
 
@@ -94,13 +99,12 @@ Here's a rundown of what Loco creates for you by default:
 | `tasks/`       | Contains your day to day business-oriented tasks such as sending emails, producing business reports, db maintenance, etc.                                         |
 | `tests/`       | Your app-wide tests: models, requests, etc.                                                                                                                       |
 | `config/`      | A stage-based configuration folder: development, test, production                                                                                                 |
-| `channels/`    | Contains all channels routes.                                                                                                                                     |
 
 ## Hello, Loco!
 
 Let's get some responses quickly. For this, we need to start up the server.
 
-You can now switch to to `myapp`:
+You can now switch to `myapp`:
 
 ```sh
 $ cd myapp
@@ -131,7 +135,7 @@ $ curl localhost:5150/_health
 ```
 
 <div class="infobox">
-The built in <code>_health</code> route will tell you that you have configured your app properly: it can establish a connection to your Postgres and Redis instances successfully.
+The built in <code>_health</code> route will tell you that you have configured your app properly: it can establish a connection to your Database and Redis instances successfully.
 </div>
 
 ### Say "Hello", Loco
@@ -139,7 +143,7 @@ The built in <code>_health</code> route will tell you that you have configured y
 Let's add a quick _hello_ response to our service.
 
 ```sh
-$ cargo loco generate controller guide -k api
+$ cargo loco generate controller guide --api
 added: "src/controllers/guide.rs"
 injected: "src/controllers/mod.rs"
 injected: "src/app.rs"
@@ -150,24 +154,32 @@ injected: "tests/requests/mod.rs"
 This is the generated controller body:
 
 ```rust
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
 use loco_rs::prelude::*;
+use axum::debug_handler;
 
-pub async fn echo(req_body: String) -> String {
-    req_body
-}
-
-pub async fn hello(State(_ctx): State<AppContext>) -> Result<Response> {
-    // do something with context (database, etc)
-    format::text("hello")
+#[debug_handler]
+pub async fn index(State(_ctx): State<AppContext>) -> Result<Response> {
+    format::empty()
 }
 
 pub fn routes() -> Routes {
     Routes::new()
-        .prefix("guide")
-        .add("/", get(hello))
-        .add("/echo", post(echo))
+        .prefix("api/guides/")
+        .add("/", get(index))
 }
+```
+
+
+Change the `index` handler body:
+
+```rust
+// replace
+    format::empty()
+// with this
+    format::text("hello")
 ```
 
 Start the server:
@@ -181,7 +193,7 @@ cargo loco start
 Now, let's test it out:
 
 ```sh
-$ curl localhost:5150/guide
+$ curl localhost:5150/api/guides
 hello
 ```
 
@@ -189,7 +201,7 @@ Loco has powerful generators, which will make you 10x productive and drive your 
 
 If you'd like to be entertained for a moment, let's "learn the hard way" and add a new controller manually as well.
 
-Add a file called `home.rs`, and `pub mod home;` it in `mod.rs`:
+Add a file called `home.rs`, and line `pub mod home;` in `mod.rs`:
 
 ```
 src/
@@ -236,9 +248,7 @@ impl Hooks for App {
     fn routes() -> AppRoutes {
         AppRoutes::with_default_routes()
             .add_route(controllers::guide::routes())
-            .add_route(controllers::notes::routes())
             .add_route(controllers::auth::routes())
-            .add_route(controllers::user::routes())
             .add_route(controllers::home::routes()) // <--- add this
     }
 ```
@@ -269,15 +279,13 @@ $ cargo loco routes
 [POST] /api/auth/reset
 [POST] /api/auth/verify
 [GET] /home/hello      <---- this is our new route!
-[GET] /api/notes
-[POST] /api/notes
   ..
   ..
 $
 ```
 
 <div class="infobox">
-The <em>SaaS Starter</em> keeps routes under <code>/api</code> because it is client-side ready. <br/>
+The <em>SaaS Starter</em> keeps routes under <code>/api</code> because it is client-side ready and we are using the <code>--api</code> option in scaffolding. <br/>
 When using client-side routing like React Router, we want to separate backend routes from client routes: the browser will use <code>/home</code> but not <code>/api/home</code> which is the backend route, and you can call <code>/api/home</code> from the client with no worries. Nevertheless, the routes: <code>/_health</code> and <code>/_ping</code> are exceptions, they stay at the root.
 </div>
 
@@ -307,7 +315,7 @@ src/
     mod.rs
 ```
 
-**This is an important _cognitive_ principle**. And the principle claims that you can only create safe, compatible API responses if you treat those as a separate, independently goverened _thing_ -- hence the 'V' in MVC, in Loco.
+**This is an important _cognitive_ principle**. And the principle claims that you can only create safe, compatible API responses if you treat those as a separate, independently governed _thing_ -- hence the 'V' in MVC, in Loco.
 
 <div class="infobox">
 Models in Loco carry the same semantics as in Rails: <b>fat models, slim controllers</b>. This means that every time you want to build something -- <em>you reach out to a model</em>.
@@ -380,12 +388,10 @@ src/models/
 ├── _entities
 │   ├── articles.rs  <-- sync'd from db schema, do not edit
 │   ├── mod.rs
-│   ├── notes.rs
 │   ├── prelude.rs
 │   └── users.rs
 ├── articles.rs   <-- generated for you, your logic goes here.
 ├── mod.rs
-├── notes.rs
 └── users.rs
 ```
 
@@ -437,7 +443,7 @@ $ cargo playground
 Now, let's insert one item:
 
 ```rust
-async fn main() -> loco_re::Result<()> {
+async fn main() -> loco_rs::Result<()> {
     let ctx = playground::<App>().await?;
 
     // add this:
@@ -465,7 +471,7 @@ $ cargo playground
 We're now ready to plug this into an `articles` controller. First, generate a new controller:
 
 ```sh
-$ cargo loco generate controller articles -k api
+$ cargo loco generate controller articles --api
 added: "src/controllers/articles.rs"
 injected: "src/controllers/mod.rs"
 injected: "src/app.rs"
@@ -487,7 +493,7 @@ pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
 }
 
 pub fn routes() -> Routes {
-    Routes::new().prefix("articles").add("/", get(list))
+    Routes::new().prefix("api/articles").add("/", get(list))
 }
 ```
 
@@ -502,7 +508,7 @@ cargo loco start
 And make a request:
 
 ```sh
-$ curl localhost:5150/articles
+$ curl localhost:5150/api/articles
 [{"created_at":"...","updated_at":"...","id":1,"title":"how to build apps in 3 steps","content":"use Loco: https://loco.rs"}]
 ```
 
@@ -544,9 +550,7 @@ pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
 }
 
 pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Response> {
-    let mut item = ActiveModel {
-        ..Default::default()
-    };
+    let mut item: ActiveModel = Default::default();
     params.update(&mut item);
     let item = item.insert(&ctx.db).await?;
     format::json(item)
@@ -575,12 +579,12 @@ pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Resu
 
 pub fn routes() -> Routes {
     Routes::new()
-        .prefix("articles")
+        .prefix("api/articles")
         .add("/", get(list))
         .add("/", post(add))
-        .add("/:id", get(get_one))
-        .add("/:id", delete(remove))
-        .add("/:id", post(update))
+        .add("/{id}", get(get_one))
+        .add("/{id}", delete(remove))
+        .add("/{id}", patch(update))
 }
 ```
 
@@ -612,14 +616,14 @@ Add a new article:
 $ curl -X POST -H "Content-Type: application/json" -d '{
   "title": "Your Title",
   "content": "Your Content xxx"
-}' localhost:5150/articles
+}' localhost:5150/api/articles
 {"created_at":"...","updated_at":"...","id":2,"title":"Your Title","content":"Your Content xxx"}
 ```
 
 Get a list:
 
 ```sh
-$ curl localhost:5150/articles
+$ curl localhost:5150/api/articles
 [{"created_at":"...","updated_at":"...","id":1,"title":"how to build apps in 3 steps","content":"use Loco: https://loco.rs"},{"created_at":"...","updated_at":"...","id":2,"title":"Your Title","content":"Your Content xxx"}
 ```
 
@@ -630,8 +634,12 @@ Let's add another model, this time: `Comment`. We want to create a relation - a 
 Instead of coding the model and controller by hand, we're going to create a **comment scaffold** which will generate a fully working CRUD API comments. We're also going to use the special `references` type:
 
 ```sh
-$ cargo loco generate scaffold comment content:text article:references -k api
+$ cargo loco generate scaffold comment content:text article:references --api
 ```
+
+<div class="infobox">
+The special <code>references:&lt;table&gt;</code> is also available. For when you want to have a different name for your column.
+</div>
 
 If you peek into the new migration, you'll discover a new database relation in the articles table:
 
@@ -651,6 +659,7 @@ If you peek into the new migration, you'll discover a new database relation in t
       ..
 ```
 
+
 Now, lets modify our API in the following way:
 
 1. Comments can be added through a shallow route: `POST comments/`
@@ -662,12 +671,12 @@ In `src/controllers/comments.rs`, remove unneeded routes and functions:
 ```rust
 pub fn routes() -> Routes {
     Routes::new()
-        .prefix("comments")
+        .prefix("api/comments")
         .add("/", post(add))
         // .add("/", get(list))
-        // .add("/:id", get(get_one))
-        // .add("/:id", delete(remove))
-        // .add("/:id", post(update))
+        // .add("/{id}", get(get_one))
+        // .add("/{id}", delete(remove))
+        // .add("/{id}", patch(update))
 }
 ```
 
@@ -693,7 +702,7 @@ Now we need to fetch a relation in `src/controllers/articles.rs`. Add the follow
 pub fn routes() -> Routes {
   // ..
   // ..
-  .add("/:id/comments", get(comments))
+  .add("/{id}/comments", get(comments))
 }
 ```
 
@@ -734,14 +743,14 @@ Add a comment to Article `1`:
 $ curl -X POST -H "Content-Type: application/json" -d '{
   "content": "this rocks",
   "article_id": 1
-}' localhost:5150/comments
+}' localhost:5150/api/comments
 {"created_at":"...","updated_at":"...","id":4,"content":"this rocks","article_id":1}
 ```
 
 And, fetch the relation:
 
 ```sh
-$ curl localhost:5150/articles/1/comments
+$ curl localhost:5150/api/articles/1/comments
 [{"created_at":"...","updated_at":"...","id":4,"content":"this rocks","article_id":1}]
 ```
 
@@ -789,6 +798,8 @@ use loco_rs::task::Vars;
 
 use crate::models::users;
 
+pub struct UserReport;
+
 #[async_trait]
 impl Task for UserReport {
     fn task(&self) -> TaskInfo {
@@ -829,9 +840,9 @@ args: Vars { cli: {"var1": "val1", "var2": "val2"} }
 ------------------------
 done: 0 users
 ```
-If you have not added an user before, the report will be empty.
+If you have not added a user before, the report will be empty.
 
-To add an user check out chapter [Registering a New User](/docs/getting-started/tour/#registering-a-new-user) of [A Quick Tour with Loco](/docs/getting-started/tour/).
+To add a user check out chapter [Registering a New User](/docs/getting-started/tour/#registering-a-new-user) of [A Quick Tour with Loco](/docs/getting-started/tour/).
 
 Remember: this is environmental, so you write the task once, and then execute in development or production as you wish. Tasks are compiled into the main app binary.
 
@@ -844,9 +855,7 @@ Go back to `src/controllers/comments.rs` and take a look at the `add` function:
 
 ```rust
 pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Response> {
-    let mut item = ActiveModel {
-        ..Default::default()
-    };
+    let mut item: ActiveModel = Default::default();
     params.update(&mut item);
     let item = item.insert(&ctx.db).await?;
     format::json(item)
@@ -861,16 +870,14 @@ async fn add(
     State(ctx): State<AppContext>,
     Json(params): Json<Params>,
 ) -> Result<Response> {
-  // we only want to make sure it exists
-  let _current_user = crate::models::users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
+    // we only want to make sure it exists
+    let _current_user = crate::models::users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
 
-  // next, update
-  // homework/bonus: make a comment _actually_ belong to user (user_id)
-  let mut item = ActiveModel {
-      ..Default::default()
-  };
-  params.update(&mut item);
-  let item = item.insert(&ctx.db).await?;
-  format::json(item)
+    // next, update
+    // homework/bonus: make a comment _actually_ belong to user (user_id)
+    let mut item: ActiveModel = Default::default();
+    params.update(&mut item);
+    let item = item.insert(&ctx.db).await?;
+    format::json(item)
 }
 ```

@@ -1,3 +1,21 @@
+## Blessed dependencies maintenance and `loco doctor`
+
+Loco contain a few major and "blessed" dependencies, these appear **both** in an app that was generated at the surface level in their `Cargo.toml` and in the core Loco framework.
+
+If stale, may require an upgrade as a must.
+
+Example for such dependencies:
+
+* The `sea-orm-cli` - while Loco uses `SeaORM`, it uses the `SeaORM` CLI to generate entities, and so there may be an incompatibility if `SeaORM` has a too large breaking change between their CLI (which ships separately) and their framework. 
+* `axum`
+* etc.
+
+This is why we are checking these automatically as part of `loco doctor`.
+
+We keep minimal version requirements for these. As a maintainer, you can update these **minimal** versions, only if required in [`doctor.rs`](src/doctor.rs).
+
+
+
 ## Running Tests
 
 Before running tests make sure that:

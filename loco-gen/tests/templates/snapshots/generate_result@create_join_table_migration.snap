@@ -1,0 +1,5 @@
+---
+source: loco-gen/tests/templates/migration.rs
+expression: collect_messages(&gen_result)
+---
+* Migration for `CreateJoinTableUsersAndGroups` added! You can now apply it with `$ cargo loco db migrate`.

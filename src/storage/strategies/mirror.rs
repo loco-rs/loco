@@ -27,7 +27,7 @@ use bytes::Bytes;
 use crate::storage::{strategies::StorageStrategy, Storage, StorageError, StorageResult};
 
 /// Enum representing the failure mode for the [`MirrorStrategy`].
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum FailureMode {
     /// Fail if any secondary storage mirror encounters an error.
     MirrorAll,
@@ -36,7 +36,7 @@ pub enum FailureMode {
 }
 
 /// Represents the Mirror Strategy for storage operations.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MirrorStrategy {
     /// The primary storage backend.
     pub primary: String,
@@ -231,12 +231,7 @@ impl MirrorStrategy {
         path: &Path,
     ) -> StorageResult<Bytes> {
         let store = storage.as_store_err(store_name)?;
-        store
-            .get(path)
-            .await?
-            .bytes()
-            .await
-            .map_err(StorageError::Store)
+        store.get(path).await?.bytes().await
     }
 }
 

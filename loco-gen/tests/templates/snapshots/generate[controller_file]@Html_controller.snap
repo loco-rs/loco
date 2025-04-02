@@ -1,0 +1,32 @@
+---
+source: loco-gen/tests/templates/controller.rs
+expression: "fs::read_to_string(controllers_path.join(\"movie.rs\")).expect(\"controller file missing\")"
+---
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::unnecessary_struct_initialization)]
+#![allow(clippy::unused_async)]
+use loco_rs::prelude::*;
+use axum::debug_handler;
+
+#[debug_handler]
+pub async fn GET(
+    ViewEngine(v): ViewEngine<TeraView>,
+    State(_ctx): State<AppContext>
+) -> Result<Response> {
+    format::render().view(&v, "movie/GET.html", data!({}))
+}
+
+#[debug_handler]
+pub async fn POST(
+    ViewEngine(v): ViewEngine<TeraView>,
+    State(_ctx): State<AppContext>
+) -> Result<Response> {
+    format::render().view(&v, "movie/POST.html", data!({}))
+}
+
+pub fn routes() -> Routes {
+    Routes::new()
+        .prefix("movies/")
+        .add("GET", get(GET))
+        .add("POST", get(POST))
+}

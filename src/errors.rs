@@ -10,7 +10,7 @@ use axum::{
 };
 use lettre::{address::AddressError, transport::smtp};
 
-use crate::controller::ErrorDetail;
+use crate::{controller::ErrorDetail, depcheck};
 
 /*
 backtrace principles:
@@ -85,9 +85,6 @@ pub enum Error {
     DB(#[from] sea_orm::DbErr),
 
     #[error(transparent)]
-    RRgen(#[from] rrgen::Error),
-
-    #[error(transparent)]
     ParseAddress(#[from] AddressError),
 
     #[error("{0}")]
@@ -135,7 +132,7 @@ pub enum Error {
     #[error(transparent)]
     Redis(#[from] sidekiq::redis_rs::RedisError),
 
-    #[cfg(feature = "bg_pg")]
+    #[cfg(any(feature = "bg_pg", feature = "bg_sqlt"))]
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
 
@@ -145,8 +142,27 @@ pub enum Error {
     #[error(transparent)]
     Cache(#[from] crate::cache::CacheError),
 
+    #[cfg(debug_assertions)]
+    #[error(transparent)]
+    Generators(#[from] loco_gen::Error),
+
+    #[error(transparent)]
+    VersionCheck(#[from] depcheck::VersionCheckError),
+
+    #[error(transparent)]
+    RequestError(#[from] reqwest::Error),
+
+    #[error(transparent)]
+    SemVer(#[from] semver::Error),
+
     #[error(transparent)]
     Any(#[from] Box<dyn std::error::Error + Send + Sync>),
+
+    #[error(transparent)]
+    ValidationError(#[from] validator::ValidationErrors),
+
+    #[error(transparent)]
+    AxumFormRejection(#[from] axum::extract::rejection::FormRejection),
 }
 
 impl Error {

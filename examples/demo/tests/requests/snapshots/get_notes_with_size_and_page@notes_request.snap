@@ -1,8 +1,0 @@
----
-source: tests/requests/notes.rs
-expression: "(notes.status_code(), notes.text())"
----
-(
-    200,
-    "{\"results\":[{\"id\":ID,\"title\":\"Loco  6\",\"content\":\"content 6\"},{\"id\":ID,\"title\":\"Loco  7\",\"content\":\"content 7\"},{\"id\":ID,\"title\":\"Loco  8\",\"content\":\"content 8\"},{\"id\":ID,\"title\":\"Loco  9\",\"content\":\"content 9\"},{\"id\":ID,\"title\":\"Loco  10\",\"content\":\"content 10\"}],\"pagination\":{\"page\":2,\"page_size\":5,\"total_pages\":3}}",
-)

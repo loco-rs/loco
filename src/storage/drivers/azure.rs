@@ -1,14 +1,14 @@
-use object_store::azure::MicrosoftAzureBuilder;
+use opendal::{services::Azblob, Operator};
 
-use super::{object_store_adapter::ObjectStoreAdapter, StoreDriver};
-use crate::Result;
+use super::StoreDriver;
+use crate::storage::{drivers::opendal_adapter::OpendalAdapter, StorageResult};
 
 /// Create new Azure storage.
 ///
 /// # Examples
 ///```
 /// use loco_rs::storage::drivers::azure;
-/// let azure_driver = azure::new("name", "account_name", "access_key");
+/// let azure_driver = azure::new("name", "account_name", "access_key", "endpoint");
 /// ```
 ///
 /// # Errors
@@ -18,13 +18,15 @@ pub fn new(
     container_name: &str,
     account_name: &str,
     access_key: &str,
-) -> Result<Box<dyn StoreDriver>> {
-    let azure = MicrosoftAzureBuilder::new()
-        .with_container_name(container_name)
-        .with_account(account_name)
-        .with_access_key(access_key)
-        .build()
-        .map_err(Box::from)?;
+    endpoint: &str,
+) -> StorageResult<Box<dyn StoreDriver>> {
+    let azure = Azblob::default()
+        .container(container_name)
+        .account_name(account_name)
+        .account_key(access_key)
+        .endpoint(endpoint);
 
-    Ok(Box::new(ObjectStoreAdapter::new(Box::new(azure))))
+    Ok(Box::new(OpendalAdapter::new(
+        Operator::new(azure)?.finish(),
+    )))
 }

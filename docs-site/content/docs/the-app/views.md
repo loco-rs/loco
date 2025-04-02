@@ -179,9 +179,7 @@ impl Hooks for App {
 
     fn routes(_ctx: &AppContext) -> AppRoutes {
         AppRoutes::with_default_routes()
-            .add_route(controllers::notes::routes())
             .add_route(controllers::auth::routes())
-            .add_route(controllers::user::routes())
             // include your controller's routes here
             .add_route(controllers::dashboard::routes())
     }
@@ -198,12 +196,7 @@ $ cargo loco routes
 [POST] /api/auth/register
 [POST] /api/auth/reset
 [POST] /api/auth/verify
-[GET] /api/notes
-[POST] /api/notes
-[GET] /api/notes/:id
-[DELETE] /api/notes/:id
-[POST] /api/notes/:id
-[GET] /api/user/current
+[GET] /api/auth/current
 [GET] /home              <-- the corresponding URL for our new view
 ```
 
@@ -237,6 +230,13 @@ In your templates you can refer to static resources in this way:
 <img src="/static/image.png"/>
 ```
 
+However, for the static middleware to work, ensure that the default fallback is disabled:
+
+```yaml
+fallback:
+  enable: false
+```
+
 
 ### Customizing the Tera view engine
 
@@ -263,7 +263,8 @@ Here's an example for a dummy "Hello" view engine. It's a view engine that alway
 
 ```rust
 // src/initializers/hello_view_engine.rs
-use axum::{async_trait, Extension, Router as AxumRouter};
+use axum::{Extension, Router as AxumRouter};
+use async_trait::async_trait;
 use loco_rs::{
     app::{AppContext, Initializer},
     controller::views::{ViewEngine, ViewRenderer},
@@ -308,3 +309,10 @@ impl Hooks for App {
     }
     // ...
 ```
+
+### Tera Built-ins
+
+Loco includes Tera with its [built-ins](https://keats.github.io/tera/docs/#built-ins) functions. In addition, Loco introduces the following custom built-in functions:
+
+To see Loco built-in function:
+* [numbers](https://docs.rs/loco-rs/latest/loco_rs/controller/views/tera_builtins/filters/number/index.html)

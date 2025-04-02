@@ -1,8 +1,0 @@
----
-source: tests/requests/view_engine.rs
-expression: "(response.status_code(), response.text())"
----
-(
-    200,
-    "<html><body>\n  <img src=\"/static/image.png\" width=\"200\"/>\n  <br/>\n  find this tera template at <code>assets/views/home/hello.html</code>: \n  <br/>\n  <br/>\n  Hello World!, \n  <br/>\n  Hallo Welt!\n  \n</body></html>\n  ",
-)

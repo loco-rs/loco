@@ -3,8 +3,9 @@
 //! sending emails with options like sender, recipient, subject, and content.
 
 use lettre::{
-    message::MultiPart, transport::smtp::authentication::Credentials, AsyncTransport, Message,
-    Tokio1Executor, Transport,
+    message::MultiPart,
+    transport::smtp::{authentication::Credentials, extension::ClientId},
+    AsyncTransport, Message, Tokio1Executor, Transport,
 };
 use tracing::error;
 
@@ -13,7 +14,7 @@ use crate::{config, errors::Error};
 
 /// An enumeration representing the possible transport methods for sending
 /// emails.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum EmailTransport {
     /// SMTP (Simple Mail Transfer Protocol) transport.
     Smtp(lettre::AsyncSmtpTransport<lettre::Tokio1Executor>),
@@ -23,7 +24,7 @@ pub enum EmailTransport {
 
 /// A structure representing the email sender, encapsulating the chosen
 /// transport method.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EmailSender {
     pub transport: EmailTransport,
 }
@@ -60,6 +61,10 @@ impl EmailSender {
                 .credentials(Credentials::new(auth.user.clone(), auth.password.clone()));
         }
 
+        if let Some(hello_name) = config.hello_name.as_ref() {
+            email_builder = email_builder.hello_name(ClientId::Domain(hello_name.clone()));
+        }
+
         Ok(Self {
             transport: EmailTransport::Smtp(email_builder.build()),
         })
@@ -93,7 +98,8 @@ impl EmailSender {
     ///
     /// # Errors
     ///
-    /// When email did't send successfully or has an error to build the message
+    /// When email doesn't send successfully or has an error to build the
+    /// message
     pub async fn mail(&self, email: &Email) -> Result<()> {
         let content = MultiPart::alternative_plain_html(email.text.clone(), email.html.clone());
         let mut builder = Message::builder()

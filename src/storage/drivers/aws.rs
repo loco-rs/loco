@@ -1,18 +1,10 @@
-#[cfg(test)]
-use core::time::Duration;
-use std::sync::Arc;
+use opendal::{services::S3, Operator};
 
-use object_store::{
-    aws::{AmazonS3Builder, AwsCredential},
-    StaticCredentialProvider,
-};
-#[cfg(test)]
-use object_store::{BackoffConfig, RetryConfig};
-
-use super::{object_store_adapter::ObjectStoreAdapter, StoreDriver};
-use crate::Result;
+use super::{opendal_adapter::OpendalAdapter, StoreDriver};
+use crate::storage::StorageResult;
 
 /// A set of AWS security credentials
+#[derive(Debug)]
 pub struct Credential {
     /// `AWS_ACCESS_KEY_ID`
     pub key_id: String,
@@ -33,14 +25,10 @@ pub struct Credential {
 /// # Errors
 ///
 /// When could not initialize the client instance
-pub fn new(bucket_name: &str, region: &str) -> Result<Box<dyn StoreDriver>> {
-    let s3 = AmazonS3Builder::new()
-        .with_bucket_name(bucket_name)
-        .with_region(region)
-        .build()
-        .map_err(Box::from)?;
+pub fn new(bucket_name: &str, region: &str) -> StorageResult<Box<dyn StoreDriver>> {
+    let s3 = S3::default().bucket(bucket_name).region(region);
 
-    Ok(Box::new(ObjectStoreAdapter::new(Box::new(s3))))
+    Ok(Box::new(OpendalAdapter::new(Operator::new(s3)?.finish())))
 }
 
 /// Create new AWS s3 storage with bucket, region and credentials.
@@ -63,18 +51,16 @@ pub fn with_credentials(
     bucket_name: &str,
     region: &str,
     credentials: Credential,
-) -> Result<Box<dyn StoreDriver>> {
-    let s3 = AmazonS3Builder::new()
-        .with_bucket_name(bucket_name)
-        .with_region(region)
-        .with_credentials(Arc::new(StaticCredentialProvider::new(AwsCredential {
-            key_id: credentials.key_id.to_string(),
-            secret_key: credentials.secret_key.to_string(),
-            token: credentials.token,
-        })))
-        .build()
-        .map_err(Box::from)?;
-    Ok(Box::new(ObjectStoreAdapter::new(Box::new(s3))))
+) -> StorageResult<Box<dyn StoreDriver>> {
+    let mut s3 = S3::default()
+        .bucket(bucket_name)
+        .region(region)
+        .access_key_id(&credentials.key_id)
+        .secret_access_key(&credentials.secret_key);
+    if let Some(token) = credentials.token {
+        s3 = s3.session_token(&token);
+    }
+    Ok(Box::new(OpendalAdapter::new(Operator::new(s3)?.finish())))
 }
 
 /// Build store with failure
@@ -85,15 +71,11 @@ pub fn with_credentials(
 #[cfg(test)]
 #[must_use]
 pub fn with_failure() -> Box<dyn StoreDriver> {
-    let s3 = AmazonS3Builder::new()
-        .with_bucket_name("loco-test")
-        .with_retry(RetryConfig {
-            backoff: BackoffConfig::default(),
-            max_retries: 0,
-            retry_timeout: Duration::from_secs(0),
-        })
-        .build()
-        .unwrap();
+    let s3 = S3::default()
+        .bucket("loco-test")
+        .region("ap-south-1")
+        .allow_anonymous()
+        .disable_ec2_metadata();
 
-    Box::new(ObjectStoreAdapter::new(Box::new(s3)))
+    Box::new(OpendalAdapter::new(Operator::new(s3).unwrap().finish()))
 }

@@ -23,13 +23,18 @@ Create your starter app:
 ```sh
 ❯ loco new
 ✔ ❯ App name? · myapp
-✔ ❯ What would you like to build? · SaaS app (with DB and user auth)
+✔ ❯ What would you like to build? · Saas App with client side rendering
 ✔ ❯ Select a DB Provider · Sqlite
-✔ ❯ Select your background worker type · Async (in-process tokyo async tasks)
-✔ ❯ Select an asset serving configuration · Client (configures assets for frontend serving)
+✔ ❯ Select your background worker type · Async (in-process tokio async tasks)
 
 🚂 Loco app generated successfully in:
 myapp/
+
+- assets: You've selected `clientside` for your asset serving configuration.
+
+Next step, build your frontend:
+  $ cd frontend/
+  $ npm install && npm run build
 ```
 <!-- </snip> -->
 
@@ -53,6 +58,7 @@ Commands:
   routes      Describe all application endpoints
   middleware  Describe all application middlewares
   task        Run a custom task
+  jobs        Managing jobs queue
   scheduler   Run the scheduler
   generate    code generation creates a set of files and code templates based on a predefined set of rules
   doctor      Validate and diagnose configurations
@@ -156,7 +162,7 @@ Options:
 You can begin by generating a scaffold for the Post resource, which will represent a single blog posting. To accomplish this, open your terminal and enter the following command:
 <!-- <snip id="scaffold-post-command" inject_from="yaml" template="sh"> -->
 ```sh
-cargo loco generate scaffold posts name:string title:string content:text
+cargo loco generate scaffold posts name:string title:string content:text --api
 ```
 <!-- </snip> -->
 
@@ -187,7 +193,7 @@ The scaffold generator will build several files in your application:
 | `assets/views/posts/show.html`             | Show post template. only for HTML and HTMX templates.                                                   |
 
 ## Your app configuration
-Configuration in `loco` lives in `config/` and by default sets up 3 different environments:
+By default, loco stores its configuration files in the config/ directory. It provides predefined configurations for three environments:
 
 ```
 config/
@@ -204,6 +210,9 @@ An environment is picked up automatically based on:
 When nothing is given, the default value is `development`.
 
 The `Loco` framework allows support for custom environments in addition to the default environment. To add a custom environment, create a configuration file with a name matching the environment identifier used in the preceding example.
+
+### Overriding the Default Configuration Path
+To use a custom configuration directory, set the `LOCO_CONFIG_FOLDER` environment variable to the desired folder path. This will instruct `loco` to load configuration files from the specified directory instead of the default `config/` folder.
 
 ### Placeholders / variables in config
 
@@ -281,6 +290,20 @@ if let Some(settings) = &ctx.config.settings {
     println!("allow list: {:?}", settings.allow_list);
 }
 ```
+
+### Server
+
+
+
+Here is a detailed description of the interface (listening, etc.) parameters under `server:`:
+
+* `port:` as the name says, for changing ports, mostly when behind a load balancer, etc.
+
+* `binding:` for changing what the IP interface "binds" to, mostly, when you are behind a load balancer like `nginx` you bind to a local address (when the LB is also there). However, you can also bind to "world" (`0.0.0.0`). You can set the binding: field via config, or via the CLI (using the `-b` flag) -- which is what Rails is doing.
+
+* `host:` - for "visibility" use cases or out-of-band use cases. For example, sometimes you want to display the current server host (in terms of domain name, etc.), which serves for visibility. And sometimes, as in the case of emails -- your server address is "out of band", meaning when I open my gmail account and I have your email -- I have to click what looks like your external address or visible address (official domain name, etc), and not an internal "host" address which is what may be the wrong thing to do (imagine an email link pointing to "http://127.0.0.1/account/verify")
+
+
 
 ### Logger
 

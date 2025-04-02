@@ -1,0 +1,9 @@
+---
+source: loco-gen/tests/templates/deployment.rs
+expression: "fs::read_to_string(tree_fs.root.join(\".cargo\").join(\"config.toml\")).expect(\".cargo/config.toml not exists\")"
+---
+[alias]
+loco = "run --bin tester-cli --"
+loco-tool = "run --"
+
+playground = "run --example playground"

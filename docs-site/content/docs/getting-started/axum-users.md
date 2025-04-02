@@ -45,7 +45,6 @@ In Loco you:
 server:
   middlewares:
     limit_payload:
-      enable: true
       body_limit: 5mb
   # .. more middleware below ..
 ```
@@ -93,7 +92,7 @@ Loco: use your standard `config/[stage].yaml` configuration, and load specific v
 # Web server configuration
 server:
   # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
-  port: {{% get_env(name="NODE_PORT", default=5150) %}}
+  port:  {{/* get_env(name="NODE_PORT", default=5150) */}}
 ```
 
 This configuration is strongly typed, contains most-used values like database URL, logger levels and filtering and more. No need to guess or reinvent the wheel.
@@ -236,4 +235,4 @@ pub fn routes() -> Routes {
 ### Verdict
 
 * **A drop-in compatibility** - Loco uses Axum and keeps all of its building blocks intact so that you can just use your own existing Axum code with no efforts.
-* **Route metadata for free** - one gap that Axum routers has is the ability to describe the currently configured routes, which can be used for listing or automatic OpenAPI schema generation. Loco has a small metadata layer to suppor this. If you use `Routes` you get it for free, while all of the different signatures remain compatible with Axum router.
+* **Route metadata for free** - one gap that Axum routers has is the ability to describe the currently configured routes, which can be used for listing or automatic OpenAPI schema generation. Loco has a small metadata layer to support this. If you use `Routes` you get it for free, while all of the different signatures remain compatible with Axum router.

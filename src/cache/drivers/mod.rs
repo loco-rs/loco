@@ -1,6 +1,8 @@
 //! # Cache Drivers Module
 //!
 //! This module defines traits and implementations for cache drivers.
+use std::time::Duration;
+
 use async_trait::async_trait;
 
 use super::CacheResult;
@@ -35,6 +37,20 @@ pub trait CacheDriver: Sync + Send {
     /// Returns a [`super::CacheError`] if there is an error during the
     /// operation.
     async fn insert(&self, key: &str, value: &str) -> CacheResult<()>;
+
+    /// Inserts a key-value pair into the cache that expires after the
+    /// specified duration.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`super::CacheError`] if there is an error during the
+    /// operation.
+    async fn insert_with_expiry(
+        &self,
+        key: &str,
+        value: &str,
+        duration: Duration,
+    ) -> CacheResult<()>;
 
     /// Removes a key-value pair from the cache.
     ///

@@ -1,15 +1,13 @@
 use std::path::Path;
 
 use async_trait::async_trait;
-use sea_orm::DatabaseConnection;
 pub use sea_orm_migration::prelude::*;
 
-#[cfg(feature = "channels")]
-use crate::controller::channels::AppChannels;
 use crate::{
     app::{AppContext, Hooks, Initializer},
     bgworker::Queue,
     boot::{create_app, BootResult, StartMode},
+    config::Config,
     controller::AppRoutes,
     environment::Environment,
     task::Tasks,
@@ -70,6 +68,7 @@ pub mod test_db {
     impl ActiveModelBehavior for ActiveModel {}
 }
 
+#[derive(Debug)]
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -79,6 +78,7 @@ impl MigratorTrait for Migrator {
     }
 }
 
+#[derive(Debug)]
 pub struct AppHook;
 #[async_trait]
 impl Hooks for AppHook {
@@ -98,8 +98,12 @@ impl Hooks for AppHook {
         AppRoutes::with_default_routes()
     }
 
-    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
-        create_app::<Self, Migrator>(mode, environment).await
+    async fn boot(
+        mode: StartMode,
+        environment: &Environment,
+        config: Config,
+    ) -> Result<BootResult> {
+        create_app::<Self, Migrator>(mode, environment, config).await
     }
 
     async fn connect_workers(_ctx: &AppContext, _q: &Queue) -> Result<()> {
@@ -111,17 +115,11 @@ impl Hooks for AppHook {
         tasks.register(super::task::ParseArgs);
     }
 
-    async fn truncate(_db: &DatabaseConnection) -> Result<()> {
+    async fn truncate(_ctx: &AppContext) -> Result<()> {
         Ok(())
     }
 
-    async fn seed(_db: &DatabaseConnection, _base: &Path) -> Result<()> {
+    async fn seed(_ctx: &AppContext, _base: &Path) -> Result<()> {
         Ok(())
-    }
-
-    #[cfg(feature = "channels")]
-    #[allow(clippy::unimplemented)]
-    fn register_channels(_ctx: &AppContext) -> AppChannels {
-        unimplemented!();
     }
 }

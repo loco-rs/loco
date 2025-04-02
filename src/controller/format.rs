@@ -20,15 +20,15 @@
 //!    format::json(Health { ok: true })
 //! }
 //! ```
+use std::convert::TryInto;
 
 use axum::{
     body::Body,
-    http::{response::Builder, HeaderName, HeaderValue},
+    http::{header, response::Builder, HeaderName, HeaderValue, StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
 };
 use axum_extra::extract::cookie::Cookie;
 use bytes::{BufMut, BytesMut};
-use hyper::{header, StatusCode};
 use serde::Serialize;
 use serde_json::json;
 
@@ -55,7 +55,7 @@ use crate::{
 ///
 /// # Errors
 ///
-/// Currently this function did't return any error. this is for feature
+/// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn empty() -> Result<Response> {
     Ok(().into_response())
@@ -76,7 +76,7 @@ pub fn empty() -> Result<Response> {
 ///
 /// # Errors
 ///
-/// Currently this function did't return any error. this is for feature
+/// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn text(t: &str) -> Result<Response> {
     Ok(t.to_string().into_response())
@@ -105,7 +105,7 @@ pub fn text(t: &str) -> Result<Response> {
 ///
 /// # Errors
 ///
-/// Currently this function did't return any error. this is for feature
+/// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn json<T: Serialize>(t: T) -> Result<Response> {
     Ok(Json(t).into_response())
@@ -134,7 +134,7 @@ pub fn empty_json() -> Result<Response> {
 ///
 /// # Errors
 ///
-/// Currently this function did't return any error. this is for feature
+/// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn html(content: &str) -> Result<Response> {
     Ok(Html(content.to_string()).into_response())
@@ -154,7 +154,7 @@ pub fn html(content: &str) -> Result<Response> {
 ///
 /// # Errors
 ///
-/// Currently this function did't return any error. this is for feature
+/// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn redirect(to: &str) -> Result<Response> {
     Ok(Redirect::to(to).into_response())
@@ -186,6 +186,7 @@ where
     html(&views::template(template, data)?)
 }
 
+#[derive(Debug)]
 pub struct RenderBuilder {
     response: Builder,
 }
@@ -267,7 +268,7 @@ impl RenderBuilder {
             .response
             .header(
                 header::CONTENT_TYPE,
-                HeaderValue::from_static(mime::TEXT_PLAIN_UTF_8.as_ref()),
+                HeaderValue::from_static("text/plain; charset=utf-8"),
             )
             .body(Body::from(content.to_string()))?)
     }
@@ -317,7 +318,7 @@ impl RenderBuilder {
             .response
             .header(
                 header::CONTENT_TYPE,
-                HeaderValue::from_static(mime::TEXT_HTML_UTF_8.as_ref()),
+                HeaderValue::from_static("text/html; charset=utf-8"),
             )
             .body(Body::from(content.to_string()))?)
     }
@@ -338,7 +339,7 @@ impl RenderBuilder {
             .response
             .header(
                 header::CONTENT_TYPE,
-                HeaderValue::from_static(mime::APPLICATION_JSON.as_ref()),
+                HeaderValue::from_static("application/json"),
             )
             .body(body)?)
     }
@@ -349,10 +350,24 @@ impl RenderBuilder {
     ///
     /// This function will return an error if IO fails
     pub fn redirect(self, to: &str) -> Result<Response> {
+        self.redirect_with_header_key(header::LOCATION, to)
+    }
+
+    /// Finalizes the HTTP response and redirects to a specified location using
+    /// a dynamic header key.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if IO fails
+    pub fn redirect_with_header_key<K>(self, key: K, to: &str) -> Result<Response>
+    where
+        K: TryInto<HeaderName>,
+        <K as TryInto<HeaderName>>::Error: Into<axum::http::Error>,
+    {
         Ok(self
             .response
             .status(StatusCode::SEE_OTHER)
-            .header(header::LOCATION, to)
+            .header(key, to)
             .body(Body::empty())?)
     }
 }
@@ -371,28 +386,27 @@ pub fn render() -> RenderBuilder {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-    use crate::{controller::views::engines::TeraView, prelude::*};
+    use axum::http::Response;
     use insta::assert_debug_snapshot;
     use tree_fs;
 
-    async fn response_body_to_string(response: hyper::Response<Body>) -> String {
+    use super::*;
+    use crate::{controller::views::engines::TeraView, prelude::*};
+
+    async fn response_body_to_string(response: Response<Body>) -> String {
         let bytes = axum::body::to_bytes(response.into_body(), 200)
             .await
             .unwrap();
         std::str::from_utf8(&bytes).unwrap().to_string()
     }
 
-    pub fn get_header_from_response(
-        response: &hyper::Response<Body>,
-        header: &str,
-    ) -> Option<String> {
+    pub fn get_header_from_response(response: &Response<Body>, header: &str) -> Option<String> {
         Some(response.headers().get(header)?.to_str().ok()?.to_string())
     }
 
     #[tokio::test]
     async fn empty_response_format() {
-        let response: hyper::Response<Body> = empty().unwrap();
+        let response: Response<Body> = empty().unwrap();
 
         assert_debug_snapshot!(response);
         assert_eq!(response_body_to_string(response).await, String::new());
@@ -450,6 +464,7 @@ mod tests {
     #[tokio::test]
     async fn view_response() {
         let yaml_content = r"
+        drop: true
         files:
         - path: template/test.html
           content: |-
@@ -457,7 +472,7 @@ mod tests {
         ";
 
         let tree_res = tree_fs::from_yaml_str(yaml_content).unwrap();
-        let v = TeraView::from_custom_dir(&tree_res).unwrap();
+        let v = TeraView::from_custom_dir(&tree_res.root).unwrap();
 
         assert_debug_snapshot!(view(&v, "template/none.html", serde_json::json!({})));
         let response = view(&v, "template/test.html", serde_json::json!({"foo": "loco"})).unwrap();
@@ -545,6 +560,7 @@ mod tests {
     #[tokio::test]
     async fn builder_view_response() {
         let yaml_content = r"
+        drop: true
         files:
         - path: template/test.html
           content: |-
@@ -552,7 +568,7 @@ mod tests {
         ";
 
         let tree_res = tree_fs::from_yaml_str(yaml_content).unwrap();
-        let v = TeraView::from_custom_dir(&tree_res).unwrap();
+        let v = TeraView::from_custom_dir(&tree_res.root).unwrap();
 
         assert_debug_snapshot!(view(&v, "template/none.html", serde_json::json!({})));
         let response = render()
@@ -597,6 +613,16 @@ mod tests {
     #[tokio::test]
     async fn builder_redirect_response() {
         let response = render().redirect("https://loco.rs").unwrap();
+
+        assert_debug_snapshot!(response);
+        assert_eq!(response_body_to_string(response).await, String::new());
+    }
+
+    #[tokio::test]
+    async fn builder_redirect_with_custom_header_response() {
+        let response = render()
+            .redirect_with_header_key("HX-Redirect", "https://loco.rs")
+            .unwrap();
 
         assert_debug_snapshot!(response);
         assert_eq!(response_body_to_string(response).await, String::new());
