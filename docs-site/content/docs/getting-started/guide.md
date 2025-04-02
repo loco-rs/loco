@@ -41,7 +41,7 @@ Loco is a Web or API framework for Rust. It's also a productivity suite for deve
 - **Fat models, slim controllers**. Models should contain most of your logic and business implementation, controllers should just be a lightweight router that understands HTTP and moves parameters around.
 - **Command line driven** to keep your momentum and flow. Generate stuff over copying and pasting or coding from scratch.
 - **Every task is "infrastructure-ready"**, just plug in your code and wire it in: controllers, models, views, tasks, background jobs, mailers, and more.
-- **Convention over configuration**: decisions are already done for you -- the folder structure matter, configuration shape and values matter, and the way an app is wired matter to how an app operates and for you do be the most effective.
+- **Convention over configuration**: decisions are already done for you -- the folder structure matter, configuration shape and values matter, and the way an app is wired matter to how an app operates and for you to be the most effective.
 
 ## Creating a New Loco App
 
@@ -104,7 +104,7 @@ Here's a rundown of what Loco creates for you by default:
 
 Let's get some responses quickly. For this, we need to start up the server.
 
-You can now switch to to `myapp`:
+You can now switch to `myapp`:
 
 ```sh
 $ cd myapp
@@ -201,7 +201,7 @@ Loco has powerful generators, which will make you 10x productive and drive your 
 
 If you'd like to be entertained for a moment, let's "learn the hard way" and add a new controller manually as well.
 
-Add a file called `home.rs`, and `pub mod home;` it in `mod.rs`:
+Add a file called `home.rs`, and line `pub mod home;` in `mod.rs`:
 
 ```
 src/
@@ -582,9 +582,9 @@ pub fn routes() -> Routes {
         .prefix("api/articles")
         .add("/", get(list))
         .add("/", post(add))
-        .add("/:id", get(get_one))
-        .add("/:id", delete(remove))
-        .add("/:id", patch(update))
+        .add("/{id}", get(get_one))
+        .add("/{id}", delete(remove))
+        .add("/{id}", patch(update))
 }
 ```
 
@@ -674,9 +674,9 @@ pub fn routes() -> Routes {
         .prefix("api/comments")
         .add("/", post(add))
         // .add("/", get(list))
-        // .add("/:id", get(get_one))
-        // .add("/:id", delete(remove))
-        // .add("/:id", patch(update))
+        // .add("/{id}", get(get_one))
+        // .add("/{id}", delete(remove))
+        // .add("/{id}", patch(update))
 }
 ```
 
@@ -702,7 +702,7 @@ Now we need to fetch a relation in `src/controllers/articles.rs`. Add the follow
 pub fn routes() -> Routes {
   // ..
   // ..
-  .add("/:id/comments", get(comments))
+  .add("/{id}/comments", get(comments))
 }
 ```
 
@@ -798,6 +798,8 @@ use loco_rs::task::Vars;
 
 use crate::models::users;
 
+pub struct UserReport;
+
 #[async_trait]
 impl Task for UserReport {
     fn task(&self) -> TaskInfo {
@@ -838,9 +840,9 @@ args: Vars { cli: {"var1": "val1", "var2": "val2"} }
 ------------------------
 done: 0 users
 ```
-If you have not added an user before, the report will be empty.
+If you have not added a user before, the report will be empty.
 
-To add an user check out chapter [Registering a New User](/docs/getting-started/tour/#registering-a-new-user) of [A Quick Tour with Loco](/docs/getting-started/tour/).
+To add a user check out chapter [Registering a New User](/docs/getting-started/tour/#registering-a-new-user) of [A Quick Tour with Loco](/docs/getting-started/tour/).
 
 Remember: this is environmental, so you write the task once, and then execute in development or production as you wish. Tasks are compiled into the main app binary.
 

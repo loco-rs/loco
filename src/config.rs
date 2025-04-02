@@ -23,11 +23,11 @@ Notes:
 ***/
 use std::{
     collections::BTreeMap,
+    fs,
     path::{Path, PathBuf},
     sync::OnceLock,
 };
 
-use fs_err as fs;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::info;
@@ -565,10 +565,12 @@ impl Config {
             path.join(format!("{env}.yaml")),
         ];
 
-        let selected_path = files
-            .iter()
-            .find(|p| p.exists())
-            .ok_or_else(|| Error::Message("no configuration file found".to_string()))?;
+        let selected_path = files.iter().find(|p| p.exists()).ok_or_else(|| {
+            Error::Message(format!(
+                "no configuration file found in folder: {}",
+                path.display()
+            ))
+        })?;
 
         info!(selected_path =? selected_path, "loading environment from");
 

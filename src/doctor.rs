@@ -1,5 +1,6 @@
 use std::{
     collections::{BTreeMap, HashMap},
+    fs,
     process::Command,
     sync::OnceLock,
 };
@@ -33,8 +34,8 @@ fn get_min_dep_versions() -> &'static HashMap<&'static str, &'static str> {
 
         min_vers.insert("tokio", "1.33.0");
         min_vers.insert("sea-orm", "1.1.0");
-        min_vers.insert("validator", "0.19.0");
-        min_vers.insert("axum", "0.7.5");
+        min_vers.insert("validator", "0.20.0");
+        min_vers.insert("axum", "0.8.1");
 
         min_vers
     })
@@ -191,7 +192,7 @@ pub async fn run_all(config: &Config, production: bool) -> Result<BTreeMap<Resou
 /// # Errors
 /// Returns error if fails
 pub fn check_deps() -> Result<Check> {
-    let cargolock = fs_err::read_to_string("Cargo.lock")?;
+    let cargolock = fs::read_to_string("Cargo.lock")?;
 
     let crate_statuses =
         depcheck::check_crate_versions(&cargolock, get_min_dep_versions().clone())?;

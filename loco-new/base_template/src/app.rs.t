@@ -10,8 +10,9 @@ use loco_rs::{
         {%- endif %}
         Queue},
     boot::{create_app, BootResult, StartMode},
+    config::Config,
     controller::AppRoutes,
-    {%- if settings.db %}
+    {%- if settings.auth %}
     db::{self, truncate_table},
     {%- endif %}
     environment::Environment,
@@ -20,22 +21,20 @@ use loco_rs::{
 };
 {%- if settings.db %}
 use migration::Migrator;
-use sea_orm::DatabaseConnection;
 {%- endif %}
 
 #[allow(unused_imports)]
 use crate::{
-    controllers
+    controllers ,tasks
     {%- if settings.initializers -%}
     , initializers
     {%- endif %} 
-    {%- if settings.db %}
-    ,tasks
+    {%- if settings.auth %}
     , models::_entities::users
     {%- endif %}
     {%- if settings.background %}
     , workers::downloader::DownloadWorker
-    {%- endif %},
+    {%- endif %}
 };
 
 pub struct App;
@@ -55,11 +54,11 @@ impl Hooks for App {
         )
     }
 
-    async fn boot(mode: StartMode, environment: &Environment) -> Result<BootResult> {
+    async fn boot(mode: StartMode, environment: &Environment, config: Config) -> Result<BootResult> {
         {%- if settings.db %}
-        create_app::<Self, Migrator>(mode, environment).await
+        create_app::<Self, Migrator>(mode, environment, config).await
         {% else %}
-        create_app::<Self>(mode, environment).await
+        create_app::<Self>(mode, environment, config).await
         {%- endif %}
     }
 
@@ -97,13 +96,26 @@ impl Hooks for App {
     }
 
     {%- if settings.db %}
-    async fn truncate(db: &DatabaseConnection) -> Result<()> {
-        truncate_table(db, users::Entity).await?;
+
+    {%- if settings.auth %}
+    async fn truncate(ctx: &AppContext) -> Result<()> {
+    {%- else %}
+    async fn truncate(_ctx: &AppContext) -> Result<()> {
+    {%- endif %} 
+        {%- if settings.auth %}
+        truncate_table(&ctx.db, users::Entity).await?;
+        {%- endif %}
         Ok(())
     }
 
-    async fn seed(db: &DatabaseConnection, base: &Path) -> Result<()> {
-        db::seed::<users::ActiveModel>(db, &base.join("users.yaml").display().to_string()).await?;
+    {%- if settings.auth %}
+    async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
+    {%- else %} 
+    async fn seed(_ctx: &AppContext, _base: &Path) -> Result<()> {
+    {%- endif %} 
+        {%- if settings.auth %}
+        db::seed::<users::ActiveModel>(&ctx.db, &base.join("users.yaml").display().to_string()).await?;
+        {%- endif %}
         Ok(())
     }
     {%- endif %}

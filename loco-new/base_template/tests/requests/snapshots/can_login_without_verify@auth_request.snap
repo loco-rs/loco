@@ -1,8 +1,5 @@
 ---
 source: tests/requests/auth.rs
-expression: "(response.status_code(), response.text())"
+expression: login_response.text()
 ---
-(
-    200,
-    "{\"token\":\"TOKEN\",\"pid\":\"PID\",\"name\":\"loco\",\"is_verified\":false}",
-)
+"{\"token\":\"TOKEN\",\"pid\":\"PID\",\"name\":\"loco\",\"is_verified\":false}"

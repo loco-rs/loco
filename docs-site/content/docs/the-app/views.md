@@ -230,6 +230,13 @@ In your templates you can refer to static resources in this way:
 <img src="/static/image.png"/>
 ```
 
+However, for the static middleware to work, ensure that the default fallback is disabled:
+
+```yaml
+fallback:
+  enable: false
+```
+
 
 ### Customizing the Tera view engine
 
@@ -256,7 +263,8 @@ Here's an example for a dummy "Hello" view engine. It's a view engine that alway
 
 ```rust
 // src/initializers/hello_view_engine.rs
-use axum::{async_trait, Extension, Router as AxumRouter};
+use axum::{Extension, Router as AxumRouter};
+use async_trait::async_trait;
 use loco_rs::{
     app::{AppContext, Initializer},
     controller::views::{ViewEngine, ViewRenderer},

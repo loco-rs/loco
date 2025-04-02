@@ -2,53 +2,45 @@
 // TODO: should be more properly aligned with extracting out the db-related gen
 // code and then feature toggling it
 #![allow(dead_code)]
-use rrgen::{GenResult, RRgen};
+pub use rrgen::{GenResult, RRgen};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-
+use serde_json::{json, Value};
 mod controller;
+use std::{
+    collections::HashMap,
+    fs,
+    path::{Path, PathBuf},
+    sync::OnceLock,
+};
+
+use colored::Colorize;
+
+#[cfg(feature = "with-db")]
+mod infer;
+#[cfg(feature = "with-db")]
+mod migration;
 #[cfg(feature = "with-db")]
 mod model;
 #[cfg(feature = "with-db")]
 mod scaffold;
+pub mod template;
+pub mod tera_ext;
 #[cfg(test)]
 mod testutil;
-use std::{str::FromStr, sync::OnceLock};
 
-const MAILER_T: &str = include_str!("templates/mailer/mailer.t");
-const MAILER_SUB_T: &str = include_str!("templates/mailer/subject.t");
-const MAILER_TEXT_T: &str = include_str!("templates/mailer/text.t");
-const MAILER_HTML_T: &str = include_str!("templates/mailer/html.t");
-
-const MIGRATION_T: &str = include_str!("templates/migration/migration.t");
-
-const TASK_T: &str = include_str!("templates/task/task.t");
-const TASK_TEST_T: &str = include_str!("templates/task/test.t");
-
-const SCHEDULER_T: &str = include_str!("templates/scheduler/scheduler.t");
-
-const WORKER_T: &str = include_str!("templates/worker/worker.t");
-const WORKER_TEST_T: &str = include_str!("templates/worker/test.t");
-
-// Deployment templates
-const DEPLOYMENT_DOCKER_T: &str = include_str!("templates/deployment/docker/docker.t");
-const DEPLOYMENT_DOCKER_IGNORE_T: &str = include_str!("templates/deployment/docker/ignore.t");
-const DEPLOYMENT_SHUTTLE_T: &str = include_str!("templates/deployment/shuttle/shuttle.t");
-const DEPLOYMENT_SHUTTLE_CONFIG_T: &str = include_str!("templates/deployment/shuttle/config.t");
-const DEPLOYMENT_NGINX_T: &str = include_str!("templates/deployment/nginx/nginx.t");
-
-const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.46.0";
-
-const DEPLOYMENT_OPTIONS: &[(&str, DeploymentKind)] = &[
-    ("Docker", DeploymentKind::Docker),
-    ("Shuttle", DeploymentKind::Shuttle),
-    ("Nginx", DeploymentKind::Nginx),
-];
+#[derive(Debug)]
+pub struct GenerateResults {
+    rrgen: Vec<rrgen::GenResult>,
+    local_templates: Vec<PathBuf>,
+}
+const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.51.0";
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("{0}")]
     Message(String),
+    #[error("template {} not found", path.display())]
+    TemplateNotFound { path: PathBuf },
     #[error(transparent)]
     RRgen(#[from] rrgen::Error),
     #[error(transparent)]
@@ -68,46 +60,155 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Serialize, Deserialize, Debug)]
 struct FieldType {
     name: String,
-    rust: Option<String>,
-    schema: Option<String>,
+    rust: RustType,
+    schema: String,
+    col_type: String,
+    #[serde(default)]
+    arity: usize,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum RustType {
+    String(String),
+    Map(HashMap<String, String>),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Mappings {
+pub struct Mappings {
     field_types: Vec<FieldType>,
 }
 impl Mappings {
-    pub fn rust_field(&self, field: &str) -> Option<&String> {
+    fn error_unrecognized_default_field(&self, field: &str) -> Error {
+        Self::error_unrecognized(field, &self.all_names())
+    }
+
+    fn error_unrecognized(field: &str, allow_fields: &[&String]) -> Error {
+        Error::Message(format!(
+            "type: `{}` not found. try any of: `{}`",
+            field,
+            allow_fields
+                .iter()
+                .map(|&s| s.to_string())
+                .collect::<Vec<String>>()
+                .join(",")
+        ))
+    }
+
+    /// Resolves the Rust type for a given field with optional parameters.
+    ///
+    /// # Errors
+    ///
+    /// if rust field not exists or invalid parameters
+    pub fn rust_field_with_params(&self, field: &str, params: &Vec<String>) -> Result<&str> {
+        match field {
+            "array" | "array^" | "array!" => {
+                if let RustType::Map(ref map) = self.rust_field_kind(field)? {
+                    if let [single] = params.as_slice() {
+                        let keys: Vec<&String> = map.keys().collect();
+                        Ok(map
+                            .get(single)
+                            .ok_or_else(|| Self::error_unrecognized(field, &keys))?)
+                    } else {
+                        Err(self.error_unrecognized_default_field(field))
+                    }
+                } else {
+                    Err(Error::Message(
+                        "array field should configured as array".to_owned(),
+                    ))
+                }
+            }
+
+            _ => self.rust_field(field),
+        }
+    }
+
+    /// Resolves the Rust type for a given field.
+    ///
+    /// # Errors
+    ///
+    /// When the given field not recognized
+    pub fn rust_field_kind(&self, field: &str) -> Result<&RustType> {
         self.field_types
             .iter()
             .find(|f| f.name == field)
-            .and_then(|f| f.rust.as_ref())
+            .map(|f| &f.rust)
+            .ok_or_else(|| self.error_unrecognized_default_field(field))
     }
-    pub fn schema_field(&self, field: &str) -> Option<&String> {
+
+    /// Resolves the Rust type for a given field.
+    ///
+    /// # Errors
+    ///
+    /// When the given field not recognized
+    pub fn rust_field(&self, field: &str) -> Result<&str> {
         self.field_types
             .iter()
             .find(|f| f.name == field)
-            .and_then(|f| f.schema.as_ref())
+            .map(|f| &f.rust)
+            .ok_or_else(|| self.error_unrecognized_default_field(field))
+            .and_then(|rust_type| match rust_type {
+                RustType::String(s) => Ok(s),
+                RustType::Map(_) => Err(Error::Message(format!(
+                    "type `{field}` need params to get the rust field type"
+                ))),
+            })
+            .map(std::string::String::as_str)
     }
-    pub fn schema_fields(&self) -> Vec<&String> {
+
+    /// Retrieves the schema field associated with the given field.
+    ///
+    /// # Errors
+    ///
+    /// When the given field not recognized
+    pub fn schema_field(&self, field: &str) -> Result<&str> {
         self.field_types
             .iter()
-            .filter(|f| f.schema.is_some())
-            .map(|f| &f.name)
-            .collect::<Vec<_>>()
+            .find(|f| f.name == field)
+            .map(|f| f.schema.as_str())
+            .ok_or_else(|| self.error_unrecognized_default_field(field))
     }
-    pub fn rust_fields(&self) -> Vec<&String> {
+
+    /// Retrieves the column type field associated with the given field.
+    ///
+    /// # Errors
+    ///
+    /// When the given field not recognized
+    pub fn col_type_field(&self, field: &str) -> Result<&str> {
         self.field_types
             .iter()
-            .filter(|f| f.rust.is_some())
-            .map(|f| &f.name)
-            .collect::<Vec<_>>()
+            .find(|f| f.name == field)
+            .map(|f| f.col_type.as_str())
+            .ok_or_else(|| self.error_unrecognized_default_field(field))
+    }
+
+    /// Retrieves the column type arity associated with the given field.
+    ///
+    /// # Errors
+    ///
+    /// When the given field not recognized
+    pub fn col_type_arity(&self, field: &str) -> Result<usize> {
+        self.field_types
+            .iter()
+            .find(|f| f.name == field)
+            .map(|f| f.arity)
+            .ok_or_else(|| self.error_unrecognized_default_field(field))
+    }
+
+    #[must_use]
+    pub fn all_names(&self) -> Vec<&String> {
+        self.field_types.iter().map(|f| &f.name).collect::<Vec<_>>()
     }
 }
 
 static MAPPINGS: OnceLock<Mappings> = OnceLock::new();
 
-fn get_mappings() -> &'static Mappings {
+/// Get type mapping for generation
+///
+/// # Panics
+///
+/// Panics if loading fails
+pub fn get_mappings() -> &'static Mappings {
     MAPPINGS.get_or_init(|| {
         let json_data = include_str!("./mappings.json");
         serde_json::from_str(json_data).expect("JSON was not well-formatted")
@@ -123,20 +224,17 @@ pub enum ScaffoldKind {
 
 #[derive(Debug, Clone)]
 pub enum DeploymentKind {
-    Docker,
-    Shuttle,
-    Nginx,
-}
-impl FromStr for DeploymentKind {
-    type Err = ();
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "docker" => Ok(Self::Docker),
-            "shuttle" => Ok(Self::Shuttle),
-            _ => Err(()),
-        }
-    }
+    Docker {
+        copy_paths: Vec<PathBuf>,
+        is_client_side_rendering: bool,
+    },
+    Shuttle {
+        runttime_version: Option<String>,
+    },
+    Nginx {
+        host: String,
+        port: i32,
+    },
 }
 
 #[derive(Debug)]
@@ -151,14 +249,14 @@ pub enum Component {
 
         /// Model fields, eg. title:string hits:int
         fields: Vec<(String, String)>,
-
-        /// Generate migration code and stop, don't run the migration
-        migration_only: bool,
     },
     #[cfg(feature = "with-db")]
     Migration {
         /// Name of the migration file
         name: String,
+
+        /// Params fields, eg. title:string hits:int
+        fields: Vec<(String, String)>,
     },
     #[cfg(feature = "with-db")]
     Scaffold {
@@ -194,15 +292,22 @@ pub enum Component {
         /// Name of the thing to generate
         name: String,
     },
+    Data {
+        /// Name of the thing to generate
+        name: String,
+    },
     Deployment {
-        fallback_file: Option<String>,
-        asset_folder: Option<String>,
-        host: String,
-        port: i32,
+        kind: DeploymentKind,
     },
 }
+
 pub struct AppInfo {
     pub app_name: String,
+}
+
+#[must_use]
+pub fn new_generator() -> RRgen {
+    RRgen::default().add_template_engine(tera_ext::new())
 }
 
 /// Generate a component
@@ -210,9 +315,7 @@ pub struct AppInfo {
 /// # Errors
 ///
 /// This function will return an error if it fails
-#[allow(clippy::too_many_lines)]
-pub fn generate(component: Component, appinfo: &AppInfo) -> Result<()> {
-    let rrgen = RRgen::default();
+pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Result<GenerateResults> {
     /*
     (1)
     XXX: remove hooks generic from child generator, materialize it here and pass it
@@ -220,113 +323,115 @@ pub fn generate(component: Component, appinfo: &AppInfo) -> Result<()> {
          this will allow us to test without an app instance
     (2) proceed to test individual generators
      */
-    match component {
+    let get_result = match component {
         #[cfg(feature = "with-db")]
-        Component::Model {
-            name,
-            link,
-            fields,
-            migration_only,
-        } => {
-            println!(
-                "{}",
-                model::generate(&rrgen, &name, link, migration_only, &fields, appinfo)?
-            );
+        Component::Model { name, link, fields } => {
+            model::generate(rrgen, &name, link, &fields, appinfo)?
         }
         #[cfg(feature = "with-db")]
         Component::Scaffold { name, fields, kind } => {
-            println!(
-                "{}",
-                scaffold::generate(&rrgen, &name, &fields, &kind, appinfo)?
-            );
+            scaffold::generate(rrgen, &name, &fields, &kind, appinfo)?
         }
         #[cfg(feature = "with-db")]
-        Component::Migration { name } => {
-            let vars =
-                json!({ "name": name, "ts": chrono::Utc::now(), "pkg_name": appinfo.app_name});
-            rrgen.generate(MIGRATION_T, &vars)?;
+        Component::Migration { name, fields } => {
+            migration::generate(rrgen, &name, &fields, appinfo)?
         }
         Component::Controller {
             name,
             actions,
             kind,
-        } => {
-            println!(
-                "{}",
-                controller::generate(&rrgen, &name, &actions, &kind, appinfo)?
-            );
-        }
+        } => controller::generate(rrgen, &name, &actions, &kind, appinfo)?,
         Component::Task { name } => {
             let vars = json!({"name": name, "pkg_name": appinfo.app_name});
-            rrgen.generate(TASK_T, &vars)?;
-            rrgen.generate(TASK_TEST_T, &vars)?;
+            render_template(rrgen, Path::new("task"), &vars)?
         }
         Component::Scheduler {} => {
             let vars = json!({"pkg_name": appinfo.app_name});
-            rrgen.generate(SCHEDULER_T, &vars)?;
+            render_template(rrgen, Path::new("scheduler"), &vars)?
         }
         Component::Worker { name } => {
             let vars = json!({"name": name, "pkg_name": appinfo.app_name});
-            rrgen.generate(WORKER_T, &vars)?;
-            rrgen.generate(WORKER_TEST_T, &vars)?;
+            render_template(rrgen, Path::new("worker"), &vars)?
         }
         Component::Mailer { name } => {
             let vars = json!({ "name": name });
-            rrgen.generate(MAILER_T, &vars)?;
-            rrgen.generate(MAILER_SUB_T, &vars)?;
-            rrgen.generate(MAILER_TEXT_T, &vars)?;
-            rrgen.generate(MAILER_HTML_T, &vars)?;
+            render_template(rrgen, Path::new("mailer"), &vars)?
         }
-        Component::Deployment {
-            fallback_file,
-            asset_folder,
-            host,
-            port,
-        } => {
-            let deployment_kind = match std::env::var("LOCO_DEPLOYMENT_KIND") {
-                Ok(kind) => kind
-                    .parse::<DeploymentKind>()
-                    .map_err(|_e| Error::Message(format!("deployment {kind} not supported")))?,
-                Err(_err) => prompt_deployment_selection().map_err(Box::from)?,
-            };
-
-            match deployment_kind {
-                DeploymentKind::Docker => {
-                    let vars = json!({
-                        "pkg_name": appinfo.app_name,
-                        "copy_asset_folder": asset_folder.unwrap_or_default(),
-                        "fallback_file": fallback_file.unwrap_or_default()
-                    });
-                    rrgen.generate(DEPLOYMENT_DOCKER_T, &vars)?;
-                    rrgen.generate(DEPLOYMENT_DOCKER_IGNORE_T, &vars)?;
-                }
-                DeploymentKind::Shuttle => {
-                    let vars = json!({
-                        "pkg_name": appinfo.app_name,
-                        "shuttle_runtime_version": DEPLOYMENT_SHUTTLE_RUNTIME_VERSION,
-                        "with_db": cfg!(feature = "with-db")
-                    });
-                    rrgen.generate(DEPLOYMENT_SHUTTLE_T, &vars)?;
-                    rrgen.generate(DEPLOYMENT_SHUTTLE_CONFIG_T, &vars)?;
-                }
-                DeploymentKind::Nginx => {
-                    let host = host.replace("http://", "").replace("https://", "");
-                    let vars = json!({
-                        "pkg_name": appinfo.app_name,
-                        "domain": host,
-                        "port": port
-                    });
-                    rrgen.generate(DEPLOYMENT_NGINX_T, &vars)?;
-                }
+        Component::Deployment { kind } => match kind {
+            DeploymentKind::Docker {
+                copy_paths,
+                is_client_side_rendering,
+            } => {
+                let vars = json!({
+                    "pkg_name": appinfo.app_name,
+                    "copy_paths": copy_paths,
+                    "is_client_side_rendering": is_client_side_rendering,
+                });
+                render_template(rrgen, Path::new("deployment/docker"), &vars)?
             }
+            DeploymentKind::Shuttle { runttime_version } => {
+                let vars = json!({
+                    "pkg_name": appinfo.app_name,
+                    "shuttle_runtime_version": runttime_version.unwrap_or_else( || DEPLOYMENT_SHUTTLE_RUNTIME_VERSION.to_string()),
+                    "with_db": cfg!(feature = "with-db")
+                });
+
+                render_template(rrgen, Path::new("deployment/shuttle"), &vars)?
+            }
+            DeploymentKind::Nginx { host, port } => {
+                let host = host.replace("http://", "").replace("https://", "");
+                let vars = json!({
+                    "pkg_name": appinfo.app_name,
+                    "domain": host,
+                    "port": port
+                });
+                render_template(rrgen, Path::new("deployment/nginx"), &vars)?
+            }
+        },
+        Component::Data { name } => {
+            let vars = json!({ "name": name });
+            render_template(rrgen, Path::new("data"), &vars)?
         }
-    }
-    Ok(())
+    };
+
+    Ok(get_result)
 }
 
-fn collect_messages(results: Vec<GenResult>) -> String {
+fn render_template(rrgen: &RRgen, template: &Path, vars: &Value) -> Result<GenerateResults> {
+    let template_files = template::collect_files_from_path(template)?;
+
+    let mut gen_result = vec![];
+    let mut local_templates = vec![];
+    for template in template_files {
+        let custom_template = Path::new(template::DEFAULT_LOCAL_TEMPLATE).join(template.path());
+
+        if custom_template.exists() {
+            let content = fs::read_to_string(&custom_template).map_err(|err| {
+                tracing::error!(custom_template = %custom_template.display(), "could not read custom template");
+                err
+            })?;
+            gen_result.push(rrgen.generate(&content, vars)?);
+            local_templates.push(custom_template);
+        } else {
+            let content = template.contents_utf8().ok_or(Error::Message(format!(
+                "could not get template content: {}",
+                template.path().display()
+            )))?;
+            gen_result.push(rrgen.generate(content, vars)?);
+        };
+    }
+
+    Ok(GenerateResults {
+        rrgen: gen_result,
+        local_templates,
+    })
+}
+
+#[must_use]
+pub fn collect_messages(results: &GenerateResults) -> String {
     let mut messages = String::new();
-    for res in results {
+
+    for res in &results.rrgen {
         if let rrgen::GenResult::Generated {
             message: Some(message),
         } = res
@@ -334,19 +439,264 @@ fn collect_messages(results: Vec<GenResult>) -> String {
             messages.push_str(&format!("* {message}\n"));
         }
     }
+
+    if !results.local_templates.is_empty() {
+        messages.push_str(&format!(
+            "{}",
+            "\nThe following templates were sourced from the local templates:\n".green()
+        ));
+        for f in &results.local_templates {
+            messages.push_str(&format!("* {}\n", f.display()));
+        }
+    }
     messages
 }
-use dialoguer::{theme::ColorfulTheme, Select};
 
-fn prompt_deployment_selection() -> Result<DeploymentKind> {
-    let options: Vec<String> = DEPLOYMENT_OPTIONS.iter().map(|t| t.0.to_string()).collect();
+/// Copies template files to a specified destination directory.
+///
+/// This function copies files from the specified template path to the
+/// destination directory. If the specified path is `/` or `.`, it copies all
+/// files from the templates directory. If the path does not exist in the
+/// templates, it returns an error.
+///
+/// # Errors
+/// when could not copy the given template path
+pub fn copy_template(path: &Path, to: &Path) -> Result<Vec<PathBuf>> {
+    let copy_template_path = if path == Path::new("/") || path == Path::new(".") {
+        None
+    } else if !template::exists(path) {
+        return Err(Error::TemplateNotFound {
+            path: path.to_path_buf(),
+        });
+    } else {
+        Some(path)
+    };
 
-    let selection = Select::with_theme(&ColorfulTheme::default())
-        .with_prompt("❯ Choose your deployment")
-        .items(&options)
-        .default(0)
-        .interact()
-        .map_err(Error::msg)?;
+    let copy_files = if let Some(path) = copy_template_path {
+        template::collect_files_from_path(path)?
+    } else {
+        template::collect_files()
+    };
 
-    Ok(DEPLOYMENT_OPTIONS[selection].1.clone())
+    let mut copied_files = vec![];
+    for f in copy_files {
+        let copy_to = to.join(f.path());
+        if copy_to.exists() {
+            tracing::debug!(
+                template_file = %copy_to.display(),
+                "skipping copy template file. already exists"
+            );
+            continue;
+        }
+        match copy_to.parent() {
+            Some(parent) => {
+                fs::create_dir_all(parent)?;
+            }
+            None => {
+                return Err(Error::Message(format!(
+                    "could not get parent folder of {}",
+                    copy_to.display()
+                )))
+            }
+        }
+
+        fs::write(&copy_to, f.contents())?;
+        tracing::trace!(
+            template = %copy_to.display(),
+            "copy template successfully"
+        );
+        copied_files.push(copy_to);
+    }
+    Ok(copied_files)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use super::*;
+
+    #[test]
+    fn test_template_not_found() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp file");
+        let path = Path::new("nonexistent-template");
+
+        let result = copy_template(path, tree_fs.root.as_path());
+        assert!(result.is_err());
+        if let Err(Error::TemplateNotFound { path: p }) = result {
+            assert_eq!(p, path.to_path_buf());
+        } else {
+            panic!("Expected TemplateNotFound error");
+        }
+    }
+
+    #[test]
+    fn test_copy_template_valid_folder_template() {
+        let temp_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("Failed to create temporary file system");
+
+        let template_dir = template::tests::find_first_dir();
+
+        let copy_result = copy_template(template_dir.path(), temp_fs.root.as_path());
+        assert!(
+            copy_result.is_ok(),
+            "Failed to copy template from directory {:?}",
+            template_dir.path()
+        );
+
+        let template_files = template::collect_files_from_path(template_dir.path())
+            .expect("Failed to collect files from the template directory");
+
+        assert!(
+            !template_files.is_empty(),
+            "No files found in the template directory"
+        );
+
+        for template_file in template_files {
+            let copy_file_path = temp_fs.root.join(template_file.path());
+
+            assert!(
+                copy_file_path.exists(),
+                "Copy file does not exist: {copy_file_path:?}"
+            );
+
+            let copy_content =
+                fs::read_to_string(&copy_file_path).expect("Failed to read coped file content");
+
+            assert_eq!(
+                template_file
+                    .contents_utf8()
+                    .expect("Failed to get template file content"),
+                copy_content,
+                "Content mismatch in file: {copy_file_path:?}"
+            );
+        }
+    }
+
+    fn test_mapping() -> Mappings {
+        Mappings {
+            field_types: vec![
+                FieldType {
+                    name: "array".to_string(),
+                    rust: RustType::Map(HashMap::from([
+                        ("string".to_string(), "Vec<String>".to_string()),
+                        ("chat".to_string(), "Vec<String>".to_string()),
+                        ("int".to_string(), "Vec<i32>".to_string()),
+                    ])),
+                    schema: "array".to_string(),
+                    col_type: "array_null".to_string(),
+                    arity: 1,
+                },
+                FieldType {
+                    name: "string^".to_string(),
+                    rust: RustType::String("String".to_string()),
+                    schema: "string_uniq".to_string(),
+                    col_type: "StringUniq".to_string(),
+                    arity: 0,
+                },
+            ],
+        }
+    }
+
+    #[test]
+    fn can_get_all_names_from_mapping() {
+        let mapping = test_mapping();
+        assert_eq!(
+            mapping.all_names(),
+            Vec::from([&"array".to_string(), &"string^".to_string()])
+        );
+    }
+
+    #[test]
+    fn can_get_col_type_arity_from_mapping() {
+        let mapping = test_mapping();
+
+        assert_eq!(mapping.col_type_arity("array").expect("Get array arity"), 1);
+        assert_eq!(
+            mapping
+                .col_type_arity("string^")
+                .expect("Get string^ arity"),
+            0
+        );
+
+        assert!(mapping.col_type_arity("unknown").is_err());
+    }
+
+    #[test]
+    fn can_get_col_type_field_from_mapping() {
+        let mapping = test_mapping();
+
+        assert_eq!(
+            mapping.col_type_field("array").expect("Get array field"),
+            "array_null"
+        );
+
+        assert!(mapping.col_type_field("unknown").is_err());
+    }
+
+    #[test]
+    fn can_get_schema_field_from_mapping() {
+        let mapping = test_mapping();
+
+        assert_eq!(
+            mapping.schema_field("string^").expect("Get string^ schema"),
+            "string_uniq"
+        );
+
+        assert!(mapping.schema_field("unknown").is_err());
+    }
+
+    #[test]
+    fn can_get_rust_field_from_mapping() {
+        let mapping = test_mapping();
+
+        assert_eq!(
+            mapping
+                .rust_field("string^")
+                .expect("Get string^ rust field"),
+            "String"
+        );
+
+        assert!(mapping.rust_field("array").is_err());
+
+        assert!(mapping.rust_field("unknown").is_err(),);
+    }
+
+    #[test]
+    fn can_get_rust_field_kind_from_mapping() {
+        let mapping = test_mapping();
+
+        assert!(mapping.rust_field_kind("string^").is_ok());
+
+        assert!(mapping.rust_field_kind("unknown").is_err(),);
+    }
+
+    #[test]
+    fn can_get_rust_field_with_params_from_mapping() {
+        let mapping = test_mapping();
+
+        assert_eq!(
+            mapping
+                .rust_field_with_params("string^", &vec!["string".to_string()])
+                .expect("Get string^ rust field"),
+            "String"
+        );
+
+        assert_eq!(
+            mapping
+                .rust_field_with_params("array", &vec!["string".to_string()])
+                .expect("Get string^ rust field"),
+            "Vec<String>"
+        );
+        assert!(mapping
+            .rust_field_with_params("array", &vec!["unknown".to_string()])
+            .is_err());
+
+        assert!(mapping.rust_field_with_params("unknown", &vec![]).is_err());
+    }
 }

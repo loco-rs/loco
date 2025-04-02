@@ -1,8 +1,0 @@
----
-source: tests/requests/ping.rs
-expression: "(response.text(), response.status_code())"
----
-(
-    "{\"ok\":true}",
-    200,
-)

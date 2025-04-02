@@ -21,7 +21,6 @@ pub struct Settings {
     pub asset: Option<Asset>,
     pub auth: bool,
     pub mailer: bool,
-    pub clientside: bool,
     pub initializers: Option<Initializers>,
     pub features: Features,
     pub loco_version_text: String,
@@ -75,13 +74,12 @@ impl Settings {
         Self {
             package_name: package_name.to_string(),
             module_name: package_name.to_snake_case(),
-            auth: prompt_selection.db.enable(),
-            mailer: prompt_selection.db.enable(),
+            auth: prompt_selection.db.enable() && prompt_selection.background.enable(),
+            mailer: prompt_selection.db.enable() && prompt_selection.background.enable(),
             db: prompt_selection.db.clone().into(),
             background: prompt_selection.background.clone().into(),
             asset: prompt_selection.asset.clone().into(),
-            clientside: prompt_selection.asset.enable(),
-            initializers: if prompt_selection.asset.enable() {
+            initializers: if prompt_selection.asset == AssetsOption::Serverside {
                 Some(Initializers { view_engine: true })
             } else {
                 None
@@ -103,7 +101,6 @@ impl Default for Settings {
             asset: Default::default(),
             auth: Default::default(),
             mailer: Default::default(),
-            clientside: Default::default(),
             initializers: Default::default(),
             features: Default::default(),
             loco_version_text: get_loco_version_text(),

@@ -1,5 +1,6 @@
 ---
 source: src/controller/app_routes.rs
+assertion_line: 337
 expression: "format!(\"{:?} {}\", route.actions, route.uri)"
 ---
 "[GET] /_ping"

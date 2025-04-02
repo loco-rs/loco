@@ -1,7 +1,6 @@
 ---
 source: tests/templates/db.rs
 expression: "format!(\"{:#?}\",\nassertion::yaml::get_value_at_path(&content, &[\"database\"]).unwrap())"
-snapshot_kind: text
 ---
 Mapping {
     "uri": Mapping {
@@ -37,5 +36,5 @@ Mapping {
     },
     "auto_migrate": Bool(true),
     "dangerously_truncate": Bool(true),
-    "dangerously_recreate": Bool(false),
+    "dangerously_recreate": Bool(true),
 }

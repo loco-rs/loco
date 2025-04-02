@@ -1,0 +1,1 @@
+Magic link example

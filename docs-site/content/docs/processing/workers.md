@@ -48,9 +48,12 @@ Then, configure a Redis based queue backend:
 ```yaml
 queue:
   kind: Redis
-  # Redis connection URI
+  # Redis connection URI.
   uri: "{{ get_env(name="REDIS_URL", default="redis://127.0.0.1") }}"
+  # Dangerously flush all data.
   dangerously_flush: false
+  # represents the number of tasks a worker can handle simultaneously.
+  num_workers: 2
 ```
 
 Or a Postgres based queue backend:
@@ -58,9 +61,12 @@ Or a Postgres based queue backend:
 ```yaml
 queue:
   kind: Postgres
-  # Postgres Queue connection URI
+  # Postgres Queue connection URI.
   uri: "{{ get_env(name="PGQ_URL", default="postgres://localhost:5432/mydb") }}"
+  # Dangerously flush all data.
   dangerously_flush: false
+  # represents the number of tasks a worker can handle simultaneously.
+  num_workers: 2
 ```
 
 Or a SQLite based queue backend:
@@ -68,9 +74,13 @@ Or a SQLite based queue backend:
 ```yaml
 queue:
   kind: Sqlite
-  # SQLite Queue connection URI
-  uri: "{{ get_env(name="SQLTQ_URL", default="sqlite://loco_development.sqlite?mode=rwc") }}"
+  # SQLite Queue connection URI.
+  uri: "{{ get_env(name="SQLTQ_URL", default="sqlite://loco_development.sqlite?
+  mode=rwc") }}"
+  # Dangerously flush all data. 
   dangerously_flush: false
+  # represents the number of tasks a worker can handle simultaneously.
+  num_workers: 2
 ```
 
 ## Running the worker process
@@ -186,6 +196,52 @@ workers:
   #   - BackgroundAsync - Workers operate asynchronously in the background, processing tasks with async capabilities.
   mode: BackgroundQueue
 ```
+
+## Manage a Workers From UI
+You can manage the jobs queue with the [Loco admin job project](https://github.com/loco-rs/admin-jobs).
+![<img style="width:100%; max-width:640px" src="tour.png"/>](https://github.com/loco-rs/admin-jobs/raw/main/media/screenshot.png)
+
+### Managing Job Queues via CLI
+
+The job queue management feature provides a powerful and flexible way to handle the lifecycle of jobs in your application. It allows you to cancel, clean up, remove outdated jobs, export job details, and import jobs, ensuring efficient and organized job processing.
+
+## Features Overview
+
+- **Cancel Jobs**  
+  Provides the ability to cancel specific jobs by name, updating their status to `cancelled`. This is useful for stopping jobs that are no longer needed, relevant, or if you want to prevent them from being processed when a bug is detected.  
+- **Clean Up Jobs**  
+  Enables the removal of jobs that have already been completed or cancelled. This helps maintain a clean and efficient job queue by eliminating unnecessary entries.  
+- **Purge Outdated Jobs**  
+  Allows you to delete jobs based on their age, measured in days. This is particularly useful for maintaining a lean job queue by removing older, irrelevant jobs.  
+  **Note**: You can use the `--dump` option to export job details to a file, manually modify the job parameters in the exported file, and then use the `import` feature to reintroduce the updated jobs into the system.  
+- **Export Job Details**  
+  Supports exporting the details of all jobs to a specified location in file format. This feature is valuable for backups, audits, or further analysis.  
+- **Import Jobs**  
+  Facilitates importing jobs from external files, making it easy to restore or add new jobs to the system. This ensures seamless integration of external job data into your application's workflow.  
+
+To access the job management commands, use the following CLI structure:
+<!-- <snip id="jobs-help-command" inject_from="yaml" action="exec" template="sh"> -->
+```sh
+Managing jobs queue
+
+Usage: demo_app-cli jobs [OPTIONS] <COMMAND>
+
+Commands:
+  cancel  Cancels jobs with the specified names, setting their status to `cancelled`
+  tidy    Deletes jobs that are either completed or cancelled
+  purge   Deletes jobs based on their age in days
+  dump    Saves the details of all jobs to files in the specified folder
+  import  Imports jobs from a file
+  help    Print this message or the help of the given subcommand(s)
+
+Options:
+  -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
+  -h, --help                       Print help
+  -V, --version                    Print version
+```
+<!-- </snip> -->
+
+
 
 ## Testing a Worker
 

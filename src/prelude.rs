@@ -9,7 +9,7 @@ pub use chrono::NaiveDateTime as DateTime;
 pub use include_dir::{include_dir, Dir};
 // some types required for controller generators
 #[cfg(feature = "with-db")]
-pub use sea_orm::prelude::{Date, DateTimeWithTimeZone, Decimal, Uuid};
+pub use sea_orm::prelude::{Date, DateTimeUtc, DateTimeWithTimeZone, Decimal, Uuid};
 #[cfg(feature = "with-db")]
 pub use sea_orm::{
     ActiveModelBehavior, ActiveModelTrait, ActiveValue, ColumnTrait, ConnectionTrait,
@@ -19,6 +19,7 @@ pub use sea_orm::{
 // sugar for controller views to use `data!({"item": ..})` instead of `json!`
 pub use serde_json::json as data;
 
+pub use crate::controller::extractor::validate::{JsonValidate, JsonValidateWithMessage};
 #[cfg(all(feature = "auth_jwt", feature = "with-db"))]
 pub use crate::controller::middleware::auth;
 #[cfg(feature = "with-db")]
@@ -27,7 +28,7 @@ pub use crate::{
     app::{AppContext, Initializer},
     bgworker::{BackgroundWorker, Queue},
     controller::{
-        format,
+        bad_request, format,
         middleware::{
             format::{Format, RespondTo},
             remote_ip::RemoteIP,

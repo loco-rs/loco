@@ -48,7 +48,28 @@ cargo loco --help
 
 <!-- <snip id="exec-help-command" inject_from="yaml" action="exec" template="sh"> -->
 ```sh
-cd ./examples/demo && cargo loco --help
+The one-person framework for Rust
+
+Usage: demo_app-cli [OPTIONS] <COMMAND>
+
+Commands:
+  start       Start an app
+  db          Perform DB operations
+  routes      Describe all application endpoints
+  middleware  Describe all application middlewares
+  task        Run a custom task
+  jobs        Managing jobs queue
+  scheduler   Run the scheduler
+  generate    code generation creates a set of files and code templates based on a predefined set of rules
+  doctor      Validate and diagnose configurations
+  version     Display the app version
+  watch       Watch and restart the app
+  help        Print this message or the help of the given subcommand(s)
+
+Options:
+  -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
+  -h, --help                       Print help
+  -V, --version                    Print version
 ```
 <!-- </snip> -->
 
@@ -119,7 +140,22 @@ Scaffolding is an efficient and speedy method for generating key components of a
 See scaffold command:
 <!-- <snip id="scaffold-help-command" inject_from="yaml" action="exec" template="sh"> -->
 ```sh
-cd ./examples/demo && cargo loco generate scaffold --help
+Generates a CRUD scaffold, model and controller
+
+Usage: demo_app-cli generate scaffold [OPTIONS] <NAME> [FIELDS]...
+
+Arguments:
+  <NAME>       Name of the thing to generate
+  [FIELDS]...  Model fields, eg. title:string hits:int
+
+Options:
+  -k, --kind <KIND>                The kind of scaffold to generate [possible values: api, html, htmx]
+      --htmx                       Use HTMX scaffold
+      --html                       Use HTML scaffold
+      --api                        Use API scaffold
+  -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
+  -h, --help                       Print help
+  -V, --version                    Print version
 ```
 <!-- </snip> -->
 
@@ -157,7 +193,7 @@ The scaffold generator will build several files in your application:
 | `assets/views/posts/show.html`             | Show post template. only for HTML and HTMX templates.                                                   |
 
 ## Your app configuration
-Configuration in `loco` lives in `config/` and by default sets up 3 different environments:
+By default, loco stores its configuration files in the config/ directory. It provides predefined configurations for three environments:
 
 ```
 config/
@@ -174,6 +210,9 @@ An environment is picked up automatically based on:
 When nothing is given, the default value is `development`.
 
 The `Loco` framework allows support for custom environments in addition to the default environment. To add a custom environment, create a configuration file with a name matching the environment identifier used in the preceding example.
+
+### Overriding the Default Configuration Path
+To use a custom configuration directory, set the `LOCO_CONFIG_FOLDER` environment variable to the desired folder path. This will instruct `loco` to load configuration files from the specified directory instead of the default `config/` folder.
 
 ### Placeholders / variables in config
 

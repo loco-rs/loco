@@ -16,7 +16,8 @@ injections:
 #![allow(clippy::unused_async)]
 use loco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
-use axum::{extract::Form, response::Redirect};
+use axum::response::Redirect;
+use axum_extra::extract::Form;
 use sea_orm::{sea_query::Order, QueryOrder};
 use axum::debug_handler;
 
@@ -123,8 +124,8 @@ pub fn routes() -> Routes {
         .add("/", get(list))
         .add("/", post(add))
         .add("new", get(new))
-        .add(":id", get(show))
-        .add(":id/edit", get(edit))
-        .add(":id", delete(remove))
-        .add(":id", post(update))
+        .add("{id}", get(show))
+        .add("{id}/edit", get(edit))
+        .add("{id}", delete(remove))
+        .add("{id}", post(update))
 }

@@ -9,7 +9,7 @@ license = "Apache-2.0"
 
 [package]
 name = "loco-rs"
-version = "0.13.2"
+version = "0.15.0"
 description = "The one-person framework for Rust"
 homepage = "https://loco.rs/"
 documentation = "https://docs.rs/loco-rs"
@@ -37,22 +37,24 @@ testing = ["dep:axum-test", "dep:scraper"]
 with-db = ["dep:sea-orm", "dep:sea-orm-migration", "loco-gen/with-db"]
 # Storage features
 all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
-storage_aws_s3 = ["object_store/aws"]
-storage_azure = ["object_store/azure"]
-storage_gcp = ["object_store/gcp"]
+storage_aws_s3 = ["opendal/services-s3"]
+storage_azure = ["opendal/services-azblob"]
+storage_gcp = ["opendal/services-gcs"]
 # Cache feature
 cache_inmem = ["dep:moka"]
 bg_redis = ["dep:rusty-sidekiq", "dep:bb8"]
 bg_pg = ["dep:sqlx", "dep:ulid"]
 bg_sqlt = ["dep:sqlx", "dep:ulid"]
+## Testing feature flags
+integration_test = []
 
 [dependencies]
-loco-gen = { version = "0.13.2", path = "./loco-gen" }
+loco-gen = { version = "0.15.0", path = "./loco-gen" }
 backtrace_printer = { version = "1.3.0" }
 
 # cli
 clap = { version = "4.4.7", features = ["derive"], optional = true }
-colored = "2"
+colored = { workspace = true }
 reqwest = { version = "0.12.7", features = [
     "charset",
     "http2",
@@ -83,13 +85,13 @@ toml = "0.8"
 async-trait = { workspace = true }
 
 axum = { workspace = true }
-axum-extra = { version = "0.9", features = ["cookie"] }
+axum-extra = { version = "0.10", features = ["cookie"] }
 regex = { workspace = true }
-fs-err = "2.11.0"
 # mailer
-tera = "1.19.1"
+tera = { workspace = true }
 thousands = "0.2.0"
-heck = "0.4.0"
+heck = { workspace = true }
+cruet = "0.13.0"
 lettre = { version = "0.11.4", default-features = false, features = [
     "builder",
     "hostname",
@@ -99,8 +101,12 @@ lettre = { version = "0.11.4", default-features = false, features = [
 include_dir = "0.7.3"
 thiserror = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
-tracing-appender = "0.2.3"
+tracing-subscriber = { version = "0.3.16", default-features = false, features = [
+    "env-filter",
+    "json",
+    "ansi",
+] }
+tracing-appender = { version = "0.2.3", default-features = false }
 
 duct = { version = "0.13.6" }
 duct_sh = { version = "0.13.7" }
@@ -111,16 +117,15 @@ byte-unit = "4.0.19"
 argon2 = { version = "0.5.2", features = ["std"] }
 rand = { version = "0.8.5", features = ["std"] }
 jsonwebtoken = { version = "9.3.0", optional = true }
-validator = { version = "0.19.0", features = ["derive"] }
+validator = { version = "0.20.0", features = ["derive"] }
 futures-util = "0.3"
 tower = { workspace = true }
 hyper = "1.1"
-mime = "0.3"
 bytes = "1.1"
 ipnetwork = "0.20.0"
 semver = "1"
 
-axum-test = { version = "16.1.0", optional = true }
+axum-test = { version = "17.0.1", optional = true }
 
 chrono = { workspace = true }
 cfg-if = "1"
@@ -128,7 +133,10 @@ cfg-if = "1"
 uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
 
 # File Upload
-object_store = { version = "0.11.0", default-features = false }
+opendal = { version = "0.50.2", default-features = false, features = [
+    "services-memory",
+    "services-fs",
+] }
 
 # cache
 moka = { version = "0.12.7", features = ["sync"], optional = true }
@@ -140,6 +148,7 @@ english-to-cron = { version = "0.1.2" }
 # bg_sqlt: sqlite workers
 # bg_pg: postgres workers
 sqlx = { version = "0.8.2", default-features = false, features = [
+    "json",
     "postgres",
     "chrono",
     "sqlite",
@@ -150,10 +159,11 @@ ulid = { version = "1", optional = true }
 rusty-sidekiq = { version = "0.11.0", default-features = false, optional = true }
 bb8 = { version = "0.8.1", optional = true }
 
-scraper = { version = "0.21.0", optional = true }
+scraper = { version = "0.21.0", features = ["deterministic"], optional = true }
 
 [workspace.dependencies]
-
+tera = { version = "1.19.1" }
+colored = { version = "2" }
 chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1.40"
 regex = "1"
@@ -161,7 +171,7 @@ thiserror = "1"
 serde = "1"
 serde_json = "1"
 async-trait = { version = "0.1.74" }
-axum = { version = "0.7.5", features = ["macros"] }
+axum = { version = "0.8.1", features = ["macros"] }
 tower = "0.4"
 tower-http = { version = "0.6.1", features = [
     "trace",
@@ -173,6 +183,7 @@ tower-http = { version = "0.6.1", features = [
     "set-header",
     "compression-full",
 ] }
+heck = "0.4.0"
 
 [dependencies.sea-orm-migration]
 optional = true
@@ -195,5 +206,12 @@ rstest = "0.21.0"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
 tree-fs = { version = "0.2.1" }
 reqwest = { version = "0.12.7" }
-serial_test = "3.1.1"
 tower = { workspace = true, features = ["util"] }
+sqlx = { version = "0.8.2", default-features = false, features = [
+    "macros",
+    "json",
+    "postgres",
+    "chrono",
+    "sqlite",
+    "migrate",
+] }

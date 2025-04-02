@@ -1,0 +1,29 @@
+---
+source: src/auth/jwt.rs
+expression: jwt.validate(&token)
+---
+Ok(
+    TokenData {
+        header: Header {
+            typ: Some(
+                "JWT",
+            ),
+            alg: HS512,
+            cty: None,
+            jku: None,
+            jwk: None,
+            kid: None,
+            x5u: None,
+            x5c: None,
+            x5t: None,
+            x5t_s256: None,
+        },
+        claims: UserClaims {
+            pid: "pid",
+            exp: EXP,
+            claims: {
+                "custom": Number(123),
+            },
+        },
+    },
+)

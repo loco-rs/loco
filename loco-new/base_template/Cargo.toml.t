@@ -21,14 +21,15 @@ loco-rs = { {{settings.loco_version_text}} {%- if not settings.features.default_
 [dependencies]
 loco-rs = { workspace = true {% if feature_list | length > 0 %}, features = {{feature_list}}{% endif %} }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = { version = "1" }
 tokio = { version = "1.33.0", default-features = false, features = [
   "rt-multi-thread",
 ] }
-async-trait = "0.1.74"
-axum = "0.7.5"
-tracing = "0.1.40"
+async-trait = { version = "0.1.74" }
+axum = { version = "0.8.1" }
+tracing = { version = "0.1.40" }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json"] }
+regex = { version = "1.11.1" }
 {%- if settings.db %}
 migration = { path = "migration" }
 sea-orm = { version = "1.1.0", features = [
@@ -37,20 +38,23 @@ sea-orm = { version = "1.1.0", features = [
   "runtime-tokio-rustls",
   "macros",
 ] }
-chrono = "0.4"
-validator = { version = "0.19" }
+chrono = { version = "0.4" }
+validator = { version = "0.20" }
 uuid = { version = "1.6.0", features = ["v4"] }
 {%- endif %}
 
 {%- if settings.mailer %}
-include_dir = "0.7"
+include_dir = { version = "0.7" }
 {%- endif %}
 
 {%- if settings.asset %}
+{%- if settings.asset.kind == "server" %}
 # view engine i18n
 fluent-templates = { version = "0.8.0", features = ["tera"] }
-unic-langid = "0.9.4"
+unic-langid = { version = "0.9.4" }
 # /view engine
+{%- endif %}
+axum-extra = { version = "0.10", features = ["form"] }
 {%- endif %}
 
 [[bin]]
@@ -67,6 +71,6 @@ required-features = []
 
 [dev-dependencies]
 loco-rs = { workspace = true, features = ["testing"] }
-serial_test = "3.1.1"
-rstest = "0.21.0"
+serial_test = { version = "3.1.1" }
+rstest = { version = "0.21.0" }
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }

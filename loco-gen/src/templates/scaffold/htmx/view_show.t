@@ -10,8 +10,12 @@ message: "{{file_name}} view was added successfully."
 View {{name}}: {% raw %}{{ item.id }}{% endraw %}
 {% raw %}{% endblock title %}{% endraw %}
 
+{% raw %}{% block page_title %}{% endraw %}
+View {{name}}: {% raw %}{{ item.id }}{% endraw %}
+{% raw %}{% endblock page_title %}{% endraw %}
+
+
 {% raw %}{% block content %}{% endraw %}
-<h1>View {{name}}: {% raw %}{{ item.id }}{% endraw %}</h1>
 <div class="mb-10">
     {% for column in columns -%}
     <div>

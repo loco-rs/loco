@@ -4,7 +4,11 @@ on:
   push:
     branches:
       - master
+    paths:
+      - "loco-gen/**"
   pull_request:
+    paths:
+      - "loco-gen/**"
 
 env:
   RUST_TOOLCHAIN: stable
@@ -48,6 +52,21 @@ jobs:
     permissions:
       contents: read
 
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_DB: postgres_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - "5432:5432"
+        # Set health checks to wait until postgres has started
+        options: --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4
@@ -57,6 +76,9 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
 
+      - name: Install seaorm cli
+        run: cargo install sea-orm-cli
+        
       - run: |
           cargo install --path ../loco-new
 
@@ -64,3 +86,4 @@ jobs:
         run: cargo test --all-features
         env:
           LOCO_DEV_MODE_PATH: ${{ github.workspace }}
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres_test

@@ -1,7 +1,10 @@
 //! # Application Bootstrapping and Logic
 //! This module contains functions and structures for bootstrapping and running
 //! your application.
-use std::path::PathBuf;
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
 use axum::Router;
 #[cfg(feature = "with-db")]
@@ -12,11 +15,12 @@ use tracing::{debug, error, info, warn};
 #[cfg(feature = "with-db")]
 use crate::db;
 use crate::{
-    app::{AppContext, Hooks},
+    app::{AppContext, Hooks, Initializer},
     banner::print_banner,
     bgworker, cache,
-    config::{self, WorkerMode},
+    config::{self, Config, WorkerMode},
     controller::ListRoutes,
+    env_vars,
     environment::Environment,
     errors::Error,
     mailer::{EmailSender, MailerWorker},
@@ -37,6 +41,8 @@ pub enum StartMode {
     ServerAndWorker,
     /// Pulling job worker and execute them
     WorkerOnly,
+    /// Run the app with all available components in the same process.
+    All,
 }
 
 pub struct BootResult {
@@ -46,6 +52,8 @@ pub struct BootResult {
     pub router: Option<Router>,
     /// worker processor
     pub run_worker: bool,
+    /// scheduler processor
+    pub run_scheduler: bool,
 }
 
 /// Configuration structure for serving an application.
@@ -72,6 +80,19 @@ pub async fn start<H: Hooks>(
     server_config: ServeParams,
     no_banner: bool,
 ) -> Result<()> {
+    if boot.run_scheduler {
+        let scheduler = scheduler::<H>(&boot.app_context, None, None, None)?;
+        tokio::spawn(async move {
+            let res = scheduler.run().await;
+            if res.is_err() {
+                error!(
+                    err = res.unwrap_err().to_string(),
+                    "error while running scheduler"
+                );
+            }
+        });
+    }
+
     if !no_banner {
         print_banner(&boot, &server_config);
     }
@@ -79,6 +100,7 @@ pub async fn start<H: Hooks>(
     let BootResult {
         router,
         run_worker,
+        run_scheduler: _,
         app_context,
     } = boot;
 
@@ -179,6 +201,34 @@ pub async fn run_task<H: Hooks>(
     Ok(())
 }
 
+/// Initializes a new scheduler instance based on the provided configuration and context.
+fn scheduler<H: Hooks>(
+    app_context: &AppContext,
+    config: Option<&PathBuf>,
+    name: Option<String>,
+    tag: Option<String>,
+) -> Result<Scheduler> {
+    let env_config_path = env::var(env_vars::SCHEDULER_CONFIG).ok();
+
+    let config_path: Option<&Path> = config.map_or_else(
+        || env_config_path.as_deref().map(Path::new),
+        |path| Some(path.as_path()),
+    );
+
+    let scheduler = match config_path {
+        Some(path) => Scheduler::from_config::<H>(path, &app_context.environment)?,
+        None => {
+            if let Some(config) = &app_context.config.scheduler {
+                Scheduler::new::<H>(config, &app_context.environment)?
+            } else {
+                return Err(Error::Scheduler(scheduler::Error::Empty));
+            }
+        }
+    };
+
+    Ok(scheduler.by_spec(&scheduler::Spec { name, tag }))
+}
+
 /// Runs the scheduler with the given configuration and context. in case if list
 /// args is true prints scheduler job configuration
 ///
@@ -199,24 +249,10 @@ pub async fn run_scheduler<H: Hooks>(
     tag: Option<String>,
     list: bool,
 ) -> Result<()> {
-    let mut tasks = Tasks::default();
-    H::register_tasks(&mut tasks);
-
     let task_span = tracing::span!(tracing::Level::DEBUG, "scheduler_jobs");
     let _guard = task_span.enter();
 
-    let scheduler = match config {
-        Some(path) => Scheduler::from_config::<H>(path, &app_context.environment)?,
-        None => {
-            if let Some(config) = &app_context.config.scheduler {
-                Scheduler::new::<H>(config, &app_context.environment)?
-            } else {
-                return Err(Error::Scheduler(scheduler::Error::Empty));
-            }
-        }
-    };
-
-    let scheduler = scheduler.by_spec(&scheduler::Spec { name, tag });
+    let scheduler = scheduler::<H>(app_context, config, name, tag)?;
     if list {
         println!("{scheduler}");
         Ok(())
@@ -248,6 +284,8 @@ pub enum RunDbCommand {
         dump: bool,
         dump_tables: Option<Vec<String>>,
     },
+    /// Dump database schema
+    Schema,
 }
 
 #[cfg(feature = "with-db")]
@@ -285,7 +323,7 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
         }
         RunDbCommand::Truncate => {
             tracing::warn!("truncate:");
-            H::truncate(&app_context.db).await?;
+            H::truncate(app_context).await?;
         }
         RunDbCommand::Seed {
             reset,
@@ -301,8 +339,12 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
                 if reset {
                     db::reset::<M>(&app_context.db).await?;
                 }
-                db::run_app_seed::<H>(&app_context.db, &from).await?;
+                db::run_app_seed::<H>(app_context, &from).await?;
             }
+        }
+        RunDbCommand::Schema => {
+            db::dump_schema(app_context, "schema_dump.json").await?;
+            println!("Database schema dumped to 'schema_dump.json'");
         }
     }
     Ok(())
@@ -313,9 +355,10 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
 ///
 /// # Errors
 /// When has an error to create DB connection.
-pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppContext> {
-    let config = environment.load()?;
-
+pub async fn create_context<H: Hooks>(
+    environment: &Environment,
+    config: Config,
+) -> Result<AppContext> {
     if config.logger.pretty_backtrace {
         std::env::set_var("RUST_BACKTRACE", "1");
         warn!(
@@ -356,9 +399,10 @@ pub async fn create_context<H: Hooks>(environment: &Environment) -> Result<AppCo
 pub async fn create_app<H: Hooks, M: MigratorTrait>(
     mode: StartMode,
     environment: &Environment,
+    config: Config,
 ) -> Result<BootResult> {
-    let app_context = create_context::<H>(environment).await?;
-    db::converge::<H, M>(&app_context.db, &app_context.config.database).await?;
+    let app_context = create_context::<H>(environment, config).await?;
+    db::converge::<H, M>(&app_context, &app_context.config.database).await?;
 
     if let (Some(queue), Some(config)) = (&app_context.queue_provider, &app_context.config.queue) {
         bgworker::converge(queue, config).await?;
@@ -371,8 +415,9 @@ pub async fn create_app<H: Hooks, M: MigratorTrait>(
 pub async fn create_app<H: Hooks>(
     mode: StartMode,
     environment: &Environment,
+    config: Config,
 ) -> Result<BootResult> {
-    let app_context = create_context::<H>(environment).await?;
+    let app_context = create_context::<H>(environment, config).await?;
 
     if let (Some(queue), Some(config)) = (&app_context.queue_provider, &app_context.config.queue) {
         bgworker::converge(queue, config).await?;
@@ -388,37 +433,44 @@ pub async fn create_app<H: Hooks>(
 pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Result<BootResult> {
     H::before_run(&app_context).await?;
     let initializers = H::initializers(&app_context).await?;
-    info!(initializers = ?initializers.iter().map(|init| init.name()).collect::<Vec<_>>().join(","), "initializers loaded");
+
+    info!(
+        initializers = ?initializers.iter().map(|init| init.name()).collect::<Vec<_>>().join(","),
+        "initializers loaded"
+    );
+
     for initializer in &initializers {
         initializer.before_run(&app_context).await?;
     }
+
     match mode {
         StartMode::ServerOnly => {
-            let app = H::before_routes(&app_context).await?;
-            let app = H::routes(&app_context).to_router::<H>(app_context.clone(), app)?;
-            let mut router = H::after_routes(app, &app_context).await?;
-            for initializer in &initializers {
-                router = initializer.after_routes(router, &app_context).await?;
-            }
-
+            let router = setup_routes::<H>(&app_context, &initializers).await?;
             Ok(BootResult {
                 app_context,
                 router: Some(router),
                 run_worker: false,
+                run_scheduler: false,
             })
         }
         StartMode::ServerAndWorker => {
             register_workers::<H>(&app_context).await?;
-            let app = H::before_routes(&app_context).await?;
-            let app = H::routes(&app_context).to_router::<H>(app_context.clone(), app)?;
-            let mut router = H::after_routes(app, &app_context).await?;
-            for initializer in &initializers {
-                router = initializer.after_routes(router, &app_context).await?;
-            }
+            let router = setup_routes::<H>(&app_context, &initializers).await?;
             Ok(BootResult {
                 app_context,
                 router: Some(router),
                 run_worker: true,
+                run_scheduler: false,
+            })
+        }
+        StartMode::All => {
+            register_workers::<H>(&app_context).await?;
+            let router = setup_routes::<H>(&app_context, &initializers).await?;
+            Ok(BootResult {
+                app_context,
+                router: Some(router),
+                run_worker: true,
+                run_scheduler: true,
             })
         }
         StartMode::WorkerOnly => {
@@ -427,9 +479,26 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
                 app_context,
                 router: None,
                 run_worker: true,
+                run_scheduler: false,
             })
         }
     }
+}
+
+/// Sets up the application's routes based on the provided initializers and hooks.
+async fn setup_routes<H: Hooks>(
+    app_context: &AppContext,
+    initializers: &[Box<dyn Initializer>],
+) -> Result<Router> {
+    let app = H::before_routes(app_context).await?;
+    let app = H::routes(app_context).to_router::<H>(app_context.clone(), app)?;
+    let mut router = H::after_routes(app, app_context).await?;
+
+    for initializer in initializers {
+        router = initializer.after_routes(router, app_context).await?;
+    }
+
+    Ok(router)
 }
 
 async fn register_workers<H: Hooks>(app_context: &AppContext) -> Result<()> {
