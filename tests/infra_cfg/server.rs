@@ -7,6 +7,12 @@
 //! hardcoded ports and bindings.
 
 use loco_rs::{boot, controller::AppRoutes, prelude::*, tests_cfg::db::AppHook};
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
+use {serde::Serialize, utoipa::ToSchema, utoipa_axum::routes};
 
 /// A simple asynchronous handler for GET requests.
 async fn get_action() -> Result<Response> {
@@ -16,6 +22,36 @@ async fn get_action() -> Result<Response> {
 /// A simple asynchronous handler for POST requests.
 async fn post_action(_body: axum::body::Bytes) -> Result<Response> {
     format::render().text("text response")
+}
+
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
+#[derive(Serialize, Debug, ToSchema)]
+pub struct Album {
+    title: String,
+    rating: u32,
+}
+
+#[cfg(any(
+    feature = "openapi_swagger",
+    feature = "openapi_redoc",
+    feature = "openapi_scalar"
+))]
+#[utoipa::path(
+    get,
+    path = "/album",
+    responses(
+        (status = 200, description = "Album found", body = Album),
+    ),
+)]
+async fn get_action_openapi() -> Result<Response> {
+    format::json(Album {
+        title: "VH II".to_string(),
+        rating: 10,
+    })
 }
 
 /// Starts the server using the provided Loco [`boot::BootResult`] result.
@@ -49,9 +85,23 @@ pub async fn start_from_boot(
 pub async fn start_from_ctx(ctx: AppContext, port: Option<i32>) -> tokio::task::JoinHandle<()> {
     let app_router = AppRoutes::empty()
         .add_route(
+            #[cfg(not(any(
+                feature = "openapi_swagger",
+                feature = "openapi_redoc",
+                feature = "openapi_scalar"
+            )))]
             Routes::new()
                 .add("/", get(get_action))
                 .add("/", post(post_action)),
+            #[cfg(any(
+                feature = "openapi_swagger",
+                feature = "openapi_redoc",
+                feature = "openapi_scalar"
+            ))]
+            Routes::new()
+                .add("/", get(get_action))
+                .add("/", post(post_action))
+                .add("/album", routes!(get_action_openapi)),
         )
         .to_router::<AppHook>(ctx.clone(), axum::Router::new())
         .expect("to router");
