@@ -390,7 +390,7 @@ pub mod tests {
 
                 assert_snapshot!(
                     format!("can_render_form_field_[form_{}_{}]", field.name, field_name),
-                    format!("Crete form\n\r{create_form}\n\rEdit Form\n\r{edit_form}")
+                    format!("Create form\n\n{create_form}\n\nEdit Form\n\n{edit_form}")
                 );
             }
         }
