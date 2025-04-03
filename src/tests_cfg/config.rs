@@ -36,6 +36,7 @@ pub fn test_config() -> Config {
             auto_migrate: false,
             dangerously_truncate: false,
             dangerously_recreate: false,
+            enable_foreign_keys: false,
         },
         queue: None,
         auth: None,
