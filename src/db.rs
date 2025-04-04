@@ -150,11 +150,11 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
     let db = Database::connect(opt).await?;
 
     if db.get_database_backend() == DatabaseBackend::Sqlite {
-        let foreign_keys = if config.enable_foreign_keys {
-            "ON"
-        } else {
-            "OFF"
-        };
+        // default set to "ON" to prevent breaking changes
+        let foreign_keys = config
+            .enable_foreign_keys
+            .map(|fk| if fk { "ON" } else { "OFF" })
+            .unwrap_or("ON");
 
         db.execute(Statement::from_string(
             DatabaseBackend::Sqlite,
