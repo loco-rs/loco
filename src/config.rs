@@ -218,6 +218,10 @@ pub struct Database {
     /// various things in development.
     #[serde(default)]
     pub dangerously_recreate: bool,
+
+    // sqlite configuration
+    /// set the foreign key pragma to be enabled or disabled
+    pub enable_foreign_keys: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

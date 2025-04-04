@@ -151,16 +151,25 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
     let db = Database::connect(opt).await?;
 
     if db.get_database_backend() == DatabaseBackend::Sqlite {
+        // default set to "ON" to prevent breaking changes
+        let foreign_keys = config
+            .enable_foreign_keys
+            .map(|fk| if fk { "ON" } else { "OFF" })
+            .unwrap_or("ON");
+
         db.execute(Statement::from_string(
             DatabaseBackend::Sqlite,
-            "
-            PRAGMA foreign_keys = ON;
+            format!(
+                "
+            PRAGMA foreign_keys = {foreign_keys};
             PRAGMA journal_mode = WAL;
             PRAGMA synchronous = NORMAL;
             PRAGMA mmap_size = 134217728;
             PRAGMA journal_size_limit = 67108864;
             PRAGMA cache_size = 2000;
-            ",
+            PRAGMA busy_timeout = 5000;
+            "
+            ),
         ))
         .await?;
     }
