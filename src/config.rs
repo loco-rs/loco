@@ -221,8 +221,7 @@ pub struct Database {
 
     // sqlite configuration
     /// set the foreign key pragma to be enabled or disabled
-    #[serde(default)]
-    pub enable_foreign_keys: bool,
+    pub enable_foreign_keys: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
