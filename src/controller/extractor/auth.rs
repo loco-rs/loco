@@ -29,7 +29,11 @@ use axum_extra::extract::cookie;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    app::AppContext, auth, config::JWT as JWTConfig, errors::Error, model::Authenticable,
+    app::AppContext,
+    auth,
+    config::JWT as JWTConfig,
+    errors::Error,
+    model::{Authenticable, ModelError},
     Result as LocoResult,
 };
 
@@ -71,7 +75,15 @@ where
             Ok(claims) => {
                 let user = T::find_by_claims_key(&ctx.db, &claims.claims.pid)
                     .await
-                    .map_err(|_| Error::Unauthorized("token is not valid".to_string()))?;
+                    .map_err(|e| {
+                        match e {
+                            ModelError::EntityNotFound => {
+                                Error::Unauthorized("not found".to_string())
+                            }
+                            ModelError::DbErr(_) => Error::InternalServerError, // don't show 401 for system errors
+                            _ => Error::Unauthorized(format!("other error: '{}'", e)),
+                        }
+                    })?;
                 Ok(Self {
                     claims: claims.claims,
                     user,
@@ -227,9 +239,13 @@ where
         let state: AppContext = AppContext::from_ref(state);
 
         // Retrieve user information based on the API key from the database.
-        let user = T::find_by_api_key(&state.db, &api_key)
-            .await
-            .map_err(|e| Error::Unauthorized(e.to_string()))?;
+        let user = T::find_by_api_key(&state.db, &api_key).await.map_err(|e| {
+            match e {
+                ModelError::EntityNotFound => Error::Unauthorized("not found".to_string()),
+                ModelError::DbErr(_) => Error::InternalServerError, // don't show 401 for system errors
+                _ => Error::Unauthorized(format!("other error: '{}'", e)),
+            }
+        })?;
 
         Ok(Self { user })
     }
