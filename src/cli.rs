@@ -23,6 +23,10 @@ cfg_if::cfg_if! {
     } else {}
 }
 
+use clap::{ArgAction, Parser, Subcommand, ValueHint};
+use colored::Colorize;
+use duct::cmd;
+use std::fmt::Write;
 #[cfg(any(
     feature = "bg_redis",
     feature = "bg_pg",
@@ -31,10 +35,6 @@ cfg_if::cfg_if! {
 ))]
 use std::process::exit;
 use std::{collections::BTreeMap, path::PathBuf};
-
-use clap::{ArgAction, Parser, Subcommand, ValueHint};
-use colored::Colorize;
-use duct::cmd;
 
 #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
 use crate::bgworker::JobStatus;
@@ -1150,7 +1150,7 @@ fn handle_generate_command<H: Hooks>(
         )?;
         let messages = loco_gen::collect_messages(&get_result);
         println!("{messages}");
-    };
+    }
     Ok(())
 }
 
@@ -1176,54 +1176,60 @@ pub fn format_templates_as_tree(paths: Vec<PathBuf>) -> String {
         }
     }
 
-    let mut output = String::new();
-    output.push_str("Available templates and directories to copy:\n\n");
+    let mut output = "Available templates and directories to copy:".to_string();
+    let _ = writeln!(output);
+    let _ = writeln!(output);
 
     for (top_level, sub_categories) in &categories {
-        output.push_str(&format!("{}", format!("{top_level}\n").yellow()));
+        let _ = writeln!(output, "{}", top_level.to_string().yellow());
 
         for (sub_category, paths) in sub_categories {
             if !sub_category.is_empty() {
-                output.push_str(&format!("{}", format!(" └── {sub_category}\n").yellow()));
+                let _ = writeln!(output, "{}", format!(" └── {sub_category}").yellow());
             }
 
             for path in paths {
-                output.push_str(&format!(
-                    "   └── {}\n",
+                let _ = writeln!(
+                    output,
+                    "   └── {}",
                     path.file_name().unwrap_or_default().to_string_lossy()
-                ));
+                );
             }
         }
     }
 
-    output.push_str(&format!("\n\n{}\n\n", "Usage Examples:".bold().green()));
-    output.push_str(&format!("{}", "Override a Specific File:\n".bold()));
-    output.push_str(&format!(
-        " * cargo loco generate override {}\n",
+    let _ = writeln!(output);
+    let _ = writeln!(output);
+    let _ = writeln!(output, "{}", "Usage Examples:".bold().green());
+    let _ = writeln!(output);
+    let _ = writeln!(output, "{}", "Override a Specific File:".bold());
+
+    let _ = writeln!(
+        output,
+        " * cargo loco generate override {}",
         "scaffold/api/controller.t".yellow()
-    ));
-    output.push_str(&format!(
+    );
+    let _ = writeln!(
+        output,
         " * cargo loco generate override {}",
         "migration/add_columns.t".yellow()
-    ));
-    output.push_str(&format!(
-        "{}",
-        "\n\nOverride All Files in a Folder:\n".bold()
-    ));
-    output.push_str(&format!(
-        " * cargo loco generate override {}\n",
+    );
+    let _ = writeln!(output);
+    let _ = writeln!(output, "{}", "Override All Files in a Folder:".bold());
+    let _ = writeln!(
+        output,
+        " * cargo loco generate override {}",
         "scaffold/htmx".yellow()
-    ));
-    output.push_str(&format!(
+    );
+
+    let _ = writeln!(
+        output,
         " * cargo loco generate override {}",
         "task".yellow()
-    ));
-    // output.push_str(" * cargo loco generate override task");
-    output.push_str(&format!("{}", "\n\nOverride All templates:\n".bold()));
-    output.push_str(&format!(
-        " * cargo loco generate override {}\n",
-        ".".yellow()
-    ));
+    );
+    let _ = writeln!(output);
+    let _ = writeln!(output, "{}", "Override All templates:".bold());
+    let _ = writeln!(output, " * cargo loco generate override {}", ".".yellow());
 
     output
 }

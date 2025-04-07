@@ -1,14 +1,14 @@
+use colored::Colorize;
+use regex::Regex;
+use semver::Version;
+use serde::Deserialize;
+use std::fmt::Write;
 use std::{
     collections::{BTreeMap, HashMap},
     fs,
     process::Command,
     sync::OnceLock,
 };
-
-use colored::Colorize;
-use regex::Regex;
-use semver::Version;
-use serde::Deserialize;
 
 use crate::{
     bgworker,
@@ -197,7 +197,7 @@ pub fn check_deps() -> Result<Check> {
     let crate_statuses =
         depcheck::check_crate_versions(&cargolock, get_min_dep_versions().clone())?;
     let mut report = String::new();
-    report.push_str("Dependencies");
+    let _ = write!(report, "Dependencies");
     let mut all_ok = true;
 
     for status in &crate_statuses {
@@ -206,12 +206,14 @@ pub fn check_deps() -> Result<Check> {
             min_version,
         } = &status.status
         {
-            report.push_str(&format!(
-                "\n     {}: version {} does not meet minimum version {}",
+            let _ = writeln!(
+                report,
+                "     {}: version {} does not meet minimum version {}",
                 status.crate_name.yellow(),
                 version.red(),
                 min_version.green()
-            ));
+            );
+
             all_ok = false;
         }
     }

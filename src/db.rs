@@ -3,10 +3,12 @@
 //! This module defines functions and operations related to the application's
 //! database interactions.
 
-use std::{
-    collections::HashMap, fs, fs::File, io::Write, path::Path, sync::OnceLock, time::Duration,
+use super::Result as AppResult;
+use crate::{
+    app::{AppContext, Hooks},
+    config, doctor, env_vars,
+    errors::Error,
 };
-
 use chrono::{DateTime, Utc};
 use duct::cmd;
 use regex::Regex;
@@ -15,14 +17,11 @@ use sea_orm::{
     DatabaseConnection, DbBackend, DbConn, DbErr, EntityTrait, IntoActiveModel, Statement,
 };
 use sea_orm_migration::MigratorTrait;
-use tracing::info;
-
-use super::Result as AppResult;
-use crate::{
-    app::{AppContext, Hooks},
-    config, doctor, env_vars,
-    errors::Error,
+use std::fmt::Write as FmtWrites;
+use std::{
+    collections::HashMap, fs, fs::File, io::Write, path::Path, sync::OnceLock, time::Duration,
 };
+use tracing::info;
 
 pub static EXTRACT_DB_NAME: OnceLock<Regex> = OnceLock::new();
 const IGNORED_TABLES: &[&str] = &[
@@ -554,7 +553,7 @@ impl Entity {{}}
                 ),
             )?;
             if !models_mod.contains(&format!("mod {module}")) {
-                models_mod.push_str(&format!("pub mod {module};\n"));
+                let _ = writeln!(models_mod, "pub mod {module};");
             }
         }
     }

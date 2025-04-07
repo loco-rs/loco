@@ -4,6 +4,8 @@ use std::{
     time::Duration,
 };
 
+use super::{BackgroundWorker, JobStatus, Queue};
+use crate::{config::PostgresQueueConfig, Error, Result};
 use chrono::{DateTime, Utc};
 use futures_util::FutureExt;
 use serde::{Deserialize, Serialize};
@@ -13,12 +15,10 @@ use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions, PgRow},
     ConnectOptions, Row,
 };
+use std::fmt::Write;
 use tokio::{task::JoinHandle, time::sleep};
 use tracing::{debug, error, trace};
 use ulid::Ulid;
-
-use super::{BackgroundWorker, JobStatus, Queue};
-use crate::{config::PostgresQueueConfig, Error, Result};
 type JobId = String;
 type JobData = JsonValue;
 
@@ -469,13 +469,14 @@ pub async fn get_jobs(
             .map(|s| format!("'{s}'"))
             .collect::<Vec<String>>()
             .join(",");
-        query.push_str(&format!(" AND status in ({status_in})"));
+        let _ = write!(query, " AND status in ({status_in})");
     }
 
     if let Some(age_days) = age_days {
-        query.push_str(&format!(
-            "AND created_at <= NOW() - INTERVAL '1 day' * {age_days}"
-        ));
+        let _ = write!(
+            query,
+            " AND created_at <= NOW() - INTERVAL '1 day' * {age_days}"
+        );
     }
 
     let rows = sqlx::query(&query).fetch_all(pool).await?;

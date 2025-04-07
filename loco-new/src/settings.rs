@@ -67,7 +67,7 @@ impl Settings {
             let mut features = Features::disable_features();
             if prompt_selection.background.enable() {
                 features.names.push("bg_redis".to_string());
-            };
+            }
             features
         };
 
