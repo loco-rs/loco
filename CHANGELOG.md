@@ -8,6 +8,8 @@
 * Add `escape` tera function to scaffold list template. [https://github.com/loco-rs/loco/pull/1337](https://github.com/loco-rs/loco/pull/1337)
 * Return a specific error when logging in with a non-existent email. [https://github.com/loco-rs/loco/pull/1336](https://github.com/loco-rs/loco/pull/1336)
 * Return a specific error when trying to verify with an invalid token. [https://github.com/loco-rs/loco/pull/1340](https://github.com/loco-rs/loco/pull/1340)
+* Clippy 1.86. [https://github.com/loco-rs/loco/pull/1353](https://github.com/loco-rs/loco/pull/1353)
+* Fix the db creation. [https://github.com/loco-rs/loco/pull/1352](https://github.com/loco-rs/loco/pull/1352)
 
 ## v0.15.0
 
