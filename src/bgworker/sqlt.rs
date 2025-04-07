@@ -4,6 +4,8 @@ use std::{
     time::Duration,
 };
 
+use super::{BackgroundWorker, JobStatus, Queue};
+use crate::{config::SqliteQueueConfig, Error, Result};
 use chrono::{DateTime, Utc};
 use futures_util::FutureExt;
 use serde::{Deserialize, Serialize};
@@ -13,12 +15,10 @@ use sqlx::{
     sqlite::{SqliteConnectOptions, SqlitePoolOptions, SqliteRow},
     ConnectOptions, QueryBuilder, Row,
 };
+use std::fmt::Write;
 use tokio::{task::JoinHandle, time::sleep};
 use tracing::{debug, error, trace};
 use ulid::Ulid;
-
-use super::{BackgroundWorker, JobStatus, Queue};
-use crate::{config::SqliteQueueConfig, Error, Result};
 type JobId = String;
 type JobData = JsonValue;
 
@@ -555,13 +555,13 @@ pub async fn get_jobs(
             .map(|s| format!("'{s}'"))
             .collect::<Vec<String>>()
             .join(",");
-        query.push_str(&format!("AND status IN ({status_in}) "));
+        let _ = write!(query, " AND status IN ({status_in})");
     }
 
     if let Some(age_days) = age_days {
         let cutoff_date = Utc::now() - chrono::Duration::days(age_days);
         let threshold_date = cutoff_date.format("%+").to_string();
-        query.push_str(&format!("AND created_at <= '{threshold_date}' "));
+        let _ = write!(query, " AND created_at <= '{threshold_date}' ");
     }
 
     let rows = sqlx::query(&query).fetch_all(pool).await?;

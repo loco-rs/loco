@@ -140,7 +140,7 @@ impl EmailSender {
                 xp.send(&msg)
                     .map_err(|e| Error::Message(format!("sending email error: {e}")))?;
             }
-        };
+        }
         Ok(())
     }
 }
