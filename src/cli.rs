@@ -38,6 +38,8 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
 use crate::bgworker::JobStatus;
+#[cfg(debug_assertions)]
+use crate::controller;
 use crate::{
     app::{AppContext, Hooks},
     boot::{
@@ -45,10 +47,10 @@ use crate::{
         start, RunDbCommand, ServeParams, StartMode,
     },
     config::Config,
-    controller,
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     logger, task, Error,
 };
+
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
@@ -520,6 +522,7 @@ pub enum DeploymentKind {
 }
 
 impl DeploymentKind {
+    #[cfg(debug_assertions)]
     fn to_generator_component(&self, config: &Config) -> loco_gen::Component {
         let kind = match self {
             Self::Docker => {
