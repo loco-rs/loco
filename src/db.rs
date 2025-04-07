@@ -196,7 +196,7 @@ pub async fn create(db_uri: &str) -> AppResult<()> {
         Error::string("The specified table name was not found in the given Postgres database URI")
     })?;
 
-    let conn = extract_db_name(db_uri)?.replace(db_uri, "/postgres");
+    let conn = db_uri.replace(db_name, "/postgres");
     let db = Database::connect(conn).await?;
 
     Ok(create_postgres_database(db_name, &db).await?)
@@ -593,6 +593,24 @@ async fn create_postgres_database(
     db_name: &str,
     db: &DatabaseConnection,
 ) -> Result<(), sea_orm::DbErr> {
+    let mut select = sea_orm::sea_query::Query::select();
+    select
+        .expr(sea_orm::sea_query::Expr::val(1))
+        .from(sea_orm::sea_query::Alias::new("pg_database"))
+        .and_where(
+            sea_orm::sea_query::Expr::col(sea_orm::sea_query::Alias::new("datname")).eq(db_name),
+        )
+        .limit(1);
+
+    let (sql, values) = select.build(sea_orm::sea_query::PostgresQueryBuilder);
+    let statement = Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values);
+
+    if db.query_one(statement).await?.is_some() {
+        tracing::info!(db_name, "database already exists");
+
+        return Err(sea_orm::DbErr::Custom("database already exists".to_owned()));
+    }
+
     let with_options = env_vars::get_or_default(env_vars::POSTGRES_DB_OPTIONS, "ENCODING='UTF8'");
 
     let query = format!("CREATE DATABASE {db_name} WITH {with_options}");
