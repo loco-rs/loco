@@ -33,9 +33,13 @@ pub struct Cors {
     pub allow_credentials: bool,
     /// Max age
     pub max_age: Option<u64>,
-    // Vary headers
+    /// Vary headers
     #[serde(default = "default_vary_headers")]
     pub vary: Vec<String>,
+    /// Very permissive policy that allows all origins, headers, and methods and can be used with credentials.
+    /// This policy is not recommended for production.
+    #[serde(default)]
+    pub permissive: bool,
 }
 
 fn default_allow_origins() -> Vec<String> {
@@ -131,11 +135,15 @@ impl Cors {
             cors = cors.vary(list);
         }
 
+        cors = cors.allow_credentials(self.allow_credentials);
+
+        if self.permissive {
+            cors = cors::CorsLayer::very_permissive();
+        }
+
         if let Some(max_age) = self.max_age {
             cors = cors.max_age(Duration::from_secs(max_age));
         }
-
-        cors = cors.allow_credentials(self.allow_credentials);
 
         Ok(cors)
     }
