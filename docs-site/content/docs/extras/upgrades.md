@@ -182,3 +182,16 @@ Migrations using `create_table` now require `("id", ColType::PkAuto)`, new migra
         ).await
     }
 ```
+
+## Upgrade from 0.15.x to 0.16.x
+
+### Swap to validators builtin email validation
+
+PR: [#1359](https://github.com/loco-rs/loco/pull/1359)
+
+Swap from using the loco custom email validator, to the builtin email validator from `validator`.
+```diff
+- #[validate(custom (function = "validation::is_valid_email"))]
++ #[validate(email(message = "invalid email"))]
+  pub email: String,
+```
