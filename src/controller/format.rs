@@ -144,11 +144,11 @@ pub fn html(content: &str) -> Result<Response> {
 ///
 /// # Example:
 ///
-/// ```rust, ignore
+/// ```rust
 /// use loco_rs::prelude::*;
 ///
 /// pub async fn openapi_spec_yaml() -> Result<Response> {
-///     format::yaml(&get_openapi_spec().to_yaml()?)
+///     format::yaml("openapi: 3.1.0\ninfo:\n  title: Loco Demo\n  ")
 /// }
 /// ```
 ///
