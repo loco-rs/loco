@@ -140,6 +140,29 @@ pub fn html(content: &str) -> Result<Response> {
     Ok(Html(content.to_string()).into_response())
 }
 
+/// Returns a YAML response
+///
+/// # Example:
+///
+/// ```rust, ignore
+/// use loco_rs::prelude::*;
+///
+/// pub async fn openapi_spec_yaml() -> Result<Response> {
+///     format::yaml(&get_openapi_spec().to_yaml()?)
+/// }
+/// ```
+///
+/// # Errors
+///
+/// Currently this function doesn't return any error. this is for feature
+/// functionality
+pub fn yaml(content: &str) -> Result<Response> {
+    Ok(Builder::new()
+        .header(header::CONTENT_TYPE, "application/yaml")
+        .body(Body::from(content.to_string()))?
+        .into_response())
+}
+
 /// Returns an redirect response
 ///
 /// # Example:
@@ -448,6 +471,15 @@ mod tests {
     async fn html_response_format() {
         let response_content: &str = "<h1>loco</h1>";
         let response = html(response_content).unwrap();
+
+        assert_debug_snapshot!(response);
+        assert_eq!(response_body_to_string(response).await, response_content);
+    }
+
+    #[tokio::test]
+    async fn yaml_response_format() {
+        let response_content: &str = "openapi: 3.1.0\ninfo:\n  title: Loco Demo\n  ";
+        let response = yaml(response_content).unwrap();
 
         assert_debug_snapshot!(response);
         assert_eq!(response_body_to_string(response).await, response_content);
