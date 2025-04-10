@@ -60,6 +60,10 @@ pub struct ModelValidationMessage {
 /// # Errors
 ///
 /// Return an error in case the email is invalid.
+#[deprecated(
+    since = "0.15.1",
+    note = "Use the builtin email validator from `validator`"
+)]
 pub fn is_valid_email(email: &str) -> Result<(), ValidationError> {
     if email.contains('@') {
         Ok(())
