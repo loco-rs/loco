@@ -4,6 +4,7 @@
 use std::{
     env,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use axum::Router;
@@ -201,7 +202,8 @@ pub async fn run_task<H: Hooks>(
     Ok(())
 }
 
-/// Initializes a new scheduler instance based on the provided configuration and context.
+/// Initializes a new scheduler instance based on the provided configuration and
+/// context.
 fn scheduler<H: Hooks>(
     app_context: &AppContext,
     config: Option<&PathBuf>,
@@ -385,6 +387,7 @@ pub async fn create_context<H: Hooks>(
         cache: cache::Cache::new(cache::drivers::null::new()).into(),
         config,
         mailer,
+        app_routes: None,
     };
 
     H::after_context(ctx).await
@@ -430,7 +433,10 @@ pub async fn create_app<H: Hooks>(
 /// # Errors
 ///
 /// When could not create the application
-pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Result<BootResult> {
+pub async fn run_app<H: Hooks>(
+    mode: &StartMode,
+    mut app_context: AppContext,
+) -> Result<BootResult> {
     H::before_run(&app_context).await?;
     let initializers = H::initializers(&app_context).await?;
 
@@ -445,7 +451,14 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
 
     match mode {
         StartMode::ServerOnly => {
-            let router = setup_routes::<H>(&app_context, &initializers).await?;
+            let app = H::before_routes(&app_context).await?;
+            let app_routes = H::routes(&app_context);
+            app_context.app_routes = Some(Arc::new(app_routes.clone()));
+            let app = app_routes.to_router::<H>(app_context.clone(), app)?;
+            let mut router = H::after_routes(app, &app_context).await?;
+            for initializer in &initializers {
+                router = initializer.after_routes(router, &app_context).await?;
+            }
             Ok(BootResult {
                 app_context,
                 router: Some(router),
@@ -455,7 +468,14 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
         }
         StartMode::ServerAndWorker => {
             register_workers::<H>(&app_context).await?;
-            let router = setup_routes::<H>(&app_context, &initializers).await?;
+            let app = H::before_routes(&app_context).await?;
+            let app_routes = H::routes(&app_context);
+            app_context.app_routes = Some(Arc::new(app_routes.clone()));
+            let app = app_routes.to_router::<H>(app_context.clone(), app)?;
+            let mut router = H::after_routes(app, &app_context).await?;
+            for initializer in &initializers {
+                router = initializer.after_routes(router, &app_context).await?;
+            }
             Ok(BootResult {
                 app_context,
                 router: Some(router),
@@ -485,7 +505,8 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
     }
 }
 
-/// Sets up the application's routes based on the provided initializers and hooks.
+/// Sets up the application's routes based on the provided initializers and
+/// hooks.
 async fn setup_routes<H: Hooks>(
     app_context: &AppContext,
     initializers: &[Box<dyn Initializer>],

@@ -86,7 +86,7 @@ pub mod format;
 mod health;
 pub mod middleware;
 mod ping;
-mod routes;
+pub mod routes;
 pub mod views;
 
 /// Create an unauthorized error with a specified message.
