@@ -9,7 +9,10 @@ use regex::Regex;
 
 use crate::{
     app::{AppContext, Hooks},
-    controller::{middleware::MiddlewareLayer, routes::Routes},
+    controller::{
+        middleware::MiddlewareLayer,
+        routes::{LocoMethodRouter, Routes},
+    },
     Result,
 };
 
@@ -30,7 +33,7 @@ pub struct AppRoutes {
 pub struct ListRoutes {
     pub uri: String,
     pub actions: Vec<axum::http::Method>,
-    pub method: axum::routing::MethodRouter<AppContext>,
+    pub method: LocoMethodRouter,
 }
 
 impl fmt::Display for ListRoutes {
@@ -200,12 +203,14 @@ impl AppRoutes {
         self
     }
 
-    /// Set multiple nested routes with a prefix. These routes will be added with the specified prefix.
-    /// The prefix will only be applied to the routes given in this function.
+    /// Set multiple nested routes with a prefix. These routes will be added
+    /// with the specified prefix. The prefix will only be applied to the
+    /// routes given in this function.
     ///
     /// # Example
     ///
-    /// In the following example, you are adding `api` as a prefix and then nesting multiple routes within it:
+    /// In the following example, you are adding `api` as a prefix and then
+    /// nesting multiple routes within it:
     ///
     /// ```rust
     /// use axum::routing::get;
@@ -303,7 +308,15 @@ impl AppRoutes {
         //
         for router in self.collect() {
             tracing::info!("{}", router.to_string());
-            app = app.route(&router.uri, router.method);
+            match router.method {
+                LocoMethodRouter::Axum(method) => {
+                    app = app.route(&router.uri, method);
+                }
+                #[cfg(feature = "openapi")]
+                LocoMethodRouter::Utoipa(method) => {
+                    app = app.route(&router.uri, method.2.clone());
+                }
+            }
         }
 
         let middlewares = self.middlewares::<H>(&ctx);
