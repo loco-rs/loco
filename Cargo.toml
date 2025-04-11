@@ -35,6 +35,7 @@ auth_jwt = ["dep:jsonwebtoken"]
 cli = ["dep:clap"]
 testing = ["dep:axum-test", "dep:scraper"]
 with-db = ["dep:sea-orm", "dep:sea-orm-migration", "loco-gen/with-db"]
+openapi = ["dep:utoipa", "dep:utoipa-axum"]
 # Storage features
 all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
 storage_aws_s3 = ["opendal/services-s3"]
@@ -132,6 +133,10 @@ cfg-if = "1"
 
 uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
 
+# OpenAPI
+utoipa = { workspace = true, optional = true }
+utoipa-axum = { workspace = true, optional = true }
+
 # File Upload
 opendal = { version = "0.50.2", default-features = false, features = [
     "services-memory",
@@ -184,6 +189,10 @@ tower-http = { version = "0.6.1", features = [
     "compression-full",
 ] }
 heck = "0.4.0"
+
+# OpenAPI
+utoipa = { version = "5.0.0", features = ["yaml"] }
+utoipa-axum = { version = "0.2.0" }
 
 [dependencies.sea-orm-migration]
 optional = true
