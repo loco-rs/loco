@@ -989,7 +989,7 @@ impl PaginationResponse {
 ```
 
 
-# Testing 
+# Testing
 When testing controllers, the goal is to call the router's controller endpoint and verify the HTTP response, including the status code, response content, headers, and more.
 
 To initialize a test request, use `use loco_rs::testing::prelude::*;`, which prepares your app routers, providing the request instance and the application context.
@@ -1046,4 +1046,36 @@ async fn can_print_echo() {
 }
 ```
 
+## Authenticated Endpoints
+The following example works for both JWT and API_KEY Authentication.
+```rust
+use loco_rs::testing::prelude::*;
+use super::prepare_data;
 
+#[tokio::test]
+#[serial]
+async fn can_get_current_user() {
+    configure_insta!();
+
+    request::<App, _, _>(|request, ctx| async move {
+        // Initialize the user
+        let user = prepare_data::init_user_login(&request, &ctx).await;
+        let (auth_key, auth_value) = prepare_data::auth_header(&user.token);
+
+        // Then add the key to the request, usually in the header
+        let response = request
+            .get("/example")
+            .add_header(auth_key, auth_value)
+            .await;
+
+        assert_eq!(
+            response.status_code(),
+            200,
+            "Current request should succeed"
+        );
+
+        assert_debug_snapshot!((response.status_code(), response.text()));
+    })
+    .await;
+}
+```
