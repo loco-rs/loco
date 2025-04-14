@@ -17,6 +17,7 @@ use sqlx::{
 };
 use std::fmt::Write;
 use tokio::{task::JoinHandle, time::sleep};
+use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, trace};
 use ulid::Ulid;
 type JobId = String;
@@ -107,16 +108,26 @@ impl JobRegistry {
 
     /// Runs the job handlers with the provided number of workers.
     #[must_use]
-    pub fn run(&self, pool: &SqlitePool, opts: &RunOpts) -> Vec<JoinHandle<()>> {
+    pub fn run(
+        &self,
+        pool: &SqlitePool,
+        opts: &RunOpts,
+        token: &CancellationToken,
+    ) -> Vec<JoinHandle<()>> {
         let mut jobs = Vec::new();
 
         let interval = opts.poll_interval_sec;
         for idx in 0..opts.num_workers {
             let handlers = self.handlers.clone();
+            let worker_token = token.clone();
 
             let pool = pool.clone();
-            let job: JoinHandle<()> = tokio::spawn(async move {
+            let job = tokio::spawn(async move {
                 loop {
+                    if worker_token.is_cancelled() {
+                        trace!(worker_num = idx, "cancellation received, stopping worker");
+                        break;
+                    }
                     trace!(
                         pool_conns = pool.num_idle(),
                         worker_num = idx,
@@ -159,7 +170,16 @@ impl JobRegistry {
                             error!(job_name = job.name, "no handler found for job");
                         }
                     } else {
-                        sleep(Duration::from_secs(interval.into())).await;
+                        tokio::select! {
+                            biased;
+                            () = worker_token.cancelled() => {
+                                trace!(worker_num = idx, "cancellation received during sleep, stopping worker");
+                                break;
+                            }
+                            () = sleep(Duration::from_secs(interval.into())) => {
+                                // Interval elapsed, continue loop
+                            }
+                        }
                     }
                 }
             });
@@ -522,6 +542,7 @@ pub struct RunOpts {
 pub async fn create_provider(qcfg: &SqliteQueueConfig) -> Result<Queue> {
     let pool = connect(qcfg).await.map_err(Box::from)?;
     let registry = JobRegistry::new();
+    let token = CancellationToken::new();
     Ok(Queue::Sqlite(
         pool,
         Arc::new(tokio::sync::Mutex::new(registry)),
@@ -529,6 +550,7 @@ pub async fn create_provider(qcfg: &SqliteQueueConfig) -> Result<Queue> {
             num_workers: qcfg.num_workers,
             poll_interval_sec: qcfg.poll_interval_sec,
         },
+        token,
     ))
 }
 
@@ -1185,7 +1207,7 @@ mod tests {
 
         assert!(initialize_database(&pool).await.is_ok());
 
-        let job_data: JobData = serde_json::json!(null);
+        let job_data = serde_json::json!(null);
         let job_id = enqueue(&pool, "PanicJob", job_data, Utc::now(), None)
             .await
             .expect("Failed to enqueue job");
@@ -1215,7 +1237,8 @@ mod tests {
             num_workers: 1,
             poll_interval_sec: 1,
         };
-        let handles = registry.run(&pool, &opts);
+        let token = CancellationToken::new();
+        let handles = registry.run(&pool, &opts, &token);
 
         // Wait a bit for the worker to process the job
         sleep(Duration::from_secs(1)).await;
@@ -1239,8 +1262,7 @@ mod tests {
             .expect("Expected error message in job data");
         assert!(
             error_msg.contains("intentional panic for testing"),
-            "Error message '{}' did not contain expected text",
-            error_msg
+            "Error message '{error_msg}' did not contain expected text"
         );
     }
 }

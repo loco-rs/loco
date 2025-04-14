@@ -77,6 +77,9 @@ pub enum Error {
     #[error("Error sending email (smtp): '{0}'")]
     Smtp(#[from] smtp::Error),
 
+    #[error("Worker error: {0}")]
+    Worker(String),
+
     #[error(transparent)]
     IO(#[from] std::io::Error),
 
