@@ -3,7 +3,7 @@
 
 use std::{
     collections::HashMap,
-    fmt, io,
+    env, fmt, io,
     path::{Path, PathBuf},
     sync::OnceLock,
     time::{Duration, Instant},
@@ -194,8 +194,10 @@ impl JobDescription {
     /// In addition to all the IO errors possible
     pub fn run(&self) -> io::Result<std::process::Output> {
         tracing::info!(command = &self.command, "execute jon command");
-        let mut exec_job =
-            duct_sh::sh_dangerous(&self.command).env("LOCO_ENV", self.environment.to_string());
+        let config_folder = env::var("LOCO_CONFIG_FOLDER").unwrap_or("config".into());
+        let mut exec_job = duct_sh::sh_dangerous(&self.command)
+            .env("LOCO_ENV", self.environment.to_string())
+            .env("LOCO_CONFIG_FOLDER", config_folder);
         exec_job = match self.output {
             Output::Silent => exec_job.stdout_null().stderr_null(),
             Output::STDOUT => exec_job,
