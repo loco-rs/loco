@@ -133,19 +133,19 @@ impl Cors {
             }
         }
 
+        cors = cors.allow_credentials(self.allow_credentials);
+
+        if self.very_permissive {
+            warn!("Very permissive CORS policy is enabled, effectively bypassing CORS for all requests. (This is not recommended for production. disable with `server.middlewares.cors.very_permissive` in your config yaml)");
+            cors = cors::CorsLayer::very_permissive();
+        }
+
         let mut list = vec![];
         for v in &self.vary {
             list.push(v.parse()?);
         }
         if !list.is_empty() {
             cors = cors.vary(list);
-        }
-
-        cors = cors.allow_credentials(self.allow_credentials);
-
-        if self.very_permissive {
-            warn!("Very permissive CORS policy is enabled, effectively bypassing CORS for all requests. (This is not recommended for production. disable with `server.middlewares.cors.very_permissive` in your config yaml)");
-            cors = cors::CorsLayer::very_permissive();
         }
 
         if let Some(max_age) = self.max_age {
