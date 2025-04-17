@@ -7,7 +7,10 @@ cfg_if::cfg_if! {
     } else {}
 
 }
-use std::{net::SocketAddr, sync::{Arc, RwLock}};
+use std::{
+    net::SocketAddr,
+    sync::{Arc, RwLock},
+};
 
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
@@ -17,7 +20,7 @@ use crate::{
     bgworker::{self, Queue},
     boot::{shutdown_signal, BootResult, ServeParams, StartMode},
     cache::{self},
-    config::{Config},
+    config::Config,
     controller::{
         middleware::{self, MiddlewareLayer},
         AppRoutes,

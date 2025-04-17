@@ -3,7 +3,8 @@
 //! your application.
 use std::{
     env,
-    path::{Path, PathBuf}, sync::{Arc, RwLock},
+    path::{Path, PathBuf},
+    sync::{Arc, RwLock},
 };
 
 use axum::Router;
