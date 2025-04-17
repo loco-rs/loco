@@ -7,16 +7,20 @@ cfg_if::cfg_if! {
     } else {}
 
 }
-use std::{net::SocketAddr, sync::Arc};
+use std::{
+    net::SocketAddr,
+    sync::{Arc, RwLock},
+};
 
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
+use http::Extensions;
 
 use crate::{
     bgworker::{self, Queue},
     boot::{shutdown_signal, BootResult, ServeParams, StartMode},
     cache::{self},
-    config::{self, Config},
+    config::Config,
     controller::{
         middleware::{self, MiddlewareLayer},
         AppRoutes,
@@ -52,6 +56,8 @@ pub struct AppContext {
     pub storage: Arc<Storage>,
     // Cache instance for the application
     pub cache: Arc<cache::Cache>,
+    /// Storage for any helpful app-specific objects
+    pub extensions: Arc<RwLock<Extensions>>,
 }
 
 /// A trait that defines hooks for customizing and extending the behavior of a
@@ -139,7 +145,7 @@ pub trait Hooks: Send {
     ///
     /// # Errors
     /// If fails returns an error
-    fn init_logger(_config: &config::Config, _env: &Environment) -> Result<bool> {
+    fn init_logger(_ctx: &AppContext, _env: &Environment) -> Result<bool> {
         Ok(false)
     }
 

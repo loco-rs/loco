@@ -4,9 +4,11 @@
 use std::{
     env,
     path::{Path, PathBuf},
+    sync::{Arc, RwLock},
 };
 
 use axum::Router;
+use http::Extensions;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
 use tokio::{select, signal, task::JoinHandle};
@@ -385,6 +387,7 @@ pub async fn create_context<H: Hooks>(
         cache: cache::Cache::new(cache::drivers::null::new()).into(),
         config,
         mailer,
+        extensions: Arc::new(RwLock::new(Extensions::new())),
     };
 
     H::after_context(ctx).await

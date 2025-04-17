@@ -121,6 +121,7 @@ validator = { version = "0.20.0", features = ["derive"] }
 futures-util = "0.3"
 tower = { workspace = true }
 hyper = "1.1"
+http = "1.3"
 bytes = "1.1"
 ipnetwork = "0.20.0"
 semver = "1"
