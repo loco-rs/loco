@@ -194,7 +194,7 @@ impl JobDescription {
     /// In addition to all the IO errors possible
     pub fn run(&self) -> io::Result<std::process::Output> {
         tracing::info!(command = &self.command, "execute job command");
-        let config_folder = env::var("LOCO_CONFIG_FOLDER").unwrap_or("config".into());
+        let config_folder = env::var("LOCO_CONFIG_FOLDER").unwrap_or_else(|_| "config".into());
         let mut exec_job = duct_sh::sh_dangerous(&self.command)
             .env("LOCO_ENV", self.environment.to_string())
             .env("LOCO_CONFIG_FOLDER", config_folder);
