@@ -1,3 +1,5 @@
+use std::sync::{Arc, RwLock};
+
 use http::Extensions;
 
 use crate::{
@@ -21,6 +23,6 @@ pub async fn get_app_context() -> AppContext {
         cache: cache::Cache::new(cache::drivers::inmem::new()).into(),
         #[cfg(not(feature = "cache_inmem"))]
         cache: cache::Cache::new(cache::drivers::null::new()).into(),
-        extensions: Extensions::new(),
+        extensions: Arc::new(RwLock::new(Extensions::new())),
     }
 }
