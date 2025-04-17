@@ -11,8 +11,9 @@ use axum::Router as AXRouter;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tower_http::cors::{self, Any};
+use tracing::warn;
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
+use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
 
 /// CORS middleware configuration
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -39,7 +40,7 @@ pub struct Cors {
     /// Very permissive policy that allows all origins, headers, and methods and can be used with credentials.
     /// This policy is not recommended for production.
     #[serde(default)]
-    pub permissive: bool,
+    pub very_permissive: bool,
 }
 
 fn default_allow_origins() -> Vec<String> {
@@ -92,6 +93,11 @@ impl Cors {
         // look for '< access-control-allow-origin: https://example.com' in response.
         // if it doesn't appear (test with a bogus domain), it is not allowed.
         if self.allow_origins == default_allow_origins() {
+            // Return an error if using a configuration disallowed by CORS
+            // https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS/Errors/CORSNotSupportingCredentials
+            if self.allow_credentials {
+                return Err(Error::string("Invalid CORS configuration. `Access-Control-Allow-Credentials: true` cannot be used with `Access-Control-Allow-Origin: *`"));
+            }
             cors = cors.allow_origin(Any);
         } else {
             let mut list = vec![];
@@ -137,7 +143,8 @@ impl Cors {
 
         cors = cors.allow_credentials(self.allow_credentials);
 
-        if self.permissive {
+        if self.very_permissive {
+            warn!("Very permissive CORS policy is enabled, effectively bypassing CORS for all requests. (This is not recommended for production. disable with `server.middlewares.cors.very_permissive` in your config yaml)");
             cors = cors::CorsLayer::very_permissive();
         }
 
