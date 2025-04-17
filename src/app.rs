@@ -7,7 +7,7 @@ cfg_if::cfg_if! {
     } else {}
 
 }
-use std::{net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, sync::{Arc, RwLock}};
 
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
@@ -54,7 +54,7 @@ pub struct AppContext {
     // Cache instance for the application
     pub cache: Arc<cache::Cache>,
     /// Storage for any helpful app-specific objects
-    pub extensions: Extensions,
+    pub extensions: Arc<RwLock<Extensions>>,
 }
 
 /// A trait that defines hooks for customizing and extending the behavior of a

@@ -3,7 +3,7 @@
 //! your application.
 use std::{
     env,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, sync::{Arc, RwLock},
 };
 
 use axum::Router;
@@ -386,7 +386,7 @@ pub async fn create_context<H: Hooks>(
         cache: cache::Cache::new(cache::drivers::null::new()).into(),
         config,
         mailer,
-        extensions: Extensions::new(),
+        extensions: Arc::new(RwLock::new(Extensions::new())),
     };
 
     H::after_context(ctx).await
