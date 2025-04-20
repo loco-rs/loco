@@ -12,7 +12,7 @@
 * Fix the db creation. [https://github.com/loco-rs/loco/pull/1352](https://github.com/loco-rs/loco/pull/1352)
 * YAML responses. [https://github.com/loco-rs/loco/pull/1360](https://github.com/loco-rs/loco/pull/1360)
 * Swap to the validators' built-in email validation. [https://github.com/loco-rs/loco/pull/1359](https://github.com/loco-rs/loco/pull/1359)
-* Cancellation tokens for the other 2 background workers. [https://github.com/loco-rs/loco/pull/1365](https://github.com/loco-rs/loco/pull/1365)
+* Cancellation tokens for the Postgres and SQLite background workers. [https://github.com/loco-rs/loco/pull/1365](https://github.com/loco-rs/loco/pull/1365)
 
 ## v0.15.0
 
