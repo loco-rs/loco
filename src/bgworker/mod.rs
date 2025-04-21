@@ -13,7 +13,7 @@ use serde_variant::to_variant_name;
 #[cfg(feature = "bg_pg")]
 pub mod pg;
 #[cfg(feature = "bg_redis")]
-pub mod skq;
+pub mod redis;
 #[cfg(feature = "bg_sqlt")]
 pub mod sqlt;
 
@@ -66,8 +66,9 @@ impl std::fmt::Display for JobStatus {
 pub enum Queue {
     #[cfg(feature = "bg_redis")]
     Redis(
-        bb8::Pool<sidekiq::RedisConnectionManager>,
-        Arc<tokio::sync::Mutex<sidekiq::Processor>>,
+        redis::RedisPool,
+        Arc<tokio::sync::Mutex<redis::JobRegistry>>,
+        redis::RunOpts,
         tokio_util::sync::CancellationToken,
     ),
     #[cfg(feature = "bg_pg")]
@@ -93,7 +94,6 @@ impl Queue {
     /// # Errors
     ///
     /// This function will return an error if fails
-    #[allow(unused_variables)]
     pub async fn enqueue<A: Serialize + Send + Sync>(
         &self,
         class: String,
@@ -103,8 +103,8 @@ impl Queue {
         tracing::debug!(worker = class, "job enqueue");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _, _) => {
-                skq::enqueue(pool, class, queue, args).await?;
+            Self::Redis(pool, _, _, _) => {
+                redis::enqueue(pool, class, queue, args).await?;
             }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, _, _, _) => {
@@ -151,9 +151,9 @@ impl Queue {
         tracing::debug!(worker = W::class_name(), "register worker");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, p, _) => {
+            Self::Redis(_, p, _, _) => {
                 let mut p = p.lock().await;
-                p.register(skq::SidekiqBackgroundWorker::new(worker));
+                p.register_worker(W::class_name(), worker)?;
             }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(_, registry, _, _) => {
@@ -179,8 +179,21 @@ impl Queue {
         tracing::debug!("running background jobs");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, p, _) => {
-                p.lock().await.clone().run().await;
+            Self::Redis(pool, registry, run_opts, token) => {
+                let handles = registry.lock().await.run(pool, run_opts, &token.clone());
+                for handle in handles {
+                    if let Err(e) = handle.await {
+                        if e.is_cancelled() {
+                            tracing::debug!("Worker task cancelled during shutdown.");
+                        } else if e.is_panic() {
+                            std::panic::resume_unwind(e.into_panic());
+                        } else {
+                            tracing::error!("Worker task failed to join: {:?}", e);
+                            return Err(crate::Error::Worker(format!("Worker join error: {e}")));
+                        }
+                    }
+                }
+                tracing::debug!("all redis worker tasks finished");
             }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, registry, run_opts, token) => {
@@ -237,7 +250,7 @@ impl Queue {
         tracing::debug!("workers setup");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, _) => {}
+            Self::Redis(_, _, _, _) => {}
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, _, _, _) => {
                 pg::initialize_database(pool).await.map_err(Box::from)?;
@@ -260,8 +273,8 @@ impl Queue {
         tracing::debug!("clearing job");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _, _) => {
-                skq::clear(pool).await?;
+            Self::Redis(pool, _, _, _) => {
+                redis::clear(pool).await?;
             }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, _, _, _) => {
@@ -285,8 +298,8 @@ impl Queue {
         tracing::debug!("job queue ping requested");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _, _) => {
-                skq::ping(pool).await?;
+            Self::Redis(pool, _, _, _) => {
+                redis::ping(pool).await?;
             }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, _, _, _) => {
@@ -305,7 +318,7 @@ impl Queue {
     pub fn describe(&self) -> String {
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, _) => "redis queue".to_string(),
+            Self::Redis(_, _, _, _) => "redis queue".to_string(),
             #[cfg(feature = "bg_pg")]
             Self::Postgres(_, _, _, _) => "postgres queue".to_string(),
             #[cfg(feature = "bg_sqlt")]
@@ -322,7 +335,7 @@ impl Queue {
         tracing::debug!("waiting for running jobs to finish...");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, cancellation_token) => cancellation_token.cancel(),
+            Self::Redis(_, _, _, cancellation_token) => cancellation_token.cancel(),
             #[cfg(feature = "bg_pg")]
             Self::Postgres(_, _, _, cancellation_token) => cancellation_token.cancel(),
             #[cfg(feature = "bg_sqlt")]
@@ -356,18 +369,17 @@ impl Queue {
                 Ok(serde_json::to_value(jobs)?)
             }
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, _) => {
-                tracing::error!("getting jobs for redis provider not implemented");
-                Err(Error::string(
-                    "getting jobs not supported for redis provider",
-                ))
+            #[cfg(feature = "bg_redis")]
+            Self::Redis(pool, _, _, _) => {
+                let jobs = redis::get_jobs(pool, status, age_days).await?;
+                Ok(serde_json::to_value(jobs)?)
             }
             Self::None => {
                 tracing::error!(
                     "no queue provider is configured: compile with at least one queue provider \
                      feature"
                 );
-                Err(Error::string("provider not configure"))
+                Err(Error::string("provider not configured"))
             }
         }
     }
@@ -388,18 +400,13 @@ impl Queue {
             #[cfg(feature = "bg_sqlt")]
             Self::Sqlite(pool, _, _, _) => sqlt::cancel_jobs_by_name(pool, job_name).await,
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, _) => {
-                tracing::error!("canceling jobs for redis provider not implemented");
-                Err(Error::string(
-                    "canceling jobs not supported for redis provider",
-                ))
-            }
+            Self::Redis(pool, _, _, _) => redis::cancel_jobs_by_name(pool, job_name).await,
             Self::None => {
                 tracing::error!(
                     "no queue provider is configured: compile with at least one queue provider \
                      feature"
                 );
-                Err(Error::string("provider not configure"))
+                Err(Error::string("provider not configured"))
             }
         }
     }
@@ -428,16 +435,15 @@ impl Queue {
                 sqlt::clear_jobs_older_than(pool, age_days, Some(status)).await
             }
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, _) => {
-                tracing::error!("clear jobs for redis provider not implemented");
-                Err(Error::string("clear jobs not supported for redis provider"))
+            Self::Redis(pool, _, _, _) => {
+                redis::clear_jobs_older_than(pool, age_days, Some(status)).await
             }
             Self::None => {
                 tracing::error!(
                     "no queue provider is configured: compile with at least one queue provider \
                      feature"
                 );
-                Err(Error::string("provider not configure"))
+                Err(Error::string("provider not configured"))
             }
         }
     }
@@ -456,16 +462,13 @@ impl Queue {
             #[cfg(feature = "bg_sqlt")]
             Self::Sqlite(pool, _, _, _) => sqlt::clear_by_status(pool, status).await,
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, _) => {
-                tracing::error!("clear jobs for redis provider not implemented");
-                Err(Error::string("clear jobs not supported for redis provider"))
-            }
+            Self::Redis(pool, _, _, _) => redis::clear_by_status(pool, status).await,
             Self::None => {
                 tracing::error!(
                     "no queue provider is configured: compile with at least one queue provider \
                      feature"
                 );
-                Err(Error::string("provider not configure"))
+                Err(Error::string("provider not configured"))
             }
         }
     }
@@ -484,18 +487,13 @@ impl Queue {
             #[cfg(feature = "bg_sqlt")]
             Self::Sqlite(pool, _, _, _) => sqlt::requeue(pool, age_minutes).await,
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, _) => {
-                tracing::error!("Update status for redis provider not implemented");
-                Err(Error::string(
-                    "Update status not supported for redis provider",
-                ))
-            }
+            Self::Redis(pool, _, _, _) => redis::requeue(pool, age_minutes).await,
             Self::None => {
                 tracing::error!(
                     "no queue provider is configured: compile with at least one queue provider \
                      feature"
                 );
-                Err(Error::string("provider not configure"))
+                Err(Error::string("provider not configured"))
             }
         }
     }
@@ -568,18 +566,19 @@ impl Queue {
                 Ok(())
             }
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, _) => {
-                tracing::error!("import jobs for redis provider not implemented");
-                Err(Error::string(
-                    "getting jobs not supported for redis provider",
-                ))
+            Self::Redis(_, _, _, _) => {
+                let jobs: Vec<redis::Job> = serde_yaml::from_reader(File::open(path)?)?;
+                for job in jobs {
+                    self.enqueue(job.name.to_string(), None, job.data).await?;
+                }
+                Ok(())
             }
             Self::None => {
                 tracing::error!(
                     "no queue provider is configured: compile with at least one queue provider \
                      feature"
                 );
-                Err(Error::string("provider not configure"))
+                Err(Error::string("provider not configured"))
             }
         }
     }
@@ -692,10 +691,9 @@ pub async fn create_queue_provider(config: &Config) -> Result<Option<Arc<Queue>>
     if config.workers.mode == config::WorkerMode::BackgroundQueue {
         if let Some(queue) = &config.queue {
             match queue {
-                // TODOQ call the object inside RedisQueueConfig and pass that
                 #[cfg(feature = "bg_redis")]
                 config::QueueConfig::Redis(qcfg) => {
-                    Ok(Some(Arc::new(skq::create_provider(qcfg).await?)))
+                    Ok(Some(Arc::new(redis::create_provider(qcfg).await?)))
                 }
                 #[cfg(feature = "bg_pg")]
                 config::QueueConfig::Postgres(qcfg) => {
@@ -774,7 +772,7 @@ mod tests {
             .await
             .expect("dump jobs");
 
-        assert_debug_snapshot!(std::fs::read_to_string(dump_file));
+        assert_debug_snapshot!(std::fs::read_to_string(dump_file).unwrap());
     }
 
     #[tokio::test]

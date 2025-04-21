@@ -1,6 +1,7 @@
 ---
 source: src/bgworker/pg.rs
 expression: job_after_dequeue
+snapshot_kind: text
 ---
 Job {
     id: "<REDACTED>",
