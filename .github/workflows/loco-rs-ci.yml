@@ -55,7 +55,7 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-hack
-      - run: cargo hack check --each-feature 
+      - run: cargo hack check --each-feature
 
   test:
     needs: [check, style]
@@ -100,4 +100,4 @@ jobs:
           args: --all-features --workspace --exclude loco-gen --exclude loco
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres_test
-          REDIS_URL: redis://localhost:{{job.services.redis.ports[6379]}}
+          REDIS_URL: redis://localhost:${{ job.services.redis.ports[6379] }}
