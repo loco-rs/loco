@@ -89,13 +89,12 @@ impl Cache {
     /// and deserialized value.
     pub async fn get<T: DeserializeOwned>(&self, key: &str) -> CacheResult<Option<T>> {
         let result = self.driver.get(key).await?;
-        match result {
-            None => Ok(None),
-            Some(value) => {
-                let deserialized = serde_json::from_str::<T>(&value)
-                    .map_err(|e| CacheError::Deserialization(e.to_string()))?;
-                Ok(Some(deserialized))
-            }
+        if let Some(value) = result {
+            let deserialized = serde_json::from_str::<T>(&value)
+                .map_err(|e| CacheError::Deserialization(e.to_string()))?;
+            Ok(Some(deserialized))
+        } else {
+            Ok(None)
         }
     }
 
@@ -132,7 +131,7 @@ impl Cache {
     /// # Errors
     ///
     /// A [`CacheResult`] indicating the success of the operation.
-    pub async fn insert<T: Serialize>(&self, key: &str, value: &T) -> CacheResult<()> {
+    pub async fn insert<T: Serialize + Sync>(&self, key: &str, value: &T) -> CacheResult<()> {
         let serialized =
             serde_json::to_string(value).map_err(|e| CacheError::Serialization(e.to_string()))?;
         self.driver.insert(key, &serialized).await
@@ -173,7 +172,7 @@ impl Cache {
     /// # Errors
     ///
     /// A [`CacheResult`] indicating the success of the operation.
-    pub async fn insert_with_expiry<T: Serialize>(
+    pub async fn insert_with_expiry<T: Serialize + Sync>(
         &self,
         key: &str,
         value: &T,
@@ -230,16 +229,15 @@ impl Cache {
     /// A [`LocoResult`] indicating the success of the operation.
     pub async fn get_or_insert<T, F>(&self, key: &str, f: F) -> LocoResult<T>
     where
-        T: Serialize + DeserializeOwned,
+        T: Serialize + DeserializeOwned + Send + Sync,
         F: Future<Output = LocoResult<T>> + Send,
     {
-        match self.get::<T>(key).await? {
-            Some(value) => Ok(value),
-            None => {
-                let value = f.await?;
-                self.insert(key, &value).await?;
-                Ok(value)
-            }
+        if let Some(value) = self.get::<T>(key).await? {
+            Ok(value)
+        } else {
+            let value = f.await?;
+            self.insert(key, &value).await?;
+            Ok(value)
         }
     }
 
@@ -294,16 +292,15 @@ impl Cache {
         f: F,
     ) -> LocoResult<T>
     where
-        T: Serialize + DeserializeOwned,
+        T: Serialize + DeserializeOwned + Send + Sync,
         F: Future<Output = LocoResult<T>> + Send,
     {
-        match self.get::<T>(key).await? {
-            Some(value) => Ok(value),
-            None => {
-                let value = f.await?;
-                self.insert_with_expiry(key, &value, duration).await?;
-                Ok(value)
-            }
+        if let Some(value) = self.get::<T>(key).await? {
+            Ok(value)
+        } else {
+            let value = f.await?;
+            self.insert_with_expiry(key, &value, duration).await?;
+            Ok(value)
         }
     }
 
