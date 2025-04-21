@@ -988,8 +988,8 @@ mod tests {
     use chrono::Utc;
 
     async fn setup_redis() -> RedisPool {
-        let redis_url = std::env::var("REDIS_TEST_URL")
-            .unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
+        let redis_url =
+            std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
         let client = connect(&redis_url).expect("connect to redis");
         clear(&client).await.expect("clear redis");
         client
