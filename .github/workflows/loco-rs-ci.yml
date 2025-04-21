@@ -55,7 +55,7 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-hack
-      - run: cargo hack check --each-feature 
+      - run: cargo hack check --each-feature
 
   test:
     needs: [check, style]
