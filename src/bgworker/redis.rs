@@ -982,7 +982,7 @@ pub async fn create_provider(qcfg: &RedisQueueConfig) -> Result<Queue> {
     ))
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "integration_test"))]
 mod tests {
     use super::*;
     use chrono::Utc;
