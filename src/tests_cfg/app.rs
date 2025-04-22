@@ -1,16 +1,15 @@
 use crate::{
     app::AppContext,
-    cache, config,
+    cache,
     environment::Environment,
     storage::{self, Storage},
     tests_cfg::config::test_config,
 };
 
 pub async fn get_app_context() -> AppContext {
-    let cache_config = config::InMemCacheConfig {
-        max_capacity: 32 * 1024 * 1024,
-    };
-    let cache = cache::drivers::inmem::new(&cache_config);
+    // Always use null cache for tests to avoid feature-specific complications
+    let driver = cache::drivers::null::new();
+    let cache = cache::Cache::new(driver);
 
     AppContext {
         environment: Environment::Test,
