@@ -152,7 +152,7 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
     if db.get_database_backend() == DatabaseBackend::Sqlite {
         db.execute(Statement::from_string(
             DatabaseBackend::Sqlite,
-            config.run_on_start.clone().unwrap_or(
+            config.run_on_start.clone().unwrap_or_else(|| {
                 "
             PRAGMA foreign_keys = ON;
             PRAGMA journal_mode = WAL;
@@ -162,8 +162,8 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
             PRAGMA cache_size = 2000;
             PRAGMA busy_timeout = 5000;
             "
-                .to_string(),
-            ),
+                .to_string()
+            }),
         ))
         .await?;
     }

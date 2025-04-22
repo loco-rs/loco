@@ -221,23 +221,23 @@ pub struct Database {
     #[serde(default)]
     pub dangerously_recreate: bool,
 
-    // sqlite run on start commands
-    /// this can be used to confiure PRAGMAs for SQLite where you can pass all values as a string.
+    // Execute query after initializing the DB
+    /// for e.g. this can be used to confiure PRAGMAs for `SQLite` where you can pass all values as a string.
     /// Default values are:
     ///
-    /// PRAGMA foreign_keys = ON;
+    /// PRAGMA `foreign_keys` = ON;
     ///
-    /// PRAGMA journal_mode = WAL;
+    /// PRAGMA `journal_mode` = WAL;
     ///
-    /// PRAGMA synchronous = NORMAL;
+    /// PRAGMA `synchronous` = NORMAL;
     ///
-    /// PRAGMA mmap_size = 134217728;
+    /// PRAGMA `mmap_size` = 134217728;
     ///
-    /// PRAGMA journal_size_limit = 67108864;
+    /// PRAGMA `journal_size_limit` = 67108864;
     ///
-    /// PRAGMA cache_size = 2000;
+    /// PRAGMA `cache_size` = 2000;
     ///
-    /// PRAGMA busy_timeout = 5000;
+    /// PRAGMA `busy_timeout` = 5000;
     pub run_on_start: Option<String>,
 }
 
