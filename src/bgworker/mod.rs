@@ -75,12 +75,14 @@ pub enum Queue {
         pg::PgPool,
         std::sync::Arc<tokio::sync::Mutex<pg::JobRegistry>>,
         pg::RunOpts,
+        tokio_util::sync::CancellationToken,
     ),
     #[cfg(feature = "bg_sqlt")]
     Sqlite(
         sqlt::SqlitePool,
         std::sync::Arc<tokio::sync::Mutex<sqlt::JobRegistry>>,
         sqlt::RunOpts,
+        tokio_util::sync::CancellationToken,
     ),
     None,
 }
@@ -105,7 +107,7 @@ impl Queue {
                 skq::enqueue(pool, class, queue, args).await?;
             }
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => {
+            Self::Postgres(pool, _, _, _) => {
                 pg::enqueue(
                     pool,
                     &class,
@@ -117,7 +119,7 @@ impl Queue {
                 .map_err(Box::from)?;
             }
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => {
+            Self::Sqlite(pool, _, _, _) => {
                 sqlt::enqueue(
                     pool,
                     &class,
@@ -154,12 +156,12 @@ impl Queue {
                 p.register(skq::SidekiqBackgroundWorker::new(worker));
             }
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(_, registry, _) => {
+            Self::Postgres(_, registry, _, _) => {
                 let mut r = registry.lock().await;
                 r.register_worker(W::class_name(), worker)?;
             }
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(_, registry, _) => {
+            Self::Sqlite(_, registry, _, _) => {
                 let mut r = registry.lock().await;
                 r.register_worker(W::class_name(), worker)?;
             }
@@ -181,20 +183,40 @@ impl Queue {
                 p.lock().await.clone().run().await;
             }
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, registry, run_opts) => {
+            Self::Postgres(pool, registry, run_opts, token) => {
                 //TODOQ: num workers to config
-                let handles = registry.lock().await.run(pool, run_opts);
+                let handles = registry.lock().await.run(pool, run_opts, &token.clone());
                 for handle in handles {
-                    handle.await?;
+                    if let Err(e) = handle.await {
+                        if e.is_cancelled() {
+                            tracing::debug!("Worker task cancelled during shutdown.");
+                        } else if e.is_panic() {
+                            std::panic::resume_unwind(e.into_panic());
+                        } else {
+                            tracing::error!("Worker task failed to join: {:?}", e);
+                            return Err(crate::Error::Worker(format!("Worker join error: {e}")));
+                        }
+                    }
                 }
+                tracing::debug!("all pg worker tasks finished");
             }
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, registry, run_opts) => {
+            Self::Sqlite(pool, registry, run_opts, token) => {
                 //TODOQ: num workers to config
-                let handles = registry.lock().await.run(pool, run_opts);
+                let handles = registry.lock().await.run(pool, run_opts, &token.clone());
                 for handle in handles {
-                    handle.await?;
+                    if let Err(e) = handle.await {
+                        if e.is_cancelled() {
+                            tracing::debug!("Worker task cancelled during shutdown.");
+                        } else if e.is_panic() {
+                            std::panic::resume_unwind(e.into_panic());
+                        } else {
+                            tracing::error!("Worker task failed to join: {:?}", e);
+                            return Err(crate::Error::Worker(format!("Worker join error: {e}")));
+                        }
+                    }
                 }
+                tracing::debug!("all sqlite worker tasks finished");
             }
             _ => {
                 tracing::error!(
@@ -217,11 +239,11 @@ impl Queue {
             #[cfg(feature = "bg_redis")]
             Self::Redis(_, _, _) => {}
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => {
+            Self::Postgres(pool, _, _, _) => {
                 pg::initialize_database(pool).await.map_err(Box::from)?;
             }
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => {
+            Self::Sqlite(pool, _, _, _) => {
                 sqlt::initialize_database(pool).await.map_err(Box::from)?;
             }
             _ => {}
@@ -242,11 +264,11 @@ impl Queue {
                 skq::clear(pool).await?;
             }
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => {
+            Self::Postgres(pool, _, _, _) => {
                 pg::clear(pool).await.map_err(Box::from)?;
             }
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => {
+            Self::Sqlite(pool, _, _, _) => {
                 sqlt::clear(pool).await.map_err(Box::from)?;
             }
             _ => {}
@@ -267,11 +289,11 @@ impl Queue {
                 skq::ping(pool).await?;
             }
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => {
+            Self::Postgres(pool, _, _, _) => {
                 pg::ping(pool).await.map_err(Box::from)?;
             }
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => {
+            Self::Sqlite(pool, _, _, _) => {
                 sqlt::ping(pool).await.map_err(Box::from)?;
             }
             _ => {}
@@ -285,9 +307,9 @@ impl Queue {
             #[cfg(feature = "bg_redis")]
             Self::Redis(_, _, _) => "redis queue".to_string(),
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(_, _, _) => "postgres queue".to_string(),
+            Self::Postgres(_, _, _, _) => "postgres queue".to_string(),
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(_, _, _) => "sqlite queue".to_string(),
+            Self::Sqlite(_, _, _, _) => "sqlite queue".to_string(),
             _ => "no queue".to_string(),
         }
     }
@@ -301,6 +323,10 @@ impl Queue {
         match self {
             #[cfg(feature = "bg_redis")]
             Self::Redis(_, _, cancellation_token) => cancellation_token.cancel(),
+            #[cfg(feature = "bg_pg")]
+            Self::Postgres(_, _, _, cancellation_token) => cancellation_token.cancel(),
+            #[cfg(feature = "bg_sqlt")]
+            Self::Sqlite(_, _, _, cancellation_token) => cancellation_token.cancel(),
             _ => {}
         }
 
@@ -315,14 +341,14 @@ impl Queue {
         tracing::debug!(status = ?status, age_days = ?age_days, "getting jobs");
         match self {
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => {
+            Self::Postgres(pool, _, _, _) => {
                 let jobs = pg::get_jobs(pool, status, age_days)
                     .await
                     .map_err(Box::from)?;
                 Ok(serde_json::to_value(jobs)?)
             }
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => {
+            Self::Sqlite(pool, _, _, _) => {
                 let jobs = sqlt::get_jobs(pool, status, age_days)
                     .await
                     .map_err(Box::from)?;
@@ -358,9 +384,9 @@ impl Queue {
 
         match self {
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => pg::cancel_jobs_by_name(pool, job_name).await,
+            Self::Postgres(pool, _, _, _) => pg::cancel_jobs_by_name(pool, job_name).await,
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => sqlt::cancel_jobs_by_name(pool, job_name).await,
+            Self::Sqlite(pool, _, _, _) => sqlt::cancel_jobs_by_name(pool, job_name).await,
             #[cfg(feature = "bg_redis")]
             Self::Redis(_, _, _) => {
                 tracing::error!("canceling jobs for redis provider not implemented");
@@ -394,11 +420,11 @@ impl Queue {
 
         match self {
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => {
+            Self::Postgres(pool, _, _, _) => {
                 pg::clear_jobs_older_than(pool, age_days, Some(status)).await
             }
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => {
+            Self::Sqlite(pool, _, _, _) => {
                 sqlt::clear_jobs_older_than(pool, age_days, Some(status)).await
             }
             #[cfg(feature = "bg_redis")]
@@ -426,9 +452,9 @@ impl Queue {
         tracing::debug!(status = ?status, "clear jobs by status");
         match self {
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => pg::clear_by_status(pool, status).await,
+            Self::Postgres(pool, _, _, _) => pg::clear_by_status(pool, status).await,
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => sqlt::clear_by_status(pool, status).await,
+            Self::Sqlite(pool, _, _, _) => sqlt::clear_by_status(pool, status).await,
             #[cfg(feature = "bg_redis")]
             Self::Redis(_, _, _) => {
                 tracing::error!("clear jobs for redis provider not implemented");
@@ -454,9 +480,9 @@ impl Queue {
         tracing::debug!(age_minutes = age_minutes, "requeue jobs");
         match self {
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => pg::requeue(pool, age_minutes).await,
+            Self::Postgres(pool, _, _, _) => pg::requeue(pool, age_minutes).await,
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => sqlt::requeue(pool, age_minutes).await,
+            Self::Sqlite(pool, _, _, _) => sqlt::requeue(pool, age_minutes).await,
             #[cfg(feature = "bg_redis")]
             Self::Redis(_, _, _) => {
                 tracing::error!("Update status for redis provider not implemented");
@@ -525,7 +551,7 @@ impl Queue {
 
         match &self {
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(_, _, _) => {
+            Self::Postgres(_, _, _, _) => {
                 let jobs: Vec<pg::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
                     self.enqueue(job.name.to_string(), None, job.data).await?;
@@ -534,7 +560,7 @@ impl Queue {
                 Ok(())
             }
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(_, _, _) => {
+            Self::Sqlite(_, _, _, _) => {
                 let jobs: Vec<sqlt::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
                     self.enqueue(job.name.to_string(), None, job.data).await?;
