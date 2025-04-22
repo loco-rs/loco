@@ -382,7 +382,7 @@ pub async fn create_context<H: Hooks>(
         db,
         queue_provider,
         storage: Storage::single(storage::drivers::null::new()).into(),
-        cache: cache::Cache::new(cache::drivers::null::new()).into(),
+        cache: cache::create_cache_provider(&config).await?,
         config,
         mailer,
     };

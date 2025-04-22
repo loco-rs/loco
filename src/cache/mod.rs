@@ -8,7 +8,9 @@ use std::{future::Future, time::Duration};
 use serde::{de::DeserializeOwned, Serialize};
 
 use self::drivers::CacheDriver;
+use crate::config;
 use crate::Result as LocoResult;
+use std::sync::Arc;
 
 /// Errors related to cache operations
 #[derive(thiserror::Error, Debug)]
@@ -16,13 +18,48 @@ use crate::Result as LocoResult;
 pub enum CacheError {
     #[error(transparent)]
     Any(#[from] Box<dyn std::error::Error + Send + Sync>),
+
     #[error("Serialization error: {0}")]
     Serialization(String),
+
     #[error("Deserialization error: {0}")]
     Deserialization(String),
+
+    #[cfg(feature = "cache_redis")]
+    #[error(transparent)]
+    Redis(#[from] bb8_redis::redis::RedisError),
+
+    #[cfg(feature = "cache_redis")]
+    #[error(transparent)]
+    RedisConnectionError(#[from] bb8_redis::bb8::RunError<bb8_redis::redis::RedisError>),
 }
 
 pub type CacheResult<T> = std::result::Result<T, CacheError>;
+
+/// Create a provider
+///
+/// # Errors
+///
+/// This function will return an error if fails to build
+#[allow(clippy::unused_async)]
+pub async fn create_cache_provider(config: &config::Config) -> crate::Result<Arc<Cache>> {
+    match &config.cache {
+        #[cfg(feature = "cache_redis")]
+        config::CacheConfig::Redis(config) => {
+            let cache = crate::cache::drivers::redis::new(config).await?;
+            Ok(Arc::new(cache))
+        }
+        #[cfg(feature = "cache_inmem")]
+        config::CacheConfig::InMem(config) => {
+            let cache = crate::cache::drivers::inmem::new(config);
+            Ok(Arc::new(cache))
+        }
+        config::CacheConfig::Null => {
+            let driver = crate::cache::drivers::null::new();
+            Ok(Arc::new(Cache::new(driver)))
+        }
+    }
+}
 
 /// Represents a cache instance
 pub struct Cache {
@@ -42,9 +79,11 @@ impl Cache {
     /// # Example
     /// ```
     /// use loco_rs::cache::{self, CacheResult};
+    /// use loco_rs::config::InMemCacheConfig;
     ///
     /// pub async fn contains_key() -> CacheResult<bool> {
-    ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
+    ///     let config = InMemCacheConfig { max_capacity: 100 };
+    ///     let cache = cache::Cache::new(cache::drivers::inmem::new(&config).driver);
     ///     cache.contains_key("key").await
     /// }
     /// ```
@@ -60,6 +99,7 @@ impl Cache {
     /// # Example
     /// ```
     /// use loco_rs::cache::{self, CacheResult};
+    /// use loco_rs::config::InMemCacheConfig;
     /// use serde::Deserialize;
     ///
     /// #[derive(Deserialize)]
@@ -69,7 +109,8 @@ impl Cache {
     /// }
     ///
     /// pub async fn get_user() -> CacheResult<Option<User>> {
-    ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
+    ///     let config = InMemCacheConfig { max_capacity: 100 };
+    ///     let cache = cache::Cache::new(cache::drivers::inmem::new(&config).driver);
     ///     cache.get::<User>("user:1").await
     /// }
     /// ```
@@ -77,9 +118,11 @@ impl Cache {
     /// # Example with String
     /// ```
     /// use loco_rs::cache::{self, CacheResult};
+    /// use loco_rs::config::InMemCacheConfig;
     ///
     /// pub async fn get_string() -> CacheResult<Option<String>> {
-    ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
+    ///     let config = InMemCacheConfig { max_capacity: 100 };
+    ///     let cache = cache::Cache::new(cache::drivers::inmem::new(&config).driver);
     ///     cache.get::<String>("key").await
     /// }
     /// ```
@@ -103,6 +146,7 @@ impl Cache {
     /// # Example
     /// ```
     /// use loco_rs::cache::{self, CacheResult};
+    /// use loco_rs::config::InMemCacheConfig;
     /// use serde::Serialize;
     ///
     /// #[derive(Serialize)]
@@ -112,7 +156,8 @@ impl Cache {
     /// }
     ///
     /// pub async fn insert() -> CacheResult<()> {
-    ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
+    ///     let config = InMemCacheConfig { max_capacity: 100 };
+    ///     let cache = cache::Cache::new(cache::drivers::inmem::new(&config).driver);
     ///     let user = User { name: "Alice".to_string(), age: 30 };
     ///     cache.insert("user:1", &user).await
     /// }
@@ -121,9 +166,11 @@ impl Cache {
     /// # Example with String
     /// ```
     /// use loco_rs::cache::{self, CacheResult};
+    /// use loco_rs::config::InMemCacheConfig;
     ///
     /// pub async fn insert_string() -> CacheResult<()> {
-    ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
+    ///     let config = InMemCacheConfig { max_capacity: 100 };
+    ///     let cache = cache::Cache::new(cache::drivers::inmem::new(&config).driver);
     ///     cache.insert("key", &"value".to_string()).await
     /// }
     /// ```
@@ -131,7 +178,11 @@ impl Cache {
     /// # Errors
     ///
     /// A [`CacheResult`] indicating the success of the operation.
-    pub async fn insert<T: Serialize + Sync>(&self, key: &str, value: &T) -> CacheResult<()> {
+    pub async fn insert<T: Serialize + Sync + ?Sized>(
+        &self,
+        key: &str,
+        value: &T,
+    ) -> CacheResult<()> {
         let serialized =
             serde_json::to_string(value).map_err(|e| CacheError::Serialization(e.to_string()))?;
         self.driver.insert(key, &serialized).await
@@ -143,6 +194,7 @@ impl Cache {
     /// ```
     /// use std::time::Duration;
     /// use loco_rs::cache::{self, CacheResult};
+    /// use loco_rs::config::InMemCacheConfig;
     /// use serde::Serialize;
     ///
     /// #[derive(Serialize)]
@@ -152,7 +204,8 @@ impl Cache {
     /// }
     ///
     /// pub async fn insert() -> CacheResult<()> {
-    ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
+    ///     let config = InMemCacheConfig { max_capacity: 100 };
+    ///     let cache = cache::Cache::new(cache::drivers::inmem::new(&config).driver);
     ///     let user = User { name: "Alice".to_string(), age: 30 };
     ///     cache.insert_with_expiry("user:1", &user, Duration::from_secs(300)).await
     /// }
@@ -162,9 +215,11 @@ impl Cache {
     /// ```
     /// use std::time::Duration;
     /// use loco_rs::cache::{self, CacheResult};
+    /// use loco_rs::config::InMemCacheConfig;
     ///
     /// pub async fn insert_string() -> CacheResult<()> {
-    ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
+    ///     let config = InMemCacheConfig { max_capacity: 100 };
+    ///     let cache = cache::Cache::new(cache::drivers::inmem::new(&config).driver);
     ///     cache.insert_with_expiry("key", &"value".to_string(), Duration::from_secs(300)).await
     /// }
     /// ```
@@ -172,7 +227,7 @@ impl Cache {
     /// # Errors
     ///
     /// A [`CacheResult`] indicating the success of the operation.
-    pub async fn insert_with_expiry<T: Serialize + Sync>(
+    pub async fn insert_with_expiry<T: Serialize + Sync + ?Sized>(
         &self,
         key: &str,
         value: &T,
@@ -309,9 +364,11 @@ impl Cache {
     /// # Example
     /// ```
     /// use loco_rs::cache::{self, CacheResult};
+    /// use loco_rs::config::InMemCacheConfig;
     ///
     /// pub async fn remove() -> CacheResult<()> {
-    ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
+    ///     let config = InMemCacheConfig { max_capacity: 100 };
+    ///     let cache = cache::Cache::new(cache::drivers::inmem::new(&config).driver);
     ///     cache.remove("key").await
     /// }
     /// ```
@@ -328,9 +385,11 @@ impl Cache {
     /// # Example
     /// ```
     /// use loco_rs::cache::{self, CacheResult};
+    /// use loco_rs::config::InMemCacheConfig;
     ///
     /// pub async fn clear() -> CacheResult<()> {
-    ///     let cache = cache::Cache::new(cache::drivers::inmem::new());
+    ///     let config = InMemCacheConfig { max_capacity: 100 };
+    ///     let cache = cache::Cache::new(cache::drivers::inmem::new(&config).driver);
     ///     cache.clear().await
     /// }
     /// ```

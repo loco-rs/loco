@@ -60,5 +60,6 @@ pub fn test_config() -> Config {
 
             output: scheduler::Output::STDOUT,
         }),
+        cache: config::CacheConfig::Null,
     }
 }
