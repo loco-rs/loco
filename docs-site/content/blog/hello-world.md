@@ -44,7 +44,7 @@ Loco is a Rails inspired web framework for Rust. It inlcudes _almost every Rails
 * Controllers and routing via [axum](https://github.com/tokio-rs/axum)
 * Models, migration, and ActiveRecord via [SeaORM](https://www.sea-ql.org/SeaORM/)
 * Views via [serde](https://serde.rs/json.html)
-* Seamless, Background jobs via [sidekiq-rs](https://github.com/film42/sidekiq-rs), multi modal: in process, out of process, async via Tokio
+* Seamless, Background jobs, multi modal: in process, out of process, async via Tokio
 * Mailers
 * Tasks
 * Seeding
