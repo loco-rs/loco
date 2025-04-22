@@ -10,6 +10,8 @@ use super::CacheResult;
 #[cfg(feature = "cache_inmem")]
 pub mod inmem;
 pub mod null;
+#[cfg(feature = "cache_redis")]
+pub mod redis;
 
 /// Trait representing a cache driver.
 #[async_trait]
