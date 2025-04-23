@@ -17,6 +17,11 @@
 * Add comprehensive tests for task module. [https://github.com/loco-rs/loco/pull/1386](https://github.com/loco-rs/loco/pull/1386)
 * Add comprehensive test coverage for data module. [https://github.com/loco-rs/loco/pull/1387](https://github.com/loco-rs/loco/pull/1387)
 * Add validator extractors test suite. [https://github.com/loco-rs/loco/pull/1388](https://github.com/loco-rs/loco/pull/1388)
+* **Breaking changes** Replace sidekiq job management. [https://github.com/loco-rs/loco/pull/1384](https://github.com/loco-rs/loco/pull/1384)
+* **Breaking changes** Add generic type support to the Cache API. [https://github.com/loco-rs/loco/pull/1385](https://github.com/loco-rs/loco/pull/1385)
+* Adding cache redis driver + configuration instead of enabling from code. [https://github.com/loco-rs/loco/pull/1389](https://github.com/loco-rs/loco/pull/1389)
+
+
 
 
 
