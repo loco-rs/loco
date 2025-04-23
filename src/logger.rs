@@ -74,7 +74,6 @@ const MODULE_WHITELIST: &[&str] = &[
     "sea_orm_migration",
     "tower_http",
     "sqlx::query",
-    "sidekiq",
     "playground",
     "loco_gen",
 ];

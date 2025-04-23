@@ -1,6 +1,7 @@
 ---
 source: src/bgworker/sqlt.rs
 expression: after_complete_job
+snapshot_kind: text
 ---
 Job {
     id: "<REDACTED>",

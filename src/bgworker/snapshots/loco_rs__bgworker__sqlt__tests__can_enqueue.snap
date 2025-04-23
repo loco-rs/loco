@@ -1,6 +1,7 @@
 ---
 source: src/bgworker/sqlt.rs
 expression: jobs
+snapshot_kind: text
 ---
 [
     Job {
