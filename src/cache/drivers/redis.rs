@@ -131,29 +131,14 @@ impl CacheDriver for Redis {
 
 #[cfg(test)]
 mod tests {
+    use crate::tests_cfg::redis::setup_redis_container;
     use std::time::Duration;
-    use testcontainers::{
-        core::{ContainerPort, WaitFor},
-        runners::AsyncRunner,
-        ContainerAsync, GenericImage,
-    };
+    use testcontainers::{ContainerAsync, GenericImage};
 
     use super::*;
 
     async fn setup_redis_driver() -> (Box<dyn CacheDriver>, ContainerAsync<GenericImage>) {
-        let redis_image = GenericImage::new("redis", "7")
-            .with_exposed_port(ContainerPort::Tcp(6379))
-            .with_wait_for(WaitFor::message_on_stdout("Ready to accept connections"));
-
-        let container = redis_image
-            .start()
-            .await
-            .expect("Failed to start Redis container");
-        let host_port = container
-            .get_host_port_ipv4(6379)
-            .await
-            .expect("Failed to get host port");
-        let redis_url = format!("redis://127.0.0.1:{}", host_port);
+        let (redis_url, container) = setup_redis_container().await;
 
         let redis_config = crate::config::RedisCacheConfig {
             uri: redis_url,

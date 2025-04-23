@@ -201,12 +201,9 @@ impl TestSupport for Any {
 mod tests {
 
     use super::*;
-    #[cfg(all(test, feature = "integration_test"))]
     use sqlx::Row;
-    #[cfg(all(test, feature = "integration_test"))]
     use std::{thread, time};
 
-    #[cfg(all(test, feature = "integration_test"))]
     async fn schema_exists(pool: &sqlx::PgPool, schema_name: &str) -> bool {
         let row =
             sqlx::query("SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_database  WHERE datname = $1)")
@@ -231,11 +228,10 @@ mod tests {
         assert!(!sqlite.db_folder.exists());
     }
 
-    #[cfg(all(test, feature = "integration_test"))]
     #[tokio::test]
     async fn postgres_test_support() {
-        let conn = std::env::var("DATABASE_URL").expect("Postgres connection string");
-        let pg: PostgresTest = PostgresTest::new(&conn).expect("create Sqlite test support");
+        let (conn, _container) = crate::tests_cfg::postgres::setup_postgres_container().await;
+        let pg: PostgresTest = PostgresTest::new(&conn).expect("create Postgres test support");
 
         pg.init_db().await;
 
