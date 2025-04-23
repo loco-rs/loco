@@ -17,9 +17,9 @@ flair =[]
 
 Loco provides the following options for background jobs:
 
-* Redis backed (powered by `sidekiq-rs`)
-* Postgres backed (own implementation)
-* SQLite backed (own implementation)
+* Redis backed
+* Postgres backed
+* SQLite backed
 * Tokio-async based (same-process, evented thread based background jobs)
 
 

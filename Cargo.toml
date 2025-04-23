@@ -42,7 +42,8 @@ storage_azure = ["opendal/services-azblob"]
 storage_gcp = ["opendal/services-gcs"]
 # Cache feature
 cache_inmem = ["dep:moka"]
-bg_redis = ["dep:rusty-sidekiq", "dep:bb8"]
+cache_redis = ["dep:bb8-redis", "dep:bb8"]
+bg_redis = ["dep:redis", "dep:ulid"]
 bg_pg = ["dep:sqlx", "dep:ulid"]
 bg_sqlt = ["dep:sqlx", "dep:ulid"]
 ## Testing feature flags
@@ -141,6 +142,8 @@ opendal = { version = "0.50.2", default-features = false, features = [
 
 # cache
 moka = { version = "0.12.7", features = ["sync"], optional = true }
+bb8-redis = { version = "0.21.0", optional = true }
+bb8 = { version = "0.8.1", optional = true }
 
 # Scheduler
 tokio-cron-scheduler = { version = "0.11.0", features = ["signal"] }
@@ -157,8 +160,10 @@ sqlx = { version = "0.8.2", default-features = false, features = [
 ulid = { version = "1", optional = true }
 
 # bg_redis: redis workers
-rusty-sidekiq = { version = "0.11.0", default-features = false, optional = true }
-bb8 = { version = "0.8.1", optional = true }
+redis = { version = "0.24.0", features = [
+    "aio",
+    "tokio-comp",
+], optional = true }
 
 scraper = { version = "0.21.0", features = ["deterministic"], optional = true }
 
@@ -216,3 +221,4 @@ sqlx = { version = "0.8.2", default-features = false, features = [
     "sqlite",
     "migrate",
 ] }
+testcontainers = { version = "0.23.3" }

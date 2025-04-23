@@ -1,6 +1,7 @@
 ---
 source: src/bgworker/pg.rs
 expression: table_info
+snapshot_kind: text
 ---
 [
     TableInfo {
