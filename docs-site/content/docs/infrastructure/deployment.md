@@ -15,7 +15,15 @@ flair =[]
 
 Deployment is super simple in Loco, and this is why this guide is super short. Although **most of the time in development you are using `cargo`** when deploying, you use the **binary that was compiled**, there is no need for `cargo` or Rust on the target server.
 
-To deploy, build your production binary for your relevant server architecture:
+## How to Deploy
+First, check your Cargo.toml to see your application name:
+```toml
+[package]
+name = "myapp" # This is your binary name
+version = "0.1.0"
+```
+
+build your production binary for your relevant server architecture:
 
 <!-- <snip id="build-command" inject_from="yaml" template="sh"> -->
 ```sh
@@ -24,6 +32,13 @@ cargo build --release
 <!-- </snip>-->
 
 And copy your binary along with your `config/` folder to the server. You can then run `myapp start` on your server.
+
+<!-- <snip id="run-command" inject_from="yaml" template="sh"> -->
+```sh
+# The binary is located in ./target/release/ after building
+./target/release/myapp start
+```
+<!-- </snip>-->
 
 That's it!
 
