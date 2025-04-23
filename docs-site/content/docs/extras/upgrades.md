@@ -58,6 +58,80 @@ The Redis background job system has been completely refactored, replacing the Si
 - **Upgrade Preparation**: Before upgrading to Loco 0.16+, ensure your Redis job queue is completely empty to avoid orphaned jobs
 - **Deployment Strategy**: Consider scheduling downtime for your application to:
 
+### Generic Cache
+
+PR: [#1385](https://github.com/loco-rs/loco/pull/1385)
+
+The cache API has been refactored to support storing and retrieving any serializable type, not just strings. This is a breaking change that requires updates to your code:
+
+#### Breaking Changes:
+
+1. **Type Parameters Required**: All cache methods now require explicit type parameters
+2. **Method Signatures**: Some method signatures have changed to support generics
+3. **Object Serialization**: Any type you store must implement `Serialize` and `Deserialize` from serde
+
+#### Migration Guide:
+
+**Before:**
+
+```rust
+// Get a string value from cache
+let value = cache.get("key").await?;
+
+// Insert or get with callback
+let value = app_ctx.cache.get_or_insert("key", async {
+    Ok("value".to_string())
+}).await.unwrap();
+
+// Insert or get with expiry
+let value = app_ctx.cache.get_or_insert_with_expiry("key", Duration::from_secs(300), async {
+    Ok("value".to_string())
+}).await.unwrap();
+```
+
+**After:**
+
+```rust
+// Get a string value from cache - specify the type
+let value = cache.get::<String>("key").await?;
+
+// Direct insert with any serializable type
+cache.insert("key", &"value".to_string()).await?;
+
+// Insert or get with callback - specify return type
+let value = app_ctx.cache.get_or_insert::<String, _>("key", async {
+    Ok("value".to_string())
+}).await.unwrap();
+
+// Store complex types
+#[derive(Serialize, Deserialize)]
+struct User {
+    name: String,
+    age: u32,
+}
+
+let user = app_ctx.cache.get_or_insert_with_expiry::<User, _>(
+    "user:1",
+    Duration::from_secs(300),
+    async {
+        Ok(User { name: "Alice".to_string(), age: 30 })
+    }
+).await.unwrap();
+```
+
+#### Implementing for Custom Types:
+
+For your custom types to work with the cache, ensure they implement `Serialize` and `Deserialize`:
+
+```rust
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize)]
+struct MyType {
+    // fields...
+}
+```
+
 ## Upgrade from 0.14.x to 0.15.x
 
 ### Upgrade validator crate
