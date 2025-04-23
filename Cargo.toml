@@ -142,6 +142,7 @@ opendal = { version = "0.50.2", default-features = false, features = [
 # cache
 moka = { version = "0.12.7", features = ["sync"], optional = true }
 bb8-redis = { version = "0.21.0", optional = true }
+bb8 = { version = "0.8.1", optional = true }
 
 # Scheduler
 tokio-cron-scheduler = { version = "0.11.0", features = ["signal"] }
