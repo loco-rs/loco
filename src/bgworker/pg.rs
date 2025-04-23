@@ -585,7 +585,7 @@ pub async fn create_provider(qcfg: &PostgresQueueConfig) -> Result<Queue> {
     ))
 }
 
-#[cfg(all(test, feature = "integration_test"))]
+#[cfg(test)]
 mod tests {
     use chrono::{NaiveDate, NaiveTime, TimeZone};
     use insta::{assert_debug_snapshot, with_settings};
@@ -593,7 +593,7 @@ mod tests {
     use tokio::time::sleep;
 
     use super::*;
-    use crate::tests_cfg;
+    use crate::tests_cfg::{self, postgres::setup_postgres_container};
 
     fn reduction() -> &'static [(&'static str, &'static str)] {
         &[
@@ -635,9 +635,27 @@ mod tests {
             .expect("job not found")
     }
 
-    #[sqlx::test]
-    async fn can_initialize_database(pool: PgPool) {
-        assert!(initialize_database(&pool).await.is_ok());
+    // New setup function that uses our testcontainer
+    async fn setup_pg_test() -> (
+        PgPool,
+        testcontainers::ContainerAsync<testcontainers::GenericImage>,
+    ) {
+        let (pg_url, container) = setup_postgres_container().await;
+        let pool = PgPool::connect(&pg_url)
+            .await
+            .expect("Failed to connect to PostgreSQL");
+
+        // Initialize the database
+        initialize_database(&pool)
+            .await
+            .expect("Failed to initialize database");
+
+        (pool, container)
+    }
+
+    #[tokio::test]
+    async fn can_initialize_database() {
+        let (pool, _container) = setup_pg_test().await;
 
         let table_info: Vec<TableInfo> = query_as::<_, TableInfo>(
             "SELECT * FROM information_schema.columns WHERE table_name =
@@ -650,9 +668,9 @@ mod tests {
         assert_debug_snapshot!(table_info);
     }
 
-    #[sqlx::test]
-    async fn can_enqueue(pool: PgPool) {
-        assert!(initialize_database(&pool).await.is_ok());
+    #[tokio::test]
+    async fn can_enqueue() {
+        let (pool, _container) = setup_pg_test().await;
 
         let jobs = get_all_jobs(&pool).await;
 
@@ -681,9 +699,9 @@ mod tests {
             });
     }
 
-    #[sqlx::test]
-    async fn can_dequeue(pool: PgPool) {
-        assert!(initialize_database(&pool).await.is_ok());
+    #[tokio::test]
+    async fn can_dequeue() {
+        let (pool, _container) = setup_pg_test().await;
 
         let run_at = Utc.from_utc_datetime(
             &NaiveDate::from_ymd_opt(2023, 1, 15)
@@ -724,9 +742,9 @@ mod tests {
             });
     }
 
-    #[sqlx::test]
-    async fn can_complete_job_without_interval(pool: PgPool) {
-        assert!(initialize_database(&pool).await.is_ok());
+    #[tokio::test]
+    async fn can_complete_job_without_interval() {
+        let (pool, _container) = setup_pg_test().await;
         tests_cfg::queue::postgres_seed_data(&pool).await;
 
         let job = get_job(&pool, "01JDM0X8EVAM823JZBGKYNBA99").await;
@@ -739,9 +757,9 @@ mod tests {
         assert_eq!(job.status, JobStatus::Completed);
     }
 
-    #[sqlx::test]
-    async fn can_complete_job_with_interval(pool: PgPool) {
-        assert!(initialize_database(&pool).await.is_ok());
+    #[tokio::test]
+    async fn can_complete_job_with_interval() {
+        let (pool, _container) = setup_pg_test().await;
         tests_cfg::queue::postgres_seed_data(&pool).await;
 
         let before_complete_job = get_job(&pool, "01JDM0X8EVAM823JZBGKYNBA98").await;
@@ -767,9 +785,9 @@ mod tests {
             });
     }
 
-    #[sqlx::test]
-    async fn can_fail_job(pool: PgPool) {
-        assert!(initialize_database(&pool).await.is_ok());
+    #[tokio::test]
+    async fn can_fail_job() {
+        let (pool, _container) = setup_pg_test().await;
         tests_cfg::queue::postgres_seed_data(&pool).await;
 
         let before_fail_job = get_job(&pool, "01JDM0X8EVAM823JZBGKYNBA97").await;
@@ -794,9 +812,9 @@ mod tests {
             });
     }
 
-    #[sqlx::test]
-    async fn can_cancel_job_by_name(pool: PgPool) {
-        assert!(initialize_database(&pool).await.is_ok());
+    #[tokio::test]
+    async fn can_cancel_job_by_name() {
+        let (pool, _container) = setup_pg_test().await;
         tests_cfg::queue::postgres_seed_data(&pool).await;
 
         let count_cancelled_jobs = get_all_jobs(&pool)
@@ -820,9 +838,9 @@ mod tests {
         assert_eq!(count_cancelled_jobs, 2);
     }
 
-    #[sqlx::test]
-    async fn can_clear(pool: PgPool) {
-        assert!(initialize_database(&pool).await.is_ok());
+    #[tokio::test]
+    async fn can_clear() {
+        let (pool, _container) = setup_pg_test().await;
         tests_cfg::queue::postgres_seed_data(&pool).await;
 
         let job_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM pg_loco_queue")
@@ -841,9 +859,9 @@ mod tests {
         assert_eq!(job_count, 0);
     }
 
-    #[sqlx::test]
-    async fn can_clear_by_status(pool: PgPool) {
-        assert!(initialize_database(&pool).await.is_ok());
+    #[tokio::test]
+    async fn can_clear_by_status() {
+        let (pool, _container) = setup_pg_test().await;
         tests_cfg::queue::postgres_seed_data(&pool).await;
 
         let jobs = get_all_jobs(&pool).await;
@@ -884,9 +902,9 @@ mod tests {
         );
     }
 
-    #[sqlx::test]
-    async fn can_clear_jobs_older_than(pool: PgPool) {
-        assert!(initialize_database(&pool).await.is_ok());
+    #[tokio::test]
+    async fn can_clear_jobs_older_than() {
+        let (pool, _container) = setup_pg_test().await;
 
         sqlx::query(
            r"INSERT INTO pg_loco_queue (id, name, task_data, status, run_at,created_at, updated_at) VALUES
@@ -903,9 +921,9 @@ mod tests {
         assert_eq!(get_all_jobs(&pool).await.len(), 2);
     }
 
-    #[sqlx::test]
-    async fn can_clear_jobs_older_than_with_status(pool: PgPool) {
-        assert!(initialize_database(&pool).await.is_ok());
+    #[tokio::test]
+    async fn can_clear_jobs_older_than_with_status() {
+        let (pool, _container) = setup_pg_test().await;
 
         sqlx::query(
            r"INSERT INTO pg_loco_queue (id, name, task_data, status, run_at,created_at, updated_at) VALUES
@@ -930,9 +948,9 @@ mod tests {
         assert_eq!(get_all_jobs(&pool).await.len(), 3);
     }
 
-    #[sqlx::test]
-    async fn can_get_jobs(pool: PgPool) {
-        assert!(initialize_database(&pool).await.is_ok());
+    #[tokio::test]
+    async fn can_get_jobs() {
+        let (pool, _container) = setup_pg_test().await;
         tests_cfg::queue::postgres_seed_data(&pool).await;
 
         assert_eq!(
@@ -959,9 +977,9 @@ mod tests {
         );
     }
 
-    #[sqlx::test]
-    async fn can_get_jobs_with_age(pool: PgPool) {
-        assert!(initialize_database(&pool).await.is_ok());
+    #[tokio::test]
+    async fn can_get_jobs_with_age() {
+        let (pool, _container) = setup_pg_test().await;
 
         sqlx::query(
             r"INSERT INTO pg_loco_queue (id, name, task_data, status, run_at,created_at, updated_at) VALUES
@@ -986,9 +1004,9 @@ mod tests {
         );
     }
 
-    #[sqlx::test]
-    async fn can_requeue(pool: PgPool) {
-        assert!(initialize_database(&pool).await.is_ok());
+    #[tokio::test]
+    async fn can_requeue() {
+        let (pool, _container) = setup_pg_test().await;
 
         sqlx::query(
             r"INSERT INTO pg_loco_queue (id, name, task_data, status, run_at,created_at, updated_at) VALUES
@@ -1035,9 +1053,9 @@ mod tests {
         );
     }
 
-    #[sqlx::test]
-    async fn can_handle_worker_panic(pool: PgPool) {
-        assert!(initialize_database(&pool).await.is_ok());
+    #[tokio::test]
+    async fn can_handle_worker_panic() {
+        let (pool, _container) = setup_pg_test().await;
 
         let job_data: JobData = serde_json::json!(null);
         let job_id = enqueue(&pool, "PanicJob", job_data, Utc::now(), None)
