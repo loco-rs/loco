@@ -60,5 +60,13 @@ pub fn test_config() -> Config {
 
             output: scheduler::Output::STDOUT,
         }),
+        // Always use in-memory cache for tests if available
+        #[cfg(feature = "cache_inmem")]
+        cache: config::CacheConfig::InMem(config::InMemCacheConfig {
+            max_capacity: 32 * 1024 * 1024, // Use explicit value instead of default
+        }),
+        // If cache_inmem is not enabled, use null cache
+        #[cfg(not(feature = "cache_inmem"))]
+        cache: config::CacheConfig::Null,
     }
 }
