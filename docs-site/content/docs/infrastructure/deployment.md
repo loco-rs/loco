@@ -33,12 +33,10 @@ cargo build --release
 
 And copy your binary along with your `config/` folder to the server. You can then run `myapp start` on your server.
 
-<!-- <snip id="run-command" inject_from="yaml" template="sh"> -->
 ```sh
 # The binary is located in ./target/release/ after building
 ./target/release/myapp start
 ```
-<!-- </snip>-->
 
 That's it!
 
