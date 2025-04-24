@@ -239,7 +239,7 @@ This is why we added a new *App level hook*, called `init_logger`, which you can
 impl Hooks for App {
     // return `Ok(true)` if you took over initializing logger
     // otherwise, return `Ok(false)` to use the Loco logging stack.
-    fn init_logger(_config: &config::Config, _env: &Environment) -> Result<bool> {
+    fn init_logger(_ctx: &AppContext, _env: &Environment) -> Result<bool> {
         Ok(false)
     }
 }
@@ -247,6 +247,42 @@ impl Hooks for App {
 
 After you've set up your own logger, return `Ok(true)` to signal that you took over initialization.
 
+### The shutdown helper
+
+If you need to perform any cleanup operations, release resources, or close out other tasks cleanly on application shutdown, Loco provides the `on_shutdown` helper for this.
+
+```rust
+// in src/app.rs
+impl Hooks for App {
+    async fn on_shutdown(_ctx: &AppContext) {
+        println!("Shutting down");
+    }
+}
+```
+
+### App-wide state
+
+The `AppContext` has an `extensions` field, which is a type-based `HashMap` that can hold an instance of any type. It is primarily for holding app-wide state to be accessible at both initialization and shutdown time.
+
+```rust
+// in src/app.rs
+use init_tracing_opentelemetry::tracing_subscriber_ext::{init_subscribers, TracingGuard};
+
+pub struct App;
+
+#[async_trait]
+impl Hooks for App {
+    fn init_logger(context: &loco_rs::app::AppContext, _env: &Environment) -> Result<bool> {
+        let guard: TracingGuard = init_subscribers().unwrap();
+        context.extensions.write().unwrap().insert(Arc::new(guard));
+        Ok(true)
+    }
+
+    async fn on_shutdown(ctx: &AppContext) {
+        let _guard = ctx.extensions.write().unwrap().remove::<TracingGuard>();
+    }
+}
+```
 
 ## Middlewares
 `Loco` is a framework that is built on top of [`axum`](https://crates.io/crates/axum)
