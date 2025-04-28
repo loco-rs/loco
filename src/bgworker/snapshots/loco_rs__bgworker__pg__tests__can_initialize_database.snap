@@ -9,34 +9,14 @@ snapshot_kind: text
             "public",
         ),
         column_name: Some(
-            "updated_at",
-        ),
-        column_default: Some(
-            "now()",
-        ),
-        is_nullable: Some(
-            "NO",
-        ),
-        data_type: Some(
-            "timestamp with time zone",
-        ),
-        is_updatable: Some(
-            "YES",
-        ),
-    },
-    TableInfo {
-        table_schema: Some(
-            "public",
-        ),
-        column_name: Some(
-            "run_at",
+            "tags",
         ),
         column_default: None,
         is_nullable: Some(
-            "NO",
+            "YES",
         ),
         data_type: Some(
-            "timestamp with time zone",
+            "jsonb",
         ),
         is_updatable: Some(
             "YES",
@@ -85,6 +65,26 @@ snapshot_kind: text
             "public",
         ),
         column_name: Some(
+            "updated_at",
+        ),
+        column_default: Some(
+            "now()",
+        ),
+        is_nullable: Some(
+            "NO",
+        ),
+        data_type: Some(
+            "timestamp with time zone",
+        ),
+        is_updatable: Some(
+            "YES",
+        ),
+    },
+    TableInfo {
+        table_schema: Some(
+            "public",
+        ),
+        column_name: Some(
             "task_data",
         ),
         column_default: None,
@@ -93,6 +93,24 @@ snapshot_kind: text
         ),
         data_type: Some(
             "jsonb",
+        ),
+        is_updatable: Some(
+            "YES",
+        ),
+    },
+    TableInfo {
+        table_schema: Some(
+            "public",
+        ),
+        column_name: Some(
+            "run_at",
+        ),
+        column_default: None,
+        is_nullable: Some(
+            "NO",
+        ),
+        data_type: Some(
+            "timestamp with time zone",
         ),
         is_updatable: Some(
             "YES",

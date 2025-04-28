@@ -99,12 +99,13 @@ impl Queue {
         class: String,
         queue: Option<String>,
         args: A,
+        tags: Option<Vec<String>>,
     ) -> Result<()> {
-        tracing::debug!(worker = class, queue = ?queue, "Enqueuing background job");
+        tracing::debug!(worker = class, queue = ?queue, tags = ?tags, "Enqueuing background job");
         match self {
             #[cfg(feature = "bg_redis")]
             Self::Redis(pool, _, _, _) => {
-                redis::enqueue(pool, class, queue, args).await?;
+                redis::enqueue(pool, class, queue, args, tags).await?;
             }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, _, _, _) => {
@@ -114,6 +115,7 @@ impl Queue {
                     serde_json::to_value(args)?,
                     chrono::Utc::now(),
                     None,
+                    tags,
                 )
                 .await
                 .map_err(Box::from)?;
@@ -126,6 +128,7 @@ impl Queue {
                     serde_json::to_value(args)?,
                     chrono::Utc::now(),
                     None,
+                    tags,
                 )
                 .await
                 .map_err(Box::from)?;
@@ -175,22 +178,31 @@ impl Queue {
     /// # Errors
     ///
     /// This function will return an error if fails
-    pub async fn run(&self) -> Result<()> {
+    pub async fn run(&self, tags: Vec<String>) -> Result<()> {
         tracing::info!("Starting background job processing");
         match self {
             #[cfg(feature = "bg_redis")]
             Self::Redis(pool, registry, run_opts, token) => {
-                let handles = registry.lock().await.run(pool, run_opts, &token.clone());
+                let handles = registry
+                    .lock()
+                    .await
+                    .run(pool, run_opts, &token.clone(), &tags);
                 Self::process_worker_handles(handles).await?;
             }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, registry, run_opts, token) => {
-                let handles = registry.lock().await.run(pool, run_opts, &token.clone());
+                let handles = registry
+                    .lock()
+                    .await
+                    .run(pool, run_opts, &token.clone(), &tags);
                 Self::process_worker_handles(handles).await?;
             }
             #[cfg(feature = "bg_sqlt")]
             Self::Sqlite(pool, registry, run_opts, token) => {
-                let handles = registry.lock().await.run(pool, run_opts, &token.clone());
+                let handles = registry
+                    .lock()
+                    .await
+                    .run(pool, run_opts, &token.clone(), &tags);
                 Self::process_worker_handles(handles).await?;
             }
             _ => {
@@ -359,7 +371,6 @@ impl Queue {
 
                 Ok(serde_json::to_value(jobs)?)
             }
-            #[cfg(feature = "bg_redis")]
             #[cfg(feature = "bg_redis")]
             Self::Redis(pool, _, _, _) => {
                 let jobs = redis::get_jobs(pool, status, age_days).await?;
@@ -539,7 +550,8 @@ impl Queue {
             Self::Postgres(_, _, _, _) => {
                 let jobs: Vec<pg::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.to_string(), None, job.data).await?;
+                    self.enqueue(job.name.to_string(), None, job.data, None)
+                        .await?;
                 }
 
                 Ok(())
@@ -548,7 +560,8 @@ impl Queue {
             Self::Sqlite(_, _, _, _) => {
                 let jobs: Vec<sqlt::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.to_string(), None, job.data).await?;
+                    self.enqueue(job.name.to_string(), None, job.data, None)
+                        .await?;
                 }
                 Ok(())
             }
@@ -556,7 +569,8 @@ impl Queue {
             Self::Redis(_, _, _, _) => {
                 let jobs: Vec<redis::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.to_string(), None, job.data).await?;
+                    self.enqueue(job.name.to_string(), None, job.data, None)
+                        .await?;
                 }
                 Ok(())
             }
@@ -579,6 +593,14 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
     fn queue() -> Option<String> {
         None
     }
+
+    /// Specifies tags associated with this worker. Workers might only process jobs
+    /// matching specific tags during startup.
+    #[must_use]
+    fn tags() -> Vec<String> {
+        Vec::new()
+    }
+
     fn build(ctx: &AppContext) -> Self;
     #[must_use]
     fn class_name() -> String
@@ -597,7 +619,10 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
         match &ctx.config.workers.mode {
             WorkerMode::BackgroundQueue => {
                 if let Some(p) = &ctx.queue_provider {
-                    p.enqueue(Self::class_name(), Self::queue(), args).await?;
+                    let tags = Self::tags();
+                    let tags_option = if tags.is_empty() { None } else { Some(tags) };
+                    p.enqueue(Self::class_name(), Self::queue(), args, tags_option)
+                        .await?;
                 } else {
                     tracing::error!(
                         "perform_later: background queue is selected, but queue was not populated \

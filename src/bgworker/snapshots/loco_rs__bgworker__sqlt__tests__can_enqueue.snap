@@ -19,5 +19,11 @@ snapshot_kind: text
         updated_at: Some(
             <REDACTED>,
         ),
+        tags: Some(
+            [
+                "email",
+                "notification",
+            ],
+        ),
     },
 ]

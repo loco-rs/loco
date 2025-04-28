@@ -43,6 +43,7 @@ pub struct Job {
     pub interval: Option<i64>,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
+    pub tags: Option<Vec<String>>,
 }
 
 pub struct JobRegistry {
@@ -113,6 +114,7 @@ impl JobRegistry {
         pool: &PgPool,
         opts: &RunOpts,
         token: &CancellationToken,
+        tags: &[String],
     ) -> Vec<JoinHandle<()>> {
         let mut jobs = Vec::new();
 
@@ -120,6 +122,7 @@ impl JobRegistry {
         for idx in 0..opts.num_workers {
             let handlers = self.handlers.clone();
             let worker_token = token.clone(); // Clone token for this worker
+            let worker_tags = tags.to_vec();
 
             let pool = pool.clone();
             let job = tokio::spawn(async move {
@@ -134,7 +137,7 @@ impl JobRegistry {
                         worker_id = idx,
                         "Connection pool stats"
                     );
-                    let job_opt = match dequeue(&pool).await {
+                    let job_opt = match dequeue(&pool, &worker_tags).await {
                         Ok(t) => t,
                         Err(err) => {
                             error!(error = %err, "Failed to fetch job from queue");
@@ -237,7 +240,8 @@ pub async fn initialize_database(pool: &PgPool) -> Result<()> {
                 run_at TIMESTAMPTZ NOT NULL,
                 interval BIGINT,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                tags JSONB
             );
             ",
         JobStatus::Queued
@@ -258,42 +262,83 @@ pub async fn enqueue(
     data: JobData,
     run_at: DateTime<Utc>,
     interval: Option<Duration>,
+    tags: Option<Vec<String>>,
 ) -> Result<JobId> {
     let data_json = serde_json::to_value(data)?;
+    let tags_json = tags
+        .as_ref()
+        .map(|t| serde_json::to_value(t).unwrap_or(serde_json::Value::Null));
 
     #[allow(clippy::cast_possible_truncation)]
     let interval_ms: Option<i64> = interval.map(|i| i.as_millis() as i64);
 
     let id = Ulid::new().to_string();
-    debug!(job_id = %id, job_name = %name, run_at = %run_at, "Enqueueing job");
+    debug!(job_id = %id, job_name = %name, run_at = %run_at, tags = ?tags, "Enqueueing job");
     sqlx::query(
-        "INSERT INTO pg_loco_queue (id, task_data, name, run_at, interval) VALUES ($1, $2, $3, \
-         $4, $5)",
+        "INSERT INTO pg_loco_queue (id, task_data, name, run_at, interval, tags) VALUES ($1, $2, $3, \
+         $4, $5, $6)",
     )
     .bind(id.clone())
     .bind(data_json)
     .bind(name)
     .bind(run_at)
     .bind(interval_ms)
+    .bind(tags_json)
     .execute(pool)
     .await?;
     Ok(id)
 }
 
-async fn dequeue(client: &PgPool) -> Result<Option<Job>> {
+async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>> {
     let mut tx = client.begin().await?;
-    let row = sqlx::query(
-        "SELECT id, name, task_data, status, run_at, interval FROM pg_loco_queue WHERE status = \
-         $1 AND run_at <= NOW() ORDER BY run_at LIMIT 1 FOR UPDATE SKIP LOCKED",
-    )
-    .bind(JobStatus::Queued.to_string())
-    .map(|row: PgRow| to_job(&row).ok())
-    .fetch_optional(&mut *tx)
-    .await?
-    .flatten();
+
+    // Base query
+    let mut query = String::from(
+        "SELECT id, name, task_data, status, run_at, interval, tags FROM pg_loco_queue WHERE status = $1 AND run_at <= NOW() "
+    );
+
+    // Apply tag filtering logic
+    if worker_tags.is_empty() {
+        // If worker has no tags, only process jobs with no tags
+        query.push_str("AND (tags IS NULL) ");
+    } else {
+        // If worker has tags, we need a more complex condition
+        query.push_str("AND (tags IS NOT NULL) ");
+
+        // In PostgreSQL, we need to build a condition for each tag individually
+        let mut conditions = Vec::new();
+
+        for (i, _) in worker_tags.iter().enumerate() {
+            // Check if the tag exists as a JSON string in the tags array
+            // Using ? operator checks if string exists as array element
+            conditions.push(format!("(tags)::jsonb ? ${}", i + 2));
+        }
+
+        if !conditions.is_empty() {
+            query.push_str(" AND (");
+            query.push_str(&conditions.join(" OR "));
+            query.push(')');
+        }
+    }
+
+    query.push_str(" ORDER BY run_at LIMIT 1 FOR UPDATE SKIP LOCKED");
+
+    // Create the query
+    let mut db_query = sqlx::query(&query).bind(JobStatus::Queued.to_string());
+
+    // Bind tag parameters
+    for tag in worker_tags {
+        db_query = db_query.bind(tag);
+    }
+
+    let row = db_query
+        .map(|row: PgRow| to_job(&row).ok())
+        .fetch_optional(&mut *tx)
+        .await?
+        .flatten();
 
     if let Some(job) = row {
-        trace!(job_id = %job.id, job_name = %job.name, "Dequeueing job for processing");
+        trace!(job_id = %job.id, job_name = %job.name, job_tags = ?job.tags, "Dequeueing job for processing");
         sqlx::query("UPDATE pg_loco_queue SET status = $1, updated_at = NOW() WHERE id = $2")
             .bind(JobStatus::Processing.to_string())
             .bind(&job.id)
@@ -538,6 +583,21 @@ pub async fn get_jobs(
 /// The decision to avoid `FromRow` is made to keep the build smaller and faster, as the 'macros'
 /// feature is unnecessary in the current dependency tree.
 fn to_job(row: &PgRow) -> Result<Job> {
+    let tags_json: Option<serde_json::Value> = row.try_get("tags").unwrap_or_default();
+    let tags = tags_json.and_then(|json_val| {
+        if json_val.is_array() {
+            let tags_vec: Vec<String> =
+                serde_json::from_value(json_val).unwrap_or_else(|_| Vec::new());
+            if tags_vec.is_empty() {
+                None
+            } else {
+                Some(tags_vec)
+            }
+        } else {
+            None
+        }
+    });
+
     Ok(Job {
         id: row.get("id"),
         name: row.get("name"),
@@ -551,6 +611,7 @@ fn to_job(row: &PgRow) -> Result<Job> {
         interval: row.get("interval"),
         created_at: row.try_get("created_at").unwrap_or_default(),
         updated_at: row.try_get("updated_at").unwrap_or_default(),
+        tags,
     })
 }
 
@@ -683,11 +744,16 @@ mod tests {
         );
 
         let job_data: JobData = serde_json::json!({"user_id": 1});
-        assert!(
-            enqueue(&pool, "PasswordChangeNotification", job_data, run_at, None)
-                .await
-                .is_ok()
-        );
+        assert!(enqueue(
+            &pool,
+            "PasswordChangeNotification",
+            job_data,
+            run_at,
+            None,
+            None
+        )
+        .await
+        .is_ok());
 
         let jobs = get_all_jobs(&pool).await;
 
@@ -710,11 +776,16 @@ mod tests {
         );
 
         let job_data: JobData = serde_json::json!({"user_id": 1});
-        assert!(
-            enqueue(&pool, "PasswordChangeNotification", job_data, run_at, None)
-                .await
-                .is_ok()
-        );
+        assert!(enqueue(
+            &pool,
+            "PasswordChangeNotification",
+            job_data,
+            run_at,
+            None,
+            None
+        )
+        .await
+        .is_ok());
 
         let job_before_dequeue = get_all_jobs(&pool)
             .await
@@ -726,7 +797,7 @@ mod tests {
 
         std::thread::sleep(std::time::Duration::from_secs(1));
 
-        assert!(dequeue(&pool).await.is_ok());
+        assert!(dequeue(&pool, &[]).await.is_ok());
 
         let job_after_dequeue = get_all_jobs(&pool)
             .await
@@ -1058,7 +1129,7 @@ mod tests {
         let (pool, _container) = setup_pg_test().await;
 
         let job_data: JobData = serde_json::json!(null);
-        let job_id = enqueue(&pool, "PanicJob", job_data, Utc::now(), None)
+        let job_id = enqueue(&pool, "PanicJob", job_data, Utc::now(), None, None)
             .await
             .expect("Failed to enqueue job");
 
@@ -1088,7 +1159,7 @@ mod tests {
             poll_interval_sec: 1,
         };
         let token = CancellationToken::new();
-        let handles = registry.run(&pool, &opts, &token);
+        let handles = registry.run(&pool, &opts, &token, &[]);
 
         // Wait a bit for the worker to process the job
         sleep(Duration::from_secs(1)).await;
@@ -1115,5 +1186,139 @@ mod tests {
             error_msg.contains("intentional panic for testing"),
             "Error message '{error_msg}' did not contain expected text"
         );
+    }
+
+    #[tokio::test]
+    async fn can_dequeue_with_tags() {
+        let (pool, _container) = setup_pg_test().await;
+
+        // Add a job with email tag
+        let run_at = Utc::now() - chrono::Duration::minutes(5); // In the past so it's ready to process
+        let job_data = serde_json::json!({"user_id": 1});
+
+        // Insert email job
+        let email_tags = Some(vec!["email".to_string()]);
+        let email_id = enqueue(
+            &pool,
+            "EmailNotification",
+            job_data.clone(),
+            run_at,
+            None,
+            email_tags,
+        )
+        .await
+        .expect("Failed to enqueue email job");
+
+        // Insert job with "sms" tag
+        let sms_tags = Some(vec!["sms".to_string()]);
+        let sms_id = enqueue(
+            &pool,
+            "SmsNotification",
+            job_data.clone(),
+            run_at,
+            None,
+            sms_tags,
+        )
+        .await
+        .expect("Failed to enqueue sms job");
+
+        // Insert job with multiple tags
+        let multi_tags = Some(vec!["email".to_string(), "priority".to_string()]);
+        let multi_id = enqueue(
+            &pool,
+            "PriorityEmail",
+            job_data.clone(),
+            run_at,
+            None,
+            multi_tags,
+        )
+        .await
+        .expect("Failed to enqueue multi-tag job");
+
+        // Insert job with no tags
+        let no_tag_id = enqueue(
+            &pool,
+            "GenericNotification",
+            job_data.clone(),
+            run_at,
+            None,
+            None,
+        )
+        .await
+        .expect("Failed to enqueue untagged job");
+
+        // Verify all jobs are in the database
+        let all_jobs = get_all_jobs(&pool).await;
+        assert_eq!(all_jobs.len(), 4);
+
+        // 1. Worker with no tags should only get untagged jobs
+        let job = dequeue(&pool, &[]).await.expect("dequeue failed");
+        assert!(job.is_some());
+        let job = job.unwrap();
+        assert_eq!(job.id, no_tag_id);
+        assert!(job.tags.is_none());
+
+        // Mark the job as completed to remove it from the queued items
+        complete_job(&pool, &job.id, None)
+            .await
+            .expect("Failed to complete job");
+
+        // 2. Worker with "email" tag should get one of the email-tagged jobs
+        let job = dequeue(&pool, &["email".to_string()])
+            .await
+            .expect("dequeue failed");
+        assert!(job.is_some());
+        let job = job.unwrap();
+        assert!(
+            job.id == email_id || job.id == multi_id,
+            "Expected either email job or multi-tag job"
+        );
+        assert!(job.tags.is_some());
+
+        // Mark the job as completed
+        complete_job(&pool, &job.id, None)
+            .await
+            .expect("Failed to complete job");
+
+        // 3. Worker with "email" tag should get the remaining email job
+        let job = dequeue(&pool, &["email".to_string()])
+            .await
+            .expect("dequeue failed");
+        assert!(job.is_some());
+        let job = job.unwrap();
+        assert!(
+            job.id == email_id || job.id == multi_id,
+            "Expected either email job or multi-tag job"
+        );
+        assert!(job.tags.is_some());
+
+        // Mark the job as completed
+        complete_job(&pool, &job.id, None)
+            .await
+            .expect("Failed to complete job");
+
+        // 4. Worker with "sms" tag should get the sms job
+        let job = dequeue(&pool, &["sms".to_string()])
+            .await
+            .expect("dequeue failed");
+        assert!(job.is_some());
+        let job = job.unwrap();
+        assert_eq!(job.id, sms_id);
+        assert!(job.tags.is_some());
+
+        // Mark the job as completed
+        complete_job(&pool, &job.id, None)
+            .await
+            .expect("Failed to complete job");
+
+        // 5. No more jobs should be available
+        let job = dequeue(&pool, &["email".to_string()])
+            .await
+            .expect("dequeue failed");
+        assert!(job.is_none());
+
+        // 6. No more jobs should be available for untagged worker
+        let job = dequeue(&pool, &[]).await.expect("dequeue failed");
+        assert!(job.is_none());
     }
 }

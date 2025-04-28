@@ -43,6 +43,7 @@ pub struct Job {
     pub interval: Option<i64>,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
+    pub tags: Option<Vec<String>>,
 }
 
 pub struct JobRegistry {
@@ -113,6 +114,7 @@ impl JobRegistry {
         pool: &SqlitePool,
         opts: &RunOpts,
         token: &CancellationToken,
+        tags: &[String],
     ) -> Vec<JoinHandle<()>> {
         let mut jobs = Vec::new();
 
@@ -120,6 +122,7 @@ impl JobRegistry {
         for idx in 0..opts.num_workers {
             let handlers = self.handlers.clone();
             let worker_token = token.clone();
+            let worker_tags = tags.to_vec();
 
             let pool = pool.clone();
             let job = tokio::spawn(async move {
@@ -133,7 +136,7 @@ impl JobRegistry {
                         worker_id = idx,
                         "Connection pool stats"
                     );
-                    let job_opt = match dequeue(&pool).await {
+                    let job_opt = match dequeue(&pool, &worker_tags).await {
                         Ok(t) => t,
                         Err(err) => {
                             error!(error = %err, "Failed to fetch job from queue");
@@ -235,7 +238,8 @@ pub async fn initialize_database(pool: &SqlitePool) -> Result<()> {
                 run_at TIMESTAMP NOT NULL,
                 interval INTEGER,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                tags JSON
             );
 
             CREATE TABLE IF NOT EXISTS sqlt_loco_queue_lock (
@@ -265,29 +269,35 @@ pub async fn enqueue(
     data: JobData,
     run_at: DateTime<Utc>,
     interval: Option<Duration>,
+    tags: Option<Vec<String>>,
 ) -> Result<JobId> {
     let data = serde_json::to_value(data)?;
+    let tags_json = match &tags {
+        Some(tags) => Some(serde_json::to_value(tags)?),
+        None => None,
+    };
 
     #[allow(clippy::cast_possible_truncation)]
     let interval_ms: Option<i64> = interval.map(|i| i.as_millis() as i64);
 
     let id = Ulid::new().to_string();
-    debug!(job_id = %id, job_name = %name, run_at = %run_at, "Enqueueing job");
+    debug!(job_id = %id, job_name = %name, run_at = %run_at, tags = ?tags, "Enqueueing job");
     sqlx::query(
-        "INSERT INTO sqlt_loco_queue (id, task_data, name, run_at, interval) VALUES ($1, $2, $3, \
-         DATETIME($4), $5)",
+        "INSERT INTO sqlt_loco_queue (id, task_data, name, run_at, interval, tags) VALUES ($1, $2, $3, \
+         DATETIME($4), $5, $6)",
     )
     .bind(id.clone())
     .bind(data)
     .bind(name)
     .bind(run_at)
     .bind(interval_ms)
+    .bind(tags_json)
     .execute(pool)
     .await?;
     Ok(id)
 }
 
-async fn dequeue(client: &SqlitePool) -> Result<Option<Job>> {
+async fn dequeue(client: &SqlitePool, worker_tags: &[String]) -> Result<Option<Job>> {
     let mut tx = client.begin().await?;
 
     let acquired_write_lock = sqlx::query(
@@ -306,22 +316,54 @@ async fn dequeue(client: &SqlitePool) -> Result<Option<Job>> {
         return Ok(None);
     }
 
-    let row = sqlx::query(
-        "SELECT id, name, task_data, status, run_at, interval
+    // Build the query with tag filtering
+    let mut query = String::from(
+        "SELECT id, name, task_data, status, run_at, interval, tags
         FROM sqlt_loco_queue
         WHERE
             status = ? AND
-            run_at <= CURRENT_TIMESTAMP
-        ORDER BY run_at LIMIT 1",
-    )
-    .bind(JobStatus::Queued.to_string())
-    .map(|row: SqliteRow| to_job(&row).ok())
-    .fetch_optional(&mut *tx)
-    .await?
-    .flatten();
+            run_at <= CURRENT_TIMESTAMP",
+    );
+
+    // Apply tag filtering logic:
+    // 1. If worker has no tags, only process jobs with no tags
+    // 2. If worker has tags, only process jobs with at least one matching tag
+    if worker_tags.is_empty() {
+        query.push_str(" AND (tags IS NULL)");
+    } else {
+        query.push_str(" AND (tags IS NOT NULL)");
+
+        // Add placeholders for the LIKE conditions
+        let mut conditions = Vec::new();
+        for _ in worker_tags {
+            conditions.push("json_extract(tags, '$') LIKE ?".to_string());
+        }
+
+        if !conditions.is_empty() {
+            query.push_str(" AND (");
+            query.push_str(&conditions.join(" OR "));
+            query.push(')');
+        }
+    }
+
+    query.push_str(" ORDER BY run_at LIMIT 1");
+
+    let mut db_query = sqlx::query(&query).bind(JobStatus::Queued.to_string());
+
+    // Add tag parameters to the query with proper JSON wildcard format
+    for tag in worker_tags {
+        // Format tag for JSON string search: each tag needs to be in format "%\"tagname\"%"
+        db_query = db_query.bind(format!("%\"{tag}\"%"));
+    }
+
+    let row = db_query
+        .map(|row: SqliteRow| to_job(&row).ok())
+        .fetch_optional(&mut *tx)
+        .await?
+        .flatten();
 
     if let Some(job) = row {
-        trace!(job_id = %job.id, job_name = %job.name, "Dequeueing job for processing");
+        trace!(job_id = %job.id, job_name = %job.name, job_tags = ?job.tags, "Dequeueing job for processing");
         sqlx::query(
             "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
         )
@@ -630,6 +672,21 @@ pub async fn get_jobs(
 /// The decision to avoid `FromRow` is made to keep the build smaller and faster, as the 'macros'
 /// feature is unnecessary in the current dependency tree.
 fn to_job(row: &SqliteRow) -> Result<Job> {
+    let tags_json: Option<serde_json::Value> = row.try_get("tags").unwrap_or_default();
+    let tags = tags_json.and_then(|json_val| {
+        if json_val.is_array() {
+            let tags_vec: Vec<String> =
+                serde_json::from_value(json_val).unwrap_or_else(|_| Vec::new());
+            if tags_vec.is_empty() {
+                None
+            } else {
+                Some(tags_vec)
+            }
+        } else {
+            None
+        }
+    });
+
     Ok(Job {
         id: row.get("id"),
         name: row.get("name"),
@@ -643,6 +700,7 @@ fn to_job(row: &SqliteRow) -> Result<Job> {
         interval: row.get("interval"),
         created_at: row.try_get("created_at").unwrap_or_default(),
         updated_at: row.try_get("updated_at").unwrap_or_default(),
+        tags,
     })
 }
 
@@ -775,11 +833,17 @@ mod tests {
         );
 
         let job_data = serde_json::json!({"user_id": 1});
-        assert!(
-            enqueue(&pool, "PasswordChangeNotification", job_data, run_at, None)
-                .await
-                .is_ok()
-        );
+        let tags = Some(vec!["email".to_string(), "notification".to_string()]);
+        assert!(enqueue(
+            &pool,
+            "PasswordChangeNotification",
+            job_data,
+            run_at,
+            None,
+            tags
+        )
+        .await
+        .is_ok());
 
         let jobs = get_all_jobs(&pool).await;
 
@@ -821,11 +885,16 @@ mod tests {
         );
 
         let job_data = serde_json::json!({"user_id": 1});
-        assert!(
-            enqueue(&pool, "PasswordChangeNotification", job_data, run_at, None)
-                .await
-                .is_ok()
-        );
+        assert!(enqueue(
+            &pool,
+            "PasswordChangeNotification",
+            job_data,
+            run_at,
+            None,
+            None
+        )
+        .await
+        .is_ok());
 
         let job_before_dequeue = get_all_jobs(&pool)
             .await
@@ -836,7 +905,7 @@ mod tests {
 
         std::thread::sleep(std::time::Duration::from_secs(1));
 
-        assert!(dequeue(&pool).await.is_ok());
+        assert!(dequeue(&pool, &[]).await.is_ok());
 
         let job_after_dequeue = get_all_jobs(&pool)
             .await
@@ -1238,7 +1307,7 @@ mod tests {
         assert!(initialize_database(&pool).await.is_ok());
 
         let job_data = serde_json::json!(null);
-        let job_id = enqueue(&pool, "PanicJob", job_data, Utc::now(), None)
+        let job_id = enqueue(&pool, "PanicJob", job_data, Utc::now(), None, None)
             .await
             .expect("Failed to enqueue job");
 
@@ -1268,7 +1337,7 @@ mod tests {
             poll_interval_sec: 1,
         };
         let token = CancellationToken::new();
-        let handles = registry.run(&pool, &opts, &token);
+        let handles = registry.run(&pool, &opts, &token, &[]);
 
         // Wait a bit for the worker to process the job
         sleep(Duration::from_secs(1)).await;
@@ -1294,5 +1363,148 @@ mod tests {
             error_msg.contains("intentional panic for testing"),
             "Error message '{error_msg}' did not contain expected text"
         );
+    }
+
+    #[tokio::test]
+    async fn can_dequeue_with_tags() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let pool = init(&tree_fs.root).await;
+
+        assert!(initialize_database(&pool).await.is_ok());
+
+        // Add a job with email tag
+        let run_at = Utc::now() - chrono::Duration::minutes(5); // In the past so it's ready to process
+        let job_data = serde_json::json!({"user_id": 1});
+        let email_tags = Some(vec!["email".to_string()]);
+
+        // Insert email job
+        let email_id = enqueue(
+            &pool,
+            "EmailNotification",
+            job_data.clone(),
+            run_at,
+            None,
+            email_tags,
+        )
+        .await
+        .expect("Failed to enqueue email job");
+
+        // Insert job with "sms" tag
+        let sms_tags = Some(vec!["sms".to_string()]);
+        let sms_id = enqueue(
+            &pool,
+            "SmsNotification",
+            job_data.clone(),
+            run_at,
+            None,
+            sms_tags,
+        )
+        .await
+        .expect("Failed to enqueue sms job");
+
+        // Insert job with multiple tags
+        let multi_tags = Some(vec!["email".to_string(), "priority".to_string()]);
+        let multi_id = enqueue(
+            &pool,
+            "PriorityEmail",
+            job_data.clone(),
+            run_at,
+            None,
+            multi_tags,
+        )
+        .await
+        .expect("Failed to enqueue multi-tag job");
+
+        // Insert job with no tags
+        let no_tag_id = enqueue(
+            &pool,
+            "GenericNotification",
+            job_data.clone(),
+            run_at,
+            None,
+            None,
+        )
+        .await
+        .expect("Failed to enqueue untagged job");
+
+        // Verify all jobs are in the database
+        let all_jobs = get_all_jobs(&pool).await;
+        assert_eq!(all_jobs.len(), 4);
+
+        // 1. Worker with no tags should only get untagged jobs
+        let job = dequeue(&pool, &[]).await.expect("dequeue failed");
+        assert!(job.is_some());
+        let job = job.unwrap();
+        assert_eq!(job.id, no_tag_id);
+        assert!(job.tags.is_none());
+
+        // Mark the job as completed to remove it from the queued items
+        complete_job(&pool, &job.id, None)
+            .await
+            .expect("Failed to complete job");
+
+        // 2. Worker with "email" tag should get one of the email-tagged jobs
+        let job = dequeue(&pool, &["email".to_string()])
+            .await
+            .expect("dequeue failed");
+        assert!(job.is_some());
+        let job = job.unwrap();
+        assert!(
+            job.id == email_id || job.id == multi_id,
+            "Expected either email job or multi-tag job"
+        );
+        assert!(job.tags.is_some());
+        assert!(job.tags.as_ref().unwrap().contains(&"email".to_string()));
+
+        // Mark the job as completed
+        complete_job(&pool, &job.id, None)
+            .await
+            .expect("Failed to complete job");
+
+        // 3. Worker with "email" tag should get the remaining email job
+        let job = dequeue(&pool, &["email".to_string()])
+            .await
+            .expect("dequeue failed");
+        assert!(job.is_some());
+        let job = job.unwrap();
+        assert!(
+            job.id == email_id || job.id == multi_id,
+            "Expected either email job or multi-tag job"
+        );
+        assert!(job.tags.is_some());
+        assert!(job.tags.as_ref().unwrap().contains(&"email".to_string()));
+
+        // Mark the job as completed
+        complete_job(&pool, &job.id, None)
+            .await
+            .expect("Failed to complete job");
+
+        // 4. Worker with "sms" tag should get the sms job
+        let job = dequeue(&pool, &["sms".to_string()])
+            .await
+            .expect("dequeue failed");
+        assert!(job.is_some());
+        let job = job.unwrap();
+        assert_eq!(job.id, sms_id);
+        assert!(job.tags.is_some());
+        assert_eq!(job.tags.as_ref().unwrap(), &vec!["sms".to_string()]);
+
+        // Mark the job as completed
+        complete_job(&pool, &job.id, None)
+            .await
+            .expect("Failed to complete job");
+
+        // 5. No more jobs should be available
+        let job = dequeue(&pool, &["email".to_string()])
+            .await
+            .expect("dequeue failed");
+        assert!(job.is_none());
+
+        // 6. No more jobs should be available for untagged worker
+        let job = dequeue(&pool, &[]).await.expect("dequeue failed");
+        assert!(job.is_none());
     }
 }

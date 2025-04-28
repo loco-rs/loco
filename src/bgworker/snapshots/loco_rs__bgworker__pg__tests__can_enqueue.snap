@@ -19,5 +19,6 @@ snapshot_kind: text
         updated_at: Some(
             <REDACTED>,
         ),
+        tags: None,
     },
 ]
