@@ -98,21 +98,21 @@ impl Queue {
         &self,
         class: String,
         queue: Option<String>,
-        args: A,
+        _args: A,
         tags: Option<Vec<String>>,
     ) -> Result<()> {
         tracing::debug!(worker = class, queue = ?queue, tags = ?tags, "Enqueuing background job");
         match self {
             #[cfg(feature = "bg_redis")]
             Self::Redis(pool, _, _, _) => {
-                redis::enqueue(pool, class, queue, args, tags).await?;
+                redis::enqueue(pool, class, queue, _args, tags).await?;
             }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, _, _, _) => {
                 pg::enqueue(
                     pool,
                     &class,
-                    serde_json::to_value(args)?,
+                    serde_json::to_value(_args)?,
                     chrono::Utc::now(),
                     None,
                     tags,
@@ -125,7 +125,7 @@ impl Queue {
                 sqlt::enqueue(
                     pool,
                     &class,
-                    serde_json::to_value(args)?,
+                    serde_json::to_value(_args)?,
                     chrono::Utc::now(),
                     None,
                     tags,
@@ -178,7 +178,7 @@ impl Queue {
     /// # Errors
     ///
     /// This function will return an error if fails
-    pub async fn run(&self, tags: Vec<String>) -> Result<()> {
+    pub async fn run(&self, _tags: Vec<String>) -> Result<()> {
         tracing::info!("Starting background job processing");
         match self {
             #[cfg(feature = "bg_redis")]
@@ -186,7 +186,7 @@ impl Queue {
                 let handles = registry
                     .lock()
                     .await
-                    .run(pool, run_opts, &token.clone(), &tags);
+                    .run(pool, run_opts, &token.clone(), &_tags);
                 Self::process_worker_handles(handles).await?;
             }
             #[cfg(feature = "bg_pg")]
@@ -194,7 +194,7 @@ impl Queue {
                 let handles = registry
                     .lock()
                     .await
-                    .run(pool, run_opts, &token.clone(), &tags);
+                    .run(pool, run_opts, &token.clone(), &_tags);
                 Self::process_worker_handles(handles).await?;
             }
             #[cfg(feature = "bg_sqlt")]
@@ -202,7 +202,7 @@ impl Queue {
                 let handles = registry
                     .lock()
                     .await
-                    .run(pool, run_opts, &token.clone(), &tags);
+                    .run(pool, run_opts, &token.clone(), &_tags);
                 Self::process_worker_handles(handles).await?;
             }
             _ => {
@@ -218,6 +218,7 @@ impl Queue {
     ///
     /// # Errors
     /// This function will return an error if a worker task fails to join
+    #[allow(dead_code)]
     async fn process_worker_handles(handles: Vec<tokio::task::JoinHandle<()>>) -> Result<()> {
         let handle_count = handles.len();
         tracing::debug!(worker_count = handle_count, "Processing worker handles");
