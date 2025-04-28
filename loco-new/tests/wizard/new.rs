@@ -51,7 +51,8 @@ fn test_combination(
     asset: AssetsOption,
     test_generator: bool,
 ) {
-    let test_dir = tree_fs::TreeBuilder::default().drop(true);
+    let test_dir = tree_fs::TreeBuilder::default().drop(false);
+    println!("{:#?}", test_dir);
 
     let executor = FileSystem::new(&PathBuf::from("base_template"), &test_dir.root);
 
@@ -216,7 +217,7 @@ impl Tester {
         cmd!(
             "cargo",
             "clippy",
-            "--quiet",
+            // "--quiet",
             "--",
             "-W",
             "clippy::pedantic",
