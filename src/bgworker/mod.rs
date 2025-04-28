@@ -94,25 +94,26 @@ impl Queue {
     /// # Errors
     ///
     /// This function will return an error if fails
+    #[allow(unused_variables)]
     pub async fn enqueue<A: Serialize + Send + Sync>(
         &self,
         class: String,
         queue: Option<String>,
-        _args: A,
+        args: A,
         tags: Option<Vec<String>>,
     ) -> Result<()> {
         tracing::debug!(worker = class, queue = ?queue, tags = ?tags, "Enqueuing background job");
         match self {
             #[cfg(feature = "bg_redis")]
             Self::Redis(pool, _, _, _) => {
-                redis::enqueue(pool, class, queue, _args, tags).await?;
+                redis::enqueue(pool, class, queue, args, tags).await?;
             }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, _, _, _) => {
                 pg::enqueue(
                     pool,
                     &class,
-                    serde_json::to_value(_args)?,
+                    serde_json::to_value(args)?,
                     chrono::Utc::now(),
                     None,
                     tags,
@@ -125,7 +126,7 @@ impl Queue {
                 sqlt::enqueue(
                     pool,
                     &class,
-                    serde_json::to_value(_args)?,
+                    serde_json::to_value(args)?,
                     chrono::Utc::now(),
                     None,
                     tags,
@@ -178,7 +179,8 @@ impl Queue {
     /// # Errors
     ///
     /// This function will return an error if fails
-    pub async fn run(&self, _tags: Vec<String>) -> Result<()> {
+    #[allow(unused_variables)]
+    pub async fn run(&self, tags: Vec<String>) -> Result<()> {
         tracing::info!("Starting background job processing");
         match self {
             #[cfg(feature = "bg_redis")]
@@ -186,7 +188,7 @@ impl Queue {
                 let handles = registry
                     .lock()
                     .await
-                    .run(pool, run_opts, &token.clone(), &_tags);
+                    .run(pool, run_opts, &token.clone(), &tags);
                 Self::process_worker_handles(handles).await?;
             }
             #[cfg(feature = "bg_pg")]
@@ -194,7 +196,7 @@ impl Queue {
                 let handles = registry
                     .lock()
                     .await
-                    .run(pool, run_opts, &token.clone(), &_tags);
+                    .run(pool, run_opts, &token.clone(), &tags);
                 Self::process_worker_handles(handles).await?;
             }
             #[cfg(feature = "bg_sqlt")]
@@ -202,7 +204,7 @@ impl Queue {
                 let handles = registry
                     .lock()
                     .await
-                    .run(pool, run_opts, &token.clone(), &_tags);
+                    .run(pool, run_opts, &token.clone(), &tags);
                 Self::process_worker_handles(handles).await?;
             }
             _ => {
