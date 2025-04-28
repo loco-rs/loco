@@ -71,6 +71,7 @@ impl DiContainer {
 }
 
 /// An extractor that streamlines the process of getting static Data from the `DiContainer`.
+/// Keep in mind that these extractors use `None` as the qualifier.
 pub struct Data<T>(pub T);
 
 impl<T> FromRequestParts<AppContext> for Data<T>
@@ -93,6 +94,8 @@ where
     }
 }
 
+/// An extractor that streamlines the process of getting a `Service` from the `DiContainer`.
+/// Keep in mind that these extractors use `None` as the qualifier.
 pub struct Injectable<T: Service>(pub T);
 
 impl<T: Service> FromRequestParts<AppContext> for Injectable<T> {
