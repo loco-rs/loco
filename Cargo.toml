@@ -167,6 +167,9 @@ redis = { version = "0.24.0", features = [
 
 scraper = { version = "0.21.0", features = ["deterministic"], optional = true }
 
+# DI System
+dashmap = "6"
+
 [workspace.dependencies]
 tera = { version = "1.19.1" }
 colored = { version = "2" }

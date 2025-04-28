@@ -12,6 +12,7 @@ use std::{net::SocketAddr, sync::Arc};
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
 
+use crate::di::DiContainer;
 use crate::{
     bgworker::{self, Queue},
     boot::{shutdown_signal, BootResult, ServeParams, StartMode},
@@ -52,6 +53,8 @@ pub struct AppContext {
     pub storage: Arc<Storage>,
     // Cache instance for the application
     pub cache: Arc<cache::Cache>,
+    // Di Container
+    pub container: Arc<DiContainer>,
 }
 
 /// A trait that defines hooks for customizing and extending the behavior of a

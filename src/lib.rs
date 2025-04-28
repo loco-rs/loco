@@ -41,10 +41,12 @@ pub mod task;
 pub mod testing;
 #[cfg(feature = "testing")]
 pub use axum_test::TestServer;
+pub mod di;
 pub mod storage;
 #[cfg(feature = "testing")]
 pub mod tests_cfg;
 pub mod validation;
+
 pub use validator;
 
 /// Application results options list

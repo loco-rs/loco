@@ -5,6 +5,7 @@ use crate::{
     storage::{self, Storage},
     tests_cfg::config::test_config,
 };
+use std::sync::Arc;
 
 pub async fn get_app_context() -> AppContext {
     // Always use in-memory cache for tests if feature is available, otherwise fall back to null
@@ -26,5 +27,6 @@ pub async fn get_app_context() -> AppContext {
         mailer: None,
         storage: Storage::single(storage::drivers::mem::new()).into(),
         cache: cache.into(),
+        container: Arc::new(Default::default()),
     }
 }

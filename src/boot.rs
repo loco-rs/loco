@@ -1,19 +1,20 @@
 //! # Application Bootstrapping and Logic
 //! This module contains functions and structures for bootstrapping and running
 //! your application.
+use axum::Router;
+#[cfg(feature = "with-db")]
+use sea_orm_migration::MigratorTrait;
+use std::sync::Arc;
 use std::{
     env,
     path::{Path, PathBuf},
 };
-
-use axum::Router;
-#[cfg(feature = "with-db")]
-use sea_orm_migration::MigratorTrait;
 use tokio::{select, signal, task::JoinHandle};
 use tracing::{debug, error, info, warn};
 
 #[cfg(feature = "with-db")]
 use crate::db;
+use crate::di::DiContainer;
 use crate::{
     app::{AppContext, Hooks, Initializer},
     banner::print_banner,
@@ -389,6 +390,7 @@ pub async fn create_context<H: Hooks>(
         cache: cache::create_cache_provider(&config).await?,
         config,
         mailer,
+        container: Arc::new(DiContainer::default()),
     };
 
     H::after_context(ctx).await
