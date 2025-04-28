@@ -4,6 +4,7 @@ use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
 use dashmap::DashMap;
 use std::any::{Any, TypeId};
+use std::future::Future;
 
 /// A container that contains and manages instances.
 #[derive(Default)]
@@ -66,10 +67,10 @@ impl DiContainer {
     }
 }
 
-/// An extractor that streamlines the process of getting a service from the `DiContainer`.
-pub struct Injectable<T>(pub T);
+/// An extractor that streamlines the process of getting static Data from the `DiContainer`.
+pub struct Data<T>(pub T);
 
-impl<T> FromRequestParts<AppContext> for Injectable<T>
+impl<T> FromRequestParts<AppContext> for Data<T>
 where
     T: Any + Clone + Send + Sync + 'static,
 {
@@ -85,7 +86,48 @@ where
             // TODO maybe introduce custom error?
             .ok_or(Error::Message("Could not find service".to_string()))?;
 
-        Ok(Injectable(instance))
+        Ok(Self(instance))
+    }
+}
+
+pub struct Injectable<T: Service>(pub T);
+
+impl<T: Service> FromRequestParts<AppContext> for Injectable<T> {
+    type Rejection = Error;
+
+    async fn from_request_parts(
+        _: &mut Parts,
+        state: &AppContext,
+    ) -> Result<Self, Self::Rejection> {
+        let instance = T::get(state).await?;
+
+        Ok(Self(instance))
+    }
+}
+
+/// Defines a service which can be given and constructed with only the AppContext.
+pub trait Service: Sized + Clone + Send + Sync + 'static {
+    /// Builds a new instance of the service.
+    fn build(ctx: &AppContext) -> impl Future<Output = Result<Self, Error>> + Send;
+
+    /// Gets you an instance of the service from the DiContainer.
+    ///
+    /// If no instance exist it will create a new one and automatically adds it to the DiContainer.
+    fn get(ctx: &AppContext) -> impl Future<Output = Result<Self, Error>> + Send {
+        async {
+            match ctx.container.get::<Self>(None) {
+                None => {
+                    let instance = Self::build(ctx).await?;
+
+                    ctx.container.add(instance, None);
+
+                    // We can safely unwrap() here has there is no chance that this service is going
+                    // to be removed before that
+                    Ok(ctx.container.get(None).unwrap())
+                }
+                Some(instance) => Ok(instance),
+            }
+        }
     }
 }
 
@@ -183,5 +225,125 @@ mod tests {
 
         assert_eq!(service1.unwrap().id, 1);
         assert_eq!(service2.unwrap().name, "test");
+    }
+
+    mod service_tests {
+        use super::*;
+        use crate::tests_cfg;
+        use futures_util::future::join_all;
+
+        #[derive(Clone, Debug, PartialEq)]
+        struct MockService {
+            id: u32,
+        }
+
+        impl Service for MockService {
+            async fn build(_ctx: &AppContext) -> Result<Self, Error> {
+                Ok(MockService { id: 42 })
+            }
+        }
+
+        #[derive(Clone, Debug, PartialEq)]
+        struct ErrorService;
+
+        impl Service for ErrorService {
+            async fn build(_ctx: &AppContext) -> Result<Self, Error> {
+                Err(Error::Message("Test build error".to_string()))
+            }
+        }
+
+        #[tokio::test]
+        async fn test_service_build() {
+            let app_context = tests_cfg::app::get_app_context().await;
+
+            let service = MockService::build(&app_context).await;
+            assert!(service.is_ok());
+            assert_eq!(service.unwrap().id, 42);
+        }
+
+        #[tokio::test]
+        async fn test_service_get_builds_new_instance() {
+            let app_context = tests_cfg::app::get_app_context().await;
+
+            // Ensure service doesn't exist before test
+            assert!(!app_context.container.has::<MockService>(None));
+
+            // First call should build a new instance
+            let service = MockService::get(&app_context).await;
+            assert!(service.is_ok());
+            assert_eq!(service.unwrap().id, 42);
+
+            // Service should now exist in container
+            assert!(app_context.container.has::<MockService>(None));
+        }
+
+        #[tokio::test]
+        async fn test_service_get_returns_existing_instance() {
+            let app_context = tests_cfg::app::get_app_context().await;
+
+            // Add a service with a custom ID directly to the container
+            let existing = MockService { id: 100 };
+            app_context.container.add(existing, None);
+
+            // Get should return the existing instance (with ID 100) instead of building a new one (which would have ID 42)
+            let service = MockService::get(&app_context).await;
+            assert!(service.is_ok());
+            assert_eq!(service.unwrap().id, 100);
+        }
+
+        #[tokio::test]
+        async fn test_service_build_error() {
+            let app_context = tests_cfg::app::get_app_context().await;
+
+            let result = ErrorService::get(&app_context).await;
+            assert!(result.is_err());
+
+            if let Err(Error::Message(msg)) = result {
+                assert_eq!(msg, "Test build error");
+            } else {
+                panic!("Expected Error::Message variant");
+            }
+
+            // Service should not be added to container after build error
+            assert!(!app_context.container.has::<ErrorService>(None));
+        }
+
+        #[tokio::test]
+        async fn test_injectable_struct() {
+            let app_context = tests_cfg::app::get_app_context().await;
+
+            // Add a service to the container
+            app_context.container.add(MockService { id: 42 }, None);
+
+            // Manually simulate what the extractor would do
+            let instance = MockService::get(&app_context).await.unwrap();
+            let injectable = Injectable(instance);
+
+            assert_eq!(injectable.0.id, 42);
+        }
+
+        #[tokio::test]
+        async fn test_service_singleton_behavior() {
+            let app_context = tests_cfg::app::get_app_context().await;
+
+            // Run multiple concurrent get() calls
+            let futures = (0..10).map(|_| MockService::get(&app_context));
+            let results = join_all(futures).await;
+
+            // All should succeed
+            for result in &results {
+                assert!(result.is_ok());
+            }
+
+            // Container should have exactly one instance
+            let instance = app_context.container.get::<MockService>(None);
+            assert!(instance.is_some());
+
+            // All returned instances should be identical
+            let first = &results[0].as_ref().unwrap();
+            for result in &results {
+                assert_eq!(&result.as_ref().unwrap(), first);
+            }
+        }
     }
 }
