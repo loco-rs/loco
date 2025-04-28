@@ -1,3 +1,4 @@
+use crate::di::DiContainer;
 use crate::{
     app::AppContext,
     cache,
@@ -27,6 +28,6 @@ pub async fn get_app_context() -> AppContext {
         mailer: None,
         storage: Storage::single(storage::drivers::mem::new()).into(),
         cache: cache.into(),
-        container: Arc::new(Default::default()),
+        container: Arc::new(DiContainer::default()),
     }
 }

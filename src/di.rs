@@ -31,6 +31,7 @@ impl DiContainer {
     /// * `qualifier`: An optional qualifier that helps you differentiate multiple instance of the same type.
     ///
     /// returns: Option<T>
+    #[must_use]
     pub fn get<T: Any + Clone + Send + Sync + 'static>(
         &self,
         qualifier: Option<String>,
@@ -47,6 +48,7 @@ impl DiContainer {
     /// * `qualifier`: An optional qualifier that helps you differentiate multiple instance of the same type.
     ///
     /// returns: bool
+    #[must_use]
     pub fn has<T: Any + Send + Sync + 'static>(&self, qualifier: Option<String>) -> bool {
         self.services.contains_key(&(TypeId::of::<T>(), qualifier))
     }
@@ -58,6 +60,7 @@ impl DiContainer {
     /// * `qualifier`: An optional qualifier that helps you differentiate multiple instance of the same type.
     ///
     /// returns: Option<T>
+    #[must_use]
     pub fn remove<T: Any + Send + Sync + 'static>(&self, qualifier: Option<String>) -> Option<T> {
         self.services
             .remove(&(TypeId::of::<T>(), qualifier))
@@ -105,14 +108,15 @@ impl<T: Service> FromRequestParts<AppContext> for Injectable<T> {
     }
 }
 
-/// Defines a service which can be given and constructed with only the AppContext.
+/// Defines a service which can be given and constructed with only the `AppContext`.
 pub trait Service: Sized + Clone + Send + Sync + 'static {
     /// Builds a new instance of the service.
     fn build(ctx: &AppContext) -> impl Future<Output = Result<Self, Error>> + Send;
 
-    /// Gets you an instance of the service from the DiContainer.
+    /// Gets you an instance of the service from the `DiContainer`.
     ///
-    /// If no instance exist it will create a new one and automatically adds it to the DiContainer.
+    /// If no instance exist it will create a new one and automatically adds it to the `DiContainer`.
+    #[must_use]
     fn get(ctx: &AppContext) -> impl Future<Output = Result<Self, Error>> + Send {
         async {
             match ctx.container.get::<Self>(None) {
