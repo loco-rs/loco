@@ -50,7 +50,7 @@ Swap from using the loco custom email validator, to the builtin email validator 
 ### Job system
 
 PR: [#1384](https://github.com/loco-rs/loco/pull/1384)
-PR: [#NEW](https://github.com/loco-rs/loco/pull/NEW)
+PR: [#1396](https://github.com/loco-rs/loco/pull/1396)
 
 Two major changes have been made to the background job system:
 
