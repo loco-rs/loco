@@ -216,7 +216,7 @@ impl Tester {
         cmd!(
             "cargo",
             "clippy",
-            "--quiet",
+            // "--quiet",
             "--",
             "-W",
             "clippy::pedantic",

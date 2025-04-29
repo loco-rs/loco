@@ -40,7 +40,11 @@ pub enum StartMode {
     /// Run the application web server and the worker in the same process.
     ServerAndWorker,
     /// Pulling job worker and execute them
-    WorkerOnly,
+    WorkerOnly {
+        /// Specifies that the worker should only handle jobs associated with one of these tags.
+        /// If empty, the worker handles all jobs.
+        tags: Vec<String>,
+    },
     /// Run the app with all available components in the same process.
     All,
 }
@@ -51,7 +55,7 @@ pub struct BootResult {
     /// Web server routes
     pub router: Option<Router>,
     /// worker processor
-    pub run_worker: bool,
+    pub worker: Option<Vec<String>>,
     /// scheduler processor
     pub run_scheduler: bool,
 }
@@ -99,18 +103,18 @@ pub async fn start<H: Hooks>(
 
     let BootResult {
         router,
-        run_worker,
+        worker,
         run_scheduler: _,
         app_context,
     } = boot;
 
-    match (router, run_worker) {
-        (Some(router), false) => {
+    match (router, worker) {
+        (Some(router), None) => {
             H::serve(router, &app_context, &server_config).await?;
         }
-        (Some(router), true) => {
+        (Some(router), Some(tags)) => {
             let handle = if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
-                Some(start_queue_worker(&app_context)?)
+                Some(start_queue_worker(&app_context, tags)?)
             } else {
                 None
             };
@@ -121,9 +125,9 @@ pub async fn start<H: Hooks>(
                 shutdown_and_await_queue_worker(&app_context, handle).await?;
             }
         }
-        (None, true) => {
+        (None, Some(tags)) => {
             let handle = if app_context.config.workers.mode == WorkerMode::BackgroundQueue {
-                Some(start_queue_worker(&app_context)?)
+                Some(start_queue_worker(&app_context, tags)?)
             } else {
                 None
             };
@@ -139,13 +143,13 @@ pub async fn start<H: Hooks>(
     Ok(())
 }
 
-fn start_queue_worker(app_context: &AppContext) -> Result<JoinHandle<()>> {
+fn start_queue_worker(app_context: &AppContext, tags: Vec<String>) -> Result<JoinHandle<()>> {
     debug!("note: worker is run in-process (tokio spawn)");
 
     if let Some(queue) = &app_context.queue_provider {
         let cloned_queue = queue.clone();
         let handle = tokio::spawn(async move {
-            let res = cloned_queue.run().await;
+            let res = cloned_queue.run(tags).await;
             if res.is_err() {
                 error!(
                     err = res.unwrap_err().to_string(),
@@ -449,7 +453,7 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
             Ok(BootResult {
                 app_context,
                 router: Some(router),
-                run_worker: false,
+                worker: None,
                 run_scheduler: false,
             })
         }
@@ -459,7 +463,7 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
             Ok(BootResult {
                 app_context,
                 router: Some(router),
-                run_worker: true,
+                worker: Some(vec![]),
                 run_scheduler: false,
             })
         }
@@ -469,16 +473,16 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
             Ok(BootResult {
                 app_context,
                 router: Some(router),
-                run_worker: true,
+                worker: Some(vec![]),
                 run_scheduler: true,
             })
         }
-        StartMode::WorkerOnly => {
+        StartMode::WorkerOnly { tags } => {
             register_workers::<H>(&app_context).await?;
             Ok(BootResult {
                 app_context,
                 router: None,
-                run_worker: true,
+                worker: Some(tags.clone()),
                 run_scheduler: false,
             })
         }

@@ -21,4 +21,5 @@ Job {
     updated_at: Some(
         <REDACTED>,
     ),
+    tags: None,
 }

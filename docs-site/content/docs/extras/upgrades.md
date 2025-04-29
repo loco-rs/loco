@@ -47,16 +47,52 @@ Swap from using the loco custom email validator, to the builtin email validator 
   pub email: String,
 ```
 
-### Refactor Redis job system
+### Job system
 
 PR: [#1384](https://github.com/loco-rs/loco/pull/1384)
+PR: [#1396](https://github.com/loco-rs/loco/pull/1396)
 
-The Redis background job system has been completely refactored, replacing the Sidekiq-compatible implementation with a new custom implementation that provides greater flexibility and improved performance. This is a significant breaking change that affects job serialization and processing:
+Two major changes have been made to the background job system:
 
-- **Breaking Change**: Jobs pushed from older Loco versions (pre-0.16) will not be recognized or processed by the new job system
-- **Data Migration**: There is no automatic migration path for existing queued jobs
-- **Upgrade Preparation**: Before upgrading to Loco 0.16+, ensure your Redis job queue is completely empty to avoid orphaned jobs
-- **Deployment Strategy**: Consider scheduling downtime for your application to:
+1. The Redis provider is no longer Sidekiq-compatible and uses a custom implementation
+2. All providers (Redis, PostgreSQL, SQLite) now support tag-based job filtering
+
+#### What Changed
+
+##### Removing Sidekiq Compatibility
+
+The Redis background job system has been completely refactored, replacing the Sidekiq-compatible implementation with a new custom implementation. This provides greater flexibility and improved performance, but means:
+
+- Jobs pushed from older Loco versions (pre-0.16) will not be recognized or processed
+- The Redis data structures have changed entirely
+- There is no automatic migration path for existing queued jobs
+
+##### Adding Job Filtering
+
+A new tag-based job filtering system has been added to all background worker providers:
+
+- Workers can now specify which tags they're interested in processing
+- Jobs can be tagged when enqueued
+- Workers with no tags only process untagged jobs, while tagged workers process jobs with matching tags
+- The same API is used across all providers
+
+#### How to Upgrade
+
+To upgrade to the new job system:
+
+1. **Process existing jobs**:
+
+   - Make sure all jobs in your queue are processed/completed before upgrading
+
+2. **Clean up old data**:
+
+   - For Redis: Flush the Redis database used for jobs (`FLUSHDB` command)
+   - For PostgreSQL: Drop the job queue tables
+   - For SQLite: Delete the job queue tables
+
+3. **Update Loco**:
+   - Update to Loco 0.16+
+   - Loco will automatically create new job tables with the correct schema on first run
 
 ### Generic Cache
 

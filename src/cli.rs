@@ -23,7 +23,7 @@ cfg_if::cfg_if! {
     } else {}
 }
 
-use clap::{ArgAction, Parser, Subcommand, ValueHint};
+use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueHint};
 use colored::Colorize;
 use duct::cmd;
 use std::fmt::Write;
@@ -75,11 +75,12 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Start an app
+    #[command(group(ArgGroup::new("start_mode").args(&["worker", "server_and_worker", "all"])))]
     #[clap(alias("s"))]
     Start {
-        /// start worker
-        #[arg(short, long, action, conflicts_with_all = &["server_and_worker", "all"])]
-        worker: bool,
+        /// Start worker. Optionally provide tags to run specific jobs (e.g. --worker=tag1,tag2)
+        #[arg(short, long, action, value_delimiter = ',', num_args = 0.., conflicts_with_all = &["server_and_worker", "all"])]
+        worker: Option<Vec<String>>,
         /// Start the server and worker in the same process
         #[arg(short, long, action, conflicts_with_all = &["worker", "all"])]
         server_and_worker: bool,
@@ -167,8 +168,8 @@ enum Commands {
     #[clap(alias("w"))]
     Watch {
         /// start worker
-        #[arg(short, long, action)]
-        worker: bool,
+        #[arg(short, long, action, value_delimiter = ',', num_args = 0..)]
+        worker: Option<Vec<String>>,
         /// start same-process server and worker
         #[arg(short, long, action)]
         server_and_worker: bool,
@@ -698,15 +699,16 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             port,
             no_banner,
         } => {
-            let start_mode = if worker {
-                StartMode::WorkerOnly
-            } else if server_and_worker {
-                StartMode::ServerAndWorker
-            } else if all {
-                StartMode::All
-            } else {
-                StartMode::ServerOnly
-            };
+            let start_mode = worker.map_or(
+                if server_and_worker {
+                    StartMode::ServerAndWorker
+                } else if all {
+                    StartMode::All
+                } else {
+                    StartMode::ServerOnly
+                },
+                |tags| StartMode::WorkerOnly { tags },
+            );
 
             let boot_result = create_app::<H, M>(start_mode, &environment, config).await?;
             let serve_params = ServeParams {
@@ -799,21 +801,25 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             server_and_worker,
         } => {
             // cargo-watch  -s 'cargo loco start'
-            let mut subcmd = vec!["cargo", "loco", "start"];
-            if worker {
-                subcmd.push("--worker");
+            let mut cmd_str = String::from("cargo loco start");
+
+            if let Some(worker_tags) = worker {
+                if worker_tags.is_empty() {
+                    cmd_str.push_str(" --worker");
+                } else {
+                    write!(cmd_str, " --worker={}", worker_tags.join(","))
+                        .expect("Failed to write to string");
+                }
             } else if server_and_worker {
-                subcmd.push("--server-and-worker");
+                cmd_str.push_str(" --server-and-worker");
             }
 
-            cmd("cargo-watch", &["-s", &subcmd.join(" ")])
-                .run()
-                .map_err(|err| {
-                    Error::Message(format!(
-                        "failed to start with `cargo-watch`. Did you `cargo install \
+            cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
+                Error::Message(format!(
+                    "failed to start with `cargo-watch`. Did you `cargo install \
                          cargo-watch`?. error details: `{err}`",
-                    ))
-                })?;
+                ))
+            })?;
         }
     }
     Ok(())
@@ -842,15 +848,16 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             port,
             no_banner,
         } => {
-            let start_mode = if worker {
-                StartMode::WorkerOnly
-            } else if server_and_worker {
-                StartMode::ServerAndWorker
-            } else if all {
-                StartMode::All
-            } else {
-                StartMode::ServerOnly
-            };
+            let start_mode = worker.map_or(
+                if server_and_worker {
+                    StartMode::ServerAndWorker
+                } else if all {
+                    StartMode::All
+                } else {
+                    StartMode::ServerOnly
+                },
+                |tags| StartMode::WorkerOnly { tags },
+            );
 
             let boot_result = create_app::<H>(start_mode, &environment, config).await?;
             let serve_params = ServeParams {
@@ -915,21 +922,25 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             server_and_worker,
         } => {
             // cargo-watch  -s 'cargo loco start'
-            let mut subcmd = vec!["cargo", "loco", "start"];
-            if worker {
-                subcmd.push("--worker");
+            let mut cmd_str = String::from("cargo loco start");
+
+            if let Some(worker_tags) = worker {
+                if worker_tags.is_empty() {
+                    cmd_str.push_str(" --worker");
+                } else {
+                    write!(cmd_str, " --worker={}", worker_tags.join(","))
+                        .expect("Failed to write to string");
+                }
             } else if server_and_worker {
-                subcmd.push("--server-and-worker");
+                cmd_str.push_str(" --server-and-worker");
             }
 
-            cmd("cargo-watch", &["-s", &subcmd.join(" ")])
-                .run()
-                .map_err(|err| {
-                    Error::Message(format!(
-                        "failed to start with `cargo-watch`. Did you `cargo install \
+            cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
+                Error::Message(format!(
+                    "failed to start with `cargo-watch`. Did you `cargo install \
                          cargo-watch`?. error details: `{err}`",
-                    ))
-                })?;
+                ))
+            })?;
         }
     }
     Ok(())

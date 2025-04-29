@@ -59,7 +59,7 @@ pub async fn start_from_ctx(ctx: AppContext, port: Option<i32>) -> tokio::task::
     let boot = boot::BootResult {
         app_context: ctx,
         router: Some(app_router),
-        run_worker: false,
+        worker: None,
         run_scheduler: false,
     };
 
@@ -82,7 +82,7 @@ pub async fn start_with_route(
     let boot = boot::BootResult {
         app_context: ctx,
         router: Some(app_router),
-        run_worker: false,
+        worker: None,
         run_scheduler: false,
     };
     start_from_boot(boot, port).await

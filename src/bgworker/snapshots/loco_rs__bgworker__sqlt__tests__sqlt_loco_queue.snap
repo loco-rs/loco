@@ -74,4 +74,12 @@ snapshot_kind: text
         ),
         pk: false,
     },
+    TableInfo {
+        cid: 8,
+        name: "tags",
+        _type: "JSON",
+        notnull: false,
+        dflt_value: None,
+        pk: false,
+    },
 ]
