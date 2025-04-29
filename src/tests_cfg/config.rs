@@ -6,6 +6,8 @@ use crate::{
     logger, scheduler,
 };
 
+use tree_fs::{Tree, TreeBuilder};
+
 #[must_use]
 pub fn test_config() -> Config {
     Config {
@@ -25,19 +27,7 @@ pub fn test_config() -> Config {
             middlewares: middleware::Config::default(),
         },
         #[cfg(feature = "with-db")]
-        database: config::Database {
-            uri: "sqlite::memory:".to_string(),
-            enable_logging: false,
-            min_connections: 1,
-            max_connections: 1,
-            connect_timeout: 1,
-            idle_timeout: 1,
-            acquire_timeout: None,
-            auto_migrate: false,
-            dangerously_truncate: false,
-            dangerously_recreate: false,
-            run_on_start: None,
-        },
+        database: get_database_config(),
         queue: None,
         auth: None,
         workers: config::Workers {
@@ -70,4 +60,44 @@ pub fn test_config() -> Config {
         #[cfg(not(feature = "cache_inmem"))]
         cache: config::CacheConfig::Null,
     }
+}
+
+#[must_use]
+pub fn get_database_config() -> config::Database {
+    config::Database {
+        uri: "sqlite::memory:".to_string(),
+        enable_logging: false,
+        min_connections: 1,
+        max_connections: 1,
+        connect_timeout: 500,
+        idle_timeout: 500,
+        acquire_timeout: None,
+        auto_migrate: false,
+        dangerously_truncate: false,
+        dangerously_recreate: false,
+        run_on_start: None,
+    }
+}
+
+/// Creates a SQLite test database configuration with a temporary file
+///
+/// Returns both the database configuration and the tree_fs temporary folder
+#[must_use]
+pub fn get_sqlite_test_config(db_filename: &str) -> (config::Database, Tree) {
+    let tree_fs = TreeBuilder::default()
+        .drop(true)
+        .create()
+        .expect("create temp folder");
+
+    let mut config = get_database_config();
+    config.uri = format!(
+        "sqlite://{}",
+        tree_fs
+            .root
+            .join(format!("{}.db?mode=rwc", db_filename))
+            .to_str()
+            .unwrap()
+    );
+
+    (config, tree_fs)
 }

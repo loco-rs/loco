@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use async_trait::async_trait;
+use sea_orm::Statement;
 pub use sea_orm_migration::prelude::*;
 
 use crate::{
@@ -13,6 +14,33 @@ use crate::{
     task::Tasks,
     Result,
 };
+
+/// Get query result as string
+///
+/// Executes the SQL query and returns the first column value as a string.
+pub async fn get_value(conn: &sea_orm::DatabaseConnection, query: &str) -> String {
+    // Execute query and get the result row
+    let row = conn
+        .query_one(Statement::from_string(
+            conn.get_database_backend(),
+            query.to_owned(),
+        ))
+        .await
+        .unwrap_or_else(|e| panic!("Query failed: {query}, error: {e}"))
+        .expect("No result returned");
+
+    // Get column names
+    let columns = row.column_names();
+
+    // Get first column name or empty string
+    let col_name = columns.first().map_or("", |c| c.as_str());
+
+    // Try as string or number, convert to lowercase for consistency
+    row.try_get::<String>("", col_name)
+        .or_else(|_| row.try_get::<i64>("", col_name).map(|v| v.to_string()))
+        .unwrap_or_else(|_| panic!("Could not extract value for column: {col_name}"))
+        .to_lowercase()
+}
 
 /// Creating a dummy db connection for docs
 ///

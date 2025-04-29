@@ -6,11 +6,11 @@ use testcontainers::{
     ContainerAsync, GenericImage, ImageExt,
 };
 
-/// Sets up a PostgreSQL test container.
+/// Sets up a `PostgreSQL` test container.
 ///
 /// # Returns
 ///
-/// A tuple containing the PostgreSQL connection URL and the container instance.
+/// A tuple containing the `PostgreSQL` connection URL and the container instance.
 ///
 /// # Panics
 ///
