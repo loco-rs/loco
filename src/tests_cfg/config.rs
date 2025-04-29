@@ -79,9 +79,13 @@ pub fn get_database_config() -> config::Database {
     }
 }
 
-/// Creates a SQLite test database configuration with a temporary file
+/// Creates a `SQLite` test database configuration with a temporary file
 ///
-/// Returns both the database configuration and the tree_fs temporary folder
+/// Returns both the database configuration and the [`tree_fs`] temporary folder
+///
+/// # Panics
+///
+/// Panics if the temporary folder cannot be created.
 #[must_use]
 pub fn get_sqlite_test_config(db_filename: &str) -> (config::Database, Tree) {
     let tree_fs = TreeBuilder::default()
@@ -94,7 +98,7 @@ pub fn get_sqlite_test_config(db_filename: &str) -> (config::Database, Tree) {
         "sqlite://{}",
         tree_fs
             .root
-            .join(format!("{}.db?mode=rwc", db_filename))
+            .join(format!("{db_filename}.db?mode=rwc"))
             .to_str()
             .unwrap()
     );

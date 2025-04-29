@@ -18,6 +18,12 @@ use crate::{
 /// Get query result as string
 ///
 /// Executes the SQL query and returns the first column value as a string.
+///
+/// # Panics
+///
+/// - If the database query fails.
+/// - If the query returns no result row.
+/// - If the value cannot be extracted from the first column as a String or i64.
 pub async fn get_value(conn: &sea_orm::DatabaseConnection, query: &str) -> String {
     // Execute query and get the result row
     let row = conn
