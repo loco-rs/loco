@@ -7,10 +7,15 @@ cfg_if::cfg_if! {
     } else {}
 
 }
-use std::{net::SocketAddr, sync::Arc};
+use std::{
+    any::{Any, TypeId},
+    net::SocketAddr,
+    sync::Arc,
+};
 
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
+use dashmap::DashMap;
 
 use crate::{
     bgworker::{self, Queue},
@@ -27,6 +32,164 @@ use crate::{
     task::Tasks,
     Result,
 };
+
+/// Type-safe heterogeneous storage for arbitrary application data
+#[derive(Default)]
+pub struct Extensions {
+    // Use DashMap for concurrent access with fine-grained locking
+    storage: DashMap<TypeId, Box<dyn Any + Send + Sync>>,
+}
+
+impl Extensions {
+    /// Insert a value of type T into the extensions
+    ///
+    /// # Example
+    /// ```
+    /// # use loco_rs::app::Extensions;
+    /// let extensions = Extensions::default();
+    ///
+    /// #[derive(Debug)]
+    /// struct TestService {
+    ///     name: String,
+    ///     value: i32,
+    /// }
+    ///
+    /// let service = TestService {
+    ///     name: "test".to_string(),
+    ///     value: 100,
+    /// };
+    ///
+    /// extensions.insert(service);
+    /// assert!(extensions.contains::<TestService>());
+    /// ```
+    pub fn insert<T: 'static + Send + Sync>(&self, val: T) {
+        self.storage.insert(TypeId::of::<T>(), Box::new(val));
+    }
+
+    /// Remove a value of type T from the extensions
+    ///
+    /// Returns true if the value was present and removed
+    ///
+    /// # Example
+    /// ```
+    /// # use loco_rs::app::Extensions;
+    /// let extensions = Extensions::default();
+    ///
+    /// #[derive(Debug)]
+    /// struct TestService {
+    ///     name: String,
+    ///     value: i32,
+    /// }
+    ///
+    /// let service = TestService {
+    ///     name: "test".to_string(),
+    ///     value: 100,
+    /// };
+    ///
+    /// extensions.insert(service);
+    /// assert!(extensions.contains::<TestService>());
+    /// assert!(extensions.remove::<TestService>());
+    /// assert!(!extensions.contains::<TestService>());
+    /// ```
+    #[must_use]
+    pub fn remove<T: 'static + Send + Sync>(&self) -> bool {
+        self.storage.remove(&TypeId::of::<T>()).is_some()
+    }
+
+    /// Get a reference to a value of type T from the extensions
+    ///
+    /// Returns None if the value doesn't exist. The reference is valid for as long
+    /// as the returned guard is held. If you need to clone the value, you can do so
+    /// directly from the returned reference.
+    ///
+    /// # Example
+    /// ```
+    /// # use loco_rs::app::Extensions;
+    /// let extensions = Extensions::default();
+    ///
+    /// #[derive(Debug)]
+    /// struct TestService {
+    ///     name: String,
+    ///     value: i32,
+    /// }
+    ///
+    /// let service = TestService {
+    ///     name: "test".to_string(),
+    ///     value: 100,
+    /// };
+    ///
+    /// extensions.insert(service);
+    ///
+    /// // Get a reference to the service
+    /// let service_ref = extensions.get::<TestService>().expect("Service not found");
+    /// // Access fields directly
+    /// assert_eq!(service_ref.name, "test");
+    /// assert_eq!(service_ref.value, 100);
+    ///
+    /// // Clone if needed
+    /// let name_clone = service_ref.name.clone();
+    /// assert_eq!(name_clone, "test");
+    ///
+    /// // Compute values from the reference
+    /// let name_len = service_ref.name.len();
+    /// assert_eq!(name_len, 4);
+    /// ```
+    #[must_use]
+    pub fn get<T: 'static + Send + Sync>(&self) -> Option<RefGuard<'_, T>> {
+        let type_id = TypeId::of::<T>();
+        self.storage.get(&type_id).map(|r| RefGuard::<T> {
+            inner: r,
+            _phantom: std::marker::PhantomData,
+        })
+    }
+
+    /// Check if the extensions contains a value of type T
+    ///
+    /// # Example
+    /// ```
+    /// # use loco_rs::app::Extensions;
+    /// let extensions = Extensions::default();
+    ///
+    /// #[derive(Debug)]
+    /// struct TestService {
+    ///     name: String,
+    ///     value: i32,
+    /// }
+    ///
+    /// let service = TestService {
+    ///     name: "test".to_string(),
+    ///     value: 100,
+    /// };
+    ///
+    /// extensions.insert(service);
+    /// assert!(extensions.contains::<TestService>());
+    /// assert!(!extensions.contains::<String>());
+    /// ```
+    #[must_use]
+    pub fn contains<T: 'static + Send + Sync>(&self) -> bool {
+        self.storage.contains_key(&TypeId::of::<T>())
+    }
+}
+
+// A wrapper around DashMap's Ref type that erases the exact type
+// but provides deref to the target type
+pub struct RefGuard<'a, T: 'static + Send + Sync> {
+    inner: dashmap::mapref::one::Ref<'a, TypeId, Box<dyn Any + Send + Sync>>,
+    _phantom: std::marker::PhantomData<&'a T>,
+}
+
+impl<T: 'static + Send + Sync> std::ops::Deref for RefGuard<'_, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        // This is safe because we only create a RefGuard for a specific type
+        // after looking it up by its TypeId
+        self.inner
+            .value()
+            .downcast_ref::<T>()
+            .expect("Type mismatch in RefGuard")
+    }
+}
 
 /// Represents the application context for a web server.
 ///
@@ -52,6 +215,8 @@ pub struct AppContext {
     pub storage: Arc<Storage>,
     // Cache instance for the application
     pub cache: Arc<cache::Cache>,
+    /// Extension storage for arbitrary application data
+    pub extensions: Arc<Extensions>,
 }
 
 /// A trait that defines hooks for customizing and extending the behavior of a
@@ -247,3 +412,123 @@ pub trait Initializer: Sync + Send {
     }
 }
 // </snip>
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tests_cfg::app::get_app_context;
+
+    #[derive(Debug, Clone, PartialEq)]
+    struct TestService {
+        name: String,
+        value: i32,
+    }
+
+    #[derive(Debug, PartialEq)]
+    struct TestServiceWithoutClone {
+        name: String,
+        value: i32,
+    }
+
+    #[test]
+    fn test_extensions_insert_and_get() {
+        let extensions = Extensions::default();
+
+        extensions.insert(42i32);
+
+        assert_eq!(*extensions.get::<i32>().expect("Value should exist"), 42);
+
+        let service = TestService {
+            name: "test".to_string(),
+            value: 100,
+        };
+
+        extensions.insert(service);
+
+        let service_ref = extensions
+            .get::<TestService>()
+            .expect("Service should exist");
+        assert_eq!(service_ref.name, "test");
+        assert_eq!(service_ref.value, 100);
+
+        let service_clone = service_ref.clone();
+        assert_eq!(service_clone.name, "test");
+    }
+
+    #[test]
+    fn test_extensions_get_without_clone() {
+        let extensions = Extensions::default();
+
+        let service = TestServiceWithoutClone {
+            name: "test_direct".to_string(),
+            value: 100,
+        };
+        extensions.insert(service);
+
+        if let Some(service_ref) = extensions.get::<TestServiceWithoutClone>() {
+            // We can access fields directly
+            assert_eq!(service_ref.name, "test_direct");
+            assert_eq!(service_ref.value, 100);
+        } else {
+            panic!("Service should still exist");
+        }
+
+        assert_eq!(
+            extensions
+                .get::<TestServiceWithoutClone>()
+                .expect("Service should exist")
+                .name
+                .len(),
+            11
+        );
+
+        if let Some(service_ref) = extensions.get::<TestServiceWithoutClone>() {
+            assert_eq!(service_ref.value, 100);
+        } else {
+            panic!("Service should still exist");
+        };
+    }
+
+    #[test]
+    fn test_extensions_remove() {
+        let extensions = Extensions::default();
+
+        extensions.insert(42i32);
+        assert!(extensions.contains::<i32>());
+        assert!(extensions.remove::<i32>());
+        assert!(!extensions.contains::<i32>());
+        assert!(!extensions.remove::<i32>());
+    }
+
+    #[test]
+    fn test_extensions_contains() {
+        let extensions = Extensions::default();
+        extensions.insert(42i32);
+
+        assert!(extensions.contains::<i32>());
+        assert!(!extensions.contains::<String>());
+    }
+
+    #[tokio::test]
+    async fn test_app_context_extensions() {
+        let ctx = get_app_context().await;
+
+        let service = TestService {
+            name: "app_context_test".to_string(),
+            value: 42,
+        };
+
+        ctx.extensions.insert(service);
+
+        if let Some(service_ref) = ctx.extensions.get::<TestService>() {
+            assert_eq!(service_ref.name, "app_context_test");
+            assert_eq!(service_ref.value, 42);
+        }
+
+        assert!(ctx.extensions.contains::<TestService>());
+        assert!(!ctx.extensions.contains::<String>());
+
+        assert!(ctx.extensions.remove::<TestService>());
+        assert!(!ctx.extensions.contains::<TestService>());
+    }
+}

@@ -709,6 +709,69 @@ Now when you make a request to the `notes::create` handler, you will see the use
 2024-XX-XXTXX:XX:XX.XXXXXZ  INFO http-request: xx::controllers::middleware::log User: John Doe  environment=development request_id=xxxxx
 ```
 
+## Application Extensions
 
+Loco provides a flexible mechanism called `Extensions` within the `AppContext` to store and share arbitrary custom data or services across your application. This feature allows you to inject your own types into the application context without modifying Loco's core structures, enhancing pluggability and customization.
 
+`AppContext.extensions` is a type-safe, thread-safe heterogeneous storage. You can store any type that implements `'static + Send + Sync`.
 
+### Why Use Extensions?
+
+- **Sharing Custom Services:** Inject your own service clients (e.g., a custom API client, a different database connection pool) and access them from controllers, middlewares, or background workers.
+- **Storing Configuration:** Store application-specific configuration objects that need to be accessible globally.
+- **Shared State:** Manage shared state needed by different parts of your application logic.
+- **Plugin Integration:** Allow plugins or initializers to register their own data or services for later use by the application.
+
+### How to Use Extensions
+
+The `Extensions` storage is accessible via `ctx.extensions` wherever you have access to the `AppContext` (e.g., in controllers, hooks, initializers).
+
+**1. Inserting Data:**
+
+Use the `insert` method to add an instance of your type. The type must be `'static + Send + Sync`.
+
+```rust
+use loco_rs::prelude::*;
+
+// Define your custom service or data structure
+struct MyCustomService {
+    api_key: String,
+}
+
+// Somewhere you have access to AppContext (e.g., an initializer or hook)
+async fn setup_custom_service(ctx: &AppContext) -> Result<()> {
+    let service = MyCustomService {
+        api_key: "secret-key".to_string(),
+    };
+    // Insert the service into extensions
+    ctx.extensions.insert(service);
+    Ok(())
+}
+```
+
+**2. Retrieving Data:**
+
+Use the `get` method to retrieve a reference to your stored data. It returns an `Option<RefGuard<T>>`. `RefGuard` is a smart pointer that dereferences to your type `T`.
+
+```rust
+// In a controller or another part of your app
+async fn my_controller_handler(State(ctx): State<AppContext>) -> Result<impl IntoResponse> {
+    // Retrieve the service using get::<YourType>()
+    if let Some(service_ref) = ctx.extensions.get::<MyCustomService>() {
+        // Access fields directly through the RefGuard
+        let key = &service_ref.api_key;
+        tracing::info!("Using API Key: {}", key);
+
+        // If your type implements Clone, you can clone it
+        let _service_clone = service_ref.clone();
+    } else {
+        // Handle the case where the service is not found
+        return Err(Error::InternalServerError);
+    }
+
+    // ... rest of your handler
+    Ok(Response::new("Handled".to_string()))
+}
+```
+
+_Note:_ The `RefGuard` holds a read lock on the underlying storage. It's important to keep its scope minimal to avoid holding the lock longer than necessary. If you need the data for longer, clone it if possible.
