@@ -247,6 +247,62 @@ impl Hooks for App {
 
 After you've set up your own logger, return `Ok(true)` to signal that you took over initialization.
 
+## App-Wide State
+
+If you want to reuse the same instance of a struct you can use the DiContainer field in the AppContext. This provides a
+way to store and retrieve shared state across your application.
+
+### Adding State to the Container
+
+You can add state to the container in your initialization code, such as in the before_run hook:
+
+```rust
+impl Hooks for App {
+    async fn before_run(ctx: &AppContext) -> Result<()> {
+        // Create a shared counter that will be accessible throughout the app
+        let counter = Arc::new(AtomicU64::new(0));
+        ctx.container.add(counter);
+        
+        // Add a database connection pool
+        let pool = create_connection_pool().await?;
+        ctx.container.add(pool);
+        
+        Ok(())
+    }
+}
+```
+
+### Retrieving State from the Container
+
+You can retrieve state from anywhere you have access to the AppContext:
+
+```rust
+async fn my_controller(State(ctx): State<AppContext>) -> impl IntoResponse {
+    // Get the counter reference
+    let counter: Option<Arc<AtomicU64>> = ctx.container.get();
+    if let Some(counter) = counter {
+        let current = counter.fetch_add(1, Ordering::SeqCst);
+        format!("Counter: {}", current + 1)
+    } else {
+        "Counter not found".to_string()
+    }
+}
+```
+
+### Using Axum extractor
+
+Loco provides an extractor for axum to streamline the usage of the container.
+
+```rust
+use axum::extract::Path;
+use loco::di::Data;
+
+async fn get_user(Path(user_id): Path<i64>, Data(user_service): Data<UserService>) -> impl IntoResponse {
+  let user = user_service.get_user(user_id);
+  
+  return user.username;
+}
+```
 
 ## Middlewares
 `Loco` is a framework that is built on top of [`axum`](https://crates.io/crates/axum)

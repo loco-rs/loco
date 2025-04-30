@@ -22,6 +22,7 @@
 * Adding cache redis driver + configuration instead of enabling from code. [https://github.com/loco-rs/loco/pull/1389](https://github.com/loco-rs/loco/pull/1389)
 * Ability to configure pragma for SQLite. [https://github.com/loco-rs/loco/pull/1346](https://github.com/loco-rs/loco/pull/1346)
 * Optimize worker tag filtering string handling. [https://github.com/loco-rs/loco/pull/1396](https://github.com/loco-rs/loco/pull/1396)
+* Added DiContainer to manage instances via the `AppContext`. [https://github.com/loco-rs/loco/pull/1398](https://github.com/loco-rs/loco/pull/1398)
 
 
 ## v0.15.0
@@ -47,6 +48,7 @@
 * Add data subsystem. [https://github.com/loco-rs/loco/pull/1267](https://github.com/loco-rs/loco/pull/1267)
 * Add "endpoint" arg to azure storage builder.[https://github.com/loco-rs/loco/pull/1317](https://github.com/loco-rs/loco/pull/1317)
 * Improve readability and performance by using  map_err in Model. [https://github.com/loco-rs/loco/pull/1311](https://github.com/loco-rs/loco/pull/1311)
+
 ### Breaking Changes
 In module `loco_rs::auth::jwt` in struct `JWT`, the impl method `generate_token` signature has changed. 
 Migration:
