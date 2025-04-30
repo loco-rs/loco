@@ -48,7 +48,6 @@ impl Extensions {
     /// # use loco_rs::app::Extensions;
     /// let extensions = Extensions::default();
     ///
-    /// #[derive(Debug)]
     /// struct TestService {
     ///     name: String,
     ///     value: i32,
@@ -68,14 +67,13 @@ impl Extensions {
 
     /// Remove a value of type T from the extensions
     ///
-    /// Returns true if the value was present and removed
+    /// Returns `Some(T)` if the value was present and removed, `None` otherwise.
     ///
     /// # Example
     /// ```
     /// # use loco_rs::app::Extensions;
     /// let extensions = Extensions::default();
     ///
-    /// #[derive(Debug)]
     /// struct TestService {
     ///     name: String,
     ///     value: i32,
@@ -88,26 +86,42 @@ impl Extensions {
     ///
     /// extensions.insert(service);
     /// assert!(extensions.contains::<TestService>());
-    /// assert!(extensions.remove::<TestService>());
+    ///
+    /// // Remove and get the value
+    /// let removed_service_opt = extensions.remove::<TestService>();
+    /// assert!(removed_service_opt.is_some(), "Service should be present");
+    /// // Assert fields individually instead of comparing the whole struct
+    /// if let Some(removed_service) = removed_service_opt {
+    ///      assert_eq!(removed_service.name, "test");
+    ///      assert_eq!(removed_service.value, 100);
+    /// }
+    /// // Ensure it's gone
     /// assert!(!extensions.contains::<TestService>());
+    ///
+    /// // Trying to remove again returns None
+    /// assert!(extensions.remove::<TestService>().is_none());
     /// ```
     #[must_use]
-    pub fn remove<T: 'static + Send + Sync>(&self) -> bool {
-        self.storage.remove(&TypeId::of::<T>()).is_some()
+    pub fn remove<T: 'static + Send + Sync>(&self) -> Option<T> {
+        self.storage
+            .remove(&TypeId::of::<T>())
+            .map(|(_, v)| v) // Extract the Box<dyn Any>
+            .and_then(|any| any.downcast::<T>().ok()) // Downcast to Box<T>
+            .map(|boxed| *boxed) // Dereference the Box<T> to get T
     }
 
-    /// Get a reference to a value of type T from the extensions
+    /// Get a reference to a value of type T from the extensions.
     ///
-    /// Returns None if the value doesn't exist. The reference is valid for as long
-    /// as the returned guard is held. If you need to clone the value, you can do so
-    /// directly from the returned reference.
+    /// Returns `None` if the value doesn't exist.
+    /// The reference is valid for as long as the returned `RefGuard` is held.
+    /// If you need to clone the value, you can do so directly from the
+    /// returned reference, or use the `get` method instead.
     ///
     /// # Example
     /// ```
     /// # use loco_rs::app::Extensions;
     /// let extensions = Extensions::default();
     ///
-    /// #[derive(Debug)]
     /// struct TestService {
     ///     name: String,
     ///     value: i32,
@@ -121,7 +135,7 @@ impl Extensions {
     /// extensions.insert(service);
     ///
     /// // Get a reference to the service
-    /// let service_ref = extensions.get::<TestService>().expect("Service not found");
+    /// let service_ref = extensions.get_ref::<TestService>().expect("Service not found");
     /// // Access fields directly
     /// assert_eq!(service_ref.name, "test");
     /// assert_eq!(service_ref.value, 100);
@@ -135,12 +149,52 @@ impl Extensions {
     /// assert_eq!(name_len, 4);
     /// ```
     #[must_use]
-    pub fn get<T: 'static + Send + Sync>(&self) -> Option<RefGuard<'_, T>> {
+    pub fn get_ref<T: 'static + Send + Sync>(&self) -> Option<RefGuard<'_, T>> {
         let type_id = TypeId::of::<T>();
         self.storage.get(&type_id).map(|r| RefGuard::<T> {
             inner: r,
             _phantom: std::marker::PhantomData,
         })
+    }
+
+    /// Get a clone of a value of type T from the extensions.
+    /// Requires T to implement Clone.
+    ///
+    /// Returns `None` if the value doesn't exist.
+    /// This method clones the stored value.
+    /// If cloning is not desired or T does not implement Clone,
+    /// use `get_ref` instead.
+    ///
+    /// # Example
+    /// ```
+    /// # use loco_rs::app::Extensions;
+    /// let extensions = Extensions::default();
+    ///
+    /// #[derive(Clone)]
+    /// struct TestService {
+    ///     name: String,
+    ///     value: i32,
+    /// }
+    ///
+    /// let service = TestService {
+    ///     name: "test".to_string(),
+    ///     value: 100,
+    /// };
+    ///
+    /// extensions.insert(service);
+    ///
+    /// // Get a clone of the service
+    /// let service_clone_opt = extensions.get::<TestService>();
+    /// assert!(service_clone_opt.is_some(), "Service not found");
+    /// // Assert fields individually
+    /// if let Some(ref service_clone) = service_clone_opt {
+    ///     assert_eq!(service_clone.name, "test");
+    ///     assert_eq!(service_clone.value, 100);
+    /// }
+    /// ```
+    #[must_use]
+    pub fn get<T: 'static + Send + Sync + Clone>(&self) -> Option<T> {
+        self.get_ref::<T>().map(|guard| (*guard).clone())
     }
 
     /// Check if the extensions contains a value of type T
@@ -150,7 +204,6 @@ impl Extensions {
     /// # use loco_rs::app::Extensions;
     /// let extensions = Extensions::default();
     ///
-    /// #[derive(Debug)]
     /// struct TestService {
     ///     name: String,
     ///     value: i32,
@@ -418,25 +471,24 @@ mod tests {
     use super::*;
     use crate::tests_cfg::app::get_app_context;
 
-    #[derive(Debug, Clone, PartialEq)]
     struct TestService {
         name: String,
         value: i32,
     }
 
-    #[derive(Debug, PartialEq)]
-    struct TestServiceWithoutClone {
+    #[derive(Clone)]
+    struct CloneableTestService {
         name: String,
         value: i32,
     }
 
     #[test]
     fn test_extensions_insert_and_get() {
+        // Setup
         let extensions = Extensions::default();
 
         extensions.insert(42i32);
-
-        assert_eq!(*extensions.get::<i32>().expect("Value should exist"), 42);
+        assert_eq!(extensions.get::<i32>().expect("Value should exist"), 42);
 
         let service = TestService {
             name: "test".to_string(),
@@ -445,48 +497,50 @@ mod tests {
 
         extensions.insert(service);
 
-        let service_ref = extensions
-            .get::<TestService>()
-            .expect("Service should exist");
-        assert_eq!(service_ref.name, "test");
-        assert_eq!(service_ref.value, 100);
-
-        let service_clone = service_ref.clone();
-        assert_eq!(service_clone.name, "test");
+        let service_ref_opt = extensions.get_ref::<TestService>();
+        assert!(service_ref_opt.is_some(), "Service ref should exist");
+        if let Some(service_ref) = service_ref_opt {
+            assert_eq!(service_ref.name, "test");
+            assert_eq!(service_ref.value, 100);
+            let name_clone = service_ref.name.clone();
+            assert_eq!(name_clone, "test");
+        } else {
+            panic!("Should have gotten Some(service_ref)");
+        }
     }
 
     #[test]
     fn test_extensions_get_without_clone() {
         let extensions = Extensions::default();
 
-        let service = TestServiceWithoutClone {
+        let service = TestService {
             name: "test_direct".to_string(),
             value: 100,
         };
         extensions.insert(service);
 
-        if let Some(service_ref) = extensions.get::<TestServiceWithoutClone>() {
-            // We can access fields directly
+        let service_ref_opt = extensions.get_ref::<TestService>();
+        assert!(service_ref_opt.is_some(), "Service ref should exist");
+        if let Some(service_ref) = service_ref_opt {
             assert_eq!(service_ref.name, "test_direct");
             assert_eq!(service_ref.value, 100);
         } else {
-            panic!("Service should still exist");
+            panic!("Should have gotten Some(service_ref)");
         }
 
-        assert_eq!(
-            extensions
-                .get::<TestServiceWithoutClone>()
-                .expect("Service should exist")
-                .name
-                .len(),
-            11
+        let name_len_opt = extensions.get_ref::<TestService>().map(|r| r.name.len());
+        assert!(
+            name_len_opt.is_some(),
+            "Service ref should exist for len check"
         );
+        assert_eq!(name_len_opt.unwrap(), 11);
 
-        if let Some(service_ref) = extensions.get::<TestServiceWithoutClone>() {
-            assert_eq!(service_ref.value, 100);
-        } else {
-            panic!("Service should still exist");
-        };
+        let value_opt = extensions.get_ref::<TestService>().map(|r| r.value);
+        assert!(
+            value_opt.is_some(),
+            "Service ref should exist for value check"
+        );
+        assert_eq!(value_opt.unwrap(), 100);
     }
 
     #[test]
@@ -495,40 +549,153 @@ mod tests {
 
         extensions.insert(42i32);
         assert!(extensions.contains::<i32>());
-        assert!(extensions.remove::<i32>());
+        assert_eq!(extensions.remove::<i32>(), Some(42));
         assert!(!extensions.contains::<i32>());
-        assert!(!extensions.remove::<i32>());
+        assert_eq!(extensions.remove::<i32>(), None);
+
+        let service = TestService {
+            name: "rem".to_string(),
+            value: 50,
+        };
+        extensions.insert(service);
+        assert!(extensions.contains::<TestService>());
+        let removed_opt = extensions.remove::<TestService>();
+        assert!(removed_opt.is_some());
+        if let Some(removed) = removed_opt {
+            assert_eq!(removed.name, "rem");
+            assert_eq!(removed.value, 50);
+        } else {
+            panic!("Removed option should be Some");
+        }
+        assert!(!extensions.contains::<TestService>());
+        assert!(extensions.remove::<TestService>().is_none());
     }
 
     #[test]
     fn test_extensions_contains() {
         let extensions = Extensions::default();
+
         extensions.insert(42i32);
+        extensions.insert(TestService {
+            name: "contains".to_string(),
+            value: 1,
+        });
 
         assert!(extensions.contains::<i32>());
+        assert!(extensions.contains::<TestService>());
         assert!(!extensions.contains::<String>());
+        assert!(!extensions.contains::<CloneableTestService>());
+    }
+
+    #[test]
+    fn test_extensions_get_cloned() {
+        let extensions = Extensions::default();
+
+        extensions.insert(42i32);
+        assert_eq!(extensions.get::<i32>(), Some(42));
+        assert!(extensions.contains::<i32>());
+
+        let service = CloneableTestService {
+            name: "cloned_test".to_string(),
+            value: 200,
+        };
+        extensions.insert(service.clone());
+
+        let service_clone_opt = extensions.get::<CloneableTestService>();
+        assert!(service_clone_opt.is_some(), "Cloned service should exist");
+        if let Some(ref service_clone) = service_clone_opt {
+            assert_eq!(service_clone.name, "cloned_test");
+            assert_eq!(service_clone.value, 200);
+        } else {
+            panic!("Should have gotten Some(service_clone)");
+        }
+
+        assert!(extensions.contains::<CloneableTestService>());
+        let original_ref_opt = extensions.get_ref::<CloneableTestService>();
+        assert!(original_ref_opt.is_some(), "Original ref should exist");
+        if let Some(original_ref) = original_ref_opt {
+            assert_eq!(original_ref.name, "cloned_test");
+            assert_eq!(original_ref.value, 200);
+        } else {
+            panic!("Should have gotten Some(original_ref)");
+        }
+
+        assert_eq!(extensions.get::<String>(), None);
+        assert!(extensions.get::<CloneableTestService>().is_some());
+        // The following line correctly fails to compile because TestService doesn't impl Clone,
+        // which is required by the `get` method.
+        // let non_existent_clone = extensions.get::<TestService>();
     }
 
     #[tokio::test]
     async fn test_app_context_extensions() {
         let ctx = get_app_context().await;
 
-        let service = TestService {
-            name: "app_context_test".to_string(),
+        let service_cloneable = CloneableTestService {
+            name: "app_context_test_cloneable".to_string(),
             value: 42,
         };
+        ctx.extensions.insert(service_cloneable.clone());
 
-        ctx.extensions.insert(service);
-
-        if let Some(service_ref) = ctx.extensions.get::<TestService>() {
-            assert_eq!(service_ref.name, "app_context_test");
+        let ref_opt = ctx.extensions.get_ref::<CloneableTestService>();
+        assert!(ref_opt.is_some(), "Cloneable service ref should exist");
+        if let Some(service_ref) = ref_opt {
+            assert_eq!(service_ref.name, "app_context_test_cloneable");
             assert_eq!(service_ref.value, 42);
+        } else {
+            panic!("Should have gotten Some(service_ref)");
+        }
+
+        let clone_opt = ctx.extensions.get::<CloneableTestService>();
+        assert!(clone_opt.is_some(), "Should get cloned service");
+        if let Some(service_clone) = clone_opt {
+            assert_eq!(service_clone.name, "app_context_test_cloneable");
+            assert_eq!(service_clone.value, 42);
+        } else {
+            panic!("Should have gotten Some(service_clone)");
+        }
+
+        assert!(ctx.extensions.contains::<CloneableTestService>());
+        assert!(!ctx.extensions.contains::<String>());
+
+        let removed_cloneable_opt = ctx.extensions.remove::<CloneableTestService>();
+        assert!(removed_cloneable_opt.is_some());
+        if let Some(removed) = removed_cloneable_opt {
+            assert_eq!(removed.name, "app_context_test_cloneable");
+            assert_eq!(removed.value, 42);
+        } else {
+            panic!("Removed cloneable option should be Some");
+        }
+        assert!(!ctx.extensions.contains::<CloneableTestService>());
+
+        let service_non_cloneable = TestService {
+            name: "app_context_test_non_cloneable".to_string(),
+            value: 99,
+        };
+        ctx.extensions.insert(service_non_cloneable);
+
+        let non_clone_ref_opt = ctx.extensions.get_ref::<TestService>();
+        assert!(
+            non_clone_ref_opt.is_some(),
+            "Non-cloneable service ref should exist"
+        );
+        if let Some(service_ref) = non_clone_ref_opt {
+            assert_eq!(service_ref.name, "app_context_test_non_cloneable");
+            assert_eq!(service_ref.value, 99);
+        } else {
+            panic!("Should have gotten Some(service_ref)");
         }
 
         assert!(ctx.extensions.contains::<TestService>());
-        assert!(!ctx.extensions.contains::<String>());
 
-        assert!(ctx.extensions.remove::<TestService>());
+        let removed_non_cloneable_opt = ctx.extensions.remove::<TestService>();
+        assert!(removed_non_cloneable_opt.is_some());
+        if let Some(removed) = removed_non_cloneable_opt {
+            assert_eq!(removed.name, "app_context_test_non_cloneable");
+            assert_eq!(removed.value, 99);
+        } else {
+            panic!("Removed non-cloneable option should be Some");
+        }
         assert!(!ctx.extensions.contains::<TestService>());
     }
 }
