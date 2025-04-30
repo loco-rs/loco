@@ -47,7 +47,19 @@
 * Add data subsystem. [https://github.com/loco-rs/loco/pull/1267](https://github.com/loco-rs/loco/pull/1267)
 * Add "endpoint" arg to azure storage builder.[https://github.com/loco-rs/loco/pull/1317](https://github.com/loco-rs/loco/pull/1317)
 * Improve readability and performance by using  map_err in Model. [https://github.com/loco-rs/loco/pull/1311](https://github.com/loco-rs/loco/pull/1311)
+### Breaking Changes
+In module `loco_rs::auth::jwt` in struct `JWT`, the impl method `generate_token` signature has changed. 
+Migration:
 
+Before
+```rust
+jwt.generate_token(&expiration, pid.clone(), None);
+```
+After
+```rust
+jwt.generate_token(expiration, pid.clone(), Map::new());
+//                 ^ no "&"                 ^ serde_json::map (doesn't allocate in constructor)
+```
 
 ## v0.14.1
 
