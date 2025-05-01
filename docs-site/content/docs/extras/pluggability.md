@@ -20,7 +20,9 @@ flair =[]
 As a reminder, error levels and their logging can be controlled in your `development.yaml`:
 
 ### Logger
+
 <!-- <snip id="configuration-logger" inject_from="code" template="yaml"> -->
+
 ```yaml
 # Application logging configuration
 logger:
@@ -36,12 +38,13 @@ logger:
   # Uncomment the line below to override to see all third party libraries you can enable this config and override the logger filters.
   # override_filter: trace
 ```
+
 <!-- </snip> -->
 
 The most important knobs here are:
 
-* `level` - your standard logging levels. Typically `debug` or `trace` in development. In production, choose what you are used to.
-* `pretty_backtrace` - provides a clear, concise path to the line of code causing the error. Use `true` in development and turn it off in production. In cases where you are debugging things in production and need some extra hand, you can turn it on and then off when you're done.
+- `level` - your standard logging levels. Typically `debug` or `trace` in development. In production, choose what you are used to.
+- `pretty_backtrace` - provides a clear, concise path to the line of code causing the error. Use `true` in development and turn it off in production. In cases where you are debugging things in production and need some extra hand, you can turn it on and then off when you're done.
 
 ### Controller logging
 
@@ -61,7 +64,6 @@ server:
 
 You should enable it to get detailed request errors and a useful `request-id` that can help collate multiple request-scoped errors.
 
-
 ### Database
 
 You have the option of logging live SQL queries, in your `database` section:
@@ -71,7 +73,6 @@ database:
   # When enabled, the sql query will be logged.
   enable_logging: false
 ```
-
 
 ### Operating around errors
 
@@ -84,15 +85,15 @@ You'll be mostly looking at your terminal for errors while developing your app, 
 
 Usually you can expect the following from errors:
 
-* `error.msg` a `to_string()` version of an error, for operators.
-* `error.detail` a debug representation of an error, for developers.
-* An error **type** e.g. `controller_error` as the primary message tailored for searching, rather than a verbal error message.
-* Errors are logged as _tracing_ events and spans, so that you can build any infrastructure you want to provide custom tracing subscribers. Check out the [prometheus](https://github.com/loco-rs/loco/blob/master/loco-extras/src/initializers/prometheus.rs) example in `loco-extras`.
+- `error.msg` a `to_string()` version of an error, for operators.
+- `error.detail` a debug representation of an error, for developers.
+- An error **type** e.g. `controller_error` as the primary message tailored for searching, rather than a verbal error message.
+- Errors are logged as _tracing_ events and spans, so that you can build any infrastructure you want to provide custom tracing subscribers. Check out the [prometheus](https://github.com/loco-rs/loco/blob/master/loco-extras/src/initializers/prometheus.rs) example in `loco-extras`.
 
 Notes:
 
-* An _error chain_ was experimented with, but provides little value in practice.
-* Errors that an end user sees are a completely different thing. We strive to provide **minimal internal details** about an error for an end user when we know a user can't do anything about an error (e.g. "database offline error"), mostly it will be a generic "Internal Server Error" on purpose -- for security reasons.
+- An _error chain_ was experimented with, but provides little value in practice.
+- Errors that an end user sees are a completely different thing. We strive to provide **minimal internal details** about an error for an end user when we know a user can't do anything about an error (e.g. "database offline error"), mostly it will be a generic "Internal Server Error" on purpose -- for security reasons.
 
 ### Producing errors
 
@@ -110,8 +111,6 @@ Err(Error::Unauthorized("some message"))
 unauthorized("some message") // create a full response object, calling Err on a created error
 ```
 
-
-
 ## Initializers
 
 Initializers are a way to encapsulate a piece of infrastructure "wiring" that you need to do in your app. You put initializers in `src/initializers/`.
@@ -119,7 +118,9 @@ Initializers are a way to encapsulate a piece of infrastructure "wiring" that yo
 ### Writing initializers
 
 Currently, an initializer is anything that implements the `Initializer` trait:
+
 <!-- <snip id="initializers-trait" inject_from="code" template="rust"> -->
+
 ```rust
 pub trait Initializer: Sync + Send {
     /// The initializer name or identifier
@@ -140,6 +141,7 @@ pub trait Initializer: Sync + Send {
     }
 }
 ```
+
 <!-- </snip> -->
 
 ### Example: Integrating Axum Session
@@ -185,12 +187,12 @@ src/
   app.rs   <--- register initializers here
 ```
 
-
 ### Using initializers
 
 After you've implemented your own initializer, you should implement the `initializers(..)` hook in your `src/app.rs` and provide a Vec of your initializers:
 
 <!-- <snip id="app-initializers" inject_from="code" template="rust"> -->
+
 ```rust
     async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
         let initializers: Vec<Box<dyn Initializer>> = vec![
@@ -202,6 +204,7 @@ After you've implemented your own initializer, you should implement the `initial
         Ok(initializers)
     }
 ```
+
 <!-- </snip> -->
 
 Loco will now run your initializer stack in the correct places during the app boot process.
@@ -210,12 +213,12 @@ Loco will now run your initializer stack in the correct places during the app bo
 
 Right now initializers contain two integration points:
 
-* `before_run` - happens before running the app -- this is a pure "initialization" type of a hook. You can send web hooks, metric points, do cleanups, pre-flight checks, etc.
-* `after_routes` - happens after routes have been added. You have access to the Axum router and its powerful layering integration points, this is where you will spend most of your time.
+- `before_run` - happens before running the app -- this is a pure "initialization" type of a hook. You can send web hooks, metric points, do cleanups, pre-flight checks, etc.
+- `after_routes` - happens after routes have been added. You have access to the Axum router and its powerful layering integration points, this is where you will spend most of your time.
 
 ### Compared to Rails initializers
 
-Rails initializers, are regular scripts that run once -- for initialization and have access to everything. They get their power from being able to access a "live" Rails app, modify it as a global instance. 
+Rails initializers, are regular scripts that run once -- for initialization and have access to everything. They get their power from being able to access a "live" Rails app, modify it as a global instance.
 
 In Loco, accessing a global instance and mutating it is not possible in Rust (for a good reason!), and so we offer two integration points which are explicit and safe:
 
@@ -224,15 +227,15 @@ In Loco, accessing a global instance and mutating it is not possible in Rust (fo
 
 Rails initializers need _ordering_ and _modification_. Meaning, a user should be certain that they run in a specific order (or re-order them), and a user is able to remove initializers that other people set before them.
 
-In Loco, we circumvent this complexity by making the user _provide a full vec_ of initializers. Vecs are ordered, and there are no implicit initializers. 
+In Loco, we circumvent this complexity by making the user _provide a full vec_ of initializers. Vecs are ordered, and there are no implicit initializers.
 
 ### The global logger initializer
 
 Some developers would like to customize their logging stack. In Loco this involves setting up tracing and tracing subscribers.
 
-Because at the moment tracing does not allow for re-initialization, or modification of an in-flight tracing stack, you *only get one chance to initialize and registr a global tracing stack*.
+Because at the moment tracing does not allow for re-initialization, or modification of an in-flight tracing stack, you _only get one chance to initialize and registr a global tracing stack_.
 
-This is why we added a new *App level hook*, called `init_logger`, which you can use to provide your own logging stack initialization.
+This is why we added a new _App level hook_, called `init_logger`, which you can use to provide your own logging stack initialization.
 
 ```rust
 // in src/app.rs
@@ -247,8 +250,8 @@ impl Hooks for App {
 
 After you've set up your own logger, return `Ok(true)` to signal that you took over initialization.
 
-
 ## Middlewares
+
 `Loco` is a framework that is built on top of [`axum`](https://crates.io/crates/axum)
 and [`tower`](https://crates.io/crates/tower). They provide a way to
 add [layers](https://docs.rs/tower/latest/tower/trait.Layer.html)
@@ -256,7 +259,6 @@ and [services](https://docs.rs/tower/latest/tower/trait.Service.html) as middlew
 
 Middleware is a way to add pre- and post-processing to your requests. This can be used for logging, authentication, rate
 limiting, route-specific processing, and more.
-
 
 ### Source Code
 
@@ -455,7 +457,7 @@ potentially causing panics or other failures.
 **Correct approach to cloning services using `std::mem::replace`**
 To handle cloning correctly, it's recommended to use `std::mem::replace` to swap the ready service with its clone in a
 controlled manner. This approach ensures that the service being used to handle the request is the one that has been
-verified as ready. Here’s how it works:
+verified as ready. Here's how it works:
 
 - Clone the service: First, create a clone of the service. This clone will eventually replace the original service in
   the service handler.
@@ -709,22 +711,22 @@ Now when you make a request to the `notes::create` handler, you will see the use
 2024-XX-XXTXX:XX:XX.XXXXXZ  INFO http-request: xx::controllers::middleware::log User: John Doe  environment=development request_id=xxxxx
 ```
 
-## Application Extensions
+## Application SharedStore
 
-Loco provides a flexible mechanism called `Extensions` within the `AppContext` to store and share arbitrary custom data or services across your application. This feature allows you to inject your own types into the application context without modifying Loco's core structures, enhancing pluggability and customization.
+Loco provides a flexible mechanism called `SharedStore` within the `AppContext` to store and share arbitrary custom data or services across your application. This feature allows you to inject your own types into the application context without modifying Loco's core structures, enhancing pluggability and customization.
 
-`AppContext.extensions` is a type-safe, thread-safe heterogeneous storage. You can store any type that implements `'static + Send + Sync`.
+`AppContext.shared_store` is a type-safe, thread-safe heterogeneous storage. You can store any type that implements `'static + Send + Sync`.
 
-### Why Use Extensions?
+### Why Use SharedStore?
 
 - **Sharing Custom Services:** Inject your own service clients (e.g., a custom API client, a different database connection pool) and access them from controllers, middlewares, or background workers.
 - **Storing Configuration:** Store application-specific configuration objects that need to be accessible globally.
 - **Shared State:** Manage shared state needed by different parts of your application logic.
 - **Plugin Integration:** Allow plugins or initializers to register their own data or services for later use by the application.
 
-### How to Use Extensions
+### How to Use SharedStore
 
-The `Extensions` storage is accessible via `ctx.extensions` wherever you have access to the `AppContext` (e.g., in controllers, hooks, initializers).
+The `SharedStore` storage is accessible via `ctx.shared_store` wherever you have access to the `AppContext` (e.g., in controllers, hooks, initializers).
 
 **1. Inserting Data:**
 
@@ -743,27 +745,30 @@ async fn setup_custom_service(ctx: &AppContext) -> Result<()> {
     let service = MyCustomService {
         api_key: "secret-key".to_string(),
     };
-    // Insert the service into extensions
-    ctx.extensions.insert(service);
+    // Insert the service into the shared store
+    ctx.shared_store.insert(service);
     Ok(())
 }
 ```
 
 **2. Retrieving Data:**
 
-Use the `get` method to retrieve a reference to your stored data. It returns an `Option<RefGuard<T>>`. `RefGuard` is a smart pointer that dereferences to your type `T`.
+Use the `get_ref` method to retrieve a reference (`RefGuard<T>`) to your stored data, or the `get` method to retrieve a clone (`Option<T>`) if the type implements `Clone`. `RefGuard` is a smart pointer that dereferences to your type `T`.
 
 ```rust
 // In a controller or another part of your app
 async fn my_controller_handler(State(ctx): State<AppContext>) -> Result<impl IntoResponse> {
-    // Retrieve the service using get::<YourType>()
-    if let Some(service_ref) = ctx.extensions.get::<MyCustomService>() {
+    // Retrieve the service using get_ref::<YourType>()
+    if let Some(service_ref) = ctx.shared_store.get_ref::<MyCustomService>() {
         // Access fields directly through the RefGuard
         let key = &service_ref.api_key;
         tracing::info!("Using API Key: {}", key);
 
-        // If your type implements Clone, you can clone it
-        let _service_clone = service_ref.clone();
+        // If MyCustomService implements Clone, you could get a clone instead:
+        // if let Some(service_clone) = ctx.shared_store.get::<MyCustomService>() {
+        //     tracing::info!("Cloned API Key: {}", service_clone.api_key);
+        // }
+
     } else {
         // Handle the case where the service is not found
         return Err(Error::InternalServerError);
@@ -774,4 +779,4 @@ async fn my_controller_handler(State(ctx): State<AppContext>) -> Result<impl Int
 }
 ```
 
-_Note:_ The `RefGuard` holds a read lock on the underlying storage. It's important to keep its scope minimal to avoid holding the lock longer than necessary. If you need the data for longer, clone it if possible.
+_Note:_ The `RefGuard` holds a read lock on the underlying storage. It's important to keep its scope minimal to avoid holding the lock longer than necessary. If you need the data for longer and the type implements `Clone`, use the `get()` method to obtain an owned clone.
