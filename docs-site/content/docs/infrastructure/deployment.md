@@ -65,7 +65,7 @@ logger:
   # override_filter: trace
 ```
 <!-- </snip>-->
- 
+
 
 - Server:
 <!-- <snip id="configuration-server" inject_from="code" template="yaml"> -->
@@ -152,7 +152,7 @@ auth:
 
 ## Running `loco doctor`
 
-You can run `loco doctor` in your server to check the connection health of your environment. 
+You can run `loco doctor` in your server to check the connection health of your environment.
 
 ```sh
 $ myapp doctor --production
@@ -164,19 +164,26 @@ Loco offers a deployment template enabling the creation of a deployment infrastr
 
 <!-- <snip id="generate-deployment-command" inject_from="yaml" template="sh"> -->
 ```sh
-cargo loco generate deployment
-? ❯ Choose your deployment ›
-❯ Docker
-❯ Shuttle
-❯ Nginx
+$ cargo -q loco generate deployment --help
+Generate a deployment infrastructure
 
-..
-✔ ❯ Choose your deployment · Docker
-skipped (exists): "dockerfile"
-added: ".dockerignore"
+Usage: myapp-cli generate deployment [OPTIONS] --kind <KIND>
+
+Options:
+      --kind <KIND>                [possible values: docker, shuttle, nginx]
+  -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
+  -h, --help                       Print help
+  -V, --version                    Print version
 ```
 <!-- </snip>-->
 
+```sh
+$ cargo -q loco generate deployment --kind docker
+added: "dockerfile"
+added: ".dockerignore"
+* Dockerfile generated successfully.
+* Dockerignore generated successfully.
+```
 
 Deployment Options:
 
