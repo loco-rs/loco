@@ -81,7 +81,7 @@ where
                                 Error::Unauthorized("not found".to_string())
                             }
                             ModelError::DbErr(_) => Error::InternalServerError, // don't show 401 for system errors
-                            _ => Error::Unauthorized(format!("other error: '{}'", e)),
+                            _ => Error::Unauthorized(format!("other error: '{e}'")),
                         }
                     })?;
                 Ok(Self {
@@ -243,7 +243,7 @@ where
             match e {
                 ModelError::EntityNotFound => Error::Unauthorized("not found".to_string()),
                 ModelError::DbErr(_) => Error::InternalServerError, // don't show 401 for system errors
-                _ => Error::Unauthorized(format!("other error: '{}'", e)),
+                _ => Error::Unauthorized(format!("other error: '{e}'")),
             }
         })?;
 
