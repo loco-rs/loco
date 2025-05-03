@@ -35,7 +35,7 @@ use std::fmt::Write;
 ))]
 use std::process::exit;
 use std::{collections::BTreeMap, path::PathBuf};
-
+use loco_gen::ScaffoldKind;
 #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
 use crate::bgworker::JobStatus;
 #[cfg(debug_assertions)]
