@@ -24,12 +24,11 @@ use std::convert::TryInto;
 
 use axum::{
     body::Body,
-    http::{response::Builder, HeaderName, HeaderValue},
+    http::{header, response::Builder, HeaderName, HeaderValue, StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
 };
 use axum_extra::extract::cookie::Cookie;
 use bytes::{BufMut, BytesMut};
-use hyper::{header, StatusCode};
 use serde::Serialize;
 use serde_json::json;
 
@@ -139,6 +138,29 @@ pub fn empty_json() -> Result<Response> {
 /// functionality
 pub fn html(content: &str) -> Result<Response> {
     Ok(Html(content.to_string()).into_response())
+}
+
+/// Returns a YAML response
+///
+/// # Example:
+///
+/// ```rust
+/// use loco_rs::prelude::*;
+///
+/// pub async fn openapi_spec_yaml() -> Result<Response> {
+///     format::yaml("openapi: 3.1.0\ninfo:\n  title: Loco Demo\n  ")
+/// }
+/// ```
+///
+/// # Errors
+///
+/// Currently this function doesn't return any error. this is for feature
+/// functionality
+pub fn yaml(content: &str) -> Result<Response> {
+    Ok(Builder::new()
+        .header(header::CONTENT_TYPE, "application/yaml")
+        .body(Body::from(content.to_string()))?
+        .into_response())
 }
 
 /// Returns an redirect response
@@ -269,7 +291,7 @@ impl RenderBuilder {
             .response
             .header(
                 header::CONTENT_TYPE,
-                HeaderValue::from_static(mime::TEXT_PLAIN_UTF_8.as_ref()),
+                HeaderValue::from_static("text/plain; charset=utf-8"),
             )
             .body(Body::from(content.to_string()))?)
     }
@@ -319,7 +341,7 @@ impl RenderBuilder {
             .response
             .header(
                 header::CONTENT_TYPE,
-                HeaderValue::from_static(mime::TEXT_HTML_UTF_8.as_ref()),
+                HeaderValue::from_static("text/html; charset=utf-8"),
             )
             .body(Body::from(content.to_string()))?)
     }
@@ -340,7 +362,7 @@ impl RenderBuilder {
             .response
             .header(
                 header::CONTENT_TYPE,
-                HeaderValue::from_static(mime::APPLICATION_JSON.as_ref()),
+                HeaderValue::from_static("application/json"),
             )
             .body(body)?)
     }
@@ -387,29 +409,27 @@ pub fn render() -> RenderBuilder {
 #[cfg(test)]
 mod tests {
 
+    use axum::http::Response;
     use insta::assert_debug_snapshot;
     use tree_fs;
 
     use super::*;
     use crate::{controller::views::engines::TeraView, prelude::*};
 
-    async fn response_body_to_string(response: hyper::Response<Body>) -> String {
+    async fn response_body_to_string(response: Response<Body>) -> String {
         let bytes = axum::body::to_bytes(response.into_body(), 200)
             .await
             .unwrap();
         std::str::from_utf8(&bytes).unwrap().to_string()
     }
 
-    pub fn get_header_from_response(
-        response: &hyper::Response<Body>,
-        header: &str,
-    ) -> Option<String> {
+    pub fn get_header_from_response(response: &Response<Body>, header: &str) -> Option<String> {
         Some(response.headers().get(header)?.to_str().ok()?.to_string())
     }
 
     #[tokio::test]
     async fn empty_response_format() {
-        let response: hyper::Response<Body> = empty().unwrap();
+        let response: Response<Body> = empty().unwrap();
 
         assert_debug_snapshot!(response);
         assert_eq!(response_body_to_string(response).await, String::new());
@@ -451,6 +471,15 @@ mod tests {
     async fn html_response_format() {
         let response_content: &str = "<h1>loco</h1>";
         let response = html(response_content).unwrap();
+
+        assert_debug_snapshot!(response);
+        assert_eq!(response_body_to_string(response).await, response_content);
+    }
+
+    #[tokio::test]
+    async fn yaml_response_format() {
+        let response_content: &str = "openapi: 3.1.0\ninfo:\n  title: Loco Demo\n  ";
+        let response = yaml(response_content).unwrap();
 
         assert_debug_snapshot!(response);
         assert_eq!(response_body_to_string(response).await, response_content);

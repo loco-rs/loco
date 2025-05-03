@@ -23,6 +23,10 @@ cfg_if::cfg_if! {
     } else {}
 }
 
+use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueHint};
+use colored::Colorize;
+use duct::cmd;
+use std::fmt::Write;
 #[cfg(any(
     feature = "bg_redis",
     feature = "bg_pg",
@@ -32,13 +36,10 @@ cfg_if::cfg_if! {
 use std::process::exit;
 use std::{collections::BTreeMap, path::PathBuf};
 
-use clap::{ArgAction, Parser, Subcommand};
-use colored::Colorize;
-use duct::cmd;
-use loco_gen::ScaffoldKind;
-
 #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
 use crate::bgworker::JobStatus;
+#[cfg(debug_assertions)]
+use crate::controller;
 use crate::{
     app::{AppContext, Hooks},
     boot::{
@@ -46,10 +47,10 @@ use crate::{
         start, RunDbCommand, ServeParams, StartMode,
     },
     config::Config,
-    controller,
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     logger, task, Error,
 };
+
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
@@ -74,14 +75,18 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Start an app
+    #[command(group(ArgGroup::new("start_mode").args(&["worker", "server_and_worker", "all"])))]
     #[clap(alias("s"))]
     Start {
-        /// start worker
-        #[arg(short, long, action)]
-        worker: bool,
-        /// start same-process server and worker
-        #[arg(short, long, action)]
+        /// Start worker. Optionally provide tags to run specific jobs (e.g. --worker=tag1,tag2)
+        #[arg(short, long, action, value_delimiter = ',', num_args = 0.., conflicts_with_all = &["server_and_worker", "all"])]
+        worker: Option<Vec<String>>,
+        /// Start the server and worker in the same process
+        #[arg(short, long, action, conflicts_with_all = &["worker", "all"])]
         server_and_worker: bool,
+        /// Start the server, worker, and scheduler in the same process
+        #[arg(short, long, action, conflicts_with_all = &["worker", "server_and_worker"])]
+        all: bool,
         /// server bind address
         #[arg(short, long, action)]
         binding: Option<String>,
@@ -132,7 +137,7 @@ enum Commands {
         /// Specify a path to a dedicated scheduler configuration file. by
         /// default load schedulers job setting from environment config.
         #[clap(value_parser)]
-        #[arg(short = 'c', long = "config", action)]
+        #[arg(short = 'c', long = "config", action, value_hint = ValueHint::FilePath)]
         config_path: Option<PathBuf>,
         /// Show all configured jobs
         #[arg(short, long, action)]
@@ -163,8 +168,8 @@ enum Commands {
     #[clap(alias("w"))]
     Watch {
         /// start worker
-        #[arg(short, long, action)]
-        worker: bool,
+        #[arg(short, long, action, value_delimiter = ',', num_args = 0..)]
+        worker: Option<Vec<String>>,
         /// start same-process server and worker
         #[arg(short, long, action)]
         server_and_worker: bool,
@@ -323,6 +328,11 @@ After running the migration, follow these steps to complete the process:
         /// Name of the thing to generate
         name: String,
     },
+    /// Generate data loader
+    Data {
+        /// Name of the thing to generate
+        name: String,
+    },
     /// Generate a deployment infrastructure
     Deployment {
         // deployment kind.
@@ -398,6 +408,7 @@ impl ComponentArg {
             Self::Scheduler {} => Ok(loco_gen::Component::Scheduler {}),
             Self::Worker { name } => Ok(loco_gen::Component::Worker { name }),
             Self::Mailer { name } => Ok(loco_gen::Component::Mailer { name }),
+            Self::Data { name } => Ok(loco_gen::Component::Data { name }),
             Self::Deployment { kind } => Ok(kind.to_generator_component(config)),
             Self::Override {
                 template_path: _,
@@ -530,7 +541,21 @@ impl DeploymentKind {
     fn to_generator_component(&self, config: &Config) -> loco_gen::Component {
         let kind = match self {
             Self::Docker => {
-                let copy_paths = Self::copy_paths(config);
+                let mut copy_paths = vec![];
+
+                if let Some(static_assets) = &config.server.middlewares.static_assets {
+                    let asset_folder =
+                        PathBuf::from(controller::views::engines::DEFAULT_ASSET_FOLDER);
+                    if asset_folder.exists() {
+                        copy_paths.push(asset_folder.clone());
+                    }
+                    if !static_assets.folder.path.starts_with(&asset_folder) {
+                        copy_paths.push(PathBuf::from(&static_assets.folder.path));
+                    }
+                    if !static_assets.fallback.starts_with(asset_folder) {
+                        copy_paths.push(PathBuf::from(&static_assets.fallback));
+                    }
+                }
 
                 let is_client_side_rendering =
                     PathBuf::from("frontend").join("package.json").exists();
@@ -615,6 +640,13 @@ enum JobsCommands {
         #[arg(short, long)]
         file: PathBuf,
     },
+    /// Change `processing` status to `queue`.
+    Requeue {
+        /// Change `processing` jobs older than the specified
+        /// maximum age in minutes.
+        #[arg(long, default_value_t = 0)]
+        from_age: i64,
+    },
 }
 
 /// Parse a single key-value pair
@@ -697,17 +729,21 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         Commands::Start {
             worker,
             server_and_worker,
+            all,
             binding,
             port,
             no_banner,
         } => {
-            let start_mode = if worker {
-                StartMode::WorkerOnly
-            } else if server_and_worker {
-                StartMode::ServerAndWorker
-            } else {
-                StartMode::ServerOnly
-            };
+            let start_mode = worker.map_or(
+                if server_and_worker {
+                    StartMode::ServerAndWorker
+                } else if all {
+                    StartMode::All
+                } else {
+                    StartMode::ServerOnly
+                },
+                |tags| StartMode::WorkerOnly { tags },
+            );
 
             let boot_result = create_app::<H, M>(start_mode, &environment, config).await?;
             let serve_params = ServeParams {
@@ -800,21 +836,25 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             server_and_worker,
         } => {
             // cargo-watch  -s 'cargo loco start'
-            let mut subcmd = vec!["cargo", "loco", "start"];
-            if worker {
-                subcmd.push("--worker");
+            let mut cmd_str = String::from("cargo loco start");
+
+            if let Some(worker_tags) = worker {
+                if worker_tags.is_empty() {
+                    cmd_str.push_str(" --worker");
+                } else {
+                    write!(cmd_str, " --worker={}", worker_tags.join(","))
+                        .expect("Failed to write to string");
+                }
             } else if server_and_worker {
-                subcmd.push("--server-and-worker");
+                cmd_str.push_str(" --server-and-worker");
             }
 
-            cmd("cargo-watch", &["-s", &subcmd.join(" ")])
-                .run()
-                .map_err(|err| {
-                    Error::Message(format!(
-                        "failed to start with `cargo-watch`. Did you `cargo install \
+            cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
+                Error::Message(format!(
+                    "failed to start with `cargo-watch`. Did you `cargo install \
                          cargo-watch`?. error details: `{err}`",
-                    ))
-                })?;
+                ))
+            })?;
         }
     }
     Ok(())
@@ -838,17 +878,21 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
         Commands::Start {
             worker,
             server_and_worker,
+            all,
             binding,
             port,
             no_banner,
         } => {
-            let start_mode = if worker {
-                StartMode::WorkerOnly
-            } else if server_and_worker {
-                StartMode::ServerAndWorker
-            } else {
-                StartMode::ServerOnly
-            };
+            let start_mode = worker.map_or(
+                if server_and_worker {
+                    StartMode::ServerAndWorker
+                } else if all {
+                    StartMode::All
+                } else {
+                    StartMode::ServerOnly
+                },
+                |tags| StartMode::WorkerOnly { tags },
+            );
 
             let boot_result = create_app::<H>(start_mode, &environment, config).await?;
             let serve_params = ServeParams {
@@ -913,21 +957,25 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             server_and_worker,
         } => {
             // cargo-watch  -s 'cargo loco start'
-            let mut subcmd = vec!["cargo", "loco", "start"];
-            if worker {
-                subcmd.push("--worker");
+            let mut cmd_str = String::from("cargo loco start");
+
+            if let Some(worker_tags) = worker {
+                if worker_tags.is_empty() {
+                    cmd_str.push_str(" --worker");
+                } else {
+                    write!(cmd_str, " --worker={}", worker_tags.join(","))
+                        .expect("Failed to write to string");
+                }
             } else if server_and_worker {
-                subcmd.push("--server-and-worker");
+                cmd_str.push_str(" --server-and-worker");
             }
 
-            cmd("cargo-watch", &["-s", &subcmd.join(" ")])
-                .run()
-                .map_err(|err| {
-                    Error::Message(format!(
-                        "failed to start with `cargo-watch`. Did you `cargo install \
+            cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
+                Error::Message(format!(
+                    "failed to start with `cargo-watch`. Did you `cargo install \
                          cargo-watch`?. error details: `{err}`",
-                    ))
-                })?;
+                ))
+            })?;
         }
     }
     Ok(())
@@ -1093,6 +1141,7 @@ async fn handle_job_command<H: Hooks>(
             Ok(())
         }
         JobsCommands::Import { file } => queue.import(file.as_path()).await,
+        JobsCommands::Requeue { from_age } => queue.requeue(from_age).await,
     }
 }
 
@@ -1150,7 +1199,7 @@ fn handle_generate_command<H: Hooks>(
         )?;
         let messages = loco_gen::collect_messages(&get_result);
         println!("{messages}");
-    };
+    }
     Ok(())
 }
 
@@ -1176,54 +1225,60 @@ pub fn format_templates_as_tree(paths: Vec<PathBuf>) -> String {
         }
     }
 
-    let mut output = String::new();
-    output.push_str("Available templates and directories to copy:\n\n");
+    let mut output = "Available templates and directories to copy:".to_string();
+    let _ = writeln!(output);
+    let _ = writeln!(output);
 
     for (top_level, sub_categories) in &categories {
-        output.push_str(&format!("{}", format!("{top_level}\n").yellow()));
+        let _ = writeln!(output, "{}", top_level.to_string().yellow());
 
         for (sub_category, paths) in sub_categories {
             if !sub_category.is_empty() {
-                output.push_str(&format!("{}", format!(" └── {sub_category}\n").yellow()));
+                let _ = writeln!(output, "{}", format!(" └── {sub_category}").yellow());
             }
 
             for path in paths {
-                output.push_str(&format!(
-                    "   └── {}\n",
+                let _ = writeln!(
+                    output,
+                    "   └── {}",
                     path.file_name().unwrap_or_default().to_string_lossy()
-                ));
+                );
             }
         }
     }
 
-    output.push_str(&format!("\n\n{}\n\n", "Usage Examples:".bold().green()));
-    output.push_str(&format!("{}", "Override a Specific File:\n".bold()));
-    output.push_str(&format!(
-        " * cargo loco generate override {}\n",
+    let _ = writeln!(output);
+    let _ = writeln!(output);
+    let _ = writeln!(output, "{}", "Usage Examples:".bold().green());
+    let _ = writeln!(output);
+    let _ = writeln!(output, "{}", "Override a Specific File:".bold());
+
+    let _ = writeln!(
+        output,
+        " * cargo loco generate override {}",
         "scaffold/api/controller.t".yellow()
-    ));
-    output.push_str(&format!(
+    );
+    let _ = writeln!(
+        output,
         " * cargo loco generate override {}",
         "migration/add_columns.t".yellow()
-    ));
-    output.push_str(&format!(
-        "{}",
-        "\n\nOverride All Files in a Folder:\n".bold()
-    ));
-    output.push_str(&format!(
-        " * cargo loco generate override {}\n",
+    );
+    let _ = writeln!(output);
+    let _ = writeln!(output, "{}", "Override All Files in a Folder:".bold());
+    let _ = writeln!(
+        output,
+        " * cargo loco generate override {}",
         "scaffold/htmx".yellow()
-    ));
-    output.push_str(&format!(
+    );
+
+    let _ = writeln!(
+        output,
         " * cargo loco generate override {}",
         "task".yellow()
-    ));
-    // output.push_str(" * cargo loco generate override task");
-    output.push_str(&format!("{}", "\n\nOverride All templates:\n".bold()));
-    output.push_str(&format!(
-        " * cargo loco generate override {}\n",
-        ".".yellow()
-    ));
+    );
+    let _ = writeln!(output);
+    let _ = writeln!(output, "{}", "Override All templates:".bold());
+    let _ = writeln!(output, " * cargo loco generate override {}", ".".yellow());
 
     output
 }

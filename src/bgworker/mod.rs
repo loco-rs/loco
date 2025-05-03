@@ -13,7 +13,7 @@ use serde_variant::to_variant_name;
 #[cfg(feature = "bg_pg")]
 pub mod pg;
 #[cfg(feature = "bg_redis")]
-pub mod skq;
+pub mod redis;
 #[cfg(feature = "bg_sqlt")]
 pub mod sqlt;
 
@@ -66,8 +66,9 @@ impl std::fmt::Display for JobStatus {
 pub enum Queue {
     #[cfg(feature = "bg_redis")]
     Redis(
-        bb8::Pool<sidekiq::RedisConnectionManager>,
-        Arc<tokio::sync::Mutex<sidekiq::Processor>>,
+        redis::RedisPool,
+        Arc<tokio::sync::Mutex<redis::JobRegistry>>,
+        redis::RunOpts,
         tokio_util::sync::CancellationToken,
     ),
     #[cfg(feature = "bg_pg")]
@@ -75,12 +76,14 @@ pub enum Queue {
         pg::PgPool,
         std::sync::Arc<tokio::sync::Mutex<pg::JobRegistry>>,
         pg::RunOpts,
+        tokio_util::sync::CancellationToken,
     ),
     #[cfg(feature = "bg_sqlt")]
     Sqlite(
         sqlt::SqlitePool,
         std::sync::Arc<tokio::sync::Mutex<sqlt::JobRegistry>>,
         sqlt::RunOpts,
+        tokio_util::sync::CancellationToken,
     ),
     None,
 }
@@ -97,33 +100,36 @@ impl Queue {
         class: String,
         queue: Option<String>,
         args: A,
+        tags: Option<Vec<String>>,
     ) -> Result<()> {
-        tracing::debug!(worker = class, "job enqueue");
+        tracing::debug!(worker = class, queue = ?queue, tags = ?tags, "Enqueuing background job");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _, _) => {
-                skq::enqueue(pool, class, queue, args).await?;
+            Self::Redis(pool, _, _, _) => {
+                redis::enqueue(pool, class, queue, args, tags).await?;
             }
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => {
+            Self::Postgres(pool, _, _, _) => {
                 pg::enqueue(
                     pool,
                     &class,
                     serde_json::to_value(args)?,
                     chrono::Utc::now(),
                     None,
+                    tags,
                 )
                 .await
                 .map_err(Box::from)?;
             }
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => {
+            Self::Sqlite(pool, _, _, _) => {
                 sqlt::enqueue(
                     pool,
                     &class,
                     serde_json::to_value(args)?,
                     chrono::Utc::now(),
                     None,
+                    tags,
                 )
                 .await
                 .map_err(Box::from)?;
@@ -146,20 +152,20 @@ impl Queue {
         &self,
         worker: W,
     ) -> Result<()> {
-        tracing::debug!(worker = W::class_name(), "register worker");
+        tracing::info!(worker = W::class_name(), "Registering background worker");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, p, _) => {
+            Self::Redis(_, p, _, _) => {
                 let mut p = p.lock().await;
-                p.register(skq::SidekiqBackgroundWorker::new(worker));
+                p.register_worker(W::class_name(), worker)?;
             }
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(_, registry, _) => {
+            Self::Postgres(_, registry, _, _) => {
                 let mut r = registry.lock().await;
                 r.register_worker(W::class_name(), worker)?;
             }
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(_, registry, _) => {
+            Self::Sqlite(_, registry, _, _) => {
                 let mut r = registry.lock().await;
                 r.register_worker(W::class_name(), worker)?;
             }
@@ -173,36 +179,72 @@ impl Queue {
     /// # Errors
     ///
     /// This function will return an error if fails
-    pub async fn run(&self) -> Result<()> {
-        tracing::debug!("running background jobs");
+    #[allow(unused_variables)]
+    pub async fn run(&self, tags: Vec<String>) -> Result<()> {
+        tracing::info!("Starting background job processing");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, p, _) => {
-                p.lock().await.clone().run().await;
+            Self::Redis(pool, registry, run_opts, token) => {
+                let handles = registry
+                    .lock()
+                    .await
+                    .run(pool, run_opts, &token.clone(), &tags);
+                Self::process_worker_handles(handles).await?;
             }
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, registry, run_opts) => {
-                //TODOQ: num workers to config
-                let handles = registry.lock().await.run(pool, run_opts);
-                for handle in handles {
-                    handle.await?;
-                }
+            Self::Postgres(pool, registry, run_opts, token) => {
+                let handles = registry
+                    .lock()
+                    .await
+                    .run(pool, run_opts, &token.clone(), &tags);
+                Self::process_worker_handles(handles).await?;
             }
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, registry, run_opts) => {
-                //TODOQ: num workers to config
-                let handles = registry.lock().await.run(pool, run_opts);
-                for handle in handles {
-                    handle.await?;
-                }
+            Self::Sqlite(pool, registry, run_opts, token) => {
+                let handles = registry
+                    .lock()
+                    .await
+                    .run(pool, run_opts, &token.clone(), &tags);
+                Self::process_worker_handles(handles).await?;
             }
             _ => {
                 tracing::error!(
-                    "no queue provider is configured: compile with at least one queue provider \
-                     feature"
+                    "No queue provider is configured: compile with at least one queue provider feature"
                 );
             }
         }
+        Ok(())
+    }
+
+    /// Process worker task handles and handle any errors
+    ///
+    /// # Errors
+    /// This function will return an error if a worker task fails to join
+    #[allow(dead_code)]
+    async fn process_worker_handles(handles: Vec<tokio::task::JoinHandle<()>>) -> Result<()> {
+        let handle_count = handles.len();
+        tracing::debug!(worker_count = handle_count, "Processing worker handles");
+
+        for (index, handle) in handles.into_iter().enumerate() {
+            if let Err(e) = handle.await {
+                if e.is_cancelled() {
+                    tracing::debug!(
+                        worker_index = index,
+                        "Worker task cancelled during shutdown"
+                    );
+                } else if e.is_panic() {
+                    tracing::error!(worker_index = index, "Worker task panicked");
+                    std::panic::resume_unwind(e.into_panic());
+                } else {
+                    tracing::error!(worker_index = index, error = ?e, "Worker task failed to join");
+                    return Err(crate::Error::Worker(format!("Worker join error: {e}")));
+                }
+            }
+        }
+        tracing::info!(
+            worker_count = handle_count,
+            "All worker tasks finished successfully"
+        );
         Ok(())
     }
 
@@ -212,16 +254,15 @@ impl Queue {
     ///
     /// This function will return an error if fails
     pub async fn setup(&self) -> Result<()> {
-        tracing::debug!("workers setup");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, _) => {}
+            Self::Redis(_, _, _, _) => {}
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => {
+            Self::Postgres(pool, _, _, _) => {
                 pg::initialize_database(pool).await.map_err(Box::from)?;
             }
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => {
+            Self::Sqlite(pool, _, _, _) => {
                 sqlt::initialize_database(pool).await.map_err(Box::from)?;
             }
             _ => {}
@@ -235,18 +276,18 @@ impl Queue {
     ///
     /// This function will return an error if fails
     pub async fn clear(&self) -> Result<()> {
-        tracing::debug!("clearing job");
+        tracing::info!("Clearing all jobs from queue");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _, _) => {
-                skq::clear(pool).await?;
+            Self::Redis(pool, _, _, _) => {
+                redis::clear(pool).await?;
             }
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => {
+            Self::Postgres(pool, _, _, _) => {
                 pg::clear(pool).await.map_err(Box::from)?;
             }
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => {
+            Self::Sqlite(pool, _, _, _) => {
                 sqlt::clear(pool).await.map_err(Box::from)?;
             }
             _ => {}
@@ -260,18 +301,18 @@ impl Queue {
     ///
     /// This function will return an error if fails
     pub async fn ping(&self) -> Result<()> {
-        tracing::debug!("job queue ping requested");
+        tracing::trace!("Pinging job queue");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _, _) => {
-                skq::ping(pool).await?;
+            Self::Redis(pool, _, _, _) => {
+                redis::ping(pool).await?;
             }
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => {
+            Self::Postgres(pool, _, _, _) => {
                 pg::ping(pool).await.map_err(Box::from)?;
             }
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => {
+            Self::Sqlite(pool, _, _, _) => {
                 sqlt::ping(pool).await.map_err(Box::from)?;
             }
             _ => {}
@@ -283,11 +324,11 @@ impl Queue {
     pub fn describe(&self) -> String {
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, _) => "redis queue".to_string(),
+            Self::Redis(_, _, _, _) => "redis queue".to_string(),
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(_, _, _) => "postgres queue".to_string(),
+            Self::Postgres(_, _, _, _) => "postgres queue".to_string(),
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(_, _, _) => "sqlite queue".to_string(),
+            Self::Sqlite(_, _, _, _) => "sqlite queue".to_string(),
             _ => "no queue".to_string(),
         }
     }
@@ -297,10 +338,14 @@ impl Queue {
     /// Does not currently return an error, but the postgres or other future
     /// queue implementations might, so using Result here as return type.
     pub fn shutdown(&self) -> Result<()> {
-        tracing::debug!("waiting for running jobs to finish...");
+        tracing::info!("Shutting down background job processing");
         match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, cancellation_token) => cancellation_token.cancel(),
+            Self::Redis(_, _, _, cancellation_token) => cancellation_token.cancel(),
+            #[cfg(feature = "bg_pg")]
+            Self::Postgres(_, _, _, cancellation_token) => cancellation_token.cancel(),
+            #[cfg(feature = "bg_sqlt")]
+            Self::Sqlite(_, _, _, cancellation_token) => cancellation_token.cancel(),
             _ => {}
         }
 
@@ -312,17 +357,17 @@ impl Queue {
         status: Option<&Vec<JobStatus>>,
         age_days: Option<i64>,
     ) -> Result<serde_json::Value> {
-        tracing::debug!(status = ?status, age_days = ?age_days, "getting jobs");
+        tracing::info!(status = ?status, age_days = ?age_days, "Retrieving jobs");
         match self {
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => {
+            Self::Postgres(pool, _, _, _) => {
                 let jobs = pg::get_jobs(pool, status, age_days)
                     .await
                     .map_err(Box::from)?;
                 Ok(serde_json::to_value(jobs)?)
             }
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => {
+            Self::Sqlite(pool, _, _, _) => {
                 let jobs = sqlt::get_jobs(pool, status, age_days)
                     .await
                     .map_err(Box::from)?;
@@ -330,18 +375,15 @@ impl Queue {
                 Ok(serde_json::to_value(jobs)?)
             }
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, _) => {
-                tracing::error!("getting jobs for redis provider not implemented");
-                Err(Error::string(
-                    "getting jobs not supported for redis provider",
-                ))
+            Self::Redis(pool, _, _, _) => {
+                let jobs = redis::get_jobs(pool, status, age_days).await?;
+                Ok(serde_json::to_value(jobs)?)
             }
             Self::None => {
                 tracing::error!(
-                    "no queue provider is configured: compile with at least one queue provider \
-                     feature"
+                    "No queue provider is configured: compile with at least one queue provider feature"
                 );
-                Err(Error::string("provider not configure"))
+                Err(Error::string("provider not configured"))
             }
         }
     }
@@ -357,26 +399,20 @@ impl Queue {
     /// - Any error in the underlying provider's cancellation logic will
     ///   propagate from the respective function.
     pub async fn cancel_jobs(&self, job_name: &str) -> Result<()> {
-        tracing::debug!(job_name = ?job_name, "cancel jobs");
+        tracing::info!(job_name = job_name, "Cancelling jobs by name");
 
         match self {
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => pg::cancel_jobs_by_name(pool, job_name).await,
+            Self::Postgres(pool, _, _, _) => pg::cancel_jobs_by_name(pool, job_name).await,
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => sqlt::cancel_jobs_by_name(pool, job_name).await,
+            Self::Sqlite(pool, _, _, _) => sqlt::cancel_jobs_by_name(pool, job_name).await,
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, _) => {
-                tracing::error!("canceling jobs for redis provider not implemented");
-                Err(Error::string(
-                    "canceling jobs not supported for redis provider",
-                ))
-            }
+            Self::Redis(pool, _, _, _) => redis::cancel_jobs_by_name(pool, job_name).await,
             Self::None => {
                 tracing::error!(
-                    "no queue provider is configured: compile with at least one queue provider \
-                     feature"
+                    "No queue provider is configured: compile with at least one queue provider feature"
                 );
-                Err(Error::string("provider not configure"))
+                Err(Error::string("provider not configured"))
             }
         }
     }
@@ -396,28 +432,26 @@ impl Queue {
         age_days: i64,
         status: &Vec<JobStatus>,
     ) -> Result<()> {
-        tracing::debug!(age_days = age_days, status = ?status, "cancel jobs with age");
+        tracing::info!(age_days = age_days, status = ?status, "Clearing older jobs");
 
         match self {
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => {
+            Self::Postgres(pool, _, _, _) => {
                 pg::clear_jobs_older_than(pool, age_days, Some(status)).await
             }
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => {
+            Self::Sqlite(pool, _, _, _) => {
                 sqlt::clear_jobs_older_than(pool, age_days, Some(status)).await
             }
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, _) => {
-                tracing::error!("clear jobs for redis provider not implemented");
-                Err(Error::string("clear jobs not supported for redis provider"))
+            Self::Redis(pool, _, _, _) => {
+                redis::clear_jobs_older_than(pool, age_days, Some(status)).await
             }
             Self::None => {
                 tracing::error!(
-                    "no queue provider is configured: compile with at least one queue provider \
-                     feature"
+                    "No queue provider is configured: compile with at least one queue provider feature"
                 );
-                Err(Error::string("provider not configure"))
+                Err(Error::string("provider not configured"))
             }
         }
     }
@@ -432,23 +466,43 @@ impl Queue {
     /// - Any error in the underlying provider's job clearing logic will
     ///   propagate from the respective function.
     pub async fn clear_by_status(&self, status: Vec<JobStatus>) -> Result<()> {
-        tracing::debug!(status = ?status, "clear jobs by status");
+        tracing::info!(status = ?status, "Clearing jobs by status");
         match self {
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _) => pg::clear_by_status(pool, status).await,
+            Self::Postgres(pool, _, _, _) => pg::clear_by_status(pool, status).await,
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _) => sqlt::clear_by_status(pool, status).await,
+            Self::Sqlite(pool, _, _, _) => sqlt::clear_by_status(pool, status).await,
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, _) => {
-                tracing::error!("clear jobs for redis provider not implemented");
-                Err(Error::string("clear jobs not supported for redis provider"))
-            }
+            Self::Redis(pool, _, _, _) => redis::clear_by_status(pool, status).await,
             Self::None => {
                 tracing::error!(
-                    "no queue provider is configured: compile with at least one queue provider \
-                     feature"
+                    "No queue provider is configured: compile with at least one queue provider feature"
                 );
-                Err(Error::string("provider not configure"))
+                Err(Error::string("provider not configured"))
+            }
+        }
+    }
+
+    /// Requeued job with the given minutes ages.
+    ///
+    /// # Errors
+    /// - If no queue provider is configured, it will return an error indicating the lack of configuration.
+    /// - If the Redis provider is selected, it will return an error stating that clearing jobs is not supported.
+    /// - Any error in the underlying provider's job clearing logic will propagate from the respective function.
+    pub async fn requeue(&self, age_minutes: &i64) -> Result<()> {
+        tracing::info!(age_minutes = age_minutes, "Requeuing stale jobs");
+        match self {
+            #[cfg(feature = "bg_pg")]
+            Self::Postgres(pool, _, _, _) => pg::requeue(pool, age_minutes).await,
+            #[cfg(feature = "bg_sqlt")]
+            Self::Sqlite(pool, _, _, _) => sqlt::requeue(pool, age_minutes).await,
+            #[cfg(feature = "bg_redis")]
+            Self::Redis(pool, _, _, _) => redis::requeue(pool, age_minutes).await,
+            Self::None => {
+                tracing::error!(
+                    "No queue provider is configured: compile with at least one queue provider feature"
+                );
+                Err(Error::string("provider not configured"))
             }
         }
     }
@@ -469,10 +523,10 @@ impl Queue {
         status: Option<&Vec<JobStatus>>,
         age_days: Option<i64>,
     ) -> Result<PathBuf> {
-        tracing::debug!(path = %path.display(), status = ?status, age_days = ?age_days, "dumping jobs");
+        tracing::info!(path = %path.display(), status = ?status, age_days = ?age_days, "Dumping jobs to file");
 
         if !path.exists() {
-            tracing::debug!(path = %path.display(), "folder not exists, creating...");
+            tracing::debug!(path = %path.display(), "Directory does not exist, creating...");
             std::fs::create_dir_all(path)?;
         }
 
@@ -487,6 +541,7 @@ impl Queue {
         let mut file = File::create(&dump_file)?;
         file.write_all(data.as_bytes())?;
 
+        tracing::info!(file = %dump_file.display(), "Jobs successfully dumped to file");
         Ok(dump_file)
     }
 
@@ -503,39 +558,42 @@ impl Queue {
     /// - If any issues occur while enqueuing the jobs, the function will return
     ///   an error.
     pub async fn import(&self, path: &Path) -> Result<()> {
-        tracing::debug!(path = %path.display(), "import jobs");
+        tracing::info!(path = %path.display(), "Importing jobs from file");
 
         match &self {
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(_, _, _) => {
+            Self::Postgres(_, _, _, _) => {
                 let jobs: Vec<pg::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.to_string(), None, job.data).await?;
+                    self.enqueue(job.name.to_string(), None, job.data, None)
+                        .await?;
                 }
 
                 Ok(())
             }
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(_, _, _) => {
+            Self::Sqlite(_, _, _, _) => {
                 let jobs: Vec<sqlt::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.to_string(), None, job.data).await?;
+                    self.enqueue(job.name.to_string(), None, job.data, None)
+                        .await?;
                 }
                 Ok(())
             }
             #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, _) => {
-                tracing::error!("import jobs for redis provider not implemented");
-                Err(Error::string(
-                    "getting jobs not supported for redis provider",
-                ))
+            Self::Redis(_, _, _, _) => {
+                let jobs: Vec<redis::Job> = serde_yaml::from_reader(File::open(path)?)?;
+                for job in jobs {
+                    self.enqueue(job.name.to_string(), None, job.data, None)
+                        .await?;
+                }
+                Ok(())
             }
             Self::None => {
                 tracing::error!(
-                    "no queue provider is configured: compile with at least one queue provider \
-                     feature"
+                    "No queue provider is configured: compile with at least one queue provider feature"
                 );
-                Err(Error::string("provider not configure"))
+                Err(Error::string("provider not configured"))
             }
         }
     }
@@ -550,6 +608,14 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
     fn queue() -> Option<String> {
         None
     }
+
+    /// Specifies tags associated with this worker. Workers might only process jobs
+    /// matching specific tags during startup.
+    #[must_use]
+    fn tags() -> Vec<String> {
+        Vec::new()
+    }
+
     fn build(ctx: &AppContext) -> Self;
     #[must_use]
     fn class_name() -> String
@@ -568,7 +634,10 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
         match &ctx.config.workers.mode {
             WorkerMode::BackgroundQueue => {
                 if let Some(p) = &ctx.queue_provider {
-                    p.enqueue(Self::class_name(), Self::queue(), args).await?;
+                    let tags = Self::tags();
+                    let tags_option = if tags.is_empty() { None } else { Some(tags) };
+                    p.enqueue(Self::class_name(), Self::queue(), args, tags_option)
+                        .await?;
                 } else {
                     tracing::error!(
                         "perform_later: background queue is selected, but queue was not populated \
@@ -631,6 +700,7 @@ pub async fn converge(queue: &Queue, config: &QueueConfig) -> Result<()> {
             num_workers: _,
         }) => {
             if *dangerously_flush {
+                tracing::warn!("Flush mode enabled - clearing all jobs from queue");
                 queue.clear().await?;
             }
         }
@@ -648,30 +718,34 @@ pub async fn create_queue_provider(config: &Config) -> Result<Option<Arc<Queue>>
     if config.workers.mode == config::WorkerMode::BackgroundQueue {
         if let Some(queue) = &config.queue {
             match queue {
-                // TODOQ call the object inside RedisQueueConfig and pass that
                 #[cfg(feature = "bg_redis")]
                 config::QueueConfig::Redis(qcfg) => {
-                    Ok(Some(Arc::new(skq::create_provider(qcfg).await?)))
+                    tracing::debug!("Creating Redis queue provider");
+                    Ok(Some(Arc::new(redis::create_provider(qcfg).await?)))
                 }
                 #[cfg(feature = "bg_pg")]
                 config::QueueConfig::Postgres(qcfg) => {
+                    tracing::debug!("Creating Postgres queue provider");
                     Ok(Some(Arc::new(pg::create_provider(qcfg).await?)))
                 }
                 #[cfg(feature = "bg_sqlt")]
                 config::QueueConfig::Sqlite(qcfg) => {
+                    tracing::debug!("Creating SQLite queue provider");
                     Ok(Some(Arc::new(sqlt::create_provider(qcfg).await?)))
                 }
 
                 #[allow(unreachable_patterns)]
                 _ => Err(Error::string(
-                    "no queue provider feature was selected and compiled, but queue configuration \
+                    "No queue provider feature was selected and compiled, but queue configuration \
                      is present",
                 )),
             }
         } else {
+            // tracing::warn!("Worker mode is BackgroundQueue but no queue configuration is present");
             Ok(None)
         }
     } else {
+        // tracing::debug!("Worker mode is not BackgroundQueue, skipping queue provider creation");
         Ok(None)
     }
 }
@@ -730,7 +804,7 @@ mod tests {
             .await
             .expect("dump jobs");
 
-        assert_debug_snapshot!(std::fs::read_to_string(dump_file));
+        assert_debug_snapshot!(std::fs::read_to_string(dump_file).unwrap());
     }
 
     #[tokio::test]

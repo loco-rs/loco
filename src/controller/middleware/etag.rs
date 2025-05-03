@@ -9,10 +9,16 @@
 use std::task::{Context, Poll};
 
 use axum::{
-    body::Body, extract::Request, http::StatusCode, response::Response, Router as AXRouter,
+    body::Body,
+    extract::Request,
+    http::{
+        header::{ETAG, IF_NONE_MATCH},
+        StatusCode,
+    },
+    response::Response,
+    Router as AXRouter,
 };
 use futures_util::future::BoxFuture;
-use hyper::header::{ETAG, IF_NONE_MATCH};
 use serde::{Deserialize, Serialize};
 use tower::{Layer, Service};
 

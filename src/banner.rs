@@ -75,9 +75,18 @@ pub fn print_banner(boot_result: &BootResult, server_config: &ServeParams) {
             server_config.port.to_string().green()
         ));
     }
-    if boot_result.run_worker {
+    if let Some(tags) = &boot_result.worker {
         modes.push("worker".green());
-        servingline.push(format!("worker is {}", "online".green()));
+        let status = format!("worker is {}", "online".green());
+        if tags.is_empty() {
+            servingline.push(status);
+        } else {
+            servingline.push(format!("{status} with tags: {}", tags.join(",")));
+        }
+    }
+    if boot_result.run_scheduler {
+        modes.push("scheduler".green());
+        servingline.push(format!("scheduler is {}", "running".green()));
     }
     if !modes.is_empty() {
         println!(

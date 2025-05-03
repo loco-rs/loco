@@ -137,6 +137,9 @@ fn test_combination(
         // Generate deployment shuttle
         tester.run_generate(&vec!["deployment", "--kind", "shuttle"]);
 
+        // Generate data
+        tester.run_generate(&vec!["data", "stocks"]);
+
         // Generate deployment kamal
         tester.run_generate(&vec!["deployment", "--kind", "kamal"]);
 
@@ -216,7 +219,7 @@ impl Tester {
         cmd!(
             "cargo",
             "clippy",
-            "--quiet",
+            // "--quiet",
             "--",
             "-W",
             "clippy::pedantic",

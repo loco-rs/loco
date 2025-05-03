@@ -11,20 +11,21 @@ use moka::{sync::Cache, Expiry};
 
 use super::CacheDriver;
 use crate::cache::CacheResult;
+use crate::config::InMemCacheConfig;
 
 /// Creates a new instance of the in-memory cache driver, with a default Loco
 /// configuration.
 ///
 /// # Returns
 ///
-/// A boxed [`CacheDriver`] instance.
+/// A [`Cache`] instance.
 #[must_use]
-pub fn new() -> Box<dyn CacheDriver> {
+pub fn new(config: &InMemCacheConfig) -> crate::cache::Cache {
     let cache: Cache<String, (Expiration, String)> = Cache::builder()
-        .max_capacity(32 * 1024 * 1024)
+        .max_capacity(config.max_capacity)
         .expire_after(InMemExpiry)
         .build();
-    Inmem::from(cache)
+    crate::cache::Cache::new(Inmem::from(cache))
 }
 
 /// Represents the in-memory cache driver.
@@ -157,12 +158,17 @@ impl Expiry<String, (Expiration, String)> for InMemExpiry {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
+    use crate::config::InMemCacheConfig;
+
+    fn create_test_config() -> InMemCacheConfig {
+        InMemCacheConfig { max_capacity: 100 }
+    }
 
     #[tokio::test]
     async fn is_contains_key() {
-        let mem = new();
+        let config = create_test_config();
+        let mem = new(&config);
         assert!(!mem.contains_key("key").await.unwrap());
         assert!(mem.insert("key", "loco").await.is_ok());
         assert!(mem.contains_key("key").await.unwrap());
@@ -170,17 +176,22 @@ mod tests {
 
     #[tokio::test]
     async fn can_get_key_value() {
-        let mem = new();
+        let config = create_test_config();
+        let mem = new(&config);
         assert!(mem.insert("key", "loco").await.is_ok());
-        assert_eq!(mem.get("key").await.unwrap(), Some("loco".to_string()));
+        assert_eq!(
+            mem.get::<String>("key").await.unwrap(),
+            Some("loco".to_string())
+        );
 
         //try getting key that not exists
-        assert_eq!(mem.get("not-found").await.unwrap(), None);
+        assert_eq!(mem.get::<String>("not-found").await.unwrap(), None);
     }
 
     #[tokio::test]
     async fn can_remove_key() {
-        let mem = new();
+        let config = create_test_config();
+        let mem = new(&config);
         assert!(mem.insert("key", "loco").await.is_ok());
         assert!(mem.contains_key("key").await.unwrap());
         mem.remove("key").await.unwrap();
@@ -189,7 +200,8 @@ mod tests {
 
     #[tokio::test]
     async fn can_clear() {
-        let mem = new();
+        let config = create_test_config();
+        let mem = new(&config);
 
         let keys = vec!["key", "key2", "key3"];
         for key in &keys {

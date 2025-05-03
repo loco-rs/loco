@@ -23,11 +23,11 @@ Notes:
 ***/
 use std::{
     collections::BTreeMap,
+    fs,
     path::{Path, PathBuf},
     sync::OnceLock,
 };
 
-use fs_err as fs;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::info;
@@ -49,6 +49,8 @@ pub struct Config {
     pub server: Server,
     #[cfg(feature = "with-db")]
     pub database: Database,
+    #[serde(default)]
+    pub cache: CacheConfig,
     pub queue: Option<QueueConfig>,
     pub auth: Option<Auth>,
     #[serde(default)]
@@ -218,6 +220,57 @@ pub struct Database {
     /// various things in development.
     #[serde(default)]
     pub dangerously_recreate: bool,
+
+    // Execute query after initializing the DB
+    /// for e.g. this can be used to confiure PRAGMAs for `SQLite` where you can pass all values as a string.
+    /// Default values are:
+    ///
+    /// PRAGMA `foreign_keys` = ON;
+    ///
+    /// PRAGMA `journal_mode` = WAL;
+    ///
+    /// PRAGMA `synchronous` = NORMAL;
+    ///
+    /// PRAGMA `mmap_size` = 134217728;
+    ///
+    /// PRAGMA `journal_size_limit` = 67108864;
+    ///
+    /// PRAGMA `cache_size` = 2000;
+    ///
+    /// PRAGMA `busy_timeout` = 5000;
+    pub run_on_start: Option<String>,
+}
+
+/// Cache configurations for the application
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[serde(tag = "kind")]
+pub enum CacheConfig {
+    #[cfg(feature = "cache_inmem")]
+    /// In-memory cache
+    InMem(InMemCacheConfig),
+    #[cfg(feature = "cache_redis")]
+    /// Redis cache
+    Redis(RedisCacheConfig),
+    /// Null cache
+    #[default]
+    Null,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct InMemCacheConfig {
+    #[serde(default = "cache_in_mem_max_capacity")]
+    pub max_capacity: u64,
+}
+
+fn cache_in_mem_max_capacity() -> u64 {
+    32 * 1024 * 1024
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct RedisCacheConfig {
+    pub uri: String,
+    /// Sets the maximum number of connections managed by the pool.
+    pub max_size: u32,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

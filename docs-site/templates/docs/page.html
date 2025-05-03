@@ -13,7 +13,7 @@
 {% block content %}
 <div role="document">
   <div class="bg-redrust text-background dark:bg-zinc-900">
-    <div class="container">
+    <div class="container xl:max-w-[80rem]">
       <aside class="w-full">
         {{ macros_sidebar::docs_sidebar(current_section=current_section) }}
       </aside>
@@ -28,11 +28,12 @@
           {% if page.extra.lead %}<p class="lead">{{ page.extra.lead | safe }}</p>{% endif %}
 
           {{ page.content | safe }}
+
+          {% if config.extra.edit_page %}
+          {{ macros_edit_page::docs_edit_page(current_path=current_path) }}
+          {% endif %}
+          {{ macros_navigation::docs_navigation(page=page, current_section=current_section) }}
         </div>
-        {% if config.extra.edit_page %}
-        {{ macros_edit_page::docs_edit_page(current_path=current_path) }}
-        {% endif %}
-        {{ macros_navigation::docs_navigation(page=page, current_section=current_section) }}
       </div>
 
       <div class="hidden text-sm xl:block">

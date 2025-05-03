@@ -71,7 +71,9 @@ async fn register(
 /// the system.
 #[debug_handler]
 async fn verify(State(ctx): State<AppContext>, Path(token): Path<String>) -> Result<Response> {
-    let user = users::Model::find_by_verification_token(&ctx.db, &token).await?;
+    let Ok(user) = users::Model::find_by_verification_token(&ctx.db, &token).await else {
+        return unauthorized("invalid token");
+    };
 
     if user.email_verified_at.is_some() {
         tracing::info!(pid = user.pid.to_string(), "user already verified");
@@ -129,7 +131,13 @@ async fn reset(State(ctx): State<AppContext>, Json(params): Json<ResetParams>) -
 /// Creates a user login and returns a token
 #[debug_handler]
 async fn login(State(ctx): State<AppContext>, Json(params): Json<LoginParams>) -> Result<Response> {
-    let user = users::Model::find_by_email(&ctx.db, &params.email).await?;
+    let Ok(user) = users::Model::find_by_email(&ctx.db, &params.email).await else {
+        tracing::debug!(
+            email = params.email,
+            "login attempt with non-existent email"
+        );
+        return unauthorized("Invalid credentials!");
+    };
 
     let valid = user.verify_password(&params.password);
 

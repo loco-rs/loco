@@ -10,6 +10,8 @@ compile_sass = true
 # Whether to generate a feed file for the site
 generate_feeds = true
 
+feed_filenames = ["blog/atom.xml", "blog/rss.xml"]
+
 # When set to "true", the generated HTML files are minified.
 minify_html = false
 

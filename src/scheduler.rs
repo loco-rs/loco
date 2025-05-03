@@ -374,7 +374,7 @@ fn execute_job(job_name: &str, uuid: Uuid, job_description: &JobDescription) {
                 "failed to execute scheduler job in sub process"
             );
         }
-    };
+    }
 }
 
 #[cfg(test)]

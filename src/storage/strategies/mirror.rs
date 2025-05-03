@@ -170,7 +170,7 @@ impl StorageStrategy for MirrorStrategy {
                     Err(err) => {
                         collect_errors.insert(secondary_store.to_string(), err.to_string());
                     }
-                };
+                }
 
                 if self.failure_mode.should_fail(&collect_errors) {
                     return Err(StorageError::Multi(collect_errors));
@@ -201,7 +201,7 @@ impl StorageStrategy for MirrorStrategy {
                     Err(err) => {
                         collect_errors.insert(secondary_store.to_string(), err.to_string());
                     }
-                };
+                }
 
                 if self.failure_mode.should_fail(&collect_errors) {
                     return Err(StorageError::Multi(collect_errors));

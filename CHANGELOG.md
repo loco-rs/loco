@@ -2,11 +2,64 @@
 
 ## Unreleased
 
+* chore: improve readability and performance by using map_err in Model. [https://github.com/loco-rs/loco/pull/1311](https://github.com/loco-rs/loco/pull/1311)
+* Allow testing the controller by passing a cookie. [https://github.com/loco-rs/loco/pull/1326](https://github.com/loco-rs/loco/pull/1326)
+* Support BigInt in the scaffold Array. [https://github.com/loco-rs/loco/pull/1304](https://github.com/loco-rs/loco/pull/1304)
+* Add `escape` tera function to scaffold list template. [https://github.com/loco-rs/loco/pull/1337](https://github.com/loco-rs/loco/pull/1337)
+* Return a specific error when logging in with a non-existent email. [https://github.com/loco-rs/loco/pull/1336](https://github.com/loco-rs/loco/pull/1336)
+* Return a specific error when trying to verify with an invalid token. [https://github.com/loco-rs/loco/pull/1340](https://github.com/loco-rs/loco/pull/1340)
+* Clippy 1.86. [https://github.com/loco-rs/loco/pull/1353](https://github.com/loco-rs/loco/pull/1353)
+* Fix the db creation. [https://github.com/loco-rs/loco/pull/1352](https://github.com/loco-rs/loco/pull/1352)
+* YAML responses. [https://github.com/loco-rs/loco/pull/1360](https://github.com/loco-rs/loco/pull/1360)
+* Swap to the validators' built-in email validation. [https://github.com/loco-rs/loco/pull/1359](https://github.com/loco-rs/loco/pull/1359)
+* Cancellation tokens for the Postgres and SQLite background workers. [https://github.com/loco-rs/loco/pull/1365](https://github.com/loco-rs/loco/pull/1365)
+* docs: testing auth routes. [https://github.com/loco-rs/loco/pull/1303](https://github.com/loco-rs/loco/pull/1303)
+* Add comprehensive tests for task module. [https://github.com/loco-rs/loco/pull/1386](https://github.com/loco-rs/loco/pull/1386)
+* Add comprehensive test coverage for data module. [https://github.com/loco-rs/loco/pull/1387](https://github.com/loco-rs/loco/pull/1387)
+* Add validator extractors test suite. [https://github.com/loco-rs/loco/pull/1388](https://github.com/loco-rs/loco/pull/1388)
+* **Breaking changes** Replace sidekiq job management. [https://github.com/loco-rs/loco/pull/1384](https://github.com/loco-rs/loco/pull/1384)
+* **Breaking changes** Add generic type support to the Cache API. [https://github.com/loco-rs/loco/pull/1385](https://github.com/loco-rs/loco/pull/1385)
+* Adding cache redis driver + configuration instead of enabling from code. [https://github.com/loco-rs/loco/pull/1389](https://github.com/loco-rs/loco/pull/1389)
+* Ability to configure pragma for SQLite. [https://github.com/loco-rs/loco/pull/1346](https://github.com/loco-rs/loco/pull/1346)
+* Optimize worker tag filtering string handling. [https://github.com/loco-rs/loco/pull/1396](https://github.com/loco-rs/loco/pull/1396)
+
+
+## v0.15.0
+
 * Added total_items to pagination view & response. [https://github.com/loco-rs/loco/pull/1197](https://github.com/loco-rs/loco/pull/1197)
-* flatten (de)serialization of custom user claims. [https://github.com/loco-rs/loco/pull/1159](https://github.com/loco-rs/loco/pull/1159)
+* Flatten (de)serialization of custom user claims. [https://github.com/loco-rs/loco/pull/1159](https://github.com/loco-rs/loco/pull/1159)
 * Updated validator to 0.20. [https://github.com/loco-rs/loco/pull/1199](https://github.com/loco-rs/loco/pull/1199)
 * Scaffold v2. [https://github.com/loco-rs/loco/pull/1209](https://github.com/loco-rs/loco/pull/1209)
+* Fix generator Docker deployment to support both server-side and client-side rendering. [https://github.com/loco-rs/loco/pull/1227](https://github.com/loco-rs/loco/pull/1227)
+* Docs: num_workers worker configuration. [https://github.com/loco-rs/loco/pull/1242](https://github.com/loco-rs/loco/pull/1242)
+* Smoother model validations. [https://github.com/loco-rs/loco/pull/1233](https://github.com/loco-rs/loco/pull/1233)
+* Docs: num_workers worker configuration. [https://github.com/loco-rs/loco/pull/1242](https://github.com/loco-rs/loco/pull/1242)
+* Ignore SQLite WAL and SHM files and update Cargo watch crate docs. [https://github.com/loco-rs/loco/pull/1254](https://github.com/loco-rs/loco/pull/1254)
+* Remove fs-err crate. [https://github.com/loco-rs/loco/pull/1253](https://github.com/loco-rs/loco/pull/1253)
+* Allows to run scheduler as part of cargo loco start. [https://github.com/loco-rs/loco/pull/1247](https://github.com/loco-rs/loco/pull/1247)
+* Added prefix and route nesting to AppRoutes. [https://github.com/loco-rs/loco/pull/1241](https://github.com/loco-rs/loco/pull/1241)
+* Replace hyper crate with axum. [https://github.com/loco-rs/loco/pull/1258](https://github.com/loco-rs/loco/pull/1258)
+* Remove mime crate. [https://github.com/loco-rs/loco/pull/1256](https://github.com/loco-rs/loco/pull/1256)
+* Support async tests. [https://github.com/loco-rs/loco/pull/1237](https://github.com/loco-rs/loco/pull/1237)
+* Change job queue status from cli.  [https://github.com/loco-rs/loco/pull/1228](https://github.com/loco-rs/loco/pull/1228)
+* Handle panics in queue worker. [https://github.com/loco-rs/loco/pull/1274](https://github.com/loco-rs/loco/pull/1274)
+* Schema with defaults. [https://github.com/loco-rs/loco/pull/1273](https://github.com/loco-rs/loco/pull/1273)
+* Add data subsystem. [https://github.com/loco-rs/loco/pull/1267](https://github.com/loco-rs/loco/pull/1267)
+* Add "endpoint" arg to azure storage builder.[https://github.com/loco-rs/loco/pull/1317](https://github.com/loco-rs/loco/pull/1317)
+* Improve readability and performance by using  map_err in Model. [https://github.com/loco-rs/loco/pull/1311](https://github.com/loco-rs/loco/pull/1311)
+### Breaking Changes
+In module `loco_rs::auth::jwt` in struct `JWT`, the impl method `generate_token` signature has changed. 
+Migration:
 
+Before
+```rust
+jwt.generate_token(&expiration, pid.clone(), None);
+```
+After
+```rust
+jwt.generate_token(expiration, pid.clone(), Map::new());
+//                 ^ no "&"                 ^ serde_json::map (doesn't allocate in constructor)
+```
 
 ## v0.14.1
 

@@ -124,12 +124,17 @@ pub mod tests {
 
     use super::*;
 
-    /// Returns the first directory in the included templates.
+    /// .
+    ///
     /// # Panics
+    ///
+    /// Panics if .
     #[must_use]
     pub fn find_first_dir() -> &'static Dir<'static> {
         TEMPLATES.dirs().next().expect("first folder")
     }
+
+    /// .
     #[must_use]
     pub fn find_first_file<'a>(dir: &'a Dir<'a>) -> Option<&'a File<'a>> {
         for entry in dir.entries() {

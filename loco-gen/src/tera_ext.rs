@@ -239,6 +239,25 @@ impl tera::Function for FormField {
                 );
                 input_group(fname, &create_input, &edit_input)
             }
+            "Vec<i64>" | "Option<Vec<i64>>" => {
+                let edit_input = input_number(
+                    fname,
+                    "{{val}}",
+                    is_required,
+                    input_class,
+                    Some((i64::MIN, i64::MAX)),
+                    Some(r#"custom_type="array""#),
+                );
+                let create_input = input_number(
+                    fname,
+                    &value,
+                    is_required,
+                    input_class,
+                    Some((i64::MIN, i64::MAX)),
+                    Some(r#"custom_type="array""#),
+                );
+                input_group(fname, &create_input, &edit_input)
+            }
             "Vec<bool>" | "Option<Vec<bool>>" => String::new(),
             _ => {
                 return Err(tera::Error::msg(format!(
@@ -371,7 +390,7 @@ pub mod tests {
 
                 assert_snapshot!(
                     format!("can_render_form_field_[form_{}_{}]", field.name, field_name),
-                    format!("Crete form\n\r{create_form}\n\rEdit Form\n\r{edit_form}")
+                    format!("Create form\n\n{create_form}\n\nEdit Form\n\n{edit_form}")
                 );
             }
         }

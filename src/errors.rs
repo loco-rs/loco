@@ -77,6 +77,9 @@ pub enum Error {
     #[error("Error sending email (smtp): '{0}'")]
     Smtp(#[from] smtp::Error),
 
+    #[error("Worker error: {0}")]
+    Worker(String),
+
     #[error(transparent)]
     IO(#[from] std::io::Error),
 
@@ -126,11 +129,7 @@ pub enum Error {
 
     #[cfg(feature = "bg_redis")]
     #[error(transparent)]
-    RedisPool(#[from] bb8::RunError<sidekiq::RedisError>),
-
-    #[cfg(feature = "bg_redis")]
-    #[error(transparent)]
-    Redis(#[from] sidekiq::redis_rs::RedisError),
+    Redis(#[from] redis::RedisError),
 
     #[cfg(any(feature = "bg_pg", feature = "bg_sqlt"))]
     #[error(transparent)]

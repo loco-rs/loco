@@ -52,6 +52,70 @@ $ cargo loco routes
 
 This command will provide you with a comprehensive overview of the controllers currently registered in your system.
 
+## AppRoutes
+
+`AppRoutes` is a core component of the `Loco` framework that helps you manage and organize your application's routes. It provides a convenient way to add, prefix, and collect routes from different controllers.
+
+### Features
+
+- **Add Routes**: Easily add routes from different controllers.
+- **Prefix Routes**: Apply a common prefix to a group of routes.
+- **Collect Routes**: Gather all routes into a single collection for further processing.
+
+### Examples
+
+#### Adding Routes
+
+You can add routes from different controllers to `AppRoutes`:
+
+```rust
+use loco_rs::controller::AppRoutes;
+use loco_rs::prelude::*;
+use axum::routing::get;
+
+fn routes(_ctx: &AppContext) -> AppRoutes {
+  AppRoutes::empty()
+          .add_route(Routes::new().add("/", get(home_handler)))
+          .add_route(Routes::new().add("/about", get(about_handler)))
+}
+```
+
+### Prefixing Routes
+
+Apply a common prefix to a group of routes:
+
+```rust
+use loco_rs::controller::AppRoutes;
+use loco_rs::prelude::*;
+use axum::routing::get;
+
+fn routes(_ctx: &AppContext) -> AppRoutes {
+    AppRoutes::empty()
+        .prefix("/api")
+        .add_route(Routes::new().add("/users", get(users_handler)))
+        .add_route(Routes::new().add("/posts", get(posts_handler)))
+}
+```
+
+### Nesting Routes
+
+AppRoutes allows you to nest routes, making it easier to organize and manage complex route hierarchies. 
+This is particularly useful when you have a set of related routes that share a common prefix.
+
+```rust
+ use loco_rs::controller::AppRoutes;
+use loco_rs::prelude::*;
+use axum::routing::get;
+
+fn routes(_ctx: &AppContext) -> AppRoutes {
+  let route = Routes::new().add("/", get(|| async { "notes" }));
+  AppRoutes::with_default_routes()
+        .prefix("api")
+        .add_route(controllers::auth::routes())
+        .nest_prefix("v1")
+        .nest_route("/notes", route)
+}
+```
 
 ## Adding state
 
@@ -925,7 +989,7 @@ impl PaginationResponse {
 ```
 
 
-# Testing 
+# Testing
 When testing controllers, the goal is to call the router's controller endpoint and verify the HTTP response, including the status code, response content, headers, and more.
 
 To initialize a test request, use `use loco_rs::testing::prelude::*;`, which prepares your app routers, providing the request instance and the application context.
@@ -954,3 +1018,64 @@ async fn can_print_echo() {
 
 As you can see initialize the testing request and using `request` instance calling /example endpoing.
 the request returns a `Response` instance with the status code and the response test
+
+
+## Async
+When writing async tests with database data, it's important to ensure that one test does not affect the data used by other tests. Since async tests can run concurrently on the same database dataset, this can lead to unstable test results.
+
+Instead of using `request`, as described in the documentation for synchronous tests, use the `request_with_create_db` function. This function generates a random database schema name and ensures that the tables are deleted once the test is completed.
+
+Note: If you cancel the test run midway (e.g., by pressing `Ctrl + C`), the cleanup process will not execute, and the database tables will remain. In such cases, you will need to manually remove them.
+
+```rust
+use loco_rs::testing::prelude::*;
+
+#[tokio::test]
+async fn can_print_echo() {
+    configure_insta!();
+
+    request_with_create_db::<App, _, _>(|request, _ctx| async move {
+        let response = request
+            .post("/example")
+            .json(&serde_json::json!({"site": "Loco"}))
+            .await;
+
+        assert_debug_snapshot!((response.status_code(), response.text()));
+    })
+    .await;
+}
+```
+
+## Authenticated Endpoints
+The following example works for both JWT and API_KEY Authentication.
+```rust
+use loco_rs::testing::prelude::*;
+use super::prepare_data;
+
+#[tokio::test]
+#[serial]
+async fn can_get_current_user() {
+    configure_insta!();
+
+    request::<App, _, _>(|request, ctx| async move {
+        // Initialize the user
+        let user = prepare_data::init_user_login(&request, &ctx).await;
+        let (auth_key, auth_value) = prepare_data::auth_header(&user.token);
+
+        // Then add the key to the request, usually in the header
+        let response = request
+            .get("/example")
+            .add_header(auth_key, auth_value)
+            .await;
+
+        assert_eq!(
+            response.status_code(),
+            200,
+            "Current request should succeed"
+        );
+
+        assert_debug_snapshot!((response.status_code(), response.text()));
+    })
+    .await;
+}
+```
