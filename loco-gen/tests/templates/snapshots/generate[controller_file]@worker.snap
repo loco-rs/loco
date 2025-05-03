@@ -38,7 +38,7 @@ impl BackgroundWorker<WorkerArgs> for Worker {
     /// 
     /// Tags can be used to filter which workers run during startup.
     /// The default implementation returns an empty vector (no tags).
-    fn tags() -> Vec<String> {
+    fn tags(&self) -> Vec<String> {
         Vec::new()
     }
     

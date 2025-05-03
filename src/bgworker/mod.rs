@@ -600,7 +600,7 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
     /// Specifies tags associated with this worker. Workers might only process jobs
     /// matching specific tags during startup.
     #[must_use]
-    fn tags() -> Vec<String> {
+    fn tags(&self) -> Vec<String> {
         Vec::new()
     }
 
@@ -622,7 +622,8 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
         match &ctx.config.workers.mode {
             WorkerMode::BackgroundQueue => {
                 if let Some(p) = &ctx.queue_provider {
-                    let tags = Self::tags();
+                    let worker = Self::build(ctx);
+                    let tags = worker.tags();
                     let tags_option = if tags.is_empty() { None } else { Some(tags) };
                     p.enqueue(Self::class_name(), Self::queue(), args, tags_option)
                         .await?;

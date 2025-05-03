@@ -161,7 +161,7 @@ When enqueueing a job, you can optionally assign tags to it. The job will then o
     #[async_trait]
     impl BackgroundWorker<DownloadWorkerArgs> for DownloadWorker {
         // Define tags for this worker
-        fn tags() -> Vec<String> {
+        fn tags(&self) -> Vec<String> {
             vec!["download".to_string(), "network".to_string()]
         }
 
@@ -192,7 +192,7 @@ impl BackgroundWorker<DownloadWorkerArgs> for DownloadWorker {
     }
 
     // Optional: Define tags for this worker
-    fn tags() -> Vec<String> {
+    fn tags(&self) -> Vec<String> {
         vec!["download".to_string()]
     }
 
@@ -229,7 +229,7 @@ The `BackgroundWorker` trait is the core interface for defining background worke
 - `build(ctx: &AppContext) -> Self`: Creates a new instance of the worker with the provided application context.
 - `perform(&self, args: A) -> Result<()>`: The main method that executes the job's logic with the provided arguments.
 - `queue() -> Option<String>`: Optional method to specify a custom queue for the worker (returns `None` by default).
-- `tags() -> Vec<String>`: Optional method to specify tags for this worker (returns an empty vector by default).
+- `tags(&self) -> Vec<String>`: Optional method to specify tags for this worker (returns an empty vector by default).
 - `class_name() -> String`: Returns the worker's class name (automatically derived from the struct name).
 - `perform_later(ctx: &AppContext, args: A) -> Result<()>`: Static method to enqueue a job to be performed later.
 
