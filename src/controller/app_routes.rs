@@ -143,11 +143,13 @@ impl AppRoutes {
         self
     }
 
-    /// Set a nested prefix for the routes. This prefix will be appended to any existing prefix.
+    /// Set a nested prefix for the routes. This prefix will be appended to any
+    /// existing prefix.
     ///
     /// # Example
     ///
-    /// In the following example, you are adding `api` as a prefix and then nesting `v1` within it:
+    /// In the following example, you are adding `api` as a prefix and then
+    /// nesting `v1` within it:
     ///
     /// ```rust
     /// use loco_rs::controller::AppRoutes;
@@ -172,12 +174,14 @@ impl AppRoutes {
         self
     }
 
-    /// Set a nested route with a prefix. This route will be added with the specified prefix.
-    /// The prefix will only be applied to the routes given in this function.
+    /// Set a nested route with a prefix. This route will be added with the
+    /// specified prefix. The prefix will only be applied to the routes
+    /// given in this function.
     ///
     /// # Example
     ///
-    /// In the following example, you are adding `api` as a prefix and then nesting a route within it:
+    /// In the following example, you are adding `api` as a prefix and then
+    /// nesting a route within it:
     ///
     /// ```rust
     /// use axum::routing::get;
@@ -200,12 +204,14 @@ impl AppRoutes {
         self
     }
 
-    /// Set multiple nested routes with a prefix. These routes will be added with the specified prefix.
-    /// The prefix will only be applied to the routes given in this function.
+    /// Set multiple nested routes with a prefix. These routes will be added
+    /// with the specified prefix. The prefix will only be applied to the
+    /// routes given in this function.
     ///
     /// # Example
     ///
-    /// In the following example, you are adding `api` as a prefix and then nesting multiple routes within it:
+    /// In the following example, you are adding `api` as a prefix and then
+    /// nesting multiple routes within it:
     ///
     /// ```rust
     /// use axum::routing::get;
@@ -318,13 +324,15 @@ impl AppRoutes {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{prelude::*, tests_cfg};
+    use std::vec;
+
     use axum::http::Method;
     use insta::assert_debug_snapshot;
     use rstest::rstest;
-    use std::vec;
     use tower::ServiceExt;
+
+    use super::*;
+    use crate::{prelude::*, tests_cfg};
 
     async fn action() -> Result<Response> {
         format::json("loco")

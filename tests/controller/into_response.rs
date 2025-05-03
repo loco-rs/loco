@@ -3,8 +3,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::infra_cfg;
 
-use crate::infra_cfg;
-
 #[tokio::test]
 async fn not_found() {
     let ctx = tests_cfg::app::get_app_context().await;

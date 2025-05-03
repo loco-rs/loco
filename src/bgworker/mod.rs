@@ -209,7 +209,8 @@ impl Queue {
             }
             _ => {
                 tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
+                    "No queue provider is configured: compile with at least one queue provider \
+                     feature"
                 );
             }
         }
@@ -381,7 +382,8 @@ impl Queue {
             }
             Self::None => {
                 tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
+                    "No queue provider is configured: compile with at least one queue provider \
+                     feature"
                 );
                 Err(Error::string("provider not configured"))
             }
@@ -410,7 +412,8 @@ impl Queue {
             Self::Redis(pool, _, _, _) => redis::cancel_jobs_by_name(pool, job_name).await,
             Self::None => {
                 tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
+                    "No queue provider is configured: compile with at least one queue provider \
+                     feature"
                 );
                 Err(Error::string("provider not configured"))
             }
@@ -449,7 +452,8 @@ impl Queue {
             }
             Self::None => {
                 tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
+                    "No queue provider is configured: compile with at least one queue provider \
+                     feature"
                 );
                 Err(Error::string("provider not configured"))
             }
@@ -476,7 +480,8 @@ impl Queue {
             Self::Redis(pool, _, _, _) => redis::clear_by_status(pool, status).await,
             Self::None => {
                 tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
+                    "No queue provider is configured: compile with at least one queue provider \
+                     feature"
                 );
                 Err(Error::string("provider not configured"))
             }
@@ -486,9 +491,12 @@ impl Queue {
     /// Requeued job with the given minutes ages.
     ///
     /// # Errors
-    /// - If no queue provider is configured, it will return an error indicating the lack of configuration.
-    /// - If the Redis provider is selected, it will return an error stating that clearing jobs is not supported.
-    /// - Any error in the underlying provider's job clearing logic will propagate from the respective function.
+    /// - If no queue provider is configured, it will return an error indicating
+    ///   the lack of configuration.
+    /// - If the Redis provider is selected, it will return an error stating
+    ///   that clearing jobs is not supported.
+    /// - Any error in the underlying provider's job clearing logic will
+    ///   propagate from the respective function.
     pub async fn requeue(&self, age_minutes: &i64) -> Result<()> {
         tracing::info!(age_minutes = age_minutes, "Requeuing stale jobs");
         match self {
@@ -500,7 +508,8 @@ impl Queue {
             Self::Redis(pool, _, _, _) => redis::requeue(pool, age_minutes).await,
             Self::None => {
                 tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
+                    "No queue provider is configured: compile with at least one queue provider \
+                     feature"
                 );
                 Err(Error::string("provider not configured"))
             }
@@ -591,7 +600,8 @@ impl Queue {
             }
             Self::None => {
                 tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
+                    "No queue provider is configured: compile with at least one queue provider \
+                     feature"
                 );
                 Err(Error::string("provider not configured"))
             }
@@ -609,8 +619,8 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
         None
     }
 
-    /// Specifies tags associated with this worker. Workers might only process jobs
-    /// matching specific tags during startup.
+    /// Specifies tags associated with this worker. Workers might only process
+    /// jobs matching specific tags during startup.
     #[must_use]
     fn tags() -> Vec<String> {
         Vec::new()
@@ -741,11 +751,13 @@ pub async fn create_queue_provider(config: &Config) -> Result<Option<Arc<Queue>>
                 )),
             }
         } else {
-            // tracing::warn!("Worker mode is BackgroundQueue but no queue configuration is present");
+            // tracing::warn!("Worker mode is BackgroundQueue but no queue configuration is
+            // present");
             Ok(None)
         }
     } else {
-        // tracing::debug!("Worker mode is not BackgroundQueue, skipping queue provider creation");
+        // tracing::debug!("Worker mode is not BackgroundQueue, skipping queue provider
+        // creation");
         Ok(None)
     }
 }

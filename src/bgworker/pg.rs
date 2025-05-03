@@ -1,11 +1,10 @@
+use std::fmt::Write;
 /// Postgres based background job queue provider
 use std::{
     collections::HashMap, future::Future, panic::AssertUnwindSafe, pin::Pin, sync::Arc,
     time::Duration,
 };
 
-use super::{BackgroundWorker, JobStatus, Queue};
-use crate::{config::PostgresQueueConfig, Error, Result};
 use chrono::{DateTime, Utc};
 use futures_util::FutureExt;
 use serde::{Deserialize, Serialize};
@@ -15,11 +14,13 @@ use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions, PgRow},
     ConnectOptions, Row,
 };
-use std::fmt::Write;
 use tokio::{task::JoinHandle, time::sleep};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, trace};
 use ulid::Ulid;
+
+use super::{BackgroundWorker, JobStatus, Queue};
+use crate::{config::PostgresQueueConfig, Error, Result};
 type JobId = String;
 type JobData = JsonValue;
 
@@ -275,8 +276,8 @@ pub async fn enqueue(
     let id = Ulid::new().to_string();
     debug!(job_id = %id, job_name = %name, run_at = %run_at, tags = ?tags, "Enqueueing job");
     sqlx::query(
-        "INSERT INTO pg_loco_queue (id, task_data, name, run_at, interval, tags) VALUES ($1, $2, $3, \
-         $4, $5, $6)",
+        "INSERT INTO pg_loco_queue (id, task_data, name, run_at, interval, tags) VALUES ($1, $2, \
+         $3, $4, $5, $6)",
     )
     .bind(id.clone())
     .bind(data_json)
@@ -294,7 +295,8 @@ async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>>
 
     // Base query
     let mut query = String::from(
-        "SELECT id, name, task_data, status, run_at, interval, tags FROM pg_loco_queue WHERE status = $1 AND run_at <= NOW() "
+        "SELECT id, name, task_data, status, run_at, interval, tags FROM pg_loco_queue WHERE \
+         status = $1 AND run_at <= NOW() ",
     );
 
     // Apply tag filtering logic
@@ -497,9 +499,11 @@ pub async fn clear_jobs_older_than(
 
 /// Requeues jobs from [`JobStatus::Processing`] to [`JobStatus::Queued`].
 ///
-/// This function updates the status of all jobs that are currently in the [`JobStatus::Processing`] state
-/// to the [`JobStatus::Queued`] state, provided they have been updated more than the specified age (`age_minutes`).
-/// The jobs that meet the criteria will have their `updated_at` timestamp set to the current time.
+/// This function updates the status of all jobs that are currently in the
+/// [`JobStatus::Processing`] state to the [`JobStatus::Queued`] state, provided
+/// they have been updated more than the specified age (`age_minutes`). The jobs
+/// that meet the criteria will have their `updated_at` timestamp set to the
+/// current time.
 ///
 /// # Errors
 ///
@@ -508,7 +512,8 @@ pub async fn requeue(pool: &PgPool, age_minutes: &i64) -> Result<()> {
     let interval = format!("{age_minutes} MINUTE");
 
     let query = format!(
-        "UPDATE pg_loco_queue SET status = $1, updated_at = NOW() WHERE status = $2 AND updated_at <= NOW() - INTERVAL '{interval}'"
+        "UPDATE pg_loco_queue SET status = $1, updated_at = NOW() WHERE status = $2 AND \
+         updated_at <= NOW() - INTERVAL '{interval}'"
     );
 
     debug!(age_minutes = age_minutes, "Requeueing stalled jobs");

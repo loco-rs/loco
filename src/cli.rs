@@ -23,10 +23,6 @@ cfg_if::cfg_if! {
     } else {}
 }
 
-use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueHint};
-use colored::Colorize;
-use duct::cmd;
-use std::fmt::Write;
 #[cfg(any(
     feature = "bg_redis",
     feature = "bg_pg",
@@ -34,8 +30,13 @@ use std::fmt::Write;
     feature = "with-db"
 ))]
 use std::process::exit;
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{collections::BTreeMap, fmt::Write, path::PathBuf};
+
+use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueHint};
+use colored::Colorize;
+use duct::cmd;
 use loco_gen::ScaffoldKind;
+
 #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
 use crate::bgworker::JobStatus;
 #[cfg(debug_assertions)]
@@ -78,7 +79,8 @@ enum Commands {
     #[command(group(ArgGroup::new("start_mode").args(&["worker", "server_and_worker", "all"])))]
     #[clap(alias("s"))]
     Start {
-        /// Start worker. Optionally provide tags to run specific jobs (e.g. --worker=tag1,tag2)
+        /// Start worker. Optionally provide tags to run specific jobs (e.g.
+        /// --worker=tag1,tag2)
         #[arg(short, long, action, value_delimiter = ',', num_args = 0.., conflicts_with_all = &["server_and_worker", "all"])]
         worker: Option<Vec<String>>,
         /// Start the server and worker in the same process
@@ -851,8 +853,8 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
 
             cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
                 Error::Message(format!(
-                    "failed to start with `cargo-watch`. Did you `cargo install \
-                         cargo-watch`?. error details: `{err}`",
+                    "failed to start with `cargo-watch`. Did you `cargo install cargo-watch`?. \
+                     error details: `{err}`",
                 ))
             })?;
         }
@@ -972,8 +974,8 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
 
             cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
                 Error::Message(format!(
-                    "failed to start with `cargo-watch`. Did you `cargo install \
-                         cargo-watch`?. error details: `{err}`",
+                    "failed to start with `cargo-watch`. Did you `cargo install cargo-watch`?. \
+                     error details: `{err}`",
                 ))
             })?;
         }

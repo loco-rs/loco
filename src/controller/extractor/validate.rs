@@ -80,7 +80,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use axum::{
         body::{to_bytes, Body},
         http::{self, Request as HttpRequest, StatusCode},
@@ -89,6 +88,8 @@ mod tests {
     use serde::{Deserialize, Serialize};
     use serde_json::{json, Value};
     use validator::Validate;
+
+    use super::*;
 
     // Define a test struct that implements Validate
     #[derive(Debug, Serialize, Deserialize, Validate)]
