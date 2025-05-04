@@ -23,7 +23,7 @@ async fn test_shared_store_extractor(#[case] exists: bool) {
         State(_ctx): State<AppContext>,
         SharedStore(shared_data): SharedStore<MySharedData>,
     ) -> Result<Response> {
-        format::json(&shared_data) // Dereference the RefGuard to get &MySharedData
+        format::json(&shared_data)
     }
 
     let ctx: AppContext = tests_cfg::app::get_app_context().await;
