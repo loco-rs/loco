@@ -168,6 +168,20 @@ struct MyType {
 }
 ```
 
+### Authentication Error Handling
+
+Authentication error handling has been improved to better distinguish between actual authorization failures and system errors:
+
+1. **System errors now return 500**: Database errors during authentication now return Internal Server Error (500) instead of Unauthorized (401)
+2. **Improved error logging**: Authentication errors are now logged with detailed messages using `tracing::error`
+3. **Message changes**: Generic error messages have been updated from "other error: '{e}'" to "could not authorize"
+
+#### Migration Guide:
+
+If you have code that relies on database errors during authentication returning 401 status codes, you'll need to update your error handling. Any code expecting a 401 for database connectivity issues should now handle 500 responses as well.
+
+Client applications should be prepared to handle both 401 and 500 status codes during authentication failures, with 401 indicating authorization problems and 500 indicating system errors.
+
 ## Upgrade from 0.14.x to 0.15.x
 
 ### Upgrade validator crate
