@@ -6,8 +6,6 @@
 //! handling. The middleware can be easily configured and applied to the
 //! application's router.
 
-#[cfg(all(feature = "auth_jwt", feature = "with-db"))]
-pub mod auth;
 pub mod catch_panic;
 pub mod compression;
 pub mod cors;
