@@ -4,6 +4,7 @@
 use std::{
     env,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use axum::Router;
@@ -389,6 +390,7 @@ pub async fn create_context<H: Hooks>(
         cache: cache::create_cache_provider(&config).await?,
         config,
         mailer,
+        shared_store: Arc::new(crate::app::SharedStore::default()),
     };
 
     H::after_context(ctx).await

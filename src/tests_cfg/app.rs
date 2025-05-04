@@ -1,5 +1,5 @@
 use crate::{
-    app::AppContext,
+    app::{AppContext, SharedStore},
     cache,
     environment::Environment,
     storage::{self, Storage},
@@ -26,5 +26,6 @@ pub async fn get_app_context() -> AppContext {
         mailer: None,
         storage: Storage::single(storage::drivers::mem::new()).into(),
         cache: cache.into(),
+        shared_store: std::sync::Arc::new(SharedStore::default()),
     }
 }
