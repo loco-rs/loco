@@ -719,64 +719,119 @@ Loco provides a flexible mechanism called `SharedStore` within the `AppContext` 
 
 ### Why Use SharedStore?
 
-- **Sharing Custom Services:** Inject your own service clients (e.g., a custom API client, a different database connection pool) and access them from controllers, middlewares, or background workers.
-- **Storing Configuration:** Store application-specific configuration objects that need to be accessible globally.
-- **Shared State:** Manage shared state needed by different parts of your application logic.
-- **Plugin Integration:** Allow plugins or initializers to register their own data or services for later use by the application.
+- **Sharing Custom Services:** Inject your own service clients (e.g., a custom API client) and access them from controllers or background workers.
+- **Storing Configuration:** Keep application-specific configuration objects accessible globally.
+- **Shared State:** Manage state needed by different parts of your application.
 
 ### How to Use SharedStore
 
-The `SharedStore` storage is accessible via `ctx.shared_store` wherever you have access to the `AppContext` (e.g., in controllers, hooks, initializers).
+You typically insert your custom data into the `shared_store` during application startup (e.g., in `src/app.rs`) and then retrieve it within your controllers or other components.
 
-**1. Inserting Data:**
+**1. Define Your Data Structures:**
 
-Use the `insert` method to add an instance of your type. The type must be `'static + Send + Sync`.
+Create the structs for the data or services you want to share. Note whether they implement `Clone`.
 
 ```rust
-use loco_rs::prelude::*;
+// In src/app.rs or a dedicated module (e.g., src/services.rs)
 
-// Define your custom service or data structure
-struct MyCustomService {
-    api_key: String,
+// This service can be cloned
+#[derive(Clone, Debug)]
+pub struct MyClonableService {
+    pub api_key: String,
 }
 
-// Somewhere you have access to AppContext (e.g., an initializer or hook)
-async fn setup_custom_service(ctx: &AppContext) -> Result<()> {
-    let service = MyCustomService {
-        api_key: "secret-key".to_string(),
-    };
-    // Insert the service into the shared store
-    ctx.shared_store.insert(service);
-    Ok(())
+// This service cannot (or should not) be cloned
+#[derive(Debug)]
+pub struct MyNonClonableService {
+    pub api_key: String,
 }
 ```
 
-**2. Retrieving Data:**
+**2. Insert into SharedStore (in `src/app.rs`):**
 
-Use the `get_ref` method to retrieve a reference (`RefGuard<T>`) to your stored data, or the `get` method to retrieve a clone (`Option<T>`) if the type implements `Clone`. `RefGuard` is a smart pointer that dereferences to your type `T`.
+A good place to insert your shared data is the `after_context` hook in your `App`'s `Hooks` implementation.
 
 ```rust
-// In a controller or another part of your app
-async fn my_controller_handler(State(ctx): State<AppContext>) -> Result<impl IntoResponse> {
-    // Retrieve the service using get_ref::<YourType>()
-    if let Some(service_ref) = ctx.shared_store.get_ref::<MyCustomService>() {
-        // Access fields directly through the RefGuard
-        let key = &service_ref.api_key;
-        tracing::info!("Using API Key: {}", key);
+// In src/app.rs
 
-        // If MyCustomService implements Clone, you could get a clone instead:
-        // if let Some(service_clone) = ctx.shared_store.get::<MyCustomService>() {
-        //     tracing::info!("Cloned API Key: {}", service_clone.api_key);
-        // }
+use crate::MyClonableService; // Import your structs
+use crate::MyNonClonableService;
 
-    } else {
-        // Handle the case where the service is not found
-        return Err(Error::InternalServerError);
+pub struct App;
+#[async_trait]
+impl Hooks for App {
+    // ... other Hooks methods (app_name, boot, etc.) ...
+
+    async fn after_context(mut ctx: AppContext) -> Result<AppContext> {
+        // Create instances of your services/data
+        let clonable_service = MyClonableService {
+            api_key: "key-cloned-12345".to_string(),
+        };
+        let non_clonable_service = MyNonClonableService {
+            api_key: "key-ref-67890".to_string(),
+        };
+
+        // Insert them into the shared store
+        ctx.shared_store.insert(clonable_service);
+        ctx.shared_store.insert(non_clonable_service);
+
+        Ok(ctx)
     }
 
-    // ... rest of your handler
-    Ok(Response::new("Handled".to_string()))
+    // ... rest of Hooks implementation ...
 }
 ```
 
-_Note:_ The `RefGuard` holds a read lock on the underlying storage. It's important to keep its scope minimal to avoid holding the lock longer than necessary. If you need the data for longer and the type implements `Clone`, use the `get()` method to obtain an owned clone.
+**3. Retrieve from SharedStore (in Controllers):**
+
+You have two main ways to retrieve data in your controllers:
+
+- **Using the `SharedStore(var)` Extractor (for `Clone`-able types):**
+  This is the most convenient way if your type implements `Clone`. The extractor retrieves and _clones_ the data for you.
+
+  ```rust
+  // In src/controllers/some_controller.rs
+  use loco_rs::prelude::*;
+  use crate::app::MyClonableService; // Or wherever it's defined
+
+  #[axum::debug_handler]
+  pub async fn index(
+      // Extracts and clones MyClonableService into `service`
+      SharedStore(service): SharedStore<MyClonableService>,
+  ) -> impl IntoResponse {
+      tracing::info!("Using Cloned Service API Key: {}", service.api_key);
+      format::empty()
+  }
+  ```
+
+- **Using `ctx.shared_store.get_ref()` (for Non-`Clone`-able types or avoiding clones):**
+  Use this method when your type doesn't implement `Clone` or when you want to avoid the performance cost of cloning. It gives you a reference (`RefGuard<T>`) to the data.
+
+  ```rust
+  // In src/controllers/some_controller.rs
+  use loco_rs::prelude::*;
+  use crate::app::MyNonClonableService; // Or wherever it's defined
+
+  #[axum::debug_handler]
+  pub async fn index(
+      State(ctx): State<AppContext>, // Need the AppContext state
+  ) -> Result<impl IntoResponse> {
+      // Get a reference to the non-clonable service
+      let service_ref = ctx.shared_store.get_ref::<MyNonClonableService>()
+          .ok_or_else(|| {
+              tracing::error!("MyNonClonableService not found in shared store");
+              Error::InternalServerError // Or a more specific error
+          })?;
+
+      // Access fields via the reference guard
+      tracing::info!("Using Non-Cloned Service API Key: {}", service_ref.api_key);
+      format::empty()
+  }
+  ```
+
+**Summary:**
+
+- Use `SharedStore` in `AppContext` to share custom services or data.
+- Insert data during app setup (e.g., `after_context` in `src/app.rs`).
+- Use the `SharedStore(var)` extractor for convenient access to `Clone`-able types (clones the data).
+- Use `ctx.shared_store.get_ref::<T>()` to get a reference to non-`Clone`-able types or to avoid cloning for performance reasons.

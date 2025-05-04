@@ -34,7 +34,7 @@ use crate::{
 };
 
 /// Type-safe heterogeneous storage for arbitrary application data
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct SharedStore {
     // Use DashMap for concurrent access with fine-grained locking
     storage: DashMap<TypeId, Box<dyn Any + Send + Sync>>,
