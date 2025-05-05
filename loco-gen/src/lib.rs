@@ -410,25 +410,7 @@ pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Resul
                     "postgres": postgres,
                     "background_queue": background_queue
                 });
-                let config_deploy_yml = Path::new("config/deploy.yml");
-                let kamal_secrets = Path::new(".kamal/secrets");
-                if config_deploy_yml.exists() {
-                    tracing::info!("backing up config/deploy.yml to config/_deploy.yml");
-                    fs::rename(config_deploy_yml, Path::new("config/_deploy.yml"))?;
-                }
-                if kamal_secrets.exists() {
-                    tracing::info!("backing up kamal/secrets to kamal/_secrets");
-                    fs::rename(kamal_secrets, Path::new(".kamal/_secrets"))?;
-                }
-                // render the dockerfile template
-                let mut gen_result_docker =
-                    render_template(rrgen, Path::new("deployment/docker"), &vars)?;
-                // render the kamal template
-                let gen_result_kamal =
-                    render_template(rrgen, Path::new("deployment/kamal"), &vars)?;
-                // merge the results
-                gen_result_docker.rrgen.extend(gen_result_kamal.rrgen);
-                gen_result_docker
+                render_kamal(rrgen, &vars)?
             }
         },
         Component::Data { name } => {
@@ -438,6 +420,28 @@ pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Resul
     };
 
     Ok(get_result)
+}
+
+fn render_kamal(rrgen: &RRgen, vars: &Value) -> Result<GenerateResults> {
+    let config_deploy_yml = Path::new("config/deploy.yml");
+    let kamal_secrets = Path::new(".kamal/secrets");
+    if config_deploy_yml.exists() {
+        tracing::info!("backing up config/deploy.yml to config/_deploy.yml");
+        fs::rename(config_deploy_yml, Path::new("config/_deploy.yml"))?;
+    }
+    if kamal_secrets.exists() {
+        tracing::info!("backing up kamal/secrets to kamal/_secrets");
+        fs::rename(kamal_secrets, Path::new(".kamal/_secrets"))?;
+    }
+    // render the dockerfile template
+    let mut gen_result_docker =
+        render_template(rrgen, Path::new("deployment/docker"), vars)?;
+    // render the kamal template
+    let gen_result_kamal =
+        render_template(rrgen, Path::new("deployment/kamal"), vars)?;
+    // merge the results
+    gen_result_docker.rrgen.extend(gen_result_kamal.rrgen);
+    Ok(gen_result_docker)
 }
 
 fn render_template(rrgen: &RRgen, template: &Path, vars: &Value) -> Result<GenerateResults> {

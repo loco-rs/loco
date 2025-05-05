@@ -32,7 +32,6 @@ pub use crate::{
     bgworker::{BackgroundWorker, Queue},
     controller::{
         bad_request,
-        extractor::validate::{JsonValidate, JsonValidateWithMessage},
         format,
         middleware::{
             format::{Format, RespondTo},
