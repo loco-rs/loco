@@ -5,15 +5,14 @@
 mod email_sender;
 mod template;
 
+use self::template::Template;
+use super::{app::AppContext, Result};
+use crate::prelude::BackgroundWorker;
 use async_trait::async_trait;
 pub use email_sender::EmailSender;
 use include_dir::Dir;
 use serde::{Deserialize, Serialize};
 use tracing::error;
-
-use self::template::Template;
-use super::{app::AppContext, Result};
-use crate::prelude::BackgroundWorker;
 
 pub const DEFAULT_FROM_SENDER: &str = "System <system@example.com>";
 
@@ -111,15 +110,17 @@ pub struct MailerWorker {
     pub ctx: AppContext,
 }
 
+impl MailerWorker {
+    pub fn build(ctx: &AppContext) -> MailerWorker {
+        Self { ctx: ctx.clone() }
+    }
+}
+
 /// Implementation of the [`Worker`] trait for the [`MailerWorker`].
 #[async_trait]
 impl BackgroundWorker<Email> for MailerWorker {
     fn queue() -> Option<String> {
         Some("mailer".to_string())
-    }
-
-    fn build(ctx: &AppContext) -> Self {
-        Self { ctx: ctx.clone() }
     }
 
     /// Performs the email sending operation using the provided [`AppContext`]

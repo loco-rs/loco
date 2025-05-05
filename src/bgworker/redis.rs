@@ -1343,12 +1343,9 @@ mod tests {
 
         // Create a mock worker
         struct TestWorker;
+
         #[async_trait::async_trait]
         impl BackgroundWorker<String> for TestWorker {
-            fn build(_ctx: &crate::app::AppContext) -> Self {
-                Self
-            }
-
             async fn perform(&self, args: String) -> crate::Result<()> {
                 assert_eq!(args, "test args");
                 Ok(())

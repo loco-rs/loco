@@ -74,14 +74,14 @@ pub enum Queue {
     #[cfg(feature = "bg_pg")]
     Postgres(
         pg::PgPool,
-        std::sync::Arc<tokio::sync::Mutex<pg::JobRegistry>>,
+        Arc<tokio::sync::Mutex<pg::JobRegistry>>,
         pg::RunOpts,
         tokio_util::sync::CancellationToken,
     ),
     #[cfg(feature = "bg_sqlt")]
     Sqlite(
         sqlt::SqlitePool,
-        std::sync::Arc<tokio::sync::Mutex<sqlt::JobRegistry>>,
+        Arc<tokio::sync::Mutex<sqlt::JobRegistry>>,
         sqlt::RunOpts,
         tokio_util::sync::CancellationToken,
     ),
@@ -588,7 +588,9 @@ impl Queue {
 }
 
 #[async_trait]
-pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + Sync {
+pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>:
+    Send + Sync + 'static
+{
     /// If you have a specific queue
     /// in mind and the provider supports custom / priority queues, make your
     /// worker return it. Otherwise, return `None`.
@@ -604,7 +606,6 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
         Vec::new()
     }
 
-    fn build(ctx: &AppContext) -> Self;
     #[must_use]
     fn class_name() -> String
     where
@@ -634,13 +635,28 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
                 }
             }
             WorkerMode::ForegroundBlocking => {
-                Self::build(ctx).perform(args).await?;
+                let worker = ctx
+                    .shared_store
+                    .get_ref::<Self>()
+                    .ok_or(Error::WorkerNotRegistered)?;
+                worker.perform(args).await?;
             }
             WorkerMode::BackgroundAsync => {
-                let dx = ctx.clone();
+                let shared_store = ctx.shared_store.clone();
                 tokio::spawn(async move {
-                    if let Err(err) = Self::build(&dx).perform(args).await {
-                        tracing::error!(err = err.to_string(), "worker failed to perform job");
+                    match shared_store.get_ref::<Self>() {
+                        Some(worker) => {
+                            if let Err(err) = worker.perform(args).await {
+                                tracing::error!(
+                                    err = err.to_string(),
+                                    "worker failed to perform job"
+                                );
+                            }
+                        }
+                        None => {
+                            let worker_name = Self::class_name();
+                            tracing::error!("Worker {worker_name} has not been registered.")
+                        }
                     }
                 });
             }
@@ -740,7 +756,6 @@ pub async fn create_queue_provider(config: &Config) -> Result<Option<Arc<Queue>>
 
 #[cfg(test)]
 mod tests {
-
     use std::path::Path;
 
     use insta::assert_debug_snapshot;

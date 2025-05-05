@@ -6,7 +6,6 @@ pub use sea_orm_migration::prelude::*;
 
 use crate::{
     app::{AppContext, Hooks, Initializer},
-    bgworker::Queue,
     boot::{create_app, BootResult, StartMode},
     config::Config,
     controller::AppRoutes,
@@ -140,7 +139,7 @@ impl Hooks for AppHook {
         create_app::<Self, Migrator>(mode, environment, config).await
     }
 
-    async fn connect_workers(_ctx: &AppContext, _q: &Queue) -> Result<()> {
+    async fn register_workers(_ctx: &AppContext) -> Result<()> {
         Ok(())
     }
 
