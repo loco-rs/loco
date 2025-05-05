@@ -555,10 +555,14 @@ impl DeploymentKind {
                     PathBuf::from("frontend").join("package.json").exists();
                 let postgres = config.database.uri.starts_with("postgres://");
                 let sqlite = config.database.uri.starts_with("sqlite://");
-                let background_queue = config.queue.as_ref().map_or(false, |queue_config| match queue_config {
-                        QueueConfig::Redis(_) => true,
-                        _ => false,
-                    });
+                let background_queue =
+                    config
+                        .queue
+                        .as_ref()
+                        .map_or(false, |queue_config| match queue_config {
+                            QueueConfig::Redis(_) => true,
+                            _ => false,
+                        });
                 loco_gen::DeploymentKind::Kamal {
                     copy_paths: vec![],
                     is_client_side_rendering,
