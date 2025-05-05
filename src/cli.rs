@@ -46,7 +46,7 @@ use crate::{
         create_app, create_context, list_endpoints, list_middlewares, run_scheduler, run_task,
         start, RunDbCommand, ServeParams, StartMode,
     },
-    config::Config,
+    config::{Config, QueueConfig},
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     logger, task, Error,
 };
@@ -337,7 +337,7 @@ After running the migration, follow these steps to complete the process:
     /// Generate a deployment infrastructure
     Deployment {
         // deployment kind.
-        #[clap(value_enum)]
+        #[clap(long, value_enum)]
         kind: DeploymentKind,
     },
 
@@ -521,6 +521,7 @@ pub enum DeploymentKind {
     Docker,
     Shuttle,
     Nginx,
+    Kamal,
 }
 
 impl DeploymentKind {
@@ -530,19 +531,7 @@ impl DeploymentKind {
             Self::Docker => {
                 let mut copy_paths = vec![];
 
-                if let Some(static_assets) = &config.server.middlewares.static_assets {
-                    let asset_folder =
-                        PathBuf::from(controller::views::engines::DEFAULT_ASSET_FOLDER);
-                    if asset_folder.exists() {
-                        copy_paths.push(asset_folder.clone());
-                    }
-                    if !static_assets.folder.path.starts_with(&asset_folder) {
-                        copy_paths.push(PathBuf::from(&static_assets.folder.path));
-                    }
-                    if !static_assets.fallback.starts_with(asset_folder) {
-                        copy_paths.push(PathBuf::from(&static_assets.fallback));
-                    }
-                }
+                Self::copy_static_assets(&mut copy_paths, config);
 
                 let is_client_side_rendering =
                     PathBuf::from("frontend").join("package.json").exists();
@@ -559,8 +548,42 @@ impl DeploymentKind {
                 host: config.server.host.to_string(),
                 port: config.server.port,
             },
+            Self::Kamal => {
+                let mut copy_paths = vec![];
+                Self::copy_static_assets(&mut copy_paths, config);
+                let is_client_side_rendering =
+                    PathBuf::from("frontend").join("package.json").exists();
+                let postgres = config.database.uri.starts_with("postgres://");
+                let sqlite = config.database.uri.starts_with("sqlite://");
+                let background_queue = config.queue.as_ref().map_or(false, |queue_config| match queue_config {
+                        QueueConfig::Redis(_) => true,
+                        _ => false,
+                    });
+                loco_gen::DeploymentKind::Kamal {
+                    copy_paths: vec![],
+                    is_client_side_rendering,
+                    postgres,
+                    sqlite,
+                    background_queue,
+                }
+            }
         };
         loco_gen::Component::Deployment { kind }
+    }
+
+    fn copy_static_assets(copy_paths: &mut Vec<PathBuf>, config: &Config) {
+        if let Some(static_assets) = &config.server.middlewares.static_assets {
+            let asset_folder = PathBuf::from(controller::views::engines::DEFAULT_ASSET_FOLDER);
+            if asset_folder.exists() {
+                copy_paths.push(asset_folder.clone());
+            }
+            if !static_assets.folder.path.starts_with(&asset_folder) {
+                copy_paths.push(PathBuf::from(&static_assets.folder.path));
+            }
+            if !static_assets.fallback.starts_with(asset_folder) {
+                copy_paths.push(PathBuf::from(&static_assets.fallback));
+            }
+        }
     }
 }
 

@@ -403,7 +403,7 @@ pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Resul
                 background_queue,
             } => {
                 let vars = json!({
-                     "pkg_name": appinfo.app_name,
+                    "pkg_name": appinfo.app_name,
                     "copy_paths": copy_paths,
                     "is_client_side_rendering": is_client_side_rendering,
                     "sqlite": sqlite,
