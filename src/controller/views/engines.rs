@@ -31,6 +31,23 @@ impl TeraView {
         Self::from_custom_dir(&PathBuf::from(DEFAULT_ASSET_FOLDER).join("views"))
     }
 
+    /// Create a new Tera instance from a directory path
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if building fails
+    fn create_tera_instance<P: AsRef<Path>>(path: P) -> Result<tera::Tera> {
+        let mut tera = tera::Tera::new(
+            path.as_ref()
+                .join("**")
+                .join("*.html")
+                .to_str()
+                .ok_or_else(|| Error::string("invalid blob"))?,
+        )?;
+        tera_builtins::filters::register_filters(&mut tera);
+        Ok(tera)
+    }
+
     /// Create a Tera view engine from a custom directory
     ///
     /// # Errors
@@ -44,14 +61,7 @@ impl TeraView {
             )));
         }
 
-        let mut tera = tera::Tera::new(
-            path.as_ref()
-                .join("**")
-                .join("*.html")
-                .to_str()
-                .ok_or_else(|| Error::string("invalid blob"))?,
-        )?;
-        tera_builtins::filters::register_filters(&mut tera);
+        let tera = Self::create_tera_instance(path.as_ref())?;
         let ctx = tera::Context::default();
         Ok(Self {
             #[cfg(debug_assertions)]
@@ -67,22 +77,17 @@ impl TeraView {
 
 impl ViewRenderer for TeraView {
     fn render<S: Serialize>(&self, key: &str, data: S) -> Result<String> {
-        #[cfg(debug_assertions)]
-        use std::borrow::BorrowMut;
-
         let context = tera::Context::from_serialize(data)?;
 
         #[cfg(debug_assertions)]
-        tracing::debug!(key = key, "Tera rendering in non-optimized debug mode");
-        #[cfg(debug_assertions)]
-        return Ok(self.tera.lock().expect("lock").borrow_mut().render_str(
-            &std::fs::read_to_string(Path::new(&self.view_dir).join(key))
-                .map_err(|_e| tera::Error::template_not_found(key))?,
-            &context,
-        )?);
+        {
+            tracing::debug!(key = key, "Tera rendering in non-optimized debug mode");
+            let tera = Self::create_tera_instance(&self.view_dir)?;
+            Ok(tera.render(key, &context)?)
+        }
 
         #[cfg(not(debug_assertions))]
-        return Ok(self.tera.render(key, &context)?);
+        Ok(self.tera.render(key, &context)?);
     }
 }
 
@@ -119,5 +124,75 @@ mod tests {
                 .unwrap(),
             "generate test2.html file: bar-txt"
         );
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn template_inheritance_hot_reload() {
+        // Create a temporary file system with a base template and a child template
+        let yaml_content = r"
+        drop: true
+        files:
+        - path: template/base.html
+          content: |-
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>{% block title %}Default Title{% endblock %}</title>
+            </head>
+            <body>
+                <header>Base Header v1</header>
+                {% block content %}
+                Default content
+                {% endblock %}
+                <footer>Base Footer</footer>
+            </body>
+            </html>
+        - path: template/child.html
+          content: |-
+            {% extends 'template/base.html' %}
+            {% block title %}Child Page{% endblock %}
+            {% block content %}
+            <div>Child content</div>
+            {% endblock %}
+        ";
+
+        let tree_res = tree_fs::from_yaml_str(yaml_content).unwrap();
+        let tree_dir = tree_res.root.clone();
+        let v = TeraView::from_custom_dir(&tree_res.root).unwrap();
+
+        // Initial render should have the original header from base template
+        let initial_render = v.render("template/child.html", json!({})).unwrap();
+        assert!(initial_render.contains("Base Header v1"));
+        assert!(initial_render.contains("Child Page"));
+        assert!(initial_render.contains("Child content"));
+
+        // Now modify the base template to change the header
+        let updated_base = r"<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}Default Title{% endblock %}</title>
+</head>
+<body>
+    <header>Base Header v2</header>
+    {% block content %}
+    Default content
+    {% endblock %}
+    <footer>Base Footer</footer>
+</body>
+</html>";
+
+        // Update the base template file
+        std::fs::write(
+            Path::new(&tree_dir).join("template").join("base.html"),
+            updated_base,
+        )
+        .unwrap();
+
+        // Render again - should have the updated header due to hot reload
+        let updated_render = v.render("template/child.html", json!({})).unwrap();
+        assert!(updated_render.contains("Base Header v2")); // Should have changed
+        assert!(updated_render.contains("Child Page")); // Should be the same
+        assert!(updated_render.contains("Child content")); // Should be the same
     }
 }

@@ -22,6 +22,9 @@
 * Adding cache redis driver + configuration instead of enabling from code. [https://github.com/loco-rs/loco/pull/1389](https://github.com/loco-rs/loco/pull/1389)
 * Ability to configure pragma for SQLite. [https://github.com/loco-rs/loco/pull/1346](https://github.com/loco-rs/loco/pull/1346)
 * Optimize worker tag filtering string handling. [https://github.com/loco-rs/loco/pull/1396](https://github.com/loco-rs/loco/pull/1396)
+* Add test coverage for db.rs. [https://github.com/loco-rs/loco/pull/1400](https://github.com/loco-rs/loco/pull/1400)
+* Allow storage of arbitrary custom objects in AppContext. [https://github.com/loco-rs/loco/pull/1404](https://github.com/loco-rs/loco/pull/1404)
+* Improve deployment generator cli (#1413). [https://github.com/loco-rs/loco/pull/1413](https://github.com/loco-rs/loco/pull/1413)
 
 
 ## v0.15.0

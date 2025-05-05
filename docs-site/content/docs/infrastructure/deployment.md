@@ -162,21 +162,28 @@ $ myapp doctor --production
 
 Loco offers a deployment template enabling the creation of a deployment infrastructure.
 
-<!-- <snip id="generate-deployment-command" inject_from="yaml" template="sh"> -->
 ```sh
-cargo loco generate deployment
-? ❯ Choose your deployment ›
-❯ Docker
-❯ Shuttle
-❯ Nginx
+$ cargo loco generate deployment --help
+Generate a deployment infrastructure
 
-..
-✔ ❯ Choose your deployment · Docker
-skipped (exists): "dockerfile"
-added: ".dockerignore"
+Usage: myapp-cli generate deployment [OPTIONS] <KIND>
+
+Arguments:
+  <KIND>  [possible values: docker, shuttle, nginx]
 ```
-<!-- </snip>-->
 
+<!-- <snip id="generate-deployment-command" inject_from="yaml" template="sh"> -->
+
+```sh
+cargo loco generate deployment docker
+
+added: "dockerfile"
+added: ".dockerignore"
+* Dockerfile generated successfully.
+* Dockerignore generated successfully
+```
+
+<!-- </snip>-->
 
 Deployment Options:
 

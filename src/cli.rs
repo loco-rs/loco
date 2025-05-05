@@ -338,7 +338,7 @@ After running the migration, follow these steps to complete the process:
     /// Generate a deployment infrastructure
     Deployment {
         // deployment kind.
-        #[clap(long, value_enum)]
+        #[clap(value_enum)]
         kind: DeploymentKind,
     },
 
