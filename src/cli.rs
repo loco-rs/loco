@@ -947,7 +947,6 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
 }
 
 // Define route node structure with enhanced methods
-// Define route node structure with enhanced methods
 #[derive(Default)]
 struct RouteNode {
     children: BTreeMap<String, RouteNode>,
@@ -969,7 +968,7 @@ impl RouteNode {
         &self.endpoints[0].0
     }
 
-    fn build_path(&self, segments: Vec<&str>) -> String {
+    fn build_path(segments: &[&str]) -> String {
         segments.iter().fold(String::new(), |mut acc, &segment| {
             if !segment.is_empty() {
                 acc.push('/');
@@ -986,7 +985,7 @@ impl RouteNode {
                 println!(
                     "{:<50} {}",
                     format!("{} {}", format!("/{segment}"), color_method(self.method())),
-                    self.build_path(vec![current_path, segment])
+                    Self::build_path(&[current_path, segment])
                 );
             }
             (true, _, true) => {
@@ -998,11 +997,11 @@ impl RouteNode {
                         format!("/{segment}/{child_segment}"),
                         color_method(child_node.method())
                     ),
-                    self.build_path(vec![current_path, segment, child_segment])
+                    Self::build_path(&[current_path, segment, child_segment])
                 );
             }
 
-            // Non-root special cases
+            // Non root level special cases
             (false, true, _) => {
                 let prefix_str = Self::format_prefix(prefix, is_last, true);
                 println!(
@@ -1012,7 +1011,7 @@ impl RouteNode {
                         format!("{}{}", prefix_str, segment),
                         color_method(self.method()),
                     ),
-                    self.build_path(vec![current_path, segment])
+                    Self::build_path(&[current_path, segment])
                 );
             }
             (false, _, true) => {
@@ -1025,7 +1024,7 @@ impl RouteNode {
                         format!("{}{}/{}", prefix_str, segment, child_segment),
                         color_method(child_node.method()),
                     ),
-                    self.build_path(vec![current_path, segment, child_segment])
+                    Self::build_path(&[current_path, segment, child_segment])
                 );
 
                 // Space after branch
@@ -1045,9 +1044,9 @@ impl RouteNode {
                 self.print_endpoints(
                     &next_prefix,
                     self.children.is_empty(),
-                    &self.build_path(vec![current_path, segment]),
+                    &Self::build_path(&[current_path, segment]),
                 );
-                self.print_children(&next_prefix, &self.build_path(vec![current_path, segment]));
+                self.print_children(&next_prefix, &Self::build_path(&[current_path, segment]));
             }
         }
     }
@@ -1082,7 +1081,7 @@ impl RouteNode {
                         format!("{}{} /{}", prefix, marker, child_segment),
                         color_method(child_node.method()),
                     ),
-                    self.build_path(vec![current_path, child_segment])
+                    Self::build_path(&[current_path, child_segment])
                 );
 
                 // Space after branch
