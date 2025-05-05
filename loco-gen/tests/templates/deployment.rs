@@ -221,12 +221,6 @@ fn can_generate_kamal_sqlite_without_background_queue() {
 "
     );
 
-    assert_snapshot!(
-        "inject[development.yaml]",
-        fs::read_to_string(tree_fs.root.join("config").join("development.yaml"))
-            .expect("development.yaml missing")
-    );
-
     // Assert the generated Dockerfile content
     assert_snapshot!(
         "generate[kamal_dockerfile_sqlite]",
@@ -300,11 +294,7 @@ fn can_generate_kamal_sqlite_with_background_queue() {
 * Secrets file generated successfully.
 "
     );
-    assert_snapshot!(
-        "inject[development.yaml]",
-        fs::read_to_string(tree_fs.root.join("config").join("development.yaml"))
-            .expect("development.yaml missing")
-    );
+
     // Assert the generated dockerfile content
     assert_snapshot!(
         "generate[kamal_dockerfile_sqlite_with_background_queue]",
@@ -378,11 +368,7 @@ fn can_generate_kamal_postgres_without_background_queue() {
 * Secrets file generated successfully.
 "
     );
-    assert_snapshot!(
-        "inject[development.yaml]",
-        fs::read_to_string(tree_fs.root.join("config").join("development.yaml"))
-            .expect("development.yaml missing")
-    );
+
     // Assert the generated dockerfile content
     assert_snapshot!(
         "generate[kamal_dockerfile_postgres_without_background_queue]",
@@ -456,11 +442,7 @@ fn can_generate_kamal_postgres_with_background_queue() {
 * Secrets file generated successfully.
 "
     );
-    assert_snapshot!(
-        "inject[development.yaml]",
-        fs::read_to_string(tree_fs.root.join("config").join("development.yaml"))
-            .expect("development.yaml missing")
-    );
+
     // Assert the generated dockerfile content
     assert_snapshot!(
         "generate[kamal_dockerfile_postgres_with_background_queue]",

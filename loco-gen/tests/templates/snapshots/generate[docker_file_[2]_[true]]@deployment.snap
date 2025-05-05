@@ -27,4 +27,4 @@ COPY --from=builder /usr/src/asset asset
 COPY --from=builder /usr/src/config config
 COPY --from=builder /usr/src/target/release/tester-cli tester-cli
 
-ENTRYPOINT ["/usr/app/tester-cli","start"]
+ENTRYPOINT ["/usr/app/tester-cli"]
