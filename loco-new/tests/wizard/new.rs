@@ -228,11 +228,11 @@ impl Tester {
             "-W",
             "rust-2018-idioms"
         )
-        .full_env(&self.env_map)
-        // .stdout_null()
-        // .stderr_null()
-        .dir(&self.dir)
-        .run()
+            .full_env(&self.env_map)
+            // .stdout_null()
+            // .stderr_null()
+            .dir(&self.dir)
+            .run()
     }
 
     fn run_test(&self) -> Result<Output, std::io::Error> {

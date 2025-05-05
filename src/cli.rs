@@ -23,6 +23,10 @@ cfg_if::cfg_if! {
     } else {}
 }
 
+use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueHint};
+use colored::Colorize;
+use duct::cmd;
+use std::fmt::Write;
 #[cfg(any(
     feature = "bg_redis",
     feature = "bg_pg",
@@ -30,12 +34,7 @@ cfg_if::cfg_if! {
     feature = "with-db"
 ))]
 use std::process::exit;
-use std::{collections::BTreeMap, fmt::Write, path::PathBuf};
-
-use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueHint};
-use colored::Colorize;
-use duct::cmd;
-use loco_gen::ScaffoldKind;
+use std::{collections::BTreeMap, path::PathBuf};
 
 #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
 use crate::bgworker::JobStatus;
@@ -79,8 +78,7 @@ enum Commands {
     #[command(group(ArgGroup::new("start_mode").args(&["worker", "server_and_worker", "all"])))]
     #[clap(alias("s"))]
     Start {
-        /// Start worker. Optionally provide tags to run specific jobs (e.g.
-        /// --worker=tag1,tag2)
+        /// Start worker. Optionally provide tags to run specific jobs (e.g. --worker=tag1,tag2)
         #[arg(short, long, action, value_delimiter = ',', num_args = 0.., conflicts_with_all = &["server_and_worker", "all"])]
         worker: Option<Vec<String>>,
         /// Start the server and worker in the same process
@@ -185,7 +183,7 @@ enum ComponentArg {
     /// Generates a new model file for defining the data structure of your
     /// application, and test file logic.
     #[command(after_help = format!(
-    "{}  
+        "{}  
   - Generate empty model:
       $ cargo loco g model posts
 
@@ -197,8 +195,8 @@ enum ComponentArg {
       # 'director:references' references the 'directors' table with 'director_id' on 'movies'
       # 'award:references:prize_id' references the 'awards' table with 'prize_id' on 'movies'
 ",
-    "Examples:".bold().underline()
-))]
+        "Examples:".bold().underline()
+    ))]
     Model {
         /// Name of the thing to generate
         name: String,
@@ -281,15 +279,15 @@ After running the migration, follow these steps to complete the process:
     },
     /// Generate a new controller with the given controller name, and test file.
     #[command(after_help = format!(
-    "{}  
+        "{}  
   - Generate an empty controller:
       $ cargo loco generate controller posts --api
 
   - Generate a controller with actions:
       $ cargo loco generate controller posts --api list remove update
 ",
-    "Examples:".bold().underline()
-))]
+        "Examples:".bold().underline()
+    ))]
     Controller {
         /// Name of the thing to generate
         name: String,
@@ -386,7 +384,19 @@ impl ComponentArg {
                 html,
                 api,
             } => {
-                let kind = Self::get_kind(kind, htmx, html, api)?;
+                let kind = if let Some(kind) = kind {
+                    kind
+                } else if htmx {
+                    loco_gen::ScaffoldKind::Htmx
+                } else if html {
+                    loco_gen::ScaffoldKind::Html
+                } else if api {
+                    loco_gen::ScaffoldKind::Api
+                } else {
+                    return Err(crate::Error::string(
+                        "Error: One of `kind`, `htmx`, `html`, or `api` must be specified.",
+                    ));
+                };
 
                 Ok(loco_gen::Component::Scaffold { name, fields, kind })
             }
@@ -398,7 +408,19 @@ impl ComponentArg {
                 html,
                 api,
             } => {
-                let kind = Self::get_kind(kind, htmx, html, api)?;
+                let kind = if let Some(kind) = kind {
+                    kind
+                } else if htmx {
+                    loco_gen::ScaffoldKind::Htmx
+                } else if html {
+                    loco_gen::ScaffoldKind::Html
+                } else if api {
+                    loco_gen::ScaffoldKind::Api
+                } else {
+                    return Err(crate::Error::string(
+                        "Error: One of `kind`, `htmx`, `html`, or `api` must be specified.",
+                    ));
+                };
 
                 Ok(loco_gen::Component::Controller {
                     name,
@@ -419,28 +441,6 @@ impl ComponentArg {
                 "Error: Override could not be generated.",
             )),
         }
-    }
-    #[allow(clippy::similar_names)]
-    fn get_kind(
-        kind: Option<loco_gen::ScaffoldKind>,
-        htmx: bool,
-        html: bool,
-        api: bool,
-    ) -> Result<ScaffoldKind, Error> {
-        let kind = if let Some(kind) = kind {
-            kind
-        } else if htmx {
-            loco_gen::ScaffoldKind::Htmx
-        } else if html {
-            loco_gen::ScaffoldKind::Html
-        } else if api {
-            loco_gen::ScaffoldKind::Api
-        } else {
-            return Err(crate::Error::string(
-                "Error: One of `kind`, `htmx`, `html`, or `api` must be specified.",
-            ));
-        };
-        Ok(kind)
     }
 }
 
@@ -520,26 +520,10 @@ pub enum DeploymentKind {
     Docker,
     Shuttle,
     Nginx,
-    Kamal,
 }
 
 impl DeploymentKind {
-    fn copy_paths(config: &Config) -> Vec<PathBuf> {
-        let mut copy_paths = vec![];
-        if let Some(static_assets) = &config.server.middlewares.static_assets {
-            let asset_folder = PathBuf::from(controller::views::engines::DEFAULT_ASSET_FOLDER);
-            if asset_folder.exists() {
-                copy_paths.push(asset_folder.clone());
-            }
-            if !static_assets.folder.path.starts_with(&asset_folder) {
-                copy_paths.push(PathBuf::from(&static_assets.folder.path));
-            }
-            if !static_assets.fallback.starts_with(asset_folder) {
-                copy_paths.push(PathBuf::from(&static_assets.fallback));
-            }
-        }
-        copy_paths
-    }
+    #[cfg(debug_assertions)]
     fn to_generator_component(&self, config: &Config) -> loco_gen::Component {
         let kind = match self {
             Self::Docker => {
@@ -574,27 +558,6 @@ impl DeploymentKind {
                 host: config.server.host.to_string(),
                 port: config.server.port,
             },
-            Self::Kamal => {
-                let copy_paths = Self::copy_paths(config);
-                let is_client_side_rendering =
-                    PathBuf::from("frontend").join("package.json").exists();
-                #[cfg(feature = "with-db")]
-                let postgres = config.database.uri.contains("postgres://");
-                #[cfg(not(feature = "with-db"))]
-                let postgres = false;
-                #[cfg(feature = "with-db")]
-                let sqlite = config.database.uri.contains("sqlite://");
-                #[cfg(not(feature = "with-db"))]
-                let sqlite = false;
-                loco_gen::DeploymentKind::Kamal {
-                    copy_paths,
-                    is_client_side_rendering,
-                    background_queue: config.workers.mode
-                        == crate::config::WorkerMode::BackgroundQueue,
-                    postgres,
-                    sqlite,
-                }
-            }
         };
         loco_gen::Component::Deployment { kind }
     }
@@ -853,8 +816,8 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
 
             cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
                 Error::Message(format!(
-                    "failed to start with `cargo-watch`. Did you `cargo install cargo-watch`?. \
-                     error details: `{err}`",
+                    "failed to start with `cargo-watch`. Did you `cargo install \
+                         cargo-watch`?. error details: `{err}`",
                 ))
             })?;
         }
@@ -974,8 +937,8 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
 
             cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
                 Error::Message(format!(
-                    "failed to start with `cargo-watch`. Did you `cargo install cargo-watch`?. \
-                     error details: `{err}`",
+                    "failed to start with `cargo-watch`. Did you `cargo install \
+                         cargo-watch`?. error details: `{err}`",
                 ))
             })?;
         }
