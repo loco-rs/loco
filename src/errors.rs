@@ -162,6 +162,9 @@ pub enum Error {
 
     #[error(transparent)]
     AxumFormRejection(#[from] axum::extract::rejection::FormRejection),
+
+    #[error("Worker was not registered")]
+    WorkerNotRegistered,
 }
 
 impl Error {

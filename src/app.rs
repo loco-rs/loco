@@ -13,12 +13,9 @@ use std::{
     sync::Arc,
 };
 
-use async_trait::async_trait;
-use axum::Router as AxumRouter;
-use dashmap::DashMap;
-
+use crate::prelude::BackgroundWorker;
 use crate::{
-    bgworker::{self, Queue},
+    bgworker,
     boot::{shutdown_signal, BootResult, ServeParams, StartMode},
     cache::{self},
     config::{self, Config},
@@ -32,6 +29,11 @@ use crate::{
     task::Tasks,
     Result,
 };
+use async_trait::async_trait;
+use axum::Router as AxumRouter;
+use dashmap::DashMap;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 /// Type-safe heterogeneous storage for arbitrary application data
 #[derive(Default, Debug)]
@@ -274,6 +276,36 @@ pub struct AppContext {
     pub shared_store: Arc<SharedStore>,
 }
 
+impl AppContext {
+    /// Registers a background worker with the application context.
+    ///
+    /// This method allows you to register a worker that implements the
+    /// [`BackgroundWorker`] trait. If a queue provider is available, the worker
+    /// will be registered with the queue. Otherwise, it will be stored in the
+    /// shared store for later use.
+    ///
+    /// # Type Parameters
+    /// - `T`: The type of data the worker processes. Must implement `Send`, `Sync`,
+    ///   `Serialize`, and `DeserializeOwned`.
+    ///
+    /// # Arguments
+    /// - `worker`: The worker instance to register.
+    ///
+    /// # Errors
+    /// Returns an error if the worker could not be registered with the queue provider.
+    pub async fn register_worker<T: Send + Sync + Serialize + DeserializeOwned + 'static>(
+        &self,
+        worker: impl BackgroundWorker<T> + 'static,
+    ) -> Result<()> {
+        match self.queue_provider.as_ref() {
+            None => self.shared_store.insert(worker),
+            Some(queue) => queue.register(worker).await?,
+        };
+
+        Ok(())
+    }
+}
+
 /// A trait that defines hooks for customizing and extending the behavior of a
 /// web server application.
 ///
@@ -414,14 +446,57 @@ pub trait Hooks: Send {
     /// Defines the application's routing configuration.
     fn routes(_ctx: &AppContext) -> AppRoutes;
 
-    // Provides the options to change Loco [`AppContext`] after initialization.
+    /// Provides the options to change Loco [`AppContext`] after initialization.
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
         Ok(ctx)
     }
 
-    /// Connects custom workers to the application using the provided
-    /// [`Processor`] and [`AppContext`].
-    async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()>;
+    /// Registers custom workers.
+    ///
+    /// # Example
+    /// ```rust
+    /// use serde::{Deserialize, Serialize};
+    /// use loco_rs::app::{AppContext, Hooks};
+    /// use loco_rs::prelude::BackgroundWorker;
+    /// use loco_rs::Result;
+    ///
+    /// pub struct App;
+    ///
+    /// #[async_trait::async_trait]
+    /// impl Hooks for App {
+    ///     async fn register_workers(ctx: &AppContext) -> Result<()> {
+    ///         // Example of custom job worker
+    ///         struct MyJobWorker {
+    ///             ctx: AppContext,
+    ///         }
+    ///
+    ///         #[derive(Serialize, Deserialize)]
+    ///         struct JobData {
+    ///             id: String,
+    ///             payload: String,
+    ///         }
+    ///
+    ///         #[async_trait::async_trait]
+    ///         impl BackgroundWorker<JobData> for MyJobWorker {
+    ///             fn queue() -> Option<String> {
+    ///                 Some("my_jobs".to_string())
+    ///             }
+    ///
+    ///             async fn perform(&self, data: JobData) -> Result<()> {
+    ///                 tracing::info!("Processing job {}: {}", data.id, data.payload);
+    ///                 // Job processing logic here
+    ///                 Ok(())
+    ///             }
+    ///         }
+    ///
+    ///         let job_worker = MyJobWorker { ctx: ctx.clone() };
+    ///         ctx.register_worker(job_worker).await?;
+    ///
+    ///         Ok(())
+    ///     }
+    /// }
+    /// ```
+    async fn register_workers(ctx: &AppContext) -> Result<()>;
 
     /// Registers custom tasks with the provided [`Tasks`] object.
     fn register_tasks(tasks: &mut Tasks);
