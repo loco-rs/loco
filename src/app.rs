@@ -21,7 +21,7 @@ use crate::{
     bgworker::{self, Queue},
     boot::{shutdown_signal, BootResult, ServeParams, StartMode},
     cache::{self},
-    config::{self, Config},
+    config::Config,
     controller::{
         middleware::{self, MiddlewareLayer},
         AppRoutes,
@@ -359,7 +359,7 @@ pub trait Hooks: Send {
     ///
     /// # Errors
     /// If fails returns an error
-    fn init_logger(_config: &config::Config, _env: &Environment) -> Result<bool> {
+    fn init_logger(_ctx: &AppContext, _env: &Environment) -> Result<bool> {
         Ok(false)
     }
 
