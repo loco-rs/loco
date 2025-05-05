@@ -982,18 +982,22 @@ impl RouteNode {
     fn print(&self, prefix: &str, segment: &str, is_last: bool, is_root: bool, current_path: &str) {
         match (is_root, self.is_leaf(), self.is_collapsible()) {
             // Root level special cases
-            (true, true, _) => println!(
-                "{} {} {}",
-                format!("/{segment}"),
-                color_method(self.method()),
-                self.build_path(vec![current_path, segment])
-            ),
+            (true, true, _) => {
+                println!(
+                    "{:<50} {}",
+                    format!("{} {}", format!("/{segment}"), color_method(self.method())),
+                    self.build_path(vec![current_path, segment])
+                );
+            }
             (true, _, true) => {
                 let (child_segment, child_node) = self.children.iter().next().unwrap();
                 println!(
-                    "{}{} {}",
-                    format!("/{segment}/{child_segment}"),
-                    color_method(child_node.method()),
+                    "{:<50} {}",
+                    format!(
+                        "{} {}",
+                        format!("/{segment}/{child_segment}"),
+                        color_method(child_node.method())
+                    ),
                     self.build_path(vec![current_path, segment, child_segment])
                 );
             }
@@ -1002,10 +1006,12 @@ impl RouteNode {
             (false, true, _) => {
                 let prefix_str = Self::format_prefix(prefix, is_last, true);
                 println!(
-                    "{}{} {} {}",
-                    prefix_str,
-                    segment,
-                    color_method(self.method()),
+                    "{:<50} {}",
+                    format!(
+                        "{} {}",
+                        format!("{}{}", prefix_str, segment),
+                        color_method(self.method()),
+                    ),
                     self.build_path(vec![current_path, segment])
                 );
             }
@@ -1013,11 +1019,12 @@ impl RouteNode {
                 let prefix_str = Self::format_prefix(prefix, is_last, true);
                 let (child_segment, child_node) = self.children.iter().next().unwrap();
                 println!(
-                    "{}{}/{} {} {}",
-                    prefix_str,
-                    segment,
-                    child_segment,
-                    color_method(child_node.method()),
+                    "{:<50} {}",
+                    format!(
+                        "{} {}",
+                        format!("{}{}/{}", prefix_str, segment, child_segment),
+                        color_method(child_node.method()),
+                    ),
                     self.build_path(vec![current_path, segment, child_segment])
                 );
 
@@ -1050,10 +1057,12 @@ impl RouteNode {
             let is_last_entry = i == self.endpoints.len() - 1 && is_last_group;
             let marker = if is_last_entry { "└─" } else { "├─" };
             println!(
-                "{}{} {} {}",
-                prefix,
-                marker,
-                color_method(method),
+                "{:<50} {}",
+                format!(
+                    "{} {}",
+                    format!("{}{}", prefix, marker),
+                    color_method(method),
+                ),
                 current_path
             );
         }
@@ -1067,10 +1076,12 @@ impl RouteNode {
             if child_node.is_leaf() {
                 let marker = if is_last_child { "└─" } else { "├─" };
                 println!(
-                    "{}{} {} {}",
-                    prefix,
-                    format!("{marker} /{child_segment}"),
-                    color_method(child_node.method()),
+                    "{:<50} {}",
+                    format!(
+                        "{} {}",
+                        format!("{}{} /{}", prefix, marker, child_segment),
+                        color_method(child_node.method()),
+                    ),
                     self.build_path(vec![current_path, child_segment])
                 );
 
