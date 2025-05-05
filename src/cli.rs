@@ -559,10 +559,7 @@ impl DeploymentKind {
                     config
                         .queue
                         .as_ref()
-                        .map_or(false, |queue_config| match queue_config {
-                            QueueConfig::Redis(_) => true,
-                            _ => false,
-                        });
+                        .is_some_and(|queue_config| matches!(queue_config, QueueConfig::Redis(_)));
                 loco_gen::DeploymentKind::Kamal {
                     copy_paths: vec![],
                     is_client_side_rendering,
