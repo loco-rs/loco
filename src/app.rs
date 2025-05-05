@@ -68,7 +68,8 @@ impl SharedStore {
 
     /// Remove a value of type T from the shared store
     ///
-    /// Returns `Some(T)` if the value was present and removed, `None` otherwise.
+    /// Returns `Some(T)` if the value was present and removed, `None`
+    /// otherwise.
     ///
     /// # Example
     /// ```
@@ -625,8 +626,8 @@ mod tests {
 
         assert_eq!(shared_store.get::<String>(), None);
         assert!(shared_store.get::<CloneableTestService>().is_some());
-        // The following line correctly fails to compile because TestService doesn't impl Clone,
-        // which is required by the `get` method.
+        // The following line correctly fails to compile because TestService
+        // doesn't impl Clone, which is required by the `get` method.
         // let non_existent_clone = shared_store.get::<TestService>();
     }
 

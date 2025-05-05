@@ -21,10 +21,6 @@ pub use serde_json::json as data;
 
 #[cfg(all(feature = "auth_jwt", feature = "with-db"))]
 pub use crate::controller::extractor::auth;
-pub use crate::controller::extractor::{
-    shared_store::SharedStore,
-    validate::{JsonValidate, JsonValidateWithMessage},
-};
 #[cfg(feature = "with-db")]
 pub use crate::model::{query, Authenticable, ModelError, ModelResult};
 pub use crate::{
@@ -32,6 +28,10 @@ pub use crate::{
     bgworker::{BackgroundWorker, Queue},
     controller::{
         bad_request,
+        extractor::{
+            shared_store::SharedStore,
+            validate::{JsonValidate, JsonValidateWithMessage},
+        },
         format,
         middleware::{
             format::{Format, RespondTo},
