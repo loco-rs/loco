@@ -3,12 +3,11 @@
 //! This module defines functions and operations related to the application's
 //! database interactions.
 
-use super::Result as AppResult;
-use crate::{
-    app::{AppContext, Hooks},
-    config, doctor, env_vars,
-    errors::Error,
+use std::{
+    collections::HashMap, fmt::Write as FmtWrites, fs, fs::File, io::Write, path::Path,
+    sync::OnceLock, time::Duration,
 };
+
 use chrono::{DateTime, Utc};
 use duct::cmd;
 use regex::Regex;
@@ -17,11 +16,14 @@ use sea_orm::{
     DatabaseConnection, DbBackend, DbConn, DbErr, EntityTrait, IntoActiveModel, Statement,
 };
 use sea_orm_migration::MigratorTrait;
-use std::fmt::Write as FmtWrites;
-use std::{
-    collections::HashMap, fs, fs::File, io::Write, path::Path, sync::OnceLock, time::Duration,
-};
 use tracing::info;
+
+use super::Result as AppResult;
+use crate::{
+    app::{AppContext, Hooks},
+    config, doctor, env_vars,
+    errors::Error,
+};
 
 pub static EXTRACT_DB_NAME: OnceLock<Regex> = OnceLock::new();
 const IGNORED_TABLES: &[&str] = &[
@@ -946,7 +948,8 @@ mod tests {
             assert_eq!(
                 actual_value,
                 expected_value.to_lowercase(),
-                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got '{actual_value}'"
+                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got \
+                 '{actual_value}'"
             );
         }
     }
@@ -984,7 +987,8 @@ mod tests {
             assert_eq!(
                 actual_value,
                 expected_value.to_lowercase(),
-                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got '{actual_value}'"
+                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got \
+                 '{actual_value}'"
             );
         }
     }
@@ -1006,7 +1010,8 @@ mod tests {
 
         assert_eq!(db.get_database_backend(), DatabaseBackend::Postgres);
 
-        let query = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'test_run_on_start'";
+        let query = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' \
+                     AND table_name = 'test_run_on_start'";
 
         let value = get_value(&db, query).await;
         assert_eq!(value, "1", "The test_run_on_start table was not created");
@@ -1014,8 +1019,9 @@ mod tests {
 
     #[cfg(test)]
     mod extract_db_name_tests {
-        use super::*;
         use rstest::rstest;
+
+        use super::*;
 
         #[rstest]
         #[case("postgres://localhost:5432/dbname", "dbname")]
@@ -1226,7 +1232,10 @@ mod tests {
         db.execute(Statement::from_string(
             backend,
             // AUTOINCREMENT keyword is important for SQLite's sequence behavior
-            format!("CREATE TABLE {table_with_auto_id} (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);"),
+            format!(
+                "CREATE TABLE {table_with_auto_id} (id INTEGER PRIMARY KEY AUTOINCREMENT, name \
+                 TEXT);"
+            ),
         ))
         .await
         .expect("Failed to create table with auto id");
@@ -1285,7 +1294,8 @@ mod tests {
             .expect("Failed to check auto-increment");
         assert!(
             !is_auto,
-            "Table '{table_with_id_not_auto}' should NOT be auto-increment, but check returned true"
+            "Table '{table_with_id_not_auto}' should NOT be auto-increment, but check returned \
+             true"
         );
 
         let table_with_serial_id = "test_table_serial_id_auto";

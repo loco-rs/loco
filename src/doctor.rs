@@ -1,14 +1,15 @@
-use colored::Colorize;
-use regex::Regex;
-use semver::Version;
-use serde::Deserialize;
-use std::fmt::Write;
 use std::{
     collections::{BTreeMap, HashMap},
+    fmt::Write,
     fs,
     process::Command,
     sync::OnceLock,
 };
+
+use colored::Colorize;
+use regex::Regex;
+use semver::Version;
+use serde::Deserialize;
 
 use crate::{
     bgworker,

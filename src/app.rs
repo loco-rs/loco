@@ -68,7 +68,8 @@ impl SharedStore {
 
     /// Remove a value of type T from the shared store
     ///
-    /// Returns `Some(T)` if the value was present and removed, `None` otherwise.
+    /// Returns `Some(T)` if the value was present and removed, `None`
+    /// otherwise.
     ///
     /// # Example
     /// ```
@@ -363,10 +364,11 @@ pub trait Hooks: Send {
         Ok(false)
     }
 
-    /// Loads the configuration settings for the application based on the given environment.
+    /// Loads the configuration settings for the application based on the given
+    /// environment.
     ///
-    /// This function is responsible for retrieving the configuration for the application
-    /// based on the current environment.
+    /// This function is responsible for retrieving the configuration for the
+    /// application based on the current environment.
     async fn load_config(env: &Environment) -> Result<Config> {
         env.load()
     }
@@ -624,8 +626,8 @@ mod tests {
 
         assert_eq!(shared_store.get::<String>(), None);
         assert!(shared_store.get::<CloneableTestService>().is_some());
-        // The following line correctly fails to compile because TestService doesn't impl Clone,
-        // which is required by the `get` method.
+        // The following line correctly fails to compile because TestService
+        // doesn't impl Clone, which is required by the `get` method.
         // let non_existent_clone = shared_store.get::<TestService>();
     }
 

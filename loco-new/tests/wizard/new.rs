@@ -140,6 +140,9 @@ fn test_combination(
         // Generate data
         tester.run_generate(&vec!["data", "stocks"]);
 
+        // Generate deployment kamal
+        tester.run_generate(&vec!["deployment", "--kind", "kamal"]);
+
         if db.enable() {
             // Generate Model
             if !settings.auth {

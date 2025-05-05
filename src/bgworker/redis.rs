@@ -4,8 +4,6 @@ use std::{
     time::Duration,
 };
 
-use super::{BackgroundWorker, JobStatus, Queue};
-use crate::{config::RedisQueueConfig, Error, Result};
 use chrono::{DateTime, Utc};
 use futures_util::FutureExt;
 use redis::{aio::Connection, AsyncCommands, Client};
@@ -15,6 +13,9 @@ use tokio::{task::JoinHandle, time::sleep};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, trace};
 use ulid::Ulid;
+
+use super::{BackgroundWorker, JobStatus, Queue};
+use crate::{config::RedisQueueConfig, Error, Result};
 
 pub type RedisPool = Client;
 type JobId = String;
@@ -547,9 +548,9 @@ fn should_include_job(job: &Job, status: Option<&Vec<JobStatus>>, age_days: Opti
 
 /// Clears jobs based on their status from the Redis queue.
 ///
-/// This function removes all jobs with a status matching any of the statuses provided
-/// in the `status` argument. It searches through all queue keys and processing sets
-/// and removes matching jobs.
+/// This function removes all jobs with a status matching any of the statuses
+/// provided in the `status` argument. It searches through all queue keys and
+/// processing sets and removes matching jobs.
 ///
 /// # Errors
 ///
@@ -646,9 +647,10 @@ pub async fn clear_by_status(client: &RedisPool, status: Vec<JobStatus>) -> Resu
 
 /// Clears jobs older than the specified number of days from the Redis queue.
 ///
-/// This function removes all jobs that were created more than `age_days` days ago
-/// and have a status matching any of the statuses provided in the `status` argument.
-/// It searches through all queue keys and processing sets and removes matching jobs.
+/// This function removes all jobs that were created more than `age_days` days
+/// ago and have a status matching any of the statuses provided in the `status`
+/// argument. It searches through all queue keys and processing sets and removes
+/// matching jobs.
 ///
 /// # Errors
 ///
@@ -762,11 +764,12 @@ pub async fn clear_jobs_older_than(
     Ok(())
 }
 
-/// Requeues failed or stalled jobs that are older than a specified number of minutes.
+/// Requeues failed or stalled jobs that are older than a specified number of
+/// minutes.
 ///
-/// This function finds jobs in processing sets that have been there for longer than
-/// `age_minutes` and moves them back to their respective queues. This is useful for
-/// recovering from job failures or worker crashes.
+/// This function finds jobs in processing sets that have been there for longer
+/// than `age_minutes` and moves them back to their respective queues. This is
+/// useful for recovering from job failures or worker crashes.
 ///
 /// # Errors
 ///
@@ -905,8 +908,9 @@ pub async fn requeue(client: &RedisPool, age_minutes: &i64) -> Result<()> {
 /// Cancels jobs with the specified name in the Redis queue.
 ///
 /// This function updates the status of jobs that match the provided `job_name`
-/// from [`JobStatus::Queued`] to [`JobStatus::Cancelled`]. Jobs are searched for in all queue keys,
-/// and only those that are currently in the [`JobStatus::Queued`] state will be affected.
+/// from [`JobStatus::Queued`] to [`JobStatus::Cancelled`]. Jobs are searched
+/// for in all queue keys, and only those that are currently in the
+/// [`JobStatus::Queued`] state will be affected.
 ///
 /// # Errors
 ///
@@ -1020,10 +1024,11 @@ pub async fn create_provider(qcfg: &RedisQueueConfig) -> Result<Queue> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::tests_cfg::redis::setup_redis_container;
     use chrono::Utc;
     use testcontainers::{ContainerAsync, GenericImage};
+
+    use super::*;
+    use crate::tests_cfg::redis::setup_redis_container;
 
     async fn setup_redis() -> (RedisPool, ContainerAsync<GenericImage>) {
         let (redis_url, container) = setup_redis_container().await;
