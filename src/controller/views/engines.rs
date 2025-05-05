@@ -86,7 +86,7 @@ impl ViewRenderer for TeraView {
         }
 
         #[cfg(not(debug_assertions))]
-        Ok(self.tera.render(key, &context)?);
+        Ok(self.tera.render(key, &context)?)
     }
 }
 
