@@ -126,6 +126,15 @@ When a model is added via migration, the following default fields are provided:
 
 These fields are ignored if you provide them in your migration command.
 
+### Field syntax
+
+Each field generally follows the format: `name:type[!^]`, where:
+
+- `!` indicates that the field is **required** (i.e. `NOT NULL` in the database),
+- `^` indicates that the field must be **unique**.
+
+### Data types
+
 For schema data types, you can use the following mapping to understand the schema:
 
 ```rust
