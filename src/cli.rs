@@ -968,66 +968,45 @@ impl RouteNode {
         &self.endpoints[0].0
     }
 
-    fn build_path(segments: &[&str]) -> String {
-        segments.iter().fold(String::new(), |mut acc, &segment| {
-            if !segment.is_empty() {
-                acc.push('/');
-                acc.push_str(segment);
-            }
-            acc.replace("//", "/")
-        })
-    }
-
     fn print(&self, prefix: &str, segment: &str, is_last: bool, is_root: bool, current_path: &str) {
         match (is_root, self.is_leaf(), self.is_collapsible()) {
             // Root level special cases
             (true, true, _) => {
-                println!(
-                    "{:<50} {}",
-                    format!("{} {}", format!("/{segment}"), color_method(self.method())),
-                    Self::build_path(&[current_path, segment])
+                Self::print_with_format(
+                    &format!("/{segment}"),
+                    &color_method(self.method()),
+                    &Self::build_path(&[current_path, segment]),
                 );
             }
             (true, _, true) => {
                 let (child_segment, child_node) = self.children.iter().next().unwrap();
-                println!(
-                    "{:<50} {}",
-                    format!(
-                        "{} {}",
-                        format!("/{segment}/{child_segment}"),
-                        color_method(child_node.method())
-                    ),
-                    Self::build_path(&[current_path, segment, child_segment])
+                Self::print_with_format(
+                    &format!("/{segment}/{child_segment}"),
+                    &color_method(child_node.method()),
+                    &Self::build_path(&[current_path, segment, child_segment]),
                 );
             }
 
             // Non root level special cases
             (false, true, _) => {
                 let prefix_str = Self::format_prefix(prefix, is_last, true);
-                println!(
-                    "{:<50} {}",
-                    format!(
-                        "{} {}",
-                        format!("{}{}", prefix_str, segment),
-                        color_method(self.method()),
-                    ),
-                    Self::build_path(&[current_path, segment])
+
+                Self::print_with_format(
+                    &format!("{prefix_str}{segment}"),
+                    &color_method(self.method()),
+                    &Self::build_path(&[current_path, segment]),
                 );
             }
             (false, _, true) => {
                 let prefix_str = Self::format_prefix(prefix, is_last, true);
                 let (child_segment, child_node) = self.children.iter().next().unwrap();
-                println!(
-                    "{:<50} {}",
-                    format!(
-                        "{} {}",
-                        format!("{}{}/{}", prefix_str, segment, child_segment),
-                        color_method(child_node.method()),
-                    ),
-                    Self::build_path(&[current_path, segment, child_segment])
+                Self::print_with_format(
+                    &format!("{prefix_str}{segment}/{child_segment}"),
+                    &color_method(child_node.method()),
+                    &Self::build_path(&[current_path, segment, child_segment]),
                 );
 
-                // Space after branch
+                // Space after branch `└─`
                 println!("{}", Self::format_next_prefix(prefix, is_last));
             }
 
@@ -1055,14 +1034,10 @@ impl RouteNode {
         for (i, (method, _)) in self.endpoints.iter().enumerate() {
             let is_last_entry = i == self.endpoints.len() - 1 && is_last_group;
             let marker = if is_last_entry { "└─" } else { "├─" };
-            println!(
-                "{:<50} {}",
-                format!(
-                    "{} {}",
-                    format!("{}{}", prefix, marker),
-                    color_method(method),
-                ),
-                current_path
+            Self::print_with_format(
+                &format!("{prefix}{marker}"),
+                &color_method(method),
+                current_path,
             );
         }
     }
@@ -1074,17 +1049,13 @@ impl RouteNode {
 
             if child_node.is_leaf() {
                 let marker = if is_last_child { "└─" } else { "├─" };
-                println!(
-                    "{:<50} {}",
-                    format!(
-                        "{} {}",
-                        format!("{}{} /{}", prefix, marker, child_segment),
-                        color_method(child_node.method()),
-                    ),
-                    Self::build_path(&[current_path, child_segment])
+                Self::print_with_format(
+                    &format!("{prefix}{marker} /{child_segment}"),
+                    &color_method(child_node.method()),
+                    &Self::build_path(&[current_path, child_segment]),
                 );
 
-                // Space after branch
+                // Space after branch `└─`
                 if is_last_child {
                     println!("{prefix}");
                 }
@@ -1109,6 +1080,20 @@ impl RouteNode {
         } else {
             format!("{prefix}│  ")
         }
+    }
+
+    fn build_path(segments: &[&str]) -> String {
+        segments.iter().fold(String::new(), |mut acc, &segment| {
+            if !segment.is_empty() {
+                acc.push('/');
+                acc.push_str(segment);
+            }
+            acc.replace("//", "/")
+        })
+    }
+
+    fn print_with_format(tree: &str, method: &str, full_path: &str) {
+        println!("{:<50} {}", format!("{tree} {method}"), full_path);
     }
 }
 
