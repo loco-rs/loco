@@ -359,7 +359,7 @@ pub trait Hooks: Send {
     ///
     /// # Errors
     /// If fails returns an error
-    fn init_logger(_ctx: &AppContext, _env: &Environment) -> Result<bool> {
+    fn init_logger(_ctx: &AppContext) -> Result<bool> {
         Ok(false)
     }
 

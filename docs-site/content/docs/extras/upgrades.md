@@ -43,10 +43,10 @@ If you are supplying an implementation of `init_logger` in your `impl` of the `H
 
 ```diff
 - fn init_logger(config: &config::Config, env: &Environment) -> Result<bool> {
-+ fn init_logger(ctx: &AppContext, env: &Environment) -> Result<bool> {
++ fn init_logger(ctx: &AppContext) -> Result<bool> {
 ```
 
-Any code in your `init_logger` implementation that makes use of the `config` can access it through `ctx.config`. In addition, you will also be able to access anything else in the `AppContext`, such as the new `shared_store`.
+Any code in your `init_logger` implementation that makes use of the `config` can access it through `ctx.config`. In addition, you will also be able to access anything else in the `AppContext`, such as the new `shared_store`. The `env` parameter is also removed, as that is accessible from the `AppContext` as `ctx.environment`.
 
 ### Swap to validators builtin email validation
 
