@@ -6,22 +6,28 @@
 {%- endif -%}
 [workspace]
 
+[workspace.package]
+edition = "2021"
+
 [package]
 name = "{{settings.package_name}}"
 version = "0.1.0"
-edition = "2021"
 publish = false
 default-run = "{{settings.module_name}}-cli"
+edition.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace.dependencies]
 loco-rs = { {{settings.loco_version_text}} {%- if not settings.features.default_features  %}, default-features = false {%- endif %} }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1" }
 
 [dependencies]
 loco-rs = { workspace = true {% if feature_list | length > 0 %}, features = {{feature_list}}{% endif %} }
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
 tokio = { version = "1.33.0", default-features = false, features = [
   "rt-multi-thread",
 ] }

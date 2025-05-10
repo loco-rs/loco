@@ -1,8 +1,8 @@
 [package]
 name = "migration"
 version = "0.1.0"
-edition = "2021"
 publish = false
+edition.workspace = true
 
 [lib]
 name = "migration"
