@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::{
     env,
     fs::{self, File},
@@ -170,6 +170,7 @@ pub fn collect_all_files(dir: &Path, assets_dir: &Path, all_files: &mut HashMap<
     }
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn generate_asset_code(
     all_files: &HashMap<String, String>,
     output_path: &Path,
@@ -203,7 +204,7 @@ pub fn generate_asset_code(
 
     // First pass: read all template contents and find their dependencies
     for (path, key) in &template_files {
-        println!("cargo:warning=Reading template: {}", key);
+        println!("cargo:warning=Reading template: {key}");
         match fs::read_to_string(path) {
             Ok(content) => {
                 // Look for {% extends "..." %} pattern
@@ -217,16 +218,15 @@ pub fn generate_asset_code(
                         .or_else(|| extends.split('\'').nth(1))
                     {
                         template_deps.insert(key.clone(), Some(parent.to_string()));
-                        println!("cargo:warning=Template {} extends {}", key, parent);
+                        println!("cargo:warning=Template {key} extends {parent}");
                     }
                 } else {
                     template_deps.insert(key.clone(), None);
-                    println!("cargo:warning=Template {} has no parent", key);
+                    println!("cargo:warning=Template {key} has no parent");
                 }
             }
             Err(e) => {
-                println!("cargo:warning=Failed to read template {}: {}", path, e);
-                continue;
+                println!("cargo:warning=Failed to read template {path}: {e}");
             }
         }
     }
@@ -234,9 +234,9 @@ pub fn generate_asset_code(
     println!("cargo:warning=Template dependencies:");
     for (template, parent) in &template_deps {
         if let Some(p) = parent {
-            println!("cargo:warning=  {} -> {}", template, p);
+            println!("cargo:warning=  {template} -> {p}");
         } else {
-            println!("cargo:warning=  {} (no parent)", template);
+            println!("cargo:warning=  {template} (no parent)");
         }
     }
 
@@ -247,7 +247,7 @@ pub fn generate_asset_code(
     // First add all base templates (those with no parents)
     for (key, parent) in &template_deps {
         if parent.is_none() {
-            println!("cargo:warning=Adding base template: {}", key);
+            println!("cargo:warning=Adding base template: {key}");
             processed.insert(key.clone());
             sorted_templates.push(key.clone());
         }
@@ -263,10 +263,7 @@ pub fn generate_asset_code(
             }
             if let Some(parent) = parent {
                 if processed.contains(parent) {
-                    println!(
-                        "cargo:warning=Adding child template: {} (extends {})",
-                        key, parent
-                    );
+                    println!("cargo:warning=Adding child template: {key} (extends {parent})");
                     processed.insert(key.clone());
                     sorted_templates.push(key.clone());
                     added_in_this_pass = true;
@@ -277,9 +274,9 @@ pub fn generate_asset_code(
     } {}
 
     // Add any remaining templates that weren't processed
-    for (key, _) in &template_deps {
+    for key in template_deps.keys() {
         if !processed.contains(key) {
-            println!("cargo:warning=Adding unprocessed template: {}", key);
+            println!("cargo:warning=Adding unprocessed template: {key}");
             sorted_templates.push(key.clone());
         }
     }
@@ -335,7 +332,7 @@ pub fn generate_asset_code(
         if let Some((path, _)) = template_files.iter().find(|(_, k)| k == template_key) {
             // Add a comment showing the dependency
             if let Some(Some(parent)) = template_deps.get(template_key) {
-                template_lines.push(format!("    // Template that extends {}\n", parent));
+                template_lines.push(format!("    // Template that extends {parent}\n"));
             } else {
                 template_lines.push("    // Base template with no parent\n".to_string());
             }

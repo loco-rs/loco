@@ -55,7 +55,8 @@ impl TeraView {
     ///
     /// Returns an error if adding a template fails
     fn load_templates_into_tera(tera: &mut tera::Tera) -> Result<()> {
-        let templates = get_embedded_templates();
+        let templates_map = get_embedded_templates();
+        let templates: BTreeMap<_, _> = templates_map.into_iter().collect();
         Self::log_template_info(&templates);
         Self::add_templates_to_tera(tera, templates)
     }
