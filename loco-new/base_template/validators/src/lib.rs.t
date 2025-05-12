@@ -1,4 +1,4 @@
-pub use validator::self;
+pub use validator;
 
 {%- if settings.auth -%}
 pub mod auth;
