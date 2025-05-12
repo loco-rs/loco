@@ -98,19 +98,13 @@ mod tests {
     use super::*;
     #[test]
     fn can_render_view() {
-        let yaml_content = r"
-        drop: true
-        files:
-        - path: template/test.html
-          content: |-
-            generate test.html file: {{foo}}
-        - path: template/test2.html
-          content: |-
-            generate test2.html file: {{bar}}
-        ";
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .add_file("template/test.html", "generate test.html file: {{foo}}")
+            .add_file("template/test2.html", "generate test2.html file: {{bar}}")
+            .create()
+            .unwrap();
 
-        let tree_res = tree_fs::from_yaml_str(yaml_content).unwrap();
-        let v = TeraView::from_custom_dir(&tree_res.root).unwrap();
+        let v = TeraView::from_custom_dir(&tree_fs.root).unwrap();
 
         assert_eq!(
             v.render("template/test.html", json!({"foo": "foo-txt"}))
@@ -128,13 +122,10 @@ mod tests {
     #[cfg(debug_assertions)]
     #[test]
     fn template_inheritance_hot_reload() {
-        // Create a temporary file system with a base template and a child template
-        let yaml_content = r"
-        drop: true
-        files:
-        - path: template/base.html
-          content: |-
-            <!DOCTYPE html>
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .add_file(
+                "template/base.html",
+                r"<!DOCTYPE html>
             <html>
             <head>
                 <title>{% block title %}Default Title{% endblock %}</title>
@@ -146,19 +137,21 @@ mod tests {
                 {% endblock %}
                 <footer>Base Footer</footer>
             </body>
-            </html>
-        - path: template/child.html
-          content: |-
-            {% extends 'template/base.html' %}
+            </html>",
+            )
+            .add_file(
+                "template/child.html",
+                r"{% extends 'template/base.html' %}
             {% block title %}Child Page{% endblock %}
             {% block content %}
             <div>Child content</div>
-            {% endblock %}
-        ";
+            {% endblock %}",
+            )
+            .create()
+            .unwrap();
 
-        let tree_res = tree_fs::from_yaml_str(yaml_content).unwrap();
-        let tree_dir = tree_res.root.clone();
-        let v = TeraView::from_custom_dir(&tree_res.root).unwrap();
+        let tree_dir = tree_fs.root.clone();
+        let v = TeraView::from_custom_dir(&tree_fs.root).unwrap();
 
         // Initial render should have the original header from base template
         let initial_render = v.render("template/child.html", json!({})).unwrap();

@@ -1,0 +1,11 @@
+---
+source: tests/build_scripts/embedded_assets.rs
+expression: file_mappings
+snapshot_kind: text
+---
+[
+    (
+        "[TEST_ROOT]/assets/css/style.css",
+        "/css/style.css",
+    ),
+]

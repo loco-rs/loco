@@ -31,7 +31,7 @@ duct = "0.13"
 include_dir = { version = "0.7.4" }
 
 [dev-dependencies]
-tree-fs = { version = "0.2.1" }
+tree-fs = { version = "0.3" }
 syn = { version = "2", features = ["full"] }
 serial_test = "3.1.1"
 uuid = { version = "1.11.0", features = ["v4", "fast-rng"] }

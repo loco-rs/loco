@@ -1,4 +1,14 @@
-pub mod engines;
+// Choose the correct engine implementation based on the feature flag
+#[cfg(feature = "embedded_assets")]
+pub mod engine_embedded;
+#[cfg(feature = "embedded_assets")]
+pub use engine_embedded as engines;
+
+#[cfg(not(feature = "embedded_assets"))]
+pub mod engine;
+#[cfg(not(feature = "embedded_assets"))]
+pub use engine as engines;
+
 use axum::{extract::FromRequestParts, http::request::Parts, Extension};
 use serde::Serialize;
 pub mod tera_builtins;

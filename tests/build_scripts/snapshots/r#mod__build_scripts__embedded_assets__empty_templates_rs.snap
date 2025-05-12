@@ -1,0 +1,10 @@
+---
+source: tests/build_scripts/embedded_assets.rs
+expression: templates_file_content
+snapshot_kind: text
+---
+#[must_use]
+pub fn get_embedded_templates() -> std::collections::HashMap<String, &'static str> {
+    // No templates found
+    std::collections::HashMap::new()
+}
