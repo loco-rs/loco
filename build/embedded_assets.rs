@@ -100,6 +100,13 @@ pub fn discover_all_directories(app_root: &Path) -> Vec<PathBuf> {
         recursively_collect_directories(app_root, &mut directories, &mut visited);
     }
 
+    // Sort directories by their string representation to ensure consistent ordering
+    directories.sort_by(|a, b| {
+        a.to_string_lossy()
+            .to_string()
+            .cmp(&b.to_string_lossy().to_string())
+    });
+
     directories
 }
 
