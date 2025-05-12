@@ -1,16 +1,14 @@
-use crate::{
-    mailers::auth::AuthMailer,
-    models::{
-        _entities::users,
-        users::{LoginParams, RegisterParams},
-    },
-    views::auth::{CurrentResponse, LoginResponse},
-};
 use axum::debug_handler;
 use loco_rs::prelude::*;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
+use validators::auth::{CurrentResponse, LoginParams, LoginResponse, RegisterParams};
+
+use crate::{
+    mailers::auth::AuthMailer,
+    models::_entities::users,
+    views::auth::{CurrentResponseExt, LoginResponseExt},
+};
 
 pub static EMAIL_DOMAIN_RE: OnceLock<Regex> = OnceLock::new();
 
@@ -20,21 +18,9 @@ fn get_allow_email_domain_re() -> &'static Regex {
     })
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct ForgotParams {
-    pub email: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct ResetParams {
-    pub token: String,
-    pub password: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct MagicLinkParams {
-    pub email: String,
-}
+pub type ForgotParams = validators::auth::ForgotParams;
+pub type ResetParams = validators::auth::ResetParams;
+pub type MagicLinkParams = validators::auth::MagicLinkParams;
 
 /// Register function creates a new user with the given parameters and sends a
 /// welcome email to the user
