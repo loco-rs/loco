@@ -22,11 +22,13 @@ edition.workspace = true
 loco-rs = { {{settings.loco_version_text}} {%- if not settings.features.default_features  %}, default-features = false {%- endif %} }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1" }
+validators = { path = "validators" }
 
 [dependencies]
 loco-rs = { workspace = true {% if feature_list | length > 0 %}, features = {{feature_list}}{% endif %} }
 serde = { workspace = true }
 serde_json = { workspace = true }
+validators = { workspace = true }
 
 tokio = { version = "1.33.0", default-features = false, features = [
   "rt-multi-thread",
@@ -45,7 +47,6 @@ sea-orm = { version = "1.1.0", features = [
   "macros",
 ] }
 chrono = { version = "0.4" }
-validator = { version = "0.20" }
 uuid = { version = "1.6.0", features = ["v4"] }
 {%- endif %}
 
