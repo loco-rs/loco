@@ -3,29 +3,25 @@ pub use validator::Validate;
 
 #[derive(Default, Debug, Clone, Validate, Deserialize, Serialize)]
 pub struct Validator {
-    #[validate(length(min = 5, message = "Name must be at least 5 characters long."))]
+    #[validate(length(min = 2, message = "Name must be at least 2 characters long."))]
     pub name: String,
-    #[validate(email(message = "Invalid email address."))]
+    #[validate(email(message = "Invalid email"))]
     pub email: String,
-    #[validate(length(min = 25, message = "Password must be at least 25 characters long."))]
-    pub password: String,
 }
 
 #[derive(Default, Debug, Clone, Validate, Deserialize, Serialize)]
 pub struct RegisterParams {
-    #[validate(length(min = 5, message = "Name must be at least 5 characters long."))]
+    #[validate(length(min = 2, message = "Name must be at least 2 characters long."))]
     pub name: String,
-    #[validate(email(message = "Invalid email address."))]
+    #[validate(email(message = "Invalid email"))]
     pub email: String,
-    #[validate(length(min = 25, message = "Password must be at least 25 characters long."))]
     pub password: String,
 }
 
 #[derive(Default, Debug, Clone, Validate, Deserialize, Serialize)]
 pub struct LoginParams {
-    #[validate(email(message = "Invalid email address."))]
+    #[validate(email(message = "Invalid email"))]
     pub email: String,
-    #[validate(length(min = 25, message = "Password must be at least 25 characters long."))]
     pub password: String,
 }
 
@@ -39,14 +35,13 @@ pub struct LoginResponse {
 
 #[derive(Default, Debug, Clone, Validate, Deserialize, Serialize)]
 pub struct ForgotParams {
-    #[validate(email(message = "Invalid email address."))]
+    #[validate(email(message = "Invalid email"))]
     pub email: String,
 }
 
 #[derive(Default, Debug, Clone, Validate, Deserialize, Serialize)]
 pub struct ResetParams {
     pub token: String,
-    #[validate(length(min = 25, message = "Password must be at least 25 characters long."))]
     pub password: String,
 }
 
@@ -59,6 +54,6 @@ pub struct CurrentResponse {
 
 #[derive(Default, Debug, Clone, Validate, Deserialize, Serialize)]
 pub struct MagicLinkParams {
-    #[validate(email(message = "Invalid email address."))]
+    #[validate(email(message = "Invalid email"))]
     pub email: String,
 }
