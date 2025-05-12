@@ -173,8 +173,8 @@ mod tests {
 
     use super::*;
 
-    fn init_filesystem() -> FileSystem {
-        let source_path = TreeBuilder::default()
+    fn init_filesystem() -> (FileSystem, tree_fs::Tree) {
+        let tree_fs = TreeBuilder::default()
             .add("test/foo.txt", "bar")
             .add("test/bar.txt.t", "crate: {{settings.package_name}}")
             .create()
@@ -183,12 +183,12 @@ mod tests {
         let copy_to = TreeBuilder::default()
             .create()
             .expect("Failed to create mock data");
-        FileSystem::new(&source_path.root, &copy_to.root)
+        (FileSystem::new(&tree_fs.root, &copy_to.root), tree_fs)
     }
 
     #[test]
     fn can_copy_file() {
-        let fs = init_filesystem();
+        let (fs, _tree_fs) = init_filesystem();
 
         assert!(fs.copy_file(&PathBuf::from("test").join("foo.txt")).is_ok());
         let copied_path = fs.target_dir.join("test").join("foo.txt");
@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn can_copy_dir() {
-        let fs = init_filesystem();
+        let (fs, _tree_fs) = init_filesystem();
         assert!(fs.copy_dir(&PathBuf::from("test")).is_ok());
         let copied_path_1 = fs.target_dir.join("test").join("foo.txt");
         let copied_path_2 = fs.target_dir.join("test").join("bar.txt.t");
@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn can_copy_template() {
-        let fs = init_filesystem();
+        let (fs, _tree_fs) = init_filesystem();
 
         let settings = Settings {
             package_name: "loco-app".to_string(),
@@ -241,7 +241,7 @@ mod tests {
 
     #[test]
     fn can_copy_template_dir() {
-        let fs = init_filesystem();
+        let (fs, _tree_fs) = init_filesystem();
 
         let settings = Settings {
             package_name: "loco-app".to_string(),
