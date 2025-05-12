@@ -1,6 +1,7 @@
 ---
 source: tests/build_scripts/embedded_assets.rs
 expression: template_content
+snapshot_kind: text
 ---
 /// Returns a BTreeMap of templates in dependency order (parents before children)
 #[must_use]

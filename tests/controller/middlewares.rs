@@ -249,6 +249,7 @@ async fn limit_payload(#[case] limit: middleware::limit_payload::DefaultBodyLimi
     handle.abort();
 }
 
+#[cfg(not(feature = "embedded_assets"))]
 #[tokio::test]
 async fn static_assets() {
     configure_insta!();

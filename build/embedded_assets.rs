@@ -244,41 +244,63 @@ pub fn generate_asset_code(
     let mut sorted_templates = Vec::new();
     let mut processed = HashSet::new();
 
-    // First add all base templates (those with no parents)
-    for (key, parent) in &template_deps {
-        if parent.is_none() {
-            println!("cargo:warning=Adding base template: {key}");
-            processed.insert(key.clone());
-            sorted_templates.push(key.clone());
-        }
+    // First add all base templates (those with no parents), sorted alphabetically
+    let mut base_templates: Vec<_> = template_deps
+        .iter()
+        .filter(|(_, parent)| parent.is_none())
+        .map(|(key, _)| key.clone())
+        .collect();
+    base_templates.sort(); // Sort base templates alphabetically
+    for key in base_templates {
+        println!("cargo:warning=Adding base template: {key}");
+        processed.insert(key.clone());
+        sorted_templates.push(key);
     }
 
-    // Then add all child templates
+    // Then add all child templates, level by level
     let mut added_in_this_pass;
     while {
         added_in_this_pass = false;
+        let mut level_templates = Vec::new();
+
+        // Collect all templates at this level
         for (key, parent) in &template_deps {
             if processed.contains(key) {
                 continue;
             }
             if let Some(parent) = parent {
                 if processed.contains(parent) {
-                    println!("cargo:warning=Adding child template: {key} (extends {parent})");
-                    processed.insert(key.clone());
-                    sorted_templates.push(key.clone());
-                    added_in_this_pass = true;
+                    level_templates.push(key.clone());
                 }
             }
         }
+
+        // Sort templates at this level alphabetically
+        level_templates.sort();
+
+        // Add them to the final list
+        for key in level_templates {
+            if let Some(Some(parent)) = template_deps.get(&key) {
+                println!("cargo:warning=Adding child template: {key} (extends {parent})");
+            }
+            processed.insert(key.clone());
+            sorted_templates.push(key);
+            added_in_this_pass = true;
+        }
+
         added_in_this_pass
     } {}
 
-    // Add any remaining templates that weren't processed
-    for key in template_deps.keys() {
-        if !processed.contains(key) {
-            println!("cargo:warning=Adding unprocessed template: {key}");
-            sorted_templates.push(key.clone());
-        }
+    // Add any remaining templates that weren't processed, sorted alphabetically
+    let mut remaining: Vec<_> = template_deps
+        .keys()
+        .filter(|key| !processed.contains(*key))
+        .cloned()
+        .collect();
+    remaining.sort();
+    for key in remaining {
+        println!("cargo:warning=Adding unprocessed template: {key}");
+        sorted_templates.push(key);
     }
 
     println!("cargo:warning=Final template order:");
