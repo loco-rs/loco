@@ -161,7 +161,7 @@ use loco_rs::{
 };
 
 async fn current(
-    auth: middleware::auth::Auth,
+    auth: middleware::auth::JWT,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
     let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;

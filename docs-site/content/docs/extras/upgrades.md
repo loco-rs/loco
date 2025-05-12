@@ -35,6 +35,19 @@ These are the major ones:
 
 ## Upgrade from 0.15.x to 0.16.x
 
+### Use `AppContext` instead of `Config` in `init_logger` in the `Hooks` trait
+
+PR: [#1418](https://github.com/loco-rs/loco/pull/1418)
+
+If you are supplying an implementation of `init_logger` in your `impl` of the `Hooks` trait in order to set up your own logging, you will need to make the following change:
+
+```diff
+- fn init_logger(config: &config::Config, env: &Environment) -> Result<bool> {
++ fn init_logger(ctx: &AppContext) -> Result<bool> {
+```
+
+Any code in your `init_logger` implementation that makes use of the `config` can access it through `ctx.config`. In addition, you will also be able to access anything else in the `AppContext`, such as the new `shared_store`. The `env` parameter is also removed, as that is accessible from the `AppContext` as `ctx.environment`.
+
 ### Swap to validators builtin email validation
 
 PR: [#1359](https://github.com/loco-rs/loco/pull/1359)
@@ -167,6 +180,20 @@ struct MyType {
     // fields...
 }
 ```
+
+### Authentication Error Handling
+
+Authentication error handling has been improved to better distinguish between actual authorization failures and system errors:
+
+1. **System errors now return 500**: Database errors during authentication now return Internal Server Error (500) instead of Unauthorized (401)
+2. **Improved error logging**: Authentication errors are now logged with detailed messages using `tracing::error`
+3. **Message changes**: Generic error messages have been updated from "other error: '{e}'" to "could not authorize"
+
+#### Migration Guide:
+
+If you have code that relies on database errors during authentication returning 401 status codes, you'll need to update your error handling. Any code expecting a 401 for database connectivity issues should now handle 500 responses as well.
+
+Client applications should be prepared to handle both 401 and 500 status codes during authentication failures, with 401 indicating authorization problems and 500 indicating system errors.
 
 ## Upgrade from 0.14.x to 0.15.x
 
