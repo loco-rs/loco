@@ -24,6 +24,10 @@ gen.copy_template("src/app.rs.t");                  // App root file
 gen.copy_template("src/lib.rs.t");                  // Library entry file
 gen.copy_template("Cargo.toml.t");                  // Project’s cargo configuration
 
+// Validators
+gen.copy_template("validators/Cargo.toml.t");
+gen.copy_template("validators/src/lib.rs.t");
+
 // bin
 gen.copy_template("src/bin/main.rs.t");
 if windows {
@@ -78,7 +82,7 @@ if db {
         gen.copy_template("tests/models/users.rs.t");              // User model test template
         gen.copy_template("tests/requests/prepare_data.rs.t");     // Data preparation template for tests
     }
-   
+
    gen.copy_template("examples/playground.rs.t");                 // Example playground template with DB setup
 }
 
@@ -95,10 +99,11 @@ if settings.initializers.view_engine {
 if settings.auth {
    gen.copy_file("src/controllers/auth.rs");        // Auth controller
    gen.copy_file("src/views/auth.rs");              // Auth views
+   gen.copy_file("validators/src/auth.rs");         // Validators
 
    gen.copy_template("tests/requests/auth.rs.t");   // Auth tests template
    gen.copy_dir("tests/requests/snapshots");        // Snapshots directory for auth tests
-} 
+}
 else {
    gen.copy_file("src/controllers/home.rs");        // Home controller if auth not enabled
    gen.copy_file("src/views/home.rs");              // Home views
