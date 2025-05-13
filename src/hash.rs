@@ -1,9 +1,9 @@
 use crate::{Error, Result};
 use argon2::{
-    password_hash::SaltString, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier,
-    Version,
+    password_hash::{rand_core::OsRng, SaltString},
+    Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, Version,
 };
-use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use rand::{distr::Alphanumeric, rng, Rng};
 
 /// Hashes a plain text password and returns the hashed result.
 ///
@@ -24,7 +24,7 @@ pub fn hash_password(pass: &str) -> Result<String> {
         argon2::Version::V0x13,
         Params::default(),
     );
-    let salt = SaltString::generate(&mut rand::rngs::OsRng);
+    let salt = SaltString::generate(&mut OsRng);
 
     Ok(arg2
         .hash_password(pass.as_bytes(), &salt)
@@ -70,7 +70,7 @@ pub fn verify_password(pass: &str, hashed_password: &str) -> bool {
 ///
 /// ```
 pub fn random_string(length: usize) -> String {
-    thread_rng()
+    rng()
         .sample_iter(&Alphanumeric)
         .take(length)
         .map(char::from)
