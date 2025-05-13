@@ -957,11 +957,11 @@ impl RouteNode {
     fn is_collapsible(&self) -> bool {
         self.endpoints.is_empty()
             && self.children.len() == 1
-            && self.children.values().next().unwrap().is_leaf()
+            && self.children.values().next().map_or(false, |child| child.is_leaf())
     }
 
     fn method(&self) -> &str {
-        &self.endpoints[0].0
+        &self.endpoints.get(0).map_or("", |(method, _)| method.as_str())
     }
 
     fn print(&self, prefix: &str, segment: &str, is_last: bool, is_root: bool, current_path: &str) {
@@ -975,7 +975,9 @@ impl RouteNode {
                 );
             }
             (true, _, true) => {
-                let (child_segment, child_node) = self.children.iter().next().unwrap();
+                let Some((child_segment, child_node)) = self.children.iter().next() else {
+                    return;
+                };
                 Self::print_with_format(
                     &format!("/{segment}/{child_segment}"),
                     &color_method(child_node.method()),
@@ -995,7 +997,9 @@ impl RouteNode {
             }
             (false, _, true) => {
                 let prefix_str = Self::format_prefix(prefix, is_last, true);
-                let (child_segment, child_node) = self.children.iter().next().unwrap();
+                let Some((child_segment, child_node)) = self.children.iter().next() else {
+                    return;
+                };
                 Self::print_with_format(
                     &format!("{prefix_str}{segment}/{child_segment}"),
                     &color_method(child_node.method()),
