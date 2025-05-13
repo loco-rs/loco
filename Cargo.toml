@@ -58,15 +58,6 @@ backtrace_printer = { version = "1.3.0" }
 # cli
 clap = { version = "4.4.7", features = ["derive"], optional = true }
 colored = { workspace = true }
-reqwest = { version = "0.12.7", features = [
-    "charset",
-    "http2",
-    "json",
-    "macos-system-configuration",
-    "rustls-tls",
-], default-features = false }
-
-
 sea-orm = { version = "1.1.0", features = [
     "sqlx-postgres",        # `DATABASE_DRIVER` feature
     "sqlx-sqlite",
@@ -84,7 +75,6 @@ serde_yaml = "0.9"
 serde_variant = "0.1.2"
 toml = "0.8"
 
-
 async-trait = { workspace = true }
 
 axum = { workspace = true }
@@ -92,7 +82,6 @@ axum-extra = { version = "0.10", features = ["cookie"] }
 regex = { workspace = true }
 # mailer
 tera = { workspace = true }
-thousands = "0.2.0"
 heck = { workspace = true }
 cruet = "0.13.0"
 lettre = { version = "0.11.4", default-features = false, features = [
@@ -123,7 +112,6 @@ jsonwebtoken = { version = "9.3.0", optional = true }
 validator = { version = "0.20.0", features = ["derive"] }
 futures-util = "0.3"
 tower = { workspace = true }
-hyper = "1.1"
 bytes = "1.1"
 ipnetwork = "0.20.0"
 semver = "1"
@@ -132,7 +120,6 @@ axum-test = { version = "17.0.1", optional = true }
 tree-fs = { version = "0.3", optional = true }
 
 chrono = { workspace = true }
-cfg-if = "1"
 
 uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
 
@@ -215,7 +202,7 @@ loco-rs = { path = ".", features = ["testing"] }
 rstest = "0.21.0"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
 tree-fs = { version = "0.3" }
-reqwest = { version = "0.12.7" }
+reqwest = { version = "0.12.7", features = ["json"] }
 tower = { workspace = true, features = ["util"] }
 sqlx = { version = "0.8.2", default-features = false, features = [
     "macros",
