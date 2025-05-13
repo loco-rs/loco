@@ -1,0 +1,10 @@
+---
+source: tests/build_scripts/embedded_assets.rs
+expression: static_file_content
+snapshot_kind: text
+---
+#[must_use]
+pub fn get_embedded_static_assets() -> std::collections::HashMap<String, &'static [u8]> {
+    // No assets found
+    std::collections::HashMap::new()
+}

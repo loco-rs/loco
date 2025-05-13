@@ -1,0 +1,15 @@
+---
+source: tests/build_scripts/embedded_assets.rs
+expression: discovered_dirs
+snapshot_kind: text
+---
+[
+    "[TEST_ROOT]/my_assets",
+    "[TEST_ROOT]/my_assets/css",
+    "[TEST_ROOT]/my_assets/empty_dir",
+    "[TEST_ROOT]/my_assets/images",
+    "[TEST_ROOT]/my_assets/js",
+    "[TEST_ROOT]/my_assets/js/vendor",
+    "[TEST_ROOT]/my_assets/views",
+    "[TEST_ROOT]/my_assets/views/user",
+]
