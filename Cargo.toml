@@ -100,8 +100,8 @@ tracing-subscriber = { version = "0.3.16", default-features = false, features = 
 ] }
 tracing-appender = { version = "0.2.3", default-features = false }
 
-duct = { version = "0.13.6" }
-duct_sh = { version = "0.13.7" }
+duct = { workspace = true }
+duct_sh = { version = "1.0.0" }
 
 tower-http = { workspace = true }
 byte-unit = "4.0.19"
@@ -181,6 +181,7 @@ tower-http = { version = "0.6.1", features = [
     "compression-full",
 ] }
 heck = "0.4.0"
+duct = { version = "1.0.0" }
 
 [dependencies.sea-orm-migration]
 optional = true
