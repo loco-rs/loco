@@ -1,12 +1,8 @@
 //! This module contains the core components and traits for building a web
 //! server application.
-cfg_if::cfg_if! {
-    if #[cfg(feature = "with-db")] {
-        use std::path::Path;
-        use sea_orm::DatabaseConnection;
-    } else {}
+#[cfg(feature = "with-db")]
+use {sea_orm::DatabaseConnection, std::path::Path};
 
-}
 use std::{
     any::{Any, TypeId},
     net::SocketAddr,

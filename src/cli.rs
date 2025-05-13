@@ -14,14 +14,8 @@
 //!     cli::main::<App, Migrator>().await
 //! }
 //! ```
-cfg_if::cfg_if! {
-    if #[cfg(feature = "with-db")] {
-        use sea_orm_migration::MigratorTrait;
-        use crate::doctor;
-        use crate::boot::{run_db};
-        use crate::db;
-    } else {}
-}
+#[cfg(feature = "with-db")]
+use {crate::boot::run_db, crate::db, crate::doctor, sea_orm_migration::MigratorTrait};
 
 use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueHint};
 use colored::Colorize;
