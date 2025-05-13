@@ -957,11 +957,13 @@ impl RouteNode {
     fn is_collapsible(&self) -> bool {
         self.endpoints.is_empty()
             && self.children.len() == 1
-            && self.children.values().next().map_or(false, |child| child.is_leaf())
+            && self.children.values().next().is_some_and(Self::is_leaf)
     }
 
     fn method(&self) -> &str {
-        &self.endpoints.get(0).map_or("", |(method, _)| method.as_str())
+        self.endpoints
+            .first()
+            .map_or("", |(method, _)| method.as_str())
     }
 
     fn print(&self, prefix: &str, segment: &str, is_last: bool, is_root: bool, current_path: &str) {
