@@ -160,7 +160,7 @@ dashmap = "6"
 
 [workspace.dependencies]
 tera = { version = "1.19.1" }
-colored = { version = "2" }
+colored = { version = "3.0" }
 chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1.40"
 regex = "1"
