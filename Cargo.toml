@@ -65,8 +65,8 @@ sea-orm = { version = "1.1.0", features = [
     "macros",
 ], optional = true }
 
-tokio = { version = "1.33.0", default-features = false }
-tokio-util = "0.7.10"
+tokio = { version = "1.45", default-features = false }
+tokio-util = "0.7"
 # the rest
 
 serde = { workspace = true }
@@ -160,7 +160,7 @@ dashmap = "6"
 
 [workspace.dependencies]
 tera = { version = "1.19.1" }
-colored = { version = "2" }
+colored = { version = "3.0" }
 chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1.40"
 regex = "1"

@@ -22,6 +22,6 @@ requestty = "0.5.0"
 regex = { version = "1.10.2" }
 thiserror = "1"
 tabled = "0.14.0"
-colored = "2.1.0"
+colored = "3.0"
 
 [dev-dependencies]
