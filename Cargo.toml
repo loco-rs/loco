@@ -92,7 +92,6 @@ axum-extra = { version = "0.10", features = ["cookie"] }
 regex = { workspace = true }
 # mailer
 tera = { workspace = true }
-thousands = "0.2.0"
 heck = { workspace = true }
 cruet = "0.13.0"
 lettre = { version = "0.11.4", default-features = false, features = [
