@@ -1,17 +1,16 @@
 use colored::Colorize;
 use regex::Regex;
 use semver::Version;
-use serde::Deserialize;
 use std::fmt::Write;
 use std::{
     collections::{BTreeMap, HashMap},
-    fs,
     process::Command,
     sync::OnceLock,
 };
 
 use crate::{
     bgworker,
+    cargo_config::CargoConfig,
     config::{self, Config},
     depcheck, Error, Result,
 };
@@ -27,6 +26,11 @@ const QUEUE_NOT_CONFIGURED: &str = "queue not configured?";
 // versions health
 const MIN_SEAORMCLI_VER: &str = "1.1.0";
 static MIN_DEP_VERSIONS: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
+static RE_CRATE_VERSION: OnceLock<Regex> = OnceLock::new();
+
+fn get_re_crate_version() -> &'static Regex {
+    RE_CRATE_VERSION.get_or_init(|| Regex::new(r#"(?m)^[^"]*"([^"]+)""#).unwrap())
+}
 
 fn get_min_dep_versions() -> &'static HashMap<&'static str, &'static str> {
     MIN_DEP_VERSIONS.get_or_init(|| {
@@ -41,46 +45,40 @@ fn get_min_dep_versions() -> &'static HashMap<&'static str, &'static str> {
     })
 }
 
-#[derive(Deserialize)]
-struct CrateResponse {
-    #[serde(rename = "crate")]
-    krate: CrateInfo,
-}
-
-#[derive(Deserialize)]
-struct CrateInfo {
-    max_version: String,
-}
-
-/// .Check latest crate version in crates.io
+/// Check latest crate version in crates.io
 ///
 /// # Errors
 ///
 /// This function will return an error if it fails
-pub async fn check_cratesio_version(
-    crate_name: &str,
-    current_version: &str,
-) -> Result<Option<String>> {
-    // Construct the URL for the crates.io API
-    let url = format!("https://crates.io/api/v1/crates/{crate_name}");
+pub fn check_cratesio_version(crate_name: &str, current_version: &str) -> Result<Option<String>> {
+    // Use cargo search to get the latest version
+    let output = Command::new("cargo")
+        .args(["search", crate_name, "--limit", "1"])
+        .output()
+        .map_err(|e| Error::Message(format!("Failed to run cargo search: {e}")))?;
 
-    let client = reqwest::Client::new();
-    // Fetch crate information
-    let response = client
-        .get(&url)
-        .header("User-Agent", "Loco-Version-Check/1.0")
-        .send()
-        .await?
-        .json::<CrateResponse>()
-        .await?;
+    let output_str = String::from_utf8(output.stdout)
+        .map_err(|e| Error::Message(format!("Invalid output from cargo search: {e}")))?;
 
-    // Parse versions
-    let current = Version::parse(current_version)?;
-    let latest = Version::parse(&response.krate.max_version)?;
+    // Parse the version from cargo search output
+    // Output format is: crate_name = "version"
+    let latest_version = get_re_crate_version()
+        .captures(&output_str)
+        .and_then(|cap| cap.get(1))
+        .map(|m| m.as_str())
+        .ok_or_else(|| {
+            Error::Message("Could not find version in cargo search output".to_string())
+        })?;
+
+    // Parse versions for comparison
+    let current = Version::parse(current_version)
+        .map_err(|e| Error::Message(format!("Invalid current version: {e}")))?;
+    let latest = Version::parse(latest_version)
+        .map_err(|e| Error::Message(format!("Invalid latest version: {e}")))?;
 
     // Compare versions
     if latest > current {
-        Ok(Some(response.krate.max_version))
+        Ok(Some(latest_version.to_string()))
     } else {
         Ok(None)
     }
@@ -179,7 +177,7 @@ pub async fn run_all(config: &Config, production: bool) -> Result<BTreeMap<Resou
         checks.insert(Resource::SeaOrmCLI, check_seaorm_cli()?);
         checks.insert(
             Resource::PublishedLocoVersion,
-            check_published_loco_version().await?,
+            check_published_loco_version()?,
         );
     }
 
@@ -192,7 +190,7 @@ pub async fn run_all(config: &Config, production: bool) -> Result<BTreeMap<Resou
 /// # Errors
 /// Returns error if fails
 pub fn check_deps() -> Result<Check> {
-    let cargolock = fs::read_to_string("Cargo.lock")?;
+    let cargolock = CargoConfig::lock_from_current_dir()?;
 
     let crate_statuses =
         depcheck::check_crate_versions(&cargolock, get_min_dep_versions().clone())?;
@@ -341,9 +339,9 @@ pub fn check_seaorm_cli() -> Result<Check> {
 /// # Errors
 ///
 /// This function will return an error if it fails
-pub async fn check_published_loco_version() -> Result<Check> {
+pub fn check_published_loco_version() -> Result<Check> {
     let compiled_version = env!("CARGO_PKG_VERSION");
-    match check_cratesio_version("loco-rs", compiled_version).await {
+    match check_cratesio_version("loco-rs", compiled_version) {
         Ok(Some(v)) => Ok(Check {
             status: CheckStatus::NotOk,
             message: format!("Loco version: `{compiled_version}`, latest version: `{v}`"),

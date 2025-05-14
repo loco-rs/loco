@@ -37,20 +37,19 @@ pub async fn setup_redis_container() -> (String, ContainerAsync<GenericImage>) {
 
     let mut connected = false;
     for attempt in 0..10 {
-        match client.get_async_connection().await {
+        match client.get_multiplexed_async_connection().await {
             Ok(mut conn) => {
                 // Try to ping
-                match redis::cmd("PING").query_async::<_, String>(&mut conn).await {
-                    Ok(_) => {
-                        // Successfully pinged Redis
-                        connected = true;
-                        break;
-                    }
-                    Err(_) => {
-                        if attempt < 9 {
-                            tokio::time::sleep(Duration::from_secs(1)).await;
-                        }
-                    }
+                if redis::cmd("PING")
+                    .query_async::<()>(&mut conn)
+                    .await
+                    .is_ok()
+                {
+                    // Successfully pinged Redis
+                    connected = true;
+                    break;
+                } else if attempt < 9 {
+                    tokio::time::sleep(Duration::from_secs(1)).await;
                 }
             }
             Err(_) => {

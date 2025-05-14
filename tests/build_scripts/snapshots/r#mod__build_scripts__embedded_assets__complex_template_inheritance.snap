@@ -1,0 +1,24 @@
+---
+source: tests/build_scripts/embedded_assets.rs
+expression: template_content
+snapshot_kind: text
+---
+/// Returns a BTreeMap of templates in dependency order (parents before children)
+#[must_use]
+pub fn get_embedded_templates() -> std::collections::BTreeMap<String, &'static str> {
+    let mut templates = std::collections::BTreeMap::new();
+    // Base template with no parent
+    templates.insert("base.html".to_string(), include_str!("[TEST_ROOT]/assets/views/base.html"));
+    // Base template with no parent
+    templates.insert("error.html".to_string(), include_str!("[TEST_ROOT]/assets/views/error.html"));
+    // Template that extends base.html
+    templates.insert("layouts/app.html".to_string(), include_str!("[TEST_ROOT]/assets/views/layouts/app.html"));
+    // Template that extends layouts/app.html
+    templates.insert("layouts/authenticated.html".to_string(), include_str!("[TEST_ROOT]/assets/views/layouts/authenticated.html"));
+    // Template that extends layouts/authenticated.html
+    templates.insert("dashboard/index.html".to_string(), include_str!("[TEST_ROOT]/assets/views/dashboard/index.html"));
+    // Template that extends layouts/authenticated.html
+    templates.insert("dashboard/settings.html".to_string(), include_str!("[TEST_ROOT]/assets/views/dashboard/settings.html"));
+
+    templates
+}

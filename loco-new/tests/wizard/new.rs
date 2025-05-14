@@ -129,13 +129,13 @@ fn test_combination(
         }
 
         // Generate deployment nginx
-        tester.run_generate(&vec!["deployment", "--kind", "nginx"]);
+        tester.run_generate(&vec!["deployment", "nginx"]);
 
         // Generate deployment nginx
-        tester.run_generate(&vec!["deployment", "--kind", "docker"]);
+        tester.run_generate(&vec!["deployment", "docker"]);
 
         // Generate deployment shuttle
-        tester.run_generate(&vec!["deployment", "--kind", "shuttle"]);
+        tester.run_generate(&vec!["deployment", "shuttle"]);
 
         // Generate data
         tester.run_generate(&vec!["data", "stocks"]);
