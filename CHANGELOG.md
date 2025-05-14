@@ -30,6 +30,20 @@
 * Hot reload on extended Tera templates. [https://github.com/loco-rs/loco/pull/1416](https://github.com/loco-rs/loco/pull/1416)
 * **Breaking changes** Update the `init_logger` to use `AppContext` instead of config. [https://github.com/loco-rs/loco/pull/1418](https://github.com/loco-rs/loco/pull/1418)
 * Support embedded assets. [https://github.com/loco-rs/loco/pull/1427](https://github.com/loco-rs/loco/pull/1427)
+* **Removed dependencies:**
+  - [`hyper`](https://github.com/loco-rs/loco/pull/1430)
+  - [`thousands`](https://github.com/loco-rs/loco/pull/1431)
+  - [`cfg-if`](https://github.com/loco-rs/loco/pull/1432)
+  - [`reqwest`](https://github.com/loco-rs/loco/pull/1434)
+- **Dependency updates:**
+  - Bumped [`tokio`] to `1.45` and [`tokio-util`] to `0.7` ([#1435](https://github.com/loco-rs/loco/pull/1435))
+  - Bumped [`colored`] to `3.0` ([#1437](https://github.com/loco-rs/loco/pull/1437))
+  - Bumped [`rand`] to `0.9` ([#1439](https://github.com/loco-rs/loco/pull/1439))
+  - Bumped [`duct`] to `1.0` ([#1438](https://github.com/loco-rs/loco/pull/1438))
+  - Bumped [`redis`] to `0.31`, [`bb8`] to `0.9`, and [`bb8-redis`] to `0.23` ([commit `7e7be`](https://github.com/loco-rs/loco/commit/7e7bebe15f74c377c93d979aab41c52eb871d667))
+  - Updated Loco template crates ([#1440](https://github.com/loco-rs/loco/pull/1440))
+ * Support custom flags from `sea-orm entity`. [https://github.com/loco-rs/loco/pull/1442](https://github.com/loco-rs/loco/pull/1442)
+ * Better `loco new` cleanup folders. [https://github.com/loco-rs/loco/pull/1429](https://github.com/loco-rs/loco/pull/1429)
 
 
 
