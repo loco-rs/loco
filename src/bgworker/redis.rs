@@ -8,7 +8,7 @@ use super::{BackgroundWorker, JobStatus, Queue};
 use crate::{config::RedisQueueConfig, Error, Result};
 use chrono::{DateTime, Utc};
 use futures_util::FutureExt;
-use redis::{aio::Connection, AsyncCommands, Client};
+use redis::{aio::MultiplexedConnection as Connection, AsyncCommands, Client};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use tokio::{task::JoinHandle, time::sleep};
@@ -241,7 +241,7 @@ fn connect(url: &str) -> Result<RedisPool> {
 }
 
 async fn get_connection(client: &RedisPool) -> Result<Connection> {
-    let conn = client.get_async_connection().await?;
+    let conn = client.get_multiplexed_async_connection().await?;
     Ok(conn)
 }
 
@@ -252,9 +252,7 @@ async fn get_connection(client: &RedisPool) -> Result<Connection> {
 /// This function will return an error if it fails
 pub async fn clear(client: &RedisPool) -> Result<()> {
     let mut conn = get_connection(client).await?;
-    redis::cmd("FLUSHDB")
-        .query_async::<_, ()>(&mut conn)
-        .await?;
+    redis::cmd("FLUSHDB").query_async::<()>(&mut conn).await?;
     Ok(())
 }
 
@@ -292,7 +290,7 @@ pub async fn enqueue(
     redis::pipe()
         .rpush(queue_key, &job_json)
         .set(job_key, &job_json)
-        .query_async::<_, ()>(&mut conn)
+        .query_async::<()>(&mut conn)
         .await?;
 
     Ok(())

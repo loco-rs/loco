@@ -48,7 +48,7 @@ cache:
 ```
 
 #### In-Memory Cache
-
+feature `cache_inmem` enable by default
 ```yaml
 cache:
   kind: InMem
@@ -56,7 +56,7 @@ cache:
 ```
 
 #### Redis Cache
-
+feature `cache_redis` should be enabled
 ```yaml
 cache:
   kind: Redis
