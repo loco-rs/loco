@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use semver::{Version, VersionReq};
 use thiserror::Error;
-use toml::Value;
+
+use crate::cargo_config::CargoConfig;
 
 #[derive(Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum VersionStatus {
@@ -32,19 +33,12 @@ pub enum VersionCheckError {
 pub type Result<T> = std::result::Result<T, VersionCheckError>;
 
 pub fn check_crate_versions(
-    cargo_lock_content: &str,
+    lock_file: &CargoConfig,
     min_versions: HashMap<&str, &str>,
 ) -> Result<Vec<CrateStatus>> {
-    let lock_file: Value = cargo_lock_content.parse()?;
-
     let packages = lock_file
-        .get("package")
-        .and_then(|v| v.as_array())
-        .ok_or_else(|| {
-            VersionCheckError::ParseError(serde::de::Error::custom(
-                "Missing package array in Cargo.lock",
-            ))
-        })?;
+        .get_package_array()
+        .map_err(|e| VersionCheckError::ParseError(serde::de::Error::custom(e.to_string())))?;
 
     let mut results = Vec::new();
 
@@ -106,6 +100,14 @@ pub fn check_crate_versions(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tree_fs::{Tree, TreeBuilder};
+
+    fn setup_test_dir(cargo_lock_content: &str) -> Tree {
+        TreeBuilder::default()
+            .add_file("Cargo.lock", cargo_lock_content)
+            .create()
+            .expect("Failed to create test directory structure")
+    }
 
     #[test]
     fn test_multiple_crates_mixed_results() {
@@ -123,12 +125,15 @@ mod tests {
             version = "0.8.4"
         "#;
 
+        let tree = setup_test_dir(cargo_lock_content);
+        let config = CargoConfig::from_path(tree.root.join("Cargo.lock")).unwrap();
+
         let mut min_versions = HashMap::new();
         min_versions.insert("serde", "1.0.130");
         min_versions.insert("tokio", "1.0");
         min_versions.insert("rand", "0.8.0");
 
-        let mut result = check_crate_versions(cargo_lock_content, min_versions).unwrap();
+        let mut result = check_crate_versions(&config, min_versions).unwrap();
         result.sort();
         assert_eq!(
             result,
@@ -160,10 +165,13 @@ mod tests {
             version = "1.0.x"
         "#;
 
+        let tree = setup_test_dir(cargo_lock_content);
+        let config = CargoConfig::from_path(tree.root.join("Cargo.lock")).unwrap();
+
         let mut min_versions = HashMap::new();
         min_versions.insert("serde", "1.0.0");
 
-        let result = check_crate_versions(cargo_lock_content, min_versions);
+        let result = check_crate_versions(&config, min_versions);
         assert!(matches!(
             result,
             Err(VersionCheckError::CrateError { crate_name, msg }) if crate_name == "serde" && msg.contains("Invalid version format")
@@ -176,10 +184,13 @@ mod tests {
             # No packages listed in this Cargo.lock
         ";
 
+        let tree = setup_test_dir(cargo_lock_content);
+        let config = CargoConfig::from_path(tree.root.join("Cargo.lock")).unwrap();
+
         let mut min_versions = HashMap::new();
         min_versions.insert("serde", "1.0.130");
 
-        let result = check_crate_versions(cargo_lock_content, min_versions);
+        let result = check_crate_versions(&config, min_versions);
         assert!(matches!(result, Err(VersionCheckError::ParseError(_))));
     }
 
@@ -191,10 +202,13 @@ mod tests {
             version = "1.0.130"
         "#;
 
+        let tree = setup_test_dir(cargo_lock_content);
+        let config = CargoConfig::from_path(tree.root.join("Cargo.lock")).unwrap();
+
         let mut min_versions = HashMap::new();
         min_versions.insert("serde", "1.0.130");
 
-        let mut result = check_crate_versions(cargo_lock_content, min_versions).unwrap();
+        let mut result = check_crate_versions(&config, min_versions).unwrap();
         result.sort();
         assert_eq!(
             result,
@@ -213,9 +227,12 @@ mod tests {
             version = "1.0.130"
         "#;
 
+        let tree = setup_test_dir(cargo_lock_content);
+        let config = CargoConfig::from_path(tree.root.join("Cargo.lock")).unwrap();
+
         let min_versions = HashMap::new(); // Empty map
 
-        let result = check_crate_versions(cargo_lock_content, min_versions).unwrap();
+        let result = check_crate_versions(&config, min_versions).unwrap();
         assert!(result.is_empty());
     }
 }

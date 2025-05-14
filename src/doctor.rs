@@ -4,13 +4,13 @@ use semver::Version;
 use std::fmt::Write;
 use std::{
     collections::{BTreeMap, HashMap},
-    fs,
     process::Command,
     sync::OnceLock,
 };
 
 use crate::{
     bgworker,
+    cargo_config::CargoConfig,
     config::{self, Config},
     depcheck, Error, Result,
 };
@@ -190,7 +190,7 @@ pub async fn run_all(config: &Config, production: bool) -> Result<BTreeMap<Resou
 /// # Errors
 /// Returns error if fails
 pub fn check_deps() -> Result<Check> {
-    let cargolock = fs::read_to_string("Cargo.lock")?;
+    let cargolock = CargoConfig::lock_from_current_dir()?;
 
     let crate_statuses =
         depcheck::check_crate_versions(&cargolock, get_min_dep_versions().clone())?;
