@@ -984,3 +984,18 @@ async fn can_create_user() {
 ```
 
 You can also use cleanup constants directly, starting with `CLEANUP_`.
+
+## Customizing Entity Generation
+
+You can customize how `sea-orm-cli` generates entities by adding configuration to your `Cargo.toml` under the `[package.metadata.db.entity]` section. For example:
+
+```toml
+[package.metadata.db.entity]
+max-connections = 1
+ignore-tables = "table1,table2"
+model-extra-derives = "CustomDerive"
+```
+
+This configuration will be passed as flags to `sea-orm-cli generate entity` when running `cargo loco db entities`.
+
+Note that some flags like `--output-dir` and `--database-url` cannot be overridden as they are managed by Loco.
