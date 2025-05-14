@@ -526,7 +526,11 @@ impl EntityCmd {
     }
 
     fn command(&self) -> Vec<&str> {
-        let mut args: Vec<&str> = self.command.iter().map(|s| s.as_str()).collect();
+        let mut args: Vec<&str> = self
+            .command
+            .iter()
+            .map(std::string::String::as_str)
+            .collect();
         for (flag, value) in &self.flags {
             args.push(flag.as_str());
             if let Some(val) = value {
