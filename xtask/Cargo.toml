@@ -16,7 +16,7 @@ required-features = []
 [dependencies]
 clap = { version = "4.4.7", features = ["derive"] }
 eyre = "0.6"
-duct = "0.13.6"
+duct = { workspace = true }
 cargo_metadata = "0.18.1"
 requestty = "0.5.0"
 regex = { version = "1.10.2" }
