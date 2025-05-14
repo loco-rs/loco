@@ -1007,9 +1007,6 @@ impl RouteNode {
                     &color_method(child_node.method()),
                     &Self::build_path(&[current_path, segment, child_segment]),
                 );
-
-                // Space after branch `└─`
-                println!("{}", Self::format_next_prefix(prefix, is_last));
             }
 
             // Standard branch node handling
@@ -1056,11 +1053,6 @@ impl RouteNode {
                     &color_method(child_node.method()),
                     &Self::build_path(&[current_path, child_segment]),
                 );
-
-                // Space after branch `└─`
-                if is_last_child {
-                    println!("{prefix}");
-                }
             } else {
                 child_node.print(prefix, child_segment, is_last_child, false, current_path);
             }
