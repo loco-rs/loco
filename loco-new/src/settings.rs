@@ -7,7 +7,7 @@ use rhai::{CustomType, TypeBuilder};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    wizard::{self, AssetsOption, BackgroundOption, DBOption},
+    wizard::{self, AssetsOption, BackgroundOption, DBOption, Template},
     LOCO_VERSION, OS,
 };
 
@@ -19,6 +19,7 @@ pub struct Settings {
     pub db: Option<Db>,
     pub background: Option<Background>,
     pub asset: Option<Asset>,
+    pub template: Template,
     pub auth: bool,
     pub mailer: bool,
     pub initializers: Option<Initializers>,
@@ -79,6 +80,7 @@ impl Settings {
             db: prompt_selection.db.clone().into(),
             background: prompt_selection.background.clone().into(),
             asset: prompt_selection.asset.clone().into(),
+            template: prompt_selection.template.clone().into(),
             initializers: if prompt_selection.asset == AssetsOption::Serverside {
                 Some(Initializers { view_engine: true })
             } else {
@@ -99,6 +101,7 @@ impl Default for Settings {
             db: Default::default(),
             background: Default::default(),
             asset: Default::default(),
+            template: Default::default(),
             auth: Default::default(),
             mailer: Default::default(),
             initializers: Default::default(),

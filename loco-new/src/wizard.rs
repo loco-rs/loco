@@ -176,6 +176,7 @@ pub struct ArgsPlaceholder {
     pub db: Option<DBOption>,
     pub bg: Option<BackgroundOption>,
     pub assets: Option<AssetsOption>,
+    pub template: Option<Template>,
 }
 
 /// Holds the user's configuration selections.
@@ -183,6 +184,7 @@ pub struct Selections {
     pub db: DBOption,
     pub background: BackgroundOption,
     pub asset: AssetsOption,
+    pub template: Template,
 }
 
 impl Selections {
@@ -295,41 +297,52 @@ where
 /// when could not show user selection or user chose not continue
 pub fn start(args: &ArgsPlaceholder) -> crate::Result<Selections> {
     // user provided everything via flags so no need to prompt, just return
-    if let (Some(db), Some(bg), Some(assets)) =
-        (args.db.clone(), args.bg.clone(), args.assets.clone())
-    {
+    if let (Some(db), Some(bg), Some(assets), Some(template)) = (
+        args.db.clone(),
+        args.bg.clone(),
+        args.assets.clone(),
+        args.template.clone(),
+    ) {
         return Ok(Selections {
             db,
             background: bg,
             asset: assets,
+            template,
         });
     }
 
-    let template = select_option(
-        "❯ What would you like to build?",
-        &Template::iter().collect::<Vec<_>>(),
-    )?;
+    let template = match args.template.clone() {
+        Some(template) => template,
+        None => select_option(
+            "❯ What would you like to build?",
+            &Template::iter().collect::<Vec<_>>(),
+        )?,
+    };
 
     match template {
         Template::Lightweight => Ok(Selections {
             db: DBOption::None,
             background: BackgroundOption::None,
             asset: AssetsOption::None,
+            template,
         }),
         Template::RestApi => Ok(Selections {
             db: select_db(args)?,
             background: select_background(args, None)?,
             asset: AssetsOption::None,
+            template,
         }),
         Template::SaasServerSideRendering => Ok(Selections {
             db: select_db(args)?,
             background: select_background(args, None)?,
             asset: AssetsOption::Serverside,
+            template,
         }),
         Template::SaasClientSideRendering => Ok(Selections {
             db: select_db(args)?,
             background: select_background(args, None)?,
             asset: AssetsOption::Clientside,
+            template,
         }),
         Template::Advanced => {
             let db = select_db(args)?;
@@ -341,6 +354,7 @@ pub fn start(args: &ArgsPlaceholder) -> crate::Result<Selections> {
                 db,
                 background: select_background(args, background_options.as_ref())?,
                 asset: select_asset(args)?,
+                template,
             })
         }
     }
