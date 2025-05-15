@@ -1,7 +1,7 @@
 //! This module defines the `Generator` struct, which is responsible for
 //! executing scripted commands
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 pub mod executer;
 pub mod template;
 use std::sync::Arc;
@@ -26,15 +26,10 @@ static APP_TEMPLATE: Dir<'_> = include_dir!("base_template");
 ///
 /// # Errors
 /// when could not extract the the base template
-pub fn extract_default_template() -> std::io::Result<PathBuf> {
-    let generator_tmp_folder = std::env::temp_dir().join("loco-generator");
-    if generator_tmp_folder.exists() {
-        std::fs::remove_dir_all(&generator_tmp_folder)?;
-    }
+pub fn extract_default_template() -> std::io::Result<tree_fs::Tree> {
+    let generator_tmp_folder = tree_fs::TreeBuilder::default().create()?;
 
-    std::fs::create_dir_all(&generator_tmp_folder)?;
-
-    APP_TEMPLATE.extract(&generator_tmp_folder)?;
+    APP_TEMPLATE.extract(&generator_tmp_folder.root)?;
     Ok(generator_tmp_folder)
 }
 
