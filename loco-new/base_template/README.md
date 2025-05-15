@@ -2,9 +2,9 @@
 
 [Loco](https://loco.rs) is a web and API framework running on Rust.
 
-This is the **SaaS starter** which includes a `User` model and authentication based on JWT.
-It also include configuration sections that help you pick either a frontend or a server-side template set up for your fullstack server.
+This is the **{template} starter**
 
+{includes}
 
 ## Quick Start
 
@@ -48,7 +48,7 @@ compilation: debug
 listening on http://localhost:5150
 ```
 
-## Full Stack Serving
+## Full Stack Serving (SaaS only)
 
 You can check your [configuration](config/development.yaml) to pick either frontend setup or server-side rendered template, and activate the relevant configuration sections.
 

@@ -1,13 +1,12 @@
 //! This module provides interactive utilities for setting up application
 //! configurations based on user input.
 
+use crate::Error;
 use clap::ValueEnum;
 use colored::Colorize;
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, Select};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, IntoEnumIterator};
-
-use crate::Error;
 
 #[derive(
     Debug, Clone, Deserialize, Serialize, EnumIter, Display, Default, PartialEq, Eq, ValueEnum,

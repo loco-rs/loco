@@ -19,7 +19,7 @@ pub struct Settings {
     pub db: Option<Db>,
     pub background: Option<Background>,
     pub asset: Option<Asset>,
-    pub template: Template,
+    pub template: Option<Template>,
     pub auth: bool,
     pub mailer: bool,
     pub initializers: Option<Initializers>,

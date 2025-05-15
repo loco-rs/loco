@@ -5,8 +5,10 @@ use std::path::{Path, PathBuf};
 pub mod executer;
 pub mod template;
 use std::sync::Arc;
+use strum::IntoEnumIterator;
 
 use include_dir::{include_dir, Dir};
+use rhai::EvalAltResult;
 use rhai::{
     export_module, exported_module,
     plugin::{
@@ -16,7 +18,7 @@ use rhai::{
     Engine, Scope,
 };
 
-use crate::wizard::AssetsOption;
+use crate::wizard::{AssetsOption, Template};
 use crate::{settings, OS};
 
 static APP_TEMPLATE: Dir<'_> = include_dir!("base_template");
@@ -82,6 +84,7 @@ impl Generator {
                 "rhai_settings_extensions",
                 exported_module!(rhai_settings_extensions).into(),
             )
+            .register_fn("create_readme", create_readme)
             .register_fn("copy_file", Self::copy_file)
             .register_fn("create_file", Self::create_file)
             .register_fn("copy_files", Self::copy_files)
@@ -100,6 +103,10 @@ impl Generator {
         scope.push("background", self.settings.background.is_some());
         scope.push("initializers", self.settings.initializers.is_some());
         scope.push("asset", self.settings.asset.is_some());
+        scope.push(
+            "template",
+            self.settings.template.clone().unwrap().to_string(),
+        );
         scope.push("windows", self.settings.os == OS::Windows);
 
         engine.run_with_scope(&mut scope, script)?;
@@ -401,5 +408,36 @@ mod tests {
         let script_res = g.run_from_script(r#"gen.copy_template_dir("src/examples");"#);
 
         assert!(script_res.is_ok());
+    }
+}
+
+fn create_readme(base_path: &str, template: &str) -> Result<(), Box<EvalAltResult>> {
+    let includes = get_includes_message(template).unwrap();
+
+    // Define the path to the existing README.md
+    let readme_path = std::path::Path::new("base_template").join("README.md");
+
+    // Read the existing README.md content
+    let mut content = std::fs::read_to_string(&readme_path).unwrap();
+
+    // Replace `{template}` with the actual template value
+    content = content.replace("{template}", template);
+    content = content.replace("{includes}", includes);
+
+    let path = std::path::Path::new(base_path).join("README.md");
+    std::fs::write(path, content).map_err(|e| e.to_string().into())
+}
+
+fn get_includes_message(template: &str) -> Option<&str> {
+    match Template::iter().find(|item| item.to_string() == template) {
+        Some(Template::RestApi) => {
+            Some(r#"Includes a `User` model and authentication based on JWT."#)
+        }
+        Some(Template::SaasClientSideRendering) | Some(Template::SaasServerSideRendering) => Some(
+            r#"Includes a `User` model and authentication based on JWT.
+It also include configuration sections that help you pick either a frontend or a server-side template set up for your fullstack server."#,
+        ),
+        Some(Template::Lightweight) | Some(Template::Advanced) => Some(""),
+        None => None, // Return None if the template is invalid
     }
 }
