@@ -68,6 +68,9 @@ impl Generator {
     /// # Errors
     ///
     /// Returns an error if the script execution fails.
+    /// # Panics
+    ///
+    /// Panics if `settings.template` is None.
     pub fn run_from_script(&self, script: &str) -> crate::Result<()> {
         let mut engine = Engine::new();
 
@@ -421,8 +424,8 @@ fn create_readme(base_path: &str, template: &str) -> Result<(), Box<EvalAltResul
     let mut content = std::fs::read_to_string(&readme_path).unwrap();
 
     // Replace `{template}` with the actual template value
-    content = content.replace("{template}", template);
-    content = content.replace("{includes}", includes);
+    content = content.replace("[template]", template);
+    content = content.replace("[includes]", includes);
 
     let path = std::path::Path::new(base_path).join("README.md");
     std::fs::write(path, content).map_err(|e| e.to_string().into())
@@ -431,13 +434,13 @@ fn create_readme(base_path: &str, template: &str) -> Result<(), Box<EvalAltResul
 fn get_includes_message(template: &str) -> Option<&str> {
     match Template::iter().find(|item| item.to_string() == template) {
         Some(Template::RestApi) => {
-            Some(r#"Includes a `User` model and authentication based on JWT."#)
+            Some(r"Includes a `User` model and authentication based on JWT.")
         }
-        Some(Template::SaasClientSideRendering) | Some(Template::SaasServerSideRendering) => Some(
-            r#"Includes a `User` model and authentication based on JWT.
-It also include configuration sections that help you pick either a frontend or a server-side template set up for your fullstack server."#,
+        Some(Template::SaasClientSideRendering | Template::SaasServerSideRendering) => Some(
+            r"Includes a `User` model and authentication based on JWT.
+It also include configuration sections that help you pick either a frontend or a server-side template set up for your fullstack server.",
         ),
-        Some(Template::Lightweight) | Some(Template::Advanced) => Some(""),
+        Some(Template::Lightweight | Template::Advanced) => Some(""),
         None => None, // Return None if the template is invalid
     }
 }
