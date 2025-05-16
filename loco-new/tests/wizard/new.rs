@@ -4,7 +4,7 @@ use duct::cmd;
 use loco::{
     generator::{executer::FileSystem, Generator},
     settings,
-    wizard::{self, AssetsOption, BackgroundOption, DBOption},
+    wizard::{self, AssetsOption, BackgroundOption, DBOption, Template},
     OS,
 };
 
@@ -28,21 +28,47 @@ use loco::{
 // when running locally set LOCO_DEV_MODE_PATH=<to local loco path>
 #[rstest::rstest]
 // lightweight service
-#[case(DBOption::None, BackgroundOption::None, AssetsOption::None)]
+#[case(
+    DBOption::None,
+    BackgroundOption::None,
+    AssetsOption::None,
+    Template::Lightweight
+)]
 // REST API
-#[case(DBOption::Sqlite, BackgroundOption::Async, AssetsOption::None)]
+#[case(
+    DBOption::Sqlite,
+    BackgroundOption::Async,
+    AssetsOption::None,
+    Template::RestApi
+)]
 // SaaS, serverside
-#[case(DBOption::None, BackgroundOption::None, AssetsOption::Serverside)]
+#[case(
+    DBOption::None,
+    BackgroundOption::None,
+    AssetsOption::Serverside,
+    Template::SaasServerSideRendering
+)]
 // SaaS, clientside
-#[case(DBOption::None, BackgroundOption::None, AssetsOption::Clientside)]
+#[case(
+    DBOption::None,
+    BackgroundOption::None,
+    AssetsOption::Clientside,
+    Template::SaasClientSideRendering
+)]
 // test only DB
-#[case(DBOption::Sqlite, BackgroundOption::None, AssetsOption::None)]
+#[case(
+    DBOption::Sqlite,
+    BackgroundOption::None,
+    AssetsOption::None,
+    Template::Lightweight
+)]
 fn test_starter_combinations(
     #[case] db: DBOption,
     #[case] background: BackgroundOption,
     #[case] asset: AssetsOption,
+    #[case] template: Template,
 ) {
-    test_combination(db, background, asset, true);
+    test_combination(db, background, asset, true, template);
 }
 
 fn test_combination(
@@ -50,6 +76,7 @@ fn test_combination(
     background: BackgroundOption,
     asset: AssetsOption,
     test_generator: bool,
+    template: Template,
 ) {
     let test_dir = tree_fs::TreeBuilder::default().drop(true);
 
@@ -59,6 +86,7 @@ fn test_combination(
         db: db.clone(),
         background: background.clone(),
         asset: asset.clone(),
+        template: template.clone(),
     };
     let settings =
         settings::Settings::from_wizard("test-loco-template", &wizard_selection, OS::default());

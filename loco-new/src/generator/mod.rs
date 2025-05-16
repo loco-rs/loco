@@ -68,9 +68,6 @@ impl Generator {
     /// # Errors
     ///
     /// Returns an error if the script execution fails.
-    /// # Panics
-    ///
-    /// Panics if `settings.template` is None.
     pub fn run_from_script(&self, script: &str) -> crate::Result<()> {
         let mut engine = Engine::new();
 
@@ -108,7 +105,11 @@ impl Generator {
         scope.push("asset", self.settings.asset.is_some());
         scope.push(
             "template",
-            self.settings.template.clone().unwrap().to_string(),
+            self.settings
+                .template
+                .clone()
+                .unwrap_or(Template::Lightweight)
+                .to_string(),
         );
         scope.push("windows", self.settings.os == OS::Windows);
 
