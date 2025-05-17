@@ -187,8 +187,7 @@ The scaffold generator will build several files in your application:
 | `src/views/mod.rs`                         | Including Posts views. only for HTML and HTMX templates.                                                |
 | `src/views/posts.rs`                       | Posts template generator. only for HTML and HTMX templates.                                             |
 | `assets/views/posts/create.html`           | Create post template. only for HTML and HTMX templates.                                                 |
-| `assets/views/posts/edit.html`             | Edit post template. only for HTML and HTMX templates.                                                   |
-| `assets/views/posts/edit.html`             | Edit post template. only for HTML and HTMX templates.                                                   |
+| `assets/views/posts/edit.html`             | Edit post template. only for HTML and HTMX templates.                                                   |                                               |
 | `assets/views/posts/list.html`             | List post template. only for HTML and HTMX templates.                                                   |
 | `assets/views/posts/show.html`             | Show post template. only for HTML and HTMX templates.                                                   |
 

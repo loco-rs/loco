@@ -643,8 +643,6 @@ You can truncate before an app starts -- which is useful for running tests, or y
 
 # Seeding
 
-`Loco` has a built-in 'seeds' feature that makes the process quick and easy. This is especially useful when reloading the database frequently in development and test environments. It's easy to get started with this feature
-
 `Loco` comes equipped with a convenient `seeds` feature, streamlining the process for quick and easy database reloading. This functionality proves especially invaluable during frequent resets in development and test environments. Let's explore how to get started with this feature:
 
 ## Creating a new seed
