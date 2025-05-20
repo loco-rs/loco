@@ -89,26 +89,11 @@ pub mod test_db {
         pub updated_at: DateTime,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, DeriveIden)]
     pub enum Loco {
         Table,
         Id,
         Name,
-    }
-
-    impl Iden for Loco {
-        fn unquoted(&self, s: &mut dyn fmt::Write) {
-            write!(
-                s,
-                "{}",
-                match self {
-                    Self::Table => "loco",
-                    Self::Id => "id",
-                    Self::Name => "name",
-                }
-            )
-            .unwrap();
-        }
     }
 
     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
