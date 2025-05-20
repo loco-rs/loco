@@ -811,6 +811,13 @@ pub async fn add_reference(
                 .await?;
             */
         }
+        bk => {
+            return Err(DbErr::BackendNotSupported {
+                db: bk.as_str(),
+                ctx: "add_reference",
+            }
+            .into())
+        }
     }
     Ok(())
 }
@@ -857,6 +864,13 @@ pub async fn remove_reference(
             // Per Rails 5.2, removing FK on existing table does nothing because
             // sqlite will not allow it.
             // more: https://www.bigbinary.com/blog/rails-6-adds-add_foreign_key-and-remove_foreign_key-for-sqlite3
+        }
+        bk => {
+            return Err(DbErr::BackendNotSupported {
+                db: bk.as_str(),
+                ctx: "remove_reference",
+            }
+            .into())
         }
     }
     Ok(())
