@@ -223,7 +223,9 @@ impl Tester {
             "-W",
             "clippy::nursery",
             "-W",
-            "rust-2018-idioms"
+            "rust-2018-idioms",
+            "-A",
+            "clippy::result_large_err"
         )
         .full_env(&self.env_map)
         // .stdout_null()
