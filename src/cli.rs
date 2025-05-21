@@ -936,10 +936,158 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
     Ok(())
 }
 
-fn show_list_endpoints<H: Hooks>(ctx: &AppContext) {
-    let mut routes = list_endpoints::<H>(ctx);
+// Define route node structure with enhanced methods
+#[derive(Default)]
+struct RouteNode {
+    children: BTreeMap<String, RouteNode>,
+    endpoints: Vec<(String, String)>,
+}
 
-    // Sort first by path, then ensure HTTP methods are in a consistent order
+impl RouteNode {
+    fn is_leaf(&self) -> bool {
+        self.endpoints.len() == 1 && self.children.is_empty()
+    }
+
+    fn is_collapsible(&self) -> bool {
+        self.endpoints.is_empty()
+            && self.children.len() == 1
+            && self.children.values().next().is_some_and(Self::is_leaf)
+    }
+
+    fn method(&self) -> &str {
+        self.endpoints
+            .first()
+            .map_or("", |(method, _)| method.as_str())
+    }
+
+    fn print(&self, prefix: &str, segment: &str, is_last: bool, is_root: bool, current_path: &str) {
+        match (is_root, self.is_leaf(), self.is_collapsible()) {
+            // Root level special cases
+            (true, true, _) => {
+                Self::print_with_format(
+                    &format!("/{segment}"),
+                    &color_method(self.method()),
+                    &Self::build_path(&[current_path, segment]),
+                );
+            }
+            (true, _, true) => {
+                let Some((child_segment, child_node)) = self.children.iter().next() else {
+                    return;
+                };
+                Self::print_with_format(
+                    &format!("/{segment}/{child_segment}"),
+                    &color_method(child_node.method()),
+                    &Self::build_path(&[current_path, segment, child_segment]),
+                );
+            }
+
+            // Non root level special cases
+            (false, true, _) => {
+                let prefix_str = Self::format_prefix(prefix, is_last, true);
+
+                Self::print_with_format(
+                    &format!("{prefix_str}{segment}"),
+                    &color_method(self.method()),
+                    &Self::build_path(&[current_path, segment]),
+                );
+            }
+            (false, _, true) => {
+                let prefix_str = Self::format_prefix(prefix, is_last, true);
+                let Some((child_segment, child_node)) = self.children.iter().next() else {
+                    return;
+                };
+                Self::print_with_format(
+                    &format!("{prefix_str}{segment}/{child_segment}"),
+                    &color_method(child_node.method()),
+                    &Self::build_path(&[current_path, segment, child_segment]),
+                );
+            }
+
+            // Standard branch node handling
+            _ => {
+                if is_root {
+                    println!("/{segment}");
+                } else if !segment.is_empty() {
+                    println!("{}{}", Self::format_prefix(prefix, is_last, true), segment);
+                }
+
+                // Print endpoints and children
+                let next_prefix = Self::format_next_prefix(prefix, is_last);
+                self.print_endpoints(
+                    &next_prefix,
+                    self.children.is_empty(),
+                    &Self::build_path(&[current_path, segment]),
+                );
+                self.print_children(&next_prefix, &Self::build_path(&[current_path, segment]));
+            }
+        }
+    }
+
+    fn print_endpoints(&self, prefix: &str, is_last_group: bool, current_path: &str) {
+        for (i, (method, _)) in self.endpoints.iter().enumerate() {
+            let is_last_entry = i == self.endpoints.len() - 1 && is_last_group;
+            let marker = if is_last_entry { "└─" } else { "├─" };
+            Self::print_with_format(
+                &format!("{prefix}{marker}"),
+                &color_method(method),
+                current_path,
+            );
+        }
+    }
+
+    fn print_children(&self, prefix: &str, current_path: &str) {
+        let children = self.children.iter().collect::<Vec<_>>();
+        for (i, (child_segment, child_node)) in children.iter().enumerate() {
+            let is_last_child = i == children.len() - 1;
+
+            if child_node.is_leaf() {
+                let marker = if is_last_child { "└─" } else { "├─" };
+                Self::print_with_format(
+                    &format!("{prefix}{marker} /{child_segment}"),
+                    &color_method(child_node.method()),
+                    &Self::build_path(&[current_path, child_segment]),
+                );
+            } else {
+                child_node.print(prefix, child_segment, is_last_child, false, current_path);
+            }
+        }
+    }
+
+    fn format_prefix(prefix: &str, is_last: bool, with_slash: bool) -> String {
+        let marker = if is_last { "└─" } else { "├─" };
+        if with_slash {
+            format!("{prefix}{marker} /")
+        } else {
+            format!("{prefix}{marker} ")
+        }
+    }
+
+    fn format_next_prefix(prefix: &str, is_last: bool) -> String {
+        if is_last {
+            format!("{prefix}   ")
+        } else {
+            format!("{prefix}│  ")
+        }
+    }
+
+    fn build_path(segments: &[&str]) -> String {
+        segments.iter().fold(String::new(), |mut acc, &segment| {
+            if !segment.is_empty() {
+                acc.push('/');
+                acc.push_str(segment);
+            }
+            acc.replace("//", "/")
+        })
+    }
+
+    fn print_with_format(tree: &str, method: &str, full_path: &str) {
+        println!("{:<50} {}", format!("{tree} {method}"), full_path);
+    }
+}
+
+fn show_list_endpoints<H: Hooks>(ctx: &AppContext) {
+    // Get and sort routes
+    let mut routes = list_endpoints::<H>(ctx);
     routes.sort_by(|a, b| {
         let method_priority = |actions: &[_]| match actions
             .first()
@@ -954,75 +1102,44 @@ fn show_list_endpoints<H: Hooks>(ctx: &AppContext) {
             "DELETE" => 4,
             _ => 5,
         };
-
-        let a_priority = method_priority(&a.actions);
-        let b_priority = method_priority(&b.actions);
-
-        a.uri.cmp(&b.uri).then(a_priority.cmp(&b_priority))
+        a.uri
+            .cmp(&b.uri)
+            .then(method_priority(&a.actions).cmp(&method_priority(&b.actions)))
     });
 
-    // Group routes by their first path segment and full path
-    let mut path_groups: BTreeMap<String, BTreeMap<String, Vec<String>>> = BTreeMap::new();
-
+    // Build route tree
+    let mut route_tree = RouteNode::default();
     for router in routes {
         let path = router.uri.trim_start_matches('/');
         let segments: Vec<&str> = path.split('/').collect();
-        let root = (*segments.first().unwrap_or(&"")).to_string();
+        if segments.is_empty() {
+            continue;
+        }
 
-        let actions_str = router
-            .actions
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>()
-            .join(",");
+        // Insert the route into the tree
+        let mut current_node = &mut route_tree;
+        for segment in &segments {
+            current_node = current_node
+                .children
+                .entry((*segment).to_string())
+                .or_default();
+        }
 
-        path_groups
-            .entry(root)
-            .or_default()
-            .entry(router.uri.to_string())
-            .or_default()
-            .push(actions_str);
+        // Store the endpoint at this node
+        current_node.endpoints.push((
+            router
+                .actions
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(","),
+            router.uri.clone(),
+        ));
     }
 
-    // Print tree structure
-    for (root, paths) in path_groups {
-        println!("/{}", root.bold());
-        let paths_count = paths.len();
-        let mut path_idx = 0;
-
-        for (path, methods) in paths {
-            path_idx += 1;
-            let is_last_path = path_idx == paths_count;
-            let is_group = methods.len() > 1;
-
-            // Print first method
-            let prefix = if is_last_path && !is_group {
-                "  └─ "
-            } else {
-                "  ├─ "
-            };
-            let colored_method = color_method(&methods[0]);
-            println!("{prefix}{colored_method}\t{path}");
-
-            // Print additional methods in group
-            if is_group {
-                for (i, method) in methods[1..].iter().enumerate() {
-                    let is_last_in_group = i == methods.len() - 2;
-                    let group_prefix = if is_last_path && is_last_in_group {
-                        "  └─ "
-                    } else {
-                        "  │  "
-                    };
-                    let colored_method = color_method(method);
-                    println!("{group_prefix}{colored_method}\t{path}");
-                }
-
-                // Add spacing between groups if not the last path
-                if !is_last_path {
-                    println!("  │");
-                }
-            }
-        }
+    // Print the route tree
+    for (i, (segment, node)) in route_tree.children.iter().enumerate() {
+        node.print("", segment, i == route_tree.children.len() - 1, true, "");
     }
 }
 
