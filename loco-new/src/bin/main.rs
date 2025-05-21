@@ -108,7 +108,7 @@ fn main() -> Result<()> {
                 ))
             } else {
                 tracing::debug!(dir = %to.display(), "creating application directory");
-                std::fs::create_dir_all(&to)?;
+                let temp_to = tree_fs::TreeBuilder::default().create()?;
 
                 let args = wizard::ArgsPlaceholder {
                     db,
@@ -121,13 +121,15 @@ fn main() -> Result<()> {
 
                 let generator_tmp_folder = extract_default_template()?;
                 tracing::debug!(
-                    dir = %generator_tmp_folder.display(),
+                    dir = %generator_tmp_folder.root.display(),
                     "temporary template folder created",
 
                 );
 
-                let executor =
-                    executer::FileSystem::new(generator_tmp_folder.as_path(), to.as_path());
+                let executor = executer::FileSystem::new(
+                    generator_tmp_folder.root.as_path(),
+                    temp_to.root.as_path(),
+                );
 
                 let settings = Settings::from_wizard(&app_name, &user_selection, os);
 
@@ -137,6 +139,9 @@ fn main() -> Result<()> {
 
                 let res = match Generator::new(Arc::new(executor), settings).run() {
                     Ok(()) => {
+                        std::fs::create_dir_all(&to)?;
+                        let copy_options = fs_extra::dir::CopyOptions::new().content_only(true);
+                        fs_extra::dir::copy(&temp_to.root, &to, &copy_options)?;
                         tracing::debug!("loco template app generated successfully",);
                         if let Err(err) = cmd!("cargo", "fmt")
                             .dir(&to)
@@ -164,10 +169,10 @@ fn main() -> Result<()> {
                     }
                 };
 
-                if let Err(err) = std::fs::remove_dir_all(&generator_tmp_folder) {
+                if let Err(err) = std::fs::remove_dir_all(&generator_tmp_folder.root) {
                     tracing::warn!(
                         error = %err,
-                        dir = %generator_tmp_folder.display(),
+                        dir = %generator_tmp_folder.root.display(),
                         "failed to delete temporary generator folder"
                     );
                 }
