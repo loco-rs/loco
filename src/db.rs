@@ -3,27 +3,31 @@
 //! This module defines functions and operations related to the application's
 //! database interactions.
 
-use std::{
-    collections::HashMap, fmt::Write as FmtWrites, fs, fs::File, io::Write, path::Path,
-    sync::OnceLock, time::Duration,
+use super::Result as AppResult;
+use crate::{
+    app::{AppContext, Hooks},
+    cargo_config::CargoConfig,
+    config, doctor, env_vars,
+    errors::Error,
 };
-
 use chrono::{DateTime, Utc};
-use duct::cmd;
 use regex::Regex;
 use sea_orm::{
     ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
     DatabaseConnection, DbBackend, DbConn, DbErr, EntityTrait, IntoActiveModel, Statement,
 };
 use sea_orm_migration::MigratorTrait;
-use tracing::info;
-
-use super::Result as AppResult;
-use crate::{
-    app::{AppContext, Hooks},
-    config, doctor, env_vars,
-    errors::Error,
+use std::fmt::Write as FmtWrites;
+use std::{
+    collections::{BTreeMap, HashMap},
+    fs,
+    fs::File,
+    io::Write,
+    path::Path,
+    sync::OnceLock,
+    time::Duration,
 };
+use tracing::info;
 
 pub static EXTRACT_DB_NAME: OnceLock<Regex> = OnceLock::new();
 const IGNORED_TABLES: &[&str] = &[
@@ -452,6 +456,91 @@ pub async fn reset_autoincrement(
     }
     Ok(())
 }
+
+struct EntityCmd {
+    command: Vec<String>,
+    flags: BTreeMap<String, Option<String>>,
+}
+
+impl EntityCmd {
+    fn new(config: &config::Database) -> Self {
+        Self {
+            command: vec!["generate".to_string(), "entity".to_string()],
+            flags: BTreeMap::from([
+                ("--database-url".to_string(), Some(config.uri.clone())),
+                (
+                    "--ignore-tables".to_string(),
+                    Some(IGNORED_TABLES.join(",")),
+                ),
+                (
+                    "--output-dir".to_string(),
+                    Some("src/models/_entities".to_string()),
+                ),
+                ("--with-serde".to_string(), Some("both".to_string())),
+            ]),
+        }
+    }
+
+    fn merge_with_config(config: &config::Database, toml_config: &toml::Table) -> Self {
+        let mut flags = Self::new(config).flags;
+
+        for (key, value) in toml_config {
+            let flag_key = format!("--{}", key.replace('_', "-"));
+
+            // Handle special cases
+            match flag_key.as_str() {
+                "--output-dir" | "--database-url" => {
+                    tracing::warn!(
+                        "Ignoring {} configuration from Cargo.toml as it cannot be overridden",
+                        key
+                    );
+                    continue;
+                }
+                "--ignore-tables" => {
+                    if let (Some(current_str), Some(new_value)) = (
+                        flags.get_mut(&flag_key).and_then(|c| c.as_mut()),
+                        value.as_str(),
+                    ) {
+                        *current_str = format!("{current_str},{new_value}");
+                    }
+                    continue;
+                }
+                _ => {}
+            }
+
+            // Handle regular flags
+            let flag_value = match value {
+                toml::Value::String(s) => Some(s.clone()),
+                toml::Value::Boolean(true) => None,
+                toml::Value::Boolean(false) => continue,
+                _ => Some(value.to_string()),
+            };
+
+            flags.insert(flag_key, flag_value);
+        }
+
+        Self {
+            command: vec!["generate".to_string(), "entity".to_string()],
+            flags,
+        }
+    }
+
+    fn command(&self) -> Vec<&str> {
+        let mut args: Vec<&str> = self
+            .command
+            .iter()
+            .map(std::string::String::as_str)
+            .collect();
+        for (flag, value) in &self.flags {
+            args.push(flag.as_str());
+            if let Some(val) = value {
+                args.push(val.as_str());
+            }
+        }
+        args
+    }
+}
+
 /// Generate entity model.
 /// This function using sea-orm-cli.
 ///
@@ -462,26 +551,28 @@ pub async fn entities<M: MigratorTrait>(ctx: &AppContext) -> AppResult<String> {
     doctor::check_seaorm_cli()?.to_result()?;
     doctor::check_db(&ctx.config.database).await.to_result()?;
 
-    let out = cmd!(
-        "sea-orm-cli",
-        "generate",
-        "entity",
-        "--with-serde",
-        "both",
-        "--output-dir",
-        "src/models/_entities",
-        "--database-url",
-        &ctx.config.database.uri,
-        "--ignore-tables",
-        IGNORED_TABLES.join(","),
-    )
-    .stderr_to_stdout()
-    .run()
-    .map_err(|err| {
-        Error::Message(format!(
-            "failed to generate entity using sea-orm-cli binary. error details: `{err}`",
-        ))
-    })?;
+    let flags = CargoConfig::from_current_dir()?
+        .get_db_entities()
+        .map_or_else(
+            || EntityCmd::new(&ctx.config.database),
+            |entity_config| {
+                tracing::info!(
+                    ?entity_config,
+                    "Found db.entity configuration in Cargo.toml"
+                );
+                EntityCmd::merge_with_config(&ctx.config.database, entity_config)
+            },
+        );
+
+    let out = duct::cmd("sea-orm-cli", &flags.command())
+        .stderr_to_stdout()
+        .run()
+        .map_err(|err| {
+            Error::Message(format!(
+                "failed to generate entity using sea-orm-cli binary. error details: `{err}`",
+            ))
+        })?;
+
     fix_entities()?;
 
     Ok(String::from_utf8_lossy(&out.stdout).to_string())
@@ -888,7 +979,9 @@ pub async fn dump_schema(ctx: &AppContext, fname: &str) -> crate::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests_cfg::{db::get_value, postgres::setup_postgres_container};
+    use crate::tests_cfg::{
+        config::get_database_config, db::get_value, postgres::setup_postgres_container,
+    };
 
     #[tokio::test]
     async fn test_sqlite_connect_success() {
@@ -948,8 +1041,7 @@ mod tests {
             assert_eq!(
                 actual_value,
                 expected_value.to_lowercase(),
-                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got \
-                 '{actual_value}'"
+                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got '{actual_value}'"
             );
         }
     }
@@ -987,8 +1079,7 @@ mod tests {
             assert_eq!(
                 actual_value,
                 expected_value.to_lowercase(),
-                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got \
-                 '{actual_value}'"
+                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got '{actual_value}'"
             );
         }
     }
@@ -1010,8 +1101,7 @@ mod tests {
 
         assert_eq!(db.get_database_backend(), DatabaseBackend::Postgres);
 
-        let query = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' \
-                     AND table_name = 'test_run_on_start'";
+        let query = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'test_run_on_start'";
 
         let value = get_value(&db, query).await;
         assert_eq!(value, "1", "The test_run_on_start table was not created");
@@ -1019,9 +1109,8 @@ mod tests {
 
     #[cfg(test)]
     mod extract_db_name_tests {
-        use rstest::rstest;
-
         use super::*;
+        use rstest::rstest;
 
         #[rstest]
         #[case("postgres://localhost:5432/dbname", "dbname")]
@@ -1232,10 +1321,7 @@ mod tests {
         db.execute(Statement::from_string(
             backend,
             // AUTOINCREMENT keyword is important for SQLite's sequence behavior
-            format!(
-                "CREATE TABLE {table_with_auto_id} (id INTEGER PRIMARY KEY AUTOINCREMENT, name \
-                 TEXT);"
-            ),
+            format!("CREATE TABLE {table_with_auto_id} (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);"),
         ))
         .await
         .expect("Failed to create table with auto id");
@@ -1294,8 +1380,7 @@ mod tests {
             .expect("Failed to check auto-increment");
         assert!(
             !is_auto,
-            "Table '{table_with_id_not_auto}' should NOT be auto-increment, but check returned \
-             true"
+            "Table '{table_with_id_not_auto}' should NOT be auto-increment, but check returned true"
         );
 
         let table_with_serial_id = "test_table_serial_id_auto";
@@ -1468,5 +1553,34 @@ mod tests {
 
         let id = result.try_get::<i32>("", "id").expect("Failed to get ID");
         assert_eq!(id, 1, "ID should be 1 after sequence reset");
+    }
+
+    #[test]
+    fn test_entity_cmd_new() {
+        let cmd = EntityCmd::new(&get_database_config());
+
+        let expected = "generate entity --database-url sqlite::memory: --ignore-tables \
+            seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock --output-dir \
+            src/models/_entities --with-serde both";
+        assert_eq!(cmd.command().join(" "), expected);
+    }
+
+    #[test]
+    fn test_entity_cmd_merge_with_config() {
+        let config_str = r#"
+max-connections = "1"
+ignore-tables = "table1,table2"
+with-serde = "none"
+model-extra-derives = "ts_rs::Ts"
+"#;
+        let config: toml::Table = toml::from_str(config_str).unwrap();
+
+        let cmd = EntityCmd::merge_with_config(&get_database_config(), &config);
+
+        let expected = "generate entity --database-url sqlite::memory: --ignore-tables \
+            seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock,table1,table2 \
+            --max-connections 1 --model-extra-derives ts_rs::Ts --output-dir src/models/_entities \
+            --with-serde none";
+        assert_eq!(cmd.command().join(" "), expected);
     }
 }

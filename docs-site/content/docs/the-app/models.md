@@ -126,6 +126,18 @@ When a model is added via migration, the following default fields are provided:
 
 These fields are ignored if you provide them in your migration command.
 
+### Field syntax
+
+Each field type may include either the `!` or `^` suffix:
+
+- `!` indicates that the field is **required** (i.e. `NOT NULL` in the database),
+- `^` indicates that the field must be **unique**.
+
+If no suffix is used, then the field can be null.
+
+
+### Data types
+
 For schema data types, you can use the following mapping to understand the schema:
 
 ```rust
@@ -198,9 +210,28 @@ For schema data types, you can use the following mapping to understand the schem
 (" array^", "array"),
 ```
 
-Using `user:references` uses the special `references` type, which will create a relationship between a `post` and a `user`, adding a `user_id` reference field to the `posts` table.
+Loco makes used of `references` type to define foreign-key relations between the model being generated and the model we wish to refer to. Do note, however, that there are two ways to use this special type:
 
-Using `approved_by:references:users` uses the special `references:<table>` type, which will create a relationship between a `post` and a `user`, adding a `approved_by` reference field to the `posts` table.
+1. `<other_model>:references`
+2. `<other_model>:references:<column_name>`
+
+The first one (`<other_model>:references`) is used to, as already clear by the semantics, create a foreign-key relation to an already existing model (`other_model` in this case). However, the **field name is implied**.
+
+e.g. If we wish to create a new model named `post`, and it must have a field/column referring to the `users` table which already exists (in new loco project with migrations applied), we will use the following command:
+
+```
+cargo loco g model post title:string user:references
+```
+
+Using `user:references` uses the special `<other_model>:references` type, which will create a relationship between the `post` (our new model) and a `user` (pre-existing model), adding a `user_id` (implied field name) reference field to the `posts` table.
+
+On the other hand, using the second approach (`<other_model>:references:<column_name>`) gives us the luxury of being able to name the field/column as per our liking. Therefore, taking the previous example itself, if we wish to create a `post` table having a title, and a foreign key that points to, perhaps the author, we will use the same previous command, but with a nimble modification:
+
+```
+cargo loco g model post title:string user:references:authored_by
+```
+
+Using `user:references:authored_by` uses the special `<other_model>:references:<column_name>` type, which will create a relationship between the `post` and the `user`, adding an `authored_by` (explicit field name) reference field to the `posts` table, instead of `user_id`.
 
 You can generate an empty model:
 
@@ -318,24 +349,22 @@ cargo loco db down 2
 
 ### Verbs, singular and plural
 
-* **references**: use **singular** for the table name, and a `:references` type. `user:references` (references `Users`), `vote:references` (references `Votes`). `:references:<table>` is also available `departing_train:references:trains` (references `Trains`).
-* **column names**: anything you like. Prefer `snake_case`.
-* **table names**: **plural, snake case**. `users`, `draft_posts`.
-* **migration names**: anything that can be a file name, prefer snake case. `create_table_users`, `add_vote_id_to_movies`.
-* **model names**: generated automatically for you. Usually the generated name is pascal case, plural. `Users`, `UsersVotes`.
- 
+- **references**: use **singular** for the table name, and a `<other_model>:references` type. `user:references` (references `Users`), `vote:references` (references `Votes`). `<other_model>:references:<column_name>` is also available `train:references:departing_train` (references `Trains`).
+- **column names**: anything you like. Prefer `snake_case`.
+- **table names**: **plural, snake case**. `users`, `draft_posts`.
+- **migration names**: anything that can be a file name, prefer snake case. `create_table_users`, `add_vote_id_to_movies`.
+- **model names**: generated automatically for you. Usually the generated name is pascal case, plural. `Users`, `UsersVotes`.
+
 Here are some examples showcasing the naming conventions:
 
 ```sh
-$ cargo loco generate model movies long_title:string added_by:references:users director:references
+$ cargo loco generate model movies long_title:string user:references:added_by director:references
 ```
 
-* model name in plural: `movies`
-* refecence director is in singular: `director:references`
-* reference added_by is in singular, the referenced model is a model and is plural: `added_by:references:users`
-* column name in snake case: `long_title:string`
-
-
+- model name in plural: `movies`
+- reference director is in singular: `director:references`
+- reference added_by is an explicit name in singular, the referenced model remains singular: `user:references:added_by`
+- column name in snake case: `long_title:string`
 
 ### Authoring migrations
 
@@ -613,8 +642,6 @@ By combining these flags, you can create different experiences to help you be mo
 You can truncate before an app starts -- which is useful for running tests, or you can recreate the entire DB when the app starts -- which is useful for integration tests or setting up a new environment. In production, you want these turned off (hence the "dangerously" part).
 
 # Seeding
-
-`Loco` has a built-in 'seeds' feature that makes the process quick and easy. This is especially useful when reloading the database frequently in development and test environments. It's easy to get started with this feature
 
 `Loco` comes equipped with a convenient `seeds` feature, streamlining the process for quick and easy database reloading. This functionality proves especially invaluable during frequent resets in development and test environments. Let's explore how to get started with this feature:
 
@@ -955,3 +982,18 @@ async fn can_create_user() {
 ```
 
 You can also use cleanup constants directly, starting with `CLEANUP_`.
+
+## Customizing Entity Generation
+
+You can customize how `sea-orm-cli` generates entities by adding configuration to your `Cargo.toml` under the `[package.metadata.db.entity]` section. For example:
+
+```toml
+[package.metadata.db.entity]
+max-connections = 1
+ignore-tables = "table1,table2"
+model-extra-derives = "CustomDerive"
+```
+
+This configuration will be passed as flags to `sea-orm-cli generate entity` when running `cargo loco db entities`.
+
+Note that some flags like `--output-dir` and `--database-url` cannot be overridden as they are managed by Loco.

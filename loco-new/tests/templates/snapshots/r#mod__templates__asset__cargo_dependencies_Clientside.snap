@@ -1,5 +1,6 @@
 ---
 source: tests/templates/asset.rs
 expression: "content.get(\"dependencies\").unwrap()"
+snapshot_kind: text
 ---
-{ async-trait = { version = "0.1.74" }, axum = { version = "0.8.1" }, axum-extra = { features = ["form"], version = "0.10" }, loco-rs = { workspace = true }, regex = { version = "1.11.1" }, serde = { features = ["derive"], version = "1" }, serde_json = { version = "1" }, tokio = { default-features = false, features = ["rt-multi-thread"], version = "1.33.0" }, tracing = { version = "0.1.40" }, tracing-subscriber = { features = ["env-filter", "json"], version = "0.3.17" } }
+{ async-trait = { version = "0.1" }, axum = { version = "0.8" }, axum-extra = { features = ["form"], version = "0.10" }, loco-rs = { workspace = true }, regex = { version = "1.11" }, serde = { features = ["derive"], version = "1" }, serde_json = { version = "1" }, tokio = { default-features = false, features = ["rt-multi-thread"], version = "1.45" }, tracing = { version = "0.1" }, tracing-subscriber = { features = ["env-filter", "json"], version = "0.3" } }

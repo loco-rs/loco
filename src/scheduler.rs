@@ -193,7 +193,7 @@ impl JobDescription {
     ///
     /// In addition to all the IO errors possible
     pub fn run(&self) -> io::Result<std::process::Output> {
-        tracing::info!(command = &self.command, "execute jon command");
+        tracing::info!(command = &self.command, "execute job command");
         let mut exec_job =
             duct_sh::sh_dangerous(&self.command).env("LOCO_ENV", self.environment.to_string());
         exec_job = match self.output {
@@ -383,28 +383,64 @@ mod tests {
     use rstest::rstest;
     use tests_cfg::db::AppHook;
     use tokio::time::{self, Duration};
+    use tree_fs::TreeBuilder;
 
     use super::*;
     use crate::tests_cfg;
 
-    fn get_scheduler_from_config() -> Result<Scheduler, Error> {
-        let scheduler_config_path = PathBuf::from("tests")
-            .join("fixtures")
-            .join("scheduler")
-            .join("scheduler.yaml");
+    fn setup_scheduler_config() -> (Scheduler, tree_fs::Tree) {
+        let tree = TreeBuilder::default()
+            .add_file(
+                "scheduler.yaml",
+                r#"
+jobs:
+  print_task:
+    run: foo
+    schedule: "*/5 * * * * *"
+    tags:
+      - base
+      - echo
 
-        Scheduler::from_config::<AppHook>(&scheduler_config_path, &Environment::Development)
+  write_to_file:
+    run: "echo loco >> ./scheduler.txt"
+    shell: true
+    schedule: "*/5 * * * * *"
+    tags:
+      - base
+      - write
+
+  run_on_start_task:
+    run: "echo \"Does this run on start?\" >> ./run_on_start.txt "
+    shell: true
+    schedule: "every 24 hours"
+    run_on_start: true
+    tags:
+      - start
+"#,
+            )
+            .create()
+            .expect("Failed to create test directory structure");
+
+        let scheduler = Scheduler::from_config::<AppHook>(
+            &tree.root.join("scheduler.yaml"),
+            &Environment::Development,
+        )
+        .expect("Failed to create scheduler from config");
+
+        (scheduler, tree)
     }
 
     #[test]
     pub fn can_display_scheduler() {
-        let scheduler = get_scheduler_from_config().unwrap();
+        let (scheduler, _tree) = setup_scheduler_config();
         assert_debug_snapshot!(format!("{scheduler}"));
     }
 
     #[test]
     pub fn can_load_from_config_local_config() {
-        assert!(get_scheduler_from_config().is_ok());
+        let (_, _tree) = setup_scheduler_config();
+        // If we got here, the setup was successful
+        assert!(true);
     }
 
     #[tokio::test]
@@ -420,7 +456,8 @@ mod tests {
 
     #[test]
     pub fn can_load_jobs_by_spec_tag_multiple_jobs() {
-        let scheduler = get_scheduler_from_config().unwrap().by_spec(&Spec {
+        let (scheduler, _tree) = setup_scheduler_config();
+        let scheduler = scheduler.by_spec(&Spec {
             name: None,
             tag: Some("base".to_string()),
         });
@@ -430,7 +467,8 @@ mod tests {
 
     #[test]
     pub fn can_load_jobs_by_spec_tag_single_jobs() {
-        let scheduler = get_scheduler_from_config().unwrap().by_spec(&Spec {
+        let (scheduler, _tree) = setup_scheduler_config();
+        let scheduler = scheduler.by_spec(&Spec {
             name: None,
             tag: Some("echo".to_string()),
         });
@@ -441,7 +479,8 @@ mod tests {
 
     #[test]
     pub fn can_load_jobs_by_spec_with_job_name() {
-        let scheduler = get_scheduler_from_config().unwrap().by_spec(&Spec {
+        let (scheduler, _tree) = setup_scheduler_config();
+        let scheduler = scheduler.by_spec(&Spec {
             name: Some("write_to_file".to_string()),
             tag: None,
         });
@@ -476,7 +515,7 @@ mod tests {
 
     #[tokio::test]
     pub async fn can_run() {
-        let mut scheduler = get_scheduler_from_config().unwrap();
+        let (mut scheduler, _config_tree) = setup_scheduler_config();
 
         let tree_fs = tree_fs::TreeBuilder::default()
             .drop(true)

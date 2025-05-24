@@ -25,16 +25,14 @@ chrono = { workspace = true }
 colored = { workspace = true }
 heck = { workspace = true }
 tera = { workspace = true }
-
+duct = { workspace = true }
 clap = { version = "4.4.7", features = ["derive"] }
-duct = "0.13"
 include_dir = { version = "0.7.4" }
 
 [dev-dependencies]
-tree-fs = { version = "0.2.1" }
+tree-fs = { version = "0.3" }
 syn = { version = "2", features = ["full"] }
 serial_test = "3.1.1"
 uuid = { version = "1.11.0", features = ["v4", "fast-rng"] }
-duct = { version = "0.13.6" }
 insta = { version = "1.41.1", features = ["redactions", "yaml", "filters"] }
 rstest = "0.23.0"

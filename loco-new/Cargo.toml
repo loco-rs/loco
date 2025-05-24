@@ -44,13 +44,13 @@ tera = { version = "1.20.0" }
 colored = { version = "2" }
 duct = { version = "0.13.6" }
 rand = { version = "0.8.5" }
+tree-fs = { version = "0.3" }
 
 [dev-dependencies]
 uuid = { version = "1.11.0", features = ["v4", "fast-rng"] }
 serde_yaml = { version = "0.9" }
 insta = { version = "1.41.1", features = ["redactions", "yaml", "filters"] }
 rstest = { version = "0.23.0" }
-tree-fs = "0.2.1"
 mockall = "0.13.0"
 toml = "0.8.19"
 regex = "1.11.1"

@@ -4,7 +4,39 @@ use std::collections::HashMap;
 use byte_unit::Byte;
 use serde_json::value::Value;
 use tera::Result;
-use thousands::Separable;
+
+/// Helper function to add commas as thousands separators
+fn separate_with_commas(num_str: &str) -> String {
+    if let Some((integer_part, decimal_part)) = num_str.split_once('.') {
+        // Handle decimal numbers
+        let formatted_integer = separate_integer_part(integer_part);
+        format!("{formatted_integer}.{decimal_part}")
+    } else {
+        // Handle integers
+        separate_integer_part(num_str)
+    }
+}
+
+fn separate_integer_part(num_str: &str) -> String {
+    let is_negative = num_str.starts_with('-');
+    let num_str = if is_negative { &num_str[1..] } else { num_str };
+
+    let len = num_str.len();
+    let mut result = String::with_capacity(len + (len - 1) / 3);
+
+    for (i, c) in num_str.chars().enumerate() {
+        if i > 0 && (len - i) % 3 == 0 {
+            result.push(',');
+        }
+        result.push(c);
+    }
+
+    if is_negative {
+        format!("-{result}")
+    } else {
+        result
+    }
+}
 
 /// Formats a numeric value by adding commas as thousands separators.
 ///
@@ -21,7 +53,11 @@ use thousands::Separable;
 /// value as a string without any error.
 pub fn number_with_delimiter(value: &Value, _: &HashMap<String, Value>) -> Result<Value> {
     match value {
-        Value::Number(number) => Ok(Value::String(number.separate_with_commas())),
+        Value::Number(_) => {
+            // Use the original string representation to preserve format
+            let num_str = value.to_string();
+            Ok(Value::String(separate_with_commas(&num_str)))
+        }
         _ => Ok(value.clone()),
     }
 }
@@ -98,6 +134,20 @@ mod tests {
     #[case(json!(-10000), "-10,000")]
     #[case(json!(-10000.12345), "-10,000.12345")]
     #[case(json!("invalid"), "invalid")]
+    #[case(json!(0), "0")]
+    #[case(json!("0.0"), "0.0")]
+    #[case(json!(0.123), "0.123")]
+    #[case(json!(1_000_000), "1,000,000")]
+    #[case(json!(1_000_000_000), "1,000,000,000")]
+    #[case(json!(1_234_567_890.123_456), "1,234,567,890.123456")]
+    #[case(json!(0.000_123), "0.000123")]
+    #[case(json!("100.00"), "100.00")]
+    #[case(json!(-0.123), "-0.123")]
+    #[case(json!(-1_234_567.89), "-1,234,567.89")]
+    #[case(json!(100), "100")]
+    #[case(json!("100.00230"), "100.00230")]
+    #[case(json!("0100.00230"), "0100.00230")]
+    #[case(json!(""), "")]
     fn test_number_with_delimiter(#[case] input: Value, #[case] expected: &str) {
         let result = number_with_delimiter(&input, &HashMap::new()).unwrap();
         assert_eq!(result, Value::String(expected.to_string()));

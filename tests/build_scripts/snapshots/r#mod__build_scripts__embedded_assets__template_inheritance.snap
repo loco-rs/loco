@@ -1,0 +1,15 @@
+---
+source: tests/build_scripts/embedded_assets.rs
+expression: template_content
+snapshot_kind: text
+---
+#[must_use]
+pub fn get_embedded_templates() -> std::collections::HashMap<String, &'static str> {
+    let mut templates = std::collections::HashMap::new();
+    // Debug log of template keys for inheritance:
+    // Template key: "base.html"
+    // Template key: "posts/list.html"
+    templates.insert("base.html".to_string(), include_str!("[TEST_ROOT]/assets/views/base.html"));
+    templates.insert("posts/list.html".to_string(), include_str!("[TEST_ROOT]/assets/views/posts/list.html"));
+    templates
+}

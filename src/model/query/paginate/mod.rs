@@ -152,11 +152,7 @@ where
     E: EntityTrait,
     <E as EntityTrait>::Model: Sync,
 {
-    let page = if pagination_query.page <= 1 {
-        0
-    } else {
-        pagination_query.page - 1
-    };
+    let page = pagination_query.page.saturating_sub(1);
     let entity = if let Some(condition) = condition {
         entity.filter(condition)
     } else {
@@ -209,11 +205,7 @@ where
     C: ConnectionTrait + Sync,
     S: PaginatorTrait<'db, C> + Send,
 {
-    let page = if pagination_query.page <= 1 {
-        0
-    } else {
-        pagination_query.page - 1
-    };
+    let page = pagination_query.page.saturating_sub(1);
 
     let query = selector.paginate(db, pagination_query.page_size);
     let total_pages_and_items = query.num_items_and_pages().await?;

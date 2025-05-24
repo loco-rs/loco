@@ -1,12 +1,8 @@
 //! This module contains the core components and traits for building a web
 //! server application.
-cfg_if::cfg_if! {
-    if #[cfg(feature = "with-db")] {
-        use std::path::Path;
-        use sea_orm::DatabaseConnection;
-    } else {}
+#[cfg(feature = "with-db")]
+use {sea_orm::DatabaseConnection, std::path::Path};
 
-}
 use std::{
     any::{Any, TypeId},
     net::SocketAddr,
@@ -21,7 +17,7 @@ use crate::{
     bgworker::{self, Queue},
     boot::{shutdown_signal, BootResult, ServeParams, StartMode},
     cache::{self},
-    config::{self, Config},
+    config::Config,
     controller::{
         middleware::{self, MiddlewareLayer},
         AppRoutes,
@@ -360,7 +356,7 @@ pub trait Hooks: Send {
     ///
     /// # Errors
     /// If fails returns an error
-    fn init_logger(_config: &config::Config, _env: &Environment) -> Result<bool> {
+    fn init_logger(_ctx: &AppContext) -> Result<bool> {
         Ok(false)
     }
 
