@@ -1,8 +1,10 @@
-use super::{AppInfo, GenerateResults, Result};
-use crate as gen;
+use std::path::Path;
+
 use rrgen::RRgen;
 use serde_json::json;
-use std::path::Path;
+
+use super::{AppInfo, GenerateResults, Result};
+use crate as gen;
 
 pub fn generate(
     rrgen: &RRgen,
