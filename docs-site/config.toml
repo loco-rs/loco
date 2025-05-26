@@ -1,7 +1,7 @@
 # The URL the site will be built for
 base_url = "https://loco.rs"
-title = "Loco.rs - Productivity-first Rust Fullstack Web Framework"
-description = "Loco.rs is like Ruby on Rails for Rust. Use it to quickly build and deploy Rust based apps from zero to production."
+title = "Loco.rs - Rustで本格的なWebアプリを素早く構築できるフルスタックフレームワーク"
+description = "Loco.rsはRust版のRuby on Railsのような存在です。ゼロから本番環境まで、Rust製アプリを素早く構築・デプロイできます。"
 
 
 # Whether to automatically compile all Sass files in the sass directory
@@ -69,8 +69,8 @@ weight = 20
 
 
 [[extra.homepage.features]]
-name = "Models"
-description = 'Model your business with rich entities and avoid writing SQL, backed by SeaORM. Build relations, validation and custom logic on your entities for the best maintainability.'
+name = "モデル"
+description = 'SeaORMを活用し、リッチなエンティティでビジネスロジックを表現。SQLを書くことなく、リレーションやバリデーション、独自ロジックも柔軟に実装でき、保守性の高い設計が可能です。'
 example = '''```rust
 impl Model {
   pub async fn find_by_email(db: &DatabaseConnection, email: &str)
@@ -93,8 +93,8 @@ impl Model {
 '''
 
 [[extra.homepage.features]]
-name = "Controllers"
-description = 'Handle Web requests parameters, body, validation, and render a response that is content-aware. We use Axum for the best performance, simplicity and extensibility.'
+name = "コントローラー"
+description = 'Webリクエストのパラメータやボディ、バリデーションを簡単に処理し、コンテンツに応じたレスポンスを返します。Axumを採用し、高いパフォーマンスとシンプルさ、拡張性を実現しています。'
 example = '''```rust
 pub async fn get_one(
     respond_to: RespondTo,
@@ -117,8 +117,8 @@ pub fn routes() -> Routes {
 '''
 
 [[extra.homepage.features]]
-name = "Views"
-description = 'Use server-rendered templates with Tera or JSON. Loco can render views on the server or work with a frontend app seamlessly. Configure your fullstack set up any way you like.'
+name = "ビュー"
+description = 'TeraによるサーバーサイドテンプレートやJSONで柔軟にビューを描画。サーバー側でのレンダリングも、フロントエンドアプリとの連携もシームレスに行えます。フルスタック構成も自由自在です。'
 example = '''```rust
 
 // Literals
@@ -137,8 +137,8 @@ format::render().etag("loco-etag")?.empty()
 '''
 
 [[extra.homepage.features]]
-name = "Background Jobs"
-description = 'Perform compute or I/O intensive jobs in the background with a Redis backed queue, or with threads. Implementing a worker is as simple as implementing a <code>perform</code> function for the <code>Worker</code> trait.'
+name = "バックグラウンドジョブ"
+description = 'Redisベースのキューやスレッドで、計算・I/O負荷の高いジョブもバックグラウンドで実行可能。Workerトレイトの<code>perform</code>関数を実装するだけで、簡単にワーカーを作成できます。'
 example = '''```rust
 impl worker::Worker<DownloadArgs> for UsersReportWorker {
     async fn perform(&self, args: DownloadArgs) -> worker::Result<()> {
@@ -157,8 +157,8 @@ impl worker::Worker<DownloadArgs> for UsersReportWorker {
 '''
 
 [[extra.homepage.features]]
-name = "Deployment"
-description = 'Easily generate deployment configurations with a guided CLI interface. Select from deployment options for tailored deployment setups.'
+name = "デプロイ"
+description = 'ガイド付きCLIで、デプロイ設定を簡単に自動生成。用途に合わせて最適なデプロイ方法を選択できます。'
 example = '''```sh
 
 $ cargo loco generate deployment
@@ -176,8 +176,8 @@ added: ".dockerignore"
 '''
 
 [[extra.homepage.features]]
-name = "Scheduler"
-description = 'Simplifies the traditional, often cumbersome crontab system, making it easier and more elegant to schedule tasks or shell scripts.'
+name = "スケジューラー"
+description = '従来の煩雑なcrontabをシンプルかつエレガントに。タスクやシェルスクリプトのスケジューリングが簡単に行えます。'
 example = '''```yaml
 jobs:
   db_vaccum:
