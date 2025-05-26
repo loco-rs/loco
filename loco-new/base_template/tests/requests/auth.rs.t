@@ -380,14 +380,10 @@ async fn can_resend_verification_email() {
             "password": "12341234"
         });
 
-        // Step 1: Register a user
         let response = request.post("/api/auth/register").json(&payload).await;
         assert_eq!(response.status_code(), 200, "Register request should succeed");
 
-        // Step 2: Send a POST request to /resend-verification-mail
-        let resend_payload = serde_json::json!({
-            "email": email
-        });
+        let resend_payload = serde_json::json!({ "email": email });
 
         let resend_response = request
             .post("/api/auth/resend-verification-mail")
@@ -402,24 +398,23 @@ async fn can_resend_verification_email() {
 
         let deliveries = ctx.mailer.unwrap().deliveries();
 
-        // Should have 2 emails sent: one during registration, one now
         assert_eq!(
-            deliveries.count, 2,
+            deliveries.count,
+            2,
             "Two emails should have been sent: welcome and re-verification"
         );
+
+        let user = users::Model::find_by_email(&ctx.db, email)
+            .await
+            .expect("User should exist");
 
         with_settings!({
             filters => cleanup_user_model()
         }, {
-            let user = users::Model::find_by_email(&ctx.db, email)
-                .await
-                .expect("User should exist");
             assert_debug_snapshot!("resend_verification_user", user);
         });
-    })
-    .await;
+    }).await; 
 }
-
 
 #[tokio::test]
 #[serial]
