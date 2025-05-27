@@ -16,16 +16,18 @@ impl Initializer for ExtraDbInitializer {
     }
 
     async fn after_routes(&self, router: AxumRouter, ctx: &AppContext) -> Result<AxumRouter> {
+        println!("1");
         let extra_db_config = ctx
             .config
             .initializers
             .clone()
             .ok_or_else(|| Error::Message("initializers config not configured".to_string()))?;
-
+        println!("2");
         let extra_db_value = extra_db_config
             .get("extra_db")
             .ok_or_else(|| Error::Message("initializers config not configured".to_string()))?;
 
+        println!("3");
         let extra_db = serde_json::from_value(extra_db_value.clone())?;
 
         let db = db::connect(&extra_db).await?;
