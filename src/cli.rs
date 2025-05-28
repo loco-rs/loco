@@ -17,10 +17,6 @@
 #[cfg(feature = "with-db")]
 use {crate::boot::run_db, crate::db, crate::doctor, sea_orm_migration::MigratorTrait};
 
-use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueHint};
-use colored::Colorize;
-use duct::cmd;
-use std::fmt::Write;
 #[cfg(any(
     feature = "bg_redis",
     feature = "bg_pg",
@@ -28,7 +24,11 @@ use std::fmt::Write;
     feature = "with-db"
 ))]
 use std::process::exit;
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{collections::BTreeMap, fmt::Write, path::PathBuf};
+
+use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueHint};
+use colored::Colorize;
+use duct::cmd;
 
 #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
 use crate::bgworker::JobStatus;
@@ -40,7 +40,7 @@ use crate::{
         create_app, create_context, list_endpoints, list_middlewares, run_scheduler, run_task,
         start, RunDbCommand, ServeParams, StartMode,
     },
-    config::Config,
+    config::{Config, QueueConfig},
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     logger, task, Error,
 };
@@ -72,7 +72,8 @@ enum Commands {
     #[command(group(ArgGroup::new("start_mode").args(&["worker", "server_and_worker", "all"])))]
     #[clap(alias("s"))]
     Start {
-        /// Start worker. Optionally provide tags to run specific jobs (e.g. --worker=tag1,tag2)
+        /// Start worker. Optionally provide tags to run specific jobs (e.g.
+        /// --worker=tag1,tag2)
         #[arg(short, long, action, value_delimiter = ',', num_args = 0.., conflicts_with_all = &["server_and_worker", "all"])]
         worker: Option<Vec<String>>,
         /// Start the server and worker in the same process
@@ -177,7 +178,7 @@ enum ComponentArg {
     /// Generates a new model file for defining the data structure of your
     /// application, and test file logic.
     #[command(after_help = format!(
-    "{}  
+        "{}  
   - Generate empty model:
       $ cargo loco g model posts
 
@@ -189,8 +190,8 @@ enum ComponentArg {
       # 'director:references' references the 'directors' table with 'director_id' on 'movies'
       # 'award:references:prize_id' references the 'awards' table with 'prize_id' on 'movies'
 ",
-    "Examples:".bold().underline()
-))]
+        "Examples:".bold().underline()
+    ))]
     Model {
         /// Name of the thing to generate
         name: String,
@@ -273,15 +274,15 @@ After running the migration, follow these steps to complete the process:
     },
     /// Generate a new controller with the given controller name, and test file.
     #[command(after_help = format!(
-    "{}  
+        "{}  
   - Generate an empty controller:
       $ cargo loco generate controller posts --api
 
   - Generate a controller with actions:
       $ cargo loco generate controller posts --api list remove update
 ",
-    "Examples:".bold().underline()
-))]
+        "Examples:".bold().underline()
+    ))]
     Controller {
         /// Name of the thing to generate
         name: String,
@@ -330,7 +331,7 @@ After running the migration, follow these steps to complete the process:
     /// Generate a deployment infrastructure
     Deployment {
         // deployment kind.
-        #[clap(value_enum)]
+        #[clap(long, value_enum)]
         kind: DeploymentKind,
     },
 
@@ -514,6 +515,7 @@ pub enum DeploymentKind {
     Docker,
     Shuttle,
     Nginx,
+    Kamal,
 }
 
 impl DeploymentKind {
@@ -523,19 +525,7 @@ impl DeploymentKind {
             Self::Docker => {
                 let mut copy_paths = vec![];
 
-                if let Some(static_assets) = &config.server.middlewares.static_assets {
-                    let asset_folder =
-                        PathBuf::from(controller::views::engines::DEFAULT_ASSET_FOLDER);
-                    if asset_folder.exists() {
-                        copy_paths.push(asset_folder.clone());
-                    }
-                    if !static_assets.folder.path.starts_with(&asset_folder) {
-                        copy_paths.push(PathBuf::from(&static_assets.folder.path));
-                    }
-                    if !static_assets.fallback.starts_with(asset_folder) {
-                        copy_paths.push(PathBuf::from(&static_assets.fallback));
-                    }
-                }
+                Self::copy_static_assets(&mut copy_paths, config);
 
                 let is_client_side_rendering =
                     PathBuf::from("frontend").join("package.json").exists();
@@ -552,8 +542,42 @@ impl DeploymentKind {
                 host: config.server.host.to_string(),
                 port: config.server.port,
             },
+            Self::Kamal => {
+                let mut copy_paths = vec![];
+                Self::copy_static_assets(&mut copy_paths, config);
+                let is_client_side_rendering =
+                    PathBuf::from("frontend").join("package.json").exists();
+                let postgres = config.database.uri.starts_with("postgres://");
+                let sqlite = config.database.uri.starts_with("sqlite://");
+                let background_queue = config
+                    .queue
+                    .as_ref()
+                    .is_some_and(|queue_config| matches!(queue_config, QueueConfig::Redis(_)));
+                loco_gen::DeploymentKind::Kamal {
+                    copy_paths: vec![],
+                    is_client_side_rendering,
+                    postgres,
+                    sqlite,
+                    background_queue,
+                }
+            }
         };
         loco_gen::Component::Deployment { kind }
+    }
+
+    fn copy_static_assets(copy_paths: &mut Vec<PathBuf>, config: &Config) {
+        if let Some(static_assets) = &config.server.middlewares.static_assets {
+            let asset_folder = PathBuf::from(controller::views::engines::DEFAULT_ASSET_FOLDER);
+            if asset_folder.exists() {
+                copy_paths.push(asset_folder.clone());
+            }
+            if !static_assets.folder.path.starts_with(&asset_folder) {
+                copy_paths.push(PathBuf::from(&static_assets.folder.path));
+            }
+            if !static_assets.fallback.starts_with(asset_folder) {
+                copy_paths.push(PathBuf::from(&static_assets.fallback));
+            }
+        }
     }
 }
 
@@ -811,8 +835,8 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
 
             cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
                 Error::Message(format!(
-                    "failed to start with `cargo-watch`. Did you `cargo install \
-                         cargo-watch`?. error details: `{err}`",
+                    "failed to start with `cargo-watch`. Did you `cargo install cargo-watch`?. \
+                     error details: `{err}`",
                 ))
             })?;
         }
@@ -927,8 +951,8 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
 
             cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
                 Error::Message(format!(
-                    "failed to start with `cargo-watch`. Did you `cargo install \
-                         cargo-watch`?. error details: `{err}`",
+                    "failed to start with `cargo-watch`. Did you `cargo install cargo-watch`?. \
+                     error details: `{err}`",
                 ))
             })?;
         }

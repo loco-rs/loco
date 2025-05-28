@@ -1,6 +1,6 @@
 ---
 source: loco-gen/tests/templates/deployment.rs
-expression: "fs::read_to_string(tree_fs.root.join(\"dockerfile\")).expect(\"dockerfile missing\")"
+expression: "fs::read_to_string(tree_fs.root.join(\"dockerfile\")).expect(\"Dockerfile missing\")"
 ---
 FROM rust:1.84-slim as builder
 
@@ -14,6 +14,8 @@ FROM debian:bookworm-slim
 
 WORKDIR /usr/app
 
+COPY --from=builder /usr/src/404.html 404.html
+COPY --from=builder /usr/src/asset asset
 COPY --from=builder /usr/src/config config
 COPY --from=builder /usr/src/target/release/tester-cli tester-cli
 
