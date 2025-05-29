@@ -1,16 +1,13 @@
+
 # The URL the site will be built for
 base_url = "https://loco.rs"
-title = "Loco.rs - Productivity-first Rust Fullstack Web Framework"
-description = "Loco.rs is like Ruby on Rails for Rust. Use it to quickly build and deploy Rust based apps from zero to production."
-
+default_language = "en"
 
 # Whether to automatically compile all Sass files in the sass directory
 compile_sass = true
 
 # Whether to generate a feed file for the site
 generate_feeds = true
-
-feed_filenames = ["blog/atom.xml", "blog/rss.xml"]
 
 # When set to "true", the generated HTML files are minified.
 minify_html = false
@@ -23,6 +20,16 @@ taxonomies = [
 
 # Whether to build a search index to be used later on by a JavaScript library
 build_search_index = true
+
+[languages.en]
+title = "Loco.rs - Productivity-first Rust Fullstack Web Framework"
+description = "Loco.rs is like Ruby on Rails for Rust. Use it to quickly build and deploy Rust based apps from zero to production."
+feed_filenames = ["blog/atom.xml", "blog/rss.xml"]
+
+[languages.ja]
+title = "Loco.rs - 生産性重視のRust フルスタックWebフレームワーク"
+description = "Loco.rsはRust版のRuby on Railsです。Rustベースのアプリをゼロからプロダクションまで素早く構築・デプロイできます。"
+generate_feeds = false
 
 [markdown]
 # Whether to do syntax highlighting

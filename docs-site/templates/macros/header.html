@@ -49,7 +49,7 @@
 				</button>
 
 				<div class="absolute mt-[106px] left-0 right-0">
-						<nav id="menu-toggle" class="flex hidden bg-background  items-center gap-4 text-sm py-[15px] px-2 w-full">
+						<nav id="menu-toggle" class="hidden bg-background  items-center gap-4 text-sm py-[15px] px-2 w-full">
 							<a class="flex items-center" href="/">
 								<img src="/icon.svg" width="30px" />
 							</a>
@@ -76,6 +76,11 @@
 							{% else %}
 				
 							{% endif %}
+							<!-- Mobile Language Switcher -->
+							<div class="ml-auto flex items-center gap-2">
+								<a href="#" onclick="switchToEnglish(event)" class="text-sm px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">🇺🇸 EN</a>
+								<a href="#" onclick="switchToJapanese(event)" class="text-sm px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">🇯🇵 JA</a>
+							</div>
 						</nav>
 		</div>
 		</div>
@@ -97,6 +102,32 @@
 		
 		
 			<nav class="flex items-center">
+				<!-- Language Switcher -->
+				<div class="relative mr-2">
+					<button onclick="toggleLangDropdown()" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-8 px-3">
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1">
+							<circle cx="12" cy="12" r="10"></circle>
+							<line x1="2" y1="12" x2="22" y2="12"></line>
+							<path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+						</svg>
+						<span id="current-lang">English</span>
+						<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ml-1">
+							<polyline points="6 9 12 15 18 9"></polyline>
+						</svg>
+					</button>
+					<div id="lang-dropdown" class="absolute hidden right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5">
+						<div class="py-1">
+							<a href="#" onclick="switchToEnglish(event)" class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+								<span class="mr-2">🇺🇸</span>
+								English
+							</a>
+							<a href="#" onclick="switchToJapanese(event)" class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+								<span class="mr-2">🇯🇵</span>
+								日本語
+							</a>
+						</div>
+					</div>
+				</div>
 				<button id="mode" class="btn btn-link order-2 order-md-4" type="button" aria-label="Toggle mode">
 					<span class="toggle-dark hidden"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
 							fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -136,6 +167,43 @@
 	function toggleMenu() {
 		var menu = document.getElementById('menu-toggle');
 		menu.classList.toggle('hidden');
+		menu.classList.toggle('flex');
 	}
+	
+	function toggleLangDropdown() {
+		var dropdown = document.getElementById('lang-dropdown');
+		dropdown.classList.toggle('hidden');
+	}
+	
+	document.addEventListener('click', function(event) {
+		var dropdown = document.getElementById('lang-dropdown');
+		var button = event.target.closest('button[onclick="toggleLangDropdown()"]');
+		if (!button && !dropdown.contains(event.target)) {
+			dropdown.classList.add('hidden');
+		}
+	});
+	
+	function switchToEnglish(event) {
+		event.preventDefault();
+		var currentPath = window.location.pathname;
+		window.location.href = 'https://loco.rs' + currentPath;
+	}
+	
+	function switchToJapanese(event) {
+		event.preventDefault();
+		var currentPath = window.location.pathname;
+		window.location.href = 'https://loco-ja.netlify.app' + currentPath;
+	}
+	
+	document.addEventListener('DOMContentLoaded', function() {
+		var currentLangElement = document.getElementById('current-lang');
+		if (currentLangElement) {
+			if (window.location.hostname === 'loco-ja.netlify.app' || window.location.hostname.includes('loco-ja')) {
+				currentLangElement.textContent = '日本語';
+			} else {
+				currentLangElement.textContent = 'English';
+			}
+		}
+	});
 </script>
 {% endmacro %}
