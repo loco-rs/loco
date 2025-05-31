@@ -8,7 +8,7 @@ use super::{BackgroundWorker, JobStatus, Queue};
 use crate::{config::RedisQueueConfig, Error, Result};
 use chrono::{DateTime, Utc};
 use futures_util::FutureExt;
-use redis::{aio::MultiplexedConnection as Connection, AsyncCommands, Client};
+use redis::{aio::MultiplexedConnection as Connection, AsyncCommands, Client, Script};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use tokio::{task::JoinHandle, time::sleep};
@@ -51,7 +51,6 @@ pub struct Job {
 impl Job {
     fn new(id: String, name: String, data: JsonValue) -> Self {
         let now = Utc::now();
-
         Self {
             id,
             name,
@@ -103,7 +102,6 @@ impl JobRegistry {
         let worker = Arc::new(worker);
         let wrapped_handler = move |_job_id: String, job_data: JobData| {
             let w = worker.clone();
-
             Box::pin(async move {
                 let args = serde_json::from_value::<Args>(job_data);
                 match args {
@@ -126,7 +124,6 @@ impl JobRegistry {
                 }
             }) as Pin<Box<dyn Future<Output = Result<(), crate::Error>> + Send>>
         };
-
         Arc::get_mut(&mut self.handlers)
             .ok_or_else(|| Error::string("cannot register worker"))?
             .insert(name, Box::new(wrapped_handler));
@@ -160,6 +157,14 @@ impl JobRegistry {
             let tags = tags.to_owned();
 
             let job = tokio::spawn(async move {
+                let mut conn = match client.get_multiplexed_async_connection().await {
+                    Ok(conn) => conn,
+                    Err(err) => {
+                        error!(err = err.to_string(), "Failed to create worker connection");
+                        return;
+                    }
+                };
+
                 loop {
                     // Check for cancellation before potentially blocking on dequeue
                     if worker_token.is_cancelled() {
@@ -167,7 +172,7 @@ impl JobRegistry {
                         break;
                     }
 
-                    let job_opt = match dequeue(&client, &queues, &tags).await {
+                    let job_opt = match dequeue_with_conn(&mut conn, &queues, &tags).await {
                         Ok(t) => t,
                         Err(err) => {
                             error!(err = err.to_string(), "cannot fetch from queue");
@@ -180,26 +185,23 @@ impl JobRegistry {
                         if let Some(handler) = handlers.get(&job.name) {
                             match handler(job.id.clone(), job.data.clone()).await {
                                 Ok(()) => {
-                                    if let Err(err) =
-                                        complete_job(&client, &job.id, &queue_name, job.interval)
-                                            .await
+                                    if let Err(err) = complete_job_with_conn(
+                                        &mut conn,
+                                        &job.id,
+                                        &queue_name,
+                                        job.interval,
+                                    )
+                                    .await
                                     {
-                                        error!(
-                                            err = err.to_string(),
-                                            job = ?job,
-                                            "cannot complete job"
-                                        );
+                                        error!(err = err.to_string(), job = ?job, "cannot complete job");
                                     }
                                 }
                                 Err(err) => {
                                     if let Err(err) =
-                                        fail_job(&client, &job.id, &queue_name, &err).await
+                                        fail_job_with_conn(&mut conn, &job.id, &queue_name, &err)
+                                            .await
                                     {
-                                        error!(
-                                            err = err.to_string(),
-                                            job = ?job,
-                                            "cannot fail job"
-                                        );
+                                        error!(err = err.to_string(), job = ?job, "cannot fail job");
                                     }
                                 }
                             }
@@ -207,24 +209,19 @@ impl JobRegistry {
                             error!(job = job.name, "no handler found for job");
                         }
                     } else {
-                        // Use tokio::select! to wait for interval or cancellation
                         tokio::select! {
                             biased;
                             () = worker_token.cancelled() => {
                                 trace!(worker_num = idx, "cancellation received during sleep, stopping worker");
                                 break;
                             }
-                            () = sleep(Duration::from_secs(interval.into())) => {
-                                // Interval elapsed, continue loop
-                            }
+                            () = sleep(Duration::from_secs(interval.into())) => {}
                         }
                     }
                 }
             });
-
             jobs.push(job);
         }
-
         jobs
     }
 }
@@ -286,18 +283,32 @@ pub async fn enqueue(
     let job_json = job.to_json()?;
 
     // Store job in Redis queue and in job key
-    let job_key = String::from(JOB_KEY_PREFIX) + &job.id;
-    redis::pipe()
-        .rpush(queue_key, &job_json)
-        .set(job_key, &job_json)
-        .query_async::<()>(&mut conn)
-        .await?;
+    let job_key = format!("{JOB_KEY_PREFIX}{}", job.id);
+    let _: () = conn.set(&job_key, &job_json).await?;
+    let _: () = conn.rpush(&queue_key, &job.id).await?;
 
     Ok(())
 }
 
-async fn dequeue(
-    client: &RedisPool,
+const DEQUEUE_SCRIPT: &str = r#"
+local queue_key = KEYS[1]
+local processing_key = KEYS[2]
+local job_id = redis.call('LPOP', queue_key)
+if job_id then
+    local added = redis.call('SADD', processing_key, job_id)
+    if added == 1 then
+        return job_id
+    else
+        redis.log(redis.LOG_WARNING, "Job already in processing: " .. job_id)
+        return nil
+    end
+else
+    return nil
+end
+"#;
+
+async fn dequeue_with_conn(
+    conn: &mut Connection,
     queues: &[String],
     tags: &[String],
 ) -> Result<Option<(Job, String)>> {
@@ -305,139 +316,119 @@ async fn dequeue(
         return Ok(None);
     }
 
-    let mut conn = get_connection(client).await?;
+    let script = Script::new(DEQUEUE_SCRIPT);
 
     // Try to get a job from each queue in order (round-robin is more complex)
     for queue_name in queues {
         let queue_key = format!("{QUEUE_KEY_PREFIX}{queue_name}");
+        let processing_key = format!("{PROCESSING_KEY_PREFIX}{queue_name}");
 
-        // Use LPOP to get and remove the first job from the queue
-        let job_json: Option<String> = conn.lpop(&queue_key, None).await?;
+        let job_id: Option<String> = script
+            .key(&queue_key)
+            .key(&processing_key)
+            .invoke_async(conn)
+            .await?;
 
-        if let Some(json) = job_json {
-            match Job::from_json(&json) {
-                Ok(job) => {
-                    // Check tag filtering
-                    let should_process = if tags.is_empty() {
-                        // Worker has no tags - only process jobs with no tags
-                        job.tags.is_none() || job.tags.as_ref().is_some_and(Vec::is_empty)
-                    } else {
-                        // Worker has tags - only process jobs with matching tags
-                        job.tags
-                            .as_ref()
-                            .is_some_and(|job_tags| job_tags.iter().any(|tag| tags.contains(tag)))
-                    };
+        if let Some(job_id) = job_id {
+            let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
+            let job_json: Option<String> = conn.get(&job_key).await?;
 
-                    if !should_process {
-                        // Put the job back in the queue
-                        let _: () = conn.rpush(&queue_key, json).await?;
+            if let Some(json) = job_json {
+                match Job::from_json(&json) {
+                    Ok(job) => {
+                        let should_process = if tags.is_empty() {
+                            job.tags.is_none() || job.tags.as_ref().map_or(true, Vec::is_empty)
+                        } else {
+                            job.tags.as_ref().is_some_and(|job_tags| {
+                                job_tags.iter().any(|tag| tags.contains(tag))
+                            })
+                        };
+
+                        if should_process {
+                            return Ok(Some((job, queue_name.clone())));
+                        }
+                        let _: () = conn.srem(&processing_key, &job_id).await?;
+                        let _: () = conn.rpush(&queue_key, &job_id).await?;
                         trace!(
-                            job_id = job.id,
+                            job_id = job_id,
                             job_tags = ?job.tags,
                             worker_tags = ?tags,
-                            "Job doesn't match tag criteria, returning to queue"
+                            "Job doesn't match tag criteria, returned to queue"
                         );
-                        continue;
                     }
-
-                    // Store job ID in processing set
-                    let processing_key = format!("{PROCESSING_KEY_PREFIX}{queue_name}");
-                    let _: () = conn.sadd(&processing_key, &job.id).await?;
-
-                    return Ok(Some((job, queue_name.clone())));
+                    Err(err) => {
+                        error!(
+                            err = err.to_string(),
+                            job_id = job_id,
+                            "Failed to parse job JSON"
+                        );
+                        let _: () = conn.srem(&processing_key, &job_id).await?;
+                    }
                 }
-                Err(err) => {
-                    error!(err = err.to_string(), "failed to parse job JSON");
-                }
+            } else {
+                error!(job_id = job_id, queue = queue_name, "Job data not found.");
+                let _: () = conn.srem(&processing_key, &job_id).await?;
             }
         }
     }
-
     Ok(None)
 }
 
-async fn complete_job(
-    client: &RedisPool,
+async fn complete_job_with_conn(
+    conn: &mut Connection,
     id: &JobId,
     queue_name: &str,
     interval_ms: Option<i64>,
 ) -> Result<()> {
-    let mut conn = get_connection(client).await?;
+    let job_key = format!("{JOB_KEY_PREFIX}{id}");
     let processing_key = format!("{PROCESSING_KEY_PREFIX}{queue_name}");
 
-    // Remove job from processing set
-    let _: () = redis::pipe()
-        .srem(&processing_key, id)
-        .query_async(&mut conn)
-        .await?;
-
-    // Get job details
-    let job_key = String::from(JOB_KEY_PREFIX) + id;
     let job_json: Option<String> = conn.get(&job_key).await?;
-
     if let Some(json) = job_json {
         if let Ok(mut job) = Job::from_json(&json) {
-            // If the job has an interval, requeue it
             if let Some(interval) = interval_ms {
-                // Update run_at time for the job
                 job.run_at = Utc::now() + chrono::Duration::milliseconds(interval);
-
-                // Reserialize and push to queue
+                job.status = JobStatus::Queued;
                 let new_json = job.to_json()?;
                 let queue_key = format!("{QUEUE_KEY_PREFIX}{queue_name}");
-
                 let _: () = redis::pipe()
-                    .rpush(queue_key, new_json.clone())
-                    .set(&job_key, new_json)
-                    .query_async(&mut conn)
+                    .set(&job_key, &new_json)
+                    .rpush(&queue_key, id)
+                    .query_async(conn)
                     .await?;
             } else {
-                // No interval, mark as completed
                 job.status = JobStatus::Completed;
                 job.updated_at = Some(Utc::now());
-
-                // Save updated job
                 let updated_json = job.to_json()?;
-                let _: () = conn.set(&job_key, updated_json).await?;
+                let _: () = conn.set(&job_key, &updated_json).await?;
             }
+            let _: () = conn.srem(&processing_key, id).await?;
         }
     }
-
     Ok(())
 }
 
-async fn fail_job(
-    client: &RedisPool,
+async fn fail_job_with_conn(
+    conn: &mut Connection,
     id: &JobId,
     queue_name: &str,
     error: &crate::Error,
 ) -> Result<()> {
-    let mut conn = get_connection(client).await?;
+    let job_key = format!("{JOB_KEY_PREFIX}{id}");
     let processing_key = format!("{PROCESSING_KEY_PREFIX}{queue_name}");
 
-    // Remove job from processing set
-    let _: () = redis::pipe()
-        .srem(&processing_key, id)
-        .query_async(&mut conn)
-        .await?;
-
-    // Store the error with the job
-    let job_key = String::from(JOB_KEY_PREFIX) + id;
     let job_json: Option<String> = conn.get(&job_key).await?;
-
     if let Some(json) = job_json {
         if let Ok(mut job) = Job::from_json(&json) {
-            // Add error to job data
             let error_json = serde_json::json!({ "error": error.to_string() });
             job.data = error_json;
             job.status = JobStatus::Failed;
-
-            // Save updated job
+            job.updated_at = Some(Utc::now());
             let updated_json = job.to_json()?;
-            let _: () = conn.set(&job_key, updated_json).await?;
+            let _: () = conn.set(&job_key, &updated_json).await?;
         }
     }
-
+    let _: () = conn.srem(&processing_key, id).await?;
     Ok(())
 }
 
@@ -485,11 +476,15 @@ pub async fn get_jobs(
 
     // Collect jobs from queues
     for queue_key in queue_keys {
-        let queue_jobs: Vec<String> = conn.lrange(&queue_key, 0, -1).await?;
-        for job_json in queue_jobs {
-            if let Ok(job) = Job::from_json(&job_json) {
-                if should_include_job(&job, status, age_days) {
-                    jobs.push(job);
+        let job_ids: Vec<String> = conn.lrange(&queue_key, 0, -1).await?;
+        for job_id in job_ids {
+            let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
+            let job_json: Option<String> = conn.get(&job_key).await?;
+            if let Some(json) = job_json {
+                if let Ok(job) = Job::from_json(&json) {
+                    if should_include_job(&job, status, age_days) {
+                        jobs.push(job);
+                    }
                 }
             }
         }
@@ -500,16 +495,14 @@ pub async fn get_jobs(
         let job_ids: Vec<String> = conn.smembers(&processing_key).await?;
         for job_id in job_ids {
             // Get the job from the job_key using the ID
-            let job_key = String::from(JOB_KEY_PREFIX) + &job_id;
+            let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
             let job_json: Option<String> = conn.get(&job_key).await?;
-
             if let Some(json) = job_json {
                 if let Ok(mut job) = Job::from_json(&json) {
                     // Jobs in processing sets have status "queued" but should be "processing"
                     if job.status == JobStatus::Queued {
                         job.status = JobStatus::Processing;
                     }
-
                     if should_include_job(&job, status, age_days) {
                         jobs.push(job);
                     }
@@ -523,14 +516,11 @@ pub async fn get_jobs(
 
 // Helper function to check if a job matches the filter criteria
 fn should_include_job(job: &Job, status: Option<&Vec<JobStatus>>, age_days: Option<i64>) -> bool {
-    // Check status filter
     if let Some(status_list) = status {
         if !status_list.contains(&job.status) {
             return false;
         }
     }
-
-    // Check age filter
     if let Some(age_days) = age_days {
         if let Some(created_at) = job.created_at {
             let cutoff_date = Utc::now() - chrono::Duration::days(age_days);
@@ -539,7 +529,6 @@ fn should_include_job(job: &Job, status: Option<&Vec<JobStatus>>, age_days: Opti
             }
         }
     }
-
     true
 }
 
@@ -579,44 +568,16 @@ pub async fn clear_by_status(client: &RedisPool, status: Vec<JobStatus>) -> Resu
     // Process queues
     for queue_key in queue_keys {
         // Get all jobs in the queue
-        let queue_jobs: Vec<String> = conn.lrange(&queue_key, 0, -1).await?;
+        let job_ids: Vec<String> = conn.lrange(&queue_key, 0, -1).await?;
 
         // Process each job individually
-        for job_json in queue_jobs {
-            if let Ok(job) = Job::from_json(&job_json) {
-                if status.contains(&job.status) {
-                    // Remove this specific job from the queue
-                    let _: i32 = conn.lrem(&queue_key, 1, &job_json).await?;
-
-                    // Delete the job_key
-                    let job_key = String::from(JOB_KEY_PREFIX) + &job.id;
-                    let _: () = conn.del(&job_key).await?;
-                }
-            }
-        }
-    }
-
-    // Process jobs in processing sets
-    for processing_key in processing_keys {
-        let job_ids: Vec<String> = conn.smembers(&processing_key).await?;
-
         for job_id in job_ids {
-            // Get the job from the job_key using the ID
-            let job_key = String::from(JOB_KEY_PREFIX) + &job_id;
+            let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
             let job_json: Option<String> = conn.get(&job_key).await?;
-
             if let Some(json) = job_json {
-                if let Ok(mut job) = Job::from_json(&json) {
-                    // Jobs in processing sets have status "queued" but should be "processing"
-                    if job.status == JobStatus::Queued {
-                        job.status = JobStatus::Processing;
-                    }
-
+                if let Ok(job) = Job::from_json(&json) {
                     if status.contains(&job.status) {
-                        // Remove job from the processing set
-                        let _: i32 = conn.srem(&processing_key, &job_id).await?;
-
-                        // Delete the job key
+                        let _: () = conn.lrem(&queue_key, 1, &job_id).await?;
                         let _: () = conn.del(&job_key).await?;
                     }
                 }
@@ -624,15 +585,30 @@ pub async fn clear_by_status(client: &RedisPool, status: Vec<JobStatus>) -> Resu
         }
     }
 
-    // Process standalone job keys that might not be in any queue or processing set
-    // (e.g., completed, failed, or cancelled jobs)
+    for processing_key in processing_keys {
+        let job_ids: Vec<String> = conn.smembers(&processing_key).await?;
+        for job_id in job_ids {
+            let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
+            let job_json: Option<String> = conn.get(&job_key).await?;
+            if let Some(json) = job_json {
+                if let Ok(mut job) = Job::from_json(&json) {
+                    if job.status == JobStatus::Queued {
+                        job.status = JobStatus::Processing;
+                    }
+                    if status.contains(&job.status) {
+                        let _: () = conn.srem(&processing_key, &job_id).await?;
+                        let _: () = conn.del(&job_key).await?;
+                    }
+                }
+            }
+        }
+    }
+
     for job_key in job_keys {
         let job_json: Option<String> = conn.get(&job_key).await?;
-
         if let Some(json) = job_json {
             if let Ok(job) = Job::from_json(&json) {
                 if status.contains(&job.status) {
-                    // Delete the job key
                     let _: () = conn.del(&job_key).await?;
                 }
             }
@@ -683,54 +659,19 @@ pub async fn clear_jobs_older_than(
     // Process queues
     for queue_key in queue_keys {
         // Get all jobs in the queue
-        let queue_jobs: Vec<String> = conn.lrange(&queue_key, 0, -1).await?;
+        let job_ids: Vec<String> = conn.lrange(&queue_key, 0, -1).await?;
 
         // Process each job individually
-        for job_json in queue_jobs {
-            if let Ok(job) = Job::from_json(&job_json) {
-                // Check if the job should be removed based on age and status
-                let should_remove = job.created_at.is_some_and(|created_at| {
-                    created_at < cutoff_date && status.map_or(true, |s| s.contains(&job.status))
-                });
-
-                if should_remove {
-                    // Remove this specific job from the queue
-                    let _: i32 = conn.lrem(&queue_key, 1, &job_json).await?;
-
-                    // Delete the job key
-                    let job_key = String::from(JOB_KEY_PREFIX) + &job.id;
-                    let _: () = conn.del(&job_key).await?;
-                }
-            }
-        }
-    }
-
-    // Process jobs in processing sets
-    for processing_key in processing_keys {
-        let job_ids: Vec<String> = conn.smembers(&processing_key).await?;
-
         for job_id in job_ids {
-            // Get the actual job data using the ID
-            let job_key = String::from(JOB_KEY_PREFIX) + &job_id;
+            let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
             let job_json: Option<String> = conn.get(&job_key).await?;
-
             if let Some(json) = job_json {
-                if let Ok(mut job) = Job::from_json(&json) {
-                    // Jobs in processing sets have status "queued" but should be "processing"
-                    if job.status == JobStatus::Queued {
-                        job.status = JobStatus::Processing;
-                    }
-
-                    // Check if the job should be removed based on age and status
+                if let Ok(job) = Job::from_json(&json) {
                     let should_remove = job.created_at.is_some_and(|created_at| {
                         created_at < cutoff_date && status.map_or(true, |s| s.contains(&job.status))
                     });
-
                     if should_remove {
-                        // Remove job from the processing set
-                        let _: i32 = conn.srem(&processing_key, &job_id).await?;
-
-                        // Delete the job key
+                        let _: () = conn.lrem(&queue_key, 1, &job_id).await?;
                         let _: () = conn.del(&job_key).await?;
                     }
                 }
@@ -738,19 +679,36 @@ pub async fn clear_jobs_older_than(
         }
     }
 
-    // Process standalone job keys (completed, failed, or cancelled jobs)
+    for processing_key in processing_keys {
+        let job_ids: Vec<String> = conn.smembers(&processing_key).await?;
+        for job_id in job_ids {
+            let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
+            let job_json: Option<String> = conn.get(&job_key).await?;
+            if let Some(json) = job_json {
+                if let Ok(mut job) = Job::from_json(&json) {
+                    if job.status == JobStatus::Queued {
+                        job.status = JobStatus::Processing;
+                    }
+                    let should_remove = job.created_at.is_some_and(|created_at| {
+                        created_at < cutoff_date && status.map_or(true, |s| s.contains(&job.status))
+                    });
+                    if should_remove {
+                        let _: () = conn.srem(&processing_key, &job_id).await?;
+                        let _: () = conn.del(&job_key).await?;
+                    }
+                }
+            }
+        }
+    }
+
     for job_key in job_keys {
         let job_json: Option<String> = conn.get(&job_key).await?;
-
         if let Some(json) = job_json {
             if let Ok(job) = Job::from_json(&json) {
-                // Check if the job should be removed based on age and status
                 let should_remove = job.created_at.is_some_and(|created_at| {
                     created_at < cutoff_date && status.map_or(true, |s| s.contains(&job.status))
                 });
-
                 if should_remove {
-                    // Delete the job key
                     let _: () = conn.del(&job_key).await?;
                 }
             }
@@ -790,52 +748,35 @@ pub async fn requeue(client: &RedisPool, age_minutes: &i64) -> Result<()> {
         let queue_key = format!("{QUEUE_KEY_PREFIX}{queue_name}");
 
         // Get all jobs in the processing set
-        let processing_jobs: Vec<String> = conn.smembers(&processing_key).await?;
+        let job_ids: Vec<String> = conn.smembers(&processing_key).await?;
 
         // Check each job in the processing set
-        for job_id in &processing_jobs {
-            // Get the actual job data using the ID
-            let job_key = String::from(JOB_KEY_PREFIX) + job_id;
+        for job_id in job_ids {
+            let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
             let job_json: Option<String> = conn.get(&job_key).await?;
-
             if let Some(json) = job_json {
                 if let Ok(mut job) = Job::from_json(&json) {
-                    // Check if the job is old enough to be requeued
                     let should_requeue = if let Some(updated_at) = job.updated_at {
                         updated_at < cutoff_time
                     } else if let Some(created_at) = job.created_at {
-                        // If no updated_at, use created_at
                         created_at < cutoff_time
                     } else {
                         false
                     };
-
                     if should_requeue {
-                        // Job has been processing for too long, requeue it
                         job.status = JobStatus::Queued;
                         job.updated_at = Some(Utc::now());
-
-                        // Update the job in Redis
-                        if let Ok(updated_json) = job.to_json() {
-                            // First, remove from the processing set
-                            let _: i32 = conn.srem(&processing_key, job_id).await?;
-
-                            // Update the job record
-                            let _: () = conn.set(&job_key, &updated_json).await?;
-
-                            // Add back to the queue
-                            let _: () = conn.rpush(&queue_key, &updated_json).await?;
-
-                            // Track count for logging
-                            *requeued_counts.entry(queue_name.clone()).or_insert(0) += 1;
-                        }
+                        let updated_json = job.to_json()?;
+                        let _: () = conn.srem(&processing_key, &job_id).await?;
+                        let _: () = conn.set(&job_key, &updated_json).await?;
+                        let _: () = conn.rpush(&queue_key, &job_id).await?;
+                        *requeued_counts.entry(queue_name.clone()).or_insert(0) += 1;
                     }
                 }
             }
         }
     }
 
-    // Also check for failed jobs to requeue
     let failed_pattern = "failed:*";
     let failed_keys: Vec<String> = redis::cmd("KEYS")
         .arg(failed_pattern)
@@ -843,60 +784,39 @@ pub async fn requeue(client: &RedisPool, age_minutes: &i64) -> Result<()> {
         .await?;
 
     for failed_key in failed_keys {
-        // Extract queue name from failed key
         let queue_name = failed_key.trim_start_matches("failed:").to_string();
         let queue_key = format!("{QUEUE_KEY_PREFIX}{queue_name}");
+        let job_ids: Vec<String> = conn.smembers(&failed_key).await?;
 
-        // Get all jobs in the failed set
-        let failed_jobs: Vec<String> = conn.smembers(&failed_key).await?;
-
-        // Check each job in the failed set
-        for job_id in &failed_jobs {
-            // Get the actual job data using the ID
-            let job_key = String::from(JOB_KEY_PREFIX) + job_id;
+        for job_id in job_ids {
+            let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
             let job_json: Option<String> = conn.get(&job_key).await?;
-
             if let Some(json) = job_json {
                 if let Ok(mut job) = Job::from_json(&json) {
-                    // Check if the job is old enough to be requeued
                     let should_requeue = if let Some(updated_at) = job.updated_at {
                         updated_at < cutoff_time && job.status == JobStatus::Failed
                     } else {
                         false
                     };
-
                     if should_requeue {
-                        // Job has been failed for long enough, requeue it
                         job.status = JobStatus::Queued;
                         job.updated_at = Some(Utc::now());
-
-                        // Update the job in Redis
-                        if let Ok(updated_json) = job.to_json() {
-                            // First, remove from the failed set
-                            let _: i32 = conn.srem(&failed_key, job_id).await?;
-
-                            // Update the job record
-                            let _: () = conn.set(&job_key, &updated_json).await?;
-
-                            // Add back to the queue
-                            let _: () = conn.rpush(&queue_key, &updated_json).await?;
-
-                            // Track count for logging
-                            *requeued_counts.entry(queue_name.clone()).or_insert(0) += 1;
-                        }
+                        let updated_json = job.to_json()?;
+                        let _: () = conn.srem(&failed_key, &job_id).await?;
+                        let _: () = conn.set(&job_key, &updated_json).await?;
+                        let _: () = conn.rpush(&queue_key, &job_id).await?;
+                        *requeued_counts.entry(queue_name.clone()).or_insert(0) += 1;
                     }
                 }
             }
         }
     }
 
-    // Log the requeue counts
     for (queue, count) in requeued_counts {
         if count > 0 {
             debug!(queue = queue, count = count, "requeued jobs");
         }
     }
-
     Ok(())
 }
 
@@ -922,37 +842,28 @@ pub async fn cancel_jobs_by_name(client: &RedisPool, job_name: &str) -> Result<(
     // Process each queue
     for queue_key in queue_keys {
         // Get all jobs in the queue
-        let queue_jobs: Vec<String> = conn.lrange(&queue_key, 0, -1).await?;
-
-        // Process each job individually
-        for job_json in queue_jobs {
-            if let Ok(mut job) = Job::from_json(&job_json) {
-                if job.name == job_name && job.status == JobStatus::Queued {
-                    // Mark this job as cancelled
-                    job.status = JobStatus::Cancelled;
-                    job.updated_at = Some(Utc::now());
-
-                    // Update the job key
-                    let job_key = String::from(JOB_KEY_PREFIX) + &job.id;
-                    let updated_json = job.to_json()?;
-
-                    // Remove this specific job from the queue
-                    let _: i32 = conn.lrem(&queue_key, 1, &job_json).await?;
-
-                    // Update the job in Redis
-                    let _: () = conn.set(&job_key, &updated_json).await?;
-
-                    // Store cancelled job in a set for tracking (optional)
-                    let cancelled_key = format!(
-                        "cancelled:{}",
-                        queue_key.trim_start_matches(QUEUE_KEY_PREFIX)
-                    );
-                    let _: () = conn.sadd(&cancelled_key, &updated_json).await?;
+        let job_ids: Vec<String> = conn.lrange(&queue_key, 0, -1).await?;
+        for job_id in job_ids {
+            let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
+            let job_json: Option<String> = conn.get(&job_key).await?;
+            if let Some(json) = job_json {
+                if let Ok(mut job) = Job::from_json(&json) {
+                    if job.name == job_name && job.status == JobStatus::Queued {
+                        job.status = JobStatus::Cancelled;
+                        job.updated_at = Some(Utc::now());
+                        let updated_json = job.to_json()?;
+                        let _: () = conn.lrem(&queue_key, 1, &job_id).await?;
+                        let _: () = conn.set(&job_key, &updated_json).await?;
+                        let cancelled_key = format!(
+                            "cancelled:{}",
+                            queue_key.trim_start_matches(QUEUE_KEY_PREFIX)
+                        );
+                        let _: () = conn.sadd(&cancelled_key, &job_id).await?;
+                    }
                 }
             }
         }
     }
-
     Ok(())
 }
 
@@ -963,8 +874,6 @@ pub fn get_queues(config_queues: &Option<Vec<String>>) -> Vec<String> {
         .iter()
         .map(ToString::to_string)
         .collect::<Vec<_>>();
-
-    // add if missing
     if let Some(config_queues) = config_queues {
         for q in config_queues {
             if !queues.iter().any(|aq| q == aq) {
@@ -972,7 +881,6 @@ pub fn get_queues(config_queues: &Option<Vec<String>>) -> Vec<String> {
             }
         }
     }
-
     queues
 }
 
@@ -992,22 +900,17 @@ pub async fn create_provider(qcfg: &RedisQueueConfig) -> Result<Queue> {
     let client = connect(&qcfg.uri)?;
     let registry = JobRegistry::new();
     let token = CancellationToken::new();
-
     let run_opts = RunOpts {
         num_workers: qcfg.num_workers,
         poll_interval_sec: 1,
         queues: qcfg.queues.clone(),
     };
-
     debug!(
         queues = ?qcfg.queues,
         num_workers = qcfg.num_workers,
         "creating Redis queue provider"
     );
-
-    // Wait for 3 seconds to ensure Redis is ready
     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-
     Ok(Queue::Redis(
         client,
         Arc::new(tokio::sync::Mutex::new(registry)),
@@ -1025,11 +928,15 @@ mod tests {
 
     async fn setup_redis() -> (RedisPool, ContainerAsync<GenericImage>) {
         let (redis_url, container) = setup_redis_container().await;
-
-        // Connect to Redis
         let client = connect(&redis_url).expect("connect to redis");
-
         (client, container)
+    }
+
+    async fn get_test_connection(client: &RedisPool) -> Connection {
+        client
+            .get_multiplexed_async_connection()
+            .await
+            .expect("get connection")
     }
 
     async fn redis_seed_data(client: &RedisPool) -> Result<()> {
@@ -1037,7 +944,7 @@ mod tests {
         let now = Utc::now();
         for i in 0..5 {
             let complete_job = Job {
-                id: format!("job{}", i),
+                id: format!("job{i}"),
                 name: "TestJob".to_string(),
                 data: serde_json::json!({"counter": i}),
                 status: JobStatus::Completed,
@@ -1084,7 +991,10 @@ mod tests {
 
         // Dequeue job
         let queues = vec!["default".to_string()];
-        let job_opt = dequeue(&client, &queues, &[]).await.expect("dequeue");
+        let mut conn = get_test_connection(&client).await;
+        let job_opt = dequeue_with_conn(&mut conn, &queues, &[])
+            .await
+            .expect("dequeue");
 
         // Verify job was dequeued
         assert!(job_opt.is_some());
@@ -1097,7 +1007,7 @@ mod tests {
 
         // Seed data
         if let Err(e) = redis_seed_data(&client).await {
-            panic!("Failed to seed data: {}", e);
+            panic!("Failed to seed data: {e}");
         }
 
         // Verify data exists first
@@ -1146,7 +1056,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_can_enqueue_with_queue_redis() {
-        // Setup Redis directly with testcontainer
         let (client, _container) = setup_redis().await;
 
         // Test enqueue with custom queue
@@ -1162,14 +1071,16 @@ mod tests {
         .is_ok());
 
         // Verify job was created in correct queue first
-        let mut conn = get_connection(&client).await.expect("get connection");
+        let mut conn = get_test_connection(&client).await;
         let queue_key = format!("{QUEUE_KEY_PREFIX}mailer");
         let queue_len: i64 = conn.llen(&queue_key).await.expect("get queue length");
         assert_eq!(queue_len, 1);
 
         // Test dequeue from mailer queue
         let queues = vec!["mailer".to_string()];
-        let _job_opt = dequeue(&client, &queues, &[]).await.expect("dequeue");
+        let _job_opt = dequeue_with_conn(&mut conn, &queues, &[])
+            .await
+            .expect("dequeue");
 
         // Queue should now be empty
         let queue_len: i64 = conn.llen(&queue_key).await.expect("get queue length");
@@ -1178,8 +1089,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_can_complete_job_redis() {
-        // Setup Redis directly with reliable container setup
-        // Setup Redis directly
         let (client, _container) = setup_redis().await;
 
         // Add job
@@ -1190,14 +1099,18 @@ mod tests {
 
         // Dequeue job
         let queues = vec!["default".to_string()];
-        let job_opt = dequeue(&client, &queues, &[]).await.expect("dequeue");
+        let mut conn = get_test_connection(&client).await;
+        let job_opt = dequeue_with_conn(&mut conn, &queues, &[])
+            .await
+            .expect("dequeue");
         let (job, queue) = job_opt.unwrap();
 
         // Complete job
-        assert!(complete_job(&client, &job.id, &queue, None).await.is_ok());
+        assert!(complete_job_with_conn(&mut conn, &job.id, &queue, None)
+            .await
+            .is_ok());
 
         // Verify job is not in processing set
-        let mut conn = get_connection(&client).await.expect("get connection");
         let processing_key = format!("{PROCESSING_KEY_PREFIX}{queue}");
         let is_member: bool = conn
             .sismember(&processing_key, &job.id)
@@ -1218,7 +1131,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_can_complete_job_with_interval_redis() {
-        // Setup Redis directly with testcontainer
         let (client, _container) = setup_redis().await;
 
         // Add job
@@ -1231,32 +1143,38 @@ mod tests {
 
         // Dequeue job
         let queues = vec!["default".to_string()];
-        let job_opt = dequeue(&client, &queues, &[]).await.expect("dequeue");
+        let mut conn = get_test_connection(&client).await;
+        let job_opt = dequeue_with_conn(&mut conn, &queues, &[])
+            .await
+            .expect("dequeue");
         let (job, queue) = job_opt.unwrap();
 
         // Complete job with interval to reschedule
-        assert!(complete_job(&client, &job.id, &queue, Some(1000))
-            .await
-            .is_ok());
+        assert!(
+            complete_job_with_conn(&mut conn, &job.id, &queue, Some(1000))
+                .await
+                .is_ok()
+        );
 
         // Verify job is back in queue
-        let mut conn = get_connection(&client).await.expect("get connection");
         let queue_key = format!("{QUEUE_KEY_PREFIX}{queue}");
         let queue_len: i64 = conn.llen(&queue_key).await.expect("get queue length");
         assert_eq!(queue_len, 1);
 
-        // Verify job has future run_at time
-        let queue_jobs: Vec<String> = conn
-            .lrange(&queue_key, 0, -1)
-            .await
-            .expect("get queue jobs");
-        let requeued_job = Job::from_json(&queue_jobs[0]).expect("parse job");
+        // Get the job ID from the queue
+        let job_id: String = conn.lindex(&queue_key, 0).await.expect("get job id");
+
+        // Get the job data using the ID
+        let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
+        let job_json: String = conn.get(&job_key).await.expect("get job data");
+        let requeued_job = Job::from_json(&job_json).expect("parse job");
+
+        // Verify the job has future run_at time
         assert!(requeued_job.run_at > Utc::now());
     }
 
     #[tokio::test]
     async fn test_can_fail_job_redis() {
-        // Setup Redis directly with testcontainer
         let (client, _container) = setup_redis().await;
 
         // Add job
@@ -1267,15 +1185,19 @@ mod tests {
 
         // Dequeue job
         let queues = vec!["default".to_string()];
-        let job_opt = dequeue(&client, &queues, &[]).await.expect("dequeue");
+        let mut conn = get_test_connection(&client).await;
+        let job_opt = dequeue_with_conn(&mut conn, &queues, &[])
+            .await
+            .expect("dequeue");
         let (job, queue) = job_opt.unwrap();
 
         // Fail job
         let error = Error::string("test failure");
-        assert!(fail_job(&client, &job.id, &queue, &error).await.is_ok());
+        assert!(fail_job_with_conn(&mut conn, &job.id, &queue, &error)
+            .await
+            .is_ok());
 
         // Verify job is not in processing set
-        let mut conn = get_connection(&client).await.expect("get connection");
         let processing_key = format!("{PROCESSING_KEY_PREFIX}{queue}");
         let is_member: bool = conn
             .sismember(&processing_key, &job.id)
@@ -1386,7 +1308,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_job_filtering_by_tags() {
-        // Use the proper container setup pattern
         let (client, _container) = setup_redis().await;
 
         // Clear any existing data for clean test environment
@@ -1428,7 +1349,8 @@ mod tests {
 
         // Test dequeue with tag1 filter
         let queues = vec!["default".to_string()];
-        let job_opt = dequeue(&client, &queues, &["tag1".to_string()])
+        let mut conn = get_test_connection(&client).await;
+        let job_opt = dequeue_with_conn(&mut conn, &queues, &["tag1".to_string()])
             .await
             .expect("dequeue with tag1");
 
@@ -1457,8 +1379,8 @@ mod tests {
 
         // Seed data with error handling
         match redis_seed_data(&client).await {
-            Ok(_) => (),
-            Err(e) => panic!("Failed to seed data: {}", e),
+            Ok(()) => (),
+            Err(e) => panic!("Failed to seed data: {e}"),
         }
 
         // Count jobs by status before clearing
