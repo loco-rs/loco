@@ -9,7 +9,7 @@ pub mod wizard;
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Matching minimal Loco version.
-pub const LOCO_VERSION: &str = "0.15";
+pub const LOCO_VERSION: &str = "0.16";
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
