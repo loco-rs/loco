@@ -44,6 +44,7 @@
   - Updated Loco template crates ([#1440](https://github.com/loco-rs/loco/pull/1440))
  * Support custom flags from `sea-orm entity`. [https://github.com/loco-rs/loco/pull/1442](https://github.com/loco-rs/loco/pull/1442)
  * Better `loco new` cleanup folders. [https://github.com/loco-rs/loco/pull/1429](https://github.com/loco-rs/loco/pull/1429)
+ * Remove legacy mailer derive macro code. [https://github.com/loco-rs/loco/pull/1472](https://github.com/loco-rs/loco/pull/1472)
 
 
 
