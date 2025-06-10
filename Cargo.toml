@@ -9,7 +9,7 @@ license = "Apache-2.0"
 
 [package]
 name = "loco-rs"
-version = "0.15.0"
+version = "0.16.0"
 description = "The one-person framework for Rust"
 homepage = "https://loco.rs/"
 documentation = "https://docs.rs/loco-rs"
@@ -52,7 +52,7 @@ integration_test = []
 embedded_assets = []
 
 [dependencies]
-loco-gen = { version = "0.15.0", path = "./loco-gen" }
+loco-gen = { version = "0.16.0", path = "./loco-gen" }
 backtrace_printer = { version = "1.3.0" }
 
 # cli
