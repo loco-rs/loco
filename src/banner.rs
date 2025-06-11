@@ -22,8 +22,11 @@ pub const BANNER: &str = r"
 
 pub fn print_banner(boot_result: &BootResult, server_config: &ServeParams) {
     let ctx = &boot_result.app_context;
-    println!("{BANNER}");
     let config = &ctx.config;
+
+    if config.launcher.banner {
+        println!("{BANNER}");
+    }
 
     println!("environment: {}", ctx.environment.to_string().green());
 
