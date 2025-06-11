@@ -1136,9 +1136,6 @@ mod tests {
         struct PanicWorker;
         #[async_trait::async_trait]
         impl BackgroundWorker<()> for PanicWorker {
-            fn build(_ctx: &crate::app::AppContext) -> Self {
-                Self
-            }
             async fn perform(&self, _args: ()) -> crate::Result<()> {
                 panic!("intentional panic for testing");
             }
