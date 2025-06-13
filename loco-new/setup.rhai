@@ -5,7 +5,9 @@
 // to the Rust environment, GitHub actions, and formatting settings.
 
 gen.copy_template(".github/workflows/ci.yaml.t");     // Actions ci template
-gen.copy_files([".gitignore", ".rustfmt.toml", "README.md"]);
+gen.copy_files([".gitignore", ".rustfmt.toml"]);
+
+create_readme(settings.package_name, template);
 
 gen.copy_template_dir(".cargo");
 
@@ -78,7 +80,7 @@ if db {
         gen.copy_template("tests/models/users.rs.t");              // User model test template
         gen.copy_template("tests/requests/prepare_data.rs.t");     // Data preparation template for tests
     }
-   
+
    gen.copy_template("examples/playground.rs.t");                 // Example playground template with DB setup
 }
 
@@ -98,7 +100,7 @@ if settings.auth {
 
    gen.copy_template("tests/requests/auth.rs.t");   // Auth tests template
    gen.copy_dir("tests/requests/snapshots");        // Snapshots directory for auth tests
-} 
+}
 else {
    gen.copy_file("src/controllers/home.rs");        // Home controller if auth not enabled
    gen.copy_file("src/views/home.rs");              // Home views
