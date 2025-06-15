@@ -35,8 +35,8 @@ pub fn assert_contains(content: &str, expected: &str) {
 
     assert!(
         content_sanitized.contains(&expected_sanitized),
-        "Assertion failed: The content did not contain the expected string. \
-         Expected: '{expected_sanitized}', content:\n{content_sanitized}"
+        "Assertion failed: The content did not contain the expected string. Expected: \
+         '{expected_sanitized}', content:\n{content_sanitized}"
     );
 }
 
@@ -46,7 +46,7 @@ pub fn assert_not_contains(content: &str, unexpected: &str) {
 
     assert!(
         !content_sanitized.contains(&unexpected_sanitized),
-        "Assertion failed: The content unexpectedly contained the string. \
-         Unexpected: '{unexpected_sanitized}', content:\n{content_sanitized}"
+        "Assertion failed: The content unexpectedly contained the string. Unexpected: \
+         '{unexpected_sanitized}', content:\n{content_sanitized}"
     );
 }

@@ -295,7 +295,8 @@ pub fn assert_css_eq_list(html: &str, selector: &str, expected_texts: &[&str]) {
     );
 }
 
-/// Parses the given HTML string and selects the elements matching the specified CSS selector.
+/// Parses the given HTML string and selects the elements matching the specified
+/// CSS selector.
 ///
 /// # Examples
 ///
@@ -563,6 +564,12 @@ mod tests {
             select(html, ".some-class"),
             vec!["<div class=\"some-class\">Some content here</div>"]
         );
-        assert_eq!(select(html, "ul"), vec!["<ul id=\"posts\">\n                <li>Post 1</li>\n                <li>Post 2</li>\n                <li>Post 3</li>\n            </ul>"]);
+        assert_eq!(
+            select(html, "ul"),
+            vec![
+                "<ul id=\"posts\">\n                <li>Post 1</li>\n                <li>Post \
+                 2</li>\n                <li>Post 3</li>\n            </ul>"
+            ]
+        );
     }
 }

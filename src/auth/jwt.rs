@@ -179,11 +179,14 @@ mod tests {
         expected_claim.extend(claims);
         let expected_value = Value::from(expected_claim);
 
-        // We check between `Value` instead of `String` to avoid key ordering issues when serializing.
-        // It is because `expected_value` has all the keys in alphabetical order, as the `Value` serialization ensures that.
-        // But when serializing `input_user_claims`, first the `pid` and `exp` fields are serialized (in that order),
-        // and then the claims are serialized in alfabetic order. So, the resulting JSON string from the `input_user_claims` serialization
-        // may have the `pid` and `exp` fields unordered which differs from the `Value` serialization.
+        // We check between `Value` instead of `String` to avoid key ordering issues
+        // when serializing. It is because `expected_value` has all the keys in
+        // alphabetical order, as the `Value` serialization ensures that.
+        // But when serializing `input_user_claims`, first the `pid` and `exp` fields
+        // are serialized (in that order), and then the claims are serialized in
+        // alfabetic order. So, the resulting JSON string from the `input_user_claims`
+        // serialization may have the `pid` and `exp` fields unordered which
+        // differs from the `Value` serialization.
         assert_eq!(
             expected_value,
             serde_json::to_value(&input_user_claims).unwrap()

@@ -1,7 +1,8 @@
-use crate::Error;
 use axum::extract::{Form, FromRequest, Json, Request};
 use serde::de::DeserializeOwned;
 use validator::Validate;
+
+use crate::Error;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct JsonValidateWithMessage<T>(pub T);
@@ -79,7 +80,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use axum::{
         body::{to_bytes, Body},
         http::{self, Request as HttpRequest, StatusCode},
@@ -88,6 +88,8 @@ mod tests {
     use serde::{Deserialize, Serialize};
     use serde_json::{json, Value};
     use validator::Validate;
+
+    use super::*;
 
     // Define a test struct that implements Validate
     #[derive(Debug, Serialize, Deserialize, Validate)]

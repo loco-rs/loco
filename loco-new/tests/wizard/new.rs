@@ -129,16 +129,19 @@ fn test_combination(
         }
 
         // Generate deployment nginx
-        tester.run_generate(&vec!["deployment", "nginx"]);
+        tester.run_generate(&vec!["deployment", "--kind", "nginx"]);
 
-        // Generate deployment nginx
-        tester.run_generate(&vec!["deployment", "docker"]);
+        // Generate deployment docker
+        tester.run_generate(&vec!["deployment", "--kind", "docker"]);
 
         // Generate deployment shuttle
-        tester.run_generate(&vec!["deployment", "shuttle"]);
+        tester.run_generate(&vec!["deployment", "--kind", "shuttle"]);
 
         // Generate data
         tester.run_generate(&vec!["data", "stocks"]);
+
+        // Generate deployment kamal
+        tester.run_generate(&vec!["deployment", "--kind", "kamal"]);
 
         if db.enable() {
             // Generate Model
