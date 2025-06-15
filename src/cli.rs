@@ -14,9 +14,6 @@
 //!     cli::main::<App, Migrator>().await
 //! }
 //! ```
-#[cfg(feature = "with-db")]
-use {crate::boot::run_db, crate::db, crate::doctor, sea_orm_migration::MigratorTrait};
-
 #[cfg(any(
     feature = "bg_redis",
     feature = "bg_pg",
@@ -29,6 +26,8 @@ use std::{collections::BTreeMap, fmt::Write, path::PathBuf};
 use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueHint};
 use colored::Colorize;
 use duct::cmd;
+#[cfg(feature = "with-db")]
+use {crate::boot::run_db, crate::db, crate::doctor, sea_orm_migration::MigratorTrait};
 
 #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
 use crate::bgworker::JobStatus;
@@ -547,8 +546,17 @@ impl DeploymentKind {
                 Self::copy_static_assets(&mut copy_paths, config);
                 let is_client_side_rendering =
                     PathBuf::from("frontend").join("package.json").exists();
+
+                #[cfg(feature = "with-db")]
                 let postgres = config.database.uri.starts_with("postgres://");
+                #[cfg(not(feature = "with-db"))]
+                let postgres = false;
+
+                #[cfg(feature = "with-db")]
                 let sqlite = config.database.uri.starts_with("sqlite://");
+                #[cfg(not(feature = "with-db"))]
+                let sqlite = false;
+
                 let background_queue = config
                     .queue
                     .as_ref()
