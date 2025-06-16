@@ -11,6 +11,7 @@ use std::{
 
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
+use axum_csrf::{CsrfConfig, CsrfLayer};
 use dashmap::DashMap;
 
 use crate::{
@@ -383,7 +384,9 @@ pub trait Hooks: Send {
     ///
     /// # Errors
     /// Axum router error
-    async fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+    async fn after_routes(mut router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+        // Add CSRF protection layer by default
+        router = router.layer(CsrfLayer::new(CsrfConfig::default()));
         Ok(router)
     }
 
