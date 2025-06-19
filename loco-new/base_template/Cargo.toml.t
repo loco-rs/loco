@@ -32,7 +32,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 regex = { version = "1.11" }
 {%- if settings.db %}
 migration = { path = "migration" }
-sea-orm = { version = "1.1", features = [
+sea-orm = { version = "~1.1", features = [
   "sqlx-sqlite",
   "sqlx-postgres",
   "runtime-tokio-rustls",
