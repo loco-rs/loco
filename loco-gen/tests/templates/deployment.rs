@@ -1,5 +1,5 @@
 use insta::assert_snapshot;
-use loco_gen::{collect_messages, generate, AppInfo, Component, DeploymentKind};
+use loco_gen::{collect_messages, generate, AppInfo, Component, DeploymentKind, DEPLOYMENT_SHUTTLE_RUNTIME_VERSION};
 use rrgen::RRgen;
 use std::{fs, path::PathBuf};
 
@@ -106,7 +106,8 @@ fn can_generate_shuttle() {
 
     let component = Component::Deployment {
         kind: DeploymentKind::Shuttle {
-            runttime_version: Some("0.1.1".to_string()),
+            //runttime_version: Some("0.50.0".to_string()),//should not be hard coded. get it from lib.rs?
+            runttime_version: Some(DEPLOYMENT_SHUTTLE_RUNTIME_VERSION.to_string()),
         },
     };
 
