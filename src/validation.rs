@@ -43,7 +43,7 @@ use std::ops::{Deref, DerefMut};
 #[cfg(feature = "with-db")]
 use sea_orm::DbErr;
 use serde::{Deserialize, Serialize};
-use validator::{Validate, ValidationError, ValidationErrors};
+use validator::{Validate, ValidationErrors};
 
 // this is a line-serialization type. it is used as an intermediate format
 // to hold validation error data when we transform from
@@ -146,13 +146,6 @@ mod tests {
     pub struct TestValidator {
         #[validate(length(min = 4, message = "Invalid min characters long."))]
         pub name: String,
-    }
-
-    #[rstest]
-    #[case("test@example.com", true)]
-    #[case("invalid-email", false)]
-    fn can_validate_email(#[case] test_name: &str, #[case] expected: bool) {
-        assert_eq!(is_valid_email(test_name).is_ok(), expected);
     }
 
     #[cfg(feature = "with-db")]
