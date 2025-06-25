@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.16.0
+
 **Note:** For detailed upgrade steps for breaking changes, see the [upgrade guide](https://loco.rs/docs/extras/upgrades/#upgrade-from-0-15-x-to-0-16-x).
 
 - chore: improve readability and performance by using map_err in Model. [https://github.com/loco-rs/loco/pull/1311](https://github.com/loco-rs/loco/pull/1311)
