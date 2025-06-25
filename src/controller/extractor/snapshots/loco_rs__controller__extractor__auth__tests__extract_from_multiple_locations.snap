@@ -1,0 +1,8 @@
+---
+source: src/controller/extractor/auth.rs
+expression: "extract_token(&jwt_config, &parts)"
+snapshot_kind: text
+---
+Ok(
+    "query_token_value",
+)
