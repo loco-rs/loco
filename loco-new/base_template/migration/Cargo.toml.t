@@ -9,7 +9,6 @@ name = "migration"
 path = "src/lib.rs"
 
 [dependencies]
-async-std = { version = "1", features = ["attributes", "tokio1"] }
 loco-rs = { workspace = true }
 
 
