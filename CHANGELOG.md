@@ -37,6 +37,7 @@
   - [`thousands`](https://github.com/loco-rs/loco/pull/1431)
   - [`cfg-if`](https://github.com/loco-rs/loco/pull/1432)
   - [`reqwest`](https://github.com/loco-rs/loco/pull/1434)
+  - [`serde_variant`](https://github.com/loco-rs/loco/pull/1493)
 
 * **Dependency updates:**
   - Bumped [`tokio`] to `1.45` and [`tokio-util`] to `0.7` ([#1435](https://github.com/loco-rs/loco/pull/1435))
@@ -49,6 +50,7 @@
 - Support custom flags from `sea-orm entity`. [https://github.com/loco-rs/loco/pull/1442](https://github.com/loco-rs/loco/pull/1442)
 - Better `loco new` cleanup folders. [https://github.com/loco-rs/loco/pull/1429](https://github.com/loco-rs/loco/pull/1429)
 - Remove legacy mailer derive macro code. [https://github.com/loco-rs/loco/pull/1472](https://github.com/loco-rs/loco/pull/1472)
+- Make extract_token and get_jwt_from_config fn public. [https://github.com/loco-rs/loco/pull/1495](https://github.com/loco-rs/loco/pull/1495)
 
 ## v0.15.0
 
