@@ -166,29 +166,23 @@ pub fn get_jwt_from_config(ctx: &AppContext) -> LocoResult<&JWTConfig> {
 /// Returns an error when the token cannot be extracted from any of the configured locations,
 /// such as missing headers, invalid formats, or inaccessible request data.
 pub fn extract_token(jwt_config: &JWTConfig, parts: &Parts) -> LocoResult<String> {
-    let locations = get_jwt_locations(&jwt_config.location);
-    let mut attempted_locations = Vec::new();
+    let locations = get_jwt_locations(jwt_config.location.as_ref());
 
     for location in &locations {
-        attempted_locations.push(location_to_string(location));
-
         if let Ok(token) = extract_token_from_location(location, parts) {
             return Ok(token);
         }
     }
 
     // If we get here, none of the locations worked
-    Err(Error::Unauthorized(format!(
-        "Token not found in any of the configured locations: [{}]",
-        attempted_locations.join(", ")
-    )))
+    Err(Error::Unauthorized("Token not found in any of the configured JWT locations. Please check your auth.jwt.location configuration.".to_string()))
 }
 
 /// Get the list of JWT locations to try, with Bearer as default
 fn get_jwt_locations(
-    config: &Option<crate::config::JWTLocationConfig>,
+    config: Option<&crate::config::JWTLocationConfig>,
 ) -> Vec<&crate::config::JWTLocation> {
-    match config.as_ref() {
+    match config {
         Some(crate::config::JWTLocationConfig::Single(location)) => vec![location],
         Some(crate::config::JWTLocationConfig::Multiple(locations)) => locations.iter().collect(),
         None => vec![&crate::config::JWTLocation::Bearer],
@@ -207,14 +201,6 @@ fn extract_token_from_location(
     }
 }
 
-/// Convert a JWTLocation to a human-readable string for error messages
-fn location_to_string(location: &crate::config::JWTLocation) -> String {
-    match location {
-        crate::config::JWTLocation::Bearer => "Bearer header".to_string(),
-        crate::config::JWTLocation::Query { name } => format!("Query parameter '{}'", name),
-        crate::config::JWTLocation::Cookie { name } => format!("Cookie '{}'", name),
-    }
-}
 /// Function to extract a token from the authorization header
 ///
 /// # Errors
@@ -360,11 +346,10 @@ mod tests {
         let error_result = extract_token(&jwt_config, &parts_no_token);
         assert!(error_result.is_err());
 
-        // For multiple locations test, verify it contains information about attempted locations
+        // For multiple locations test, verify it contains configuration guidance
         if test_name == "extract_from_multiple_locations" {
             let error_msg = format!("{:?}", error_result.unwrap_err());
-            assert!(error_msg.contains("Cookie 'nonexistent'"));
-            assert!(error_msg.contains("Query parameter 'query_token'"));
+            assert!(error_msg.contains("auth.jwt.location configuration"));
         }
     }
 }
