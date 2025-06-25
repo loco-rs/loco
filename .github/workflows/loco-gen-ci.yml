@@ -36,7 +36,8 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Run cargo fmt
         run: cargo fmt --all -- --check
-      - name: Run cargo clippy --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms
+      - name: Run cargo clippy
+        run: cargo clippy --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms
 
   test:
     needs: [style]
