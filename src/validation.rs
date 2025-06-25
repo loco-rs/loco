@@ -55,24 +55,6 @@ pub struct ModelValidationMessage {
     pub message: Option<String>,
 }
 
-/// Validate the given email
-///
-/// # Errors
-///
-/// Return an error in case the email is invalid.
-#[deprecated(
-    since = "0.15.1",
-    note = "Use the builtin email validator from `validator`"
-)]
-pub fn is_valid_email(email: &str) -> Result<(), ValidationError> {
-    if email.contains('@') {
-        Ok(())
-    } else {
-        Err(ValidationError::new("invalid email"))
-    }
-}
-
-///
 /// <DbErr conversion hack>
 ///
 /// Convert `ModelValidationErrors` (pretty) into a `DbErr` (ugly) for database
