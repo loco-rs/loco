@@ -1,5 +1,6 @@
-use sqlx::PgPool;
 use std::time::Duration;
+
+use sqlx::PgPool;
 use testcontainers::{
     core::{ContainerPort, WaitFor},
     runners::AsyncRunner,
@@ -10,11 +11,13 @@ use testcontainers::{
 ///
 /// # Returns
 ///
-/// A tuple containing the `PostgreSQL` connection URL and the container instance.
+/// A tuple containing the `PostgreSQL` connection URL and the container
+/// instance.
 ///
 /// # Panics
 ///
-/// This function will panic if it fails to set up, start, or connect to the PostgreSQL container.
+/// This function will panic if it fails to set up, start, or connect to the
+/// PostgreSQL container.
 pub async fn setup_postgres_container() -> (String, ContainerAsync<GenericImage>) {
     let pg_image = GenericImage::new("postgres", "15")
         .with_wait_for(WaitFor::message_on_stdout(
