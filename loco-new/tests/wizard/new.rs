@@ -69,6 +69,12 @@ fn test_combination(
     let mut env_map: HashMap<_, _> = std::env::vars().collect();
     env_map.insert("RUSTFLAGS".into(), "-D warnings".into());
 
+    if let Ok(sccache_wrapper) = std::env::var("RUSTC_WRAPPER") {
+        if sccache_wrapper == "sccache" {
+            env_map.insert("RUSTC_WRAPPER".into(), sccache_wrapper);
+        }
+    }
+
     let tester = Tester {
         dir: test_dir.root,
         env_map,
