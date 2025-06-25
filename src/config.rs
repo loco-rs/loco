@@ -403,9 +403,9 @@ pub struct Auth {
 /// JWT configuration structure.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct JWT {
-    /// The location where JWT tokens are expected to be found during
-    /// authentication.
-    pub location: Option<JWTLocation>,
+    /// The location(s) where JWT tokens are expected to be found during
+    /// authentication. Can be a single location or an array of locations.
+    pub location: Option<JWTLocationConfig>,
     /// The secret key For JWT token
     pub secret: String,
     /// The expiration time for authentication tokens
@@ -425,6 +425,16 @@ pub enum JWTLocation {
     Query { name: String },
     /// Authenticate using a token stored in a cookie.
     Cookie { name: String },
+}
+
+/// Configuration for JWT location(s) - supports both single location and multiple locations
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum JWTLocationConfig {
+    /// Single authentication location
+    Single(JWTLocation),
+    /// Multiple authentication locations (tried in order)
+    Multiple(Vec<JWTLocation>),
 }
 
 /// Server configuration structure.
