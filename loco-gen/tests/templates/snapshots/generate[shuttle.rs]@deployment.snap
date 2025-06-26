@@ -1,6 +1,7 @@
 ---
 source: loco-gen/tests/templates/deployment.rs
 expression: "fs::read_to_string(tree_fs.root.join(\"src\").join(\"bin\").join(\"shuttle.rs\")).expect(\"shuttle rs missing\")"
+snapshot_kind: text
 ---
 use loco_rs::boot::{create_app, StartMode};
 use loco_rs::environment::Environment;
