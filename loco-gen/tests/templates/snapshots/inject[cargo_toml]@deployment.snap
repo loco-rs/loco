@@ -1,10 +1,12 @@
 ---
 source: loco-gen/tests/templates/deployment.rs
 expression: "fs::read_to_string(tree_fs.root.join(\"Cargo.toml\")).expect(\"cargo.toml not exists\")"
+snapshot_kind: text
 ---
 [dependencies]
-shuttle-axum = "0.55.0"
-shuttle-runtime = { version = "0.55.0", default-features = false }
+shuttle-axum = "[SHUTTLE_RUNTIME_VERSION]"
+shuttle-runtime = { version = "[SHUTTLE_RUNTIME_VERSION]", default-features = false }
+shuttle-shared-db = { version = "[SHUTTLE_RUNTIME_VERSION]", features = ["postgres"] }
 
 
 [[bin]]
