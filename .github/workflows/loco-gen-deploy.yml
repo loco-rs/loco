@@ -2,16 +2,6 @@ name: "[loco-gen-deploy]"
 on:
   schedule:
     - cron: "0 0 * * *"
-  push:
-    branches:
-      - master
-    paths:
-      - "loco-new/**"
-      - "loco-gen/**"
-  pull_request:
-    paths:
-      - "loco-new/**"
-      - "loco-gen/**"
 
 env:
   RUST_TOOLCHAIN: stable

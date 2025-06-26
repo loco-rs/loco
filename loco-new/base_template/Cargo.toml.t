@@ -9,7 +9,7 @@
 [package]
 name = "{{settings.package_name}}"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 publish = false
 default-run = "{{settings.module_name}}-cli"
 
