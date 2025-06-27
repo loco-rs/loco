@@ -366,7 +366,9 @@ pub async fn create_context<H: Hooks>(
     config: Config,
 ) -> Result<AppContext> {
     if config.logger.pretty_backtrace {
-        std::env::set_var("RUST_BACKTRACE", "1");
+        unsafe {
+            std::env::set_var("RUST_BACKTRACE", "1");
+        }
         warn!(
             "pretty backtraces are enabled (this is great for development but has a runtime cost \
              for production. disable with `logger.pretty_backtrace` in your config yaml)"

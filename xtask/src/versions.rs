@@ -49,17 +49,23 @@ pub fn bump_version(version: &str) -> Result<()> {
     if env::var("LOCO_DEV_MODE_PATH").is_err() {
         let loco_path = current_dir()?.to_string_lossy().to_string();
         println!("setting LOCO_DEV_MODE_PATH to `{loco_path}`");
-        env::set_var("LOCO_DEV_MODE_PATH", loco_path);
+        unsafe {
+            env::set_var("LOCO_DEV_MODE_PATH", loco_path);
+        }
 
         // this should accelerate starters compilation
         println!("setting CARGO_SHARED_PATH");
-        env::set_var("CARGO_SHARED_PATH", "/tmp/cargo-shared-path");
+        unsafe {
+            env::set_var("CARGO_SHARED_PATH", "/tmp/cargo-shared-path");
+        }
     }
 
     cmd("cargo", ["test", "--", "--test-threads", "1"].as_slice())
         .dir(new_path)
         .run()?;
-    env::remove_var("CARGO_SHARED_PATH");
+    unsafe {
+        env::remove_var("CARGO_SHARED_PATH");
+    }
 
     // replace main versions
     let version_replacement = format!(r#"version = "{version}""#);
