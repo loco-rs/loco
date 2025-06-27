@@ -119,7 +119,7 @@ impl EmbeddedAssets {
         }
     }
 
-    fn serve(&self, uri: &str) -> impl IntoResponse {
+    fn serve(&self, uri: &str) -> impl IntoResponse + use<> {
         let assets = get_embedded_static_assets();
 
         assets.get(uri).map_or_else(
