@@ -64,8 +64,8 @@ impl Template {
         tera_instance.register_filter(
             "random_string",
             move |value: &tera::Value, _args: &HashMap<String, tera::Value>| {
-                if let tera::Value::Number(length) = value {
-                    if let Some(length) = length.as_u64() {
+                if let tera::Value::Number(length) = value
+                    && let Some(length) = length.as_u64() {
                         let rand_str: String = rng_clone.lock().map_or_else(
                             |_| {
                                 let mut r = StdRng::from_entropy();
@@ -75,7 +75,6 @@ impl Template {
                         );
                         return Ok(tera::Value::String(rand_str));
                     }
-                }
                 // Ok(tera::Value::String(String::new()))
                 Err(tera::Error::msg("arg must be a number"))
             },
