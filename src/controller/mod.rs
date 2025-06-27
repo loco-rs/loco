@@ -75,7 +75,7 @@ use colored::Colorize;
 pub use routes::Routes;
 use serde::Serialize;
 
-use crate::{errors::Error, Result};
+use crate::{Result, errors::Error};
 
 mod app_routes;
 mod backtrace;

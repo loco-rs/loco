@@ -23,19 +23,19 @@ use std::collections::HashMap;
 
 use axum::{
     extract::{FromRef, FromRequestParts, Query},
-    http::{request::Parts, HeaderMap},
+    http::{HeaderMap, request::Parts},
 };
 use axum_extra::extract::cookie;
 use serde::{Deserialize, Serialize};
 use tracing;
 
 use crate::{
+    Result as LocoResult,
     app::AppContext,
     auth,
     config::JWT as JWTConfig,
     errors::Error,
     model::{Authenticable, ModelError},
-    Result as LocoResult,
 };
 
 // ---------------------------------------
@@ -120,7 +120,8 @@ where
     }
 }
 
-/// extract a [JWT] token from request parts, using a non-mutable reference to the [Parts]
+/// extract a [JWT] token from request parts, using a non-mutable reference to
+/// the [Parts]
 ///
 /// # Errors
 /// Return an error when JWT token not configured or when the token is not valid
@@ -163,8 +164,9 @@ pub fn get_jwt_from_config(ctx: &AppContext) -> LocoResult<&JWTConfig> {
 ///
 /// # Errors
 ///
-/// Returns an error when the token cannot be extracted from the configured location,
-/// such as missing headers, invalid formats, or inaccessible request data.
+/// Returns an error when the token cannot be extracted from the configured
+/// location, such as missing headers, invalid formats, or inaccessible request
+/// data.
 pub fn extract_token(jwt_config: &JWTConfig, parts: &Parts) -> LocoResult<String> {
     #[allow(clippy::match_wildcard_for_single_variants)]
     match jwt_config

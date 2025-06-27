@@ -1,25 +1,26 @@
+use std::fmt::Write;
 /// `SQLite` based background job queue provider
 use std::{
     collections::HashMap, future::Future, panic::AssertUnwindSafe, pin::Pin, sync::Arc,
     time::Duration,
 };
 
-use super::{BackgroundWorker, JobStatus, Queue};
-use crate::{config::SqliteQueueConfig, Error, Result};
 use chrono::{DateTime, Utc};
 use futures_util::FutureExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 pub use sqlx::SqlitePool;
 use sqlx::{
-    sqlite::{SqliteConnectOptions, SqlitePoolOptions, SqliteRow},
     ConnectOptions, QueryBuilder, Row,
+    sqlite::{SqliteConnectOptions, SqlitePoolOptions, SqliteRow},
 };
-use std::fmt::Write;
 use tokio::{task::JoinHandle, time::sleep};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, trace};
 use ulid::Ulid;
+
+use super::{BackgroundWorker, JobStatus, Queue};
+use crate::{Error, Result, config::SqliteQueueConfig};
 type JobId = String;
 type JobData = JsonValue;
 
@@ -283,8 +284,8 @@ pub async fn enqueue(
     let id = Ulid::new().to_string();
     debug!(job_id = %id, job_name = %name, run_at = %run_at, tags = ?tags, "Enqueueing job");
     sqlx::query(
-        "INSERT INTO sqlt_loco_queue (id, task_data, name, run_at, interval, tags) VALUES ($1, $2, $3, \
-         DATETIME($4), $5, $6)",
+        "INSERT INTO sqlt_loco_queue (id, task_data, name, run_at, interval, tags) VALUES ($1, \
+         $2, $3, DATETIME($4), $5, $6)",
     )
     .bind(id.clone())
     .bind(data)
@@ -352,7 +353,8 @@ async fn dequeue(client: &SqlitePool, worker_tags: &[String]) -> Result<Option<J
 
     // Add tag parameters to the query with proper JSON wildcard format
     for tag in worker_tags {
-        // Format tag for JSON string search: each tag needs to be in format "%\"tagname\"%"
+        // Format tag for JSON string search: each tag needs to be in format
+        // "%\"tagname\"%"
         db_query = db_query.bind(format!("%\"{tag}\"%"));
     }
 
@@ -451,9 +453,9 @@ async fn fail_job(pool: &SqlitePool, id: &JobId, error: &crate::Error) -> Result
 
 /// Cancels jobs in the `sqlt_loco_queue` table by their name.
 ///
-/// This function updates the status of all jobs with the given `name` and a status of
-/// [`JobStatus::Queued`] to [`JobStatus::Cancelled`]. The update also sets the `updated_at` timestamp to the
-/// current time.
+/// This function updates the status of all jobs with the given `name` and a
+/// status of [`JobStatus::Queued`] to [`JobStatus::Cancelled`]. The update also
+/// sets the `updated_at` timestamp to the current time.
 ///
 /// # Errors
 ///
@@ -493,9 +495,9 @@ pub async fn clear(pool: &SqlitePool) -> Result<()> {
 
 /// Deletes jobs from the `sqlt_loco_queue` table based on their status.
 ///
-/// This function removes all jobs with a status that matches any of the statuses provided
-/// in the `status` argument. The statuses are checked against the `status` column in the
-/// database, and any matching rows are deleted.
+/// This function removes all jobs with a status that matches any of the
+/// statuses provided in the `status` argument. The statuses are checked against
+/// the `status` column in the database, and any matching rows are deleted.
 ///
 /// # Errors
 ///
@@ -519,16 +521,19 @@ pub async fn clear_by_status(pool: &SqlitePool, status: Vec<JobStatus>) -> Resul
 
 /// Requeues jobs from [`JobStatus::Processing`] to [`JobStatus::Queued`].
 ///
-/// This function updates the status of all jobs that are currently in the [`JobStatus::Processing`] state
-/// to the [`JobStatus::Queued`] state, provided they have been updated more than the specified age (`age_minutes`).
-/// The jobs that meet the criteria will have their `updated_at` timestamp set to the current time.
+/// This function updates the status of all jobs that are currently in the
+/// [`JobStatus::Processing`] state to the [`JobStatus::Queued`] state, provided
+/// they have been updated more than the specified age (`age_minutes`). The jobs
+/// that meet the criteria will have their `updated_at` timestamp set to the
+/// current time.
 ///
 /// # Errors
 ///
 /// This function will return an error if it fails
 pub async fn requeue(pool: &SqlitePool, age_minutes: &i64) -> Result<()> {
     let query = format!(
-        "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE status = $2 AND updated_at <= DATETIME('now', '-{age_minutes} minute')"
+        "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE status = $2 \
+         AND updated_at <= DATETIME('now', '-{age_minutes} minute')"
     );
 
     debug!(age_minutes = age_minutes, "Requeueing stalled jobs");
@@ -541,11 +546,12 @@ pub async fn requeue(pool: &SqlitePool, age_minutes: &i64) -> Result<()> {
     Ok(())
 }
 
-/// Deletes jobs from the `sqlt_loco_queue` table that are older than a specified number of days.
+/// Deletes jobs from the `sqlt_loco_queue` table that are older than a
+/// specified number of days.
 ///
-/// This function removes jobs that have a `created_at` timestamp older than the provided
-/// number of days. Additionally, if a `status` is provided, only jobs with a status matching
-/// one of the provided values will be deleted.
+/// This function removes jobs that have a `created_at` timestamp older than the
+/// provided number of days. Additionally, if a `status` is provided, only jobs
+/// with a status matching one of the provided values will be deleted.
 ///
 /// # Errors
 ///
@@ -664,13 +670,14 @@ pub async fn get_jobs(
 
 /// Converts a row from the database into a [`Job`] object.
 ///
-/// This function takes a row from the `SQLite` database and manually extracts the necessary
-/// fields to populate a [`Job`] object.
+/// This function takes a row from the `SQLite` database and manually extracts
+/// the necessary fields to populate a [`Job`] object.
 ///
-/// **Note:** This function manually extracts values from the database row instead of using
-/// the `FromRow` trait, which would require enabling the 'macros' feature in the dependencies.
-/// The decision to avoid `FromRow` is made to keep the build smaller and faster, as the 'macros'
-/// feature is unnecessary in the current dependency tree.
+/// **Note:** This function manually extracts values from the database row
+/// instead of using the `FromRow` trait, which would require enabling the
+/// 'macros' feature in the dependencies. The decision to avoid `FromRow` is
+/// made to keep the build smaller and faster, as the 'macros' feature is
+/// unnecessary in the current dependency tree.
 fn to_job(row: &SqliteRow) -> Result<Job> {
     let tags_json: Option<serde_json::Value> = row.try_get("tags").unwrap_or_default();
     let tags = tags_json.and_then(|json_val| {
@@ -711,7 +718,7 @@ mod tests {
 
     use chrono::{NaiveDate, NaiveTime, TimeZone};
     use insta::{assert_debug_snapshot, with_settings};
-    use sqlx::{query_as, FromRow, Pool, Sqlite};
+    use sqlx::{FromRow, Pool, Sqlite, query_as};
 
     use super::*;
     use crate::tests_cfg;
@@ -834,16 +841,18 @@ mod tests {
 
         let job_data = serde_json::json!({"user_id": 1});
         let tags = Some(vec!["email".to_string(), "notification".to_string()]);
-        assert!(enqueue(
-            &pool,
-            "PasswordChangeNotification",
-            job_data,
-            run_at,
-            None,
-            tags
-        )
-        .await
-        .is_ok());
+        assert!(
+            enqueue(
+                &pool,
+                "PasswordChangeNotification",
+                job_data,
+                run_at,
+                None,
+                tags
+            )
+            .await
+            .is_ok()
+        );
 
         let jobs = get_all_jobs(&pool).await;
 
@@ -885,16 +894,18 @@ mod tests {
         );
 
         let job_data = serde_json::json!({"user_id": 1});
-        assert!(enqueue(
-            &pool,
-            "PasswordChangeNotification",
-            job_data,
-            run_at,
-            None,
-            None
-        )
-        .await
-        .is_ok());
+        assert!(
+            enqueue(
+                &pool,
+                "PasswordChangeNotification",
+                job_data,
+                run_at,
+                None,
+                None
+            )
+            .await
+            .is_ok()
+        );
 
         let job_before_dequeue = get_all_jobs(&pool)
             .await
@@ -958,9 +969,11 @@ mod tests {
 
         std::thread::sleep(std::time::Duration::from_secs(1));
 
-        assert!(complete_job(&pool, &before_complete_job.id, Some(10))
-            .await
-            .is_ok());
+        assert!(
+            complete_job(&pool, &before_complete_job.id, Some(10))
+                .await
+                .is_ok()
+        );
 
         let after_complete_job = get_job(&pool, "01JDM0X8EVAM823JZBGKYNBA98").await;
 
@@ -990,13 +1003,15 @@ mod tests {
 
         std::thread::sleep(std::time::Duration::from_secs(1));
 
-        assert!(fail_job(
-            &pool,
-            &before_fail_job.id,
-            &crate::Error::string("some error")
-        )
-        .await
-        .is_ok());
+        assert!(
+            fail_job(
+                &pool,
+                &before_fail_job.id,
+                &crate::Error::string("some error")
+            )
+            .await
+            .is_ok()
+        );
 
         let after_fail_job = get_job(&pool, "01JDM0X8EVAM823JZBGKYNBA97").await;
 
@@ -1027,9 +1042,11 @@ mod tests {
 
         assert_eq!(count_cancelled_jobs, 1);
 
-        assert!(cancel_jobs_by_name(&pool, "UserAccountActivation")
-            .await
-            .is_ok());
+        assert!(
+            cancel_jobs_by_name(&pool, "UserAccountActivation")
+                .await
+                .is_ok()
+        );
 
         let count_cancelled_jobs = get_all_jobs(&pool)
             .await
@@ -1171,13 +1188,15 @@ mod tests {
         .unwrap();
 
         assert_eq!(get_all_jobs(&pool).await.len(), 4);
-        assert!(clear_jobs_older_than(
-            &pool,
-            10,
-            Some(&vec![JobStatus::Cancelled, JobStatus::Completed])
-        )
-        .await
-        .is_ok());
+        assert!(
+            clear_jobs_older_than(
+                &pool,
+                10,
+                Some(&vec![JobStatus::Cancelled, JobStatus::Completed])
+            )
+            .await
+            .is_ok()
+        );
 
         assert_eq!(get_all_jobs(&pool).await.len(), 3);
     }
@@ -1323,9 +1342,11 @@ mod tests {
         }
 
         let mut registry = JobRegistry::new();
-        assert!(registry
-            .register_worker("PanicJob".to_string(), PanicWorker)
-            .is_ok());
+        assert!(
+            registry
+                .register_worker("PanicJob".to_string(), PanicWorker)
+                .is_ok()
+        );
 
         // Get the initial job state
         let job = get_job(&pool, &job_id).await;

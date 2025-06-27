@@ -1,8 +1,11 @@
-use crate::{app::AppContext, Error};
-use axum::{extract::FromRequestParts, http::request::Parts};
 use std::any::Any;
 
-/// An extractor that streamlines the process of getting static Data from the `DiContainer`.
+use axum::{extract::FromRequestParts, http::request::Parts};
+
+use crate::{Error, app::AppContext};
+
+/// An extractor that streamlines the process of getting static Data from the
+/// `DiContainer`.
 pub struct SharedStore<T>(pub T);
 
 impl<T> FromRequestParts<AppContext> for SharedStore<T>

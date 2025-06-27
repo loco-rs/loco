@@ -3,13 +3,13 @@
 //! sending emails with options like sender, recipient, subject, and content.
 
 use lettre::{
+    AsyncTransport, Message, Tokio1Executor, Transport,
     message::MultiPart,
     transport::smtp::{authentication::Credentials, extension::ClientId},
-    AsyncTransport, Message, Tokio1Executor, Transport,
 };
 use tracing::error;
 
-use super::{Email, Result, DEFAULT_FROM_SENDER};
+use super::{DEFAULT_FROM_SENDER, Email, Result};
 use crate::{config, errors::Error};
 
 /// An enumeration representing the possible transport methods for sending

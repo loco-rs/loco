@@ -14,13 +14,6 @@
 //!     cli::main::<App, Migrator>().await
 //! }
 //! ```
-#[cfg(feature = "with-db")]
-use {crate::boot::run_db, crate::db, crate::doctor, sea_orm_migration::MigratorTrait};
-
-use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueHint};
-use colored::Colorize;
-use duct::cmd;
-use std::fmt::Write;
 #[cfg(any(
     feature = "bg_redis",
     feature = "bg_pg",
@@ -28,21 +21,28 @@ use std::fmt::Write;
     feature = "with-db"
 ))]
 use std::process::exit;
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{collections::BTreeMap, fmt::Write, path::PathBuf};
+
+use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueHint};
+use colored::Colorize;
+use duct::cmd;
+#[cfg(feature = "with-db")]
+use {crate::boot::run_db, crate::db, crate::doctor, sea_orm_migration::MigratorTrait};
 
 #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
 use crate::bgworker::JobStatus;
 #[cfg(debug_assertions)]
 use crate::controller;
 use crate::{
+    Error,
     app::{AppContext, Hooks},
     boot::{
-        create_app, create_context, list_endpoints, list_middlewares, run_scheduler, run_task,
-        start, RunDbCommand, ServeParams, StartMode,
+        RunDbCommand, ServeParams, StartMode, create_app, create_context, list_endpoints,
+        list_middlewares, run_scheduler, run_task, start,
     },
     config::Config,
-    environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
-    logger, task, Error,
+    environment::{DEFAULT_ENVIRONMENT, Environment, resolve_from_env},
+    logger, task,
 };
 
 #[derive(Parser)]
@@ -72,7 +72,8 @@ enum Commands {
     #[command(group(ArgGroup::new("start_mode").args(&["worker", "server_and_worker", "all"])))]
     #[clap(alias("s"))]
     Start {
-        /// Start worker. Optionally provide tags to run specific jobs (e.g. --worker=tag1,tag2)
+        /// Start worker. Optionally provide tags to run specific jobs (e.g.
+        /// --worker=tag1,tag2)
         #[arg(short, long, action, value_delimiter = ',', num_args = 0.., conflicts_with_all = &["server_and_worker", "all"])]
         worker: Option<Vec<String>>,
         /// Start the server and worker in the same process
@@ -811,8 +812,8 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
 
             cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
                 Error::Message(format!(
-                    "failed to start with `cargo-watch`. Did you `cargo install \
-                         cargo-watch`?. error details: `{err}`",
+                    "failed to start with `cargo-watch`. Did you `cargo install cargo-watch`?. \
+                     error details: `{err}`",
                 ))
             })?;
         }
@@ -927,8 +928,8 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
 
             cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
                 Error::Message(format!(
-                    "failed to start with `cargo-watch`. Did you `cargo install \
-                         cargo-watch`?. error details: `{err}`",
+                    "failed to start with `cargo-watch`. Did you `cargo install cargo-watch`?. \
+                     error details: `{err}`",
                 ))
             })?;
         }

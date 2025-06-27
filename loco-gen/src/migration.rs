@@ -5,7 +5,7 @@ use rrgen::RRgen;
 use serde_json::json;
 
 use crate::{
-    infer, model::get_columns_and_references, render_template, AppInfo, GenerateResults, Result,
+    AppInfo, GenerateResults, Result, infer, model::get_columns_and_references, render_template,
 };
 
 /// skipping some fields from the generated models.

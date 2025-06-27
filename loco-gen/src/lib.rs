@@ -4,16 +4,17 @@
 #![allow(dead_code)]
 pub use rrgen::{GenResult, RRgen};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 mod controller;
-use colored::Colorize;
-use std::fmt::Write;
 use std::{
     collections::HashMap,
+    fmt::Write,
     fs,
     path::{Path, PathBuf},
     sync::OnceLock,
 };
+
+use colored::Colorize;
 
 #[cfg(feature = "with-db")]
 mod infer;
@@ -498,7 +499,7 @@ pub fn copy_template(path: &Path, to: &Path) -> Result<Vec<PathBuf>> {
                 return Err(Error::Message(format!(
                     "could not get parent folder of {}",
                     copy_to.display()
-                )))
+                )));
             }
         }
 
@@ -695,9 +696,11 @@ mod tests {
                 .expect("Get string^ rust field"),
             "Vec<String>"
         );
-        assert!(mapping
-            .rust_field_with_params("array", &vec!["unknown".to_string()])
-            .is_err());
+        assert!(
+            mapping
+                .rust_field_with_params("array", &vec!["unknown".to_string()])
+                .is_err()
+        );
 
         assert!(mapping.rust_field_with_params("unknown", &vec![]).is_err());
     }

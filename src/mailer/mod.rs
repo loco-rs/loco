@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use tracing::error;
 
 use self::template::Template;
-use super::{app::AppContext, Result};
+use super::{Result, app::AppContext};
 use crate::prelude::BackgroundWorker;
 
 pub const DEFAULT_FROM_SENDER: &str = "System <system@example.com>";

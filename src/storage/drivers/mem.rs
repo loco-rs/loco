@@ -1,4 +1,4 @@
-use opendal::{services::Memory, Operator};
+use opendal::{Operator, services::Memory};
 
 use super::StoreDriver;
 use crate::storage::drivers::opendal_adapter::OpendalAdapter;
