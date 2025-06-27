@@ -2,7 +2,7 @@
 use axum::{
     extract::FromRequestParts,
     http::{
-        header::{HeaderMap, ACCEPT, CONTENT_TYPE},
+        header::{ACCEPT, CONTENT_TYPE, HeaderMap},
         request::Parts,
     },
 };

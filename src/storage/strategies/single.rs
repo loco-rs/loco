@@ -6,7 +6,7 @@ use std::path::Path;
 
 use bytes::Bytes;
 
-use crate::storage::{strategies::StorageStrategy, Storage, StorageResult};
+use crate::storage::{Storage, StorageResult, strategies::StorageStrategy};
 
 /// Represents a single storage strategy.
 #[derive(Clone)]
@@ -88,7 +88,7 @@ mod tests {
     use std::{collections::BTreeMap, path::PathBuf};
 
     use super::*;
-    use crate::storage::{drivers, Storage};
+    use crate::storage::{Storage, drivers};
 
     #[tokio::test]
     async fn can_upload() {
@@ -158,18 +158,22 @@ mod tests {
         let orig_path = PathBuf::from("users").join("data").join("1.txt");
         let file_content = Bytes::from("file content");
 
-        assert!(storage
-            .upload(orig_path.as_path(), &file_content)
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .upload(orig_path.as_path(), &file_content)
+                .await
+                .is_ok()
+        );
 
         assert!(store.exists(orig_path.as_path()).await.unwrap());
 
         let new_path = PathBuf::from("users").join("data-2").join("2.txt");
-        assert!(storage
-            .rename(orig_path.as_path(), new_path.as_path())
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .rename(orig_path.as_path(), new_path.as_path())
+                .await
+                .is_ok()
+        );
 
         assert!(!store.exists(orig_path.as_path()).await.unwrap());
         assert!(store.exists(new_path.as_path()).await.unwrap());
@@ -187,18 +191,22 @@ mod tests {
         let orig_path = PathBuf::from("users").join("data").join("1.txt");
         let file_content = Bytes::from("file content");
 
-        assert!(storage
-            .upload(orig_path.as_path(), &file_content)
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .upload(orig_path.as_path(), &file_content)
+                .await
+                .is_ok()
+        );
 
         assert!(store.exists(orig_path.as_path()).await.unwrap());
 
         let new_path = PathBuf::from("users").join("data-2").join("2.txt");
-        assert!(storage
-            .copy(orig_path.as_path(), new_path.as_path())
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .copy(orig_path.as_path(), new_path.as_path())
+                .await
+                .is_ok()
+        );
 
         assert!(store.exists(orig_path.as_path()).await.unwrap());
         assert!(store.exists(new_path.as_path()).await.unwrap());

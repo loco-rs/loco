@@ -4,8 +4,8 @@ use rrgen::RRgen;
 use serde_json::json;
 
 use crate::{
-    get_mappings, infer::parse_field_type, model, render_template, AppInfo, Error, GenerateResults,
-    Result, ScaffoldKind,
+    AppInfo, Error, GenerateResults, Result, ScaffoldKind, get_mappings, infer::parse_field_type,
+    model, render_template,
 };
 
 pub fn generate(

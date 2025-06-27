@@ -6,16 +6,15 @@ use std::time::Duration;
 use async_trait::async_trait;
 use bb8::Pool;
 use bb8_redis::{
-    bb8,
-    redis::{cmd, AsyncCommands},
-    RedisConnectionManager,
+    RedisConnectionManager, bb8,
+    redis::{AsyncCommands, cmd},
 };
 
 use super::CacheDriver;
-use crate::cache::CacheResult;
-use crate::config::RedisCacheConfig;
+use crate::{cache::CacheResult, config::RedisCacheConfig};
 
-/// Creates a new instance of the Redis cache driver with a default configuration.
+/// Creates a new instance of the Redis cache driver with a default
+/// configuration.
 ///
 /// # Returns
 ///
@@ -131,11 +130,12 @@ impl CacheDriver for Redis {
 
 #[cfg(test)]
 mod tests {
-    use crate::tests_cfg::redis::setup_redis_container;
     use std::time::Duration;
+
     use testcontainers::{ContainerAsync, GenericImage};
 
     use super::*;
+    use crate::tests_cfg::redis::setup_redis_container;
 
     async fn setup_redis_driver() -> (Box<dyn CacheDriver>, ContainerAsync<GenericImage>) {
         let (redis_url, container) = setup_redis_container().await;
@@ -159,20 +159,24 @@ mod tests {
     async fn test_contains_key() {
         let (redis, _container) = setup_redis_driver().await;
 
-        assert!(!redis
-            .contains_key("test_key")
-            .await
-            .expect("Failed to check if key exists"));
+        assert!(
+            !redis
+                .contains_key("test_key")
+                .await
+                .expect("Failed to check if key exists")
+        );
 
         redis
             .insert("test_key", "test_value")
             .await
             .expect("Failed to insert key");
 
-        assert!(redis
-            .contains_key("test_key")
-            .await
-            .expect("Failed to check if key exists after insertion"));
+        assert!(
+            redis
+                .contains_key("test_key")
+                .await
+                .expect("Failed to check if key exists after insertion")
+        );
     }
 
     #[tokio::test]
@@ -210,20 +214,24 @@ mod tests {
             .await
             .expect("Failed to insert key");
 
-        assert!(redis
-            .contains_key("test_key")
-            .await
-            .expect("Failed to check if key exists"));
+        assert!(
+            redis
+                .contains_key("test_key")
+                .await
+                .expect("Failed to check if key exists")
+        );
 
         redis
             .remove("test_key")
             .await
             .expect("Failed to remove key");
 
-        assert!(!redis
-            .contains_key("test_key")
-            .await
-            .expect("Failed to check if key exists after removal"));
+        assert!(
+            !redis
+                .contains_key("test_key")
+                .await
+                .expect("Failed to check if key exists after removal")
+        );
     }
 
     #[tokio::test]
@@ -239,19 +247,23 @@ mod tests {
         }
 
         for key in &keys {
-            assert!(redis
-                .contains_key(key)
-                .await
-                .expect("Failed to check if key exists"));
+            assert!(
+                redis
+                    .contains_key(key)
+                    .await
+                    .expect("Failed to check if key exists")
+            );
         }
 
         redis.clear().await.expect("Failed to clear cache");
 
         for key in &keys {
-            assert!(!redis
-                .contains_key(key)
-                .await
-                .expect("Failed to check if key exists after clear"));
+            assert!(
+                !redis
+                    .contains_key(key)
+                    .await
+                    .expect("Failed to check if key exists after clear")
+            );
         }
     }
 
@@ -264,16 +276,20 @@ mod tests {
             .await
             .expect("Failed to insert key with expiry");
 
-        assert!(redis
-            .contains_key("expiring_key")
-            .await
-            .expect("Failed to check if key exists"));
+        assert!(
+            redis
+                .contains_key("expiring_key")
+                .await
+                .expect("Failed to check if key exists")
+        );
 
         tokio::time::sleep(Duration::from_secs(2)).await;
 
-        assert!(!redis
-            .contains_key("expiring_key")
-            .await
-            .expect("Failed to check if key exists after expiry"));
+        assert!(
+            !redis
+                .contains_key("expiring_key")
+                .await
+                .expect("Failed to check if key exists after expiry")
+        );
     }
 }

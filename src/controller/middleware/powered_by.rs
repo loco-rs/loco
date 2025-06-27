@@ -9,12 +9,12 @@
 use std::sync::OnceLock;
 
 use axum::{
-    http::header::{HeaderName, HeaderValue},
     Router as AXRouter,
+    http::header::{HeaderName, HeaderValue},
 };
 use tower_http::set_header::SetResponseHeaderLayer;
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
+use crate::{Result, app::AppContext, controller::middleware::MiddlewareLayer};
 
 static DEFAULT_IDENT_HEADER_VALUE: OnceLock<HeaderValue> = OnceLock::new();
 

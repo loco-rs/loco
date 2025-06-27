@@ -1,9 +1,10 @@
+use std::{collections::HashMap, env::current_dir, fs::read_to_string};
+
 use duct::cmd;
 use insta::assert_snapshot;
 use loco_gen::get_mappings;
 use rstest::rstest;
 use serial_test::serial;
-use std::{collections::HashMap, env::current_dir, fs::read_to_string};
 
 #[rstest]
 #[serial]

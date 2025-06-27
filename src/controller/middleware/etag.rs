@@ -9,20 +9,20 @@
 use std::task::{Context, Poll};
 
 use axum::{
+    Router as AXRouter,
     body::Body,
     extract::Request,
     http::{
-        header::{ETAG, IF_NONE_MATCH},
         StatusCode,
+        header::{ETAG, IF_NONE_MATCH},
     },
     response::Response,
-    Router as AXRouter,
 };
 use futures_util::future::BoxFuture;
 use serde::{Deserialize, Serialize};
 use tower::{Layer, Service};
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
+use crate::{Result, app::AppContext, controller::middleware::MiddlewareLayer};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Etag {

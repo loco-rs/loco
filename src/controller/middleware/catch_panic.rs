@@ -10,9 +10,10 @@ use serde::{Deserialize, Serialize};
 use tower_http::catch_panic::CatchPanicLayer;
 
 use crate::{
+    Result,
     app::AppContext,
-    controller::{middleware::MiddlewareLayer, IntoResponse},
-    errors, Result,
+    controller::{IntoResponse, middleware::MiddlewareLayer},
+    errors,
 };
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -62,10 +63,10 @@ impl MiddlewareLayer for CatchPanic {
 mod tests {
 
     use axum::{
+        Router,
         body::Body,
         http::{Method, Request, StatusCode},
         routing::get,
-        Router,
     };
     use tower::ServiceExt;
 

@@ -4,17 +4,18 @@ use std::{
     time::Duration,
 };
 
-use super::{BackgroundWorker, JobStatus, Queue};
-use crate::{config::RedisQueueConfig, Error, Result};
 use chrono::{DateTime, Utc};
 use futures_util::FutureExt;
-use redis::{aio::MultiplexedConnection as Connection, AsyncCommands, Client, Script};
+use redis::{AsyncCommands, Client, Script, aio::MultiplexedConnection as Connection};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use tokio::{task::JoinHandle, time::sleep};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, trace};
 use ulid::Ulid;
+
+use super::{BackgroundWorker, JobStatus, Queue};
+use crate::{Error, Result, config::RedisQueueConfig};
 
 pub type RedisPool = Client;
 type JobId = String;
@@ -534,9 +535,9 @@ fn should_include_job(job: &Job, status: Option<&Vec<JobStatus>>, age_days: Opti
 
 /// Clears jobs based on their status from the Redis queue.
 ///
-/// This function removes all jobs with a status matching any of the statuses provided
-/// in the `status` argument. It searches through all queue keys and processing sets
-/// and removes matching jobs.
+/// This function removes all jobs with a status matching any of the statuses
+/// provided in the `status` argument. It searches through all queue keys and
+/// processing sets and removes matching jobs.
 ///
 /// # Errors
 ///
@@ -620,9 +621,10 @@ pub async fn clear_by_status(client: &RedisPool, status: Vec<JobStatus>) -> Resu
 
 /// Clears jobs older than the specified number of days from the Redis queue.
 ///
-/// This function removes all jobs that were created more than `age_days` days ago
-/// and have a status matching any of the statuses provided in the `status` argument.
-/// It searches through all queue keys and processing sets and removes matching jobs.
+/// This function removes all jobs that were created more than `age_days` days
+/// ago and have a status matching any of the statuses provided in the `status`
+/// argument. It searches through all queue keys and processing sets and removes
+/// matching jobs.
 ///
 /// # Errors
 ///
@@ -718,11 +720,12 @@ pub async fn clear_jobs_older_than(
     Ok(())
 }
 
-/// Requeues failed or stalled jobs that are older than a specified number of minutes.
+/// Requeues failed or stalled jobs that are older than a specified number of
+/// minutes.
 ///
-/// This function finds jobs in processing sets that have been there for longer than
-/// `age_minutes` and moves them back to their respective queues. This is useful for
-/// recovering from job failures or worker crashes.
+/// This function finds jobs in processing sets that have been there for longer
+/// than `age_minutes` and moves them back to their respective queues. This is
+/// useful for recovering from job failures or worker crashes.
 ///
 /// # Errors
 ///
@@ -823,8 +826,9 @@ pub async fn requeue(client: &RedisPool, age_minutes: &i64) -> Result<()> {
 /// Cancels jobs with the specified name in the Redis queue.
 ///
 /// This function updates the status of jobs that match the provided `job_name`
-/// from [`JobStatus::Queued`] to [`JobStatus::Cancelled`]. Jobs are searched for in all queue keys,
-/// and only those that are currently in the [`JobStatus::Queued`] state will be affected.
+/// from [`JobStatus::Queued`] to [`JobStatus::Cancelled`]. Jobs are searched
+/// for in all queue keys, and only those that are currently in the
+/// [`JobStatus::Queued`] state will be affected.
 ///
 /// # Errors
 ///
@@ -921,10 +925,11 @@ pub async fn create_provider(qcfg: &RedisQueueConfig) -> Result<Queue> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::tests_cfg::redis::setup_redis_container;
     use chrono::Utc;
     use testcontainers::{ContainerAsync, GenericImage};
+
+    use super::*;
+    use crate::tests_cfg::redis::setup_redis_container;
 
     async fn setup_redis() -> (RedisPool, ContainerAsync<GenericImage>) {
         let (redis_url, container) = setup_redis_container().await;
@@ -1060,15 +1065,17 @@ mod tests {
 
         // Test enqueue with custom queue
         let args = serde_json::json!({"email": "user@example.com"});
-        assert!(enqueue(
-            &client,
-            "EmailNotification".to_string(),
-            Some("mailer".to_string()),
-            args,
-            None
-        )
-        .await
-        .is_ok());
+        assert!(
+            enqueue(
+                &client,
+                "EmailNotification".to_string(),
+                Some("mailer".to_string()),
+                args,
+                None
+            )
+            .await
+            .is_ok()
+        );
 
         // Verify job was created in correct queue first
         let mut conn = get_test_connection(&client).await;
@@ -1093,9 +1100,11 @@ mod tests {
 
         // Add job
         let args = serde_json::json!({"task": "test"});
-        assert!(enqueue(&client, "TestJob".to_string(), None, args, None)
-            .await
-            .is_ok());
+        assert!(
+            enqueue(&client, "TestJob".to_string(), None, args, None)
+                .await
+                .is_ok()
+        );
 
         // Dequeue job
         let queues = vec!["default".to_string()];
@@ -1106,9 +1115,11 @@ mod tests {
         let (job, queue) = job_opt.unwrap();
 
         // Complete job
-        assert!(complete_job_with_conn(&mut conn, &job.id, &queue, None)
-            .await
-            .is_ok());
+        assert!(
+            complete_job_with_conn(&mut conn, &job.id, &queue, None)
+                .await
+                .is_ok()
+        );
 
         // Verify job is not in processing set
         let processing_key = format!("{PROCESSING_KEY_PREFIX}{queue}");
@@ -1179,9 +1190,11 @@ mod tests {
 
         // Add job
         let args = serde_json::json!({"task": "test"});
-        assert!(enqueue(&client, "TestJob".to_string(), None, args, None)
-            .await
-            .is_ok());
+        assert!(
+            enqueue(&client, "TestJob".to_string(), None, args, None)
+                .await
+                .is_ok()
+        );
 
         // Dequeue job
         let queues = vec!["default".to_string()];
@@ -1193,9 +1206,11 @@ mod tests {
 
         // Fail job
         let error = Error::string("test failure");
-        assert!(fail_job_with_conn(&mut conn, &job.id, &queue, &error)
-            .await
-            .is_ok());
+        assert!(
+            fail_job_with_conn(&mut conn, &job.id, &queue, &error)
+                .await
+                .is_ok()
+        );
 
         // Verify job is not in processing set
         let processing_key = format!("{PROCESSING_KEY_PREFIX}{queue}");
@@ -1276,15 +1291,19 @@ mod tests {
         }
 
         // Register worker
-        assert!(registry
-            .register_worker("TestJob".to_string(), TestWorker)
-            .is_ok());
+        assert!(
+            registry
+                .register_worker("TestJob".to_string(), TestWorker)
+                .is_ok()
+        );
 
         // Add job
         let args = serde_json::json!("test args");
-        assert!(enqueue(&client, "TestJob".to_string(), None, args, None)
-            .await
-            .is_ok());
+        assert!(
+            enqueue(&client, "TestJob".to_string(), None, args, None)
+                .await
+                .is_ok()
+        );
 
         // Run registry with worker for a short time
         let opts = RunOpts {
@@ -1315,37 +1334,43 @@ mod tests {
 
         // Create jobs with different tags using the proper enqueue function
         let args1 = serde_json::json!({"task": "task1"});
-        assert!(enqueue(
-            &client,
-            "TaggedJob".to_string(),
-            Some("default".to_string()),
-            args1,
-            Some(vec!["tag1".to_string(), "common".to_string()])
-        )
-        .await
-        .is_ok());
+        assert!(
+            enqueue(
+                &client,
+                "TaggedJob".to_string(),
+                Some("default".to_string()),
+                args1,
+                Some(vec!["tag1".to_string(), "common".to_string()])
+            )
+            .await
+            .is_ok()
+        );
 
         let args2 = serde_json::json!({"task": "task2"});
-        assert!(enqueue(
-            &client,
-            "TaggedJob".to_string(),
-            Some("default".to_string()),
-            args2,
-            Some(vec!["tag2".to_string(), "common".to_string()])
-        )
-        .await
-        .is_ok());
+        assert!(
+            enqueue(
+                &client,
+                "TaggedJob".to_string(),
+                Some("default".to_string()),
+                args2,
+                Some(vec!["tag2".to_string(), "common".to_string()])
+            )
+            .await
+            .is_ok()
+        );
 
         let args3 = serde_json::json!({"task": "task3"});
-        assert!(enqueue(
-            &client,
-            "TaggedJob".to_string(),
-            Some("default".to_string()),
-            args3,
-            Some(vec!["tag3".to_string()])
-        )
-        .await
-        .is_ok());
+        assert!(
+            enqueue(
+                &client,
+                "TaggedJob".to_string(),
+                Some("default".to_string()),
+                args3,
+                Some(vec!["tag3".to_string()])
+            )
+            .await
+            .is_ok()
+        );
 
         // Test dequeue with tag1 filter
         let queues = vec!["default".to_string()];

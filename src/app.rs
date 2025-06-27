@@ -1,8 +1,5 @@
 //! This module contains the core components and traits for building a web
 //! server application.
-#[cfg(feature = "with-db")]
-use {sea_orm::DatabaseConnection, std::path::Path};
-
 use std::{
     any::{Any, TypeId},
     net::SocketAddr,
@@ -12,21 +9,23 @@ use std::{
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
 use dashmap::DashMap;
+#[cfg(feature = "with-db")]
+use {sea_orm::DatabaseConnection, std::path::Path};
 
 use crate::{
+    Result,
     bgworker::{self, Queue},
-    boot::{shutdown_signal, BootResult, ServeParams, StartMode},
+    boot::{BootResult, ServeParams, StartMode, shutdown_signal},
     cache::{self},
     config::Config,
     controller::{
-        middleware::{self, MiddlewareLayer},
         AppRoutes,
+        middleware::{self, MiddlewareLayer},
     },
     environment::Environment,
     mailer::EmailSender,
     storage::Storage,
     task::Tasks,
-    Result,
 };
 
 /// Type-safe heterogeneous storage for arbitrary application data
@@ -64,7 +63,8 @@ impl SharedStore {
 
     /// Remove a value of type T from the shared store
     ///
-    /// Returns `Some(T)` if the value was present and removed, `None` otherwise.
+    /// Returns `Some(T)` if the value was present and removed, `None`
+    /// otherwise.
     ///
     /// # Example
     /// ```
@@ -318,7 +318,7 @@ pub trait Hooks: Send {
     /// # Errors
     /// Could not boot the application
     async fn boot(mode: StartMode, environment: &Environment, config: Config)
-        -> Result<BootResult>;
+    -> Result<BootResult>;
 
     /// Start serving the Axum web application on the specified address and
     /// port.
@@ -358,10 +358,11 @@ pub trait Hooks: Send {
         Ok(false)
     }
 
-    /// Loads the configuration settings for the application based on the given environment.
+    /// Loads the configuration settings for the application based on the given
+    /// environment.
     ///
-    /// This function is responsible for retrieving the configuration for the application
-    /// based on the current environment.
+    /// This function is responsible for retrieving the configuration for the
+    /// application based on the current environment.
     async fn load_config(env: &Environment) -> Result<Config> {
         env.load()
     }
@@ -619,8 +620,8 @@ mod tests {
 
         assert_eq!(shared_store.get::<String>(), None);
         assert!(shared_store.get::<CloneableTestService>().is_some());
-        // The following line correctly fails to compile because TestService doesn't impl Clone,
-        // which is required by the `get` method.
+        // The following line correctly fails to compile because TestService
+        // doesn't impl Clone, which is required by the `get` method.
         // let non_existent_clone = shared_store.get::<TestService>();
     }
 
