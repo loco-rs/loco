@@ -1,16 +1,17 @@
 use std::{
     env,
     path::{Path, PathBuf},
-    process::{exit, Command},
+    process::{Command, exit},
     sync::Arc,
 };
 
 use clap::{Parser, Subcommand};
 use duct::cmd;
 use loco::{
-    generator::{executer, extract_default_template, Generator},
+    OS, Result,
+    generator::{Generator, executer, extract_default_template},
     settings::Settings,
-    wizard, Result, OS,
+    wizard,
 };
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
