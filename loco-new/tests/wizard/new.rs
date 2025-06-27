@@ -225,7 +225,9 @@ impl Tester {
             "-W",
             "rust-2018-idioms",
             "-A",
-            "clippy::result_large_err"
+            "clippy::result_large_err",
+            "-A",
+            "clippy::cognitive_complexity",
         )
         .full_env(&self.env_map)
         // .stdout_null()
