@@ -2,7 +2,7 @@ use tabled::settings::Style;
 
 use crate::ci::RunResults;
 
-pub fn print_ci_results(result: &Vec<RunResults>) -> String {
+#[must_use] pub fn print_ci_results(result: &Vec<RunResults>) -> String {
     let mut builder = tabled::builder::Builder::default();
 
     builder.push_record(vec!["path", "fmt", "clippy", "test"]);

@@ -406,9 +406,8 @@ fn render_template(rrgen: &RRgen, template: &Path, vars: &Value) -> Result<Gener
         let custom_template = Path::new(template::DEFAULT_LOCAL_TEMPLATE).join(template.path());
 
         if custom_template.exists() {
-            let content = fs::read_to_string(&custom_template).map_err(|err| {
+            let content = fs::read_to_string(&custom_template).inspect_err(|err| {
                 tracing::error!(custom_template = %custom_template.display(), "could not read custom template");
-                err
             })?;
             gen_result.push(rrgen.generate(&content, vars)?);
             local_templates.push(custom_template);

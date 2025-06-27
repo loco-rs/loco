@@ -76,7 +76,7 @@ impl StorageStrategy for BackupStrategy {
                     Err(err) => {
                         collect_errors.insert(secondary_store.to_string(), err.to_string());
                     }
-                };
+                }
             }
         }
 
@@ -115,7 +115,7 @@ impl StorageStrategy for BackupStrategy {
                     Err(err) => {
                         collect_errors.insert(secondary_store.to_string(), err.to_string());
                     }
-                };
+                }
             }
         }
 
@@ -151,7 +151,7 @@ impl StorageStrategy for BackupStrategy {
                     Err(err) => {
                         collect_errors.insert(secondary_store.to_string(), err.to_string());
                     }
-                };
+                }
             }
         }
 
@@ -184,7 +184,7 @@ impl StorageStrategy for BackupStrategy {
                     Err(err) => {
                         collect_errors.insert(secondary_store.to_string(), err.to_string());
                     }
-                };
+                }
             }
         }
 

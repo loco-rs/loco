@@ -424,7 +424,7 @@ pub trait Hooks: Send {
 
     /// Truncates the database as required. Users should implement this
     /// function. The truncate controlled from the [`crate::config::Database`]
-    /// by changing dangerously_truncate to true (default false).
+    /// by changing `dangerously_truncate` to true (default false).
     /// Truncate can be useful when you want to truncate the database before any
     /// test.
     #[cfg(feature = "with-db")]
