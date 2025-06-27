@@ -1,7 +1,7 @@
 [package]
 name = "xtask"
 version = "0.2.0"
-edition = "2021"
+edition = "2024"
 authors = ["Dotan Nahum <dotan@rng0.io>", "Elad Kaplan <kaplan.elad@gmail.com>"]
 
 [lib]
