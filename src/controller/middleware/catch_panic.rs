@@ -77,7 +77,14 @@ mod tests {
     async fn panic_enabled() {
         let middleware = CatchPanic { enable: true };
 
-        let app = Router::new().route("/", get(|| async { panic!("panic") }));
+        let app = Router::new().route(
+            "/",
+            get(|| async {
+                panic!("panic");
+                #[allow(unreachable_code)]
+                "unreachable"
+            }),
+        );
         let app = middleware
             .apply(app)
             .expect("apply middleware")
