@@ -12,6 +12,8 @@ use lettre::{address::AddressError, transport::smtp};
 
 use crate::{controller::ErrorDetail, depcheck};
 
+use dialoguer;
+
 /*
 backtrace principles:
 - use a plan warapper variant with no 'from' conversion
@@ -159,6 +161,9 @@ pub enum Error {
 
     #[error(transparent)]
     AxumFormRejection(#[from] axum::extract::rejection::FormRejection),
+
+    #[error("Dialoguer error: {0}")]
+    DialogError(#[from] dialoguer::Error),
 }
 
 impl Error {
