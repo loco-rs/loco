@@ -11,7 +11,9 @@ use std::fs;
 #[case(ScaffoldKind::Htmx)]
 #[test]
 fn can_generate(#[case] kind: ScaffoldKind) {
-    std::env::set_var("SKIP_MIGRATION", "");
+    unsafe {
+        std::env::remove_var("SKIP_MIGRATION");
+    }
     let mut settings = insta::Settings::clone_current();
     settings.set_prepend_module_to_snapshot(false);
     settings.set_snapshot_suffix(format!("{kind:?}_scaffold"));

@@ -34,7 +34,9 @@ async fn main(
   {% if with_db %}#[shuttle_shared_db::Postgres] conn_str: String,{% endif %}
   #[shuttle_runtime::Metadata] meta: DeploymentMetadata,
 ) -> shuttle_axum::ShuttleAxum {
-    {% if with_db %}std::env::set_var("DATABASE_URL", conn_str);{% endif %}
+    {% if with_db %}unsafe {
+        std::env::set_var("DATABASE_URL", conn_str);
+    }{% endif %}
     let environment = match meta.env {
         shuttle_runtime::Environment::Local => Environment::Development,
         shuttle_runtime::Environment::Deployment => Environment::Production,
@@ -43,7 +45,7 @@ async fn main(
      let config = environment
         .load()
         .expect("Failed to load configuration from the environment");
-    
+
     let boot_result = create_app::<App{% if with_db %}, Migrator{% endif %}>(StartMode::ServerOnly, &environment, config)
         .await
         .unwrap();
