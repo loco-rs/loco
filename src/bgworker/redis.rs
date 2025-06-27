@@ -337,7 +337,7 @@ async fn dequeue_with_conn(
                 match Job::from_json(&json) {
                     Ok(job) => {
                         let should_process = if tags.is_empty() {
-                            job.tags.is_none() || job.tags.as_ref().map_or(true, Vec::is_empty)
+                            job.tags.is_none() || job.tags.as_ref().is_none_or(Vec::is_empty)
                         } else {
                             job.tags.as_ref().is_some_and(|job_tags| {
                                 job_tags.iter().any(|tag| tags.contains(tag))
@@ -668,7 +668,7 @@ pub async fn clear_jobs_older_than(
             if let Some(json) = job_json {
                 if let Ok(job) = Job::from_json(&json) {
                     let should_remove = job.created_at.is_some_and(|created_at| {
-                        created_at < cutoff_date && status.map_or(true, |s| s.contains(&job.status))
+                        created_at < cutoff_date && status.is_none_or(|s| s.contains(&job.status))
                     });
                     if should_remove {
                         let _: () = conn.lrem(&queue_key, 1, &job_id).await?;
@@ -690,7 +690,7 @@ pub async fn clear_jobs_older_than(
                         job.status = JobStatus::Processing;
                     }
                     let should_remove = job.created_at.is_some_and(|created_at| {
-                        created_at < cutoff_date && status.map_or(true, |s| s.contains(&job.status))
+                        created_at < cutoff_date && status.is_none_or(|s| s.contains(&job.status))
                     });
                     if should_remove {
                         let _: () = conn.srem(&processing_key, &job_id).await?;
@@ -706,7 +706,7 @@ pub async fn clear_jobs_older_than(
         if let Some(json) = job_json {
             if let Ok(job) = Job::from_json(&json) {
                 let should_remove = job.created_at.is_some_and(|created_at| {
-                    created_at < cutoff_date && status.map_or(true, |s| s.contains(&job.status))
+                    created_at < cutoff_date && status.is_none_or(|s| s.contains(&job.status))
                 });
                 if should_remove {
                     let _: () = conn.del(&job_key).await?;
