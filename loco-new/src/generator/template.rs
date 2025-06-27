@@ -6,7 +6,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use rand::{distributions::Alphanumeric, rngs::StdRng, Rng, SeedableRng};
+use rand::{Rng, SeedableRng, distributions::Alphanumeric, rngs::StdRng};
 use tera::{Context, Tera};
 
 use crate::settings::Settings;
@@ -65,16 +65,17 @@ impl Template {
             "random_string",
             move |value: &tera::Value, _args: &HashMap<String, tera::Value>| {
                 if let tera::Value::Number(length) = value
-                    && let Some(length) = length.as_u64() {
-                        let rand_str: String = rng_clone.lock().map_or_else(
-                            |_| {
-                                let mut r = StdRng::from_entropy();
-                                generate_random_string(&mut r, length)
-                            },
-                            |mut rng| generate_random_string(&mut *rng, length),
-                        );
-                        return Ok(tera::Value::String(rand_str));
-                    }
+                    && let Some(length) = length.as_u64()
+                {
+                    let rand_str: String = rng_clone.lock().map_or_else(
+                        |_| {
+                            let mut r = StdRng::from_entropy();
+                            generate_random_string(&mut r, length)
+                        },
+                        |mut rng| generate_random_string(&mut *rng, length),
+                    );
+                    return Ok(tera::Value::String(rand_str));
+                }
                 // Ok(tera::Value::String(String::new()))
                 Err(tera::Error::msg("arg must be a number"))
             },

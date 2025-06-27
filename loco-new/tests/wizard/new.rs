@@ -2,10 +2,10 @@ use std::{collections::HashMap, path::PathBuf, process::Output, sync::Arc};
 
 use duct::cmd;
 use loco::{
-    generator::{executer::FileSystem, Generator},
+    OS,
+    generator::{Generator, executer::FileSystem},
     settings,
     wizard::{self, AssetsOption, BackgroundOption, DBOption},
-    OS,
 };
 
 // #[cfg(feature = "test-wizard")]
