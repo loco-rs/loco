@@ -235,8 +235,7 @@ impl<T: 'static + Send + Sync> std::ops::Deref for RefGuard<'_, T> {
     fn deref(&self) -> &Self::Target {
         // This is safe because we only create a RefGuard for a specific type
         // after looking it up by its TypeId
-        self.inner
-            .value()
+        (**self.inner.value())
             .downcast_ref::<T>()
             .expect("Type mismatch in RefGuard")
     }
