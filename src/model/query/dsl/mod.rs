@@ -1,6 +1,6 @@
 use sea_orm::{
-    sea_query::{IntoCondition, Order},
     ColumnTrait, Condition, Value,
+    sea_query::{IntoCondition, Order},
 };
 use serde::{Deserialize, Serialize};
 

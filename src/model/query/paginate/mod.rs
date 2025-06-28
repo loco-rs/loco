@@ -1,4 +1,4 @@
-use sea_orm::{prelude::*, Condition, DatabaseConnection, EntityTrait, QueryFilter, SelectorTrait};
+use sea_orm::{Condition, DatabaseConnection, EntityTrait, QueryFilter, SelectorTrait, prelude::*};
 use serde::{Deserialize, Serialize};
 
 /// Set the default pagination page size.

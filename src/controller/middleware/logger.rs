@@ -7,15 +7,15 @@
 //! into the log context, allowing environment-specific logging (e.g.,
 //! "development", "production").
 
-use axum::{http, Router as AXRouter};
+use axum::{Router as AXRouter, http};
 use serde::{Deserialize, Serialize};
 use tower_http::{add_extension::AddExtensionLayer, trace::TraceLayer};
 
 use crate::{
-    app::AppContext,
-    controller::middleware::{request_id::LocoRequestId, MiddlewareLayer},
-    environment::Environment,
     Result,
+    app::AppContext,
+    controller::middleware::{MiddlewareLayer, request_id::LocoRequestId},
+    environment::Environment,
 };
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

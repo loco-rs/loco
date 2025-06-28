@@ -7,8 +7,8 @@ use rhai::{CustomType, TypeBuilder};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    wizard::{self, AssetsOption, BackgroundOption, DBOption},
     LOCO_VERSION, OS,
+    wizard::{self, AssetsOption, BackgroundOption, DBOption},
 };
 
 /// Represents general application settings.
