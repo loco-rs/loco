@@ -41,7 +41,6 @@ use crate::{
         start, RunDbCommand, ServeParams, StartMode,
     },
     config::Config,
-    create_user,
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     logger, task, Error,
 };
@@ -169,9 +168,6 @@ enum Commands {
         #[arg(short, long, action)]
         server_and_worker: bool,
     },
-    #[cfg(feature = "with-db")]
-    #[clap(alias("cu"))]
-    CreateUser,
 }
 
 #[cfg(debug_assertions)]
@@ -819,10 +815,6 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                          cargo-watch`?. error details: `{err}`",
                 ))
             })?;
-        }
-        Commands::CreateUser => {
-            let app_context = create_context::<H>(&environment, app_context.config).await?;
-            create_user::run(&app_context).await?;
         }
     }
     Ok(())

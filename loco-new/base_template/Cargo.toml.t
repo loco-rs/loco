@@ -30,6 +30,7 @@ axum = { version = "0.8" }
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 regex = { version = "1.11" }
+
 {%- if settings.db %}
 migration = { path = "migration" }
 sea-orm = { version = "1.1", features = [
@@ -62,6 +63,11 @@ name = "{{settings.module_name}}-cli"
 path = "src/bin/main.rs"
 required-features = []
 
+[[bin]]
+name = "create-user"
+path = "src/bin/create_user.rs"
+required-features = []
+
 {%- if settings.os == "windows" %}
 [[bin]]
 name = "tool"
@@ -74,3 +80,4 @@ loco-rs = { workspace = true, features = ["testing"] }
 serial_test = { version = "3.1.1" }
 rstest = { version = "0.25" }
 insta = { version = "1.34", features = ["redactions", "yaml", "filters"] }
+dialoguer = "0.11.0"
