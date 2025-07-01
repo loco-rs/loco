@@ -1,18 +1,16 @@
 use dialoguer::{Input, Password};
 use {{settings.module_name}}::models::users::Model;
 use {{settings.module_name}}::models::users::RegisterParams;
-use std::env;
+use std::path::PathBuf;
 use migration::{Migrator, MigratorTrait};
 use sea_orm::Database;
-use loco_rs::Result;
+use loco_rs::{environment::Environment, Result};
 
 
 #[tokio::main]
 pub async fn main() -> Result<()> {
 
-    env::set_var("RUN_MODE", "development");
-
-    let config = {{settings.module_name}}::config::load().expect("configuration loading");
+    let config = Environment::load_from_folder(&Environment::Development, &PathBuf::from("config"))?;
     let db_url = config.database.uri;
 
     let db = Database::connect(db_url).await?;
