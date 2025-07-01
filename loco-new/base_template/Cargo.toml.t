@@ -65,7 +65,7 @@ path = "src/bin/main.rs"
 required-features = []
 
 [[bin]]
-name = "create-user"
+name = "createuser"
 path = "src/bin/create_user.rs"
 required-features = []
 
