@@ -57,6 +57,7 @@ unic-langid = { version = "0.9" }
 {%- endif %}
 axum-extra = { version = "0.10", features = ["form"] }
 {%- endif %}
+dialoguer = "0.11.0"
 
 [[bin]]
 name = "{{settings.module_name}}-cli"
@@ -80,4 +81,3 @@ loco-rs = { workspace = true, features = ["testing"] }
 serial_test = { version = "3.1.1" }
 rstest = { version = "0.25" }
 insta = { version = "1.34", features = ["redactions", "yaml", "filters"] }
-dialoguer = "0.11.0"

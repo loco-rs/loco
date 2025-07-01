@@ -7,7 +7,6 @@ pub mod mailers;
 {%- endif %}
 {%- if settings.db %}
 pub mod models;
-pub mod create_user;
 {%- endif %}
 pub mod tasks;
 pub mod views;
