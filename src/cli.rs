@@ -168,6 +168,7 @@ enum Commands {
         #[arg(short, long, action)]
         server_and_worker: bool,
     },
+    Createuser,
 }
 
 #[cfg(debug_assertions)]
@@ -815,6 +816,10 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                          cargo-watch`?. error details: `{err}`",
                 ))
             })?;
+        }
+
+        Commands::Createuser => {
+            _ =cmd!("cargo", "run", "--bin", "createuser").run()?
         }
     }
     Ok(())
