@@ -11,8 +11,6 @@ examples/myapp
 *.sqlite3-wal
 *.sqlite3-shm
 
-loco-new/test_app
-
 # IDE config files
 .idea
 .vscode
