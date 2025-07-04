@@ -25,6 +25,7 @@ pub mod app;
 pub mod auth;
 pub mod boot;
 pub mod cache;
+pub use axum_csrf;
 #[cfg(feature = "cli")]
 pub mod cli;
 pub mod config;

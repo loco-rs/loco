@@ -79,6 +79,7 @@ async-trait = { workspace = true }
 
 axum = { workspace = true }
 axum-extra = { version = "0.10", features = ["cookie"] }
+axum_csrf = { version = "0.11.0", features = ["layer"] }
 regex = { workspace = true }
 # mailer
 tera = { workspace = true }

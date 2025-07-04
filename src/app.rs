@@ -28,6 +28,7 @@ use crate::{
     task::Tasks,
     Result,
 };
+use axum_csrf::{CsrfLayer, CsrfConfig};
 
 /// Type-safe heterogeneous storage for arbitrary application data
 #[derive(Default, Debug)]
@@ -383,7 +384,11 @@ pub trait Hooks: Send {
     ///
     /// # Errors
     /// Axum router error
-    async fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+    async fn after_routes(mut router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+        // Implement CSRF protection by default
+        let csrf_config = CsrfConfig::default();
+        let csrf_layer = CsrfLayer::new(csrf_config);
+        router = router.layer(csrf_layer);
         Ok(router)
     }
 
