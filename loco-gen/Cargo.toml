@@ -1,6 +1,6 @@
 [package]
 name = "loco-gen"
-version = "0.15.0"
+version = "0.16.0"
 description = "Loco generators"
 license.workspace = true
 edition.workspace = true
