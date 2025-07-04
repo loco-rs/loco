@@ -123,7 +123,7 @@ impl Hooks for App {
     }
 
     {%- if settings.auth %}
-        async fn cli_create_user(ctx: &AppContext) -> Result<()> {
+    async fn cli_create_user(ctx: &AppContext) -> Result<()> {
         cli_user_create::create(ctx).await?;
         Ok(())
     }

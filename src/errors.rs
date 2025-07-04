@@ -8,8 +8,8 @@ use axum::{
         StatusCode,
     },
 };
-use lettre::{address::AddressError, transport::smtp};
 use dialoguer;
+use lettre::{address::AddressError, transport::smtp};
 
 use crate::{controller::ErrorDetail, depcheck};
 
@@ -163,7 +163,6 @@ pub enum Error {
 
     #[error("Cannot read input: {0}")]
     DialoguerError(#[from] dialoguer::Error),
-
 }
 
 impl Error {
