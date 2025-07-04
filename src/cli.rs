@@ -819,7 +819,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         }
 
         Commands::Createuser => {
-            _ =cmd!("cargo", "run", "--bin", "createuser").run()?
+            H::cli_create_user(&app_context).await?;
         }
     }
     Ok(())

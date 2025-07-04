@@ -64,11 +64,6 @@ name = "{{settings.module_name}}-cli"
 path = "src/bin/main.rs"
 required-features = []
 
-[[bin]]
-name = "createuser"
-path = "src/bin/create_user.rs"
-required-features = []
-
 {%- if settings.os == "windows" %}
 [[bin]]
 name = "tool"

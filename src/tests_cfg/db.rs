@@ -156,4 +156,8 @@ impl Hooks for AppHook {
     async fn seed(_ctx: &AppContext, _base: &Path) -> Result<()> {
         Ok(())
     }
+
+    async fn cli_create_user(_ctx: &AppContext) -> Result<()> {
+        Ok(())
+    }
 }
