@@ -16,7 +16,7 @@ pub async fn create(ctx: &AppContext) -> Result<()> {
         .interact_text()?;
 
     let email: String = Input::with_theme(&ColorfulTheme::default())
-        .with_prompt("📧 Enter email")
+        .with_prompt("📧 ❯ Enter email")
         .interact_text()?;
 
     let password: String = Password::with_theme(&ColorfulTheme::default())
