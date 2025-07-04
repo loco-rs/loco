@@ -47,6 +47,5 @@ pub mod tests_cfg;
 pub mod validation;
 pub use validator;
 pub mod cargo_config;
-
 /// Application results options list
 pub type Result<T, E = Error> = std::result::Result<T, E>;
