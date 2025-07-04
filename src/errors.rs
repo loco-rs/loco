@@ -9,6 +9,7 @@ use axum::{
     },
 };
 use lettre::{address::AddressError, transport::smtp};
+use dialoguer;
 
 use crate::{controller::ErrorDetail, depcheck};
 
@@ -159,6 +160,10 @@ pub enum Error {
 
     #[error(transparent)]
     AxumFormRejection(#[from] axum::extract::rejection::FormRejection),
+
+    #[error("Cannot read input: {0}")]
+    DialoguerError(#[from] dialoguer::Error),
+
 }
 
 impl Error {

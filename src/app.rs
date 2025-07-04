@@ -441,6 +441,13 @@ pub trait Hooks: Send {
     /// This function allows users to perform any necessary cleanup or final
     /// actions before the application stops completely.
     async fn on_shutdown(_ctx: &AppContext) {}
+
+    /// Function to create a new user via CLI.
+    /// This function will be called when the user runs `cargo loco createuser`.
+    /// On the project-side this this function is implemented by the `Hooks` trait in a way
+    /// that a new user can be created in the project's database.
+    #[cfg(feature = "with-db")]
+    async fn cli_create_user(app_context: &AppContext) -> Result<()>;
 }
 
 /// An initializer.

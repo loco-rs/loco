@@ -30,6 +30,7 @@ axum = { version = "0.8" }
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 regex = { version = "1.11" }
+
 {%- if settings.db %}
 migration = { path = "migration" }
 sea-orm = { version = "1.1", features = [
@@ -56,6 +57,7 @@ unic-langid = { version = "0.9" }
 {%- endif %}
 axum-extra = { version = "0.10", features = ["form"] }
 {%- endif %}
+dialoguer = "0.11.0"
 
 [[bin]]
 name = "{{settings.module_name}}-cli"

@@ -30,7 +30,10 @@ use crate::{
     , initializers
     {%- endif %} 
     {%- if settings.auth %}
-    , models::_entities::users
+    , models::{
+        _entities::users,
+        cli_user_create
+    }
     {%- endif %}
     {%- if settings.background %}
     , workers::downloader::DownloadWorker
@@ -118,5 +121,12 @@ impl Hooks for App {
         {%- endif %}
         Ok(())
     }
+
+    {%- if settings.auth %}
+        async fn cli_create_user(ctx: &AppContext) -> Result<()> {
+        cli_user_create::create(ctx).await?;
+        Ok(())
+    }
+    {%- endif %}
     {%- endif %}
 }
