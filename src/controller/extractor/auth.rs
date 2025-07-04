@@ -150,7 +150,7 @@ where
 ///
 /// # Errors
 /// Return an error when JWT token not configured
-fn get_jwt_from_config(ctx: &AppContext) -> LocoResult<&JWTConfig> {
+pub fn get_jwt_from_config(ctx: &AppContext) -> LocoResult<&JWTConfig> {
     ctx.config
         .auth
         .as_ref()
@@ -160,7 +160,12 @@ fn get_jwt_from_config(ctx: &AppContext) -> LocoResult<&JWTConfig> {
         .ok_or_else(|| Error::string("JWT token not configured"))
 }
 /// extract token from the configured jwt location settings
-fn extract_token(jwt_config: &JWTConfig, parts: &Parts) -> LocoResult<String> {
+///
+/// # Errors
+///
+/// Returns an error when the token cannot be extracted from the configured location,
+/// such as missing headers, invalid formats, or inaccessible request data.
+pub fn extract_token(jwt_config: &JWTConfig, parts: &Parts) -> LocoResult<String> {
     #[allow(clippy::match_wildcard_for_single_variants)]
     match jwt_config
         .location
