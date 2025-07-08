@@ -169,8 +169,10 @@ pub fn default_middleware_stack(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer
         // Powered by middleware with a default identifier
         Box::new(powered_by::new(ctx.config.server.ident.as_deref())),
 
-        // CSRF middleware with a default true if None
-        Box::new(middlewares.csrf_protection.clone().unwrap_or(Default::default())),
+        // CSRF middleware with a default true
+        Box::new(middlewares.csrf_protection.clone().unwrap_or_else(|| csrf_protection::CsrfProtection {
+            enable: true
+        })),
     ]
 }
 
