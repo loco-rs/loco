@@ -25,7 +25,8 @@ server:
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
   middlewares:
     # Enable or disable CSRF protection.
-    csrf_protection: true
+    csrf_protection:
+      enable: true
     
   {%- if settings.asset %}
     {%- if settings.asset.kind == "server" %}

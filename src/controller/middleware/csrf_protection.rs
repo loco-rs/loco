@@ -6,7 +6,10 @@ use axum_csrf::{CsrfConfig, CsrfLayer};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
-pub struct CsrfProtection;
+pub struct CsrfProtection {
+    #[serde(default)]
+    pub enable: bool,
+}
 
 impl MiddlewareLayer for CsrfProtection {
 
