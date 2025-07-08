@@ -18,6 +18,7 @@ pub mod powered_by;
 pub mod remote_ip;
 pub mod request_id;
 pub mod secure_headers;
+pub mod csrf_protection;
 #[cfg(feature = "embedded_assets")]
 pub mod static_assets_embedded;
 #[cfg(feature = "embedded_assets")]
@@ -167,6 +168,9 @@ pub fn default_middleware_stack(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer
         ),
         // Powered by middleware with a default identifier
         Box::new(powered_by::new(ctx.config.server.ident.as_deref())),
+
+        // CSRF middleware with a default true if None
+        Box::new(middlewares.csrf_protection.clone().unwrap_or(Default::default())),
     ]
 }
 
@@ -209,4 +213,7 @@ pub struct Config {
 
     /// Request ID
     pub request_id: Option<request_id::RequestId>,
+
+    /// CSRF Protection
+    pub csrf_protection: Option<csrf_protection::CsrfProtection>,
 }
