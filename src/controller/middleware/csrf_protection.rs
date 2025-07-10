@@ -3,7 +3,7 @@ use crate::app::AppContext;
 use crate::Result;
 use axum::Router as AXRouter;
 use axum_csrf::{CsrfConfig, CsrfLayer, SameSite as AXSameSite};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::convert::Into;
 use time::Duration as TimeDuration;
 
@@ -27,7 +27,7 @@ pub struct CsrfCookie {
     pub(crate) same_site: Option<SameSite>,
 }
 
-#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, Serialize)]
 pub enum SameSite {
     Lax,
     Strict,
@@ -41,6 +41,22 @@ impl Into<AXSameSite> for SameSite {
             SameSite::Lax => AXSameSite::Lax,
             SameSite::Strict => AXSameSite::Strict,
             SameSite::None => AXSameSite::None,
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for SameSite {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+
+        match value.to_lowercase().as_str() {
+            "lax" => Ok(SameSite::Lax),
+            "strict" => Ok(SameSite::Strict),
+            "none" => Ok(SameSite::None),
+            _ => Err(serde::de::Error::custom("Invalid same_site value")),
         }
     }
 }
