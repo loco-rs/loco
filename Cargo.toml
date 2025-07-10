@@ -121,6 +121,7 @@ axum-test = { version = "17.0.1", optional = true }
 tree-fs = { version = "0.3", optional = true }
 
 chrono = { workspace = true }
+time = "0.3.41"
 
 uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
 

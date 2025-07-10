@@ -171,7 +171,8 @@ pub fn default_middleware_stack(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer
 
         // CSRF middleware with a default true
         Box::new(middlewares.csrf_protection.clone().unwrap_or_else(|| csrf_protection::CsrfProtection {
-            enable: true
+            enable: Some(true),
+            ..Default::default()
         })),
     ]
 }
