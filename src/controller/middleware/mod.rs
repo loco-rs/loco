@@ -9,6 +9,7 @@
 pub mod catch_panic;
 pub mod compression;
 pub mod cors;
+pub mod csrf_protection;
 pub mod etag;
 pub mod fallback;
 pub mod format;
@@ -18,7 +19,6 @@ pub mod powered_by;
 pub mod remote_ip;
 pub mod request_id;
 pub mod secure_headers;
-pub mod csrf_protection;
 #[cfg(feature = "embedded_assets")]
 pub mod static_assets_embedded;
 #[cfg(feature = "embedded_assets")]
@@ -168,11 +168,12 @@ pub fn default_middleware_stack(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer
         ),
         // Powered by middleware with a default identifier
         Box::new(powered_by::new(ctx.config.server.ident.as_deref())),
-
         // CSRF middleware with a default true
-        Box::new(middlewares.csrf_protection.clone().unwrap_or_else(|| csrf_protection::CsrfProtection {
-            enable: Some(true),
-            ..Default::default()
+        Box::new(middlewares.csrf_protection.clone().unwrap_or_else(|| {
+            csrf_protection::CsrfProtection {
+                enable: Some(true),
+                ..Default::default()
+            }
         })),
     ]
 }
