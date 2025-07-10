@@ -15,96 +15,103 @@ top = false
 flair =[]
 +++
 
-In Loco Storage, we facilitate working with files through multiple operations. Storage can be in-memory, on disk, or use cloud services such as AWS S3, GCP, and Azure.
 
-Loco supports simple storage operations and advanced features like mirroring data or backup strategies with different failure modes.
+## Overview 🌟
 
-By default, in-memory and disk storage come out of the box. To work with cloud providers, you should specify the following features:
-- `storage_aws_s3`
-- `storage_azure`
-- `storage_gcp`
-- `all_storage`
+In Loco Storage, we enable seamless file management through a variety of operations. Whether you are handling data in-memory, on local disk, or via cloud services such as AWS S3, GCP, or Azure, Loco provides a flexible and robust solution.
 
-By default loco initialize a `Null` provider, meaning any work with the storage will return an error. 
+Loco supports essential storage tasks such as uploading, downloading, deleting, renaming, copying, and checking existence. For advanced scenarios, it offers features like data mirroring or backup strategies with customizable failure modes to ensure reliability.
+
+By default, in-memory and disk storage are available out-of-the-box. To integrate cloud providers, enable the relevant Cargo features:
+
+- `storage_aws_s3` for AWS S3
+- `minio` for MinIO
+- `storage_azure` for Azure Blob Storage
+- `storage_gcp` for Google Cloud Storage
+- `all_storage` to include all cloud options
+
+Without configuration, Loco initializes a `Null` provider, which returns errors for any storage operations—ensuring you set up a proper driver before use.
 
 ## Setup
 
-Add the `after_context` function as a Hook in the `app.rs` file and import the `storage` module from `loco_rs`.
+To integrate storage into your Loco application, add an `after_context` hook in your `app.rs` file. Import the `storage` module from `loco_rs` and configure your driver(s).
+
+Here's a basic example using the in-memory driver:
 
 ```rust
 use loco_rs::storage;
 
 async fn after_context(ctx: AppContext) -> Result<AppContext> {
-    Ok(ctx)
-}
-```
+    let mem_driver = storage::drivers::mem::new();
 
-This hook returns a Storage instance that holds all storage configurations, covered in the next sections. This Storage instance is stored as part of the application context and is available in controllers, endpoints, task workers, and more.
-
-## Glossary
-|          |   |
-| -        | - |
-| `StorageDriver` | Trait implementation something that does storage  |
-| `Storage`| Abstraction implementation for managing one or more storage drivers. |
-| `Strategy`| Trait implementing various strategies for Storage, such as mirror or backup. |
-| `FailureMode`| Implemented within each Strategy, determining how to handle operations in case of failures. |
-
-### Initialize Storage
-
-Storage can be configured with a single driver or multiple drivers.
-
-#### Single Store
-
-In this example, we initialize the in-memory driver and create a new storage with the single function.
-
-```rust
-use loco_rs::storage;
-
-async fn after_context(ctx: AppContext) -> Result<AppContext> {
     Ok(AppContext {
-        storage: Storage::single(storage::drivers::mem::new()).into(),
+        storage: Storage::single(mem_driver).into(),
         ..ctx
     })
 }
 ```
 
-### Multiple Drivers
+This hook injects a `Storage` instance into the application context, making it accessible in controllers, endpoints, tasks, and more.
 
-For advanced usage, you can set up multiple drivers and apply smart strategies that come out of the box. Each strategy has its own set of failure modes that you can decide how to handle.
+## Glossary 📚
 
-Creating multiple drivers:
+Here's a quick reference for key terms:
+
+| Term             | Description                                                                 |
+|------------------|-----------------------------------------------------------------------------|
+| **StorageDriver** | A trait implementation for actual storage backends (e.g., AWS, local disk). |
+| **Storage**      | An abstraction layer managing one or more drivers with strategies.          |
+| **Strategy**     | A trait for advanced behaviors like mirroring or backups.                   |
+| **FailureMode**  | Defines how strategies handle errors during operations.                     |
+
+## Initializing Storage 🛠️
+
+Storage can be set up with a single driver for simplicity or multiple drivers for redundancy and advanced strategies.
+
+### Single Store
+
+For basic use, initialize one driver and wrap it in `Storage::single`:
 
 ```rust
-use crate::storage::{drivers, Storage};
+   Storage::single(storage::drivers::mem::new()).into(),
+```
+
+### Multiple Drivers
+
+For scenarios requiring redundancy, create multiple drivers and apply strategies like mirroring or backups.
+
+First, define your drivers:
+
+```rust
+use loco_rs::storage::drivers;
 
 let aws_1 = drivers::aws::new("users");
 let azure = drivers::azure::new("users");
 let aws_2 = drivers::aws::new("users-mirror");
 ```
 
-#### Mirror Strategy:
-You can keep multiple services in sync by defining a mirror service. A mirror service **replicates** uploads, deletes, rename and copy across two or more subordinate services. The download behavior redundantly retrieves data, meaning if the file retrieval fails from the primary, the first file found in the secondaries is returned.
+#### Mirror Strategy
 
-#### Behaviour
+The mirror strategy replicates operations (upload, delete, rename, copy) across a primary and secondary stores, keeping them in sync. For downloads, it falls back to secondaries if the primary fails.
 
-After creating the three store instances, we need to create the mirror strategy instance and define the failure mode. The mirror strategy expects the primary store and a list of secondary stores, along with failure mode options:
-- `MirrorAll`: All secondary storages must succeed. If one fails, the operation continues to the rest but returns an error.
-- `AllowMirrorFailure`: The operation does not return an error when one or more mirror operations fail.
+**Failure Modes**:
 
-The failure mode is relevant for upload, delete, move, and copy.
+- `MirrorAll`: All mirrors must succeed; errors from any cause the operation to fail.
+- `AllowMirrorFailure`: Continues even if mirrors fail, without returning an error.
 
-Example:
+Example configuration:
+
 ```rust
+use loco_rs::storage::{MirrorStrategy, FailureMode, Storage, StorageStrategy};
+use std::collections::BTreeMap;
 
-// Define the mirror strategy by setting the primary store and secondary stores by names.
-let strategy = Box::new(MirrorStrategy::new(
+let strategy: Box<dyn StorageStrategy> = Box::new(MirrorStrategy::new(
     "store_1",
     Some(vec!["store_2".to_string(), "store_3".to_string()]),
     FailureMode::MirrorAll,
-)) as Box<dyn StorageStrategy>;
+));
 
-// Create the storage with the store mapping and the strategy.
- let storage = Storage::new(
+let storage = Storage::new(
     BTreeMap::from([
         ("store_1".to_string(), aws_1),
         ("store_2".to_string(), azure),
@@ -114,64 +121,66 @@ let strategy = Box::new(MirrorStrategy::new(
 );
 ```
 
-### Backup Strategy:
+#### Backup Strategy
 
-You can back up your operations across multiple storages and control the failure mode policy.
+The backup strategy performs operations on the primary and replicates them to backups. Downloads always use the primary.
 
-After creating the three store instances, we need to create the backup strategy instance and define the failure mode. The backup strategy expects the primary store and a list of secondary stores, along with failure mode options:
-- `BackupAll`: All secondary storages must succeed. If one fails, the operation continues to the rest but returns an error.
-- `AllowBackupFailure`: The operation does not return an error when one or more backup operations fail.
-- `AtLeastOneFailure`: At least one operation should pass.
-- `CountFailure`: The given number of backups should pass.
+**Failure Modes**:
 
-The failure mode is relevant for upload, delete, move, and copy. The download always retrieves the file from the primary.
+- `BackupAll`: All backups must succeed; errors cause failure.
+- `AllowBackupFailure`: Ignores backup failures.
+- `AtLeastOneSuccess`: Ensures at least one backup succeeds.
+- `CountSuccess`: Requires a specified number of backups to succeed.
 
 Example:
-```rust
 
-// Define the backup strategy by setting the primary store and secondary stores by names.
+```rust
+use loco_rs::storage::{BackupStrategy, FailureMode, Storage, StorageStrategy};
+use std::collections::BTreeMap;
+
 let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
     "store_1",
     Some(vec!["store_2".to_string(), "store_3".to_string()]),
     FailureMode::AllowBackupFailure,
-)) as Box<dyn StorageStrategy>;
+));
 
 let storage = Storage::new(
     BTreeMap::from([
-        ("store_1".to_string(), store_1),
-        ("store_2".to_string(), store_2),
-        ("store_3".to_string(), store_3),
+        ("store_1".to_string(), aws_1),
+        ("store_2".to_string(), azure),
+        ("store_3".to_string(), aws_2),
     ]),
     strategy.into(),
 );
 ```
 
-## Create Your Own Strategy
+## Creating Your Own Strategy 🛠️✨
 
-In case you have a specific strategy, you can easily create it by implementing the StorageStrategy and implementing all store functionality.
+If built-in strategies do not fit, implement the `StorageStrategy` trait to define custom logic for all operations (upload, get, delete, etc.).
 
-## Usage In Controller
+## Usage in Controllers 📝
 
-Follow this example, make sure you enable `multipart` feature in axum crate.
+Enable the `multipart` feature in Axum for file uploads. Here's an example controller for uploading files:
 
 ```rust
+use axum::{extract::{Multipart, State}, response::Response};
+use loco_rs::{prelude::*, storage::Storage};
+use std::path::PathBuf;
+
 async fn upload_file(
     State(ctx): State<AppContext>,
     mut multipart: Multipart,
 ) -> Result<Response> {
     let mut file = None;
     while let Some(field) = multipart.next_field().await.map_err(|err| {
-        tracing::error!(error = ?err,"could not readd multipart");
-        Error::BadRequest("could not readd multipart".into())
+        tracing::error!(error = ?err, "could not read multipart");
+        Error::BadRequest("could not read multipart".into())
     })? {
-        let file_name = match field.file_name() {
-            Some(file_name) => file_name.to_string(),
-            _ => return Err(Error::BadRequest("file name not found".into())),
-        };
+        let file_name = field.file_name().ok_or(Error::BadRequest("file name not found".into()))?.to_string();
 
         let content = field.bytes().await.map_err(|err| {
-            tracing::error!(error = ?err,"could not readd bytes");
-            Error::BadRequest("could not readd bytes".into())
+            tracing::error!(error = ?err, "could not read bytes");
+            Error::BadRequest("could not read bytes".into())
         })?;
 
         let path = PathBuf::from("folder").join(file_name);
@@ -185,16 +194,18 @@ async fn upload_file(
     })
 }
 ```
-# Testing
 
-By testing file storage in your controller you can follow this example:
+## Testing 🧪
+
+Test storage interactions in controllers using Loco's testing utilities:
 
 ```rust
 use loco_rs::testing::prelude::*;
+use axum::multipart::{MultipartForm, Part};
 
 #[tokio::test]
 #[serial]
-async fn can_register() {
+async fn can_upload() {
     request::<App, _, _>(|request, ctx| async move {
         let file_content = "loco file upload";
         let file_part = Part::bytes(file_content.as_bytes()).file_name("loco.txt");
@@ -215,3 +226,214 @@ async fn can_register() {
 }
 ```
 
+## Quckly start (Minio/S3 Example)
+
+Loco makes file storage a breeze, whether you're saving files locally, in-memory, or on cloud platforms like AWS S3 or MinIO. This guide walks you through setting up storage, configuring cloud providers, and creating endpoints to upload and retrieve files. Let's dive in! 🌊
+
+### 1. Enable Storage Features 📚
+
+To use cloud storage, enable the necessary features in your `Cargo.toml` file. This tells Loco which storage backends you want to support.
+Add the necessary features to your `Cargo.toml`:
+
+```toml
+loco-rs = { version = "newest-version", features = [ "minio"] }
+```
+
+**Note**: Replace `"newest-version"` with the latest `loco-rs` version. If you're only using local or in-memory storage, you can skip the cloud features.
+
+### 2. Configure Your Storage Backend 🛠️
+
+#### 2.1 Minio Setup ☁️
+
+Set up your storage in the `src/app.rs` file by adding a driver to the `after_context` hook. This makes storage available across your app (controllers, tasks, etc.).
+
+```rust
+// src/app.rs
+
+use loco_rs::storage::{aws, drivers::aws::Credential};
+
+async fn after_context(ctx: AppContext) -> Result<AppContext> {
+        let credential = minio::Credential {
+            key_id: "...".to_string(),
+            secret_key: "...".to_string(),
+            endpoint: "http://127.0.1:9000".to_string(),
+        };
+
+        let driver = minio::with_bucket_and_credentials("bucket-name",credential);
+
+        Ok(AppContext {
+            storage: Storage::single(driver.unwrap()).into(),
+            ..ctx
+        })
+}
+```
+
+**Tips**:
+
+- Update the `endpoint` to match your MinIO server (e.g., `http://localhost:9000`).
+- Set `MINIO_ACCESS_KEY` and `MINIO_SECRET_KEY` in your environment variables.
+
+#### 2.2 AWS S3 Setup ☁️
+
+For AWS S3, provide your bucket name, region, and credentials.
+
+```rust
+// src/app.rs
+use loco_rs::storage::{aws, drivers::aws::Credential};
+
+async fn after_context(ctx: AppContext) -> Result<AppContext> {
+    let credential = Credential {
+        key_id: "AWS_ACCESS_KEY_ID",
+        secret_key: "AWS_ACCESS_KEY_SECRET",
+        token: None,
+    };
+
+    let driver = aws::with_credentials("my-bucket", "ap-south-1", credential);
+
+    Ok(AppContext {
+        storage: Storage::single(driver.unwrap()).into(),
+        ..ctx
+    })
+}
+```
+
+**Tips**:
+
+- Store `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in environment variables for security.
+- Use `aws::with_credentials_and_endpoint` if you need a custom S3 endpoint (e.g., for S3-compatible services).
+
+### 3. Create Storage Endpoints 🎮
+
+Add controllers to handle file uploads and downloads. We'll create two endpoints: one to upload files and another to retrieve them, mimicking Rails' Active Storage format for compatibility.
+
+#### 3.1 Upload Function
+
+```rust
+use axum::{extract::{Multipart, State}, response::Response};
+use loco_rs::{prelude::*, storage::Storage};
+use std::path::PathBuf;
+
+#[debug_handler]
+async fn upload_file(State(ctx): State<AppContext>, mut multipart: Multipart) -> Result<Response> {
+    while let Some(field) = multipart.next_field().await.map_err(|err| {
+        tracing::error!(error = ?err, "could not read multipart");
+        Error::BadRequest("could not read multipart".into())
+    })? {
+        let file_name = match field.file_name() {
+            Some(file_name) => file_name.to_string(),
+            _ => return Err(Error::BadRequest("file name not found".into())),
+        };
+
+        let content = field.bytes().await.map_err(|err| {
+            tracing::error!(error = ?err, "could not read bytes");
+            Error::BadRequest("could not read bytes".into())
+        })?;
+
+        // Construct S3-compatible key (virtual path)
+        let pid = uuid::Uuid::new_v4(); // you should change to signed_id if you want to follow active storage process
+        let key = format!("uploads/{}", pid);
+        let path = PathBuf::from(&key);
+
+        let _res = ctx
+            .storage
+            .as_ref()
+            .upload(path.as_path(), &content)
+            .await?;
+
+        return format::json(data!({
+        "message": "File uploaded successfully",
+          "file": {
+                "pid": pid.to_string(), 
+                "filename": file_name,
+                "byte_size": content.len(),
+                // You can also save in database or as activestorage data structure
+            
+          }
+        }));
+    }
+
+    bad_request("No files were uploaded")
+}
+
+
+pub fn routes() -> Routes {
+    Routes::new()
+        .prefix("/storage")
+        .add("/upload", post(upload_file))
+}
+
+```
+
+## 4. Test Your Setup 🧪
+
+Try uploading and downloading a file to ensure everything works.
+
+### Upload a File
+
+```bash
+curl -X POST http://localhost:5150/storage/upload \
+  -F "file=@example.txt" \
+  -H "Content-Type: multipart/form-data"
+```
+
+**Expected Response**:
+
+```json
+{
+  "message": "File uploaded successfully",
+  "file": {
+    "pid": "550e8400-e29b-41d4-a716-446655440000",
+    "filename": "example.txt",
+    "byte_size": 123,
+    //...etc
+  }
+}
+```
+
+### Download a File
+
+```rust
+use axum::{extract::{Multipart, State}, response::Response};
+use loco_rs::{prelude::*, storage::Storage};
+use std::path::PathBuf;
+
+
+async fn show_file(State(ctx): State<AppContext>, pid: String) -> Result<Response> {
+    let key = format!("uploads/{}", pid);
+    let path = PathBuf::from(&key);
+    let content: Vec<u8> = ctx.storage.as_ref().download(&path).await?;
+
+    if content.is_empty() {
+        return not_found();
+    }
+
+    Ok(Response::builder()
+        .header("Content-Type", "application/octet-stream")
+        .body(content.into())
+        .unwrap())
+}
+
+pub fn routes() -> Routes {
+    Routes::new()
+        .prefix("storage/")
+        .add("/{pid}", get(show_file))
+}
+```ç
+
+Use the `pid` from the upload response:
+(Note: pid just for demo purpose)
+
+```bash
+curl http://localhost:3000/storage/eyJhbGciOiJIUzI1NiJ9...
+```
+
+**Expected**: The file content is returned with appropriate headers, or a `404` if the file is missing.
+
+## 5. Tips for Success 🌟
+
+- **Secure Your Secrets**: Store `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, and `JWT_SECRET` in environment variables or a secret manager.
+- **File Metadata**: Save file details (e.g., `filename`, `content_type`) in a database during upload to improve `show_file`’s content type accuracy.
+- **Validation**: Add file size and extension checks to `upload_file` for security (e.g., limit to 10 MB, allow only `.txt`, `.pdf`).
+- **Production**: Add authentication and rate limiting to protect your endpoints.
+
+Happy file storing with Loco! 🚀 If you hit any snags, check your logs or reach out for help.

@@ -36,8 +36,9 @@ cli = ["dep:clap"]
 testing = ["dep:axum-test", "dep:scraper", "dep:tree-fs"]
 with-db = ["dep:sea-orm", "dep:sea-orm-migration", "loco-gen/with-db"]
 # Storage features
-all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
+all_storage = ["storage_aws_s3", "minio", "storage_azure", "storage_gcp"]
 storage_aws_s3 = ["opendal/services-s3"]
+minio = ["opendal/services-s3"]
 storage_azure = ["opendal/services-azblob"]
 storage_gcp = ["opendal/services-gcs"]
 # Cache feature
@@ -124,7 +125,7 @@ chrono = { workspace = true }
 uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
 
 # File Upload
-opendal = { version = "0.50.2", default-features = false, features = [
+opendal = { version = "0.53.3", default-features = false, features = [
     "services-memory",
     "services-fs",
 ] }
