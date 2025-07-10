@@ -31,7 +31,7 @@ pub fn new(bucket_name: &str, endpoint: &str) -> StorageResult<Box<dyn StoreDriv
     Ok(Box::new(OpendalAdapter::new(Operator::new(minio)?.finish())))
 }
 
-/// Create new minio storage with bucket, region and credentials.
+/// Create new Minio storage with bucket, region and credentials.
 ///
 /// # Examples
 ///```
@@ -39,22 +39,21 @@ pub fn new(bucket_name: &str, endpoint: &str) -> StorageResult<Box<dyn StoreDriv
 /// let credential = minio::Credential {
 ///    key_id: "".to_string(),
 ///    secret_key: "".to_string(),
-///    token: None
+///    endpoint: "http://localhost:9000".to_string()
 /// };
-/// let minio_driver = minio::with_credentials("bucket_name", "region", credential);
+/// let minio_driver = minio::with_credentials("bucket_name",credential);
 /// ```
 ///
 /// # Errors
 ///
 /// When could not initialize the client instance
-pub fn with_credentials(
+pub fn with_bucket_and_credentials(
     bucket_name: &str,
-    endpoint: &str,
     credentials: Credential,
 ) -> StorageResult<Box<dyn StoreDriver>> {
     let minio = S3Minio::default()
         .bucket(bucket_name)
-        .endpoint(endpoint)
+        .endpoint(&credentials.endpoint)
         .region("auto")
         .access_key_id(&credentials.key_id)
         .secret_access_key(&credentials.secret_key);
