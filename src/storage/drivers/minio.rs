@@ -1,4 +1,4 @@
-use opendal::{services::S3, Operator};
+use opendal::{services::S3 as S3Minio, Operator};
 
 use super::{opendal_adapter::OpendalAdapter, StoreDriver};
 use crate::storage::StorageResult;
@@ -14,34 +14,34 @@ pub struct Credential {
     pub endpoint: String
 }
 
-/// Create new Minio s3 storage with bucket and region.
+/// Create new minio storage with bucket and url.
 ///
 /// # Examples
 ///```
-/// use loco_rs::storage::drivers::Minio;
-/// let Minio_driver = Minio::new("bucket_name", "region");
+/// use loco_rs::storage::drivers::minio;
+/// let minio_driver = minio::new("bucket_name", "region");
 /// ```
 ///
 /// # Errors
 ///
 /// When could not initialize the client instance
 pub fn new(bucket_name: &str, endpoint: &str) -> StorageResult<Box<dyn StoreDriver>> {
-    let s3 = S3::default().bucket(bucket_name).endpoint(endpoint);
+    let minio = S3Minio::default().bucket(bucket_name).endpoint(endpoint);
 
-    Ok(Box::new(OpendalAdapter::new(Operator::new(s3)?.finish())))
+    Ok(Box::new(OpendalAdapter::new(Operator::new(minio)?.finish())))
 }
 
-/// Create new Minio s3 storage with bucket, region and credentials.
+/// Create new minio storage with bucket, region and credentials.
 ///
 /// # Examples
 ///```
-/// use loco_rs::storage::drivers::Minio;
-/// let credential = Minio::Credential {
+/// use loco_rs::storage::drivers::minio;
+/// let credential = minio::Credential {
 ///    key_id: "".to_string(),
 ///    secret_key: "".to_string(),
 ///    token: None
 /// };
-/// let Minio_driver = Minio::with_credentials("bucket_name", "region", credential);
+/// let minio_driver = minio::with_credentials("bucket_name", "region", credential);
 /// ```
 ///
 /// # Errors
@@ -52,15 +52,13 @@ pub fn with_credentials(
     endpoint: &str,
     credentials: Credential,
 ) -> StorageResult<Box<dyn StoreDriver>> {
-    let mut s3 = S3::default()
+    let minio = S3Minio::default()
         .bucket(bucket_name)
         .endpoint(endpoint)
+        .region("auto")
         .access_key_id(&credentials.key_id)
         .secret_access_key(&credentials.secret_key);
-    if let Some(token) = credentials.token {
-        s3 = s3.session_token(&token);
-    }
-    Ok(Box::new(OpendalAdapter::new(Operator::new(s3)?.finish())))
+    Ok(Box::new(OpendalAdapter::new(Operator::new(minio)?.finish())))
 }
 
 /// Build store with failure
@@ -71,11 +69,11 @@ pub fn with_credentials(
 #[cfg(test)]
 #[must_use]
 pub fn with_failure() -> Box<dyn StoreDriver> {
-    let s3 = S3::default()
+    let minio = S3Minio::default()
         .bucket("loco-test")
         .region("ap-south-1")
         .allow_anonymous()
         .disable_ec2_metadata();
 
-    Box::new(OpendalAdapter::new(Operator::new(s3).unwrap().finish()))
+    Box::new(OpendalAdapter::new(Operator::new(minio).unwrap().finish()))
 }

@@ -44,7 +44,7 @@ pub fn new(bucket_name: &str, region: &str) -> StorageResult<Box<dyn StoreDriver
 ///     token: None,
 /// };
 ///
-/// let aws_driver = aws::with_credentials_and_endpoint("bucket_name", "region", credential, "https://s3.amazonaws.com");
+/// let aws_driver = aws::with_credentials_and_endpoint("bucket_name", "region", "https://s3.amazonaws.com", credential);
 /// ```
 ///
 /// # Errors
@@ -53,15 +53,17 @@ pub fn new(bucket_name: &str, region: &str) -> StorageResult<Box<dyn StoreDriver
 pub fn with_credentials_and_endpoint(
     bucket_name: &str,
     region: &str,
+    endpoint: &str,
     credentials: Credential,
-    url: &str,
 ) -> StorageResult<Box<dyn StoreDriver>> {
     let mut s3 = S3::default()
         .bucket(bucket_name)
+        .endpoint(endpoint)
         .region(region)
         .access_key_id(&credentials.key_id)
         .secret_access_key(&credentials.secret_key)
-        .endpoint(url);
+      ;
+
     if let Some(token) = credentials.token {
         s3 = s3.session_token(&token);
     }
