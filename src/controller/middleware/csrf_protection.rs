@@ -52,6 +52,8 @@ impl MiddlewareLayer for CsrfProtection {
     /// Applies the CSRF protection middleware.
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
 
+        if let Some(true) = self.enable {
+
         let mut csrf_config = CsrfConfig::default();
 
         if let Some(cookie) = &self.cookie {
@@ -88,7 +90,12 @@ impl MiddlewareLayer for CsrfProtection {
 
         let csrf_layer = CsrfLayer::new(csrf_config);
         let app = app.layer(csrf_layer);
-        Ok(app)
+
+        return Ok(app);
+
+    } else {
+        return Ok(app)
     }
+}
 
 }
