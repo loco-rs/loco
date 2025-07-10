@@ -6,6 +6,10 @@ use opendal::Reader;
 
 #[cfg(feature = "storage_aws_s3")]
 pub mod aws;
+
+#[cfg(feature = "minio")]
+pub mod minio;
+
 #[cfg(feature = "storage_azure")]
 pub mod azure;
 #[cfg(feature = "storage_gcp")]

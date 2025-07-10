@@ -31,6 +31,43 @@ pub fn new(bucket_name: &str, region: &str) -> StorageResult<Box<dyn StoreDriver
     Ok(Box::new(OpendalAdapter::new(Operator::new(s3)?.finish())))
 }
 
+/// Create new AWS s3 storage with bucket, region and credentials and URL.
+/// 
+/// # Examples
+///
+/// ```
+/// use loco_rs::storage::drivers::aws;
+///
+/// let credential = aws::Credential {
+///     key_id: "".to_string(),
+///     secret_key: "".to_string(),
+///     token: None,
+/// };
+///
+/// let aws_driver = aws::with_credentials_and_endpoint("bucket_name", "region", credential, "https://s3.amazonaws.com");
+/// ```
+///
+/// # Errors
+///
+/// This function returns an error if the underlying `Operator` creation fails, such as due to invalid credentials, endpoint configuration issues, or other OpenDAL-related errors.
+pub fn with_credentials_and_endpoint(
+    bucket_name: &str,
+    region: &str,
+    credentials: Credential,
+    url: &str,
+) -> StorageResult<Box<dyn StoreDriver>> {
+    let mut s3 = S3::default()
+        .bucket(bucket_name)
+        .region(region)
+        .access_key_id(&credentials.key_id)
+        .secret_access_key(&credentials.secret_key)
+        .endpoint(url);
+    if let Some(token) = credentials.token {
+        s3 = s3.session_token(&token);
+    }
+    Ok(Box::new(OpendalAdapter::new(Operator::new(s3)?.finish())))
+}
+
 /// Create new AWS s3 storage with bucket, region and credentials.
 ///
 /// # Examples
