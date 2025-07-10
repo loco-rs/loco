@@ -9,8 +9,8 @@
 
 use std::path::PathBuf;
 
-use axum::Router as AXRouter;
 use axum::{
+    Router as AXRouter,
     body::Body,
     extract::{Path as AxumPath, Request},
     http::StatusCode,
@@ -20,7 +20,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
+use crate::{Result, app::AppContext, controller::middleware::MiddlewareLayer};
 
 // Include the generated static assets at the module level
 include!(concat!(env!("OUT_DIR"), "/generated_code/static_assets.rs"));
@@ -119,7 +119,7 @@ impl EmbeddedAssets {
         }
     }
 
-    fn serve(&self, uri: &str) -> impl IntoResponse {
+    fn serve(&self, uri: &str) -> impl IntoResponse + use<> {
         let assets = get_embedded_static_assets();
 
         assets.get(uri).map_or_else(

@@ -24,7 +24,7 @@ use std::convert::TryInto;
 
 use axum::{
     body::Body,
-    http::{header, response::Builder, HeaderName, HeaderValue, StatusCode},
+    http::{HeaderName, HeaderValue, StatusCode, header, response::Builder},
     response::{Html, IntoResponse, Redirect, Response},
 };
 use axum_extra::extract::cookie::Cookie;
@@ -33,11 +33,11 @@ use serde::Serialize;
 use serde_json::json;
 
 use crate::{
-    controller::{
-        views::{self, ViewRenderer},
-        Json,
-    },
     Result,
+    controller::{
+        Json,
+        views::{self, ViewRenderer},
+    },
 };
 
 /// Returns an empty response.
@@ -411,10 +411,13 @@ mod tests {
 
     use axum::http::Response;
     use insta::assert_debug_snapshot;
+    #[cfg(not(feature = "embedded_assets"))]
     use tree_fs;
 
     use super::*;
-    use crate::{controller::views::engines::TeraView, prelude::*};
+    #[cfg(not(feature = "embedded_assets"))]
+    use crate::controller::views::engines::TeraView;
+    use crate::prelude::*;
 
     async fn response_body_to_string(response: Response<Body>) -> String {
         let bytes = axum::body::to_bytes(response.into_body(), 200)

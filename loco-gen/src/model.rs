@@ -7,7 +7,7 @@ use rrgen::RRgen;
 use serde_json::json;
 
 use crate::{
-    get_mappings, infer::parse_field_type, render_template, AppInfo, Error, GenerateResults, Result,
+    AppInfo, Error, GenerateResults, Result, get_mappings, infer::parse_field_type, render_template,
 };
 
 /// skipping some fields from the generated models.
@@ -65,11 +65,12 @@ pub fn get_columns_and_references(
                         let array_kind = match params.as_slice() {
                             [array_kind] => Ok(array_kind),
                             _ => Err(Error::Message(format!(
-                                    "type: `{ftype}` requires exactly {arity} parameter{}, but {} were given (`{}`).",
-                                    if arity == 1 { "" } else { "s" },
-                                    params.len(),
-                                    params.join(",")
-                                ))),
+                                "type: `{ftype}` requires exactly {arity} parameter{}, but {} \
+                                 were given (`{}`).",
+                                if arity == 1 { "" } else { "s" },
+                                params.len(),
+                                params.join(",")
+                            ))),
                         }?;
 
                         format!(

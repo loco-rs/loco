@@ -1,7 +1,8 @@
-use insta::assert_snapshot;
-use loco_gen::{collect_messages, generate, AppInfo, Component, DeploymentKind};
-use rrgen::RRgen;
 use std::{fs, path::PathBuf};
+
+use insta::assert_snapshot;
+use loco_gen::{AppInfo, Component, DeploymentKind, collect_messages, generate};
+use rrgen::RRgen;
 
 #[rstest::rstest]
 fn can_generate_docker(

@@ -1,9 +1,11 @@
-use super::utils::{guess_file_by_time, APP_ROUTS, MIGRATION_SRC_LIB};
+use std::fs;
+
 use insta::{assert_snapshot, with_settings};
-use loco_gen::{collect_messages, generate, tera_ext, AppInfo, Component, ScaffoldKind};
+use loco_gen::{AppInfo, Component, ScaffoldKind, collect_messages, generate, tera_ext};
 use rrgen::RRgen;
 use rstest::rstest;
-use std::fs;
+
+use super::utils::{APP_ROUTS, MIGRATION_SRC_LIB, guess_file_by_time};
 
 #[rstest]
 #[case(ScaffoldKind::Api)]
@@ -11,7 +13,9 @@ use std::fs;
 #[case(ScaffoldKind::Htmx)]
 #[test]
 fn can_generate(#[case] kind: ScaffoldKind) {
-    std::env::set_var("SKIP_MIGRATION", "");
+    unsafe {
+        std::env::remove_var("SKIP_MIGRATION");
+    }
     let mut settings = insta::Settings::clone_current();
     settings.set_prepend_module_to_snapshot(false);
     settings.set_snapshot_suffix(format!("{kind:?}_scaffold"));
@@ -134,4 +138,5 @@ fn can_generate(#[case] kind: ScaffoldKind) {
     }
 }
 
-// thread 'templates::scaffold::can_generate::case_1' panicked at loco-gen/tests/templates/scaffold.rs:48:6:
+// thread 'templates::scaffold::can_generate::case_1' panicked at
+// loco-gen/tests/templates/scaffold.rs:48:6:

@@ -32,7 +32,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::info;
 
-use crate::{controller::middleware, environment::Environment, logger, scheduler, Error, Result};
+use crate::{Error, Result, controller::middleware, environment::Environment, logger, scheduler};
 
 static DEFAULT_FOLDER: OnceLock<PathBuf> = OnceLock::new();
 
@@ -222,8 +222,8 @@ pub struct Database {
     pub dangerously_recreate: bool,
 
     // Execute query after initializing the DB
-    /// for e.g. this can be used to confiure PRAGMAs for `SQLite` where you can pass all values as a string.
-    /// Default values are:
+    /// for e.g. this can be used to confiure PRAGMAs for `SQLite` where you can
+    /// pass all values as a string. Default values are:
     ///
     /// PRAGMA `foreign_keys` = ON;
     ///

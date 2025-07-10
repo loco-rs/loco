@@ -1,13 +1,13 @@
 use heck::ToSnakeCase;
 use sea_orm::{
+    ColumnType, DbErr, ForeignKeyAction,
     sea_query::{
         Alias, ColumnDef, Expr, Index, IntoIden, PgInterval, Table, TableAlterStatement,
         TableCreateStatement, TableForeignKey,
     },
-    ColumnType, DbErr, ForeignKeyAction,
 };
 pub use sea_orm_migration::schema::*;
-use sea_orm_migration::{prelude::Iden, sea_query, SchemaManager};
+use sea_orm_migration::{SchemaManager, prelude::Iden, sea_query};
 
 #[derive(Iden)]
 enum GeneralIds {

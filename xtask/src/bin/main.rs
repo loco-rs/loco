@@ -1,6 +1,6 @@
 use std::env;
 
-use cargo_metadata::{semver::Version, MetadataCommand, Package};
+use cargo_metadata::{MetadataCommand, Package, semver::Version};
 use clap::{
     ArgAction::{SetFalse, SetTrue},
     Parser, Subcommand,
@@ -39,7 +39,7 @@ enum Commands {
 fn main() -> eyre::Result<()> {
     let cli = Cli::parse();
     let project_dir = env::current_dir()?;
-    println!("running in: {project_dir:?}");
+    println!("running in: {}", project_dir.display());
 
     let res = match cli.command {
         Commands::Test { quick } => {

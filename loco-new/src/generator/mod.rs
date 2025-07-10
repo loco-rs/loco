@@ -6,18 +6,16 @@ pub mod executer;
 pub mod template;
 use std::sync::Arc;
 
-use include_dir::{include_dir, Dir};
+use include_dir::{Dir, include_dir};
 use rhai::{
-    export_module, exported_module,
+    Engine, Scope, export_module, exported_module,
     plugin::{
         Dynamic, FnNamespace, FuncRegistration, Module, NativeCallContext, PluginFunc, RhaiResult,
         TypeId,
     },
-    Engine, Scope,
 };
 
-use crate::wizard::AssetsOption;
-use crate::{settings, OS};
+use crate::{OS, settings, wizard::AssetsOption};
 
 static APP_TEMPLATE: Dir<'_> = include_dir!("base_template");
 
@@ -247,7 +245,8 @@ impl Generator {
 #[export_module]
 mod rhai_settings_extensions {
 
-    /// Retrieves the value of the `view_engine` field from the [`settings::Initializers`] struct.
+    /// Retrieves the value of the `view_engine` field from the
+    /// [`settings::Initializers`] struct.
     #[rhai_fn(global, get = "view_engine", pure)]
     pub fn view_engine(initializers: &mut Option<settings::Initializers>) -> bool {
         initializers.as_ref().is_some_and(|i| i.view_engine)

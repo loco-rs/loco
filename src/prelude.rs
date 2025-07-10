@@ -6,7 +6,7 @@ pub use axum::{
 };
 pub use axum_extra::extract::cookie;
 pub use chrono::NaiveDateTime as DateTime;
-pub use include_dir::{include_dir, Dir};
+pub use include_dir::{Dir, include_dir};
 // some types required for controller generators
 #[cfg(feature = "with-db")]
 pub use sea_orm::prelude::{Date, DateTimeUtc, DateTimeWithTimeZone, Decimal, Uuid};
@@ -21,24 +21,25 @@ pub use serde_json::json as data;
 
 #[cfg(all(feature = "auth_jwt", feature = "with-db"))]
 pub use crate::controller::extractor::auth;
-pub use crate::controller::extractor::{
-    shared_store::SharedStore,
-    validate::{JsonValidate, JsonValidateWithMessage},
-};
 #[cfg(feature = "with-db")]
-pub use crate::model::{query, Authenticable, ModelError, ModelResult};
+pub use crate::model::{Authenticable, ModelError, ModelResult, query};
 pub use crate::{
+    Result,
     app::{AppContext, Initializer},
     bgworker::{BackgroundWorker, Queue},
     controller::{
-        bad_request, format,
+        Json, Routes, bad_request,
+        extractor::{
+            shared_store::SharedStore,
+            validate::{JsonValidate, JsonValidateWithMessage},
+        },
+        format,
         middleware::{
             format::{Format, RespondTo},
             remote_ip::RemoteIP,
         },
         not_found, unauthorized,
-        views::{engines::TeraView, ViewEngine, ViewRenderer},
-        Json, Routes,
+        views::{ViewEngine, ViewRenderer, engines::TeraView},
     },
     errors::Error,
     mailer,
@@ -46,7 +47,6 @@ pub use crate::{
     task::{self, Task, TaskInfo},
     validation::{self, Validatable},
     validator::Validate,
-    Result,
 };
 #[cfg(feature = "with-db")]
 pub mod model {

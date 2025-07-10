@@ -1,18 +1,19 @@
-use colored::Colorize;
-use regex::Regex;
-use semver::Version;
-use std::fmt::Write;
 use std::{
     collections::{BTreeMap, HashMap},
+    fmt::Write,
     process::Command,
     sync::OnceLock,
 };
 
+use colored::Colorize;
+use regex::Regex;
+use semver::Version;
+
 use crate::{
-    bgworker,
+    Error, Result, bgworker,
     cargo_config::CargoConfig,
     config::{self, Config},
-    depcheck, Error, Result,
+    depcheck,
 };
 
 const SEAORM_INSTALLED: &str = "SeaORM CLI is installed";
