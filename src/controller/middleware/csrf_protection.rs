@@ -2,8 +2,9 @@ use super::MiddlewareLayer;
 use crate::app::AppContext;
 use crate::Result;
 use axum::Router as AXRouter;
-use axum_csrf::{CsrfConfig, CsrfLayer};
+use axum_csrf::{CsrfConfig, CsrfLayer, SameSite as AXSameSite};
 use serde::{Deserialize, Serialize};
+use std::convert::Into;
 use time::Duration as TimeDuration;
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
@@ -23,6 +24,25 @@ pub struct CsrfCookie {
     pub(crate) lifetime: Option<i64>,
     pub(crate) http_only: Option<bool>,
     pub(crate) token_length: Option<usize>,
+    pub(crate) same_site: Option<SameSite>,
+}
+
+#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+pub enum SameSite {
+    Lax,
+    Strict,
+    #[default]
+    None,
+}
+
+impl Into<AXSameSite> for SameSite {
+    fn into(self) -> AXSameSite {
+        match self {
+            SameSite::Lax => AXSameSite::Lax,
+            SameSite::Strict => AXSameSite::Strict,
+            SameSite::None => AXSameSite::None,
+        }
+    }
 }
 
 impl MiddlewareLayer for CsrfProtection {
@@ -71,6 +91,9 @@ impl MiddlewareLayer for CsrfProtection {
                 }
                 if let Some(token_length) = cookie.token_length {
                     csrf_config = csrf_config.with_cookie_len(token_length);
+                }
+                if let Some(same_site) = &cookie.same_site {
+                    csrf_config = csrf_config.with_cookie_same_site(same_site.clone().into());
                 }
             }
 
