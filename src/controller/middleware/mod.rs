@@ -9,6 +9,7 @@
 pub mod catch_panic;
 pub mod compression;
 pub mod cors;
+pub mod csrf_protection;
 pub mod etag;
 pub mod fallback;
 pub mod format;
@@ -167,6 +168,13 @@ pub fn default_middleware_stack(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer
         ),
         // Powered by middleware with a default identifier
         Box::new(powered_by::new(ctx.config.server.ident.as_deref())),
+        // CSRF middleware with a default true
+        Box::new(middlewares.csrf_protection.clone().unwrap_or_else(|| {
+            csrf_protection::CsrfProtection {
+                enable: Some(true),
+                ..Default::default()
+            }
+        })),
     ]
 }
 
@@ -209,4 +217,7 @@ pub struct Config {
 
     /// Request ID
     pub request_id: Option<request_id::RequestId>,
+
+    /// CSRF Protection
+    pub csrf_protection: Option<csrf_protection::CsrfProtection>,
 }

@@ -4,6 +4,7 @@ pub use axum::{
     response::{IntoResponse, Response},
     routing::{delete, get, head, options, patch, post, put, trace},
 };
+pub use axum_csrf as csrf;
 pub use axum_extra::extract::cookie;
 pub use chrono::NaiveDateTime as DateTime;
 pub use include_dir::{include_dir, Dir};

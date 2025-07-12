@@ -24,6 +24,32 @@ server:
   host: http://localhost
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
   middlewares:
+    # Enable or disable CSRF protection.
+    csrf_protection:
+      enable: true
+
+      # Custom configuration for CSRF protection.
+      # You can customize the CSRF-cookie that will be used to protect against CSRF attacks.
+      # Uncomment the block below to customize the CSRF protection settings.
+      # You don't need to set all fields, only the ones you want to customize.
+      # If you don't want to specify any custom settings, you can leave the field commented. A default configuration will be used.
+
+
+      #cookie:                                  # CSRF cookie configuration
+        #name: "csrf-cookie"                    # Name of the CSRF cookie
+        #domain: "example.com"                  # Domain for the CSRF cookie, leave empty for default
+        #path: "/"                              # Path for the CSRF cookie, leave empty for default
+        #same_site: Lax                         # SameSite attribute for the CSRF cookie, options: Lax, Strict, None
+        #http_only: true                        # Whether the CSRF cookie should be HTTP only
+        #lifetime: 3600                         #Lifetime in seconds
+        #secure: true                           # Whether the CSRF cookie should be secure (only sent over HTTPS)
+
+      #token:                                   # CSRF token configuration    
+        #salt: "7f3d2b1e9c8a4f6d"               # Salt for CSRF token generation, should be a random string
+        #prefix_with_host: true                 # Whether to prefix the CSRF token with the host
+        #token_length: 32                       # Length of the CSRF token
+
+    
   {%- if settings.asset %}
     {%- if settings.asset.kind == "server" %}
     static:
