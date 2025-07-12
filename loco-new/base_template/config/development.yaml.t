@@ -32,7 +32,7 @@ server:
       # You can customize the CSRF-cookie that will be used to protect against CSRF attacks.
       # Uncomment the block below to customize the CSRF protection settings.
       # You don't need to set all fields, only the ones you want to customize.
-      # If you don't want to specify any custom settings, you can leave one field commented.
+      # If you don't want to specify any custom settings, you can leave one field commented. A default configuration will be used.
 
       #cookie:                                  # CSRF cookie configuration
         #name: "csrf-cookie"                    # Name of the CSRF cookie
