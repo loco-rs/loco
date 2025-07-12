@@ -11,9 +11,7 @@ use time::Duration as TimeDuration;
 pub struct CsrfProtection {
     pub(crate) enable: Option<bool>,
     pub(crate) cookie: Option<CsrfCookie>,
-    pub(crate) secure: Option<bool>,
-    pub(crate) salt: Option<String>,
-    pub(crate) prefix_with_host: Option<bool>,
+    pub(crate) token: Option<CsrfToken>,
 }
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
@@ -23,8 +21,15 @@ pub struct CsrfCookie {
     pub(crate) path: Option<String>,
     pub(crate) lifetime: Option<i64>,
     pub(crate) http_only: Option<bool>,
-    pub(crate) token_length: Option<usize>,
     pub(crate) same_site: Option<SameSite>,
+    pub(crate) secure: Option<bool>,
+}
+
+#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+pub struct CsrfToken {
+    pub(crate) salt: Option<String>,
+    pub(crate) prefix_with_host: Option<bool>,
+    pub(crate) token_length: Option<usize>,
 }
 
 #[derive(Debug, Default, Clone, Serialize)]
@@ -105,22 +110,21 @@ impl MiddlewareLayer for CsrfProtection {
                 if let Some(http_only) = cookie.http_only {
                     csrf_config = csrf_config.with_http_only(http_only);
                 }
-                if let Some(token_length) = cookie.token_length {
-                    csrf_config = csrf_config.with_cookie_len(token_length);
-                }
                 if let Some(same_site) = &cookie.same_site {
                     csrf_config = csrf_config.with_cookie_same_site(same_site.clone().into());
                 }
             }
 
-            if let Some(secure) = self.secure {
-                csrf_config = csrf_config.with_secure(secure);
-            }
-            if let Some(salt) = &self.salt {
-                csrf_config = csrf_config.with_salt(salt.clone());
-            }
-            if let Some(prefix_with_host) = self.prefix_with_host {
-                csrf_config = csrf_config.with_prefix_with_host(prefix_with_host);
+            if let Some(token) = &self.token {
+                if let Some(salt) = &token.salt {
+                    csrf_config = csrf_config.with_salt(salt.clone());
+                }
+                if let Some(prefix_with_host) = token.prefix_with_host {
+                    csrf_config = csrf_config.with_prefix_with_host(prefix_with_host);
+                }
+                if let Some(token_length) = token.token_length {
+                    csrf_config = csrf_config.with_cookie_len(token_length);
+                }
             }
 
             let csrf_layer = CsrfLayer::new(csrf_config);
