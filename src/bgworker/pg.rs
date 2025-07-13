@@ -44,6 +44,7 @@ pub struct Job {
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
     pub tags: Option<Vec<String>>,
+    pub priority: i32,
 }
 
 pub struct JobRegistry {
@@ -241,7 +242,8 @@ pub async fn initialize_database(pool: &PgPool) -> Result<()> {
                 interval BIGINT,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                tags JSONB
+                tags JSONB,
+                priority INT NOT NULL DEFAULT 0
             );
             ",
         JobStatus::Queued
@@ -263,6 +265,7 @@ pub async fn enqueue(
     run_at: DateTime<Utc>,
     interval: Option<Duration>,
     tags: Option<Vec<String>>,
+    priority: Option<i32>,
 ) -> Result<JobId> {
     let data_json = serde_json::to_value(data)?;
     let tags_json = tags
@@ -275,8 +278,8 @@ pub async fn enqueue(
     let id = Ulid::new().to_string();
     debug!(job_id = %id, job_name = %name, run_at = %run_at, tags = ?tags, "Enqueueing job");
     sqlx::query(
-        "INSERT INTO pg_loco_queue (id, task_data, name, run_at, interval, tags) VALUES ($1, $2, $3, \
-         $4, $5, $6)",
+        "INSERT INTO pg_loco_queue (id, task_data, name, run_at, interval, tags, priority) VALUES ($1, $2, $3, \
+         $4, $5, $6, $7)",
     )
     .bind(id.clone())
     .bind(data_json)
@@ -284,6 +287,7 @@ pub async fn enqueue(
     .bind(run_at)
     .bind(interval_ms)
     .bind(tags_json)
+    .bind(priority)
     .execute(pool)
     .await?;
     Ok(id)
@@ -321,7 +325,7 @@ async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>>
         }
     }
 
-    query.push_str(" ORDER BY run_at LIMIT 1 FOR UPDATE SKIP LOCKED");
+    query.push_str(" ORDER BY priority DESC, run_at LIMIT 1 FOR UPDATE SKIP LOCKED");
 
     // Create the query
     let mut db_query = sqlx::query(&query).bind(JobStatus::Queued.to_string());
@@ -338,7 +342,7 @@ async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>>
         .flatten();
 
     if let Some(job) = row {
-        trace!(job_id = %job.id, job_name = %job.name, job_tags = ?job.tags, "Dequeueing job for processing");
+        debug!(job_id = %job.id, job_name = %job.name, job_tags = ?job.tags, job_priority = %job.priority, "Dequeueing job for processing");
         sqlx::query("UPDATE pg_loco_queue SET status = $1, updated_at = NOW() WHERE id = $2")
             .bind(JobStatus::Processing.to_string())
             .bind(&job.id)
@@ -612,6 +616,7 @@ fn to_job(row: &PgRow) -> Result<Job> {
         created_at: row.try_get("created_at").unwrap_or_default(),
         updated_at: row.try_get("updated_at").unwrap_or_default(),
         tags,
+        priority: row.get("priority"),
     })
 }
 
@@ -750,6 +755,7 @@ mod tests {
             job_data,
             run_at,
             None,
+            None,
             None
         )
         .await
@@ -781,6 +787,7 @@ mod tests {
             "PasswordChangeNotification",
             job_data,
             run_at,
+            None,
             None,
             None
         )
@@ -1129,7 +1136,7 @@ mod tests {
         let (pool, _container) = setup_pg_test().await;
 
         let job_data: JobData = serde_json::json!(null);
-        let job_id = enqueue(&pool, "PanicJob", job_data, Utc::now(), None, None)
+        let job_id = enqueue(&pool, "PanicJob", job_data, Utc::now(), None, None, None)
             .await
             .expect("Failed to enqueue job");
 
@@ -1205,6 +1212,7 @@ mod tests {
             run_at,
             None,
             email_tags,
+            None,
         )
         .await
         .expect("Failed to enqueue email job");
@@ -1218,6 +1226,7 @@ mod tests {
             run_at,
             None,
             sms_tags,
+            None,
         )
         .await
         .expect("Failed to enqueue sms job");
@@ -1231,6 +1240,7 @@ mod tests {
             run_at,
             None,
             multi_tags,
+            None,
         )
         .await
         .expect("Failed to enqueue multi-tag job");
@@ -1241,6 +1251,7 @@ mod tests {
             "GenericNotification",
             job_data.clone(),
             run_at,
+            None,
             None,
             None,
         )

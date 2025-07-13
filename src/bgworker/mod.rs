@@ -94,6 +94,7 @@ impl Queue {
     /// # Errors
     ///
     /// This function will return an error if fails
+    /// Priority: higher number = higher priority, currently only supported for postgres
     #[allow(unused_variables)]
     pub async fn enqueue<A: Serialize + Send + Sync>(
         &self,
@@ -101,6 +102,7 @@ impl Queue {
         queue: Option<String>,
         args: A,
         tags: Option<Vec<String>>,
+        priority: Option<i32>,
     ) -> Result<()> {
         tracing::debug!(worker = class, queue = ?queue, tags = ?tags, "Enqueuing background job");
         match self {
@@ -117,6 +119,7 @@ impl Queue {
                     chrono::Utc::now(),
                     None,
                     tags,
+                    priority,
                 )
                 .await
                 .map_err(Box::from)?;
@@ -553,7 +556,7 @@ impl Queue {
             Self::Postgres(_, _, _, _) => {
                 let jobs: Vec<pg::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.to_string(), None, job.data, None)
+                    self.enqueue(job.name.to_string(), None, job.data, None, None) // TODO add priority support
                         .await?;
                 }
 
@@ -563,7 +566,7 @@ impl Queue {
             Self::Sqlite(_, _, _, _) => {
                 let jobs: Vec<sqlt::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.to_string(), None, job.data, None)
+                    self.enqueue(job.name.to_string(), None, job.data, None, None) // TODO add priority support
                         .await?;
                 }
                 Ok(())
@@ -572,7 +575,7 @@ impl Queue {
             Self::Redis(_, _, _, _) => {
                 let jobs: Vec<redis::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.to_string(), None, job.data, None)
+                    self.enqueue(job.name.to_string(), None, job.data, None, None) // TODO add priority support
                         .await?;
                 }
                 Ok(())
@@ -619,12 +622,19 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
     where
         Self: Sized,
     {
+        Self::perform_later_with_priority(ctx, args, None).await
+    }
+
+    async fn perform_later_with_priority(ctx: &AppContext, args: A, priority: Option<i32>) -> crate::Result<()>
+    where
+        Self: Sized,
+    {
         match &ctx.config.workers.mode {
             WorkerMode::BackgroundQueue => {
                 if let Some(p) = &ctx.queue_provider {
                     let tags = Self::tags();
                     let tags_option = if tags.is_empty() { None } else { Some(tags) };
-                    p.enqueue(Self::class_name(), Self::queue(), args, tags_option)
+                    p.enqueue(Self::class_name(), Self::queue(), args, tags_option, priority)
                         .await?;
                 } else {
                     tracing::error!(
