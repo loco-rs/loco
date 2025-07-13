@@ -298,7 +298,7 @@ async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>>
 
     // Base query
     let mut query = String::from(
-        "SELECT id, name, task_data, status, run_at, interval, tags FROM pg_loco_queue WHERE status = $1 AND run_at <= NOW() "
+        "SELECT id, name, task_data, status, run_at, interval, tags, priority FROM pg_loco_queue WHERE status = $1 AND run_at <= NOW() "
     );
 
     // Apply tag filtering logic
