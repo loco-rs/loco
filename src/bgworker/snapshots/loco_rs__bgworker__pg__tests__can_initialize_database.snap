@@ -1,7 +1,7 @@
 ---
 source: src/bgworker/pg.rs
+assertion_line: 767
 expression: table_info
-snapshot_kind: text
 ---
 [
     TableInfo {
@@ -9,32 +9,16 @@ snapshot_kind: text
             "public",
         ),
         column_name: Some(
-            "tags",
+            "priority",
         ),
-        column_default: None,
+        column_default: Some(
+            "0",
+        ),
         is_nullable: Some(
-            "YES",
+            "NO",
         ),
         data_type: Some(
-            "jsonb",
-        ),
-        is_updatable: Some(
-            "YES",
-        ),
-    },
-    TableInfo {
-        table_schema: Some(
-            "public",
-        ),
-        column_name: Some(
-            "interval",
-        ),
-        column_default: None,
-        is_nullable: Some(
-            "YES",
-        ),
-        data_type: Some(
-            "bigint",
+            "integer",
         ),
         is_updatable: Some(
             "YES",
@@ -85,6 +69,24 @@ snapshot_kind: text
             "public",
         ),
         column_name: Some(
+            "tags",
+        ),
+        column_default: None,
+        is_nullable: Some(
+            "YES",
+        ),
+        data_type: Some(
+            "jsonb",
+        ),
+        is_updatable: Some(
+            "YES",
+        ),
+    },
+    TableInfo {
+        table_schema: Some(
+            "public",
+        ),
+        column_name: Some(
             "task_data",
         ),
         column_default: None,
@@ -111,6 +113,24 @@ snapshot_kind: text
         ),
         data_type: Some(
             "timestamp with time zone",
+        ),
+        is_updatable: Some(
+            "YES",
+        ),
+    },
+    TableInfo {
+        table_schema: Some(
+            "public",
+        ),
+        column_name: Some(
+            "interval",
+        ),
+        column_default: None,
+        is_nullable: Some(
+            "YES",
+        ),
+        data_type: Some(
+            "bigint",
         ),
         is_updatable: Some(
             "YES",

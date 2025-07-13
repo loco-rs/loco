@@ -1,7 +1,7 @@
 ---
 source: src/bgworker/pg.rs
+assertion_line: 803
 expression: jobs
-snapshot_kind: text
 ---
 [
     Job {
@@ -20,5 +20,6 @@ snapshot_kind: text
             <REDACTED>,
         ),
         tags: None,
+        priority: 0,
     },
 ]
