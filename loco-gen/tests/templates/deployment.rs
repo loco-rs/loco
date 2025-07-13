@@ -42,14 +42,20 @@ fn can_generate_docker(
 * Dockerignore generated successfully.
 "
     );
-    assert_snapshot!(
-        format!(
-            "generate[docker_file_[{}]_[{}]]",
-            copy_paths.len(),
-            is_client_side_rendering
-        ),
-        fs::read_to_string(tree_fs.root.join("dockerfile")).expect("dockerfile missing")
-    );
+    insta::with_settings!({
+        filters => vec![
+            (r"FROM rust:\d+\.\d+\.\d+-slim", "FROM rust:[version]-slim"),
+        ]
+    }, {
+        assert_snapshot!(
+            format!(
+                "generate[docker_file_[{}]_[{}]]",
+                copy_paths.len(),
+                is_client_side_rendering
+            ),
+            fs::read_to_string(tree_fs.root.join("dockerfile")).expect("dockerfile missing")
+        );
+    });
 
     assert_eq!(
         fs::read_to_string(tree_fs.root.join(".dockerignore")).expect(".dockerignore missing"),
