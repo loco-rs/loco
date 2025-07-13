@@ -1,6 +1,11 @@
 # Changelog
 
 ## Unreleased
+- fix clippy result_large_err. [https://github.com/loco-rs/loco/pull/1496](https://github.com/loco-rs/loco/pull/1496)
+- chore: remove async-std. [https://github.com/loco-rs/loco/pull/1492](https://github.com/loco-rs/loco/pull/1492)
+- fix: Bump shuttle version to 0.55.0. [https://github.com/loco-rs/loco/pull/1488](https://github.com/loco-rs/loco/pull/1488)
+- Change a docker building image to 1.87. [https://github.com/loco-rs/loco/pull/1475](https://github.com/loco-rs/loco/pull/1475)
+
 
 ## v0.16.0
 
