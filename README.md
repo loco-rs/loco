@@ -13,6 +13,7 @@
    [![crate](https://img.shields.io/crates/v/loco-rs.svg)](https://crates.io/crates/loco-rs)
    [![docs](https://docs.rs/loco-rs/badge.svg)](https://docs.rs/loco-rs)
    [![Discord channel](https://img.shields.io/badge/discord-Join-us)](https://discord.gg/fTvyBzwKS8)
+   [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/loco-rs/loco)
 
  </div>
 
