@@ -35,7 +35,7 @@ server:
       # If you don't want to specify any custom settings, you can leave the field commented. A default configuration will be used.
 
 
-      #cookie:                                  # CSRF cookie configuration
+      cookie:                                  # CSRF cookie configuration
         #name: "csrf-cookie"                    # Name of the CSRF cookie
         #domain: "example.com"                  # Domain for the CSRF cookie, leave empty for default.
         #path: "/"                              # Path for the CSRF cookie, leave empty for default.
@@ -44,7 +44,7 @@ server:
         #lifetime: 3600                         #Lifetime in seconds.
         #secure: true                           # Whether the CSRF cookie should be secure (only sent over HTTPS).
 
-      #token:
+      token:
         #key: "base64:qLzkTWGbdC6gh0kUfzrZpQpW9e92mI6dC5QJ4bfPt0A="      # A Base64-encoded secret. Must decode to exactly 32 bytes. Used for CSRF token signing. The "base64:" prefix is obligatory. If you don't specify a key, a random one will be generated that is only valid on runtime. This is not recommended for production use.
         #salt: "7f3d2b1e9c8a4f6d"                                        # Salt for CSRF token generation, should be a random string.
         #prefix_with_host: true                                          # Whether to prefix the CSRF token with the host.
