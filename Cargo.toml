@@ -156,6 +156,7 @@ redis = { version = "0.31", features = ["aio", "tokio-comp"], optional = true }
 scraper = { version = "0.21.0", features = ["deterministic"], optional = true }
 
 dashmap = "6"
+base64 = "0.22.1"
 
 [workspace.dependencies]
 tera = { version = "1.19.1" }

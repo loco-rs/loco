@@ -2,10 +2,12 @@ use super::MiddlewareLayer;
 use crate::app::AppContext;
 use crate::Result;
 use axum::Router as AXRouter;
-use axum_csrf::{CsrfConfig, CsrfLayer, SameSite as AXSameSite};
+use axum_csrf::{CsrfConfig, CsrfLayer, Key, SameSite as AXSameSite};
+use base64::engine as B64Engine;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::convert::Into;
 use time::Duration as TimeDuration;
+use B64Engine::Engine;
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct CsrfProtection {
@@ -27,6 +29,7 @@ pub struct CsrfCookie {
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct CsrfToken {
+    pub(crate) key: Option<String>,
     pub(crate) salt: Option<String>,
     pub(crate) prefix_with_host: Option<bool>,
     pub(crate) token_length: Option<usize>,
@@ -118,6 +121,29 @@ impl MiddlewareLayer for CsrfProtection {
             if let Some(token) = &self.token {
                 if let Some(salt) = &token.salt {
                     csrf_config = csrf_config.with_salt(salt.clone());
+                }
+                if let Some(key) = &token.key {
+                    let key = key.strip_prefix("base64:");
+                    if key.is_none() {
+                        return Err(crate::Error::string(
+                            "CSRF key must be prefixed with 'base64:'",
+                        ));
+                    }
+
+                    let key = key.unwrap();
+
+                    let key_bytes =
+                        B64Engine::general_purpose::STANDARD
+                            .decode(key)
+                            .map_err(|_| {
+                                crate::Error::string(
+                                    "Invalid CSRF key format. It should be base64 encoded.",
+                                )
+                            })?;
+
+                    let new_key = Key::from(key_bytes.as_slice());
+
+                    csrf_config = csrf_config.with_key(Some(new_key));
                 }
                 if let Some(prefix_with_host) = token.prefix_with_host {
                     csrf_config = csrf_config.with_prefix_with_host(prefix_with_host);
