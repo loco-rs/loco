@@ -18,8 +18,8 @@ use {{pkg_name}}::app::App;
 
 #[shuttle_runtime::main]
 async fn main(
-  {% if with_db %}#[shuttle_shared_db::Postgres] conn_str: String,{% endif %}
-  #[shuttle_runtime::Metadata] meta: shuttle_runtime::DeploymentMetadata,
+    {% if with_db %}#[shuttle_shared_db::Postgres] conn_str: String,{% endif %}
+    #[shuttle_runtime::Metadata] meta: shuttle_runtime::DeploymentMetadata,
 ) -> shuttle_axum::ShuttleAxum {
     {% if with_db %}std::env::set_var("DATABASE_URL", conn_str);{% endif %}
     let environment = match meta.env {
