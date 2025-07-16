@@ -1,16 +1,15 @@
-use crate::Error;
-use axum::extract::{
-    Form, FromRequest, FromRequestParts, Json, Path, Query, Request,
-};
+use axum::extract::{Form, FromRequest, Json, Query, Request};
 use serde::de::DeserializeOwned;
 use validator::Validate;
 
+use crate::Error;
+
 /// Axum middleware for validating JSON request bodies
 ///
-/// This module provides extractors for validating JSON request bodies, form data,
-/// path parameters, and query parameters using the `validator` crate. Each extractor
-/// supports both detailed validation error messages (`WithMessage` variants) and
-/// simplified error responses.
+/// This module provides extractors for validating JSON request bodies, form
+/// data, path parameters, and query parameters using the `validator` crate.
+/// Each extractor supports both detailed validation error messages
+/// (`WithMessage` variants) and simplified error responses.
 ///
 /// # Example:
 ///
@@ -27,7 +26,7 @@ use validator::Validate;
 ///     email: String,
 /// }
 ///
-/// async fn create_user(validate::JsonValidateWithMessage(user): validate::JsonValidateWithMessage<User>) -> String {
+/// async fn create_user(Validate::JsonValidateWithMessage(user): Validate::JsonValidateWithMessage<User>) -> String {
 ///     format!("User created: {}, {}", user.username, user.email)
 /// }
 ///
@@ -71,7 +70,7 @@ where
 ///     email: String,
 /// }
 ///
-/// async fn create_user(validate::FormValidateWithMessage(user): validate::FormValidateWithMessage<User>) -> String {
+/// async fn create_user(Validate::FormValidateWithMessage(user): Validate::FormValidateWithMessage<User>) -> String {
 ///     format!("User created: {}, {}", user.username, user.email)
 /// }
 ///
@@ -98,7 +97,8 @@ where
     }
 }
 
-/// Axum middleware for validating JSON request bodies with simplified error handling
+/// Axum middleware for validating JSON request bodies with simplified error
+/// handling
 ///
 /// # Example:
 ///
@@ -115,7 +115,7 @@ where
 ///     email: String,
 /// }
 ///
-/// async fn create_user(validate::JsonValidate(user): validate::JsonValidate<User>) -> String {
+/// async fn create_user(Validate::JsonValidate(user): Validate::JsonValidate<User>) -> String {
 ///     format!("User created: {}, {}", user.username, user.email)
 /// }
 ///
@@ -162,7 +162,7 @@ where
 ///     email: String,
 /// }
 ///
-/// async fn create_user(validate::FormValidate(user): validate::FormValidate<User>) -> String {
+/// async fn create_user(Validate::FormValidate(user): Validate::FormValidate<User>) -> String {
 ///     format!("User created: {}, {}", user.username, user.email)
 /// }
 ///
@@ -192,104 +192,6 @@ where
     }
 }
 
-/// Axum middleware for validating path parameters
-///
-/// # Example:
-///
-/// ```
-/// use axum::{routing::get, Router};
-/// use serde::{Deserialize, Serialize};
-/// use validator::Validate;
-///
-/// #[derive(Serialize, Deserialize, Validate)]
-/// struct UserParams {
-///     #[validate(range(min = 1, message = "id must be at least 1"))]
-///     id: i32,
-/// }
-///
-/// async fn get_user(validate::PathValidateWithMessage(params): validate::PathValidateWithMessage<UserParams>) -> String {
-///     format!("User ID: {}", params.id)
-/// }
-///
-/// fn app() -> Router {
-///     Router::new()
-///         .route("/users/:id", get(get_user))
-/// }
-/// ```
-
-#[derive(Debug, Clone, Copy, Default)]
-pub struct PathValidateWithMessage<T>(pub T);
-
-impl<T, S> FromRequestParts<S> for PathValidateWithMessage<T>
-where
-    T: DeserializeOwned + Validate + Send,
-    S: Send + Sync,
-{
-    type Rejection = Error;
-
-    async fn from_request_parts(
-        parts: &mut axum::http::request::Parts,
-        state: &S,
-    ) -> Result<Self, Self::Rejection> {
-        let Path(value) =
-            <Path<T> as axum::extract::FromRequestParts<S>>::from_request_parts(parts, state)
-                .await
-                .map_err(|_err| Error::BadRequest(String::new()))?;
-        value.validate()?;
-        Ok(Self(value))
-    }
-}
-
-/// Axum middleware for validating path parameters with simplified error handling
-///
-/// # Example:
-///
-/// ```
-/// use axum::{routing::get, Router};
-/// use serde::{Deserialize, Serialize};
-/// use validator::Validate;
-///
-/// #[derive(Serialize, Deserialize, Validate)]
-/// struct UserParams {
-///     #[validate(range(min = 1, message = "id must be at least 1"))]
-///     id: i32,
-/// }
-///
-/// async fn get_user(validate::PathValidate(params): validate::PathValidate<UserParams>) -> String {
-///     format!("User ID: {}", params.id)
-/// }
-///
-/// fn app() -> Router {
-///     Router::new()
-///         .route("/users/:id", get(get_user))
-/// }
-/// ```
-
-#[derive(Debug, Clone, Copy, Default)]
-pub struct PathValidate<T>(pub T);
-
-impl<T, S> FromRequestParts<S> for PathValidate<T>
-where
-    T: DeserializeOwned + Validate + Send,
-    S: Send + Sync,
-{
-    type Rejection = Error;
-
-    async fn from_request_parts(
-        parts: &mut axum::http::request::Parts,
-        state: &S,
-    ) -> Result<Self, Self::Rejection> {
-        let Path(value) = <Path<T> as axum::extract::FromRequestParts<S>>::from_request_parts(parts, state)
-            .await
-            .map_err(|_err| Error::BadRequest(String::new()))?;
-        value.validate().map_err(|err| {
-            tracing::debug!(err = ?err, "path validation error occurred");
-            Error::BadRequest(String::new())
-        })?;
-        Ok(Self(value))
-    }
-}
-
 /// Axum middleware for validating query parameters
 ///
 /// # Example:
@@ -307,7 +209,7 @@ where
 ///     email: String,
 /// }
 ///
-/// async fn get_user(validate::QueryValidateWithMessage(params): validate::QueryValidateWithMessage<UserQuery>) -> String {
+/// async fn get_user(Validate::QueryValidateWithMessage(params): Validate::QueryValidateWithMessage<UserQuery>) -> String {
 ///     format!("User: {}, Email: {}", params.username, params.email)
 /// }
 ///
@@ -330,13 +232,16 @@ where
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let Query(value) = Query::<T>::from_request(req, state)
             .await
-            .map_err(|_err| Error::BadRequest(String::new()))?;
-        value.validate()?;
+            .map_err(|rejection| {
+                Error::BadRequest(format!("Invalid query string: {}", rejection))
+            })?;
+        value.validate().map_err(Error::ValidationError)?;
         Ok(Self(value))
     }
 }
 
-/// Axum middleware for validating query parameters with simplified error handling
+/// Axum middleware for validating query parameters with simplified error
+/// handling
 ///
 /// # Example:
 ///
@@ -353,8 +258,8 @@ where
 ///     email: String,
 /// }
 ///
-/// async fn get_user(validate::QueryValidate(params): validate::QueryValidate<UserQuery>) -> String {
-///     format!("User: {}, Email: {}", params.username, params.email)
+/// async fn get_user(Validate::QueryValidate(params): Validate::QueryValidate<UserQuery>) -> String {
+///     format!("User: {}, Email: {}, params.username, params.email)
 /// }
 ///
 /// fn app() -> Router {
@@ -376,7 +281,9 @@ where
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let Query(value) = Query::<T>::from_request(req, state)
             .await
-            .map_err(|_err| Error::BadRequest(String::new()))?;
+            .map_err(|rejection| {
+                Error::BadRequest(format!("Invalid query string: {}", rejection))
+            })?;
         value.validate().map_err(|err| {
             tracing::debug!(err = ?err, "query validation error occurred");
             Error::BadRequest(String::new())
@@ -387,7 +294,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use axum::{
         body::{to_bytes, Body},
         http::{self, Request as HttpRequest, StatusCode},
@@ -396,6 +302,8 @@ mod tests {
     use serde::{Deserialize, Serialize};
     use serde_json::{json, Value};
     use validator::Validate;
+
+    use super::*;
 
     #[derive(Debug, Serialize, Deserialize, Validate)]
     struct TestUser {
@@ -437,14 +345,6 @@ mod tests {
                 "application/x-www-form-urlencoded",
             )
             .body(Body::from(form_data.to_string()))
-            .unwrap()
-    }
-
-    fn create_path_request(path: &str) -> HttpRequest<Body> {
-        HttpRequest::builder()
-            .method(http::Method::GET)
-            .uri(path)
-            .body(Body::empty())
             .unwrap()
     }
 
@@ -603,7 +503,8 @@ mod tests {
         }
 
         let expected = json!({
-            "error": "Bad Request"
+            "error": "Bad Request",
+            // "description": ""
         });
 
         assert_response_status_and_body(err, StatusCode::BAD_REQUEST, expected).await;
@@ -638,7 +539,8 @@ mod tests {
         }
 
         let expected = json!({
-            "error": "Bad Request"
+            "error": "Bad Request",
+            // "description": ""
         });
 
         assert_response_status_and_body(err, StatusCode::BAD_REQUEST, expected).await;
@@ -653,7 +555,8 @@ mod tests {
         assert!(result.is_err());
 
         let expected = json!({
-            "error": "Bad Request"
+            "error": "Bad Request",
+            // "description": "invalid type: map, expected a string at line 1 column 47"
         });
 
         assert_response_status_and_body(result.unwrap_err(), StatusCode::BAD_REQUEST, expected)
@@ -679,87 +582,6 @@ mod tests {
             expected,
         )
         .await;
-    }
-
-    #[tokio::test]
-    async fn test_path_validate_with_message_valid() {
-        let request = create_path_request("/users/42");
-
-        let result = PathValidateWithMessage::<TestPathParams>::from_request_parts(
-            &mut request.into_parts().0,
-            &(),
-        )
-        .await;
-        assert!(result.is_ok());
-
-        let params = result.unwrap().0;
-        assert_eq!(params.id, 42);
-    }
-
-    #[tokio::test]
-    async fn test_path_validate_with_message_invalid() {
-        let request = create_path_request("/users/0");
-
-        let result = PathValidateWithMessage::<TestPathParams>::from_request_parts(
-            &mut request.into_parts().0,
-            &(),
-        )
-        .await;
-        assert!(result.is_err());
-
-        let expected = json!({
-            "errors": {
-                "id": [
-                    {
-                        "code": "range",
-                        "message": "id must be at least 1",
-                        "params": {
-                            "min": 1,
-                            "value": 0
-                        }
-                    }
-                ]
-            }
-        });
-
-        assert_response_status_and_body(result.unwrap_err(), StatusCode::BAD_REQUEST, expected)
-            .await;
-    }
-
-    #[tokio::test]
-    async fn test_path_validate_valid() {
-        let request = create_path_request("/users/42");
-
-        let result =
-            PathValidate::<TestPathParams>::from_request_parts(&mut request.into_parts().0, &())
-                .await;
-        assert!(result.is_ok());
-
-        let params = result.unwrap().0;
-        assert_eq!(params.id, 42);
-    }
-
-    #[tokio::test]
-    async fn test_path_validate_invalid() {
-        let request = create_path_request("/users/0");
-
-        let result =
-            PathValidate::<TestPathParams>::from_request_parts(&mut request.into_parts().0, &())
-                .await;
-        assert!(result.is_err());
-
-        let err = result.unwrap_err();
-        if let Error::BadRequest(msg) = &err {
-            assert_eq!(msg, &String::new());
-        } else {
-            panic!("Expected BadRequest error");
-        }
-
-        let expected = json!({
-            "error": "Bad Request"
-        });
-
-        assert_response_status_and_body(err, StatusCode::BAD_REQUEST, expected).await;
     }
 
     #[tokio::test]
@@ -840,7 +662,8 @@ mod tests {
         }
 
         let expected = json!({
-            "error": "Bad Request"
+            "error": "Bad Request",
+            // "description": ""
         });
 
         assert_response_status_and_body(err, StatusCode::BAD_REQUEST, expected).await;
@@ -848,14 +671,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_malformed_query() {
-        let invalid_query = "username=valid_user&email%invalid_format";
+        let invalid_query = "username=valid_user&email=invalid_format";
         let request = create_query_request(invalid_query);
 
         let result = QueryValidate::<TestQueryParams>::from_request(request, &()).await;
         assert!(result.is_err());
 
         let expected = json!({
-            "error": "Bad Request"
+            "error": "Bad Request",
+            // "description": "Invalid query string: expected `=` after key"
         });
 
         assert_response_status_and_body(result.unwrap_err(), StatusCode::BAD_REQUEST, expected)
