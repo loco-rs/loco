@@ -35,7 +35,7 @@ jobs:
       - run: cargo fmt --all -- --check
         working-directory: ./loco-new
       - name: Run cargo clippy
-        run: cargo clippy --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms -A clippy::result_large_err
+        run: cargo clippy --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms
         working-directory: ./loco-new
 
   test:

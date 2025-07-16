@@ -300,6 +300,7 @@ pub enum RunDbCommand {
 ///
 /// Return an error when the given command fails. mostly return
 /// [`sea_orm::DbErr`]
+#[allow(clippy::cognitive_complexity)]
 pub async fn run_db<H: Hooks, M: MigratorTrait>(
     app_context: &AppContext,
     cmd: RunDbCommand,
