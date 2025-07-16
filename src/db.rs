@@ -792,6 +792,7 @@ pub async fn get_tables(db: &DatabaseConnection) -> AppResult<Vec<String>> {
 ///
 /// Returns an error if the operation fails for any reason or could not save the
 /// content into a file.
+#[allow(clippy::cognitive_complexity)]
 pub async fn dump_tables(
     db: &DatabaseConnection,
     to: &Path,
