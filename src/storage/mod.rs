@@ -29,7 +29,7 @@ pub enum StorageError {
     StoreNotFound(String),
 
     #[error(transparent)]
-    Store(#[from] opendal::Error),
+    Store(#[from] Box<opendal::Error>),
 
     #[error("Unable to read data from file {}", path.display().to_string())]
     UnableToReadBytes { path: PathBuf },
@@ -42,6 +42,12 @@ pub enum StorageError {
 }
 
 pub type StorageResult<T> = std::result::Result<T, StorageError>;
+
+impl From<opendal::Error> for StorageError {
+    fn from(val: opendal::Error) -> Self {
+        Self::Store(Box::new(val))
+    }
+}
 
 pub struct Storage {
     pub stores: BTreeMap<String, Box<dyn StoreDriver>>,
