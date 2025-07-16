@@ -88,7 +88,7 @@ Usually you can expect the following from errors:
 - `error.msg` a `to_string()` version of an error, for operators.
 - `error.detail` a debug representation of an error, for developers.
 - An error **type** e.g. `controller_error` as the primary message tailored for searching, rather than a verbal error message.
-- Errors are logged as _tracing_ events and spans, so that you can build any infrastructure you want to provide custom tracing subscribers. Check out the [prometheus](https://github.com/loco-rs/loco/blob/master/loco-extras/src/initializers/prometheus.rs) example in `loco-extras`.
+- Errors are logged as _tracing_ events and spans, so that you can build any infrastructure you want to provide custom tracing subscribers. Check out the [prometheus](https://github.com/loco-rs/loco-extras/blob/main/src/initializers/prometheus.rs) example in `loco-extras`.
 
 Notes:
 
