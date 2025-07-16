@@ -173,11 +173,10 @@ pub async fn get_available_port() -> i32 {
 /// ```rust,ignore
 /// use myapp::app::App;
 /// use loco_rs::testing::prelude::*;
-/// use migration::Migrator;
 ///
 /// #[tokio::test]
 /// async fn test_create_user() {
-///     let boot = boot_test::<App, Migrator>().await;
+///     let boot = boot_test::<App>().await;
 /// }
 /// ```
 ///
@@ -197,11 +196,10 @@ pub async fn boot_test<H: Hooks>() -> Result<BootResult> {
 /// ```rust,ignore
 /// use myapp::app::App;
 /// use loco_rs::testing::prelude::*;
-/// use migration::Migrator;
 ///
 /// #[tokio::test]
 /// async fn test_create_user() {
-///     let boot = boot_test_with_create_db::<App, Migrator>().await;
+///     let boot = boot_test_with_create_db::<App>().await;
 /// }
 /// ```
 ///
@@ -238,12 +236,11 @@ pub async fn boot_test_with_create_db<H: Hooks>() -> Result<BootResultWrapper> {
 /// ```rust,ignore
 /// use myapp::app::App;
 /// use loco_rs::testing::prelude::*;
-/// use migration::Migrator;
 ///
 /// #[tokio::test]
 /// async fn test_create_user() {
 ///     let port = get_available_port().await;
-///     let boot = boot_test_unique_port::<App, Migrator>(Some(port)).await;
+///     let boot = boot_test_unique_port::<App>(Some(port)).await;
 ///
 ///     /// .....
 ///     assert!(false)
