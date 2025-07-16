@@ -73,7 +73,8 @@ impl StoreDriver for OpendalAdapter {
     ///
     /// # Behavior
     ///
-    /// Fallback to copy and delete source if the storage does not support rename.
+    /// Fallback to copy and delete source if the storage does not support
+    /// rename.
     ///
     /// # Errors
     ///
@@ -95,7 +96,8 @@ impl StoreDriver for OpendalAdapter {
     ///
     /// # Behavior
     ///
-    /// Fallback to read from source and write into dest if the storage does not support copy.
+    /// Fallback to read from source and write into dest if the storage does not
+    /// support copy.
     ///
     /// # Errors
     ///
@@ -134,9 +136,10 @@ impl StoreDriver for OpendalAdapter {
     ///
     /// # TODO
     ///
-    /// The `exists` function should return an error for issues such as permission denied.
-    /// However, these errors are not handled during the migration process and should be addressed
-    /// after the test suites are refactored.
+    /// The `exists` function should return an error for issues such as
+    /// permission denied. However, these errors are not handled during the
+    /// migration process and should be addressed after the test suites are
+    /// refactored.
     async fn exists(&self, path: &Path) -> StorageResult<bool> {
         let path = path.display().to_string();
         Ok(self.opendal_impl.exists(&path).await.unwrap_or(false))

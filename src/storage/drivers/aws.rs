@@ -48,7 +48,9 @@ pub fn new(bucket_name: &str, region: &str) -> StorageResult<Box<dyn StoreDriver
 ///
 /// # Errors
 ///
-/// This function returns an error if the underlying `Operator` creation fails, such as due to invalid credentials, endpoint configuration issues, or other OpenDAL-related errors.
+/// This function returns an error if the underlying `Operator` creation fails,
+/// such as due to invalid credentials, endpoint configuration issues, or other
+/// OpenDAL-related errors.
 pub fn with_credentials_and_endpoint(
     bucket_name: &str,
     region: &str,
