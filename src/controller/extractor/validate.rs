@@ -238,7 +238,7 @@ where
         let Query(value) = Query::<T>::from_request(req, state)
             .await
             .map_err(|rejection| {
-                Error::BadRequest(format!("Invalid query string: {}", rejection))
+                Error::BadRequest(format!("Invalid query string: {rejection}"))
             })?;
         value.validate().map_err(Error::ValidationError)?;
         Ok(Self(value))
@@ -288,7 +288,7 @@ where
         let Query(value) = Query::<T>::from_request(req, state)
             .await
             .map_err(|rejection| {
-                Error::BadRequest(format!("Invalid query string: {}", rejection))
+                Error::BadRequest(format!("Invalid query string: {rejection}"))
             })?;
         value.validate().map_err(|err| {
             tracing::debug!(err = ?err, "query validation error occurred");
