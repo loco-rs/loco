@@ -27,12 +27,11 @@ pub struct Credential {
 /// When could not initialize the client instance
 pub fn new(bucket_name: &str, region: &str) -> StorageResult<Box<dyn StoreDriver>> {
     let s3 = S3::default().bucket(bucket_name).region(region);
-
     Ok(Box::new(OpendalAdapter::new(Operator::new(s3)?.finish())))
 }
 
 /// Create new AWS s3 storage with bucket, region and credentials and URL.
-/// 
+///
 /// # Examples
 ///
 /// ```
@@ -61,8 +60,7 @@ pub fn with_credentials_and_endpoint(
         .endpoint(endpoint)
         .region(region)
         .access_key_id(&credentials.key_id)
-        .secret_access_key(&credentials.secret_key)
-      ;
+        .secret_access_key(&credentials.secret_key);
 
     if let Some(token) = credentials.token {
         s3 = s3.session_token(&token);

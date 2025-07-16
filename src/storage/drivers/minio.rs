@@ -11,7 +11,7 @@ pub struct Credential {
     /// `Minio_SECRET_ACCESS_KEY`
     pub secret_key: String,
     /// `Minio_SESSION_TOKEN`
-    pub endpoint: String
+    pub endpoint: String,
 }
 
 /// Create new minio storage with bucket and url.
@@ -28,7 +28,9 @@ pub struct Credential {
 pub fn new(bucket_name: &str, endpoint: &str) -> StorageResult<Box<dyn StoreDriver>> {
     let minio = S3Minio::default().bucket(bucket_name).endpoint(endpoint);
 
-    Ok(Box::new(OpendalAdapter::new(Operator::new(minio)?.finish())))
+    Ok(Box::new(OpendalAdapter::new(
+        Operator::new(minio)?.finish(),
+    )))
 }
 
 /// Create new Minio storage with bucket, region and credentials.
@@ -57,7 +59,9 @@ pub fn with_bucket_and_credentials(
         .region("auto")
         .access_key_id(&credentials.key_id)
         .secret_access_key(&credentials.secret_key);
-    Ok(Box::new(OpendalAdapter::new(Operator::new(minio)?.finish())))
+    Ok(Box::new(OpendalAdapter::new(
+        Operator::new(minio)?.finish(),
+    )))
 }
 
 /// Build store with failure
