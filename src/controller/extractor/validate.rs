@@ -16,6 +16,7 @@ use crate::Error;
 /// ```
 /// use axum::{routing::post, Router};
 /// use serde::{Deserialize, Serialize};
+/// use loco_rs::controller::extractor::validate::JsonValidateWithMessage;
 /// use validator::Validate;
 ///
 /// #[derive(Serialize, Deserialize, Validate)]
@@ -26,7 +27,7 @@ use crate::Error;
 ///     email: String,
 /// }
 ///
-/// async fn create_user(Validate::JsonValidateWithMessage(user): Validate::JsonValidateWithMessage<User>) -> String {
+/// async fn create_user(JsonValidateWithMessage(user): JsonValidateWithMessage<User>) -> String {
 ///     format!("User created: {}, {}", user.username, user.email)
 /// }
 ///
@@ -60,6 +61,7 @@ where
 /// ```
 /// use axum::{routing::post, Router};
 /// use serde::{Deserialize, Serialize};
+/// use loco_rs::controller::extractor::validate::FormValidateWithMessage;
 /// use validator::Validate;
 ///
 /// #[derive(Serialize, Deserialize, Validate)]
@@ -70,7 +72,7 @@ where
 ///     email: String,
 /// }
 ///
-/// async fn create_user(Validate::FormValidateWithMessage(user): Validate::FormValidateWithMessage<User>) -> String {
+/// async fn create_user(FormValidateWithMessage(user): FormValidateWithMessage<User>) -> String {
 ///     format!("User created: {}, {}", user.username, user.email)
 /// }
 ///
@@ -105,6 +107,7 @@ where
 /// ```
 /// use axum::{routing::post, Router};
 /// use serde::{Deserialize, Serialize};
+/// use loco_rs::controller::extractor::validate::JsonValidate;
 /// use validator::Validate;
 ///
 /// #[derive(Serialize, Deserialize, Validate)]
@@ -115,7 +118,7 @@ where
 ///     email: String,
 /// }
 ///
-/// async fn create_user(Validate::JsonValidate(user): Validate::JsonValidate<User>) -> String {
+/// async fn create_user(JsonValidate(user): JsonValidate<User>) -> String {
 ///     format!("User created: {}, {}", user.username, user.email)
 /// }
 ///
@@ -152,6 +155,7 @@ where
 /// ```
 /// use axum::{routing::post, Router};
 /// use serde::{Deserialize, Serialize};
+/// use loco_rs::controller::extractor::validate::FormValidate;
 /// use validator::Validate;
 ///
 /// #[derive(Serialize, Deserialize, Validate)]
@@ -162,7 +166,7 @@ where
 ///     email: String,
 /// }
 ///
-/// async fn create_user(Validate::FormValidate(user): Validate::FormValidate<User>) -> String {
+/// async fn create_user(FormValidate(user): FormValidate<User>) -> String {
 ///     format!("User created: {}, {}", user.username, user.email)
 /// }
 ///
@@ -199,6 +203,7 @@ where
 /// ```
 /// use axum::{routing::get, Router};
 /// use serde::{Deserialize, Serialize};
+/// use loco_rs::controller::extractor::validate::QueryValidateWithMessage;
 /// use validator::Validate;
 ///
 /// #[derive(Serialize, Deserialize, Validate)]
@@ -209,7 +214,7 @@ where
 ///     email: String,
 /// }
 ///
-/// async fn get_user(Validate::QueryValidateWithMessage(params): Validate::QueryValidateWithMessage<UserQuery>) -> String {
+/// async fn get_user(QueryValidateWithMessage(params): QueryValidateWithMessage<UserQuery>) -> String {
 ///     format!("User: {}, Email: {}", params.username, params.email)
 /// }
 ///
@@ -248,6 +253,7 @@ where
 /// ```
 /// use axum::{routing::get, Router};
 /// use serde::{Deserialize, Serialize};
+/// use loco_rs::controller::extractor::validate::QueryValidate;
 /// use validator::Validate;
 ///
 /// #[derive(Serialize, Deserialize, Validate)]
@@ -258,8 +264,8 @@ where
 ///     email: String,
 /// }
 ///
-/// async fn get_user(Validate::QueryValidate(params): Validate::QueryValidate<UserQuery>) -> String {
-///     format!("User: {}, Email: {}, params.username, params.email)
+/// async fn get_user(QueryValidate(params): QueryValidate<UserQuery>) -> String {
+///     format!("User: {}, Email: {}", params.username, params.email)
 /// }
 ///
 /// fn app() -> Router {
