@@ -236,7 +236,7 @@ pub async fn get_one(
 Here is a case where you might want to both render differently based on
 different formats AND ALSO, render differently based on kinds of errors you got.
 
-```rust
+````rust
 pub async fn get_one(
     respond_to: RespondTo,
     Path(id): Path<i32>,
@@ -273,7 +273,7 @@ pub async fn get_one(
         Err(err) => Err(err),
     }
 }
-```
+````
 
 Here, we also "centralize" our error handling by first wrapping the workflow in a function, and grabbing the result type.
 
@@ -320,10 +320,13 @@ Loco comes with a set of built-in middleware out of the box. Some are enabled by
 ## The default stack
 
 You get all the enabled middlewares run the following command
+
 <!-- <snip id="cli-middleware-list" inject_from="yaml" template="sh"> -->
+
 ```sh
 cargo loco middleware --config
 ```
+
 <!-- </snip> -->
 
 This is the stack in `development` mode:
@@ -393,7 +396,7 @@ You can control the `powered_by` middleware by changing the value for `server.id
 
 ```yaml
 server:
-    ident: my-server #(or empty string to disable)
+  ident: my-server #(or empty string to disable)
 ```
 
 ### Example: add a non-default middleware
@@ -428,9 +431,9 @@ powered_by             {"ident":"loco.rs"}
 Let's change the request body limit to `5mb`. When overriding a middleware configuration, rememeber to keep an `enable: true`:
 
 ```yaml
-  middlewares:
-    limit_payload:
-      body_limit: 5mb
+middlewares:
+  limit_payload:
+    body_limit: 5mb
 ```
 
 The result:
@@ -472,8 +475,8 @@ By default, Loco uses Bearer authentication for JWT. However, you can customize 
   auth:
     # JWT authentication
     jwt:
-      location: Bearer
-  ...
+      location:
+        from: Bearer
   ```
 
 - _Cookie Authentication:_ Configure the location from which to extract the token and specify the cookie name:
@@ -483,10 +486,9 @@ By default, Loco uses Bearer authentication for JWT. However, you can customize 
   auth:
     # JWT authentication
     jwt:
-      location: 
+      location:
         from: Cookie
         name: token
-  ...
   ```
 
 - _Query Parameter Authentication:_ Specify the location and name of the query parameter:
@@ -496,11 +498,46 @@ By default, Loco uses Bearer authentication for JWT. However, you can customize 
   auth:
     # JWT authentication
     jwt:
-      location: 
+      location:
         from: Query
         name: token
-  ...
   ```
+
+###### Multiple Location Authentication (Fallback Chain)
+
+You can configure multiple authentication locations that will be tried in order until one succeeds. This is useful when you want to support multiple authentication methods simultaneously:
+
+```yaml
+# Authentication Configuration
+auth:
+  # JWT authentication
+  jwt:
+    location:
+      - from: Bearer # Try Authorization header first
+      - from: Cookie # If not found, try cookie
+        name: session_token
+      - from: Query # Finally try query parameter
+        name: api_token
+```
+
+With this configuration:
+
+1. The system first checks for a Bearer token in the `Authorization` header
+2. If not found, it looks for a cookie named `session_token`
+3. If still not found, it checks for a query parameter named `api_token`
+4. If none are found, authentication fails with a descriptive error message
+
+This approach provides flexibility for different client types:
+
+- Web browsers can use cookies
+- API clients can use Bearer tokens
+- Simple clients can use query parameters
+
+**Error Messages:** When authentication fails, the system provides clear feedback about which locations were attempted:
+
+```
+Token not found in any of the configured locations: [Bearer header, Cookie 'session_token', Query parameter 'api_token']
+```
 
 ##### Usage
 
@@ -542,9 +579,9 @@ To disable the middleware edit the configuration as follows:
 
 ```yaml
 #...
-  middlewares:
-    catch_panic:
-      enable: false
+middlewares:
+  catch_panic:
+    enable: false
 ```
 
 ## Limit Payload
@@ -557,9 +594,9 @@ You can customize or disable this behavior through your configuration file.
 
 ```yaml
 #...
-  middlewares:
-    limit_payload:
-      body_limit: 5mb
+middlewares:
+  limit_payload:
+    body_limit: 5mb
 ```
 
 ### Disable payload size limitation
@@ -568,9 +605,9 @@ To remove the restriction entirely, set `body_limit` to `disable`:
 
 ```yaml
 #...
-  middlewares:
-    limit_payload:
-      body_limit: disable
+middlewares:
+  limit_payload:
+    body_limit: disable
 ```
 
 ##### Usage
@@ -595,10 +632,10 @@ To enable the middleware edit the configuration as follows:
 
 ```yaml
 #...
-  middlewares:
-    timeout_request:
-      enable: false
-      timeout: 5000
+middlewares:
+  timeout_request:
+    enable: false
+    timeout: 5000
 ```
 
 ## Logger
@@ -609,9 +646,9 @@ To disable the middleware edit the configuration as follows:
 
 ```yaml
 #...
-  middlewares:
-    logger:
-      enable: false
+middlewares:
+  logger:
+    enable: false
 ```
 
 ## Fallback
@@ -623,22 +660,22 @@ You can disable or customize this behavior in your `development.yaml` file. You 
 ```yaml
 # the default pre-baked welcome screen
 fallback:
-    enable: true
+  enable: true
 ```
 
 ```yaml
 # a different predefined 404 page
 fallback:
-    enable: true
-    file: assets/404.html
+  enable: true
+  file: assets/404.html
 ```
 
 ```yaml
 # a message, and customizing the status code to return 200 instead of 404
 fallback:
-    enable: true
-    code: 200
-    not_found: cannot find this resource
+  enable: true
+  code: 200
+  not_found: cannot find this resource
 ```
 
 For production, it's recommended to disable this.
@@ -646,7 +683,7 @@ For production, it's recommended to disable this.
 ```yaml
 # disable. you can also remove the `fallback` section entirely to disable
 fallback:
-    enable: false
+  enable: false
 ```
 
 ## Remote IP
@@ -734,10 +771,10 @@ To support `htmx`, You can add the following override, to allow some inline runn
 
 ```yaml
 secure_headers:
-    preset: github
-    overrides:
-        # this allows you to use HTMX, and has unsafe-inline. Remove or consider in production
-        "Content-Security-Policy": "default-src 'self' https:; font-src 'self' https: data:; img-src 'self' https: data:; object-src 'none'; script-src 'unsafe-inline' 'self' https:; style-src 'self' https: 'unsafe-inline'"
+  preset: github
+  overrides:
+    # this allows you to use HTMX, and has unsafe-inline. Remove or consider in production
+    "Content-Security-Policy": "default-src 'self' https:; font-src 'self' https: data:; img-src 'self' https: data:; object-src 'none'; script-src 'unsafe-inline' 'self' https:; style-src 'self' https: 'unsafe-inline'"
 ```
 
 ## Compression
@@ -748,9 +785,9 @@ To enable response compression, based on `accept-encoding` request header, simpl
 
 ```yaml
 #...
-  middlewares:
-    compression:
-      enable: true
+middlewares:
+  compression:
+    enable: true
 ```
 
 Doing so will compress each response and set `content-encoding` response header accordingly.
@@ -834,6 +871,7 @@ impl Hooks for App {
     }
 }
 ```
+
 # Request Validation
 
 Request validation in the Loco framework ensures that incoming HTTP request data, such as JSON payloads, query parameters, or form data, conforms to predefined rules before processing. Utilizing the `validator` crate ([documentation](https://github.com/Keats/validator)), Loco provides specialized extractors for robust validation.
@@ -850,6 +888,7 @@ Request validation in the Loco framework ensures that incoming HTTP request data
 | `FormValidateWithMessage`        | ✅                     | `application/x-www-form-urlencoded`         | Form data  |
 
 ### Notes:
+
 - **Error Status**: HTTP status codes for invalid data or unsupported `Content-Type`.
 - **Structured JSON Errors**: Provided by `WithMessage` extractors for detailed error reporting.
 - **Supported Content Type**: Specifies the expected request `Content-Type`.
