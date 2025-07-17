@@ -9,8 +9,4 @@ shuttle-runtime = { version = "[SHUTTLE_RUNTIME_VERSION]", default-features = fa
 shuttle-shared-db = { version = "[SHUTTLE_RUNTIME_VERSION]", features = ["postgres"] }
 
 
-[[bin]]
-name = "tester"
-path = "src/bin/shuttle.rs"
-
 [dev-dependencies]
