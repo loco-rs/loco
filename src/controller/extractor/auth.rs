@@ -163,35 +163,59 @@ pub fn get_jwt_from_config(ctx: &AppContext) -> LocoResult<&JWTConfig> {
 ///
 /// # Errors
 ///
-/// Returns an error when the token cannot be extracted from the configured location,
+/// Returns an error when the token cannot be extracted from any of the configured locations,
 /// such as missing headers, invalid formats, or inaccessible request data.
 pub fn extract_token(jwt_config: &JWTConfig, parts: &Parts) -> LocoResult<String> {
-    #[allow(clippy::match_wildcard_for_single_variants)]
-    match jwt_config
-        .location
-        .as_ref()
-        .unwrap_or(&crate::config::JWTLocation::Bearer)
-    {
-        crate::config::JWTLocation::Query { name } => extract_token_from_query(name, parts),
-        crate::config::JWTLocation::Cookie { name } => extract_token_from_cookie(name, parts),
-        crate::config::JWTLocation::Bearer => extract_token_from_header(&parts.headers)
-            .map_err(|e| Error::Unauthorized(e.to_string())),
+    let locations = get_jwt_locations(jwt_config.location.as_ref());
+
+    for location in &locations {
+        if let Ok(token) = extract_token_from_location(location, parts) {
+            return Ok(token);
+        }
+    }
+
+    // If we get here, none of the locations worked
+    Err(Error::Unauthorized("Token not found in any of the configured JWT locations. Please check your auth.jwt.location configuration.".to_string()))
+}
+
+/// Get the list of JWT locations to try, with Bearer as default
+fn get_jwt_locations(
+    config: Option<&crate::config::JWTLocationConfig>,
+) -> Vec<&crate::config::JWTLocation> {
+    match config {
+        Some(crate::config::JWTLocationConfig::Single(location)) => vec![location],
+        Some(crate::config::JWTLocationConfig::Multiple(locations)) => locations.iter().collect(),
+        None => vec![&crate::config::JWTLocation::Bearer],
     }
 }
+
+/// Extract token from a specific location
+fn extract_token_from_location(
+    location: &crate::config::JWTLocation,
+    parts: &Parts,
+) -> LocoResult<String> {
+    match location {
+        crate::config::JWTLocation::Query { name } => extract_token_from_query(name, parts),
+        crate::config::JWTLocation::Cookie { name } => extract_token_from_cookie(name, parts),
+        crate::config::JWTLocation::Bearer => extract_token_from_header(&parts.headers),
+    }
+}
+
 /// Function to extract a token from the authorization header
 ///
 /// # Errors
 ///
-/// When token is not valid or out found
+/// When token is not valid or not found
 pub fn extract_token_from_header(headers: &HeaderMap) -> LocoResult<String> {
-    Ok(headers
+    let token = headers
         .get(AUTH_HEADER)
         .ok_or_else(|| Error::Unauthorized(format!("header {AUTH_HEADER} token not found")))?
         .to_str()
         .map_err(|err| Error::Unauthorized(err.to_string()))?
         .strip_prefix(TOKEN_PREFIX)
-        .ok_or_else(|| Error::Unauthorized(format!("error strip {AUTH_HEADER} value")))?
-        .to_string())
+        .ok_or_else(|| Error::Unauthorized(format!("error strip {AUTH_HEADER} value")))?;
+
+    Ok(token.to_string())
 }
 
 /// Extract a token value from cookie
@@ -282,13 +306,18 @@ mod tests {
 
     #[rstest]
     #[case("extract_from_default", "https://loco.rs", None)]
-    #[case("extract_from_bearer", "loco.rs", Some(config::JWTLocation::Bearer))]
-    #[case("extract_from_cookie", "https://loco.rs", Some(config::JWTLocation::Cookie{name: "loco_cookie_key".to_string()}))]
-    #[case("extract_from_query", "https://loco.rs?query_token=query_token_value&test=loco", Some(config::JWTLocation::Query{name: "query_token".to_string()}))]
+    #[case(
+        "extract_from_bearer",
+        "loco.rs",
+        Some(config::JWTLocationConfig::Single(config::JWTLocation::Bearer))
+    )]
+    #[case("extract_from_cookie", "https://loco.rs", Some(config::JWTLocationConfig::Single(config::JWTLocation::Cookie{name: "loco_cookie_key".to_string()})))]
+    #[case("extract_from_query", "https://loco.rs?query_token=query_token_value&test=loco", Some(config::JWTLocationConfig::Single(config::JWTLocation::Query{name: "query_token".to_string()})))]
+    #[case("extract_from_multiple_locations", "https://loco.rs?query_token=query_token_value&test=loco", Some(config::JWTLocationConfig::Multiple(vec![config::JWTLocation::Cookie{name: "nonexistent".to_string()}, config::JWTLocation::Query{name: "query_token".to_string()}])))]
     fn can_extract_token(
         #[case] test_name: &str,
         #[case] url: &str,
-        #[case] location: Option<config::JWTLocation>,
+        #[case] location: Option<config::JWTLocationConfig>,
     ) {
         let jwt_config = JWTConfig {
             location,
@@ -308,12 +337,19 @@ mod tests {
         let (parts, ()) = request.into_parts();
         assert_debug_snapshot!(test_name, extract_token(&jwt_config, &parts));
 
-        // expected error
-        let request = axum::http::Request::builder()
+        // Test error message for missing token
+        let request_no_token = axum::http::Request::builder()
             .uri("https://loco.rs")
             .body(())
             .unwrap();
-        let (parts, ()) = request.into_parts();
-        assert!(extract_token(&jwt_config, &parts).is_err());
+        let (parts_no_token, ()) = request_no_token.into_parts();
+        let error_result = extract_token(&jwt_config, &parts_no_token);
+        assert!(error_result.is_err());
+
+        // For multiple locations test, verify it contains configuration guidance
+        if test_name == "extract_from_multiple_locations" {
+            let error_msg = format!("{:?}", error_result.unwrap_err());
+            assert!(error_msg.contains("auth.jwt.location configuration"));
+        }
     }
 }
