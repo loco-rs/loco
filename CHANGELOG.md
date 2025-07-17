@@ -5,7 +5,10 @@
 - chore: remove async-std. [https://github.com/loco-rs/loco/pull/1492](https://github.com/loco-rs/loco/pull/1492)
 - fix: Bump shuttle version to 0.55.0. [https://github.com/loco-rs/loco/pull/1488](https://github.com/loco-rs/loco/pull/1488)
 - Change a docker building image to 1.87. [https://github.com/loco-rs/loco/pull/1475](https://github.com/loco-rs/loco/pull/1475)
-
+- Fix Clippy warnings for Rust 1.88 stable. [https://github.com/loco-rs/loco/pull/1519](https://github.com/loco-rs/loco/pull/1519) 
+- Remove Migrator from boot_test_* doc comments. [https://github.com/loco-rs/loco/pull/1512](https://github.com/loco-rs/loco/pull/1512) 
+- fix: use rust-lld linker on windows. [https://github.com/loco-rs/loco/pull/1508](https://github.com/loco-rs/loco/pull/1508) 
+- Fix precompressed in static assets. [https://github.com/loco-rs/loco/pull/1524](https://github.com/loco-rs/loco/pull/1524) 
 
 ## v0.16.0
 
