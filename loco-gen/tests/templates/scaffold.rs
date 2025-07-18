@@ -135,5 +135,3 @@ fn can_generate(#[case] kind: ScaffoldKind) {
         }
     }
 }
-
-// thread 'templates::scaffold::can_generate::case_1' panicked at loco-gen/tests/templates/scaffold.rs:48:6:
