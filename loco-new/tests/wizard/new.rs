@@ -68,6 +68,7 @@ fn test_combination(
 
     let mut env_map: HashMap<_, _> = std::env::vars().collect();
     env_map.insert("RUSTFLAGS".into(), "-D warnings".into());
+    env_map.insert("CARGO_TARGET_DIR".into(), "/tmp/shared-target".into());
 
     let tester = Tester {
         dir: test_dir.root,
