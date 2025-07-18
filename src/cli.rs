@@ -388,7 +388,7 @@ impl ComponentArg {
                     loco_gen::ScaffoldKind::Api
                 } else {
                     return Err(crate::Error::string(
-                        "Error: One of `kind`, `htmx`, `html`, or `api` must be specified.",
+                        "Error: generating this component requires one of `--kind`, `--htmx`, `--html`, or `--api` to be specified. Run with `--help` for more information.",
                     ));
                 };
 
