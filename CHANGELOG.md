@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+
+
+## v0.16.1
 - fix clippy result_large_err. [https://github.com/loco-rs/loco/pull/1496](https://github.com/loco-rs/loco/pull/1496)
 - chore: remove async-std. [https://github.com/loco-rs/loco/pull/1492](https://github.com/loco-rs/loco/pull/1492)
 - fix: Bump shuttle version to 0.55.0. [https://github.com/loco-rs/loco/pull/1488](https://github.com/loco-rs/loco/pull/1488)
@@ -9,6 +12,7 @@
 - Remove Migrator from boot_test_* doc comments. [https://github.com/loco-rs/loco/pull/1512](https://github.com/loco-rs/loco/pull/1512) 
 - fix: use rust-lld linker on windows. [https://github.com/loco-rs/loco/pull/1508](https://github.com/loco-rs/loco/pull/1508) 
 - Fix precompressed in static assets. [https://github.com/loco-rs/loco/pull/1524](https://github.com/loco-rs/loco/pull/1524) 
+- support multiple jwt location. [https://github.com/loco-rs/loco/pull/1497](https://github.com/loco-rs/loco/pull/1497) 
 
 ## v0.16.0
 
