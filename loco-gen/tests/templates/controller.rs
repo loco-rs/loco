@@ -1,9 +1,11 @@
-use super::utils::APP_ROUTS;
+use std::fs;
+
 use insta::assert_snapshot;
-use loco_gen::{collect_messages, generate, AppInfo, Component, ScaffoldKind};
+use loco_gen::{AppInfo, Component, ScaffoldKind, collect_messages, generate};
 use rrgen::RRgen;
 use rstest::rstest;
-use std::fs;
+
+use super::utils::APP_ROUTS;
 
 #[rstest]
 #[case(ScaffoldKind::Api)]

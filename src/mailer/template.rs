@@ -16,7 +16,7 @@
 
 use include_dir::Dir;
 
-use crate::{errors::Error, tera, Result};
+use crate::{Result, errors::Error, tera};
 
 /// The filename for the subject template file.
 const SUBJECT: &str = "subject.t";

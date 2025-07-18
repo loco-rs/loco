@@ -12,11 +12,13 @@
 //!  let config = environment.load().expect("failed to load environment");
 //! }
 //! ```
-use super::config::Config;
-use crate::{env_vars, Result};
+use std::{path::Path, str::FromStr};
+
 use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
-use std::{path::Path, str::FromStr};
+
+use super::config::Config;
+use crate::{Result, env_vars};
 
 pub const DEFAULT_ENVIRONMENT: &str = "development";
 pub const LOCO_ENV: &str = "LOCO_ENV";
@@ -105,15 +107,21 @@ mod tests {
     fn test_resolve_env() {
         let original = env::var("LOCO_ENV");
 
-        env::remove_var(LOCO_ENV);
-        env::remove_var(RAILS_ENV);
-        env::remove_var(NODE_ENV);
+        unsafe {
+            env::remove_var(LOCO_ENV);
+            env::remove_var(RAILS_ENV);
+            env::remove_var(NODE_ENV);
+        }
         assert_eq!(resolve_from_env(), "development");
-        env::set_var("LOCO_ENV", "custom");
+        unsafe {
+            env::set_var("LOCO_ENV", "custom");
+        }
         assert_eq!(resolve_from_env(), "custom");
 
         if let Ok(v) = original {
-            env::set_var(LOCO_ENV, v);
+            unsafe {
+                env::set_var("LOCO_ENV", v);
+            }
         }
     }
 

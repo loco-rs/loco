@@ -1,9 +1,10 @@
-use redis::Client;
 use std::time::Duration;
+
+use redis::Client;
 use testcontainers::{
+    ContainerAsync, GenericImage,
     core::{ContainerPort, WaitFor},
     runners::AsyncRunner,
-    ContainerAsync, GenericImage,
 };
 
 /// Sets up a Redis test container.
@@ -14,7 +15,8 @@ use testcontainers::{
 ///
 /// # Panics
 ///
-/// This function will panic if it fails to set up, start, or connect to the Redis container.
+/// This function will panic if it fails to set up, start, or connect to the
+/// Redis container.
 pub async fn setup_redis_container() -> (String, ContainerAsync<GenericImage>) {
     let redis_image = GenericImage::new("redis", "7")
         .with_exposed_port(ContainerPort::Tcp(6379))

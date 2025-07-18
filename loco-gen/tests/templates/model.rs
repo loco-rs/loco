@@ -1,8 +1,10 @@
-use super::utils::{guess_file_by_time, MIGRATION_SRC_LIB};
-use insta::{assert_snapshot, with_settings};
-use loco_gen::{collect_messages, generate, AppInfo, Component};
-use rrgen::RRgen;
 use std::fs;
+
+use insta::{assert_snapshot, with_settings};
+use loco_gen::{AppInfo, Component, collect_messages, generate};
+use rrgen::RRgen;
+
+use super::utils::{MIGRATION_SRC_LIB, guess_file_by_time};
 
 macro_rules! configure_insta {
     () => {
@@ -15,7 +17,9 @@ macro_rules! configure_insta {
 
 #[test]
 fn can_generate() {
-    std::env::set_var("SKIP_MIGRATION", "");
+    unsafe {
+        std::env::remove_var("SKIP_MIGRATION");
+    }
     configure_insta!();
     let tree_fs = tree_fs::TreeBuilder::default()
         .drop(true)
@@ -78,7 +82,9 @@ fn can_generate() {
 
 #[test]
 fn fail_when_migration_lib_not_exists() {
-    std::env::set_var("SKIP_MIGRATION", "");
+    unsafe {
+        std::env::remove_var("SKIP_MIGRATION");
+    }
     let tree_fs = tree_fs::TreeBuilder::default()
         .drop(true)
         .add_empty("tests/models/mod.rs")
@@ -109,7 +115,9 @@ fn fail_when_migration_lib_not_exists() {
 
 #[test]
 fn fail_when_test_models_mod_not_exists() {
-    std::env::set_var("SKIP_MIGRATION", "");
+    unsafe {
+        std::env::remove_var("SKIP_MIGRATION");
+    }
     let tree_fs = tree_fs::TreeBuilder::default()
         .drop(true)
         .add("migration/src/lib.rs", MIGRATION_SRC_LIB)

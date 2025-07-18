@@ -1,10 +1,11 @@
+use std::{fs, path::PathBuf};
+
 use insta::assert_snapshot;
 use loco_gen::{
-    collect_messages, generate, AppInfo, Component, DeploymentKind,
-    DEPLOYMENT_SHUTTLE_RUNTIME_VERSION,
+    AppInfo, Component, DEPLOYMENT_SHUTTLE_RUNTIME_VERSION, DeploymentKind, collect_messages,
+    generate,
 };
 use rrgen::RRgen;
-use std::{fs, path::PathBuf};
 
 #[rstest::rstest]
 fn can_generate_docker(

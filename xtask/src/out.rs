@@ -2,6 +2,7 @@ use tabled::settings::Style;
 
 use crate::ci::RunResults;
 
+#[must_use]
 pub fn print_ci_results(result: &Vec<RunResults>) -> String {
     let mut builder = tabled::builder::Builder::default();
 
