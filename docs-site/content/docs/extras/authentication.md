@@ -148,7 +148,7 @@ curl --location --request GET '127.0.0.1:5150/api/auth/current' \
 
 ### Creating an Authenticated Endpoint
 
-To establish an authenticated endpoint, import `controller::middleware` from the `loco_rs` library and incorporate the auth middleware into the function endpoint parameters.
+To establish an authenticated endpoint, import `controller::extractor::auth` from the `loco_rs` library and incorporate the auth middleware into the function endpoint parameters.
 
 Consider the following example in Rust:
 
@@ -156,12 +156,12 @@ Consider the following example in Rust:
 use axum::{extract::State, Json};
 use loco_rs::{
     app::AppContext,
-    controller::middleware,
+    controller::extractor::auth,
     Result,
 };
 
 async fn current(
-    auth: middleware::auth::JWT,
+    auth: auth::JWT,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
     let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
@@ -219,17 +219,17 @@ After registering a new user, make sure you see the `api_key` in the database fo
 
 ### Creating an Authenticated Endpoint with API Authentication
 
-To set up an API-authenticated endpoint, import `controller::middleware` from the loco_rs library and include the auth middleware in the function endpoint parameters using `middleware::auth::ApiToken`.
+To set up an API-authenticated endpoint, import `controller::extractor::auth` from the loco_rs library and include the auth middleware in the function endpoint parameters using `auth::ApiToken`.
 
 Consider the following example in Rust:
 
 ```rust
 use loco_rs::prelude::*;
-use loco_rs::controller::middleware;
+use loco_rs::controller::extractor::auth;
 use crate::{models::_entities::users, views::user::CurrentResponse};
 
 async fn current_by_api_key(
-    auth: middleware::auth::ApiToken<users::Model>,
+    auth: auth::ApiToken<users::Model>,
     State(_ctx): State<AppContext>,
 ) -> Result<Response> {
     format::json(CurrentResponse::new(&auth.user))
