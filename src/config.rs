@@ -57,6 +57,8 @@ pub struct Config {
     pub workers: Workers,
     pub mailer: Option<Mailer>,
     pub initializers: Option<Initializers>,
+    #[serde(default)]
+    pub launcher: Launcher,
 
     /// Custom app settings
     ///
@@ -549,6 +551,7 @@ pub struct Mailer {
 ///     - client_identifier: google # Identifier for the `OAuth2` provider.
 ///       Replace 'google' with your provider's name if different, must be
 ///       unique within the oauth2 config. ... # other fields
+/// ```
 pub type Initializers = BTreeMap<String, serde_json::Value>;
 
 /// SMTP mailer configuration structure.
@@ -574,6 +577,19 @@ pub struct MailerAuth {
     pub user: String,
     /// Password
     pub password: String,
+}
+
+/// Configuration for the main control application
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Launcher {
+    /// Show or hide the banner
+    pub banner: bool,
+}
+
+impl Default for Launcher {
+    fn default() -> Self {
+        Self { banner: true }
+    }
 }
 
 impl Config {
