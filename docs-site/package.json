@@ -7,7 +7,8 @@
     "build": "NODE_ENV=production npx tailwindcss -i styles/styles.css -o static/styles/styles.css",
     "watch-tailwinds": "npx tailwindcss -i styles/styles.css -o static/styles/styles.css --watch",
     "serve": "zola serve",
-    "dev": "npm-run-all --parallel watch-tailwinds serve"
+    "dev": "npm-run-all --parallel watch-tailwinds serve",
+    "start": "npm run build && npm run serve"
   },
   "keywords": [],
   "author": "",
