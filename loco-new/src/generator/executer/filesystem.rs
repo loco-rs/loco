@@ -228,9 +228,10 @@ mod tests {
             ..Default::default()
         };
 
-        assert!(fs
-            .copy_template(&PathBuf::from("test").join("bar.txt.t"), &settings)
-            .is_ok());
+        assert!(
+            fs.copy_template(&PathBuf::from("test").join("bar.txt.t"), &settings)
+                .is_ok()
+        );
         let copied_path = fs.target_dir.join("test").join("bar.txt");
         assert!(copied_path.exists());
         assert_eq!(
@@ -248,9 +249,10 @@ mod tests {
             ..Default::default()
         };
 
-        assert!(fs
-            .copy_template_dir(&PathBuf::from("test"), &settings)
-            .is_ok());
+        assert!(
+            fs.copy_template_dir(&PathBuf::from("test"), &settings)
+                .is_ok()
+        );
         let copied_path_1 = fs.target_dir.join("test").join("foo.txt");
         let copied_path_2 = fs.target_dir.join("test").join("bar.txt");
         assert!(copied_path_1.exists());

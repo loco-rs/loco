@@ -1,7 +1,7 @@
-use opendal::{services::Fs, Operator};
+use opendal::{Operator, services::Fs};
 
 use super::StoreDriver;
-use crate::storage::{drivers::opendal_adapter::OpendalAdapter, StorageResult};
+use crate::storage::{StorageResult, drivers::opendal_adapter::OpendalAdapter};
 
 /// Create new filesystem storage with no prefix
 ///

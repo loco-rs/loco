@@ -30,7 +30,7 @@ pub mod timeout;
 use axum::Router as AXRouter;
 use serde::{Deserialize, Serialize};
 
-use crate::{app::AppContext, environment::Environment, Result};
+use crate::{Result, app::AppContext, environment::Environment};
 
 /// Trait representing the behavior of middleware components in the application.
 /// When implementing a new middleware, make sure to go over this checklist:

@@ -7,13 +7,13 @@
 //! debugging.
 
 use axum::{
-    extract::Request, http::HeaderValue, middleware::Next, response::Response, Router as AXRouter,
+    Router as AXRouter, extract::Request, http::HeaderValue, middleware::Next, response::Response,
 };
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
+use crate::{Result, app::AppContext, controller::middleware::MiddlewareLayer};
 
 const X_REQUEST_ID: &str = "x-request-id";
 const MAX_LEN: usize = 255;

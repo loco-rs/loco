@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tower_http::cors::{self, Any};
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
+use crate::{Result, app::AppContext, controller::middleware::MiddlewareLayer};
 
 /// CORS middleware configuration
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -166,10 +166,10 @@ impl MiddlewareLayer for Cors {
 mod tests {
 
     use axum::{
+        Router,
         body::Body,
         http::{Method, Request},
         routing::get,
-        Router,
     };
     use insta::assert_debug_snapshot;
     use rstest::rstest;

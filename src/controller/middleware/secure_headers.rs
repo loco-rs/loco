@@ -10,17 +10,17 @@ use std::{
 };
 
 use axum::{
+    Router as AXRouter,
     body::Body,
     http::{HeaderName, HeaderValue, Request},
     response::Response,
-    Router as AXRouter,
 };
 use futures_util::future::BoxFuture;
 use serde::{Deserialize, Serialize};
 use serde_json::{self, json};
 use tower::{Layer, Service};
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
+use crate::{Error, Result, app::AppContext, controller::middleware::MiddlewareLayer};
 
 static PRESETS: OnceLock<HashMap<String, BTreeMap<String, String>>> = OnceLock::new();
 fn get_presets() -> &'static HashMap<String, BTreeMap<String, String>> {
@@ -227,9 +227,9 @@ where
 mod tests {
 
     use axum::{
+        Router,
         http::{HeaderMap, Method},
         routing::get,
-        Router,
     };
     use insta::assert_debug_snapshot;
     use tower::ServiceExt;

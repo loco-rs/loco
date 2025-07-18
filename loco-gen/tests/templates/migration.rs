@@ -1,9 +1,11 @@
-use super::utils::{guess_file_by_time, MIGRATION_SRC_LIB};
+use std::fs;
+
 use insta::{assert_snapshot, with_settings};
-use loco_gen::{collect_messages, generate, AppInfo, Component};
+use loco_gen::{AppInfo, Component, collect_messages, generate};
 use rrgen::RRgen;
 use rstest::rstest;
-use std::fs;
+
+use super::utils::{MIGRATION_SRC_LIB, guess_file_by_time};
 
 #[rstest]
 #[case("create_table", Component::Migration {

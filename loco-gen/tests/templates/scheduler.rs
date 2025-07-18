@@ -1,7 +1,8 @@
-use insta::assert_snapshot;
-use loco_gen::{collect_messages, generate, AppInfo, Component};
-use rrgen::RRgen;
 use std::fs;
+
+use insta::assert_snapshot;
+use loco_gen::{AppInfo, Component, collect_messages, generate};
+use rrgen::RRgen;
 
 macro_rules! configure_insta {
     ($($expr:expr),*) => {

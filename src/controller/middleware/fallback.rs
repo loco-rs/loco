@@ -4,12 +4,12 @@
 //! not match. It serves a file, a custom not-found message, or a default HTML
 //! fallback page based on the configuration.
 
-use axum::{http::StatusCode, response::Html, Router as AXRouter};
+use axum::{Router as AXRouter, http::StatusCode, response::Html};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::json;
 use tower_http::services::ServeFile;
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
+use crate::{Result, app::AppContext, controller::middleware::MiddlewareLayer};
 
 #[derive(Debug)]
 pub struct StatusCodeWrapper(pub StatusCode);

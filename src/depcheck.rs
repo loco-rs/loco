@@ -99,8 +99,9 @@ pub fn check_crate_versions(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tree_fs::{Tree, TreeBuilder};
+
+    use super::*;
 
     fn setup_test_dir(cargo_lock_content: &str) -> Tree {
         TreeBuilder::default()

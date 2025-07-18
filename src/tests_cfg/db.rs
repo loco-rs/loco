@@ -5,14 +5,14 @@ use sea_orm::Statement;
 pub use sea_orm_migration::prelude::*;
 
 use crate::{
+    Result,
     app::{AppContext, Hooks, Initializer},
     bgworker::Queue,
-    boot::{create_app, BootResult, StartMode},
+    boot::{BootResult, StartMode, create_app},
     config::Config,
     controller::AppRoutes,
     environment::Environment,
     task::Tasks,
-    Result,
 };
 
 /// Get query result as string

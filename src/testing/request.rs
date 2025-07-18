@@ -1,20 +1,19 @@
 use std::net::SocketAddr;
+#[cfg(feature = "with-db")]
+use std::ops::Deref;
 
 use axum_test::{TestServer, TestServerConfig};
 use tokio::net::TcpListener;
 
 #[cfg(feature = "with-db")]
 use crate::Error;
-
 use crate::{
+    Result,
     app::{AppContext, Hooks},
     boot::{self, BootResult},
     config::Server,
     environment::Environment,
-    Result,
 };
-#[cfg(feature = "with-db")]
-use std::ops::Deref;
 
 #[cfg(feature = "with-db")]
 pub struct BootResultWrapper {
@@ -148,7 +147,8 @@ pub fn get_base_url_port(port: i32) -> String {
 ///
 /// # Panics
 ///
-/// Will panic if binding to test server address fails or if getting the local address fails
+/// Will panic if binding to test server address fails or if getting the local
+/// address fails
 pub async fn get_available_port() -> i32 {
     let addr = format!("{TEST_BINDING_SERVER}:0");
     let listener = TcpListener::bind(addr)
@@ -188,10 +188,12 @@ pub async fn boot_test<H: Hooks>() -> Result<BootResult> {
     Ok(boot)
 }
 
-/// Bootstraps the test application with a test environment and creates a new database.
+/// Bootstraps the test application with a test environment and creates a new
+/// database.
 ///
-/// This function initializes the test environment and sets up a fresh database for testing.
-/// The test database will be used during the test, and it will be cleaned up once the test completes.
+/// This function initializes the test environment and sets up a fresh database
+/// for testing. The test database will be used during the test, and it will be
+/// cleaned up once the test completes.
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
@@ -271,10 +273,12 @@ where
     callback(server, boot.app_context.clone()).await;
 }
 
-/// Executes a test server request using the provided callback and the default boot process.
+/// Executes a test server request using the provided callback and the default
+/// boot process.
 ///
-/// This function will boot the test environment without creating a new database.
-/// It takes a `callback` function that is called with the test server and application context.
+/// This function will boot the test environment without creating a new
+/// database. It takes a `callback` function that is called with the test server
+/// and application context.
 ///
 /// # Panics
 /// When could not initialize the test request.this errors can be when could not
@@ -306,10 +310,12 @@ where
 {
     request_with_config::<H, F, Fut>(RequestConfig::default(), callback).await;
 }
-/// Executes a test server request with a created database using the provided callback.
+/// Executes a test server request with a created database using the provided
+/// callback.
 ///
-/// This function will boot the test environment and create a new database for the test.
-/// It takes a `callback` function that is called with the test server and application context.
+/// This function will boot the test environment and create a new database for
+/// the test. It takes a `callback` function that is called with the test server
+/// and application context.
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
@@ -338,12 +344,14 @@ where
 
 /// Executes a test server request using a custom [`RequestConfig`].
 ///
-/// This function will boot the test environment without creating a new database.
-/// It takes a `config` parameter to customize request settings and a `callback`
-/// function that is called with the test server and application context.
+/// This function will boot the test environment without creating a new
+/// database. It takes a `config` parameter to customize request settings and a
+/// `callback` function that is called with the test server and application
+/// context.
 ///
 /// # Panics
-/// When the test request cannot be initialized, such as when the test app fails to start.
+/// When the test request cannot be initialized, such as when the test app fails
+/// to start.
 ///
 /// # Example
 /// ```rust,ignore
@@ -361,14 +369,17 @@ where
     request_internal::<F, Fut>(callback, &boot, config).await;
 }
 
-/// Executes a test server request with a created database using a custom [`RequestConfig`].
+/// Executes a test server request with a created database using a custom
+/// [`RequestConfig`].
 ///
-/// This function initializes the test environment, sets up a fresh database, and then runs
-/// the provided callback function with the test server and application context.
-/// The test database will be cleaned up after the test completes.
+/// This function initializes the test environment, sets up a fresh database,
+/// and then runs the provided callback function with the test server and
+/// application context. The test database will be cleaned up after the test
+/// completes.
 ///
 /// # Panics
-/// When the test request cannot be initialized, such as when the test app fails to start.
+/// When the test request cannot be initialized, such as when the test app fails
+/// to start.
 ///
 /// # Example
 /// ```rust,ignore

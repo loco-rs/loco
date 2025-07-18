@@ -24,7 +24,7 @@ use std::convert::TryInto;
 
 use axum::{
     body::Body,
-    http::{header, response::Builder, HeaderName, HeaderValue, StatusCode},
+    http::{HeaderName, HeaderValue, StatusCode, header, response::Builder},
     response::{Html, IntoResponse, Redirect, Response},
 };
 use axum_extra::extract::cookie::Cookie;
@@ -33,11 +33,11 @@ use serde::Serialize;
 use serde_json::json;
 
 use crate::{
-    controller::{
-        views::{self, ViewRenderer},
-        Json,
-    },
     Result,
+    controller::{
+        Json,
+        views::{self, ViewRenderer},
+    },
 };
 
 /// Returns an empty response.

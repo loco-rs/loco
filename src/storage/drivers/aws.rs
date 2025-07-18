@@ -1,6 +1,6 @@
-use opendal::{services::S3, Operator};
+use opendal::{Operator, services::S3};
 
-use super::{opendal_adapter::OpendalAdapter, StoreDriver};
+use super::{StoreDriver, opendal_adapter::OpendalAdapter};
 use crate::storage::StorageResult;
 
 /// A set of AWS security credentials

@@ -3,14 +3,12 @@
 //! This module provides a generic cache interface for various cache drivers.
 pub mod drivers;
 
-use std::{future::Future, time::Duration};
+use std::{future::Future, sync::Arc, time::Duration};
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 
 use self::drivers::CacheDriver;
-use crate::config;
-use crate::Result as LocoResult;
-use std::sync::Arc;
+use crate::{Result as LocoResult, config};
 
 /// Errors related to cache operations
 #[derive(thiserror::Error, Debug)]
@@ -94,7 +92,8 @@ impl Cache {
         self.driver.contains_key(key).await
     }
 
-    /// Retrieves a value from the cache based on the provided key and deserializes it.
+    /// Retrieves a value from the cache based on the provided key and
+    /// deserializes it.
     ///
     /// # Example
     /// ```
@@ -188,7 +187,8 @@ impl Cache {
         self.driver.insert(key, &serialized).await
     }
 
-    /// Inserts a serializable value into the cache with the provided key and expiry duration.
+    /// Inserts a serializable value into the cache with the provided key and
+    /// expiry duration.
     ///
     /// # Example
     /// ```
@@ -240,9 +240,9 @@ impl Cache {
             .await
     }
 
-    /// Retrieves and deserializes the value associated with the given key from the cache,
-    /// or inserts it if it does not exist, using the provided closure to
-    /// generate the value.
+    /// Retrieves and deserializes the value associated with the given key from
+    /// the cache, or inserts it if it does not exist, using the provided
+    /// closure to generate the value.
     ///
     /// # Example
     /// ```
@@ -296,9 +296,9 @@ impl Cache {
         }
     }
 
-    /// Retrieves and deserializes the value associated with the given key from the cache,
-    /// or inserts it (with expiry after provided duration) if it does not
-    /// exist, using the provided closure to generate the value.
+    /// Retrieves and deserializes the value associated with the given key from
+    /// the cache, or inserts it (with expiry after provided duration) if it
+    /// does not exist, using the provided closure to generate the value.
     ///
     /// # Example
     /// ```
@@ -405,8 +405,9 @@ impl Cache {
 #[cfg(test)]
 mod tests {
 
-    use crate::tests_cfg;
     use serde::{Deserialize, Serialize};
+
+    use crate::tests_cfg;
 
     #[tokio::test]
     async fn can_get_or_insert() {

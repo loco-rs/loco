@@ -18,11 +18,11 @@ use std::{
 };
 
 use axum::{
+    Router as AXRouter,
     body::Body,
     extract::{ConnectInfo, FromRequestParts, Request},
     http::{header::HeaderMap, request::Parts},
     response::Response,
-    Router as AXRouter,
 };
 use futures_util::future::BoxFuture;
 use ipnetwork::IpNetwork;
@@ -30,7 +30,7 @@ use serde::{Deserialize, Serialize};
 use tower::{Layer, Service};
 use tracing::error;
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
+use crate::{Error, Result, app::AppContext, controller::middleware::MiddlewareLayer};
 
 static LOCAL_TRUSTED_PROXIES: OnceLock<Vec<IpNetwork>> = OnceLock::new();
 
@@ -277,9 +277,7 @@ where
         let xff_ip = maybe_get_forwarded(req.headers(), layer.trusted_proxies.as_ref());
         let remote_ip = xff_ip.map_or_else(
             || {
-                
-                req
-                    .extensions()
+                req.extensions()
                     .get::<ConnectInfo<SocketAddr>>()
                     .map_or_else(
                         || {

@@ -25,7 +25,7 @@ use std::{collections::BTreeMap, path::Path};
 
 use bytes::Bytes;
 
-use crate::storage::{strategies::StorageStrategy, Storage, StorageError, StorageResult};
+use crate::storage::{Storage, StorageError, StorageResult, strategies::StorageStrategy};
 
 /// Enum representing the failure mode for the [`BackupStrategy`].
 #[derive(Clone, Debug)]
@@ -226,7 +226,7 @@ mod tests {
     use std::{collections::BTreeMap, path::PathBuf};
 
     use super::*;
-    use crate::storage::{drivers, Storage};
+    use crate::storage::{Storage, drivers};
 
     // Upload
 
@@ -570,19 +570,23 @@ mod tests {
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
         let file_content = Bytes::from("file content");
 
-        assert!(storage
-            .upload(orig_path.as_path(), &file_content)
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .upload(orig_path.as_path(), &file_content)
+                .await
+                .is_ok()
+        );
 
         assert!(store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(store_2.exists(orig_path.as_path()).await.unwrap());
         assert!(store_3.exists(orig_path.as_path()).await.unwrap());
 
-        assert!(storage
-            .rename(orig_path.as_path(), new_path.as_path())
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .rename(orig_path.as_path(), new_path.as_path())
+                .await
+                .is_ok()
+        );
 
         assert!(!store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(!store_2.exists(orig_path.as_path()).await.unwrap());
@@ -621,10 +625,12 @@ mod tests {
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
         let file_content = Bytes::from("file content");
 
-        assert!(storage
-            .upload(orig_path.as_path(), &file_content)
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .upload(orig_path.as_path(), &file_content)
+                .await
+                .is_ok()
+        );
 
         assert!(store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(store_2.exists(orig_path.as_path()).await.unwrap());
@@ -632,10 +638,12 @@ mod tests {
 
         assert!(store_2.delete(orig_path.as_path()).await.is_ok());
 
-        assert!(storage
-            .rename(orig_path.as_path(), new_path.as_path())
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .rename(orig_path.as_path(), new_path.as_path())
+                .await
+                .is_ok()
+        );
 
         assert!(!store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(!store_2.exists(orig_path.as_path()).await.unwrap());
@@ -674,10 +682,12 @@ mod tests {
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
         let file_content = Bytes::from("file content");
 
-        assert!(storage
-            .upload(orig_path.as_path(), &file_content)
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .upload(orig_path.as_path(), &file_content)
+                .await
+                .is_ok()
+        );
 
         assert!(store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(store_2.exists(orig_path.as_path()).await.unwrap());
@@ -685,10 +695,12 @@ mod tests {
 
         assert!(store_2.delete(orig_path.as_path()).await.is_ok());
 
-        assert!(storage
-            .rename(orig_path.as_path(), new_path.as_path())
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .rename(orig_path.as_path(), new_path.as_path())
+                .await
+                .is_ok()
+        );
 
         assert!(!store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(!store_2.exists(orig_path.as_path()).await.unwrap());
@@ -727,10 +739,12 @@ mod tests {
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
         let file_content = Bytes::from("file content");
 
-        assert!(storage
-            .upload(orig_path.as_path(), &file_content)
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .upload(orig_path.as_path(), &file_content)
+                .await
+                .is_ok()
+        );
 
         assert!(store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(store_2.exists(orig_path.as_path()).await.unwrap());
@@ -739,10 +753,12 @@ mod tests {
         assert!(store_2.delete(orig_path.as_path()).await.is_ok());
         assert!(store_3.delete(orig_path.as_path()).await.is_ok());
 
-        assert!(storage
-            .rename(orig_path.as_path(), new_path.as_path())
-            .await
-            .is_err());
+        assert!(
+            storage
+                .rename(orig_path.as_path(), new_path.as_path())
+                .await
+                .is_err()
+        );
 
         assert!(!store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(!store_2.exists(orig_path.as_path()).await.unwrap());
@@ -781,10 +797,12 @@ mod tests {
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
         let file_content = Bytes::from("file content");
 
-        assert!(storage
-            .upload(orig_path.as_path(), &file_content)
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .upload(orig_path.as_path(), &file_content)
+                .await
+                .is_ok()
+        );
 
         assert!(store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(store_2.exists(orig_path.as_path()).await.unwrap());
@@ -792,10 +810,12 @@ mod tests {
 
         assert!(store_2.delete(orig_path.as_path()).await.is_ok());
 
-        assert!(storage
-            .rename(orig_path.as_path(), new_path.as_path())
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .rename(orig_path.as_path(), new_path.as_path())
+                .await
+                .is_ok()
+        );
 
         assert!(!store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(!store_2.exists(orig_path.as_path()).await.unwrap());
@@ -834,10 +854,12 @@ mod tests {
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
         let file_content = Bytes::from("file content");
 
-        assert!(storage
-            .upload(orig_path.as_path(), &file_content)
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .upload(orig_path.as_path(), &file_content)
+                .await
+                .is_ok()
+        );
 
         assert!(store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(store_2.exists(orig_path.as_path()).await.unwrap());
@@ -846,10 +868,12 @@ mod tests {
         assert!(store_2.delete(orig_path.as_path()).await.is_ok());
         assert!(store_3.delete(orig_path.as_path()).await.is_ok());
 
-        assert!(storage
-            .rename(orig_path.as_path(), new_path.as_path())
-            .await
-            .is_err());
+        assert!(
+            storage
+                .rename(orig_path.as_path(), new_path.as_path())
+                .await
+                .is_err()
+        );
 
         assert!(!store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(!store_2.exists(orig_path.as_path()).await.unwrap());
@@ -890,19 +914,23 @@ mod tests {
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
         let file_content = Bytes::from("file content");
 
-        assert!(storage
-            .upload(orig_path.as_path(), &file_content)
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .upload(orig_path.as_path(), &file_content)
+                .await
+                .is_ok()
+        );
 
         assert!(store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(store_2.exists(orig_path.as_path()).await.unwrap());
         assert!(store_3.exists(orig_path.as_path()).await.unwrap());
 
-        assert!(storage
-            .copy(orig_path.as_path(), new_path.as_path())
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .copy(orig_path.as_path(), new_path.as_path())
+                .await
+                .is_ok()
+        );
 
         assert!(store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(store_2.exists(orig_path.as_path()).await.unwrap());
@@ -941,10 +969,12 @@ mod tests {
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
         let file_content = Bytes::from("file content");
 
-        assert!(storage
-            .upload(orig_path.as_path(), &file_content)
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .upload(orig_path.as_path(), &file_content)
+                .await
+                .is_ok()
+        );
 
         assert!(store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(store_2.exists(orig_path.as_path()).await.unwrap());
@@ -952,10 +982,12 @@ mod tests {
 
         assert!(store_2.delete(orig_path.as_path()).await.is_ok());
 
-        assert!(storage
-            .copy(orig_path.as_path(), new_path.as_path())
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .copy(orig_path.as_path(), new_path.as_path())
+                .await
+                .is_ok()
+        );
 
         assert!(store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(!store_2.exists(orig_path.as_path()).await.unwrap());
@@ -994,10 +1026,12 @@ mod tests {
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
         let file_content = Bytes::from("file content");
 
-        assert!(storage
-            .upload(orig_path.as_path(), &file_content)
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .upload(orig_path.as_path(), &file_content)
+                .await
+                .is_ok()
+        );
 
         assert!(store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(store_2.exists(orig_path.as_path()).await.unwrap());
@@ -1005,10 +1039,12 @@ mod tests {
 
         assert!(store_2.delete(orig_path.as_path()).await.is_ok());
 
-        assert!(storage
-            .copy(orig_path.as_path(), new_path.as_path())
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .copy(orig_path.as_path(), new_path.as_path())
+                .await
+                .is_ok()
+        );
 
         assert!(store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(!store_2.exists(orig_path.as_path()).await.unwrap());
@@ -1047,10 +1083,12 @@ mod tests {
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
         let file_content = Bytes::from("file content");
 
-        assert!(storage
-            .upload(orig_path.as_path(), &file_content)
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .upload(orig_path.as_path(), &file_content)
+                .await
+                .is_ok()
+        );
 
         assert!(store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(store_2.exists(orig_path.as_path()).await.unwrap());
@@ -1059,10 +1097,12 @@ mod tests {
         assert!(store_2.delete(orig_path.as_path()).await.is_ok());
         assert!(store_3.delete(orig_path.as_path()).await.is_ok());
 
-        assert!(storage
-            .copy(orig_path.as_path(), new_path.as_path())
-            .await
-            .is_err());
+        assert!(
+            storage
+                .copy(orig_path.as_path(), new_path.as_path())
+                .await
+                .is_err()
+        );
 
         assert!(store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(!store_2.exists(orig_path.as_path()).await.unwrap());
@@ -1101,10 +1141,12 @@ mod tests {
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
         let file_content = Bytes::from("file content");
 
-        assert!(storage
-            .upload(orig_path.as_path(), &file_content)
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .upload(orig_path.as_path(), &file_content)
+                .await
+                .is_ok()
+        );
 
         assert!(store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(store_2.exists(orig_path.as_path()).await.unwrap());
@@ -1112,10 +1154,12 @@ mod tests {
 
         assert!(store_2.delete(orig_path.as_path()).await.is_ok());
 
-        assert!(storage
-            .copy(orig_path.as_path(), new_path.as_path())
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .copy(orig_path.as_path(), new_path.as_path())
+                .await
+                .is_ok()
+        );
 
         assert!(store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(!store_2.exists(orig_path.as_path()).await.unwrap());
@@ -1154,10 +1198,12 @@ mod tests {
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
         let file_content = Bytes::from("file content");
 
-        assert!(storage
-            .upload(orig_path.as_path(), &file_content)
-            .await
-            .is_ok());
+        assert!(
+            storage
+                .upload(orig_path.as_path(), &file_content)
+                .await
+                .is_ok()
+        );
 
         assert!(store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(store_2.exists(orig_path.as_path()).await.unwrap());
@@ -1166,10 +1212,12 @@ mod tests {
         assert!(store_2.delete(orig_path.as_path()).await.is_ok());
         assert!(store_3.delete(orig_path.as_path()).await.is_ok());
 
-        assert!(storage
-            .copy(orig_path.as_path(), new_path.as_path())
-            .await
-            .is_err());
+        assert!(
+            storage
+                .copy(orig_path.as_path(), new_path.as_path())
+                .await
+                .is_err()
+        );
 
         assert!(store_1.exists(orig_path.as_path()).await.unwrap());
         assert!(!store_2.exists(orig_path.as_path()).await.unwrap());

@@ -2,8 +2,9 @@ use async_trait::async_trait;
 use axum::{Extension, Router as AxumRouter};
 
 use crate::{
+    Error, Result,
     app::{AppContext, Initializer},
-    db, Error, Result,
+    db,
 };
 
 #[allow(clippy::module_name_repetitions)]

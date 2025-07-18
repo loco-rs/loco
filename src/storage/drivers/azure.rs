@@ -1,7 +1,7 @@
-use opendal::{services::Azblob, Operator};
+use opendal::{Operator, services::Azblob};
 
 use super::StoreDriver;
-use crate::storage::{drivers::opendal_adapter::OpendalAdapter, StorageResult};
+use crate::storage::{StorageResult, drivers::opendal_adapter::OpendalAdapter};
 
 /// Create new Azure storage.
 ///

@@ -6,10 +6,10 @@ use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{
-    fmt, fmt::MakeWriter, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer, Registry,
+    EnvFilter, Layer, Registry, fmt, fmt::MakeWriter, layer::SubscriberExt, util::SubscriberInitExt,
 };
 
-use crate::{app::Hooks, config, Error, Result};
+use crate::{Error, Result, app::Hooks, config};
 
 // Define an enumeration for log levels
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]

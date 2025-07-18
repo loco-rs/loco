@@ -9,7 +9,7 @@ use axum::Router as AXRouter;
 use serde::{Deserialize, Serialize};
 use tower_http::compression::CompressionLayer;
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
+use crate::{Result, app::AppContext, controller::middleware::MiddlewareLayer};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Compression {

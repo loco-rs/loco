@@ -7,7 +7,7 @@ use loco::{
     generator::{self, executer::FileSystem, template},
     settings,
 };
-use rand::{rngs::StdRng, SeedableRng};
+use rand::{SeedableRng, rngs::StdRng};
 
 mod asset;
 mod auth;

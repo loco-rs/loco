@@ -1,12 +1,13 @@
-use crate::{
-    app::{AppContext, Hooks},
-    db, hash, Error, Result,
-};
+use std::{future::Future, path::PathBuf, pin::Pin};
+
 use sqlx::{Pool, Postgres};
-use std::future::Future;
-use std::path::PathBuf;
-use std::pin::Pin;
 use tree_fs::TreeBuilder;
+
+use crate::{
+    Error, Result,
+    app::{AppContext, Hooks},
+    db, hash,
+};
 
 /// Seeds data into the database.
 ///
@@ -202,9 +203,11 @@ impl TestSupport for Any {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-    use sqlx::Row;
     use std::{thread, time};
+
+    use sqlx::Row;
+
+    use super::*;
 
     async fn schema_exists(pool: &sqlx::PgPool, schema_name: &str) -> bool {
         let row =

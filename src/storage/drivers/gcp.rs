@@ -1,7 +1,7 @@
-use opendal::{services::Gcs, Operator};
+use opendal::{Operator, services::Gcs};
 
 use super::StoreDriver;
-use crate::storage::{drivers::opendal_adapter::OpendalAdapter, StorageResult};
+use crate::storage::{StorageResult, drivers::opendal_adapter::OpendalAdapter};
 
 /// Create new GCP storage.
 ///

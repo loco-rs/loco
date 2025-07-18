@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 use async_trait::async_trait;
 
-use crate::{app::AppContext, errors::Error, Result};
+use crate::{Result, app::AppContext, errors::Error};
 
 /// Struct representing a collection of task arguments.
 #[derive(Default, Debug)]

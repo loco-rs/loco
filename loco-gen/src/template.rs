@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use include_dir::{include_dir, Dir, DirEntry, File};
+use include_dir::{Dir, DirEntry, File, include_dir};
 
 use crate::{Error, Result};
 

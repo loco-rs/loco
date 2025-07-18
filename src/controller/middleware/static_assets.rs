@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tower_http::services::{ServeDir, ServeFile};
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
+use crate::{Error, Result, app::AppContext, controller::middleware::MiddlewareLayer};
 
 /// Static asset middleware configuration
 #[derive(Debug, Clone, Deserialize, Serialize)]

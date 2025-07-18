@@ -1,6 +1,6 @@
 use std::env;
 
-use cargo_metadata::{semver::Version, MetadataCommand, Package};
+use cargo_metadata::{MetadataCommand, Package, semver::Version};
 use clap::{
     ArgAction::{SetFalse, SetTrue},
     Parser, Subcommand,

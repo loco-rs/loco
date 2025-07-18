@@ -7,11 +7,10 @@ use std::{
 };
 
 use async_trait::async_trait;
-use moka::{sync::Cache, Expiry};
+use moka::{Expiry, sync::Cache};
 
 use super::CacheDriver;
-use crate::cache::CacheResult;
-use crate::config::InMemCacheConfig;
+use crate::{cache::CacheResult, config::InMemCacheConfig};
 
 /// Creates a new instance of the in-memory cache driver, with a default Loco
 /// configuration.

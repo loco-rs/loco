@@ -2,7 +2,7 @@ use std::{env, path::Path};
 
 use serde::de::DeserializeOwned;
 
-use crate::{env_vars, Error, Result};
+use crate::{Error, Result, env_vars};
 
 const DEFAULT_DATA_FOLDER: &str = "data";
 fn data_folder() -> String {
@@ -39,9 +39,10 @@ pub async fn load_json_file<T: DeserializeOwned>(path: &str) -> Result<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde::Deserialize;
     use tree_fs::TreeBuilder;
+
+    use super::*;
 
     #[derive(Deserialize, Debug, PartialEq)]
     struct TestData {

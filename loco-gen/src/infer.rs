@@ -1,4 +1,4 @@
-use cruet::{case::snake::to_snake_case, Inflector};
+use cruet::{Inflector, case::snake::to_snake_case};
 
 use crate::{Error, Result};
 

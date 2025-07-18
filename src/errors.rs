@@ -3,9 +3,9 @@
 use axum::{
     extract::rejection::JsonRejection,
     http::{
+        StatusCode,
         header::{InvalidHeaderName, InvalidHeaderValue},
         method::InvalidMethod,
-        StatusCode,
     },
 };
 use lettre::{address::AddressError, transport::smtp};
