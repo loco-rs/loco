@@ -515,7 +515,7 @@ pub fn routes() -> Routes {
 
 Now when you make a request to the `auth::register` handler, you will see the request method and path logged.
 
-```shell
+```sh
 2024-XX-XXTXX:XX:XX.XXXXXZ  INFO http-request: xx::controllers::middleware::log Request: POST "/auth/register" http.method=POST http.uri=/auth/register http.version=HTTP/1.1  environment=development request_id=xxxxx
 ```
 
@@ -541,7 +541,7 @@ impl Hooks for App {
 
 Now when you make a request to any handler in the `auth` route, you will see the request method and path logged.
 
-```shell
+```sh
 2024-XX-XXTXX:XX:XX.XXXXXZ  INFO http-request: xx::controllers::middleware::log Request: POST "/auth/register" http.method=POST http.uri=/auth/register http.version=HTTP/1.1  environment=development request_id=xxxxx
 ```
 
@@ -670,7 +670,7 @@ impl Hooks for App {
 
 Now when you make a request to any handler in the `notes` route, you will see the user's name logged.
 
-```shell
+```sh
 2024-XX-XXTXX:XX:XX.XXXXXZ  INFO http-request: xx::controllers::middleware::log User: John Doe  environment=development request_id=xxxxx
 ```
 
@@ -707,7 +707,7 @@ pub fn routes(ctx: &AppContext) -> Routes {
 
 Now when you make a request to the `notes::create` handler, you will see the user's name logged.
 
-```shell
+```sh
 2024-XX-XXTXX:XX:XX.XXXXXZ  INFO http-request: xx::controllers::middleware::log User: John Doe  environment=development request_id=xxxxx
 ```
 

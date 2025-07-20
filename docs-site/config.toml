@@ -33,6 +33,7 @@ highlight_themes_css = [
   { theme = "OneHalfDark", filename = "syntax-theme-dark.css" },
   { theme = "OneHalfLight", filename = "syntax-theme-light.css" },
 ]
+extra_syntaxes_and_themes = ["syntaxes"]
 [extra]
 # Put all your custom variables here
 
