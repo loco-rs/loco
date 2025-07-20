@@ -890,7 +890,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
         }
         #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
         Commands::Jobs { command } => {
-            handle_job_command::<H>(command, &environment, config).await?
+            handle_job_command::<H>(command, &environment, app_context.config).await?
         }
         Commands::Scheduler {
             name,
