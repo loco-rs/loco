@@ -45,7 +45,15 @@ rustup component add rustfmt --toolchain nightly
 ```
 And then format your code by running:
 ```sh
-cargo +nightly fmt
+rustup default nightly
+
+cargo fmt --all
+cargo fmt --all --manifest-path loco-new/Cargo.toml
+
+cargo clippy --fix --allow-dirty --workspace --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms
+cargo clippy --fix --allow-dirty --workspace --all-features --manifest-path loco-new/Cargo.toml -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms
+
+rustup default stable
 ```
 
 ## Testing

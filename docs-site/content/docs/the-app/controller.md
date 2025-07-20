@@ -792,7 +792,43 @@ middlewares:
 
 Doing so will compress each response and set `content-encoding` response header accordingly.
 
-## Precompressed assets
+## Static Assets
+
+The static assets middleware serves static files (e.g., images, CSS, JS) from a specified folder to the client. It also allows configuration of a fallback file to serve in case a requested file is not found, and can serve precompressed files if enabled.
+
+### Basic Configuration
+
+```yaml
+#...
+middlewares:
+  static_assets:
+    enable: true
+    folder:
+      uri: "/static"
+      path: "assets/static"
+    fallback: "assets/static/404.html"
+    must_exist: true
+```
+
+### Cache Control
+
+You can configure cache control headers for static assets to optimize performance. By default, static assets are cached for 1 year (`max-age=31536000`).
+
+```yaml
+#...
+middlewares:
+  static_assets:
+    enable: true
+    cache_control: "max-age=31536000, public"  # 1 year cache
+    # or
+    cache_control: "max-age=86400"  # 1 day cache
+    # or
+    cache_control: "no-cache"  # No caching
+    # or
+    cache_control: null  # Disable caching entirely
+```
+
+### Precompressed Assets
 
 `Loco` leverages [ServeDir::precompressed_gzip](https://docs.rs/tower-http/latest/tower_http/services/struct.ServeDir.html#method.precompressed_gzip) to enable a `one click` solution of serving pre compressed assets.
 
@@ -801,9 +837,8 @@ If a static assets exists on the disk as a `.gz` file, `Loco` will serve it inst
 ```yaml
 #...
 middlewares:
-  ...
   static_assets:
-    ...
+    enable: true
     precompressed: true
 ```
 
