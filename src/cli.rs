@@ -388,7 +388,7 @@ impl ComponentArg {
                     loco_gen::ScaffoldKind::Api
                 } else {
                     return Err(crate::Error::string(
-                        "Error: One of `kind`, `htmx`, `html`, or `api` must be specified.",
+                        "Error: generating this component requires one of `--kind`, `--htmx`, `--html`, or `--api` to be specified. Run with `--help` for more information.",
                     ));
                 };
 
@@ -890,7 +890,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
         }
         #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
         Commands::Jobs { command } => {
-            handle_job_command::<H>(command, &environment, config).await?
+            handle_job_command::<H>(command, &environment, app_context.config).await?
         }
         Commands::Scheduler {
             name,
