@@ -744,7 +744,6 @@ dependencies = [
  "rhai",
  "rstest",
  "serde",
- "serde_json",
  "serde_yaml",
  "strum",
  "tera",
