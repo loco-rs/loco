@@ -1,7 +1,10 @@
 # Changelog
 
 ## Unreleased
-
+- Update auth import in Authentication document. [https://github.com/loco-rs/loco/pull/1531](https://github.com/loco-rs/loco/pull/1531)
+- adding cache control header to stati_asset middleware. [https://github.com/loco-rs/loco/pull/1535](https://github.com/loco-rs/loco/pull/1535)
+- fix borrow checker when sending config to handle_job_command when feature with-db is off. [https://github.com/loco-rs/loco/pull/1536](https://github.com/loco-rs/loco/pull/1536)
+- feat: add initializer health checks to doctor command. [https://github.com/loco-rs/loco/pull/1537](https://github.com/loco-rs/loco/pull/1537)
 
 ## v0.16.1
 - fix clippy result_large_err. [https://github.com/loco-rs/loco/pull/1496](https://github.com/loco-rs/loco/pull/1496)
