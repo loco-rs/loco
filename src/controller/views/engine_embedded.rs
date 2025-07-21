@@ -38,7 +38,7 @@ impl TeraView {
     #[inline(always)]
     pub fn post_process(
         mut self,
-        post_process: impl FnMut(&mut tera::Tera) -> Result<()> + Send + Sync + 'static,
+        mut post_process: impl FnMut(&mut tera::Tera) -> Result<()> + Send + Sync + 'static,
     ) -> Result<Self> {
         post_process(&mut self.tera)?;
         Ok(self)
