@@ -6,7 +6,7 @@ use serde::Serialize;
 
 pub static DEFAULT_ASSET_FOLDER: &str = "assets";
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct TeraView {
     #[cfg(debug_assertions)]
     pub tera: std::sync::Arc<std::sync::Mutex<tera::Tera>>,
@@ -17,7 +17,30 @@ pub struct TeraView {
     #[cfg(debug_assertions)]
     pub view_dir: String,
 
+    pub tera_post_process:
+        Option<std::sync::Arc<dyn Fn(&mut tera::Tera) -> Result<()> + Send + Sync>>,
+
     pub default_context: tera::Context,
+}
+
+impl std::fmt::Debug for TeraView {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut f = f.debug_struct("TeraView");
+        f.field("tera", &self.tera);
+        #[cfg(debug_assertions)]
+        let f = f.field("view_dir", &self.view_dir);
+        let f = f
+            .field(
+                "tera_post_process",
+                if self.tera_post_process.is_some() {
+                    &Some("Fn")
+                } else {
+                    &None::<&'static str>
+                },
+            )
+            .field("default_context", &self.default_context);
+        f.finish()
+    }
 }
 
 impl TeraView {
@@ -28,6 +51,31 @@ impl TeraView {
     /// This function will return an error if building fails
     pub fn build() -> Result<Self> {
         Self::from_custom_dir(&PathBuf::from(DEFAULT_ASSET_FOLDER).join("views"))
+    }
+
+    /// Attach the Tera view engine with a post-processing function for subsequent instantiation.
+    ///
+    /// The post-processing function is also run during the call to this method.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the post-processing function fails
+    pub fn post_process(
+        mut self,
+        post_process: impl Fn(&mut tera::Tera) -> Result<()> + Send + Sync + 'static,
+    ) -> Result<Self> {
+        {
+            #[cfg(debug_assertions)]
+            let engine = &mut *self.tera.lock().unwrap();
+
+            #[cfg(not(debug_assertions))]
+            let engine = &mut self.tera;
+
+            post_process(engine)?;
+        }
+
+        self.tera_post_process = Some(std::sync::Arc::new(post_process));
+        Ok(self)
     }
 
     /// Create a new Tera instance from a directory path
@@ -66,6 +114,8 @@ impl TeraView {
             #[cfg(debug_assertions)]
             view_dir: path.as_ref().to_string_lossy().to_string(),
             #[cfg(debug_assertions)]
+            tera_post_process: None,
+            #[cfg(debug_assertions)]
             tera: std::sync::Arc::new(std::sync::Mutex::new(tera)),
             #[cfg(not(debug_assertions))]
             tera: tera,
@@ -81,7 +131,10 @@ impl ViewRenderer for TeraView {
         #[cfg(debug_assertions)]
         {
             tracing::debug!(key = key, "Tera rendering in non-optimized debug mode");
-            let tera = Self::create_tera_instance(&self.view_dir)?;
+            let mut tera = Self::create_tera_instance(&self.view_dir)?;
+            if let Some(post_process) = self.tera_post_process.as_deref() {
+                post_process(&mut tera)?;
+            }
             Ok(tera.render(key, &context)?)
         }
 
@@ -92,7 +145,8 @@ impl ViewRenderer for TeraView {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::json;
+    use serde_json::{json, Value};
+    use std::collections::HashMap;
     use tree_fs;
 
     use super::*;
@@ -131,7 +185,7 @@ mod tests {
                 <title>{% block title %}Default Title{% endblock %}</title>
             </head>
             <body>
-                <header>Base Header v1</header>
+                <header>Base Header v1: {{ 1 | hello }}</header>
                 {% block content %}
                 Default content
                 {% endblock %}
@@ -151,11 +205,19 @@ mod tests {
             .unwrap();
 
         let tree_dir = tree_fs.root.clone();
-        let v = TeraView::from_custom_dir(&tree_fs.root).unwrap();
+        let v = TeraView::from_custom_dir(&tree_fs.root)
+            .unwrap()
+            .post_process(|tera| {
+                tera.register_filter("hello", |value: &Value, _: &HashMap<String, Value>| {
+                    Ok(format!("Hello World v{value}").into())
+                });
+                Ok(())
+            })
+            .unwrap();
 
         // Initial render should have the original header from base template
         let initial_render = v.render("template/child.html", json!({})).unwrap();
-        assert!(initial_render.contains("Base Header v1"));
+        assert!(initial_render.contains("Base Header v1: Hello World v1"));
         assert!(initial_render.contains("Child Page"));
         assert!(initial_render.contains("Child content"));
 
@@ -166,7 +228,7 @@ mod tests {
     <title>{% block title %}Default Title{% endblock %}</title>
 </head>
 <body>
-    <header>Base Header v2</header>
+    <header>Base Header v2: {{ 2 | hello }}</header>
     {% block content %}
     Default content
     {% endblock %}
@@ -183,7 +245,7 @@ mod tests {
 
         // Render again - should have the updated header due to hot reload
         let updated_render = v.render("template/child.html", json!({})).unwrap();
-        assert!(updated_render.contains("Base Header v2")); // Should have changed
+        assert!(updated_render.contains("Base Header v2: Hello World v2")); // Should have changed
         assert!(updated_render.contains("Child Page")); // Should be the same
         assert!(updated_render.contains("Child content")); // Should be the same
     }
