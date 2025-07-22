@@ -1,3 +1,16 @@
+//! Doctor module for health checks and diagnostics.
+//!
+//! This module provides health checks for various components of a Loco application.
+//!
+//! # Initializer Health Checks
+//!
+//! Initializers can now provide their own health checks by implementing the `check` method
+//! on the `Initializer` trait. This allows each initializer to validate its configuration
+//! and test its connections during the doctor command.
+//!
+//! When you run `cargo loco doctor`, any initializers that implement the `check` method
+//! will have their health checks executed and displayed in the output.
+
 use colored::Colorize;
 use regex::Regex;
 use semver::Version;
@@ -92,6 +105,7 @@ pub enum Resource {
     Queue,
     Deps,
     PublishedLocoVersion,
+    Initializer(String),
 }
 
 /// Represents the status of a resource check.
@@ -141,7 +155,7 @@ impl std::fmt::Display for Check {
         let icon = match self.status {
             CheckStatus::Ok => "✅",
             CheckStatus::NotOk => "❌",
-            CheckStatus::NotConfigure => "⚠️ ",
+            CheckStatus::NotConfigure => "⚠️",
         };
 
         write!(
@@ -151,7 +165,7 @@ impl std::fmt::Display for Check {
             self.message,
             self.description
                 .as_ref()
-                .map(|d| format!("\n{d}"))
+                .map(|d| format!("\n   {d}"))
                 .unwrap_or_default()
         )
     }
@@ -160,16 +174,33 @@ impl std::fmt::Display for Check {
 /// Runs checks for all configured resources.
 /// # Errors
 /// Error when one of the checks fail
-pub async fn run_all(config: &Config, production: bool) -> Result<BTreeMap<Resource, Check>> {
+pub async fn run_all<H: crate::app::Hooks>(
+    app_context: &crate::app::AppContext,
+    production: bool,
+) -> Result<BTreeMap<Resource, Check>> {
     let mut checks = BTreeMap::from(
         #[cfg(feature = "with-db")]
-        [(Resource::Database, check_db(&config.database).await)],
+        [(
+            Resource::Database,
+            check_db(&app_context.config.database).await,
+        )],
         #[cfg(not(feature = "with-db"))]
         [],
     );
 
-    if config.workers.mode == config::WorkerMode::BackgroundQueue {
-        checks.insert(Resource::Queue, check_queue(config).await);
+    if app_context.config.workers.mode == config::WorkerMode::BackgroundQueue {
+        checks.insert(Resource::Queue, check_queue(&app_context.config).await);
+    }
+
+    // Add initializer checks
+    if let Ok(initializers) = H::initializers(app_context).await {
+        for initializer in initializers {
+            if let Ok(Some(mut check)) = initializer.check(app_context).await {
+                // Format the message to include "Initializer [name]: " prefix
+                check.message = format!("Initializer {}: {}", initializer.name(), check.message);
+                checks.insert(Resource::Initializer(initializer.name()), check);
+            }
+        }
     }
 
     if !production {
