@@ -26,7 +26,7 @@ Provides a convenient code generator to simplify the creation of a starter contr
 Generate a controller:
 
 ```sh
-$ cargo loco generate controller [OPTIONS] <CONTROLLER_NAME>
+cargo loco generate controller [OPTIONS] <CONTROLLER_NAME>
 ```
 
 After generating the controller, navigate to the created file in `src/controllers` to view the controller endpoints. You can also check the testing (in folder tests/requests) documentation for testing this controller.
@@ -466,11 +466,10 @@ In the `Loco` framework, middleware plays a crucial role in authentication. `Loc
 
 ##### Configuration
 
-By default, Loco uses Bearer authentication for JWT. However, you can customize this behavior in the configuration file under the auth.jwt section. You can configure a single authentication location or multiple locations that will be tried in order.
-
-###### Single Location Authentication
+By default, Loco uses Bearer authentication for JWT. However, you can customize this behavior in the configuration file under the auth.jwt section.
 
 - _Bearer Authentication:_ Keep the configuration blank or explicitly set it as follows:
+
   ```yaml
   # Authentication Configuration
   auth:
@@ -479,7 +478,9 @@ By default, Loco uses Bearer authentication for JWT. However, you can customize 
       location:
         from: Bearer
   ```
+
 - _Cookie Authentication:_ Configure the location from which to extract the token and specify the cookie name:
+
   ```yaml
   # Authentication Configuration
   auth:
@@ -489,7 +490,9 @@ By default, Loco uses Bearer authentication for JWT. However, you can customize 
         from: Cookie
         name: token
   ```
+
 - _Query Parameter Authentication:_ Specify the location and name of the query parameter:
+
   ```yaml
   # Authentication Configuration
   auth:
@@ -871,7 +874,7 @@ routes.
 For more information on handler and route based middleware, refer to the [middleware](/docs/the-app/controller/#middleware)
 documentation.
 
-### Handler based middleware:
+### Handler based middleware
 
 Apply a layer to a specific handler using `layer` method.
 
@@ -884,7 +887,7 @@ pub fn routes() -> Routes {
 }
 ```
 
-### Route based middleware:
+### Route based middleware
 
 Apply a layer to a specific route using `layer` method.
 
@@ -906,26 +909,57 @@ impl Hooks for App {
 
 # Request Validation
 
-`JsonValidate` extractor simplifies input [validation](https://github.com/Keats/validator) by integrating with the validator crate. Here's an example of how to validate incoming request data:
+Request validation in the Loco framework ensures that incoming HTTP request data, such as JSON payloads, query parameters, or form data, conforms to predefined rules before processing. Utilizing the `validator` crate ([documentation](https://github.com/Keats/validator)), Loco provides specialized extractors for robust validation.
 
-### Define Your Validation Rules
+## Validation Extractors
+
+| Extractor                    |  JSON  |  Content Type                     | Request Body                              |
+|-------------------------------|------------------------|--------------------------------------------|-------------------------------------------|
+| `JsonValidate`                   | ❌                     | `application/json`                         | JSON (e.g., `{"name": "John", "email": "john@example.com"}`) |
+| `JsonValidateWithMessage`        | ✅                     | `application/json`                         | JSON (e.g., `{"name": "John", "email": "john@example.com"}`) |
+| `QueryValidate`                   | ❌                     | Any                                        | Query string (e.g., `?name=John&email=john@example.com`) |
+| `QueryValidateWithMessage`         | ✅                     | Any                                        | Query string (e.g., `?name=John&email=john@example.com`) |
+| `FormValidate`                   | ❌                     | `application/x-www-form-urlencoded`         | Form data  |
+| `FormValidateWithMessage`        | ✅                     | `application/x-www-form-urlencoded`         | Form data  |
+
+### Notes:
+
+- **Error Status**: HTTP status codes for invalid data or unsupported `Content-Type`.
+- **Structured JSON Errors**: Provided by `WithMessage` extractors for detailed error reporting.
+- **Supported Content Type**: Specifies the expected request `Content-Type`.
+- **Request Body**: Describes the expected format of the request data.
+
+## Implementing Request Validation
+
+### 1. Define Validation Rules
+
+Define a Rust struct with validation rules using the `serde` and `validator` crates.
+
+#### Example: `DataParams` Struct
 
 ```rust
-use axum::debug_handler;
-use loco_rs::prelude::*;
 use serde::Deserialize;
 use validator::Validate;
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct DataParams {
-    #[validate(length(min = 5, message = "custom message"))]
+    #[validate(length(min = 5, message = "Name must be at least 5 characters long"))]
     pub name: String,
     #[validate(email)]
     pub email: String,
 }
 ```
 
-### Create a Handler with Validation
+- **Rules**:
+  - `name`: Requires at least 5 characters.
+  - `email`: Must be a valid email address.
+- The `Validate` macro enables automatic field validation.
+
+### 2. Create Handlers with Validation
+
+Loco extractors validate data within HTTP handlers, proceeding with validated data or returning errors.
+
+#### Example 1: JSON Validation with `JsonValidate`
 
 ```rust
 use axum::debug_handler;
@@ -940,40 +974,90 @@ pub async fn index(
 }
 ```
 
-Using the `JsonValidate` extractor, Loco automatically performs validation on the DataParams struct:
+- Deserializes and validates JSON payloads (e.g., `{"name": "John", "email": "john@example.com"}`).
+- Returns **400 Bad Request** on failure.
 
-- If validation passes, the handler continues execution with params.
-- If validation fails, a 400 Bad Request response is returned.
+#### Example 2: Query Validation with `QueryValidate`
 
-### Returning Validation Errors as JSON
+```rust
+use axum::debug_handler;
+use loco_rs::prelude::*;
 
-If you'd like to return validation errors in a structured JSON format, use `JsonValidateWithMessage` instead of `JsonValidate`. The response format will look like this:
+#[debug_handler]
+pub async fn index(
+    State(_ctx): State<AppContext>,
+    QueryValidate(params): QueryValidate<DataParams>,
+) -> Result<Response> {
+    format::empty()
+}
+```
+
+- Validates query parameters (e.g., `?name=John&email=john@example.com`).
+- Returns **400 Bad Request** on failure.
+
+#### Example 3: Form Validation with `FormValidateWithMessage`
+
+```rust
+use axum::debug_handler;
+use loco_rs::prelude::*;
+
+#[debug_handler]
+pub async fn index(
+    State(_ctx): State<AppContext>,
+    FormValidateWithMessage(params): FormValidateWithMessage<DataParams>,
+) -> Result<Response> {
+    format::empty()
+}
+```
+
+- Validates form data (e.g., `name=John&email=john@example.com`) with `application/x-www-form-urlencoded` content type.
+- Returns **400 Bad Request** on failure, with structured JSON errors.
+
+### 3. Structured Error Responses
+
+`WithMessage` extractors (e.g., `JsonValidateWithMessage`) provide detailed JSON error responses.
+
+#### Example Error Response
+
+For invalid form data (`{"name": "abc", "email": "invalid_email"}`):
 
 ```json
 {
   "errors": {
+    "name": [
+      {
+        "code": "length",
+        "message": "Name must be at least 5 characters long",
+        "params": {
+          "min": 5,
+          "value": "abc"
+        }
+      }
+    ],
     "email": [
       {
         "code": "email",
         "message": null,
         "params": {
-          "value": "ad"
-        }
-      }
-    ],
-    "name": [
-      {
-        "code": "length",
-        "message": "custom message",
-        "params": {
-          "min": 5,
-          "value": "d"
+          "value": "invalid_email"
         }
       }
     ]
   }
 }
 ```
+
+- **Structure**:
+  - `errors`: Maps fields to arrays of validation errors.
+  - Each error includes `code`, `message`, and `params` for context.
+
+## Key Considerations
+
+- **Extractor Selection**: Choose based on the request data type (JSON, query, or form).
+- **Error Handling**:
+  - Standard extractors return generic HTTP errors.
+  - `WithMessage` extractors provide structured JSON errors for client-side feedback.
+- **Further Reading**: Refer to the [validator crate documentation](https://github.com/Keats/validator) for advanced validation rules.
 
 # Pagination
 
