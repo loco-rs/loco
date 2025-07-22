@@ -1,5 +1,8 @@
 use insta::assert_snapshot;
-use loco_gen::{collect_messages, generate, AppInfo, Component, DeploymentKind};
+use loco_gen::{
+    collect_messages, generate, AppInfo, Component, DeploymentKind,
+    DEPLOYMENT_SHUTTLE_RUNTIME_VERSION,
+};
 use rrgen::RRgen;
 use std::{fs, path::PathBuf};
 
@@ -39,14 +42,20 @@ fn can_generate_docker(
 * Dockerignore generated successfully.
 "
     );
-    assert_snapshot!(
-        format!(
-            "generate[docker_file_[{}]_[{}]]",
-            copy_paths.len(),
-            is_client_side_rendering
-        ),
-        fs::read_to_string(tree_fs.root.join("dockerfile")).expect("dockerfile missing")
-    );
+    insta::with_settings!({
+        filters => vec![
+            (r"FROM rust:\d+\.\d+\.\d+-slim", "FROM rust:[version]-slim"),
+        ]
+    }, {
+        assert_snapshot!(
+            format!(
+                "generate[docker_file_[{}]_[{}]]",
+                copy_paths.len(),
+                is_client_side_rendering
+            ),
+            fs::read_to_string(tree_fs.root.join("dockerfile")).expect("dockerfile missing")
+        );
+    });
 
     assert_eq!(
         fs::read_to_string(tree_fs.root.join(".dockerignore")).expect(".dockerignore missing"),
@@ -106,7 +115,7 @@ fn can_generate_shuttle() {
 
     let component = Component::Deployment {
         kind: DeploymentKind::Shuttle {
-            runttime_version: Some("0.1.1".to_string()),
+            runttime_version: Some(DEPLOYMENT_SHUTTLE_RUNTIME_VERSION.to_string()),
         },
     };
 
@@ -159,8 +168,14 @@ playground = "run --example playground"
         fs::read_to_string(tree_fs.root.join(".cargo").join("config.toml"))
             .expect(".cargo/config.toml not exists")
     );
-    assert_snapshot!(
-        "inject[cargo_toml]",
-        fs::read_to_string(tree_fs.root.join("Cargo.toml")).expect("cargo.toml not exists")
-    );
+    insta::with_settings!({
+        filters => vec![
+            (DEPLOYMENT_SHUTTLE_RUNTIME_VERSION, "[SHUTTLE_RUNTIME_VERSION]"),
+        ]
+    }, {
+        assert_snapshot!(
+            "inject[cargo_toml]",
+            fs::read_to_string(tree_fs.root.join("Cargo.toml")).expect("cargo.toml not exists")
+        );
+    });
 }

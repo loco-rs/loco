@@ -9,6 +9,12 @@ env:
 
 jobs:
   g-deploy-docker:
+    # This workflow creates a new Loco application and builds a Docker image
+    # We only want this to run on the main repository (loco-rs/loco) and not on forks because:
+    # 1. It consumes GitHub Actions minutes unnecessarily on forks
+    # 2. The Docker build and deployment is specific to the main repository
+    # 3. Forks typically don't need to run this automated deployment process
+    if: github.repository == 'loco-rs/loco'
     runs-on: ubuntu-latest
 
     permissions:

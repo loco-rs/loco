@@ -19,7 +19,6 @@ flair =[]
 
 # Controllers and Routing
 
-
 ## Adding a controller
 
 Provides a convenient code generator to simplify the creation of a starter controller connected to your project. Additionally, a test file is generated, enabling easy testing of your controller.
@@ -27,11 +26,10 @@ Provides a convenient code generator to simplify the creation of a starter contr
 Generate a controller:
 
 ```sh
-$ cargo loco generate controller [OPTIONS] <CONTROLLER_NAME>
+cargo loco generate controller [OPTIONS] <CONTROLLER_NAME>
 ```
 
 After generating the controller, navigate to the created file in `src/controllers` to view the controller endpoints. You can also check the testing (in folder tests/requests) documentation for testing this controller.
-
 
 ### Displaying active routes
 
@@ -99,7 +97,7 @@ fn routes(_ctx: &AppContext) -> AppRoutes {
 
 ### Nesting Routes
 
-AppRoutes allows you to nest routes, making it easier to organize and manage complex route hierarchies. 
+AppRoutes allows you to nest routes, making it easier to organize and manage complex route hierarchies.
 This is particularly useful when you have a set of related routes that share a common prefix.
 
 ```rust
@@ -177,7 +175,7 @@ Note that by-design _sharing state between controllers and workers have no meani
 
 ### Shared state in tasks
 
-Tasks don't really have a value for shared state, as they have a similar life as any exec'd binary. The process fires up, boots, creates all resources needed (connects to db, etc.), performs the task logic, and then the 
+Tasks don't really have a value for shared state, as they have a similar life as any exec'd binary. The process fires up, boots, creates all resources needed (connects to db, etc.), performs the task logic, and then the
 
 ## Routes in Controllers
 
@@ -238,8 +236,7 @@ pub async fn get_one(
 Here is a case where you might want to both render differently based on
 different formats AND ALSO, render differently based on kinds of errors you got.
 
-
-```rust
+````rust
 pub async fn get_one(
     respond_to: RespondTo,
     Path(id): Path<i32>,
@@ -276,7 +273,7 @@ pub async fn get_one(
         Err(err) => Err(err),
     }
 }
-```
+````
 
 Here, we also "centralize" our error handling by first wrapping the workflow in a function, and grabbing the result type.
 
@@ -323,10 +320,13 @@ Loco comes with a set of built-in middleware out of the box. Some are enabled by
 ## The default stack
 
 You get all the enabled middlewares run the following command
+
 <!-- <snip id="cli-middleware-list" inject_from="yaml" template="sh"> -->
+
 ```sh
 cargo loco middleware --config
 ```
+
 <!-- </snip> -->
 
 This is the stack in `development` mode:
@@ -396,7 +396,7 @@ You can control the `powered_by` middleware by changing the value for `server.id
 
 ```yaml
 server:
-    ident: my-server #(or empty string to disable)
+  ident: my-server #(or empty string to disable)
 ```
 
 ### Example: add a non-default middleware
@@ -431,9 +431,9 @@ powered_by             {"ident":"loco.rs"}
 Let's change the request body limit to `5mb`. When overriding a middleware configuration, rememeber to keep an `enable: true`:
 
 ```yaml
-  middlewares:
-    limit_payload:
-      body_limit: 5mb
+middlewares:
+  limit_payload:
+    body_limit: 5mb
 ```
 
 The result:
@@ -459,46 +459,90 @@ secure_headers         (disabled)
 ```
 
 ### Authentication
+
 In the `Loco` framework, middleware plays a crucial role in authentication. `Loco` supports various authentication methods, including JSON Web Token (JWT) and API Key authentication. This section outlines how to configure and use authentication middleware in your application.
 
 #### JSON Web Token (JWT)
 
 ##### Configuration
+
 By default, Loco uses Bearer authentication for JWT. However, you can customize this behavior in the configuration file under the auth.jwt section.
-* *Bearer Authentication:* Keep the configuration blank or explicitly set it as follows:
+
+- _Bearer Authentication:_ Keep the configuration blank or explicitly set it as follows:
+
   ```yaml
   # Authentication Configuration
   auth:
     # JWT authentication
     jwt:
-      location: Bearer
-  ...
-  ```
-* *Cookie Authentication:* Configure the location from which to extract the token and specify the cookie name:
-  ```yaml
-  # Authentication Configuration
-  auth:
-    # JWT authentication
-    jwt:
-      location: 
-        from: Cookie
-        name: token
-  ...
-  ```
-* *Query Parameter Authentication:* Specify the location and name of the query parameter:
-  ```yaml
-  # Authentication Configuration
-  auth:
-    # JWT authentication
-    jwt:
-      location: 
-        from: Query
-        name: token
-  ...
+      location:
+        from: Bearer
   ```
 
+- _Cookie Authentication:_ Configure the location from which to extract the token and specify the cookie name:
+
+  ```yaml
+  # Authentication Configuration
+  auth:
+    # JWT authentication
+    jwt:
+      location:
+        from: Cookie
+        name: token
+  ```
+
+- _Query Parameter Authentication:_ Specify the location and name of the query parameter:
+
+  ```yaml
+  # Authentication Configuration
+  auth:
+    # JWT authentication
+    jwt:
+      location:
+        from: Query
+        name: token
+  ```
+
+###### Multiple Location Authentication (Fallback Chain)
+
+You can configure multiple authentication locations that will be tried in order until one succeeds. This is useful when you want to support multiple authentication methods simultaneously:
+
+```yaml
+# Authentication Configuration
+auth:
+  # JWT authentication
+  jwt:
+    location:
+      - from: Bearer # Try Authorization header first
+      - from: Cookie # If not found, try cookie
+        name: session_token
+      - from: Query # Finally try query parameter
+        name: api_token
+```
+
+With this configuration:
+
+1. The system first checks for a Bearer token in the `Authorization` header
+2. If not found, it looks for a cookie named `session_token`
+3. If still not found, it checks for a query parameter named `api_token`
+4. If none are found, authentication fails with a descriptive error message
+
+This approach provides flexibility for different client types:
+
+- Web browsers can use cookies
+- API clients can use Bearer tokens
+- Simple clients can use query parameters
+
+**Error Messages:** When authentication fails, the system provides clear feedback about which locations were attempted:
+
+```
+Token not found in any of the configured locations: [Bearer header, Cookie 'session_token', Query parameter 'api_token']
+```
+
 ##### Usage
+
 In your controller parameters, use `auth::JWT` for authentication. This triggers authentication validation based on the configured settings.
+
 ```rust
 use loco_rs::prelude::*;
 
@@ -509,10 +553,13 @@ async fn current(
     // Your implementation here
 }
 ```
+
 Additionally, you can fetch the current user by replacing auth::JWT with `auth::ApiToken<users::Model>`.
 
 #### API Key
+
 For API Key authentication, use auth::ApiToken. This middleware validates the API key against the user database record and loads the corresponding user into the authentication parameter.
+
 ```rust
 use loco_rs::prelude::*;
 
@@ -532,11 +579,10 @@ To disable the middleware edit the configuration as follows:
 
 ```yaml
 #...
-  middlewares:
-    catch_panic:
-      enable: false
+middlewares:
+  catch_panic:
+    enable: false
 ```
-
 
 ## Limit Payload
 
@@ -545,25 +591,29 @@ The Limit Payload middleware restricts the maximum allowed size for HTTP request
 You can customize or disable this behavior through your configuration file.
 
 ### Set a custom limit
+
 ```yaml
 #...
-  middlewares:
-    limit_payload:
-      body_limit: 5mb
+middlewares:
+  limit_payload:
+    body_limit: 5mb
 ```
 
 ### Disable payload size limitation
+
 To remove the restriction entirely, set `body_limit` to `disable`:
+
 ```yaml
 #...
-  middlewares:
-    limit_payload:
-      body_limit: disable
+middlewares:
+  limit_payload:
+    body_limit: disable
 ```
 
-
 ##### Usage
+
 In your controller parameters, use `axum::body::Bytes`.
+
 ```rust
 use loco_rs::prelude::*;
 
@@ -582,12 +632,11 @@ To enable the middleware edit the configuration as follows:
 
 ```yaml
 #...
-  middlewares:
-    timeout_request:
-      enable: false
-      timeout: 5000
+middlewares:
+  timeout_request:
+    enable: false
+    timeout: 5000
 ```
-
 
 ## Logger
 
@@ -597,39 +646,36 @@ To disable the middleware edit the configuration as follows:
 
 ```yaml
 #...
-  middlewares:
-    logger:
-      enable: false
+middlewares:
+  logger:
+    enable: false
 ```
-
 
 ## Fallback
 
 When choosing the SaaS starter (or any starter that is not API-first), you get a default fallback behavior with the _Loco welcome screen_. This is a development-only mode where a `404` request shows you a nice and friendly page that tells you what happened and what to do next. This also takes preference over the static handler, so make sure to disable it if you want to have static content served.
 
-
 You can disable or customize this behavior in your `development.yaml` file. You can set a few options:
-
 
 ```yaml
 # the default pre-baked welcome screen
 fallback:
-    enable: true
+  enable: true
 ```
 
 ```yaml
 # a different predefined 404 page
 fallback:
-    enable: true
-    file: assets/404.html
+  enable: true
+  file: assets/404.html
 ```
 
 ```yaml
 # a message, and customizing the status code to return 200 instead of 404
 fallback:
-    enable: true
-    code: 200
-    not_found: cannot find this resource
+  enable: true
+  code: 200
+  not_found: cannot find this resource
 ```
 
 For production, it's recommended to disable this.
@@ -637,7 +683,7 @@ For production, it's recommended to disable this.
 ```yaml
 # disable. you can also remove the `fallback` section entirely to disable
 fallback:
-    enable: false
+  enable: false
 ```
 
 ## Remote IP
@@ -681,8 +727,7 @@ pub async fn list(ip: RemoteIP, State(ctx): State<AppContext>) -> Result<Respons
 
 When using the `RemoteIP` middleware, take note of the security implications vs. your current architecture (as noted in the documentation and in the configuration section): if your app is NOT under a proxy, you can be prone to IP spoofing vulnerability because anyone can set headers to arbitrary values, and specifically, anyone can set the `X-Forwarded-For` header.
 
-This middleware is not enabled by default. Usually, you *will know* if you need this middleware and you will be aware of the security aspects of using it in the correct architecture. If you're not sure -- don't use it (keep `enable` to `false`).
-
+This middleware is not enabled by default. Usually, you _will know_ if you need this middleware and you will be aware of the security aspects of using it in the correct architecture. If you're not sure -- don't use it (keep `enable` to `false`).
 
 ## Secure Headers
 
@@ -726,10 +771,10 @@ To support `htmx`, You can add the following override, to allow some inline runn
 
 ```yaml
 secure_headers:
-    preset: github
-    overrides:
-        # this allows you to use HTMX, and has unsafe-inline. Remove or consider in production
-        "Content-Security-Policy": "default-src 'self' https:; font-src 'self' https: data:; img-src 'self' https: data:; object-src 'none'; script-src 'unsafe-inline' 'self' https:; style-src 'self' https: 'unsafe-inline'"
+  preset: github
+  overrides:
+    # this allows you to use HTMX, and has unsafe-inline. Remove or consider in production
+    "Content-Security-Policy": "default-src 'self' https:; font-src 'self' https: data:; img-src 'self' https: data:; object-src 'none'; script-src 'unsafe-inline' 'self' https:; style-src 'self' https: 'unsafe-inline'"
 ```
 
 ## Compression
@@ -740,15 +785,50 @@ To enable response compression, based on `accept-encoding` request header, simpl
 
 ```yaml
 #...
-  middlewares:
-    compression:
-      enable: true
+middlewares:
+  compression:
+    enable: true
 ```
 
 Doing so will compress each response and set `content-encoding` response header accordingly.
 
-## Precompressed assets
+## Static Assets
 
+The static assets middleware serves static files (e.g., images, CSS, JS) from a specified folder to the client. It also allows configuration of a fallback file to serve in case a requested file is not found, and can serve precompressed files if enabled.
+
+### Basic Configuration
+
+```yaml
+#...
+middlewares:
+  static_assets:
+    enable: true
+    folder:
+      uri: "/static"
+      path: "assets/static"
+    fallback: "assets/static/404.html"
+    must_exist: true
+```
+
+### Cache Control
+
+You can configure cache control headers for static assets to optimize performance. By default, static assets are cached for 1 year (`max-age=31536000`).
+
+```yaml
+#...
+middlewares:
+  static_assets:
+    enable: true
+    cache_control: "max-age=31536000, public"  # 1 year cache
+    # or
+    cache_control: "max-age=86400"  # 1 day cache
+    # or
+    cache_control: "no-cache"  # No caching
+    # or
+    cache_control: null  # Disable caching entirely
+```
+
+### Precompressed Assets
 
 `Loco` leverages [ServeDir::precompressed_gzip](https://docs.rs/tower-http/latest/tower_http/services/struct.ServeDir.html#method.precompressed_gzip) to enable a `one click` solution of serving pre compressed assets.
 
@@ -757,14 +837,14 @@ If a static assets exists on the disk as a `.gz` file, `Loco` will serve it inst
 ```yaml
 #...
 middlewares:
-  ...
   static_assets:
-    ...
+    enable: true
     precompressed: true
 ```
 
 ## CORS
-This middleware enables Cross-Origin Resource Sharing (CORS) by allowing configurable origins, methods, and headers in HTTP requests. 
+
+This middleware enables Cross-Origin Resource Sharing (CORS) by allowing configurable origins, methods, and headers in HTTP requests.
 It can be tailored to fit various application requirements, supporting permissive CORS or specific rules as defined in the middleware configuration.
 
 ```yaml
@@ -794,8 +874,7 @@ routes.
 For more information on handler and route based middleware, refer to the [middleware](/docs/the-app/controller/#middleware)
 documentation.
 
-
-### Handler based middleware:
+### Handler based middleware
 
 Apply a layer to a specific handler using `layer` method.
 
@@ -808,7 +887,7 @@ pub fn routes() -> Routes {
 }
 ```
 
-### Route based middleware:
+### Route based middleware
 
 Apply a layer to a specific route using `layer` method.
 
@@ -829,24 +908,59 @@ impl Hooks for App {
 ```
 
 # Request Validation
-`JsonValidate` extractor simplifies input [validation](https://github.com/Keats/validator) by integrating with the validator crate. Here's an example of how to validate incoming request data:
 
-### Define Your Validation Rules
+Request validation in the Loco framework ensures that incoming HTTP request data, such as JSON payloads, query parameters, or form data, conforms to predefined rules before processing. Utilizing the `validator` crate ([documentation](https://github.com/Keats/validator)), Loco provides specialized extractors for robust validation.
+
+## Validation Extractors
+
+| Extractor                    |  JSON  |  Content Type                     | Request Body                              |
+|-------------------------------|------------------------|--------------------------------------------|-------------------------------------------|
+| `JsonValidate`                   | ❌                     | `application/json`                         | JSON (e.g., `{"name": "John", "email": "john@example.com"}`) |
+| `JsonValidateWithMessage`        | ✅                     | `application/json`                         | JSON (e.g., `{"name": "John", "email": "john@example.com"}`) |
+| `QueryValidate`                   | ❌                     | Any                                        | Query string (e.g., `?name=John&email=john@example.com`) |
+| `QueryValidateWithMessage`         | ✅                     | Any                                        | Query string (e.g., `?name=John&email=john@example.com`) |
+| `FormValidate`                   | ❌                     | `application/x-www-form-urlencoded`         | Form data  |
+| `FormValidateWithMessage`        | ✅                     | `application/x-www-form-urlencoded`         | Form data  |
+
+### Notes:
+
+- **Error Status**: HTTP status codes for invalid data or unsupported `Content-Type`.
+- **Structured JSON Errors**: Provided by `WithMessage` extractors for detailed error reporting.
+- **Supported Content Type**: Specifies the expected request `Content-Type`.
+- **Request Body**: Describes the expected format of the request data.
+
+## Implementing Request Validation
+
+### 1. Define Validation Rules
+
+Define a Rust struct with validation rules using the `serde` and `validator` crates.
+
+#### Example: `DataParams` Struct
+
 ```rust
-use axum::debug_handler;
-use loco_rs::prelude::*;
 use serde::Deserialize;
 use validator::Validate;
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct DataParams {
-    #[validate(length(min = 5, message = "custom message"))]
+    #[validate(length(min = 5, message = "Name must be at least 5 characters long"))]
     pub name: String,
     #[validate(email)]
     pub email: String,
 }
 ```
-### Create a Handler with Validation
+
+- **Rules**:
+  - `name`: Requires at least 5 characters.
+  - `email`: Must be a valid email address.
+- The `Validate` macro enables automatic field validation.
+
+### 2. Create Handlers with Validation
+
+Loco extractors validate data within HTTP handlers, proceeding with validated data or returning errors.
+
+#### Example 1: JSON Validation with `JsonValidate`
+
 ```rust
 use axum::debug_handler;
 use loco_rs::prelude::*;
@@ -859,38 +973,91 @@ pub async fn index(
     format::empty()
 }
 ```
-Using the `JsonValidate` extractor, Loco automatically performs validation on the DataParams struct:
-* If validation passes, the handler continues execution with params.
-* If validation fails, a 400 Bad Request response is returned.
 
-### Returning Validation Errors as JSON
-If you'd like to return validation errors in a structured JSON format, use `JsonValidateWithMessage` instead of `JsonValidate`. The response format will look like this:
+- Deserializes and validates JSON payloads (e.g., `{"name": "John", "email": "john@example.com"}`).
+- Returns **400 Bad Request** on failure.
+
+#### Example 2: Query Validation with `QueryValidate`
+
+```rust
+use axum::debug_handler;
+use loco_rs::prelude::*;
+
+#[debug_handler]
+pub async fn index(
+    State(_ctx): State<AppContext>,
+    QueryValidate(params): QueryValidate<DataParams>,
+) -> Result<Response> {
+    format::empty()
+}
+```
+
+- Validates query parameters (e.g., `?name=John&email=john@example.com`).
+- Returns **400 Bad Request** on failure.
+
+#### Example 3: Form Validation with `FormValidateWithMessage`
+
+```rust
+use axum::debug_handler;
+use loco_rs::prelude::*;
+
+#[debug_handler]
+pub async fn index(
+    State(_ctx): State<AppContext>,
+    FormValidateWithMessage(params): FormValidateWithMessage<DataParams>,
+) -> Result<Response> {
+    format::empty()
+}
+```
+
+- Validates form data (e.g., `name=John&email=john@example.com`) with `application/x-www-form-urlencoded` content type.
+- Returns **400 Bad Request** on failure, with structured JSON errors.
+
+### 3. Structured Error Responses
+
+`WithMessage` extractors (e.g., `JsonValidateWithMessage`) provide detailed JSON error responses.
+
+#### Example Error Response
+
+For invalid form data (`{"name": "abc", "email": "invalid_email"}`):
 
 ```json
 {
   "errors": {
+    "name": [
+      {
+        "code": "length",
+        "message": "Name must be at least 5 characters long",
+        "params": {
+          "min": 5,
+          "value": "abc"
+        }
+      }
+    ],
     "email": [
       {
         "code": "email",
         "message": null,
         "params": {
-          "value": "ad"
-        }
-      }
-    ],
-    "name": [
-      {
-        "code": "length",
-        "message": "custom message",
-        "params": {
-          "min": 5,
-          "value": "d"
+          "value": "invalid_email"
         }
       }
     ]
   }
 }
-```  
+```
+
+- **Structure**:
+  - `errors`: Maps fields to arrays of validation errors.
+  - Each error includes `code`, `message`, and `params` for context.
+
+## Key Considerations
+
+- **Extractor Selection**: Choose based on the request data type (JSON, query, or form).
+- **Error Handling**:
+  - Standard extractors return generic HTTP errors.
+  - `WithMessage` extractors provide structured JSON errors for client-side feedback.
+- **Further Reading**: Refer to the [validator crate documentation](https://github.com/Keats/validator) for advanced validation rules.
 
 # Pagination
 
@@ -906,8 +1073,8 @@ use loco_rs::prelude::*;
 let res = query::fetch_page(&ctx.db, notes::Entity::find(), &query::PaginationQuery::page(2)).await;
 ```
 
-
 ## Using pagination With Filter
+
 ```rust
 use loco_rs::prelude::*;
 
@@ -932,10 +1099,10 @@ let paginated_notes = query::paginate(
 - Call the paginate function.
 
 ### Pagination view
+
 After creating getting the `paginated_notes` in the previous example, you can choose which fields from the model you want to return and keep the same pagination response in all your different data responses.
 
 Define the data you're returning to the user in Loco views. If you're not familiar with views, refer to the [documentation](@/docs/the-app/views.md) for more context.
-
 
 Create a notes view file in `src/view/notes` with the following code:
 
@@ -988,8 +1155,8 @@ impl PaginationResponse {
 }
 ```
 
-
 # Testing
+
 When testing controllers, the goal is to call the router's controller endpoint and verify the HTTP response, including the status code, response content, headers, and more.
 
 To initialize a test request, use `use loco_rs::testing::prelude::*;`, which prepares your app routers, providing the request instance and the application context.
@@ -1019,8 +1186,8 @@ async fn can_print_echo() {
 As you can see initialize the testing request and using `request` instance calling /example endpoing.
 the request returns a `Response` instance with the status code and the response test
 
-
 ## Async
+
 When writing async tests with database data, it's important to ensure that one test does not affect the data used by other tests. Since async tests can run concurrently on the same database dataset, this can lead to unstable test results.
 
 Instead of using `request`, as described in the documentation for synchronous tests, use the `request_with_create_db` function. This function generates a random database schema name and ensures that the tables are deleted once the test is completed.
@@ -1047,7 +1214,9 @@ async fn can_print_echo() {
 ```
 
 ## Authenticated Endpoints
+
 The following example works for both JWT and API_KEY Authentication.
+
 ```rust
 use loco_rs::testing::prelude::*;
 use super::prepare_data;

@@ -11,10 +11,12 @@
 
 use std::path::PathBuf;
 
+use axum::http::header::{HeaderValue, CACHE_CONTROL};
 use axum::Router as AXRouter;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tower_http::services::{ServeDir, ServeFile};
+use tower_http::set_header::SetResponseHeaderLayer;
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
 
@@ -36,6 +38,8 @@ pub struct StaticAssets {
     /// Enable `precompressed_gzip`
     #[serde(default = "default_precompressed")]
     pub precompressed: bool,
+    /// Cache control header value for static assets (e.g., "max-age=31536000")
+    pub cache_control: Option<String>,
 }
 
 impl Default for StaticAssets {
@@ -62,6 +66,7 @@ fn default_folder_config() -> FolderConfig {
         path: PathBuf::from("assets/static"),
     }
 }
+
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
 pub struct FolderConfig {
     /// Uri for the assets
@@ -106,17 +111,37 @@ impl MiddlewareLayer for StaticAssets {
 
         let serve_dir = ServeDir::new(&self.folder.path).fallback(ServeFile::new(&self.fallback));
 
-        if &self.folder.uri == "/" {
-            Ok(app.fallback_service(serve_dir))
+        // Create static service with cache control if configured
+        let static_service = if let Some(cache_control) = &self.cache_control {
+            let cache_header_layer = SetResponseHeaderLayer::overriding(
+                CACHE_CONTROL,
+                HeaderValue::from_str(cache_control)
+                    .unwrap_or_else(|_| HeaderValue::from_static("max-age=31536000")),
+            );
+
+            let base_service = if self.precompressed {
+                serve_dir.precompressed_gzip()
+            } else {
+                serve_dir
+            };
+
+            // Create a router with the cache control layer applied to the static service
+            AXRouter::new()
+                .fallback_service(base_service)
+                .layer(cache_header_layer)
         } else {
-            Ok(app.nest_service(
-                &self.folder.uri,
-                if self.precompressed {
-                    serve_dir.precompressed_gzip()
-                } else {
-                    serve_dir
-                },
-            ))
+            let base_service = if self.precompressed {
+                serve_dir.precompressed_gzip()
+            } else {
+                serve_dir
+            };
+            AXRouter::new().fallback_service(base_service)
+        };
+
+        if &self.folder.uri == "/" {
+            Ok(app.fallback_service(static_service))
+        } else {
+            Ok(app.nest_service(&self.folder.uri, static_service))
         }
     }
 }

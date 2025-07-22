@@ -2,7 +2,7 @@ to: "dockerfile"
 skip_exists: true
 message: "Dockerfile generated successfully."
 ---
-FROM rust:1.83.0-slim as builder
+FROM rust:1.87.0-slim as builder
 
 WORKDIR /usr/src/
 
