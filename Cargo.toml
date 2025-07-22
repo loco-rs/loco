@@ -62,7 +62,7 @@ backtrace_printer = { version = "1.3.0" }
 # cli
 clap = { version = "4.4.7", features = ["derive"], optional = true }
 colored = { workspace = true }
-sea-orm = { git = "https://github.com/SeaQL/sea-orm", branch = "master", version = "2.0.0-rc", features = [
+sea-orm = { version = "2.0.0-rc", features = [
     "sqlx-postgres",        # `DATABASE_DRIVER` feature
     "sqlx-sqlite",
     "runtime-tokio-rustls",
@@ -187,8 +187,6 @@ duct = { version = "1.0.0" }
 
 [dependencies.sea-orm-migration]
 optional = true
-git = "https://github.com/SeaQL/sea-orm"
-branch = "master"
 version = "2.0.0-rc"
 features = [
     # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.
