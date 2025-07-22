@@ -49,7 +49,6 @@ impl TeraView {
     /// # Errors
     ///
     /// This function will return an error if building fails
-    #[inline(always)]
     pub fn build() -> Result<Self> {
         Self::from_custom_dir(&PathBuf::from(DEFAULT_ASSET_FOLDER).join("views"))
     }

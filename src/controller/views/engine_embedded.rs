@@ -23,7 +23,6 @@ impl TeraView {
     /// # Errors
     ///
     /// This function will return an error if building fails
-    #[inline(always)]
     pub fn build() -> Result<Self> {
         Self::from_embedded_templates()
     }
@@ -35,7 +34,6 @@ impl TeraView {
     /// # Errors
     ///
     /// This function will return an error if the post-processing function fails
-    #[inline(always)]
     pub fn post_process(
         mut self,
         mut post_process: impl FnMut(&mut tera::Tera) -> Result<()> + Send + Sync + 'static,
