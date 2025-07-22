@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## v0.16.1
+## v0.16.2
 - Update auth import in the Authentication document. [https://github.com/loco-rs/loco/pull/1531](https://github.com/loco-rs/loco/pull/1531)
 - Adding cache control header to the static asset middleware. [https://github.com/loco-rs/loco/pull/1535](https://github.com/loco-rs/loco/pull/1535)
 - Fix borrow checker when sending config to handle_job_command when feature with-db is off. [https://github.com/loco-rs/loco/pull/1536](https://github.com/loco-rs/loco/pull/1536)
