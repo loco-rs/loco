@@ -30,13 +30,7 @@ use axum_extra::extract::cookie;
 use serde::{Deserialize, Serialize};
 use tracing;
 
-use crate::{
-    app::AppContext,
-    auth,
-    config::JWT as JWTConfig,
-    errors::Error,
-    Result as LocoResult,
-};
+use crate::{app::AppContext, auth, config::JWT as JWTConfig, errors::Error, Result as LocoResult};
 
 #[cfg(all(feature = "with-db"))]
 use crate::model::{Authenticable, ModelError};
