@@ -27,22 +27,24 @@ use crate::{
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Params {
     {% for column in columns -%}
-    {% if column.2 == "IntegerNull" %}
+    {%- if column.2 == "IntegerNull" -%}
     pub {{column.0}}: Option<i32>,
-    {% else %}
+    {%- else -%}
     pub {{column.0}}: {{column.1}},
-    {% endif %}
+    {%- endif %}
     {% endfor -%}
 }
 
 impl Params {
     fn update(&self, item: &mut ActiveModel) {
       {% for column in columns -%}
-      {% if column.2 == "IntegerNull" %}
+      {%- if column.2 == "IntegerNull" -%}
       item.{{column.0}} = Set(self.{{column.0}});
-      {% else %}
+      {%- elif "i32" in column.1 or "i64" in column.1 -%}
+      item.{{column.0}} = Set(self.{{column.0}});
+      {%- else -%}
       item.{{column.0}} = Set(self.{{column.0}}.clone());
-      {% endif %}
+      {%- endif %}
       {% endfor -%}
     }
 }

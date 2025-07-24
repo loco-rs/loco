@@ -438,11 +438,10 @@ async fn create_table_impl(
     // user, admin_id
     for (from_tbl, ref_name) in refs {
         // Check for nullable reference
-        let (nz_from_table, is_nullable) = if from_tbl.ends_with('?') {
-            (normalize_table(&from_tbl[..from_tbl.len() - 1]), true)
-        } else {
-            (normalize_table(from_tbl), false)
-        };
+        let (nz_from_table, is_nullable) = from_tbl.strip_suffix('?').map_or_else(
+            || (normalize_table(from_tbl), false),
+            |stripped| (normalize_table(stripped), true),
+        );
         let nz_ref_name = if ref_name.is_empty() {
             reference_id(&nz_from_table)
         } else {
