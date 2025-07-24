@@ -23,14 +23,26 @@ use crate::models::_entities::{{file_name | plural}}::{ActiveModel, Entity, Mode
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Params {
     {% for column in columns -%}
+    {%- if column.2 == "IntegerNull" -%}
+    pub {{column.0}}: Option<i32>,
+    {%- else -%}
     pub {{column.0}}: {{column.1}},
+    {%- endif %}
     {% endfor -%}
 }
 
 impl Params {
     fn update(&self, item: &mut ActiveModel) {
       {% for column in columns -%}
+      {%- if "Vec<" in column.1 -%}
       item.{{column.0}} = Set(self.{{column.0}}.clone());
+      {%- elif column.2 == "IntegerNull" -%}
+      item.{{column.0}} = Set(self.{{column.0}});
+      {%- elif "i32" in column.1 or "i64" in column.1 or "i16" in column.1 or "Uuid" in column.1 or "f32" in column.1 or "f64" in column.1 or "Decimal" in column.1 or "bool" in column.1 or "Date" in column.1 or "DateTime" in column.1 or "DateTimeWithTimeZone" in column.1 -%}
+      item.{{column.0}} = Set(self.{{column.0}});
+      {%- else -%}
+      item.{{column.0}} = Set(self.{{column.0}}.clone());
+      {%- endif %}
       {% endfor -%}
     }
 }
