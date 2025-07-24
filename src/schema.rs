@@ -437,30 +437,39 @@ async fn create_table_impl(
     // users, None
     // user, admin_id
     for (from_tbl, ref_name) in refs {
-        let nz_from_table = normalize_table(from_tbl);
-        // in movies, user:references, creates a `user_id` field or what ever in
-        // `ref_name` if given
+        // Check for nullable reference
+        let (nz_from_table, is_nullable) = if from_tbl.ends_with('?') {
+            (normalize_table(&from_tbl[..from_tbl.len() - 1]), true)
+        } else {
+            (normalize_table(from_tbl), false)
+        };
         let nz_ref_name = if ref_name.is_empty() {
             reference_id(&nz_from_table)
         } else {
             (*ref_name).to_string()
         };
-        // user -> users
-
-        // create user_id in movies
-        stmt.col(ColType::Integer.to_def(Alias::new(&nz_ref_name)));
-        // link user_id in movies to users#id
-        stmt.foreign_key(
-            sea_query::ForeignKey::create()
-                // fk-movies-user_id-to-users
-                .name(format!("fk-{nz_from_table}-{nz_ref_name}-to-{nz_table}")) // XXX fix
-                // from movies#user_id (user_id is just created now)
-                .from(Alias::new(&nz_table), Alias::new(&nz_ref_name)) // XXX fix
-                // to users#id
-                .to(Alias::new(nz_from_table), Alias::new("id")) // XXX fix
-                .on_delete(ForeignKeyAction::Cascade)
-                .on_update(ForeignKeyAction::Cascade),
-        );
+        // Only add the column if it doesn't already exist in cols
+        if !cols.iter().any(|(col_name, _)| *col_name == nz_ref_name) {
+            let col_type = if is_nullable {
+                ColType::IntegerNull
+            } else {
+                ColType::Integer
+            };
+            stmt.col(col_type.to_def(Alias::new(&nz_ref_name)));
+        }
+        // Set FK actions based on nullability
+        let mut fk = sea_query::ForeignKey::create();
+        fk.name(format!("fk-{nz_from_table}-{nz_ref_name}-to-{nz_table}"));
+        fk.from(Alias::new(&nz_table), Alias::new(&nz_ref_name));
+        fk.to(Alias::new(nz_from_table), Alias::new("id"));
+        if is_nullable {
+            fk.on_delete(ForeignKeyAction::SetNull);
+            fk.on_update(ForeignKeyAction::NoAction);
+        } else {
+            fk.on_delete(ForeignKeyAction::Cascade);
+            fk.on_update(ForeignKeyAction::Cascade);
+        }
+        stmt.foreign_key(&mut fk);
     }
     m.create_table(stmt).await?;
     Ok(())
