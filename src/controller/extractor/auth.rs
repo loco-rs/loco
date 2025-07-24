@@ -6,6 +6,7 @@
 //! use loco_rs::prelude::*;
 //! use serde::Serialize;
 //! use axum::extract::State;
+//! use loco_rs::controller::extractor::auth;
 //!
 //! #[derive(Serialize)]
 //! pub struct TestResponse {
@@ -34,9 +35,11 @@ use crate::{
     auth,
     config::JWT as JWTConfig,
     errors::Error,
-    model::{Authenticable, ModelError},
     Result as LocoResult,
 };
+
+#[cfg(all(feature = "with-db"))]
+use crate::model::{Authenticable, ModelError};
 
 // ---------------------------------------
 //
@@ -50,6 +53,7 @@ const AUTH_HEADER: &str = "authorization";
 
 // Define a struct to represent user authentication information serialized
 // to/from JSON
+#[cfg(all(feature = "with-db"))]
 #[derive(Debug, Deserialize, Serialize)]
 pub struct JWTWithUser<T: Authenticable> {
     pub claims: auth::jwt::UserClaims,
@@ -57,6 +61,7 @@ pub struct JWTWithUser<T: Authenticable> {
 }
 
 // Implement the FromRequestParts trait for the Auth struct
+#[cfg(all(feature = "with-db"))]
 impl<S, T> FromRequestParts<S> for JWTWithUser<T>
 where
     AppContext: FromRef<S>,
@@ -252,6 +257,7 @@ pub fn extract_token_from_query(name: &str, parts: &Parts) -> LocoResult<String>
 // API Token Auth / Extractor
 //
 // ---------------------------------------
+#[cfg(all(feature = "with-db"))]
 #[derive(Debug, Deserialize, Serialize)]
 // Represents the data structure for the API token.
 pub struct ApiToken<T: Authenticable> {
@@ -260,6 +266,7 @@ pub struct ApiToken<T: Authenticable> {
 
 // Implementing the `FromRequestParts` trait for `ApiToken` to enable extracting
 // it from the request.
+#[cfg(all(feature = "with-db"))]
 impl<S, T> FromRequestParts<S> for ApiToken<T>
 where
     AppContext: FromRef<S>,
