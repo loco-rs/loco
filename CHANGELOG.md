@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Support nullable foreign keys with `references?` syntax. [https://github.com/loco-rs/loco/pull/1544](https://github.com/loco-rs/loco/pull/1544)
 
 ## v0.16.2
 - Update auth import in the Authentication document. [https://github.com/loco-rs/loco/pull/1531](https://github.com/loco-rs/loco/pull/1531)
