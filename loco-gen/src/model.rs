@@ -43,10 +43,10 @@ pub fn get_columns_and_references(
                 references.push((fname.to_string(), refname.clone()));
             }
             crate::infer::FieldType::NullableReference => {
-                references.push((format!("{}?", fname), String::new()));
+                references.push((format!("{fname}?"), String::new()));
             }
             crate::infer::FieldType::NullableReferenceWithCustomField(refname) => {
-                references.push((format!("{}?", fname), refname.clone()));
+                references.push((format!("{fname}?"), refname.clone()));
             }
             crate::infer::FieldType::Type(ftype) => {
                 let mappings = get_mappings();
