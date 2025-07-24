@@ -453,46 +453,18 @@ impl MigrationTrait for Migration {
 
 Using the `manager` directly lets you access more advanced operations while authoring your migrations.
 
-**Add a column**
-
-```rust
-  manager
-    .alter_table(
-        Table::alter()
-            .table(Movies::Table)
-            .add_column_if_not_exists(integer(Movies::Rating))
-            .to_owned(),
-    )
-    .await
-```
-
-**Drop a column**
-
-```rust
-  manager
-    .alter_table(
-        Table::alter()
-            .table(Movies::Table)
-            .drop_column(Movies::Rating)
-            .to_owned(),
-    )
-    .await
-```
-
 **Add index**
 
 You can copy some of this code for adding an index
 
 ```rust
-  manager
-    .create_index(
-        Index::create()
-            .name("idx-movies-rating")
-            .table(Movies::Table)
-            .col(Movies::Rating)
-            .to_owned(),
-    )
-    .await;
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        let db = manager.get_connection();
+        let _ = db
+            .execute_unprepared("CREATE INDEX thread_board_active_index ON threads (board_id, last_active);")
+            .await?;
+        Ok(())
+    }
 ```
 
 **Create a data fix**
