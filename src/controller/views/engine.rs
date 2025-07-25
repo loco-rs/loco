@@ -6,6 +6,8 @@ use serde::Serialize;
 
 pub static DEFAULT_ASSET_FOLDER: &str = "assets";
 
+type TeraPostProcessor = std::sync::Arc<dyn Fn(&mut tera::Tera) -> Result<()> + Send + Sync>;
+
 #[derive(Clone)]
 pub struct TeraView {
     #[cfg(debug_assertions)]
@@ -17,8 +19,7 @@ pub struct TeraView {
     #[cfg(debug_assertions)]
     pub view_dir: String,
 
-    pub tera_post_process:
-        Option<std::sync::Arc<dyn Fn(&mut tera::Tera) -> Result<()> + Send + Sync>>,
+    pub tera_post_process: Option<TeraPostProcessor>,
 
     pub default_context: tera::Context,
 }
@@ -113,7 +114,6 @@ impl TeraView {
         Ok(Self {
             #[cfg(debug_assertions)]
             view_dir: path.as_ref().to_string_lossy().to_string(),
-            #[cfg(debug_assertions)]
             tera_post_process: None,
             #[cfg(debug_assertions)]
             tera: std::sync::Arc::new(std::sync::Mutex::new(tera)),
