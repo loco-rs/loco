@@ -36,6 +36,11 @@ pub struct MagicLinkParams {
     pub email: String,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ResendVerificationParams {
+    pub email: String,
+}
+
 /// Register function creates a new user with the given parameters and sends a
 /// welcome email to the user
 #[debug_handler]
@@ -222,6 +227,38 @@ async fn magic_link_verify(
     format::json(LoginResponse::new(&user, &token))
 }
 
+#[debug_handler]
+async fn resend_verification_email(
+    State(ctx): State<AppContext>,
+    Json(params): Json<ResendVerificationParams>,
+) -> Result<Response> {
+    let Ok(user) = users::Model::find_by_email(&ctx.db, &params.email).await else {
+        tracing::info!(
+            email = params.email,
+            "User not found for resend verification"
+        );
+        return format::json(());
+    };
+
+    if user.email_verified_at.is_some() {
+        tracing::info!(
+            pid = user.pid.to_string(),
+            "User already verified, skipping resend"
+        );
+        return format::json(());
+    }
+
+    let user = user
+        .into_active_model()
+        .set_email_verification_sent(&ctx.db)
+        .await?;
+
+    AuthMailer::send_welcome(&ctx, &user).await?;
+    tracing::info!(pid = user.pid.to_string(), "Verification email re-sent");
+
+    format::json(())
+}
+
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/auth")
@@ -233,4 +270,5 @@ pub fn routes() -> Routes {
         .add("/current", get(current))
         .add("/magic-link", post(magic_link))
         .add("/magic-link/{token}", get(magic_link_verify))
+        .add("/resend-verification-mail", post(resend_verification_email))
 }
