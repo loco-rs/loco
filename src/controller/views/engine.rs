@@ -114,7 +114,6 @@ impl TeraView {
         Ok(Self {
             #[cfg(debug_assertions)]
             view_dir: path.as_ref().to_string_lossy().to_string(),
-            #[cfg(debug_assertions)]
             tera_post_process: None,
             #[cfg(debug_assertions)]
             tera: std::sync::Arc::new(std::sync::Mutex::new(tera)),
