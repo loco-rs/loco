@@ -17,6 +17,7 @@ pub struct TeraView {
     #[cfg(debug_assertions)]
     pub view_dir: String,
 
+    #[cfg(debug_assertions)]
     pub tera_post_process:
         Option<std::sync::Arc<dyn Fn(&mut tera::Tera) -> Result<()> + Send + Sync>>,
 
@@ -29,6 +30,7 @@ impl std::fmt::Debug for TeraView {
         f.field("tera", &self.tera);
         #[cfg(debug_assertions)]
         let f = f.field("view_dir", &self.view_dir);
+        #[cfg(debug_assertions)]
         let f = f
             .field(
                 "tera_post_process",
@@ -60,6 +62,7 @@ impl TeraView {
     /// # Errors
     ///
     /// This function will return an error if the post-processing function fails
+    #[cfg(debug_assertions)]
     pub fn post_process(
         mut self,
         post_process: impl Fn(&mut tera::Tera) -> Result<()> + Send + Sync + 'static,
