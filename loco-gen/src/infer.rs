@@ -15,6 +15,8 @@ pub enum MigrationType {
 pub enum FieldType {
     Reference,
     ReferenceWithCustomField(String),
+    NullableReference,
+    NullableReferenceWithCustomField(String),
     Type(String),
     TypeWithParameters(String, Vec<String>),
 }
@@ -23,6 +25,10 @@ pub fn parse_field_type(ftype: &str) -> Result<FieldType> {
     let parts: Vec<&str> = ftype.split(':').collect();
 
     match parts.as_slice() {
+        ["references?"] => Ok(FieldType::NullableReference),
+        ["references?", f] => Ok(FieldType::NullableReferenceWithCustomField(
+            (*f).to_string(),
+        )),
         ["references"] => Ok(FieldType::Reference),
         ["references", f] => Ok(FieldType::ReferenceWithCustomField((*f).to_string())),
         [t] => Ok(FieldType::Type((*t).to_string())),

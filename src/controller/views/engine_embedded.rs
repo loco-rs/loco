@@ -27,6 +27,21 @@ impl TeraView {
         Self::from_embedded_templates()
     }
 
+    /// Attach the Tera view engine with a post-processing function for subsequent instantiation.
+    ///
+    /// The post-processing function is also run during the call to this method.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the post-processing function fails
+    pub fn post_process(
+        mut self,
+        mut post_process: impl FnMut(&mut tera::Tera) -> Result<()> + Send + Sync + 'static,
+    ) -> Result<Self> {
+        post_process(&mut self.tera)?;
+        Ok(self)
+    }
+
     /// Load and initialize templates from embedded assets
     ///
     /// # Errors

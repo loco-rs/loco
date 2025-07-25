@@ -1,6 +1,7 @@
 ---
 source: loco-gen/tests/templates/scaffold.rs
 expression: "fs::read_to_string(views_path.join(format!(\"{view}.html\"))).expect(\"view file missing\")"
+snapshot_kind: text
 ---
 {% extends "base.html" %}
 
@@ -26,6 +27,9 @@ movie
                             {{"title" | capitalize }}
                         </th>
                         <th class="h-10 px-2 text-left align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0 [&amp;>[role=checkbox]]:translate-y-[2px] w-[100px]">
+                            {{"user_id" | capitalize }}
+                        </th>
+                        <th class="h-10 px-2 text-left align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0 [&amp;>[role=checkbox]]:translate-y-[2px] w-[100px]">
                            Actions
                         </th>
                     </tr>
@@ -36,6 +40,10 @@ movie
                         <td
                             class="p-2 align-middle  font-medium">
                             {{item.title | escape }}
+                        </td>
+                        <td
+                            class="p-2 align-middle  font-medium">
+                            {{item.user_id | escape }}
                         </td>
                         <td>
                             <a href="/movies/{{ item.id }}/edit">Edit</a>

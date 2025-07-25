@@ -1,6 +1,7 @@
 ---
 source: loco-gen/tests/templates/scaffold.rs
 expression: "fs::read_to_string(controllers_path.join(\"movie.rs\")).expect(\"controller file missing\")"
+snapshot_kind: text
 ---
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::unnecessary_struct_initialization)]
@@ -20,11 +21,13 @@ use crate::{
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Params {
     pub title: Option<String>,
+    pub user_id: i32,
     }
 
 impl Params {
     fn update(&self, item: &mut ActiveModel) {
       item.title = Set(self.title.clone());
+      item.user_id = Set(self.user_id);
       }
 }
 

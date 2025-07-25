@@ -68,6 +68,8 @@ fn test_combination(
 
     let mut env_map: HashMap<_, _> = std::env::vars().collect();
     env_map.insert("RUSTFLAGS".into(), "-D warnings".into());
+    env_map.insert("DB_CONNECT_TIMEOUT".into(), "2000".into());
+    env_map.insert("DB_IDLE_TIMEOUT".into(), "2000".into());
 
     let tester = Tester {
         dir: test_dir.root,
