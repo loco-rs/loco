@@ -3,19 +3,25 @@ use std::path::{Path, PathBuf};
 use super::tera_builtins;
 use crate::{controller::views::ViewRenderer, Error, Result};
 use serde::Serialize;
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 pub static DEFAULT_ASSET_FOLDER: &str = "assets";
+
+#[cfg(debug_assertions)]
+#[derive(Debug, Clone)]
+pub struct HotReloadingTeraEngine {
+    pub engine: tera::Tera,
+    pub view_path: PathBuf,
+    pub view_path_hash: u64,
+}
 
 #[derive(Clone)]
 pub struct TeraView {
     #[cfg(debug_assertions)]
-    pub tera: std::sync::Arc<std::sync::Mutex<tera::Tera>>,
+    pub tera: std::sync::Arc<std::sync::Mutex<HotReloadingTeraEngine>>,
 
     #[cfg(not(debug_assertions))]
     pub tera: tera::Tera,
-
-    #[cfg(debug_assertions)]
-    pub view_dir: String,
 
     pub tera_post_process:
         Option<std::sync::Arc<dyn Fn(&mut tera::Tera) -> Result<()> + Send + Sync>>,
@@ -25,11 +31,8 @@ pub struct TeraView {
 
 impl std::fmt::Debug for TeraView {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut f = f.debug_struct("TeraView");
-        f.field("tera", &self.tera);
-        #[cfg(debug_assertions)]
-        let f = f.field("view_dir", &self.view_dir);
-        let f = f
+        f.debug_struct("TeraView")
+            .field("tera", &self.tera)
             .field(
                 "tera_post_process",
                 if self.tera_post_process.is_some() {
@@ -38,8 +41,8 @@ impl std::fmt::Debug for TeraView {
                     &None::<&'static str>
                 },
             )
-            .field("default_context", &self.default_context);
-        f.finish()
+            .field("default_context", &self.default_context)
+            .finish()
     }
 }
 
@@ -66,7 +69,7 @@ impl TeraView {
     ) -> Result<Self> {
         {
             #[cfg(debug_assertions)]
-            let engine = &mut *self.tera.lock().unwrap();
+            let engine = &mut self.tera.lock().unwrap().engine;
 
             #[cfg(not(debug_assertions))]
             let engine = &mut self.tera;
@@ -84,15 +87,77 @@ impl TeraView {
     ///
     /// This function will return an error if building fails
     fn create_tera_instance<P: AsRef<Path>>(path: P) -> Result<tera::Tera> {
-        let mut tera = tera::Tera::new(
-            path.as_ref()
-                .join("**")
-                .join("*.html")
-                .to_str()
-                .ok_or_else(|| Error::string("invalid blob"))?,
-        )?;
+        let path = path
+            .as_ref()
+            .to_str()
+            .ok_or_else(|| Error::string("invalid glob"))?;
+
+        let mut tera = tera::Tera::new(path)?;
+
         tera_builtins::filters::register_filters(&mut tera);
+
         Ok(tera)
+    }
+
+    /// Create a unique hash for the view directory based on the following
+    /// metadata of the files in the directory:
+    ///
+    /// 1) The file name
+    /// 2) The file size
+    /// 3) The last modified time
+    ///
+    /// If this hash changes, it indicates that at least one of the files
+    /// in the directory has changed,
+    ///
+    /// # Note
+    ///
+    /// This glob-walking code is taken directly from Tera because
+    /// we want to ensure that we handle glob patterns consistently
+    fn hash_view_dir<P: AsRef<Path>>(path: &P) -> Result<u64> {
+        let glob = path
+            .as_ref()
+            .to_str()
+            .ok_or_else(|| Error::string("invalid glob"))?;
+
+        let Some(n) = glob.find('*') else {
+            return Err(Error::string("invalid glob"));
+        };
+
+        // Copied from Tera code
+        let (parent_dir, glob_end) = glob.split_at(n);
+        let parent_dir = std::fs::canonicalize(parent_dir)
+            .unwrap_or_else(|_| std::path::PathBuf::from(parent_dir));
+
+        let glob = parent_dir
+            .join(glob_end)
+            .into_os_string()
+            .into_string()
+            .unwrap();
+
+        let glob_walker = globwalk::glob_builder(&glob)
+            .follow_links(true)
+            .build()
+            .map_err(|_| Error::string("error walking glob"))?;
+
+        let mut hasher = DefaultHasher::new();
+
+        for entry in glob_walker.filter_map(std::result::Result::ok) {
+            let filename = entry.path().to_string_lossy();
+            let Ok(metadata) = entry.metadata() else {
+                continue;
+            };
+            let Ok(modified) = metadata.modified() else {
+                continue;
+            };
+            filename.hash(&mut hasher);
+            metadata.len().hash(&mut hasher);
+            let duration_since_epoch = modified
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos() as u64;
+            duration_since_epoch.hash(&mut hasher);
+        }
+        Ok(hasher.finish())
     }
 
     /// Create a Tera view engine from a custom directory
@@ -108,18 +173,27 @@ impl TeraView {
             )));
         }
 
-        let tera = Self::create_tera_instance(path.as_ref())?;
-        let ctx = tera::Context::default();
+        let path: PathBuf = path.as_ref().join("**").join("*.html").into();
+
+        // Hash the view path files
+        let hash = Self::hash_view_dir(&path)?;
+
+        // Create instance
+        let tera = Self::create_tera_instance(&path)?;
+
         Ok(Self {
-            #[cfg(debug_assertions)]
-            view_dir: path.as_ref().to_string_lossy().to_string(),
-            #[cfg(debug_assertions)]
             tera_post_process: None,
+
             #[cfg(debug_assertions)]
-            tera: std::sync::Arc::new(std::sync::Mutex::new(tera)),
+            tera: std::sync::Arc::new(std::sync::Mutex::new(HotReloadingTeraEngine {
+                engine: tera,
+                view_path: path,
+                view_path_hash: hash,
+            })),
             #[cfg(not(debug_assertions))]
             tera: tera,
-            default_context: ctx,
+
+            default_context: tera::Context::default(),
         })
     }
 }
@@ -130,12 +204,28 @@ impl ViewRenderer for TeraView {
 
         #[cfg(debug_assertions)]
         {
-            tracing::debug!(key = key, "Tera rendering in non-optimized debug mode");
-            let mut tera = Self::create_tera_instance(&self.view_dir)?;
-            if let Some(post_process) = self.tera_post_process.as_deref() {
-                post_process(&mut tera)?;
+            let mut tera = self.tera.lock().unwrap();
+
+            // Hash the view path files
+            let hash = Self::hash_view_dir(&tera.view_path)?;
+
+            // Only create a new Tera instance if the hash has changed
+            if tera.view_path_hash != hash {
+                tracing::warn!("Tera rendering in non-optimized debug mode");
+                tracing::debug!(key = key, "Hot-reloading Tera view engine");
+
+                tera.view_path_hash = hash;
+
+                let mut new_engine = Self::create_tera_instance(&tera.view_path)?;
+
+                if let Some(post_process) = self.tera_post_process.as_deref() {
+                    post_process(&mut new_engine)?;
+                }
+
+                tera.engine = new_engine;
             }
-            Ok(tera.render(key, &context)?)
+
+            Ok(tera.engine.render(key, &context)?)
         }
 
         #[cfg(not(debug_assertions))]
