@@ -195,6 +195,32 @@ If you have code that relies on database errors during authentication returning 
 
 Client applications should be prepared to handle both 401 and 500 status codes during authentication failures, with 401 indicating authorization problems and 500 indicating system errors.
 
+### Server side rendering
+We had some changes in Tera template. go to `src/initializers/view_engine.rs` and replace the `after_routes` function with:
+```rust
+async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+        let tera_engine = if std::path::Path::new(I18N_DIR).exists() {
+            let arc = std::sync::Arc::new(
+                ArcLoader::builder(&I18N_DIR, unic_langid::langid!("en-US"))
+                    .shared_resources(Some(&[I18N_SHARED.into()]))
+                    .customize(|bundle| bundle.set_use_isolating(false))
+                    .build()
+                    .map_err(|e| Error::string(&e.to_string()))?,
+            );
+            info!("locales loaded");
+
+            engines::TeraView::build()?.post_process(move |tera| {
+                tera.register_function("t", FluentLoader::new(arc.clone()));
+                Ok(())
+            })?
+        } else {
+            engines::TeraView::build()?
+        };
+
+        Ok(router.layer(Extension(ViewEngine::from(tera_engine))))
+    }
+```
+
 ## Upgrade from 0.14.x to 0.15.x
 
 ### Upgrade validator crate

@@ -33,7 +33,7 @@ pub struct GenerateResults {
     rrgen: Vec<rrgen::GenResult>,
     local_templates: Vec<PathBuf>,
 }
-pub const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.55.0";
+pub const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.56.0";
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {

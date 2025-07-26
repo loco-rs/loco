@@ -442,6 +442,10 @@ pub trait Hooks: Send {
 
 /// An initializer.
 /// Initializers should be kept in `src/initializers/`
+///
+/// Initializers can provide health checks by implementing the `check` method.
+/// These checks will be run during the `cargo loco doctor` command to validate
+/// the initializer's configuration and test its connections.
 #[async_trait]
 // <snip id="initializers-trait">
 pub trait Initializer: Sync + Send {
@@ -460,6 +464,13 @@ pub trait Initializer: Sync + Send {
     /// Router
     async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
         Ok(router)
+    }
+
+    /// Perform health checks for this initializer.
+    /// This method is called during the doctor command to validate the initializer's configuration.
+    /// Return `None` if no check is needed, or `Some(Check)` if a check should be performed.
+    async fn check(&self, _app_context: &AppContext) -> Result<Option<crate::doctor::Check>> {
+        Ok(None)
     }
 }
 // </snip>
