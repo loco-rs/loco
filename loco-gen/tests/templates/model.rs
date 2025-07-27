@@ -27,7 +27,6 @@ fn can_generate() {
     let rrgen = RRgen::with_working_dir(&tree_fs.root);
     let component = Component::Model {
         name: "movies".to_string(),
-        link: false,
         fields: vec![("title".to_string(), "string".to_string())],
     };
 
@@ -88,7 +87,6 @@ fn fail_when_migration_lib_not_exists() {
     let rrgen = RRgen::with_working_dir(&tree_fs.root);
     let component = Component::Model {
         name: "movies".to_string(),
-        link: false,
         fields: vec![("title".to_string(), "string".to_string())],
     };
 
@@ -119,7 +117,6 @@ fn fail_when_test_models_mod_not_exists() {
     let rrgen = RRgen::with_working_dir(&tree_fs.root);
     let component = Component::Model {
         name: "movies".to_string(),
-        link: false,
         fields: vec![("title".to_string(), "string".to_string())],
     };
 

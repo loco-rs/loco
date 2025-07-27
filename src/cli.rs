@@ -189,10 +189,6 @@ enum ComponentArg {
         /// Name of the thing to generate
         name: String,
 
-        /// Is it a link table? Use this in many-to-many relations
-        #[arg(short, long, action)]
-        link: bool,
-
         /// Model fields, eg. title:string hits:int
         #[clap(value_parser = parse_key_val::<String,String>)]
         fields: Vec<(String, String)>,
@@ -358,9 +354,7 @@ impl ComponentArg {
     fn into_gen_component(self, config: &Config) -> crate::Result<loco_gen::Component> {
         match self {
             #[cfg(feature = "with-db")]
-            Self::Model { name, link, fields } => {
-                Ok(loco_gen::Component::Model { name, link, fields })
-            }
+            Self::Model { name, fields } => Ok(loco_gen::Component::Model { name, fields }),
             #[cfg(feature = "with-db")]
             Self::Migration { name, fields } => Ok(loco_gen::Component::Migration { name, fields }),
             #[cfg(feature = "with-db")]
