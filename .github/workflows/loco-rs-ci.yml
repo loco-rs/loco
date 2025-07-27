@@ -51,6 +51,24 @@ jobs:
           tool: cargo-hack
       - run: cargo hack check --each-feature
 
+  build:
+    needs: [check, style]
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run cargo build
+        run: cargo build --release
   test:
     needs: [check, style]
     runs-on: ubuntu-latest
