@@ -33,11 +33,22 @@ pub fn generate(
         let field_type = parse_field_type(ftype)?;
         match field_type {
             crate::infer::FieldType::Reference => {
-                // (users, "")
-                //references.push((fname.to_string(), String::new()));
+                let col_name = format!("{fname}_id");
+                columns.push((col_name, "i32".to_string(), "Integer".to_string()));
             }
-            crate::infer::FieldType::ReferenceWithCustomField(_refname) => {
-                //references.push((fname.to_string(), refname.clone()));
+            crate::infer::FieldType::ReferenceWithCustomField(refname) => {
+                columns.push((refname.clone(), "i32".to_string(), "Integer".to_string()));
+            }
+            crate::infer::FieldType::NullableReference => {
+                let col_name = format!("{fname}_id");
+                columns.push((col_name, "i32".to_string(), "IntegerNull".to_string()));
+            }
+            crate::infer::FieldType::NullableReferenceWithCustomField(refname) => {
+                columns.push((
+                    refname.clone(),
+                    "i32".to_string(),
+                    "IntegerNull".to_string(),
+                ));
             }
             crate::infer::FieldType::Type(ftype) => {
                 let mappings = get_mappings();

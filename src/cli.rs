@@ -15,18 +15,12 @@
 //! }
 //! ```
 #[cfg(feature = "with-db")]
-use {crate::boot::run_db, crate::db, crate::doctor, sea_orm_migration::MigratorTrait};
+use {crate::boot::run_db, crate::db, sea_orm_migration::MigratorTrait};
 
 use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueHint};
 use colored::Colorize;
 use duct::cmd;
 use std::fmt::Write;
-#[cfg(any(
-    feature = "bg_redis",
-    feature = "bg_pg",
-    feature = "bg_sqlt",
-    feature = "with-db"
-))]
 use std::process::exit;
 use std::{collections::BTreeMap, path::PathBuf};
 
@@ -41,6 +35,7 @@ use crate::{
         start, RunDbCommand, ServeParams, StartMode,
     },
     config::Config,
+    doctor,
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
     logger, task, Error,
 };
@@ -146,7 +141,6 @@ enum Commands {
         #[command(subcommand)]
         component: ComponentArg,
     },
-    #[cfg(feature = "with-db")]
     /// Validate and diagnose configurations.
     Doctor {
         /// print out the current configurations.
@@ -776,7 +770,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                 println!("Environment: {}", &environment);
             } else {
                 let mut should_exit = false;
-                for (_, check) in doctor::run_all(&app_context.config, production).await? {
+                for (_, check) in doctor::run_all::<H>(&app_context, production).await? {
                     if !should_exit && !check.valid() {
                         should_exit = true;
                     }
@@ -903,6 +897,26 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
         #[cfg(debug_assertions)]
         Commands::Generate { component } => {
             handle_generate_command::<H>(component, &app_context.config)?;
+        }
+        Commands::Doctor {
+            config: config_arg,
+            production,
+        } => {
+            if config_arg {
+                println!("{}", &app_context.config);
+                println!("Environment: {}", &environment);
+            } else {
+                let mut should_exit = false;
+                for (_, check) in doctor::run_all::<H>(&app_context, production).await? {
+                    if !should_exit && !check.valid() {
+                        should_exit = true;
+                    }
+                    println!("{check}");
+                }
+                if should_exit {
+                    exit(1);
+                }
+            }
         }
         Commands::Version {} => {
             println!("{}", H::app_version(),);

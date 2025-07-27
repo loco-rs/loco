@@ -279,6 +279,7 @@ async fn static_assets() {
         },
         fallback: base_static_path.join("404.html"),
         precompressed: false,
+        cache_control: None,
     });
 
     let port = get_available_port().await;

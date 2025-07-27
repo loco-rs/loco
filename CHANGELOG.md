@@ -1,10 +1,22 @@
 # Changelog
 
 ## Unreleased
+
+## v0.16.3
+- Support nullable foreign keys with `references?` syntax. [https://github.com/loco-rs/loco/pull/1544](https://github.com/loco-rs/loco/pull/1544)
+- **HOTFIX**: Fixed a critical issue introduced in version `v0.16.2` that caused `cargo build --release` to fail after merging #1540. [https://github.com/loco-rs/loco/pull/1551](https://github.com/loco-rs/loco/pull/1551)
+- Add an API to re-send verification mail. [https://github.com/loco-rs/loco/pull/1456](https://github.com/loco-rs/loco/pull/1456)
+- Adding to ci cargo build --release. [https://github.com/loco-rs/loco/pull/1553](https://github.com/loco-rs/loco/pull/1553)
+
+## v0.16.2
 - Update auth import in the Authentication document. [https://github.com/loco-rs/loco/pull/1531](https://github.com/loco-rs/loco/pull/1531)
 - Adding cache control header to the static asset middleware. [https://github.com/loco-rs/loco/pull/1535](https://github.com/loco-rs/loco/pull/1535)
 - Fix borrow checker when sending config to handle_job_command when feature with-db is off. [https://github.com/loco-rs/loco/pull/1536](https://github.com/loco-rs/loco/pull/1536)
 - feat: add initializer health checks to doctor command. [https://github.com/loco-rs/loco/pull/1537](https://github.com/loco-rs/loco/pull/1537)
+- Update shuttle template to 0.56. [https://github.com/loco-rs/loco/pull/1518](https://github.com/loco-rs/loco/pull/1518)
+- Encapsulate post-processing into Tera engine creation. [https://github.com/loco-rs/loco/pull/1540](https://github.com/loco-rs/loco/pull/1540)
+- Adding QueryValidateWithMessage. [https://github.com/loco-rs/loco/pull/1521](https://github.com/loco-rs/loco/pull/1521)
+- Add S3 driver with credentials and endpoint support. [https://github.com/loco-rs/loco/pull/1539](https://github.com/loco-rs/loco/pull/1539)
 
 ## v0.16.1
 - fix clippy result_large_err. [https://github.com/loco-rs/loco/pull/1496](https://github.com/loco-rs/loco/pull/1496)

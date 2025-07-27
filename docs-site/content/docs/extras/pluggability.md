@@ -139,6 +139,13 @@ pub trait Initializer: Sync + Send {
     async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
         Ok(router)
     }
+
+    /// Perform health checks for this initializer.
+    /// This method is called during the doctor command to validate the initializer's configuration.
+    /// Return `None` if no check is needed, or `Some(Check)` if a check should be performed.
+    async fn check(&self, _app_context: &AppContext) -> Result<Option<crate::doctor::Check>> {
+        Ok(None)
+    }
 }
 ```
 
@@ -208,6 +215,90 @@ After you've implemented your own initializer, you should implement the `initial
 <!-- </snip> -->
 
 Loco will now run your initializer stack in the correct places during the app boot process.
+
+### Initializer Health Checks
+
+Initializers can now provide their own health checks by implementing the `check` method. This allows each initializer to validate its configuration and test its connections during the `cargo loco doctor` command.
+
+#### Implementing Health Checks
+
+To add health checks to your initializer, implement the `check` method:
+
+```rust
+use async_trait::async_trait;
+use loco_rs::app::{AppContext, Initializer};
+use loco_rs::doctor::{Check, CheckStatus};
+
+struct MyCustomInitializer;
+
+#[async_trait]
+impl Initializer for MyCustomInitializer {
+    fn name(&self) -> String {
+        "my_custom_initializer".to_string()
+    }
+
+    async fn check(&self, app_context: &AppContext) -> loco_rs::Result<Option<Check>> {
+        // Check if your configuration exists
+        let config = app_context.config.initializers.as_ref()
+            .and_then(|init| init.get("my_custom_initializer"))
+            .ok_or_else(|| loco_rs::Error::Message("Configuration not found".to_string()))?;
+
+        // Perform your health check
+        match self.test_connection(config).await {
+            Ok(()) => Ok(Some(Check {
+                status: CheckStatus::Ok,
+                message: "My custom service: success".to_string(),
+                description: None,
+            })),
+            Err(err) => Ok(Some(Check {
+                status: CheckStatus::NotOk,
+                message: "My custom service: failed".to_string(),
+                description: Some(err.to_string()),
+            })),
+        }
+    }
+}
+```
+
+#### Health Check Return Values
+
+The `check` method returns `Result<Option<Check>>`:
+
+- **`Ok(None)`**: No health check needed (default behavior)
+- **`Ok(Some(Check))`**: Health check result to be displayed
+
+#### Check Status Types
+
+```rust
+pub enum CheckStatus {
+    Ok,           // ✅ Component is healthy
+    NotOk,        // ❌ Component has issues
+    NotConfigure, // ⚠️ Component not configured (may be intentional)
+}
+```
+
+#### Running Initializer Health Checks
+
+Health checks are automatically run when you execute:
+
+```sh
+cargo loco doctor
+```
+
+The output will include your initializer checks:
+
+```
+✅ Database connection: success
+✅ Initializer my_custom_initializer: My custom service: success
+❌ Initializer failing_service: Service connection: failed
+   connection timeout after 30 seconds
+```
+
+#### Optional Health Checks
+
+Health checks are completely optional. If your initializer doesn't implement the `check` method, it will use the default implementation that returns `Ok(None)`, meaning no health check will be performed.
+
+This makes the feature backward-compatible and allows initializers to opt-in to health checking when needed.
 
 ### What other things you can do?
 

@@ -15,10 +15,9 @@ top = false
 flair =[]
 +++
 
-
 Models in `loco` mean entity classes that allow for easy database querying and writes, but also migrations and seeding.
 
-## Sqlite vs Postgres 
+## Sqlite vs Postgres
 
 You might have selected `sqlite` which is the default when you created your new app. Loco allows you to _seamlessly_ move between `sqlite` and `postgres`.
 
@@ -38,6 +37,7 @@ Your local postgres database should be with <code>loco:loco</code> and a db name
 For your convenience, here is a docker command to start up a Postgresql database server:
 
 <!-- <snip id="postgres-run-docker-command" inject_from="yaml" template="sh"> -->
+
 ```sh
 docker run -d -p 5432:5432 \
   -e POSTGRES_USER=loco \
@@ -45,13 +45,13 @@ docker run -d -p 5432:5432 \
   -e POSTGRES_PASSWORD="loco" \
   postgres:15.3-alpine
 ```
+
 <!-- </snip> -->
-
-
 
 Finally you can also use the doctor command to validate your connection:
 
 <!-- <snip id="doctor-command" inject_from="yaml template="sh"> -->
+
 ```sh
 $ cargo loco doctor
     Finished dev [unoptimized + debuginfo] target(s) in 0.32s
@@ -60,6 +60,7 @@ $ cargo loco doctor
 ✅ DB connection: success
 ✅ Redis connection: success
 ```
+
 <!-- </snip> -->
 
 ## Fat models, slim controllers
@@ -134,7 +135,6 @@ Each field type may include either the `!` or `^` suffix:
 - `^` indicates that the field must be **unique**.
 
 If no suffix is used, then the field can be null.
-
 
 ### Data types
 
@@ -225,6 +225,19 @@ cargo loco g model post title:string user:references
 
 Using `user:references` uses the special `<other_model>:references` type, which will create a relationship between the `post` (our new model) and a `user` (pre-existing model), adding a `user_id` (implied field name) reference field to the `posts` table.
 
+### Nullable Foreign Keys
+
+If you want to create a **nullable foreign key** (i.e., a reference that can be `NULL` in the database), simply add a `?` after `references`:
+
+```
+cargo loco g model post title:string user:references?
+```
+
+This will create a `user_id` column on the `posts` table that is nullable, and the foreign key constraint will use `ON DELETE SET NULL` and `ON UPDATE NO ACTION`.
+
+- `user:references` → `user_id` is NOT NULL (required foreign key)
+- `user:references?` → `user_id` is NULLABLE (optional foreign key)
+
 On the other hand, using the second approach (`<other_model>:references:<column_name>`) gives us the luxury of being able to name the field/column as per our liking. Therefore, taking the previous example itself, if we wish to create a `post` table having a title, and a foreign key that points to, perhaps the author, we will use the same previous command, but with a nimble modification:
 
 ```
@@ -239,7 +252,6 @@ You can generate an empty model:
 $ cargo loco generate model posts
 ```
 
-
 Or a data model, without any references:
 
 ```
@@ -248,7 +260,7 @@ $ cargo loco generate model posts title:string! content:text
 
 ## Migrations
 
-Other than using the model generator, you drive your schema by *creating migrations*.
+Other than using the model generator, you drive your schema by _creating migrations_.
 
 ```
 $ cargo loco generate migration <name of migration> [name:type, name:type ...]
@@ -270,14 +282,14 @@ $ cargo loco db entities
 
 Loco is a migration-first framework, similar to Rails. Which means that when you want to add models, data fields, or model oriented changes - you start with a migration that describes it, and then you apply the migration to get back generated entities in `model/_entities`.
 
-This enforces _everything-as-code_, _reproducibility_ and _atomicity_, where no knowledge of the schema goes missing. 
+This enforces _everything-as-code_, _reproducibility_ and _atomicity_, where no knowledge of the schema goes missing.
 
 **Naming the migration is important**, the type of migration that is being generated is inferred from the migration name.
 
 ### Create a new table
 
-* Name template: `Create___`
-* Example: `CreatePosts`
+- Name template: `Create___`
+- Example: `CreatePosts`
 
 ```
 $ cargo loco g migration CreatePosts title:string content:string
@@ -285,8 +297,8 @@ $ cargo loco g migration CreatePosts title:string content:string
 
 ### Add columns
 
-* Name template: `Add___To___`
-* Example: `AddNameAndAgeToUsers` (the string `NameAndAge` does not matter, you specify columns individually, however `Users` does matter because this will be the name of the table)
+- Name template: `Add___To___`
+- Example: `AddNameAndAgeToUsers` (the string `NameAndAge` does not matter, you specify columns individually, however `Users` does matter because this will be the name of the table)
 
 ```
 $ cargo loco g migration AddNameAndAgeToUsers name:string age:int
@@ -294,8 +306,8 @@ $ cargo loco g migration AddNameAndAgeToUsers name:string age:int
 
 ### Remove columns
 
-* Name template: `Remove___From___`
-* Example: `RemoveNameAndAgeFromUsers` (same note exists as in _add columns_)
+- Name template: `Remove___From___`
+- Example: `RemoveNameAndAgeFromUsers` (same note exists as in _add columns_)
 
 ```
 $ cargo logo g migration RemoveNameAndAgeFromUsers name:string age:int
@@ -303,8 +315,8 @@ $ cargo logo g migration RemoveNameAndAgeFromUsers name:string age:int
 
 ### Add references
 
-* Name template: `Add___RefTo___`
-* Example: `AddUserRefToPosts` (`User` does not matter, as you specify one or many references individually, `Posts` does matter as it will be the table name in the migration)
+- Name template: `Add___RefTo___`
+- Example: `AddUserRefToPosts` (`User` does not matter, as you specify one or many references individually, `Posts` does matter as it will be the table name in the migration)
 
 ```
 $ cargo loco g migration AddUserRefToPosts user:references
@@ -312,8 +324,8 @@ $ cargo loco g migration AddUserRefToPosts user:references
 
 ### Create a join table
 
-* Name template: `CreateJoinTable___And___` (supported between 2 tables)
-* Example: `CreateJoinTableUsersAndGroups`
+- Name template: `CreateJoinTable___And___` (supported between 2 tables)
+- Example: `CreateJoinTableUsersAndGroups`
 
 ```
 $ cargo loco g migration CreateJoinTableUsersAndGroups count:int
@@ -334,17 +346,21 @@ $ cargo loco g migration FixUsersTable
 If you realize that you made a mistake, you can always undo the migration. This will undo the changes made by the migration (assuming that you added the appropriate code for `down` in the migration).
 
 <!-- <snip id="migrate-down-command" inject_from="yaml" template="sh"> -->
+
 ```sh
 cargo loco db down
 ```
+
 <!-- </snip> -->
 
 The `down` command on its own will rollback only the last migration. If you want to rollback multiple migrations, you can specify the number of migrations to rollback.
 
 <!-- <snip id="migrate-down-n-command" inject_from="yaml" template="sh"> -->
+
 ```sh
 cargo loco db down 2
 ```
+
 <!-- </snip> -->
 
 ### Verbs, singular and plural
@@ -433,7 +449,6 @@ impl MigrationTrait for Migration {
 
 Add a single column. You can use as many such statements as you like in a single migration (to add multiple columns).
 
-
 ```rust
 impl MigrationTrait for Migration {
     async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
@@ -447,7 +462,6 @@ impl MigrationTrait for Migration {
     }
 }
 ```
-
 
 ### Authoring advanced migrations
 
@@ -503,7 +517,7 @@ Creating a data fix in a migration is easy - just use SQL statements as you like
   async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
 
     let db = manager.get_connection();
-    
+
     // issue SQL queries with `db`
     // https://www.sea-ql.org/SeaORM/docs/basic-crud/raw-sql/#use-raw-query--execute-interface
 
@@ -513,17 +527,16 @@ Creating a data fix in a migration is easy - just use SQL statements as you like
 
 Having said that, it's up to you to code your data fixes in:
 
-* `task` - where you can use high level models
-* `migration` - where you can both change structure and fix data stemming from it with raw SQL
-* or an ad-hoc `playground` - where you can use high level models or experiment with things
-
+- `task` - where you can use high level models
+- `migration` - where you can both change structure and fix data stemming from it with raw SQL
+- or an ad-hoc `playground` - where you can use high level models or experiment with things
 
 ## Validation
 
 We use the [validator](https://docs.rs/validator) library under the hood. First, build your validator with the constraints you need, and then implement `Validatable` for your `ActiveModel`.
 
-
 <!-- <snip id="model-validation" inject_from="code" template="rust"> -->
+
 ```rust
 #[derive(Debug, Validate, Deserialize)]
 pub struct Validator {
@@ -542,13 +555,12 @@ impl Validatable for super::_entities::users::ActiveModel {
     }
 }
 ```
-<!-- </snip> -->
 
+<!-- </snip> -->
 
 Note that `Validatable` is how you instruct Loco which `Validator` to provide and how to build it from a model.
 
 Now you can use `user.validate()` seamlessly in your code, when it is `Ok` the model is valid, otherwise you'll find validation errors in `Err(...)` available for inspection.
-
 
 ## Relationships
 
@@ -561,7 +573,6 @@ $ cargo loco generate model company name:string user:references
 ```
 
 This will create a migration with a `user_id` field in `Company` which will reference a `User`.
-
 
 ### Many to many
 
@@ -588,7 +599,6 @@ Writing src/models/_entities/prelude.rs
 
 This will create a many-to-many link table named `UsersVotes` with a composite primary key containing both `user_id` and `movie_id`. Because it has precisely 2 IDs, SeaORM will identify it as a many-to-many link table, and generate entities with the appropriate `via()` relationship:
 
-
 ```rust
 // User, newly generated entity with a `via` relation at _entities/users.rs
 
@@ -605,18 +615,22 @@ impl Related<super::movies::Entity> for Entity {
 
 Using `via()` will cause `find_related` to walk through the link table without you needing to know the details of the link table.
 
-
-
-
 ## Configuration
 
 Model configuration that's available to you is exciting because it controls all aspects of development, testing, and production, with a ton of goodies, coming from production experience.
 
 <!-- <snip id="configuration-database" inject_from="code" template="yaml"> -->
+
 ```yaml
 database:
   # Database connection URI
-  uri: {{get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_app")}}
+  uri:
+    {
+      {
+        get_env(name="DATABASE_URL",
+        default="postgres://loco:loco@localhost:5432/loco_app"),
+      },
+    }
   # When enabled, the sql query will be logged.
   enable_logging: false
   # Set the timeout duration when acquiring a connection.
@@ -634,8 +648,8 @@ database:
   # Recreating schema when application loaded.  This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_recreate: false
 ```
-<!-- </snip>-->
 
+<!-- </snip>-->
 
 By combining these flags, you can create different experiences to help you be more productive.
 
@@ -716,7 +730,9 @@ This implementation ensures that the seed is executed when the seed function is 
   Export the contents of your database tables to files. This feature allows you to back up the current state of your database or prepare data for reuse across environments.
 
 To access the seed commands, use the following CLI structure:
+
 <!-- <snip id="seed-help-command" inject_from="yaml" action="exec" template="sh"> -->
+
 ```sh
 Seed your database with initial data or dump tables to files
 
@@ -731,8 +747,8 @@ Options:
   -h, --help                       Print help
   -V, --version                    Print version
 ```
-<!-- </snip> -->
 
+<!-- </snip> -->
 
 ### Using a Test
 
@@ -775,8 +791,6 @@ initializers:
     dangerously_recreate: false
 ```
 
-
-
 Load this [initializer](@/docs/extras/pluggability.md#initializers) into `initializers` hook like this example
 
 ```rs
@@ -806,28 +820,29 @@ pub async fn list(
 ## Multi-DB (multi-tenant)
 
 To connect more than two different databases, the database configuration should look like this:
+
 ```yaml
 initializers:
-  multi_db: 
-    secondary_db:      
+  multi_db:
+    secondary_db:
       uri: postgres://loco:loco@localhost:5432/loco_app
-      enable_logging: false      
-      connect_timeout: 500      
-      idle_timeout: 500      
-      min_connections: 1      
-      max_connections: 1      
-      auto_migrate: true      
-      dangerously_truncate: false      
+      enable_logging: false
+      connect_timeout: 500
+      idle_timeout: 500
+      min_connections: 1
+      max_connections: 1
+      auto_migrate: true
+      dangerously_truncate: false
       dangerously_recreate: false
-    third_db:      
+    third_db:
       uri: postgres://loco:loco@localhost:5432/loco_app
-      enable_logging: false      
-      connect_timeout: 500      
-      idle_timeout: 500      
-      min_connections: 1      
-      max_connections: 1      
-      auto_migrate: true      
-      dangerously_truncate: false      
+      enable_logging: false
+      connect_timeout: 500
+      idle_timeout: 500
+      min_connections: 1
+      max_connections: 1
+      auto_migrate: true
+      dangerously_truncate: false
       dangerously_recreate: false
 ```
 
@@ -886,15 +901,12 @@ async fn can_find_by_pid() {
 }
 ```
 
-
-
 To simplify the testing process, `Loco` provides helpful functions that make writing tests more convenient. Ensure you enable the testing feature in your `Cargo.toml`:
 
 ```toml
 [dev-dependencies]
 loco-rs = { version = "*",  features = ["testing"] }
 ```
-
 
 ## Database cleanup
 
@@ -904,7 +916,6 @@ In some cases, you may want to run tests with a clean dataset, ensuring that eac
 
 - When doing it recommended to run all the relevant task in with [serial](https://crates.io/crates/rstest) crate.
 - To decide which tables you want to truncate, add the entity model to the App hook:
-
 
 ```rust
 pub struct App;
@@ -920,6 +931,7 @@ impl Hooks for App {
 ```
 
 ## Async
+
 When writing async tests with database data, it's important to ensure that one test does not affect the data used by other tests. Since async tests can run concurrently on the same database dataset, this can lead to unstable test results.
 
 Instead of using `boot_test`, as described in the documentation for synchronous tests, use the `boot_test_with_create_db` function. This function generates a random database schema name and ensures that the tables are deleted once the test is completed.
