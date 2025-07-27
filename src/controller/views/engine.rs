@@ -2,8 +2,11 @@ use std::path::{Path, PathBuf};
 
 use super::tera_builtins;
 use crate::{controller::views::ViewRenderer, Error, Result};
+use notify::{
+    event::{EventKind, ModifyKind},
+    Event, RecursiveMode, Watcher,
+};
 use serde::Serialize;
-use std::hash::{DefaultHasher, Hash, Hasher};
 
 pub static DEFAULT_ASSET_FOLDER: &str = "assets";
 
@@ -12,7 +15,8 @@ pub static DEFAULT_ASSET_FOLDER: &str = "assets";
 pub struct HotReloadingTeraEngine {
     pub engine: tera::Tera,
     pub view_path: PathBuf,
-    pub view_path_hash: u64,
+    pub file_watcher: Option<std::sync::Arc<notify::RecommendedWatcher>>,
+    pub dirty: bool,
 }
 
 #[derive(Clone)]
@@ -99,67 +103,6 @@ impl TeraView {
         Ok(tera)
     }
 
-    /// Create a unique hash for the view directory based on the following
-    /// metadata of the files in the directory:
-    ///
-    /// 1) The file name
-    /// 2) The file size
-    /// 3) The last modified time
-    ///
-    /// If this hash changes, it indicates that at least one of the files
-    /// in the directory has changed,
-    ///
-    /// # Note
-    ///
-    /// This glob-walking code is taken directly from Tera because
-    /// we want to ensure that we handle glob patterns consistently
-    fn hash_view_dir<P: AsRef<Path>>(path: &P) -> Result<u64> {
-        let glob = path
-            .as_ref()
-            .to_str()
-            .ok_or_else(|| Error::string("invalid glob"))?;
-
-        let Some(n) = glob.find('*') else {
-            return Err(Error::string("invalid glob"));
-        };
-
-        // Copied from Tera code
-        let (parent_dir, glob_end) = glob.split_at(n);
-        let parent_dir = std::fs::canonicalize(parent_dir)
-            .unwrap_or_else(|_| std::path::PathBuf::from(parent_dir));
-
-        let glob = parent_dir
-            .join(glob_end)
-            .into_os_string()
-            .into_string()
-            .unwrap();
-
-        let glob_walker = globwalk::glob_builder(&glob)
-            .follow_links(true)
-            .build()
-            .map_err(|_| Error::string("error walking glob"))?;
-
-        let mut hasher = DefaultHasher::new();
-
-        for entry in glob_walker.filter_map(std::result::Result::ok) {
-            let filename = entry.path().to_string_lossy();
-            let Ok(metadata) = entry.metadata() else {
-                continue;
-            };
-            let Ok(modified) = metadata.modified() else {
-                continue;
-            };
-            filename.hash(&mut hasher);
-            metadata.len().hash(&mut hasher);
-            let duration_since_epoch = modified
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos() as u64;
-            duration_since_epoch.hash(&mut hasher);
-        }
-        Ok(hasher.finish())
-    }
-
     /// Create a Tera view engine from a custom directory
     ///
     /// # Errors
@@ -172,27 +115,88 @@ impl TeraView {
                 path.as_ref().display()
             )));
         }
-
-        let path: PathBuf = path.as_ref().join("**").join("*.html").into();
-
-        // Hash the view path files
-        let hash = Self::hash_view_dir(&path)?;
+        let view_dir = path.as_ref();
+        let view_path: PathBuf = view_dir.join("**").join("*.html").into();
 
         // Create instance
-        let tera = Self::create_tera_instance(&path)?;
+        let tera = Self::create_tera_instance(&view_path)?;
+
+        // Enable hot-reloading in debug build
+        #[cfg(debug_assertions)]
+        let tera = {
+            let tera = std::sync::Arc::new(std::sync::Mutex::new(HotReloadingTeraEngine {
+                engine: tera,
+                view_path,
+                file_watcher: None,
+                dirty: false,
+            }));
+
+            let tera_clone = tera.clone();
+
+            // Create file watcher
+            let mut watcher = notify::recommended_watcher(move |event| {
+                let Ok(Event { kind, paths, .. }) = event else {
+                    return;
+                };
+
+                // Only handle sub-directories and .html files
+                if !paths
+                    .iter()
+                    .all(|p| p.is_dir() || p.extension().map_or(false, |ext| ext == "html"))
+                {
+                    return;
+                }
+
+                // Set dirty flag if file/directory modified
+                match kind {
+                    // Simple access, no changes
+                    EventKind::Access(_) => (),
+                    // Metadata changes, no content change
+                    EventKind::Modify(ModifyKind::Metadata(_)) => (),
+                    // Content modified
+                    EventKind::Modify(ModifyKind::Data(change)) => {
+                        tracing::debug!(?paths, ?change, "View file modified");
+                        tera_clone.lock().unwrap().dirty = true;
+                    }
+                    // File renamed
+                    EventKind::Modify(ModifyKind::Name(change)) => {
+                        tracing::debug!(?paths, ?change, "View file renamed");
+                        tera_clone.lock().unwrap().dirty = true;
+                    }
+                    // Other modifications
+                    EventKind::Modify(change) => {
+                        tracing::debug!(?paths, ?change, "View file modified");
+                        tera_clone.lock().unwrap().dirty = true;
+                    }
+                    // File created.
+                    EventKind::Create(_) => {
+                        tracing::debug!(?paths, "View file created");
+                        tera_clone.lock().unwrap().dirty = true;
+                    }
+                    // File removed.
+                    EventKind::Remove(_) => {
+                        tracing::debug!(?paths, "View file removed");
+                        tera_clone.lock().unwrap().dirty = true;
+                    }
+                    // All other changes.
+                    event => {
+                        tracing::debug!(?paths, ?event, "View file changed");
+                        tera_clone.lock().unwrap().dirty = true;
+                    }
+                }
+            })
+            .map_err(|_| Error::string("error creating file watcher"))?;
+            watcher
+                .watch(view_dir, RecursiveMode::Recursive)
+                .map_err(|_| Error::string("error watching for file changes in view directory"))?;
+
+            tera.lock().unwrap().file_watcher = Some(watcher.into());
+            tera
+        };
 
         Ok(Self {
             tera_post_process: None,
-
-            #[cfg(debug_assertions)]
-            tera: std::sync::Arc::new(std::sync::Mutex::new(HotReloadingTeraEngine {
-                engine: tera,
-                view_path: path,
-                view_path_hash: hash,
-            })),
-            #[cfg(not(debug_assertions))]
-            tera: tera,
-
+            tera,
             default_context: tera::Context::default(),
         })
     }
@@ -206,15 +210,11 @@ impl ViewRenderer for TeraView {
         {
             let mut tera = self.tera.lock().unwrap();
 
-            // Hash the view path files
-            let hash = Self::hash_view_dir(&tera.view_path)?;
+            // Only create a new Tera instance if the view path files have changed
+            if tera.dirty {
+                tracing::warn!(key, "Hot-reloading Tera view engine");
 
-            // Only create a new Tera instance if the hash has changed
-            if tera.view_path_hash != hash {
-                tracing::warn!("Tera rendering in non-optimized debug mode");
-                tracing::debug!(key = key, "Hot-reloading Tera view engine");
-
-                tera.view_path_hash = hash;
+                tera.dirty = false;
 
                 let mut new_engine = Self::create_tera_instance(&tera.view_path)?;
 
