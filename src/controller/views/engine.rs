@@ -7,6 +7,7 @@ use notify::{
     Event, RecursiveMode, Watcher,
 };
 use serde::Serialize;
+use tracing::{debug, warn};
 
 pub static DEFAULT_ASSET_FOLDER: &str = "assets";
 
@@ -150,42 +151,33 @@ impl TeraView {
                 // Set dirty flag if file/directory modified
                 match kind {
                     // Simple access, no changes
-                    EventKind::Access(_) => (),
+                    EventKind::Access(_) => return,
                     // Metadata changes, no content change
-                    EventKind::Modify(ModifyKind::Metadata(_)) => (),
+                    EventKind::Modify(ModifyKind::Metadata(_)) => return,
                     // Content modified
                     EventKind::Modify(ModifyKind::Data(change)) => {
-                        tracing::debug!(?paths, ?change, "View file modified");
-                        tera_clone.lock().unwrap().dirty = true;
+                        debug!(?paths, ?change, "View file modified")
                     }
                     // File renamed
                     EventKind::Modify(ModifyKind::Name(change)) => {
-                        tracing::debug!(?paths, ?change, "View file renamed");
-                        tera_clone.lock().unwrap().dirty = true;
+                        debug!(?paths, ?change, "View file renamed")
                     }
                     // Other modifications
                     EventKind::Modify(change) => {
-                        tracing::debug!(?paths, ?change, "View file modified");
-                        tera_clone.lock().unwrap().dirty = true;
+                        debug!(?paths, ?change, "View file modified")
                     }
                     // File created.
-                    EventKind::Create(_) => {
-                        tracing::debug!(?paths, "View file created");
-                        tera_clone.lock().unwrap().dirty = true;
-                    }
+                    EventKind::Create(_) => debug!(?paths, "View file created"),
                     // File removed.
-                    EventKind::Remove(_) => {
-                        tracing::debug!(?paths, "View file removed");
-                        tera_clone.lock().unwrap().dirty = true;
-                    }
+                    EventKind::Remove(_) => debug!(?paths, "View file removed"),
                     // All other changes.
-                    event => {
-                        tracing::debug!(?paths, ?event, "View file changed");
-                        tera_clone.lock().unwrap().dirty = true;
-                    }
+                    change => debug!(?paths, ?change, "View file changed"),
                 }
+
+                tera_clone.lock().unwrap().dirty = true;
             })
             .map_err(|_| Error::string("error creating file watcher"))?;
+
             watcher
                 .watch(view_dir, RecursiveMode::Recursive)
                 .map_err(|_| Error::string("error watching for file changes in view directory"))?;
@@ -212,7 +204,7 @@ impl ViewRenderer for TeraView {
 
             // Only create a new Tera instance if the view path files have changed
             if tera.dirty {
-                tracing::warn!(key, "Hot-reloading Tera view engine");
+                warn!(key, "Hot-reloading Tera view engine");
 
                 tera.dirty = false;
 
