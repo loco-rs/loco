@@ -365,3 +365,97 @@ async fn can_reject_invalid_magic_link_token() {
     })
     .await;
 }
+
+
+#[tokio::test]
+#[serial]
+async fn can_resend_verification_email() {
+    configure_insta!();
+
+    request::<App, _, _>(|request, ctx| async move {
+        let email = "test@loco.com";
+        let payload = serde_json::json!({
+            "name": "loco",
+            "email": email,
+            "password": "12341234"
+        });
+
+        let response = request.post("/api/auth/register").json(&payload).await;
+        assert_eq!(response.status_code(), 200, "Register request should succeed");
+
+        let resend_payload = serde_json::json!({ "email": email });
+
+        let resend_response = request
+            .post("/api/auth/resend-verification-mail")
+            .json(&resend_payload)
+            .await;
+
+        assert_eq!(
+            resend_response.status_code(),
+            200,
+            "Resend verification email should succeed"
+        );
+
+        let deliveries = ctx.mailer.unwrap().deliveries();
+
+        assert_eq!(
+            deliveries.count,
+            2,
+            "Two emails should have been sent: welcome and re-verification"
+        );
+
+        let user = users::Model::find_by_email(&ctx.db, email)
+            .await
+            .expect("User should exist");
+
+        with_settings!({
+            filters => cleanup_user_model()
+        }, {
+            assert_debug_snapshot!("resend_verification_user", user);
+        });
+    }).await; 
+}
+
+#[tokio::test]
+#[serial]
+async fn cannot_resend_email_if_already_verified() {
+    configure_insta!();
+
+    request::<App, _, _>(|request, ctx| async move {
+        let email = "verified@loco.com";
+        let payload = serde_json::json!({
+            "name": "verified",
+            "email": email,
+            "password": "12341234"
+        });
+
+        request.post("/api/auth/register").json(&payload).await;
+
+        // Verify user
+        let user = users::Model::find_by_email(&ctx.db, email).await.unwrap();
+        if let Some(token) = user.email_verification_token.clone() {
+            request.get(&format!("/api/auth/verify/{token}")).await;
+        }
+
+        // Try resending verification email
+        let resend_payload = serde_json::json!({ "email": email });
+
+        let resend_response = request
+            .post("/api/auth/resend-verification-mail")
+            .json(&resend_payload)
+            .await;
+
+        assert_eq!(
+            resend_response.status_code(),
+            200,
+            "Should return 200 even if already verified"
+        );
+
+        let deliveries = ctx.mailer.unwrap().deliveries();
+        assert_eq!(
+            deliveries.count, 1,
+            "Only the original welcome email should be sent"
+        );
+    })
+    .await;
+}
