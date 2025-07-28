@@ -1,5 +1,6 @@
 ---
 source: loco-gen/tests/templates/migration.rs
 expression: collect_messages(&gen_result)
+snapshot_kind: text
 ---
-* Migration for `movies` added! You can now apply it with `$ cargo loco db migrate`.
+* Migration for `movies` added! You can now apply it with `$ cargo loco db migrate && cargo loco db entities`.

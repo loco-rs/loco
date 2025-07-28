@@ -41,7 +41,7 @@ fn can_generate() {
 
     assert_eq!(
         collect_messages(&gen_result),
-        r"* Migration for `movies` added! You can now apply it with `$ cargo loco db migrate`.
+        r"* Migration for `movies` added! You can now apply it with `$ cargo loco db migrate && cargo loco db entities`.
 * A test for model `Movies` was added. Run with `cargo test`.
 "
     );
