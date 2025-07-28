@@ -12,7 +12,7 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
-        create_join_table(m, "group_users",
+        create_join_table(m, "user_groups",
             &[
             ],
             &[
@@ -23,6 +23,6 @@ impl MigrationTrait for Migration {
     }
 
     async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
-        drop_table(m, "group_users").await
+        drop_table(m, "user_groups").await
     }
 }
