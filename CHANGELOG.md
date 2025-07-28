@@ -1,6 +1,10 @@
 # Changelog
 
 ## Unreleased
+- feat: decouple JWT authentication from database dependency. [https://github.com/loco-rs/loco/pull/1546](https://github.com/loco-rs/loco/pull/1546)
+- fix: add sqlx dependency to with-db feature. [https://github.com/loco-rs/loco/pull/1557](https://github.com/loco-rs/loco/pull/1557)
+- Remove the deprecated `--link` generate command and fix the table name creation. [https://github.com/loco-rs/loco/pull/1556](https://github.com/loco-rs/loco/pull/1556)
+
 
 ## v0.16.3
 - Support nullable foreign keys with `references?` syntax. [https://github.com/loco-rs/loco/pull/1544](https://github.com/loco-rs/loco/pull/1544)
