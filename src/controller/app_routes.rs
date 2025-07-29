@@ -51,7 +51,13 @@ impl AppRoutes {
     #[must_use]
     pub fn with_default_routes() -> Self {
         let routes = Self::empty().add_route(super::ping::routes());
-        #[cfg(feature = "with-db")]
+        #[cfg(any(
+            feature = "with-db",
+            feature = "bg_pg",
+            feature = "bg_redis",
+            feature = "bg_sqlt",
+            feature = "cache_redis"
+        ))]
         let routes = routes.add_route(super::health::routes());
 
         routes
