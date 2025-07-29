@@ -4,7 +4,7 @@
 {% set plural_snake = table | plural | snake_case -%}
 to: "migration/src/{{module_name}}.rs"
 skip_glob: "migration/src/m????????_??????_{{plural_snake}}.rs"
-message: "Migration for `{{name}}` added! You can now apply it with `$ cargo loco db migrate`."
+message: "Migration for `{{name}}` added! You can now apply it with `$ cargo loco db migrate && cargo loco db entities`."
 injections:
 - into: "migration/src/lib.rs"
   before: "inject-above"

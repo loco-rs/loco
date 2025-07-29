@@ -18,7 +18,7 @@ pub fn generate(
     // - scaffold is never a link table
     // - never run with migration_only, because the controllers will refer to the
     //   models. the models only arrive after migration and entities sync.
-    let mut gen_result = model::generate(rrgen, name, false, fields, appinfo)?;
+    let mut gen_result = model::generate(rrgen, name, fields, appinfo)?;
 
     let mut columns = Vec::new();
     for (fname, ftype) in fields {

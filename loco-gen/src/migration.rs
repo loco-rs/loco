@@ -46,9 +46,7 @@ pub fn generate(
             render_template(rrgen, Path::new("migration/add_references.t"), &vars)
         }
         infer::MigrationType::CreateJoinTable { table_a, table_b } => {
-            let mut tables = [table_a.clone(), table_b.clone()];
-            tables.sort();
-            let table = tables.join("_");
+            let table = format!("{table_a}_{table_b}");
             let (columns, references) = get_columns_and_references(&[
                 (table_a, "references".to_string()),
                 (table_b, "references".to_string()),
