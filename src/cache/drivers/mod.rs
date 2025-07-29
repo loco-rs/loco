@@ -19,7 +19,7 @@ pub trait CacheDriver: Sync + Send {
     /// Pings the cache to check if it is reachable.
     ///
     /// # Errors
-    /// 
+    ///
     /// Returns a [`super::CacheError`] if there is an error during the
     /// operation.
     async fn ping(&self) -> CacheResult<Option<String>>;

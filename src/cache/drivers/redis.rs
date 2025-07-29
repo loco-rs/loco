@@ -54,7 +54,6 @@ impl Redis {
 
 #[async_trait]
 impl CacheDriver for Redis {
-
     /// Sends a ping to Redis to check if it is reachable.
     ///
     /// # Errors

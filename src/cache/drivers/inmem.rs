@@ -58,7 +58,7 @@ impl CacheDriver for Inmem {
             "Operation not supported by null cache".into(),
         ))
     }
-    
+
     /// Checks if a key exists in the cache.
     ///
     /// # Errors
