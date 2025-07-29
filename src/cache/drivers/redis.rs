@@ -54,6 +54,18 @@ impl Redis {
 
 #[async_trait]
 impl CacheDriver for Redis {
+
+    /// Sends a ping to Redis to check if it is reachable.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `CacheError` if there is an error during the operation.
+    async fn ping(&self) -> CacheResult<Option<String>> {
+        let mut conn = self.pool.get().await?;
+        let result: Option<String> = conn.ping().await?;
+        Ok(result)
+    }
+
     /// Checks if a key exists in the cache.
     ///
     /// # Errors
@@ -153,6 +165,14 @@ mod tests {
         let driver = cache.driver;
 
         (driver, container)
+    }
+
+    #[tokio::test]
+    async fn ping_returns_pong_when_redis_is_reachable() {
+        let (redis, _container) = setup_redis_driver().await;
+
+        let result = redis.ping().await.expect("Failed to ping Redis");
+        assert_eq!(result, Some("PONG".to_string()));
     }
 
     #[tokio::test]

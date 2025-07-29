@@ -10,7 +10,7 @@ use async_trait::async_trait;
 use moka::{sync::Cache, Expiry};
 
 use super::CacheDriver;
-use crate::cache::CacheResult;
+use crate::cache::{CacheError, CacheResult};
 use crate::config::InMemCacheConfig;
 
 /// Creates a new instance of the in-memory cache driver, with a default Loco
@@ -48,6 +48,17 @@ impl Inmem {
 
 #[async_trait]
 impl CacheDriver for Inmem {
+    /// Pings the cache to check if it is reachable.
+    ///
+    /// # Errors
+    ///
+    /// Returns always error
+    async fn ping(&self) -> CacheResult<Option<String>> {
+        Err(CacheError::Any(
+            "Operation not supported by null cache".into(),
+        ))
+    }
+    
     /// Checks if a key exists in the cache.
     ///
     /// # Errors
