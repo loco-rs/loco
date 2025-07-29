@@ -11,62 +11,35 @@ use crate::{app::AppContext, Result};
 /// Represents the health status of the application.
 #[derive(Serialize)]
 struct Health {
-    #[cfg(feature = "with-db")]
-    pub db: bool,
-    #[cfg(any(feature = "bg_pg", feature = "bg_redis", feature = "bg_sqlt"))]
-    pub queue: bool,
-    #[cfg(feature = "cache_redis")]
-    pub redis_cache: bool,
+    pub ok: bool,
 }
 
-/// Check the healthiness of the application bt ping to the redis and the DB to
-/// ensure that connection
+/// Check the healthiness of the application by sending a ping request to
+/// Redis or the DB (depending on feature flags) to ensure connection liveness.
 async fn health(State(ctx): State<AppContext>) -> Result<Response> {
+    let mut is_ok: bool = true;
+
     #[cfg(feature = "with-db")]
-    let is_db_ok = match ctx.db.ping().await {
-        Ok(()) => true,
-        Err(error) => {
-            tracing::error!(err.msg = %error, err.detail = ?error, "health_db_ping_error");
-            false
-        }
-    };
+    if let Err(error) = ctx.db.ping().await {
+        tracing::error!(err.msg = %error, err.detail = ?error, "health_db_ping_error");
+        is_ok = false;
+    }
 
     #[cfg(any(feature = "bg_pg", feature = "bg_redis", feature = "bg_sqlt"))]
-    let is_queue_ok = {
-        if let Some(queue) = ctx.queue_provider {
-            match queue.ping().await {
-                Ok(()) => true,
-                Err(error) => {
-                    tracing::error!(err.msg = %error, err.detail = ?error, "health_bg_redis_ping_error");
-                    false
-                }
-            }
-        } else {
-            false
+    if let Some(queue) = ctx.queue_provider {
+        if let Err(error) = queue.ping().await {
+            tracing::error!(err.msg = %error, err.detail = ?error, "health_queue_ping_error");
+            is_ok = false;
         }
-    };
+    }
 
     #[cfg(feature = "cache_redis")]
-    let is_redis_cache_ok = {
-        match ctx.cache.driver.ping().await {
-            // Reference: https://redis.io/docs/latest/commands/ping/#examples
-            Ok(Some(result)) => result == "PONG",
-            Ok(None) => false,
-            Err(error) => {
-                tracing::error!(err.msg = %error, err.detail = ?error, "health_cache_redis_ping_error");
-                false
-            }
-        }
-    };
+    if let Err(error) = ctx.cache.driver.ping().await {
+        tracing::error!(err.msg = %error, err.detail = ?error, "health_redis_ping_error");
+        is_ok = false;
+    }
 
-    format::json(Health {
-        #[cfg(feature = "with-db")]
-        db: is_db_ok,
-        #[cfg(any(feature = "bg_pg", feature = "bg_redis", feature = "bg_sqlt"))]
-        queue: is_queue_ok,
-        #[cfg(feature = "cache_redis")]
-        redis_cache: is_redis_cache_ok,
-    })
+    format::json(Health { ok: is_ok })
 }
 
 /// Defines and returns the health-related routes.
