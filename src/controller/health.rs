@@ -25,7 +25,6 @@ async fn health(State(ctx): State<AppContext>) -> Result<Response> {
         is_ok = false;
     }
 
-    #[cfg(any(feature = "bg_pg", feature = "bg_redis", feature = "bg_sqlt"))]
     if let Some(queue) = ctx.queue_provider {
         if let Err(error) = queue.ping().await {
             tracing::error!(err.msg = %error, err.detail = ?error, "health_queue_ping_error");
