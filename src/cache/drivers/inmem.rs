@@ -54,9 +54,9 @@ impl CacheDriver for Inmem {
     ///
     /// Returns always error
     async fn ping(&self) -> CacheResult<Option<String>> {
-        Err(CacheError::Any(
-            "Operation not supported by null cache".into(),
-        ))
+        // Get an empty key to check if the in-mem cache is reachable.
+        self.get("").await.map(|_| Some("PONG".to_string()))
+            .map_err(|e| CacheError::Any(Box::from(e.to_string())))
     }
 
     /// Checks if a key exists in the cache.
@@ -174,6 +174,13 @@ mod tests {
 
     fn create_test_config() -> InMemCacheConfig {
         InMemCacheConfig { max_capacity: 100 }
+    }
+
+    #[tokio::test]
+    async fn ping_returns_pong_when_cache_is_accessible() {
+        let config = create_test_config();
+        let mem = new(&config);
+        assert_eq!(mem.ping().await.unwrap(), Some("PONG".to_string()));
     }
 
     #[tokio::test]
