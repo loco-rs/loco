@@ -88,6 +88,9 @@ impl Cache {
     ///     cache.ping().await
     /// }
     /// ```
+    ///
+    /// # Errors
+    /// A [`CacheResult`] indicating whether the cache is reachable.
     pub async fn ping(&self) -> CacheResult<Option<String>> {
         self.driver.ping().await
     }
