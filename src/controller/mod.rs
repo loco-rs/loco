@@ -82,13 +82,6 @@ mod backtrace;
 mod describe;
 pub mod extractor;
 pub mod format;
-#[cfg(any(
-    feature = "with-db",
-    feature = "bg_pg",
-    feature = "bg_redis",
-    feature = "bg_sqlt",
-    feature = "cache_redis"
-))]
 mod health;
 pub mod middleware;
 mod ping;
