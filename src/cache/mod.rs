@@ -74,6 +74,25 @@ impl Cache {
         Self { driver }
     }
 
+
+    /// Pings the cache to check if it is reachable.
+    ///
+    /// # Example
+    /// ```
+    /// use loco_rs::cache::{self, CacheResult};
+    /// use loco_rs::config::InMemCacheConfig;
+    ///
+    /// pub async fn ping() -> CacheResult<Option<String>> {
+    ///     let config = InMemCacheConfig { max_capacity: 100 };
+    ///     let cache = cache::Cache::new(cache::drivers::inmem::new(&config).driver);
+    ///     // It should return Some("PONG") if cache is reachable
+    ///     cache.ping().await
+    /// }
+    /// ```
+    pub async fn ping(&self) -> CacheResult<Option<String>> {
+        self.driver.ping().await
+    }
+
     /// Checks if a key exists in the cache.
     ///
     /// # Example
