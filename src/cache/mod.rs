@@ -74,7 +74,6 @@ impl Cache {
         Self { driver }
     }
 
-
     /// Pings the cache to check if it is reachable.
     ///
     /// # Example

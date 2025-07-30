@@ -55,7 +55,9 @@ impl CacheDriver for Inmem {
     /// Returns always error
     async fn ping(&self) -> CacheResult<Option<String>> {
         // Get an empty key to check if the in-mem cache is reachable.
-        self.get("").await.map(|_| Some("PONG".to_string()))
+        self.get("")
+            .await
+            .map(|_| Some("PONG".to_string()))
             .map_err(|e| CacheError::Any(Box::from(e.to_string())))
     }
 
