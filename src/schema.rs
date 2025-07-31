@@ -870,12 +870,21 @@ pub async fn add_enum_values(
 pub async fn drop_enum_type(m: &SchemaManager<'_>, enum_name: &str) -> Result<(), DbErr> {
     match m.get_database_backend() {
         sea_orm::DatabaseBackend::Postgres => {
-            m.drop_type(
-                sea_query::extension::postgres::Type::drop()
-                    .name(Alias::new(enum_name))
-                    .to_owned(),
-            )
-            .await?;
+            // First check if the enum type exists
+            let enum_exists = check_enum_exists(m, enum_name).await?;
+            if !enum_exists {
+                tracing::info!("Enum type '{}' does not exist, skipping drop", enum_name);
+                return Ok(());
+            }
+
+            // Try to drop the enum type with CASCADE to handle any remaining references
+            let query = format!("DROP TYPE IF EXISTS {enum_name} CASCADE");
+            m.get_connection()
+                .execute(sea_orm::Statement::from_string(
+                    sea_orm::DatabaseBackend::Postgres,
+                    query,
+                ))
+                .await?;
         }
         _ => {
             // SQLite/MySQL don't have native enum types

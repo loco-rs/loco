@@ -587,7 +587,11 @@ impl MigrationTrait for Migration {
     }
 
     async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
-        drop_table(m, "task").await
+        drop_table(m, "task").await?;
+        drop_enum_type(m, "product_status").await?;
+        drop_enum_type(m, "priority_level").await?;
+        Ok(())
+
     }
 }
 ```
