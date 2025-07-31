@@ -477,6 +477,7 @@ impl EntityCmd {
                     Some("src/models/_entities".to_string()),
                 ),
                 ("--with-serde".to_string(), Some("both".to_string())),
+                ("--with-copy-enums".to_string(), None),
             ]),
         }
     }
