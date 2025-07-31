@@ -170,7 +170,7 @@ thiserror = "1"
 serde = "1"
 serde_json = "1"
 async-trait = { version = "0.1.74" }
-axum = { version = "0.8.1", features = ["macros"] }
+axum = { version = "0.8.1", features = ["macros", "multipart"] }
 tower = "0.4"
 tower-http = { version = "0.6.1", features = [
     "trace",

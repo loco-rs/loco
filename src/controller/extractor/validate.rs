@@ -1,4 +1,6 @@
-use axum::extract::{Form, FromRequest, Json, Query, Request};
+use std::collections::HashMap;
+
+use axum::extract::{Form, FromRequest, Json, Multipart, Query, Request};
 use serde::de::DeserializeOwned;
 use validator::Validate;
 
@@ -36,7 +38,6 @@ use crate::Error;
 ///         .route("/users", post(create_user))
 /// }
 /// ```
-
 #[derive(Debug, Clone, Copy, Default)]
 pub struct JsonValidateWithMessage<T>(pub T);
 
@@ -81,7 +82,6 @@ where
 ///         .route("/users", post(create_user))
 /// }
 /// ```
-
 #[derive(Debug, Clone, Copy, Default)]
 pub struct FormValidateWithMessage<T>(pub T);
 
@@ -127,7 +127,6 @@ where
 ///         .route("/users", post(create_user))
 /// }
 /// ```
-
 #[derive(Debug, Clone, Copy, Default)]
 pub struct JsonValidate<T>(pub T);
 
@@ -175,7 +174,6 @@ where
 ///         .route("/users", post(create_user))
 /// }
 /// ```
-
 #[derive(Debug, Clone, Copy, Default)]
 pub struct FormValidate<T>(pub T);
 
@@ -223,7 +221,6 @@ where
 ///         .route("/users", get(get_user))
 /// }
 /// ```
-
 #[derive(Debug, Clone, Copy, Default)]
 pub struct QueryValidateWithMessage<T>(pub T);
 
@@ -271,7 +268,6 @@ where
 ///         .route("/users", get(get_user))
 /// }
 /// ```
-
 #[derive(Debug, Clone, Copy, Default)]
 pub struct QueryValidate<T>(pub T);
 
@@ -290,6 +286,151 @@ where
             tracing::debug!(err = ?err, "query validation error occurred");
             Error::BadRequest(String::new())
         })?;
+        Ok(Self(value))
+    }
+}
+
+/// Axum middleware for validating multipart form data with simplified error handling
+///
+/// # Example:
+///
+/// ```
+/// use axum::{routing::post, Router};
+/// use serde::{Deserialize, Serialize};
+/// use loco_rs::controller::extractor::validate::MultipartValidate;
+/// use validator::Validate;
+///
+/// #[derive(Serialize, Deserialize, Validate)]
+/// struct User {
+///     #[validate(length(min = 3, message = "username must be at least 3 characters"))]
+///     username: String,
+///     #[validate(email(message = "email must be valid"))]
+///     email: String,
+/// }
+///
+/// async fn create_user(MultipartValidate(user): MultipartValidate<User>) -> String {
+///     format!("User created: {}, {}", user.username, user.email)
+/// }
+///
+/// fn app() -> Router {
+///     Router::new()
+///         .route("/users", post(create_user))
+/// }
+/// ```
+#[derive(Debug, Clone, Copy, Default)]
+pub struct MultipartValidate<T>(pub T);
+
+impl<T, S> FromRequest<S> for MultipartValidate<T>
+where
+    T: DeserializeOwned + Validate,
+    S: Send + Sync,
+{
+    type Rejection = Error;
+
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+        let mut multipart = Multipart::from_request(req, state)
+            .await
+            .map_err(|rejection| {
+                Error::BadRequest(format!("Invalid Multipart string: {rejection}"))
+            })?;
+        let mut fields = HashMap::new();
+
+        while let Some(field) = multipart.next_field().await.map_err(|err| {
+            tracing::debug!(err = ?err, "multipart field read error occurred");
+            Error::BadRequest(String::new())
+        })? {
+            if let Some(name) = field.name() {
+                let name = name.to_string();
+                let value = field.text().await.map_err(|err| {
+                    tracing::debug!(err = ?err, field_name = %name, "multipart field text read error occurred");
+                    Error::BadRequest(String::new())
+                })?;
+                fields.insert(name, serde_json::Value::String(value));
+            }
+        }
+
+        let json_value = serde_json::Value::Object(fields.into_iter().collect());
+
+        let value: T = serde_json::from_value(json_value).map_err(|err| {
+            tracing::debug!(err = ?err, "multipart deserialization error occurred");
+            Error::BadRequest(String::new())
+        })?;
+
+        value.validate().map_err(|err| {
+            tracing::debug!(err = ?err, "multipart validation error occurred");
+            Error::BadRequest(String::new())
+        })?;
+        Ok(Self(value))
+    }
+}
+
+/// Axum middleware for validating multipart form data
+///
+/// # Example:
+///
+/// ```
+/// use axum::{routing::post, Router};
+/// use serde::{Deserialize, Serialize};
+/// use loco_rs::controller::extractor::validate::MultipartValidateWithMessage;
+/// use validator::Validate;
+///
+/// #[derive(Serialize, Deserialize, Validate)]
+/// struct User {
+///     #[validate(length(min = 3, message = "username must be at least 3 characters"))]
+///     username: String,
+///     #[validate(email(message = "email must be valid"))]
+///     email: String,
+/// }
+///
+/// async fn create_user(MultipartValidateWithMessage(user): MultipartValidateWithMessage<User>) -> String {
+///     format!("User created: {}, {}", user.username, user.email)
+/// }
+///
+/// fn app() -> Router {
+///     Router::new()
+///         .route("/users", post(create_user))
+/// }
+/// ```
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct MultipartValidateWithMessage<T>(pub T);
+
+impl<T, S> FromRequest<S> for MultipartValidateWithMessage<T>
+where
+    T: DeserializeOwned + Validate,
+    S: Send + Sync,
+{
+    type Rejection = Error;
+
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+        let mut multipart = Multipart::from_request(req, state)
+            .await
+            .map_err(|rejection| {
+                Error::BadRequest(format!("Invalid Multipart string: {rejection}"))
+            })?;
+        let mut fields = HashMap::new();
+
+        while let Some(field) = multipart
+            .next_field()
+            .await
+            .map_err(|err| Error::BadRequest(format!("Failed to read multipart field: {err}")))?
+        {
+            if let Some(name) = field.name() {
+                let name = name.to_string();
+                let value = field.text().await.map_err(|err| {
+                    Error::BadRequest(format!("Failed to read field '{name}': {err}"))
+                })?;
+                fields.insert(name, serde_json::Value::String(value));
+            }
+        }
+
+        let json_value = serde_json::Value::Object(fields.into_iter().collect());
+
+        let value: T = serde_json::from_value(json_value).map_err(|err| {
+            Error::BadRequest(format!("Failed to deserialize multipart data: {err}"))
+        })?;
+
+        value.validate().map_err(Error::ValidationError)?;
         Ok(Self(value))
     }
 }
@@ -355,6 +496,31 @@ mod tests {
             .method(http::Method::GET)
             .uri(format!("/test?{}", query))
             .body(Body::empty())
+            .unwrap()
+    }
+
+    fn create_multipart_request(fields: &[(&str, &str)]) -> HttpRequest<Body> {
+        let boundary = "boundary123";
+        let mut body = Vec::new();
+
+        for (name, value) in fields {
+            body.extend_from_slice(format!("--{}\r\n", boundary).as_bytes());
+            body.extend_from_slice(
+                format!("Content-Disposition: form-data; name=\"{}\"\r\n\r\n", name).as_bytes(),
+            );
+            body.extend_from_slice(value.as_bytes());
+            body.extend_from_slice(b"\r\n");
+        }
+        body.extend_from_slice(format!("--{}--\r\n", boundary).as_bytes());
+
+        HttpRequest::builder()
+            .method(http::Method::POST)
+            .uri("/test")
+            .header(
+                http::header::CONTENT_TYPE,
+                format!("multipart/form-data; boundary={}", boundary),
+            )
+            .body(Body::from(body))
             .unwrap()
     }
 
@@ -682,6 +848,115 @@ mod tests {
         let expected = json!({
             "error": "Bad Request",
             // "description": "Invalid query string: expected `=` after key"
+        });
+
+        assert_response_status_and_body(result.unwrap_err(), StatusCode::BAD_REQUEST, expected)
+            .await;
+    }
+
+    #[tokio::test]
+    async fn test_multipart_validate_with_message_valid() {
+        let fields = vec![("username", "valid_user"), ("email", "test@example.com")];
+        let request = create_multipart_request(&fields);
+
+        let result = MultipartValidateWithMessage::<TestUser>::from_request(request, &()).await;
+        assert!(result.is_ok());
+
+        let user = result.unwrap().0;
+        assert_eq!(user.username, "valid_user");
+        assert_eq!(user.email, "test@example.com");
+    }
+
+    #[tokio::test]
+    async fn test_multipart_validate_with_message_invalid() {
+        let fields = vec![("username", "ab"), ("email", "invalid-email")];
+        let request = create_multipart_request(&fields);
+
+        let result = MultipartValidateWithMessage::<TestUser>::from_request(request, &()).await;
+        assert!(result.is_err());
+
+        let expected = json!({
+            "errors": {
+                "username": [
+                    {
+                        "code": "length",
+                        "message": "username must be at least 3 characters",
+                        "params": {
+                            "min": 3,
+                            "value": "ab"
+                        }
+                    }
+                ],
+                "email": [
+                    {
+                        "code": "email",
+                        "message": "email must be valid",
+                        "params": {
+                            "value": "invalid-email"
+                        }
+                    }
+                ]
+            }
+        });
+
+        assert_response_status_and_body(result.unwrap_err(), StatusCode::BAD_REQUEST, expected)
+            .await;
+    }
+
+    #[tokio::test]
+    async fn test_multipart_validate_valid() {
+        let fields = vec![("username", "valid_user"), ("email", "test@example.com")];
+        let request = create_multipart_request(&fields);
+
+        let result = MultipartValidate::<TestUser>::from_request(request, &()).await;
+        assert!(result.is_ok());
+
+        let user = result.unwrap().0;
+        assert_eq!(user.username, "valid_user");
+        assert_eq!(user.email, "test@example.com");
+    }
+
+    #[tokio::test]
+    async fn test_multipart_validate_invalid() {
+        let fields = vec![("username", "ab"), ("email", "invalid-email")];
+        let request = create_multipart_request(&fields);
+
+        let result = MultipartValidate::<TestUser>::from_request(request, &()).await;
+        assert!(result.is_err());
+
+        let err = result.unwrap_err();
+        if let Error::BadRequest(msg) = &err {
+            assert_eq!(msg, &String::new());
+        } else {
+            panic!("Expected BadRequest error");
+        }
+
+        let expected = json!({
+            "error": "Bad Request",
+            // "description": ""
+        });
+
+        assert_response_status_and_body(err, StatusCode::BAD_REQUEST, expected).await;
+    }
+
+    #[tokio::test]
+    async fn test_malformed_multipart() {
+        let request = HttpRequest::builder()
+            .method(http::Method::POST)
+            .uri("/test")
+            .header(
+                http::header::CONTENT_TYPE,
+                "multipart/form-data; boundary=invalid",
+            )
+            .body(Body::from("invalid multipart data"))
+            .unwrap();
+
+        let result = MultipartValidate::<TestUser>::from_request(request, &()).await;
+        assert!(result.is_err());
+
+        let expected = json!({
+            "error": "Bad Request",
+            // "description": "Invalid Multipart string: ..."
         });
 
         assert_response_status_and_body(result.unwrap_err(), StatusCode::BAD_REQUEST, expected)

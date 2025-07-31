@@ -913,25 +913,48 @@ Request validation in the Loco framework ensures that incoming HTTP request data
 
 ## Validation Extractors
 
-| Extractor                    |  JSON  |  Content Type                     | Request Body                              |
-|-------------------------------|------------------------|--------------------------------------------|-------------------------------------------|
-| `JsonValidate`                   | ❌                     | `application/json`                         | JSON (e.g., `{"name": "John", "email": "john@example.com"}`) |
-| `JsonValidateWithMessage`        | ✅                     | `application/json`                         | JSON (e.g., `{"name": "John", "email": "john@example.com"}`) |
-| `QueryValidate`                   | ❌                     | Any                                        | Query string (e.g., `?name=John&email=john@example.com`) |
-| `QueryValidateWithMessage`         | ✅                     | Any                                        | Query string (e.g., `?name=John&email=john@example.com`) |
-| `FormValidate`                   | ❌                     | `application/x-www-form-urlencoded`         | Form data  |
-| `FormValidateWithMessage`        | ✅                     | `application/x-www-form-urlencoded`         | Form data  |
+Loco provides comprehensive validation extractors for different types of request data. Each extractor comes in two variants: standard and `WithMessage` for detailed error reporting.
 
-### Notes:
+| Extractor                      | Error Messages | Content Type                        | Request Body            | Use Case                              |
+| ------------------------------ | -------------- | ----------------------------------- | ----------------------- | ------------------------------------- |
+| `JsonValidate`                 | ❌ Generic     | `application/json`                  | JSON payload            | API endpoints                         |
+| `JsonValidateWithMessage`      | ✅ Detailed    | `application/json`                  | JSON payload            | API endpoints with client feedback    |
+| `QueryValidate`                | ❌ Generic     | Any                                 | Query string parameters | GET requests with filters             |
+| `QueryValidateWithMessage`     | ✅ Detailed    | Any                                 | Query string parameters | GET requests with detailed validation |
+| `FormValidate`                 | ❌ Generic     | `application/x-www-form-urlencoded` | Form data               | HTML forms                            |
+| `FormValidateWithMessage`      | ✅ Detailed    | `application/x-www-form-urlencoded` | Form data               | HTML forms with validation feedback   |
+| `MultipartValidate`            | ❌ Generic     | `multipart/form-data`               | Multipart form data     | File uploads and complex forms        |
+| `MultipartValidateWithMessage` | ✅ Detailed    | `multipart/form-data`               | Multipart form data     | File uploads with validation feedback |
 
-- **Error Status**: HTTP status codes for invalid data or unsupported `Content-Type`.
-- **Structured JSON Errors**: Provided by `WithMessage` extractors for detailed error reporting.
-- **Supported Content Type**: Specifies the expected request `Content-Type`.
-- **Request Body**: Describes the expected format of the request data.
+### Extractor Variants
+
+#### Standard vs WithMessage Extractors
+
+- **Standard Extractors** (`JsonValidate`, `QueryValidate`, `FormValidate`, `MultipartValidate`):
+
+  - Return generic HTTP 400 Bad Request errors
+  - Suitable for internal APIs or when detailed error messages aren't needed
+  - Provide better security by not exposing validation details
+
+- **WithMessage Extractors** (`JsonValidateWithMessage`, `QueryValidateWithMessage`, `FormValidateWithMessage`, `MultipartValidateWithMessage`):
+  - Return structured JSON error responses with detailed validation messages
+  - Ideal for public APIs and user-facing forms
+  - Provide field-specific error messages for better user experience
+
+### Content Types and Use Cases
+
+#### When to Use Each Content Type
+
+- **JSON**: Best for API endpoints and AJAX requests
+- **Query Parameters**: Perfect for GET requests with filters, pagination, and search
+- **Form Data**: Traditional HTML forms and simple data submission
+- **Multipart**: File uploads, complex forms with mixed content types
 
 ## Implementing Request Validation
 
 ### 1. Define Validation Rules
+
+#### Creating Validation Structs
 
 Define a Rust struct with validation rules using the `serde` and `validator` crates.
 
@@ -956,6 +979,8 @@ pub struct DataParams {
 - The `Validate` macro enables automatic field validation.
 
 ### 2. Create Handlers with Validation
+
+#### Handler Implementation Examples
 
 Loco extractors validate data within HTTP handlers, proceeding with validated data or returning errors.
 
@@ -1013,7 +1038,47 @@ pub async fn index(
 - Validates form data (e.g., `name=John&email=john@example.com`) with `application/x-www-form-urlencoded` content type.
 - Returns **400 Bad Request** on failure, with structured JSON errors.
 
+#### Example 4: Multipart Validation with `MultipartValidate`
+
+```rust
+use axum::debug_handler;
+use loco_rs::prelude::*;
+
+#[debug_handler]
+pub async fn upload_profile(
+    State(_ctx): State<AppContext>,
+    MultipartValidate(params): MultipartValidate<DataParams>,
+) -> Result<Response> {
+    format::empty()
+}
+```
+
+- Validates multipart form data (e.g., file uploads with form fields) with `multipart/form-data` content type.
+- Returns **400 Bad Request** on failure with generic error messages.
+- Ideal for file upload endpoints where detailed validation feedback isn't needed.
+
+#### Example 5: Multipart Validation with `MultipartValidateWithMessage`
+
+```rust
+use axum::debug_handler;
+use loco_rs::prelude::*;
+
+#[debug_handler]
+pub async fn upload_profile(
+    State(_ctx): State<AppContext>,
+    MultipartValidateWithMessage(params): MultipartValidateWithMessage<DataParams>,
+) -> Result<Response> {
+    format::empty()
+}
+```
+
+- Validates multipart form data with detailed error messages.
+- Returns **400 Bad Request** on failure with structured JSON errors.
+- Perfect for user-facing file upload forms with validation feedback.
+
 ### 3. Structured Error Responses
+
+#### Error Response Format
 
 `WithMessage` extractors (e.g., `JsonValidateWithMessage`) provide detailed JSON error responses.
 
@@ -1051,13 +1116,213 @@ For invalid form data (`{"name": "abc", "email": "invalid_email"}`):
   - `errors`: Maps fields to arrays of validation errors.
   - Each error includes `code`, `message`, and `params` for context.
 
+## Validation Rules and Best Practices
+
+### Common Validation Rules
+
+#### Built-in Validation Rules
+
+The `validator` crate provides a comprehensive set of validation rules. Here are some commonly used ones:
+
+```rust
+use serde::Deserialize;
+use validator::Validate;
+
+#[derive(Debug, Deserialize, Validate)]
+pub struct UserRegistration {
+    #[validate(length(min = 3, max = 50, message = "Username must be between 3 and 50 characters"))]
+    pub username: String,
+
+    #[validate(email(message = "Please provide a valid email address"))]
+    pub email: String,
+
+    #[validate(length(min = 8, message = "Password must be at least 8 characters long"))]
+    pub password: String,
+
+    #[validate(range(min = 18, message = "Age must be at least 18"))]
+    pub age: u32,
+
+    #[validate(url(message = "Please provide a valid URL"))]
+    pub website: Option<String>,
+
+    #[validate(regex(path = r"^\+?[1-9]\d{1,14}$", message = "Please provide a valid phone number"))]
+    pub phone: Option<String>,
+}
+```
+
+### Validation Rule Examples
+
+#### Validation Rule Reference
+
+| Rule                        | Description                | Example                          |
+| --------------------------- | -------------------------- | -------------------------------- |
+| `length(min = 3, max = 50)` | String length constraints  | Usernames, titles                |
+| `email`                     | Email format validation    | User registration, contact forms |
+| `range(min = 0, max = 100)` | Numeric range validation   | Ages, percentages, ratings       |
+| `url`                       | URL format validation      | Website links, API endpoints     |
+| `regex(path = "...")`       | Custom regex validation    | Phone numbers, postal codes      |
+| `required`                  | Field must be present      | Required form fields             |
+| `custom`                    | Custom validation function | Complex business logic           |
+
+### Best Practices
+
+#### Validation Implementation Guidelines
+
+1. **Choose the Right Extractor**:
+
+   - Use JSON extractors for API endpoints
+   - Use query extractors for GET requests with filters
+   - Use form extractors for HTML forms
+   - Use multipart extractors for file uploads
+
+2. **Error Message Strategy**:
+
+   - Use `WithMessage` variants for user-facing forms and public APIs
+   - Use standard variants for internal APIs to avoid exposing validation details
+
+3. **Validation Granularity**:
+
+   - Keep validation rules focused and specific
+   - Use custom validation for complex business logic
+   - Consider database constraints as a backup
+
+4. **Security Considerations**:
+   - Standard extractors provide better security by not exposing validation details
+   - Be careful with detailed error messages in production APIs
+   - Validate on both client and server side
+
+### Advanced Validation
+
+#### Custom Validation Functions
+
+For complex validation scenarios, you can use custom validation functions:
+
+```rust
+use validator::{Validate, ValidationError};
+
+#[derive(Debug, Deserialize, Validate)]
+pub struct ComplexData {
+    #[validate(custom = "validate_password_strength")]
+    pub password: String,
+
+    #[validate(custom = "validate_username_availability")]
+    pub username: String,
+}
+
+fn validate_password_strength(password: &str) -> Result<(), ValidationError> {
+    if password.len() < 8 {
+        return Err(ValidationError::new("password_too_short"));
+    }
+
+    if !password.chars().any(|c| c.is_uppercase()) {
+        return Err(ValidationError::new("password_no_uppercase"));
+    }
+
+    if !password.chars().any(|c| c.is_numeric()) {
+        return Err(ValidationError::new("password_no_number"));
+    }
+
+    Ok(())
+}
+
+fn validate_username_availability(username: &str) -> Result<(), ValidationError> {
+    // Check against database or external service
+    // This is just an example
+    if username == "admin" {
+        return Err(ValidationError::new("username_taken"));
+    }
+    Ok(())
+}
+```
+
 ## Key Considerations
 
-- **Extractor Selection**: Choose based on the request data type (JSON, query, or form).
+#### Important Notes for Validation
+
+- **Extractor Selection**: Choose based on the request data type (JSON, query, form, or multipart).
 - **Error Handling**:
   - Standard extractors return generic HTTP errors.
   - `WithMessage` extractors provide structured JSON errors for client-side feedback.
+- **Performance**: Validation happens before your handler logic, ensuring invalid requests are rejected early.
+- **Testing**: All validation extractors are thoroughly tested. See the [testing section](#testing) for examples.
 - **Further Reading**: Refer to the [validator crate documentation](https://github.com/Keats/validator) for advanced validation rules.
+
+## Testing Validation
+
+#### Testing Validation Extractors
+
+When testing endpoints that use validation extractors, you can verify both valid and invalid scenarios:
+
+```rust
+use loco_rs::testing::prelude::*;
+
+#[tokio::test]
+#[serial]
+async fn test_user_registration_validation() {
+    configure_insta!();
+
+    request::<App, _, _>(|request, _ctx| async move {
+        // Test valid registration
+        let valid_data = serde_json::json!({
+            "username": "validuser",
+            "email": "user@example.com",
+            "password": "securepass123"
+        });
+
+        let response = request
+            .post("/auth/register")
+            .json(&valid_data)
+            .await;
+
+        assert_eq!(response.status_code(), 200);
+
+        // Test invalid registration
+        let invalid_data = serde_json::json!({
+            "username": "ab", // Too short
+            "email": "invalid-email", // Invalid email
+            "password": "123" // Too short
+        });
+
+        let response = request
+            .post("/auth/register")
+            .json(&invalid_data)
+            .await;
+
+        assert_eq!(response.status_code(), 400);
+
+        // Verify error response structure
+        let error_json: serde_json::Value = response.json().await;
+        assert!(error_json.get("errors").is_some());
+    })
+    .await;
+}
+```
+
+### Testing Different Content Types
+
+#### Multipart and Form Testing
+
+```rust
+#[tokio::test]
+#[serial]
+async fn test_multipart_validation() {
+    configure_insta!();
+
+    request::<App, _, _>(|request, _ctx| async move {
+        // Test multipart form validation
+        let response = request
+            .post("/upload/profile")
+            .multipart()
+            .text("username", "validuser")
+            .text("email", "user@example.com")
+            .send()
+            .await;
+
+        assert_eq!(response.status_code(), 200);
+    })
+    .await;
+}
+```
 
 # Pagination
 
