@@ -12,7 +12,7 @@ use bb8_redis::{
 };
 
 use super::CacheDriver;
-use crate::cache::CacheResult;
+use crate::cache::{CacheError, CacheResult};
 use crate::config::RedisCacheConfig;
 
 /// Creates a new instance of the Redis cache driver with a default configuration.
@@ -59,10 +59,12 @@ impl CacheDriver for Redis {
     /// # Errors
     ///
     /// Returns a `CacheError` if there is an error during the operation.
-    async fn ping(&self) -> CacheResult<Option<String>> {
+    async fn ping(&self) -> CacheResult<()> {
         let mut conn = self.pool.get().await?;
-        let result: Option<String> = conn.ping().await?;
-        Ok(result)
+        match conn.ping::<Option<String>>().await? {
+            Some(_) => Ok(()),
+            None => Err(CacheError::Any("Redis ping failed".into())),
+        }
     }
 
     /// Checks if a key exists in the cache.
@@ -170,8 +172,7 @@ mod tests {
     async fn ping_returns_pong_when_redis_is_reachable() {
         let (redis, _container) = setup_redis_driver().await;
 
-        let result = redis.ping().await.expect("Failed to ping Redis");
-        assert_eq!(result, Some("PONG".to_string()));
+        assert!(redis.ping().await.is_ok());
     }
 
     #[tokio::test]

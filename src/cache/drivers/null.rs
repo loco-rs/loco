@@ -32,7 +32,7 @@ impl CacheDriver for Null {
     /// # Errors
     ///
     /// Returns always error
-    async fn ping(&self) -> CacheResult<Option<String>> {
+    async fn ping(&self) -> CacheResult<()> {
         Err(CacheError::Any(
             "Operation not supported by null cache".into(),
         ))
