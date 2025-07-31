@@ -22,7 +22,7 @@ pub trait CacheDriver: Sync + Send {
     ///
     /// Returns a [`super::CacheError`] if there is an error during the
     /// operation.
-    async fn ping(&self) -> CacheResult<Option<String>>;
+    async fn ping(&self) -> CacheResult<()>;
 
     /// Checks if a key exists in the cache.
     ///
