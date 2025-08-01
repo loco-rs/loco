@@ -531,6 +531,86 @@ Having said that, it's up to you to code your data fixes in:
 - `migration` - where you can both change structure and fix data stemming from it with raw SQL
 - or an ad-hoc `playground` - where you can use high level models or experiment with things
 
+
+### Enum Types
+
+Enum types allow you to create columns with a predefined set of values. While enum types are not supported via the CLI generator, you can create them manually in migrations.
+
+#### Creating Enum Types in Migrations
+
+To create enum types, you need to manually write a migration. Here's an example:
+
+```rust
+use loco_rs::schema::*;
+use sea_orm_migration::prelude::*;
+
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        create_table(
+            m,
+            "task",
+            &[
+                ("id", ColType::PkAuto),
+                ("name", ColType::StringNull),
+                (
+                    "status",
+                    ColType::Enum(
+                        "product_status".to_string(),
+                        vec![
+                            "draft".to_string(),
+                            "published".to_string(),
+                            "archived".to_string(),
+                        ],
+                    ),
+                ),
+                (
+                    "priority",
+                    ColType::EnumWithDefault(
+                        "priority_level".to_string(),
+                        vec![
+                            "low".to_string(),
+                            "medium".to_string(),
+                            "high".to_string(),
+                            "urgent".to_string(),
+                        ],
+                        "medium".to_string(), // default value
+                    ),
+                ),
+            ],
+            &[],
+        )
+        .await
+    }
+
+    async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        drop_table(m, "task").await?;
+        drop_enum_type(m, "product_status").await?;
+        drop_enum_type(m, "priority_level").await?;
+        Ok(())
+
+    }
+}
+```
+
+#### Available Enum Types
+
+- `ColType::Enum(enum_name, variants)` - Non-nullable enum column
+- `ColType::EnumNull(enum_name, variants)` - Nullable enum column
+- `ColType::EnumWithDefault(enum_name, variants, default_value)` - Non-nullable enum column with default
+- `ColType::EnumNullWithDefault(enum_name, variants, default_value)` - Nullable enum column with default
+
+#### Key Features
+
+- **Automatic enum type creation**: Enum types are automatically created in the database if they don't exist
+- **Default values**: New records automatically get the specified default values if no value is provided
+- **Nullable support**: Both nullable and non-nullable enum columns are supported
+
+> **Note**: Enum types with default values are currently only supported in PostgreSQL.
+
 ## Validation
 
 We use the [validator](https://docs.rs/validator) library under the hood. First, build your validator with the constraints you need, and then implement `Validatable` for your `ActiveModel`.
