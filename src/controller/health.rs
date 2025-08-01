@@ -32,6 +32,7 @@ async fn health(State(ctx): State<AppContext>) -> Result<Response> {
         }
     }
 
+    #[cfg(any(feature = "cache_inmem", feature = "cache_redis"))]
     if let Err(error) = ctx.cache.driver.ping().await {
         tracing::error!(err.msg = %error, err.detail = ?error, "health_cache_ping_error");
         is_ok = false;
