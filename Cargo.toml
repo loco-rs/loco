@@ -9,7 +9,7 @@ license = "Apache-2.0"
 
 [package]
 name = "loco-rs"
-version = "0.16.2"
+version = "0.16.3"
 description = "The one-person framework for Rust"
 homepage = "https://loco.rs/"
 documentation = "https://docs.rs/loco-rs"
@@ -34,7 +34,12 @@ default = [
 auth_jwt = ["dep:jsonwebtoken"]
 cli = ["dep:clap"]
 testing = ["dep:axum-test", "dep:scraper", "dep:tree-fs"]
-with-db = ["dep:sea-orm", "dep:sea-orm-migration", "loco-gen/with-db"]
+with-db = [
+    "dep:sea-orm",
+    "dep:sea-orm-migration",
+    "dep:sqlx",
+    "loco-gen/with-db",
+]
 # Storage features
 all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
 storage_aws_s3 = ["opendal/services-s3"]

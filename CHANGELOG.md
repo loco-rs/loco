@@ -1,7 +1,17 @@
 # Changelog
 
 ## Unreleased
+- feat: decouple JWT authentication from database dependency. [https://github.com/loco-rs/loco/pull/1546](https://github.com/loco-rs/loco/pull/1546)
+- fix: add sqlx dependency to with-db feature. [https://github.com/loco-rs/loco/pull/1557](https://github.com/loco-rs/loco/pull/1557)
+- Remove the deprecated `--link` generate command and fix the table name creation. [https://github.com/loco-rs/loco/pull/1556](https://github.com/loco-rs/loco/pull/1556)
+- Support underscore for migration join table. [https://github.com/loco-rs/loco/pull/1562](https://github.com/loco-rs/loco/pull/1562)
+- Fix: resolve deployment CLI argument parsing issue. [https://github.com/loco-rs/loco/pull/1566](https://github.com/loco-rs/loco/pull/1566)
+
+## v0.16.3
 - Support nullable foreign keys with `references?` syntax. [https://github.com/loco-rs/loco/pull/1544](https://github.com/loco-rs/loco/pull/1544)
+- **HOTFIX**: Fixed a critical issue introduced in version `v0.16.2` that caused `cargo build --release` to fail after merging #1540. [https://github.com/loco-rs/loco/pull/1551](https://github.com/loco-rs/loco/pull/1551)
+- Add an API to re-send verification mail. [https://github.com/loco-rs/loco/pull/1456](https://github.com/loco-rs/loco/pull/1456)
+- Adding to ci cargo build --release. [https://github.com/loco-rs/loco/pull/1553](https://github.com/loco-rs/loco/pull/1553)
 
 ## v0.16.2
 - Update auth import in the Authentication document. [https://github.com/loco-rs/loco/pull/1531](https://github.com/loco-rs/loco/pull/1531)

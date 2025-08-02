@@ -531,6 +531,86 @@ Having said that, it's up to you to code your data fixes in:
 - `migration` - where you can both change structure and fix data stemming from it with raw SQL
 - or an ad-hoc `playground` - where you can use high level models or experiment with things
 
+
+### Enum Types
+
+Enum types allow you to create columns with a predefined set of values. While enum types are not supported via the CLI generator, you can create them manually in migrations.
+
+#### Creating Enum Types in Migrations
+
+To create enum types, you need to manually write a migration. Here's an example:
+
+```rust
+use loco_rs::schema::*;
+use sea_orm_migration::prelude::*;
+
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        create_table(
+            m,
+            "task",
+            &[
+                ("id", ColType::PkAuto),
+                ("name", ColType::StringNull),
+                (
+                    "status",
+                    ColType::Enum(
+                        "product_status".to_string(),
+                        vec![
+                            "draft".to_string(),
+                            "published".to_string(),
+                            "archived".to_string(),
+                        ],
+                    ),
+                ),
+                (
+                    "priority",
+                    ColType::EnumWithDefault(
+                        "priority_level".to_string(),
+                        vec![
+                            "low".to_string(),
+                            "medium".to_string(),
+                            "high".to_string(),
+                            "urgent".to_string(),
+                        ],
+                        "medium".to_string(), // default value
+                    ),
+                ),
+            ],
+            &[],
+        )
+        .await
+    }
+
+    async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        drop_table(m, "task").await?;
+        drop_enum_type(m, "product_status").await?;
+        drop_enum_type(m, "priority_level").await?;
+        Ok(())
+
+    }
+}
+```
+
+#### Available Enum Types
+
+- `ColType::Enum(enum_name, variants)` - Non-nullable enum column
+- `ColType::EnumNull(enum_name, variants)` - Nullable enum column
+- `ColType::EnumWithDefault(enum_name, variants, default_value)` - Non-nullable enum column with default
+- `ColType::EnumNullWithDefault(enum_name, variants, default_value)` - Nullable enum column with default
+
+#### Key Features
+
+- **Automatic enum type creation**: Enum types are automatically created in the database if they don't exist
+- **Default values**: New records automatically get the specified default values if no value is provided
+- **Nullable support**: Both nullable and non-nullable enum columns are supported
+
+> **Note**: Enum types with default values are currently only supported in PostgreSQL.
+
 ## Validation
 
 We use the [validator](https://docs.rs/validator) library under the hood. First, build your validator with the constraints you need, and then implement `Validatable` for your `ActiveModel`.
@@ -576,7 +656,7 @@ This will create a migration with a `user_id` field in `Company` which will refe
 
 ### Many to many
 
-Here is how to create a typical "votes" table, which links a `User` and a `Movie` with a many-to-many link table. Note that it uses the special `--link` flag in the model generator.
+Here is how to create a typical "votes" table, which links a `User` and a `Movie` with a many-to-many relationship using a join table.
 
 Let's create a new `Movie` entity:
 
@@ -584,36 +664,39 @@ Let's create a new `Movie` entity:
 $ cargo loco generate model movies title:string
 ```
 
-And now the link table between `User` (which we already have) and `Movie` (which we just generated) to record votes:
+And now create a join table between `User` (which we already have) and `Movie` (which we just generated) to record votes:
 
 ```
-$ cargo loco generate model --link users_votes user:references movie:references vote:int
-    ..
-    ..
-Writing src/models/_entities/movies.rs
-Writing src/models/_entities/users.rs
-Writing src/models/_entities/mod.rs
-Writing src/models/_entities/prelude.rs
-... Done.
+$ cargo loco generate migration CreateJoinTableUsersAndMovies vote:int
 ```
 
-This will create a many-to-many link table named `UsersVotes` with a composite primary key containing both `user_id` and `movie_id`. Because it has precisely 2 IDs, SeaORM will identify it as a many-to-many link table, and generate entities with the appropriate `via()` relationship:
+This will create a many-to-many join table named `users_movies` with a composite primary key containing both `user_id` and `movie_id`. The table will also include the `vote` column as specified.
+
+After running the migration, you can define the relationships in your entity files:
 
 ```rust
-// User, newly generated entity with a `via` relation at _entities/users.rs
-
-// ..
+// In src/models/_entities/users.rs
 impl Related<super::movies::Entity> for Entity {
     fn to() -> RelationDef {
-        super::users_votes::Relation::Movies.def()
+        super::users_movies::Relation::Movies.def()
     }
     fn via() -> Option<RelationDef> {
-        Some(super::users_votes::Relation::Users.def().rev())
+        Some(super::users_movies::Relation::Users.def().rev())
+    }
+}
+
+// In src/models/_entities/movies.rs
+impl Related<super::users::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::users_movies::Relation::Users.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(super::users_movies::Relation::Movies.def().rev())
     }
 }
 ```
 
-Using `via()` will cause `find_related` to walk through the link table without you needing to know the details of the link table.
+Using `via()` will cause `find_related` to walk through the join table without you needing to know the details of the link table.
 
 ## Configuration
 

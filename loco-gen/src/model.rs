@@ -99,7 +99,6 @@ pub fn get_columns_and_references(
 pub fn generate(
     rrgen: &RRgen,
     name: &str,
-    is_link: bool,
     fields: &[(String, String)],
     appinfo: &AppInfo,
 ) -> Result<GenerateResults> {
@@ -108,7 +107,7 @@ pub fn generate(
 
     let (columns, references) = get_columns_and_references(fields)?;
 
-    let vars = json!({"name": name, "ts": ts, "pkg_name": pkg_name, "is_link": is_link, "columns": columns, "references": references});
+    let vars = json!({"name": name, "ts": ts, "pkg_name": pkg_name, "columns": columns, "references": references});
     let gen_result = render_template(rrgen, Path::new("model"), &vars)?;
 
     if std::env::var("SKIP_MIGRATION").is_err() {

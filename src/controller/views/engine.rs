@@ -20,6 +20,8 @@ pub struct HotReloadingTeraEngine {
     pub dirty: bool,
 }
 
+type TeraPostProcessor = dyn Fn(&mut tera::Tera) -> Result<()> + Send + Sync;
+
 #[derive(Clone)]
 pub struct TeraView {
     #[cfg(debug_assertions)]
@@ -28,8 +30,7 @@ pub struct TeraView {
     #[cfg(not(debug_assertions))]
     pub tera: tera::Tera,
 
-    pub tera_post_process:
-        Option<std::sync::Arc<dyn Fn(&mut tera::Tera) -> Result<()> + Send + Sync>>,
+    pub tera_post_process: Option<std::sync::Arc<TeraPostProcessor>>,
 
     pub default_context: tera::Context,
 }
