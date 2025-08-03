@@ -320,7 +320,7 @@ pub async fn enqueue(
     .bind(run_at)
     .bind(interval_ms)
     .bind(tags_json)
-    .bind(priority)
+    .bind(priority.unwrap_or(0))
     .execute(pool)
     .await?;
     Ok(id)
