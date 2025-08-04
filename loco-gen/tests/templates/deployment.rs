@@ -53,14 +53,14 @@ fn can_generate_docker(
                 copy_paths.len(),
                 is_client_side_rendering
             ),
-            fs::read_to_string(tree_fs.root.join("dockerfile")).expect("dockerfile missing")
+            fs::read_to_string(tree_fs.root.join("Dockerfile")).expect("Dockerfile missing")
         );
     });
 
     assert_eq!(
         fs::read_to_string(tree_fs.root.join(".dockerignore")).expect(".dockerignore missing"),
         r"target
-dockerfile
+Dockerfile
 .dockerignore
 .git
 .gitignore
