@@ -16,16 +16,16 @@ struct Health {
 
 /// Check the healthiness of the application by sending a ping request to
 /// Redis or the DB (depending on feature flags) to ensure connection liveness.
-async fn health(State(ctx): State<AppContext>) -> Result<Response> {
+pub async fn health(State(ctx): State<AppContext>) -> Result<Response> {
     let mut is_ok: bool = true;
 
     #[cfg(feature = "with-db")]
-    if let Err(error) = ctx.db.ping().await {
+    if let Err(error) = &ctx.db.ping().await {
         tracing::error!(err.msg = %error, err.detail = ?error, "health_db_ping_error");
         is_ok = false;
     }
 
-    if let Some(queue) = ctx.queue_provider {
+    if let Some(queue) = &ctx.queue_provider {
         if let Err(error) = queue.ping().await {
             tracing::error!(err.msg = %error, err.detail = ?error, "health_queue_ping_error");
             is_ok = false;
@@ -33,7 +33,7 @@ async fn health(State(ctx): State<AppContext>) -> Result<Response> {
     }
 
     #[cfg(any(feature = "cache_inmem", feature = "cache_redis"))]
-    if let Err(error) = ctx.cache.driver.ping().await {
+    if let Err(error) = &ctx.cache.driver.ping().await {
         tracing::error!(err.msg = %error, err.detail = ?error, "health_cache_ping_error");
         is_ok = false;
     }
