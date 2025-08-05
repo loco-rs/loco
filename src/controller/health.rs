@@ -16,6 +16,9 @@ struct Health {
 
 /// Check the healthiness of the application by sending a ping request to
 /// Redis or the DB (depending on feature flags) to ensure connection liveness.
+///
+/// # Errors
+/// All errors are logged, and the health status is returned as a JSON response.
 pub async fn health(State(ctx): State<AppContext>) -> Result<Response> {
     let mut is_ok: bool = true;
 
