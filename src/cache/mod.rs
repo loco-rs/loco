@@ -7,7 +7,7 @@ use std::{future::Future, time::Duration};
 
 use serde::{de::DeserializeOwned, Serialize};
 
-use self::drivers::CacheDriver;
+pub use self::drivers::CacheDriver;
 use crate::config;
 use crate::Result as LocoResult;
 use std::sync::Arc;

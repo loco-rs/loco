@@ -82,7 +82,7 @@ mod backtrace;
 mod describe;
 pub mod extractor;
 pub mod format;
-mod health;
+pub mod health;
 pub mod middleware;
 mod ping;
 mod routes;
