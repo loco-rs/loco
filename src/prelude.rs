@@ -23,7 +23,10 @@ pub use serde_json::json as data;
 pub use crate::controller::extractor::auth;
 pub use crate::controller::extractor::{
     shared_store::SharedStore,
-    validate::{JsonValidate, JsonValidateWithMessage},
+    validate::{
+        FormValidate, FormValidateWithMessage, JsonValidate, JsonValidateWithMessage,
+        MultipartValidate, MultipartValidateWithMessage, QueryValidate, QueryValidateWithMessage,
+    },
 };
 #[cfg(feature = "with-db")]
 pub use crate::model::{query, Authenticable, ModelError, ModelResult};
