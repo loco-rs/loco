@@ -14,23 +14,33 @@ struct Health {
     pub ok: bool,
 }
 
-/// Check the healthiness of the application bt ping to the redis and the DB to
-/// insure that connection
-async fn health(State(ctx): State<AppContext>) -> Result<Response> {
-    let mut is_ok = match ctx.db.ping().await {
-        Ok(()) => true,
-        Err(error) => {
-            tracing::error!(err.msg = %error, err.detail = ?error, "health_db_ping_error");
-            false
-        }
-    };
+/// Check the healthiness of the application by sending a ping request to
+/// Redis or the DB (depending on feature flags) to ensure connection liveness.
+///
+/// # Errors
+/// All errors are logged, and the health status is returned as a JSON response.
+pub async fn health(State(ctx): State<AppContext>) -> Result<Response> {
+    let mut is_ok: bool = true;
 
-    if let Some(queue) = ctx.queue_provider {
+    #[cfg(feature = "with-db")]
+    if let Err(error) = &ctx.db.ping().await {
+        tracing::error!(err.msg = %error, err.detail = ?error, "health_db_ping_error");
+        is_ok = false;
+    }
+
+    if let Some(queue) = &ctx.queue_provider {
         if let Err(error) = queue.ping().await {
-            tracing::error!(err.msg = %error, err.detail = ?error, "health_redis_ping_error");
+            tracing::error!(err.msg = %error, err.detail = ?error, "health_queue_ping_error");
             is_ok = false;
         }
     }
+
+    #[cfg(any(feature = "cache_inmem", feature = "cache_redis"))]
+    if let Err(error) = &ctx.cache.driver.ping().await {
+        tracing::error!(err.msg = %error, err.detail = ?error, "health_cache_ping_error");
+        is_ok = false;
+    }
+
     format::json(Health { ok: is_ok })
 }
 
