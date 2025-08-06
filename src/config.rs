@@ -394,6 +394,26 @@ fn num_workers() -> u32 {
 ///     secret: <your secret>
 ///     expiration: 604800 # 7 days
 /// ```
+///
+/// Example (development, with location specified):
+/// ```yaml
+/// # config/development.yaml
+/// auth:
+///   jwt:
+///     secret: <your secret>
+///     expiration: 604800 # 7 days
+///     location:
+///      - from: Cookie
+///        name: jwt_token
+/// ```
+///
+/// Example curl request with JWT token in the Cookie:
+/// ```sh
+/// curl --location '127.0.0.1:5150/api/auth/register' \
+///      --header 'Content-Type: application/json' \
+///      --cookie 'jwt_token=<YOUR_JWT_TOKEN>' \
+///      --data '{}'
+/// ```
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Auth {
     /// JWT authentication config
