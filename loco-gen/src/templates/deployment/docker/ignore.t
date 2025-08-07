@@ -3,7 +3,7 @@ skip_exists: true
 message: "Dockerignore generated successfully."
 ---
 target
-dockerfile
+Dockerfile
 .dockerignore
 .git
 .gitignore

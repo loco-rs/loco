@@ -169,7 +169,7 @@ $ cargo loco generate deployment
 
 ..
 ✔ ❯ Choose your deployment · Docker
-skipped (exists): "dockerfile"
+skipped (exists): "Dockerfile"
 added: ".dockerignore"
 
 ```
