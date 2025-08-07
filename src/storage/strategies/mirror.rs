@@ -52,7 +52,6 @@ pub struct MirrorStrategy {
 /// delete, rename, copy) across multiple storage backends, with optional
 /// secondary storage support and customizable failure modes.
 #[async_trait::async_trait]
-#[async_trait::async_trait]
 impl StorageStrategy for MirrorStrategy {
     /// Uploads content to the primary and, if configured, secondary storage
     /// mirror.
