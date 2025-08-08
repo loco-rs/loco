@@ -1,0 +1,15 @@
+echo "Running cargo fmt check..."
+cargo fmt --all -- --check
+if [ $? -ne 0 ]; then
+    echo "cargo fmt failed"
+    exit 1
+fi
+
+echo "Running cargo clippy..."
+cargo clippy --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms
+if [ $? -ne 0 ]; then
+    echo "cargo clippy failed"
+    exit 1
+fi
+
+exit 0
