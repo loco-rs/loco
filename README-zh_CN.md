@@ -42,7 +42,7 @@ cd my_project
 启动开发服务器:
 
 ```sh
-loco server
+cargo loco start
 ```
 
 ## 贡献
