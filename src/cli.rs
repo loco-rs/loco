@@ -182,12 +182,19 @@ enum ComponentArg {
       $ cargo loco g model movies long_title:string director:references award:references:prize_id
       # 'director:references' references the 'directors' table with 'director_id' on 'movies'
       # 'award:references:prize_id' references the 'awards' table with 'prize_id' on 'movies'
+
+  - Generate model without timestamps:
+      $ cargo loco g model posts title:string content:text --without-tz
 ",
     "Examples:".bold().underline()
 ))]
     Model {
         /// Name of the thing to generate
         name: String,
+
+        /// Generate model without timestamps (`created_at`, `updated_at` columns)
+        #[arg(long, action)]
+        without_tz: bool,
 
         /// Model fields, eg. title:string hits:int
         #[clap(value_parser = parse_key_val::<String,String>)]
@@ -220,6 +227,14 @@ enum ComponentArg {
       $ cargo loco g migration FixUsersTable
       # Creates a blank migration file for custom edits to the 'users' table.
 
+  - Create migration without timestamps:
+      $ cargo loco g migration CreatePosts title:string --without-tz
+      # Creates a migration without timestamp columns
+
+  - Create join table without timestamps:
+      $ cargo loco g migration CreateJoinTableUsersAndGroups count:int --without-tz
+      # Creates a join table without timestamp columns
+
 After running the migration, follow these steps to complete the process:
   - Apply the migration:
     $ cargo loco db migrate
@@ -229,6 +244,11 @@ After running the migration, follow these steps to complete the process:
     Migration {
         /// Name of the migration to generate
         name: String,
+
+        /// Generate migration without timestamps (`created_at`, `updated_at` columns)
+        #[arg(long, action)]
+        without_tz: bool,
+
         /// Table fields, eg. title:string hits:int
         #[clap(value_parser = parse_key_val::<String,String>, )]
         fields: Vec<(String, String)>,
@@ -236,10 +256,16 @@ After running the migration, follow these steps to complete the process:
     #[cfg(feature = "with-db")]
     /// Generates a CRUD scaffold, model and controller
     #[command(after_help = format!("{}
- $ cargo loco g model posts title:string! user:references --api", "Examples:".bold().underline()))]
+ $ cargo loco g model posts title:string! user:references --api
+
+ $ cargo loco g scaffold posts title:string! user:references --api --without-tz", "Examples:".bold().underline()))]
     Scaffold {
         /// Name of the thing to generate
         name: String,
+
+        /// Generate scaffold without timestamps (`created_at`, `updated_at` columns)
+        #[arg(long, action)]
+        without_tz: bool,
 
         /// Model fields, eg. title:string hits:int
         #[clap(value_parser = parse_key_val::<String,String>)]
@@ -354,12 +380,29 @@ impl ComponentArg {
     fn into_gen_component(self, config: &Config) -> crate::Result<loco_gen::Component> {
         match self {
             #[cfg(feature = "with-db")]
-            Self::Model { name, fields } => Ok(loco_gen::Component::Model { name, fields }),
+            Self::Model {
+                name,
+                without_tz,
+                fields,
+            } => Ok(loco_gen::Component::Model {
+                name,
+                with_tz: !without_tz,
+                fields,
+            }),
             #[cfg(feature = "with-db")]
-            Self::Migration { name, fields } => Ok(loco_gen::Component::Migration { name, fields }),
+            Self::Migration {
+                name,
+                without_tz,
+                fields,
+            } => Ok(loco_gen::Component::Migration {
+                name,
+                with_tz: !without_tz,
+                fields,
+            }),
             #[cfg(feature = "with-db")]
             Self::Scaffold {
                 name,
+                without_tz,
                 fields,
                 kind,
                 htmx,
@@ -380,7 +423,12 @@ impl ComponentArg {
                     ));
                 };
 
-                Ok(loco_gen::Component::Scaffold { name, fields, kind })
+                Ok(loco_gen::Component::Scaffold {
+                    name,
+                    with_tz: !without_tz,
+                    fields,
+                    kind,
+                })
             }
             Self::Controller {
                 name,

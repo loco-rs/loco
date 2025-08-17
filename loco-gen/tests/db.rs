@@ -78,13 +78,16 @@ fn test_migrations_flow(#[values("postgres", "sqlite")] db_kind: &str) {
     let script = [
         "loco db reset",
         "loco g model user name:string",
+        "loco g model user_without_tz name:string --without-tz",
         &format!("loco g scaffold playlists {types_line} --htmx"),
+        &format!("loco g scaffold playlists_without_tz {types_line} --htmx --without-tz"),
         &format!("loco g model movies {types_line} playlist:references user:references?"),
         "loco g migration AddContentToMovies content:string",
         "loco g migration CreateActors foobar:string",
         // TBD this errors under sqlite because they don`t support alter and uniq
         //        &format!("loco g migration AddAllToActors {types_line}"),
         "loco g migration CreateJoinTableActorsAndMovies minutes:int",
+        "loco g migration CreateJoinTableUser_without_tzAndMovies minutes:int --without-tz",
         "loco g migration CreateAwards name:string actor:references",
         "loco g migration RemoveContentFromMovies content:string",
         "loco g migration AddRatingToMovies rating:int",

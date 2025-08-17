@@ -19,6 +19,7 @@ fn can_generate(#[case] kind: ScaffoldKind) {
 
     let component = Component::Scaffold {
         name: "movie".to_string(),
+        with_tz: true,
         fields: vec![
             ("title".to_string(), "string".to_string()),
             ("user".to_string(), "references".to_string()),
