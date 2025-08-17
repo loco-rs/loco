@@ -411,10 +411,9 @@ mod tests {
 
     use axum::http::Response;
     use insta::assert_debug_snapshot;
-    use tree_fs;
 
     use super::*;
-    use crate::{controller::views::engines::TeraView, prelude::*};
+    use crate::prelude::*;
 
     async fn response_body_to_string(response: Response<Body>) -> String {
         let bytes = axum::body::to_bytes(response.into_body(), 200)
