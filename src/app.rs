@@ -235,6 +235,7 @@ impl<T: 'static + Send + Sync> std::ops::Deref for RefGuard<'_, T> {
     fn deref(&self) -> &Self::Target {
         // This is safe because we only create a RefGuard for a specific type
         // after looking it up by its TypeId
+        #[allow(clippy::coerce_container_to_any)]
         self.inner
             .value()
             .downcast_ref::<T>()
@@ -424,7 +425,7 @@ pub trait Hooks: Send {
 
     /// Truncates the database as required. Users should implement this
     /// function. The truncate controlled from the [`crate::config::Database`]
-    /// by changing dangerously_truncate to true (default false).
+    /// by changing `dangerously_truncate` to true (default false).
     /// Truncate can be useful when you want to truncate the database before any
     /// test.
     #[cfg(feature = "with-db")]
