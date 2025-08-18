@@ -48,11 +48,14 @@ pub fn generate(
         }
         infer::MigrationType::CreateJoinTable { table_a, table_b } => {
             let table = format!("{table_a}_{table_b}");
-            let (columns, references) = get_columns_and_references(&[
-                (table_a, "references".to_string()),
-                (table_b, "references".to_string()),
-            ])?;
-            let vars = json!({"name": name, "table": table,"with_tz": with_tz, "ts": ts, "pkg_name": pkg_name, "columns": columns, "references": references});
+            let (columns, extra_references) = get_columns_and_references(fields)?;
+
+            let references = [(table_a, String::new()), (table_b, String::new())]
+                .into_iter()
+                .chain(extra_references)
+                .collect::<Vec<_>>();
+
+            let vars = json!({"name": name, "table": table, "ts": ts, "pkg_name": pkg_name, "columns": columns, "references": references});
             render_template(rrgen, Path::new("migration/join_table.t"), &vars)
         }
         infer::MigrationType::Empty => {

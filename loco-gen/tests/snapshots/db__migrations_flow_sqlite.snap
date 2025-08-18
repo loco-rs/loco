@@ -5,7 +5,7 @@ snapshot_kind: text
 ---
 [
   {
-    "sql": "CREATE TABLE \"actor_movies\" ( \"created_at\" timestamp_with_timezone_text NOT NULL DEFAULT CURRENT_TIMESTAMP, \"updated_at\" timestamp_with_timezone_text NOT NULL DEFAULT CURRENT_TIMESTAMP, \"actor_id\" integer NOT NULL, \"movie_id\" integer NOT NULL, CONSTRAINT \"idx-actor_movies-refs-pk\" PRIMARY KEY (\"actor_id\", \"movie_id\"), FOREIGN KEY (\"actor_id\") REFERENCES \"actors\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY (\"movie_id\") REFERENCES \"movies\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE )",
+    "sql": "CREATE TABLE \"actor_movies\" ( \"minutes\" integer NULL, \"actor_id\" integer NOT NULL, \"movie_id\" integer NOT NULL, CONSTRAINT \"idx-actor_movies-refs-pk\" PRIMARY KEY (\"actor_id\", \"movie_id\"), FOREIGN KEY (\"actor_id\") REFERENCES \"actors\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY (\"movie_id\") REFERENCES \"movies\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE )",
     "table": "actor_movies"
   },
   {
@@ -33,7 +33,7 @@ snapshot_kind: text
     "table": "seaql_migrations"
   },
   {
-    "sql": "CREATE TABLE \"user_without_tz_movies\" ( \"user_without_tz_id\" integer NOT NULL, \"movie_id\" integer NOT NULL, CONSTRAINT \"idx-user_without_tz_movies-refs-pk\" PRIMARY KEY (\"user_without_tz_id\", \"movie_id\"), FOREIGN KEY (\"user_without_tz_id\") REFERENCES \"user_without_tzs\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY (\"movie_id\") REFERENCES \"movies\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE )",
+    "sql": "CREATE TABLE \"user_without_tz_movies\" ( \"minutes\" integer NULL, \"user_without_tz_id\" integer NOT NULL, \"movie_id\" integer NOT NULL, CONSTRAINT \"idx-user_without_tz_movies-refs-pk\" PRIMARY KEY (\"user_without_tz_id\", \"movie_id\"), FOREIGN KEY (\"user_without_tz_id\") REFERENCES \"user_without_tzs\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY (\"movie_id\") REFERENCES \"movies\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE )",
     "table": "user_without_tz_movies"
   },
   {

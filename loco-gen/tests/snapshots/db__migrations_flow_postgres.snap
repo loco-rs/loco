@@ -5,14 +5,9 @@ snapshot_kind: text
 ---
 [
   {
-    "column": "created_at",
+    "column": "minutes",
     "table": "actor_movies",
-    "type": "timestamp with time zone"
-  },
-  {
-    "column": "updated_at",
-    "table": "actor_movies",
-    "type": "timestamp with time zone"
+    "type": "integer"
   },
   {
     "column": "actor_id",
@@ -1088,6 +1083,11 @@ snapshot_kind: text
     "column": "applied_at",
     "table": "seaql_migrations",
     "type": "bigint"
+  },
+  {
+    "column": "minutes",
+    "table": "user_without_tz_movies",
+    "type": "integer"
   },
   {
     "column": "user_without_tz_id",
