@@ -8,6 +8,15 @@ use std::fs;
 #[rstest]
 #[case("create_table", Component::Migration {
         name: "CreateMovies".to_string(),
+        with_tz: true,
+        fields: vec![
+            ("title".to_string(), "string".to_string()),
+            ("user".to_string(), "references".to_string()),
+        ],
+    }, "movies.rs")]
+#[case("create_table_without_tz", Component::Migration {
+        name: "CreateMovies".to_string(),
+        with_tz: false,
         fields: vec![
             ("title".to_string(), "string".to_string()),
             ("user".to_string(), "references".to_string()),
@@ -15,6 +24,7 @@ use std::fs;
     }, "movies.rs")]
 #[case("add_column", Component::Migration {
         name: "AddNameAndAgeToUsers".to_string(),
+        with_tz: true,
         fields: vec![
             ("name".to_string(), "string".to_string()),
             ("age".to_string(), "int".to_string()),
@@ -22,6 +32,7 @@ use std::fs;
     }, "add_name_and_age_to_users.rs")]
 #[case("remove_columns", Component::Migration {
         name: "RemoveNameAndAgeFromUsers".to_string(),
+        with_tz: true,
         fields: vec![
             ("name".to_string(), "string".to_string()),
             ("age".to_string(), "int".to_string()),
@@ -29,18 +40,28 @@ use std::fs;
     }, "remove_name_and_age_from_users.rs")]
 #[case("add_reference", Component::Migration {
         name: "AddUserRefToPosts".to_string(),
+        with_tz: true,
         fields: vec![
             ("user".to_string(), "references".to_string()),
         ],
     }, "add_user_ref_to_posts.rs")]
+#[case("create_join_table_without_tz", Component::Migration {
+        name: "CreateJoinTableUsersAndGroups".to_string(),
+        with_tz: false,
+        fields: vec![
+            ("count".to_string(), "int".to_string()),
+        ],
+    }, "create_join_table_users_and_groups.rs")]
 #[case("create_join_table", Component::Migration {
         name: "CreateJoinTableUsersAndGroups".to_string(),
+        with_tz: true,
         fields: vec![
             ("count".to_string(), "int".to_string()),
         ],
     }, "create_join_table_users_and_groups.rs")]
 #[case("empty", Component::Migration {
         name: "FixUsersTable".to_string(),
+        with_tz: true,
         fields: vec![
             ("count".to_string(), "int".to_string()),
         ],
@@ -101,6 +122,7 @@ fn can_generate(
 #[rstest]
 #[case(Component::Migration {
         name: "CreateMovies".to_string(),
+        with_tz: true,
         fields: vec![
             ("title".to_string(), "string".to_string()),
             ("user".to_string(), "references".to_string()),
@@ -108,6 +130,7 @@ fn can_generate(
     })]
 #[case(Component::Migration {
         name: "AddNameAndAgeToUsers".to_string(),
+        with_tz: true,
         fields: vec![
             ("name".to_string(), "string".to_string()),
             ("age".to_string(), "int".to_string()),
@@ -115,6 +138,7 @@ fn can_generate(
     })]
 #[case(Component::Migration {
         name: "RemoveNameAndAgeFromUsers".to_string(),
+        with_tz: true,
         fields: vec![
             ("name".to_string(), "string".to_string()),
             ("age".to_string(), "int".to_string()),
@@ -122,18 +146,21 @@ fn can_generate(
     })]
 #[case(Component::Migration {
         name: "AddUserRefToPosts".to_string(),
+        with_tz: true,
         fields: vec![
             ("user".to_string(), "references".to_string()),
         ],
     })]
 #[case(Component::Migration {
         name: "CreateJoinTableUsersAndGroups".to_string(),
+        with_tz: true,
         fields: vec![
             ("count".to_string(), "int".to_string()),
         ],
     })]
 #[case(Component::Migration {
         name: "FixUsersTable".to_string(),
+        with_tz: true,
         fields: vec![
             ("count".to_string(), "int".to_string()),
         ],

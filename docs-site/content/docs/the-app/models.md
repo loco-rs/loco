@@ -127,6 +127,33 @@ When a model is added via migration, the following default fields are provided:
 
 These fields are ignored if you provide them in your migration command.
 
+### Controlling Timestamps
+
+By default, all models include timestamp columns (`created_at` and `updated_at`). If you want to create a model without these timestamp columns, you can use the `--without-tz` flag:
+
+```sh
+# Generate model with timestamps (default behavior)
+$ cargo loco g model posts title:string content:text
+
+# Generate model without timestamps
+$ cargo loco g model posts title:string content:text --without-tz
+```
+
+This flag is also available for migrations and scaffolds:
+
+```sh
+# Generate migration without timestamps
+$ cargo loco g migration CreatePosts title:string --without-tz
+
+# Generate scaffold without timestamps
+$ cargo loco g scaffold posts title:string --api --without-tz
+
+# Generate join table without timestamps
+$ cargo loco g migration CreateJoinTableUsersAndPosts --without-tz
+```
+
+When using `--without-tz`, the generated table will not include the `created_at` and `updated_at` columns, giving you full control over timestamp management in your models.
+
 ### Field syntax
 
 Each field type may include either the `!` or `^` suffix:
@@ -530,7 +557,6 @@ Having said that, it's up to you to code your data fixes in:
 - `task` - where you can use high level models
 - `migration` - where you can both change structure and fix data stemming from it with raw SQL
 - or an ad-hoc `playground` - where you can use high level models or experiment with things
-
 
 ### Enum Types
 
