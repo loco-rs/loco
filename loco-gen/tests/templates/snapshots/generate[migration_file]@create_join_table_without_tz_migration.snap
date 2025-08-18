@@ -14,6 +14,7 @@ impl MigrationTrait for Migration {
     async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
         create_join_table_without_timestamps(m, "user_groups",
             &[
+            ("count", ColType::IntegerNull),
             ],
             &[
             ("user", ""),
