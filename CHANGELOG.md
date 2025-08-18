@@ -1,11 +1,18 @@
 # Changelog
 
 ## Unreleased
-- feat: decouple JWT authentication from database dependency. [https://github.com/loco-rs/loco/pull/1546](https://github.com/loco-rs/loco/pull/1546)
-- fix: add sqlx dependency to with-db feature. [https://github.com/loco-rs/loco/pull/1557](https://github.com/loco-rs/loco/pull/1557)
+- Feat: decouple JWT authentication from database dependency. [https://github.com/loco-rs/loco/pull/1546](https://github.com/loco-rs/loco/pull/1546)
+- Fix: add sqlx dependency to with-db feature. [https://github.com/loco-rs/loco/pull/1557](https://github.com/loco-rs/loco/pull/1557)
 - Remove the deprecated `--link` generate command and fix the table name creation. [https://github.com/loco-rs/loco/pull/1556](https://github.com/loco-rs/loco/pull/1556)
 - Support underscore for migration join table. [https://github.com/loco-rs/loco/pull/1562](https://github.com/loco-rs/loco/pull/1562)
 - Fix: resolve deployment CLI argument parsing issue. [https://github.com/loco-rs/loco/pull/1566](https://github.com/loco-rs/loco/pull/1566)
+- Add database enum support (Postgres only). [https://github.com/loco-rs/loco/pull/1593](https://github.com/loco-rs/loco/pull/1568)
+- Remove duplicated #[async_trait::async_trait]. [https://github.com/loco-rs/loco/pull/1593](https://github.com/loco-rs/loco/pull/1572)
+- Clippy fixes for Rust 1.89. [https://github.com/loco-rs/loco/pull/1593](https://github.com/loco-rs/loco/pull/1593)
+- Improvement: do not hot-reload unless files have changed. [https://github.com/loco-rs/loco/pull/1552](https://github.com/loco-rs/loco/pull/1552)
+- Feat: add --without-tz flag for controlling timestamp generation. [https://github.com/loco-rs/loco/pull/1592](https://github.com/loco-rs/loco/pull/1592)
+- Support extra fields when generating the join table migration. [https://github.com/loco-rs/loco/pull/1595](https://github.com/loco-rs/loco/pull/1595)
+
 
 ## v0.16.3
 - Support nullable foreign keys with `references?` syntax. [https://github.com/loco-rs/loco/pull/1544](https://github.com/loco-rs/loco/pull/1544)
