@@ -18,7 +18,7 @@ pub fn generate(
     // - scaffold is never a link table
     // - never run with migration_only, because the controllers will refer to the
     //   models. the models only arrive after migration and entities sync.
-    let mut gen_result = model::generate(rrgen, name, false, fields, appinfo)?;
+    let mut gen_result = model::generate(rrgen, name, fields, appinfo)?;
 
     let mut columns = Vec::new();
     for (fname, ftype) in fields {
@@ -33,11 +33,22 @@ pub fn generate(
         let field_type = parse_field_type(ftype)?;
         match field_type {
             crate::infer::FieldType::Reference => {
-                // (users, "")
-                //references.push((fname.to_string(), String::new()));
+                let col_name = format!("{fname}_id");
+                columns.push((col_name, "i32".to_string(), "Integer".to_string()));
             }
-            crate::infer::FieldType::ReferenceWithCustomField(_refname) => {
-                //references.push((fname.to_string(), refname.clone()));
+            crate::infer::FieldType::ReferenceWithCustomField(refname) => {
+                columns.push((refname.clone(), "i32".to_string(), "Integer".to_string()));
+            }
+            crate::infer::FieldType::NullableReference => {
+                let col_name = format!("{fname}_id");
+                columns.push((col_name, "i32".to_string(), "IntegerNull".to_string()));
+            }
+            crate::infer::FieldType::NullableReferenceWithCustomField(refname) => {
+                columns.push((
+                    refname.clone(),
+                    "i32".to_string(),
+                    "IntegerNull".to_string(),
+                ));
             }
             crate::infer::FieldType::Type(ftype) => {
                 let mappings = get_mappings();

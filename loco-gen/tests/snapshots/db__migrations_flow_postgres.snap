@@ -1,6 +1,7 @@
 ---
 source: loco-gen/tests/db.rs
 expression: "read_to_string(tree_fs.root.join(\"myapp\").join(\"schema_dump.json\")).unwrap()"
+snapshot_kind: text
 ---
 [
   {
@@ -405,6 +406,11 @@ expression: "read_to_string(tree_fs.root.join(\"myapp\").join(\"schema_dump.json
   },
   {
     "column": "playlist_id",
+    "table": "movies",
+    "type": "integer"
+  },
+  {
+    "column": "user_id",
     "table": "movies",
     "type": "integer"
   },

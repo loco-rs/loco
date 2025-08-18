@@ -18,13 +18,7 @@ on:
   push:
     branches:
       - master
-    paths-ignore: 
-      - "loco-gen/**"
-      - "loco-new/**"
   pull_request:
-    paths-ignore: 
-      - "loco-gen/**"
-      - "loco-new/**"
 
 env:
   RUST_TOOLCHAIN: stable
@@ -39,7 +33,7 @@ jobs:
 
     steps:
       - name: Checkout the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
@@ -55,6 +49,7 @@ jobs:
           loco new -n myappdb --db sqlite --bg async --assets serverside -a
           cd myappdb
           cargo check
+          cargo build --release
         env:
           LOCO_DEV_MODE_PATH: ${{ github.workspace }}
           
@@ -62,6 +57,7 @@ jobs:
           loco new -n myapp --db none --bg none --assets none -a
           cd myapp
           cargo check
+          cargo build --release
         env:
           LOCO_DEV_MODE_PATH: ${{ github.workspace }}
 

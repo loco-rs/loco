@@ -1,6 +1,7 @@
 ---
 source: loco-gen/tests/templates/scaffold.rs
 expression: "fs::read_to_string(views_path.join(format!(\"{view}.html\"))).expect(\"view file missing\")"
+snapshot_kind: text
 ---
 {% extends "base.html" %}
 
@@ -18,6 +19,10 @@ Create new movie
     <div class="space-y-2">
     <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for=":r2l:-form-item">title</label>
     <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" id="title" name="title" type="text" value=""  />
+</div>
+        <div class="space-y-2">
+    <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for=":r2l:-form-item">user_id</label>
+    <input class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm" min="-2147483648" max="2147483647" id="user_id" name="user_id" type="number" value=""  step="1" />
 </div>
         <div class="mt-5">
             <button class=" text-xs py-3 px-6 rounded-lg bg-gray-900 text-white" type="submit">Submit</button>

@@ -1,6 +1,7 @@
 ---
 source: loco-gen/tests/templates/scaffold.rs
 expression: "fs::read_to_string(views_path.join(format!(\"{view}.html\"))).expect(\"view file missing\")"
+snapshot_kind: text
 ---
 {% extends "base.html" %}
 
@@ -17,6 +18,9 @@ View movie: {{ item.id }}
 <div class="mb-10">
     <div>
     <label><b>{{"title" | capitalize }}:</b> {{item.title}}</label>
+    </div>
+<div>
+    <label><b>{{"user_id" | capitalize }}:</b> {{item.user_id}}</label>
     </div>
 <br />
 <a href="/movies">Back to movies</a>

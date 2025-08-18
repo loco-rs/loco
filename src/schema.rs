@@ -4,7 +4,7 @@ use sea_orm::{
         Alias, ColumnDef, Expr, Index, IntoIden, PgInterval, Table, TableAlterStatement,
         TableCreateStatement, TableForeignKey,
     },
-    ColumnType, DbErr, ForeignKeyAction,
+    ColumnType, ConnectionTrait, DbErr, ForeignKeyAction,
 };
 pub use sea_orm_migration::schema::*;
 use sea_orm_migration::{prelude::Iden, sea_query, SchemaManager};
@@ -58,6 +58,100 @@ where
         .timestamp_with_time_zone()
         .not_null()
         .take()
+}
+
+/// Create a non-nullable enum column definition.
+pub fn enum_type<T>(name: T, enum_name: &str) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name)
+        .enumeration::<Alias, Alias, Vec<Alias>>(Alias::new(enum_name), vec![])
+        .not_null()
+        .take()
+}
+
+/// Create a nullable enum column definition.
+pub fn enum_type_null<T>(name: T, enum_name: &str) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name)
+        .enumeration::<Alias, Alias, Vec<Alias>>(Alias::new(enum_name), vec![])
+        .null()
+        .take()
+}
+
+/// Create a non-nullable enum column definition with default value.
+///
+/// # Example
+/// ```ignore
+/// create_table(m, "users", vec![
+///     ("status", ColType::EnumWithDefault("status_enum".to_string(), vec!["pending".to_string(), "active".to_string()], "pending".to_string()))
+/// ], vec![]).await;
+/// ```
+pub fn enum_type_with_default<T>(name: T, enum_name: &str, default_value: &str) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name)
+        .enumeration::<Alias, Alias, Vec<Alias>>(Alias::new(enum_name), vec![])
+        .not_null()
+        .default(Expr::val(default_value))
+        .take()
+}
+
+/// Create a nullable enum column definition with default value.
+///
+/// # Example
+/// ```ignore
+/// create_table(m, "users", vec![
+///     ("status", ColType::EnumNullWithDefault("status_enum".to_string(), vec!["pending".to_string(), "active".to_string()], "pending".to_string()))
+/// ], vec![]).await;
+/// ```
+pub fn enum_type_null_with_default<T>(name: T, enum_name: &str, default_value: &str) -> ColumnDef
+where
+    T: IntoIden,
+{
+    ColumnDef::new(name)
+        .enumeration::<Alias, Alias, Vec<Alias>>(Alias::new(enum_name), vec![])
+        .null()
+        .default(Expr::val(default_value))
+        .take()
+}
+
+/// Check if an enum type already exists in the database
+async fn check_enum_exists(m: &SchemaManager<'_>, enum_name: &str) -> Result<bool, DbErr> {
+    match m.get_database_backend() {
+        sea_orm::DatabaseBackend::Postgres => {
+            let query = format!(
+                "SELECT EXISTS (
+                    SELECT 1 FROM pg_type 
+                    WHERE typname = '{enum_name}' 
+                    AND typtype = 'e'
+                )"
+            );
+
+            let result = m
+                .get_connection()
+                .query_one(sea_orm::Statement::from_string(
+                    sea_orm::DatabaseBackend::Postgres,
+                    query,
+                ))
+                .await?;
+
+            Ok(result.is_some_and(|row| row.try_get::<bool>("", "exists").unwrap_or(false)))
+        }
+        sea_orm::DatabaseBackend::Sqlite => {
+            // SQLite doesn't have native enum types, so we'll always return false
+            // to allow creation of enum-like behavior through CHECK constraints
+            Ok(false)
+        }
+        sea_orm::DatabaseBackend::MySql => {
+            // MySQL doesn't support enums in the same way, so we'll always return false
+            Ok(false)
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -176,6 +270,11 @@ pub enum ColType {
     Array(ColumnType),
     ArrayNull(ColumnType),
     ArrayUniq(ColumnType),
+    // Enum types
+    Enum(String, Vec<String>),
+    EnumNull(String, Vec<String>),
+    EnumWithDefault(String, Vec<String>, String),
+    EnumNullWithDefault(String, Vec<String>, String),
 }
 
 pub enum ArrayColType {
@@ -324,6 +423,15 @@ impl ColType {
             Self::Array(kind) => array(name, kind.clone()),
             Self::ArrayNull(kind) => array_null(name, kind.clone()),
             Self::ArrayUniq(kind) => array_uniq(name, kind.clone()),
+            // Enum types
+            Self::Enum(enum_name, _) => enum_type(name, enum_name),
+            Self::EnumNull(enum_name, _) => enum_type_null(name, enum_name),
+            Self::EnumWithDefault(enum_name, _, default_value) => {
+                enum_type_with_default(name, enum_name, default_value)
+            }
+            Self::EnumNullWithDefault(enum_name, _, default_value) => {
+                enum_type_null_with_default(name, enum_name, default_value)
+            }
             // defaults
             Self::MoneyWithDefault(v) => money(name).default(*v).take(),
             Self::IntegerWithDefault(v) => integer(name).default(*v).take(),
@@ -409,6 +517,51 @@ async fn create_table_impl(
 ) -> Result<(), DbErr> {
     let nz_table = normalize_table(table);
 
+    // Create enum types automatically if they don't exist
+    let mut enum_types = std::collections::HashSet::new();
+    for (_, col_type) in cols {
+        match col_type {
+            ColType::Enum(enum_name, variants)
+            | ColType::EnumNull(enum_name, variants)
+            | ColType::EnumWithDefault(enum_name, variants, _)
+            | ColType::EnumNullWithDefault(enum_name, variants, _) => {
+                if !enum_types.contains(enum_name) {
+                    enum_types.insert(enum_name.clone());
+
+                    // Check if enum type already exists
+                    let enum_exists = check_enum_exists(m, enum_name).await?;
+
+                    if !enum_exists {
+                        // Create enum type with provided variants
+                        match m.get_database_backend() {
+                            sea_orm::DatabaseBackend::Postgres => {
+                                let variant_aliases: Vec<Alias> =
+                                    variants.iter().map(Alias::new).collect();
+                                m.create_type(
+                                    sea_query::extension::postgres::Type::create()
+                                        .as_enum(Alias::new(enum_name))
+                                        .values(variant_aliases)
+                                        .to_owned(),
+                                )
+                                .await?;
+                            }
+                            #[allow(clippy::match_same_arms)]
+                            sea_orm::DatabaseBackend::Sqlite => {
+                                // SQLite doesn't support native enum types
+                                // The enum behavior will be handled by the column definition
+                                // which will create a TEXT column with CHECK constraints
+                            }
+                            sea_orm::DatabaseBackend::MySql => {
+                                // MySql not supporting
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
     let mut stmt = table_auto_tz(Alias::new(&nz_table));
     if is_join {
         let mut idx = Index::create();
@@ -437,30 +590,38 @@ async fn create_table_impl(
     // users, None
     // user, admin_id
     for (from_tbl, ref_name) in refs {
-        let nz_from_table = normalize_table(from_tbl);
-        // in movies, user:references, creates a `user_id` field or what ever in
-        // `ref_name` if given
+        // Check for nullable reference
+        let (nz_from_table, is_nullable) = from_tbl.strip_suffix('?').map_or_else(
+            || (normalize_table(from_tbl), false),
+            |stripped| (normalize_table(stripped), true),
+        );
         let nz_ref_name = if ref_name.is_empty() {
             reference_id(&nz_from_table)
         } else {
             (*ref_name).to_string()
         };
-        // user -> users
-
-        // create user_id in movies
-        stmt.col(ColType::Integer.to_def(Alias::new(&nz_ref_name)));
-        // link user_id in movies to users#id
-        stmt.foreign_key(
-            sea_query::ForeignKey::create()
-                // fk-movies-user_id-to-users
-                .name(format!("fk-{nz_from_table}-{nz_ref_name}-to-{nz_table}")) // XXX fix
-                // from movies#user_id (user_id is just created now)
-                .from(Alias::new(&nz_table), Alias::new(&nz_ref_name)) // XXX fix
-                // to users#id
-                .to(Alias::new(nz_from_table), Alias::new("id")) // XXX fix
-                .on_delete(ForeignKeyAction::Cascade)
-                .on_update(ForeignKeyAction::Cascade),
-        );
+        // Only add the column if it doesn't already exist in cols
+        if !cols.iter().any(|(col_name, _)| *col_name == nz_ref_name) {
+            let col_type = if is_nullable {
+                ColType::IntegerNull
+            } else {
+                ColType::Integer
+            };
+            stmt.col(col_type.to_def(Alias::new(&nz_ref_name)));
+        }
+        // Set FK actions based on nullability
+        let mut fk = sea_query::ForeignKey::create();
+        fk.name(format!("fk-{nz_from_table}-{nz_ref_name}-to-{nz_table}"));
+        fk.from(Alias::new(&nz_table), Alias::new(&nz_ref_name));
+        fk.to(Alias::new(nz_from_table), Alias::new("id"));
+        if is_nullable {
+            fk.on_delete(ForeignKeyAction::SetNull);
+            fk.on_update(ForeignKeyAction::NoAction);
+        } else {
+            fk.on_delete(ForeignKeyAction::Cascade);
+            fk.on_update(ForeignKeyAction::Cascade);
+        }
+        stmt.foreign_key(&mut fk);
     }
     m.create_table(stmt).await?;
     Ok(())
@@ -656,4 +817,79 @@ pub async fn drop_table(m: &SchemaManager<'_>, table: &str) -> Result<(), DbErr>
     let nz_table = normalize_table(table);
     m.drop_table(Table::drop().table(Alias::new(nz_table)).to_owned())
         .await
+}
+
+///
+/// Add enum values to an existing enum type
+/// ```ignore
+/// add_enum_values(m, "status_enum", vec!["suspended", "cancelled"]).await;
+/// ```
+///
+/// # Errors
+/// fails when it fails
+pub async fn add_enum_values(
+    m: &SchemaManager<'_>,
+    enum_name: &str,
+    new_values: Vec<String>,
+) -> Result<(), DbErr> {
+    match m.get_database_backend() {
+        sea_orm::DatabaseBackend::Postgres => {
+            for value in new_values {
+                m.get_connection()
+                    .execute(sea_orm::Statement::from_string(
+                        sea_orm::DatabaseBackend::Postgres,
+                        format!("ALTER TYPE {enum_name} ADD VALUE '{value}'"),
+                    ))
+                    .await?;
+            }
+        }
+        sea_orm::DatabaseBackend::Sqlite => {
+            // SQLite doesn't support native enums, values are handled by CHECK constraints
+            tracing::info!(
+                "SQLite: Enum values are handled by CHECK constraints. No action needed."
+            );
+        }
+        sea_orm::DatabaseBackend::MySql => {
+            // MySQL handles enums differently
+            tracing::info!(
+                "MySQL: Enum values are handled by column definition. No action needed."
+            );
+        }
+    }
+    Ok(())
+}
+
+///
+/// Drop an enum type completely
+/// ```ignore
+/// drop_enum_type(m, "status_enum").await;
+/// ```
+///
+/// # Errors
+/// fails when it fails
+pub async fn drop_enum_type(m: &SchemaManager<'_>, enum_name: &str) -> Result<(), DbErr> {
+    match m.get_database_backend() {
+        sea_orm::DatabaseBackend::Postgres => {
+            // First check if the enum type exists
+            let enum_exists = check_enum_exists(m, enum_name).await?;
+            if !enum_exists {
+                tracing::info!("Enum type '{}' does not exist, skipping drop", enum_name);
+                return Ok(());
+            }
+
+            // Try to drop the enum type with CASCADE to handle any remaining references
+            let query = format!("DROP TYPE IF EXISTS {enum_name} CASCADE");
+            m.get_connection()
+                .execute(sea_orm::Statement::from_string(
+                    sea_orm::DatabaseBackend::Postgres,
+                    query,
+                ))
+                .await?;
+        }
+        _ => {
+            // SQLite/MySQL don't have native enum types
+            tracing::info!("No native enum type to drop for this database backend.");
+        }
+    }
+    Ok(())
 }

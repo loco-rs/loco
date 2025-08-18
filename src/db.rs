@@ -477,6 +477,7 @@ impl EntityCmd {
                     Some("src/models/_entities".to_string()),
                 ),
                 ("--with-serde".to_string(), Some("both".to_string())),
+                ("--with-copy-enums".to_string(), None),
             ]),
         }
     }
@@ -1562,7 +1563,7 @@ mod tests {
 
         let expected = "generate entity --database-url sqlite::memory: --ignore-tables \
             seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock --output-dir \
-            src/models/_entities --with-serde both";
+            src/models/_entities --with-copy-enums --with-serde both";
         assert_eq!(cmd.command().join(" "), expected);
     }
 
@@ -1581,7 +1582,7 @@ model-extra-derives = "ts_rs::Ts"
         let expected = "generate entity --database-url sqlite::memory: --ignore-tables \
             seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock,table1,table2 \
             --max-connections 1 --model-extra-derives ts_rs::Ts --output-dir src/models/_entities \
-            --with-serde none";
+            --with-copy-enums --with-serde none";
         assert_eq!(cmd.command().join(" "), expected);
     }
 }

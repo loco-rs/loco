@@ -15,6 +15,8 @@ pub enum MigrationType {
 pub enum FieldType {
     Reference,
     ReferenceWithCustomField(String),
+    NullableReference,
+    NullableReferenceWithCustomField(String),
     Type(String),
     TypeWithParameters(String, Vec<String>),
 }
@@ -23,6 +25,10 @@ pub fn parse_field_type(ftype: &str) -> Result<FieldType> {
     let parts: Vec<&str> = ftype.split(':').collect();
 
     match parts.as_slice() {
+        ["references?"] => Ok(FieldType::NullableReference),
+        ["references?", f] => Ok(FieldType::NullableReferenceWithCustomField(
+            (*f).to_string(),
+        )),
         ["references"] => Ok(FieldType::Reference),
         ["references", f] => Ok(FieldType::ReferenceWithCustomField((*f).to_string())),
         [t] => Ok(FieldType::Type((*t).to_string())),
@@ -50,11 +56,24 @@ pub fn guess_migration_type(migration_name: &str) -> MigrationType {
         ["remove", _column_names @ .., "from", table_name] => MigrationType::RemoveColumns {
             table: table_name.to_plural(),
         },
-        ["create", "join", "table", table_a, "and", table_b] => {
-            let table_a = table_a.to_singular();
-            let table_b = table_b.to_singular();
-            MigrationType::CreateJoinTable { table_a, table_b }
-        }
+        ["create", "join", "table", parts @ ..] => parts
+            .iter()
+            .position(|&part| part == "and")
+            .map_or(MigrationType::Empty, |and_index| {
+                let first_parts = &parts[..and_index];
+                let second_parts = &parts[and_index + 1..];
+
+                if first_parts.is_empty() || second_parts.is_empty() {
+                    return MigrationType::Empty;
+                }
+
+                let table_a = first_parts.join("_");
+                let table_b = second_parts.join("_");
+
+                let table_a = table_a.to_singular();
+                let table_b = table_b.to_singular();
+                MigrationType::CreateJoinTable { table_a, table_b }
+            }),
         _ => MigrationType::Empty,
     }
 }
@@ -115,10 +134,85 @@ mod tests {
     }
 
     #[test]
+    fn test_infer_create_join_table_with_underscores() {
+        // Test the specific case that was failing
+        assert_eq!(
+            guess_migration_type("CreateJoinTableGlobal_recipesAndGlobal_materials"),
+            MigrationType::CreateJoinTable {
+                table_a: "global_recipe".to_string(),
+                table_b: "global_material".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn test_infer_create_join_table_complex_names() {
+        // Test more complex table names with multiple underscores
+        assert_eq!(
+            guess_migration_type("CreateJoinTableUser_profilesAndGroup_members"),
+            MigrationType::CreateJoinTable {
+                table_a: "user_profile".to_string(),
+                table_b: "group_member".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn test_infer_create_join_table_mixed_names() {
+        // Test one simple name and one complex name
+        assert_eq!(
+            guess_migration_type("CreateJoinTableUsersAndGroup_members"),
+            MigrationType::CreateJoinTable {
+                table_a: "user".to_string(),
+                table_b: "group_member".to_string()
+            }
+        );
+    }
+
+    #[test]
     fn test_empty_migration() {
         assert_eq!(
             guess_migration_type("UnknownMigrationType"),
             MigrationType::Empty
+        );
+    }
+
+    #[test]
+    fn test_infer_create_join_table_no_and_separator() {
+        // Test case where there's no "and" separator
+        assert_eq!(
+            guess_migration_type("CreateJoinTableUsersGroups"),
+            MigrationType::Empty
+        );
+    }
+
+    #[test]
+    fn test_infer_create_join_table_empty_after_and() {
+        // Test case where there are no parts after "and"
+        assert_eq!(
+            guess_migration_type("CreateJoinTableUsersAnd"),
+            MigrationType::Empty
+        );
+    }
+
+    #[test]
+    fn test_infer_create_join_table_empty_before_and() {
+        // Test case where there are no parts before "and"
+        assert_eq!(
+            guess_migration_type("CreateJoinTableAndGroups"),
+            MigrationType::Empty
+        );
+    }
+
+    #[test]
+    fn test_infer_create_join_table_multiple_ands() {
+        // Test case with multiple "and" separators (should use first one)
+        assert_eq!(
+            guess_migration_type("CreateJoinTableUsersAndGroupsAndMore"),
+            MigrationType::CreateJoinTable {
+                table_a: "user".to_string(),
+                table_b: "groups_and_more".to_string()
+            }
         );
     }
 }

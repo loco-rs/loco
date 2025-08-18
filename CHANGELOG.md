@@ -1,7 +1,77 @@
 # Changelog
 
 ## Unreleased
+- feat: decouple JWT authentication from database dependency. [https://github.com/loco-rs/loco/pull/1546](https://github.com/loco-rs/loco/pull/1546)
+- fix: add sqlx dependency to with-db feature. [https://github.com/loco-rs/loco/pull/1557](https://github.com/loco-rs/loco/pull/1557)
+- Remove the deprecated `--link` generate command and fix the table name creation. [https://github.com/loco-rs/loco/pull/1556](https://github.com/loco-rs/loco/pull/1556)
+- Support underscore for migration join table. [https://github.com/loco-rs/loco/pull/1562](https://github.com/loco-rs/loco/pull/1562)
+- Fix: resolve deployment CLI argument parsing issue. [https://github.com/loco-rs/loco/pull/1566](https://github.com/loco-rs/loco/pull/1566)
 
+## v0.16.3
+- Support nullable foreign keys with `references?` syntax. [https://github.com/loco-rs/loco/pull/1544](https://github.com/loco-rs/loco/pull/1544)
+- **HOTFIX**: **Breaking changes** Fixed a critical issue introduced in version `v0.16.2` that caused `cargo build --release` to fail after merging #1540. [https://github.com/loco-rs/loco/pull/1551](https://github.com/loco-rs/loco/pull/1551)
+- Add an API to re-send verification mail. [https://github.com/loco-rs/loco/pull/1456](https://github.com/loco-rs/loco/pull/1456)
+- Adding to ci cargo build --release. [https://github.com/loco-rs/loco/pull/1553](https://github.com/loco-rs/loco/pull/1553)
+
+### Breaking Changes
+
+In file `src/initializers/view_engine.rs`, modify the method `after_routes`:
+
+Before
+
+```rust
+async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+	#[allow(unused_mut)]
+	let mut tera_engine = engines::TeraView::build()?;
+	if std::path::Path::new(I18N_DIR).exists() {
+		let arc = ArcLoader::builder(&I18N_DIR, unic_langid::langid!("en-US"))
+			.shared_resources(Some(&[I18N_SHARED.into()]))
+			.customize(|bundle| bundle.set_use_isolating(false))
+			.build()
+			.map_err(|e| Error::string(&e.to_string()))?;
+		#[cfg(debug_assertions)]
+		tera_engine
+			.tera
+			.lock()
+			.expect("lock")
+			.register_function("t", FluentLoader::new(arc));
+
+		#[cfg(not(debug_assertions))]
+		tera_engine
+			.tera
+			.register_function("t", FluentLoader::new(arc));
+		info!("locales loaded");
+	}
+
+	Ok(router.layer(Extension(ViewEngine::from(tera_engine))))
+}
+```
+
+After (use `post_process` to add i18n initialization code)
+
+```rust
+async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+	let tera_engine = if std::path::Path::new(I18N_DIR).exists() {
+		let arc = std::sync::Arc::new(
+			ArcLoader::builder(&I18N_DIR, unic_langid::langid!("en-US"))
+				.shared_resources(Some(&[I18N_SHARED.into()]))
+				.customize(|bundle| bundle.set_use_isolating(false))
+				.build()
+				.map_err(|e| Error::string(&e.to_string()))?,
+		);
+		info!("locales loaded");
+
+		engines::TeraView::build()?.post_process(move |tera| {
+			tera.register_function("t", FluentLoader::new(arc.clone()));
+			Ok(())
+		})?
+	} else {
+		engines::TeraView::build()?
+	};
+
+	Ok(router.layer(Extension(ViewEngine::from(tera_engine))))
+}
+```
 ## v0.16.2
 - Update auth import in the Authentication document. [https://github.com/loco-rs/loco/pull/1531](https://github.com/loco-rs/loco/pull/1531)
 - Adding cache control header to the static asset middleware. [https://github.com/loco-rs/loco/pull/1535](https://github.com/loco-rs/loco/pull/1535)
