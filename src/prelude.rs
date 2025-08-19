@@ -44,10 +44,10 @@ pub use crate::{
     mailer,
     mailer::Mailer,
     task::{self, Task, TaskInfo},
-    validation::{self, Validatable},
-    validator::Validate,
+    validation::{self, Validatable, ValidatorTrait},
     Result,
 };
+pub use validator::Validate;
 #[cfg(feature = "with-db")]
 pub mod model {
     pub use crate::model::query;
