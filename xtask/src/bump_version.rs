@@ -52,10 +52,7 @@ impl BumpVersion {
         // when finished successfully, you're allowed to bump all starters to the new
         // version
         if self.bump_starters {
-            self.modify_starters_loco_version(
-                "loco-rs = { path = \"../../\"",
-                Some("loco-rs = { path = \"../../../\""),
-            )?;
+            self.modify_starters_loco_version("loco-rs = { path = \"../../\"")?;
 
             println!("Testing starters CI");
 
@@ -73,10 +70,10 @@ impl BumpVersion {
                 }
             }
 
-            self.modify_starters_loco_version(
-                &format!("loco-rs = {{ version = \"{}\"", self.version),
-                None,
-            )?;
+            self.modify_starters_loco_version(&format!(
+                "loco-rs = {{ version = \"{}\"",
+                self.version
+            ))?;
             println!("{}", "Bump loco starters finished successfully".green());
         }
 
@@ -160,11 +157,7 @@ impl BumpVersion {
     /// # Errors
     /// Returns an error when it could not parse a loco Cargo.toml file or has
     /// an error updating the file.
-    pub fn modify_starters_loco_version(
-        &self,
-        replace_with: &str,
-        replace_migrator: Option<&str>,
-    ) -> Result<()> {
+    pub fn modify_starters_loco_version(&self, replace_with: &str) -> Result<()> {
         let starter_projects =
             utils::get_cargo_folders(&self.base_dir.join(utils::FOLDER_STARTERS))?;
 

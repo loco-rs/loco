@@ -65,3 +65,6 @@ Cargo.lock
 starters/saas/frontend/package-lock.json
 starters/saas/frontend/yarn.lock
 starters/saas/frontend/pnpm-lock.yaml
+
+
+example

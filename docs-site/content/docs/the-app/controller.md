@@ -909,18 +909,23 @@ impl Hooks for App {
 
 # Request Validation
 
-Request validation in the Loco framework ensures that incoming HTTP request data, such as JSON payloads, query parameters, or form data, conforms to predefined rules before processing. Utilizing the `validator` crate ([documentation](https://github.com/Keats/validator)), Loco provides specialized extractors for robust validation.
+Request validation in Loco ensures that incoming data (JSON payloads, query parameters, or form data) conforms to rules before processing. You can validate in two ways:
+
+- With the derive-based `validator` crate ([documentation](https://github.com/Keats/validator))
+- By implementing Loco’s `ValidatorTrait` for custom validation logic (no external crate required)
+
+Loco’s validation extractors work with either approach, and the `WithMessage` variants return structured JSON errors suitable for client-side feedback.
 
 ## Validation Extractors
 
-| Extractor                    |  JSON  |  Content Type                     | Request Body                              |
-|-------------------------------|------------------------|--------------------------------------------|-------------------------------------------|
-| `JsonValidate`                   | ❌                     | `application/json`                         | JSON (e.g., `{"name": "John", "email": "john@example.com"}`) |
-| `JsonValidateWithMessage`        | ✅                     | `application/json`                         | JSON (e.g., `{"name": "John", "email": "john@example.com"}`) |
-| `QueryValidate`                   | ❌                     | Any                                        | Query string (e.g., `?name=John&email=john@example.com`) |
-| `QueryValidateWithMessage`         | ✅                     | Any                                        | Query string (e.g., `?name=John&email=john@example.com`) |
-| `FormValidate`                   | ❌                     | `application/x-www-form-urlencoded`         | Form data  |
-| `FormValidateWithMessage`        | ✅                     | `application/x-www-form-urlencoded`         | Form data  |
+| Extractor                  | JSON | Content Type                        | Request Body                                                 |
+| -------------------------- | ---- | ----------------------------------- | ------------------------------------------------------------ |
+| `JsonValidate`             | ❌   | `application/json`                  | JSON (e.g., `{"name": "John", "email": "john@example.com"}`) |
+| `JsonValidateWithMessage`  | ✅   | `application/json`                  | JSON (e.g., `{"name": "John", "email": "john@example.com"}`) |
+| `QueryValidate`            | ❌   | Any                                 | Query string (e.g., `?name=John&email=john@example.com`)     |
+| `QueryValidateWithMessage` | ✅   | Any                                 | Query string (e.g., `?name=John&email=john@example.com`)     |
+| `FormValidate`             | ❌   | `application/x-www-form-urlencoded` | Form data                                                    |
+| `FormValidateWithMessage`  | ✅   | `application/x-www-form-urlencoded` | Form data                                                    |
 
 ### Notes:
 
@@ -932,6 +937,11 @@ Request validation in the Loco framework ensures that incoming HTTP request data
 ## Implementing Request Validation
 
 ### 1. Define Validation Rules
+
+You can validate requests in two ways:
+
+- Using the `validator` crate (derive-based)
+- Implementing a custom validator via the `ValidatorTrait` (no external crate required)
 
 Define a Rust struct with validation rules using the `serde` and `validator` crates.
 
@@ -954,6 +964,65 @@ pub struct DataParams {
   - `name`: Requires at least 5 characters.
   - `email`: Must be a valid email address.
 - The `Validate` macro enables automatic field validation.
+
+Alternatively, implement the `ValidatorTrait` for full control without using the `validator` crate:
+
+```rust
+use loco_rs::prelude::*;
+use serde::Deserialize;
+use std::collections::{BTreeMap, HashMap};
+
+#[derive(Debug, Deserialize)]
+pub struct CustomDataParams {
+    pub name: String,
+    pub email: String,
+}
+
+impl ValidatorTrait for CustomDataParams {
+    fn validate(&self) -> Result<(), ModelValidationErrors> {
+        let mut errors: BTreeMap<String, Vec<ValidationError>> = BTreeMap::new();
+
+        if self.name.len() < 5 {
+            let mut params: HashMap<String, serde_json::Value> = HashMap::new();
+            params.insert("min".to_string(), serde_json::json!(5));
+            params.insert("value".to_string(), serde_json::json!(&self.name));
+            errors.insert(
+                "name".to_string(),
+                vec![ValidationError {
+                    code: "length".to_string(),
+                    message: Some("custom message".to_string()),
+                    params,
+                }],
+            );
+        }
+
+        if !self.email.contains('@') {
+            let mut params: HashMap<String, serde_json::Value> = HashMap::new();
+            params.insert("value".to_string(), serde_json::json!(&self.email));
+            errors.insert(
+                "email".to_string(),
+                vec![ValidationError {
+                    code: "email".to_string(),
+                    message: None,
+                    params,
+                }],
+            );
+        }
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(ModelValidationErrors { errors })
+        }
+    }
+}
+```
+
+Notes:
+
+- WithMessage extractors return structured errors; when implementing `ValidatorTrait`, use `ModelValidationErrors { errors: BTreeMap<String, Vec<ValidationError>> }` to match the expected shape.
+- `ValidationError` fields: `code: String`, `message: Option<String>`, `params: HashMap<String, serde_json::Value>`. Empty `params` are omitted from JSON automatically.
+- If you prefer derive-based validation, `validator::Validate` is automatically adapted to `ValidatorTrait` behind the scenes.
 
 ### 2. Create Handlers with Validation
 
