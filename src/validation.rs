@@ -38,12 +38,11 @@
 //! }
 //! ```
 
-use std::ops::{Deref, DerefMut};
-
 #[cfg(feature = "with-db")]
 use sea_orm::DbErr;
 use serde::{Deserialize, Serialize};
-use validator::{Validate, ValidationErrors};
+use std::collections::{BTreeMap, HashMap};
+use validator::ValidationErrors;
 
 // this is a line-serialization type. it is used as an intermediate format
 // to hold validation error data when we transform from
@@ -64,21 +63,39 @@ pub struct ModelValidationMessage {
 /// in the trait, we MUST use `DbErr`, so we need to "hide" a _representation_
 /// of the error in `DbErr::Custom`, so that it can be unpacked later down the
 /// stream, in the central error response handler.
-#[derive(Debug, thiserror::Error)]
-#[error("Model validation failed: {0}")]
-pub struct ModelValidationErrors(ValidationErrors);
-
-impl Deref for ModelValidationErrors {
-    type Target = ValidationErrors;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+pub struct ValidationError {
+    pub code: String,
+    pub message: Option<String>,
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    pub params: HashMap<String, serde_json::Value>,
 }
 
-impl DerefMut for ModelValidationErrors {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+#[derive(Debug, thiserror::Error, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[error("Model validation failed")]
+pub struct ModelValidationErrors {
+    pub errors: BTreeMap<String, Vec<ValidationError>>,
+}
+
+impl From<ValidationErrors> for ModelValidationErrors {
+    fn from(value: ValidationErrors) -> Self {
+        let mut map: BTreeMap<String, Vec<ValidationError>> = BTreeMap::new();
+        for (field, errs) in &value.field_errors() {
+            let mut list: Vec<ValidationError> = Vec::with_capacity(errs.len());
+            for err in *errs {
+                let mut params: HashMap<String, serde_json::Value> = HashMap::new();
+                for (k, v) in &err.params {
+                    params.insert(k.to_string(), v.clone());
+                }
+                list.push(ValidationError {
+                    code: err.code.to_string(),
+                    message: err.message.as_ref().map(std::string::ToString::to_string),
+                    params,
+                });
+            }
+            map.insert((*field).to_string(), list);
+        }
+        Self { errors: map }
     }
 }
 
@@ -92,29 +109,44 @@ impl From<ModelValidationErrors> for DbErr {
 #[cfg(feature = "with-db")]
 #[must_use]
 pub fn into_db_error(errors: &ModelValidationErrors) -> sea_orm::DbErr {
-    use std::collections::BTreeMap;
-
-    let errors = &errors.0;
-    let error_data: BTreeMap<String, Vec<ModelValidationMessage>> = errors
-        .field_errors()
+    let compact: BTreeMap<String, Vec<ModelValidationMessage>> = errors
+        .errors
         .iter()
-        .map(|(field, field_errors)| {
-            let errors = field_errors
+        .map(|(field, list)| {
+            let flat: Vec<ModelValidationMessage> = list
                 .iter()
-                .map(|err| ModelValidationMessage {
-                    code: err.code.to_string(),
-                    message: err.message.as_ref().map(std::string::ToString::to_string),
+                .map(|e| ModelValidationMessage {
+                    code: e.code.clone(),
+                    message: e.message.clone(),
                 })
                 .collect();
-            ((*field).to_string(), errors)
+            (field.clone(), flat)
         })
         .collect();
-    let json_errors = serde_json::to_value(error_data);
-    match json_errors {
-        Ok(errors_json) => sea_orm::DbErr::Custom(errors_json.to_string()),
+
+    match serde_json::to_string(&compact) {
+        Ok(s) => sea_orm::DbErr::Custom(s),
         Err(err) => sea_orm::DbErr::Custom(format!(
             "[before_save] could not parse validation errors. err: {err}"
         )),
+    }
+}
+
+/// Implement `Validatable` for `ActiveModel` when you want it to have a
+/// `validate()` function.
+pub trait ValidatorTrait {
+    /// Perform validation and return a normalized error type
+    ///
+    /// # Errors
+    ///
+    /// Returns `ModelValidationErrors` when validation fails.
+    fn validate(&self) -> Result<(), ModelValidationErrors>;
+}
+
+/// Adapter: allow using the `validator` crate seamlessly
+impl<T: validator::Validate> ValidatorTrait for T {
+    fn validate(&self) -> Result<(), ModelValidationErrors> {
+        validator::Validate::validate(self).map_err(ModelValidationErrors::from)
     }
 }
 
@@ -127,9 +159,10 @@ pub trait Validatable {
     ///
     /// This function will return an error if there are validation errors
     fn validate(&self) -> Result<(), ModelValidationErrors> {
-        self.validator().validate().map_err(ModelValidationErrors)
+        let v = self.validator();
+        validator::Validate::validate(&*v).map_err(ModelValidationErrors::from)
     }
-    fn validator(&self) -> Box<dyn Validate>;
+    fn validator(&self) -> Box<dyn validator::Validate>;
 }
 
 #[cfg(test)]
@@ -142,7 +175,7 @@ mod tests {
 
     use super::*;
 
-    #[derive(Debug, Validate, Deserialize)]
+    #[derive(Debug, Deserialize, Validate)]
     pub struct TestValidator {
         #[validate(length(min = 4, message = "Invalid min characters long."))]
         pub name: String,
@@ -159,8 +192,47 @@ mod tests {
 
         assert_debug_snapshot!(
             format!("struct-[{name}]"),
-            data.validate()
-                .map_err(|e| into_db_error(&ModelValidationErrors(e)))
+            validator::Validate::validate(&data)
+                .map_err(|e| into_db_error(&ModelValidationErrors::from(e)))
         );
+    }
+
+    // Custom validator example without the `validator` crate
+    #[derive(Debug, Deserialize)]
+    pub struct CustomValidator {
+        pub name: String,
+    }
+
+    impl ValidatorTrait for CustomValidator {
+        fn validate(&self) -> Result<(), ModelValidationErrors> {
+            if self.name.len() < 4 {
+                let mut errors: BTreeMap<String, Vec<ValidationError>> = BTreeMap::new();
+                errors.insert(
+                    "name".to_string(),
+                    vec![ValidationError {
+                        code: "length".to_string(),
+                        message: Some("Invalid min characters long.".to_string()),
+                        params: HashMap::new(),
+                    }],
+                );
+                return Err(ModelValidationErrors { errors });
+            }
+            Ok(())
+        }
+    }
+
+    #[rstest]
+    #[case("ab")]
+    #[case("abcd")]
+    fn custom_validator_works(#[case] name: &str) {
+        let v = CustomValidator {
+            name: name.to_string(),
+        };
+        let res = v.validate();
+        if name.len() < 4 {
+            assert!(res.is_err());
+        } else {
+            assert!(res.is_ok());
+        }
     }
 }

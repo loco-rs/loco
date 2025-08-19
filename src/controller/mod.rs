@@ -233,22 +233,12 @@ impl IntoResponse for Error {
                 (err.status(), ErrorDetail::with_reason("Bad Request"))
             }
 
-            Self::ValidationError(ref errors) => serde_json::to_value(errors).map_or_else(
-                |_| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        ErrorDetail::new("internal_server_error", "Internal Server Error"),
-                    )
-                },
-                |errors| {
-                    (
-                        StatusCode::BAD_REQUEST,
-                        ErrorDetail {
-                            error: None,
-                            description: None,
-                            errors: Some(errors),
-                        },
-                    )
+            Self::Validation(ref errors) => (
+                StatusCode::BAD_REQUEST,
+                ErrorDetail {
+                    error: None,
+                    description: None,
+                    errors: Some(serde_json::to_value(&errors.errors).unwrap_or_default()),
                 },
             ),
             _ => (
