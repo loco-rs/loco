@@ -244,6 +244,9 @@ pub enum Component {
         /// Name of the thing to generate
         name: String,
 
+        /// Whether to include timestamps (`created_at``updated_at`at columns) in the model
+        with_tz: bool,
+
         /// Model fields, eg. title:string hits:int
         fields: Vec<(String, String)>,
     },
@@ -252,6 +255,9 @@ pub enum Component {
         /// Name of the migration file
         name: String,
 
+        /// Whether to include timestamps (`created_at`, `updated_at` columns) in the migration
+        with_tz: bool,
+
         /// Params fields, eg. title:string hits:int
         fields: Vec<(String, String)>,
     },
@@ -259,6 +265,9 @@ pub enum Component {
     Scaffold {
         /// Name of the thing to generate
         name: String,
+
+        /// Whether to include timestamps (`created_at``updated_at`at columns) in the scaffold
+        with_tz: bool,
 
         /// Model and params fields, eg. title:string hits:int
         fields: Vec<(String, String)>,
@@ -322,15 +331,24 @@ pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Resul
      */
     let get_result = match component {
         #[cfg(feature = "with-db")]
-        Component::Model { name, fields } => model::generate(rrgen, &name, &fields, appinfo)?,
+        Component::Model {
+            name,
+            with_tz,
+            fields,
+        } => model::generate(rrgen, &name, with_tz, &fields, appinfo)?,
         #[cfg(feature = "with-db")]
-        Component::Scaffold { name, fields, kind } => {
-            scaffold::generate(rrgen, &name, &fields, &kind, appinfo)?
-        }
+        Component::Scaffold {
+            name,
+            with_tz,
+            fields,
+            kind,
+        } => scaffold::generate(rrgen, &name, with_tz, &fields, &kind, appinfo)?,
         #[cfg(feature = "with-db")]
-        Component::Migration { name, fields } => {
-            migration::generate(rrgen, &name, &fields, appinfo)?
-        }
+        Component::Migration {
+            name,
+            with_tz,
+            fields,
+        } => migration::generate(rrgen, &name, with_tz, &fields, appinfo)?,
         Component::Controller {
             name,
             actions,

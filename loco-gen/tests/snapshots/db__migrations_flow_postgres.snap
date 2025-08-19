@@ -5,14 +5,9 @@ snapshot_kind: text
 ---
 [
   {
-    "column": "created_at",
+    "column": "minutes",
     "table": "actor_movies",
-    "type": "timestamp with time zone"
-  },
-  {
-    "column": "updated_at",
-    "table": "actor_movies",
-    "type": "timestamp with time zone"
+    "type": "integer"
   },
   {
     "column": "actor_id",
@@ -755,6 +750,331 @@ snapshot_kind: text
     "type": "ARRAY"
   },
   {
+    "column": "id",
+    "table": "playlists_without_tzs",
+    "type": "integer"
+  },
+  {
+    "column": "uuid_uniq",
+    "table": "playlists_without_tzs",
+    "type": "uuid"
+  },
+  {
+    "column": "uuid",
+    "table": "playlists_without_tzs",
+    "type": "uuid"
+  },
+  {
+    "column": "uuid_nonull",
+    "table": "playlists_without_tzs",
+    "type": "uuid"
+  },
+  {
+    "column": "string",
+    "table": "playlists_without_tzs",
+    "type": "character varying"
+  },
+  {
+    "column": "string_nonull",
+    "table": "playlists_without_tzs",
+    "type": "character varying"
+  },
+  {
+    "column": "string_uniq",
+    "table": "playlists_without_tzs",
+    "type": "character varying"
+  },
+  {
+    "column": "text",
+    "table": "playlists_without_tzs",
+    "type": "text"
+  },
+  {
+    "column": "text_nonull",
+    "table": "playlists_without_tzs",
+    "type": "text"
+  },
+  {
+    "column": "text_uniq",
+    "table": "playlists_without_tzs",
+    "type": "text"
+  },
+  {
+    "column": "small_unsigned",
+    "table": "playlists_without_tzs",
+    "type": "smallint"
+  },
+  {
+    "column": "small_unsigned_nonull",
+    "table": "playlists_without_tzs",
+    "type": "smallint"
+  },
+  {
+    "column": "small_unsigned_uniq",
+    "table": "playlists_without_tzs",
+    "type": "smallint"
+  },
+  {
+    "column": "big_unsigned",
+    "table": "playlists_without_tzs",
+    "type": "bigint"
+  },
+  {
+    "column": "big_unsigned_nonull",
+    "table": "playlists_without_tzs",
+    "type": "bigint"
+  },
+  {
+    "column": "big_unsigned_uniq",
+    "table": "playlists_without_tzs",
+    "type": "bigint"
+  },
+  {
+    "column": "small_int",
+    "table": "playlists_without_tzs",
+    "type": "smallint"
+  },
+  {
+    "column": "small_int_nonull",
+    "table": "playlists_without_tzs",
+    "type": "smallint"
+  },
+  {
+    "column": "small_int_uniq",
+    "table": "playlists_without_tzs",
+    "type": "smallint"
+  },
+  {
+    "column": "int",
+    "table": "playlists_without_tzs",
+    "type": "integer"
+  },
+  {
+    "column": "int_nonull",
+    "table": "playlists_without_tzs",
+    "type": "integer"
+  },
+  {
+    "column": "int_uniq",
+    "table": "playlists_without_tzs",
+    "type": "integer"
+  },
+  {
+    "column": "big_int",
+    "table": "playlists_without_tzs",
+    "type": "bigint"
+  },
+  {
+    "column": "big_int_nonull",
+    "table": "playlists_without_tzs",
+    "type": "bigint"
+  },
+  {
+    "column": "big_int_uniq",
+    "table": "playlists_without_tzs",
+    "type": "bigint"
+  },
+  {
+    "column": "float",
+    "table": "playlists_without_tzs",
+    "type": "real"
+  },
+  {
+    "column": "float_nonull",
+    "table": "playlists_without_tzs",
+    "type": "real"
+  },
+  {
+    "column": "float_uniq",
+    "table": "playlists_without_tzs",
+    "type": "real"
+  },
+  {
+    "column": "double",
+    "table": "playlists_without_tzs",
+    "type": "double precision"
+  },
+  {
+    "column": "double_nonull",
+    "table": "playlists_without_tzs",
+    "type": "double precision"
+  },
+  {
+    "column": "double_uniq",
+    "table": "playlists_without_tzs",
+    "type": "double precision"
+  },
+  {
+    "column": "decimal",
+    "table": "playlists_without_tzs",
+    "type": "numeric"
+  },
+  {
+    "column": "decimal_nonull",
+    "table": "playlists_without_tzs",
+    "type": "numeric"
+  },
+  {
+    "column": "decimal_uniq",
+    "table": "playlists_without_tzs",
+    "type": "numeric"
+  },
+  {
+    "column": "bool",
+    "table": "playlists_without_tzs",
+    "type": "boolean"
+  },
+  {
+    "column": "bool_nonull",
+    "table": "playlists_without_tzs",
+    "type": "boolean"
+  },
+  {
+    "column": "tstz",
+    "table": "playlists_without_tzs",
+    "type": "timestamp with time zone"
+  },
+  {
+    "column": "tstz_nonull",
+    "table": "playlists_without_tzs",
+    "type": "timestamp with time zone"
+  },
+  {
+    "column": "date",
+    "table": "playlists_without_tzs",
+    "type": "date"
+  },
+  {
+    "column": "date_nonull",
+    "table": "playlists_without_tzs",
+    "type": "date"
+  },
+  {
+    "column": "date_uniq",
+    "table": "playlists_without_tzs",
+    "type": "date"
+  },
+  {
+    "column": "date_time",
+    "table": "playlists_without_tzs",
+    "type": "timestamp without time zone"
+  },
+  {
+    "column": "date_time_nonull",
+    "table": "playlists_without_tzs",
+    "type": "timestamp without time zone"
+  },
+  {
+    "column": "date_time_uniq",
+    "table": "playlists_without_tzs",
+    "type": "timestamp without time zone"
+  },
+  {
+    "column": "json",
+    "table": "playlists_without_tzs",
+    "type": "json"
+  },
+  {
+    "column": "json_nonull",
+    "table": "playlists_without_tzs",
+    "type": "json"
+  },
+  {
+    "column": "jsonb",
+    "table": "playlists_without_tzs",
+    "type": "jsonb"
+  },
+  {
+    "column": "jsonb_nonull",
+    "table": "playlists_without_tzs",
+    "type": "jsonb"
+  },
+  {
+    "column": "jsonb_uniq",
+    "table": "playlists_without_tzs",
+    "type": "jsonb"
+  },
+  {
+    "column": "blob",
+    "table": "playlists_without_tzs",
+    "type": "bytea"
+  },
+  {
+    "column": "blob_nonull",
+    "table": "playlists_without_tzs",
+    "type": "bytea"
+  },
+  {
+    "column": "blob_uniq",
+    "table": "playlists_without_tzs",
+    "type": "bytea"
+  },
+  {
+    "column": "money",
+    "table": "playlists_without_tzs",
+    "type": "money"
+  },
+  {
+    "column": "money_nonull",
+    "table": "playlists_without_tzs",
+    "type": "money"
+  },
+  {
+    "column": "money_uniq",
+    "table": "playlists_without_tzs",
+    "type": "money"
+  },
+  {
+    "column": "unsigned_nonull",
+    "table": "playlists_without_tzs",
+    "type": "integer"
+  },
+  {
+    "column": "unsigned",
+    "table": "playlists_without_tzs",
+    "type": "integer"
+  },
+  {
+    "column": "unsigned_uniq",
+    "table": "playlists_without_tzs",
+    "type": "integer"
+  },
+  {
+    "column": "age",
+    "table": "playlists_without_tzs",
+    "type": "numeric"
+  },
+  {
+    "column": "age_nonull",
+    "table": "playlists_without_tzs",
+    "type": "numeric"
+  },
+  {
+    "column": "array_string",
+    "table": "playlists_without_tzs",
+    "type": "ARRAY"
+  },
+  {
+    "column": "array_float",
+    "table": "playlists_without_tzs",
+    "type": "ARRAY"
+  },
+  {
+    "column": "array_int",
+    "table": "playlists_without_tzs",
+    "type": "ARRAY"
+  },
+  {
+    "column": "array_double",
+    "table": "playlists_without_tzs",
+    "type": "ARRAY"
+  },
+  {
+    "column": "array_bool",
+    "table": "playlists_without_tzs",
+    "type": "ARRAY"
+  },
+  {
     "column": "version",
     "table": "seaql_migrations",
     "type": "character varying"
@@ -763,6 +1083,31 @@ snapshot_kind: text
     "column": "applied_at",
     "table": "seaql_migrations",
     "type": "bigint"
+  },
+  {
+    "column": "minutes",
+    "table": "user_without_tz_movies",
+    "type": "integer"
+  },
+  {
+    "column": "user_without_tz_id",
+    "table": "user_without_tz_movies",
+    "type": "integer"
+  },
+  {
+    "column": "movie_id",
+    "table": "user_without_tz_movies",
+    "type": "integer"
+  },
+  {
+    "column": "id",
+    "table": "user_without_tzs",
+    "type": "integer"
+  },
+  {
+    "column": "name",
+    "table": "user_without_tzs",
+    "type": "character varying"
   },
   {
     "column": "created_at",

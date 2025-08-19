@@ -12,18 +12,20 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
-        create_join_table_without_timestamps(m, "user_groups",
+        create_table_without_timestamps(m, "movies",
             &[
-            ("count", ColType::IntegerNull),
+            
+            ("id", ColType::PkAuto),
+            
+            ("title", ColType::StringNull),
             ],
             &[
             ("user", ""),
-            ("group", ""),
             ]
         ).await
     }
 
     async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
-        drop_table(m, "user_groups").await
+        drop_table(m, "movies").await
     }
 }
