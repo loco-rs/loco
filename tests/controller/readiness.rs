@@ -7,7 +7,7 @@ mod tests {
     use loco_rs::cache::CacheResult;
     use loco_rs::prelude::{get_available_port, get_base_url_port, Response};
     use loco_rs::tests_cfg::db::fail_connection;
-    use loco_rs::{cache, controller::health, tests_cfg};
+    use loco_rs::{cache, controller::readiness, tests_cfg};
     use serde_json::Value;
     use std::sync::Arc;
     use std::time::Duration;
@@ -59,7 +59,7 @@ mod tests {
         feature = "cache_inmem"
     )))]
     #[tokio::test]
-    async fn health_no_features() {
+    async fn readiness_no_features() {
         // Compile-time assertions to ensure no features are enabled
         #[cfg(any(
             feature = "with-db",
@@ -76,14 +76,14 @@ mod tests {
 
         #[allow(clippy::items_after_statements)]
         async fn action(State(ctx): State<AppContext>) -> loco_rs::Result<Response> {
-            health::health(State(ctx)).await
+            readiness::readiness(State(ctx)).await
         }
 
         let port = get_available_port().await;
         let handle =
-            infra_cfg::server::start_with_route(ctx, "_health", get(action), Some(port)).await;
+            infra_cfg::server::start_with_route(ctx, "_readiness", get(action), Some(port)).await;
 
-        let res = reqwest::get(&format!("{}_health", get_base_url_port(port)))
+        let res = reqwest::get(&format!("{}_readiness", get_base_url_port(port)))
             .await
             .expect("Valid response");
 
@@ -97,20 +97,20 @@ mod tests {
 
     #[cfg(feature = "with-db")]
     #[tokio::test]
-    async fn health_with_db_success() {
+    async fn readiness_with_db_success() {
         let mut ctx = tests_cfg::app::get_app_context().await;
         ctx.queue_provider = None;
 
         #[allow(clippy::items_after_statements)]
         async fn action(State(ctx): State<AppContext>) -> loco_rs::Result<Response> {
-            health::health(State(ctx)).await
+            readiness::readiness(State(ctx)).await
         }
 
         let port = get_available_port().await;
         let handle =
-            infra_cfg::server::start_with_route(ctx, "_health", get(action), Some(port)).await;
+            infra_cfg::server::start_with_route(ctx, "_readiness", get(action), Some(port)).await;
 
-        let res = reqwest::get(&format!("{}_health", get_base_url_port(port)))
+        let res = reqwest::get(&format!("{}_readiness", get_base_url_port(port)))
             .await
             .expect("Valid response");
 
@@ -124,7 +124,7 @@ mod tests {
 
     #[cfg(feature = "with-db")]
     #[tokio::test]
-    async fn health_with_db_failure() {
+    async fn readiness_with_db_failure() {
         let mut ctx = tests_cfg::app::get_app_context().await;
         ctx.queue_provider = None;
 
@@ -132,14 +132,14 @@ mod tests {
 
         #[allow(clippy::items_after_statements)]
         async fn action(State(ctx): State<AppContext>) -> loco_rs::Result<Response> {
-            health::health(State(ctx)).await
+            readiness::readiness(State(ctx)).await
         }
 
         let port = get_available_port().await;
         let handle =
-            infra_cfg::server::start_with_route(ctx, "_health", get(action), Some(port)).await;
+            infra_cfg::server::start_with_route(ctx, "_readiness", get(action), Some(port)).await;
 
-        let res = reqwest::get(&format!("{}_health", get_base_url_port(port)))
+        let res = reqwest::get(&format!("{}_readiness", get_base_url_port(port)))
             .await
             .expect("Valid response");
 
@@ -153,7 +153,7 @@ mod tests {
 
     #[cfg(feature = "cache_inmem")]
     #[tokio::test]
-    async fn health_with_cache_inmem() {
+    async fn readiness_with_cache_inmem() {
         let mut ctx = tests_cfg::app::get_app_context().await;
         ctx.queue_provider = None;
 
@@ -164,14 +164,14 @@ mod tests {
 
         #[allow(clippy::items_after_statements)]
         async fn action(State(ctx): State<AppContext>) -> loco_rs::Result<Response> {
-            health::health(State(ctx)).await
+            readiness::readiness(State(ctx)).await
         }
 
         let port = get_available_port().await;
         let handle =
-            infra_cfg::server::start_with_route(ctx, "_health", get(action), Some(port)).await;
+            infra_cfg::server::start_with_route(ctx, "_readiness", get(action), Some(port)).await;
 
-        let res = reqwest::get(&format!("{}_health", get_base_url_port(port)))
+        let res = reqwest::get(&format!("{}_readiness", get_base_url_port(port)))
             .await
             .expect("Valid response");
 
@@ -185,20 +185,20 @@ mod tests {
 
     #[cfg(feature = "cache_redis")]
     #[tokio::test]
-    async fn health_with_cache_redis_success() {
+    async fn readiness_with_cache_redis_success() {
         let mut ctx = tests_cfg::app::get_app_context().await;
         ctx.queue_provider = None;
 
         #[allow(clippy::items_after_statements)]
         async fn action(State(ctx): State<AppContext>) -> loco_rs::Result<Response> {
-            health::health(State(ctx)).await
+            readiness::readiness(State(ctx)).await
         }
 
         let port = get_available_port().await;
         let handle =
-            infra_cfg::server::start_with_route(ctx, "_health", get(action), Some(port)).await;
+            infra_cfg::server::start_with_route(ctx, "_readiness", get(action), Some(port)).await;
 
-        let res = reqwest::get(&format!("{}_health", get_base_url_port(port)))
+        let res = reqwest::get(&format!("{}_readiness", get_base_url_port(port)))
             .await
             .expect("Valid response");
 
@@ -212,7 +212,7 @@ mod tests {
 
     #[cfg(feature = "cache_redis")]
     #[tokio::test]
-    async fn health_with_cache_redis_failure() {
+    async fn readiness_with_cache_redis_failure() {
         let mut ctx = tests_cfg::app::get_app_context().await;
         ctx.queue_provider = None;
 
@@ -222,14 +222,14 @@ mod tests {
 
         #[allow(clippy::items_after_statements)]
         async fn action(State(ctx): State<AppContext>) -> loco_rs::Result<Response> {
-            health::health(State(ctx)).await
+            readiness::readiness(State(ctx)).await
         }
 
         let port = get_available_port().await;
         let handle =
-            infra_cfg::server::start_with_route(ctx, "_health", get(action), Some(port)).await;
+            infra_cfg::server::start_with_route(ctx, "_readiness", get(action), Some(port)).await;
 
-        let res = reqwest::get(&format!("{}_health", get_base_url_port(port)))
+        let res = reqwest::get(&format!("{}_readiness", get_base_url_port(port)))
             .await
             .expect("Valid response");
 
@@ -243,20 +243,20 @@ mod tests {
 
     #[cfg(all(feature = "with-db", feature = "cache_redis"))]
     #[tokio::test]
-    async fn health_with_db_and_redis_success() {
+    async fn readiness_with_db_and_redis_success() {
         let mut ctx = tests_cfg::app::get_app_context().await;
         ctx.queue_provider = None;
 
         #[allow(clippy::items_after_statements)]
         async fn action(State(ctx): State<AppContext>) -> loco_rs::Result<Response> {
-            health::health(State(ctx)).await
+            readiness::readiness(State(ctx)).await
         }
 
         let port = get_available_port().await;
         let handle =
-            infra_cfg::server::start_with_route(ctx, "_health", get(action), Some(port)).await;
+            infra_cfg::server::start_with_route(ctx, "_readiness", get(action), Some(port)).await;
 
-        let res = reqwest::get(&format!("{}_health", get_base_url_port(port)))
+        let res = reqwest::get(&format!("{}_readiness", get_base_url_port(port)))
             .await
             .expect("Valid response");
 
@@ -270,7 +270,7 @@ mod tests {
 
     #[cfg(all(feature = "with-db", feature = "cache_redis"))]
     #[tokio::test]
-    async fn health_with_db_and_redis_partial_failure() {
+    async fn readiness_with_db_and_redis_partial_failure() {
         let mut ctx = tests_cfg::app::get_app_context().await;
         ctx.queue_provider = None;
 
@@ -280,14 +280,14 @@ mod tests {
 
         #[allow(clippy::items_after_statements)]
         async fn action(State(ctx): State<AppContext>) -> loco_rs::Result<Response> {
-            health::health(State(ctx)).await
+            readiness::readiness(State(ctx)).await
         }
 
         let port = get_available_port().await;
         let handle =
-            infra_cfg::server::start_with_route(ctx, "_health", get(action), Some(port)).await;
+            infra_cfg::server::start_with_route(ctx, "_readiness", get(action), Some(port)).await;
 
-        let res = reqwest::get(&format!("{}_health", get_base_url_port(port)))
+        let res = reqwest::get(&format!("{}_readiness", get_base_url_port(port)))
             .await
             .expect("Valid response");
 
