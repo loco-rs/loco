@@ -57,7 +57,7 @@ The SaaS starter is an all-included set up for projects requiring both a UI and 
 
 **Rest API**
 
-- `ping` and `health` endpoints to check service health. See all endpoint with the following command `cargo loco routes`
+- `_ping`, `_health` and `_readiness` endpoints to check service health. See all endpoint with the following command `cargo loco routes`
 - Users table and authentication middleware.
 - User model with authentication logic and user registration.
 - Forgot password API flow.
