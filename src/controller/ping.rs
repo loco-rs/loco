@@ -2,17 +2,10 @@
 //! reporting. These routes are commonly used to monitor the health of the
 //! application and its dependencies.
 
-use axum::{response::Response, routing::get};
-use serde::Serialize;
-
 use super::{format, routes::Routes};
+use crate::controller::response::Health;
 use crate::Result;
-
-/// Represents the health status of the application.
-#[derive(Serialize)]
-struct Health {
-    pub ok: bool,
-}
+use axum::{response::Response, routing::get};
 
 /// Check application ping endpoint
 async fn ping() -> Result<Response> {

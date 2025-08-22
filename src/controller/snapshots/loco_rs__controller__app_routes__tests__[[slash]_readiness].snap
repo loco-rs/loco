@@ -1,0 +1,5 @@
+---
+source: src/controller/app_routes.rs
+expression: "format!(\"{:?} {}\", route.actions, route.uri)"
+---
+"[GET] /_readiness"
