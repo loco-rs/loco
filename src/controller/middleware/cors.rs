@@ -54,7 +54,7 @@ fn default_allow_methods() -> Vec<String> {
 }
 
 fn default_expose_headers() -> Vec<String> {
-    vec!["*".to_string()]
+    vec![]
 }
 
 fn default_vary_headers() -> Vec<String> {
@@ -130,9 +130,7 @@ impl Cors {
             }
         }
 
-        if self.expose_headers == default_expose_headers() {
-            cors = cors.expose_headers(Any);
-        } else {
+        if self.expose_headers != default_expose_headers() {
             let mut list = vec![];
             for method in &self.expose_headers {
                 list.push(method.parse()?);
