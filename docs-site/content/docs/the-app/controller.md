@@ -335,7 +335,7 @@ This is the stack in `development` mode:
 $ cargo loco middleware --config
 
 limit_payload          {"body_limit":{"Limit":1000000}}
-cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
+cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"expose_header":[""],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
 catch_panic            {"enable":true}
 etag                   {"enable":true}
 logger                 {"config":{"enable":true},"environment":"development"}
@@ -416,7 +416,7 @@ The result:
 $ cargo loco middleware --config
 
 limit_payload          {"body_limit":{"Limit":1000000}}
-cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
+cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"expose_header":[""],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
 catch_panic            {"enable":true}
 etag                   {"enable":true}
 remote_ip              {"enable":true,"trusted_proxies":null}
@@ -442,7 +442,7 @@ The result:
 $ cargo loco middleware --config
 
 limit_payload          {"body_limit":{"Limit":5000000}}
-cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
+cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"expose_headers":[""],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
 catch_panic            {"enable":true}
 etag                   {"enable":true}
 logger                 {"config":{"enable":true},"environment":"development"}
@@ -849,21 +849,26 @@ It can be tailored to fit various application requirements, supporting permissiv
 
 ```yaml
 #...
-middlewares:
+server:
   ...
-  cors:
-    enable: true
-    # Set the value of the [`Access-Control-Allow-Origin`][mdn] header
-    # allow_origins:
-    #   - https://loco.rs
-    # Set the value of the [`Access-Control-Allow-Headers`][mdn] header
-    # allow_headers:
-    # - Content-Type
-    # Set the value of the [`Access-Control-Allow-Methods`][mdn] header
-    # allow_methods:
-    #   - POST
-    # Set the value of the [`Access-Control-Max-Age`][mdn] header in seconds
-    # max_age: 3600
+  middlewares:
+    ...
+    cors:
+      enable: true
+      # Set the value of the [`Access-Control-Allow-Origin`][mdn] header
+      # allow_origins:
+      #   - https://loco.rs
+      # Set the value of the [`Access-Control-Allow-Headers`][mdn] header
+      # allow_headers:
+      # - Content-Type
+      # Set the value of the [`Access-Control-Allow-Methods`][mdn] header
+      # allow_methods:
+      #   - POST
+      # expose_headers:
+      #   - X-CUSTOM-HEADER1
+      #   - X-CUSTOM-HEADER2
+      # Set the value of the [`Access-Control-Max-Age`][mdn] header in seconds
+      # max_age: 3600
 
 ```
 
