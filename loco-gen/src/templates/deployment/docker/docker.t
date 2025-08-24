@@ -1,4 +1,4 @@
-to: "dockerfile"
+to: "Dockerfile"
 skip_exists: true
 message: "Dockerfile generated successfully."
 ---

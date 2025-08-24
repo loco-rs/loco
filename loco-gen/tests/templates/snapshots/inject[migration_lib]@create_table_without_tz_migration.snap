@@ -1,0 +1,23 @@
+---
+source: loco-gen/tests/templates/migration.rs
+expression: "fs::read_to_string(migration_path.join(\"lib.rs\")).expect(\"Failed to read lib.rs\")"
+snapshot_kind: text
+---
+#![allow(elided_lifetimes_in_paths)]
+#![allow(clippy::wildcard_imports)]
+pub use sea_orm_migration::prelude::*;
+mod m[TIME]_users;
+
+mod m[TIME]_movies;
+pub struct Migrator;
+
+#[async_trait::async_trait]
+impl MigratorTrait for Migrator {
+    fn migrations() -> Vec<Box<dyn MigrationTrait>> {
+        vec![
+            Box::new(m[TIME]_users::Migration),
+            Box::new(m[TIME]_movies::Migration),
+            // inject-above (do not remove this comment)
+        ]
+    }
+}

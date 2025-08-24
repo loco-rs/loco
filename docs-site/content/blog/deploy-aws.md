@@ -45,7 +45,7 @@ $ cargo loco generate deployment
 ❯ Docker
   Shuttle
 
-added: "dockerfile"
+added: "Dockerfile"
 added: ".dockerignore"
 ```
 
@@ -55,8 +55,8 @@ Now, we can build the Docker image which will be used to deploy our app on AWS F
 $ docker build -t myapp .
 
 [+] Building 237.1s (16/16) FINISHED                                                                                                               docker:desktop-linux
- => [internal] load build definition from dockerfile                                                                                                               0.0s
- => => transferring dockerfile: 331B                                                                                                                               0.0s
+ => [internal] load build definition from Dockerfile                                                                                                               0.0s
+ => => transferring Dockerfile: 331B                                                                                                                               0.0s
  ...
  => => writing image sha256:07416ca8195e4026ab65bc567f990ea83141aa10890f8443deb8f54a8bae7f0a                                                                       0.0s
  => => naming to docker.io/library/myapp

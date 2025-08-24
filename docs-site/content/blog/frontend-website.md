@@ -197,7 +197,7 @@ Run `cargo loco generate deployment` and select Docker as the deployment type:
 ```sh
 $ cargo loco generate deployment
 ✔ ❯ Choose your deployment · Docker
-added: "dockerfile"
+added: "Dockerfile"
 added: ".dockerignore"
 ```
 

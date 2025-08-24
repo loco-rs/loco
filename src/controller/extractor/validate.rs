@@ -1,6 +1,6 @@
+use crate::validation::ValidatorTrait;
 use axum::extract::{Form, FromRequest, Json, Query, Request};
 use serde::de::DeserializeOwned;
-use validator::Validate;
 
 use crate::Error;
 
@@ -42,14 +42,14 @@ pub struct JsonValidateWithMessage<T>(pub T);
 
 impl<T, S> FromRequest<S> for JsonValidateWithMessage<T>
 where
-    T: DeserializeOwned + Validate,
+    T: DeserializeOwned + ValidatorTrait,
     S: Send + Sync,
 {
     type Rejection = Error;
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let Json(value) = Json::<T>::from_request(req, state).await?;
-        value.validate()?;
+        value.validate().map_err(Error::Validation)?;
         Ok(Self(value))
     }
 }
@@ -87,14 +87,14 @@ pub struct FormValidateWithMessage<T>(pub T);
 
 impl<T, S> FromRequest<S> for FormValidateWithMessage<T>
 where
-    T: DeserializeOwned + Validate,
+    T: DeserializeOwned + ValidatorTrait,
     S: Send + Sync,
 {
     type Rejection = Error;
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
         let Form(value) = Form::<T>::from_request(req, state).await?;
-        value.validate()?;
+        value.validate().map_err(Error::Validation)?;
         Ok(Self(value))
     }
 }
@@ -133,7 +133,7 @@ pub struct JsonValidate<T>(pub T);
 
 impl<T, S> FromRequest<S> for JsonValidate<T>
 where
-    T: DeserializeOwned + Validate,
+    T: DeserializeOwned + ValidatorTrait,
     S: Send + Sync,
 {
     type Rejection = Error;
@@ -181,7 +181,7 @@ pub struct FormValidate<T>(pub T);
 
 impl<T, S> FromRequest<S> for FormValidate<T>
 where
-    T: DeserializeOwned + Validate,
+    T: DeserializeOwned + ValidatorTrait,
     S: Send + Sync,
 {
     type Rejection = Error;
@@ -229,7 +229,7 @@ pub struct QueryValidateWithMessage<T>(pub T);
 
 impl<T, S> FromRequest<S> for QueryValidateWithMessage<T>
 where
-    T: DeserializeOwned + Validate,
+    T: DeserializeOwned + ValidatorTrait,
     S: Send + Sync,
 {
     type Rejection = Error;
@@ -238,7 +238,7 @@ where
         let Query(value) = Query::<T>::from_request(req, state)
             .await
             .map_err(|rejection| Error::BadRequest(format!("Invalid query string: {rejection}")))?;
-        value.validate().map_err(Error::ValidationError)?;
+        value.validate().map_err(Error::Validation)?;
         Ok(Self(value))
     }
 }
@@ -277,7 +277,7 @@ pub struct QueryValidate<T>(pub T);
 
 impl<T, S> FromRequest<S> for QueryValidate<T>
 where
-    T: DeserializeOwned + Validate,
+    T: DeserializeOwned + ValidatorTrait,
     S: Send + Sync,
 {
     type Rejection = Error;
@@ -296,6 +296,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::validation::{ModelValidationErrors, ValidatorTrait};
     use axum::{
         body::{to_bytes, Body},
         http::{self, Request as HttpRequest, StatusCode},
@@ -584,6 +585,74 @@ mod tests {
             expected,
         )
         .await;
+    }
+
+    // Custom validator that does not rely on the `validator` crate
+    #[derive(Debug, Serialize, Deserialize)]
+    struct CustomData {
+        username: String,
+        email: String,
+    }
+
+    impl ValidatorTrait for CustomData {
+        fn validate(&self) -> Result<(), ModelValidationErrors> {
+            use crate::validation::ValidationError;
+            use std::collections::{BTreeMap, HashMap};
+            if self.username.len() < 3 {
+                let mut errors: BTreeMap<String, Vec<ValidationError>> = BTreeMap::new();
+                errors.insert(
+                    "username".to_string(),
+                    vec![ValidationError {
+                        code: "length".to_string(),
+                        message: Some("username must be at least 3 characters".to_string()),
+                        params: HashMap::new(),
+                    }],
+                );
+                return Err(ModelValidationErrors { errors });
+            }
+            if !self.email.contains('@') {
+                let mut errors: BTreeMap<String, Vec<ValidationError>> = BTreeMap::new();
+                errors.insert(
+                    "email".to_string(),
+                    vec![ValidationError {
+                        code: "email".to_string(),
+                        message: Some("email must be valid".to_string()),
+                        params: HashMap::new(),
+                    }],
+                );
+                return Err(ModelValidationErrors { errors });
+            }
+            Ok(())
+        }
+    }
+
+    #[tokio::test]
+    async fn test_json_validate_with_message_custom_validator_invalid() {
+        let invalid_json = r#"{"username": "ab", "email": "invalid"}"#;
+        let request = create_json_request(invalid_json);
+
+        let result = JsonValidateWithMessage::<CustomData>::from_request(request, &()).await;
+        assert!(result.is_err());
+
+        let expected = json!({
+            "errors": {
+                "username": [
+                    { "code": "length", "message": "username must be at least 3 characters" }
+                ]
+            }
+        });
+
+        assert_response_status_and_body(result.unwrap_err(), StatusCode::BAD_REQUEST, expected)
+            .await;
+    }
+
+    #[tokio::test]
+    async fn test_json_validate_with_message_custom_validator_valid() {
+        let valid_json = r#"{"username": "valid_user", "email": "valid@example.com"}"#;
+        let request = create_json_request(valid_json);
+
+        let result = JsonValidateWithMessage::<CustomData>::from_request(request, &()).await;
+        assert!(result.is_ok());
     }
 
     #[tokio::test]

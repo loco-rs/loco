@@ -177,7 +177,7 @@ Arguments:
 ```sh
 cargo loco generate deployment docker
 
-added: "dockerfile"
+added: "Dockerfile"
 added: ".dockerignore"
 * Dockerfile generated successfully.
 * Dockerignore generated successfully

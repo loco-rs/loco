@@ -16,6 +16,7 @@ pub const IGNORE_FIELDS: &[&str] = &["created_at", "updated_at", "create_at", "u
 pub fn generate(
     rrgen: &RRgen,
     name: &str,
+    with_tz: bool,
     fields: &[(String, String)],
     appinfo: &AppInfo,
 ) -> Result<GenerateResults> {
@@ -27,7 +28,7 @@ pub fn generate(
         // NOTE: re-uses the 'new model' migration template!
         infer::MigrationType::CreateTable { table } => {
             let (columns, references) = get_columns_and_references(fields)?;
-            let vars = json!({"name": table, "ts": ts, "pkg_name": pkg_name, "is_link": false, "columns": columns, "references": references});
+            let vars = json!({"name": table, "ts": ts, "with_tz": with_tz,"pkg_name": pkg_name, "is_link": false, "columns": columns, "references": references});
             render_template(rrgen, Path::new("model/model.t"), &vars)
         }
         infer::MigrationType::AddColumns { table } => {
@@ -47,10 +48,13 @@ pub fn generate(
         }
         infer::MigrationType::CreateJoinTable { table_a, table_b } => {
             let table = format!("{table_a}_{table_b}");
-            let (columns, references) = get_columns_and_references(&[
-                (table_a, "references".to_string()),
-                (table_b, "references".to_string()),
-            ])?;
+            let (columns, extra_references) = get_columns_and_references(fields)?;
+
+            let references = [(table_a, String::new()), (table_b, String::new())]
+                .into_iter()
+                .chain(extra_references)
+                .collect::<Vec<_>>();
+
             let vars = json!({"name": name, "table": table, "ts": ts, "pkg_name": pkg_name, "columns": columns, "references": references});
             render_template(rrgen, Path::new("migration/join_table.t"), &vars)
         }

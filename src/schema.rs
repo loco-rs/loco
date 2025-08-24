@@ -483,7 +483,7 @@ pub async fn create_table(
     cols: &[(&str, ColType)],
     refs: &[(&str, &str)], // [(from_tbl, to_tbl), ...]
 ) -> Result<(), DbErr> {
-    create_table_impl(m, table, cols, refs, false).await
+    create_table_impl(m, table, cols, refs, false, true).await
 }
 
 ///
@@ -505,7 +505,54 @@ pub async fn create_join_table(
     cols: &[(&str, ColType)],
     refs: &[(&str, &str)], // [(from_tbl, to_tbl), ...]
 ) -> Result<(), DbErr> {
-    create_table_impl(m, table, cols, refs, true).await
+    create_table_impl(m, table, cols, refs, true, true).await
+}
+
+/// Create a table without automatic timestamps.
+/// This gives users full control over their table schema.
+/// ```ignore
+/// create_table_without_timestamps(m, "movies", vec![
+///     ("title", ColType::String)
+/// ],
+/// vec![]
+/// )
+/// .await;
+/// ```
+///
+/// ```shell
+/// loco g migration CreateMovies title:string user:references --without-timestamps
+/// ```
+/// # Errors
+/// fails when it fails
+pub async fn create_table_without_timestamps(
+    m: &SchemaManager<'_>,
+    table: &str,
+    cols: &[(&str, ColType)],
+    refs: &[(&str, &str)], // [(from_tbl, to_tbl), ...]
+) -> Result<(), DbErr> {
+    create_table_impl(m, table, cols, refs, false, false).await
+}
+
+/// Create a join table without automatic timestamps.
+/// A join table has a composite primary key.
+/// ```ignore
+/// create_join_table_without_timestamps(m, "movies", vec![
+///     ("title", ColType::String)
+/// ],
+/// vec![]
+/// )
+/// .await;
+/// ```
+///
+/// # Errors
+/// fails when it fails
+pub async fn create_join_table_without_timestamps(
+    m: &SchemaManager<'_>,
+    table: &str,
+    cols: &[(&str, ColType)],
+    refs: &[(&str, &str)], // [(from_tbl, to_tbl), ...]
+) -> Result<(), DbErr> {
+    create_table_impl(m, table, cols, refs, true, false).await
 }
 
 async fn create_table_impl(
@@ -514,6 +561,7 @@ async fn create_table_impl(
     cols: &[(&str, ColType)],
     refs: &[(&str, &str)], // [(from_tbl, to_tbl), ...]
     is_join: bool,
+    add_timestamps: bool, // New parameter to control timestamp addition
 ) -> Result<(), DbErr> {
     let nz_table = normalize_table(table);
 
@@ -562,7 +610,16 @@ async fn create_table_impl(
         }
     }
 
-    let mut stmt = table_auto_tz(Alias::new(&nz_table));
+    // Conditionally create table with or without timestamps
+    let mut stmt = if add_timestamps {
+        table_auto_tz(Alias::new(&nz_table))
+    } else {
+        Table::create()
+            .table(Alias::new(&nz_table))
+            .if_not_exists()
+            .take()
+    };
+
     if is_join {
         let mut idx = Index::create();
         idx.name(format!("idx-{nz_table}-refs-pk"))
