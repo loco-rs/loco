@@ -155,6 +155,8 @@ In case you have a specific strategy, you can easily create it by implementing t
 Follow this example, make sure you enable `multipart` feature in axum crate.
 
 ```rust
+use loco_rs::prelude::*;
+
 async fn upload_file(
     State(ctx): State<AppContext>,
     mut multipart: Multipart,

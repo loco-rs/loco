@@ -1,4 +1,3 @@
-use axum::debug_handler;
 use loco_rs::prelude::*;
 
 use crate::views::home::HomeResponse;

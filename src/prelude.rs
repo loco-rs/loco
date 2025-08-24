@@ -1,6 +1,7 @@
 pub use async_trait::async_trait;
 pub use axum::{
-    extract::{Form, Path, State},
+    debug_handler,
+    extract::{Form, Multipart, Path, Query, State},
     response::{IntoResponse, Response},
     routing::{delete, get, head, options, patch, post, put, trace},
 };
