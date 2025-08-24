@@ -1,13 +1,14 @@
 use std::path::{Path, PathBuf};
 
-use super::tera_builtins;
-use crate::{controller::views::ViewRenderer, Error, Result};
 use notify::{
     event::{EventKind, ModifyKind},
     Event, RecursiveMode, Watcher,
 };
 use serde::Serialize;
 use tracing::{debug, warn};
+
+use super::tera_builtins;
+use crate::{controller::views::ViewRenderer, Error, Result};
 
 pub static DEFAULT_ASSET_FOLDER: &str = "assets";
 
@@ -62,7 +63,8 @@ impl TeraView {
         Self::from_custom_dir(&PathBuf::from(DEFAULT_ASSET_FOLDER).join("views"))
     }
 
-    /// Attach the Tera view engine with a post-processing function for subsequent instantiation.
+    /// Attach the Tera view engine with a post-processing function for
+    /// subsequent instantiation.
     ///
     /// The post-processing function is also run during the call to this method.
     ///
@@ -118,7 +120,7 @@ impl TeraView {
             )));
         }
         let view_dir = path.as_ref();
-        let view_path: PathBuf = view_dir.join("**").join("*.html").into();
+        let view_path: PathBuf = view_dir.join("**").join("*.html");
 
         // Create instance
         let tera = Self::create_tera_instance(&view_path)?;
@@ -144,7 +146,7 @@ impl TeraView {
                 // Only handle sub-directories and .html files
                 if !paths
                     .iter()
-                    .all(|p| p.is_dir() || p.extension().map_or(false, |ext| ext == "html"))
+                    .all(|p| p.is_dir() || p.extension().is_some_and(|ext| ext == "html"))
                 {
                     return;
                 }
@@ -228,8 +230,9 @@ impl ViewRenderer for TeraView {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::{json, Value};
     use std::collections::HashMap;
+
+    use serde_json::{json, Value};
     use tree_fs;
 
     use super::*;
