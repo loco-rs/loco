@@ -320,6 +320,9 @@ impl Hooks for App {
 There are three default health check endpoints that are automatically registered in the application:
 - `_ping` and `_health`: Can be used by startup probe and liveness probe, they only confirm the server is running (simple 200 OK).
 - `_readiness`: Can be used by readiness probe, tt checks dependencies (DB, Cache, Storage).
+  - If you configure a queue, it will check if the queue is reachable.
+  - If you enable `with-db` feature, it'll also check the database connection.
+  - If you enable `cache_inmem` or `cache_redis` features, it'll also check the cache connection.
 
 Why we separate these endpoints?
 - **Best practices**: Aligns with Kubernetes patterns to avoid removing healthy servers from rotation when dependencies fail temporarily.
