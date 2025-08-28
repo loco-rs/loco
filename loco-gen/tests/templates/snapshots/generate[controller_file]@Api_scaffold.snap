@@ -1,14 +1,12 @@
 ---
 source: loco-gen/tests/templates/scaffold.rs
 expression: "fs::read_to_string(controllers_path.join(\"movie.rs\")).expect(\"controller file missing\")"
-snapshot_kind: text
 ---
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
 use loco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
-use axum::debug_handler;
 
 use crate::models::_entities::movies::{ActiveModel, Entity, Model};
 
