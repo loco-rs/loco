@@ -15,8 +15,6 @@ In today's rapidly evolving technological landscape, Infrastructure as Code (IaC
 
 In this article, we will explore how to deploy a Rust app built with [loco](https://loco.rs) on AWS Fargate using Terraform. We will start by creating a new project and selecting the `Rest API` template:
 
-````sh
-
 ```sh
 $ cargo install loco
 $ loco new
@@ -25,7 +23,7 @@ $ loco new
   lightweight-service (minimal, only controllers and views)
 ❯ Rest API (with DB and user auth)
   SaaS app (with DB and user auth)
-````
+```
 
 ## Prerequisites
 
