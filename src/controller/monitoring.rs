@@ -14,10 +14,17 @@ pub struct Health {
 }
 
 /// Check application ping endpoint
+///
+/// # Errors
+/// This function always returns `Ok` with a JSON response indicating the
 pub async fn ping() -> Result<Response> {
     format::json(Health { ok: true })
 }
 
+/// Check application ping endpoint
+///
+/// # Errors
+/// This function always returns `Ok` with a JSON response indicating the
 pub async fn health() -> Result<Response> {
     format::json(Health { ok: true })
 }
