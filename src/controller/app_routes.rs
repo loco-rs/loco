@@ -51,9 +51,7 @@ impl AppRoutes {
     #[must_use]
     pub fn with_default_routes() -> Self {
         Self::empty().add_routes(vec![
-            super::ping::routes(),
-            super::health::routes(),
-            super::readiness::routes(),
+            super::monitoring::routes(),
         ])
     }
 

@@ -3,10 +3,24 @@
 //! application and its dependencies.
 
 use axum::{extract::State, response::Response, routing::get};
-
+use serde::Serialize;
 use super::{format, routes::Routes};
-use crate::controller::response::Health;
 use crate::{app::AppContext, Result};
+
+/// Represents the health status of the application.
+#[derive(Serialize)]
+pub struct Health {
+    pub ok: bool,
+}
+
+/// Check application ping endpoint
+pub async fn ping() -> Result<Response> {
+    format::json(Health { ok: true })
+}
+
+pub async fn health() -> Result<Response> {
+    format::json(Health { ok: true })
+}
 
 /// Check the readiness of the application by sending a ping request to
 /// Redis or the DB (depending on feature flags) to ensure connection liveness.
@@ -40,5 +54,8 @@ pub async fn readiness(State(ctx): State<AppContext>) -> Result<Response> {
 
 /// Defines and returns the readiness-related routes.
 pub fn routes() -> Routes {
-    Routes::new().add("/_readiness", get(readiness))
+    Routes::new()
+        .add("/_readiness", get(readiness))
+        .add("/_ping", get(ping))
+        .add("/_health", get(health))
 }

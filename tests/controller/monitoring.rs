@@ -7,7 +7,7 @@ mod tests {
     use loco_rs::cache::CacheResult;
     use loco_rs::prelude::{get_available_port, get_base_url_port, Response};
     use loco_rs::tests_cfg::db::fail_connection;
-    use loco_rs::{cache, controller::readiness, tests_cfg};
+    use loco_rs::{cache, controller::monitoring, tests_cfg};
     use serde_json::Value;
     use std::sync::Arc;
     use std::time::Duration;
@@ -76,7 +76,7 @@ mod tests {
 
         #[allow(clippy::items_after_statements)]
         async fn action(State(ctx): State<AppContext>) -> loco_rs::Result<Response> {
-            readiness::readiness(State(ctx)).await
+            monitoring::readiness(State(ctx)).await
         }
 
         let port = get_available_port().await;
@@ -84,6 +84,58 @@ mod tests {
             infra_cfg::server::start_with_route(ctx, "_readiness", get(action), Some(port)).await;
 
         let res = reqwest::get(&format!("{}_readiness", get_base_url_port(port)))
+            .await
+            .expect("Valid response");
+
+        assert_eq!(res.status(), 200);
+
+        let res_json: Value = res.json().await.expect("Valid JSON response");
+        assert_eq!(res_json["ok"], true);
+
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn ping_works() {
+        let mut ctx = tests_cfg::app::get_app_context().await;
+        ctx.queue_provider = None;
+
+        #[allow(clippy::items_after_statements)]
+        async fn action(State(_ctx): State<AppContext>) -> loco_rs::Result<Response> {
+            monitoring::ping().await
+        }
+
+        let port = get_available_port().await;
+        let handle =
+            infra_cfg::server::start_with_route(ctx, "_ping", get(action), Some(port)).await;
+
+        let res = reqwest::get(&format!("{}_ping", get_base_url_port(port)))
+            .await
+            .expect("Valid response");
+
+        assert_eq!(res.status(), 200);
+
+        let res_json: Value = res.json().await.expect("Valid JSON response");
+        assert_eq!(res_json["ok"], true);
+
+        handle.abort();
+    }
+
+    #[tokio::test]
+    async fn health_works() {
+        let mut ctx = tests_cfg::app::get_app_context().await;
+        ctx.queue_provider = None;
+
+        #[allow(clippy::items_after_statements)]
+        async fn action(State(_ctx): State<AppContext>) -> loco_rs::Result<Response> {
+            monitoring::health().await
+        }
+
+        let port = get_available_port().await;
+        let handle =
+            infra_cfg::server::start_with_route(ctx, "_health", get(action), Some(port)).await;
+
+        let res = reqwest::get(&format!("{}_health", get_base_url_port(port)))
             .await
             .expect("Valid response");
 
@@ -103,7 +155,7 @@ mod tests {
 
         #[allow(clippy::items_after_statements)]
         async fn action(State(ctx): State<AppContext>) -> loco_rs::Result<Response> {
-            readiness::readiness(State(ctx)).await
+            monitoring::readiness(State(ctx)).await
         }
 
         let port = get_available_port().await;
@@ -132,7 +184,7 @@ mod tests {
 
         #[allow(clippy::items_after_statements)]
         async fn action(State(ctx): State<AppContext>) -> loco_rs::Result<Response> {
-            readiness::readiness(State(ctx)).await
+            monitoring::readiness(State(ctx)).await
         }
 
         let port = get_available_port().await;
@@ -164,7 +216,7 @@ mod tests {
 
         #[allow(clippy::items_after_statements)]
         async fn action(State(ctx): State<AppContext>) -> loco_rs::Result<Response> {
-            readiness::readiness(State(ctx)).await
+            monitoring::readiness(State(ctx)).await
         }
 
         let port = get_available_port().await;
@@ -191,7 +243,7 @@ mod tests {
 
         #[allow(clippy::items_after_statements)]
         async fn action(State(ctx): State<AppContext>) -> loco_rs::Result<Response> {
-            readiness::readiness(State(ctx)).await
+            monitoring::readiness(State(ctx)).await
         }
 
         let port = get_available_port().await;
@@ -222,7 +274,7 @@ mod tests {
 
         #[allow(clippy::items_after_statements)]
         async fn action(State(ctx): State<AppContext>) -> loco_rs::Result<Response> {
-            readiness::readiness(State(ctx)).await
+            monitoring::readiness(State(ctx)).await
         }
 
         let port = get_available_port().await;
@@ -249,7 +301,7 @@ mod tests {
 
         #[allow(clippy::items_after_statements)]
         async fn action(State(ctx): State<AppContext>) -> loco_rs::Result<Response> {
-            readiness::readiness(State(ctx)).await
+            monitoring::readiness(State(ctx)).await
         }
 
         let port = get_available_port().await;
@@ -280,7 +332,7 @@ mod tests {
 
         #[allow(clippy::items_after_statements)]
         async fn action(State(ctx): State<AppContext>) -> loco_rs::Result<Response> {
-            readiness::readiness(State(ctx)).await
+            monitoring::readiness(State(ctx)).await
         }
 
         let port = get_available_port().await;

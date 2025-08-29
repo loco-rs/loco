@@ -82,11 +82,8 @@ mod backtrace;
 mod describe;
 pub mod extractor;
 pub mod format;
-mod health;
 pub mod middleware;
-mod ping;
-pub mod readiness;
-mod response;
+pub mod monitoring;
 mod routes;
 pub mod views;
 
