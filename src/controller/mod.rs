@@ -82,10 +82,8 @@ mod backtrace;
 mod describe;
 pub mod extractor;
 pub mod format;
-#[cfg(feature = "with-db")]
-mod health;
 pub mod middleware;
-mod ping;
+pub mod monitoring;
 mod routes;
 pub mod views;
 
