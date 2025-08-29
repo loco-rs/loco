@@ -50,9 +50,7 @@ impl AppRoutes {
     /// Create a new instance with the default routes.
     #[must_use]
     pub fn with_default_routes() -> Self {
-        Self::empty().add_routes(vec![
-            super::monitoring::routes(),
-        ])
+        Self::empty().add_routes(vec![super::monitoring::routes()])
     }
 
     /// Create an empty instance.

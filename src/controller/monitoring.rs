@@ -2,10 +2,10 @@
 //! reporting. These routes are commonly used to monitor the readiness of the
 //! application and its dependencies.
 
-use axum::{extract::State, response::Response, routing::get};
-use serde::Serialize;
 use super::{format, routes::Routes};
 use crate::{app::AppContext, Result};
+use axum::{extract::State, response::Response, routing::get};
+use serde::Serialize;
 
 /// Represents the health status of the application.
 #[derive(Serialize)]
