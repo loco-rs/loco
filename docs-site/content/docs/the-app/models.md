@@ -37,7 +37,6 @@ Your local postgres database should be with <code>loco:loco</code> and a db name
 For your convenience, here is a docker command to start up a Postgresql database server:
 
 <!-- <snip id="postgres-run-docker-command" inject_from="yaml" template="sh"> -->
-
 ```sh
 docker run -d -p 5432:5432 \
   -e POSTGRES_USER=loco \
@@ -45,7 +44,6 @@ docker run -d -p 5432:5432 \
   -e POSTGRES_PASSWORD="loco" \
   postgres:15.3-alpine
 ```
-
 <!-- </snip> -->
 
 Finally you can also use the doctor command to validate your connection:
@@ -373,21 +371,17 @@ $ cargo loco g migration FixUsersTable
 If you realize that you made a mistake, you can always undo the migration. This will undo the changes made by the migration (assuming that you added the appropriate code for `down` in the migration).
 
 <!-- <snip id="migrate-down-command" inject_from="yaml" template="sh"> -->
-
 ```sh
 cargo loco db down
 ```
-
 <!-- </snip> -->
 
 The `down` command on its own will rollback only the last migration. If you want to rollback multiple migrations, you can specify the number of migrations to rollback.
 
 <!-- <snip id="migrate-down-n-command" inject_from="yaml" template="sh"> -->
-
 ```sh
 cargo loco db down 2
 ```
-
 <!-- </snip> -->
 
 ### Verbs, singular and plural
@@ -495,10 +489,17 @@ impl MigrationTrait for Migration {
 You can copy some of this code for adding an index
 
 ```rust
-    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        add_index(manager, "movies", "idx-movies-rating", &["rating"]);
+impl MigrationTrait for Migration {
+    async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        add_index(m, "movies", "idx-movies-rating", &["rating"]);
         Ok(())
     }
+
+    async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        remove_index(m, "movies", "idx-movies-rating");
+        Ok(())
+    }
+}
 ```
 
 **Remove index**
@@ -506,29 +507,22 @@ You can copy some of this code for adding an index
 You can copy some of this code for removing an index
 
 ```rust
-    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        remove_index(manager, "movies", "idx-movies-rating");
+impl MigrationTrait for Migration {
+    async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        remove_index(m, "movies", "idx-movies-rating");
         Ok(())
     }
+
+    async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        add_index(m, "movies", "idx-movies-rating", &["rating"]);
+        Ok(())
+    }
+}
 ```
 
 ### Authoring advanced migrations
 
 Using the `manager` directly lets you access more advanced operations while authoring your migrations.
-
-**Add index**
-
-You can copy some of this code for adding an index
-
-```rust
-    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let db = manager.get_connection();
-        let _ = db
-            .execute_unprepared("CREATE INDEX idx-movies-rating ON movies (rating);")
-            .await?;
-        Ok(())
-    }
-```
 
 **Create a data fix**
 
@@ -835,22 +829,9 @@ This implementation ensures that the seed is executed when the seed function is 
 To access the seed commands, use the following CLI structure:
 
 <!-- <snip id="seed-help-command" inject_from="yaml" action="exec" template="sh"> -->
-
 ```sh
-Seed your database with initial data or dump tables to files
-
-Usage: demo_app-cli db seed [OPTIONS]
-
-Options:
-  -r, --reset                      Clears all data in the database before seeding
-  -d, --dump                       Dumps all database tables to files
-      --dump-tables <DUMP_TABLES>  Specifies specific tables to dump
-      --from <FROM>                Specifies the folder containing seed files (defaults to 'src/fixtures') [default: src/fixtures]
-  -e, --environment <ENVIRONMENT>  Specify the environment [default: development]
-  -h, --help                       Print help
-  -V, --version                    Print version
+cd ./examples/demo && cargo loco db seed --help
 ```
-
 <!-- </snip> -->
 
 ### Using a Test
