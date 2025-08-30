@@ -28,32 +28,82 @@ pub fn generate(
         // NOTE: re-uses the 'new model' migration template!
         infer::MigrationType::CreateTable { table } => {
             let (columns, references) = get_columns_and_references(fields)?;
-            let vars = json!({"name": table, "ts": ts, "with_tz": with_tz,"pkg_name": pkg_name, "is_link": false, "columns": columns, "references": references});
+            let vars = json!({
+                "name": table,
+                "ts": ts,
+                "with_tz": with_tz,
+                "pkg_name": pkg_name,
+                "is_link": false,
+                "columns": columns,
+                "references": references
+            });
             render_template(rrgen, Path::new("model/model.t"), &vars)
         }
         infer::MigrationType::AddColumns { table } => {
             let (columns, references) = get_columns_and_references(fields)?;
-            let vars = json!({"name": name, "table": table, "ts": ts, "pkg_name": pkg_name, "is_link": false, "columns": columns, "references": references});
+            let vars = json!({
+                "name": name,
+                "table": table,
+                "ts": ts,
+                "pkg_name": pkg_name,
+                "is_link": false,
+                "columns": columns,
+                "references": references
+            });
             render_template(rrgen, Path::new("migration/add_columns.t"), &vars)
         }
         infer::MigrationType::RemoveColumns { table } => {
             let (columns, _references) = get_columns_and_references(fields)?;
-            let vars = json!({"name": name, "table": table, "ts": ts, "pkg_name": pkg_name, "columns": columns});
+            let vars = json!({
+                "name": name,
+                "table": table,
+                "ts": ts,
+                "pkg_name": pkg_name,
+                "columns": columns
+            });
             render_template(rrgen, Path::new("migration/remove_columns.t"), &vars)
         }
         infer::MigrationType::AddIndex { table } => {
             let (columns, references) = get_columns_and_references(fields)?;
-            let vars = json!({"name": name, "table": table, "ts": ts, "pkg_name": pkg_name, "is_link": false, "columns": columns, "references": references});
+            let vars = json!({
+                "name": name,
+                "table": table,
+                "ts": ts,
+                "pkg_name": pkg_name,
+                "is_link": false,
+                "columns": columns.iter()
+                                  .map(|(k, _)| format!("{}", k))
+                                  .collect::<Vec<String>>()
+                                  .join(","),
+                "references": references
+            });
             render_template(rrgen, Path::new("migration/add_indexes.t"), &vars)
         }
         infer::MigrationType::RemoveIndex { table } => {
-            let (columns, _references) = get_columns_and_references(fields)?;
-            let vars = json!({"name": name, "table": table, "ts": ts, "pkg_name": pkg_name, "columns": columns});
-            render_template(rrgen, Path::new("migration/remove_index.t"), &vars)
+            let (columns, references) = get_columns_and_references(fields)?;
+            let vars = json!({
+                "name": name,
+                "table": table,
+                "ts": ts,
+                "pkg_name": pkg_name,
+                "columns": columns.iter()
+                                  .map(|(k, _)| format!("{}", k))
+                                  .collect::<Vec<String>>()
+                                  .join(","),
+                "references": references
+            });
+            render_template(rrgen, Path::new("migration/remove_indexes.t"), &vars)
         }
         infer::MigrationType::AddReference { table } => {
             let (columns, references) = get_columns_and_references(fields)?;
-            let vars = json!({"name": name, "table": table, "ts": ts, "pkg_name": pkg_name, "columns": columns, "references": references});
+            let vars = json!({
+                "name": name,
+                "table": table,
+                "ts": ts,
+                "pkg_name": pkg_name,
+                "columns": columns,
+                "references": references
+            });
             render_template(rrgen, Path::new("migration/add_references.t"), &vars)
         }
         infer::MigrationType::CreateJoinTable { table_a, table_b } => {
@@ -65,7 +115,14 @@ pub fn generate(
                 .chain(extra_references)
                 .collect::<Vec<_>>();
 
-            let vars = json!({"name": name, "table": table, "ts": ts, "pkg_name": pkg_name, "columns": columns, "references": references});
+            let vars = json!({
+                "name": name,
+                "table": table,
+                "ts": ts,
+                "pkg_name": pkg_name, 
+                "columns": columns,
+                "references": references
+            });
             render_template(rrgen, Path::new("migration/join_table.t"), &vars)
         }
         infer::MigrationType::Empty => {
