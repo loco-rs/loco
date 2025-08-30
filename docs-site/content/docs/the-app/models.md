@@ -490,6 +490,28 @@ impl MigrationTrait for Migration {
 }
 ```
 
+**Add index**
+
+You can copy some of this code for adding an index
+
+```rust
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        add_index(manager, "movies", "idx-movies-rating", &["rating"]);
+        Ok(())
+    }
+```
+
+**Remove index**
+
+You can copy some of this code for removing an index
+
+```rust
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        remove_index(manager, "movies", "idx-movies-rating");
+        Ok(())
+    }
+```
+
 ### Authoring advanced migrations
 
 Using the `manager` directly lets you access more advanced operations while authoring your migrations.
