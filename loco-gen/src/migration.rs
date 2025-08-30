@@ -41,6 +41,16 @@ pub fn generate(
             let vars = json!({"name": name, "table": table, "ts": ts, "pkg_name": pkg_name, "columns": columns});
             render_template(rrgen, Path::new("migration/remove_columns.t"), &vars)
         }
+        infer::MigrationType::AddIndex { table } => {
+            let (columns, references) = get_columns_and_references(fields)?;
+            let vars = json!({"name": name, "table": table, "ts": ts, "pkg_name": pkg_name, "is_link": false, "columns": columns, "references": references});
+            render_template(rrgen, Path::new("migration/add_indexes.t"), &vars)
+        }
+        infer::MigrationType::RemoveIndex { table } => {
+            let (columns, _references) = get_columns_and_references(fields)?;
+            let vars = json!({"name": name, "table": table, "ts": ts, "pkg_name": pkg_name, "columns": columns});
+            render_template(rrgen, Path::new("migration/remove_index.t"), &vars)
+        }
         infer::MigrationType::AddReference { table } => {
             let (columns, references) = get_columns_and_references(fields)?;
             let vars = json!({"name": name, "table": table, "ts": ts, "pkg_name": pkg_name, "columns": columns, "references": references});

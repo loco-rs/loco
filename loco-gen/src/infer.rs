@@ -7,6 +7,8 @@ pub enum MigrationType {
     CreateTable { table: String },
     AddColumns { table: String },
     RemoveColumns { table: String },
+    AddIndex { table: String },
+    RemoveIndex { table: String },
     AddReference { table: String },
     CreateJoinTable { table_a: String, table_b: String },
     Empty,
@@ -45,6 +47,12 @@ pub fn guess_migration_type(migration_name: &str) -> MigrationType {
 
     match parts.as_slice() {
         ["create", table_name] => MigrationType::CreateTable {
+            table: table_name.to_plural(),
+        },
+        ["add", "index", _column_names @ .., "to", table_name] => MigrationType::AddIndex {
+            table: table_name.to_plural(),
+        },
+        ["remove", "index", _column_names @ .., "from", table_name] => MigrationType::RemoveIndex {
             table: table_name.to_plural(),
         },
         ["add", _reference_name, "ref", "to", table_name] => MigrationType::AddReference {
@@ -107,6 +115,26 @@ mod tests {
         assert_eq!(
             guess_migration_type("RemoveNameAndAgeFromUsers"),
             MigrationType::RemoveColumns {
+                table: "users".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn test_infer_add_index() {
+        assert_eq!(
+            guess_migration_type("AddIndexNameToUsers"),
+            MigrationType::AddIndex {
+                table: "users".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn test_infer_remove_index() {
+        assert_eq!(
+            guess_migration_type("RemoveIndexNameFromUsers"),
+            MigrationType::RemoveIndex {
                 table: "users".to_string(),
             }
         );

@@ -738,6 +738,52 @@ pub async fn remove_column(m: &SchemaManager<'_>, table: &str, name: &str) -> Re
 }
 
 ///
+/// Add a index to a table with a list of column
+///
+/// ```ignore
+/// add_column(m, "movies", "title", Vec<String>).await;
+/// ```
+/// # Errors
+/// fails when it fails
+pub async fn add_index(
+    m: &SchemaManager<'_>,
+    table: &str,
+    name: &str,
+    column_names: &[&str],
+) -> Result<(), DbErr> {
+    let nz_table = normalize_table(table);
+    let mut index = Index::create();
+    index.name(name.to_string()).table(Alias::new(nz_table));
+
+    for column_name in column_names {
+        index.col(Alias::new(*column_name));
+    }
+
+    m.create_index(index.to_owned()).await?;
+    Ok(())
+}
+
+///
+/// Drop a index from a table.
+///
+/// ```ignore
+/// drop_column(m, "movies", "title").await;
+/// ```
+/// # Errors
+/// fails when it fails
+pub async fn remove_index(m: &SchemaManager<'_>, table: &str, name: &str) -> Result<(), DbErr> {
+    let nz_table = normalize_table(table);
+    m.drop_index(
+        Index::drop()
+            .name(name.to_string())
+            .table(Alias::new(nz_table))
+            .to_owned(),
+    )
+    .await?;
+    Ok(())
+}
+
+///
 /// Adds a reference. Reads "movies belongs-to users":
 /// ```ignore
 /// add_reference(m, "movies", "users").await;
