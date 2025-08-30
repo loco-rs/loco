@@ -22,16 +22,12 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
-        {% for column in columns -%}
-        add_index(m, "{{plural_snake}}", "{{column.0}}", vec!["{{column.1}}"]).await?;
-        {% endfor -%}
+        add_index(m, "{{plural_snake}}", "index_{{plural_snake}}_{{columns}}", &["{{columns}}"]).await?;
         Ok(())
     }
 
     async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
-        {% for column in columns -%}
-        remove_index(m, "{{plural_snake}}", "{{column.0}}").await?;
-        {% endfor -%}
+        remove_index(m, "{{plural_snake}}", "index_{{plural_snake}}_{{columns}}").await?;
         Ok(())
     }
 }
