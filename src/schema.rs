@@ -759,7 +759,7 @@ pub async fn add_index(
         index.col(Alias::new(*column_name));
     }
 
-    m.create_index(index.to_owned()).await?;
+    m.create_index(index.if_not_exists().to_owned()).await?;
     Ok(())
 }
 
@@ -777,6 +777,7 @@ pub async fn remove_index(m: &SchemaManager<'_>, table: &str, name: &str) -> Res
         Index::drop()
             .name(name.to_string())
             .table(Alias::new(nz_table))
+            .if_exists()
             .to_owned(),
     )
     .await?;
