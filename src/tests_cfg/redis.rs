@@ -16,7 +16,7 @@ use testcontainers::{
 ///
 /// This function will panic if it fails to set up, start, or connect to the Redis container.
 pub async fn setup_redis_container() -> (String, ContainerAsync<GenericImage>) {
-    let redis_image = GenericImage::new("redis", "7")
+    let redis_image = GenericImage::new("redis", "7-alpine")
         .with_exposed_port(ContainerPort::Tcp(6379))
         .with_wait_for(WaitFor::message_on_stdout("Ready to accept connections"));
 
