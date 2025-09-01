@@ -144,7 +144,7 @@ impl Routes {
     /// // - POST /api/products
     /// ```
     #[must_use]
-    pub fn merge(mut self, other: Routes) -> Self {
+    pub fn merge(mut self, other: Self) -> Self {
         // Extend the handlers vector with all handlers from the other Routes
         self.handlers.extend(other.handlers);
         self
@@ -153,7 +153,7 @@ impl Routes {
     /// Merge multiple Routes instances into this one.
     ///
     /// This is a convenience method that allows you to merge multiple Routes
-    /// instances at once, which is particularly useful when setting up AppRoutes
+    /// instances at once, which is particularly useful when setting up `AppRoutes`
     /// and you want to collect routes from different controllers before nesting them.
     ///
     /// # Example
@@ -194,7 +194,7 @@ impl Routes {
     /// // - GET /api/orders
     /// ```
     #[must_use]
-    pub fn merge_all(mut self, others: Vec<Routes>) -> Self {
+    pub fn merge_all(mut self, others: Vec<Self>) -> Self {
         // Extend the handlers vector with all handlers from all Routes
         for other in others {
             self.handlers.extend(other.handlers);
@@ -325,7 +325,7 @@ impl Routes {
     /// // - DELETE /api/v1/users/{id}
     /// ```
     #[must_use]
-    pub fn nest(mut self, path: &str, nested_routes: Routes) -> Self {
+    pub fn nest(mut self, path: &str, nested_routes: Self) -> Self {
         // Normalize the path to ensure it starts with / and doesn't end with /
         let mut normalized_path = path.to_string();
         if !normalized_path.starts_with('/') {
