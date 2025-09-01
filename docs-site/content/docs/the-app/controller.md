@@ -1053,7 +1053,6 @@ Loco extractors validate data within HTTP handlers, proceeding with validated da
 #### Example 1: JSON Validation with `JsonValidate`
 
 ```rust
-use axum::debug_handler;
 use loco_rs::prelude::*;
 
 #[debug_handler]
@@ -1071,7 +1070,6 @@ pub async fn index(
 #### Example 2: Query Validation with `QueryValidate`
 
 ```rust
-use axum::debug_handler;
 use loco_rs::prelude::*;
 
 #[debug_handler]
@@ -1089,7 +1087,6 @@ pub async fn index(
 #### Example 3: Form Validation with `FormValidateWithMessage`
 
 ```rust
-use axum::debug_handler;
 use loco_rs::prelude::*;
 
 #[debug_handler]
