@@ -885,7 +885,7 @@ You have two main ways to retrieve data in your controllers:
   use loco_rs::prelude::*;
   use crate::app::MyClonableService; // Or wherever it's defined
 
-  #[axum::debug_handler]
+  #[debug_handler]
   pub async fn index(
       // Extracts and clones MyClonableService into `service`
       SharedStore(service): SharedStore<MyClonableService>,
@@ -903,7 +903,7 @@ You have two main ways to retrieve data in your controllers:
   use loco_rs::prelude::*;
   use crate::app::MyNonClonableService; // Or wherever it's defined
 
-  #[axum::debug_handler]
+  #[debug_handler]
   pub async fn index(
       State(ctx): State<AppContext>, // Need the AppContext state
   ) -> Result<impl IntoResponse> {
