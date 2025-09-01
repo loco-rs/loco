@@ -88,6 +88,120 @@ impl Routes {
         self
     }
 
+    /// Merge another Routes instance into this one.
+    ///
+    /// This method allows you to combine multiple Routes instances into a single
+    /// Routes struct. All handlers from the other Routes will be added to this one.
+    /// This is useful for collecting routes from different controllers before
+    /// nesting them under a common prefix.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use loco_rs::prelude::*;
+    /// use axum::routing::{get, post};
+    ///
+    /// async fn list_users() -> Result<Response> {
+    ///     format::json("users list")
+    /// }
+    ///
+    /// async fn create_user() -> Result<Response> {
+    ///     format::json("user created")
+    /// }
+    ///
+    /// async fn list_products() -> Result<Response> {
+    ///     format::json("products list")
+    /// }
+    ///
+    /// async fn create_product() -> Result<Response> {
+    ///     format::json("product created")
+    /// }
+    ///
+    /// // Create separate route groups
+    /// let user_routes = Routes::new()
+    ///     .add("/users", get(list_users))
+    ///     .add("/users", post(create_user));
+    ///
+    /// let product_routes = Routes::new()
+    ///     .add("/products", get(list_products))
+    ///     .add("/products", post(create_product));
+    ///
+    /// // Merge them into a single Routes instance
+    /// let api_routes = Routes::new()
+    ///     .merge(user_routes)
+    ///     .merge(product_routes);
+    ///
+    /// // Now nest the combined routes under /api
+    /// let app_routes = Routes::new()
+    ///     .add("/health", get(|| async { "ok" }))
+    ///     .nest("/api", api_routes);
+    ///
+    /// // This will result in routes:
+    /// // - GET /health
+    /// // - GET /api/users
+    /// // - POST /api/users
+    /// // - GET /api/products
+    /// // - POST /api/products
+    /// ```
+    #[must_use]
+    pub fn merge(mut self, other: Routes) -> Self {
+        // Extend the handlers vector with all handlers from the other Routes
+        self.handlers.extend(other.handlers);
+        self
+    }
+
+    /// Merge multiple Routes instances into this one.
+    ///
+    /// This is a convenience method that allows you to merge multiple Routes
+    /// instances at once, which is particularly useful when setting up AppRoutes
+    /// and you want to collect routes from different controllers before nesting them.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use loco_rs::prelude::*;
+    /// use axum::routing::{get, post};
+    ///
+    /// async fn list_users() -> Result<Response> {
+    ///     format::json("users list")
+    /// }
+    ///
+    /// async fn list_products() -> Result<Response> {
+    ///     format::json("products list")
+    /// }
+    ///
+    /// async fn list_orders() -> Result<Response> {
+    ///     format::json("orders list")
+    /// }
+    ///
+    /// // Create separate route groups from different controllers
+    /// let user_routes = Routes::new().add("/users", get(list_users));
+    /// let product_routes = Routes::new().add("/products", get(list_products));
+    /// let order_routes = Routes::new().add("/orders", get(list_orders));
+    ///
+    /// // Merge all of them at once
+    /// let api_routes = Routes::new().merge_all(vec![user_routes, product_routes, order_routes]);
+    ///
+    /// // Now nest the combined routes under /api
+    /// let app_routes = Routes::new()
+    ///     .add("/health", get(|| async { "ok" }))
+    ///     .nest("/api", api_routes);
+    ///
+    /// // This will result in routes:
+    /// // - GET /health
+    /// // - GET /api/users
+    /// // - GET /api/products
+    /// // - GET /api/orders
+    /// ```
+    #[must_use]
+    pub fn merge_all(mut self, others: Vec<Routes>) -> Self {
+        // Extend the handlers vector with all handlers from all Routes
+        for other in others {
+            self.handlers.extend(other.handlers);
+        }
+        self
+    }
+
     /// Set a prefix for the routes. this prefix will be a prefix for all the
     /// routes.
     ///
@@ -338,5 +452,134 @@ mod tests {
 
         let users_handler = &app_routes.handlers[0];
         assert_eq!(users_handler.uri, "/api/users");
+    }
+
+    #[test]
+    fn test_merge_method() {
+        // Create separate route groups
+        let user_routes = Routes::new()
+            .add("/users", get(users))
+            .add("/users/{id}", get(user_detail));
+
+        let product_routes = Routes::new()
+            .add("/products", get(users))
+            .add("/products/{id}", get(user_detail));
+
+        // Merge them into a single Routes instance
+        let merged_routes = Routes::new().merge(user_routes).merge(product_routes);
+
+        // Verify all routes are present
+        assert_eq!(merged_routes.handlers.len(), 4);
+
+        // Check user routes
+        let user_list_handler = &merged_routes.handlers[0];
+        assert_eq!(user_list_handler.uri, "/users");
+
+        let user_detail_handler = &merged_routes.handlers[1];
+        assert_eq!(user_detail_handler.uri, "/users/{id}");
+
+        // Check product routes
+        let product_list_handler = &merged_routes.handlers[2];
+        assert_eq!(product_list_handler.uri, "/products");
+
+        let product_detail_handler = &merged_routes.handlers[3];
+        assert_eq!(product_detail_handler.uri, "/products/{id}");
+    }
+
+    #[test]
+    fn test_merge_and_nest_combination() {
+        // Create separate route groups
+        let user_routes = Routes::new()
+            .add("/users", get(users))
+            .add("/users/{id}", get(user_detail));
+
+        let product_routes = Routes::new()
+            .add("/products", get(users))
+            .add("/products/{id}", get(user_detail));
+
+        // Merge them and then nest under /api
+        let api_routes = Routes::new().merge(user_routes).merge(product_routes);
+
+        let app_routes = Routes::new()
+            .add("/health", get(ping))
+            .nest("/api", api_routes);
+
+        // Verify the final structure
+        assert_eq!(app_routes.handlers.len(), 5);
+
+        // Check health route is at root level
+        let health_handler = &app_routes.handlers[0];
+        assert_eq!(health_handler.uri, "/health");
+
+        // Check nested user routes
+        let user_list_handler = &app_routes.handlers[1];
+        assert_eq!(user_list_handler.uri, "/api/users");
+
+        let user_detail_handler = &app_routes.handlers[2];
+        assert_eq!(user_detail_handler.uri, "/api/users/{id}");
+
+        // Check nested product routes
+        let product_list_handler = &app_routes.handlers[3];
+        assert_eq!(product_list_handler.uri, "/api/products");
+
+        let product_detail_handler = &app_routes.handlers[4];
+        assert_eq!(product_detail_handler.uri, "/api/products/{id}");
+    }
+
+    #[test]
+    fn test_merge_all_method() {
+        // Create separate route groups
+        let user_routes = Routes::new().add("/users", get(users));
+        let product_routes = Routes::new().add("/products", get(users));
+        let order_routes = Routes::new().add("/orders", get(users));
+
+        // Merge all of them at once
+        let merged_routes =
+            Routes::new().merge_all(vec![user_routes, product_routes, order_routes]);
+
+        // Verify all routes are present
+        assert_eq!(merged_routes.handlers.len(), 3);
+
+        // Check all routes are present
+        let user_handler = &merged_routes.handlers[0];
+        assert_eq!(user_handler.uri, "/users");
+
+        let product_handler = &merged_routes.handlers[1];
+        assert_eq!(product_handler.uri, "/products");
+
+        let order_handler = &merged_routes.handlers[2];
+        assert_eq!(order_handler.uri, "/orders");
+    }
+
+    #[test]
+    fn test_merge_all_and_nest_combination() {
+        // Create separate route groups from different controllers
+        let user_routes = Routes::new().add("/users", get(users));
+        let product_routes = Routes::new().add("/products", get(users));
+        let order_routes = Routes::new().add("/orders", get(users));
+
+        // Merge all and then nest under /api
+        let api_routes = Routes::new().merge_all(vec![user_routes, product_routes, order_routes]);
+
+        let app_routes = Routes::new()
+            .add("/health", get(ping))
+            .nest("/api", api_routes);
+
+        // Verify the final structure
+        assert_eq!(app_routes.handlers.len(), 4);
+
+        // Check health route is at root level
+        let health_handler = &app_routes.handlers[0];
+        assert_eq!(health_handler.uri, "/health");
+
+        // Check nested routes
+        let user_handler = &app_routes.handlers[1];
+        assert_eq!(user_handler.uri, "/api/users");
+
+        let product_handler = &app_routes.handlers[2];
+        assert_eq!(product_handler.uri, "/api/products");
+
+        let order_handler = &app_routes.handlers[3];
+        assert_eq!(order_handler.uri, "/api/orders");
     }
 }
