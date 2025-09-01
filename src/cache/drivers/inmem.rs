@@ -48,6 +48,15 @@ impl Inmem {
 
 #[async_trait]
 impl CacheDriver for Inmem {
+    /// Pings the cache to check if it is reachable.
+    ///
+    /// # Errors
+    ///
+    /// Returns always error
+    async fn ping(&self) -> CacheResult<()> {
+        Ok(())
+    }
+
     /// Checks if a key exists in the cache.
     ///
     /// # Errors
@@ -163,6 +172,13 @@ mod tests {
 
     fn create_test_config() -> InMemCacheConfig {
         InMemCacheConfig { max_capacity: 100 }
+    }
+
+    #[tokio::test]
+    async fn ping_returns_pong_when_cache_is_accessible() {
+        let config = create_test_config();
+        let mem = new(&config);
+        assert!(mem.ping().await.is_ok());
     }
 
     #[tokio::test]

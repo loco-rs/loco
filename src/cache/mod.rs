@@ -7,7 +7,7 @@ use std::{future::Future, time::Duration};
 
 use serde::{de::DeserializeOwned, Serialize};
 
-use self::drivers::CacheDriver;
+pub use self::drivers::CacheDriver;
 use crate::config;
 use crate::Result as LocoResult;
 use std::sync::Arc;
@@ -72,6 +72,26 @@ impl Cache {
     #[must_use]
     pub fn new(driver: Box<dyn CacheDriver>) -> Self {
         Self { driver }
+    }
+
+    /// Pings the cache to check if it is reachable.
+    ///
+    /// # Example
+    /// ```
+    /// use loco_rs::cache::{self, CacheResult};
+    /// use loco_rs::config::InMemCacheConfig;
+    ///
+    /// pub async fn ping() -> CacheResult<()> {
+    ///     let config = InMemCacheConfig { max_capacity: 100 };
+    ///     let cache = cache::Cache::new(cache::drivers::inmem::new(&config).driver);
+    ///     cache.ping().await
+    /// }
+    /// ```
+    ///
+    /// # Errors
+    /// A [`CacheResult`] indicating whether the cache is reachable.
+    pub async fn ping(&self) -> CacheResult<()> {
+        self.driver.ping().await
     }
 
     /// Checks if a key exists in the cache.

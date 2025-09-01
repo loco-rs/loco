@@ -40,6 +40,7 @@ $ cargo loco routes
 
 [GET] /_health
 [GET] /_ping
+[GET] /_readiness
 [POST] /auth/forgot
 [POST] /auth/login
 [POST] /auth/register
@@ -312,6 +313,22 @@ impl Hooks for App {
 }
 
 ```
+
+## Default Endpoints
+
+### Health check endpoints
+There are three default health check endpoints that are automatically registered in the application:
+- `_ping` and `_health`: Can be used by startup probe and liveness probe, they only confirm the server is running (simple 200 OK).
+- `_readiness`: Can be used by readiness probe, tt checks dependencies (DB, Cache, Storage).
+  - If you configure a queue, it will check if the queue is reachable.
+  - If you enable `with-db` feature, it'll also check the database connection.
+  - If you enable `cache_inmem` or `cache_redis` features, it'll also check the cache connection.
+
+Why we separate these endpoints?
+- **Best practices**: Aligns with Kubernetes patterns to avoid removing healthy servers from rotation when dependencies fail temporarily.
+- **Load Balancer Clarity**: A Clear distinction helps load balancers make accurate routing decisions without conflating server and dependency health.
+- **Flexibility**: Splitting endpoints gives users more control to decide which checks to monitor based on their needs (e.g., prioritizing liveness for basic uptime or readiness for full system health).
+- **Debugging**: Separate endpoints make it easier to diagnose issues (e.g., server up but S3 down).
 
 # Middleware
 
@@ -1036,7 +1053,6 @@ Loco extractors validate data within HTTP handlers, proceeding with validated da
 #### Example 1: JSON Validation with `JsonValidate`
 
 ```rust
-use axum::debug_handler;
 use loco_rs::prelude::*;
 
 #[debug_handler]
@@ -1054,7 +1070,6 @@ pub async fn index(
 #### Example 2: Query Validation with `QueryValidate`
 
 ```rust
-use axum::debug_handler;
 use loco_rs::prelude::*;
 
 #[debug_handler]
@@ -1072,7 +1087,6 @@ pub async fn index(
 #### Example 3: Form Validation with `FormValidateWithMessage`
 
 ```rust
-use axum::debug_handler;
 use loco_rs::prelude::*;
 
 #[debug_handler]
