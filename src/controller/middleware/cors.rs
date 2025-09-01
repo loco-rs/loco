@@ -28,6 +28,9 @@ pub struct Cors {
     /// Allow methods
     #[serde(default = "default_allow_methods")]
     pub allow_methods: Vec<String>,
+    /// Expose headers
+    #[serde(default = "default_expose_headers")]
+    pub expose_headers: Vec<String>,
     /// Allow credentials
     #[serde(default)]
     pub allow_credentials: bool,
@@ -48,6 +51,10 @@ fn default_allow_headers() -> Vec<String> {
 
 fn default_allow_methods() -> Vec<String> {
     vec!["*".to_string()]
+}
+
+fn default_expose_headers() -> Vec<String> {
+    vec![]
 }
 
 fn default_vary_headers() -> Vec<String> {
@@ -123,6 +130,16 @@ impl Cors {
             }
         }
 
+        if self.expose_headers != default_expose_headers() {
+            let mut list = vec![];
+            for method in &self.expose_headers {
+                list.push(method.parse()?);
+            }
+            if !list.is_empty() {
+                cors = cors.expose_headers(list);
+            }
+        }
+
         let mut list = vec![];
         for v in &self.vary {
             list.push(v.parse()?);
@@ -179,16 +196,17 @@ mod tests {
     use crate::tests_cfg;
 
     #[rstest]
-    #[case("default", None, None, None)]
-    #[case("with_allow_headers", Some(vec!["token".to_string(), "user".to_string()]), None, None)]
-    #[case("with_allow_methods", None, Some(vec!["post".to_string(), "get".to_string()]), None)]
-    #[case("with_max_age", None, None, Some(20))]
-    #[case("default", None, None, None)]
+    #[case("default", None, None, None, None)]
+    #[case("with_allow_headers", Some(vec!["token".to_string(), "user".to_string()]), None, None, None)]
+    #[case("with_expose_headers", None, None, Some(vec!["token".to_string(), "user".to_string()]), None)]
+    #[case("with_allow_methods", None, Some(vec!["post".to_string(), "get".to_string()]), None, None)]
+    #[case("with_max_age", None, None, None, Some(20))]
     #[tokio::test]
     async fn cors_enabled(
         #[case] test_name: &str,
         #[case] allow_headers: Option<Vec<String>>,
         #[case] allow_methods: Option<Vec<String>>,
+        #[case] expose_headers: Option<Vec<String>>,
         #[case] max_age: Option<u64>,
     ) {
         let mut middleware = Cors::default();
@@ -197,6 +215,9 @@ mod tests {
         }
         if let Some(allow_methods) = allow_methods {
             middleware.allow_methods = allow_methods;
+        }
+        if let Some(expose_headers) = expose_headers {
+            middleware.expose_headers = expose_headers;
         }
         middleware.max_age = max_age;
 
@@ -229,6 +250,10 @@ mod tests {
                 format!(
                     "access-control-allow-headers: {:?}",
                     response.headers().get("access-control-allow-headers")
+                ),
+                format!(
+                    "access-control-expose-headers: {:?}",
+                    response.headers().get("access-control-expose-headers")
                 ),
                 format!("allow: {:?}", response.headers().get("allow")),
             )
@@ -274,6 +299,10 @@ mod tests {
                 format!(
                     "access-control-allow-headers: {:?}",
                     response.headers().get("access-control-allow-headers")
+                ),
+                format!(
+                    "access-control-expose-headers: {:?}",
+                    response.headers().get("access-control-expose-headers")
                 ),
                 format!("allow: {:?}", response.headers().get("allow")),
             )
