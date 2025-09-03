@@ -194,6 +194,68 @@ impl StorageStrategy for BackupStrategy {
 
         Ok(())
     }
+
+    /// Downloads content as a stream from the primary storage
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`StorageResult`] with the stream
+    async fn download_stream(
+        &self,
+        storage: &Storage,
+        path: &Path,
+    ) -> StorageResult<super::super::stream::BytesStream> {
+        // For backup strategy, we only download from primary
+        storage.as_store_err(&self.primary)?.get_stream(path).await
+    }
+
+    /// Uploads content from a stream to the primary and backup storage
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`StorageResult`] indicating of the operation status.
+    async fn upload_stream(
+        &self,
+        storage: &Storage,
+        path: &Path,
+        stream: super::super::stream::BytesStream,
+    ) -> StorageResult<()> {
+        // For backup strategy, we need to buffer the stream content once
+        // to be able to upload to multiple stores
+        let content = stream
+            .collect()
+            .await
+            .map_err(|e| StorageError::Any(Box::new(e)))?;
+
+        // Upload to primary
+        storage
+            .as_store_err(&self.primary)?
+            .upload(path, &content)
+            .await?;
+
+        // Upload to backups if configured
+        if let Some(secondaries) = self.secondaries.as_ref() {
+            let mut collect_errors: BTreeMap<String, String> = BTreeMap::new();
+            for secondary_store in secondaries {
+                match storage.as_store_err(secondary_store) {
+                    Ok(store) => {
+                        if let Err(err) = store.upload(path, &content).await {
+                            collect_errors.insert(secondary_store.to_string(), err.to_string());
+                        }
+                    }
+                    Err(err) => {
+                        collect_errors.insert(secondary_store.to_string(), err.to_string());
+                    }
+                }
+            }
+
+            if self.failure_mode.should_fail(&collect_errors) {
+                return Err(StorageError::Multi(collect_errors));
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl BackupStrategy {
