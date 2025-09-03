@@ -7,6 +7,7 @@ use crate::{
     views::auth::{CurrentResponse, LoginResponse},
 };
 use loco_rs::prelude::*;
+use axum::debug_handler;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
