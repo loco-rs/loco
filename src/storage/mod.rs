@@ -12,8 +12,8 @@
 //! The selected strategy can be dynamically changed at runtime.
 mod contents;
 pub mod drivers;
-pub mod stream;
 pub mod strategies;
+pub mod stream;
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
@@ -371,7 +371,7 @@ impl Storage {
         self.as_store(name)
             .ok_or(StorageError::StoreNotFound(name.to_string()))
     }
-    
+
     /// Downloads content from storage as a stream, enabling efficient
     /// handling of large files without loading them entirely into memory.
     ///
@@ -396,9 +396,10 @@ impl Storage {
     /// This method returns an error if the download operation fails or if there
     /// is an issue with the strategy configuration.
     pub async fn download_stream(&self, path: &Path) -> StorageResult<BytesStream> {
-        self.download_stream_with_policy(path, &*self.strategy).await
+        self.download_stream_with_policy(path, &*self.strategy)
+            .await
     }
-    
+
     /// Downloads content from storage as a stream using a specific strategy.
     ///
     /// # Errors
@@ -412,7 +413,7 @@ impl Storage {
     ) -> StorageResult<BytesStream> {
         strategy.download_stream(self, path).await
     }
-    
+
     /// Uploads content from a stream to storage, enabling efficient
     /// handling of large files without loading them entirely into memory.
     ///
@@ -435,9 +436,10 @@ impl Storage {
     /// This method returns an error if the upload operation fails or if there
     /// is an issue with the strategy configuration.
     pub async fn upload_stream(&self, path: &Path, stream: BytesStream) -> StorageResult<()> {
-        self.upload_stream_with_policy(path, stream, &*self.strategy).await
+        self.upload_stream_with_policy(path, stream, &*self.strategy)
+            .await
     }
-    
+
     /// Uploads content from a stream using a specific strategy.
     ///
     /// # Errors
