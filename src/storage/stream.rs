@@ -6,13 +6,13 @@ use futures_util::{Stream, StreamExt};
 use opendal::Reader;
 
 /// A stream of bytes that abstracts over the underlying storage implementation.
-/// This type ensures that OpenDAL types are not exposed in the public API.
+/// This type ensures that `OpenDAL` types are not exposed in the public API.
 pub struct BytesStream {
     inner: Pin<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send>>,
 }
 
 impl BytesStream {
-    /// Create a BytesStream from an OpenDAL Reader.
+    /// Create a `BytesStream` from an `OpenDAL` `Reader`.
     /// This is an internal method used by storage drivers.
     pub(crate) async fn from_reader(reader: Reader) -> Result<Self, crate::storage::StorageError> {
         // Convert the Reader into a stream of bytes
@@ -31,8 +31,12 @@ impl BytesStream {
         })
     }
 
-    /// Collect the entire stream into a single Bytes buffer.
+    /// Collect the entire stream into a single `Bytes` buffer.
     /// This method should be used carefully as it loads the entire content into memory.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if reading from the stream fails.
     pub async fn collect(mut self) -> Result<Bytes, std::io::Error> {
         let mut buffer = Vec::new();
 
@@ -55,13 +59,14 @@ impl Stream for BytesStream {
 
 /// Extension trait for axum integration
 impl BytesStream {
-    /// Convert the BytesStream into an axum Body for HTTP responses.
+    /// Convert the `BytesStream` into an axum `Body` for HTTP responses.
     /// This enables zero-copy streaming directly to the HTTP response.
+    #[must_use]
     pub fn into_body(self) -> axum::body::Body {
         axum::body::Body::from_stream(self)
     }
 
-    /// Create a BytesStream from an axum request body.
+    /// Create a `BytesStream` from an axum request body.
     /// This is useful for streaming uploads.
     ///
     /// Note: This requires the body to be converted to a stream first.

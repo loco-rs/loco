@@ -142,8 +142,8 @@ impl StoreDriver for OpendalAdapter {
         Ok(self.opendal_impl.exists(&path).await.unwrap_or(false))
     }
 
-    /// Native streaming implementation for OpenDAL.
-    /// This directly uses OpenDAL's reader for efficient streaming.
+    /// Native streaming implementation for `OpenDAL`.
+    /// This directly uses `OpenDAL`'s reader for efficient streaming.
     async fn get_stream(&self, path: &Path) -> StorageResult<BytesStream> {
         let reader = self
             .opendal_impl
@@ -152,8 +152,8 @@ impl StoreDriver for OpendalAdapter {
         BytesStream::from_reader(reader).await
     }
 
-    /// Native streaming upload for OpenDAL.
-    /// This uses OpenDAL's writer to stream data directly without buffering.
+    /// Native streaming upload for `OpenDAL`.
+    /// This uses `OpenDAL`'s writer to stream data directly without buffering.
     async fn upload_stream(
         &self,
         path: &Path,
@@ -175,8 +175,8 @@ impl StoreDriver for OpendalAdapter {
         let meta = writer.close().await?;
 
         Ok(UploadResponse {
-            e_tag: meta.etag().map(|v| v.to_string()),
-            version: meta.version().map(|v| v.to_string()),
+            e_tag: meta.etag().map(std::string::ToString::to_string),
+            version: meta.version().map(std::string::ToString::to_string),
         })
     }
 }

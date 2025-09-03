@@ -46,7 +46,7 @@ impl GetResponse {
     }
 
     /// Convert the response into a streaming bytes reader.
-    /// This method consumes the GetResponse and returns a BytesStream
+    /// This method consumes the `GetResponse` and returns a `BytesStream`
     /// that can be used for efficient streaming without loading the entire
     /// content into memory.
     ///

@@ -223,22 +223,21 @@ impl StorageStrategy for MirrorStrategy {
         path: &Path,
     ) -> StorageResult<super::super::stream::BytesStream> {
         // Try primary first
-        match storage.as_store_err(&self.primary)?.get_stream(path).await {
-            Ok(stream) => Ok(stream),
-            Err(_) => {
-                // If primary fails, try secondaries
-                if let Some(secondaries) = self.secondaries.as_ref() {
-                    for secondary_store in secondaries {
-                        if let Some(store) = storage.as_store(secondary_store) {
-                            if let Ok(stream) = store.get_stream(path).await {
-                                return Ok(stream);
-                            }
+        if let Ok(stream) = storage.as_store_err(&self.primary)?.get_stream(path).await {
+            Ok(stream)
+        } else {
+            // If primary fails, try secondaries
+            if let Some(secondaries) = self.secondaries.as_ref() {
+                for secondary_store in secondaries {
+                    if let Some(store) = storage.as_store(secondary_store) {
+                        if let Ok(stream) = store.get_stream(path).await {
+                            return Ok(stream);
                         }
                     }
                 }
-                // If all failed, return error from primary
-                storage.as_store_err(&self.primary)?.get_stream(path).await
             }
+            // If all failed, return error from primary
+            storage.as_store_err(&self.primary)?.get_stream(path).await
         }
     }
 
