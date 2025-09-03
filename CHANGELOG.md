@@ -17,6 +17,7 @@
 - Enable edit CORS expose headers. [https://github.com/loco-rs/loco/pull/1599](https://github.com/loco-rs/loco/pull/1599)
 - Adding new imports about multipart. [https://github.com/loco-rs/loco/pull/1600](https://github.com/loco-rs/loco/pull/1600)
 - Adding readiness default endpoint. [https://github.com/loco-rs/loco/pull/1563](https://github.com/loco-rs/loco/pull/1563)
+- Add Route methods to make collecting and nesting easier. [https://github.com/loco-rs/loco/pull/1608](https://github.com/loco-rs/loco/pull/1608)
 
 
 ## v0.16.3
