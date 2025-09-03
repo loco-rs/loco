@@ -91,6 +91,8 @@ fn test_migrations_flow(#[values("postgres", "sqlite")] db_kind: &str) {
         "loco g migration CreateAwards name:string actor:references",
         "loco g migration RemoveContentFromMovies content:string",
         "loco g migration AddRatingToMovies rating:int",
+        "loco g migration AddIndexNameToUsers name:string",
+        "loco g migration RemoveIndexNameFromUsers name:string",
         "loco db migrate",
         "loco db entities",
         "loco db schema",
