@@ -16,11 +16,8 @@ pub use reqwest::{
 #[cfg(feature = "with-db")]
 pub use sea_orm::prelude::{Date, DateTimeUtc, DateTimeWithTimeZone, Decimal, Uuid};
 #[cfg(feature = "with-db")]
-pub use sea_orm::{
-    ActiveModelBehavior, ActiveModelTrait, ActiveValue, ColumnTrait, ConnectionTrait,
-    DatabaseConnection, DbErr, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, Set,
-    TransactionTrait,
-};
+pub use sea_orm::entity::prelude::*;
+pub use sea_orm::{ ActiveValue, DbErr, IntoActiveModel, Set, TransactionTrait};
 // sugar for controller views to use `data!({"item": ..})` instead of `json!`
 pub use serde_json::json as data;
 
