@@ -52,7 +52,7 @@ pub use crate::{
     validation::{self, Validatable, ValidatorTrait},
     Result,
 };
-pub use validator::Validate;
+pub use validator::{Validate, ValidationError};
 #[cfg(feature = "with-db")]
 pub mod model {
     pub use crate::model::query;
