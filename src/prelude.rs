@@ -8,14 +8,17 @@ pub use axum::{
 pub use axum_extra::extract::cookie;
 pub use chrono::NaiveDateTime as DateTime;
 pub use include_dir::{include_dir, Dir};
+pub use reqwest::{
+    header::{HeaderName, HeaderValue},
+    StatusCode,
+};
 // some types required for controller generators
 #[cfg(feature = "with-db")]
 pub use sea_orm::prelude::{Date, DateTimeUtc, DateTimeWithTimeZone, Decimal, Uuid};
 #[cfg(feature = "with-db")]
+pub use sea_orm::entity::prelude::*;
 pub use sea_orm::{
-    ActiveModelBehavior, ActiveModelTrait, ActiveValue, ColumnTrait, ConnectionTrait,
-    DatabaseConnection, DbErr, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, Set,
-    TransactionTrait,
+    ActiveValue, DbErr, IntoActiveModel, Set, TransactionTrait, QuerySelect
 };
 // sugar for controller views to use `data!({"item": ..})` instead of `json!`
 pub use serde_json::json as data;
@@ -48,7 +51,7 @@ pub use crate::{
     validation::{self, Validatable, ValidatorTrait},
     Result,
 };
-pub use validator::Validate;
+pub use validator::{Validate, ValidationError};
 #[cfg(feature = "with-db")]
 pub mod model {
     pub use crate::model::query;
