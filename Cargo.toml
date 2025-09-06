@@ -132,6 +132,7 @@ opendal = { version = "0.54", default-features = false, features = [
     "services-memory",
     "services-fs",
 ] }
+reqwest = { version = "0.12.22", features = ["json", "rustls-tls", "multipart"] }
 
 # cache
 moka = { version = "0.12.7", features = ["sync"], optional = true }
@@ -205,7 +206,6 @@ loco-rs = { path = ".", features = ["testing"] }
 rstest = "0.21.0"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
 tree-fs = { version = "0.3" }
-reqwest = { version = "0.12.7", features = ["json"] }
 tower = { workspace = true, features = ["util"] }
 sqlx = { version = "0.8.2", default-features = false, features = [
     "macros",
