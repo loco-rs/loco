@@ -8,10 +8,7 @@ pub use axum::{
 pub use axum_extra::extract::cookie;
 pub use chrono::NaiveDateTime as DateTime;
 pub use include_dir::{include_dir, Dir};
-pub use reqwest::{
-    header::{HeaderName, HeaderValue},
-    Client, StatusCode,
-};
+pub use reqwest::{header::*, Client, StatusCode};
 #[cfg(feature = "with-db")]
 pub use sea_orm::entity::prelude::*;
 // some types required for controller generators
