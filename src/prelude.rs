@@ -18,7 +18,8 @@ pub use sea_orm::prelude::{Date, DateTimeUtc, DateTimeWithTimeZone, Decimal, Uui
 #[cfg(feature = "with-db")]
 pub use sea_orm::entity::prelude::*;
 pub use sea_orm::{
-    ActiveValue, DbErr, IntoActiveModel, Set, TransactionTrait, QuerySelect
+    ActiveValue, DbErr, IntoActiveModel, Set, TransactionTrait, QuerySelect,
+    JoinType, EntityOrSelect
 };
 // sugar for controller views to use `data!({"item": ..})` instead of `json!`
 pub use serde_json::json as data;
