@@ -571,7 +571,7 @@ async fn current(
 }
 ```
 
-Additionally, you can fetch the current user by replacing auth::JWT with `auth::ApiToken<users::Model>`.
+Additionally, you can fetch the current user by replacing auth::JWT with `auth::JWTWithUser<users::Model>`.
 
 #### API Key
 
