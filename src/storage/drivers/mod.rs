@@ -15,7 +15,7 @@ pub mod mem;
 pub mod null;
 pub mod opendal_adapter;
 
-use super::StorageResult;
+use super::{stream::BytesStream, StorageResult};
 
 #[derive(Debug)]
 pub struct UploadResponse {
@@ -43,6 +43,18 @@ impl GetResponse {
     /// Returns a `StorageError` with the reason for the failure.
     pub async fn bytes(&self) -> StorageResult<Bytes> {
         Ok(self.stream.read(..).await?.to_bytes())
+    }
+
+    /// Convert the response into a streaming bytes reader.
+    /// This method consumes the `GetResponse` and returns a `BytesStream`
+    /// that can be used for efficient streaming without loading the entire
+    /// content into memory.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `StorageError` if the stream cannot be created.
+    pub async fn into_stream(self) -> StorageResult<BytesStream> {
+        BytesStream::from_reader(self.stream).await
     }
 }
 
@@ -94,4 +106,47 @@ pub trait StoreDriver: Sync + Send {
     /// Returns a `StorageResult` with a boolean indicating the existence of the
     /// content.
     async fn exists(&self, path: &Path) -> StorageResult<bool>;
+
+    /// Retrieves content from the specified path and returns it as a stream.
+    /// This method is more memory-efficient than `get()` for large files as it
+    /// doesn't load the entire content into memory.
+    ///
+    /// # Default Implementation
+    ///
+    /// The default implementation uses the regular `get()` method and converts
+    /// the result to a stream. Storage drivers that support native streaming
+    /// should override this method for better performance.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `StorageResult` with the streaming response.
+    async fn get_stream(&self, path: &Path) -> StorageResult<BytesStream> {
+        let response = self.get(path).await?;
+        response.into_stream().await
+    }
+
+    /// Uploads content from a stream to the specified path.
+    /// This method is more memory-efficient than `upload()` for large files
+    /// as it doesn't require loading the entire content into memory.
+    ///
+    /// # Default Implementation
+    ///
+    /// The default implementation collects the stream into bytes and calls
+    /// the regular `upload()` method. Storage drivers that support native
+    /// streaming should override this method for better performance.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `StorageResult` with the upload response.
+    async fn upload_stream(
+        &self,
+        path: &Path,
+        stream: BytesStream,
+    ) -> StorageResult<UploadResponse> {
+        let bytes = stream
+            .collect()
+            .await
+            .map_err(|e| super::StorageError::Any(Box::new(e)))?;
+        self.upload(path, &bytes).await
+    }
 }

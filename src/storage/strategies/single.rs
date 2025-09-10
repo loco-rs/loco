@@ -80,6 +80,37 @@ impl StorageStrategy for SingleStrategy {
     async fn copy(&self, storage: &Storage, from: &Path, to: &Path) -> StorageResult<()> {
         Ok(storage.as_store_err(&self.primary)?.copy(from, to).await?)
     }
+
+    /// Downloads content as a stream from the primary storage
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`StorageResult`] with the stream
+    async fn download_stream(
+        &self,
+        storage: &Storage,
+        path: &Path,
+    ) -> StorageResult<super::super::stream::BytesStream> {
+        storage.as_store_err(&self.primary)?.get_stream(path).await
+    }
+
+    /// Uploads content from a stream to the primary storage
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`StorageResult`] indicating of the operation status.
+    async fn upload_stream(
+        &self,
+        storage: &Storage,
+        path: &Path,
+        stream: super::super::stream::BytesStream,
+    ) -> StorageResult<()> {
+        storage
+            .as_store_err(&self.primary)?
+            .upload_stream(path, stream)
+            .await?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
