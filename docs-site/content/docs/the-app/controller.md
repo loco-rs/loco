@@ -1243,6 +1243,94 @@ impl PaginationResponse {
 }
 ```
 
+## Custom Extractors
+
+When it is necessary to validate request information contained in the request header, a custom extractor can be implemented for this purpose. For example, in a multi-tenant application that includes the current tenant identifier in the headers, the extractor should retrieve the value, verify its validity in the database, and ensure that the user is authorized to access it. To implement a custom extractor, it is required to implement one of the following traits: FromRequest or FromRequestParts.
+
+```rust
+use axum::{
+    extract::FromRequestParts,
+    extract::FromRef,
+    http::{request::Parts, StatusCode},
+};
+use loco_rs::prelude::*;
+use sea_orm::{EntityTrait, DatabaseConnection};
+
+use loco_rs::app::AppContext;
+use crate::models::_entities::companies; // Adjust to your strucuture
+
+#[derive(Debug, Clone)]
+pub struct CompanyContext(pub i32, pub String);
+
+impl<S> FromRequestParts<S> for CompanyContext
+where
+    AppContext: FromRef<S>,
+    S: Send + Sync,
+{
+    type Rejection = (StatusCode, String);
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &S
+    ) -> Result<Self, Self::Rejection> {
+
+        // 1. get header
+        let nickname = parts.headers
+            .get("x-my-company")
+            .and_then(|h| h.to_str().ok())
+            .ok_or((
+                StatusCode::BAD_REQUEST,
+                "Missing X-MY-COMPANY".to_string(),
+            ))?
+            .to_string();
+
+        let ctx = AppContext::from_ref(state);
+        let db: &DatabaseConnection = &ctx.db;
+
+        // 3. Search tenant on database
+        let company = companies::Entity::find()
+            .filter(companies::Column::Uuid.eq(nickname.clone()))
+            .one(db)
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("DB error: {}", e),
+                )
+            })?
+            .ok_or((
+                StatusCode::NOT_FOUND,
+                "Company not found".to_string(),
+            ))?;
+
+        Ok(CompanyContext(company.id, nickname))
+    }
+}
+
+```
+
+After that just added to your action. 
+
+```rust
+#[debug_handler]
+pub async fn add(
+    CompanyContext(company_id, nickname): CompanyContext,
+    State(ctx): State<AppContext>,
+    Json(params): Json<Params>,
+) -> Result<Response> {
+
+    // Action logic ... 
+
+
+    format::json({ message: "added!" })
+}
+```
+
+<div class="infobox">
+More information about extractors can be found in the <a href="https://docs.rs/axum/latest/axum/extract/index.html#the-order-of-extractors">axum documentation</a>.
+</div>
+
+
 # Testing
 
 When testing controllers, the goal is to call the router's controller endpoint and verify the HTTP response, including the status code, response content, headers, and more.
