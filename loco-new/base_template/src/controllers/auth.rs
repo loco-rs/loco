@@ -132,6 +132,17 @@ async fn reset(State(ctx): State<AppContext>, Json(params): Json<ResetParams>) -
     format::json(())
 }
 
+/// Updates user data and returns the current user with updated data
+#[debug_handler]
+async fn update(auth: auth::JWT, State(ctx): State<AppContext>, Json(params): Json<RegisterParams>) -> Result<Response> {
+    let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?
+        .into_active_model()
+        .update_user_data(&ctx.db, params)
+        .await?;
+
+    format::json(CurrentResponse::new(&user))
+}
+
 /// Creates a user login and returns a token
 #[debug_handler]
 async fn login(State(ctx): State<AppContext>, Json(params): Json<LoginParams>) -> Result<Response> {
@@ -266,6 +277,7 @@ pub fn routes() -> Routes {
         .add("/login", post(login))
         .add("/forgot", post(forgot))
         .add("/reset", post(reset))
+        .add("/update", post(update))
         .add("/current", get(current))
         .add("/magic-link", post(magic_link))
         .add("/magic-link/{token}", get(magic_link_verify))
