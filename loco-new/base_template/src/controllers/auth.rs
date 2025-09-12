@@ -7,6 +7,7 @@ use crate::{
     views::auth::{CurrentResponse, LoginResponse},
 };
 use loco_rs::prelude::*;
+use loco_rs::model::ModelError;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
@@ -130,6 +131,34 @@ async fn reset(State(ctx): State<AppContext>, Json(params): Json<ResetParams>) -
         .await?;
 
     format::json(())
+}
+
+/// Updates user data and returns the current user with updated data.
+/// Returns an error if username or email already exist.
+#[debug_handler]
+async fn update(auth: auth::JWT, State(ctx): State<AppContext>, Json(params): Json<RegisterParams>) -> Result<Response> {
+    if let Ok(_) = users::Model::find_by_email(&ctx.db, &params.email).await {
+        return Err(
+                    Error::CustomError(
+                        StatusCode::CONFLICT,
+                        ErrorDeatil::with_reason("Email already exists")
+                    )
+                );
+    }
+    if let Ok(_) = users::Model::find_by_username(&ctx.db, &params.username).await {
+        return Err(
+            Error::CustomError(
+                StatusCode::CONFLICT,
+                ErrorDeatil::with_reason("Username already exists")
+            )
+        );
+    }
+    let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?
+        .into_active_model()
+        .update_user_data(&ctx.db, params)
+        .await?;
+
+    format::json(CurrentResponse::new(&user))
 }
 
 /// Creates a user login and returns a token
@@ -266,6 +295,7 @@ pub fn routes() -> Routes {
         .add("/login", post(login))
         .add("/forgot", post(forgot))
         .add("/reset", post(reset))
+        .add("/update", post(update))
         .add("/current", get(current))
         .add("/magic-link", post(magic_link))
         .add("/magic-link/{token}", get(magic_link_verify))
