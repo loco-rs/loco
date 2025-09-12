@@ -163,6 +163,7 @@ curl --location '127.0.0.1:5150/api/auth/update' \
          "password": "new-password"
      }'
 ```
+Loco will check if the new username and email already exist. If so, it will not update and return an error.
 
 ### Creating an Authenticated Endpoint
 
