@@ -91,9 +91,13 @@ pub enum Queue {
 impl Queue {
     /// Add a job to the queue
     ///
+    /// Returns the job ID if the queue provider supports it:
+    /// - `Some(String)` - Job ID for Redis, PostgreSQL, and SQLite providers
+    /// - `None` - When using Queue::None or if the provider doesn't support job IDs
+    ///
     /// # Errors
     ///
-    /// This function will return an error if fails
+    /// This function will return an error if the enqueue operation fails
     #[allow(unused_variables)]
     pub async fn enqueue<A: Serialize + Send + Sync>(
         &self,
@@ -101,15 +105,15 @@ impl Queue {
         queue: Option<String>,
         args: A,
         tags: Option<Vec<String>>,
-    ) -> Result<()> {
+    ) -> Result<Option<String>> {
         tracing::debug!(worker = class, queue = ?queue, tags = ?tags, "Enqueuing background job");
-        match self {
+        let job_id = match self {
             #[cfg(feature = "bg_redis")]
             Self::Redis(pool, _, _, _) => {
-                redis::enqueue(pool, class, queue, args, tags).await?;
+                Some(redis::enqueue(pool, class, queue, args, tags).await?)
             }
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _, _) => {
+            Self::Postgres(pool, _, _, _) => Some(
                 pg::enqueue(
                     pool,
                     &class,
@@ -119,10 +123,10 @@ impl Queue {
                     tags,
                 )
                 .await
-                .map_err(Box::from)?;
-            }
+                .map_err(Box::from)?,
+            ),
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _, _) => {
+            Self::Sqlite(pool, _, _, _) => Some(
                 sqlt::enqueue(
                     pool,
                     &class,
@@ -132,11 +136,11 @@ impl Queue {
                     tags,
                 )
                 .await
-                .map_err(Box::from)?;
-            }
-            _ => {}
-        }
-        Ok(())
+                .map_err(Box::from)?,
+            ),
+            _ => None,
+        };
+        Ok(job_id)
     }
 
     /// Register a worker
@@ -209,7 +213,8 @@ impl Queue {
             }
             _ => {
                 tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
+                    "No queue provider is configured: compile with at least one queue provider \
+                     feature"
                 );
             }
         }
@@ -381,20 +386,24 @@ impl Queue {
             }
             Self::None => {
                 tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
+                    "No queue provider is configured: compile with at least one queue provider \
+                     feature"
                 );
                 Err(Error::string("provider not configured"))
             }
         }
     }
 
-    /// Cancels jobs based on the given job name for the configured queue provider.
+    /// Cancels jobs based on the given job name for the configured queue
+    /// provider.
     ///
     /// # Errors
-    /// - If no queue provider is configured, it will return an error indicating the lack of configuration.
-    /// - If the Redis provider is selected, it will return an error stating that cancellation is not supported.
-    /// - Any error in the underlying provider's cancellation logic will propagate from the respective function.
-    ///
+    /// - If no queue provider is configured, it will return an error indicating
+    ///   the lack of configuration.
+    /// - If the Redis provider is selected, it will return an error stating
+    ///   that cancellation is not supported.
+    /// - Any error in the underlying provider's cancellation logic will
+    ///   propagate from the respective function.
     pub async fn cancel_jobs(&self, job_name: &str) -> Result<()> {
         tracing::info!(job_name = job_name, "Cancelling jobs by name");
 
@@ -407,20 +416,24 @@ impl Queue {
             Self::Redis(pool, _, _, _) => redis::cancel_jobs_by_name(pool, job_name).await,
             Self::None => {
                 tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
+                    "No queue provider is configured: compile with at least one queue provider \
+                     feature"
                 );
                 Err(Error::string("provider not configured"))
             }
         }
     }
 
-    /// Clears jobs older than a specified number of days for the configured queue provider.
+    /// Clears jobs older than a specified number of days for the configured
+    /// queue provider.
     ///
     /// # Errors
-    /// - If no queue provider is configured, it will return an error indicating the lack of configuration.
-    /// - If the Redis provider is selected, it will return an error stating that clearing jobs is not supported.
-    /// - Any error in the underlying provider's job clearing logic will propagate from the respective function.
-    ///
+    /// - If no queue provider is configured, it will return an error indicating
+    ///   the lack of configuration.
+    /// - If the Redis provider is selected, it will return an error stating
+    ///   that clearing jobs is not supported.
+    /// - Any error in the underlying provider's job clearing logic will
+    ///   propagate from the respective function.
     pub async fn clear_jobs_older_than(
         &self,
         age_days: i64,
@@ -443,7 +456,8 @@ impl Queue {
             }
             Self::None => {
                 tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
+                    "No queue provider is configured: compile with at least one queue provider \
+                     feature"
                 );
                 Err(Error::string("provider not configured"))
             }
@@ -453,9 +467,12 @@ impl Queue {
     /// Clears jobs based on their status for the configured queue provider.
     ///
     /// # Errors
-    /// - If no queue provider is configured, it will return an error indicating the lack of configuration.
-    /// - If the Redis provider is selected, it will return an error stating that clearing jobs is not supported.
-    /// - Any error in the underlying provider's job clearing logic will propagate from the respective function.
+    /// - If no queue provider is configured, it will return an error indicating
+    ///   the lack of configuration.
+    /// - If the Redis provider is selected, it will return an error stating
+    ///   that clearing jobs is not supported.
+    /// - Any error in the underlying provider's job clearing logic will
+    ///   propagate from the respective function.
     pub async fn clear_by_status(&self, status: Vec<JobStatus>) -> Result<()> {
         tracing::info!(status = ?status, "Clearing jobs by status");
         match self {
@@ -467,7 +484,8 @@ impl Queue {
             Self::Redis(pool, _, _, _) => redis::clear_by_status(pool, status).await,
             Self::None => {
                 tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
+                    "No queue provider is configured: compile with at least one queue provider \
+                     feature"
                 );
                 Err(Error::string("provider not configured"))
             }
@@ -477,9 +495,12 @@ impl Queue {
     /// Requeued job with the given minutes ages.
     ///
     /// # Errors
-    /// - If no queue provider is configured, it will return an error indicating the lack of configuration.
-    /// - If the Redis provider is selected, it will return an error stating that clearing jobs is not supported.
-    /// - Any error in the underlying provider's job clearing logic will propagate from the respective function.
+    /// - If no queue provider is configured, it will return an error indicating
+    ///   the lack of configuration.
+    /// - If the Redis provider is selected, it will return an error stating
+    ///   that clearing jobs is not supported.
+    /// - Any error in the underlying provider's job clearing logic will
+    ///   propagate from the respective function.
     pub async fn requeue(&self, age_minutes: &i64) -> Result<()> {
         tracing::info!(age_minutes = age_minutes, "Requeuing stale jobs");
         match self {
@@ -491,7 +512,8 @@ impl Queue {
             Self::Redis(pool, _, _, _) => redis::requeue(pool, age_minutes).await,
             Self::None => {
                 tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
+                    "No queue provider is configured: compile with at least one queue provider \
+                     feature"
                 );
                 Err(Error::string("provider not configured"))
             }
@@ -500,12 +522,13 @@ impl Queue {
 
     /// Dumps the list of jobs to a YAML file at the specified path.
     ///
-    /// This function retrieves jobs from the queue, optionally filtered by their status, and
-    /// writes the job data to a YAML file.
+    /// This function retrieves jobs from the queue, optionally filtered by
+    /// their status, and writes the job data to a YAML file.
     ///
     /// # Errors
     /// - If the specified path cannot be created, an error will be returned.
-    /// - If the job retrieval or YAML serialization fails, an error will be returned.
+    /// - If the job retrieval or YAML serialization fails, an error will be
+    ///   returned.
     /// - If there is an issue creating the dump file, an error will be returned
     pub async fn dump(
         &self,
@@ -537,14 +560,16 @@ impl Queue {
 
     /// Imports jobs from a YAML file into the configured queue provider.
     ///
-    /// This function reads job data from a YAML file located at the specified `path` and imports
-    /// the jobs into the queue.
+    /// This function reads job data from a YAML file located at the specified
+    /// `path` and imports the jobs into the queue.
     ///
     /// # Errors
-    /// - If there is an issue opening or reading the YAML file, an error will be returned.
-    /// - If the queue provider is Redis or none, an error will be returned indicating the lack of support.
-    /// - If any issues occur while enqueuing the jobs, the function will return an error.
-    ///
+    /// - If there is an issue opening or reading the YAML file, an error will
+    ///   be returned.
+    /// - If the queue provider is Redis or none, an error will be returned
+    ///   indicating the lack of support.
+    /// - If any issues occur while enqueuing the jobs, the function will return
+    ///   an error.
     pub async fn import(&self, path: &Path) -> Result<()> {
         tracing::info!(path = %path.display(), "Importing jobs from file");
 
@@ -579,7 +604,8 @@ impl Queue {
             }
             Self::None => {
                 tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
+                    "No queue provider is configured: compile with at least one queue provider \
+                     feature"
                 );
                 Err(Error::string("provider not configured"))
             }
@@ -597,8 +623,8 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
         None
     }
 
-    /// Specifies tags associated with this worker. Workers might only process jobs
-    /// matching specific tags during startup.
+    /// Specifies tags associated with this worker. Workers might only process
+    /// jobs matching specific tags during startup.
     #[must_use]
     fn tags() -> Vec<String> {
         Vec::new()
@@ -615,26 +641,29 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
         let name = type_name.split("::").last().unwrap_or(type_name);
         name.to_upper_camel_case()
     }
-    async fn perform_later(ctx: &AppContext, args: A) -> crate::Result<()>
+    async fn perform_later(ctx: &AppContext, args: A) -> crate::Result<Option<String>>
     where
         Self: Sized,
     {
-        match &ctx.config.workers.mode {
+        let job_id = match &ctx.config.workers.mode {
             WorkerMode::BackgroundQueue => {
                 if let Some(p) = &ctx.queue_provider {
                     let tags = Self::tags();
                     let tags_option = if tags.is_empty() { None } else { Some(tags) };
+
                     p.enqueue(Self::class_name(), Self::queue(), args, tags_option)
-                        .await?;
+                        .await?
                 } else {
                     tracing::error!(
                         "perform_later: background queue is selected, but queue was not populated \
                          in context"
                     );
+                    None
                 }
             }
             WorkerMode::ForegroundBlocking => {
                 Self::build(ctx).perform(args).await?;
+                None
             }
             WorkerMode::BackgroundAsync => {
                 let dx = ctx.clone();
@@ -643,9 +672,10 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
                         tracing::error!(err = err.to_string(), "worker failed to perform job");
                     }
                 });
+                None
             }
-        }
-        Ok(())
+        };
+        Ok(job_id)
     }
 
     async fn perform(&self, args: A) -> crate::Result<()>;
@@ -729,11 +759,13 @@ pub async fn create_queue_provider(config: &Config) -> Result<Option<Arc<Queue>>
                 )),
             }
         } else {
-            // tracing::warn!("Worker mode is BackgroundQueue but no queue configuration is present");
+            // tracing::warn!("Worker mode is BackgroundQueue but no queue configuration is
+            // present");
             Ok(None)
         }
     } else {
-        // tracing::debug!("Worker mode is not BackgroundQueue, skipping queue provider creation");
+        // tracing::debug!("Worker mode is not BackgroundQueue, skipping queue provider
+        // creation");
         Ok(None)
     }
 }
@@ -763,6 +795,54 @@ mod tests {
             poll_interval_sec: 1,
             num_workers: 1,
         }
+    }
+
+    #[tokio::test]
+    async fn queue_enqueue_returns_job_id() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+
+        // Test with SQLite provider - should return Some(job_id)
+        let qcfg = sqlite_config(tree_fs.root.as_path());
+        let queue = sqlt::create_provider(&qcfg)
+            .await
+            .expect("create sqlite queue");
+
+        queue.setup().await.expect("setup sqlite db");
+
+        let job_id = queue
+            .enqueue(
+                "TestJob".to_string(),
+                None,
+                serde_json::json!({"test": "data"}),
+                None,
+            )
+            .await
+            .expect("enqueue job");
+
+        assert!(job_id.is_some(), "SQLite provider should return job ID");
+        let job_id = job_id.unwrap();
+        assert!(!job_id.is_empty(), "Job ID should not be empty");
+        assert!(
+            ulid::Ulid::from_string(&job_id).is_ok(),
+            "Job ID should be valid ULID"
+        );
+
+        // Test with None provider - should return None
+        let none_queue = Queue::None;
+        let job_id = none_queue
+            .enqueue(
+                "TestJob".to_string(),
+                None,
+                serde_json::json!({"test": "data"}),
+                None,
+            )
+            .await
+            .expect("enqueue to None provider");
+
+        assert!(job_id.is_none(), "None provider should return None");
     }
 
     #[tokio::test]
