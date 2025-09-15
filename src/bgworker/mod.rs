@@ -92,8 +92,8 @@ impl Queue {
     /// Add a job to the queue
     ///
     /// Returns the job ID if the queue provider supports it:
-    /// - `Some(String)` - Job ID for Redis, PostgreSQL, and SQLite providers
-    /// - `None` - When using Queue::None or if the provider doesn't support job IDs
+    /// - `Some(String)` - Job ID for Redis, `PostgreSQL`, and `SQLite` providers
+    /// - `None` - When using `Queue::None` or if the provider doesn't support job IDs
     ///
     /// # Errors
     ///
