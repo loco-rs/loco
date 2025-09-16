@@ -9,6 +9,7 @@ pub mod bgworker;
 mod depcheck;
 pub mod initializers;
 pub mod prelude;
+mod sys;
 
 pub mod data;
 pub mod doctor;
