@@ -3,7 +3,7 @@
 //! application and its dependencies.
 
 use super::{format, routes::Routes};
-use crate::{app::AppContext, Result};
+use crate::{app::AppContext, config, Result};
 use axum::{extract::State, response::Response, routing::get};
 use serde::Serialize;
 
