@@ -14,6 +14,7 @@ pub use sea_orm::entity::prelude::*;
 // some types required for controller generators
 #[cfg(feature = "with-db")]
 pub use sea_orm::prelude::{Date, DateTimeUtc, DateTimeWithTimeZone, Decimal, Uuid};
+#[cfg(feature = "with-db")]
 pub use sea_orm::{
     ActiveValue, DbErr, EntityOrSelect, IntoActiveModel, JoinType, QuerySelect, Set,
     TransactionTrait,
