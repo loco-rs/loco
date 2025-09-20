@@ -38,10 +38,12 @@ pub async fn readiness(State(ctx): State<AppContext>) -> Result<Response> {
     let mut is_ok: bool = true;
 
     #[cfg(feature = "with-db")]
-    if let Err(error) = &ctx.db.ping().await {
+    is_ok = if let Err(error) = &ctx.db.ping().await {
         tracing::error!(err.msg = %error, err.detail = ?error, "readiness_db_ping_error");
-        is_ok = false;
-    }
+        false
+    } else {
+        true
+    };
 
     if let Some(queue) = &ctx.queue_provider {
         if let Err(error) = queue.ping().await {
