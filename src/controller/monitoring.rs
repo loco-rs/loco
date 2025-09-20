@@ -35,15 +35,15 @@ pub async fn health() -> Result<Response> {
 /// # Errors
 /// All errors are logged, and the readiness status is returned as a JSON response.
 pub async fn readiness(State(ctx): State<AppContext>) -> Result<Response> {
+    #[allow(unused_assignments)]
+    #[allow(clippy::useless_let_if_seq)]
     let mut is_ok: bool = true;
 
     #[cfg(feature = "with-db")]
-    is_ok = if let Err(error) = &ctx.db.ping().await {
+    if let Err(error) = &ctx.db.ping().await {
         tracing::error!(err.msg = %error, err.detail = ?error, "readiness_db_ping_error");
-        false
-    } else {
-        true
-    };
+        is_ok = false;
+    }
 
     if let Some(queue) = &ctx.queue_provider {
         if let Err(error) = queue.ping().await {
