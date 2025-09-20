@@ -39,7 +39,7 @@ pub async fn health() -> Result<Response> {
 pub async fn readiness(State(ctx): State<AppContext>) -> Result<Response> {
     // Check database connection
     #[cfg(feature = "with-db")]
-    if let Err(error) = &ctx.db.ping().await {
+    is_ok = if let Err(error) = &ctx.db.ping().await {
         tracing::error!(err.msg = %error, err.detail = ?error, "readiness_db_ping_error");
         return format::json(Health { ok: false });
     }
