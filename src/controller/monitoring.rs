@@ -35,6 +35,8 @@ pub async fn health() -> Result<Response> {
 /// # Errors
 /// All errors are logged, and the readiness status is returned as a JSON response.
 pub async fn readiness(State(ctx): State<AppContext>) -> Result<Response> {
+    #[allow(unused_assignments)]
+    #[allow(clippy::useless_let_if_seq)]
     let mut is_ok: bool = true;
 
     #[cfg(feature = "with-db")]
