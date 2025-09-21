@@ -18,6 +18,10 @@
 - Adding new imports about multipart. [https://github.com/loco-rs/loco/pull/1600](https://github.com/loco-rs/loco/pull/1600)
 - Adding readiness default endpoint. [https://github.com/loco-rs/loco/pull/1563](https://github.com/loco-rs/loco/pull/1563)
 - Add Route methods to make collecting and nesting easier. [https://github.com/loco-rs/loco/pull/1608](https://github.com/loco-rs/loco/pull/1608)
+- Add streaming support for both download and upload. [https://github.com/loco-rs/loco/pull/1610](https://github.com/loco-rs/loco/pull/1610)
+- Fix Clippy for Rust 1.90. [https://github.com/loco-rs/loco/pull/1630](https://github.com/loco-rs/loco/pull/1630)
+- Loco CLI: Update rhai version. [https://github.com/loco-rs/loco/pull/1631](https://github.com/loco-rs/loco/pull/1631)
+
 
 
 ## v0.16.3

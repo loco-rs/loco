@@ -329,6 +329,9 @@ mod tests {
         )
         .unwrap();
 
+        // Wait for file watcher to detect the change
+        std::thread::sleep(std::time::Duration::from_millis(300));
+
         // Render again - should have the updated header due to hot reload
         let updated_render = v.render("template/child.html", json!({})).unwrap();
         assert!(updated_render.contains("Base Header v2: Hello World v2")); // Should have changed

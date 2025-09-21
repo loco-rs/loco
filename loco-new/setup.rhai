@@ -85,7 +85,7 @@ if db {
 // =====================
 // Initializers Support
 // =====================
-if settings.initializers.view_engine {
+if settings.initializers != () && settings.initializers.view_engine {
    gen.copy_file("src/initializers/view_engine.rs"); // Template for view engine initializer
 }
 
@@ -124,14 +124,14 @@ if background {
 // =====================
 // Server side
 // =====================
-if settings.asset.is_server_side {
+if settings.asset != () && settings.asset.is_server_side {
     gen.copy_dir("assets");                        // Static assets directory
 }
 
 // =====================
 // Client side
 // =====================
-if settings.asset.is_client_side {
+if settings.asset != () && settings.asset.is_client_side {
    gen.copy_dir("frontend");
    gen.create_file("frontend/dist/index.html", "this is a placeholder. please run your frontend build (npm build)");
 }

@@ -106,7 +106,7 @@ impl fmt::Display for Scheduler {
                     job.cron,
                     job.tags
                         .as_ref()
-                        .map_or("-".to_string(), |tags| tags.join(", ")),
+                        .map_or_else(|| "-".to_string(), |tags| tags.join(", ")),
                     job.run,
                 )?;
             }

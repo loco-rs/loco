@@ -3,7 +3,9 @@
 //! application and its dependencies.
 
 use super::{format, routes::Routes};
-use crate::{app::AppContext, config, Result};
+#[cfg(any(feature = "cache_inmem", feature = "cache_redis"))]
+use crate::config;
+use crate::{app::AppContext, Result};
 use axum::{extract::State, response::Response, routing::get};
 use serde::Serialize;
 
@@ -35,21 +37,22 @@ pub async fn health() -> Result<Response> {
 /// # Errors
 /// All errors are logged, and the readiness status is returned as a JSON response.
 pub async fn readiness(State(ctx): State<AppContext>) -> Result<Response> {
-    let mut is_ok: bool = true;
-
+    // Check database connection
     #[cfg(feature = "with-db")]
     if let Err(error) = &ctx.db.ping().await {
         tracing::error!(err.msg = %error, err.detail = ?error, "readiness_db_ping_error");
-        is_ok = false;
+        return format::json(Health { ok: false });
     }
 
+    // Check queue connection
     if let Some(queue) = &ctx.queue_provider {
         if let Err(error) = queue.ping().await {
             tracing::error!(err.msg = %error, err.detail = ?error, "readiness_queue_ping_error");
-            is_ok = false;
+            return format::json(Health { ok: false });
         }
     }
 
+    // Check cache connection
     #[cfg(any(feature = "cache_inmem", feature = "cache_redis"))]
     {
         match ctx.config.cache {
@@ -57,21 +60,21 @@ pub async fn readiness(State(ctx): State<AppContext>) -> Result<Response> {
             config::CacheConfig::InMem(_) => {
                 if let Err(error) = &ctx.cache.driver.ping().await {
                     tracing::error!(err.msg = %error, err.detail = ?error, "readiness_cache_ping_error");
-                    is_ok = false;
+                    return format::json(Health { ok: false });
                 }
             }
             #[cfg(feature = "cache_redis")]
             config::CacheConfig::Redis(_) => {
                 if let Err(error) = &ctx.cache.driver.ping().await {
                     tracing::error!(err.msg = %error, err.detail = ?error, "readiness_cache_ping_error");
-                    is_ok = false;
+                    return format::json(Health { ok: false });
                 }
             }
             config::CacheConfig::Null => (),
         }
     }
 
-    format::json(Health { ok: is_ok })
+    format::json(Health { ok: true })
 }
 
 /// Defines and returns the readiness-related routes.
@@ -84,12 +87,14 @@ pub fn routes() -> Routes {
 
 #[cfg(test)]
 mod tests {
-    use crate::tests_cfg::redis::setup_redis_container;
     use axum::routing::get;
     use loco_rs::tests_cfg::db::fail_connection;
     use loco_rs::{bgworker, cache, config, controller::monitoring, tests_cfg};
     use serde_json::Value;
     use tower::ServiceExt;
+
+    #[cfg(feature = "cache_redis")]
+    use crate::tests_cfg::redis::setup_redis_container;
 
     #[tokio::test]
     async fn ping_works() {
