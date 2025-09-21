@@ -71,6 +71,10 @@ impl Generator {
         );
         engine
             .build_type::<settings::Settings>()
+            .build_type::<settings::Initializers>()
+            .build_type::<settings::Asset>()
+            .build_type::<settings::Db>()
+            .build_type::<settings::Background>()
             .register_type_with_name::<Option<settings::Initializers>>("Option<Initializers>")
             .register_type_with_name::<Option<settings::Asset>>("Option<settings::Asset>")
             .register_static_module(
@@ -267,6 +271,18 @@ mod rhai_settings_extensions {
         rendering_method
             .as_ref()
             .is_some_and(|r| matches!(r.kind, AssetsOption::Serverside))
+    }
+
+    /// Checks if the rendering method is set to server-side rendering (direct access).
+    #[rhai_fn(global, get = "is_server_side", pure)]
+    pub const fn is_server_side_direct(rendering_method: &mut settings::Asset) -> bool {
+        matches!(rendering_method.kind, AssetsOption::Serverside)
+    }
+
+    /// Checks if the rendering method is set to client-side rendering (direct access).
+    #[rhai_fn(global, get = "is_client_side", pure)]
+    pub const fn is_client_side_direct(rendering_method: &mut settings::Asset) -> bool {
+        matches!(rendering_method.kind, AssetsOption::Clientside)
     }
 }
 
