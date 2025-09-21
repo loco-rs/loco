@@ -3,7 +3,9 @@
 //! application and its dependencies.
 
 use super::{format, routes::Routes};
-use crate::{app::AppContext, config, Result};
+#[cfg(any(feature = "cache_inmem", feature = "cache_redis"))]
+use crate::config;
+use crate::{app::AppContext, Result};
 use axum::{extract::State, response::Response, routing::get};
 use serde::Serialize;
 
