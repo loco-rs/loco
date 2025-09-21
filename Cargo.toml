@@ -129,7 +129,7 @@ chrono = { workspace = true }
 uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
 
 # File Upload
-opendal = { version = "0.50.2", default-features = false, features = [
+opendal = { version = "0.54", default-features = false, features = [
     "services-memory",
     "services-fs",
 ] }
