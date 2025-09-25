@@ -11,6 +11,7 @@ use loco_rs::model::ModelError;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
+use axum::StatusCode;
 
 pub static EMAIL_DOMAIN_RE: OnceLock<Regex> = OnceLock::new();
 
@@ -141,11 +142,11 @@ async fn update(auth: auth::JWT, State(ctx): State<AppContext>, Json(params): Js
         return Err(
                     Error::CustomError(
                         StatusCode::CONFLICT,
-                        ErrorDeatil::with_reason("Email already exists")
+                        ErrorDetail::with_reason("Email already exists")
                     )
                 );
     }
-    if let Ok(_) = users::Model::find_by_username(&ctx.db, &params.username).await {
+    if let Ok(_) = users::Model::find_by_username(&ctx.db, &params.name).await {
         return Err(
             Error::CustomError(
                 StatusCode::CONFLICT,
