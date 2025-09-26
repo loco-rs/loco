@@ -150,7 +150,7 @@ async fn update(auth: auth::JWT, State(ctx): State<AppContext>, Json(params): Js
         return Err(
             Error::CustomError(
                 StatusCode::CONFLICT,
-                ErrorDeatil::with_reason("Username already exists")
+                ErrorDetail::with_reason("Username already exists")
             )
         );
     }
