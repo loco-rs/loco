@@ -6,12 +6,11 @@ use crate::{
     },
     views::auth::{CurrentResponse, LoginResponse},
 };
+use axum::debug_handler;
 use loco_rs::prelude::*;
-use loco_rs::model::ModelError;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
-use axum::StatusCode;
 
 pub static EMAIL_DOMAIN_RE: OnceLock<Regex> = OnceLock::new();
 
@@ -137,24 +136,19 @@ async fn reset(State(ctx): State<AppContext>, Json(params): Json<ResetParams>) -
 /// Updates user data and returns the current user with updated data.
 /// Returns an error if username or email already exist.
 #[debug_handler]
-async fn update(auth: auth::JWT, State(ctx): State<AppContext>, Json(params): Json<RegisterParams>) -> Result<Response> {
+async fn update(
+    auth: auth::JWT,
+    State(ctx): State<AppContext>,
+    Json(params): Json<RegisterParams>,
+) -> Result<Response> {
     if let Ok(_) = users::Model::find_by_email(&ctx.db, &params.email).await {
-        return Err(
-                    Error::CustomError(
-                        StatusCode::CONFLICT,
-                        ErrorDetail::with_reason("Email already exists")
-                    )
-                );
+        return Err(Error::Message("Email already exists".to_string()));
     }
-    if let Ok(_) = users::Model::find_by_username(&ctx.db, &params.name).await {
-        return Err(
-            Error::CustomError(
-                StatusCode::CONFLICT,
-                ErrorDetail::with_reason("Username already exists")
-            )
-        );
+    if let Ok(_) = users::Model::find_by_name(&ctx.db, &params.name).await {
+        return Err(Error::Message("Username already exists".to_string()));
     }
-    let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?
+    let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid)
+        .await?
         .into_active_model()
         .update_user_data(&ctx.db, params)
         .await?;
