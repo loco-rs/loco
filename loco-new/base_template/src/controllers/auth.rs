@@ -141,10 +141,10 @@ async fn update(
     State(ctx): State<AppContext>,
     Json(params): Json<RegisterParams>,
 ) -> Result<Response> {
-    if let Ok(_) = users::Model::find_by_email(&ctx.db, &params.email).await {
+    if users::Model::find_by_email(&ctx.db, &params.email).await.is_ok() {
         return Err(Error::Message("Email already exists".to_string()));
     }
-    if let Ok(_) = users::Model::find_by_name(&ctx.db, &params.name).await {
+    if users::Model::find_by_name(&ctx.db, &params.name).await.is_ok() {
         return Err(Error::Message("Username already exists".to_string()));
     }
     let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid)
