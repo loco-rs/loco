@@ -3,23 +3,9 @@
 //! This module defines functions and operations related to the application's
 //! database interactions.
 
-use super::Result as AppResult;
-use crate::{
-    app::{AppContext, Hooks},
-    cargo_config::CargoConfig,
-    config, doctor, env_vars,
-    errors::Error,
-};
-use chrono::{DateTime, Utc};
-use regex::Regex;
-use sea_orm::{
-    ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
-    DatabaseConnection, DbBackend, DbConn, DbErr, EntityTrait, IntoActiveModel, Statement,
-};
-use sea_orm_migration::MigratorTrait;
-use std::fmt::Write as FmtWrites;
 use std::{
     collections::{BTreeMap, HashMap},
+    fmt::Write as FmtWrites,
     fs,
     fs::File,
     io::Write,
@@ -27,7 +13,23 @@ use std::{
     sync::OnceLock,
     time::Duration,
 };
+
+use chrono::{DateTime, Utc};
+use regex::Regex;
+use sea_orm::{
+    ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
+    DatabaseConnection, DbBackend, DbConn, DbErr, EntityTrait, IntoActiveModel, Statement,
+};
+use sea_orm_migration::MigratorTrait;
 use tracing::info;
+
+use super::Result as AppResult;
+use crate::{
+    app::{AppContext, Hooks},
+    cargo_config::CargoConfig,
+    config, doctor, env_vars,
+    errors::Error,
+};
 
 pub static EXTRACT_DB_NAME: OnceLock<Regex> = OnceLock::new();
 const IGNORED_TABLES: &[&str] = &[
@@ -863,6 +865,10 @@ pub async fn dump_tables(
                     .try_get::<String>("", &col_name)
                     .map(serde_json::Value::String)
                     .or_else(|_| {
+                        row.try_get::<bool>("", &col_name)
+                            .map(serde_json::Value::Bool)
+                    })
+                    .or_else(|_| {
                         row.try_get::<i8>("", &col_name)
                             .map(serde_json::Value::from)
                     })
@@ -895,10 +901,6 @@ pub async fn dump_tables(
                             .map(|v| serde_json::Value::String(v.to_rfc3339()))
                     })
                     .or_else(|_| row.try_get::<serde_json::Value>("", &col_name))
-                    .or_else(|_| {
-                        row.try_get::<bool>("", &col_name)
-                            .map(serde_json::Value::Bool)
-                    })
                     .ok();
 
                 if let Some(value) = value_result {
@@ -1064,7 +1066,8 @@ mod tests {
             assert_eq!(
                 actual_value,
                 expected_value.to_lowercase(),
-                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got '{actual_value}'"
+                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got \
+                 '{actual_value}'"
             );
         }
     }
@@ -1102,7 +1105,8 @@ mod tests {
             assert_eq!(
                 actual_value,
                 expected_value.to_lowercase(),
-                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got '{actual_value}'"
+                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got \
+                 '{actual_value}'"
             );
         }
     }
@@ -1124,7 +1128,8 @@ mod tests {
 
         assert_eq!(db.get_database_backend(), DatabaseBackend::Postgres);
 
-        let query = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'test_run_on_start'";
+        let query = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' \
+                     AND table_name = 'test_run_on_start'";
 
         let value = get_value(&db, query).await;
         assert_eq!(value, "1", "The test_run_on_start table was not created");
@@ -1132,8 +1137,9 @@ mod tests {
 
     #[cfg(test)]
     mod extract_db_name_tests {
-        use super::*;
         use rstest::rstest;
+
+        use super::*;
 
         #[rstest]
         #[case("postgres://localhost:5432/dbname", "dbname")]
@@ -1344,7 +1350,10 @@ mod tests {
         db.execute(Statement::from_string(
             backend,
             // AUTOINCREMENT keyword is important for SQLite's sequence behavior
-            format!("CREATE TABLE {table_with_auto_id} (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);"),
+            format!(
+                "CREATE TABLE {table_with_auto_id} (id INTEGER PRIMARY KEY AUTOINCREMENT, name \
+                 TEXT);"
+            ),
         ))
         .await
         .expect("Failed to create table with auto id");
@@ -1403,7 +1412,8 @@ mod tests {
             .expect("Failed to check auto-increment");
         assert!(
             !is_auto,
-            "Table '{table_with_id_not_auto}' should NOT be auto-increment, but check returned true"
+            "Table '{table_with_id_not_auto}' should NOT be auto-increment, but check returned \
+             true"
         );
 
         let table_with_serial_id = "test_table_serial_id_auto";
@@ -1583,8 +1593,8 @@ mod tests {
         let cmd = EntityCmd::new(&get_database_config());
 
         let expected = "generate entity --database-url sqlite::memory: --ignore-tables \
-            seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock --output-dir \
-            src/models/_entities --with-copy-enums --with-serde both";
+                        seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock \
+                        --output-dir src/models/_entities --with-copy-enums --with-serde both";
         assert_eq!(cmd.command().join(" "), expected);
     }
 
@@ -1601,9 +1611,232 @@ model-extra-derives = "ts_rs::Ts"
         let cmd = EntityCmd::merge_with_config(&get_database_config(), &config);
 
         let expected = "generate entity --database-url sqlite::memory: --ignore-tables \
-            seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock,table1,table2 \
-            --max-connections 1 --model-extra-derives ts_rs::Ts --output-dir src/models/_entities \
-            --with-copy-enums --with-serde none";
+                        seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock,\
+                        table1,table2 --max-connections 1 --model-extra-derives ts_rs::Ts \
+                        --output-dir src/models/_entities --with-copy-enums --with-serde none";
         assert_eq!(cmd.command().join(" "), expected);
+    }
+
+    #[tokio::test]
+    async fn test_dump_tables_boolean_serialization() {
+        use sea_orm::Statement;
+        use serde_yaml::Value;
+        use tempfile::TempDir;
+
+        use crate::tests_cfg::config::get_sqlite_test_config;
+
+        // Setup SQLite database
+        let (config, _tree_fs) = get_sqlite_test_config("test_boolean_dump");
+        let db = connect(&config).await.expect("Failed to connect to SQLite");
+        let backend = db.get_database_backend();
+
+        // Create test table with boolean columns
+        let table_name = "test_boolean_table";
+        db.execute(Statement::from_string(
+            backend,
+            format!(
+                "CREATE TABLE {table_name} (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    active BOOLEAN,
+                    enabled BOOLEAN NOT NULL DEFAULT 1,
+                    nullable_bool BOOLEAN
+                );"
+            ),
+        ))
+        .await
+        .expect("Failed to create test table");
+
+        // Insert test data with various boolean values
+        db.execute(Statement::from_string(
+            backend,
+            format!(
+                "INSERT INTO {table_name} (name, active, enabled, nullable_bool) VALUES 
+                ('test1', 1, 1, 1),
+                ('test2', 0, 0, 0),
+                ('test3', 1, 0, NULL),
+                ('test4', 0, 1, 1);"
+            ),
+        ))
+        .await
+        .expect("Failed to insert test data");
+
+        // Create temporary directory for dump
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let dump_path = temp_dir.path();
+
+        // Dump the table data
+        dump_tables(&db, dump_path, Some(vec![table_name.to_string()]))
+            .await
+            .expect("Failed to dump table");
+
+        // Read and verify the dumped YAML file
+        let yaml_file = dump_path.join(format!("{table_name}.yaml"));
+        assert!(yaml_file.exists(), "YAML file should exist");
+
+        let yaml_content = std::fs::read_to_string(&yaml_file).expect("Failed to read YAML file");
+        let data: Vec<Value> = serde_yaml::from_str(&yaml_content).expect("Failed to parse YAML");
+
+        // Verify we have 4 records
+        assert_eq!(data.len(), 4, "Should have 4 records");
+
+        // Verify boolean values are properly serialized as true/false, not 1/0
+        for (i, record) in data.iter().enumerate() {
+            let record_map = record.as_mapping().expect("Record should be a mapping");
+
+            // Check that boolean fields are properly serialized
+            if let Some(active_value) = record_map.get("active") {
+                match active_value {
+                    Value::Bool(_) => {
+                        // This is correct - boolean values should be serialized
+                        // as bool
+                    }
+                    Value::Number(n) => {
+                        panic!(
+                            "Record {i}: 'active' field should be serialized as boolean, not \
+                             number: {n}"
+                        );
+                    }
+                    _ => {
+                        panic!(
+                            "Record {i}: 'active' field should be serialized as boolean, got: \
+                             {active_value:?}"
+                        );
+                    }
+                }
+            }
+
+            if let Some(enabled_value) = record_map.get("enabled") {
+                match enabled_value {
+                    Value::Bool(_) => {
+                        // This is correct - boolean values should be serialized
+                        // as bool
+                    }
+                    Value::Number(n) => {
+                        panic!(
+                            "Record {i}: 'enabled' field should be serialized as boolean, not \
+                             number: {n}"
+                        );
+                    }
+                    _ => {
+                        panic!(
+                            "Record {i}: 'enabled' field should be serialized as boolean, got: \
+                             {enabled_value:?}"
+                        );
+                    }
+                }
+            }
+
+            if let Some(nullable_bool_value) = record_map.get("nullable_bool") {
+                match nullable_bool_value {
+                    Value::Bool(_) | Value::Null => {
+                        // This is correct - boolean values should be serialized
+                        // as bool or null
+                    }
+                    Value::Number(n) => {
+                        panic!(
+                            "Record {i}: 'nullable_bool' field should be serialized as boolean or \
+                             null, not number: {n}"
+                        );
+                    }
+                    _ => {
+                        panic!(
+                            "Record {i}: 'nullable_bool' field should be serialized as boolean or \
+                             null, got: {nullable_bool_value:?}"
+                        );
+                    }
+                }
+            }
+        }
+
+        // Verify specific boolean values by finding records by name
+        let mut test1_record = None;
+        let mut test2_record = None;
+        let mut test3_record = None;
+        let mut test4_record = None;
+
+        for record in &data {
+            let record_map = record.as_mapping().unwrap();
+            if let Some(name_value) = record_map.get("name") {
+                if let Some(name) = name_value.as_str() {
+                    match name {
+                        "test1" => test1_record = Some(record),
+                        "test2" => test2_record = Some(record),
+                        "test3" => test3_record = Some(record),
+                        "test4" => test4_record = Some(record),
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        // Verify test1 record (active=true, enabled=true, nullable_bool=true)
+        let test1_map = test1_record.unwrap().as_mapping().unwrap();
+        assert!(
+            test1_map.get("active").unwrap().as_bool().unwrap(),
+            "test1 record active should be true"
+        );
+        assert!(
+            test1_map.get("enabled").unwrap().as_bool().unwrap(),
+            "test1 record enabled should be true"
+        );
+        assert!(
+            test1_map.get("nullable_bool").unwrap().as_bool().unwrap(),
+            "test1 record nullable_bool should be true"
+        );
+
+        // Verify test2 record (active=false, enabled=false, nullable_bool=false)
+        let test2_map = test2_record.unwrap().as_mapping().unwrap();
+        assert!(
+            !test2_map.get("active").unwrap().as_bool().unwrap(),
+            "test2 record active should be false"
+        );
+        assert!(
+            !test2_map.get("enabled").unwrap().as_bool().unwrap(),
+            "test2 record enabled should be false"
+        );
+        assert!(
+            !test2_map.get("nullable_bool").unwrap().as_bool().unwrap(),
+            "test2 record nullable_bool should be false"
+        );
+
+        // Verify test3 record (active=true, enabled=false, nullable_bool=null)
+        let test3_map = test3_record.unwrap().as_mapping().unwrap();
+        assert!(
+            test3_map.get("active").unwrap().as_bool().unwrap(),
+            "test3 record active should be true"
+        );
+        assert!(
+            !test3_map.get("enabled").unwrap().as_bool().unwrap(),
+            "test3 record enabled should be false"
+        );
+        // Note: nullable_bool field might be missing from dump when NULL, which is
+        // expected behavior
+        if let Some(nullable_bool_value) = test3_map.get("nullable_bool") {
+            assert!(
+                nullable_bool_value.is_null(),
+                "test3 record nullable_bool should be null if present"
+            );
+        }
+
+        // Verify test4 record (active=false, enabled=true, nullable_bool=true)
+        let test4_map = test4_record.unwrap().as_mapping().unwrap();
+        assert!(
+            !test4_map.get("active").unwrap().as_bool().unwrap(),
+            "test4 record active should be false"
+        );
+        assert!(
+            test4_map.get("enabled").unwrap().as_bool().unwrap(),
+            "test4 record enabled should be true"
+        );
+        assert!(
+            test4_map.get("nullable_bool").unwrap().as_bool().unwrap(),
+            "test4 record nullable_bool should be true"
+        );
+
+        println!(
+            "✅ Boolean serialization test passed - all boolean values correctly serialized as \
+             true/false instead of 1/0"
+        );
     }
 }
