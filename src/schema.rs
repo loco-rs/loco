@@ -134,7 +134,7 @@ async fn check_enum_exists(m: &SchemaManager<'_>, enum_name: &str) -> Result<boo
 
             let result = m
                 .get_connection()
-                .query_one(sea_orm::Statement::from_string(
+                .query_one_raw(sea_orm::Statement::from_string(
                     sea_orm::DatabaseBackend::Postgres,
                     query,
                 ))
@@ -149,6 +149,10 @@ async fn check_enum_exists(m: &SchemaManager<'_>, enum_name: &str) -> Result<boo
         }
         sea_orm::DatabaseBackend::MySql => {
             // MySQL doesn't support enums in the same way, so we'll always return false
+            Ok(false)
+        }
+        _ => {
+            // Unknown database, do nothing
             Ok(false)
         }
     }
@@ -602,6 +606,9 @@ async fn create_table_impl(
                             sea_orm::DatabaseBackend::MySql => {
                                 // MySql not supporting
                             }
+                            _ => {
+                                // Unknown database, do nothing
+                            }
                         }
                     }
                 }
@@ -811,6 +818,13 @@ pub async fn add_reference(
                 .await?;
             */
         }
+        bk => {
+            return Err(DbErr::BackendNotSupported {
+                db: bk.as_str(),
+                ctx: "add_reference",
+            }
+            .into())
+        }
     }
     Ok(())
 }
@@ -858,6 +872,13 @@ pub async fn remove_reference(
             // sqlite will not allow it.
             // more: https://www.bigbinary.com/blog/rails-6-adds-add_foreign_key-and-remove_foreign_key-for-sqlite3
         }
+        bk => {
+            return Err(DbErr::BackendNotSupported {
+                db: bk.as_str(),
+                ctx: "remove_reference",
+            }
+            .into())
+        }
     }
     Ok(())
 }
@@ -893,7 +914,7 @@ pub async fn add_enum_values(
         sea_orm::DatabaseBackend::Postgres => {
             for value in new_values {
                 m.get_connection()
-                    .execute(sea_orm::Statement::from_string(
+                    .execute_raw(sea_orm::Statement::from_string(
                         sea_orm::DatabaseBackend::Postgres,
                         format!("ALTER TYPE {enum_name} ADD VALUE '{value}'"),
                     ))
@@ -910,6 +931,12 @@ pub async fn add_enum_values(
             // MySQL handles enums differently
             tracing::info!(
                 "MySQL: Enum values are handled by column definition. No action needed."
+            );
+        }
+        db => {
+            tracing::info!(
+                "{}: Unsure how to handle Enum values, no action to be done.",
+                db.as_str()
             );
         }
     }
@@ -937,7 +964,7 @@ pub async fn drop_enum_type(m: &SchemaManager<'_>, enum_name: &str) -> Result<()
             // Try to drop the enum type with CASCADE to handle any remaining references
             let query = format!("DROP TYPE IF EXISTS {enum_name} CASCADE");
             m.get_connection()
-                .execute(sea_orm::Statement::from_string(
+                .execute_raw(sea_orm::Statement::from_string(
                     sea_orm::DatabaseBackend::Postgres,
                     query,
                 ))
