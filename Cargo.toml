@@ -217,3 +217,4 @@ sqlx = { version = "0.8.2", default-features = false, features = [
     "migrate",
 ] }
 testcontainers = { version = "0.23.3" }
+tempfile = "3.8"
