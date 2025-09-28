@@ -32,6 +32,8 @@ jobs:
           components: rustfmt
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
+      - name: Setup Rust clippy
+        run: rustup component add clippy
       - run: cargo fmt --all -- --check
         working-directory: ./loco-new
       - name: Run cargo clippy
