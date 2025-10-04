@@ -45,6 +45,34 @@ Next step, build your frontend:
 
 ## Available Starters
 
+### Command Line Options
+
+Print the command line options:
+
+```console
+$ loco new --help
+Create a new Loco app
+
+Usage: loco[EXE] new [OPTIONS]
+
+Options:
+  -p, --path <PATH>          Local path to generate into [default: .]
+  -v, --verbose <VERBOSE>    Verbosity level [default: ERROR]
+  -n, --name <NAME>          App name
+  -t, --template <TEMPLATE>  Starter template
+      --db <DB>              DB Provider [possible values: sqlite, postgres]
+      --bg <BG>              Background worker configuration [possible values: async, queue, blocking]
+      --assets <ASSETS>      Assets serving configuration [possible values: serverside, clientside]
+  -h, --help                 Print help
+  -V, --version              Print version
+```
+
+Example starter with a SQLite database, async background worker, and server side assets:
+
+```sh
+loco new --db sqlite --bg async --assets serverside
+```
+
 ### SaaS Starter
 
 The SaaS starter is an all-included set up for projects requiring both a UI and a REST API. For the UI this starter supports a client-side app or classic server-side templates (or a combination).
