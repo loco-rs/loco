@@ -61,7 +61,6 @@ impl Stream for BytesStream {
 impl BytesStream {
     /// Convert the `BytesStream` into an axum `Body` for HTTP responses.
     /// This enables zero-copy streaming directly to the HTTP response.
-    #[must_use]
     pub fn into_body(self) -> axum::body::Body {
         axum::body::Body::from_stream(self)
     }
