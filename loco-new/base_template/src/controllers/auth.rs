@@ -6,6 +6,7 @@ use crate::{
     },
     views::auth::{CurrentResponse, LoginResponse},
 };
+use axum::debug_handler;
 use loco_rs::prelude::*;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
