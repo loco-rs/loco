@@ -1,7 +1,9 @@
+use std::collections::BTreeMap;
+
+use serde::Serialize;
+
 use super::tera_builtins;
 use crate::{controller::views::ViewRenderer, Result};
-use serde::Serialize;
-use std::collections::BTreeMap;
 
 pub static DEFAULT_ASSET_FOLDER: &str = "assets";
 
@@ -27,7 +29,8 @@ impl TeraView {
         Self::from_embedded_templates()
     }
 
-    /// Attach the Tera view engine with a post-processing function for subsequent instantiation.
+    /// Attach the Tera view engine with a post-processing function for
+    /// subsequent instantiation.
     ///
     /// The post-processing function is also run during the call to this method.
     ///

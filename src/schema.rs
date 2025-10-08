@@ -596,8 +596,10 @@ async fn create_table_impl(
                             #[allow(clippy::match_same_arms)]
                             sea_orm::DatabaseBackend::Sqlite => {
                                 // SQLite doesn't support native enum types
-                                // The enum behavior will be handled by the column definition
-                                // which will create a TEXT column with CHECK constraints
+                                // The enum behavior will be handled by the
+                                // column definition
+                                // which will create a TEXT column with CHECK
+                                // constraints
                             }
                             sea_orm::DatabaseBackend::MySql => {
                                 // MySql not supporting

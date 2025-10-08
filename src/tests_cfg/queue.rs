@@ -1,12 +1,14 @@
+use std::path::PathBuf;
+
 #[cfg(any(feature = "bg_pg", feature = "bg_sqlt"))]
 use crate::bgworker;
-use std::path::PathBuf;
 
 #[cfg(feature = "bg_pg")]
 /// # Panics
 ///
-/// This function will panic if it fails to prepare or insert the seed data, causing the tests to fail quickly
-/// and preventing further test execution with incomplete setup.
+/// This function will panic if it fails to prepare or insert the seed data,
+/// causing the tests to fail quickly and preventing further test execution with
+/// incomplete setup.
 pub async fn postgres_seed_data(pool: &sqlx::PgPool) {
     let yaml_tasks = std::fs::read_to_string(
         PathBuf::from("tests")
@@ -40,8 +42,9 @@ pub async fn postgres_seed_data(pool: &sqlx::PgPool) {
 #[cfg(feature = "bg_sqlt")]
 /// # Panics
 ///
-/// This function will panic if it fails to prepare or insert the seed data, causing the tests to fail quickly
-/// and preventing further test execution with incomplete setup.
+/// This function will panic if it fails to prepare or insert the seed data,
+/// causing the tests to fail quickly and preventing further test execution with
+/// incomplete setup.
 pub async fn sqlite_seed_data(pool: &sqlx::Pool<sqlx::Sqlite>) {
     let yaml_tasks = std::fs::read_to_string(
         PathBuf::from("tests")

@@ -128,7 +128,7 @@ impl BumpVersion {
 
             if !re.is_match(&content) {
                 return Err(Error::BumpVersion {
-                    path: cargo_toml_file.clone(),
+                    path: cargo_toml_file,
                     package: subcrate.to_string(),
                 });
             }

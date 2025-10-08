@@ -30,10 +30,9 @@ use axum_extra::extract::cookie;
 use serde::{Deserialize, Serialize};
 use tracing;
 
-use crate::{app::AppContext, auth, config::JWT as JWTConfig, errors::Error, Result as LocoResult};
-
 #[cfg(feature = "with-db")]
 use crate::model::{Authenticable, ModelError};
+use crate::{app::AppContext, auth, config::JWT as JWTConfig, errors::Error, Result as LocoResult};
 
 // ---------------------------------------
 //
@@ -119,7 +118,8 @@ where
     }
 }
 
-/// extract a [JWT] token from request parts, using a non-mutable reference to the [Parts]
+/// extract a [JWT] token from request parts, using a non-mutable reference to
+/// the [Parts]
 ///
 /// # Errors
 /// Return an error when JWT token not configured or when the token is not valid
@@ -162,8 +162,9 @@ pub fn get_jwt_from_config(ctx: &AppContext) -> LocoResult<&JWTConfig> {
 ///
 /// # Errors
 ///
-/// Returns an error when the token cannot be extracted from any of the configured locations,
-/// such as missing headers, invalid formats, or inaccessible request data.
+/// Returns an error when the token cannot be extracted from any of the
+/// configured locations, such as missing headers, invalid formats, or
+/// inaccessible request data.
 pub fn extract_token(jwt_config: &JWTConfig, parts: &Parts) -> LocoResult<String> {
     let locations = get_jwt_locations(jwt_config.location.as_ref());
 
@@ -174,7 +175,11 @@ pub fn extract_token(jwt_config: &JWTConfig, parts: &Parts) -> LocoResult<String
     }
 
     // If we get here, none of the locations worked
-    Err(Error::Unauthorized("Token not found in any of the configured JWT locations. Please check your auth.jwt.location configuration.".to_string()))
+    Err(Error::Unauthorized(
+        "Token not found in any of the configured JWT locations. Please check your \
+         auth.jwt.location configuration."
+            .to_string(),
+    ))
 }
 
 /// Get the list of JWT locations to try, with Bearer as default
