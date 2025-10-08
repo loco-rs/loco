@@ -2,7 +2,7 @@
 
 [package]
 name = "loco"
-version = "0.16.2"
+version = "0.16.3"
 edition = "2021"
 description = "Loco new app generator"
 license = "Apache-2.0"
