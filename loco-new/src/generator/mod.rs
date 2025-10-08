@@ -16,8 +16,7 @@ use rhai::{
     Engine, Scope,
 };
 
-use crate::wizard::AssetsOption;
-use crate::{settings, OS};
+use crate::{settings, wizard::AssetsOption, OS};
 
 static APP_TEMPLATE: Dir<'_> = include_dir!("base_template");
 
@@ -251,7 +250,8 @@ impl Generator {
 #[export_module]
 mod rhai_settings_extensions {
 
-    /// Retrieves the value of the `view_engine` field from the [`settings::Initializers`] struct.
+    /// Retrieves the value of the `view_engine` field from the
+    /// [`settings::Initializers`] struct.
     #[rhai_fn(global, get = "view_engine", pure)]
     pub fn view_engine(initializers: &mut Option<settings::Initializers>) -> bool {
         initializers.as_ref().is_some_and(|i| i.view_engine)
@@ -273,13 +273,15 @@ mod rhai_settings_extensions {
             .is_some_and(|r| matches!(r.kind, AssetsOption::Serverside))
     }
 
-    /// Checks if the rendering method is set to server-side rendering (direct access).
+    /// Checks if the rendering method is set to server-side rendering (direct
+    /// access).
     #[rhai_fn(global, get = "is_server_side", pure)]
     pub const fn is_server_side_direct(rendering_method: &mut settings::Asset) -> bool {
         matches!(rendering_method.kind, AssetsOption::Serverside)
     }
 
-    /// Checks if the rendering method is set to client-side rendering (direct access).
+    /// Checks if the rendering method is set to client-side rendering (direct
+    /// access).
     #[rhai_fn(global, get = "is_client_side", pure)]
     pub const fn is_client_side_direct(rendering_method: &mut settings::Asset) -> bool {
         matches!(rendering_method.kind, AssetsOption::Clientside)

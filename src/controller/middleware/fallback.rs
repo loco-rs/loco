@@ -89,7 +89,7 @@ impl MiddlewareLayer for Fallback {
         let app = if let Some(path) = &self.file {
             app.fallback_service(ServeFile::new(path))
         } else if let Some(not_found) = &self.not_found {
-            let not_found = not_found.to_string();
+            let not_found = not_found.clone();
             let status_code = self.code;
             app.fallback(move || async move { (status_code, not_found) })
         } else {

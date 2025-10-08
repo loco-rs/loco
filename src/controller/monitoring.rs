@@ -2,12 +2,13 @@
 //! reporting. These routes are commonly used to monitor the readiness of the
 //! application and its dependencies.
 
+use axum::{extract::State, response::Response, routing::get};
+use serde::Serialize;
+
 use super::{format, routes::Routes};
 #[cfg(any(feature = "cache_inmem", feature = "cache_redis"))]
 use crate::config;
 use crate::{app::AppContext, Result};
-use axum::{extract::State, response::Response, routing::get};
-use serde::Serialize;
 
 /// Represents the health status of the application.
 #[derive(Serialize)]
@@ -35,7 +36,8 @@ pub async fn health() -> Result<Response> {
 /// Redis or the DB (depending on feature flags) to ensure connection liveness.
 ///
 /// # Errors
-/// All errors are logged, and the readiness status is returned as a JSON response.
+/// All errors are logged, and the readiness status is returned as a JSON
+/// response.
 pub async fn readiness(State(ctx): State<AppContext>) -> Result<Response> {
     // Check database connection
     #[cfg(feature = "with-db")]
@@ -88,8 +90,9 @@ pub fn routes() -> Routes {
 #[cfg(test)]
 mod tests {
     use axum::routing::get;
-    use loco_rs::tests_cfg::db::fail_connection;
-    use loco_rs::{bgworker, cache, config, controller::monitoring, tests_cfg};
+    use loco_rs::{
+        bgworker, cache, config, controller::monitoring, tests_cfg, tests_cfg::db::fail_connection,
+    };
     use serde_json::Value;
     use tower::ServiceExt;
 
@@ -318,7 +321,8 @@ mod tests {
     async fn readiness_with_cache_redis_failure() {
         let mut ctx = tests_cfg::app::get_app_context().await;
         let failour_redis_url = "redis://127.0.0.2:0";
-        // Force config to Redis to ensure ping path executes, but swap driver to Null (which errors on ping)
+        // Force config to Redis to ensure ping path executes, but swap driver to Null
+        // (which errors on ping)
         ctx.config.cache = config::CacheConfig::Redis(loco_rs::config::RedisCacheConfig {
             uri: failour_redis_url.to_string(),
             max_size: 10,
