@@ -16,7 +16,7 @@
 
  </div>
 
-Español · [English](./README.md) · [中文](./README-zh_CN.md) · [Français](./README.fr.md) · [Português (Brasil)](./README-pt_BR.md) · [日本語](./README.ja.md) · [한국어](./README.ko.md) · [Русский](./README.ru.md) · Español
+Español · [English](./README.md) · [中文](./README-zh_CN.md) · [Français](./README.fr.md) · [Português (Brasil)](./README-pt_BR.md) · [日本語](./README.ja.md) · [한국어](./README.ko.md) · [Русский](./README.ru.md) · Español · [Vietnamese](./README.vi.md)
 
 ## ¿Qué es Loco?
 
