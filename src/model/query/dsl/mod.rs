@@ -164,9 +164,9 @@ pub fn date_range<T: ColumnTrait>(col: T) -> date_range::DateRangeBuilder<T> {
     date_range::DateRangeBuilder::new(condition(), col)
 }
 
-impl IntoCondition for ConditionBuilder {
-    fn into_condition(self) -> Condition {
-        self.build()
+impl From<ConditionBuilder> for Condition {
+    fn from(cond: ConditionBuilder) -> Condition {
+        cond.build()
     }
 }
 
