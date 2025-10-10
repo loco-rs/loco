@@ -128,7 +128,7 @@ pub fn bad_request<T: Into<String>, U>(msg: T) -> Result<U> {
 /// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn not_found<T>() -> Result<T> {
-    Err(Error::NotFound)
+    Err(Error::NotFound("".to_string()))
 }
 #[derive(Debug, Serialize)]
 /// Structure representing details about an error.
@@ -199,7 +199,7 @@ impl IntoResponse for Error {
         }
 
         let public_facing_error = match self {
-            Self::NotFound => (
+            Self::NotFound(_) => (
                 StatusCode::NOT_FOUND,
                 ErrorDetail::new("not_found", "Resource was not found"),
             ),
