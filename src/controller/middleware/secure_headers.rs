@@ -216,6 +216,9 @@ where
             let mut response: Response = future.await?;
             let headers = response.headers_mut();
             for (k, v) in &layer.headers {
+                if headers.contains_key(k) {
+                    continue;
+                }
                 headers.insert(k, v.clone());
             }
             Ok(response)
@@ -225,9 +228,10 @@ where
 
 #[cfg(test)]
 mod tests {
-
+    use crate::controller::format;
     use axum::{
-        http::{HeaderMap, Method},
+        body::Body,
+        http::{header::CONTENT_SECURITY_POLICY, HeaderMap, HeaderValue, Method, Response},
         routing::get,
         Router,
     };
@@ -287,6 +291,44 @@ mod tests {
             .unwrap();
         let response = app.oneshot(req).await.unwrap();
         assert_debug_snapshot!(normalize_headers(response.headers()));
+    }
+
+    #[tokio::test]
+    async fn can_dynamically_override_headers() {
+        let config = SecureHeader {
+            enable: true,
+            preset: "github".to_string(),
+            overrides: None,
+        };
+        async fn handler() -> Result<Response<Body>> {
+            let nonce = "random";
+            let mut res: Response<Body> = format::template(
+                "<style nonce='{{ nonce }}'></style>",
+                serde_json::json!({"nonce": nonce}),
+            )
+            .unwrap();
+            res.headers_mut().insert(
+                CONTENT_SECURITY_POLICY, HeaderValue::from_str(
+                    &format!("default-src 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'; upgrade-insecure-requests; block-all-mixed-content; style-src 'self' 'nonce-{nonce}';")
+                ).expect("cannot create a header value")
+            );
+            Ok(res)
+        }
+        let app = Router::new()
+            .route("/", get(handler))
+            .layer(SecureHeaders::new(&config).unwrap());
+
+        let req = Request::builder()
+            .uri("/")
+            .method(Method::GET)
+            .body(Body::empty())
+            .unwrap();
+        let response = app.oneshot(req).await.unwrap();
+        let headers = normalize_headers(response.headers());
+        assert_eq!(
+            headers.get(&CONTENT_SECURITY_POLICY.to_string()).unwrap(),
+            "default-src 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'; upgrade-insecure-requests; block-all-mixed-content; style-src 'self' 'nonce-random';"
+        )
     }
 
     #[tokio::test]
