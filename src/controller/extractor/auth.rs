@@ -23,7 +23,7 @@
 use std::collections::HashMap;
 
 use axum::{
-    extract::{FromRef, FromRequestParts, Query},
+    extract::{FromRef, FromRequestParts, OptionalFromRequestParts, Query},
     http::{request::Parts, HeaderMap},
 };
 use axum_extra::extract::cookie;
@@ -67,7 +67,9 @@ where
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
         let ctx: AppContext = AppContext::from_ref(state);
 
-        let token = extract_token(get_jwt_from_config(&ctx)?, parts)?;
+        let token = extract_token(get_jwt_from_config(&ctx)?, parts)?.ok_or_else(
+            // If we get here, none of the locations worked
+            || Error::Unauthorized("Token not found in any of the configured JWT locations. Please check your auth.jwt.location configuration.".to_string()))?;
 
         let jwt_secret = ctx.config.get_jwt_config()?;
 
@@ -115,6 +117,21 @@ where
     type Rejection = Error;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
+        extract_jwt_from_request_parts(parts, state)?.ok_or_else(
+            // If we get here, none of the locations worked
+            || Error::Unauthorized("Token not found in any of the configured JWT locations. Please check your auth.jwt.location configuration.".to_string()))
+    }
+}
+
+// Implement the OptionalFromRequestParts trait for the Auth struct, for routes where behaviour depends on auth status.
+impl<S> OptionalFromRequestParts<S> for JWT
+where
+    AppContext: FromRef<S>,
+    S: Send + Sync,
+{
+    type Rejection = Error;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Option<Self>, Error> {
         extract_jwt_from_request_parts(parts, state)
     }
 }
@@ -123,25 +140,27 @@ where
 ///
 /// # Errors
 /// Return an error when JWT token not configured or when the token is not valid
-pub fn extract_jwt_from_request_parts<S>(parts: &Parts, state: &S) -> Result<JWT, Error>
+pub fn extract_jwt_from_request_parts<S>(parts: &Parts, state: &S) -> Result<Option<JWT>, Error>
 where
     AppContext: FromRef<S>,
     S: Send + Sync,
 {
     let ctx: AppContext = AppContext::from_ref(state); // change to ctx
 
-    let token = extract_token(get_jwt_from_config(&ctx)?, parts)?;
+    if let Some(token) = extract_token(get_jwt_from_config(&ctx)?, parts)? {
+        let jwt_secret = ctx.config.get_jwt_config()?;
 
-    let jwt_secret = ctx.config.get_jwt_config()?;
-
-    match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
-        Ok(claims) => Ok(JWT {
-            claims: claims.claims,
-        }),
-        Err(err) => {
-            tracing::error!("JWT validation error: {}", err);
-            Err(Error::Unauthorized("token is not valid".to_string()))
+        match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
+            Ok(claims) => Ok(Some(JWT {
+                claims: claims.claims,
+            })),
+            Err(err) => {
+                tracing::error!("JWT validation error: {}", err);
+                Err(Error::Unauthorized("token is not valid".to_string()))
+            }
         }
+    } else {
+        Ok(None)
     }
 }
 
@@ -164,17 +183,16 @@ pub fn get_jwt_from_config(ctx: &AppContext) -> LocoResult<&JWTConfig> {
 ///
 /// Returns an error when the token cannot be extracted from any of the configured locations,
 /// such as missing headers, invalid formats, or inaccessible request data.
-pub fn extract_token(jwt_config: &JWTConfig, parts: &Parts) -> LocoResult<String> {
+pub fn extract_token(jwt_config: &JWTConfig, parts: &Parts) -> LocoResult<Option<String>> {
     let locations = get_jwt_locations(jwt_config.location.as_ref());
 
-    for location in &locations {
-        if let Ok(token) = extract_token_from_location(location, parts) {
-            return Ok(token);
+    for location in locations {
+        if let Ok(Some(token)) = extract_token_from_location(location, parts) {
+            return Ok(Some(token));
         }
     }
 
-    // If we get here, none of the locations worked
-    Err(Error::Unauthorized("Token not found in any of the configured JWT locations. Please check your auth.jwt.location configuration.".to_string()))
+    Ok(None)
 }
 
 /// Get the list of JWT locations to try, with Bearer as default
@@ -192,7 +210,7 @@ fn get_jwt_locations(
 fn extract_token_from_location(
     location: &crate::config::JWTLocation,
     parts: &Parts,
-) -> LocoResult<String> {
+) -> LocoResult<Option<String>> {
     match location {
         crate::config::JWTLocation::Query { name } => extract_token_from_query(name, parts),
         crate::config::JWTLocation::Cookie { name } => extract_token_from_cookie(name, parts),
@@ -205,45 +223,41 @@ fn extract_token_from_location(
 /// # Errors
 ///
 /// When token is not valid or not found
-pub fn extract_token_from_header(headers: &HeaderMap) -> LocoResult<String> {
-    let token = headers
-        .get(AUTH_HEADER)
-        .ok_or_else(|| Error::Unauthorized(format!("header {AUTH_HEADER} token not found")))?
-        .to_str()
-        .map_err(|err| Error::Unauthorized(err.to_string()))?
-        .strip_prefix(TOKEN_PREFIX)
-        .ok_or_else(|| Error::Unauthorized(format!("error strip {AUTH_HEADER} value")))?;
-
-    Ok(token.to_string())
+pub fn extract_token_from_header(headers: &HeaderMap) -> LocoResult<Option<String>> {
+    if let Some(token) = headers.get(AUTH_HEADER) {
+        Ok(Some(
+            token
+                .to_str()
+                .map_err(|err| Error::Unauthorized(err.to_string()))?
+                .strip_prefix(TOKEN_PREFIX)
+                .ok_or_else(|| Error::Unauthorized(format!("error strip {AUTH_HEADER} value")))?
+                .to_string(),
+        ))
+    } else {
+        Ok(None)
+    }
 }
 
 /// Extract a token value from cookie
 ///
 /// # Errors
 /// when token value from cookie is not found
-pub fn extract_token_from_cookie(name: &str, parts: &Parts) -> LocoResult<String> {
+pub fn extract_token_from_cookie(name: &str, parts: &Parts) -> LocoResult<Option<String>> {
     // LogoResult
     let jar: cookie::CookieJar = cookie::CookieJar::from_headers(&parts.headers);
-    Ok(jar
-        .get(name)
-        .ok_or(Error::Unauthorized("token is not found".to_string()))?
-        .to_string()
-        .strip_prefix(&format!("{name}="))
-        .ok_or_else(|| Error::Unauthorized("error strip value".to_string()))?
-        .to_string())
+    Ok(jar.get(name).map(|c| c.value().to_string()))
 }
 /// Extract a token value from query
 ///
 /// # Errors
 /// when token value from cookie is not found
-pub fn extract_token_from_query(name: &str, parts: &Parts) -> LocoResult<String> {
+pub fn extract_token_from_query(name: &str, parts: &Parts) -> LocoResult<Option<String>> {
     // LogoResult
-    let parameters: Query<HashMap<String, String>> =
-        Query::try_from_uri(&parts.uri).map_err(|err| Error::Unauthorized(err.to_string()))?;
-    parameters
-        .get(name)
-        .cloned()
-        .ok_or_else(|| Error::Unauthorized(format!("`{name}` query parameter not found")))
+    if let Ok(parameters) = Query::<HashMap<String, String>>::try_from_uri(&parts.uri) {
+        Ok(parameters.get(name).cloned())
+    } else {
+        Ok(None)
+    }
 }
 
 // ---------------------------------------
@@ -272,7 +286,8 @@ where
     // Extracts `ApiToken` from the request parts.
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
         // Extract API key from the request header.
-        let api_key = extract_token_from_header(&parts.headers)?;
+        let api_key = extract_token_from_header(&parts.headers)?
+        .ok_or_else(|| Error::Unauthorized(format!("header {AUTH_HEADER} token not found")))?;
 
         // Convert the state reference to the application context.
         let state: AppContext = AppContext::from_ref(state);
