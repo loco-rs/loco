@@ -319,7 +319,7 @@ impl ColType {
 
 impl ColType {
     #[allow(clippy::too_many_lines)]
-    pub fn to_def(&self, name: impl IntoIden) -> ColumnDef {
+    fn to_def(&self, name: impl IntoIden) -> ColumnDef {
         match self {
             Self::PkAuto => pk_auto(name),
             Self::PkUuid => pk_uuid(name),
