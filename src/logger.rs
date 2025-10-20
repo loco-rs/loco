@@ -170,10 +170,10 @@ pub fn init<H: Hooks>(config: &config::Logger) -> Result<()> {
 
     if !layers.is_empty() {
         let env_filter = init_env_filter::<H>(config.override_filter.as_ref(), &config.level);
-        let _ = tracing_subscriber::registry()
+        tracing_subscriber::registry()
             .with(layers)
             .with(env_filter)
-            .try_init();
+            .init();
     }
     Ok(())
 }
