@@ -158,15 +158,6 @@ Sometimes you might want state that can be shared between controllers, workers, 
 
 You can review the example [shared-global-state](https://github.com/loco-rs/shared-global-state) app to see how to integrate `libvips`, which is a C based image manipulation library. `libvips` requires an odd thing from the developer: to keep a single instance of it loaded per app process. We do this by keeping a [single `lazy_static` field](https://github.com/loco-rs/shared-global-state/blob/main/src/app.rs#L27-L34), and referring to it from different places in the app.
 
-Read the following to see how it's done in each individual part of the app.
-
-### Shared state in controllers
-
-You can use the solution provided in this document. A live example [is here](https://github.com/loco-rs/loco/blob/master/examples/llm-candle-inference/src/app.rs#L41).
-
-### Shared state in workers
-
-Workers are intentionally verbatim initialized in [app hooks](https://github.com/loco-rs/loco/blob/master/starters/saas/src/app.rs#L59).
 
 This means you can shape them as a "regular" Rust struct that takes a state as a field. Then refer to that field in perform.
 
