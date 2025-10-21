@@ -14,7 +14,7 @@
 
  </div>
 
-[English](./README.md) · [中文](./README-zh_CN.md) · [Français](./README.fr.md) · [Portuguese (Brazil)](./README-pt_BR.md) ・ [日本語](./README.ja.md) · 한국어 · [Русский](./README.ru.md)
+[English](./README.md) · [中文](./README-zh_CN.md) · [Français](./README.fr.md) · [Portuguese (Brazil)](./README-pt_BR.md) ・ [日本語](./README.ja.md) · 한국어 · [Русский](./README.ru.md) · [Español](./README.es.md)
 
 
 ## Loco란?

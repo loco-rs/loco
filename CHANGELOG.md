@@ -2,6 +2,8 @@
 
 ## Unreleased
 - Feat: Worker::perform_later() now returns job IDs for status tracking. Returns `Result<Option<String>>` with the job ID when using background queue mode. [https://github.com/loco-rs/loco/issues/1623](https://github.com/loco-rs/loco/issues/1623)
+
+## v0.16.4 
 - Feat: decouple JWT authentication from database dependency. [https://github.com/loco-rs/loco/pull/1546](https://github.com/loco-rs/loco/pull/1546)
 - Fix: add sqlx dependency to with-db feature. [https://github.com/loco-rs/loco/pull/1557](https://github.com/loco-rs/loco/pull/1557)
 - Remove the deprecated `--link` generate command and fix the table name creation. [https://github.com/loco-rs/loco/pull/1556](https://github.com/loco-rs/loco/pull/1556)
