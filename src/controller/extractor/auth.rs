@@ -54,7 +54,7 @@ pub struct JWTWithUser<T: Authenticable> {
     pub user: T,
 }
 
-// Implement the FromRequestParts trait for the Auth struct
+// Implement axum traits for the Auth struct
 #[cfg(feature = "with-db")]
 impl<S, T> FromRequestParts<S> for JWTWithUser<T>
 where
@@ -97,6 +97,50 @@ where
                 tracing::error!("JWT validation error: {}", err);
                 Err(Error::Unauthorized("token is not valid".to_string()))
             }
+        }
+    }
+}
+
+#[cfg(feature = "with-db")]
+impl<S, T> OptionalFromRequestParts<S> for JWTWithUser<T>
+where
+    AppContext: FromRef<S>,
+    S: Send + Sync,
+    T: Authenticable,
+{
+    type Rejection = Error;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Option<Self>, Error> {
+        let ctx: AppContext = AppContext::from_ref(state);
+
+        if let Some(token) = extract_token(get_jwt_from_config(&ctx)?, parts)? {
+            let jwt_secret = ctx.config.get_jwt_config()?;
+
+            match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
+                Ok(claims) => match T::find_by_claims_key(&ctx.db, &claims.claims.pid).await {
+                    Ok(user) => Ok(Some(JWTWithUser {
+                        claims: claims.claims,
+                        user,
+                    })),
+                    Err(ModelError::EntityNotFound) => {
+                        Err(Error::Unauthorized("not found".to_string()))
+                    }
+                    Err(ModelError::DbErr(db_err)) => {
+                        tracing::error!("Database error during authentication: {}", db_err);
+                        Err(Error::InternalServerError)
+                    }
+                    Err(unhandled) => {
+                        tracing::error!("Authentication error: {}", unhandled);
+                        Err(Error::Unauthorized("could not authorize".to_string()))
+                    }
+                },
+                Err(err) => {
+                    tracing::error!("JWT validation error: {}", err);
+                    Err(Error::Unauthorized("token is not valid".to_string()))
+                }
+            }
+        } else {
+            Ok(None)
         }
     }
 }
@@ -287,7 +331,7 @@ where
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
         // Extract API key from the request header.
         let api_key = extract_token_from_header(&parts.headers)?
-        .ok_or_else(|| Error::Unauthorized(format!("header {AUTH_HEADER} token not found")))?;
+            .ok_or_else(|| Error::Unauthorized(format!("header {AUTH_HEADER} token not found")))?;
 
         // Convert the state reference to the application context.
         let state: AppContext = AppContext::from_ref(state);
@@ -360,7 +404,7 @@ mod tests {
             .unwrap();
         let (parts_no_token, ()) = request_no_token.into_parts();
         let error_result = extract_token(&jwt_config, &parts_no_token);
-        assert!(error_result.is_err());
+        assert!(error_result.as_ref().is_ok_and(|inner| inner.is_none()));
 
         // For multiple locations test, verify it contains configuration guidance
         if test_name == "extract_from_multiple_locations" {
