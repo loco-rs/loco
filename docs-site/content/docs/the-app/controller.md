@@ -158,16 +158,6 @@ Sometimes you might want state that can be shared between controllers, workers, 
 
 You can review the example [shared-global-state](https://github.com/loco-rs/shared-global-state) app to see how to integrate `libvips`, which is a C based image manipulation library. `libvips` requires an odd thing from the developer: to keep a single instance of it loaded per app process. We do this by keeping a [single `lazy_static` field](https://github.com/loco-rs/shared-global-state/blob/main/src/app.rs#L27-L34), and referring to it from different places in the app.
 
-Read the following to see how it's done in each individual part of the app.
-
-### Shared state in controllers
-
-You can use the solution provided in this document. A live example [is here](https://github.com/loco-rs/loco/blob/master/examples/llm-candle-inference/src/app.rs#L41).
-
-### Shared state in workers
-
-Workers are intentionally verbatim initialized in [app hooks](https://github.com/loco-rs/loco/blob/master/starters/saas/src/app.rs#L59).
-
 This means you can shape them as a "regular" Rust struct that takes a state as a field. Then refer to that field in perform.
 
 [Here's how the worker is initialized](https://github.com/loco-rs/shared-global-state/blob/main/src/workers/downloader.rs#L19) with the global `vips` instance in the `shared-global-state` example.
@@ -176,7 +166,7 @@ Note that by-design _sharing state between controllers and workers have no meani
 
 ### Shared state in tasks
 
-Tasks don't really have a value for shared state, as they have a similar life as any exec'd binary. The process fires up, boots, creates all resources needed (connects to db, etc.), performs the task logic, and then the
+Tasks don't really have a value for shared state, as they have a similar life as any exec'd binary. The process fires up, boots, creates all resources needed (connects to db, etc.), performs the task logic, and then the process terminates.
 
 ## Routes in Controllers
 
@@ -317,7 +307,9 @@ impl Hooks for App {
 ## Default Endpoints
 
 ### Health check endpoints
+
 There are three default health check endpoints that are automatically registered in the application:
+
 - `_ping` and `_health`: Can be used by startup probe and liveness probe, they only confirm the server is running (simple 200 OK).
 - `_readiness`: Can be used by readiness probe, tt checks dependencies (DB, Cache, Storage).
   - If you configure a queue, it will check if the queue is reachable.
@@ -325,6 +317,7 @@ There are three default health check endpoints that are automatically registered
   - If you enable `cache_inmem` or `cache_redis` features, it'll also check the cache connection.
 
 Why we separate these endpoints?
+
 - **Best practices**: Aligns with Kubernetes patterns to avoid removing healthy servers from rotation when dependencies fail temporarily.
 - **Load Balancer Clarity**: A Clear distinction helps load balancers make accurate routing decisions without conflating server and dependency health.
 - **Flexibility**: Splitting endpoints gives users more control to decide which checks to monitor based on their needs (e.g., prioritizing liveness for basic uptime or readiness for full system health).
@@ -1309,7 +1302,7 @@ where
 
 ```
 
-After that just added to your action. 
+After that just added to your action.
 
 ```rust
 #[debug_handler]
@@ -1319,7 +1312,7 @@ pub async fn add(
     Json(params): Json<Params>,
 ) -> Result<Response> {
 
-    // Action logic ... 
+    // Action logic ...
 
 
     format::json({ message: "added!" })
@@ -1329,7 +1322,6 @@ pub async fn add(
 <div class="infobox">
 More information about extractors can be found in the <a href="https://docs.rs/axum/latest/axum/extract/index.html#the-order-of-extractors">axum documentation</a>.
 </div>
-
 
 # Testing
 
