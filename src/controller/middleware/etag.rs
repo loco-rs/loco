@@ -8,9 +8,8 @@
 
 use std::task::{Context, Poll};
 
-use axum::{
-    body::Body, extract::Request, http::StatusCode, response::Response, Router as AXRouter,
-};
+use aide::axum::ApiRouter;
+use axum::{body::Body, extract::Request, http::StatusCode, response::Response};
 use futures_util::future::BoxFuture;
 use hyper::header::{ETAG, IF_NONE_MATCH};
 use serde::{Deserialize, Serialize};
@@ -40,7 +39,7 @@ impl MiddlewareLayer for Etag {
     }
 
     /// Applies the `ETag` middleware to the application router.
-    fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+    fn apply(&self, app: ApiRouter<AppContext>) -> Result<ApiRouter<AppContext>> {
         Ok(app.layer(EtagLayer))
     }
 }

@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 
+use aide::openapi::OpenApi;
 use axum_test::{TestServer, TestServerConfig};
 
 use crate::{
@@ -81,9 +82,11 @@ where
         default_content_type: Some("application/json".to_string()),
         ..Default::default()
     };
+    let mut api = OpenApi::default();
     let server = TestServer::new_with_config(
         boot.router
             .unwrap()
+            .finish_api(&mut api)
             .into_make_service_with_connect_info::<SocketAddr>(),
         config,
     )

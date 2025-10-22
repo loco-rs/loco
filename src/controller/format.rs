@@ -26,6 +26,7 @@ use axum::{
     body::Body,
     http::{response::Builder, HeaderName, HeaderValue},
     response::{Html, IntoResponse, Redirect, Response},
+    Json,
 };
 use axum_extra::extract::cookie::Cookie;
 use bytes::{BufMut, BytesMut};
@@ -34,10 +35,7 @@ use serde::Serialize;
 use serde_json::json;
 
 use crate::{
-    controller::{
-        views::{self, ViewRenderer},
-        Json,
-    },
+    controller::views::{self, ViewRenderer},
     Result,
 };
 

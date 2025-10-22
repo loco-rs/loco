@@ -128,7 +128,7 @@ axum-test = { version = "17.0.1", optional = true }
 chrono = { workspace = true }
 cfg-if = "1"
 
-uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
+uuid = { version = "1.10.0", features = ["v4", "fast-rng", "serde"] }
 
 # File Upload
 opendal = { version = "0.50.2", default-features = false, features = [
@@ -158,6 +158,8 @@ rusty-sidekiq = { version = "0.11.0", default-features = false, optional = true 
 bb8 = { version = "0.8.1", optional = true }
 
 scraper = { version = "0.21.0", features = ["deterministic"], optional = true }
+aide = { "version" = "0.14.0", "features" = ["axum", "axum-json"]}
+schemars = { "version" = "0.8.21", "features" = ["uuid1"]}
 
 [workspace.dependencies]
 colored = { version = "2" }

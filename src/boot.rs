@@ -3,7 +3,7 @@
 //! your application.
 use std::path::PathBuf;
 
-use axum::Router;
+use aide::axum::ApiRouter;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
 use tokio::{select, signal, task::JoinHandle};
@@ -44,7 +44,7 @@ pub struct BootResult {
     /// Application Context
     pub app_context: AppContext,
     /// Web server routes
-    pub router: Option<Router>,
+    pub router: Option<ApiRouter>,
     /// worker processor
     pub run_worker: bool,
 }

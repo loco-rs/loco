@@ -5,7 +5,7 @@
 //! times and reducing bandwidth usage. The middleware configuration allows for
 //! enabling or disabling compression based on the application settings.
 
-use axum::Router as AXRouter;
+use aide::axum::ApiRouter;
 use serde::{Deserialize, Serialize};
 use tower_http::compression::CompressionLayer;
 
@@ -33,7 +33,7 @@ impl MiddlewareLayer for Compression {
     }
 
     /// Applies the Compression middleware layer to the Axum router.
-    fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+    fn apply(&self, app: ApiRouter<AppContext>) -> Result<ApiRouter<AppContext>> {
         Ok(app.layer(CompressionLayer::new()))
     }
 }

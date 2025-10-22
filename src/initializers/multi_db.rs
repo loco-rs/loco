@@ -1,5 +1,6 @@
+use aide::axum::ApiRouter;
 use async_trait::async_trait;
-use axum::{Extension, Router as AxumRouter};
+use axum::Extension;
 
 use crate::{
     app::{AppContext, Initializer},
@@ -15,7 +16,7 @@ impl Initializer for MultiDbInitializer {
         "multi_db".to_string()
     }
 
-    async fn after_routes(&self, router: AxumRouter, ctx: &AppContext) -> Result<AxumRouter> {
+    async fn after_routes(&self, router: ApiRouter, ctx: &AppContext) -> Result<ApiRouter> {
         let settings = ctx
             .config
             .initializers

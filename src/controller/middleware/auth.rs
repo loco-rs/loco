@@ -21,6 +21,7 @@
 //! ```
 use std::collections::HashMap;
 
+use aide::OperationInput;
 use axum::{
     extract::{FromRef, FromRequestParts, Query},
     http::{request::Parts, HeaderMap},
@@ -50,6 +51,8 @@ pub struct JWTWithUser<T: Authenticable> {
     pub claims: auth::jwt::UserClaims,
     pub user: T,
 }
+
+impl<T: Authenticable> OperationInput for JWTWithUser<T> {}
 
 // Implement the FromRequestParts trait for the Auth struct
 impl<S, T> FromRequestParts<S> for JWTWithUser<T>
@@ -88,6 +91,8 @@ where
 pub struct JWT {
     pub claims: auth::jwt::UserClaims,
 }
+
+impl OperationInput for JWT {}
 
 // Implement the FromRequestParts trait for the Auth struct
 impl<S> FromRequestParts<S> for JWT

@@ -9,11 +9,11 @@ use std::{
     task::{Context, Poll},
 };
 
+use aide::axum::ApiRouter;
 use axum::{
     body::Body,
     http::{HeaderName, HeaderValue, Request},
     response::Response,
-    Router as AXRouter,
 };
 use futures_util::future::BoxFuture;
 use serde::{Deserialize, Serialize};
@@ -111,7 +111,7 @@ impl MiddlewareLayer for SecureHeader {
     }
 
     /// Applies the secure headers layer to the application router
-    fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+    fn apply(&self, app: ApiRouter<AppContext>) -> Result<ApiRouter<AppContext>> {
         Ok(app.layer(SecureHeaders::new(self)?))
     }
 }

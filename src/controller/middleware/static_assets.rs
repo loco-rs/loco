@@ -11,7 +11,7 @@
 
 use std::path::PathBuf;
 
-use axum::Router as AXRouter;
+use aide::axum::ApiRouter;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tower_http::services::{ServeDir, ServeFile};
@@ -88,14 +88,14 @@ impl MiddlewareLayer for StaticAssets {
 
     /// Applies the static assets middleware to the application router.
     ///
-    /// This method wraps the provided [`AXRouter`] with a service to serve
+    /// This method wraps the provided [`ApiRouter`] with a service to serve
     /// static files from the folder specified in the configuration. It will
     /// serve a fallback file if the requested file is not found, and can
     /// also serve precompressed (gzip) files if enabled.
     ///
     /// Before applying, it checks if the folder and fallback file exist. If
     /// either is missing, it returns an error.
-    fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+    fn apply(&self, app: ApiRouter<AppContext>) -> Result<ApiRouter<AppContext>> {
         if self.must_exist
             && (!PathBuf::from(&self.folder.path).exists()
                 || !PathBuf::from(&self.fallback).exists())

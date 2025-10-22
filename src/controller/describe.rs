@@ -1,5 +1,6 @@
 use std::sync::OnceLock;
 
+use aide::axum::routing::ApiMethodRouter;
 use axum::{http, routing::MethodRouter};
 use regex::Regex;
 
@@ -16,8 +17,8 @@ fn get_describe_method_action() -> &'static Regex {
 /// Currently axum not exposed the action type of the router. for hold extra
 /// information about routers we need to convert the `method` to string and
 /// capture the details
-pub fn method_action(method: &MethodRouter<AppContext>) -> Vec<http::Method> {
-    let method_str = format!("{method:?}");
+pub fn method_action(method: &ApiMethodRouter<AppContext>) -> Vec<http::Method> {
+    let method_str = format!("{:?}", MethodRouter::<AppContext>::from(method.clone()));
 
     get_describe_method_action()
         .captures(&method_str)

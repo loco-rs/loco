@@ -8,10 +8,8 @@
 
 use std::sync::OnceLock;
 
-use axum::{
-    http::header::{HeaderName, HeaderValue},
-    Router as AXRouter,
-};
+use aide::axum::ApiRouter;
+use axum::http::header::{HeaderName, HeaderValue};
 use tower_http::set_header::SetResponseHeaderLayer;
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
@@ -77,7 +75,7 @@ impl MiddlewareLayer for Middleware {
 
     /// Applies the middleware to the application by adding the `X-Powered-By`
     /// header to each response.
-    fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+    fn apply(&self, app: ApiRouter<AppContext>) -> Result<ApiRouter<AppContext>> {
         Ok(app.layer(SetResponseHeaderLayer::overriding(
             HeaderName::from_static("x-powered-by"),
             self.ident

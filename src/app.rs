@@ -9,8 +9,8 @@ cfg_if::cfg_if! {
 }
 use std::{net::SocketAddr, sync::Arc};
 
+use aide::{axum::ApiRouter, openapi::OpenApi, transform::TransformOpenApi};
 use async_trait::async_trait;
-use axum::Router as AxumRouter;
 
 use crate::{
     bgworker::{self, Queue},
@@ -52,6 +52,12 @@ pub struct AppContext {
     pub storage: Arc<Storage>,
     // Cache instance for the application
     pub cache: Arc<cache::Cache>,
+}
+
+impl std::fmt::Debug for AppContext {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AppContext").finish()
+    }
 }
 
 /// A trait that defines hooks for customizing and extending the behavior of a
@@ -110,7 +116,11 @@ pub trait Hooks: Send {
     ///
     /// # Returns
     /// A Result indicating success () or an error if the server fails to start.
-    async fn serve(app: AxumRouter, ctx: &AppContext, serve_params: &ServeParams) -> Result<()> {
+    async fn serve(app: ApiRouter, ctx: &AppContext, serve_params: &ServeParams) -> Result<()> {
+        aide::generate::on_error(|error| {
+            panic!("{error}");
+        });
+
         let listener = tokio::net::TcpListener::bind(&format!(
             "{}:{}",
             serve_params.binding, serve_params.port
@@ -118,16 +128,20 @@ pub trait Hooks: Send {
         .await?;
 
         let cloned_ctx = ctx.clone();
-        axum::serve(
-            listener,
-            app.into_make_service_with_connect_info::<SocketAddr>(),
-        )
-        .with_graceful_shutdown(async move {
-            shutdown_signal().await;
-            tracing::info!("shutting down...");
-            Self::on_shutdown(&cloned_ctx).await;
-        })
-        .await?;
+
+        let mut api = OpenApi::default();
+        let app = app
+            .finish_api_with(&mut api, Self::api_docs)
+            .into_make_service_with_connect_info::<SocketAddr>();
+        std::fs::write("docs.json", serde_json::to_string_pretty(&api).unwrap()).unwrap();
+
+        axum::serve(listener, app)
+            .with_graceful_shutdown(async move {
+                shutdown_signal().await;
+                tracing::info!("shutting down...");
+                Self::on_shutdown(&cloned_ctx).await;
+            })
+            .await?;
 
         Ok(())
     }
@@ -157,8 +171,8 @@ pub trait Hooks: Send {
     ///
     /// # Errors
     /// Return an [`Result`] when the router could not be created
-    async fn before_routes(_ctx: &AppContext) -> Result<AxumRouter<AppContext>> {
-        Ok(AxumRouter::new())
+    async fn before_routes(_ctx: &AppContext) -> Result<ApiRouter<AppContext>> {
+        Ok(ApiRouter::new())
     }
 
     /// Invoke this function after the Loco routers have been constructed. This
@@ -167,7 +181,7 @@ pub trait Hooks: Send {
     ///
     /// # Errors
     /// Axum router error
-    async fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+    async fn after_routes(router: ApiRouter, _ctx: &AppContext) -> Result<ApiRouter> {
         Ok(router)
     }
 
@@ -193,6 +207,11 @@ pub trait Hooks: Send {
 
     /// Defines the application's routing configuration.
     fn routes(_ctx: &AppContext) -> AppRoutes;
+
+    fn api_docs(api: TransformOpenApi) -> TransformOpenApi {
+        api.title(Self::app_name())
+            .version(Self::app_version().as_str())
+    }
 
     // Provides the options to change Loco [`AppContext`] after initialization.
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
@@ -242,7 +261,7 @@ pub trait Initializer: Sync + Send {
     /// Occurs after the app's `after_routes`.
     /// Use this to compose additional functionality and wire it into an Axum
     /// Router
-    async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+    async fn after_routes(&self, router: ApiRouter, _ctx: &AppContext) -> Result<ApiRouter> {
         Ok(router)
     }
 }

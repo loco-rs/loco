@@ -7,7 +7,7 @@
 
 use std::time::Duration;
 
-use axum::Router as AXRouter;
+use aide::axum::ApiRouter;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tower_http::cors::{self, Any};
@@ -157,7 +157,7 @@ impl MiddlewareLayer for Cors {
     }
 
     /// Applies the CORS middleware layer to the Axum router.
-    fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+    fn apply(&self, app: ApiRouter<AppContext>) -> Result<ApiRouter<AppContext>> {
         Ok(app.layer(self.cors()?))
     }
 }

@@ -23,7 +23,7 @@ pub mod secure_headers;
 pub mod static_assets;
 pub mod timeout;
 
-use axum::Router as AXRouter;
+use aide::axum::ApiRouter;
 use serde::{Deserialize, Serialize};
 
 use crate::{app::AppContext, environment::Environment, Result};
@@ -64,7 +64,7 @@ pub trait MiddlewareLayer {
     /// # Errors
     ///
     /// If there is an issue when adding the middleware to the router.
-    fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>>;
+    fn apply(&self, app: ApiRouter<AppContext>) -> Result<ApiRouter<AppContext>>;
 }
 
 #[allow(clippy::unnecessary_lazy_evaluations)]

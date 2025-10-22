@@ -11,7 +11,7 @@
 //! request action to enforce the payload limit correctly. Without this, the
 //! middleware will not function as intended.
 
-use axum::Router as AXRouter;
+use aide::axum::ApiRouter;
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
@@ -77,7 +77,7 @@ impl MiddlewareLayer for LimitPayload {
 
     /// Applies the payload limit middleware to the application router by adding
     /// a `DefaultBodyLimit` layer.
-    fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+    fn apply(&self, app: ApiRouter<AppContext>) -> Result<ApiRouter<AppContext>> {
         let body_limit_layer = match self.body_limit {
             DefaultBodyLimitKind::Disable => axum::extract::DefaultBodyLimit::disable(),
             DefaultBodyLimitKind::Limit(limit) => axum::extract::DefaultBodyLimit::max(limit),

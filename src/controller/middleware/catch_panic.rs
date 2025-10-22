@@ -5,7 +5,7 @@
 //! internal server error response. This middleware helps ensure that the
 //! application can gracefully handle unexpected errors without crashing the
 //! server.
-use axum::Router as AXRouter;
+use aide::axum::ApiRouter;
 use serde::{Deserialize, Serialize};
 use tower_http::catch_panic::CatchPanicLayer;
 
@@ -53,7 +53,7 @@ impl MiddlewareLayer for CatchPanic {
     }
 
     /// Applies the Catch Panic middleware layer to the Axum router.
-    fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+    fn apply(&self, app: ApiRouter<AppContext>) -> Result<ApiRouter<AppContext>> {
         Ok(app.layer(CatchPanicLayer::custom(handle_panic)))
     }
 }

@@ -17,12 +17,12 @@ use std::{
     task::{Context, Poll},
 };
 
+use aide::axum::ApiRouter;
 use axum::{
     body::Body,
     extract::{ConnectInfo, FromRequestParts, Request},
     http::request::Parts,
     response::Response,
-    Router as AXRouter,
 };
 use futures_util::future::BoxFuture;
 use hyper::HeaderMap;
@@ -120,7 +120,7 @@ impl MiddlewareLayer for RemoteIpMiddleware {
     }
 
     /// Applies the Remote IP middleware to the given Axum router.
-    fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+    fn apply(&self, app: ApiRouter<AppContext>) -> Result<ApiRouter<AppContext>> {
         Ok(app.layer(RemoteIPLayer::new(self)?))
     }
 }

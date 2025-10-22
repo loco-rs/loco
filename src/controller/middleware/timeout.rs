@@ -11,7 +11,7 @@
 //! the request took too long to process.
 use std::time::Duration;
 
-use axum::Router as AXRouter;
+use aide::axum::ApiRouter;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tower_http::timeout::TimeoutLayer;
@@ -55,10 +55,10 @@ impl MiddlewareLayer for TimeOut {
 
     /// Applies the timeout middleware to the application router.
     ///
-    /// This method wraps the provided [`AXRouter`] in a [`TimeoutLayer`],
+    /// This method wraps the provided [`ApiRouter`] in a [`TimeoutLayer`],
     /// ensuring that requests exceeding the specified timeout duration will
     /// be interrupted.
-    fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+    fn apply(&self, app: ApiRouter<AppContext>) -> Result<ApiRouter<AppContext>> {
         Ok(app.layer(TimeoutLayer::new(Duration::from_millis(self.timeout))))
     }
 }

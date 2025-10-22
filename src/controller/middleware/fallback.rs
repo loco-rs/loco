@@ -4,7 +4,8 @@
 //! not match. It serves a file, a custom not-found message, or a default HTML
 //! fallback page based on the configuration.
 
-use axum::{http::StatusCode, response::Html, Router as AXRouter};
+use aide::axum::ApiRouter;
+use axum::{http::StatusCode, response::Html};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::json;
 use tower_http::services::ServeFile;
@@ -85,7 +86,7 @@ impl MiddlewareLayer for Fallback {
     }
 
     /// Applies the fallback middleware to the application router.
-    fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+    fn apply(&self, app: ApiRouter<AppContext>) -> Result<ApiRouter<AppContext>> {
         let app = if let Some(path) = &self.file {
             app.fallback_service(ServeFile::new(path))
         } else if let Some(not_found) = &self.not_found {

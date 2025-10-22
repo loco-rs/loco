@@ -4,7 +4,8 @@
 
 use std::{fmt, sync::OnceLock};
 
-use axum::Router as AXRouter;
+use aide::axum::{routing::ApiMethodRouter, ApiRouter};
+
 use regex::Regex;
 
 use crate::{
@@ -26,11 +27,10 @@ pub struct AppRoutes {
     routes: Vec<Routes>,
 }
 
-#[derive(Debug)]
 pub struct ListRoutes {
     pub uri: String,
     pub actions: Vec<axum::http::Method>,
-    pub method: axum::routing::MethodRouter<AppContext>,
+    pub method: ApiMethodRouter<AppContext>,
 }
 
 impl fmt::Display for ListRoutes {
@@ -170,8 +170,8 @@ impl AppRoutes {
     pub fn to_router<H: Hooks>(
         &self,
         ctx: AppContext,
-        mut app: AXRouter<AppContext>,
-    ) -> Result<AXRouter> {
+        mut app: ApiRouter<AppContext>,
+    ) -> Result<ApiRouter> {
         // IMPORTANT: middleware ordering in this function is opposite to what you
         // intuitively may think. when using `app.layer` to add individual middleware,
         // the LAST middleware is the FIRST to meet the outside world (a user request
@@ -190,10 +190,10 @@ impl AppRoutes {
         // issues in compile times itself (https://github.com/rust-lang/crates.io/pull/7443).
         //
         for router in self.collect() {
+            // panic!("Adding {} to router", router.uri);
             tracing::info!("{}", router.to_string());
-            app = app.route(&router.uri, router.method);
+            app = app.api_route(&router.uri, router.method);
         }
-
         let middlewares = self.middlewares::<H>(&ctx);
         for mid in middlewares {
             app = mid.apply(app)?;

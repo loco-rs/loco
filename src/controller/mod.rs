@@ -67,9 +67,9 @@
 
 pub use app_routes::{AppRoutes, ListRoutes};
 use axum::{
-    extract::FromRequest,
     http::StatusCode,
     response::{IntoResponse, Response},
+    Json,
 };
 use colored::Colorize;
 pub use routes::Routes;
@@ -163,16 +163,6 @@ impl ErrorDetail {
             description: None,
             errors: None,
         }
-    }
-}
-
-#[derive(Debug, FromRequest)]
-#[from_request(via(axum::Json), rejection(Error))]
-pub struct Json<T>(pub T);
-
-impl<T: Serialize> IntoResponse for Json<T> {
-    fn into_response(self) -> axum::response::Response {
-        axum::Json(self.0).into_response()
     }
 }
 

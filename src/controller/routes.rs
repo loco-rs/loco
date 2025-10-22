@@ -1,6 +1,11 @@
 use std::convert::Infallible;
 
-use axum::{extract::Request, response::IntoResponse, routing::Route};
+use aide::axum::routing::ApiMethodRouter;
+use axum::{
+    extract::Request,
+    response::IntoResponse,
+    routing::{MethodRouter, Route},
+};
 use tower::{Layer, Service};
 
 use super::describe;
@@ -12,11 +17,24 @@ pub struct Routes {
     // pub version: Option<String>,
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default)]
 pub struct Handler {
     pub uri: String,
-    pub method: axum::routing::MethodRouter<AppContext>,
+    pub method: ApiMethodRouter<AppContext>,
     pub actions: Vec<axum::http::Method>,
+}
+
+impl std::fmt::Debug for Handler {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Handler")
+            .field("uri", &self.uri)
+            .field(
+                "method",
+                &Into::<MethodRouter<AppContext>>::into(self.method.clone()),
+            )
+            .field("actions", &self.actions)
+            .finish()
+    }
 }
 
 impl Routes {
@@ -78,7 +96,7 @@ impl Routes {
     /// Routes::new().add("/_ping", get(ping));
     /// ````
     #[must_use]
-    pub fn add(mut self, uri: &str, method: axum::routing::MethodRouter<AppContext>) -> Self {
+    pub fn add(mut self, uri: &str, method: ApiMethodRouter<AppContext>) -> Self {
         describe::method_action(&method);
         self.handlers.push(Handler {
             uri: uri.to_owned(),

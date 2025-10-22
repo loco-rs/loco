@@ -6,9 +6,8 @@
 //! This can be useful for tracking requests across services, logging, and
 //! debugging.
 
-use axum::{
-    extract::Request, http::HeaderValue, middleware::Next, response::Response, Router as AXRouter,
-};
+use aide::axum::ApiRouter;
+use axum::{extract::Request, http::HeaderValue, middleware::Next, response::Response};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -54,7 +53,7 @@ impl MiddlewareLayer for RequestId {
     ///
     /// # Errors
     /// This function returns an error if the middleware cannot be applied.
-    fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+    fn apply(&self, app: ApiRouter<AppContext>) -> Result<ApiRouter<AppContext>> {
         Ok(app.layer(axum::middleware::from_fn(request_id_middleware)))
     }
 }

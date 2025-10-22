@@ -7,7 +7,8 @@
 //! into the log context, allowing environment-specific logging (e.g.,
 //! "development", "production").
 
-use axum::{http, Router as AXRouter};
+use aide::axum::ApiRouter;
+use axum::http;
 use serde::{Deserialize, Serialize};
 use tower_http::{add_extension::AddExtensionLayer, trace::TraceLayer};
 
@@ -66,7 +67,7 @@ impl MiddlewareLayer for Middleware {
     /// The `TraceLayer` is customized with `make_span_with` to extract
     /// request-specific details like method, URI, version, user agent, and
     /// request ID, then create a tracing span for the request.
-    fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
+    fn apply(&self, app: ApiRouter<AppContext>) -> Result<ApiRouter<AppContext>> {
         Ok(app
             .layer(
                 TraceLayer::new_for_http().make_span_with(|request: &http::Request<_>| {
