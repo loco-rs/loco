@@ -1,6 +1,7 @@
 ---
 source: tests/templates/auth.rs
 expression: "std::fs::read_to_string(generator.path(\"src/app.rs\")).expect(\"could not open file\")"
+snapshot_kind: text
 ---
 use std::path::Path;
 use async_trait::async_trait;
@@ -58,7 +59,7 @@ impl Hooks for App {
 
     #[allow(unused_variables)]
     fn register_tasks(tasks: &mut Tasks) {
-        // tasks-inject (do not remove)
+        // tasks-inject (do not remove) 
     }
     async fn truncate(_ctx: &AppContext) -> Result<()> {
         Ok(())
