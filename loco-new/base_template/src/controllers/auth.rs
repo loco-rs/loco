@@ -144,9 +144,6 @@ async fn update(
     if users::Model::find_by_email(&ctx.db, &params.email).await.is_ok() {
         return Err(Error::Message("Email already exists".to_string()));
     }
-    if users::Model::find_by_name(&ctx.db, &params.name).await.is_ok() {
-        return Err(Error::Message("Username already exists".to_string()));
-    }
     let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid)
         .await?
         .into_active_model()
