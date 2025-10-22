@@ -93,6 +93,9 @@ impl Hooks for App {
     #[allow(unused_variables)]
     fn register_tasks(tasks: &mut Tasks) {
         // tasks-inject (do not remove)
+        {%- if settings.auth %}
+        tasks.register(tasks::user_create::UserCreate);
+        {%- endif %} 
     }
 
     {%- if settings.db %}
