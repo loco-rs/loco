@@ -10,7 +10,7 @@ use std::{
 use axum::Router;
 #[cfg(feature = "with-db")]
 use sea_orm_migration::MigratorTrait;
-use tokio::{select, signal, task::JoinHandle};
+use tokio::task::JoinHandle;
 use tracing::{debug, error, info, warn};
 
 #[cfg(feature = "with-db")]
@@ -28,6 +28,7 @@ use crate::{
     prelude::BackgroundWorker,
     scheduler::{self, Scheduler},
     storage::{self, Storage},
+    sys,
     task::{self, Tasks},
     Result,
 };
@@ -42,8 +43,8 @@ pub enum StartMode {
     ServerAndWorker,
     /// Pulling job worker and execute them
     WorkerOnly {
-        /// Specifies that the worker should only handle jobs associated with one of these tags.
-        /// If empty, the worker handles all jobs.
+        /// Specifies that the worker should only handle jobs associated with
+        /// one of these tags. If empty, the worker handles all jobs.
         tags: Vec<String>,
     },
     /// Run the app with all available components in the same process.
@@ -133,7 +134,7 @@ pub async fn start<H: Hooks>(
                 None
             };
 
-            shutdown_signal().await;
+            sys::wait_for_ctrlc_or_term().await;
 
             if let Some(handle) = handle {
                 shutdown_and_await_queue_worker(&app_context, handle).await?;
@@ -172,11 +173,7 @@ async fn shutdown_and_await_queue_worker(
         queue.shutdown()?;
     }
 
-    println!("press ctrl-c again to force quit");
-    select! {
-        _ = handle => {}
-        () = shutdown_signal() => {}
-    }
+    sys::wait_with_force_quit(handle).await;
     Ok(())
 }
 
@@ -206,7 +203,8 @@ pub async fn run_task<H: Hooks>(
     Ok(())
 }
 
-/// Initializes a new scheduler instance based on the provided configuration and context.
+/// Initializes a new scheduler instance based on the provided configuration and
+/// context.
 fn scheduler<H: Hooks>(
     app_context: &AppContext,
     config: Option<&PathBuf>,
@@ -492,7 +490,8 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
     }
 }
 
-/// Sets up the application's routes based on the provided initializers and hooks.
+/// Sets up the application's routes based on the provided initializers and
+/// hooks.
 async fn setup_routes<H: Hooks>(
     app_context: &AppContext,
     initializers: &[Box<dyn Initializer>],
@@ -525,36 +524,6 @@ async fn register_workers<H: Hooks>(app_context: &AppContext) -> Result<()> {
 #[must_use]
 pub fn list_endpoints<H: Hooks>(ctx: &AppContext) -> Vec<ListRoutes> {
     H::routes(ctx).collect()
-}
-
-/// Waits for a shutdown signal, either via Ctrl+C or termination signal.
-///
-/// # Panics
-///
-/// This function will panic if it fails to install the signal handlers for
-/// Ctrl+C or the terminate signal on Unix-based systems.
-pub async fn shutdown_signal() {
-    let ctrl_c = async {
-        signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
-    };
-
-    #[cfg(unix)]
-    let terminate = async {
-        signal::unix::signal(signal::unix::SignalKind::terminate())
-            .expect("failed to install signal handler")
-            .recv()
-            .await;
-    };
-
-    #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
-
-    tokio::select! {
-        () = ctrl_c => {},
-        () = terminate => {},
-    }
 }
 
 pub struct MiddlewareInfo {
