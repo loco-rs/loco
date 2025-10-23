@@ -8,31 +8,35 @@ pub use axum::{
 pub use axum_extra::extract::cookie;
 pub use chrono::NaiveDateTime as DateTime;
 pub use include_dir::{include_dir, Dir};
+pub use reqwest::{header::*, Client, StatusCode};
+#[cfg(feature = "with-db")]
+pub use sea_orm::entity::prelude::*;
 // some types required for controller generators
 #[cfg(feature = "with-db")]
 pub use sea_orm::prelude::{Date, DateTimeUtc, DateTimeWithTimeZone, Decimal, Uuid};
 #[cfg(feature = "with-db")]
 pub use sea_orm::{
-    ActiveModelBehavior, ActiveModelTrait, ActiveValue, ColumnTrait, ConnectionTrait,
-    DatabaseConnection, DbErr, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, Set,
-    TransactionTrait,
+    ActiveValue, DbErr, EntityOrSelect, FromQueryResult, IntoActiveModel, JoinType, QuerySelect,
+    Set, TransactionTrait,
 };
 // sugar for controller views to use `data!({"item": ..})` instead of `json!`
 pub use serde_json::json as data;
+pub use validator::{Validate, ValidationError};
 
 #[cfg(feature = "auth_jwt")]
 pub use crate::controller::extractor::auth;
-pub use crate::controller::extractor::{
-    shared_store::SharedStore,
-    validate::{JsonValidate, JsonValidateWithMessage},
-};
 #[cfg(feature = "with-db")]
 pub use crate::model::{query, Authenticable, ModelError, ModelResult};
 pub use crate::{
     app::{AppContext, Initializer},
     bgworker::{BackgroundWorker, Queue},
     controller::{
-        bad_request, format,
+        bad_request,
+        extractor::{
+            shared_store::SharedStore,
+            validate::{JsonValidate, JsonValidateWithMessage},
+        },
+        format,
         middleware::{
             format::{Format, RespondTo},
             remote_ip::RemoteIP,
@@ -48,7 +52,6 @@ pub use crate::{
     validation::{self, Validatable, ValidatorTrait},
     Result,
 };
-pub use validator::Validate;
 #[cfg(feature = "with-db")]
 pub mod model {
     pub use crate::model::query;
