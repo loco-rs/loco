@@ -373,7 +373,7 @@ mod tests {
 
         let result = extract_token_from_header(&headers);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "valid_token_123");
+        assert_eq!(result.unwrap(), Some("valid_token_123".to_string()));
     }
 
     #[test]
@@ -386,7 +386,7 @@ mod tests {
 
         let result = extract_token_from_header(&headers);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), " token_with_spaces  ");
+        assert_eq!(result.unwrap(), Some(" token_with_spaces  ".to_string()));
     }
 
     #[test]
@@ -399,18 +399,15 @@ mod tests {
 
         let result = extract_token_from_header(&headers);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "token-with_special.chars");
+        assert_eq!(result.unwrap(), Some("token-with_special.chars".to_string()));
     }
 
     #[test]
     fn test_extract_token_from_header_missing_header() {
         let headers = HeaderMap::new();
         let result = extract_token_from_header(&headers);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("authorization token not found"));
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_none());
     }
 
     #[test]
@@ -452,7 +449,7 @@ mod tests {
 
         let result = extract_token_from_cookie("test_cookie", &parts);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "cookie_value_123");
+        assert_eq!(result.unwrap(), Some("cookie_value_123".to_string()));
     }
 
     #[test]
@@ -465,7 +462,7 @@ mod tests {
 
         let result = extract_token_from_cookie("auth_token", &parts);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "token-with.special_chars");
+        assert_eq!(result.unwrap(), Some("token-with.special_chars".to_string()));
     }
 
     #[test]
@@ -474,11 +471,8 @@ mod tests {
         let (parts, ()) = request.into_parts();
 
         let result = extract_token_from_cookie("nonexistent", &parts);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("token is not found"));
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_none());
     }
 
     #[test]
@@ -490,11 +484,8 @@ mod tests {
         let (parts, ()) = request.into_parts();
 
         let result = extract_token_from_cookie("nonexistent", &parts);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("token is not found"));
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_none());
     }
 
     #[test]
@@ -507,7 +498,7 @@ mod tests {
 
         let result = extract_token_from_query("token", &parts);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "query_value_123");
+        assert_eq!(result.unwrap(), Some("query_value_123".to_string()));
     }
 
     #[test]
@@ -520,7 +511,7 @@ mod tests {
 
         let result = extract_token_from_query("auth_token", &parts);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "token-with.special_chars");
+        assert_eq!(result.unwrap(), Some("token-with.special_chars".to_string()));
     }
 
     #[test]
@@ -532,11 +523,8 @@ mod tests {
         let (parts, ()) = request.into_parts();
 
         let result = extract_token_from_query("nonexistent_param", &parts);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("query parameter not found"));
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_none());
     }
 
     #[test]
@@ -548,7 +536,8 @@ mod tests {
         let (parts, ()) = request.into_parts();
 
         let result = extract_token_from_query("nonexistent_param", &parts);
-        assert!(result.is_err());
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_none())
     }
 
     #[test]
@@ -648,7 +637,7 @@ mod tests {
 
         let result = extract_token_from_location(&config::JWTLocation::Bearer, &parts);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), " bearer_value");
+        assert_eq!(result.unwrap(), Some(" bearer_value".to_string()));
     }
 
     #[test]
@@ -668,7 +657,7 @@ mod tests {
             &parts,
         );
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "cookie_value");
+        assert_eq!(result.unwrap(), Some("cookie_value".to_string()));
     }
 
     #[test]
@@ -688,7 +677,7 @@ mod tests {
             &parts,
         );
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "query_value");
+        assert_eq!(result.unwrap(), Some("query_value".to_string()));
     }
 
     #[test]
@@ -710,7 +699,7 @@ mod tests {
 
         let result = extract_token(&jwt_config, &parts);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), " valid_token");
+        assert_eq!(result.unwrap(), Some(" valid_token".to_string()));
     }
 
     #[test]
@@ -736,7 +725,7 @@ mod tests {
 
         let result = extract_token(&jwt_config, &parts);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "fallback_token");
+        assert_eq!(result.unwrap(), Some("fallback_token".to_string()));
     }
 
     #[test]
@@ -761,11 +750,8 @@ mod tests {
         let (parts, ()) = request.into_parts();
 
         let result = extract_token(&jwt_config, &parts);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Token not found in any of the configured JWT locations"));
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_none());
     }
 
     #[test]
@@ -786,7 +772,7 @@ mod tests {
 
         let result = extract_token(&jwt_config, &parts);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), " bearer_token_value");
+        assert_eq!(result.unwrap(), Some(" bearer_token_value".to_string()));
     }
 
     #[test]
@@ -809,7 +795,7 @@ mod tests {
 
         let result = extract_token(&jwt_config, &parts);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), " bearer_token_value");
+        assert_eq!(result.unwrap(), Some(" bearer_token_value".to_string()));
     }
 
     #[test]
@@ -834,7 +820,7 @@ mod tests {
 
         let result = extract_token(&jwt_config, &parts);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "cookie_token_value");
+        assert_eq!(result.unwrap(), Some("cookie_token_value".to_string()));
     }
 
     #[test]
@@ -859,7 +845,7 @@ mod tests {
 
         let result = extract_token(&jwt_config, &parts);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "query_token_value");
+        assert_eq!(result.unwrap(), Some("query_token_value".to_string()));
     }
 
     #[test]
@@ -887,7 +873,7 @@ mod tests {
 
         let result = extract_token(&jwt_config, &parts);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "query_token_value");
+        assert_eq!(result.unwrap(), Some("query_token_value".to_string()));
     }
 
     #[test]
@@ -909,11 +895,10 @@ mod tests {
             .uri("https://loco.rs")
             .body(())
             .unwrap();
-        let (parts, ()) = request.into_parts();
+        let (mut parts, ()) = request.into_parts();
 
         let result = extract_token(&jwt_config, &parts);
-        assert!(result.is_err());
-        let error_msg = result.unwrap_err().to_string();
-        assert!(error_msg.contains("auth.jwt.location configuration"));
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_none());
     }
 }
