@@ -1,7 +1,10 @@
 //! # Application Error Handling
 
 use axum::{
-    extract::rejection::JsonRejection,
+    extract::{ 
+        rejection::JsonRejection,
+        multipart::MultipartError
+    },
     http::{
         header::{InvalidHeaderName, InvalidHeaderValue},
         method::InvalidMethod,
@@ -99,7 +102,11 @@ pub enum Error {
 
     // API
     #[error("not found")]
-    NotFound,
+    NotFound(String),
+
+    // API
+    #[error("not found")]
+    UnprocessableEntity(String),
 
     #[error("{0}")]
     BadRequest(String),
@@ -139,6 +146,9 @@ pub enum Error {
     Storage(#[from] crate::storage::StorageError),
 
     #[error(transparent)]
+    Multipart(MultipartError),
+
+    #[error(transparent)]
     Cache(#[from] crate::cache::CacheError),
 
     #[cfg(debug_assertions)]
@@ -159,6 +169,10 @@ pub enum Error {
 
     #[error(transparent)]
     AxumFormRejection(#[from] axum::extract::rejection::FormRejection),
+
+    #[error(transparent)]
+    Uuid(uuid::Error),
+
 }
 
 impl Error {
