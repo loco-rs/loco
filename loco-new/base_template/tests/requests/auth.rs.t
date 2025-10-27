@@ -116,7 +116,7 @@ async fn login_with_un_existing_email() {
     configure_insta!();
 
     request::<App, _, _>(|request, _ctx| async move {
-      
+
         let login_response = request
             .post("/api/auth/login")
             .json(&serde_json::json!({
