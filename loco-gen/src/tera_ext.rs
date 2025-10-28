@@ -61,7 +61,7 @@ impl tera::Function for FormField {
                     is_required,
                     input_class,
                     Some(
-                        r#"pattern="[0-9A-Fa-f]{{8}}-[0-9A-Fa-f]{{4}}-[0-9A-Fa-f]{{4}}-[0-9A-Fa-f]{{4}}-[0-9A-Fa-f]{{12}}""#,
+                        r#"pattern="[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}""#,
                     ),
                 );
                 format!(
