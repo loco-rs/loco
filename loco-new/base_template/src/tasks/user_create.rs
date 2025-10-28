@@ -1,4 +1,5 @@
 use loco_rs::prelude::*;
+use dialoguer::{theme::ColorfulTheme, Input, Password};
 
 use crate::{
     mailers::auth::AuthMailer,

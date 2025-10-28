@@ -38,6 +38,7 @@ sea-orm = { version = "1.1", features = [
   "runtime-tokio-rustls",
   "macros",
 ] }
+dialoguer = { workspace = true }
 chrono = { version = "0.4" }
 validator = { version = "0.20" }
 uuid = { version = "1.6", features = ["v4"] }
