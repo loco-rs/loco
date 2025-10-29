@@ -1,5 +1,4 @@
 use loco_rs::prelude::*;
-use dialoguer::{theme::ColorfulTheme, Input, Password};
 
 use crate::{
     mailers::auth::AuthMailer,
@@ -17,23 +16,20 @@ impl Task for UserCreate {
     }
     async fn run(&self, app_context: &AppContext, vars: &task::Vars) -> Result<()> {
 
-        let name: String = Input::with_theme(&ColorfulTheme::default())
-            .with_prompt("👤 ❯ Enter username")
-            .interact_text()?;
+        let email = vars
+            .cli_arg("email")
+            .map_err(|_| Error::string("email is mandatory"))?;
+        let name = vars
+            .cli_arg("name")
+            .map_err(|_| Error::string("name is mandatory"))?;
+        let password = vars
+            .cli_arg("password")
+            .map_err(|_| Error::string("password is mandatory"))?;
 
-        let email: String = Input::with_theme(&ColorfulTheme::default())
-            .with_prompt("📧 ❯ Enter email")
-            .interact_text()?;
-
-        let password: String = Password::with_theme(&ColorfulTheme::default())
-            .with_prompt("🔒 ❯ Enter password")
-            .with_confirmation("⚠️ ❯ Confirm password", "Passwords don't match")
-            .interact()?;
-
-        let params = RegisterParams {
-            name: name.trim().to_string(),
-            email: email.trim().to_string(),
-            password: password,
+        let register_params = RegisterParams {
+            email: email.to_string(),
+            password: password.to_string(),
+            name: name.to_string(),
         };
 
         // Create user with password using the same logic as register controller
