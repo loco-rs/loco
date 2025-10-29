@@ -3,7 +3,6 @@ use {{settings.module_name}}::{app::App, models::users};
 
 use loco_rs::boot::run_task;
 use serial_test::serial;
-use dialoguer::{theme::ColorfulTheme, Input, Confirm};
 use std::io::Cursor;
 
 #[tokio::test]
