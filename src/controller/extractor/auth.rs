@@ -399,7 +399,10 @@ mod tests {
 
         let result = extract_token_from_header(&headers);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), Some("token-with_special.chars".to_string()));
+        assert_eq!(
+            result.unwrap(),
+            Some("token-with_special.chars".to_string())
+        );
     }
 
     #[test]
@@ -462,7 +465,10 @@ mod tests {
 
         let result = extract_token_from_cookie("auth_token", &parts);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), Some("token-with.special_chars".to_string()));
+        assert_eq!(
+            result.unwrap(),
+            Some("token-with.special_chars".to_string())
+        );
     }
 
     #[test]
@@ -511,7 +517,10 @@ mod tests {
 
         let result = extract_token_from_query("auth_token", &parts);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), Some("token-with.special_chars".to_string()));
+        assert_eq!(
+            result.unwrap(),
+            Some("token-with.special_chars".to_string())
+        );
     }
 
     #[test]
