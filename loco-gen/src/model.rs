@@ -37,10 +37,10 @@ pub fn get_columns_and_references(
         match field_type {
             crate::infer::FieldType::Reference => {
                 // (users, "")
-                references.push((fname.to_string(), String::new()));
+                references.push((fname.clone(), String::new()));
             }
             crate::infer::FieldType::ReferenceWithCustomField(refname) => {
-                references.push((fname.to_string(), refname.clone()));
+                references.push((fname.clone(), refname.clone()));
             }
             crate::infer::FieldType::NullableReference => {
                 references.push((format!("{fname}?"), String::new()));
@@ -51,7 +51,7 @@ pub fn get_columns_and_references(
             crate::infer::FieldType::Type(ftype) => {
                 let mappings = get_mappings();
                 let col_type = mappings.col_type_field(ftype.as_str())?;
-                columns.push((fname.to_string(), col_type.to_string()));
+                columns.push((fname.clone(), col_type.to_string()));
             }
             crate::infer::FieldType::TypeWithParameters(ftype, params) => {
                 let mappings = get_mappings();
@@ -71,11 +71,12 @@ pub fn get_columns_and_references(
                         let array_kind = match params.as_slice() {
                             [array_kind] => Ok(array_kind),
                             _ => Err(Error::Message(format!(
-                                    "type: `{ftype}` requires exactly {arity} parameter{}, but {} were given (`{}`).",
-                                    if arity == 1 { "" } else { "s" },
-                                    params.len(),
-                                    params.join(",")
-                                ))),
+                                "type: `{ftype}` requires exactly {arity} parameter{}, but {} \
+                                 were given (`{}`).",
+                                if arity == 1 { "" } else { "s" },
+                                params.len(),
+                                params.join(",")
+                            ))),
                         }?;
 
                         format!(
@@ -89,7 +90,7 @@ pub fn get_columns_and_references(
                     }
                 };
 
-                columns.push((fname.to_string(), col));
+                columns.push((fname.clone(), col));
             }
         }
     }
@@ -116,7 +117,7 @@ pub fn generate(
         let cwd = current_dir()?;
         let env_map: HashMap<_, _> = std::env::vars().collect();
 
-        let _ = cmd!("cargo", "loco-tool", "db", "migrate",)
+        let _ = cmd!("cargo", "run", "--", "db", "migrate",)
             .stderr_to_stdout()
             .dir(cwd.as_path())
             .full_env(&env_map)
@@ -126,7 +127,7 @@ pub fn generate(
                     "failed to run loco db migration. error details: `{err}`",
                 ))
             })?;
-        let _ = cmd!("cargo", "loco-tool", "db", "entities",)
+        let _ = cmd!("cargo", "run", "--", "db", "entities",)
             .stderr_to_stdout()
             .dir(cwd.as_path())
             .full_env(&env_map)
