@@ -44,6 +44,7 @@ pub struct Job {
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
     pub tags: Option<Vec<String>>,
+    #[serde(default)]
     pub priority: i32,
 }
 
