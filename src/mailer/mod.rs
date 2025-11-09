@@ -89,7 +89,7 @@ pub trait Mailer {
         email.from = Some(email.from.unwrap_or_else(|| opts.from.clone()));
         email.reply_to = email.reply_to.or_else(|| opts.reply_to.clone());
 
-        MailerWorker::perform_later(ctx, email.clone()).await?;
+        MailerWorker::perform_later_with_priority(ctx, email.clone(), Some(100)).await?;
         Ok(())
     }
 
