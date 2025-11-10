@@ -42,8 +42,8 @@ pub enum StartMode {
     ServerAndWorker,
     /// Pulling job worker and execute them
     WorkerOnly {
-        /// Specifies that the worker should only handle jobs associated with one of these tags.
-        /// If empty, the worker handles all jobs.
+        /// Specifies that the worker should only handle jobs associated with
+        /// one of these tags. If empty, the worker handles all jobs.
         tags: Vec<String>,
     },
     /// Run the app with all available components in the same process.
@@ -72,6 +72,47 @@ pub struct ServeParams {
     pub binding: String,
 }
 
+/// Find an available port starting from the given port, incrementing until
+/// an available port is found.
+///
+/// # Arguments
+///
+/// * `start_port` - The port to start searching from
+/// * `binding` - The network address to bind to
+/// * `max_attempts` - Maximum number of ports to try (default: 50)
+///
+/// # Returns
+///
+/// The first available port found, or an error if no port is available
+/// within the attempt limit.
+async fn find_available_port(
+    start_port: i32,
+    binding: &str,
+    max_attempts: i32,
+) -> crate::Result<i32> {
+    use std::net::TcpListener;
+    
+    for i in 0..max_attempts {
+        let port = start_port + i;
+        match TcpListener::bind(&format!("{}:{}", binding, port)) {
+            Ok(_) => {
+                if i > 0 {
+                    info!(
+                        "Port {} is in use, using port {} instead",
+                        start_port, port
+                    );
+                }
+                return Ok(port);
+            }
+            Err(_) => {
+                // Port is in use, try next one
+                continue;
+            }
+        }
+    }
+    Err(Error::string("Could not find an available port"))
+}
+
 /// Runs the application based on the provided `BootResult`.
 ///
 /// This function is responsible for starting the application, including the
@@ -82,9 +123,15 @@ pub struct ServeParams {
 /// When could not initialize the application.
 pub async fn start<H: Hooks>(
     boot: BootResult,
-    server_config: ServeParams,
+    mut server_config: ServeParams,
     no_banner: bool,
 ) -> Result<()> {
+    // Find an available port starting from the configured port
+    if boot.router.is_some() {
+        let start_port = server_config.port;
+        server_config.port = find_available_port(start_port, &server_config.binding, 50).await?;
+    }
+
     if boot.run_scheduler {
         let scheduler = scheduler::<H>(&boot.app_context, None, None, None)?;
         tokio::spawn(async move {
@@ -206,7 +253,8 @@ pub async fn run_task<H: Hooks>(
     Ok(())
 }
 
-/// Initializes a new scheduler instance based on the provided configuration and context.
+/// Initializes a new scheduler instance based on the provided configuration and
+/// context.
 fn scheduler<H: Hooks>(
     app_context: &AppContext,
     config: Option<&PathBuf>,
@@ -492,7 +540,8 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
     }
 }
 
-/// Sets up the application's routes based on the provided initializers and hooks.
+/// Sets up the application's routes based on the provided initializers and
+/// hooks.
 async fn setup_routes<H: Hooks>(
     app_context: &AppContext,
     initializers: &[Box<dyn Initializer>],
