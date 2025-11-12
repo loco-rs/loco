@@ -8,7 +8,6 @@ use std::sync::Arc;
 
 use fs_extra::dir::CopyOptions;
 use include_dir::{include_dir, Dir};
-use tree_fs::TreeBuilder;
 use rhai::{
     export_module, exported_module,
     plugin::{
@@ -17,6 +16,7 @@ use rhai::{
     },
     Engine, Scope,
 };
+use tree_fs::TreeBuilder;
 
 use crate::wizard::AssetsOption;
 use crate::{settings, OS};
@@ -48,7 +48,7 @@ pub fn extract_tree_template(source_path: &Path) -> std::io::Result<tree_fs::Tre
             format!(
                 "Source directory '{}' not found or is not a directory",
                 source_path.display()
-            )
+            ),
         ));
     }
 
@@ -58,15 +58,19 @@ pub fn extract_tree_template(source_path: &Path) -> std::io::Result<tree_fs::Tre
     // 3. Prepare copy options
     // We use `content_only` to mimic the `extract` behavior.
     // This copies the *contents* of `source_path`, not the `source_path` folder itself.
-    let options = CopyOptions::new()
-        .content_only(true);
+    let options = CopyOptions::new().content_only(true);
 
     // 4. Copies files from the dynamic `source_path` into the temporary directory
-    fs_extra::dir::copy(source_path, &generator_tmp_folder.root, &options)
-        .map_err(|e| std::io::Error::new(
+    fs_extra::dir::copy(source_path, &generator_tmp_folder.root, &options).map_err(|e| {
+        std::io::Error::new(
             std::io::ErrorKind::Other,
-            format!("Failed to copy template from '{}': {}", source_path.display(), e)
-        ))?;
+            format!(
+                "Failed to copy template from '{}': {}",
+                source_path.display(),
+                e
+            ),
+        )
+    })?;
 
     // 5. Returns a handle to the populated temporary directory (same as before)
     return Ok(generator_tmp_folder);
