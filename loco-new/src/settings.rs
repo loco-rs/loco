@@ -25,7 +25,6 @@ pub struct Settings {
     pub initializers: Option<Initializers>,
     pub features: Features,
     pub loco_version_text: String,
-    pub template_dir: String,
     pub os: OS,
 }
 
@@ -59,7 +58,7 @@ impl From<AssetsOption> for Option<Asset> {
 impl Settings {
     /// Creates a new [`Settings`] instance based on prompt selections.
     #[must_use]
-    pub fn from_wizard(package_name: &str, template_dir: &str, prompt_selection: &wizard::Selections, os: OS) -> Self {
+    pub fn from_wizard(package_name: &str, prompt_selection: &wizard::Selections, os: OS) -> Self {
         let features = if prompt_selection.db.enable() {
             Features::default()
         } else {
@@ -72,7 +71,6 @@ impl Settings {
 
         Self {
             package_name: package_name.to_string(),
-            template_dir: template_dir.to_string(),
             module_name: package_name.to_snake_case(),
             auth: prompt_selection.db.enable(),
             mailer: prompt_selection.db.enable(),
@@ -103,7 +101,6 @@ impl Default for Settings {
             mailer: Default::default(),
             initializers: Default::default(),
             features: Default::default(),
-            template_dir: "base_template".to_string(),
             loco_version_text: get_loco_version_text(),
             os: Default::default(),
         }
