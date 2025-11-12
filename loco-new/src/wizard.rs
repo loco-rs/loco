@@ -59,8 +59,8 @@ impl DBOption {
     pub fn user_message(&self) -> Option<String> {
         match self {
             Self::Postgres => Some(format!(
-                "{}: You've selected `{}` as your DB provider (you should have a postgres \
-                 instance to connect to)",
+                "{}: You've selected `{}` as your DB provider \
+                 (you should have a postgres instance to connect to)",
                 "database".underline(),
                 "postgres".yellow()
             )),

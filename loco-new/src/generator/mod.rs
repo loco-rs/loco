@@ -6,7 +6,9 @@ pub mod executer;
 pub mod template;
 use std::sync::Arc;
 
+use fs_extra::dir::CopyOptions;
 use include_dir::{include_dir, Dir};
+use tree_fs::TreeBuilder;
 use rhai::{
     export_module, exported_module,
     plugin::{
@@ -21,6 +23,7 @@ use crate::{settings, OS};
 
 static APP_TEMPLATE: Dir<'_> = include_dir!("base_template");
 
+
 /// Extracts a default template to a temporary directory for use by the
 /// application.
 ///
@@ -28,9 +31,51 @@ static APP_TEMPLATE: Dir<'_> = include_dir!("base_template");
 /// when could not extract the the base template
 pub fn extract_default_template() -> std::io::Result<tree_fs::Tree> {
     let generator_tmp_folder = tree_fs::TreeBuilder::default().create()?;
-
     APP_TEMPLATE.extract(&generator_tmp_folder.root)?;
     Ok(generator_tmp_folder)
+}
+
+/// Extracts a template to a temporary directory for use by the
+/// application.
+///
+/// # Errors
+/// when could not extract the the base template
+pub fn extract_tree_template(source_path: &Path) -> std::io::Result<tree_fs::Tree> {
+    // 1. Validate the dynamic source path
+    if !source_path.is_dir() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!(
+                "Source directory '{}' not found or is not a directory",
+                source_path.display()
+            )
+        ));
+    }
+
+    // 2. Creates a new empty temporary directory on disk (same as before)
+    let generator_tmp_folder = TreeBuilder::default().create()?;
+
+    // 3. Prepare copy options
+    // We use `content_only` to mimic the `extract` behavior.
+    // This copies the *contents* of `source_path`, not the `source_path` folder itself.
+    let options = CopyOptions::new()
+        .content_only(true);
+
+    // 4. Copies files from the dynamic `source_path` into the temporary directory
+    fs_extra::dir::copy(source_path, &generator_tmp_folder.root, &options)
+        .map_err(|e| std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("Failed to copy template from '{}': {}", source_path.display(), e)
+        ))?;
+
+    // 5. Returns a handle to the populated temporary directory (same as before)
+    return Ok(generator_tmp_folder);
+}
+
+// This function does what you're asking for.
+pub fn read_file_contents(path_str: &str) -> std::io::Result<String> {
+    let path = Path::new(path_str);
+    std::fs::read_to_string(path)
 }
 
 /// The `Generator` struct provides functionality to execute scripted
