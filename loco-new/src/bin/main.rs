@@ -9,11 +9,7 @@ use clap::{Parser, Subcommand};
 use duct::cmd;
 use loco::{
     generator::{
-        executer,
-        extract_default_template,
-        extract_tree_template,
-        read_file_contents,
-        Generator
+        executer, extract_default_template, extract_tree_template, read_file_contents, Generator,
     },
     settings::Settings,
     wizard, Result, OS,
@@ -136,12 +132,8 @@ fn main() -> Result<()> {
                     "base_template"
                 };
 
-                let settings = Settings::from_wizard(
-                    &app_name,
-                    &prompt_template_dir,
-                    &user_selection,
-                    os
-                );
+                let settings =
+                    Settings::from_wizard(&app_name, &prompt_template_dir, &user_selection, os);
                 let template_path = Path::new(settings.template_dir.as_str());
 
                 let generator_tmp_folder = if let Some(_) = template_dir {
@@ -159,20 +151,19 @@ fn main() -> Result<()> {
                     temp_to.root.as_path(),
                 );
 
-
                 if let Ok(path) = env::var("LOCO_DEV_MODE_PATH") {
                     println!("⚠️ NOTICE: working in dev mode, pointing to local Loco on '{path}'");
                 }
 
                 let dynamic_script_owner: Option<String> = if let Some(path) = template_dir {
                     let setup_filepath = format!("{}/setup.rhai", path); // Your line 168
-                    
+
                     // Read the file and store the *owned String* in our `Option`.
                     // We return the `Result` and `?` will propagate the error.
                     Some(read_file_contents(setup_filepath.as_str())?)
                 } else {
                     None
-                };      
+                };
 
                 // 2. NOW, we can safely create the `script` borrow.
                 let script = if let Some(ref contents) = dynamic_script_owner {
@@ -182,10 +173,11 @@ fn main() -> Result<()> {
                 } else {
                     // Otherwise, `script` gets the static fallback.
                     // (I am guessing this is what your `else` block had)
-                    include_str!("../../setup.rhai") 
+                    include_str!("../../setup.rhai")
                 };
 
-                let res = match Generator::new(Arc::new(executor), settings).run_from_script(script) {
+                let res = match Generator::new(Arc::new(executor), settings).run_from_script(script)
+                {
                     Ok(()) => {
                         std::fs::create_dir_all(&to)?;
                         let copy_options = fs_extra::dir::CopyOptions::new().content_only(true);
