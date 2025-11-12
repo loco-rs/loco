@@ -728,7 +728,7 @@ checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
 
 [[package]]
 name = "loco"
-version = "0.16.3"
+version = "0.16.2"
 dependencies = [
  "clap",
  "colored",
