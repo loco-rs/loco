@@ -8,7 +8,7 @@ use std::{
     fmt::Write as FmtWrites,
     fs,
     fs::File,
-    io::Write,
+    io::BufWriter,
     path::Path,
     sync::OnceLock,
     time::Duration,
@@ -21,6 +21,7 @@ use sea_orm::{
     DatabaseConnection, DbBackend, DbConn, DbErr, EntityTrait, IntoActiveModel, Statement,
 };
 use sea_orm_migration::MigratorTrait;
+use serde::ser::{SerializeSeq, Serializer};
 use tracing::info;
 
 use super::Result as AppResult;
@@ -850,12 +851,16 @@ pub async fn dump_tables(
             "fetched rows from table"
         );
 
-        let mut table_data: Vec<HashMap<String, serde_json::Value>> = Vec::new();
-
         if !to.exists() {
             tracing::info!("the specified dump folder does not exist. creating the folder now");
             fs::create_dir_all(to)?;
         }
+
+        let file_db_content_path = to.join(format!("{table}.yaml"));
+        let file = File::create(&file_db_content_path)?;
+        let write_buffer = BufWriter::new(file);
+        let mut ser = serde_yaml::Serializer::new(write_buffer);
+        let mut seq = ser.serialize_seq(None)?;
 
         for row in data_result {
             let mut row_data: HashMap<String, serde_json::Value> = HashMap::new();
@@ -907,15 +912,11 @@ pub async fn dump_tables(
                     row_data.insert(col_name, value);
                 }
             }
-            table_data.push(row_data);
+
+            seq.serialize_element(&row_data)?;
         }
 
-        let data = serde_yaml::to_string(&table_data)?;
-
-        let file_db_content_path = to.join(format!("{table}.yaml"));
-
-        let mut file = File::create(&file_db_content_path)?;
-        file.write_all(data.as_bytes())?;
+        seq.end()?;
         tracing::info!(table, file_db_content_path = %file_db_content_path.display(), "table data written to YAML file");
     }
 
