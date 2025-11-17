@@ -436,6 +436,10 @@ pub trait Hooks: Send {
     #[cfg(feature = "with-db")]
     async fn seed(_ctx: &AppContext, path: &Path) -> Result<()>;
 
+    /// Dumps the database data to a file.
+    #[cfg(feature = "with-db")]
+    async fn dump(_ctx: &AppContext, path: &Path, tables: &Option<Vec<String>>) -> Result<()>;
+
     /// Called when the application is shutting down.
     /// This function allows users to perform any necessary cleanup or final
     /// actions before the application stops completely.

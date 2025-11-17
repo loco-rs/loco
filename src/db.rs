@@ -14,7 +14,7 @@ use std::{
     time::Duration,
 };
 
-use chrono::{DateTime, Utc};
+use futures_util::TryStreamExt;
 use regex::Regex;
 use sea_orm::{
     ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
@@ -288,7 +288,7 @@ where
     <A as ActiveModelTrait>::Entity: EntityName,
 {
     // Deserialize YAML file into a vector of JSON values
-    let seed_data: Vec<Value> = serde_yaml::from_reader(File::open(path)?)?;
+    let seed_data: Vec<Value> = serde_json::from_reader(File::open(path)?)?;
 
     // Insert each row
     for row in seed_data {
@@ -710,6 +710,33 @@ where
     Ok(())
 }
 
+/// Dump entity data from database to a YAML file using streaming serialization
+///
+/// # Errors
+///
+/// Returns a [`AppResult`] if an error occurs during database query, file
+/// creation or serialization
+#[allow(clippy::type_repetition_in_bounds)]
+pub async fn dump<A>(db: &DatabaseConnection, path: &Path) -> crate::Result<()>
+where
+    <<A as ActiveModelTrait>::Entity as EntityTrait>::Model: serde::Serialize,
+    A: ActiveModelTrait + Send + Sync,
+    <A as ActiveModelTrait>::Entity: EntityName,
+{
+    let file = File::create(path)?;
+    let write_buffer = BufWriter::new(file);
+    let mut ser = serde_json::Serializer::new(write_buffer);
+    let mut seq = ser.serialize_seq(None)?;
+
+    let mut stream = A::Entity::find().stream(db).await?;
+    while let Some(item) = stream.try_next().await? {
+        seq.serialize_element(&item)?;
+    }
+
+    seq.end()?;
+    Ok(())
+}
+
 /// Execute seed from the given path
 ///
 /// # Errors
@@ -717,6 +744,19 @@ where
 /// when seed process is fails
 pub async fn run_app_seed<H: Hooks>(ctx: &AppContext, path: &Path) -> AppResult<()> {
     H::seed(ctx, path).await
+}
+
+/// Execute dump to the given path
+///
+/// # Errors
+///
+/// when dump process fails
+pub async fn run_app_dump<H: Hooks>(
+    ctx: &AppContext,
+    path: &Path,
+    tables: &Option<Vec<String>>,
+) -> AppResult<()> {
+    H::dump(ctx, path, tables).await
 }
 
 /// Create a Postgres database from the given db name.
@@ -806,123 +846,6 @@ pub async fn get_tables(db: &DatabaseConnection) -> AppResult<Vec<String>> {
             }
         })
         .collect())
-}
-
-/// Dumps the contents of specified database tables into YAML files.
-///
-/// # Errors
-/// This function retrieves data from all tables in the database, filters them
-/// if `only_tables` is provided, and writes each table's content to a separate
-/// YAML file in the specified directory.
-///
-/// Returns an error if the operation fails for any reason or could not save the
-/// content into a file.
-#[allow(clippy::cognitive_complexity)]
-pub async fn dump_tables(
-    db: &DatabaseConnection,
-    to: &Path,
-    only_tables: Option<Vec<String>>,
-) -> AppResult<()> {
-    tracing::debug!("getting tables from the database");
-
-    let tables = get_tables(db).await?;
-    tracing::info!(tables = ?tables, "found tables");
-
-    for table in tables {
-        if let Some(ref only_tables) = only_tables {
-            if !only_tables.contains(&table) {
-                tracing::info!(table, "skipping table as it is not in the specified list");
-                continue;
-            }
-        }
-
-        tracing::info!(table, "get table data");
-
-        let data_result = db
-            .query_all(Statement::from_string(
-                db.get_database_backend(),
-                format!(r#"SELECT * FROM "{table}""#),
-            ))
-            .await?;
-
-        tracing::info!(
-            table,
-            rows_fetched = data_result.len(),
-            "fetched rows from table"
-        );
-
-        if !to.exists() {
-            tracing::info!("the specified dump folder does not exist. creating the folder now");
-            fs::create_dir_all(to)?;
-        }
-
-        let file_db_content_path = to.join(format!("{table}.yaml"));
-        let file = File::create(&file_db_content_path)?;
-        let write_buffer = BufWriter::new(file);
-        let mut ser = serde_yaml::Serializer::new(write_buffer);
-        let mut seq = ser.serialize_seq(None)?;
-
-        for row in data_result {
-            let mut row_data: HashMap<String, serde_json::Value> = HashMap::new();
-
-            for col_name in row.column_names() {
-                let value_result = row
-                    .try_get::<String>("", &col_name)
-                    .map(serde_json::Value::String)
-                    .or_else(|_| {
-                        row.try_get::<i8>("", &col_name)
-                            .map(serde_json::Value::from)
-                    })
-                    .or_else(|_| {
-                        row.try_get::<i16>("", &col_name)
-                            .map(serde_json::Value::from)
-                    })
-                    .or_else(|_| {
-                        row.try_get::<i32>("", &col_name)
-                            .map(serde_json::Value::from)
-                    })
-                    .or_else(|_| {
-                        row.try_get::<i64>("", &col_name)
-                            .map(serde_json::Value::from)
-                    })
-                    .or_else(|_| {
-                        row.try_get::<f32>("", &col_name)
-                            .map(serde_json::Value::from)
-                    })
-                    .or_else(|_| {
-                        row.try_get::<f64>("", &col_name)
-                            .map(serde_json::Value::from)
-                    })
-                    .or_else(|_| {
-                        row.try_get::<uuid::Uuid>("", &col_name)
-                            .map(|v| serde_json::Value::String(v.to_string()))
-                    })
-                    .or_else(|_| {
-                        row.try_get::<DateTime<Utc>>("", &col_name)
-                            .map(|v| serde_json::Value::String(v.to_rfc3339()))
-                    })
-                    .or_else(|_| row.try_get::<serde_json::Value>("", &col_name))
-                    .or_else(|_| {
-                        row.try_get::<bool>("", &col_name)
-                            .map(serde_json::Value::Bool)
-                    })
-                    .ok();
-
-                if let Some(value) = value_result {
-                    row_data.insert(col_name, value);
-                }
-            }
-
-            seq.serialize_element(&row_data)?;
-        }
-
-        seq.end()?;
-        tracing::info!(table, file_db_content_path = %file_db_content_path.display(), "table data written to YAML file");
-    }
-
-    tracing::info!("dumping tables process completed successfully");
-
-    Ok(())
 }
 
 /// dumps the db schema into file.

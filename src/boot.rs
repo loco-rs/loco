@@ -341,7 +341,7 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
             tracing::warn!(reset = reset, from = %from.display(), "seed:");
 
             if dump || dump_tables.is_some() {
-                db::dump_tables(&app_context.db, from.as_path(), dump_tables).await?;
+                db::run_app_dump::<H>(app_context, from.as_path(), &dump_tables).await?;
             } else {
                 if reset {
                     db::reset::<M>(&app_context.db).await?;

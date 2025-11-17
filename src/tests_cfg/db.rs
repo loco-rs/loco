@@ -171,4 +171,8 @@ impl Hooks for AppHook {
     async fn seed(_ctx: &AppContext, _base: &Path) -> Result<()> {
         Ok(())
     }
+
+    async fn dump(_ctx: &AppContext, _base: &Path, _tables: &Option<Vec<String>>) -> Result<()> {
+        Ok(())
+    }
 }
