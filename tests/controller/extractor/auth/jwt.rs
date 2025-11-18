@@ -274,7 +274,8 @@ async fn can_extract_jwt_from_query() {
     handle.abort();
 }
 
-// Test JWT extractor with multiple locations - Cookie first, then Query fallback
+// Test JWT extractor with multiple locations - Cookie first, then Query
+// fallback
 #[tokio::test]
 async fn can_extract_jwt_with_multiple_locations_cookie_fallback() {
     let mut ctx = tests_cfg::app::get_app_context().await;
@@ -320,7 +321,8 @@ async fn can_extract_jwt_with_multiple_locations_cookie_fallback() {
     handle.abort();
 }
 
-// Test JWT extractor with multiple locations - Query first, then Bearer fallback
+// Test JWT extractor with multiple locations - Query first, then Bearer
+// fallback
 #[tokio::test]
 async fn can_extract_jwt_with_multiple_locations_query_fallback() {
     let mut ctx = tests_cfg::app::get_app_context().await;
@@ -792,8 +794,8 @@ async fn can_validate_error_message_for_missing_token() {
 
     // The error message should be consistent
     let _error_text = res.text().await.expect("Error response should have text");
-    // Note: The actual error message format depends on the error handling implementation
-    // This test ensures we get a 401 status for missing token
+    // Note: The actual error message format depends on the error handling
+    // implementation This test ensures we get a 401 status for missing token
     handle.abort();
 }
 
@@ -825,8 +827,8 @@ async fn can_validate_error_message_for_invalid_token() {
 
     // The error message should be consistent for invalid tokens
     let _error_text = res.text().await.expect("Error response should have text");
-    // Note: The actual error message format depends on the error handling implementation
-    // This test ensures we get a 401 status for invalid token
+    // Note: The actual error message format depends on the error handling
+    // implementation This test ensures we get a 401 status for invalid token
     handle.abort();
 }
 
@@ -858,8 +860,8 @@ async fn can_validate_error_message_for_malformed_header() {
 
     // The error message should be consistent for malformed headers
     let _error_text = res.text().await.expect("Error response should have text");
-    // Note: The actual error message format depends on the error handling implementation
-    // This test ensures we get a 401 status for malformed header
+    // Note: The actual error message format depends on the error handling
+    // implementation This test ensures we get a 401 status for malformed header
     handle.abort();
 }
 

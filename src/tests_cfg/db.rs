@@ -62,8 +62,8 @@ pub async fn dummy_connection() -> sea_orm::DatabaseConnection {
 /// Creating a failing db connection for tests
 ///
 /// # Panics
-/// Set a non-existing database, disabled the connection pool creation and connection validation,
-/// it should fail immediately when it's used.
+/// Set a non-existing database, disabled the connection pool creation and
+/// connection validation, it should fail immediately when it's used.
 pub async fn fail_connection() -> sea_orm::DatabaseConnection {
     let mut opt =
         sea_orm::ConnectOptions::new("postgres://loco:loco@127.0.0.1:9999/non_existent_db");

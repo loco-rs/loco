@@ -1,8 +1,7 @@
-use crate::validation::ValidatorTrait;
 use axum::extract::{Form, FromRequest, Json, Query, Request};
 use serde::de::DeserializeOwned;
 
-use crate::Error;
+use crate::{validation::ValidatorTrait, Error};
 
 /// Axum middleware for validating JSON request bodies
 ///
@@ -296,7 +295,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::validation::{ModelValidationErrors, ValidatorTrait};
     use axum::{
         body::{to_bytes, Body},
         http::{self, Request as HttpRequest, StatusCode},
@@ -307,6 +305,7 @@ mod tests {
     use validator::Validate;
 
     use super::*;
+    use crate::validation::{ModelValidationErrors, ValidatorTrait};
 
     #[derive(Debug, Serialize, Deserialize, Validate)]
     struct TestUser {
@@ -590,8 +589,9 @@ mod tests {
 
     impl ValidatorTrait for CustomData {
         fn validate(&self) -> Result<(), ModelValidationErrors> {
-            use crate::validation::ValidationError;
             use std::collections::{BTreeMap, HashMap};
+
+            use crate::validation::ValidationError;
             if self.username.len() < 3 {
                 let mut errors: BTreeMap<String, Vec<ValidationError>> = BTreeMap::new();
                 errors.insert(

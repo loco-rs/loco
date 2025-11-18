@@ -11,12 +11,16 @@
 
 use std::path::PathBuf;
 
-use axum::http::header::{HeaderValue, CACHE_CONTROL};
-use axum::Router as AXRouter;
+use axum::{
+    http::header::{HeaderValue, CACHE_CONTROL},
+    Router as AXRouter,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tower_http::services::{ServeDir, ServeFile};
-use tower_http::set_header::SetResponseHeaderLayer;
+use tower_http::{
+    services::{ServeDir, ServeFile},
+    set_header::SetResponseHeaderLayer,
+};
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
 

@@ -222,8 +222,8 @@ pub struct Database {
     pub dangerously_recreate: bool,
 
     // Execute query after initializing the DB
-    /// for e.g. this can be used to confiure PRAGMAs for `SQLite` where you can pass all values as a string.
-    /// Default values are:
+    /// for e.g. this can be used to confiure PRAGMAs for `SQLite` where you can
+    /// pass all values as a string. Default values are:
     ///
     /// PRAGMA `foreign_keys` = ON;
     ///
@@ -427,7 +427,8 @@ pub enum JWTLocation {
     Cookie { name: String },
 }
 
-/// Configuration for JWT location(s) - supports both single location and multiple locations
+/// Configuration for JWT location(s) - supports both single location and
+/// multiple locations
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum JWTLocationConfig {

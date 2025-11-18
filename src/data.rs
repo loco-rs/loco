@@ -39,9 +39,10 @@ pub async fn load_json_file<T: DeserializeOwned>(path: &str) -> Result<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde::Deserialize;
     use tree_fs::TreeBuilder;
+
+    use super::*;
 
     #[derive(Deserialize, Debug, PartialEq)]
     struct TestData {
