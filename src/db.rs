@@ -6,9 +6,8 @@
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::Write as FmtWrites,
-    fs,
-    fs::File,
-    io::BufWriter,
+    fs::{self, File},
+    io::{BufReader, BufWriter},
     path::Path,
     sync::OnceLock,
     time::Duration,
@@ -18,10 +17,12 @@ use futures_util::TryStreamExt;
 use regex::Regex;
 use sea_orm::{
     ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
-    DatabaseConnection, DbBackend, DbConn, DbErr, EntityTrait, IntoActiveModel, Statement,
+    DatabaseConnection, DbBackend, DbConn, DbErr, EntityName, EntityTrait, IntoActiveModel,
+    Statement,
 };
 use sea_orm_migration::MigratorTrait;
-use serde::ser::{SerializeSeq, Serializer};
+use serde::ser::Serializer;
+use serde_json::{json, Deserializer};
 use tracing::info;
 
 use super::Result as AppResult;
@@ -267,8 +268,6 @@ pub async fn reset<M: MigratorTrait>(db: &DatabaseConnection) -> Result<(), sea_
     migrate::<M>(db).await
 }
 
-use sea_orm::EntityName;
-use serde_json::{json, Value};
 /// Seed the database with data from a specified file.
 /// Seeds open the file path and insert all file content into the DB.
 ///
@@ -288,11 +287,13 @@ where
     <A as ActiveModelTrait>::Entity: EntityName,
 {
     // Deserialize YAML file into a vector of JSON values
-    let seed_data: Vec<Value> = serde_json::from_reader(File::open(path)?)?;
+    let read_buffer = BufReader::new(File::open(path)?);
+    let de = Deserializer::from_reader(read_buffer);
+    let items = de.into_iter::<<<A as ActiveModelTrait>::Entity as EntityTrait>::Model>();
 
     // Insert each row
-    for row in seed_data {
-        let model = A::from_json(row)?;
+    for row in items {
+        let model = row?.into_active_model();
         A::Entity::insert(model).exec(db).await?;
     }
 
@@ -726,14 +727,12 @@ where
     let file = File::create(path)?;
     let write_buffer = BufWriter::new(file);
     let mut ser = serde_json::Serializer::new(write_buffer);
-    let mut seq = ser.serialize_seq(None)?;
 
     let mut stream = A::Entity::find().stream(db).await?;
     while let Some(item) = stream.try_next().await? {
-        seq.serialize_element(&item)?;
+        ser.serialize_some(&item)?;
     }
 
-    seq.end()?;
     Ok(())
 }
 
