@@ -7,7 +7,8 @@ use crate::{
 };
 
 pub async fn get_app_context() -> AppContext {
-    // Always use in-memory cache for tests if feature is available, otherwise fall back to null
+    // Always use in-memory cache for tests if feature is available, otherwise fall
+    // back to null
     #[cfg(feature = "cache_inmem")]
     let cache = cache::drivers::inmem::new(&crate::config::InMemCacheConfig {
         max_capacity: 32 * 1024 * 1024, // Use explicit value instead of default

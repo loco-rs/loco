@@ -1,5 +1,5 @@
-use std::collections::{HashMap, HashSet};
 use std::{
+    collections::{HashMap, HashSet},
     env,
     fs::{self, File},
     io::{self, Write},
@@ -150,7 +150,8 @@ pub fn collect_all_files(dir: &Path, assets_dir: &Path, all_files: &mut HashMap<
                         "cargo:warning=Failed to strip prefix for path: {}",
                         path.display()
                     );
-                    continue; // Skip this file if we can't determine its relative path
+                    continue; // Skip this file if we can't determine its
+                              // relative path
                 };
 
                 // Format the key as a path, using forward slashes
@@ -186,7 +187,8 @@ pub fn generate_asset_code(
     let mut static_assets = Vec::new();
     let mut template_files = Vec::new();
 
-    // Simple categorization: if file ends with .html or .htm, it's a template, otherwise static asset
+    // Simple categorization: if file ends with .html or .htm, it's a template,
+    // otherwise static asset
     for (path, key) in all_files {
         if std::path::Path::new(key)
             .extension()
@@ -321,8 +323,10 @@ pub fn generate_asset_code(
     // Create the static assets content
     let mut static_lines = vec![
         "#[must_use]\n".to_string(),
-        "pub fn get_embedded_static_assets() -> std::collections::HashMap<String, &'static [u8]> {\n".to_string(),
-        "    let mut assets = std::collections::HashMap::new();\n".to_string()
+        "pub fn get_embedded_static_assets() -> std::collections::HashMap<String, &'static [u8]> \
+         {\n"
+        .to_string(),
+        "    let mut assets = std::collections::HashMap::new();\n".to_string(),
     ];
 
     for (path, key) in &static_assets {

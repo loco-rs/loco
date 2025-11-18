@@ -12,10 +12,13 @@ use bb8_redis::{
 };
 
 use super::CacheDriver;
-use crate::cache::{CacheError, CacheResult};
-use crate::config::RedisCacheConfig;
+use crate::{
+    cache::{CacheError, CacheResult},
+    config::RedisCacheConfig,
+};
 
-/// Creates a new instance of the Redis cache driver with a default configuration.
+/// Creates a new instance of the Redis cache driver with a default
+/// configuration.
 ///
 /// # Returns
 ///
@@ -144,11 +147,12 @@ impl CacheDriver for Redis {
 
 #[cfg(test)]
 mod tests {
-    use crate::tests_cfg::redis::setup_redis_container;
     use std::time::Duration;
+
     use testcontainers::{ContainerAsync, GenericImage};
 
     use super::*;
+    use crate::tests_cfg::redis::setup_redis_container;
 
     async fn setup_redis_driver() -> (Box<dyn CacheDriver>, ContainerAsync<GenericImage>) {
         let (redis_url, container) = setup_redis_container().await;

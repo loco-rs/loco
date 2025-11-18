@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
+use tree_fs::{Tree, TreeBuilder};
+
 use crate::{
     config::{self, Config},
     controller::middleware,
     logger, scheduler,
 };
-
-use tree_fs::{Tree, TreeBuilder};
 
 #[must_use]
 pub fn test_config() -> Config {

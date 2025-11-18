@@ -6,14 +6,15 @@ pub use rrgen::{GenResult, RRgen};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 mod controller;
-use colored::Colorize;
-use std::fmt::Write;
 use std::{
     collections::HashMap,
+    fmt::Write,
     fs,
     path::{Path, PathBuf},
     sync::OnceLock,
 };
+
+use colored::Colorize;
 
 #[cfg(feature = "with-db")]
 mod infer;
@@ -244,7 +245,8 @@ pub enum Component {
         /// Name of the thing to generate
         name: String,
 
-        /// Whether to include timestamps (`created_at``updated_at`at columns) in the model
+        /// Whether to include timestamps (`created_at``updated_at`at columns)
+        /// in the model
         with_tz: bool,
 
         /// Model fields, eg. title:string hits:int
@@ -255,7 +257,8 @@ pub enum Component {
         /// Name of the migration file
         name: String,
 
-        /// Whether to include timestamps (`created_at`, `updated_at` columns) in the migration
+        /// Whether to include timestamps (`created_at`, `updated_at` columns)
+        /// in the migration
         with_tz: bool,
 
         /// Params fields, eg. title:string hits:int
@@ -266,7 +269,8 @@ pub enum Component {
         /// Name of the thing to generate
         name: String,
 
-        /// Whether to include timestamps (`created_at``updated_at`at columns) in the scaffold
+        /// Whether to include timestamps (`created_at``updated_at`at columns)
+        /// in the scaffold
         with_tz: bool,
 
         /// Model and params fields, eg. title:string hits:int

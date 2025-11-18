@@ -90,10 +90,10 @@ impl Routes {
 
     /// Merge another Routes instance into this one.
     ///
-    /// This method allows you to combine multiple Routes instances into a single
-    /// Routes struct. All handlers from the other Routes will be added to this one.
-    /// This is useful for collecting routes from different controllers before
-    /// nesting them under a common prefix.
+    /// This method allows you to combine multiple Routes instances into a
+    /// single Routes struct. All handlers from the other Routes will be
+    /// added to this one. This is useful for collecting routes from
+    /// different controllers before nesting them under a common prefix.
     ///
     /// # Example
     ///
@@ -153,8 +153,9 @@ impl Routes {
     /// Merge multiple Routes instances into this one.
     ///
     /// This is a convenience method that allows you to merge multiple Routes
-    /// instances at once, which is particularly useful when setting up `AppRoutes`
-    /// and you want to collect routes from different controllers before nesting them.
+    /// instances at once, which is particularly useful when setting up
+    /// `AppRoutes` and you want to collect routes from different
+    /// controllers before nesting them.
     ///
     /// # Example
     ///
@@ -272,9 +273,9 @@ impl Routes {
 
     /// Nest another Routes instance under a prefix path.
     ///
-    /// This method allows you to nest a group of routes under a specific path prefix,
-    /// similar to Axum's `nest` method. The nested routes will have their URIs
-    /// prefixed with the given path.
+    /// This method allows you to nest a group of routes under a specific path
+    /// prefix, similar to Axum's `nest` method. The nested routes will have
+    /// their URIs prefixed with the given path.
     ///
     /// # Example
     ///
@@ -360,9 +361,10 @@ impl Routes {
 
 #[cfg(test)]
 mod tests {
+    use axum::routing::get;
+
     use super::*;
     use crate::prelude::*;
-    use axum::routing::get;
 
     async fn users() -> Result<Response> {
         format::json("users list")

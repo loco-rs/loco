@@ -9,13 +9,13 @@
 
 use std::path::PathBuf;
 
-use axum::Router as AXRouter;
 use axum::{
     body::Body,
     extract::{Path as AxumPath, Request},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::get,
+    Router as AXRouter,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;

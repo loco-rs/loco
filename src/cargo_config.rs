@@ -4,10 +4,11 @@
 //! with specific support for accessing database entity configuration
 //! under the `[package.metadata.db.entity]` section.
 
-use crate::errors::Error;
-use crate::Result as AppResult;
 use std::path::Path;
+
 use toml::Table;
+
+use crate::{errors::Error, Result as AppResult};
 
 /// Represents a parsed Cargo.toml configuration
 ///
@@ -18,7 +19,8 @@ pub struct CargoConfig {
 }
 
 impl CargoConfig {
-    /// Creates a new [`CargoConfig`] by reading the Cargo.toml file from the current directory
+    /// Creates a new [`CargoConfig`] by reading the Cargo.toml file from the
+    /// current directory
     ///
     /// # Errors
     /// * If the Cargo.toml file cannot be read
@@ -27,7 +29,8 @@ impl CargoConfig {
         Self::from_path("Cargo.toml")
     }
 
-    /// Creates a new [`CargoConfig`] by reading the Cargo.lock file from the current directory
+    /// Creates a new [`CargoConfig`] by reading the Cargo.lock file from the
+    /// current directory
     ///
     /// # Errors
     /// * If the Cargo.lock file cannot be read
@@ -36,7 +39,8 @@ impl CargoConfig {
         Self::from_path("Cargo.lock")
     }
 
-    /// Creates a new [`CargoConfig`] by reading and parsing a TOML file from the specified path
+    /// Creates a new [`CargoConfig`] by reading and parsing a TOML file from
+    /// the specified path
     ///
     /// # Errors
     /// * If the file cannot be read
@@ -54,7 +58,8 @@ impl CargoConfig {
 
     /// Retrieves the database entity configuration from the Cargo.toml
     ///
-    /// Looks for configuration under the `[package.metadata.db.entity]` section.
+    /// Looks for configuration under the `[package.metadata.db.entity]`
+    /// section.
     #[must_use]
     pub fn get_db_entities(&self) -> Option<&Table> {
         self.toml

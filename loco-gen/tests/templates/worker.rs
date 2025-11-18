@@ -1,8 +1,10 @@
-use super::utils::APP_WORKER;
+use std::fs;
+
 use insta::assert_snapshot;
 use loco_gen::{collect_messages, generate, AppInfo, Component};
 use rrgen::RRgen;
-use std::fs;
+
+use super::utils::APP_WORKER;
 
 macro_rules! configure_insta {
     () => {

@@ -38,10 +38,11 @@
 //! }
 //! ```
 
+use std::collections::{BTreeMap, HashMap};
+
 #[cfg(feature = "with-db")]
 use sea_orm::DbErr;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
 use validator::ValidationErrors;
 
 // this is a line-serialization type. it is used as an intermediate format

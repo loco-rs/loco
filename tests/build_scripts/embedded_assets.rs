@@ -1,9 +1,10 @@
-use insta::{assert_debug_snapshot, assert_snapshot};
-use std::collections::HashMap;
-use std::path::Path; // For creating regex filters
+use std::{collections::HashMap, path::Path};
+
+use insta::{assert_debug_snapshot, assert_snapshot}; // For creating regex filters
 
 // Import only the essential functions from build/embedded_assets.rs
-// Use a module declaration with the `#[path]` attribute to specify the file path
+// Use a module declaration with the `#[path]` attribute to specify the file
+// path
 #[path = "../../build/embedded_assets.rs"]
 mod embedded_assets;
 
@@ -296,34 +297,39 @@ fn test_template_inheritance() {
         .drop(true)
         // Level 1 (base)
         .add_file(
-            "assets/views/base.html", 
-            "<!DOCTYPE html><html><head><title>{% block meta_title %}Base{% endblock %}</title>{% block head %}{% endblock %}</head><body>{% block body %}{% endblock %}</body></html>"
+            "assets/views/base.html",
+            "<!DOCTYPE html><html><head><title>{% block meta_title %}Base{% endblock %}</title>{% \
+             block head %}{% endblock %}</head><body>{% block body %}{% endblock %}</body></html>",
         )
         // Level 2 (extends base)
         .add_file(
-            "assets/views/layouts/app.html", 
-            "{% extends \"base.html\" %}{% block head %}<link rel=\"stylesheet\" href=\"/app.css\">{% endblock %}{% block body %}<nav>{% block nav %}{% endblock %}</nav><main>{% block content %}{% endblock %}</main>{% endblock %}"
+            "assets/views/layouts/app.html",
+            "{% extends \"base.html\" %}{% block head %}<link rel=\"stylesheet\" \
+             href=\"/app.css\">{% endblock %}{% block body %}<nav>{% block nav %}{% endblock \
+             %}</nav><main>{% block content %}{% endblock %}</main>{% endblock %}",
         )
         // Level 3 (extends app)
         .add_file(
-            "assets/views/layouts/authenticated.html", 
-            "{% extends \"layouts/app.html\" %}{% block nav %}<div class=\"user-nav\">{% block user_nav %}{% endblock %}</div>{% endblock %}"
+            "assets/views/layouts/authenticated.html",
+            "{% extends \"layouts/app.html\" %}{% block nav %}<div class=\"user-nav\">{% block \
+             user_nav %}{% endblock %}</div>{% endblock %}",
         )
         // Level 4 (extends authenticated)
         .add_file(
-            "assets/views/dashboard/index.html", 
-            "{% extends \"layouts/authenticated.html\" %}{% block meta_title %}Dashboard{% endblock %}{% block user_nav %}<a href=\"/profile\">Profile</a>{% endblock %}{% block content %}<h1>Dashboard</h1>{% endblock %}"
+            "assets/views/dashboard/index.html",
+            "{% extends \"layouts/authenticated.html\" %}{% block meta_title %}Dashboard{% \
+             endblock %}{% block user_nav %}<a href=\"/profile\">Profile</a>{% endblock %}{% \
+             block content %}<h1>Dashboard</h1>{% endblock %}",
         )
         // Another Level 4 template to test multiple children
         .add_file(
-            "assets/views/dashboard/settings.html", 
-            "{% extends \"layouts/authenticated.html\" %}{% block meta_title %}Settings{% endblock %}{% block user_nav %}<a href=\"/profile\">Profile</a>{% endblock %}{% block content %}<h1>Settings</h1>{% endblock %}"
+            "assets/views/dashboard/settings.html",
+            "{% extends \"layouts/authenticated.html\" %}{% block meta_title %}Settings{% \
+             endblock %}{% block user_nav %}<a href=\"/profile\">Profile</a>{% endblock %}{% \
+             block content %}<h1>Settings</h1>{% endblock %}",
         )
         // Independent template with no inheritance
-        .add_file(
-            "assets/views/error.html",
-            "<h1>Error</h1>"
-        )
+        .add_file("assets/views/error.html", "<h1>Error</h1>")
         .add_directory("target/debug/build/embedded_code")
         .create()
         .unwrap();
