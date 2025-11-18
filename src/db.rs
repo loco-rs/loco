@@ -717,7 +717,6 @@ where
 ///
 /// Returns a [`AppResult`] if an error occurs during database query, file
 /// creation or serialization
-#[allow(clippy::type_repetition_in_bounds)]
 pub async fn dump<A>(db: &DatabaseConnection, path: &Path) -> crate::Result<()>
 where
     <<A as ActiveModelTrait>::Entity as EntityTrait>::Model: serde::Serialize,
