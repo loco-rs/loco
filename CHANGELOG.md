@@ -40,6 +40,8 @@ async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<Ax
 
 
 
+- Feat: Mailer templates now support full Tera template features including inheritance, blocks, and extends. Templates can also be shared across multiple mailers using `Template::new_with_shared()`. [https://github.com/loco-rs/loco/pull/TBD](https://github.com/loco-rs/loco/pull/TBD)
+
 ## v0.16.4 
 - Feat: decouple JWT authentication from database dependency. [https://github.com/loco-rs/loco/pull/1546](https://github.com/loco-rs/loco/pull/1546)
 - Fix: add sqlx dependency to with-db feature. [https://github.com/loco-rs/loco/pull/1557](https://github.com/loco-rs/loco/pull/1557)

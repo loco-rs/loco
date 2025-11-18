@@ -3,7 +3,12 @@
 //! template files, a `Content` struct to hold email content, and a `Template`
 //! struct to manage template rendering.
 //!
-//! # Example
+//! The mailer template system supports full Tera template features including:
+//! - Template inheritance with `{% extends %}` and `{% block %}`
+//! - Template includes with `{% include %}`
+//! - Shared templates across multiple mailers
+//!
+//! # Basic Usage
 //!
 //! ```rust, ignore
 //! use include_dir::{include_dir, Dir};
@@ -14,6 +19,64 @@
 //! let template = Template::new(&welcome)?;
 //! let content = template.render(&args)?;
 //! ```
+//!
+//! # Template Inheritance
+//!
+//! Templates can extend other templates using Tera's inheritance syntax:
+//!
+//! **base.t** (shared template):
+//! ```tera
+//! <!DOCTYPE html>
+//! <html>
+//! <head><title>{% block title %}Email{% endblock %}</title></head>
+//! <body>
+//!     {% block body %}{% endblock %}
+//! </body>
+//! </html>
+//! ```
+//!
+//! **html.t** (mailer-specific template):
+//! ```tera
+//! {% extends "base.t" %}
+//! {% block title %}Welcome Email{% endblock %}
+//! {% block body %}
+//! <h1>Hello {{ name }}!</h1>
+//! {% endblock %}
+//! ```
+//!
+//! # Shared Templates Across Mailers
+//!
+//! Multiple mailers can share common templates (e.g., a base HTML layout):
+//!
+//! ```rust, ignore
+//! use include_dir::{include_dir, Dir};
+//! use loco_rs::mailer::template::Template;
+//!
+//! // Shared base template directory
+//! static shared_base: Dir<'_> = include_dir!("src/mailers/shared");
+//!
+//! // Welcome mailer templates
+//! static welcome: Dir<'_> = include_dir!("src/mailers/auth/welcome");
+//!
+//! // Reset password mailer templates
+//! static reset_password: Dir<'_> = include_dir!("src/mailers/auth/reset_password");
+//!
+//! // Both mailers can use the shared base template
+//! let welcome_template = Template::new_with_shared(&welcome, &[&shared_base])?;
+//! let reset_template = Template::new_with_shared(&reset_password, &[&shared_base])?;
+//! ```
+//!
+//! Templates from shared directories are loaded first, then templates from the main
+//! directory. This means:
+//! - Mailer-specific templates can extend templates from shared directories
+//! - Mailer-specific templates override any templates with the same name from shared directories
+//!
+//! # Required Template Files
+//!
+//! Each mailer template directory must contain three files:
+//! - `subject.t` - Email subject line template
+//! - `html.t` - HTML email body template
+//! - `text.t` - Plain text email body template
 
 use include_dir::Dir;
 use tera::{Context, Tera};
@@ -56,10 +119,70 @@ impl Template {
     /// - Template syntax is invalid
     /// - Building inheritance chains fails
     pub fn new(dir: &Dir<'_>) -> Result<Self> {
+        Self::new_with_shared(dir, &[])
+    }
+
+    /// Creates a new `Template` instance with the provided directory and optional
+    /// shared template directories.
+    ///
+    /// This allows multiple mailers to share common templates (e.g., a base HTML layout).
+    /// Templates from shared directories are loaded first, then templates from the main
+    /// directory. This means templates in the main directory can extend templates from
+    /// shared directories, and templates in the main directory will override any templates
+    /// with the same name from shared directories.
+    ///
+    /// # Example
+    ///
+    /// ```rust, ignore
+    /// use include_dir::{include_dir, Dir};
+    /// use loco_rs::mailer::template::Template;
+    ///
+    /// // Shared base template directory
+    /// static shared_base: Dir<'_> = include_dir!("src/mailers/shared");
+    ///
+    /// // Welcome mailer templates
+    /// static welcome: Dir<'_> = include_dir!("src/mailers/auth/welcome");
+    ///
+    /// // Create template with shared base templates
+    /// let template = Template::new_with_shared(&welcome, &[&shared_base])?;
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Required template files are missing
+    /// - Template syntax is invalid
+    /// - Building inheritance chains fails
+    /// - A template extends a non-existent parent template
+    pub fn new_with_shared(dir: &Dir<'_>, shared_dirs: &[&Dir<'_>]) -> Result<Self> {
         let mut tera = Tera::default();
 
-        // Load all template files from the directory into Tera
-        // Use the filename as the template name to ensure consistent naming
+        // First, load templates from shared directories
+        // This allows mailer-specific templates to extend shared templates
+        for shared_dir in shared_dirs {
+            Self::load_templates_from_dir(&mut tera, shared_dir)?;
+        }
+
+        // Then, load templates from the main directory
+        // These will override any templates with the same name from shared directories
+        Self::load_templates_from_dir(&mut tera, dir)?;
+
+        // Build inheritance chains to enable template inheritance, blocks, and extends
+        tera.build_inheritance_chains().map_err(|e| {
+            Error::Message(format!(
+                "failed to build template inheritance chains: {}",
+                e
+            ))
+        })?;
+
+        Ok(Self { tera })
+    }
+
+    /// Loads all template files from a directory into the Tera instance.
+    ///
+    /// Templates are registered by their filename, so templates can reference each other
+    /// by simple names (e.g., `{% extends "base.t" %}`).
+    fn load_templates_from_dir(tera: &mut Tera, dir: &Dir<'_>) -> Result<()> {
         for entry in dir.files() {
             let path = entry.path();
             // Use the filename (last component) as the template name
@@ -71,16 +194,7 @@ impl Template {
             tera.add_raw_template(name, &content)
                 .map_err(|e| Error::Message(format!("failed to add template '{}': {}", name, e)))?;
         }
-
-        // Build inheritance chains to enable template inheritance, blocks, and extends
-        tera.build_inheritance_chains().map_err(|e| {
-            Error::Message(format!(
-                "failed to build template inheritance chains: {}",
-                e
-            ))
-        })?;
-
-        Ok(Self { tera })
+        Ok(())
     }
 
     /// Renders the email content based on the provided locals using the
@@ -132,6 +246,12 @@ mod tests {
         include_dir!("tests/fixtures/email_template/inheritance");
     static INVALID_INHERITANCE_TEMPLATE_DIR: include_dir::Dir<'_> =
         include_dir!("tests/fixtures/email_template/invalid_inheritance");
+    static SHARED_TEMPLATE_DIR: include_dir::Dir<'_> =
+        include_dir!("tests/fixtures/email_template/shared");
+    static WELCOME_TEMPLATE_DIR: include_dir::Dir<'_> =
+        include_dir!("tests/fixtures/email_template/welcome");
+    static RESET_PASSWORD_TEMPLATE_DIR: include_dir::Dir<'_> =
+        include_dir!("tests/fixtures/email_template/reset_password");
 
     #[test]
     fn can_render_template() {
@@ -195,5 +315,53 @@ mod tests {
             "Error message should mention the missing template or inheritance issue. Got: {}",
             error_msg
         );
+    }
+
+    #[test]
+    fn can_use_shared_templates_across_mailers() {
+        let args = serde_json::json!({
+            "name": "Test User",
+        });
+
+        // Welcome mailer using shared base template
+        let welcome_template =
+            Template::new_with_shared(&WELCOME_TEMPLATE_DIR, &[&SHARED_TEMPLATE_DIR]).unwrap();
+        let welcome_content = welcome_template.render(&args).unwrap();
+
+        // Verify welcome email uses shared base template
+        assert_eq!(welcome_content.subject.trim(), "Welcome Test User!");
+        assert!(welcome_content.html.contains("<html>"));
+        assert!(welcome_content.html.contains("<head>"));
+        assert!(welcome_content.html.contains("<title>Welcome!</title>"));
+        assert!(welcome_content.html.contains("<h1>Welcome Test User!</h1>"));
+        assert!(welcome_content.html.contains("Thank you for joining us"));
+        assert!(welcome_content.html.contains("© 2024 My Company")); // Footer from shared template
+        assert!(welcome_content.html.contains("</body>"));
+        assert!(welcome_content.html.contains("</html>"));
+
+        // Reset password mailer using the same shared base template
+        let reset_args = serde_json::json!({
+            "resetUrl": "https://example.com/reset?token=abc123",
+        });
+        let reset_template =
+            Template::new_with_shared(&RESET_PASSWORD_TEMPLATE_DIR, &[&SHARED_TEMPLATE_DIR])
+                .unwrap();
+        let reset_content = reset_template.render(&reset_args).unwrap();
+
+        // Verify reset password email also uses shared base template
+        assert_eq!(reset_content.subject.trim(), "Reset Your Password");
+        assert!(reset_content.html.contains("<html>"));
+        assert!(reset_content.html.contains("<head>"));
+        assert!(reset_content.html.contains("<title>Reset Password</title>"));
+        assert!(reset_content.html.contains("<h1>Reset Your Password</h1>"));
+        assert!(reset_content
+            .html
+            .contains("https://example.com/reset?token=abc123"));
+        assert!(reset_content.html.contains("© 2024 My Company")); // Footer from shared template
+        assert!(reset_content.html.contains("</body>"));
+        assert!(reset_content.html.contains("</html>"));
+
+        // Both mailers share the same base template structure but have different content
+        assert_ne!(welcome_content.html, reset_content.html);
     }
 }
