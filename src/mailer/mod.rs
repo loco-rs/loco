@@ -96,7 +96,7 @@ pub trait Mailer {
     /// Renders and sends an email using the provided [`AppContext`], template
     /// directory, and arguments.
     async fn mail_template(ctx: &AppContext, dir: &Dir<'_>, args: Args) -> Result<()> {
-        let content = Template::new(dir).render(&args.locals)?;
+        let content = Template::new(dir)?.render(&args.locals)?;
         Self::mail(
             ctx,
             &Email {
