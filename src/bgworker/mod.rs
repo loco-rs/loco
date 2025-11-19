@@ -625,7 +625,11 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
         Self::perform_later_with_priority(ctx, args, None).await
     }
 
-    async fn perform_later_with_priority(ctx: &AppContext, args: A, priority: Option<i32>) -> crate::Result<()>
+    async fn perform_later_with_priority(
+        ctx: &AppContext,
+        args: A,
+        priority: Option<i32>,
+    ) -> crate::Result<()>
     where
         Self: Sized,
     {
@@ -634,8 +638,14 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
                 if let Some(p) = &ctx.queue_provider {
                     let tags = Self::tags();
                     let tags_option = if tags.is_empty() { None } else { Some(tags) };
-                    p.enqueue(Self::class_name(), Self::queue(), args, tags_option, priority)
-                        .await?;
+                    p.enqueue(
+                        Self::class_name(),
+                        Self::queue(),
+                        args,
+                        tags_option,
+                        priority,
+                    )
+                    .await?;
                 } else {
                     tracing::error!(
                         "perform_later: background queue is selected, but queue was not populated \

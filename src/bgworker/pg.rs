@@ -232,13 +232,13 @@ async fn connect(cfg: &PostgresQueueConfig) -> Result<PgPool> {
 /// This function will return an error if it fails
 pub async fn initialize_database(pool: &PgPool) -> Result<()> {
     debug!("Initializing job database tables");
-    
+
     // First, check if the table exists
     let table_exists: bool = sqlx::query_scalar(
         "SELECT EXISTS (
             SELECT FROM information_schema.tables 
             WHERE table_name = 'pg_loco_queue'
-        )"
+        )",
     )
     .fetch_one(pool)
     .await?;
@@ -271,7 +271,7 @@ pub async fn initialize_database(pool: &PgPool) -> Result<()> {
                 SELECT FROM information_schema.columns 
                 WHERE table_name = 'pg_loco_queue' 
                 AND column_name = 'priority'
-            )"
+            )",
         )
         .fetch_one(pool)
         .await?;
@@ -283,7 +283,7 @@ pub async fn initialize_database(pool: &PgPool) -> Result<()> {
                 .await?;
         }
     }
-    
+
     Ok(())
 }
 
