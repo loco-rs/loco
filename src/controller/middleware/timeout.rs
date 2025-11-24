@@ -11,8 +11,8 @@
 //! the request took too long to process.
 use std::time::Duration;
 
+use axum::http::StatusCode;
 use axum::Router as AXRouter;
-use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tower_http::timeout::TimeoutLayer;
@@ -61,7 +61,7 @@ impl MiddlewareLayer for TimeOut {
     /// be interrupted.
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
         Ok(app.layer(TimeoutLayer::with_status_code(
-            StatusCode(408),
+            StatusCode::from_u16(408).unwrap(),
             Duration::from_millis(self.timeout),
         )))
     }
