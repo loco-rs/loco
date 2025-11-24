@@ -1,8 +1,5 @@
 // FILE: src/model/query/dsl/mod.rs
-use sea_orm::{
-    sea_query::{IntoCondition, Order},
-    ColumnTrait, Condition, Value,
-};
+use sea_orm::{sea_query::Order, ColumnTrait, Condition, Value};
 use serde::{Deserialize, Serialize};
 
 mod date_range;

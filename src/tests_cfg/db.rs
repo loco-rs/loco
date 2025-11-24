@@ -97,17 +97,12 @@ pub mod test_db {
     }
 
     impl Iden for Loco {
-        fn unquoted(&self, s: &mut dyn fmt::Write) {
-            write!(
-                s,
-                "{}",
-                match self {
-                    Self::Table => "loco",
-                    Self::Id => "id",
-                    Self::Name => "name",
-                }
-            )
-            .unwrap();
+        fn unquoted(&self) -> &str {
+            match self {
+                Self::Table => "loco",
+                Self::Id => "id",
+                Self::Name => "name",
+            }
         }
     }
 
