@@ -351,7 +351,7 @@ async fn has_id_column(
           )"
             );
             let result = db
-                .query_one(Statement::from_string(DatabaseBackend::Postgres, query))
+                .query_one_raw(Statement::from_string(DatabaseBackend::Postgres, query))
                 .await?;
             result.is_some_and(|row| row.try_get::<bool>("", "exists").unwrap_or(false))
         }
@@ -362,7 +362,7 @@ async fn has_id_column(
           WHERE name = 'id'"
             );
             let result = db
-                .query_one(Statement::from_string(DatabaseBackend::Sqlite, query))
+                .query_one_raw(Statement::from_string(DatabaseBackend::Sqlite, query))
                 .await?;
             result.is_some_and(|row| row.try_get::<i32>("", "count").unwrap_or(0) > 0)
         }
@@ -393,7 +393,7 @@ async fn is_auto_increment(
                 "SELECT pg_get_serial_sequence('{table_name}', 'id') IS NOT NULL as is_serial"
             );
             let result = db
-                .query_one(Statement::from_string(DatabaseBackend::Postgres, query))
+                .query_one_raw(Statement::from_string(DatabaseBackend::Postgres, query))
                 .await?;
             result.is_some_and(|row| row.try_get::<bool>("", "is_serial").unwrap_or(false))
         }
@@ -401,7 +401,7 @@ async fn is_auto_increment(
             let query =
                 format!("SELECT sql FROM sqlite_master WHERE type='table' AND name='{table_name}'");
             let result = db
-                .query_one(Statement::from_string(DatabaseBackend::Sqlite, query))
+                .query_one_raw(Statement::from_string(DatabaseBackend::Sqlite, query))
                 .await?;
             result.is_some_and(|row| {
                 row.try_get::<String>("", "sql")
@@ -748,7 +748,7 @@ async fn create_postgres_database(
     let (sql, values) = select.build(sea_orm::sea_query::PostgresQueryBuilder);
     let statement = Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values);
 
-    if db.query_one(statement).await?.is_some() {
+    if db.query_one_raw(statement).await?.is_some() {
         tracing::info!(db_name, "database already exists");
 
         return Err(sea_orm::DbErr::Custom("database already exists".to_owned()));
@@ -1482,7 +1482,7 @@ mod tests {
 
         // Insert a new row and check ID (should be 4, continuing the sequence)
         let result = db
-            .query_one(Statement::from_string(
+            .query_one_raw(Statement::from_string(
                 backend,
                 format!("INSERT INTO {table_name} (name) VALUES ('test') RETURNING id;"),
             ))
@@ -1511,7 +1511,7 @@ mod tests {
 
         // Insert a new row and check ID (should be 1 after reset)
         let result = db
-            .query_one(Statement::from_string(
+            .query_one_raw(Statement::from_string(
                 backend,
                 format!("INSERT INTO {table_name} (name) VALUES ('reset') RETURNING id;"),
             ))
@@ -1558,7 +1558,7 @@ mod tests {
 
         // Insert a new row and check ID (should be 4, continuing the sequence)
         let result = db
-            .query_one(Statement::from_string(
+            .query_one_raw(Statement::from_string(
                 backend,
                 format!("INSERT INTO {table_name} (name) VALUES ('test') RETURNING id;"),
             ))
@@ -1587,7 +1587,7 @@ mod tests {
 
         // Insert a new row and check ID (should be 1 after reset)
         let result = db
-            .query_one(Statement::from_string(
+            .query_one_raw(Statement::from_string(
                 backend,
                 format!("INSERT INTO {table_name} (name) VALUES ('reset') RETURNING id;"),
             ))
