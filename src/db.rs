@@ -3,23 +3,9 @@
 //! This module defines functions and operations related to the application's
 //! database interactions.
 
-use super::Result as AppResult;
-use crate::{
-    app::{AppContext, Hooks},
-    cargo_config::CargoConfig,
-    config, doctor, env_vars,
-    errors::Error,
-};
-use chrono::{DateTime, Utc};
-use regex::Regex;
-use sea_orm::{
-    ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
-    DatabaseConnection, DbBackend, DbConn, DbErr, EntityTrait, IntoActiveModel, Statement,
-};
-use sea_orm_migration::MigratorTrait;
-use std::fmt::Write as FmtWrites;
 use std::{
     collections::{BTreeMap, HashMap},
+    fmt::Write as FmtWrites,
     fs,
     fs::File,
     io::Write,
@@ -27,7 +13,25 @@ use std::{
     sync::OnceLock,
     time::Duration,
 };
+
+use chrono::{DateTime, Utc};
+use regex::Regex;
+use sea_orm::{
+    ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
+    DatabaseConnection, DatabaseConnectionType, DbBackend, DbConn, DbErr, EntityTrait, ExprTrait,
+    IntoActiveModel, Statement,
+};
+use sea_orm_migration::MigratorTrait;
+use serde::Serialize;
 use tracing::info;
+
+use super::Result as AppResult;
+use crate::{
+    app::{AppContext, Hooks},
+    cargo_config::CargoConfig,
+    config, doctor, env_vars,
+    errors::Error,
+};
 
 pub static EXTRACT_DB_NAME: OnceLock<Regex> = OnceLock::new();
 const IGNORED_TABLES: &[&str] = &[
@@ -86,9 +90,12 @@ impl MultiDb {
 #[allow(clippy::match_wildcard_for_single_variants)]
 pub async fn verify_access(db: &DatabaseConnection) -> AppResult<()> {
     match db {
-        DatabaseConnection::SqlxPostgresPoolConnection(_) => {
+        DatabaseConnection {
+            inner: DatabaseConnectionType::SqlxPostgresPoolConnection(_),
+            ..
+        } => {
             let res = db
-                .query_all(Statement::from_string(
+                .query_all_raw(Statement::from_string(
                     DatabaseBackend::Postgres,
                     "SELECT * FROM pg_catalog.pg_tables WHERE tableowner = current_user;",
                 ))
@@ -99,7 +106,10 @@ pub async fn verify_access(db: &DatabaseConnection) -> AppResult<()> {
                 ));
             }
         }
-        DatabaseConnection::Disconnected => {
+        DatabaseConnection {
+            inner: DatabaseConnectionType::Disconnected,
+            ..
+        } => {
             return Err(Error::string("connection to database has been closed"));
         }
         _ => {}
@@ -158,7 +168,7 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
 
     match db.get_database_backend() {
         DatabaseBackend::Sqlite => {
-            db.execute(Statement::from_string(
+            db.execute_raw(Statement::from_string(
                 DatabaseBackend::Sqlite,
                 config.run_on_start.clone().unwrap_or_else(|| {
                     "
@@ -177,13 +187,14 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
         }
         DatabaseBackend::Postgres | DatabaseBackend::MySql => {
             if let Some(run_on_start) = &config.run_on_start {
-                db.execute(Statement::from_string(
+                db.execute_raw(Statement::from_string(
                     db.get_database_backend(),
                     run_on_start.clone(),
                 ))
                 .await?;
             }
         }
+        _ => unimplemented!(),
     }
 
     Ok(db)
@@ -278,9 +289,12 @@ use serde_json::{json, Value};
 #[allow(clippy::type_repetition_in_bounds)]
 pub async fn seed<A>(db: &DatabaseConnection, path: &str) -> crate::Result<()>
 where
-    <<A as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+    <<A as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<A> + Serialize,
     for<'de> <<A as ActiveModelTrait>::Entity as EntityTrait>::Model: serde::de::Deserialize<'de>,
-    A: ActiveModelTrait + Send + Sync,
+    A: ActiveModelTrait
+        + Send
+        + Sync
+        + sea_orm::TryIntoModel<<<A as ActiveModelTrait>::Entity as sea_orm::EntityTrait>::Model>,
     sea_orm::Insert<A>: Send + Sync,
     <A as ActiveModelTrait>::Entity: EntityName,
 {
@@ -331,25 +345,25 @@ async fn has_id_column(
         DatabaseBackend::Postgres => {
             let query = format!(
                 "SELECT EXISTS (
-              SELECT 1 
-              FROM information_schema.columns 
-              WHERE table_name = '{table_name}' 
+              SELECT 1
+              FROM information_schema.columns
+              WHERE table_name = '{table_name}'
               AND column_name = 'id'
           )"
             );
             let result = db
-                .query_one(Statement::from_string(DatabaseBackend::Postgres, query))
+                .query_one_raw(Statement::from_string(DatabaseBackend::Postgres, query))
                 .await?;
             result.is_some_and(|row| row.try_get::<bool>("", "exists").unwrap_or(false))
         }
         DatabaseBackend::Sqlite => {
             let query = format!(
-                "SELECT COUNT(*) as count 
-          FROM pragma_table_info('{table_name}') 
+                "SELECT COUNT(*) as count
+          FROM pragma_table_info('{table_name}')
           WHERE name = 'id'"
             );
             let result = db
-                .query_one(Statement::from_string(DatabaseBackend::Sqlite, query))
+                .query_one_raw(Statement::from_string(DatabaseBackend::Sqlite, query))
                 .await?;
             result.is_some_and(|row| row.try_get::<i32>("", "count").unwrap_or(0) > 0)
         }
@@ -358,6 +372,7 @@ async fn has_id_column(
                 "Unsupported database backend: MySQL".to_string(),
             ))
         }
+        _ => unimplemented!(),
     };
 
     Ok(result)
@@ -380,7 +395,7 @@ async fn is_auto_increment(
                 "SELECT pg_get_serial_sequence('{table_name}', 'id') IS NOT NULL as is_serial"
             );
             let result = db
-                .query_one(Statement::from_string(DatabaseBackend::Postgres, query))
+                .query_one_raw(Statement::from_string(DatabaseBackend::Postgres, query))
                 .await?;
             result.is_some_and(|row| row.try_get::<bool>("", "is_serial").unwrap_or(false))
         }
@@ -388,7 +403,7 @@ async fn is_auto_increment(
             let query =
                 format!("SELECT sql FROM sqlite_master WHERE type='table' AND name='{table_name}'");
             let result = db
-                .query_one(Statement::from_string(DatabaseBackend::Sqlite, query))
+                .query_one_raw(Statement::from_string(DatabaseBackend::Sqlite, query))
                 .await?;
             result.is_some_and(|row| {
                 row.try_get::<String>("", "sql")
@@ -400,6 +415,7 @@ async fn is_auto_increment(
                 "Unsupported database backend: MySQL".to_string(),
             ))
         }
+        _ => unimplemented!(),
     };
     Ok(result)
 }
@@ -429,7 +445,7 @@ pub async fn reset_autoincrement(
                 "SELECT setval(pg_get_serial_sequence('{table_name}', 'id'), COALESCE(MAX(id), 0) \
                  + 1, false) FROM {table_name}"
             );
-            db.execute(Statement::from_sql_and_values(
+            db.execute_raw(Statement::from_sql_and_values(
                 DatabaseBackend::Postgres,
                 &query_str,
                 vec![],
@@ -441,7 +457,7 @@ pub async fn reset_autoincrement(
                 "UPDATE sqlite_sequence SET seq = (SELECT MAX(id) FROM {table_name}) WHERE name = \
                  '{table_name}'"
             );
-            db.execute(Statement::from_sql_and_values(
+            db.execute_raw(Statement::from_sql_and_values(
                 DatabaseBackend::Sqlite,
                 &query_str,
                 vec![],
@@ -453,6 +469,7 @@ pub async fn reset_autoincrement(
                 "Unsupported database backend: MySQL".to_string(),
             ))
         }
+        _ => unimplemented!(),
     }
     Ok(())
 }
@@ -735,7 +752,7 @@ async fn create_postgres_database(
     let (sql, values) = select.build(sea_orm::sea_query::PostgresQueryBuilder);
     let statement = Statement::from_sql_and_values(DatabaseBackend::Postgres, sql, values);
 
-    if db.query_one(statement).await?.is_some() {
+    if db.query_one_raw(statement).await?.is_some() {
         tracing::info!(db_name, "database already exists");
 
         return Err(sea_orm::DbErr::Custom("database already exists".to_owned()));
@@ -746,7 +763,7 @@ async fn create_postgres_database(
     let query = format!("CREATE DATABASE {db_name} WITH {with_options}");
     tracing::info!(query, "creating postgres database");
 
-    db.execute(sea_orm::Statement::from_string(
+    db.execute_raw(sea_orm::Statement::from_string(
         sea_orm::DatabaseBackend::Postgres,
         query,
     ))
@@ -774,10 +791,11 @@ pub async fn get_tables(db: &DatabaseConnection) -> AppResult<Vec<String>> {
         DatabaseBackend::Sqlite => {
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
         }
+        _ => unimplemented!(),
     };
 
     let result = db
-        .query_all(Statement::from_string(
+        .query_all_raw(Statement::from_string(
             db.get_database_backend(),
             query.to_string(),
         ))
@@ -791,6 +809,7 @@ pub async fn get_tables(db: &DatabaseConnection) -> AppResult<Vec<String>> {
                     "table_name"
                 }
                 sea_orm::DatabaseBackend::Sqlite => "name",
+                _ => unimplemented!(),
             };
 
             if let Ok(table_name) = row.try_get::<String>("", col) {
@@ -836,7 +855,7 @@ pub async fn dump_tables(
         tracing::info!(table, "get table data");
 
         let data_result = db
-            .query_all(Statement::from_string(
+            .query_all_raw(Statement::from_string(
                 db.get_database_backend(),
                 format!(r#"SELECT * FROM "{table}""#),
             ))
@@ -939,7 +958,7 @@ pub async fn dump_schema(ctx: &AppContext, fname: &str) -> crate::Result<()> {
                 ORDER BY table_name, ordinal_position;
             ";
             let stmt = Statement::from_string(DbBackend::Postgres, query.to_owned());
-            let rows = db.query_all(stmt).await?;
+            let rows = db.query_all_raw(stmt).await?;
             rows.into_iter()
                 .map(|row| {
                     // Wrap the closure in a Result to handle errors properly
@@ -959,7 +978,7 @@ pub async fn dump_schema(ctx: &AppContext, fname: &str) -> crate::Result<()> {
                 ORDER BY TABLE_NAME, ORDINAL_POSITION;
             ";
             let stmt = Statement::from_string(DbBackend::MySql, query.to_owned());
-            let rows = db.query_all(stmt).await?;
+            let rows = db.query_all_raw(stmt).await?;
             rows.into_iter()
                 .map(|row| {
                     // Wrap the closure in a Result to handle errors properly
@@ -979,7 +998,7 @@ pub async fn dump_schema(ctx: &AppContext, fname: &str) -> crate::Result<()> {
                 ORDER BY name;
             ";
             let stmt = Statement::from_string(DbBackend::Sqlite, query.to_owned());
-            let rows = db.query_all(stmt).await?;
+            let rows = db.query_all_raw(stmt).await?;
             rows.into_iter()
                 .map(|row| {
                     // Wrap the closure in a Result to handle errors properly
@@ -990,6 +1009,7 @@ pub async fn dump_schema(ctx: &AppContext, fname: &str) -> crate::Result<()> {
                 })
                 .collect::<Result<Vec<serde_json::Value>, DbErr>>()? // Specify error type explicitly
         }
+        _ => unimplemented!(),
     };
     // Serialize schema info to JSON format
     let schema_json = serde_json::to_string_pretty(&schema_info)?;
@@ -1064,7 +1084,8 @@ mod tests {
             assert_eq!(
                 actual_value,
                 expected_value.to_lowercase(),
-                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got '{actual_value}'"
+                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got \
+                 '{actual_value}'"
             );
         }
     }
@@ -1102,7 +1123,8 @@ mod tests {
             assert_eq!(
                 actual_value,
                 expected_value.to_lowercase(),
-                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got '{actual_value}'"
+                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got \
+                 '{actual_value}'"
             );
         }
     }
@@ -1124,7 +1146,8 @@ mod tests {
 
         assert_eq!(db.get_database_backend(), DatabaseBackend::Postgres);
 
-        let query = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'test_run_on_start'";
+        let query = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' \
+                     AND table_name = 'test_run_on_start'";
 
         let value = get_value(&db, query).await;
         assert_eq!(value, "1", "The test_run_on_start table was not created");
@@ -1132,8 +1155,9 @@ mod tests {
 
     #[cfg(test)]
     mod extract_db_name_tests {
-        use super::*;
         use rstest::rstest;
+
+        use super::*;
 
         #[rstest]
         #[case("postgres://localhost:5432/dbname", "dbname")]
@@ -1251,7 +1275,7 @@ mod tests {
         let backend = db.get_database_backend();
 
         let table_no_id = "test_table_no_id";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE {table_no_id} (name TEXT);"),
         ))
@@ -1267,7 +1291,7 @@ mod tests {
         );
 
         let table_with_id = "test_table_with_id";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE {table_with_id} (id INTEGER PRIMARY KEY, name TEXT);"),
         ))
@@ -1283,7 +1307,7 @@ mod tests {
         );
 
         let table_with_serial_id = "test_table_with_serial_id";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE {table_with_serial_id} (id SERIAL PRIMARY KEY, name TEXT);"),
         ))
@@ -1308,7 +1332,7 @@ mod tests {
         assert_eq!(backend, DatabaseBackend::Sqlite);
 
         let table_no_id = "test_table_no_id";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE {table_no_id} (name TEXT);"),
         ))
@@ -1324,7 +1348,7 @@ mod tests {
         );
 
         let table_with_id = "test_table_with_id";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             // SQLite uses INTEGER PRIMARY KEY for rowid alias
             format!("CREATE TABLE {table_with_id} (id INTEGER PRIMARY KEY, name TEXT);"),
@@ -1341,10 +1365,13 @@ mod tests {
         );
 
         let table_with_auto_id = "test_table_with_auto_id";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             // AUTOINCREMENT keyword is important for SQLite's sequence behavior
-            format!("CREATE TABLE {table_with_auto_id} (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);"),
+            format!(
+                "CREATE TABLE {table_with_auto_id} (id INTEGER PRIMARY KEY AUTOINCREMENT, name \
+                 TEXT);"
+            ),
         ))
         .await
         .expect("Failed to create table with auto id");
@@ -1369,7 +1396,7 @@ mod tests {
         let backend = db.get_database_backend();
 
         let table_no_id = "test_table_no_id_auto";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE {table_no_id} (name TEXT);"),
         ))
@@ -1391,7 +1418,7 @@ mod tests {
         );
 
         let table_with_id_not_auto = "test_table_id_not_auto";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE {table_with_id_not_auto} (id INTEGER PRIMARY KEY, name TEXT);"),
         ))
@@ -1403,11 +1430,12 @@ mod tests {
             .expect("Failed to check auto-increment");
         assert!(
             !is_auto,
-            "Table '{table_with_id_not_auto}' should NOT be auto-increment, but check returned true"
+            "Table '{table_with_id_not_auto}' should NOT be auto-increment, but check returned \
+             true"
         );
 
         let table_with_serial_id = "test_table_serial_id_auto";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE {table_with_serial_id} (id SERIAL PRIMARY KEY, name TEXT);"),
         ))
@@ -1436,7 +1464,7 @@ mod tests {
 
         // Create test table with SERIAL id
         let table_name = "test_reset_sequence";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE {table_name} (id SERIAL PRIMARY KEY, name TEXT);"),
         ))
@@ -1444,7 +1472,7 @@ mod tests {
         .expect("Failed to create test table");
 
         // Insert multiple rows in a single query
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("INSERT INTO {table_name} (name) VALUES ('one'), ('two'), ('three');"),
         ))
@@ -1452,7 +1480,7 @@ mod tests {
         .expect("Failed to insert test data");
 
         // Delete all rows
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("DELETE FROM {table_name};"),
         ))
@@ -1461,7 +1489,7 @@ mod tests {
 
         // Insert a new row and check ID (should be 4, continuing the sequence)
         let result = db
-            .query_one(Statement::from_string(
+            .query_one_raw(Statement::from_string(
                 backend,
                 format!("INSERT INTO {table_name} (name) VALUES ('test') RETURNING id;"),
             ))
@@ -1476,7 +1504,7 @@ mod tests {
         );
 
         // Delete all rows again
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("DELETE FROM {table_name};"),
         ))
@@ -1490,7 +1518,7 @@ mod tests {
 
         // Insert a new row and check ID (should be 1 after reset)
         let result = db
-            .query_one(Statement::from_string(
+            .query_one_raw(Statement::from_string(
                 backend,
                 format!("INSERT INTO {table_name} (name) VALUES ('reset') RETURNING id;"),
             ))
@@ -1512,7 +1540,7 @@ mod tests {
 
         // Create test table with auto-incrementing id
         let table_name = "test_reset_sequence";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE {table_name} (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);"),
         ))
@@ -1520,7 +1548,7 @@ mod tests {
         .expect("Failed to create test table");
 
         // Insert multiple rows in a single query
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("INSERT INTO {table_name} (name) VALUES ('one'), ('two'), ('three');"),
         ))
@@ -1528,7 +1556,7 @@ mod tests {
         .expect("Failed to insert test data");
 
         // Delete all rows
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("DELETE FROM {table_name};"),
         ))
@@ -1537,7 +1565,7 @@ mod tests {
 
         // Insert a new row and check ID (should be 4, continuing the sequence)
         let result = db
-            .query_one(Statement::from_string(
+            .query_one_raw(Statement::from_string(
                 backend,
                 format!("INSERT INTO {table_name} (name) VALUES ('test') RETURNING id;"),
             ))
@@ -1552,7 +1580,7 @@ mod tests {
         );
 
         // Delete all rows again
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("DELETE FROM {table_name};"),
         ))
@@ -1566,7 +1594,7 @@ mod tests {
 
         // Insert a new row and check ID (should be 1 after reset)
         let result = db
-            .query_one(Statement::from_string(
+            .query_one_raw(Statement::from_string(
                 backend,
                 format!("INSERT INTO {table_name} (name) VALUES ('reset') RETURNING id;"),
             ))
@@ -1583,8 +1611,8 @@ mod tests {
         let cmd = EntityCmd::new(&get_database_config());
 
         let expected = "generate entity --database-url sqlite::memory: --ignore-tables \
-            seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock --output-dir \
-            src/models/_entities --with-copy-enums --with-serde both";
+                        seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock \
+                        --output-dir src/models/_entities --with-copy-enums --with-serde both";
         assert_eq!(cmd.command().join(" "), expected);
     }
 
@@ -1601,9 +1629,9 @@ model-extra-derives = "ts_rs::Ts"
         let cmd = EntityCmd::merge_with_config(&get_database_config(), &config);
 
         let expected = "generate entity --database-url sqlite::memory: --ignore-tables \
-            seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock,table1,table2 \
-            --max-connections 1 --model-extra-derives ts_rs::Ts --output-dir src/models/_entities \
-            --with-copy-enums --with-serde none";
+                        seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock,\
+                        table1,table2 --max-connections 1 --model-extra-derives ts_rs::Ts \
+                        --output-dir src/models/_entities --with-copy-enums --with-serde none";
         assert_eq!(cmd.command().join(" "), expected);
     }
 }
