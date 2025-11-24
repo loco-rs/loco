@@ -18,7 +18,8 @@ use chrono::{DateTime, Utc};
 use regex::Regex;
 use sea_orm::{
     ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
-    DatabaseConnection, DbBackend, DbConn, DbErr, EntityTrait, IntoActiveModel, Statement,
+    DatabaseConnection, DatabaseConnectionType, DbBackend, DbConn, DbErr, EntityTrait,
+    IntoActiveModel, Statement,
 };
 use sea_orm_migration::MigratorTrait;
 use tracing::info;
@@ -88,9 +89,12 @@ impl MultiDb {
 #[allow(clippy::match_wildcard_for_single_variants)]
 pub async fn verify_access(db: &DatabaseConnection) -> AppResult<()> {
     match db {
-        DatabaseConnection::SqlxPostgresPoolConnection(_) => {
+        DatabaseConnection {
+            inner: DatabaseConnectionType::SqlxPostgresPoolConnection(_),
+            ..
+        } => {
             let res = db
-                .query_all(Statement::from_string(
+                .query_all_raw(Statement::from_string(
                     DatabaseBackend::Postgres,
                     "SELECT * FROM pg_catalog.pg_tables WHERE tableowner = current_user;",
                 ))
@@ -101,7 +105,10 @@ pub async fn verify_access(db: &DatabaseConnection) -> AppResult<()> {
                 ));
             }
         }
-        DatabaseConnection::Disconnected => {
+        DatabaseConnection {
+            inner: DatabaseConnectionType::Disconnected,
+            ..
+        } => {
             return Err(Error::string("connection to database has been closed"));
         }
         _ => {}
@@ -160,7 +167,7 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
 
     match db.get_database_backend() {
         DatabaseBackend::Sqlite => {
-            db.execute(Statement::from_string(
+            db.execute_raw(Statement::from_string(
                 DatabaseBackend::Sqlite,
                 config.run_on_start.clone().unwrap_or_else(|| {
                     "
@@ -179,7 +186,7 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
         }
         DatabaseBackend::Postgres | DatabaseBackend::MySql => {
             if let Some(run_on_start) = &config.run_on_start {
-                db.execute(&Statement::from_string(
+                db.execute_raw(&Statement::from_string(
                     db.get_database_backend(),
                     run_on_start.clone(),
                 ))
@@ -431,7 +438,7 @@ pub async fn reset_autoincrement(
                 "SELECT setval(pg_get_serial_sequence('{table_name}', 'id'), COALESCE(MAX(id), 0) \
                  + 1, false) FROM {table_name}"
             );
-            db.execute(Statement::from_sql_and_values(
+            db.execute_raw(Statement::from_sql_and_values(
                 DatabaseBackend::Postgres,
                 &query_str,
                 vec![],
@@ -443,7 +450,7 @@ pub async fn reset_autoincrement(
                 "UPDATE sqlite_sequence SET seq = (SELECT MAX(id) FROM {table_name}) WHERE name = \
                  '{table_name}'"
             );
-            db.execute(Statement::from_sql_and_values(
+            db.execute_raw(Statement::from_sql_and_values(
                 DatabaseBackend::Sqlite,
                 &query_str,
                 vec![],
@@ -748,7 +755,7 @@ async fn create_postgres_database(
     let query = format!("CREATE DATABASE {db_name} WITH {with_options}");
     tracing::info!(query, "creating postgres database");
 
-    db.execute(sea_orm::Statement::from_string(
+    db.execute_raw(sea_orm::Statement::from_string(
         sea_orm::DatabaseBackend::Postgres,
         query,
     ))
@@ -779,7 +786,7 @@ pub async fn get_tables(db: &DatabaseConnection) -> AppResult<Vec<String>> {
     };
 
     let result = db
-        .query_all(Statement::from_string(
+        .query_all_raw(Statement::from_string(
             db.get_database_backend(),
             query.to_string(),
         ))
@@ -838,7 +845,7 @@ pub async fn dump_tables(
         tracing::info!(table, "get table data");
 
         let data_result = db
-            .query_all(Statement::from_string(
+            .query_all_raw(Statement::from_string(
                 db.get_database_backend(),
                 format!(r#"SELECT * FROM "{table}""#),
             ))
@@ -941,7 +948,7 @@ pub async fn dump_schema(ctx: &AppContext, fname: &str) -> crate::Result<()> {
                 ORDER BY table_name, ordinal_position;
             ";
             let stmt = Statement::from_string(DbBackend::Postgres, query.to_owned());
-            let rows = db.query_all(stmt).await?;
+            let rows = db.query_all_raw(stmt).await?;
             rows.into_iter()
                 .map(|row| {
                     // Wrap the closure in a Result to handle errors properly
@@ -961,7 +968,7 @@ pub async fn dump_schema(ctx: &AppContext, fname: &str) -> crate::Result<()> {
                 ORDER BY TABLE_NAME, ORDINAL_POSITION;
             ";
             let stmt = Statement::from_string(DbBackend::MySql, query.to_owned());
-            let rows = db.query_all(stmt).await?;
+            let rows = db.query_all_raw(stmt).await?;
             rows.into_iter()
                 .map(|row| {
                     // Wrap the closure in a Result to handle errors properly
@@ -981,7 +988,7 @@ pub async fn dump_schema(ctx: &AppContext, fname: &str) -> crate::Result<()> {
                 ORDER BY name;
             ";
             let stmt = Statement::from_string(DbBackend::Sqlite, query.to_owned());
-            let rows = db.query_all(stmt).await?;
+            let rows = db.query_all_raw(stmt).await?;
             rows.into_iter()
                 .map(|row| {
                     // Wrap the closure in a Result to handle errors properly
@@ -1257,7 +1264,7 @@ mod tests {
         let backend = db.get_database_backend();
 
         let table_no_id = "test_table_no_id";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE {table_no_id} (name TEXT);"),
         ))
@@ -1273,7 +1280,7 @@ mod tests {
         );
 
         let table_with_id = "test_table_with_id";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE {table_with_id} (id INTEGER PRIMARY KEY, name TEXT);"),
         ))
@@ -1289,7 +1296,7 @@ mod tests {
         );
 
         let table_with_serial_id = "test_table_with_serial_id";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE {table_with_serial_id} (id SERIAL PRIMARY KEY, name TEXT);"),
         ))
@@ -1314,7 +1321,7 @@ mod tests {
         assert_eq!(backend, DatabaseBackend::Sqlite);
 
         let table_no_id = "test_table_no_id";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE {table_no_id} (name TEXT);"),
         ))
@@ -1330,7 +1337,7 @@ mod tests {
         );
 
         let table_with_id = "test_table_with_id";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             // SQLite uses INTEGER PRIMARY KEY for rowid alias
             format!("CREATE TABLE {table_with_id} (id INTEGER PRIMARY KEY, name TEXT);"),
@@ -1347,7 +1354,7 @@ mod tests {
         );
 
         let table_with_auto_id = "test_table_with_auto_id";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             // AUTOINCREMENT keyword is important for SQLite's sequence behavior
             format!(
@@ -1378,7 +1385,7 @@ mod tests {
         let backend = db.get_database_backend();
 
         let table_no_id = "test_table_no_id_auto";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE {table_no_id} (name TEXT);"),
         ))
@@ -1400,7 +1407,7 @@ mod tests {
         );
 
         let table_with_id_not_auto = "test_table_id_not_auto";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE {table_with_id_not_auto} (id INTEGER PRIMARY KEY, name TEXT);"),
         ))
@@ -1417,7 +1424,7 @@ mod tests {
         );
 
         let table_with_serial_id = "test_table_serial_id_auto";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE {table_with_serial_id} (id SERIAL PRIMARY KEY, name TEXT);"),
         ))
@@ -1446,7 +1453,7 @@ mod tests {
 
         // Create test table with SERIAL id
         let table_name = "test_reset_sequence";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE {table_name} (id SERIAL PRIMARY KEY, name TEXT);"),
         ))
@@ -1454,7 +1461,7 @@ mod tests {
         .expect("Failed to create test table");
 
         // Insert multiple rows in a single query
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("INSERT INTO {table_name} (name) VALUES ('one'), ('two'), ('three');"),
         ))
@@ -1462,7 +1469,7 @@ mod tests {
         .expect("Failed to insert test data");
 
         // Delete all rows
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("DELETE FROM {table_name};"),
         ))
@@ -1486,7 +1493,7 @@ mod tests {
         );
 
         // Delete all rows again
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("DELETE FROM {table_name};"),
         ))
@@ -1522,7 +1529,7 @@ mod tests {
 
         // Create test table with auto-incrementing id
         let table_name = "test_reset_sequence";
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("CREATE TABLE {table_name} (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);"),
         ))
@@ -1530,7 +1537,7 @@ mod tests {
         .expect("Failed to create test table");
 
         // Insert multiple rows in a single query
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("INSERT INTO {table_name} (name) VALUES ('one'), ('two'), ('three');"),
         ))
@@ -1538,7 +1545,7 @@ mod tests {
         .expect("Failed to insert test data");
 
         // Delete all rows
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("DELETE FROM {table_name};"),
         ))
@@ -1562,7 +1569,7 @@ mod tests {
         );
 
         // Delete all rows again
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("DELETE FROM {table_name};"),
         ))
