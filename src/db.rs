@@ -22,6 +22,7 @@ use sea_orm::{
     IntoActiveModel, Statement,
 };
 use sea_orm_migration::MigratorTrait;
+use serde::Serialize;
 use tracing::info;
 
 use super::Result as AppResult;
@@ -186,7 +187,7 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
         }
         DatabaseBackend::Postgres | DatabaseBackend::MySql => {
             if let Some(run_on_start) = &config.run_on_start {
-                db.execute_raw(&Statement::from_string(
+                db.execute_raw(Statement::from_string(
                     db.get_database_backend(),
                     run_on_start.clone(),
                 ))
@@ -287,9 +288,12 @@ use serde_json::{json, Value};
 #[allow(clippy::type_repetition_in_bounds)]
 pub async fn seed<A>(db: &DatabaseConnection, path: &str) -> crate::Result<()>
 where
-    <<A as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<A>,
+    <<A as ActiveModelTrait>::Entity as EntityTrait>::Model: IntoActiveModel<A> + Serialize,
     for<'de> <<A as ActiveModelTrait>::Entity as EntityTrait>::Model: serde::de::Deserialize<'de>,
-    A: ActiveModelTrait + Send + Sync,
+    A: ActiveModelTrait
+        + Send
+        + Sync
+        + sea_orm::TryIntoModel<<<A as ActiveModelTrait>::Entity as sea_orm::EntityTrait>::Model>,
     sea_orm::Insert<A>: Send + Sync,
     <A as ActiveModelTrait>::Entity: EntityName,
 {
