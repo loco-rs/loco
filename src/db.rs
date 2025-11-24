@@ -3,23 +3,9 @@
 //! This module defines functions and operations related to the application's
 //! database interactions.
 
-use super::Result as AppResult;
-use crate::{
-    app::{AppContext, Hooks},
-    cargo_config::CargoConfig,
-    config, doctor, env_vars,
-    errors::Error,
-};
-use chrono::{DateTime, Utc};
-use regex::Regex;
-use sea_orm::{
-    ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
-    DatabaseConnection, DbBackend, DbConn, DbErr, EntityTrait, IntoActiveModel, Statement,
-};
-use sea_orm_migration::MigratorTrait;
-use std::fmt::Write as FmtWrites;
 use std::{
     collections::{BTreeMap, HashMap},
+    fmt::Write as FmtWrites,
     fs,
     fs::File,
     io::Write,
@@ -27,7 +13,23 @@ use std::{
     sync::OnceLock,
     time::Duration,
 };
+
+use chrono::{DateTime, Utc};
+use regex::Regex;
+use sea_orm::{
+    ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
+    DatabaseConnection, DbBackend, DbConn, DbErr, EntityTrait, IntoActiveModel, Statement,
+};
+use sea_orm_migration::MigratorTrait;
 use tracing::info;
+
+use super::Result as AppResult;
+use crate::{
+    app::{AppContext, Hooks},
+    cargo_config::CargoConfig,
+    config, doctor, env_vars,
+    errors::Error,
+};
 
 pub static EXTRACT_DB_NAME: OnceLock<Regex> = OnceLock::new();
 const IGNORED_TABLES: &[&str] = &[
@@ -177,7 +179,7 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
         }
         DatabaseBackend::Postgres | DatabaseBackend::MySql => {
             if let Some(run_on_start) = &config.run_on_start {
-                db.execute(Statement::from_string(
+                db.execute(&Statement::from_string(
                     db.get_database_backend(),
                     run_on_start.clone(),
                 ))
@@ -331,9 +333,9 @@ async fn has_id_column(
         DatabaseBackend::Postgres => {
             let query = format!(
                 "SELECT EXISTS (
-              SELECT 1 
-              FROM information_schema.columns 
-              WHERE table_name = '{table_name}' 
+              SELECT 1
+              FROM information_schema.columns
+              WHERE table_name = '{table_name}'
               AND column_name = 'id'
           )"
             );
@@ -344,8 +346,8 @@ async fn has_id_column(
         }
         DatabaseBackend::Sqlite => {
             let query = format!(
-                "SELECT COUNT(*) as count 
-          FROM pragma_table_info('{table_name}') 
+                "SELECT COUNT(*) as count
+          FROM pragma_table_info('{table_name}')
           WHERE name = 'id'"
             );
             let result = db
@@ -1064,7 +1066,8 @@ mod tests {
             assert_eq!(
                 actual_value,
                 expected_value.to_lowercase(),
-                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got '{actual_value}'"
+                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got \
+                 '{actual_value}'"
             );
         }
     }
@@ -1102,7 +1105,8 @@ mod tests {
             assert_eq!(
                 actual_value,
                 expected_value.to_lowercase(),
-                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got '{actual_value}'"
+                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got \
+                 '{actual_value}'"
             );
         }
     }
@@ -1124,7 +1128,8 @@ mod tests {
 
         assert_eq!(db.get_database_backend(), DatabaseBackend::Postgres);
 
-        let query = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'test_run_on_start'";
+        let query = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' \
+                     AND table_name = 'test_run_on_start'";
 
         let value = get_value(&db, query).await;
         assert_eq!(value, "1", "The test_run_on_start table was not created");
@@ -1132,8 +1137,9 @@ mod tests {
 
     #[cfg(test)]
     mod extract_db_name_tests {
-        use super::*;
         use rstest::rstest;
+
+        use super::*;
 
         #[rstest]
         #[case("postgres://localhost:5432/dbname", "dbname")]
@@ -1344,7 +1350,10 @@ mod tests {
         db.execute(Statement::from_string(
             backend,
             // AUTOINCREMENT keyword is important for SQLite's sequence behavior
-            format!("CREATE TABLE {table_with_auto_id} (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);"),
+            format!(
+                "CREATE TABLE {table_with_auto_id} (id INTEGER PRIMARY KEY AUTOINCREMENT, name \
+                 TEXT);"
+            ),
         ))
         .await
         .expect("Failed to create table with auto id");
@@ -1403,7 +1412,8 @@ mod tests {
             .expect("Failed to check auto-increment");
         assert!(
             !is_auto,
-            "Table '{table_with_id_not_auto}' should NOT be auto-increment, but check returned true"
+            "Table '{table_with_id_not_auto}' should NOT be auto-increment, but check returned \
+             true"
         );
 
         let table_with_serial_id = "test_table_serial_id_auto";
@@ -1583,8 +1593,8 @@ mod tests {
         let cmd = EntityCmd::new(&get_database_config());
 
         let expected = "generate entity --database-url sqlite::memory: --ignore-tables \
-            seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock --output-dir \
-            src/models/_entities --with-copy-enums --with-serde both";
+                        seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock \
+                        --output-dir src/models/_entities --with-copy-enums --with-serde both";
         assert_eq!(cmd.command().join(" "), expected);
     }
 
@@ -1601,9 +1611,9 @@ model-extra-derives = "ts_rs::Ts"
         let cmd = EntityCmd::merge_with_config(&get_database_config(), &config);
 
         let expected = "generate entity --database-url sqlite::memory: --ignore-tables \
-            seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock,table1,table2 \
-            --max-connections 1 --model-extra-derives ts_rs::Ts --output-dir src/models/_entities \
-            --with-copy-enums --with-serde none";
+                        seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock,\
+                        table1,table2 --max-connections 1 --model-extra-derives ts_rs::Ts \
+                        --output-dir src/models/_entities --with-copy-enums --with-serde none";
         assert_eq!(cmd.command().join(" "), expected);
     }
 }

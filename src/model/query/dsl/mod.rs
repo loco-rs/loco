@@ -172,12 +172,6 @@ impl From<ConditionBuilder> for Condition {
     }
 }
 
-impl IntoCondition for ConditionBuilder {
-    fn into_condition(self) -> Condition {
-        self.condition
-    }
-}
-
 /// Builder query condition
 ///
 /// # Examples
