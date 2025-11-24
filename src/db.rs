@@ -18,7 +18,7 @@ use chrono::{DateTime, Utc};
 use regex::Regex;
 use sea_orm::{
     ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
-    DatabaseConnection, DatabaseConnectionType, DbBackend, DbConn, DbErr, EntityTrait,
+    DatabaseConnection, DatabaseConnectionType, DbBackend, DbConn, DbErr, EntityTrait, ExprTrait,
     IntoActiveModel, Statement,
 };
 use sea_orm_migration::MigratorTrait;
@@ -194,6 +194,7 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
                 .await?;
             }
         }
+        _ => unimplemented!(),
     }
 
     Ok(db)
@@ -371,6 +372,7 @@ async fn has_id_column(
                 "Unsupported database backend: MySQL".to_string(),
             ))
         }
+        _ => unimplemented!(),
     };
 
     Ok(result)
@@ -413,6 +415,7 @@ async fn is_auto_increment(
                 "Unsupported database backend: MySQL".to_string(),
             ))
         }
+        _ => unimplemented!(),
     };
     Ok(result)
 }
@@ -466,6 +469,7 @@ pub async fn reset_autoincrement(
                 "Unsupported database backend: MySQL".to_string(),
             ))
         }
+        _ => unimplemented!(),
     }
     Ok(())
 }
@@ -787,6 +791,7 @@ pub async fn get_tables(db: &DatabaseConnection) -> AppResult<Vec<String>> {
         DatabaseBackend::Sqlite => {
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
         }
+        _ => unimplemented!(),
     };
 
     let result = db
@@ -804,6 +809,7 @@ pub async fn get_tables(db: &DatabaseConnection) -> AppResult<Vec<String>> {
                     "table_name"
                 }
                 sea_orm::DatabaseBackend::Sqlite => "name",
+                _ => unimplemented!(),
             };
 
             if let Ok(table_name) = row.try_get::<String>("", col) {
@@ -1003,6 +1009,7 @@ pub async fn dump_schema(ctx: &AppContext, fname: &str) -> crate::Result<()> {
                 })
                 .collect::<Result<Vec<serde_json::Value>, DbErr>>()? // Specify error type explicitly
         }
+        _ => unimplemented!(),
     };
     // Serialize schema info to JSON format
     let schema_json = serde_json::to_string_pretty(&schema_info)?;
