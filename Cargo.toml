@@ -200,6 +200,9 @@ features = [
 [package.metadata.docs.rs]
 features = ["testing"]
 
+[patch.crates-io]
+sea-query = { git = "https://github.com/elcoosp/sea-query.git" }
+
 [dev-dependencies]
 loco-rs = { path = ".", features = ["testing"] }
 rstest = "0.21.0"

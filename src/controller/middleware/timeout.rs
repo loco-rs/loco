@@ -12,6 +12,7 @@
 use std::time::Duration;
 
 use axum::Router as AXRouter;
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tower_http::timeout::TimeoutLayer;
@@ -59,6 +60,9 @@ impl MiddlewareLayer for TimeOut {
     /// ensuring that requests exceeding the specified timeout duration will
     /// be interrupted.
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
-        Ok(app.layer(TimeoutLayer::new(Duration::from_millis(self.timeout))))
+        Ok(app.layer(TimeoutLayer::with_status_code(
+            StatusCode(408),
+            Duration::from_millis(self.timeout),
+        )))
     }
 }
