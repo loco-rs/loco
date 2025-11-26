@@ -162,6 +162,34 @@ enum Commands {
         #[arg(short, long, action)]
         server_and_worker: bool,
     },
+    /// Deploy to AWS Lambda using Cargo Lambda
+    #[clap(alias("d"))]
+    Deploy {
+        #[command(subcommand)]
+        command: DeployCommands,
+    },
+}
+
+#[derive(Subcommand)]
+enum DeployCommands {
+    /// Deploy to AWS Lambda (builds and deploys automatically, like Zappa)
+    Lambda {
+        /// Dry run - build only, don't deploy
+        #[arg(long, action)]
+        dry_run: bool,
+    },
+    /// Invoke the deployed Lambda function
+    Invoke {
+        /// JSON payload to send
+        #[arg(short, long, default_value = r#"{"httpMethod": "GET", "path": "/_health"}"#)]
+        payload: String,
+    },
+    /// Tail CloudWatch logs for the Lambda function
+    Logs {
+        /// Follow logs in real-time
+        #[arg(short, long, action)]
+        follow: bool,
+    },
 }
 
 #[cfg(debug_assertions)]
@@ -852,6 +880,9 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                 ))
             })?;
         }
+        Commands::Deploy { command } => {
+            handle_deploy_command::<H>(command, &app_context.config).await?;
+        }
     }
     Ok(())
 }
@@ -987,6 +1018,9 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
                          cargo-watch`?. error details: `{err}`",
                 ))
             })?;
+        }
+        Commands::Deploy { command } => {
+            handle_deploy_command::<H>(command, &app_context.config).await?;
         }
     }
     Ok(())
@@ -1328,6 +1362,348 @@ fn handle_generate_command<H: Hooks>(
         let messages = loco_gen::collect_messages(&get_result);
         println!("{messages}");
     }
+    Ok(())
+}
+
+/// Lambda handler template - embedded directly in the CLI
+const LAMBDA_HANDLER_TEMPLATE: &str = r#"//! AWS Lambda handler for Loco application (auto-generated)
+use lambda_http::{run, service_fn, Body, Error, Request, Response};
+use loco_rs::boot::{create_app, StartMode};
+use loco_rs::environment::Environment;
+use {{APP_MODULE}}::app::App;
+{{MIGRATION_IMPORT}}
+use std::sync::Arc;
+use tokio::sync::OnceCell;
+
+static APP_ROUTER: OnceCell<Arc<axum::Router>> = OnceCell::const_new();
+
+async fn get_router() -> &'static Arc<axum::Router> {
+    APP_ROUTER
+        .get_or_init(|| async {
+            // Read environment from LOCO_ENV, default to development
+            let env_str = std::env::var("LOCO_ENV").unwrap_or_else(|_| "development".to_string());
+            let environment: Environment = env_str.parse().unwrap_or(Environment::Development);
+            
+            let config = environment
+                .load()
+                .expect(&format!(
+                    "Failed to load configuration for environment '{}'. \
+                    Make sure config/{}.yaml exists and has all required fields (logger, server, etc.)",
+                    env_str, env_str
+                ));
+
+            let boot_result = create_app::<App{{MIGRATOR_GENERIC}}>(
+                StartMode::ServerOnly,
+                &environment,
+                config,
+            )
+            .await
+            .expect("Failed to create app");
+
+            Arc::new(boot_result.router.expect("Router not available"))
+        })
+        .await
+}
+
+async fn function_handler(event: Request) -> Result<Response<Body>, Error> {
+    let router = get_router().await;
+    let (parts, body) = event.into_parts();
+    let body = axum::body::Body::from(body.to_vec());
+    let request = axum::http::Request::from_parts(parts, body);
+    
+    let response = tower::ServiceExt::oneshot(router.clone().as_ref().clone(), request)
+        .await
+        .map_err(|e| Error::from(format!("Request failed: {}", e)))?;
+    
+    let (parts, body) = response.into_parts();
+    let body_bytes = axum::body::to_bytes(body, usize::MAX)
+        .await
+        .map_err(|e| Error::from(format!("Body conversion failed: {}", e)))?;
+    
+    Ok(Response::from_parts(parts, Body::from(body_bytes.to_vec())))
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .with_target(false)
+        .without_time()
+        .init();
+
+    run(service_fn(function_handler)).await
+}
+"#;
+
+/// Manages temporary Lambda deployment files
+struct LambdaDeployContext {
+    lambda_bin_path: PathBuf,
+    cargo_backup: Option<String>,
+    cargo_path: PathBuf,
+}
+
+impl LambdaDeployContext {
+    fn new() -> Self {
+        Self {
+            lambda_bin_path: PathBuf::from("src/bin/_loco_lambda.rs"),
+            cargo_backup: None,
+            cargo_path: PathBuf::from("Cargo.toml"),
+        }
+    }
+
+    fn setup(&mut self, app_name: &str, with_db: bool) -> crate::Result<()> {
+        // Create Lambda handler
+        let handler = LAMBDA_HANDLER_TEMPLATE
+            .replace("{{APP_MODULE}}", app_name)
+            .replace(
+                "{{MIGRATION_IMPORT}}",
+                if with_db { "use migration::Migrator;" } else { "" },
+            )
+            .replace(
+                "{{MIGRATOR_GENERIC}}",
+                if with_db { ", Migrator" } else { "" },
+            );
+
+        // Ensure src/bin directory exists
+        if let Some(parent) = self.lambda_bin_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(&self.lambda_bin_path, handler)?;
+
+        // Backup and modify Cargo.toml
+        let cargo_content = std::fs::read_to_string(&self.cargo_path)?;
+        self.cargo_backup = Some(cargo_content.clone());
+
+        // Add Lambda dependencies and binary
+        let mut new_cargo = cargo_content;
+        
+        // Add lambda dependencies if not present
+        if !new_cargo.contains("lambda_http") {
+            let dep_insert = r#"
+# Lambda dependencies (auto-added by loco deploy)
+lambda_http = "0.14"
+lambda_runtime = "0.14"
+tower = "0.4"
+"#;
+            if let Some(pos) = new_cargo.find("[dependencies]") {
+                let insert_pos = new_cargo[pos..].find('\n').map(|p| pos + p + 1).unwrap_or(new_cargo.len());
+                new_cargo.insert_str(insert_pos, dep_insert);
+            }
+        }
+
+        // Add lambda binary if not present
+        if !new_cargo.contains("_loco_lambda") {
+            let bin_section = r#"
+
+[[bin]]
+name = "_loco_lambda"
+path = "src/bin/_loco_lambda.rs"
+"#;
+            new_cargo.push_str(bin_section);
+        }
+
+        std::fs::write(&self.cargo_path, new_cargo)?;
+        Ok(())
+    }
+
+    fn cleanup(&self) -> crate::Result<()> {
+        // Remove Lambda handler
+        if self.lambda_bin_path.exists() {
+            std::fs::remove_file(&self.lambda_bin_path)?;
+        }
+
+        // Restore Cargo.toml
+        if let Some(backup) = &self.cargo_backup {
+            std::fs::write(&self.cargo_path, backup)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl Drop for LambdaDeployContext {
+    fn drop(&mut self) {
+        if let Err(e) = self.cleanup() {
+            eprintln!("Warning: Failed to cleanup Lambda deploy files: {}", e);
+        }
+    }
+}
+
+async fn handle_deploy_command<H: Hooks>(
+    command: DeployCommands,
+    config: &Config,
+) -> crate::Result<()> {
+    let lambda_config = config.lambda.clone().unwrap_or_default();
+    let project_name = lambda_config.effective_project_name(&H::app_name());
+
+    // Check if cargo-lambda is installed
+
+    match command {
+        DeployCommands::Lambda { dry_run } => {
+            println!("{}", "🚀 Starting Lambda deployment...".green().bold());
+            println!("{}", "   Creating temporary Lambda handler...".cyan());
+
+            // Setup temporary files
+            let mut deploy_ctx = LambdaDeployContext::new();
+            let with_db = cfg!(feature = "with-db");
+            deploy_ctx.setup(&H::app_name(), with_db)?;
+
+            println!("{}", "   Building Lambda function...".cyan());
+
+            // Build
+            let mut build_args = vec!["lambda", "build", "--release", "--bin", "_loco_lambda"];
+            if lambda_config.architecture == "arm64" {
+                build_args.push("--arm64");
+            }
+
+            let build_result = cmd("cargo", &build_args).run();
+            
+            if let Err(err) = build_result {
+                return Err(Error::Message(format!("Failed to build Lambda function: {err}")));
+            }
+
+            if dry_run {
+                println!("{}", "Dry run - build completed, skipping deploy.".yellow());
+                println!("{}", "   Cleaning up temporary files...".cyan());
+                return Ok(());
+            }
+
+            println!(
+                "{}",
+                format!("   Deploying {} to AWS Lambda...", project_name).cyan()
+            );
+
+            // Deploy
+            let mut deploy_args = vec![
+                "lambda".to_string(),
+                "deploy".to_string(),
+                project_name.clone(),
+                format!("--region={}", lambda_config.region),
+                format!("--memory={}", lambda_config.memory_size),
+                format!("--timeout={}", lambda_config.timeout),
+                "--binary-name=_loco_lambda".to_string(),
+                "--include=config/".to_string(),
+            ];
+
+            if let Some(profile) = &lambda_config.profile_name {
+                deploy_args.push(format!("--profile={}", profile));
+            }
+
+            if lambda_config.function_url {
+                deploy_args.push("--enable-function-url".to_string());
+            }
+
+            // Always set LOCO_ENV from config (defaults to development)
+            if !lambda_config.environment.contains_key("LOCO_ENV") {
+                deploy_args.push(format!("--env-var=LOCO_ENV={}", lambda_config.loco_env));
+            }
+            
+            for (key, value) in &lambda_config.environment {
+                deploy_args.push(format!("--env-var={}={}", key, value));
+            }
+
+            if let Some(role_arn) = &lambda_config.role_arn {
+                deploy_args.push(format!("--iam-role={}", role_arn));
+            }
+
+            let args_refs: Vec<&str> = deploy_args.iter().map(|s| s.as_str()).collect();
+            cmd("cargo", &args_refs).run().map_err(|err| {
+                Error::Message(format!("Failed to deploy Lambda function: {err}"))
+            })?;
+
+            println!("{}", "   Cleaning up temporary files...".cyan());
+            // Cleanup happens automatically via Drop
+
+            println!("{}", "✅ Deployment completed successfully!".green().bold());
+
+            // Get function URL
+            if lambda_config.function_url {
+                let mut url_args = vec![
+                    "lambda",
+                    "get-function-url-config",
+                    "--function-name",
+                    &project_name,
+                    "--region",
+                    &lambda_config.region,
+                    "--query",
+                    "FunctionUrl",
+                    "--output",
+                    "text",
+                ];
+
+                if let Some(profile) = &lambda_config.profile_name {
+                    url_args.push("--profile");
+                    url_args.push(profile);
+                }
+
+                if let Ok(output) = cmd("aws", &url_args).read() {
+                    println!(
+                        "\n{} {}",
+                        "🌐 Function URL:".green().bold(),
+                        output.trim().cyan().bold()
+                    );
+                }
+            }
+        }
+        DeployCommands::Invoke { payload } => {
+            println!(
+                "{}",
+                format!("Invoking Lambda function {}...", project_name)
+                    .green()
+                    .bold()
+            );
+
+            let mut invoke_args = vec![
+                "lambda",
+                "invoke",
+                &project_name,
+                "--region",
+                &lambda_config.region,
+                "--data-ascii",
+                &payload,
+            ];
+
+            if let Some(profile) = &lambda_config.profile_name {
+                invoke_args.push("--profile");
+                invoke_args.push(profile);
+            }
+
+            cmd("cargo", &invoke_args).run().map_err(|err| {
+                Error::Message(format!("Failed to invoke Lambda function: {err}"))
+            })?;
+        }
+        DeployCommands::Logs { follow } => {
+            println!(
+                "{}",
+                format!("Fetching logs for {}...", project_name)
+                    .green()
+                    .bold()
+            );
+
+            let log_group = format!("/aws/lambda/{}", project_name);
+            let mut log_args = vec![
+                "logs",
+                "tail",
+                &log_group,
+                "--region",
+                &lambda_config.region,
+            ];
+
+            if follow {
+                log_args.push("--follow");
+            }
+
+            if let Some(profile) = &lambda_config.profile_name {
+                log_args.push("--profile");
+                log_args.push(profile);
+            }
+
+            cmd("aws", &log_args).run().map_err(|err| {
+                Error::Message(format!("Failed to fetch logs: {err}"))
+            })?;
+        }
+    }
+
     Ok(())
 }
 
