@@ -136,7 +136,7 @@ auth:
 
 # AWS Lambda Deployment Configuration (Cargo Lambda)
 # Similar to Zappa for Python, configure your Lambda deployment here.
-# Uncomment and customize to enable Lambda deployment with: cargo loco deploy lambda
+# Uncomment and customize to enable Lambda deployment with: cargo loco lambda deploy
 #
 # lambda:
 #   # Lambda function name (defaults to package name)

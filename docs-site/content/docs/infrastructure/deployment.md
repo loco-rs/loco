@@ -205,3 +205,121 @@ Deployment Options:
 Choose the option that best fits your deployment needs. Happy deploying!
 
 If you have a preference for deploying on a different cloud, feel free to open a pull request. Your contributions are more than welcome!
+
+## AWS Lambda
+
+Loco provides a built-in AWS Lambda deployment experience similar to [Zappa](https://github.com/zappa/Zappa) for Python. Deploy your Loco application to AWS Lambda with a single command—no permanent scripts or configuration files generated.
+
+### Prerequisites
+
+1. **Install Cargo Lambda**:
+```sh
+# Using Cargo (requires Zig or Docker)
+cargo install cargo-lambda
+```
+
+2. **Configure AWS credentials** using one of these methods:
+   - AWS CLI: `aws configure`
+   - Environment variables: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
+   - IAM role (when running on AWS infrastructure)
+
+### Configuration
+
+Add the `lambda` section to your `config/development.yaml` (or any environment config):
+
+```yaml
+lambda:
+  # Lambda function name (defaults to package name)
+  project_name: my-loco-app
+  # Memory in MB (128-10240). More memory = faster cold starts
+  memory_size: 256
+  # Timeout in seconds (max 900)
+  timeout: 30
+  # AWS region
+  region: us-east-1
+  # Loco environment to load in Lambda (development, production, test)
+  loco_env: development
+  # AWS CLI profile (optional)
+  # profile_name: default
+  # CPU architecture: x86_64 or arm64 (arm64 recommended for better price/performance)
+  architecture: arm64
+  # Enable direct HTTP access via Lambda Function URL
+  function_url: true
+  # Environment variables passed to Lambda
+  environment:
+    RUST_LOG: info
+    DATABASE_URL: "postgres://user:pass@host:5432/db"
+  # IAM role ARN (optional - auto-created if not specified)
+  # role_arn: arn:aws:iam::ACCOUNT_ID:role/your-role
+```
+
+### Configuration Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `project_name` | Package name | Lambda function name |
+| `memory_size` | `256` | Memory allocation in MB (128-10240) |
+| `timeout` | `30` | Function timeout in seconds (max 900) |
+| `region` | `us-east-1` | AWS region for deployment |
+| `loco_env` | `development` | Which Loco config environment to load |
+| `profile_name` | - | AWS CLI profile name |
+| `architecture` | `arm64` | CPU architecture (`x86_64` or `arm64`) |
+| `function_url` | `true` | Enable Lambda Function URL for HTTP access |
+| `environment` | `{}` | Environment variables for the Lambda function |
+| `role_arn` | - | Custom IAM role ARN (auto-created if not set) |
+
+### Deploy
+
+Deploy your application to AWS Lambda:
+
+```sh
+cargo loco lambda deploy
+```
+
+This command:
+1. Creates a temporary Lambda handler binary
+2. Builds for the target architecture using `cargo lambda build`
+3. Deploys to AWS Lambda with your configuration
+4. Sets up a Function URL (if enabled)
+5. Cleans up all temporary files
+
+For a dry run (build only, no deployment):
+
+```sh
+cargo loco lambda deploy --dry-run
+```
+
+### Invoke
+
+Test your deployed Lambda function:
+
+```sh
+# Default health check
+cargo loco lambda invoke
+
+# Custom payload
+cargo loco lambda invoke --payload '{"httpMethod": "GET", "path": "/api/users"}'
+
+# POST request example
+cargo loco lambda invoke --payload '{"httpMethod": "POST", "path": "/api/auth/login", "body": "{\"email\":\"user@example.com\",\"password\":\"secret\"}"}'
+```
+
+### Logs
+
+View CloudWatch logs for your Lambda function:
+
+```sh
+# Recent logs
+cargo loco lambda logs
+
+# Follow logs in real-time
+cargo loco lambda logs --follow
+```
+
+### How It Works
+
+The Lambda deployment creates a handler that:
+- Wraps your Loco application with the AWS Lambda runtime
+- Uses `lambda_http` for API Gateway and Lambda Function URL compatibility
+- Loads configuration from the environment specified by `loco_env`
+- Includes your `config/` directory in the deployment package
