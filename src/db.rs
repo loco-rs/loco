@@ -265,7 +265,7 @@ pub async fn reset<M: MigratorTrait>(db: &DatabaseConnection) -> Result<(), sea_
 }
 
 use sea_orm::EntityName;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 /// Seed the database with data from a specified file.
 /// Seeds open the file path and insert all file content into the DB.
 ///
@@ -287,11 +287,13 @@ where
     // Deserialize YAML file into a vector of JSON values
     let seed_data: Vec<Value> = serde_yaml::from_reader(File::open(path)?)?;
 
-    // Insert each row
+    // Insert each row at once
+    let mut seed_models = Vec::new();
     for row in seed_data {
         let model = A::from_json(row)?;
-        A::Entity::insert(model).exec(db).await?;
+        seed_models.push(model);
     }
+    A::Entity::insert_many(seed_models).exec(db).await?;
 
     // Get the table name from the entity
     let table_name = A::Entity::default().table_name().to_string();
@@ -356,7 +358,7 @@ async fn has_id_column(
         DatabaseBackend::MySql => {
             return Err(Error::Message(
                 "Unsupported database backend: MySQL".to_string(),
-            ))
+            ));
         }
     };
 
@@ -398,7 +400,7 @@ async fn is_auto_increment(
         DatabaseBackend::MySql => {
             return Err(Error::Message(
                 "Unsupported database backend: MySQL".to_string(),
-            ))
+            ));
         }
     };
     Ok(result)
@@ -451,7 +453,7 @@ pub async fn reset_autoincrement(
         DatabaseBackend::MySql => {
             return Err(Error::Message(
                 "Unsupported database backend: MySQL".to_string(),
-            ))
+            ));
         }
     }
     Ok(())
@@ -766,7 +768,7 @@ pub async fn get_tables(db: &DatabaseConnection) -> AppResult<Vec<String>> {
         DatabaseBackend::MySql => {
             return Err(Error::Message(
                 "Unsupported database backend: MySQL".to_string(),
-            ))
+            ));
         }
         DatabaseBackend::Postgres => {
             "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
