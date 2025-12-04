@@ -3,7 +3,7 @@
 //! sending emails with options like sender, recipient, subject, and content.
 
 use lettre::{
-    message::MultiPart,
+    message::{header, MultiPart},
     transport::smtp::{authentication::Credentials, extension::ClientId},
     AsyncTransport, Message, Tokio1Executor, Transport,
 };
@@ -124,6 +124,18 @@ impl EmailSender {
             builder = builder.reply_to(reply_to.parse()?);
         }
 
+        if let Some(headers) = &email.headers {
+            if let Some(references) = &headers.references {
+                builder = builder.header(header::References::from(references.clone()));
+            }
+            if let Some(in_reply_to) = &headers.in_reply_to {
+                builder = builder.header(header::InReplyTo::from(in_reply_to.clone()));
+            }
+            if let Some(message_id) = &headers.message_id {
+                builder = builder.header(header::MessageId::from(message_id.clone()));
+            }
+        }
+
         let msg = builder
             .subject(email.subject.clone())
             .multipart(content)
@@ -177,6 +189,49 @@ mod tests {
             html: html.to_string(),
             bcc: None,
             cc: None,
+            headers: None,
+        };
+        assert!(sender.mail(&data).await.is_ok());
+
+        with_settings!({filters => vec![
+            (r"[0-9A-Za-z]+{40}", "IDENTIFIER"),
+            (r"\w+, \d{1,2} \w+ \d{4} \d{2}:\d{2}:\d{2} [+-]\d{4}", "DATE")
+        ]}, {
+            assert_debug_snapshot!(stub.messages());
+        });
+    }
+
+    #[tokio::test]
+    async fn can_send_email_with_custom_headers() {
+        let stub = StubTransport::new_ok();
+
+        let sender = EmailSender {
+            transport: EmailTransport::Test(stub.clone()),
+        };
+
+        let html = r"
+<html>
+    <body>
+        Test Message with Headers
+    </body>
+</html>";
+
+        let headers = crate::mailer::EmailHeaders {
+            references: Some("<notification-item-123@example.com>".to_string()),
+            in_reply_to: Some("<notification-item-123@example.com>".to_string()),
+            message_id: Some("<notification-item-123-1234567890@example.com>".to_string()),
+        };
+
+        let data = Email {
+            from: Some("test@framework.com".to_string()),
+            to: "user1@framework.com".to_string(),
+            reply_to: None,
+            subject: "Email Subject with Headers".to_string(),
+            text: "Welcome with headers".to_string(),
+            html: html.to_string(),
+            bcc: None,
+            cc: None,
+            headers: Some(headers),
         };
         assert!(sender.mail(&data).await.is_ok());
 
