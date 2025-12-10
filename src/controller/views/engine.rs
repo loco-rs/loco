@@ -2,55 +2,30 @@ use std::path::{Path, PathBuf};
 
 use super::tera_builtins;
 use crate::{controller::views::ViewRenderer, Error, Result};
+use serde::Serialize;
+
+#[cfg(debug_assertions)]
 use notify::{
     event::{EventKind, ModifyKind},
     Event, RecursiveMode, Watcher,
 };
-use serde::Serialize;
-use tracing::{debug, warn};
 
 pub static DEFAULT_ASSET_FOLDER: &str = "assets";
 
 #[cfg(debug_assertions)]
-#[derive(Debug, Clone)]
 pub struct HotReloadingTeraEngine {
     pub engine: tera::Tera,
     pub view_path: PathBuf,
-    pub file_watcher: Option<std::sync::Arc<notify::RecommendedWatcher>>,
+    pub file_watcher: Box<dyn notify::Watcher + Send + Sync>,
     pub dirty: bool,
+    pub post_process: Box<dyn Fn(&mut tera::Tera) -> Result<()> + Send + Sync>,
 }
-
-type TeraPostProcessor = dyn Fn(&mut tera::Tera) -> Result<()> + Send + Sync;
 
 #[derive(Clone)]
-pub struct TeraView {
-    #[cfg(debug_assertions)]
-    pub tera: std::sync::Arc<std::sync::Mutex<HotReloadingTeraEngine>>,
-
-    #[cfg(not(debug_assertions))]
-    pub tera: tera::Tera,
-
-    pub tera_post_process: Option<std::sync::Arc<TeraPostProcessor>>,
-
-    pub default_context: tera::Context,
-}
-
-impl std::fmt::Debug for TeraView {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("TeraView")
-            .field("tera", &self.tera)
-            .field(
-                "tera_post_process",
-                if self.tera_post_process.is_some() {
-                    &Some("Fn")
-                } else {
-                    &None::<&'static str>
-                },
-            )
-            .field("default_context", &self.default_context)
-            .finish()
-    }
-}
+pub struct TeraView(
+    #[cfg(debug_assertions)] std::sync::Arc<std::sync::Mutex<HotReloadingTeraEngine>>,
+    #[cfg(not(debug_assertions))] std::sync::Arc<tera::Tera>,
+);
 
 impl TeraView {
     /// Create a Tera view engine
@@ -59,32 +34,25 @@ impl TeraView {
     ///
     /// This function will return an error if building fails
     pub fn build() -> Result<Self> {
-        Self::from_custom_dir(&PathBuf::from(DEFAULT_ASSET_FOLDER).join("views"))
+        Self::from_custom_dir(&PathBuf::from(DEFAULT_ASSET_FOLDER).join("views"), |_| {
+            Ok(())
+        })
     }
 
-    /// Attach the Tera view engine with a post-processing function for subsequent instantiation.
+    /// Create a Tera view engine with a post-processing function for subsequent instantiation.
     ///
     /// The post-processing function is also run during the call to this method.
     ///
     /// # Errors
     ///
-    /// This function will return an error if the post-processing function fails
-    pub fn post_process(
-        mut self,
+    /// This function will return an error if building fails or if the post-processing function fails
+    pub fn build_with_post_process(
         post_process: impl Fn(&mut tera::Tera) -> Result<()> + Send + Sync + 'static,
     ) -> Result<Self> {
-        {
-            #[cfg(debug_assertions)]
-            let engine = &mut self.tera.lock().unwrap().engine;
-
-            #[cfg(not(debug_assertions))]
-            let engine = &mut self.tera;
-
-            post_process(engine)?;
-        }
-
-        self.tera_post_process = Some(std::sync::Arc::new(post_process));
-        Ok(self)
+        Self::from_custom_dir(
+            &PathBuf::from(DEFAULT_ASSET_FOLDER).join("views"),
+            post_process,
+        )
     }
 
     /// Create a new Tera instance from a directory path
@@ -107,10 +75,15 @@ impl TeraView {
 
     /// Create a Tera view engine from a custom directory
     ///
+    /// The post-processing function is also run during the call to this method.
+    ///
     /// # Errors
     ///
-    /// This function will return an error if building fails
-    pub fn from_custom_dir<P: AsRef<Path>>(path: &P) -> Result<Self> {
+    /// This function will return an error if building fails or if the post-processing function fails
+    pub fn from_custom_dir<P: AsRef<Path>>(
+        path: &P,
+        post_process: impl Fn(&mut tera::Tera) -> Result<()> + Send + Sync + 'static,
+    ) -> Result<Self> {
         if !path.as_ref().exists() {
             return Err(Error::string(&format!(
                 "missing views directory: `{}`",
@@ -121,7 +94,10 @@ impl TeraView {
         let view_path: PathBuf = view_dir.join("**").join("*.html").into();
 
         // Create instance
-        let tera = Self::create_tera_instance(&view_path)?;
+        let mut tera = Self::create_tera_instance(&view_path)?;
+
+        // Do post processing
+        post_process(&mut tera)?;
 
         // Enable hot-reloading in debug build
         #[cfg(debug_assertions)]
@@ -129,14 +105,17 @@ impl TeraView {
             let tera = std::sync::Arc::new(std::sync::Mutex::new(HotReloadingTeraEngine {
                 engine: tera,
                 view_path,
-                file_watcher: None,
+                file_watcher: Box::new(notify::NullWatcher),
                 dirty: false,
+                post_process: Box::new(post_process),
             }));
 
-            let tera_clone = tera.clone();
+            let tera2 = tera.clone();
 
             // Create file watcher
             let mut watcher = notify::recommended_watcher(move |event| {
+                use tracing::info;
+
                 let Ok(Event { kind, paths, .. }) = event else {
                     return;
                 };
@@ -157,25 +136,25 @@ impl TeraView {
                     EventKind::Modify(ModifyKind::Metadata(_)) => return,
                     // Content modified
                     EventKind::Modify(ModifyKind::Data(change)) => {
-                        debug!(?paths, ?change, "View file modified")
+                        info!(?paths, ?change, "View file modified")
                     }
                     // File renamed
                     EventKind::Modify(ModifyKind::Name(change)) => {
-                        debug!(?paths, ?change, "View file renamed")
+                        info!(?paths, ?change, "View file renamed")
                     }
                     // Other modifications
                     EventKind::Modify(change) => {
-                        debug!(?paths, ?change, "View file modified")
+                        info!(?paths, ?change, "View file modified")
                     }
                     // File created.
-                    EventKind::Create(_) => debug!(?paths, "View file created"),
+                    EventKind::Create(_) => info!(?paths, "View file created"),
                     // File removed.
-                    EventKind::Remove(_) => debug!(?paths, "View file removed"),
+                    EventKind::Remove(_) => info!(?paths, "View file removed"),
                     // All other changes.
-                    change => debug!(?paths, ?change, "View file changed"),
+                    change => info!(?paths, ?change, "View file changed"),
                 }
 
-                tera_clone.lock().unwrap().dirty = true;
+                tera2.lock().unwrap().dirty = true;
             })
             .map_err(|_| Error::string("error creating file watcher"))?;
 
@@ -183,15 +162,14 @@ impl TeraView {
                 .watch(view_dir, RecursiveMode::Recursive)
                 .map_err(|_| Error::string("error watching for file changes in view directory"))?;
 
-            tera.lock().unwrap().file_watcher = Some(watcher.into());
+            tera.lock().unwrap().file_watcher = Box::new(watcher);
             tera
         };
 
-        Ok(Self {
-            tera_post_process: None,
-            tera,
-            default_context: tera::Context::default(),
-        })
+        #[cfg(not(debug_assertions))]
+        let tera = std::sync::Arc::new(tera);
+
+        Ok(Self(tera))
     }
 }
 
@@ -201,19 +179,17 @@ impl ViewRenderer for TeraView {
 
         #[cfg(debug_assertions)]
         {
-            let mut tera = self.tera.lock().unwrap();
+            let mut tera = self.0.lock().unwrap();
 
             // Only create a new Tera instance if the view path files have changed
             if tera.dirty {
-                warn!(key, "Hot-reloading Tera view engine");
+                tracing::warn!(key, "Hot-reloading Tera view engine");
 
                 tera.dirty = false;
 
                 let mut new_engine = Self::create_tera_instance(&tera.view_path)?;
 
-                if let Some(post_process) = self.tera_post_process.as_deref() {
-                    post_process(&mut new_engine)?;
-                }
+                tera.post_process.as_ref()(&mut new_engine)?;
 
                 tera.engine = new_engine;
             }
@@ -222,7 +198,7 @@ impl ViewRenderer for TeraView {
         }
 
         #[cfg(not(debug_assertions))]
-        Ok(self.tera.render(key, &context)?)
+        Ok(self.0.render(key, &context)?)
     }
 }
 
@@ -241,7 +217,7 @@ mod tests {
             .create()
             .unwrap();
 
-        let v = TeraView::from_custom_dir(&tree_fs.root).unwrap();
+        let v = TeraView::from_custom_dir(&tree_fs.root, |_| Ok(())).unwrap();
 
         assert_eq!(
             v.render("template/test.html", json!({"foo": "foo-txt"}))
@@ -288,15 +264,13 @@ mod tests {
             .unwrap();
 
         let tree_dir = tree_fs.root.clone();
-        let v = TeraView::from_custom_dir(&tree_fs.root)
-            .unwrap()
-            .post_process(|tera| {
-                tera.register_filter("hello", |value: &Value, _: &HashMap<String, Value>| {
-                    Ok(format!("Hello World v{value}").into())
-                });
-                Ok(())
-            })
-            .unwrap();
+        let v = TeraView::from_custom_dir(&tree_fs.root, |tera| {
+            tera.register_filter("hello", |value: &Value, _: &HashMap<String, Value>| {
+                Ok(format!("Hello World v{value}").into())
+            });
+            Ok(())
+        })
+        .unwrap();
 
         // Initial render should have the original header from base template
         let initial_render = v.render("template/child.html", json!({})).unwrap();

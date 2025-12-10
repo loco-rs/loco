@@ -3,7 +3,7 @@ use axum::{Extension, Router as AxumRouter};
 use fluent_templates::{ArcLoader, FluentLoader};
 use loco_rs::{
     app::{AppContext, Initializer},
-    controller::views::{engines, ViewEngine},
+    controller::views::ViewEngine,
     Error, Result,
 };
 use tracing::info;
@@ -30,7 +30,7 @@ impl Initializer for ViewEngineInitializer {
             );
             info!("locales loaded");
 
-            engines::TeraView::build()?.post_process(move |tera| {
+            engines::TeraView::build_with_post_process(move |tera| {
                 tera.register_function("t", FluentLoader::new(arc.clone()));
                 Ok(())
             })?
