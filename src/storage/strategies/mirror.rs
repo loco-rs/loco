@@ -210,6 +210,84 @@ impl StorageStrategy for MirrorStrategy {
 
         Ok(())
     }
+
+    /// Downloads content as a stream from the primary storage, or from
+    /// secondary storage if primary fails.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`StorageResult`] with the stream
+    async fn download_stream(
+        &self,
+        storage: &Storage,
+        path: &Path,
+    ) -> StorageResult<super::super::stream::BytesStream> {
+        // Try primary first
+        if let Ok(stream) = storage.as_store_err(&self.primary)?.get_stream(path).await {
+            Ok(stream)
+        } else {
+            // If primary fails, try secondaries
+            if let Some(secondaries) = self.secondaries.as_ref() {
+                for secondary_store in secondaries {
+                    if let Some(store) = storage.as_store(secondary_store) {
+                        if let Ok(stream) = store.get_stream(path).await {
+                            return Ok(stream);
+                        }
+                    }
+                }
+            }
+            // If all failed, return error from primary
+            storage.as_store_err(&self.primary)?.get_stream(path).await
+        }
+    }
+
+    /// Uploads content from a stream to the primary and secondary storage
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`StorageResult`] indicating of the operation status.
+    async fn upload_stream(
+        &self,
+        storage: &Storage,
+        path: &Path,
+        stream: super::super::stream::BytesStream,
+    ) -> StorageResult<()> {
+        // For mirroring, we need to buffer the stream content once
+        // to be able to upload to multiple stores
+        let content = stream
+            .collect()
+            .await
+            .map_err(|e| StorageError::Any(Box::new(e)))?;
+
+        // Upload to primary
+        storage
+            .as_store_err(&self.primary)?
+            .upload(path, &content)
+            .await?;
+
+        // Upload to secondaries if configured
+        if let Some(secondaries) = self.secondaries.as_ref() {
+            let mut collect_errors: BTreeMap<String, String> = BTreeMap::new();
+            for secondary_store in secondaries {
+                match storage.as_store_err(secondary_store) {
+                    Ok(store) => {
+                        if let Err(err) = store.upload(path, &content).await {
+                            collect_errors.insert(secondary_store.to_string(), err.to_string());
+                        }
+                    }
+                    Err(err) => {
+                        collect_errors.insert(secondary_store.to_string(), err.to_string());
+                    }
+                }
+
+                if self.failure_mode.should_fail(&collect_errors) {
+                    return Err(StorageError::Multi(collect_errors));
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl MirrorStrategy {

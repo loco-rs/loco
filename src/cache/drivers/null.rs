@@ -27,6 +27,17 @@ pub fn new() -> Box<dyn CacheDriver> {
 
 #[async_trait]
 impl CacheDriver for Null {
+    /// Pings the cache to check if it is reachable.
+    ///
+    /// # Errors
+    ///
+    /// Returns always error
+    async fn ping(&self) -> CacheResult<()> {
+        Err(CacheError::Any(
+            "Operation not supported by null cache".into(),
+        ))
+    }
+
     /// Checks if a key exists in the cache.
     ///
     /// # Errors

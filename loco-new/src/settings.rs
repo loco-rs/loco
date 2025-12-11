@@ -3,7 +3,10 @@
 use std::env;
 
 use heck::ToSnakeCase;
+<<<<<<< HEAD
 #[allow(unused_imports)]
+=======
+>>>>>>> 2f4eb70c2e059723b0d956f5366260a3f25a900e
 use rhai::{CustomType, Dynamic, EvalAltResult, Position, TypeBuilder};
 use serde::{Deserialize, Serialize};
 

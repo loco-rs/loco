@@ -1,14 +1,20 @@
 use std::path::{Path, PathBuf};
 
+<<<<<<< HEAD
 use super::tera_builtins;
 use crate::{controller::views::ViewRenderer, Error, Result};
 use serde::Serialize;
 
 #[cfg(debug_assertions)]
+=======
+>>>>>>> 2f4eb70c2e059723b0d956f5366260a3f25a900e
 use notify::{
     event::{EventKind, ModifyKind},
     Event, RecursiveMode, Watcher,
 };
+
+use super::tera_builtins;
+use crate::{controller::views::ViewRenderer, Error, Result};
 
 pub static DEFAULT_ASSET_FOLDER: &str = "assets";
 
@@ -42,7 +48,12 @@ impl TeraView {
         })
     }
 
+<<<<<<< HEAD
     /// Create a Tera view engine with a post-processing function for subsequent instantiation.
+=======
+    /// Attach the Tera view engine with a post-processing function for
+    /// subsequent instantiation.
+>>>>>>> 2f4eb70c2e059723b0d956f5366260a3f25a900e
     ///
     /// The post-processing function is also run during the call to this method.
     ///
@@ -94,7 +105,11 @@ impl TeraView {
             )));
         }
         let view_dir = path.as_ref();
+<<<<<<< HEAD
         let view_path = view_dir.join("**").join("*.html");
+=======
+        let view_path: PathBuf = view_dir.join("**").join("*.html");
+>>>>>>> 2f4eb70c2e059723b0d956f5366260a3f25a900e
 
         // Create instance
         let mut tera = Self::create_tera_instance(&view_path)?;
@@ -207,8 +222,9 @@ impl ViewRenderer for TeraView {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::{json, Value};
     use std::collections::HashMap;
+
+    use serde_json::{json, Value};
     use tree_fs;
 
     use super::*;
@@ -302,6 +318,9 @@ mod tests {
             updated_base,
         )
         .unwrap();
+
+        // Wait for file watcher to detect the change
+        std::thread::sleep(std::time::Duration::from_millis(300));
 
         // Render again - should have the updated header due to hot reload
         let updated_render = v.render("template/child.html", json!({})).unwrap();

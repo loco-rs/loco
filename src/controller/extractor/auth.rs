@@ -299,58 +299,562 @@ where
 #[cfg(test)]
 mod tests {
 
-    use insta::assert_debug_snapshot;
-    use rstest::rstest;
+    use axum::http::{HeaderMap, HeaderValue};
 
     use super::*;
     use crate::config;
 
-    #[rstest]
-    #[case("extract_from_default", "https://loco.rs", None)]
-    #[case(
-        "extract_from_bearer",
-        "loco.rs",
-        Some(config::JWTLocationConfig::Single(config::JWTLocation::Bearer))
-    )]
-    #[case("extract_from_cookie", "https://loco.rs", Some(config::JWTLocationConfig::Single(config::JWTLocation::Cookie{name: "loco_cookie_key".to_string()})))]
-    #[case("extract_from_query", "https://loco.rs?query_token=query_token_value&test=loco", Some(config::JWTLocationConfig::Single(config::JWTLocation::Query{name: "query_token".to_string()})))]
-    #[case("extract_from_multiple_locations", "https://loco.rs?query_token=query_token_value&test=loco", Some(config::JWTLocationConfig::Multiple(vec![config::JWTLocation::Cookie{name: "nonexistent".to_string()}, config::JWTLocation::Query{name: "query_token".to_string()}])))]
-    fn can_extract_token(
-        #[case] test_name: &str,
-        #[case] url: &str,
-        #[case] location: Option<config::JWTLocationConfig>,
-    ) {
+    #[test]
+    fn test_extract_token_from_header_success() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            AUTH_HEADER,
+            HeaderValue::from_str("Bearer valid_token_123").unwrap(),
+        );
+
+        let result = extract_token_from_header(&headers);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "valid_token_123");
+    }
+
+    #[test]
+    fn test_extract_token_from_header_with_spaces() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            AUTH_HEADER,
+            HeaderValue::from_str("Bearer  token_with_spaces  ").unwrap(),
+        );
+
+        let result = extract_token_from_header(&headers);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), " token_with_spaces  ");
+    }
+
+    #[test]
+    fn test_extract_token_from_header_special_chars() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            AUTH_HEADER,
+            HeaderValue::from_str("Bearer token-with_special.chars").unwrap(),
+        );
+
+        let result = extract_token_from_header(&headers);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "token-with_special.chars");
+    }
+
+    #[test]
+    fn test_extract_token_from_header_missing_header() {
+        let headers = HeaderMap::new();
+        let result = extract_token_from_header(&headers);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("authorization token not found"));
+    }
+
+    #[test]
+    fn test_extract_token_from_header_missing_bearer_prefix() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            AUTH_HEADER,
+            HeaderValue::from_str("InvalidPrefix token").unwrap(),
+        );
+
+        let result = extract_token_from_header(&headers);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("error strip authorization value"));
+    }
+
+    #[test]
+    fn test_extract_token_from_header_empty_value() {
+        let mut headers = HeaderMap::new();
+        headers.insert(AUTH_HEADER, HeaderValue::from_str("Bearer").unwrap());
+
+        let result = extract_token_from_header(&headers);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("error strip authorization value"));
+    }
+
+    #[test]
+    fn test_extract_token_from_cookie_success() {
+        let request = axum::http::Request::builder()
+            .header("Cookie", "test_cookie=cookie_value_123")
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token_from_cookie("test_cookie", &parts);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "cookie_value_123");
+    }
+
+    #[test]
+    fn test_extract_token_from_cookie_special_chars() {
+        let request = axum::http::Request::builder()
+            .header("Cookie", "auth_token=token-with.special_chars")
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token_from_cookie("auth_token", &parts);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "token-with.special_chars");
+    }
+
+    #[test]
+    fn test_extract_token_from_cookie_missing_cookie() {
+        let request = axum::http::Request::builder().body(()).unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token_from_cookie("nonexistent", &parts);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("token is not found"));
+    }
+
+    #[test]
+    fn test_extract_token_from_cookie_not_found() {
+        let request = axum::http::Request::builder()
+            .header("Cookie", "different_cookie=value")
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token_from_cookie("nonexistent", &parts);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("token is not found"));
+    }
+
+    #[test]
+    fn test_extract_token_from_query_success() {
+        let request = axum::http::Request::builder()
+            .uri("https://example.com?token=query_value_123&other=param")
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token_from_query("token", &parts);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "query_value_123");
+    }
+
+    #[test]
+    fn test_extract_token_from_query_special_chars() {
+        let request = axum::http::Request::builder()
+            .uri("https://example.com?auth_token=token-with.special_chars")
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token_from_query("auth_token", &parts);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "token-with.special_chars");
+    }
+
+    #[test]
+    fn test_extract_token_from_query_missing_param() {
+        let request = axum::http::Request::builder()
+            .uri("https://example.com?other=param")
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token_from_query("nonexistent_param", &parts);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("query parameter not found"));
+    }
+
+    #[test]
+    fn test_extract_token_from_query_invalid_uri() {
+        let request = axum::http::Request::builder()
+            .uri("not-a-valid-uri")
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token_from_query("nonexistent_param", &parts);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_get_jwt_locations_default() {
         let jwt_config = JWTConfig {
-            location,
+            location: None,
+            secret: String::new(),
+            expiration: 1,
+        };
+
+        let locations = get_jwt_locations(jwt_config.location.as_ref());
+        assert_eq!(locations.len(), 1);
+        assert!(matches!(locations[0], config::JWTLocation::Bearer));
+    }
+
+    #[test]
+    fn test_get_jwt_locations_single_bearer() {
+        let jwt_config = JWTConfig {
+            location: Some(config::JWTLocationConfig::Single(
+                config::JWTLocation::Bearer,
+            )),
+            secret: String::new(),
+            expiration: 1,
+        };
+
+        let locations = get_jwt_locations(jwt_config.location.as_ref());
+        assert_eq!(locations.len(), 1);
+        assert!(matches!(locations[0], config::JWTLocation::Bearer));
+    }
+
+    #[test]
+    fn test_get_jwt_locations_single_cookie() {
+        let jwt_config = JWTConfig {
+            location: Some(config::JWTLocationConfig::Single(
+                config::JWTLocation::Cookie {
+                    name: "auth_token".to_string(),
+                },
+            )),
+            secret: String::new(),
+            expiration: 1,
+        };
+
+        let locations = get_jwt_locations(jwt_config.location.as_ref());
+        assert_eq!(locations.len(), 1);
+        assert!(matches!(locations[0], config::JWTLocation::Cookie { .. }));
+    }
+
+    #[test]
+    fn test_get_jwt_locations_single_query() {
+        let jwt_config = JWTConfig {
+            location: Some(config::JWTLocationConfig::Single(
+                config::JWTLocation::Query {
+                    name: "token".to_string(),
+                },
+            )),
+            secret: String::new(),
+            expiration: 1,
+        };
+
+        let locations = get_jwt_locations(jwt_config.location.as_ref());
+        assert_eq!(locations.len(), 1);
+        assert!(matches!(locations[0], config::JWTLocation::Query { .. }));
+    }
+
+    #[test]
+    fn test_get_jwt_locations_multiple() {
+        let jwt_config = JWTConfig {
+            location: Some(config::JWTLocationConfig::Multiple(vec![
+                config::JWTLocation::Cookie {
+                    name: "auth".to_string(),
+                },
+                config::JWTLocation::Query {
+                    name: "token".to_string(),
+                },
+                config::JWTLocation::Bearer,
+            ])),
+            secret: String::new(),
+            expiration: 1,
+        };
+
+        let locations = get_jwt_locations(jwt_config.location.as_ref());
+        assert_eq!(locations.len(), 3);
+        assert!(matches!(locations[0], config::JWTLocation::Cookie { .. }));
+        assert!(matches!(locations[1], config::JWTLocation::Query { .. }));
+        assert!(matches!(locations[2], config::JWTLocation::Bearer));
+    }
+
+    #[test]
+    fn test_extract_token_from_location_bearer() {
+        let request = axum::http::Request::builder()
+            .uri("https://example.com?token=query_value")
+            .header(AUTH_HEADER, format!("{TOKEN_PREFIX} bearer_value"))
+            .header("Cookie", "auth_token=cookie_value")
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token_from_location(&config::JWTLocation::Bearer, &parts);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), " bearer_value");
+    }
+
+    #[test]
+    fn test_extract_token_from_location_cookie() {
+        let request = axum::http::Request::builder()
+            .uri("https://example.com?token=query_value")
+            .header(AUTH_HEADER, format!("{TOKEN_PREFIX} bearer_value"))
+            .header("Cookie", "auth_token=cookie_value")
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token_from_location(
+            &config::JWTLocation::Cookie {
+                name: "auth_token".to_string(),
+            },
+            &parts,
+        );
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "cookie_value");
+    }
+
+    #[test]
+    fn test_extract_token_from_location_query() {
+        let request = axum::http::Request::builder()
+            .uri("https://example.com?token=query_value")
+            .header(AUTH_HEADER, format!("{TOKEN_PREFIX} bearer_value"))
+            .header("Cookie", "auth_token=cookie_value")
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token_from_location(
+            &config::JWTLocation::Query {
+                name: "token".to_string(),
+            },
+            &parts,
+        );
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "query_value");
+    }
+
+    #[test]
+    fn test_extract_token_single_location_success() {
+        let jwt_config = JWTConfig {
+            location: Some(config::JWTLocationConfig::Single(
+                config::JWTLocation::Bearer,
+            )),
             secret: String::new(),
             expiration: 1,
         };
 
         let request = axum::http::Request::builder()
-            .uri(url)
-            .header(AUTH_HEADER, format!("{TOKEN_PREFIX} bearer_token_value"))
-            .header(
-                "Cookie",
-                format!("{}={}", "loco_cookie_key", "cookie_token_value"),
-            )
+            .uri("https://example.com")
+            .header(AUTH_HEADER, format!("{TOKEN_PREFIX} valid_token"))
             .body(())
             .unwrap();
         let (parts, ()) = request.into_parts();
-        assert_debug_snapshot!(test_name, extract_token(&jwt_config, &parts));
 
-        // Test error message for missing token
-        let request_no_token = axum::http::Request::builder()
+        let result = extract_token(&jwt_config, &parts);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), " valid_token");
+    }
+
+    #[test]
+    fn test_extract_token_multiple_locations_fallback() {
+        let jwt_config = JWTConfig {
+            location: Some(config::JWTLocationConfig::Multiple(vec![
+                config::JWTLocation::Cookie {
+                    name: "nonexistent".to_string(),
+                },
+                config::JWTLocation::Query {
+                    name: "token".to_string(),
+                },
+            ])),
+            secret: String::new(),
+            expiration: 1,
+        };
+
+        let request = axum::http::Request::builder()
+            .uri("https://example.com?token=fallback_token")
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token(&jwt_config, &parts);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "fallback_token");
+    }
+
+    #[test]
+    fn test_extract_token_all_locations_fail() {
+        let jwt_config = JWTConfig {
+            location: Some(config::JWTLocationConfig::Multiple(vec![
+                config::JWTLocation::Cookie {
+                    name: "nonexistent".to_string(),
+                },
+                config::JWTLocation::Query {
+                    name: "missing".to_string(),
+                },
+            ])),
+            secret: String::new(),
+            expiration: 1,
+        };
+
+        let request = axum::http::Request::builder()
+            .uri("https://example.com")
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token(&jwt_config, &parts);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Token not found in any of the configured JWT locations"));
+    }
+
+    #[test]
+    fn test_extract_from_default() {
+        let jwt_config = JWTConfig {
+            location: None,
+            secret: String::new(),
+            expiration: 1,
+        };
+
+        let request = axum::http::Request::builder()
+            .uri("https://loco.rs")
+            .header(AUTH_HEADER, format!("{TOKEN_PREFIX} bearer_token_value"))
+            .header("Cookie", "loco_cookie_key=cookie_token_value")
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token(&jwt_config, &parts);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), " bearer_token_value");
+    }
+
+    #[test]
+    fn test_extract_from_bearer() {
+        let jwt_config = JWTConfig {
+            location: Some(config::JWTLocationConfig::Single(
+                config::JWTLocation::Bearer,
+            )),
+            secret: String::new(),
+            expiration: 1,
+        };
+
+        let request = axum::http::Request::builder()
+            .uri("loco.rs")
+            .header(AUTH_HEADER, format!("{TOKEN_PREFIX} bearer_token_value"))
+            .header("Cookie", "loco_cookie_key=cookie_token_value")
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token(&jwt_config, &parts);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), " bearer_token_value");
+    }
+
+    #[test]
+    fn test_extract_from_cookie() {
+        let jwt_config = JWTConfig {
+            location: Some(config::JWTLocationConfig::Single(
+                config::JWTLocation::Cookie {
+                    name: "loco_cookie_key".to_string(),
+                },
+            )),
+            secret: String::new(),
+            expiration: 1,
+        };
+
+        let request = axum::http::Request::builder()
+            .uri("https://loco.rs")
+            .header(AUTH_HEADER, format!("{TOKEN_PREFIX} bearer_token_value"))
+            .header("Cookie", "loco_cookie_key=cookie_token_value")
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token(&jwt_config, &parts);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "cookie_token_value");
+    }
+
+    #[test]
+    fn test_extract_from_query() {
+        let jwt_config = JWTConfig {
+            location: Some(config::JWTLocationConfig::Single(
+                config::JWTLocation::Query {
+                    name: "query_token".to_string(),
+                },
+            )),
+            secret: String::new(),
+            expiration: 1,
+        };
+
+        let request = axum::http::Request::builder()
+            .uri("https://loco.rs?query_token=query_token_value&test=loco")
+            .header(AUTH_HEADER, format!("{TOKEN_PREFIX} bearer_token_value"))
+            .header("Cookie", "loco_cookie_key=cookie_token_value")
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token(&jwt_config, &parts);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "query_token_value");
+    }
+
+    #[test]
+    fn test_extract_from_multiple_locations() {
+        let jwt_config = JWTConfig {
+            location: Some(config::JWTLocationConfig::Multiple(vec![
+                config::JWTLocation::Cookie {
+                    name: "nonexistent".to_string(),
+                },
+                config::JWTLocation::Query {
+                    name: "query_token".to_string(),
+                },
+            ])),
+            secret: String::new(),
+            expiration: 1,
+        };
+
+        let request = axum::http::Request::builder()
+            .uri("https://loco.rs?query_token=query_token_value&test=loco")
+            .header(AUTH_HEADER, format!("{TOKEN_PREFIX} bearer_token_value"))
+            .header("Cookie", "loco_cookie_key=cookie_token_value")
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token(&jwt_config, &parts);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "query_token_value");
+    }
+
+    #[test]
+    fn test_extract_token_error_message_for_missing_token() {
+        let jwt_config = JWTConfig {
+            location: Some(config::JWTLocationConfig::Multiple(vec![
+                config::JWTLocation::Cookie {
+                    name: "nonexistent".to_string(),
+                },
+                config::JWTLocation::Query {
+                    name: "missing".to_string(),
+                },
+            ])),
+            secret: String::new(),
+            expiration: 1,
+        };
+
+        let request = axum::http::Request::builder()
             .uri("https://loco.rs")
             .body(())
             .unwrap();
-        let (parts_no_token, ()) = request_no_token.into_parts();
-        let error_result = extract_token(&jwt_config, &parts_no_token);
-        assert!(error_result.is_err());
+        let (parts, ()) = request.into_parts();
 
-        // For multiple locations test, verify it contains configuration guidance
-        if test_name == "extract_from_multiple_locations" {
-            let error_msg = format!("{:?}", error_result.unwrap_err());
-            assert!(error_msg.contains("auth.jwt.location configuration"));
-        }
+        let result = extract_token(&jwt_config, &parts);
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("auth.jwt.location configuration"));
     }
 }

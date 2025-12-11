@@ -17,7 +17,6 @@ injections:
 use loco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
 use sea_orm::{sea_query::Order, QueryOrder};
-use axum::debug_handler;
 
 use crate::{
     models::_entities::{{file_name | plural}}::{ActiveModel, Column, Entity, Model},

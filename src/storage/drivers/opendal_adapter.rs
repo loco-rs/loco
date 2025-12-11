@@ -2,11 +2,11 @@ use std::path::Path;
 
 use async_trait::async_trait;
 use bytes::Bytes;
-use futures_util::SinkExt;
+use futures_util::{SinkExt, StreamExt};
 use opendal::{layers::RetryLayer, Operator};
 
 use super::{GetResponse, StoreDriver, UploadResponse};
-use crate::storage::{StorageError, StorageResult};
+use crate::storage::{stream::BytesStream, StorageError, StorageResult};
 
 pub struct OpendalAdapter {
     opendal_impl: Operator,
@@ -140,5 +140,43 @@ impl StoreDriver for OpendalAdapter {
     async fn exists(&self, path: &Path) -> StorageResult<bool> {
         let path = path.display().to_string();
         Ok(self.opendal_impl.exists(&path).await.unwrap_or(false))
+    }
+
+    /// Native streaming implementation for `OpenDAL`.
+    /// This directly uses `OpenDAL`'s reader for efficient streaming.
+    async fn get_stream(&self, path: &Path) -> StorageResult<BytesStream> {
+        let reader = self
+            .opendal_impl
+            .reader(&path.display().to_string())
+            .await?;
+        BytesStream::from_reader(reader).await
+    }
+
+    /// Native streaming upload for `OpenDAL`.
+    /// This uses `OpenDAL`'s writer to stream data directly without buffering.
+    async fn upload_stream(
+        &self,
+        path: &Path,
+        stream: BytesStream,
+    ) -> StorageResult<UploadResponse> {
+        let path_str = path.display().to_string();
+
+        // Create writer with OpenDAL's native API
+        let mut writer = self.opendal_impl.writer(&path_str).await?;
+
+        // Stream data directly to the writer using native write method
+        let mut stream = Box::pin(stream);
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.map_err(|e| StorageError::Any(Box::new(e)))?;
+            // Use the native write method which handles the data more efficiently
+            writer.write(chunk).await?;
+        }
+
+        let meta = writer.close().await?;
+
+        Ok(UploadResponse {
+            e_tag: meta.etag().map(std::string::ToString::to_string),
+            version: meta.version().map(std::string::ToString::to_string),
+        })
     }
 }

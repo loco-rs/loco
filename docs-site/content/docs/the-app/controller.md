@@ -40,6 +40,7 @@ $ cargo loco routes
 
 [GET] /_health
 [GET] /_ping
+[GET] /_readiness
 [POST] /auth/forgot
 [POST] /auth/login
 [POST] /auth/register
@@ -157,16 +158,6 @@ Sometimes you might want state that can be shared between controllers, workers, 
 
 You can review the example [shared-global-state](https://github.com/loco-rs/shared-global-state) app to see how to integrate `libvips`, which is a C based image manipulation library. `libvips` requires an odd thing from the developer: to keep a single instance of it loaded per app process. We do this by keeping a [single `lazy_static` field](https://github.com/loco-rs/shared-global-state/blob/main/src/app.rs#L27-L34), and referring to it from different places in the app.
 
-Read the following to see how it's done in each individual part of the app.
-
-### Shared state in controllers
-
-You can use the solution provided in this document. A live example [is here](https://github.com/loco-rs/loco/blob/master/examples/llm-candle-inference/src/app.rs#L41).
-
-### Shared state in workers
-
-Workers are intentionally verbatim initialized in [app hooks](https://github.com/loco-rs/loco/blob/master/starters/saas/src/app.rs#L59).
-
 This means you can shape them as a "regular" Rust struct that takes a state as a field. Then refer to that field in perform.
 
 [Here's how the worker is initialized](https://github.com/loco-rs/shared-global-state/blob/main/src/workers/downloader.rs#L19) with the global `vips` instance in the `shared-global-state` example.
@@ -175,7 +166,7 @@ Note that by-design _sharing state between controllers and workers have no meani
 
 ### Shared state in tasks
 
-Tasks don't really have a value for shared state, as they have a similar life as any exec'd binary. The process fires up, boots, creates all resources needed (connects to db, etc.), performs the task logic, and then the
+Tasks don't really have a value for shared state, as they have a similar life as any exec'd binary. The process fires up, boots, creates all resources needed (connects to db, etc.), performs the task logic, and then the process terminates.
 
 ## Routes in Controllers
 
@@ -313,6 +304,25 @@ impl Hooks for App {
 
 ```
 
+## Default Endpoints
+
+### Health check endpoints
+
+There are three default health check endpoints that are automatically registered in the application:
+
+- `_ping` and `_health`: Can be used by startup probe and liveness probe, they only confirm the server is running (simple 200 OK).
+- `_readiness`: Can be used by readiness probe, tt checks dependencies (DB, Cache, Storage).
+  - If you configure a queue, it will check if the queue is reachable.
+  - If you enable `with-db` feature, it'll also check the database connection.
+  - If you enable `cache_inmem` or `cache_redis` features, it'll also check the cache connection.
+
+Why we separate these endpoints?
+
+- **Best practices**: Aligns with Kubernetes patterns to avoid removing healthy servers from rotation when dependencies fail temporarily.
+- **Load Balancer Clarity**: A Clear distinction helps load balancers make accurate routing decisions without conflating server and dependency health.
+- **Flexibility**: Splitting endpoints gives users more control to decide which checks to monitor based on their needs (e.g., prioritizing liveness for basic uptime or readiness for full system health).
+- **Debugging**: Separate endpoints make it easier to diagnose issues (e.g., server up but S3 down).
+
 # Middleware
 
 Loco comes with a set of built-in middleware out of the box. Some are enabled by default, while others need to be configured. Middleware registration is flexible and can be managed either through the `*.yaml` environment configuration or directly in the code.
@@ -335,7 +345,7 @@ This is the stack in `development` mode:
 $ cargo loco middleware --config
 
 limit_payload          {"body_limit":{"Limit":1000000}}
-cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
+cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"expose_header":[""],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
 catch_panic            {"enable":true}
 etag                   {"enable":true}
 logger                 {"config":{"enable":true},"environment":"development"}
@@ -416,7 +426,7 @@ The result:
 $ cargo loco middleware --config
 
 limit_payload          {"body_limit":{"Limit":1000000}}
-cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
+cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"expose_header":[""],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
 catch_panic            {"enable":true}
 etag                   {"enable":true}
 remote_ip              {"enable":true,"trusted_proxies":null}
@@ -442,7 +452,7 @@ The result:
 $ cargo loco middleware --config
 
 limit_payload          {"body_limit":{"Limit":5000000}}
-cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
+cors                   {"enable":true,"allow_origins":["any"],"allow_headers":["*"],"allow_methods":["*"],"expose_headers":[""],"max_age":null,"vary":["origin","access-control-request-method","access-control-request-headers"]}
 catch_panic            {"enable":true}
 etag                   {"enable":true}
 logger                 {"config":{"enable":true},"environment":"development"}
@@ -554,7 +564,7 @@ async fn current(
 }
 ```
 
-Additionally, you can fetch the current user by replacing auth::JWT with `auth::ApiToken<users::Model>`.
+Additionally, you can fetch the current user by replacing auth::JWT with `auth::JWTWithUser<users::Model>`.
 
 #### API Key
 
@@ -849,21 +859,26 @@ It can be tailored to fit various application requirements, supporting permissiv
 
 ```yaml
 #...
-middlewares:
+server:
   ...
-  cors:
-    enable: true
-    # Set the value of the [`Access-Control-Allow-Origin`][mdn] header
-    # allow_origins:
-    #   - https://loco.rs
-    # Set the value of the [`Access-Control-Allow-Headers`][mdn] header
-    # allow_headers:
-    # - Content-Type
-    # Set the value of the [`Access-Control-Allow-Methods`][mdn] header
-    # allow_methods:
-    #   - POST
-    # Set the value of the [`Access-Control-Max-Age`][mdn] header in seconds
-    # max_age: 3600
+  middlewares:
+    ...
+    cors:
+      enable: true
+      # Set the value of the [`Access-Control-Allow-Origin`][mdn] header
+      # allow_origins:
+      #   - https://loco.rs
+      # Set the value of the [`Access-Control-Allow-Headers`][mdn] header
+      # allow_headers:
+      # - Content-Type
+      # Set the value of the [`Access-Control-Allow-Methods`][mdn] header
+      # allow_methods:
+      #   - POST
+      # expose_headers:
+      #   - X-CUSTOM-HEADER1
+      #   - X-CUSTOM-HEADER2
+      # Set the value of the [`Access-Control-Max-Age`][mdn] header in seconds
+      # max_age: 3600
 
 ```
 
@@ -1031,7 +1046,6 @@ Loco extractors validate data within HTTP handlers, proceeding with validated da
 #### Example 1: JSON Validation with `JsonValidate`
 
 ```rust
-use axum::debug_handler;
 use loco_rs::prelude::*;
 
 #[debug_handler]
@@ -1049,7 +1063,6 @@ pub async fn index(
 #### Example 2: Query Validation with `QueryValidate`
 
 ```rust
-use axum::debug_handler;
 use loco_rs::prelude::*;
 
 #[debug_handler]
@@ -1067,7 +1080,6 @@ pub async fn index(
 #### Example 3: Form Validation with `FormValidateWithMessage`
 
 ```rust
-use axum::debug_handler;
 use loco_rs::prelude::*;
 
 #[debug_handler]
@@ -1223,6 +1235,93 @@ impl PaginationResponse {
     }
 }
 ```
+
+## Custom Extractors
+
+When it is necessary to validate request information contained in the request header, a custom extractor can be implemented for this purpose. For example, in a multi-tenant application that includes the current tenant identifier in the headers, the extractor should retrieve the value, verify its validity in the database, and ensure that the user is authorized to access it. To implement a custom extractor, it is required to implement one of the following traits: FromRequest or FromRequestParts.
+
+```rust
+use axum::{
+    extract::FromRequestParts,
+    extract::FromRef,
+    http::{request::Parts, StatusCode},
+};
+use loco_rs::prelude::*;
+use sea_orm::{EntityTrait, DatabaseConnection};
+
+use loco_rs::app::AppContext;
+use crate::models::_entities::companies; // Adjust to your strucuture
+
+#[derive(Debug, Clone)]
+pub struct CompanyContext(pub i32, pub String);
+
+impl<S> FromRequestParts<S> for CompanyContext
+where
+    AppContext: FromRef<S>,
+    S: Send + Sync,
+{
+    type Rejection = (StatusCode, String);
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &S
+    ) -> Result<Self, Self::Rejection> {
+
+        // 1. get header
+        let nickname = parts.headers
+            .get("x-my-company")
+            .and_then(|h| h.to_str().ok())
+            .ok_or((
+                StatusCode::BAD_REQUEST,
+                "Missing X-MY-COMPANY".to_string(),
+            ))?
+            .to_string();
+
+        let ctx = AppContext::from_ref(state);
+        let db: &DatabaseConnection = &ctx.db;
+
+        // 3. Search tenant on database
+        let company = companies::Entity::find()
+            .filter(companies::Column::Uuid.eq(nickname.clone()))
+            .one(db)
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("DB error: {}", e),
+                )
+            })?
+            .ok_or((
+                StatusCode::NOT_FOUND,
+                "Company not found".to_string(),
+            ))?;
+
+        Ok(CompanyContext(company.id, nickname))
+    }
+}
+
+```
+
+After that just added to your action.
+
+```rust
+#[debug_handler]
+pub async fn add(
+    CompanyContext(company_id, nickname): CompanyContext,
+    State(ctx): State<AppContext>,
+    Json(params): Json<Params>,
+) -> Result<Response> {
+
+    // Action logic ...
+
+
+    format::json({ message: "added!" })
+}
+```
+
+<div class="infobox">
+More information about extractors can be found in the <a href="https://docs.rs/axum/latest/axum/extract/index.html#the-order-of-extractors">axum documentation</a>.
+</div>
 
 # Testing
 

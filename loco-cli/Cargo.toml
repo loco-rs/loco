@@ -8,7 +8,6 @@ description = "loco cli website generator"
 license = "Apache-2.0"
 homepage = "https://docs.rs/loco-cli"
 documentation = "https://docs.rs/loco-cli"
-authors = ["Dotan Nahum <dotan@rng0.io>", "Elad Kaplan <kaplan.elad@gmail.com>"]
 
 [profile.release]
 strip = true
