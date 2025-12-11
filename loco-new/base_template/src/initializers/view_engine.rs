@@ -30,7 +30,7 @@ impl Initializer for ViewEngineInitializer {
             );
             info!("locales loaded");
 
-            engines::TeraView::build()?.post_process(move |tera| {
+            engines::TeraView::build_with_post_process(move |tera| {
                 tera.register_function("t", FluentLoader::new(arc.clone()));
                 Ok(())
             })?
