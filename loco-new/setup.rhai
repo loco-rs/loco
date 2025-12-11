@@ -85,11 +85,7 @@ if db {
 // =====================
 // Initializers Support
 // =====================
-<<<<<<< HEAD
 if settings.initializers?.view_engine ?? false {
-=======
-if settings.initializers != () && settings.initializers.view_engine {
->>>>>>> 2f4eb70c2e059723b0d956f5366260a3f25a900e
    gen.copy_file("src/initializers/view_engine.rs"); // Template for view engine initializer
 }
 
@@ -128,22 +124,14 @@ if background {
 // =====================
 // Server side
 // =====================
-<<<<<<< HEAD
 if settings.asset?.is_server_side ?? false {
-=======
-if settings.asset != () && settings.asset.is_server_side {
->>>>>>> 2f4eb70c2e059723b0d956f5366260a3f25a900e
     gen.copy_dir("assets");                        // Static assets directory
 }
 
 // =====================
 // Client side
 // =====================
-<<<<<<< HEAD
 if settings.asset?.is_client_side ?? false {
-=======
-if settings.asset != () && settings.asset.is_client_side {
->>>>>>> 2f4eb70c2e059723b0d956f5366260a3f25a900e
    gen.copy_dir("frontend");
    gen.create_file("frontend/dist/index.html", "this is a placeholder. please run your frontend build (npm build)");
 }
