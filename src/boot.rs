@@ -89,11 +89,8 @@ pub async fn start<H: Hooks>(
         let scheduler = scheduler::<H>(&boot.app_context, None, None, None)?;
         tokio::spawn(async move {
             let res = scheduler.run().await;
-            if res.is_err() {
-                error!(
-                    err = res.unwrap_err().to_string(),
-                    "error while running scheduler"
-                );
+            if let Err(err) = res {
+                error!(err = err.to_string(), "error while running scheduler");
             }
         });
     }
@@ -151,11 +148,8 @@ fn start_queue_worker(app_context: &AppContext, tags: Vec<String>) -> Result<Joi
         let cloned_queue = queue.clone();
         let handle = tokio::spawn(async move {
             let res = cloned_queue.run(tags).await;
-            if res.is_err() {
-                error!(
-                    err = res.unwrap_err().to_string(),
-                    "error while running worker"
-                );
+            if let Err(err) = res {
+                error!(err = err.to_string(), "error while running worker");
             }
         });
         return Ok(handle);

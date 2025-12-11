@@ -995,7 +995,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
 // Define route node structure with enhanced methods
 #[derive(Default)]
 struct RouteNode {
-    children: BTreeMap<String, RouteNode>,
+    children: BTreeMap<String, Self>,
     endpoints: Vec<(String, String)>,
 }
 
@@ -1221,13 +1221,10 @@ async fn handle_job_command<H: Hooks>(
     config: Config,
 ) -> crate::Result<()> {
     let app_context = create_context::<H>(environment, config).await?;
-    let queue = app_context.queue_provider.map_or_else(
-        || {
-            println!("queue not configured");
-            exit(1);
-        },
-        |queue_provider| queue_provider,
-    );
+    let queue = app_context.queue_provider.unwrap_or_else(|| {
+        println!("queue not configured");
+        exit(1);
+    });
 
     match &command {
         JobsCommands::Cancel { name } => queue.cancel_jobs(name).await,
