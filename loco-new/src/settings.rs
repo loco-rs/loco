@@ -3,7 +3,7 @@
 use std::env;
 
 use heck::ToSnakeCase;
-use rhai::{CustomType, Dynamic, TypeBuilder};
+use rhai::{CustomType, Dynamic, EvalAltResult, Position, TypeBuilder};
 use serde::{Deserialize, Serialize};
 
 use crate::{

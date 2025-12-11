@@ -13,12 +13,15 @@ use notify::{
 pub static DEFAULT_ASSET_FOLDER: &str = "assets";
 
 #[cfg(debug_assertions)]
+type PostProcessFnType = dyn Fn(&mut tera::Tera) -> Result<()> + Send + Sync;
+
+#[cfg(debug_assertions)]
 pub struct HotReloadingTeraEngine {
     pub engine: tera::Tera,
     pub view_path: PathBuf,
     pub file_watcher: Box<dyn notify::Watcher + Send + Sync>,
     pub dirty: bool,
-    pub post_process: Box<dyn Fn(&mut tera::Tera) -> Result<()> + Send + Sync>,
+    pub post_process: Box<PostProcessFnType>,
 }
 
 #[derive(Clone)]
@@ -91,7 +94,7 @@ impl TeraView {
             )));
         }
         let view_dir = path.as_ref();
-        let view_path: PathBuf = view_dir.join("**").join("*.html").into();
+        let view_path = view_dir.join("**").join("*.html");
 
         // Create instance
         let mut tera = Self::create_tera_instance(&view_path)?;
@@ -123,7 +126,7 @@ impl TeraView {
                 // Only handle sub-directories and .html files
                 if !paths
                     .iter()
-                    .all(|p| p.is_dir() || p.extension().map_or(false, |ext| ext == "html"))
+                    .all(|p| p.is_dir() || p.extension().is_some_and(|ext| ext == "html"))
                 {
                     return;
                 }
