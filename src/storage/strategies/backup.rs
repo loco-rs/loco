@@ -70,11 +70,11 @@ impl StorageStrategy for BackupStrategy {
                 match storage.as_store_err(secondary_store) {
                     Ok(store) => {
                         if let Err(err) = store.upload(path, content).await {
-                            collect_errors.insert(secondary_store.to_string(), err.to_string());
+                            collect_errors.insert(secondary_store.clone(), err.to_string());
                         }
                     }
                     Err(err) => {
-                        collect_errors.insert(secondary_store.to_string(), err.to_string());
+                        collect_errors.insert(secondary_store.clone(), err.to_string());
                     }
                 };
             }
@@ -109,11 +109,11 @@ impl StorageStrategy for BackupStrategy {
                 match storage.as_store_err(secondary_store) {
                     Ok(store) => {
                         if let Err(err) = store.delete(path).await {
-                            collect_errors.insert(secondary_store.to_string(), err.to_string());
+                            collect_errors.insert(secondary_store.clone(), err.to_string());
                         }
                     }
                     Err(err) => {
-                        collect_errors.insert(secondary_store.to_string(), err.to_string());
+                        collect_errors.insert(secondary_store.clone(), err.to_string());
                     }
                 };
             }
@@ -145,11 +145,11 @@ impl StorageStrategy for BackupStrategy {
                 match storage.as_store_err(secondary_store) {
                     Ok(store) => {
                         if let Err(err) = store.rename(from, to).await {
-                            collect_errors.insert(secondary_store.to_string(), err.to_string());
+                            collect_errors.insert(secondary_store.clone(), err.to_string());
                         }
                     }
                     Err(err) => {
-                        collect_errors.insert(secondary_store.to_string(), err.to_string());
+                        collect_errors.insert(secondary_store.clone(), err.to_string());
                     }
                 };
             }
@@ -178,11 +178,11 @@ impl StorageStrategy for BackupStrategy {
                 match storage.as_store_err(secondary_store) {
                     Ok(store) => {
                         if let Err(err) = store.copy(from, to).await {
-                            collect_errors.insert(secondary_store.to_string(), err.to_string());
+                            collect_errors.insert(secondary_store.clone(), err.to_string());
                         }
                     }
                     Err(err) => {
-                        collect_errors.insert(secondary_store.to_string(), err.to_string());
+                        collect_errors.insert(secondary_store.clone(), err.to_string());
                     }
                 };
             }

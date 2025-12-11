@@ -71,7 +71,7 @@ pub fn print_banner(boot_result: &BootResult, server_config: &ServeParams) {
         modes.push("server".green());
         servingline.push(format!(
             "listening on http://{}:{}",
-            server_config.binding.to_string().green(),
+            server_config.binding.clone().green(),
             server_config.port.to_string().green()
         ));
     }
