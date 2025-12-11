@@ -13,6 +13,28 @@
 - Feat: add --without-tz flag for controlling timestamp generation. [https://github.com/loco-rs/loco/pull/1592](https://github.com/loco-rs/loco/pull/1592)
 - Support extra fields when generating the join table migration. [https://github.com/loco-rs/loco/pull/1595](https://github.com/loco-rs/loco/pull/1595)
 
+### Breaking Changes
+
+In file `src/initializers/view_engine.rs`, modify the code lines in `after_routes`:
+
+Before
+
+```rust
+async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+                :
+    engines::TeraView::build()?.post_process(move |tera| {
+                :
+```
+
+After (use `build_with_post_process` instead of `post_process`)
+
+```rust
+async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+                :
+    engines::TeraView::build_with_post_process(move |tera| {
+                :
+}
+```
 
 ## v0.16.3
 - Support nullable foreign keys with `references?` syntax. [https://github.com/loco-rs/loco/pull/1544](https://github.com/loco-rs/loco/pull/1544)
