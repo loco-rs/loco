@@ -259,18 +259,6 @@ mod rhai_settings_extensions {
     pub const fn is_server_side(rendering_method: &mut settings::Asset) -> bool {
         matches!(rendering_method.kind, AssetsOption::Serverside)
     }
-
-    /// Checks if the rendering method is set to server-side rendering (direct access).
-    #[rhai_fn(global, get = "is_server_side", pure)]
-    pub const fn is_server_side_direct(rendering_method: &mut settings::Asset) -> bool {
-        matches!(rendering_method.kind, AssetsOption::Serverside)
-    }
-
-    /// Checks if the rendering method is set to client-side rendering (direct access).
-    #[rhai_fn(global, get = "is_client_side", pure)]
-    pub const fn is_client_side_direct(rendering_method: &mut settings::Asset) -> bool {
-        matches!(rendering_method.kind, AssetsOption::Clientside)
-    }
 }
 
 #[cfg(test)]
