@@ -86,7 +86,7 @@ impl EmailSender {
                 messages: stub
                     .messages()
                     .iter()
-                    .map(|(_, content)| content.to_string())
+                    .map(|(_, content)| content.clone())
                     .collect(),
             };
         }
