@@ -70,11 +70,11 @@ impl AppRoutes {
                 let uri_parts = controller
                     .prefix
                     .as_ref()
-                    .map_or_else(Vec::new, |prefix| vec![prefix.to_string()]);
+                    .map_or_else(Vec::new, |prefix| vec![prefix.clone()]);
 
                 controller.handlers.iter().map(move |handler| {
                     let mut parts = uri_parts.clone();
-                    parts.push(handler.uri.to_string());
+                    parts.push(handler.uri.clone());
                     let joined_parts = parts.join("/");
 
                     let normalized = get_normalize_url().replace_all(&joined_parts, "/");
