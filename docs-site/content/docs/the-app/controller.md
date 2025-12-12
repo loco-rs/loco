@@ -1218,7 +1218,7 @@ impl From<notes::Model> for ListResponse {
 
 impl PaginationResponse {
     #[must_use]
-    pub fn response(data: PaginatedResponse<notes::Model>, pagination_query: &PaginationQuery) -> Pager<Vec<ListResponse>> {
+    pub fn response(data: PageResponse<notes::Model>, pagination_query: &PaginationQuery) -> Pager<Vec<ListResponse>> {
         Pager {
             results: data
                 .page

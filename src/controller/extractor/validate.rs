@@ -317,12 +317,6 @@ mod tests {
     }
 
     #[derive(Debug, Serialize, Deserialize, Validate)]
-    struct TestPathParams {
-        #[validate(range(min = 1, message = "id must be at least 1"))]
-        id: i32,
-    }
-
-    #[derive(Debug, Serialize, Deserialize, Validate)]
     struct TestQueryParams {
         #[validate(length(min = 3, message = "username must be at least 3 characters"))]
         username: String,
