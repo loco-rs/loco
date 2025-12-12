@@ -574,8 +574,7 @@ impl Queue {
             Self::Postgres(_, _, _, _) => {
                 let jobs: Vec<pg::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.to_string(), None, job.data, None)
-                        .await?;
+                    self.enqueue(job.name.clone(), None, job.data, None).await?;
                 }
 
                 Ok(())
@@ -584,8 +583,7 @@ impl Queue {
             Self::Sqlite(_, _, _, _) => {
                 let jobs: Vec<sqlt::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.to_string(), None, job.data, None)
-                        .await?;
+                    self.enqueue(job.name.clone(), None, job.data, None).await?;
                 }
                 Ok(())
             }
@@ -593,8 +591,7 @@ impl Queue {
             Self::Redis(_, _, _, _) => {
                 let jobs: Vec<redis::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.to_string(), None, job.data, None)
-                        .await?;
+                    self.enqueue(job.name.clone(), None, job.data, None).await?;
                 }
                 Ok(())
             }

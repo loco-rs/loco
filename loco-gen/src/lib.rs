@@ -90,7 +90,7 @@ impl Mappings {
             field,
             allow_fields
                 .iter()
-                .map(|&s| s.to_string())
+                .map(|&s| s.clone())
                 .collect::<Vec<String>>()
                 .join(",")
         ))
