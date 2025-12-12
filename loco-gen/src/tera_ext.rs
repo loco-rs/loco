@@ -61,7 +61,7 @@ impl tera::Function for FormField {
                     is_required,
                     input_class,
                     Some(
-                        r#"pattern="[0-9A-Fa-f]{{8}}-[0-9A-Fa-f]{{4}}-[0-9A-Fa-f]{{4}}-[0-9A-Fa-f]{{4}}-[0-9A-Fa-f]{{12}}""#,
+                        r#"pattern="[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}""#,
                     ),
                 );
                 format!(
@@ -363,7 +363,7 @@ pub mod tests {
         for field in &mapping.field_types {
             let rust_fields = match &field.rust {
                 crate::RustType::String(rust_field) => {
-                    HashMap::from([(field.name.to_string(), rust_field.to_string())])
+                    HashMap::from([(field.name.clone(), rust_field.clone())])
                 }
                 crate::RustType::Map(data) => data.clone(),
             };
