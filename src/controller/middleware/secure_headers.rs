@@ -121,7 +121,12 @@ impl SecureHeader {
     ///
     /// Applies the preset headers and any custom overrides.
     fn as_headers(&self) -> Result<Vec<(HeaderName, HeaderValue)>> {
-        let mut headers = vec![];
+        let mut pairs = BTreeMap::new();
+        if let Some(overrides) = &self.overrides {
+            for (key, value) in overrides {
+                pairs.insert(key, value);
+            }
+        }
 
         let preset = &self.preset;
         let p = get_presets().get(preset).ok_or_else(|| {
@@ -130,29 +135,20 @@ impl SecureHeader {
             ))
         })?;
 
-        Self::push_headers(&mut headers, p)?;
-        if let Some(overrides) = &self.overrides {
-            Self::push_headers(&mut headers, overrides)?;
+        for (key, value) in p {
+            if pairs.contains_key(key) {
+                continue;
+            }
+            pairs.insert(key, value);
+        }
+        let mut headers = Vec::with_capacity(pairs.len());
+        for (key, value) in pairs {
+            headers.push((
+                HeaderName::from_bytes(key.as_bytes()).map_err(Box::from)?,
+                HeaderValue::from_str(value).map_err(Box::from)?,
+            ))
         }
         Ok(headers)
-    }
-
-    /// Helper function to push headers into a mutable vector.
-    ///
-    /// This function takes a map of header names and values, converting them
-    /// into valid HTTP headers and adding them to the provided `headers`
-    /// vector.
-    fn push_headers(
-        headers: &mut Vec<(HeaderName, HeaderValue)>,
-        hm: &BTreeMap<String, String>,
-    ) -> Result<()> {
-        for (k, v) in hm {
-            headers.push((
-                HeaderName::from_bytes(k.clone().as_bytes()).map_err(Box::from)?,
-                HeaderValue::from_str(v.clone().as_str()).map_err(Box::from)?,
-            ));
-        }
-        Ok(())
     }
 }
 
