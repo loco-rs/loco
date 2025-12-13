@@ -146,7 +146,7 @@ impl SecureHeader {
             headers.push((
                 HeaderName::from_bytes(key.as_bytes()).map_err(Box::from)?,
                 HeaderValue::from_str(value).map_err(Box::from)?,
-            ))
+            ));
         }
         Ok(headers)
     }
