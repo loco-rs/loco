@@ -17,6 +17,13 @@ use crate::prelude::BackgroundWorker;
 
 pub const DEFAULT_FROM_SENDER: &str = "System <system@example.com>";
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EmailHeaders {
+    pub references: Option<String>,
+    pub in_reply_to: Option<String>,
+    pub message_id: Option<String>,
+}
+
 /// The arguments struct for specifying email details such as sender, recipient,
 /// reply-to, and locals.
 #[derive(Debug, Clone, Default)]
@@ -27,6 +34,7 @@ pub struct Args {
     pub locals: serde_json::Value,
     pub bcc: Option<String>,
     pub cc: Option<String>,
+    pub headers: Option<EmailHeaders>,
 }
 
 /// The structure representing an email details.
@@ -48,6 +56,8 @@ pub struct Email {
     pub bcc: Option<String>,
     /// CC header to message
     pub cc: Option<String>,
+    /// Custom headers for the email (e.g., References, In-Reply-To, Message-ID)
+    pub headers: Option<EmailHeaders>,
 }
 
 /// The options struct for configuring the email sender.
@@ -98,6 +108,7 @@ pub trait Mailer {
                 html: content.html,
                 bcc: args.bcc.clone(),
                 cc: args.cc.clone(),
+                headers: args.headers.clone(),
             },
         )
         .await
