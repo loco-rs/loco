@@ -264,6 +264,8 @@ pub enum ColType {
     Uuid,
     UuidNull,
     UuidUniq,
+    UuidWithDefault(String),
+    UuidUniqWithDefault(String),
     VarBitLen(u32),
     VarBitLenNull(u32),
     VarBitLenUniq(u32),
@@ -456,6 +458,8 @@ impl ColType {
             Self::StringWithDefault(v) => string(name).default(v.clone()).take(),
             Self::StringLenWithDefault(len, v) => string_len(name, *len).default(v.clone()).take(),
             Self::TextWithDefault(v) => text(name).default(v.clone()).take(),
+            Self::UuidWithDefault(v) => uuid(name).default(Expr::cust(v.clone())).take(),
+            Self::UuidUniqWithDefault(v) => uuid_uniq(name).default(Expr::cust(v.clone())).take(),
         }
     }
 }
