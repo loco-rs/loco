@@ -355,7 +355,7 @@ async fn has_id_column(
         }
         DatabaseBackend::MySql => {
             return Err(Error::Message(
-                "Unsupported database backend: MySQL".to_string(),
+                "Unsupported database backend for has_id_column: MySQL".to_string(),
             ))
         }
     };
@@ -397,7 +397,7 @@ async fn is_auto_increment(
         }
         DatabaseBackend::MySql => {
             return Err(Error::Message(
-                "Unsupported database backend: MySQL".to_string(),
+                "Unsupported database backend for is_auto_increment: MySQL".to_string(),
             ))
         }
     };
@@ -450,7 +450,7 @@ pub async fn reset_autoincrement(
         }
         DatabaseBackend::MySql => {
             return Err(Error::Message(
-                "Unsupported database backend: MySQL".to_string(),
+                "Unsupported database backend for reset_autoincrement: MySQL".to_string(),
             ))
         }
     }
@@ -765,7 +765,7 @@ pub async fn get_tables(db: &DatabaseConnection) -> AppResult<Vec<String>> {
     let query = match db.get_database_backend() {
         DatabaseBackend::MySql => {
             return Err(Error::Message(
-                "Unsupported database backend: MySQL".to_string(),
+                "Unsupported database backend for get_tables: MySQL".to_string(),
             ))
         }
         DatabaseBackend::Postgres => {
