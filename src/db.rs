@@ -368,9 +368,6 @@ async fn has_id_column(
             
             // MySQL returns count as i64 in many drivers
             result.is_some_and(|row| row.try_get::<i64>("", "count").unwrap_or(0) > 0)
-            /* return Err(Error::Message(
-                "Unsupported database backend for has_id_column: MySQL".to_string(),
-            )) */
         }
     };
 
@@ -424,9 +421,7 @@ async fn is_auto_increment(
             
             // Check if count > 0. Note: MySQL drivers often return i64 for COUNT(*)
             result.is_some_and(|row| row.try_get::<i64>("", "count").unwrap_or(0) > 0)
-           /*  return Err(Error::Message(
-                "Unsupported database backend for is_auto_increment: MySQL".to_string(),
-            )) */
+
         }
     };
     Ok(result)
@@ -486,9 +481,7 @@ pub async fn reset_autoincrement(
                 query_str,
             ))
             .await?;
-           /*  return Err(Error::Message(
-                "Unsupported database backend for reset_autoincrement: MySQL".to_string(),
-            )) */
+
         }
     }
     Ok(())
