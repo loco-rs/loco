@@ -1,5 +1,6 @@
-use chrono::{Duration, Utc};
 use std::path::{Path, PathBuf};
+
+use chrono::{Duration, Utc};
 
 pub const MIGRATION_SRC_LIB: &str = r"
 #![allow(elided_lifetimes_in_paths)]

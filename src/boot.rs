@@ -42,8 +42,8 @@ pub enum StartMode {
     ServerAndWorker,
     /// Pulling job worker and execute them
     WorkerOnly {
-        /// Specifies that the worker should only handle jobs associated with one of these tags.
-        /// If empty, the worker handles all jobs.
+        /// Specifies that the worker should only handle jobs associated with
+        /// one of these tags. If empty, the worker handles all jobs.
         tags: Vec<String>,
     },
     /// Run the app with all available components in the same process.
@@ -198,7 +198,8 @@ pub async fn run_task<H: Hooks>(
     Ok(())
 }
 
-/// Initializes a new scheduler instance based on the provided configuration and context.
+/// Initializes a new scheduler instance based on the provided configuration and
+/// context.
 fn scheduler<H: Hooks>(
     app_context: &AppContext,
     config: Option<&PathBuf>,
@@ -332,7 +333,7 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
             tracing::warn!(reset = reset, from = %from.display(), "seed:");
 
             if dump || dump_tables.is_some() {
-                db::dump_tables(&app_context.db, from.as_path(), dump_tables).await?;
+                db::run_app_dump::<H>(app_context, from.as_path(), &dump_tables).await?;
             } else {
                 if reset {
                     db::reset::<M>(&app_context.db).await?;
@@ -484,7 +485,8 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
     }
 }
 
-/// Sets up the application's routes based on the provided initializers and hooks.
+/// Sets up the application's routes based on the provided initializers and
+/// hooks.
 async fn setup_routes<H: Hooks>(
     app_context: &AppContext,
     initializers: &[Box<dyn Initializer>],

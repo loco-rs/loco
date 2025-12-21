@@ -1,25 +1,29 @@
 //! Doctor module for health checks and diagnostics.
 //!
-//! This module provides health checks for various components of a Loco application.
+//! This module provides health checks for various components of a Loco
+//! application.
 //!
 //! # Initializer Health Checks
 //!
-//! Initializers can now provide their own health checks by implementing the `check` method
-//! on the `Initializer` trait. This allows each initializer to validate its configuration
-//! and test its connections during the doctor command.
+//! Initializers can now provide their own health checks by implementing the
+//! `check` method on the `Initializer` trait. This allows each initializer to
+//! validate its configuration and test its connections during the doctor
+//! command.
 //!
-//! When you run `cargo loco doctor`, any initializers that implement the `check` method
-//! will have their health checks executed and displayed in the output.
+//! When you run `cargo loco doctor`, any initializers that implement the
+//! `check` method will have their health checks executed and displayed in the
+//! output.
+
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::Write,
+    process::Command,
+    sync::OnceLock,
+};
 
 use colored::Colorize;
 use regex::Regex;
 use semver::Version;
-use std::fmt::Write;
-use std::{
-    collections::{BTreeMap, HashMap},
-    process::Command,
-    sync::OnceLock,
-};
 
 use crate::{
     bgworker,

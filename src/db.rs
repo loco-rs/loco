@@ -3,6 +3,28 @@
 //! This module defines functions and operations related to the application's
 //! database interactions.
 
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::Write as FmtWrites,
+    fs::{self, File},
+    io::{BufReader, BufWriter},
+    path::Path,
+    sync::OnceLock,
+    time::Duration,
+};
+
+use futures_util::TryStreamExt;
+use regex::Regex;
+use sea_orm::{
+    ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
+    DatabaseConnection, DbBackend, DbConn, DbErr, EntityName, EntityTrait, IntoActiveModel,
+    Statement,
+};
+use sea_orm_migration::MigratorTrait;
+use serde::ser::Serializer;
+use serde_json::{json, Deserializer};
+use tracing::info;
+
 use super::Result as AppResult;
 use crate::{
     app::{AppContext, Hooks},
@@ -10,24 +32,6 @@ use crate::{
     config, doctor, env_vars,
     errors::Error,
 };
-use chrono::{DateTime, Utc};
-use regex::Regex;
-use sea_orm::{
-    ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseBackend,
-    DatabaseConnection, DbBackend, DbConn, DbErr, EntityTrait, IntoActiveModel, Statement,
-};
-use sea_orm_migration::MigratorTrait;
-use std::fmt::Write as FmtWrites;
-use std::{
-    collections::{BTreeMap, HashMap},
-    fs,
-    fs::File,
-    io::Write,
-    path::Path,
-    sync::OnceLock,
-    time::Duration,
-};
-use tracing::info;
 
 pub static EXTRACT_DB_NAME: OnceLock<Regex> = OnceLock::new();
 const IGNORED_TABLES: &[&str] = &[
@@ -264,8 +268,6 @@ pub async fn reset<M: MigratorTrait>(db: &DatabaseConnection) -> Result<(), sea_
     migrate::<M>(db).await
 }
 
-use sea_orm::EntityName;
-use serde_json::{json, Value};
 /// Seed the database with data from a specified file.
 /// Seeds open the file path and insert all file content into the DB.
 ///
@@ -285,11 +287,13 @@ where
     <A as ActiveModelTrait>::Entity: EntityName,
 {
     // Deserialize YAML file into a vector of JSON values
-    let seed_data: Vec<Value> = serde_yaml::from_reader(File::open(path)?)?;
+    let read_buffer = BufReader::new(File::open(path)?);
+    let de = Deserializer::from_reader(read_buffer);
+    let items = de.into_iter::<<<A as ActiveModelTrait>::Entity as EntityTrait>::Model>();
 
     // Insert each row
-    for row in seed_data {
-        let model = A::from_json(row)?;
+    for row in items {
+        let model = row?.into_active_model();
         A::Entity::insert(model).exec(db).await?;
     }
 
@@ -707,6 +711,30 @@ where
     Ok(())
 }
 
+/// Dump entity data from database to a YAML file using streaming serialization
+///
+/// # Errors
+///
+/// Returns a [`AppResult`] if an error occurs during database query, file
+/// creation or serialization
+pub async fn dump<A>(db: &DatabaseConnection, path: &Path) -> crate::Result<()>
+where
+    <<A as ActiveModelTrait>::Entity as EntityTrait>::Model: serde::Serialize,
+    A: ActiveModelTrait + Send + Sync,
+    <A as ActiveModelTrait>::Entity: EntityName,
+{
+    let file = File::create(path)?;
+    let write_buffer = BufWriter::new(file);
+    let mut ser = serde_json::Serializer::new(write_buffer);
+
+    let mut stream = A::Entity::find().stream(db).await?;
+    while let Some(item) = stream.try_next().await? {
+        ser.serialize_some(&item)?;
+    }
+
+    Ok(())
+}
+
 /// Execute seed from the given path
 ///
 /// # Errors
@@ -714,6 +742,19 @@ where
 /// when seed process is fails
 pub async fn run_app_seed<H: Hooks>(ctx: &AppContext, path: &Path) -> AppResult<()> {
     H::seed(ctx, path).await
+}
+
+/// Execute dump to the given path
+///
+/// # Errors
+///
+/// when dump process fails
+pub async fn run_app_dump<H: Hooks>(
+    ctx: &AppContext,
+    path: &Path,
+    tables: &Option<Vec<String>>,
+) -> AppResult<()> {
+    H::dump(ctx, path, tables).await
 }
 
 /// Create a Postgres database from the given db name.
@@ -803,123 +844,6 @@ pub async fn get_tables(db: &DatabaseConnection) -> AppResult<Vec<String>> {
             }
         })
         .collect())
-}
-
-/// Dumps the contents of specified database tables into YAML files.
-///
-/// # Errors
-/// This function retrieves data from all tables in the database, filters them
-/// if `only_tables` is provided, and writes each table's content to a separate
-/// YAML file in the specified directory.
-///
-/// Returns an error if the operation fails for any reason or could not save the
-/// content into a file.
-#[allow(clippy::cognitive_complexity)]
-pub async fn dump_tables(
-    db: &DatabaseConnection,
-    to: &Path,
-    only_tables: Option<Vec<String>>,
-) -> AppResult<()> {
-    tracing::debug!("getting tables from the database");
-
-    let tables = get_tables(db).await?;
-    tracing::info!(tables = ?tables, "found tables");
-
-    for table in tables {
-        if let Some(ref only_tables) = only_tables {
-            if !only_tables.contains(&table) {
-                tracing::info!(table, "skipping table as it is not in the specified list");
-                continue;
-            }
-        }
-
-        tracing::info!(table, "get table data");
-
-        let data_result = db
-            .query_all(Statement::from_string(
-                db.get_database_backend(),
-                format!(r#"SELECT * FROM "{table}""#),
-            ))
-            .await?;
-
-        tracing::info!(
-            table,
-            rows_fetched = data_result.len(),
-            "fetched rows from table"
-        );
-
-        let mut table_data: Vec<HashMap<String, serde_json::Value>> = Vec::new();
-
-        if !to.exists() {
-            tracing::info!("the specified dump folder does not exist. creating the folder now");
-            fs::create_dir_all(to)?;
-        }
-
-        for row in data_result {
-            let mut row_data: HashMap<String, serde_json::Value> = HashMap::new();
-
-            for col_name in row.column_names() {
-                let value_result = row
-                    .try_get::<String>("", &col_name)
-                    .map(serde_json::Value::String)
-                    .or_else(|_| {
-                        row.try_get::<i8>("", &col_name)
-                            .map(serde_json::Value::from)
-                    })
-                    .or_else(|_| {
-                        row.try_get::<i16>("", &col_name)
-                            .map(serde_json::Value::from)
-                    })
-                    .or_else(|_| {
-                        row.try_get::<i32>("", &col_name)
-                            .map(serde_json::Value::from)
-                    })
-                    .or_else(|_| {
-                        row.try_get::<i64>("", &col_name)
-                            .map(serde_json::Value::from)
-                    })
-                    .or_else(|_| {
-                        row.try_get::<f32>("", &col_name)
-                            .map(serde_json::Value::from)
-                    })
-                    .or_else(|_| {
-                        row.try_get::<f64>("", &col_name)
-                            .map(serde_json::Value::from)
-                    })
-                    .or_else(|_| {
-                        row.try_get::<uuid::Uuid>("", &col_name)
-                            .map(|v| serde_json::Value::String(v.to_string()))
-                    })
-                    .or_else(|_| {
-                        row.try_get::<DateTime<Utc>>("", &col_name)
-                            .map(|v| serde_json::Value::String(v.to_rfc3339()))
-                    })
-                    .or_else(|_| row.try_get::<serde_json::Value>("", &col_name))
-                    .or_else(|_| {
-                        row.try_get::<bool>("", &col_name)
-                            .map(serde_json::Value::Bool)
-                    })
-                    .ok();
-
-                if let Some(value) = value_result {
-                    row_data.insert(col_name, value);
-                }
-            }
-            table_data.push(row_data);
-        }
-
-        let data = serde_yaml::to_string(&table_data)?;
-
-        let file_db_content_path = to.join(format!("{table}.yaml"));
-
-        let mut file = File::create(&file_db_content_path)?;
-        file.write_all(data.as_bytes())?;
-        tracing::info!(table, file_db_content_path = %file_db_content_path.display(), "table data written to YAML file");
-    }
-
-    tracing::info!("dumping tables process completed successfully");
-
-    Ok(())
 }
 
 /// dumps the db schema into file.
@@ -1064,7 +988,8 @@ mod tests {
             assert_eq!(
                 actual_value,
                 expected_value.to_lowercase(),
-                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got '{actual_value}'"
+                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got \
+                 '{actual_value}'"
             );
         }
     }
@@ -1102,7 +1027,8 @@ mod tests {
             assert_eq!(
                 actual_value,
                 expected_value.to_lowercase(),
-                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got '{actual_value}'"
+                "PRAGMA {pragma} value mismatch - expected '{expected_value}', got \
+                 '{actual_value}'"
             );
         }
     }
@@ -1124,7 +1050,8 @@ mod tests {
 
         assert_eq!(db.get_database_backend(), DatabaseBackend::Postgres);
 
-        let query = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'test_run_on_start'";
+        let query = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' \
+                     AND table_name = 'test_run_on_start'";
 
         let value = get_value(&db, query).await;
         assert_eq!(value, "1", "The test_run_on_start table was not created");
@@ -1132,8 +1059,9 @@ mod tests {
 
     #[cfg(test)]
     mod extract_db_name_tests {
-        use super::*;
         use rstest::rstest;
+
+        use super::*;
 
         #[rstest]
         #[case("postgres://localhost:5432/dbname", "dbname")]
@@ -1344,7 +1272,10 @@ mod tests {
         db.execute(Statement::from_string(
             backend,
             // AUTOINCREMENT keyword is important for SQLite's sequence behavior
-            format!("CREATE TABLE {table_with_auto_id} (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);"),
+            format!(
+                "CREATE TABLE {table_with_auto_id} (id INTEGER PRIMARY KEY AUTOINCREMENT, name \
+                 TEXT);"
+            ),
         ))
         .await
         .expect("Failed to create table with auto id");
@@ -1403,7 +1334,8 @@ mod tests {
             .expect("Failed to check auto-increment");
         assert!(
             !is_auto,
-            "Table '{table_with_id_not_auto}' should NOT be auto-increment, but check returned true"
+            "Table '{table_with_id_not_auto}' should NOT be auto-increment, but check returned \
+             true"
         );
 
         let table_with_serial_id = "test_table_serial_id_auto";
@@ -1583,8 +1515,8 @@ mod tests {
         let cmd = EntityCmd::new(&get_database_config());
 
         let expected = "generate entity --database-url sqlite::memory: --ignore-tables \
-            seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock --output-dir \
-            src/models/_entities --with-copy-enums --with-serde both";
+                        seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock \
+                        --output-dir src/models/_entities --with-copy-enums --with-serde both";
         assert_eq!(cmd.command().join(" "), expected);
     }
 
@@ -1601,9 +1533,9 @@ model-extra-derives = "ts_rs::Ts"
         let cmd = EntityCmd::merge_with_config(&get_database_config(), &config);
 
         let expected = "generate entity --database-url sqlite::memory: --ignore-tables \
-            seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock,table1,table2 \
-            --max-connections 1 --model-extra-derives ts_rs::Ts --output-dir src/models/_entities \
-            --with-copy-enums --with-serde none";
+                        seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock,\
+                        table1,table2 --max-connections 1 --model-extra-derives ts_rs::Ts \
+                        --output-dir src/models/_entities --with-copy-enums --with-serde none";
         assert_eq!(cmd.command().join(" "), expected);
     }
 }

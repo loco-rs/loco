@@ -1,5 +1,7 @@
-use std::pin::Pin;
-use std::task::{Context, Poll};
+use std::{
+    pin::Pin,
+    task::{Context, Poll},
+};
 
 use bytes::Bytes;
 use futures_util::{Stream, StreamExt};
@@ -32,7 +34,8 @@ impl BytesStream {
     }
 
     /// Collect the entire stream into a single `Bytes` buffer.
-    /// This method should be used carefully as it loads the entire content into memory.
+    /// This method should be used carefully as it loads the entire content into
+    /// memory.
     ///
     /// # Errors
     ///
