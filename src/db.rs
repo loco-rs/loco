@@ -354,9 +354,23 @@ async fn has_id_column(
             result.is_some_and(|row| row.try_get::<i32>("", "count").unwrap_or(0) > 0)
         }
         DatabaseBackend::MySql => {
-            return Err(Error::Message(
+
+            let query = format!(
+                "SELECT COUNT(*) as count 
+                 FROM information_schema.columns 
+                 WHERE table_schema = DATABASE() 
+                 AND table_name = '{table_name}' 
+                 AND column_name = 'id'"
+            );
+            let result = db
+                .query_one(Statement::from_string(DatabaseBackend::MySql, query))
+                .await?;
+            
+            // MySQL returns count as i64 in many drivers
+            result.is_some_and(|row| row.try_get::<i64>("", "count").unwrap_or(0) > 0)
+            /* return Err(Error::Message(
                 "Unsupported database backend for has_id_column: MySQL".to_string(),
-            ))
+            )) */
         }
     };
 
