@@ -1,6 +1,44 @@
 # Changelog
 
-## Unreleased
+
+
+##  Unreleased
+- Fix `cargo fmt` error in `loco-new` ([#1669](https://github.com/loco-rs/loco/pull/1669))
+- Fix UUID pattern in form field generation ([#1665](https://github.com/loco-rs/loco/pull/1665))
+- Add tests for auth extractor ([#1671](https://github.com/loco-rs/loco/pull/1671))
+- Fix Clippy warnings for Rust 1.92 ([#1705](https://github.com/loco-rs/loco/pull/1705))
+- Add email headers support to mailer ([#1700](https://github.com/loco-rs/loco/pull/1700))
+- Wrap `TeraView` in `Arc` to reduce release binary size ([#1703](https://github.com/loco-rs/loco/pull/1703))
+- Allow overriding a secure header ([#1659](https://github.com/loco-rs/loco/pull/1659))
+- Add “create user” task ([#1670](https://github.com/loco-rs/loco/pull/1670))
+- Add `UuidUniqWithDefault` and `UuidWithDefault` types ([#1642](https://github.com/loco-rs/loco/pull/1642))
+- Refactor users model to reuse `find_by_api_key` in `Authenticable` ([#1706](https://github.com/loco-rs/loco/pull/1706))
+- Split error detail generic parameters ([#1709](https://github.com/loco-rs/loco/pull/1709))
+- Update `loco-new` for new Rhai version ([#1704](https://github.com/loco-rs/loco/pull/1704))
+
+### Breaking Changes
+In file `src/initializers/view_engine.rs`, modify the code lines in `after_routes`:
+
+Before
+
+```rust
+async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+                :
+    engines::TeraView::build()?.post_process(move |tera| {
+                :
+```
+
+After (use `build_with_post_process` instead of `post_process`)
+
+```rust
+async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
+                :
+    engines::TeraView::build_with_post_process(move |tera| {
+                :
+}
+```
+
+
 
 ## v0.16.4 
 - Feat: decouple JWT authentication from database dependency. [https://github.com/loco-rs/loco/pull/1546](https://github.com/loco-rs/loco/pull/1546)
@@ -23,7 +61,6 @@
 - Add streaming support for both download and upload. [https://github.com/loco-rs/loco/pull/1610](https://github.com/loco-rs/loco/pull/1610)
 - Fix Clippy for Rust 1.90. [https://github.com/loco-rs/loco/pull/1630](https://github.com/loco-rs/loco/pull/1630)
 - Loco CLI: Update rhai version. [https://github.com/loco-rs/loco/pull/1631](https://github.com/loco-rs/loco/pull/1631)
-
 
 
 ## v0.16.3

@@ -43,11 +43,11 @@
 //!         AppRoutes::with_default_routes()
 //!             // .add_route(controllers::notes::routes())
 //!     }
-//!     
+//!
 //!     async fn boot(mode: StartMode, environment: &Environment, config: Config) -> Result<BootResult>{
 //!          create_app::<Self, Migrator>(mode, environment, config).await
 //!     }
-//!     
+//!
 //!     async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {
 //!         Ok(())
 //!     }
@@ -144,7 +144,10 @@ pub struct ErrorDetail {
 impl ErrorDetail {
     /// Create a new `ErrorDetail` with the specified error and description.
     #[must_use]
-    pub fn new<T: Into<String> + AsRef<str>>(error: T, description: T) -> Self {
+    pub fn new<T1: Into<String> + AsRef<str>, T2: Into<String> + AsRef<str>>(
+        error: T1,
+        description: T2,
+    ) -> Self {
         let description = (!description.as_ref().is_empty()).then(|| description.into());
         Self {
             error: Some(error.into()),

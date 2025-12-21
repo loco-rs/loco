@@ -265,7 +265,7 @@ pub async fn reset<M: MigratorTrait>(db: &DatabaseConnection) -> Result<(), sea_
 }
 
 use sea_orm::EntityName;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 /// Seed the database with data from a specified file.
 /// Seeds open the file path and insert all file content into the DB.
 ///
@@ -287,7 +287,7 @@ where
     // Deserialize YAML file into a vector of JSON values
     let seed_data: Vec<Value> = serde_yaml::from_reader(File::open(path)?)?;
 
-    // Insert each row at once
+    // Insert each row
     let mut seed_models = Vec::new();
     for row in seed_data {
         let model = A::from_json(row)?;

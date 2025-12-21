@@ -69,6 +69,7 @@ if db {
         gen.copy_file("migration/src/m20220101_000001_users.rs");  // Users migration file
         gen.copy_file("src/models/_entities/users.rs");             // Users entity definition
         gen.copy_file("src/models/users.rs");                      // Users model logic
+         gen.copy_file("src/tasks/user_create.rs");                      
 
         // Fixtures and test setup for authentication
         gen.copy_dir("src/fixtures");                              // Database fixtures directory
@@ -77,6 +78,8 @@ if db {
         gen.copy_dir("tests/models/snapshots");                    // Test snapshots for models
         gen.copy_template("tests/models/users.rs.t");              // User model test template
         gen.copy_template("tests/requests/prepare_data.rs.t");     // Data preparation template for tests
+        gen.copy_template("tests/tasks/user_create.rs.t");     
+
     }
    
    gen.copy_template("examples/playground.rs.t");                 // Example playground template with DB setup
@@ -85,7 +88,7 @@ if db {
 // =====================
 // Initializers Support
 // =====================
-if settings.initializers != () && settings.initializers.view_engine {
+if settings.initializers?.view_engine ?? false {
    gen.copy_file("src/initializers/view_engine.rs"); // Template for view engine initializer
 }
 
@@ -124,14 +127,14 @@ if background {
 // =====================
 // Server side
 // =====================
-if settings.asset != () && settings.asset.is_server_side {
+if settings.asset?.is_server_side ?? false {
     gen.copy_dir("assets");                        // Static assets directory
 }
 
 // =====================
 // Client side
 // =====================
-if settings.asset != () && settings.asset.is_client_side {
+if settings.asset?.is_client_side ?? false {
    gen.copy_dir("frontend");
    gen.create_file("frontend/dist/index.html", "this is a placeholder. please run your frontend build (npm build)");
 }
