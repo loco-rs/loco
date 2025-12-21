@@ -65,6 +65,7 @@ colored = { workspace = true }
 sea-orm = { version = "1.1.0", features = [
     "sqlx-postgres",        # `DATABASE_DRIVER` feature
     "sqlx-sqlite",
+    "sqlx-mysql",
     "runtime-tokio-rustls",
     "macros",
 ], optional = true }
@@ -213,6 +214,7 @@ sqlx = { version = "0.8.2", default-features = false, features = [
     "postgres",
     "chrono",
     "sqlite",
+    "mysql",
     "migrate",
 ] }
 testcontainers = { version = "0.23.3" }

@@ -182,6 +182,7 @@ pub struct LoggerFileAppender {
 pub struct Database {
     /// The URI for connecting to the database. For example:
     /// * Postgres: `postgres://root:12341234@localhost:5432/myapp_development`
+    /// * MySQL: `mysql://root:12341234@localhost:3306/myapp_development`
     /// * Sqlite: `sqlite://db.sqlite?mode=rwc`
     pub uri: String,
 

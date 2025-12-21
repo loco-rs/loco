@@ -1040,7 +1040,7 @@ pub async fn dump_schema(ctx: &AppContext, fname: &str) -> crate::Result<()> {
 mod tests {
     use super::*;
     use crate::tests_cfg::{
-        config::get_database_config, db::get_value, postgres::setup_postgres_container,
+        config::get_database_config, db::get_value, postgres::setup_postgres_container, mysql::setup_mysql_container,
     };
 
     #[tokio::test]
@@ -1076,6 +1076,25 @@ mod tests {
 
         let db = result.unwrap();
         assert_eq!(db.get_database_backend(), DatabaseBackend::Postgres);
+    }
+
+    #[tokio::test]
+    async fn test_mysql_connect_success() {
+        let (mysql_url, _container) = setup_mysql_container().await;
+        let mut config = crate::tests_cfg::config::get_database_config();
+        config.uri = mysql_url;
+        config.min_connections = 1;
+        config.max_connections = 5;
+        
+        let result = connect(&config).await;
+        assert!(
+            result.is_ok(),
+            "Failed to connect to MySQL: {:?}",
+            result.err()
+        );
+
+        let db = result.unwrap();
+        assert_eq!(db.get_database_backend(), DatabaseBackend::MySql);
     }
 
     #[tokio::test]
@@ -1276,7 +1295,7 @@ mod tests {
             "Test database '{test_db_name}' not exists"
         );
     }
-
+    
     #[tokio::test]
     async fn test_postgres_has_id_column() {
         let (pg_url, _container) = setup_postgres_container().await;
@@ -1395,6 +1414,46 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn test_mysql_has_id_column() {
+        let (mysql_url, _container) = setup_mysql_container().await;
+        let mut config = crate::tests_cfg::config::get_database_config();
+        config.uri = mysql_url;
+        let db = connect(&config)
+            .await
+            .expect("Failed to connect to MySQL");
+        let backend = db.get_database_backend();
+
+        // Table without ID
+        let table_no_id = "test_table_no_id";
+        db.execute(Statement::from_string(
+            backend,
+            format!("CREATE TABLE `{table_no_id}` (name TEXT);"),
+        ))
+        .await
+        .expect("Failed to create table without id");
+
+        let has_id = has_id_column(&db, &backend, table_no_id)
+            .await
+            .expect("Failed to check for id column");
+        assert!(!has_id, "Table should NOT have an 'id' column");
+
+        // Table with standard ID
+        let table_with_id = "test_table_with_id";
+        db.execute(Statement::from_string(
+            backend,
+            format!("CREATE TABLE `{table_with_id}` (id INTEGER PRIMARY KEY, name TEXT);"),
+        ))
+        .await
+        .expect("Failed to create table with id");
+
+        let has_id = has_id_column(&db, &backend, table_with_id)
+            .await
+            .expect("Failed to check for id column");
+        assert!(has_id, "Table SHOULD have an 'id' column");
+    }
+
+ 
     #[tokio::test]
     async fn test_postgres_is_auto_increment() {
         let (pg_url, _container) = setup_postgres_container().await;
@@ -1614,6 +1673,48 @@ mod tests {
         let id = result.try_get::<i32>("", "id").expect("Failed to get ID");
         assert_eq!(id, 1, "ID should be 1 after sequence reset");
     }
+
+    #[tokio::test]
+    async fn test_mysql_reset_autoincrement() {
+        let (mysql_url, _container) = setup_mysql_container().await;
+        let mut config = crate::tests_cfg::config::get_database_config();
+        config.uri = mysql_url;
+        let db = connect(&config).await.unwrap();
+        let backend = db.get_database_backend();
+
+        let table_name = "test_reset_table";
+        db.execute(Statement::from_string(
+            backend,
+            format!("CREATE TABLE `{table_name}` (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255));"),
+        ))
+        .await
+        .unwrap();
+
+        // Verify is_auto_increment detection
+        let auto_inc = is_auto_increment(&db, &backend, table_name).await.unwrap();
+        assert!(auto_inc, "Should detect auto_increment on MySQL");
+
+        // Insert row and reset
+        db.execute(Statement::from_string(
+            backend,
+            format!("INSERT INTO `{table_name}` (name) VALUES ('first');"),
+        ))
+        .await
+        .unwrap();
+
+        // Reset sequence
+        reset_autoincrement(backend, table_name, &db).await.expect("Failed to reset");
+
+        // In MySQL, after a reset to 1, the next insert should get ID 1 (if table is empty)
+        // or MAX(id)+1. To truly test reset, we'd truncate then reset.
+        db.execute(Statement::from_string(backend, format!("TRUNCATE TABLE `{table_name}`;"))).await.unwrap();
+        reset_autoincrement(backend, table_name, &db).await.unwrap();
+        
+        db.execute(Statement::from_string(backend, format!("INSERT INTO `{table_name}` (name) VALUES ('after_reset');"))).await.unwrap();
+        let last_id = get_value(&db, &format!("SELECT id FROM `{table_name}` LIMIT 1")).await;
+        assert_eq!(last_id, "1");
+    }
+
 
     #[test]
     fn test_entity_cmd_new() {
