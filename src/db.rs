@@ -477,9 +477,18 @@ pub async fn reset_autoincrement(
             .await?;
         }
         DatabaseBackend::MySql => {
-            return Err(Error::Message(
-                "Unsupported database backend for reset_autoincrement: MySQL".to_string(),
+            // In MySQL, setting AUTO_INCREMENT to 1 is a standard way to reset it.
+            // MySQL will automatically adjust this value to MAX(id) + 1 when 
+            // the next record is inserted.
+            let query_str = format!("ALTER TABLE `{table_name}` AUTO_INCREMENT = 1");
+            db.execute(Statement::from_string(
+                DatabaseBackend::MySql,
+                query_str,
             ))
+            .await?;
+           /*  return Err(Error::Message(
+                "Unsupported database backend for reset_autoincrement: MySQL".to_string(),
+            )) */
         }
     }
     Ok(())
