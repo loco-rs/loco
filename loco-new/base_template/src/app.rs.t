@@ -95,6 +95,7 @@ impl Hooks for App {
         // tasks-inject (do not remove)
         {%- if settings.auth %}
         tasks.register(tasks::user_create::UserCreate);
+        tasks.register(tasks::user_delete::UserDelete);
         {%- endif %} 
     }
 
