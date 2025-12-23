@@ -1,8 +1,5 @@
 //! This module contains the core components and traits for building a web
 //! server application.
-#[cfg(feature = "with-db")]
-use {sea_orm::DatabaseConnection, std::path::Path};
-
 use std::{
     any::{Any, TypeId},
     net::SocketAddr,
@@ -12,6 +9,8 @@ use std::{
 use async_trait::async_trait;
 use axum::Router as AxumRouter;
 use dashmap::DashMap;
+#[cfg(feature = "with-db")]
+use {sea_orm::DatabaseConnection, std::path::Path};
 
 use crate::{
     bgworker::{self, Queue},
@@ -64,7 +63,8 @@ impl SharedStore {
 
     /// Remove a value of type T from the shared store
     ///
-    /// Returns `Some(T)` if the value was present and removed, `None` otherwise.
+    /// Returns `Some(T)` if the value was present and removed, `None`
+    /// otherwise.
     ///
     /// # Example
     /// ```
@@ -360,10 +360,11 @@ pub trait Hooks: Send {
         Ok(false)
     }
 
-    /// Loads the configuration settings for the application based on the given environment.
+    /// Loads the configuration settings for the application based on the given
+    /// environment.
     ///
-    /// This function is responsible for retrieving the configuration for the application
-    /// based on the current environment.
+    /// This function is responsible for retrieving the configuration for the
+    /// application based on the current environment.
     async fn load_config(env: &Environment) -> Result<Config> {
         env.load()
     }
@@ -468,8 +469,9 @@ pub trait Initializer: Sync + Send {
     }
 
     /// Perform health checks for this initializer.
-    /// This method is called during the doctor command to validate the initializer's configuration.
-    /// Return `None` if no check is needed, or `Some(Check)` if a check should be performed.
+    /// This method is called during the doctor command to validate the
+    /// initializer's configuration. Return `None` if no check is needed, or
+    /// `Some(Check)` if a check should be performed.
     async fn check(&self, _app_context: &AppContext) -> Result<Option<crate::doctor::Check>> {
         Ok(None)
     }
@@ -632,8 +634,8 @@ mod tests {
 
         assert_eq!(shared_store.get::<String>(), None);
         assert!(shared_store.get::<CloneableTestService>().is_some());
-        // The following line correctly fails to compile because TestService doesn't impl Clone,
-        // which is required by the `get` method.
+        // The following line correctly fails to compile because TestService
+        // doesn't impl Clone, which is required by the `get` method.
         // let non_existent_clone = shared_store.get::<TestService>();
     }
 

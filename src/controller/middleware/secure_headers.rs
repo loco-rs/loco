@@ -224,7 +224,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::controller::format;
     use axum::{
         body::Body,
         http::{header::CONTENT_SECURITY_POLICY, HeaderMap, HeaderValue, Method, Response},
@@ -235,6 +234,7 @@ mod tests {
     use tower::ServiceExt;
 
     use super::*;
+    use crate::controller::format;
     fn normalize_headers(headers: &HeaderMap) -> BTreeMap<String, String> {
         headers
             .iter()
@@ -304,9 +304,13 @@ mod tests {
             )
             .unwrap();
             res.headers_mut().insert(
-                CONTENT_SECURITY_POLICY, HeaderValue::from_str(
-                    &format!("default-src 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'; upgrade-insecure-requests; block-all-mixed-content; style-src 'self' 'nonce-{nonce}';")
-                ).expect("cannot create a header value")
+                CONTENT_SECURITY_POLICY,
+                HeaderValue::from_str(&format!(
+                    "default-src 'self'; form-action 'self'; object-src 'none'; frame-ancestors \
+                     'none'; upgrade-insecure-requests; block-all-mixed-content; style-src 'self' \
+                     'nonce-{nonce}';"
+                ))
+                .expect("cannot create a header value"),
             );
             Ok(res)
         }
@@ -323,7 +327,8 @@ mod tests {
         let headers = normalize_headers(response.headers());
         assert_eq!(
             headers.get(&CONTENT_SECURITY_POLICY.to_string()).unwrap(),
-            "default-src 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'; upgrade-insecure-requests; block-all-mixed-content; style-src 'self' 'nonce-random';"
+            "default-src 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'; \
+             upgrade-insecure-requests; block-all-mixed-content; style-src 'self' 'nonce-random';"
         )
     }
 

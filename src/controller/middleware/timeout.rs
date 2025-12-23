@@ -11,8 +11,7 @@
 //! the request took too long to process.
 use std::time::Duration;
 
-use axum::http::StatusCode;
-use axum::Router as AXRouter;
+use axum::{http::StatusCode, Router as AXRouter};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tower_http::timeout::TimeoutLayer;

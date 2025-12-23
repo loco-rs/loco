@@ -14,15 +14,13 @@
 //!     cli::main::<App, Migrator>().await
 //! }
 //! ```
-#[cfg(feature = "with-db")]
-use {crate::boot::run_db, crate::db, sea_orm_migration::MigratorTrait};
+use std::{collections::BTreeMap, fmt::Write, path::PathBuf, process::exit};
 
 use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueHint};
 use colored::Colorize;
 use duct::cmd;
-use std::fmt::Write;
-use std::process::exit;
-use std::{collections::BTreeMap, path::PathBuf};
+#[cfg(feature = "with-db")]
+use {crate::boot::run_db, crate::db, sea_orm_migration::MigratorTrait};
 
 #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
 use crate::bgworker::JobStatus;
@@ -67,7 +65,8 @@ enum Commands {
     #[command(group(ArgGroup::new("start_mode").args(&["worker", "server_and_worker", "all"])))]
     #[clap(alias("s"))]
     Start {
-        /// Start worker. Optionally provide tags to run specific jobs (e.g. --worker=tag1,tag2)
+        /// Start worker. Optionally provide tags to run specific jobs (e.g.
+        /// --worker=tag1,tag2)
         #[arg(short, long, action, value_delimiter = ',', num_args = 0.., conflicts_with_all = &["server_and_worker", "all"])]
         worker: Option<Vec<String>>,
         /// Start the server and worker in the same process
@@ -192,7 +191,8 @@ enum ComponentArg {
         /// Name of the thing to generate
         name: String,
 
-        /// Generate model without timestamps (`created_at`, `updated_at` columns)
+        /// Generate model without timestamps (`created_at`, `updated_at`
+        /// columns)
         #[arg(long, action)]
         without_tz: bool,
 
@@ -245,7 +245,8 @@ After running the migration, follow these steps to complete the process:
         /// Name of the migration to generate
         name: String,
 
-        /// Generate migration without timestamps (`created_at`, `updated_at` columns)
+        /// Generate migration without timestamps (`created_at`, `updated_at`
+        /// columns)
         #[arg(long, action)]
         without_tz: bool,
 
@@ -263,7 +264,8 @@ After running the migration, follow these steps to complete the process:
         /// Name of the thing to generate
         name: String,
 
-        /// Generate scaffold without timestamps (`created_at`, `updated_at` columns)
+        /// Generate scaffold without timestamps (`created_at`, `updated_at`
+        /// columns)
         #[arg(long, action)]
         without_tz: bool,
 
@@ -419,7 +421,9 @@ impl ComponentArg {
                     loco_gen::ScaffoldKind::Api
                 } else {
                     return Err(crate::Error::string(
-                        "Error: generating this component requires one of `--kind`, `--htmx`, `--html`, or `--api` to be specified. Run with `--help` for more information.",
+                        "Error: generating this component requires one of `--kind`, `--htmx`, \
+                         `--html`, or `--api` to be specified. Run with `--help` for more \
+                         information.",
                     ));
                 };
 
@@ -847,8 +851,8 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
 
             cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
                 Error::Message(format!(
-                    "failed to start with `cargo-watch`. Did you `cargo install \
-                         cargo-watch`?. error details: `{err}`",
+                    "failed to start with `cargo-watch`. Did you `cargo install cargo-watch`?. \
+                     error details: `{err}`",
                 ))
             })?;
         }
@@ -983,8 +987,8 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
 
             cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
                 Error::Message(format!(
-                    "failed to start with `cargo-watch`. Did you `cargo install \
-                         cargo-watch`?. error details: `{err}`",
+                    "failed to start with `cargo-watch`. Did you `cargo install cargo-watch`?. \
+                     error details: `{err}`",
                 ))
             })?;
         }

@@ -1,14 +1,14 @@
 use std::path::{Path, PathBuf};
 
-use super::tera_builtins;
-use crate::{controller::views::ViewRenderer, Error, Result};
-use serde::Serialize;
-
 #[cfg(debug_assertions)]
 use notify::{
     event::{EventKind, ModifyKind},
     Event, RecursiveMode, Watcher,
 };
+use serde::Serialize;
+
+use super::tera_builtins;
+use crate::{controller::views::ViewRenderer, Error, Result};
 
 pub static DEFAULT_ASSET_FOLDER: &str = "assets";
 
@@ -39,13 +39,15 @@ impl TeraView {
         })
     }
 
-    /// Create a Tera view engine with a post-processing function for subsequent instantiation.
+    /// Create a Tera view engine with a post-processing function for subsequent
+    /// instantiation.
     ///
     /// The post-processing function is also run during the call to this method.
     ///
     /// # Errors
     ///
-    /// This function will return an error if building fails or if the post-processing function fails
+    /// This function will return an error if building fails or if the
+    /// post-processing function fails
     pub fn build_with_post_process(
         post_process: impl Fn(&mut tera::Tera) -> Result<()> + Send + Sync + 'static,
     ) -> Result<Self> {
@@ -79,7 +81,8 @@ impl TeraView {
     ///
     /// # Errors
     ///
-    /// This function will return an error if building fails or if the post-processing function fails
+    /// This function will return an error if building fails or if the
+    /// post-processing function fails
     pub fn from_custom_dir<P: AsRef<Path>>(
         path: &P,
         post_process: impl Fn(&mut tera::Tera) -> Result<()> + Send + Sync + 'static,
