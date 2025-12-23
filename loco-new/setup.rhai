@@ -69,7 +69,8 @@ if db {
         gen.copy_file("migration/src/m20220101_000001_users.rs");  // Users migration file
         gen.copy_file("src/models/_entities/users.rs");             // Users entity definition
         gen.copy_file("src/models/users.rs");                      // Users model logic
-         gen.copy_file("src/tasks/user_create.rs");                      
+        gen.copy_file("src/tasks/user_create.rs");
+        gen.copy_file("src/tasks/user_delete.rs");                          
 
         // Fixtures and test setup for authentication
         gen.copy_dir("src/fixtures");                              // Database fixtures directory
@@ -78,7 +79,8 @@ if db {
         gen.copy_dir("tests/models/snapshots");                    // Test snapshots for models
         gen.copy_template("tests/models/users.rs.t");              // User model test template
         gen.copy_template("tests/requests/prepare_data.rs.t");     // Data preparation template for tests
-        gen.copy_template("tests/tasks/user_create.rs.t");     
+        gen.copy_template("tests/tasks/user_create.rs.t");
+        gen.copy_template("tests/tasks/user_delete.rs.t");     
 
     }
    

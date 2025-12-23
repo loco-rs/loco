@@ -11,10 +11,11 @@ impl Task for UserCreate {
     fn task(&self) -> TaskInfo {
         TaskInfo {
             name: "user:create".to_string(),
-            detail: "Create a new user with email, name, and password. Sends welcome email and sets up email verification.\nUsage:\ncargo run task user:create email:user@example.com name:\"John Doe\" password:\"securepassword\"".to_string(),
+            detail: "Create a new user with email, name, and password. Sends welcome email and sets up email verification.\nUsage:\ncargo run task user:create".to_string(),
         }
     }
     async fn run(&self, app_context: &AppContext, vars: &task::Vars) -> Result<()> {
+
         let email = vars
             .cli_arg("email")
             .map_err(|_| Error::string("email is mandatory"))?;
