@@ -1,6 +1,5 @@
 use crate::models::_entities::users;
 use loco_rs::prelude::*;
-use std::env;
 
 pub struct UserDelete;
 #[async_trait]

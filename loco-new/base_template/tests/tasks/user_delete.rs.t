@@ -1,6 +1,5 @@
 use loco_rs::{task, testing::prelude::*};
 use {{settings.module_name}}::{app::App, models::users};
-use std::env;
 
 use loco_rs::boot::run_task;
 use serial_test::serial;
