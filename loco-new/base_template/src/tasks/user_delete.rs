@@ -25,7 +25,7 @@ impl Task for UserDelete {
             user_to_delete.name, user_to_delete.email, user_to_delete.pid
         );
 
-        if force_flag.is_err() || force_flag.unwrap().trim() != "true" {
+        if force_flag.is_err() || force_flag.unwrap().trim().to_lowercase() != "true" {
             println!(
                 "Are you sure you want to delete the user {}\n({})\nwith pid '{}'?\nType 'yes' and hit enter to confirm",
                 user_to_delete.name, user_to_delete.email, user_to_delete.pid
