@@ -87,6 +87,23 @@ impl Model {
         user.ok_or_else(|| ModelError::EntityNotFound)
     }
 
+    /// finds a user by the provided name
+    ///
+    /// # Errors
+    ///
+    /// When could not find user by the given token or DB query error
+    pub async fn find_by_name(db: &DatabaseConnection, name: &str) -> ModelResult<Self> {
+        let user = users::Entity::find()
+            .filter(
+                model::query::condition()
+                    .eq(users::Column::Name, name)
+                    .build(),
+            )
+            .one(db)
+            .await?;
+        user.ok_or_else(|| ModelError::EntityNotFound)
+    }
+
     /// finds a user by the provided verification token
     ///
     /// # Errors
@@ -329,6 +346,23 @@ impl ActiveModel {
         self.reset_sent_at = ActiveValue::Set(None);
         self.update(db).await.map_err(ModelError::from)
     }
+
+    /// Changes the user data and updates it in the database.
+    ///
+    /// # Errors
+    ///
+    /// when has DB query error
+    pub async fn update_user_data(
+        mut self, db: &DatabaseConnection,
+        params: RegisterParams,
+    ) -> ModelResult<Model> {
+        self.name = ActiveValue::set(params.name);
+        self.email = ActiveValue::set(params.email);
+        self.password =
+            ActiveValue::set(hash::hash_password(&params.password).map_err(|e| ModelError::Any(e.into()))?);
+        self.update(db).await.map_err(ModelError::from)
+    }
+
 
     /// Creates a magic link token for passwordless authentication.
     ///
