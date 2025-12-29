@@ -363,7 +363,7 @@ pub mod tests {
         for field in &mapping.field_types {
             let rust_fields = match &field.rust {
                 crate::RustType::String(rust_field) => {
-                    HashMap::from([(field.name.to_string(), rust_field.to_string())])
+                    HashMap::from([(field.name.clone(), rust_field.clone())])
                 }
                 crate::RustType::Map(data) => data.clone(),
             };

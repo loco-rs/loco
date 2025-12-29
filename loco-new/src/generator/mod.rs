@@ -72,11 +72,9 @@ impl Generator {
         engine
             .build_type::<settings::Settings>()
             .build_type::<settings::Initializers>()
-            .build_type::<settings::Asset>()
             .build_type::<settings::Db>()
+            .build_type::<settings::Asset>()
             .build_type::<settings::Background>()
-            .register_type_with_name::<Option<settings::Initializers>>("Option<Initializers>")
-            .register_type_with_name::<Option<settings::Asset>>("Option<settings::Asset>")
             .register_static_module(
                 "rhai_settings_extensions",
                 exported_module!(rhai_settings_extensions).into(),
@@ -250,39 +248,16 @@ impl Generator {
 /// in a controlled and expressive way.
 #[export_module]
 mod rhai_settings_extensions {
-
-    /// Retrieves the value of the `view_engine` field from the [`settings::Initializers`] struct.
-    #[rhai_fn(global, get = "view_engine", pure)]
-    pub fn view_engine(initializers: &mut Option<settings::Initializers>) -> bool {
-        initializers.as_ref().is_some_and(|i| i.view_engine)
-    }
-
     /// Checks if the rendering method is set to client-side rendering.
     #[rhai_fn(global, get = "is_client_side", pure)]
-    pub fn is_client_side(rendering_method: &mut Option<settings::Asset>) -> bool {
-        rendering_method
-            .as_ref()
-            .is_some_and(|r| matches!(r.kind, AssetsOption::Clientside))
+    pub const fn is_client_side(rendering_method: &mut settings::Asset) -> bool {
+        matches!(rendering_method.kind, AssetsOption::Clientside)
     }
 
     /// Checks if the rendering method is set to server-side rendering.
     #[rhai_fn(global, get = "is_server_side", pure)]
-    pub fn is_server_side(rendering_method: &mut Option<settings::Asset>) -> bool {
-        rendering_method
-            .as_ref()
-            .is_some_and(|r| matches!(r.kind, AssetsOption::Serverside))
-    }
-
-    /// Checks if the rendering method is set to server-side rendering (direct access).
-    #[rhai_fn(global, get = "is_server_side", pure)]
-    pub const fn is_server_side_direct(rendering_method: &mut settings::Asset) -> bool {
+    pub const fn is_server_side(rendering_method: &mut settings::Asset) -> bool {
         matches!(rendering_method.kind, AssetsOption::Serverside)
-    }
-
-    /// Checks if the rendering method is set to client-side rendering (direct access).
-    #[rhai_fn(global, get = "is_client_side", pure)]
-    pub const fn is_client_side_direct(rendering_method: &mut settings::Asset) -> bool {
-        matches!(rendering_method.kind, AssetsOption::Clientside)
     }
 }
 

@@ -159,13 +159,6 @@ fn maybe_get_forwarded(
         > The X-Forwarded-For IP list is searched from the rightmost, skipping all addresses that
         > are on the trusted proxy list. The first non-matching address is the target address.
         */
-        .filter(|ip| {
-            // trusted proxies provided REPLACES our default local proxies
-            let proxies = trusted_proxies.unwrap_or_else(|| get_local_trusted_proxies());
-            !proxies
-                .iter()
-                .any(|trusted_proxy| trusted_proxy.contains(*ip))
-        })
         /*
         > When choosing the X-Forwarded-For client IP address closest to the client (untrustworthy
         > and not for security-related purposes), the first IP from the leftmost that is a valid
@@ -175,7 +168,13 @@ fn maybe_get_forwarded(
         > The first trustworthy X-Forwarded-For IP address may belong to an untrusted intermediate
         > proxy rather than the actual client computer, but it is the only IP suitable for security uses.
         */
-        .next_back()
+        .rfind(|ip| {
+            // trusted proxies provided REPLACES our default local proxies
+            let proxies = trusted_proxies.unwrap_or_else(|| get_local_trusted_proxies());
+            !proxies
+                .iter()
+                .any(|trusted_proxy| trusted_proxy.contains(*ip))
+        })
 }
 
 #[derive(Copy, Clone, Debug)]

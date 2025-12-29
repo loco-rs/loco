@@ -54,7 +54,7 @@ pub fn generate(
             crate::infer::FieldType::Type(ftype) => {
                 let mappings = get_mappings();
                 let rust_type = mappings.rust_field(ftype.as_str())?;
-                columns.push((fname.to_string(), rust_type.to_string(), ftype));
+                columns.push((fname.clone(), rust_type.to_string(), ftype));
             }
             crate::infer::FieldType::TypeWithParameters(ftype, params) => {
                 let mappings = get_mappings();
@@ -69,7 +69,7 @@ pub fn generate(
                     )));
                 }
 
-                columns.push((fname.to_string(), rust_type.to_string(), ftype));
+                columns.push((fname.clone(), rust_type.to_string(), ftype));
             }
         }
     }
