@@ -16,7 +16,10 @@ impl Task for UserDelete {
             Ok(pid) => pid,
             Err(_) => return Err(Error::string("pid is mandatory")),
         };
-        let force_flag = vars.cli_arg("force");
+        let force_flag = vars
+            .cli_arg("force")
+            .map(|v| v.trim().to_lowercase() == "true")
+            .unwrap_or(false);
 
         let user_to_delete = users::Model::find_by_pid(&app_context.db, &input).await?;
 
@@ -25,7 +28,7 @@ impl Task for UserDelete {
             user_to_delete.name, user_to_delete.email, user_to_delete.pid
         );
 
-        if force_flag.is_err() || force_flag.unwrap().trim().to_lowercase() != "true" {
+        if !force_flag {
             println!(
                 "Are you sure you want to delete the user {}\n({})\nwith pid '{}'?\nType 'yes' and hit enter to confirm",
                 user_to_delete.name, user_to_delete.email, user_to_delete.pid
@@ -41,7 +44,7 @@ impl Task for UserDelete {
             })?;
 
             if confirm.trim().to_lowercase() != "yes" {
-                println!("⛔ User deletion cancelled - nothing has been deleted!");
+                println!("User deletion cancelled - nothing has been deleted!");
                 return Ok(());
             }
         }
@@ -54,7 +57,13 @@ impl Task for UserDelete {
                 tracing::error!(message = err.to_string(), "could not delete user");
                 Error::string(&format!("Failed to delete user. err: {err}",))
             })?;
-        println!("🗑️ User deleted successfully!");
+        println!("User deleted successfully!");
+        tracing::info!(
+            pid = user_to_delete.pid.to_string(),
+            username = user_to_delete.name,
+            email = user_to_delete.email,
+            "User deleted"
+        );
 
         Ok(())
     }
