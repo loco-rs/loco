@@ -1,7 +1,5 @@
 use insta::assert_snapshot;
-use loco_gen::{
-    collect_messages, generate, AppInfo, Component, DeploymentKind,
-};
+use loco_gen::{collect_messages, generate, AppInfo, Component, DeploymentKind};
 use rrgen::RRgen;
 use std::{fs, path::PathBuf};
 
@@ -104,4 +102,3 @@ fn can_generate_nginx() {
             .expect("nginx config missing")
     );
 }
-
