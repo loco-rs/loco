@@ -169,7 +169,7 @@ Generate a deployment infrastructure
 Usage: myapp-cli generate deployment [OPTIONS] <KIND>
 
 Arguments:
-  <KIND>  [possible values: docker, shuttle, nginx]
+  <KIND>  [possible values: docker, nginx]
 ```
 
 <!-- <snip id="generate-deployment-command" inject_from="yaml" template="sh"> -->
@@ -192,13 +192,7 @@ Deployment Options:
 - Generates a Dockerfile ready for building and deploying.
 - Creates a .dockerignore file.
 
-2. Shuttle:
-
-- Generates a shuttle main function.
-- Adds `shuttle-runtime` and `shuttle-axum` as dependencies.
-- Adds a bin entrypoint for the deployment.
-
-3. Nginx:
+2. Nginx:
 
 - Generates a nginx configuration file for reverse proxying.
 

@@ -33,7 +33,6 @@ pub struct GenerateResults {
     rrgen: Vec<rrgen::GenResult>,
     local_templates: Vec<PathBuf>,
 }
-pub const DEPLOYMENT_SHUTTLE_RUNTIME_VERSION: &str = "0.56.0";
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -228,9 +227,6 @@ pub enum DeploymentKind {
         copy_paths: Vec<PathBuf>,
         is_client_side_rendering: bool,
     },
-    Shuttle {
-        runttime_version: Option<String>,
-    },
     Nginx {
         host: String,
         port: i32,
@@ -381,15 +377,6 @@ pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Resul
                     "is_client_side_rendering": is_client_side_rendering,
                 });
                 render_template(rrgen, Path::new("deployment/docker"), &vars)?
-            }
-            DeploymentKind::Shuttle { runttime_version } => {
-                let vars = json!({
-                    "pkg_name": appinfo.app_name,
-                    "shuttle_runtime_version": runttime_version.unwrap_or_else( || DEPLOYMENT_SHUTTLE_RUNTIME_VERSION.to_string()),
-                    "with_db": cfg!(feature = "with-db")
-                });
-
-                render_template(rrgen, Path::new("deployment/shuttle"), &vars)?
             }
             DeploymentKind::Nginx { host, port } => {
                 let host = host.replace("http://", "").replace("https://", "");
