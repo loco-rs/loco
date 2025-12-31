@@ -1,6 +1,6 @@
-{%- if settings.db %}
+{%- if settings.db -%}
 use std::path::Path;
-{%- endif %}
+{% endif -%}
 use async_trait::async_trait;
 use loco_rs::{
     app::{AppContext, Hooks, Initializer},

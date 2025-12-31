@@ -92,17 +92,9 @@ pub enum BackgroundOption {
     #[strum(to_string = "Blocking (run tasks in foreground)")]
     #[serde(rename = "ForegroundBlocking")]
     Blocking,
-    #[strum(to_string = "None")]
-    #[serde(rename = "none")]
-    None,
 }
 
 impl BackgroundOption {
-    #[must_use]
-    pub const fn enable(&self) -> bool {
-        !matches!(self, Self::None)
-    }
-
     #[must_use]
     pub fn user_message(&self) -> Option<String> {
         match self {
@@ -118,7 +110,7 @@ impl BackgroundOption {
                 "workers".underline(),
                 "blocking".yellow()
             )),
-            Self::Async | Self::None => None,
+            Self::Async => None,
         }
     }
 
@@ -128,7 +120,6 @@ impl BackgroundOption {
             Self::Async => "Async",
             Self::Queue => "BackgroundQueue",
             Self::Blocking => "ForegroundBlocking",
-            Self::None => "None",
         }
     }
 }
@@ -313,7 +304,7 @@ pub fn start(args: &ArgsPlaceholder) -> crate::Result<Selections> {
     match template {
         Template::Lightweight => Ok(Selections {
             db: DBOption::None,
-            background: BackgroundOption::None,
+            background: BackgroundOption::Async,
             asset: AssetsOption::None,
         }),
         Template::RestApi => Ok(Selections {
@@ -333,13 +324,9 @@ pub fn start(args: &ArgsPlaceholder) -> crate::Result<Selections> {
         }),
         Template::Advanced => {
             let db = select_db(args)?;
-            let background_options = match db {
-                DBOption::Sqlite | DBOption::Postgres => Some(vec![BackgroundOption::None]),
-                DBOption::None => None,
-            };
             Ok(Selections {
                 db,
-                background: select_background(args, background_options.as_ref())?,
+                background: select_background(args, None)?,
                 asset: select_asset(args)?,
             })
         }

@@ -42,10 +42,7 @@ impl From<DBOption> for Option<Db> {
 
 impl From<BackgroundOption> for Option<Background> {
     fn from(bg: BackgroundOption) -> Self {
-        match bg {
-            BackgroundOption::None => None,
-            _ => Some(Background { kind: bg }),
-        }
+        Some(Background { kind: bg })
     }
 }
 
@@ -66,7 +63,7 @@ impl Settings {
             Features::default()
         } else {
             let mut features = Features::disable_features();
-            if prompt_selection.background.enable() {
+            if matches!(prompt_selection.background, wizard::BackgroundOption::Queue) {
                 features.names.push("bg_redis".to_string());
             }
             features
@@ -75,8 +72,8 @@ impl Settings {
         Self {
             package_name: package_name.to_string(),
             module_name: package_name.to_snake_case(),
-            auth: prompt_selection.db.enable() && prompt_selection.background.enable(),
-            mailer: prompt_selection.db.enable() && prompt_selection.background.enable(),
+            auth: prompt_selection.db.enable(),
+            mailer: prompt_selection.db.enable(),
             db: prompt_selection.db.clone().into(),
             background: prompt_selection.background.clone().into(),
             asset: prompt_selection.asset.clone().into(),

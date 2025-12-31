@@ -118,11 +118,9 @@ if settings.mailer {
 // =====================
 // Background Processing
 // =====================
-if background {
-    gen.copy_template("src/workers/mod.rs.t");       // Workers directory
-    gen.copy_dir("tests/workers");                   // Workers test directory
-    gen.copy_file("src/workers/downloader.rs");
-}
+gen.copy_template("src/workers/mod.rs.t");       // Workers directory
+gen.copy_dir("tests/workers");                   // Workers test directory
+gen.copy_file("src/workers/downloader.rs");
 
 // =====================
 // Server side
