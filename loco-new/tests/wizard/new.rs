@@ -122,11 +122,8 @@ fn test_combination(db: DBOption, asset: AssetsOption, test_generator: bool) {
         // Generate deployment nginx
         tester.run_generate(&vec!["deployment", "nginx"]);
 
-        // Generate deployment nginx
+        // Generate deployment docker
         tester.run_generate(&vec!["deployment", "docker"]);
-
-        // Generate deployment shuttle
-        tester.run_generate(&vec!["deployment", "shuttle"]);
 
         // Generate data
         tester.run_generate(&vec!["data", "stocks"]);
