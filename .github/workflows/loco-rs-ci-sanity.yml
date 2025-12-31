@@ -54,7 +54,7 @@ jobs:
           LOCO_DEV_MODE_PATH: ${{ github.workspace }}
           
       - run: |
-          loco new -n myapp --db none --bg none --assets none -a
+          loco new -n myapp --db none --bg async --assets none -a
           cd myapp
           cargo check
           cargo build --release
