@@ -28,36 +28,27 @@ use loco::{
 // when running locally set LOCO_DEV_MODE_PATH=<to local loco path>
 #[rstest::rstest]
 // lightweight service
-#[case(DBOption::None, BackgroundOption::None, AssetsOption::None)]
+#[case(DBOption::None, AssetsOption::None)]
 // REST API
-#[case(DBOption::Sqlite, BackgroundOption::Async, AssetsOption::None)]
+#[case(DBOption::Sqlite, AssetsOption::None)]
 // SaaS, serverside
-#[case(DBOption::None, BackgroundOption::None, AssetsOption::Serverside)]
+#[case(DBOption::None, AssetsOption::Serverside)]
 // SaaS, clientside
-#[case(DBOption::None, BackgroundOption::None, AssetsOption::Clientside)]
+#[case(DBOption::None, AssetsOption::Clientside)]
 // test only DB
-#[case(DBOption::Sqlite, BackgroundOption::None, AssetsOption::None)]
-fn test_starter_combinations(
-    #[case] db: DBOption,
-    #[case] background: BackgroundOption,
-    #[case] asset: AssetsOption,
-) {
-    test_combination(db, background, asset, true);
+#[case(DBOption::Sqlite, AssetsOption::None)]
+fn test_starter_combinations(#[case] db: DBOption, #[case] asset: AssetsOption) {
+    test_combination(db, asset, true);
 }
 
-fn test_combination(
-    db: DBOption,
-    background: BackgroundOption,
-    asset: AssetsOption,
-    test_generator: bool,
-) {
+fn test_combination(db: DBOption, asset: AssetsOption, test_generator: bool) {
     let test_dir = tree_fs::TreeBuilder::default().drop(true);
 
     let executor = FileSystem::new(&PathBuf::from("base_template"), &test_dir.root);
 
     let wizard_selection = wizard::Selections {
         db: db.clone(),
-        background: background.clone(),
+        background: BackgroundOption::Async,
         asset: asset.clone(),
     };
     let settings =
@@ -120,10 +111,8 @@ fn test_combination(
         // Generate Scheduler
         tester.run_generate(&vec!["scheduler"]);
 
-        if background.enable() {
-            // Generate Worker
-            tester.run_generate(&vec!["worker", "cleanup"]);
-        }
+        // Generate Worker (background workers are always enabled)
+        tester.run_generate(&vec!["worker", "cleanup"]);
 
         if settings.mailer {
             // Generate Mailer

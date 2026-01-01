@@ -17,7 +17,6 @@ pub fn run_generator(background: BackgroundOption) -> TestGenerator {
 fn test_config_file_queue(
     #[values("config/development.yaml", "config/test.yaml")] config_file: &str,
     #[values(
-        BackgroundOption::None,
         BackgroundOption::Async,
         BackgroundOption::Queue,
         BackgroundOption::Blocking
@@ -62,7 +61,6 @@ fn test_config_file_queue(
 fn test_config_file_workers(
     #[values("config/development.yaml")] config_file: &str,
     #[values(
-        BackgroundOption::None,
         BackgroundOption::Async,
         BackgroundOption::Queue,
         BackgroundOption::Blocking
@@ -94,20 +92,14 @@ fn test_config_file_workers(
                 "ForegroundBlocking",
             );
         }
-        BackgroundOption::None => {
-            assertion::yaml::assert_path_is_empty(&content, &["workers"]);
-        }
     };
 
-    if background.enable() {
-        assertion::yaml::assert_path_key_count(&content, &["workers"], 1);
-    }
+    assertion::yaml::assert_path_key_count(&content, &["workers"], 1);
 }
 
 #[rstest]
 fn test_config_file_workers_tests(
     #[values(
-        BackgroundOption::None,
         BackgroundOption::Async,
         BackgroundOption::Queue,
         BackgroundOption::Blocking
@@ -139,20 +131,14 @@ fn test_config_file_workers_tests(
                 "ForegroundBlocking",
             );
         }
-        BackgroundOption::None => {
-            assertion::yaml::assert_path_is_empty(&content, &["workers"]);
-        }
     };
 
-    if background.enable() {
-        assertion::yaml::assert_path_key_count(&content, &["workers"], 1);
-    }
+    assertion::yaml::assert_path_key_count(&content, &["workers"], 1);
 }
 
 #[rstest]
 fn test_app_rs(
     #[values(
-        BackgroundOption::None,
         BackgroundOption::Async,
         BackgroundOption::Queue,
         BackgroundOption::Blocking
@@ -169,7 +155,6 @@ fn test_app_rs(
 #[rstest]
 fn test_src_lib_rs(
     #[values(
-        BackgroundOption::None,
         BackgroundOption::Async,
         BackgroundOption::Queue,
         BackgroundOption::Blocking
@@ -181,17 +166,12 @@ fn test_src_lib_rs(
     let content =
         std::fs::read_to_string(generator.path("src/lib.rs")).expect("could not open file");
 
-    if background.enable() {
-        assertion::string::assert_line_regex(&content, "(?m)^pub mod workers;$");
-    } else {
-        assertion::string::assert_str_not_exists(&content, "pub mod workers;");
-    }
+    assertion::string::assert_line_regex(&content, "(?m)^pub mod workers;$");
 }
 
 #[rstest]
 fn test_tests_mod_rs(
     #[values(
-        BackgroundOption::None,
         BackgroundOption::Async,
         BackgroundOption::Queue,
         BackgroundOption::Blocking
@@ -203,9 +183,5 @@ fn test_tests_mod_rs(
     let content =
         std::fs::read_to_string(generator.path("tests/mod.rs")).expect("could not open file");
 
-    if background.enable() {
-        assertion::string::assert_line_regex(&content, "(?m)^mod workers;$");
-    } else {
-        assertion::string::assert_str_not_exists(&content, "mod workers;");
-    }
+    assertion::string::assert_line_regex(&content, "(?m)^mod workers;$");
 }
