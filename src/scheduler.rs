@@ -165,12 +165,12 @@ impl Job {
         environment: &Environment,
     ) -> JobDescription {
         let command = if self.shell {
-            self.run.to_string()
+            self.run.clone()
         } else {
             [
                 binary_path.display().to_string(),
                 "task".to_string(),
-                self.run.to_string(),
+                self.run.clone(),
             ]
             .join(" ")
         };
@@ -239,11 +239,11 @@ impl Scheduler {
         let mut jobs = HashMap::new();
         for (job_name, job) in &data.jobs {
             if job.shell {
-                jobs.insert(job_name.to_string(), job.clone());
+                jobs.insert(job_name.clone(), job.clone());
             } else {
                 let task_name = job.run.split_whitespace().next().unwrap_or("");
                 if tasks.names().iter().any(|name| name.as_str() == task_name) {
-                    jobs.insert(job_name.to_string(), job.clone());
+                    jobs.insert(job_name.clone(), job.clone());
                 } else {
                     return Err(Error::TaskNotFound(task_name.to_string()));
                 }
@@ -311,7 +311,7 @@ impl Scheduler {
 
             if job.run_on_start {
                 let job_description = job_description.clone();
-                let job_name = job_name.to_string();
+                let job_name = job_name.clone();
                 sched
                     .add(tokio_cron_scheduler::Job::new_one_shot_async(
                         Duration::from_secs(0),
@@ -326,13 +326,13 @@ impl Scheduler {
                     .await?;
             }
 
-            let job_name = job_name.to_string();
+            let job_name = job_name.clone();
             sched
                 .add(tokio_cron_scheduler::Job::new_async(
                     cron_syntax.as_str(),
                     move |uuid, mut _l| {
                         let job_description = job_description.clone();
-                        let job_name = job_name.to_string();
+                        let job_name = job_name.clone();
                         Box::pin(async move {
                             execute_job(job_name.as_str(), uuid, &job_description);
                         })

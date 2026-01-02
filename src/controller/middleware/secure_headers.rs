@@ -121,7 +121,12 @@ impl SecureHeader {
     ///
     /// Applies the preset headers and any custom overrides.
     fn as_headers(&self) -> Result<Vec<(HeaderName, HeaderValue)>> {
-        let mut headers = vec![];
+        let mut pairs = BTreeMap::new();
+        if let Some(overrides) = &self.overrides {
+            for (key, value) in overrides {
+                pairs.insert(key, value);
+            }
+        }
 
         let preset = &self.preset;
         let p = get_presets().get(preset).ok_or_else(|| {
@@ -130,29 +135,20 @@ impl SecureHeader {
             ))
         })?;
 
-        Self::push_headers(&mut headers, p)?;
-        if let Some(overrides) = &self.overrides {
-            Self::push_headers(&mut headers, overrides)?;
+        for (key, value) in p {
+            if pairs.contains_key(key) {
+                continue;
+            }
+            pairs.insert(key, value);
         }
-        Ok(headers)
-    }
-
-    /// Helper function to push headers into a mutable vector.
-    ///
-    /// This function takes a map of header names and values, converting them
-    /// into valid HTTP headers and adding them to the provided `headers`
-    /// vector.
-    fn push_headers(
-        headers: &mut Vec<(HeaderName, HeaderValue)>,
-        hm: &BTreeMap<String, String>,
-    ) -> Result<()> {
-        for (k, v) in hm {
+        let mut headers = Vec::with_capacity(pairs.len());
+        for (key, value) in pairs {
             headers.push((
-                HeaderName::from_bytes(k.clone().as_bytes()).map_err(Box::from)?,
-                HeaderValue::from_str(v.clone().as_str()).map_err(Box::from)?,
+                HeaderName::from_bytes(key.as_bytes()).map_err(Box::from)?,
+                HeaderValue::from_str(value).map_err(Box::from)?,
             ));
         }
-        Ok(())
+        Ok(headers)
     }
 }
 
@@ -216,6 +212,9 @@ where
             let mut response: Response = future.await?;
             let headers = response.headers_mut();
             for (k, v) in &layer.headers {
+                if headers.contains_key(k) {
+                    continue;
+                }
                 headers.insert(k, v.clone());
             }
             Ok(response)
@@ -225,9 +224,10 @@ where
 
 #[cfg(test)]
 mod tests {
-
+    use crate::controller::format;
     use axum::{
-        http::{HeaderMap, Method},
+        body::Body,
+        http::{header::CONTENT_SECURITY_POLICY, HeaderMap, HeaderValue, Method, Response},
         routing::get,
         Router,
     };
@@ -287,6 +287,44 @@ mod tests {
             .unwrap();
         let response = app.oneshot(req).await.unwrap();
         assert_debug_snapshot!(normalize_headers(response.headers()));
+    }
+
+    #[tokio::test]
+    async fn can_dynamically_override_headers() {
+        let config = SecureHeader {
+            enable: true,
+            preset: "github".to_string(),
+            overrides: None,
+        };
+        async fn handler() -> Result<Response<Body>> {
+            let nonce = "random";
+            let mut res: Response<Body> = format::template(
+                "<style nonce='{{ nonce }}'></style>",
+                serde_json::json!({"nonce": nonce}),
+            )
+            .unwrap();
+            res.headers_mut().insert(
+                CONTENT_SECURITY_POLICY, HeaderValue::from_str(
+                    &format!("default-src 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'; upgrade-insecure-requests; block-all-mixed-content; style-src 'self' 'nonce-{nonce}';")
+                ).expect("cannot create a header value")
+            );
+            Ok(res)
+        }
+        let app = Router::new()
+            .route("/", get(handler))
+            .layer(SecureHeaders::new(&config).unwrap());
+
+        let req = Request::builder()
+            .uri("/")
+            .method(Method::GET)
+            .body(Body::empty())
+            .unwrap();
+        let response = app.oneshot(req).await.unwrap();
+        let headers = normalize_headers(response.headers());
+        assert_eq!(
+            headers.get(&CONTENT_SECURITY_POLICY.to_string()).unwrap(),
+            "default-src 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'; upgrade-insecure-requests; block-all-mixed-content; style-src 'self' 'nonce-random';"
+        )
     }
 
     #[tokio::test]

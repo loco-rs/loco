@@ -1,6 +1,6 @@
-{%- if settings.db %}
+{%- if settings.db -%}
 use std::path::Path;
-{%- endif %}
+{% endif -%}
 use async_trait::async_trait;
 use loco_rs::{
     app::{AppContext, Hooks, Initializer},
@@ -93,6 +93,9 @@ impl Hooks for App {
     #[allow(unused_variables)]
     fn register_tasks(tasks: &mut Tasks) {
         // tasks-inject (do not remove)
+        {%- if settings.auth %}
+        tasks.register(tasks::user_create::UserCreate);
+        {%- endif %} 
     }
 
     {%- if settings.db %}

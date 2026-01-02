@@ -6,12 +6,14 @@ use tera::{Tera, Value};
 pub fn new() -> Tera {
     let mut tera = Tera::default();
     tera.register_function("render_form_field", FormField);
+    tera.register_function("render_view_field", ViewField);
     tera
 }
 
 const DEFAULT_INPUT_CLASS: &str = "flex h-9 w-full rounded-md border border-input bg-transparent \
                                    px-3 py-1 text-base shadow-sm md:text-sm";
 struct FormField;
+struct ViewField;
 
 impl tera::Function for FormField {
     #[allow(clippy::too_many_lines)]
@@ -340,6 +342,51 @@ fn input_description<S: AsRef<str>>(description: S) -> String {
     )
 }
 
+impl tera::Function for ViewField {
+    fn call(&self, args: &HashMap<String, Value>) -> tera::Result<Value> {
+        let fname = args
+            .get("fname")
+            .ok_or_else(|| tera::Error::msg("fname is mandatory"))?
+            .as_str()
+            .ok_or_else(|| tera::Error::msg("fname must be a string"))?;
+        let rust_type = args
+            .get("rust_type")
+            .ok_or_else(|| tera::Error::msg("rust_type is mandatory"))?
+            .as_str()
+            .ok_or_else(|| tera::Error::msg("rust_type must be a string"))?;
+
+        // Generate the appropriate display code based on the rust type
+        // For strings, we escape HTML. For numbers, booleans, dates, and arrays, we don't.
+        let display_code = match rust_type {
+            "String"
+            | "Option<String>"
+            | "Uuid"
+            | "Option<Uuid>"
+            | "serde_json::Value"
+            | "Option<serde_json::Value>" => {
+                // Strings and JSON values need escaping
+                format!(r"{{{{item.{fname} | escape }}}}")
+            }
+            "bool" | "Option<bool>" => {
+                // Booleans: show "false" if empty/None, otherwise show the value
+                format!(
+                    r"{{% if item.{fname} %}}{{{{item.{fname}}}}}{{% else %}}false{{% endif %}}"
+                )
+            }
+            _ => {
+                // Everything else (numbers, dates, arrays, etc.) doesn't need escaping
+                format!(r"{{{{item.{fname}}}}}")
+            }
+        };
+
+        Ok(Value::String(display_code))
+    }
+
+    fn is_safe(&self) -> bool {
+        true
+    }
+}
+
 #[cfg(test)]
 pub mod tests {
     use insta::assert_snapshot;
@@ -363,7 +410,7 @@ pub mod tests {
         for field in &mapping.field_types {
             let rust_fields = match &field.rust {
                 crate::RustType::String(rust_field) => {
-                    HashMap::from([(field.name.to_string(), rust_field.to_string())])
+                    HashMap::from([(field.name.clone(), rust_field.clone())])
                 }
                 crate::RustType::Map(data) => data.clone(),
             };
@@ -394,5 +441,52 @@ pub mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn can_render_view_field() {
+        let mapping = get_mappings();
+
+        let mut template_engine = new();
+
+        template_engine
+            .add_raw_template(
+                "template",
+                r"{{ render_view_field(fname=fname_val, rust_type=rust_type_val)}}",
+            )
+            .unwrap_or_else(|_| panic!("Failed to add raw template"));
+
+        let mut all_results = Vec::new();
+
+        for field in &mapping.field_types {
+            let rust_fields = match &field.rust {
+                crate::RustType::String(rust_field) => {
+                    HashMap::from([(field.name.clone(), rust_field.clone())])
+                }
+                crate::RustType::Map(data) => data.clone(),
+            };
+
+            for (field_name, rust_field_type) in rust_fields {
+                let mut template_ctx = tera::Context::new();
+                template_ctx.insert("fname_val", &field.name);
+                template_ctx.insert("rust_type_val", &rust_field_type);
+
+                let view_field = template_engine
+                    .render("template", &template_ctx)
+                    .unwrap_or_else(|err| {
+                        panic!("Failed to render template. context: {template_ctx:?} .err: {err:?}")
+                    });
+
+                all_results.push(format!(
+                    "Field: {}.{} (type: {})\n{}\n",
+                    field.name, field_name, rust_field_type, view_field
+                ));
+            }
+        }
+
+        // Sort results to ensure consistent ordering
+        all_results.sort();
+
+        assert_snapshot!("can_render_view_field", all_results.join("\n"));
     }
 }

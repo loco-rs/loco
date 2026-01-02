@@ -58,7 +58,7 @@ impl Hooks for App {
 
     #[allow(unused_variables)]
     fn register_tasks(tasks: &mut Tasks) {
-        // tasks-inject (do not remove)
+        // tasks-inject (do not remove) 
     }
     async fn truncate(_ctx: &AppContext) -> Result<()> {
         Ok(())

@@ -877,7 +877,7 @@ pub fn get_queues(config_queues: &Option<Vec<String>>) -> Vec<String> {
     if let Some(config_queues) = config_queues {
         for q in config_queues {
             if !queues.iter().any(|aq| q == aq) {
-                queues.push(q.to_string());
+                queues.push(q.clone());
             }
         }
     }
