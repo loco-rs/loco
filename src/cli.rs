@@ -548,7 +548,6 @@ impl From<DbCommands> for RunDbCommand {
 #[derive(clap::ValueEnum, Clone)]
 pub enum DeploymentKind {
     Docker,
-    Shuttle,
     Nginx,
 }
 
@@ -581,9 +580,6 @@ impl DeploymentKind {
                     is_client_side_rendering,
                 }
             }
-            Self::Shuttle => loco_gen::DeploymentKind::Shuttle {
-                runttime_version: None,
-            },
             Self::Nginx => loco_gen::DeploymentKind::Nginx {
                 host: config.server.host.clone(),
                 port: config.server.port,

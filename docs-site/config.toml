@@ -164,7 +164,6 @@ example = '''```sh
 $ cargo loco generate deployment
 ? ❯ Choose your deployment ›
 ❯ Docker
-❯ Shuttle
 ❯ Nginx
 
 ..
