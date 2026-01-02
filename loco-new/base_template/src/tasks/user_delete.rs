@@ -49,6 +49,10 @@ impl Task for UserDelete {
             }
         }
 
+        let user_name = user_to_delete.name.clone();
+        let user_email = user_to_delete.email.clone();
+        let user_pid = user_to_delete.pid.clone();
+
         let _deleted_user = user_to_delete
             .into_active_model()
             .delete(&app_context.db)
@@ -59,9 +63,9 @@ impl Task for UserDelete {
             })?;
         println!("User deleted successfully!");
         tracing::info!(
-            pid = user_to_delete.pid.to_string(),
-            username = user_to_delete.name,
-            email = user_to_delete.email,
+            pid = user_pid.to_string(),
+            username = user_name,
+            email = user_email,
             "User deleted"
         );
 
