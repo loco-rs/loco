@@ -13,6 +13,7 @@ injections:
 use loco_rs::prelude::*;
 use serde_json::json;
 
+static shared: Dir<'_> = include_dir!("src/mailers/shared");
 static welcome: Dir<'_> = include_dir!("src/mailers/{{module_name}}/welcome");
 
 #[allow(clippy::module_name_repetitions)]
@@ -24,9 +25,10 @@ impl {{struct_name}} {
     /// # Errors
     /// When email sending is failed
     pub async fn send_welcome(ctx: &AppContext, to: &str, msg: &str) -> Result<()> {
-        Self::mail_template(
+        Self::mail_template_with_shared(
             ctx,
             &welcome,
+            &[&shared],
             mailer::Args {
                 to: to.to_string(),
                 locals: json!({
