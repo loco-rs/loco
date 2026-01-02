@@ -241,7 +241,7 @@ async fn can_update_user_data() {
 
     let update_params = RegisterParams {
         name: "new-name".to_string(),
-        email: "new-email".to_string(),
+        email: "new-email@example.com".to_string(),
         password: "new-password".to_string(),
     };
 
@@ -260,7 +260,7 @@ async fn can_update_user_data() {
 
 
     assert_eq!(user.name, "new-name", "Expected name to be updated");
-    assert_eq!(user.email, "new-email", "Expected email to be updated");
+    assert_eq!(user.email, "new-email@example.com", "Expected email to be updated");
     assert!(user.verify_password("new-password"), "Password verification failed for new password");
 }
 

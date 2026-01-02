@@ -353,16 +353,15 @@ impl ActiveModel {
     ///
     /// when has DB query error
     pub async fn update_user_data(
-        mut self, db: &DatabaseConnection,
+        mut self,
+        db: &DatabaseConnection,
         params: RegisterParams,
     ) -> ModelResult<Model> {
         self.name = ActiveValue::set(params.name);
         self.email = ActiveValue::set(params.email);
-        self.password =
-            ActiveValue::set(hash::hash_password(&params.password).map_err(|e| ModelError::Any(e.into()))?);
+        self.reset_password(db, &params.password).await?;
         self.update(db).await.map_err(ModelError::from)
     }
-
 
     /// Creates a magic link token for passwordless authentication.
     ///
