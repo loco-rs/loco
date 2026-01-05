@@ -12,16 +12,13 @@ impl Task for UserDelete {
         }
     }
     async fn run(&self, app_context: &AppContext, vars: &task::Vars) -> Result<()> {
-        let input = match vars.cli_arg("pid") {
-            Ok(pid) => pid,
-            Err(_) => return Err(Error::string("pid is mandatory")),
-        };
+        let Ok(input) = vars.cli_arg("pid") else { return Err(Error::string("pid is mandatory")) };
         let force_flag = vars
             .cli_arg("force")
             .map(|v| v.trim().to_lowercase() == "true")
             .unwrap_or(false);
 
-        let user_to_delete = users::Model::find_by_pid(&app_context.db, &input).await?;
+        let user_to_delete = users::Model::find_by_pid(&app_context.db, input).await?;
 
         println!(
             "User to delete:\nUsername: {}\nEmail: {}\nPID: {}",
@@ -51,7 +48,7 @@ impl Task for UserDelete {
 
         let user_name = user_to_delete.name.clone();
         let user_email = user_to_delete.email.clone();
-        let user_pid = user_to_delete.pid.clone();
+        let user_pid = user_to_delete.pid;
 
         let _deleted_user = user_to_delete
             .into_active_model()
