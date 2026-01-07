@@ -12,7 +12,9 @@ impl Task for UserDelete {
         }
     }
     async fn run(&self, app_context: &AppContext, vars: &task::Vars) -> Result<()> {
-        let Ok(input) = vars.cli_arg("pid") else { return Err(Error::string("pid is mandatory")) };
+        let Ok(input) = vars.cli_arg("pid") else {
+            return Err(Error::string("pid is mandatory"));
+        };
         let force_flag = vars
             .cli_arg("force")
             .map(|v| v.trim().to_lowercase() == "true")

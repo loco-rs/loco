@@ -4,6 +4,7 @@ pub use sea_orm_migration::prelude::*;
 
 {%- if settings.auth %}
 mod m20220101_000001_users;
+mod m20220101_000002_groups;
 {%- endif %}
 
 pub struct Migrator;
@@ -14,6 +15,7 @@ impl MigratorTrait for Migrator {
         vec![
             {%- if settings.auth %}
             Box::new(m20220101_000001_users::Migration),
+            Box::new(m20220101_000002_groups::Migration),
             {%- endif %}
             // inject-above (do not remove this comment)
         ]
