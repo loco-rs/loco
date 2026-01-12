@@ -1,7 +1,6 @@
 # Changelog
 
 
-
 ##  Unreleased
 - Fix `cargo fmt` error in `loco-new` ([#1669](https://github.com/loco-rs/loco/pull/1669))
 - Fix UUID pattern in form field generation ([#1665](https://github.com/loco-rs/loco/pull/1665))
@@ -15,6 +14,7 @@
 - Refactor users model to reuse `find_by_api_key` in `Authenticable` ([#1706](https://github.com/loco-rs/loco/pull/1706))
 - Split error detail generic parameters ([#1709](https://github.com/loco-rs/loco/pull/1709))
 - Update `loco-new` for new Rhai version ([#1704](https://github.com/loco-rs/loco/pull/1704))
+- Feat: Worker::perform_later() now returns job IDs for status tracking. Returns `Result<Option<String>>` with the job ID when using background queue mode. [https://github.com/loco-rs/loco/issues/1623](https://github.com/loco-rs/loco/issues/1623)
 
 ### Breaking Changes
 In file `src/initializers/view_engine.rs`, modify the code lines in `after_routes`:

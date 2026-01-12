@@ -47,9 +47,9 @@ storage_gcp = ["opendal/services-gcs"]
 # Cache feature
 cache_inmem = ["dep:moka"]
 cache_redis = ["dep:bb8-redis", "dep:bb8"]
-bg_redis = ["dep:redis", "dep:ulid"]
-bg_pg = ["dep:sqlx", "dep:ulid"]
-bg_sqlt = ["dep:sqlx", "dep:ulid"]
+bg_redis = ["dep:redis"]
+bg_pg = ["dep:sqlx"]
+bg_sqlt = ["dep:sqlx"]
 ## Testing feature flags
 integration_test = []
 # Embed assets into binary
@@ -150,7 +150,7 @@ sqlx = { version = "0.8.2", default-features = false, features = [
     "chrono",
     "sqlite",
 ], optional = true }
-ulid = { version = "1", optional = true }
+ulid = "1"
 
 # bg_redis: redis workers
 redis = { version = "0.31", features = ["aio", "tokio-comp"], optional = true }
