@@ -357,7 +357,7 @@ impl Queue {
         Ok(())
     }
 
-    async fn get_jobs(
+    pub async fn get_jobs(
         &self,
         status: Option<&Vec<JobStatus>>,
         age_days: Option<i64>,
