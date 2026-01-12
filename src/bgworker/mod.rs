@@ -664,12 +664,15 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
             }
             WorkerMode::BackgroundAsync => {
                 let dx = ctx.clone();
-                tokio::spawn(async move {
-                    if let Err(err) = Self::build(&dx).perform(args).await {
-                        tracing::error!(err = err.to_string(), "worker failed to perform job");
-                    }
-                });
-                None
+                Some(
+                    tokio::spawn(async move {
+                        if let Err(err) = Self::build(&dx).perform(args).await {
+                            tracing::error!(err = err.to_string(), "worker failed to perform job");
+                        }
+                    })
+                    .id()
+                    .to_string(),
+                )
             }
         };
         Ok(job_id)
