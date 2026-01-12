@@ -10,6 +10,7 @@ use async_trait::async_trait;
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
+use ulid::Ulid;
 #[cfg(feature = "bg_pg")]
 pub mod pg;
 #[cfg(feature = "bg_redis")]
@@ -638,7 +639,7 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
         let name = type_name.split("::").last().unwrap_or(type_name);
         name.to_upper_camel_case()
     }
-    async fn perform_later(ctx: &AppContext, args: A) -> crate::Result<Option<String>>
+    async fn perform_later(ctx: &AppContext, args: A) -> crate::Result<String>
     where
         Self: Sized,
     {
@@ -650,29 +651,28 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
 
                     p.enqueue(Self::class_name(), Self::queue(), args, tags_option)
                         .await?
+                        .unwrap_or_else(|| Ulid::new().to_string())
                 } else {
-                    tracing::error!(
+                    return Err(Error::string(
                         "perform_later: background queue is selected, but queue was not populated \
-                         in context"
-                    );
-                    None
+                         in context",
+                    ));
                 }
             }
             WorkerMode::ForegroundBlocking => {
+                let job_id = Ulid::new().to_string();
                 Self::build(ctx).perform(args).await?;
-                None
+                job_id
             }
             WorkerMode::BackgroundAsync => {
                 let dx = ctx.clone();
-                Some(
-                    tokio::spawn(async move {
-                        if let Err(err) = Self::build(&dx).perform(args).await {
-                            tracing::error!(err = err.to_string(), "worker failed to perform job");
-                        }
-                    })
-                    .id()
-                    .to_string(),
-                )
+                tokio::spawn(async move {
+                    if let Err(err) = Self::build(&dx).perform(args).await {
+                        tracing::error!(err = err.to_string(), "worker failed to perform job");
+                    }
+                })
+                .id()
+                .to_string()
             }
         };
         Ok(job_id)
