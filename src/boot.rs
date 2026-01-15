@@ -28,7 +28,7 @@ use crate::{
     prelude::BackgroundWorker,
     scheduler::{self, Scheduler},
     storage::{self, Storage},
-    task::{self, Tasks},
+    task::Tasks,
     Result,
 };
 
@@ -180,7 +180,7 @@ async fn shutdown_and_await_queue_worker(
 pub async fn run_task<H: Hooks>(
     app_context: &AppContext,
     task: Option<&String>,
-    vars: &task::Vars,
+    args: &[String],
 ) -> Result<()> {
     let mut tasks = Tasks::default();
     H::register_tasks(&mut tasks);
@@ -188,7 +188,7 @@ pub async fn run_task<H: Hooks>(
     if let Some(task) = task {
         let task_span = tracing::span!(tracing::Level::DEBUG, "task", task,);
         let _guard = task_span.enter();
-        tasks.run(app_context, task, vars).await?;
+        tasks.run(app_context, task, args).await?;
     } else {
         let list = tasks.list();
         for item in &list {
