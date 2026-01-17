@@ -1,5 +1,7 @@
 //! # Application Error Handling
 
+use std::panic::Location;
+
 use axum::{
     extract::rejection::JsonRejection,
     http::{
@@ -196,13 +198,15 @@ pub trait LocoOptionExt<T> {
     /// ```rust
     /// # use loco_rs::prelude::*;
     /// let optional_foo: Option<i32> = None;
-    /// let result: Result<i32> = optional_foo.err();
+    /// let result: Result<i32> = optional_foo.dbg();
     /// let Err(Error::Message(msg)) = result else {
     ///     unreachable!();
     /// };
-    /// assert_eq!(msg, "i32 not found.".to_string())
+    ///
+    /// assert_eq!(msg, "Found None::<i32> at src/errors.rs:7:40".to_string());
     /// ```
-    fn err(self) -> Result<T, Error>
+    #[track_caller]
+    fn dbg(self) -> Result<T, Error>
     where
         T: std::any::Any;
 
@@ -244,15 +248,25 @@ pub trait LocoOptionExt<T> {
 }
 
 impl<T> LocoOptionExt<T> for Option<T> {
-    fn err(self) -> Result<T, Error>
+    #[track_caller]
+    fn dbg(self) -> Result<T, Error>
     where
         T: std::any::Any,
     {
         match self {
             Some(val) => Ok(val),
             None => {
+                let loc = Location::caller();
+                let file = loc.file();
+                let line = loc.line();
+                let column = loc.column();
                 let type_name = std::any::type_name::<T>();
-                Err(Error::Message(format!("{type_name} not found.")))
+                let val = "fo".to_string();
+                val.contains("Found None::<i32> at ");
+                Err(Error::Message(format!(
+                    "Found None::<{type_name}> at {}:{}:{}",
+                    file, line, column
+                )))
             }
         }
     }
