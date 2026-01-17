@@ -186,3 +186,38 @@ impl Error {
         }
     }
 }
+
+pub trait LocoOptionExt<T> {
+    fn err(self) -> Result<T, Error>
+    where
+        T: std::any::Any;
+
+    fn msg(self, msg: impl ToString) -> Result<T, Error>;
+
+    fn status(self, status: StatusCode, msg: impl ToString) -> Result<T, Error>;
+}
+
+impl<T> LocoOptionExt<T> for Option<T> {
+    fn err(self) -> Result<T, Error>
+    where
+        T: std::any::Any,
+    {
+        match self {
+            Some(val) => Ok(val),
+            None => {
+                let type_name = std::any::type_name::<T>();
+                Err(Error::Message(format!("{type_name} not found.")))
+            }
+        }
+    }
+    fn msg(self, msg: impl ToString) -> Result<T, Error> {
+        self.ok_or(Error::Message(msg.to_string()))
+    }
+
+    fn status(self, status: StatusCode, msg: impl ToString) -> Result<T, Error> {
+        self.ok_or(Error::CustomError(
+            status,
+            ErrorDetail::new(String::new(), msg.to_string()),
+        ))
+    }
+}
