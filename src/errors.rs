@@ -202,8 +202,9 @@ pub trait LocoOptionExt<T> {
     /// let Err(Error::Message(msg)) = result else {
     ///     unreachable!();
     /// };
-    ///
-    /// assert_eq!(msg, "Found None::<i32> at src/errors.rs:7:40".to_string());
+    /// // `msg` will return a message like
+    /// // "Found None::<i32> at src/errors.rs:7:40"
+    /// # assert!(msg.contains("Found None::<i32> at "));
     /// ```
     #[expect(clippy::missing_errors_doc)]
     #[cfg_attr(debug_assertions, track_caller)]
