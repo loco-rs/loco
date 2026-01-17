@@ -187,14 +187,60 @@ impl Error {
     }
 }
 
+/// Provides a set of helper methods converting `Option<T>`s into [`Result<T>`](crate::Result)s.
 pub trait LocoOptionExt<T> {
+    /// Convert an option to an Error.
+    ///
+    /// Uses the typename to formulate an Error::Message
+    ///
+    /// ```rust
+    /// # use loco_rs::prelude::*;
+    /// let optional_foo: Option<i32> = None;
+    /// let result: Result<i32> = optional_foo.err();
+    /// let Err(Error::Message(msg)) = result else {
+    ///     unreachable!();
+    /// };
+    /// assert_eq!(msg, "i32 not found.".to_string())
+    /// ```
     fn err(self) -> Result<T, Error>
     where
         T: std::any::Any;
 
+    /// Convert an option to an Error with a custom [`Error::Message`].
+    ///
+    /// ```rust
+    /// # use loco_rs::prelude::*;
+    /// let optional_foo: Option<i32> = None;
+    /// let result: Result<i32> = optional_foo.msg("Where'd my number go?");
+    /// let Err(Error::Message(msg)) = result else {
+    ///     unreachable!();
+    /// };
+    /// assert_eq!(msg, "Where'd my number go?".to_string())
+    /// ```
     fn msg(self, msg: impl ToString) -> Result<T, Error>;
 
-    fn status(self, status: StatusCode, msg: impl ToString) -> Result<T, Error>;
+    /// Convert an option to an Error with an [`Error::CustomError`].
+    ///
+    /// ```rust
+    /// # use loco_rs::prelude::*;
+    /// # use axum::http::StatusCode;
+    ///
+    /// let optional_foo: Option<i32> = None;
+    /// let result: Result<i32> = optional_foo.status(StatusCode::BAD_REQUEST, "Missing number", "Maybe don't set optional_foo to None");
+    /// let Err(Error::CustomError(status, error_detail)) = result else {
+    ///     unreachable!();
+    /// };
+    ///
+    /// assert_eq!(status, StatusCode::BAD_REQUEST);
+    /// assert_eq!(error_detail.error, Some("Missing number".to_string()));
+    /// assert_eq!(error_detail.description, Some("Maybe don't set optional_foo to None".to_string()));
+    /// ```
+    fn status<T1: Into<String> + AsRef<str>, T2: Into<String> + AsRef<str>>(
+        self,
+        status: StatusCode,
+        error: T1,
+        description: T2,
+    ) -> Result<T, Error>;
 }
 
 impl<T> LocoOptionExt<T> for Option<T> {
@@ -214,10 +260,15 @@ impl<T> LocoOptionExt<T> for Option<T> {
         self.ok_or(Error::Message(msg.to_string()))
     }
 
-    fn status(self, status: StatusCode, msg: impl ToString) -> Result<T, Error> {
+    fn status<T1: Into<String> + AsRef<str>, T2: Into<String> + AsRef<str>>(
+        self,
+        status: StatusCode,
+        error: T1,
+        description: T2,
+    ) -> Result<T, Error> {
         self.ok_or(Error::CustomError(
             status,
-            ErrorDetail::new(String::new(), msg.to_string()),
+            ErrorDetail::new(error, description),
         ))
     }
 }
