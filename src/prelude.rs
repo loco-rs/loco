@@ -41,7 +41,7 @@ pub use crate::{
         views::{engines::TeraView, ViewEngine, ViewRenderer},
         Json, Routes,
     },
-    errors::Error,
+    errors::{Error, LocoOptionExt},
     mailer,
     mailer::Mailer,
     task::{self, Task, TaskInfo},

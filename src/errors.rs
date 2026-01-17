@@ -1,5 +1,7 @@
 //! # Application Error Handling
 
+use std::panic::Location;
+
 use axum::{
     extract::rejection::JsonRejection,
     http::{
@@ -184,5 +186,115 @@ impl Error {
                 backtrace: Box::new(backtrace),
             },
         }
+    }
+}
+
+/// Provides a set of helper methods converting `Option<T>`s into [`Result<T>`](crate::Result)s.
+pub trait LocoOptionExt<T> {
+    /// Convert an option to an Error.
+    ///
+    /// Uses the typename and callsite to formulate an [`Error::Message`]
+    ///
+    /// ```rust
+    /// # use loco_rs::prelude::*;
+    /// let optional_foo: Option<i32> = None;
+    /// let result: Result<i32> = optional_foo.dbg();
+    /// let Err(Error::Message(msg)) = result else {
+    ///     unreachable!();
+    /// };
+    /// // `msg` will return a message like
+    /// // "Found None::<i32> at src/errors.rs:7:40"
+    /// # assert!(msg.contains("Found None::<i32> at "));
+    /// ```
+    #[expect(clippy::missing_errors_doc)]
+    #[cfg_attr(debug_assertions, track_caller)]
+    fn dbg(self) -> Result<T, Error>
+    where
+        T: std::any::Any;
+
+    /// Convert an option to an Error with a custom [`Error::Message`].
+    ///
+    /// ```rust
+    /// # use loco_rs::prelude::*;
+    /// let optional_foo: Option<i32> = None;
+    /// let result: Result<i32> = optional_foo.msg("Where'd my number go?");
+    /// let Err(Error::Message(msg)) = result else {
+    ///     unreachable!();
+    /// };
+    /// assert_eq!(msg, "Where'd my number go?".to_string())
+    /// ```
+    #[expect(clippy::missing_errors_doc)]
+    fn msg(self, msg: impl ToString) -> Result<T, Error>;
+
+    /// Convert an option to an Error with an [`Error::CustomError`].
+    ///
+    /// ```rust
+    /// # use loco_rs::prelude::*;
+    /// # use axum::http::StatusCode;
+    ///
+    /// let optional_foo: Option<i32> = None;
+    /// let result: Result<i32> = optional_foo.status(
+    ///     StatusCode::BAD_REQUEST,
+    ///     "Missing number",
+    ///     "Maybe don't set optional_foo to None"
+    /// );
+    /// let Err(Error::CustomError(status, error_detail)) = result else {
+    ///     unreachable!();
+    /// };
+    ///
+    /// assert_eq!(status, StatusCode::BAD_REQUEST);
+    /// assert_eq!(error_detail.error, Some("Missing number".to_string()));
+    /// assert_eq!(
+    ///     error_detail.description,
+    ///     Some("Maybe don't set optional_foo to None".to_string())
+    /// );
+    /// ```
+    #[expect(clippy::missing_errors_doc)]
+    fn status<T1: Into<String> + AsRef<str>, T2: Into<String> + AsRef<str>>(
+        self,
+        status: StatusCode,
+        error: T1,
+        description: T2,
+    ) -> Result<T, Error>;
+}
+
+impl<T> LocoOptionExt<T> for Option<T> {
+    #[cfg_attr(debug_assertions, track_caller)]
+    fn dbg(self) -> Result<T, Error>
+    where
+        T: std::any::Any,
+    {
+        self.ok_or_else(|| {
+            #[cfg(debug_assertions)]
+            {
+                let loc = Location::caller();
+                let file = loc.file();
+                let line = loc.line();
+                let column = loc.column();
+                let type_name = std::any::type_name::<T>();
+                Error::Message(format!(
+                    "Found None::<{type_name}> at {file}:{line}:{column}",
+                ))
+            }
+            #[cfg(not(debug_assertions))]
+            {
+                Error::NotFound
+            }
+        })
+    }
+    fn msg(self, msg: impl ToString) -> Result<T, Error> {
+        self.ok_or(Error::Message(msg.to_string()))
+    }
+
+    fn status<T1: Into<String> + AsRef<str>, T2: Into<String> + AsRef<str>>(
+        self,
+        status: StatusCode,
+        error: T1,
+        description: T2,
+    ) -> Result<T, Error> {
+        self.ok_or(Error::CustomError(
+            status,
+            ErrorDetail::new(error, description),
+        ))
     }
 }
