@@ -206,7 +206,7 @@ pub trait LocoOptionExt<T> {
     /// assert_eq!(msg, "Found None::<i32> at src/errors.rs:7:40".to_string());
     /// ```
     #[expect(clippy::missing_errors_doc)]
-    #[track_caller]
+    #[cfg_attr(debug_assertions, track_caller)]
     fn dbg(self) -> Result<T, Error>
     where
         T: std::any::Any;
@@ -258,20 +258,27 @@ pub trait LocoOptionExt<T> {
 }
 
 impl<T> LocoOptionExt<T> for Option<T> {
-    #[track_caller]
+    #[cfg_attr(debug_assertions, track_caller)]
     fn dbg(self) -> Result<T, Error>
     where
         T: std::any::Any,
     {
         self.ok_or_else(|| {
-            let loc = Location::caller();
-            let file = loc.file();
-            let line = loc.line();
-            let column = loc.column();
-            let type_name = std::any::type_name::<T>();
-            Error::Message(format!(
-                "Found None::<{type_name}> at {file}:{line}:{column}",
-            ))
+            #[cfg(debug_assertions)]
+            {
+                let loc = Location::caller();
+                let file = loc.file();
+                let line = loc.line();
+                let column = loc.column();
+                let type_name = std::any::type_name::<T>();
+                Error::Message(format!(
+                    "Found None::<{type_name}> at {file}:{line}:{column}",
+                ))
+            }
+            #[cfg(not(debug_assertions))]
+            {
+                Error::NotFound
+            }
         })
     }
     fn msg(self, msg: impl ToString) -> Result<T, Error> {
