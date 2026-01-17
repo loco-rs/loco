@@ -230,14 +230,21 @@ pub trait LocoOptionExt<T> {
     /// # use axum::http::StatusCode;
     ///
     /// let optional_foo: Option<i32> = None;
-    /// let result: Result<i32> = optional_foo.status(StatusCode::BAD_REQUEST, "Missing number", "Maybe don't set optional_foo to None");
+    /// let result: Result<i32> = optional_foo.status(
+    ///     StatusCode::BAD_REQUEST,
+    ///     "Missing number",
+    ///     "Maybe don't set optional_foo to None"
+    /// );
     /// let Err(Error::CustomError(status, error_detail)) = result else {
     ///     unreachable!();
     /// };
     ///
     /// assert_eq!(status, StatusCode::BAD_REQUEST);
     /// assert_eq!(error_detail.error, Some("Missing number".to_string()));
-    /// assert_eq!(error_detail.description, Some("Maybe don't set optional_foo to None".to_string()));
+    /// assert_eq!(
+    ///     error_detail.description,
+    ///     Some("Maybe don't set optional_foo to None".to_string())
+    /// );
     /// ```
     fn status<T1: Into<String> + AsRef<str>, T2: Into<String> + AsRef<str>>(
         self,
@@ -261,8 +268,6 @@ impl<T> LocoOptionExt<T> for Option<T> {
                 let line = loc.line();
                 let column = loc.column();
                 let type_name = std::any::type_name::<T>();
-                let val = "fo".to_string();
-                val.contains("Found None::<i32> at ");
                 Err(Error::Message(format!(
                     "Found None::<{type_name}> at {}:{}:{}",
                     file, line, column
