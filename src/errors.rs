@@ -193,7 +193,7 @@ impl Error {
 pub trait LocoOptionExt<T> {
     /// Convert an option to an Error.
     ///
-    /// Uses the typename to formulate an Error::Message
+    /// Uses the typename and callsite to formulate an [`Error::Message`]
     ///
     /// ```rust
     /// # use loco_rs::prelude::*;
@@ -205,6 +205,7 @@ pub trait LocoOptionExt<T> {
     ///
     /// assert_eq!(msg, "Found None::<i32> at src/errors.rs:7:40".to_string());
     /// ```
+    #[expect(clippy::missing_errors_doc)]
     #[track_caller]
     fn dbg(self) -> Result<T, Error>
     where
@@ -221,6 +222,7 @@ pub trait LocoOptionExt<T> {
     /// };
     /// assert_eq!(msg, "Where'd my number go?".to_string())
     /// ```
+    #[expect(clippy::missing_errors_doc)]
     fn msg(self, msg: impl ToString) -> Result<T, Error>;
 
     /// Convert an option to an Error with an [`Error::CustomError`].
@@ -246,6 +248,7 @@ pub trait LocoOptionExt<T> {
     ///     Some("Maybe don't set optional_foo to None".to_string())
     /// );
     /// ```
+    #[expect(clippy::missing_errors_doc)]
     fn status<T1: Into<String> + AsRef<str>, T2: Into<String> + AsRef<str>>(
         self,
         status: StatusCode,
@@ -260,20 +263,16 @@ impl<T> LocoOptionExt<T> for Option<T> {
     where
         T: std::any::Any,
     {
-        match self {
-            Some(val) => Ok(val),
-            None => {
-                let loc = Location::caller();
-                let file = loc.file();
-                let line = loc.line();
-                let column = loc.column();
-                let type_name = std::any::type_name::<T>();
-                Err(Error::Message(format!(
-                    "Found None::<{type_name}> at {}:{}:{}",
-                    file, line, column
-                )))
-            }
-        }
+        self.ok_or_else(|| {
+            let loc = Location::caller();
+            let file = loc.file();
+            let line = loc.line();
+            let column = loc.column();
+            let type_name = std::any::type_name::<T>();
+            Error::Message(format!(
+                "Found None::<{type_name}> at {file}:{line}:{column}",
+            ))
+        })
     }
     fn msg(self, msg: impl ToString) -> Result<T, Error> {
         self.ok_or(Error::Message(msg.to_string()))
