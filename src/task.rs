@@ -58,7 +58,7 @@ impl Vars {
     pub fn cli_arg(&self, key: &str) -> Result<&str> {
         self.cli
             .get(key)
-            .map(|key| key.deref())
+            .map(Deref::deref)
             .ok_or(Error::Message(format!("the argument {key} does not exist")))
     }
 }

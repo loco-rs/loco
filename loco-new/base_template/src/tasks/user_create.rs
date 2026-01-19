@@ -26,9 +26,9 @@ impl Task for UserCreate {
             .map_err(|_| Error::string("password is mandatory"))?;
 
         let register_params = RegisterParams {
-            email: email.clone(),
-            password: password.clone(),
-            name: name.clone(),
+            email: email.to_owned(),
+            password: password.to_owned(),
+            name: name.to_owned(),
         };
 
         // Create user with password using the same logic as register controller
