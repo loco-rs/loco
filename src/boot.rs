@@ -40,8 +40,16 @@ pub enum StartMode {
     ServerOnly,
     /// Run the application web server and the worker in the same process.
     ServerAndWorker,
+    /// Run the server and scheduler without workers.
+    ServerAndScheduler,
     /// Pulling job worker and execute them
     WorkerOnly {
+        /// Specifies that the worker should only handle jobs associated with one of these tags.
+        /// If empty, the worker handles all jobs.
+        tags: Vec<String>,
+    },
+    /// Run workers and scheduler without the HTTP server.
+    WorkerAndScheduler {
         /// Specifies that the worker should only handle jobs associated with one of these tags.
         /// If empty, the worker handles all jobs.
         tags: Vec<String>,
@@ -462,6 +470,15 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
                 run_scheduler: false,
             })
         }
+        StartMode::ServerAndScheduler => {
+            let router = setup_routes::<H>(&app_context, &initializers).await?;
+            Ok(BootResult {
+                app_context,
+                router: Some(router),
+                worker: None,
+                run_scheduler: true,
+            })
+        }
         StartMode::All => {
             register_workers::<H>(&app_context).await?;
             let router = setup_routes::<H>(&app_context, &initializers).await?;
@@ -479,6 +496,15 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
                 router: None,
                 worker: Some(tags.clone()),
                 run_scheduler: false,
+            })
+        }
+        StartMode::WorkerAndScheduler { tags } => {
+            register_workers::<H>(&app_context).await?;
+            Ok(BootResult {
+                app_context,
+                router: None,
+                worker: Some(tags.clone()),
+                run_scheduler: true,
             })
         }
     }
