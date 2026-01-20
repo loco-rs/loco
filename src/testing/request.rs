@@ -184,7 +184,7 @@ pub async fn get_available_port() -> i32 {
 /// when could not bootstrap the test environment
 pub async fn boot_test<H: Hooks>() -> Result<BootResult> {
     let config = H::load_config(&Environment::Test).await?;
-    let boot = H::boot(boot::StartMode::ServerOnly, &Environment::Test, config).await?;
+    let boot = H::boot(boot::StartMode::server_only(), &Environment::Test, config).await?;
     Ok(boot)
 }
 
@@ -211,7 +211,7 @@ pub async fn boot_test_with_create_db<H: Hooks>() -> Result<BootResultWrapper> {
     let test_db = super::db::init_test_db_creation(&config.database.uri)?;
     test_db.init_db().await;
     config.database.uri = test_db.get_connection_str().to_string();
-    let boot = match H::boot(boot::StartMode::ServerOnly, &Environment::Test, config).await {
+    let boot = match H::boot(boot::StartMode::server_only(), &Environment::Test, config).await {
         Ok(boot) => boot,
         Err(err) => {
             test_db.cleanup_db();
@@ -252,7 +252,7 @@ pub async fn boot_test_unique_port<H: Hooks>(port: Option<i32>) -> Result<BootRe
         binding: TEST_BINDING_SERVER.to_string(),
         ..config.server
     };
-    H::boot(boot::StartMode::ServerOnly, &Environment::Test, config).await
+    H::boot(boot::StartMode::server_only(), &Environment::Test, config).await
 }
 
 #[allow(clippy::future_not_send)]
