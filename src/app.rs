@@ -10,6 +10,7 @@ use std::{
 };
 
 use async_trait::async_trait;
+use axum::extract::FromRef;
 use axum::Router as AxumRouter;
 use dashmap::DashMap;
 
@@ -249,7 +250,7 @@ impl<T: 'static + Send + Sync> std::ops::Deref for RefGuard<'_, T> {
 /// the web server to operate. It is typically used to store and manage shared
 /// resources and settings that are accessible throughout the application's
 /// lifetime.
-#[derive(Clone)]
+#[derive(Clone, FromRef)]
 #[allow(clippy::module_name_repetitions)]
 pub struct AppContext {
     /// The environment in which the application is running.
