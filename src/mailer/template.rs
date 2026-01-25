@@ -264,32 +264,14 @@ mod tests {
     }
 
     #[test]
-    fn can_render_template_with_inheritance() {
+    fn can_render_template_with_inheritance() -> Result<()> {
         let args = serde_json::json!({
             "verifyToken": "ABC-123-XYZ",
             "name": "Test User",
         });
-        let template = Template::new(&INHERITANCE_TEMPLATE_DIR).unwrap();
-        let content = template.render(&args).unwrap();
-
-        // Verify that template inheritance worked
-        // Subject should be rendered directly (no inheritance)
-        assert_eq!(content.subject.trim(), "Welcome Test User!");
-
-        // HTML should extend base.t and include the full HTML structure
-        assert!(content.html.contains("<html>"));
-        assert!(content.html.contains("<head>"));
-        assert!(content.html.contains("<title>Welcome Email</title>"));
-        assert!(content.html.contains("<h1>Hello Test User!</h1>"));
-        assert!(content.html.contains("ABC-123-XYZ"));
-        // Check for closing tags separately (they might be on different lines)
-        assert!(content.html.contains("</body>"));
-        assert!(content.html.contains("</html>"));
-
-        // Text should be rendered directly (no inheritance)
-        assert!(content.text.contains("Hello Test User!"));
-        assert!(content.text.contains("ABC-123-XYZ"));
-        assert!(content.text.contains("Thank you for using our service"));
+        let template = Template::new(&INHERITANCE_TEMPLATE_DIR)?;
+        assert_debug_snapshot!(template.render(&args)?);
+        Ok(())
     }
 
     #[test]
@@ -318,50 +300,23 @@ mod tests {
     }
 
     #[test]
-    fn can_use_shared_templates_across_mailers() {
+    fn can_use_shared_templates_across_mailers() -> Result<()> {
         let args = serde_json::json!({
             "name": "Test User",
         });
 
         // Welcome mailer using shared base template
         let welcome_template =
-            Template::new_with_shared(&WELCOME_TEMPLATE_DIR, &[&SHARED_TEMPLATE_DIR]).unwrap();
-        let welcome_content = welcome_template.render(&args).unwrap();
-
-        // Verify welcome email uses shared base template
-        assert_eq!(welcome_content.subject.trim(), "Welcome Test User!");
-        assert!(welcome_content.html.contains("<html>"));
-        assert!(welcome_content.html.contains("<head>"));
-        assert!(welcome_content.html.contains("<title>Welcome!</title>"));
-        assert!(welcome_content.html.contains("<h1>Welcome Test User!</h1>"));
-        assert!(welcome_content.html.contains("Thank you for joining us"));
-        assert!(welcome_content.html.contains("© 2024 My Company")); // Footer from shared template
-        assert!(welcome_content.html.contains("</body>"));
-        assert!(welcome_content.html.contains("</html>"));
+            Template::new_with_shared(&WELCOME_TEMPLATE_DIR, &[&SHARED_TEMPLATE_DIR])?;
+        assert_debug_snapshot!(welcome_template.render(&args)?);
 
         // Reset password mailer using the same shared base template
         let reset_args = serde_json::json!({
             "resetUrl": "https://example.com/reset?token=abc123",
         });
         let reset_template =
-            Template::new_with_shared(&RESET_PASSWORD_TEMPLATE_DIR, &[&SHARED_TEMPLATE_DIR])
-                .unwrap();
-        let reset_content = reset_template.render(&reset_args).unwrap();
-
-        // Verify reset password email also uses shared base template
-        assert_eq!(reset_content.subject.trim(), "Reset Your Password");
-        assert!(reset_content.html.contains("<html>"));
-        assert!(reset_content.html.contains("<head>"));
-        assert!(reset_content.html.contains("<title>Reset Password</title>"));
-        assert!(reset_content.html.contains("<h1>Reset Your Password</h1>"));
-        assert!(reset_content
-            .html
-            .contains("https://example.com/reset?token=abc123"));
-        assert!(reset_content.html.contains("© 2024 My Company")); // Footer from shared template
-        assert!(reset_content.html.contains("</body>"));
-        assert!(reset_content.html.contains("</html>"));
-
-        // Both mailers share the same base template structure but have different content
-        assert_ne!(welcome_content.html, reset_content.html);
+            Template::new_with_shared(&RESET_PASSWORD_TEMPLATE_DIR, &[&SHARED_TEMPLATE_DIR])?;
+        assert_debug_snapshot!(reset_template.render(&reset_args)?);
+        Ok(())
     }
 }
