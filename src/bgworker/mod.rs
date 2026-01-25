@@ -94,7 +94,7 @@ impl Queue {
     /// # Errors
     ///
     /// This function will return an error if fails
-    /// Priority: higher number = higher priority, currently only supported for postgres
+    /// Priority: higher number = higher priority, supported for postgres, sqlite, and redis
     #[allow(unused_variables)]
     pub async fn enqueue<A: Serialize + Send + Sync>(
         &self,
@@ -108,7 +108,7 @@ impl Queue {
         match self {
             #[cfg(feature = "bg_redis")]
             Self::Redis(pool, _, _, _) => {
-                redis::enqueue(pool, class, queue, args, tags).await?;
+                redis::enqueue(pool, class, queue, args, tags, priority).await?;
             }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, _, _, _) => {
@@ -133,6 +133,7 @@ impl Queue {
                     chrono::Utc::now(),
                     None,
                     tags,
+                    priority,
                 )
                 .await
                 .map_err(Box::from)?;
@@ -556,7 +557,7 @@ impl Queue {
             Self::Postgres(_, _, _, _) => {
                 let jobs: Vec<pg::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.clone(), None, job.data, None, None) // TODO add priority support
+                    self.enqueue(job.name.clone(), None, job.data, None, Some(job.priority))
                         .await?;
                 }
 
@@ -566,7 +567,7 @@ impl Queue {
             Self::Sqlite(_, _, _, _) => {
                 let jobs: Vec<sqlt::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.clone(), None, job.data, None, None) // TODO add priority support
+                    self.enqueue(job.name.clone(), None, job.data, None, Some(job.priority))
                         .await?;
                 }
                 Ok(())
@@ -575,7 +576,7 @@ impl Queue {
             Self::Redis(_, _, _, _) => {
                 let jobs: Vec<redis::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.clone(), None, job.data, None, None) // TODO add priority support
+                    self.enqueue(job.name.clone(), None, job.data, None, Some(job.priority))
                         .await?;
                 }
                 Ok(())

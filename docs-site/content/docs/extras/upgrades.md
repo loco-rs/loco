@@ -33,6 +33,56 @@ These are the major ones:
 - [SeaORM](https://www.sea-ql.org/SeaORM), [CHANGELOG](https://github.com/SeaQL/sea-orm/blob/master/CHANGELOG.md)
 - [Axum](https://github.com/tokio-rs/axum), [CHANGELOG](https://github.com/tokio-rs/axum/blob/main/axum/CHANGELOG.md)
 
+## Upgrade to v0.16.5(??) (Unreleased)
+
+### Redis Background Worker Queue Migration
+
+PR: [#1693](https://github.com/loco-rs/loco/pull/1693)
+
+**This is a breaking change for Redis background worker queues.**
+
+The Redis queue implementation has been migrated from Lists to Sorted Sets (ZSET) to support job priorities. Jobs stored in the old List format are not compatible with the new ZSET format.
+
+#### Migration Strategy
+
+**Option 1: Drain queues before upgrade (Recommended)**
+1. Stop enqueueing new jobs
+2. Let all workers process existing jobs until queues are empty
+3. Upgrade to the new version
+4. Resume normal operation
+
+**Option 2: Manual migration**
+If you have long-running or scheduled jobs that can't be drained:
+
+```bash
+# Before upgrading, export jobs from Redis
+redis-cli --scan --pattern "queue:*" | while read key; do
+    redis-cli LRANGE "$key" 0 -1 >> jobs_backup.txt
+done
+
+# After upgrading, you'll need to re-enqueue jobs via your application
+# The job data is still stored in "job:*" keys
+```
+
+**Option 3: Accept job loss**
+
+If losing queued jobs is acceptable for your use case, simply upgrade. Existing queued jobs will remain in List format but won't be processed. They can be manually cleaned up with:
+
+```bash
+redis-cli --scan --pattern "queue:*" | xargs redis-cli DEL
+```
+
+#### What Changed
+
+- Queue storage: `LPUSH`/`LPOP` → `ZADD`/`ZPOPMIN`
+- Priority support: Jobs now dequeue based on priority (higher = first)
+- Performance: Minimal impact (O(1) → O(log N), still sub-millisecond)
+- Memory: ~20-30% increase due to score storage
+
+#### SQLite and Postgres Background Workers
+
+SQLite and Postgres workers also gained priority support but with **no breaking changes**. The priority column is automatically added to existing databases on startup.
+
 ## Upgrade from 0.15.x to 0.16.x
 
 ### Use `AppContext` instead of `Config` in `init_logger` in the `Hooks` trait
