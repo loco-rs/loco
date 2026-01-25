@@ -688,9 +688,9 @@ impl ConditionBuilder {
     ///     .build(sea_orm::DatabaseBackend::Postgres)
     ///     .to_string();
     ///
-/// assert_eq!(
-///     query_str,
-///     "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"created_at\" BETWEEN '2024-03-01 22:10:57.000000' AND '2024-03-25 22:10:57.000000'" );
+    /// assert_eq!(
+    ///     query_str,
+    ///     "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"created_at\" BETWEEN '2024-03-01 22:10:57.000000' AND '2024-03-25 22:10:57.000000'" );
     /// ````
     #[must_use]
     pub fn date_range<T: ColumnTrait>(self, col: T) -> date_range::DateRangeBuilder<T> {
