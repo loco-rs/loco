@@ -1,0 +1,23 @@
+---
+source: loco-gen/tests/templates/mailer.rs
+expression: "fs::read_to_string(path).unwrap_or_else(|_| panic!(\"{name} missing\"))"
+---
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}Email{% endblock %}</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% block body %}{% endblock %}
+        <div class="footer">
+            {% block footer %}{% endblock %}
+        </div>
+    </div>
+</body>
+</html>
