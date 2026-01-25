@@ -2,4 +2,9 @@
 source: loco-gen/tests/templates/mailer.rs
 expression: "fs::read_to_string(path).unwrap_or_else(|_| panic!(\"{name} missing\"))"
 ---
-welcome to <em>acmeworld!</em>
+{% extends "base.t" %}
+{% block title %}Welcome!{% endblock %}
+{% block body %}
+<h1>Welcome!</h1>
+<p>welcome to <em>acmeworld!</em></p>
+{% endblock %}
