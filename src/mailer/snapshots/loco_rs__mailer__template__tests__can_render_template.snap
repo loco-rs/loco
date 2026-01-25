@@ -1,6 +1,6 @@
 ---
 source: src/mailer/template.rs
-expression: "Template::new(&include_dir!(\"tests/fixtures/email_template/test\")).render(&args)"
+expression: template.render(&args)
 ---
 Ok(
     Content {

@@ -1,0 +1,9 @@
+---
+source: src/mailer/template.rs
+expression: template.render(&args)?
+---
+Content {
+    subject: "Welcome Test User!\n\n",
+    text: "Hello Test User!\n\nYour verification token is: ABC-123-XYZ\n\nThank you for using our service.\n\n",
+    html: "<!DOCTYPE html>\n<html>\n<head><title>Welcome Email</title></head>\n<body>\n\n<h1>Hello Test User!</h1>\n<p>Your verification token is: <strong>ABC-123-XYZ</strong></p>\n\n</body>\n</html>\n\n",
+}
