@@ -19,4 +19,5 @@ Job {
         <REDACTED>,
     ),
     tags: None,
+    priority: 0,
 }

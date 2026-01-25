@@ -82,4 +82,14 @@ snapshot_kind: text
         dflt_value: None,
         pk: false,
     },
+    TableInfo {
+        cid: 9,
+        name: "priority",
+        _type: "INTEGER",
+        notnull: true,
+        dflt_value: Some(
+            "0",
+        ),
+        pk: false,
+    },
 ]
