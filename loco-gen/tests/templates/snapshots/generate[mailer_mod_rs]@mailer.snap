@@ -7,6 +7,7 @@ expression: "fs::read_to_string(path).unwrap_or_else(|_| panic!(\"{name} missing
 use loco_rs::prelude::*;
 use serde_json::json;
 
+static shared: Dir<'_> = include_dir!("src/mailers/shared");
 static welcome: Dir<'_> = include_dir!("src/mailers/reset_password/welcome");
 
 #[allow(clippy::module_name_repetitions)]
@@ -18,9 +19,10 @@ impl ResetPassword {
     /// # Errors
     /// When email sending is failed
     pub async fn send_welcome(ctx: &AppContext, to: &str, msg: &str) -> Result<()> {
-        Self::mail_template(
+        Self::mail_template_with_shared(
             ctx,
             &welcome,
+            &[&shared],
             mailer::Args {
                 to: to.to_string(),
                 locals: json!({

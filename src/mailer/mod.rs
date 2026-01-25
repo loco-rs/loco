@@ -96,7 +96,49 @@ pub trait Mailer {
     /// Renders and sends an email using the provided [`AppContext`], template
     /// directory, and arguments.
     async fn mail_template(ctx: &AppContext, dir: &Dir<'_>, args: Args) -> Result<()> {
-        let content = Template::new(dir).render(&args.locals)?;
+        Self::mail_template_with_shared(ctx, dir, &[], args).await
+    }
+
+    /// Renders and sends an email using the provided [`AppContext`], template
+    /// directory, shared template directories, and arguments.
+    ///
+    /// This allows multiple mailers to share common templates (e.g., a base HTML layout).
+    /// Templates from shared directories are loaded first, then templates from the main
+    /// directory. This means templates in the main directory can extend templates from
+    /// shared directories.
+    ///
+    /// # Example
+    ///
+    /// ```rust, ignore
+    /// use include_dir::{include_dir, Dir};
+    /// use loco_rs::prelude::*;
+    ///
+    /// // Shared base template directory
+    /// static shared_base: Dir<'_> = include_dir!("src/mailers/shared");
+    ///
+    /// // Welcome mailer templates
+    /// static welcome: Dir<'_> = include_dir!("src/mailers/auth/welcome");
+    ///
+    /// // Send email with shared templates
+    /// Self::mail_template_with_shared(
+    ///     ctx,
+    ///     &welcome,
+    ///     &[&shared_base],
+    ///     mailer::Args {
+    ///         to: "user@example.com".to_string(),
+    ///         locals: json!({"name": "User"}),
+    ///         ..Default::default()
+    ///     },
+    /// )
+    /// .await?;
+    /// ```
+    async fn mail_template_with_shared(
+        ctx: &AppContext,
+        dir: &Dir<'_>,
+        shared_dirs: &[&Dir<'_>],
+        args: Args,
+    ) -> Result<()> {
+        let content = Template::new_with_shared(dir, shared_dirs)?.render(&args.locals)?;
         Self::mail(
             ctx,
             &Email {
