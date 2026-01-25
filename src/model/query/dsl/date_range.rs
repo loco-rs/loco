@@ -92,7 +92,7 @@ mod tests {
 
         assert_eq!(
             query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"created_at\" > '2024-03-01 22:10:57'"
+            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"created_at\" > '2024-03-01 22:10:57.000000'"
         );
     }
 
@@ -116,7 +116,7 @@ mod tests {
 
         assert_eq!(
             query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"created_at\" < '2024-03-01 22:10:57'"
+            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"created_at\" < '2024-03-01 22:10:57.000000'"
         );
     }
 
@@ -143,7 +143,7 @@ mod tests {
 
         assert_eq!(
             query_str,
-            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"created_at\" BETWEEN '2024-03-01 22:10:57' AND '2024-03-25 22:10:57'"
+            "SELECT \"loco\".\"id\" FROM \"loco\" WHERE \"loco\".\"created_at\" BETWEEN '2024-03-01 22:10:57.000000' AND '2024-03-25 22:10:57.000000'"
         );
     }
 }
