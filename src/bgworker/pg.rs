@@ -243,7 +243,25 @@ pub async fn initialize_database(pool: &PgPool) -> Result<()> {
     .fetch_one(pool)
     .await?;
 
-    if !table_exists {
+    if table_exists {
+        // Check if priority column exists
+        let priority_exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'pg_loco_queue' 
+                AND column_name = 'priority'
+            )",
+        )
+        .fetch_one(pool)
+        .await?;
+
+        if !priority_exists {
+            debug!("Adding priority column to existing pg_loco_queue table");
+            sqlx::query("ALTER TABLE pg_loco_queue ADD COLUMN priority INT NOT NULL DEFAULT 0")
+                .execute(pool)
+                .await?;
+        }
+    } else {
         // Create the table with all columns including priority
         sqlx::raw_sql(&format!(
             r"
@@ -264,24 +282,6 @@ pub async fn initialize_database(pool: &PgPool) -> Result<()> {
         ))
         .execute(pool)
         .await?;
-    } else {
-        // Check if priority column exists
-        let priority_exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS (
-                SELECT FROM information_schema.columns 
-                WHERE table_name = 'pg_loco_queue' 
-                AND column_name = 'priority'
-            )",
-        )
-        .fetch_one(pool)
-        .await?;
-
-        if !priority_exists {
-            debug!("Adding priority column to existing pg_loco_queue table");
-            sqlx::query("ALTER TABLE pg_loco_queue ADD COLUMN priority INT NOT NULL DEFAULT 0")
-                .execute(pool)
-                .await?;
-        }
     }
 
     Ok(())
