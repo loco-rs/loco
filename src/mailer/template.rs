@@ -155,10 +155,7 @@ impl Template {
 
         // Build inheritance chains to enable template inheritance, blocks, and extends
         tera.build_inheritance_chains().map_err(|e| {
-            Error::Message(format!(
-                "failed to build template inheritance chains: {}",
-                e
-            ))
+            Error::Message(format!("failed to build template inheritance chains: {e}"))
         })?;
 
         Ok(Self { tera })
@@ -178,7 +175,7 @@ impl Template {
             })?;
             let content = String::from_utf8_lossy(entry.contents()).to_string();
             tera.add_raw_template(name, &content)
-                .map_err(|e| Error::Message(format!("failed to add template '{}': {}", name, e)))?;
+                .map_err(|e| Error::Message(format!("failed to add template '{name}': {e}")))?;
         }
         Ok(())
     }
@@ -193,22 +190,22 @@ impl Template {
     /// - Template rendering fails
     pub fn render(&self, locals: &serde_json::Value) -> Result<Content> {
         let context = Context::from_serialize(locals)
-            .map_err(|e| Error::Message(format!("failed to create template context: {}", e)))?;
+            .map_err(|e| Error::Message(format!("failed to create template context: {e}")))?;
 
         let subject = self
             .tera
             .render(SUBJECT, &context)
-            .map_err(|e| Error::Message(format!("failed to render subject template: {}", e)))?;
+            .map_err(|e| Error::Message(format!("failed to render subject template: {e}")))?;
 
         let text = self
             .tera
             .render(TEXT, &context)
-            .map_err(|e| Error::Message(format!("failed to render text template: {}", e)))?;
+            .map_err(|e| Error::Message(format!("failed to render text template: {e}")))?;
 
         let html = self
             .tera
             .render(HTML, &context)
-            .map_err(|e| Error::Message(format!("failed to render html template: {}", e)))?;
+            .map_err(|e| Error::Message(format!("failed to render html template: {e}")))?;
 
         Ok(Content {
             subject,
