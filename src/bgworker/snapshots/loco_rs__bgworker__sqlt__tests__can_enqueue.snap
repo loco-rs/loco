@@ -25,5 +25,6 @@ snapshot_kind: text
                 "notification",
             ],
         ),
+        priority: 0,
     },
 ]

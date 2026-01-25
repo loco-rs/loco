@@ -1,7 +1,7 @@
 ---
 source: src/bgworker/pg.rs
+assertion_line: 852
 expression: job_after_dequeue
-snapshot_kind: text
 ---
 Job {
     id: "<REDACTED>",
@@ -19,4 +19,5 @@ Job {
         <REDACTED>,
     ),
     tags: None,
+    priority: 0,
 }
