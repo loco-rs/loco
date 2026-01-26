@@ -132,9 +132,8 @@ fn main() -> Result<()> {
                     "base_template"
                 };
 
-                let settings =
-                    Settings::from_wizard(&app_name, &prompt_template_dir, &user_selection, os);
-                let template_path = Path::new(settings.template_dir.as_str());
+                let settings = Settings::from_wizard(&app_name, &user_selection, os);
+                let template_path = Path::new(&prompt_template_dir);
 
                 let generator_tmp_folder = if let Some(_) = template_dir {
                     extract_tree_template(template_path)?
