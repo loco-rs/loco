@@ -127,11 +127,11 @@ fn main() -> Result<()> {
                 let args = wizard::ArgsPlaceholder { db, bg, assets };
                 let user_selection = wizard::start(&args)?;
 
-                let prompt_template_dir = template_dir.as_ref()
-                        .map_or(
-                            "base_template",
-                            |template_dir_str| template_dir_str.as_str()
-                        );
+                let prompt_template_dir = template_dir
+                    .as_ref()
+                    .map_or("base_template", |template_dir_str| {
+                        template_dir_str.as_str()
+                    });
 
                 let settings = Settings::from_wizard(&app_name, &user_selection, os);
                 let template_path = Path::new(&prompt_template_dir);
@@ -166,11 +166,11 @@ fn main() -> Result<()> {
                 };
 
                 // 2. NOW, we can safely create the `script` borrow.
-                let script = dynamic_script_owner.as_ref()
-                        .map_or(
-                            include_str!("../../setup.rhai"),
-                            |contents| contents.as_str()
-                        );
+                let script = dynamic_script_owner
+                    .as_ref()
+                    .map_or(include_str!("../../setup.rhai"), |contents| {
+                        contents.as_str()
+                    });
 
                 let res = match Generator::new(Arc::new(executor), settings).run_from_script(script)
                 {
