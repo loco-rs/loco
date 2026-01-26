@@ -72,6 +72,7 @@ const DEFAULT_OS: &str = "linux";
 #[cfg(not(unix))]
 const DEFAULT_OS: &str = "windows";
 
+#[allow(clippy::too_many_lines)]
 #[allow(clippy::cognitive_complexity)]
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -126,16 +127,16 @@ fn main() -> Result<()> {
                 let args = wizard::ArgsPlaceholder { db, bg, assets };
                 let user_selection = wizard::start(&args)?;
 
-                let prompt_template_dir = if let Some(ref template_dir_str) = template_dir {
-                    template_dir_str.as_str()
-                } else {
-                    "base_template"
-                };
+                let prompt_template_dir = template_dir.as_ref()
+                        .map_or(
+                            "base_template",
+                            |template_dir_str| template_dir_str.as_str()
+                        );
 
                 let settings = Settings::from_wizard(&app_name, &user_selection, os);
                 let template_path = Path::new(&prompt_template_dir);
 
-                let generator_tmp_folder = if let Some(_) = template_dir {
+                let generator_tmp_folder = if template_dir.is_some() {
                     extract_tree_template(template_path)?
                 } else {
                     extract_default_template()?
@@ -155,7 +156,7 @@ fn main() -> Result<()> {
                 }
 
                 let dynamic_script_owner: Option<String> = if let Some(path) = template_dir {
-                    let setup_filepath = format!("{}/setup.rhai", path); // Your line 168
+                    let setup_filepath = format!("{path}/setup.rhai"); // Your line 168
 
                     // Read the file and store the *owned String* in our `Option`.
                     // We return the `Result` and `?` will propagate the error.
@@ -165,15 +166,11 @@ fn main() -> Result<()> {
                 };
 
                 // 2. NOW, we can safely create the `script` borrow.
-                let script = if let Some(ref contents) = dynamic_script_owner {
-                    // If we have a dynamic script, `script` borrows from `dynamic_script_owner`.
-                    // `dynamic_script_owner` lives on, so this is safe!
-                    contents.as_str()
-                } else {
-                    // Otherwise, `script` gets the static fallback.
-                    // (I am guessing this is what your `else` block had)
-                    include_str!("../../setup.rhai")
-                };
+                let script = dynamic_script_owner.as_ref()
+                        .map_or(
+                            include_str!("../../setup.rhai"),
+                            |contents| contents.as_str()
+                        );
 
                 let res = match Generator::new(Arc::new(executor), settings).run_from_script(script)
                 {

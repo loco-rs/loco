@@ -62,21 +62,25 @@ pub fn extract_tree_template(source_path: &Path) -> std::io::Result<tree_fs::Tre
 
     // 4. Copies files from the dynamic `source_path` into the temporary directory
     fs_extra::dir::copy(source_path, &generator_tmp_folder.root, &options).map_err(|e| {
-        std::io::Error::new(
-            std::io::ErrorKind::Other,
+        std::io::Error::other(
             format!(
                 "Failed to copy template from '{}': {}",
                 source_path.display(),
                 e
-            ),
+            )
         )
     })?;
 
     // 5. Returns a handle to the populated temporary directory (same as before)
-    return Ok(generator_tmp_folder);
+    Ok(generator_tmp_folder)
 }
 
-// This function does what you're asking for.
+/// Reads the content of a file at the given path into a string.
+///
+/// # Errors
+///
+/// Returns an error if the file does not exist, or if there are 
+/// permission issues reading the file.
 pub fn read_file_contents(path_str: &str) -> std::io::Result<String> {
     let path = Path::new(path_str);
     std::fs::read_to_string(path)
