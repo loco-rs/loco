@@ -30,10 +30,17 @@ use axum_extra::extract::cookie;
 use serde::{Deserialize, Serialize};
 use tracing;
 
-use crate::{app::AppContext, auth, config::JWT as JWTConfig, errors::Error, Result as LocoResult};
+use crate::{
+    auth,
+    config::{Config, JWT as JWTConfig},
+    errors::Error,
+    Result as LocoResult,
+};
 
 #[cfg(feature = "with-db")]
 use crate::model::{Authenticable, ModelError};
+#[cfg(feature = "with-db")]
+use sea_orm::DatabaseConnection;
 
 // ---------------------------------------
 //
@@ -58,22 +65,24 @@ pub struct JWTWithUser<T: Authenticable> {
 #[cfg(feature = "with-db")]
 impl<S, T> FromRequestParts<S> for JWTWithUser<T>
 where
-    AppContext: FromRef<S>,
+    Config: FromRef<S>,
+    DatabaseConnection: FromRef<S>,
     S: Send + Sync,
     T: Authenticable,
 {
     type Rejection = Error;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
-        let ctx: AppContext = AppContext::from_ref(state);
+        let config: Config = Config::from_ref(state);
+        let db: DatabaseConnection = DatabaseConnection::from_ref(state);
 
-        let token = extract_token(get_jwt_from_config(&ctx)?, parts)?;
+        let token = extract_token(get_jwt_from_config(&config)?, parts)?;
 
-        let jwt_secret = ctx.config.get_jwt_config()?;
+        let jwt_secret = config.get_jwt_config()?;
 
         match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
             Ok(claims) => {
-                let user = T::find_by_claims_key(&ctx.db, &claims.claims.pid)
+                let user = T::find_by_claims_key(&db, &claims.claims.pid)
                     .await
                     .map_err(|e| match e {
                         ModelError::EntityNotFound => Error::Unauthorized("not found".to_string()),
@@ -109,7 +118,7 @@ pub struct JWT {
 // Implement the FromRequestParts trait for the Auth struct
 impl<S> FromRequestParts<S> for JWT
 where
-    AppContext: FromRef<S>,
+    Config: FromRef<S>,
     S: Send + Sync,
 {
     type Rejection = Error;
@@ -125,14 +134,14 @@ where
 /// Return an error when JWT token not configured or when the token is not valid
 pub fn extract_jwt_from_request_parts<S>(parts: &Parts, state: &S) -> Result<JWT, Error>
 where
-    AppContext: FromRef<S>,
+    Config: FromRef<S>,
     S: Send + Sync,
 {
-    let ctx: AppContext = AppContext::from_ref(state); // change to ctx
+    let config: Config = Config::from_ref(state);
 
-    let token = extract_token(get_jwt_from_config(&ctx)?, parts)?;
+    let token = extract_token(get_jwt_from_config(&config)?, parts)?;
 
-    let jwt_secret = ctx.config.get_jwt_config()?;
+    let jwt_secret = config.get_jwt_config()?;
 
     match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
         Ok(claims) => Ok(JWT {
@@ -149,8 +158,8 @@ where
 ///
 /// # Errors
 /// Return an error when JWT token not configured
-pub fn get_jwt_from_config(ctx: &AppContext) -> LocoResult<&JWTConfig> {
-    ctx.config
+pub fn get_jwt_from_config(config: &Config) -> LocoResult<&JWTConfig> {
+    config
         .auth
         .as_ref()
         .ok_or_else(|| Error::string("auth not configured"))?
@@ -263,7 +272,7 @@ pub struct ApiToken<T: Authenticable> {
 #[cfg(feature = "with-db")]
 impl<S, T> FromRequestParts<S> for ApiToken<T>
 where
-    AppContext: FromRef<S>,
+    DatabaseConnection: FromRef<S>,
     S: Send + Sync,
     T: Authenticable,
 {
@@ -274,11 +283,11 @@ where
         // Extract API key from the request header.
         let api_key = extract_token_from_header(&parts.headers)?;
 
-        // Convert the state reference to the application context.
-        let state: AppContext = AppContext::from_ref(state);
+        // Extract database connection from state.
+        let db: DatabaseConnection = DatabaseConnection::from_ref(state);
 
         // Retrieve user information based on the API key from the database.
-        let user = T::find_by_api_key(&state.db, &api_key)
+        let user = T::find_by_api_key(&db, &api_key)
             .await
             .map_err(|e| match e {
                 ModelError::EntityNotFound => Error::Unauthorized("not found".to_string()),
