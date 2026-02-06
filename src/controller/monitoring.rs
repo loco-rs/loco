@@ -6,7 +6,12 @@ use super::{format, routes::Routes};
 #[cfg(any(feature = "cache_inmem", feature = "cache_redis"))]
 use crate::config;
 use crate::{app::AppContext, Result};
-use axum::{extract::State, response::Response, routing::get};
+use axum::{
+    extract::State,
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    routing::get,
+};
 use serde::Serialize;
 
 /// Represents the health status of the application.
@@ -36,19 +41,25 @@ pub async fn health() -> Result<Response> {
 ///
 /// # Errors
 /// All errors are logged, and the readiness status is returned as a JSON response.
-pub async fn readiness(State(ctx): State<AppContext>) -> Result<Response> {
+pub async fn readiness(State(ctx): State<AppContext>) -> (StatusCode, Response) {
     // Check database connection
     #[cfg(feature = "with-db")]
     if let Err(error) = &ctx.db.ping().await {
         tracing::error!(err.msg = %error, err.detail = ?error, "readiness_db_ping_error");
-        return format::json(Health { ok: false });
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format::json(Health { ok: false }).into_response(),
+        );
     }
 
     // Check queue connection
     if let Some(queue) = &ctx.queue_provider {
         if let Err(error) = queue.ping().await {
             tracing::error!(err.msg = %error, err.detail = ?error, "readiness_queue_ping_error");
-            return format::json(Health { ok: false });
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format::json(Health { ok: false }).into_response(),
+            );
         }
     }
 
@@ -60,21 +71,30 @@ pub async fn readiness(State(ctx): State<AppContext>) -> Result<Response> {
             config::CacheConfig::InMem(_) => {
                 if let Err(error) = &ctx.cache.driver.ping().await {
                     tracing::error!(err.msg = %error, err.detail = ?error, "readiness_cache_ping_error");
-                    return format::json(Health { ok: false });
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format::json(Health { ok: false }).into_response(),
+                    );
                 }
             }
             #[cfg(feature = "cache_redis")]
             config::CacheConfig::Redis(_) => {
                 if let Err(error) = &ctx.cache.driver.ping().await {
                     tracing::error!(err.msg = %error, err.detail = ?error, "readiness_cache_ping_error");
-                    return format::json(Health { ok: false });
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format::json(Health { ok: false }).into_response(),
+                    );
                 }
             }
             config::CacheConfig::Null => (),
         }
     }
 
-    format::json(Health { ok: true })
+    (
+        StatusCode::OK,
+        format::json(Health { ok: true }).into_response(),
+    )
 }
 
 /// Defines and returns the readiness-related routes.
@@ -230,7 +250,7 @@ mod tests {
 
         // Test the router directly using oneshot
         let response = router.oneshot(req).await.unwrap();
-        assert_eq!(response.status(), 200);
+        assert_eq!(response.status(), 500);
 
         // Get the response body
         let body = axum::body::to_bytes(response.into_body(), usize::MAX)
@@ -346,7 +366,7 @@ mod tests {
 
         // Test the router directly using oneshot
         let response = router.oneshot(req).await.unwrap();
-        assert_eq!(response.status(), 200);
+        assert_eq!(response.status(), 500);
 
         // Get the response body
         let body = axum::body::to_bytes(response.into_body(), usize::MAX)
@@ -428,7 +448,7 @@ mod tests {
 
         // Test the router directly using oneshot
         let response = router.oneshot(req).await.unwrap();
-        assert_eq!(response.status(), 200);
+        assert_eq!(response.status(), 500);
 
         // Get the response body
         let body = axum::body::to_bytes(response.into_body(), usize::MAX)
