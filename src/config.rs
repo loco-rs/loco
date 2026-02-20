@@ -445,6 +445,7 @@ pub enum JWTLocationConfig {
 /// server:
 ///   port: {{ get_env(name="NODE_PORT", default=5150) }}
 ///   host: http://localhost
+///   port_in_url: true
 ///   middlewares:
 ///     limit_payload:
 ///       enable: true
@@ -469,6 +470,9 @@ pub struct Server {
     pub binding: String,
     /// The port on which the server should listen for incoming connections.
     pub port: i32,
+    /// Whether the port should be included in the full URL
+    #[serde(default = "default_port_in_url")]
+    pub port_in_url: bool,
     /// The webserver host
     pub host: String,
     /// Identify via the `Server` header
@@ -483,10 +487,18 @@ fn default_binding() -> String {
     "localhost".to_string()
 }
 
+fn default_port_in_url() -> bool {
+    true
+}
+
 impl Server {
     #[must_use]
     pub fn full_url(&self) -> String {
-        format!("{}:{}", self.host, self.port)
+        if self.port_in_url {
+            format!("{}:{}", self.host, self.port)
+        } else {
+            self.host.clone()
+        }
     }
 }
 /// Background worker configuration
