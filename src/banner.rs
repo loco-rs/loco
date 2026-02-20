@@ -29,41 +29,45 @@ pub fn print_banner(boot_result: &BootResult, server_config: &ServeParams) {
 
     #[cfg(feature = "with-db")]
     {
-        let mut database = Vec::new();
-        if config.database.enable_logging {
-            database.push("logging".green());
-        }
-        if config.database.auto_migrate {
-            database.push("automigrate".yellow());
-        }
-        if config.database.dangerously_recreate {
-            database.push("recreate".bright_red());
-        }
-        if config.database.dangerously_truncate {
-            database.push("truncate".bright_red());
-        }
+        let db_modes = [
+            (config.database.enable_logging, "logging".green()),
+            (config.database.auto_migrate, "automigrate".yellow()),
+            (
+                config.database.dangerously_recreate,
+                "recreate".bright_red(),
+            ),
+            (
+                config.database.dangerously_truncate,
+                "truncate".bright_red(),
+            ),
+        ]
+        .iter()
+        .filter(|x| x.0)
+        .map(|x| x.1.to_string())
+        .collect::<Vec<_>>();
 
-        if !database.is_empty() {
-            println!(
-                "   database: {}",
-                database
-                    .iter()
-                    .map(ToString::to_string)
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            );
+        if !db_modes.is_empty() {
+            println!("   database: {}", db_modes.join(", "));
         }
     }
-    if config.logger.enable {
-        println!("     logger: {}", config.logger.level.to_string().green());
-    } else {
-        println!("     logger: {}", "disabled".bright_red());
-    }
-    if cfg!(debug_assertions) {
-        println!("compilation: {}", "debug".bright_red());
-    } else {
-        println!("compilation: {}", "release".green());
-    }
+
+    println!(
+        "     logger: {}",
+        if config.logger.enable {
+            config.logger.level.to_string().green()
+        } else {
+            "disabled".bright_red()
+        }
+    );
+
+    println!(
+        "compilation: {}",
+        if cfg!(debug_assertions) {
+            "debug".bright_red()
+        } else {
+            "release".green()
+        }
+    );
 
     let mut modes = Vec::new();
     let mut servingline = Vec::new();
