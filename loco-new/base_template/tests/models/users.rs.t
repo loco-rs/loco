@@ -227,6 +227,42 @@ async fn can_reset_password() {
     assert!(user.verify_password("new-password"), "Password verification failed for new password");
 }
 
+#[tokio::test]
+#[serial]
+async fn can_update_user_data() {
+    configure_insta!();
+
+    let boot = boot_test::<App>().await.expect("Failed to boot test application");
+    seed::<App>(&boot.app_context).await.expect("Failed to seed database");
+
+    let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
+        .await
+        .expect("Failed to find user by PID");
+
+    let update_params = RegisterParams {
+        name: "new-name".to_string(),
+        email: "new-email@example.com".to_string(),
+        password: "new-password".to_string(),
+    };
+
+    let result = user
+        .clone()
+        .into_active_model()
+        .update_user_data(&boot.app_context.db, update_params)
+        .await;
+
+    assert!(result.is_ok(), "Failed to update user data");
+
+    let user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111")
+        .await
+        .expect("Failed to find user by PID after update");
+
+
+
+    assert_eq!(user.name, "new-name", "Expected name to be updated");
+    assert_eq!(user.email, "new-email@example.com", "Expected email to be updated");
+    assert!(user.verify_password("new-password"), "Password verification failed for new password");
+}
 
 #[tokio::test]
 #[serial]
