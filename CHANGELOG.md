@@ -15,8 +15,22 @@
 - Refactor users model to reuse `find_by_api_key` in `Authenticable` ([#1706](https://github.com/loco-rs/loco/pull/1706))
 - Split error detail generic parameters ([#1709](https://github.com/loco-rs/loco/pull/1709))
 - Update `loco-new` for new Rhai version ([#1704](https://github.com/loco-rs/loco/pull/1704))
+- Add priority support to SQLite and Redis background workers ([#1693](https://github.com/loco-rs/loco/pull/1693))
+  - SQLite: Priority column automatically migrated on startup
+  - Redis: **BREAKING CHANGE** - Migrated from Lists to Sorted Sets (ZSET) for priority support
+  - Priority API: Use `perform_later_with_priority(ctx, args, Some(priority))` or pass priority to `queue.enqueue()`
+  - Higher numbers = higher priority (consistent across all backends)
 
 ### Breaking Changes
+
+**Redis Background Worker Queue Migration**
+
+PR: [#1693](https://github.com/loco-rs/loco/pull/1693)
+
+The Redis queue implementation has been migrated from Lists to Sorted Sets (ZSET) to support job priorities. Jobs stored in the old List format are not compatible with the new ZSET format. See the [upgrade guide](docs-site/content/docs/extras/upgrades.md) for migration instructions.
+
+**View Engine Initializer**
+
 In file `src/initializers/view_engine.rs`, modify the code lines in `after_routes`:
 
 Before
