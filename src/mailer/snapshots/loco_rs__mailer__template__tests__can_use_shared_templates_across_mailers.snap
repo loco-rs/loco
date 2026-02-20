@@ -1,0 +1,9 @@
+---
+source: src/mailer/template.rs
+expression: welcome_template.render(&args).unwrap()
+---
+Content {
+    subject: "Welcome Test User!\n\n",
+    text: "Welcome Test User!\n\nThank you for joining us.\n\n",
+    html: "<!DOCTYPE html>\n<html>\n<head>\n    <title>Welcome!</title>\n    <style>\n        body { font-family: Arial, sans-serif; }\n        .footer { color: #666; font-size: 12px; }\n    </style>\n</head>\n<body>\n    \n<h1>Welcome Test User!</h1>\n<p>Thank you for joining us.</p>\n\n    <div class=\"footer\">\n        © 2024 My Company\n    </div>\n</body>\n</html>\n\n",
+}
