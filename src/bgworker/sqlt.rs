@@ -834,16 +834,20 @@ mod tests {
 
         let job_data = serde_json::json!({"user_id": 1});
         let tags = Some(vec!["email".to_string(), "notification".to_string()]);
-        assert!(enqueue(
+        let job_id = enqueue(
             &pool,
             "PasswordChangeNotification",
             job_data,
             run_at,
             None,
-            tags
+            tags,
         )
-        .await
-        .is_ok());
+        .await;
+        assert!(job_id.is_ok());
+        let job_id = job_id.unwrap();
+        assert!(!job_id.is_empty());
+        // Verify it's a valid ULID
+        assert!(ulid::Ulid::from_string(&job_id).is_ok());
 
         let jobs = get_all_jobs(&pool).await;
 
@@ -885,16 +889,19 @@ mod tests {
         );
 
         let job_data = serde_json::json!({"user_id": 1});
-        assert!(enqueue(
+        let job_id = enqueue(
             &pool,
             "PasswordChangeNotification",
             job_data,
             run_at,
             None,
-            None
+            None,
         )
-        .await
-        .is_ok());
+        .await;
+        assert!(job_id.is_ok());
+        let job_id = job_id.unwrap();
+        assert!(!job_id.is_empty());
+        assert!(ulid::Ulid::from_string(&job_id).is_ok());
 
         let job_before_dequeue = get_all_jobs(&pool)
             .await
