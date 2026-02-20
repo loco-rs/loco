@@ -256,11 +256,11 @@ pub async fn boot_test_unique_port<H: Hooks>(port: Option<i32>) -> Result<BootRe
 }
 
 #[allow(clippy::future_not_send)]
-async fn request_internal<F, Fut>(callback: F, boot: &BootResult, test_server_config: RequestConfig)
-where
-    F: FnOnce(TestServer, AppContext) -> Fut,
-    Fut: std::future::Future<Output = ()>,
-{
+async fn request_internal(
+    callback: impl AsyncFnOnce(TestServer, AppContext),
+    boot: &BootResult,
+    test_server_config: RequestConfig,
+) {
     let routes = boot.router.clone().unwrap();
     let server = TestServer::new_with_config(
         routes.into_make_service_with_connect_info::<SocketAddr>(),
@@ -292,19 +292,15 @@ where
 /// #[tokio::test]
 /// #[serial]
 /// async fn can_register() {
-///     request::<App, _, _>(|request, ctx| async move {
+///     request::<App>(|request, ctx| async move {
 ///         let response = request.post("/auth/register").json(&serde_json::json!({})).await;
 ///     })
 ///     .await;
 /// }
 /// ```
 #[allow(clippy::future_not_send)]
-pub async fn request<H: Hooks, F, Fut>(callback: F)
-where
-    F: FnOnce(TestServer, AppContext) -> Fut,
-    Fut: std::future::Future<Output = ()>,
-{
-    request_with_config::<H, F, Fut>(RequestConfig::default(), callback).await;
+pub async fn request<H: Hooks>(callback: impl AsyncFnOnce(TestServer, AppContext)) {
+    request_with_config::<H>(RequestConfig::default(), callback).await;
 }
 /// Executes a test server request with a created database using the provided callback.
 ///
@@ -316,7 +312,7 @@ where
 ///
 /// #[tokio::test]
 /// async fn can_register() {
-///     request_with_create_db::<App, _, _>(|request, ctx| async move {
+///     request_with_create_db::<App>(|request, ctx| async move {
 ///         let response = request.post("/auth/register").json(&serde_json::json!({})).await;
 ///     })
 ///     .await;
@@ -328,12 +324,8 @@ where
 /// initialize the test app
 #[allow(clippy::future_not_send)]
 #[cfg(feature = "with-db")]
-pub async fn request_with_create_db<H: Hooks, F, Fut>(callback: F)
-where
-    F: FnOnce(TestServer, AppContext) -> Fut,
-    Fut: std::future::Future<Output = ()>,
-{
-    request_config_with_create_db::<H, F, Fut>(RequestConfig::default(), callback).await;
+pub async fn request_with_create_db<H: Hooks>(callback: impl AsyncFnOnce(TestServer, AppContext)) {
+    request_config_with_create_db::<H>(RequestConfig::default(), callback).await;
 }
 
 /// Executes a test server request using a custom [`RequestConfig`].
@@ -352,13 +344,12 @@ where
 ///     let response = request.get("/endpoint").await;
 /// });
 /// ```
-pub async fn request_with_config<H: Hooks, F, Fut>(config: RequestConfig, callback: F)
-where
-    F: FnOnce(TestServer, AppContext) -> Fut,
-    Fut: std::future::Future<Output = ()>,
-{
+pub async fn request_with_config<H: Hooks>(
+    config: RequestConfig,
+    callback: impl AsyncFnOnce(TestServer, AppContext),
+) {
     let boot: BootResult = boot_test::<H>().await.unwrap();
-    request_internal::<F, Fut>(callback, &boot, config).await;
+    request_internal(callback, &boot, config).await;
 }
 
 /// Executes a test server request with a created database using a custom [`RequestConfig`].
@@ -379,11 +370,10 @@ where
 /// ```
 #[allow(clippy::future_not_send)]
 #[cfg(feature = "with-db")]
-pub async fn request_config_with_create_db<H: Hooks, F, Fut>(config: RequestConfig, callback: F)
-where
-    F: FnOnce(TestServer, AppContext) -> Fut,
-    Fut: std::future::Future<Output = ()>,
-{
+pub async fn request_config_with_create_db<H: Hooks>(
+    config: RequestConfig,
+    callback: impl AsyncFnOnce(TestServer, AppContext),
+) {
     let boot_wrapper: BootResultWrapper = boot_test_with_create_db::<H>().await.unwrap();
-    request_internal::<F, Fut>(callback, &boot_wrapper.inner, config).await;
+    request_internal(callback, &boot_wrapper.inner, config).await;
 }
