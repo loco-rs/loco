@@ -2,7 +2,7 @@
 //!
 //! This module defines the task management framework used to manage and execute
 //! tasks in a web server application.
-use std::{collections::BTreeMap, ops::Deref};
+use std::collections::BTreeMap;
 
 use async_trait::async_trait;
 
@@ -58,7 +58,7 @@ impl Vars {
     pub fn cli_arg(&self, key: &str) -> Result<&str> {
         self.cli
             .get(key)
-            .map(Deref::deref)
+            .map(String::as_str)
             .ok_or(Error::Message(format!("the argument {key} does not exist")))
     }
 }
