@@ -47,7 +47,7 @@ pub async fn readiness(State(ctx): State<AppContext>) -> (StatusCode, Response) 
     if let Err(error) = &ctx.db.ping().await {
         tracing::error!(err.msg = %error, err.detail = ?error, "readiness_db_ping_error");
         return (
-            StatusCode::INTERNAL_SERVER_ERROR,
+            StatusCode::SERVICE_UNAVAILABLE,
             format::json(Health { ok: false }).into_response(),
         );
     }
@@ -57,7 +57,7 @@ pub async fn readiness(State(ctx): State<AppContext>) -> (StatusCode, Response) 
         if let Err(error) = queue.ping().await {
             tracing::error!(err.msg = %error, err.detail = ?error, "readiness_queue_ping_error");
             return (
-                StatusCode::INTERNAL_SERVER_ERROR,
+                StatusCode::SERVICE_UNAVAILABLE,
                 format::json(Health { ok: false }).into_response(),
             );
         }
@@ -72,7 +72,7 @@ pub async fn readiness(State(ctx): State<AppContext>) -> (StatusCode, Response) 
                 if let Err(error) = &ctx.cache.driver.ping().await {
                     tracing::error!(err.msg = %error, err.detail = ?error, "readiness_cache_ping_error");
                     return (
-                        StatusCode::INTERNAL_SERVER_ERROR,
+                        StatusCode::SERVICE_UNAVAILABLE,
                         format::json(Health { ok: false }).into_response(),
                     );
                 }
@@ -82,7 +82,7 @@ pub async fn readiness(State(ctx): State<AppContext>) -> (StatusCode, Response) 
                 if let Err(error) = &ctx.cache.driver.ping().await {
                     tracing::error!(err.msg = %error, err.detail = ?error, "readiness_cache_ping_error");
                     return (
-                        StatusCode::INTERNAL_SERVER_ERROR,
+                        StatusCode::SERVICE_UNAVAILABLE,
                         format::json(Health { ok: false }).into_response(),
                     );
                 }
@@ -250,7 +250,7 @@ mod tests {
 
         // Test the router directly using oneshot
         let response = router.oneshot(req).await.unwrap();
-        assert_eq!(response.status(), 500);
+        assert_eq!(response.status(), 503);
 
         // Get the response body
         let body = axum::body::to_bytes(response.into_body(), usize::MAX)
@@ -366,7 +366,7 @@ mod tests {
 
         // Test the router directly using oneshot
         let response = router.oneshot(req).await.unwrap();
-        assert_eq!(response.status(), 500);
+        assert_eq!(response.status(), 503);
 
         // Get the response body
         let body = axum::body::to_bytes(response.into_body(), usize::MAX)
@@ -448,7 +448,7 @@ mod tests {
 
         // Test the router directly using oneshot
         let response = router.oneshot(req).await.unwrap();
-        assert_eq!(response.status(), 500);
+        assert_eq!(response.status(), 503);
 
         // Get the response body
         let body = axum::body::to_bytes(response.into_body(), usize::MAX)
