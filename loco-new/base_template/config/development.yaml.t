@@ -133,3 +133,31 @@ auth:
     # Token expiration time in seconds
     expiration: 604800 # 7 days
 {%- endif %}
+
+# AWS Lambda Deployment Configuration (Cargo Lambda)
+# Similar to Zappa for Python, configure your Lambda deployment here.
+# Uncomment and customize to enable Lambda deployment with: cargo loco deploy lambda
+#
+# lambda:
+#   # Lambda function name (defaults to package name)
+#   project_name: {{settings.package_name}}
+#   # Memory in MB (128-10240). More memory = faster cold starts
+#   memory_size: 256
+#   # Timeout in seconds (max 900)
+#   timeout: 30
+#   # AWS region
+#   region: us-east-1
+#   # Loco environment to load (development, production, test)
+#   loco_env: development
+#   # AWS CLI profile (optional)
+#   # profile_name: default
+#   # CPU architecture: x86_64 or arm64 (arm64 recommended for better price/performance)
+#   architecture: arm64
+#   # Enable direct HTTP access via Lambda Function URL
+#   function_url: true
+#   # Environment variables
+#   # environment:
+#   #   RUST_LOG: info
+#   #   DATABASE_URL: "your-database-url"
+#   # IAM role ARN (optional - auto-created if not specified)
+#   # role_arn: arn:aws:iam::ACCOUNT_ID:role/your-role
