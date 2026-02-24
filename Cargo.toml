@@ -155,7 +155,7 @@ ulid = "1"
 # bg_redis: redis workers
 redis = { version = "0.31", features = ["aio", "tokio-comp"], optional = true }
 
-scraper = { version = "0.21.0", features = ["deterministic"], optional = true }
+scraper = { version = "0.25.0", features = ["deterministic"], optional = true }
 
 dashmap = "6"
 notify = "8.1.0"
