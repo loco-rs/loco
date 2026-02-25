@@ -358,6 +358,9 @@ impl Queue {
         Ok(())
     }
 
+    /// # Errors
+    ///
+    /// Returns an error if the underlying queue backend fails to retrieve jobs.
     pub async fn get_jobs(
         &self,
         status: Option<&Vec<JobStatus>>,
