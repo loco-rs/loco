@@ -22,6 +22,7 @@ pub fn test_config() -> Config {
         server: config::Server {
             binding: "localhost".to_string(),
             port: 5555,
+            port_in_url: true,
             host: "localhost".to_string(),
             ident: None,
             middlewares: middleware::Config::default(),
