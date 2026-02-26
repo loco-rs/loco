@@ -33,21 +33,60 @@ use crate::{
 };
 
 /// Represents the application startup mode.
-#[derive(Debug)]
-pub enum StartMode {
-    /// Run the application as a server only. when running web server only,
-    /// workers job will not handle.
-    ServerOnly,
-    /// Run the application web server and the worker in the same process.
-    ServerAndWorker,
-    /// Pulling job worker and execute them
-    WorkerOnly {
-        /// Specifies that the worker should only handle jobs associated with one of these tags.
-        /// If empty, the worker handles all jobs.
-        tags: Vec<String>,
-    },
-    /// Run the app with all available components in the same process.
-    All,
+///
+/// This struct allows for additive combinations of server, worker, and scheduler components.
+/// Use the constructor methods for common configurations or build custom combinations.
+#[derive(Debug, Default, Clone)]
+pub struct StartMode {
+    /// Whether to run the HTTP server
+    pub server: bool,
+    /// Whether to run workers. If Some, contains optional tags to filter jobs.
+    /// Empty vec means run all jobs.
+    pub worker: Option<Vec<String>>,
+    /// Whether to run the scheduler
+    pub scheduler: bool,
+}
+
+impl StartMode {
+    /// Run server only (default behavior)
+    #[must_use]
+    pub fn server_only() -> Self {
+        Self {
+            server: true,
+            worker: None,
+            scheduler: false,
+        }
+    }
+
+    /// Run server and worker together
+    #[must_use]
+    pub fn server_and_worker() -> Self {
+        Self {
+            server: true,
+            worker: Some(vec![]),
+            scheduler: false,
+        }
+    }
+
+    /// Run worker only with optional tags
+    #[must_use]
+    pub fn worker_only(tags: Vec<String>) -> Self {
+        Self {
+            server: false,
+            worker: Some(tags),
+            scheduler: false,
+        }
+    }
+
+    /// Run all components: server, worker, and scheduler
+    #[must_use]
+    pub fn all() -> Self {
+        Self {
+            server: true,
+            worker: Some(vec![]),
+            scheduler: true,
+        }
+    }
 }
 
 pub struct BootResult {
@@ -442,46 +481,25 @@ pub async fn run_app<H: Hooks>(mode: &StartMode, app_context: AppContext) -> Res
         initializer.before_run(&app_context).await?;
     }
 
-    match mode {
-        StartMode::ServerOnly => {
-            let router = setup_routes::<H>(&app_context, &initializers).await?;
-            Ok(BootResult {
-                app_context,
-                router: Some(router),
-                worker: None,
-                run_scheduler: false,
-            })
-        }
-        StartMode::ServerAndWorker => {
-            register_workers::<H>(&app_context).await?;
-            let router = setup_routes::<H>(&app_context, &initializers).await?;
-            Ok(BootResult {
-                app_context,
-                router: Some(router),
-                worker: Some(vec![]),
-                run_scheduler: false,
-            })
-        }
-        StartMode::All => {
-            register_workers::<H>(&app_context).await?;
-            let router = setup_routes::<H>(&app_context, &initializers).await?;
-            Ok(BootResult {
-                app_context,
-                router: Some(router),
-                worker: Some(vec![]),
-                run_scheduler: true,
-            })
-        }
-        StartMode::WorkerOnly { tags } => {
-            register_workers::<H>(&app_context).await?;
-            Ok(BootResult {
-                app_context,
-                router: None,
-                worker: Some(tags.clone()),
-                run_scheduler: false,
-            })
-        }
-    }
+    let router = if mode.server {
+        Some(setup_routes::<H>(&app_context, &initializers).await?)
+    } else {
+        None
+    };
+
+    let worker = if let Some(tags) = &mode.worker {
+        register_workers::<H>(&app_context).await?;
+        Some(tags.clone())
+    } else {
+        None
+    };
+
+    Ok(BootResult {
+        app_context,
+        router,
+        worker,
+        run_scheduler: mode.scheduler,
+    })
 }
 
 /// Sets up the application's routes based on the provided initializers and hooks.

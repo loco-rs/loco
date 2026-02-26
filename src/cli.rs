@@ -17,7 +17,7 @@
 #[cfg(feature = "with-db")]
 use {crate::boot::run_db, crate::db, sea_orm_migration::MigratorTrait};
 
-use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueHint};
+use clap::{ArgAction, Parser, Subcommand, ValueHint};
 use colored::Colorize;
 use duct::cmd;
 use std::fmt::Write;
@@ -64,18 +64,23 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Start an app
-    #[command(group(ArgGroup::new("start_mode").args(&["worker", "server_and_worker", "all"])))]
     #[clap(alias("s"))]
     Start {
+        /// Run the server
+        #[arg(long, action)]
+        server: bool,
         /// Start worker. Optionally provide tags to run specific jobs (e.g. --worker=tag1,tag2)
-        #[arg(short, long, action, value_delimiter = ',', num_args = 0.., conflicts_with_all = &["server_and_worker", "all"])]
+        #[arg(short, long, action, value_delimiter = ',', num_args = 0..)]
         worker: Option<Vec<String>>,
-        /// Start the server and worker in the same process
-        #[arg(short, long, action, conflicts_with_all = &["worker", "all"])]
-        server_and_worker: bool,
+        /// Run the scheduler
+        #[arg(long, action)]
+        scheduler: bool,
         /// Start the server, worker, and scheduler in the same process
-        #[arg(short, long, action, conflicts_with_all = &["worker", "server_and_worker"])]
+        #[arg(short, long, action)]
         all: bool,
+        /// [DEPRECATED] Use --server --worker instead
+        #[arg(short, long, action, hide = true)]
+        server_and_worker: bool,
         /// server bind address
         #[arg(short, long, action)]
         binding: Option<String>,
@@ -155,11 +160,20 @@ enum Commands {
     /// Watch and restart the app
     #[clap(alias("w"))]
     Watch {
+        /// Run the server
+        #[arg(long, action)]
+        server: bool,
         /// start worker
         #[arg(short, long, action, value_delimiter = ',', num_args = 0..)]
         worker: Option<Vec<String>>,
-        /// start same-process server and worker
+        /// Run the scheduler
+        #[arg(long, action)]
+        scheduler: bool,
+        /// Start the server, worker, and scheduler
         #[arg(short, long, action)]
+        all: bool,
+        /// [DEPRECATED] Use --server --worker instead
+        #[arg(long, action, hide = true)]
         server_and_worker: bool,
     },
 }
@@ -719,23 +733,41 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
 
     match cli.command {
         Commands::Start {
+            server,
             worker,
-            server_and_worker,
+            scheduler,
             all,
+            server_and_worker,
             binding,
             port,
             no_banner,
         } => {
-            let start_mode = worker.map_or(
-                if server_and_worker {
-                    StartMode::ServerAndWorker
-                } else if all {
-                    StartMode::All
+            // Deprecation warning
+            if server_and_worker {
+                eprintln!(
+                    "{}",
+                    "Warning: --server-and-worker is deprecated. Use --server --worker instead."
+                        .yellow()
+                );
+            }
+
+            let start_mode = if all {
+                StartMode::all()
+            } else {
+                // Default behavior: if no flags specified, run server only
+                let run_server = server || server_and_worker || (worker.is_none() && !scheduler);
+                let run_worker = if worker.is_some() || server_and_worker {
+                    Some(worker.unwrap_or_default())
                 } else {
-                    StartMode::ServerOnly
-                },
-                |tags| StartMode::WorkerOnly { tags },
-            );
+                    None
+                };
+
+                StartMode {
+                    server: run_server,
+                    worker: run_worker,
+                    scheduler,
+                }
+            };
 
             let boot_result =
                 create_app::<H, M>(start_mode, &environment, app_context.config).await?;
@@ -824,21 +856,43 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         }
 
         Commands::Watch {
+            server,
             worker,
+            scheduler,
+            all,
             server_and_worker,
         } => {
+            // Deprecation warning
+            if server_and_worker {
+                eprintln!(
+                    "{}",
+                    "Warning: --server-and-worker is deprecated. Use --server --worker instead."
+                        .yellow()
+                );
+            }
+
             // cargo-watch  -s 'cargo loco start'
             let mut cmd_str = String::from("cargo loco start");
 
-            if let Some(worker_tags) = worker {
-                if worker_tags.is_empty() {
-                    cmd_str.push_str(" --worker");
-                } else {
-                    write!(cmd_str, " --worker={}", worker_tags.join(","))
-                        .expect("Failed to write to string");
+            if all {
+                cmd_str.push_str(" --all");
+            } else {
+                if server || server_and_worker {
+                    cmd_str.push_str(" --server");
                 }
-            } else if server_and_worker {
-                cmd_str.push_str(" --server-and-worker");
+                if let Some(worker_tags) = worker {
+                    if worker_tags.is_empty() {
+                        cmd_str.push_str(" --worker");
+                    } else {
+                        write!(cmd_str, " --worker={}", worker_tags.join(","))
+                            .expect("Failed to write to string");
+                    }
+                } else if server_and_worker {
+                    cmd_str.push_str(" --worker");
+                }
+                if scheduler {
+                    cmd_str.push_str(" --scheduler");
+                }
             }
 
             cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
@@ -869,23 +923,41 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
 
     match cli.command {
         Commands::Start {
+            server,
             worker,
-            server_and_worker,
+            scheduler,
             all,
+            server_and_worker,
             binding,
             port,
             no_banner,
         } => {
-            let start_mode = worker.map_or(
-                if server_and_worker {
-                    StartMode::ServerAndWorker
-                } else if all {
-                    StartMode::All
+            // Deprecation warning
+            if server_and_worker {
+                eprintln!(
+                    "{}",
+                    "Warning: --server-and-worker is deprecated. Use --server --worker instead."
+                        .yellow()
+                );
+            }
+
+            let start_mode = if all {
+                StartMode::all()
+            } else {
+                // Default behavior: if no flags specified, run server only
+                let run_server = server || server_and_worker || (worker.is_none() && !scheduler);
+                let run_worker = if worker.is_some() || server_and_worker {
+                    Some(worker.unwrap_or_default())
                 } else {
-                    StartMode::ServerOnly
-                },
-                |tags| StartMode::WorkerOnly { tags },
-            );
+                    None
+                };
+
+                StartMode {
+                    server: run_server,
+                    worker: run_worker,
+                    scheduler,
+                }
+            };
 
             let boot_result = create_app::<H>(start_mode, &environment, app_context.config).await?;
             let serve_params = ServeParams {
@@ -960,21 +1032,43 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             println!("{}", H::app_version(),);
         }
         Commands::Watch {
+            server,
             worker,
+            scheduler,
+            all,
             server_and_worker,
         } => {
+            // Deprecation warning
+            if server_and_worker {
+                eprintln!(
+                    "{}",
+                    "Warning: --server-and-worker is deprecated. Use --server --worker instead."
+                        .yellow()
+                );
+            }
+
             // cargo-watch  -s 'cargo loco start'
             let mut cmd_str = String::from("cargo loco start");
 
-            if let Some(worker_tags) = worker {
-                if worker_tags.is_empty() {
-                    cmd_str.push_str(" --worker");
-                } else {
-                    write!(cmd_str, " --worker={}", worker_tags.join(","))
-                        .expect("Failed to write to string");
+            if all {
+                cmd_str.push_str(" --all");
+            } else {
+                if server || server_and_worker {
+                    cmd_str.push_str(" --server");
                 }
-            } else if server_and_worker {
-                cmd_str.push_str(" --server-and-worker");
+                if let Some(worker_tags) = worker {
+                    if worker_tags.is_empty() {
+                        cmd_str.push_str(" --worker");
+                    } else {
+                        write!(cmd_str, " --worker={}", worker_tags.join(","))
+                            .expect("Failed to write to string");
+                    }
+                } else if server_and_worker {
+                    cmd_str.push_str(" --worker");
+                }
+                if scheduler {
+                    cmd_str.push_str(" --scheduler");
+                }
             }
 
             cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
