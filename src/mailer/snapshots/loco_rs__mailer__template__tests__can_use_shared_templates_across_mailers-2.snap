@@ -1,0 +1,9 @@
+---
+source: src/mailer/template.rs
+expression: reset_template.render(&reset_args).unwrap()
+---
+Content {
+    subject: "Reset Your Password\n\n",
+    text: "Reset Your Password\n\nClick the link below to reset your password:\nhttps://example.com/reset?token=abc123\n\n",
+    html: "<!DOCTYPE html>\n<html>\n<head>\n    <title>Reset Password</title>\n    <style>\n        body { font-family: Arial, sans-serif; }\n        .footer { color: #666; font-size: 12px; }\n    </style>\n</head>\n<body>\n    \n<h1>Reset Your Password</h1>\n<p>Click the link below to reset your password:</p>\n<p><a href=\"https://example.com/reset?token=abc123\">Reset Password</a></p>\n\n    <div class=\"footer\">\n        © 2024 My Company\n    </div>\n</body>\n</html>\n\n",
+}

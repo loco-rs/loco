@@ -66,6 +66,18 @@ fn can_generate() {
                 .join("welcome")
                 .join("html.t"),
         ),
+        (
+            "generate[shared_base_t_file]",
+            mailer_path.join("shared").join("base.t"),
+        ),
+        (
+            "generate[shared_subject_t_file]",
+            mailer_path.join("shared").join("subject.t"),
+        ),
+        (
+            "generate[shared_text_t_file]",
+            mailer_path.join("shared").join("text.t"),
+        ),
     ] {
         assert_snapshot!(
             name,
