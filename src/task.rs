@@ -55,9 +55,10 @@ impl Vars {
     /// assert!(vars.cli_arg("key1").is_ok());
     /// assert!(vars.cli_arg("not-exists").is_err());
     /// ```
-    pub fn cli_arg(&self, key: &str) -> Result<&String> {
+    pub fn cli_arg(&self, key: &str) -> Result<&str> {
         self.cli
             .get(key)
+            .map(String::as_str)
             .ok_or(Error::Message(format!("the argument {key} does not exist")))
     }
 }
