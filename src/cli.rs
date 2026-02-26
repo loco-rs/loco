@@ -162,6 +162,36 @@ enum Commands {
         #[arg(short, long, action)]
         server_and_worker: bool,
     },
+    /// AWS Lambda deployment commands using Cargo Lambda
+    Lambda {
+        #[command(subcommand)]
+        command: LambdaCommands,
+    },
+}
+
+#[derive(Subcommand)]
+enum LambdaCommands {
+    /// Build and deploy to AWS Lambda (like Zappa for Python)
+    #[clap(alias("d"))]
+    Deploy {
+        /// Dry run - build only, don't deploy
+        #[arg(long, action)]
+        dry_run: bool,
+    },
+    /// Invoke the deployed Lambda function
+    #[clap(alias("i"))]
+    Invoke {
+        /// JSON payload to send
+        #[arg(short, long, default_value = r#"{"httpMethod": "GET", "path": "/_health"}"#)]
+        payload: String,
+    },
+    /// Tail CloudWatch logs for the Lambda function
+    #[clap(alias("l"))]
+    Logs {
+        /// Follow logs in real-time
+        #[arg(short, long, action)]
+        follow: bool,
+    },
 }
 
 #[cfg(debug_assertions)]
@@ -848,6 +878,9 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                 ))
             })?;
         }
+        Commands::Lambda { command } => {
+            handle_lambda_command::<H>(command, &app_context.config)?;
+        }
     }
     Ok(())
 }
@@ -983,6 +1016,9 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
                          cargo-watch`?. error details: `{err}`",
                 ))
             })?;
+        }
+        Commands::Lambda { command } => {
+            handle_lambda_command::<H>(command, &app_context.config)?;
         }
     }
     Ok(())
@@ -1322,6 +1358,27 @@ fn handle_generate_command<H: Hooks>(
         println!("{messages}");
     }
     Ok(())
+}
+
+fn handle_lambda_command<H: Hooks>(
+    command: LambdaCommands,
+    config: &Config,
+) -> crate::Result<()> {
+    use crate::deploy::lambda;
+
+    let lambda_config = config.lambda.clone().unwrap_or_default();
+    let project_name = lambda_config.effective_project_name(&H::app_name());
+
+    match command {
+        LambdaCommands::Deploy { dry_run } => {
+            let with_db = cfg!(feature = "with-db");
+            lambda::deploy(&lambda_config, &project_name, &H::app_name(), with_db, dry_run)
+        }
+        LambdaCommands::Invoke { payload } => {
+            lambda::invoke(&lambda_config, &project_name, &payload)
+        }
+        LambdaCommands::Logs { follow } => lambda::logs(&lambda_config, &project_name, follow),
+    }
 }
 
 #[must_use]
