@@ -369,7 +369,7 @@ async fn dequeue(client: &SqlitePool, worker_tags: &[String]) -> Result<Option<J
         }
     }
 
-    query.push_str(" ORDER BY priority DESC, run_at LIMIT 1");
+    query.push_str(" ORDER BY priority DESC, run_at, id LIMIT 1");
 
     let mut db_query = sqlx::query(&query).bind(JobStatus::Queued.to_string());
 
@@ -1737,6 +1737,56 @@ mod tests {
         }
 
         // No more jobs
+        let job = dequeue(&pool, &[]).await.expect("dequeue failed");
+        assert!(job.is_none());
+    }
+
+    #[tokio::test]
+    async fn can_dequeue_with_priority_extremes_and_ties() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let pool = init(&tree_fs.root).await;
+
+        assert!(initialize_database(&pool).await.is_ok());
+        let base_time = Utc::now() - chrono::Duration::minutes(10);
+
+        let scenarios = [
+            ("PriorityMax", i32::MAX, 4_i64, 1_i32),
+            ("PriorityTieEarly", 42_i32, 1_i64, 2_i32),
+            ("PriorityTieLate", 42_i32, 3_i64, 3_i32),
+            ("PriorityZero", 0_i32, 0_i64, 4_i32),
+            ("PriorityMin", i32::MIN, 2_i64, 5_i32),
+        ];
+
+        for (name, priority, minute_offset, index) in scenarios {
+            enqueue(
+                &pool,
+                name,
+                serde_json::json!({ "index": index }),
+                base_time + chrono::Duration::minutes(minute_offset),
+                None,
+                None,
+                Some(priority),
+            )
+            .await
+            .expect("enqueue test job");
+        }
+
+        for expected_index in [1, 2, 3, 4, 5] {
+            let job = dequeue(&pool, &[]).await.expect("dequeue failed");
+            assert!(job.is_some());
+            let job = job.unwrap();
+            assert_eq!(
+                job.data.get("index"),
+                Some(&serde_json::json!(expected_index))
+            );
+            complete_job(&pool, &job.id, None)
+                .await
+                .expect("Failed to complete job");
+        }
+
         let job = dequeue(&pool, &[]).await.expect("dequeue failed");
         assert!(job.is_none());
     }

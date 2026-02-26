@@ -150,6 +150,21 @@ To use a worker, we mainly think about adding a job to the queue, so you `use` t
 
 Unlike Rails and Ruby, with Rust you can enjoy _strongly typed_ job arguments which gets serialized and pushed into the queue.
 
+### Priority Semantics
+
+For queue-backed workers (`Redis`, `Postgres`, and `SQLite`), priorities follow the same rules:
+
+1. Higher number means more urgent.
+2. Valid priority range is full `i32` (`-2_147_483_648..=2_147_483_647`).
+3. If priorities are equal, jobs with earlier `run_at` are processed first.
+4. If both priority and `run_at` are equal, ordering is deterministic using job id.
+
+You can enqueue with an explicit priority using:
+
+```rust
+DownloadWorker::perform_later_with_priority(&ctx, args, Some(42)).await?;
+```
+
 ### Assigning Tags to Jobs
 
 When enqueueing a job, you can optionally assign tags to it. The job will then only be processed by workers that match at least one of its tags:

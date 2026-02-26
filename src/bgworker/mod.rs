@@ -94,7 +94,11 @@ impl Queue {
     /// # Errors
     ///
     /// This function will return an error if fails
-    /// Priority: higher number = higher priority, supported for postgres, sqlite, and redis
+    ///
+    /// Priority semantics for all queue backends:
+    /// - Higher value means higher urgency.
+    /// - Valid range is full `i32` (`-2_147_483_648..=2_147_483_647`).
+    /// - Ties are resolved by earlier `run_at`, then by stable job id ordering.
     #[allow(unused_variables)]
     pub async fn enqueue<A: Serialize + Send + Sync>(
         &self,

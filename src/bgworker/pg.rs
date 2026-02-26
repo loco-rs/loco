@@ -359,7 +359,7 @@ async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>>
         }
     }
 
-    query.push_str(" ORDER BY priority DESC, run_at LIMIT 1 FOR UPDATE SKIP LOCKED");
+    query.push_str(" ORDER BY priority DESC, run_at, id LIMIT 1 FOR UPDATE SKIP LOCKED");
 
     // Create the query
     let mut db_query = sqlx::query(&query).bind(JobStatus::Queued.to_string());
@@ -1163,6 +1163,50 @@ mod tests {
                 .len(),
             2
         );
+    }
+
+    #[tokio::test]
+    async fn can_dequeue_with_priority_extremes_and_ties() {
+        let (pool, _container) = setup_pg_test().await;
+        let base_time = Utc::now() - chrono::Duration::minutes(10);
+
+        let scenarios = [
+            ("PriorityMax", i32::MAX, 4_i64, 1_i32),
+            ("PriorityTieEarly", 42_i32, 1_i64, 2_i32),
+            ("PriorityTieLate", 42_i32, 3_i64, 3_i32),
+            ("PriorityZero", 0_i32, 0_i64, 4_i32),
+            ("PriorityMin", i32::MIN, 2_i64, 5_i32),
+        ];
+
+        for (name, priority, minute_offset, index) in scenarios {
+            enqueue(
+                &pool,
+                name,
+                serde_json::json!({ "index": index }),
+                base_time + chrono::Duration::minutes(minute_offset),
+                None,
+                None,
+                Some(priority),
+            )
+            .await
+            .expect("enqueue test job");
+        }
+
+        for expected_index in [1, 2, 3, 4, 5] {
+            let job = dequeue(&pool, &[]).await.expect("dequeue failed");
+            assert!(job.is_some());
+            let job = job.unwrap();
+            assert_eq!(
+                job.data.get("index"),
+                Some(&serde_json::json!(expected_index))
+            );
+            complete_job(&pool, &job.id, None)
+                .await
+                .expect("complete job");
+        }
+
+        let job = dequeue(&pool, &[]).await.expect("dequeue failed");
+        assert!(job.is_none());
     }
 
     #[tokio::test]

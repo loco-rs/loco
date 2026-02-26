@@ -245,18 +245,13 @@ async fn get_connection(client: &RedisPool) -> Result<Connection> {
     Ok(conn)
 }
 
-/// Calculate Redis ZSET score from priority and timestamp
+/// Calculate Redis ZSET score from priority only.
 ///
-/// Formula: -priority * 1e10 + `timestamp_millis`
-/// - Negative priority ensures ZPOPMIN gets highest priority first
-/// - Timestamp provides deterministic ordering for equal priorities
-/// - Using 1e10 multiplier ensures priority dominates over timestamp differences
-fn calculate_score(priority: i32, timestamp: DateTime<Utc>) -> f64 {
-    // Note: timestamp_millis() returns i64, which can lose precision when cast to f64
-    // but this is acceptable for our use case as we only need millisecond precision
-    #[allow(clippy::cast_precision_loss)]
-    let timestamp_millis = timestamp.timestamp_millis() as f64;
-    f64::from(-priority).mul_add(1e10, timestamp_millis)
+/// We intentionally use only priority in the score to preserve exact ordering
+/// for the full i32 range. Timestamp tie-breaking is handled explicitly in
+/// `dequeue_with_conn` by sorting candidates by `(run_at, id)`.
+fn calculate_score(priority: i32) -> f64 {
+    -f64::from(priority)
 }
 
 /// Clear tasks
@@ -302,7 +297,7 @@ pub async fn enqueue(
     let job_json = job.to_json()?;
 
     // Calculate score for ZSET based on priority and timestamp
-    let score = calculate_score(job.priority, job.run_at);
+    let score = calculate_score(job.priority);
 
     // Store job in Redis queue (ZSET) and in job key
     let job_key = format!("{JOB_KEY_PREFIX}{}", job.id);
@@ -346,8 +341,9 @@ async fn dequeue_with_conn(
         let queue_key = format!("{QUEUE_KEY_PREFIX}{queue_name}");
         let processing_key = format!("{PROCESSING_KEY_PREFIX}{queue_name}");
 
-        // Paging through the queue to find a matching job
+        // Paging through the queue to find matching jobs.
         let mut offset = 0;
+        let mut candidates: Vec<(String, Job)> = Vec::new();
 
         while offset < MAX_SEARCH {
             let job_ids: Vec<String> = conn
@@ -378,19 +374,7 @@ async fn dequeue_with_conn(
                             };
 
                             if should_process {
-                                // Try to acquire the job atomically
-                                let result: Option<f64> = script
-                                    .key(&queue_key)
-                                    .key(&processing_key)
-                                    .arg(job_id)
-                                    .invoke_async(conn)
-                                    .await?;
-
-                                if result.is_some() {
-                                    return Ok(Some((job, queue_name.clone())));
-                                }
-                                // If result is None, the job was taken by another worker between ZRANGE and acquire.
-                                // We continue to the next candidate.
+                                candidates.push((job_id.clone(), job));
                             } else {
                                 trace!(
                                     job_id = job_id,
@@ -418,6 +402,34 @@ async fn dequeue_with_conn(
             }
             offset += BATCH_SIZE;
         }
+
+        // Deterministic ordering rules:
+        // 1. Higher priority first
+        // 2. Earlier run_at first for equal priority
+        // 3. Smaller id first as a final deterministic tiebreaker
+        candidates.sort_by(|(id_a, job_a), (id_b, job_b)| {
+            job_b
+                .priority
+                .cmp(&job_a.priority)
+                .then_with(|| job_a.run_at.cmp(&job_b.run_at))
+                .then_with(|| id_a.cmp(id_b))
+        });
+
+        for (job_id, job) in candidates {
+            // Try to acquire the job atomically
+            let result: Option<f64> = script
+                .key(&queue_key)
+                .key(&processing_key)
+                .arg(&job_id)
+                .invoke_async(conn)
+                .await?;
+
+            if result.is_some() {
+                return Ok(Some((job, queue_name.clone())));
+            }
+            // The job was taken by another worker between scan and acquire.
+            // Continue with the next candidate.
+        }
     }
     Ok(None)
 }
@@ -439,7 +451,7 @@ async fn complete_job_with_conn(
                 job.status = JobStatus::Queued;
                 let new_json = job.to_json()?;
                 let queue_key = format!("{QUEUE_KEY_PREFIX}{queue_name}");
-                let score = calculate_score(job.priority, job.run_at);
+                let score = calculate_score(job.priority);
                 let _: () = redis::pipe()
                     .set(&job_key, &new_json)
                     .zadd(&queue_key, id, score)
@@ -816,7 +828,7 @@ pub async fn requeue(client: &RedisPool, age_minutes: &i64) -> Result<()> {
                         job.status = JobStatus::Queued;
                         job.updated_at = Some(Utc::now());
                         let updated_json = job.to_json()?;
-                        let score = calculate_score(job.priority, job.run_at);
+                        let score = calculate_score(job.priority);
                         let _: () = conn.srem(&processing_key, &job_id).await?;
                         let _: () = conn.set(&job_key, &updated_json).await?;
                         let _: () = conn.zadd(&queue_key, &job_id, score).await?;
@@ -852,7 +864,7 @@ pub async fn requeue(client: &RedisPool, age_minutes: &i64) -> Result<()> {
                         job.status = JobStatus::Queued;
                         job.updated_at = Some(Utc::now());
                         let updated_json = job.to_json()?;
-                        let score = calculate_score(job.priority, job.run_at);
+                        let score = calculate_score(job.priority);
                         let _: () = conn.srem(&failed_key, &job_id).await?;
                         let _: () = conn.set(&job_key, &updated_json).await?;
                         let _: () = conn.zadd(&queue_key, &job_id, score).await?;
@@ -1623,111 +1635,160 @@ mod tests {
         // Use a base time in the past so all jobs are ready
         let base_time = Utc::now() - chrono::Duration::minutes(10);
 
-        // Enqueue jobs with different priorities and timestamps
-        // Job 1: priority 10, later timestamp (should be dequeued third - same priority, later time)
-        let run_at_1 = base_time + chrono::Duration::minutes(3);
-        let args1 = serde_json::json!({"task": "low_priority_late", "index": 1});
-        // Manually create job with specific run_at to control timestamp
+        // Enqueue jobs that cover high priorities, equal-priority tie-breaking, and negative priorities.
+        // Expected dequeue order by `index`:
+        // 1) i32::MAX
+        // 2) priority 42 (earlier run_at)
+        // 3) priority 42 (later run_at)
+        // 4) priority 0
+        // 5) i32::MIN
+        let run_at_1 = base_time + chrono::Duration::minutes(4);
+        let args1 = serde_json::json!({"task": "highest_priority", "index": 1});
         let mut job1 = Job::new("job1".to_string(), "Task1".to_string(), args1);
-        job1.priority = 10;
+        job1.priority = i32::MAX;
         job1.run_at = run_at_1;
         let mut conn = get_test_connection(&client).await;
         let queue_key = format!("{QUEUE_KEY_PREFIX}default");
-        let score1 = calculate_score(job1.priority, job1.run_at);
+        let score1 = calculate_score(job1.priority);
         let _: () = conn
             .set(format!("{JOB_KEY_PREFIX}job1"), job1.to_json().unwrap())
             .await
             .unwrap();
         let _: () = conn.zadd(&queue_key, "job1", score1).await.unwrap();
 
-        // Job 2: priority 20, later timestamp (should be dequeued first - highest priority)
-        let run_at_2 = base_time + chrono::Duration::minutes(2);
-        let args2 = serde_json::json!({"task": "high_priority_late", "index": 2});
+        // Equal priority, earlier timestamp.
+        let run_at_2 = base_time + chrono::Duration::minutes(1);
+        let args2 = serde_json::json!({"task": "equal_priority_early", "index": 2});
         let mut job2 = Job::new("job2".to_string(), "Task2".to_string(), args2);
-        job2.priority = 20;
+        job2.priority = 42;
         job2.run_at = run_at_2;
-        let score2 = calculate_score(job2.priority, job2.run_at);
+        let score2 = calculate_score(job2.priority);
         let _: () = conn
             .set(format!("{JOB_KEY_PREFIX}job2"), job2.to_json().unwrap())
             .await
             .unwrap();
         let _: () = conn.zadd(&queue_key, "job2", score2).await.unwrap();
 
-        // Job 3: priority 10, earlier timestamp (should be dequeued second - same priority, earlier time)
-        let run_at_3 = base_time + chrono::Duration::minutes(1);
-        let args3 = serde_json::json!({"task": "low_priority_early", "index": 3});
+        // Equal priority, later timestamp.
+        let run_at_3 = base_time + chrono::Duration::minutes(3);
+        let args3 = serde_json::json!({"task": "equal_priority_late", "index": 3});
         let mut job3 = Job::new("job3".to_string(), "Task3".to_string(), args3);
-        job3.priority = 10;
+        job3.priority = 42;
         job3.run_at = run_at_3;
-        let score3 = calculate_score(job3.priority, job3.run_at);
+        let score3 = calculate_score(job3.priority);
         let _: () = conn
             .set(format!("{JOB_KEY_PREFIX}job3"), job3.to_json().unwrap())
             .await
             .unwrap();
         let _: () = conn.zadd(&queue_key, "job3", score3).await.unwrap();
 
-        // Job 4: priority 5, earliest timestamp (should be dequeued last - lowest priority)
+        // Default priority baseline.
         let run_at_4 = base_time;
-        let args4 = serde_json::json!({"task": "lowest_priority_early", "index": 4});
+        let args4 = serde_json::json!({"task": "zero_priority", "index": 4});
         let mut job4 = Job::new("job4".to_string(), "Task4".to_string(), args4);
-        job4.priority = 5;
+        job4.priority = 0;
         job4.run_at = run_at_4;
-        let score4 = calculate_score(job4.priority, job4.run_at);
+        let score4 = calculate_score(job4.priority);
         let _: () = conn
             .set(format!("{JOB_KEY_PREFIX}job4"), job4.to_json().unwrap())
             .await
             .unwrap();
         let _: () = conn.zadd(&queue_key, "job4", score4).await.unwrap();
 
+        // Lowest possible priority.
+        let run_at_5 = base_time + chrono::Duration::minutes(2);
+        let args5 = serde_json::json!({"task": "lowest_priority", "index": 5});
+        let mut job5 = Job::new("job5".to_string(), "Task5".to_string(), args5);
+        job5.priority = i32::MIN;
+        job5.run_at = run_at_5;
+        let score5 = calculate_score(job5.priority);
+        let _: () = conn
+            .set(format!("{JOB_KEY_PREFIX}job5"), job5.to_json().unwrap())
+            .await
+            .unwrap();
+        let _: () = conn.zadd(&queue_key, "job5", score5).await.unwrap();
+
         let queues = vec!["default".to_string()];
 
-        // First dequeue should get priority 20 (highest priority)
-        let job_opt = dequeue_with_conn(&mut conn, &queues, &[])
-            .await
-            .expect("dequeue failed");
-        assert!(job_opt.is_some());
-        let (job, _) = job_opt.unwrap();
-        assert_eq!(job.priority, 20);
-        assert_eq!(job.data.get("index"), Some(&serde_json::json!(2)));
-        complete_job_with_conn(&mut conn, &job.id, "default", None)
-            .await
-            .expect("complete job");
+        for expected_index in [1, 2, 3, 4, 5] {
+            let job_opt = dequeue_with_conn(&mut conn, &queues, &[])
+                .await
+                .expect("dequeue failed");
+            assert!(job_opt.is_some());
+            let (job, _) = job_opt.unwrap();
+            assert_eq!(
+                job.data.get("index"),
+                Some(&serde_json::json!(expected_index))
+            );
+            if expected_index == 1 {
+                assert_eq!(job.priority, i32::MAX);
+            }
+            if expected_index == 5 {
+                assert_eq!(job.priority, i32::MIN);
+            }
+            if expected_index == 2 || expected_index == 3 {
+                assert_eq!(job.priority, 42);
+            }
+            if expected_index == 4 {
+                assert_eq!(job.priority, 0);
+            }
+            complete_job_with_conn(&mut conn, &job.id, "default", None)
+                .await
+                .expect("complete job");
+        }
 
-        // Second dequeue should get priority 10 with earlier timestamp
+        // No more jobs.
         let job_opt = dequeue_with_conn(&mut conn, &queues, &[])
             .await
             .expect("dequeue failed");
-        assert!(job_opt.is_some());
-        let (job, _) = job_opt.unwrap();
-        assert_eq!(job.priority, 10);
-        assert_eq!(job.data.get("index"), Some(&serde_json::json!(3)));
-        complete_job_with_conn(&mut conn, &job.id, "default", None)
-            .await
-            .expect("complete job");
+        assert!(job_opt.is_none());
+    }
 
-        // Third dequeue should get the other priority 10 job
-        let job_opt = dequeue_with_conn(&mut conn, &queues, &[])
-            .await
-            .expect("dequeue failed");
-        assert!(job_opt.is_some());
-        let (job, _) = job_opt.unwrap();
-        assert_eq!(job.priority, 10);
-        assert_eq!(job.data.get("index"), Some(&serde_json::json!(1)));
-        complete_job_with_conn(&mut conn, &job.id, "default", None)
-            .await
-            .expect("complete job");
+    #[tokio::test]
+    async fn test_priority_ordering_with_equal_priorities_redis() {
+        let (client, _container) = setup_redis().await;
 
-        // Fourth dequeue should get priority 5 (lowest priority)
-        let job_opt = dequeue_with_conn(&mut conn, &queues, &[])
+        // Clear any existing data
+        assert!(clear(&client).await.is_ok());
+
+        // Enqueue multiple jobs with same priority but different timestamps
+        // Enqueue in reverse order - jobs enqueued first will have earlier timestamps
+        // and should be dequeued first when priorities are equal
+        for i in (0..5).rev() {
+            let args = serde_json::json!({"index": i});
+            // Use slightly different timestamps by waiting between enqueues
+            if i < 4 {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+            enqueue(
+                &client,
+                "EqualPriorityJob".to_string(),
+                None,
+                args,
+                None,
+                Some(15), // Same priority for all
+            )
             .await
-            .expect("dequeue failed");
-        assert!(job_opt.is_some());
-        let (job, _) = job_opt.unwrap();
-        assert_eq!(job.priority, 5);
-        assert_eq!(job.data.get("index"), Some(&serde_json::json!(4)));
-        complete_job_with_conn(&mut conn, &job.id, "default", None)
-            .await
-            .expect("complete job");
+            .expect(&format!("enqueue job {}", i));
+        }
+
+        let queues = vec!["default".to_string()];
+        let mut conn = get_test_connection(&client).await;
+
+        // Dequeue should get jobs in order of timestamp (earliest first).
+        // We enqueued in reverse order (4, 3, 2, 1, 0), so 4 was enqueued first.
+        for i in (0..5).rev() {
+            let job_opt = dequeue_with_conn(&mut conn, &queues, &[])
+                .await
+                .expect("dequeue failed");
+            assert!(job_opt.is_some());
+            let (job, _) = job_opt.unwrap();
+            assert_eq!(job.priority, 15);
+            assert_eq!(job.data.get("index"), Some(&serde_json::json!(i)));
+            complete_job_with_conn(&mut conn, &job.id, "default", None)
+                .await
+                .expect("complete job");
+        }
 
         // No more jobs
         let job_opt = dequeue_with_conn(&mut conn, &queues, &[])
@@ -1784,68 +1845,6 @@ mod tests {
             .find(|j| j.name == "DefaultPriorityJob")
             .expect("DefaultPriorityJob not found");
         assert_eq!(default_job.priority, 0);
-    }
-
-    #[tokio::test]
-    async fn test_priority_ordering_with_equal_priorities_redis() {
-        let (client, _container) = setup_redis().await;
-
-        // Clear any existing data
-        assert!(clear(&client).await.is_ok());
-
-        // Enqueue multiple jobs with same priority but different timestamps
-        // Enqueue in reverse order - jobs enqueued first will have earlier timestamps
-        // and should be dequeued first when priorities are equal
-        for i in (0..5).rev() {
-            let args = serde_json::json!({"index": i});
-            // Use slightly different timestamps by waiting between enqueues
-            if i < 4 {
-                tokio::time::sleep(Duration::from_millis(10)).await;
-            }
-            enqueue(
-                &client,
-                "EqualPriorityJob".to_string(),
-                None,
-                args,
-                None,
-                Some(15), // Same priority for all
-            )
-            .await
-            .expect(&format!("enqueue job {}", i));
-        }
-
-        let queues = vec!["default".to_string()];
-        let mut conn = get_test_connection(&client).await;
-
-        // Dequeue should get jobs in order of timestamp (earliest first)
-        // Since we're using ZSET scores with timestamp as tiebreaker, earlier timestamps
-        // should have lower scores (when priority is equal) and be dequeued first
-        // We enqueued in reverse order (4, 3, 2, 1, 0), so 4 was enqueued first (earliest timestamp)
-        // and should be dequeued first
-        for i in (0..5).rev() {
-            let job_opt = dequeue_with_conn(&mut conn, &queues, &[])
-                .await
-                .expect("dequeue failed");
-            assert!(job_opt.is_some());
-            let (job, _) = job_opt.unwrap();
-            assert_eq!(job.priority, 15);
-            // Verify it's the job with the earliest remaining timestamp
-            // Jobs enqueued earlier should have earlier timestamps and be dequeued first
-            let expected_index = i;
-            assert_eq!(
-                job.data.get("index"),
-                Some(&serde_json::json!(expected_index))
-            );
-            complete_job_with_conn(&mut conn, &job.id, "default", None)
-                .await
-                .expect("Failed to complete job");
-        }
-
-        // No more jobs
-        let job_opt = dequeue_with_conn(&mut conn, &queues, &[])
-            .await
-            .expect("dequeue failed");
-        assert!(job_opt.is_none());
     }
 
     #[tokio::test]
@@ -1921,7 +1920,7 @@ mod tests {
         let queue_key = format!("{QUEUE_KEY_PREFIX}default");
 
         // Manually add to ensure timestamp/score control
-        let score1 = calculate_score(job1.priority, job1.run_at);
+        let score1 = calculate_score(job1.priority);
         let _: () = conn
             .set(format!("{JOB_KEY_PREFIX}job1"), job1.to_json().unwrap())
             .await
@@ -1936,7 +1935,7 @@ mod tests {
         job2.tags = None; // No tags
         job2.run_at = run_at_2;
 
-        let score2 = calculate_score(job2.priority, job2.run_at);
+        let score2 = calculate_score(job2.priority);
         let _: () = conn
             .set(format!("{JOB_KEY_PREFIX}job2"), job2.to_json().unwrap())
             .await
