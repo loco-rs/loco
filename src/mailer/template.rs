@@ -129,6 +129,7 @@ impl Template {
     /// - Template syntax is invalid
     /// - Building inheritance chains fails
     /// - A template extends a non-existent parent template
+    #[allow(dead_code)] // used for tests / backwards compatibility
     pub fn new(dir: &Dir<'_>) -> Result<Self> {
         Self::new_with_shared(dir, &[])
     }
