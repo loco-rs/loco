@@ -2,43 +2,68 @@
 //!
 //! This module defines the task management framework used to manage and execute
 //! tasks in a web server application.
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, future::Future};
 
 use async_trait::async_trait;
 
 use crate::{app::AppContext, errors::Error, Result};
 
-/// Struct representing a collection of task arguments.
+/// Parsed key:value arguments for tasks that prefer structured args.
+///
+/// This is a helper for tasks that want the `key:value` argument style.
+///
+/// # Example
+///
+/// ```
+/// use loco_rs::task::Vars;
+///
+/// let args = vec!["key1:value1".to_string(), "key2:value2".to_string()];
+/// let vars = Vars::from_args(&args);
+/// assert_eq!(vars.cli_arg("key1"), Some(&"value1".to_string()));
+/// ```
 #[derive(Default, Debug)]
 pub struct Vars {
-    /// A list of cli arguments.
+    /// A map of parsed key:value arguments.
     pub cli: BTreeMap<String, String>,
 }
 
 impl Vars {
-    /// Create [`Vars`] instance from cli arguments.
+    /// Parse arguments in `key:value` format.
     ///
-    /// # Arguments
-    ///
-    /// * `key` - A string representing the key.
-    /// * `value` - A string representing the value.
+    /// Arguments not matching the format are ignored.
     ///
     /// # Example
     ///
     /// ```
     /// use loco_rs::task::Vars;
     ///
-    /// let args = vec![("key1".to_string(), "value".to_string())];
-    /// let vars = Vars::from_cli_args(args);
+    /// let args = vec!["name:John".to_string(), "age:30".to_string(), "plain_arg".to_string()];
+    /// let vars = Vars::from_args(&args);
+    /// assert_eq!(vars.cli_arg("name"), Some(&"John".to_string()));
+    /// assert_eq!(vars.cli_arg("age"), Some(&"30".to_string()));
+    /// assert_eq!(vars.cli_arg("plain_arg"), None); // Not in key:value format
     /// ```
     #[must_use]
-    pub fn from_cli_args(args: Vec<(String, String)>) -> Self {
-        Self {
-            cli: args.into_iter().collect(),
-        }
+    pub fn from_args(args: &[String]) -> Self {
+        let cli = args
+            .iter()
+            .filter_map(|s| {
+                let pos = s.find(':')?;
+                Some((s[..pos].to_string(), s[pos + 1..].to_string()))
+            })
+            .collect();
+        Self { cli }
     }
 
-    /// Retrieves the value associated with the given key from the `cli` list.
+    /// Get a CLI argument by key.
+    ///
+    /// Returns `Some` if the key exists, `None` otherwise.
+    #[must_use]
+    pub fn cli_arg(&self, key: &str) -> Option<&String> {
+        self.cli.get(key)
+    }
+
+    /// Get a CLI argument by key, returning an error if missing.
     ///
     /// # Errors
     ///
@@ -49,16 +74,16 @@ impl Vars {
     /// ```
     /// use loco_rs::task::Vars;
     ///
-    /// let args = vec![("key1".to_string(), "value".to_string())];
-    /// let vars = Vars::from_cli_args(args);
+    /// let args = vec!["key1:value".to_string()];
+    /// let vars = Vars::from_args(&args);
     ///
-    /// assert!(vars.cli_arg("key1").is_ok());
-    /// assert!(vars.cli_arg("not-exists").is_err());
+    /// assert!(vars.require("key1").is_ok());
+    /// assert!(vars.require("not-exists").is_err());
     /// ```
-    pub fn cli_arg(&self, key: &str) -> Result<&String> {
+    pub fn require(&self, key: &str) -> Result<&String> {
         self.cli
             .get(key)
-            .ok_or(Error::Message(format!("the argument {key} does not exist")))
+            .ok_or_else(|| Error::Message(format!("required argument '{key}' not provided")))
     }
 }
 
@@ -71,12 +96,107 @@ pub struct TaskInfo {
 }
 
 /// A trait defining the behavior of a task.
+///
+/// Tasks receive raw command-line arguments as a slice of strings,
+/// allowing full flexibility in argument parsing.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use loco_rs::prelude::*;
+///
+/// pub struct MyTask;
+///
+/// #[async_trait]
+/// impl Task for MyTask {
+///     fn task(&self) -> TaskInfo {
+///         TaskInfo {
+///             name: "my_task".to_string(),
+///             detail: "Does something useful".to_string(),
+///         }
+///     }
+///
+///     async fn run(&self, ctx: &AppContext, args: &[String]) -> Result<()> {
+///         for arg in args {
+///             println!("Processing: {}", arg);
+///         }
+///         Ok(())
+///     }
+/// }
+/// ```
 #[async_trait]
 pub trait Task: Send + Sync {
     /// Get information about the task.
     fn task(&self) -> TaskInfo;
-    /// Execute the task with the provided application context and variables.
-    async fn run(&self, app_context: &AppContext, vars: &Vars) -> Result<()>;
+    /// Execute the task with the provided application context and arguments.
+    async fn run(&self, app_context: &AppContext, args: &[String]) -> Result<()>;
+}
+
+/// A trait for tasks that want to use the `key:value` argument parsing.
+///
+/// Implement this trait and wrap with [`VarsTask`] to get automatic
+/// parsing of `key:value` arguments into a [`Vars`] struct.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use loco_rs::prelude::*;
+/// use loco_rs::task::{VarsTask, VarsTaskHandler, Vars};
+///
+/// pub struct MyTask;
+///
+/// impl VarsTaskHandler for MyTask {
+///     fn task(&self) -> TaskInfo {
+///         TaskInfo {
+///             name: "my_task".to_string(),
+///             detail: "Create something: name:<NAME> count:<COUNT>".to_string(),
+///         }
+///     }
+///
+///     async fn run(&self, ctx: &AppContext, vars: &Vars) -> Result<()> {
+///         let name = vars.require("name")?;
+///         let count = vars.cli_arg("count").map(|s| s.parse::<i32>().unwrap_or(1));
+///         // ... do something
+///         Ok(())
+///     }
+/// }
+///
+/// // Register with: tasks.register(VarsTask(MyTask));
+/// // Usage: cargo loco task my_task name:foo count:5
+/// ```
+pub trait VarsTaskHandler: Send + Sync {
+    /// Get information about the task.
+    fn task(&self) -> TaskInfo;
+    /// Execute the task with parsed key:value arguments.
+    fn run(
+        &self,
+        app_context: &AppContext,
+        vars: &Vars,
+    ) -> impl Future<Output = Result<()>> + Send;
+}
+
+/// A wrapper that parses `key:value` args into [`Vars`] for the inner task.
+///
+/// Use this to wrap a [`VarsTaskHandler`] implementation so it can be
+/// registered as a [`Task`].
+///
+/// # Example
+///
+/// ```rust,ignore
+/// tasks.register(VarsTask(MyVarsTask));
+/// ```
+pub struct VarsTask<T: VarsTaskHandler>(pub T);
+
+#[async_trait]
+impl<T: VarsTaskHandler + 'static> Task for VarsTask<T> {
+    fn task(&self) -> TaskInfo {
+        self.0.task()
+    }
+
+    async fn run(&self, app_context: &AppContext, args: &[String]) -> Result<()> {
+        let vars = Vars::from_args(args);
+        self.0.run(app_context, &vars).await
+    }
 }
 
 /// Managing and running tasks.
@@ -101,18 +221,18 @@ impl Tasks {
             .collect::<Vec<_>>()
     }
 
-    /// Run a registered task by name with provided variables.
+    /// Run a registered task by name with provided arguments.
     ///
     /// # Errors
     ///
-    /// Returns a [`Result`] if an task finished with error. mostly if the given
-    /// task is not found or an error to run the task.s
-    pub async fn run(&self, app_context: &AppContext, task: &str, vars: &Vars) -> Result<()> {
+    /// Returns a [`Result`] if a task finished with error. Mostly if the given
+    /// task is not found or an error running the task.
+    pub async fn run(&self, app_context: &AppContext, task: &str, args: &[String]) -> Result<()> {
         let task = self
             .registry
             .get(task)
             .ok_or_else(|| Error::TaskNotFound(task.to_string()))?;
-        task.run(app_context, vars).await?;
+        task.run(app_context, args).await?;
         Ok(())
     }
 
@@ -129,25 +249,36 @@ mod tests {
     use crate::tests_cfg;
 
     #[tokio::test]
-    async fn test_vars_from_cli_args() {
+    async fn test_vars_from_args() {
         let args = vec![
-            ("key1".to_string(), "value1".to_string()),
-            ("key2".to_string(), "value2".to_string()),
+            "key1:value1".to_string(),
+            "key2:value2".to_string(),
+            "plain_arg".to_string(),
         ];
-        let vars = Vars::from_cli_args(args);
+        let vars = Vars::from_args(&args);
 
         assert_eq!(vars.cli.len(), 2);
         assert_eq!(vars.cli.get("key1"), Some(&"value1".to_string()));
         assert_eq!(vars.cli.get("key2"), Some(&"value2".to_string()));
+        assert_eq!(vars.cli.get("plain_arg"), None);
     }
 
     #[tokio::test]
     async fn test_vars_cli_arg() {
-        let args = vec![("key1".to_string(), "value1".to_string())];
-        let vars = Vars::from_cli_args(args);
+        let args = vec!["key1:value1".to_string()];
+        let vars = Vars::from_args(&args);
 
-        assert_eq!(vars.cli_arg("key1").unwrap(), "value1");
-        assert!(vars.cli_arg("not-exists").is_err());
+        assert_eq!(vars.cli_arg("key1"), Some(&"value1".to_string()));
+        assert_eq!(vars.cli_arg("not-exists"), None);
+    }
+
+    #[tokio::test]
+    async fn test_vars_require() {
+        let args = vec!["key1:value1".to_string()];
+        let vars = Vars::from_args(&args);
+
+        assert_eq!(vars.require("key1").unwrap(), "value1");
+        assert!(vars.require("not-exists").is_err());
     }
 
     #[tokio::test]
@@ -185,9 +316,9 @@ mod tests {
         tasks.register(tests_cfg::task::Foo);
 
         let app_context = tests_cfg::app::get_app_context().await;
-        let vars = Vars::default();
+        let args: Vec<String> = vec![];
 
-        let result = tasks.run(&app_context, "foo", &vars).await;
+        let result = tasks.run(&app_context, "foo", &args).await;
         assert!(result.is_ok());
     }
 
@@ -197,10 +328,10 @@ mod tests {
         tasks.register(tests_cfg::task::ParseArgs);
 
         let app_context = tests_cfg::app::get_app_context().await;
-        let vars = Vars::default();
+        let args: Vec<String> = vec![];
 
         // ParseArgs will fail with "invalid args" if app != "loco" or refresh != true
-        let result = tasks.run(&app_context, "parse_args", &vars).await;
+        let result = tasks.run(&app_context, "parse_args", &args).await;
         assert!(result.is_err());
 
         if let Err(Error::Message(msg)) = result {
@@ -216,14 +347,10 @@ mod tests {
         tasks.register(tests_cfg::task::ParseArgs);
 
         let app_context = tests_cfg::app::get_app_context().await;
-        let args = vec![
-            ("test".to_string(), "true".to_string()),
-            ("app".to_string(), "loco".to_string()),
-        ];
-        let vars = Vars::from_cli_args(args);
+        let args = vec!["test:true".to_string(), "app:loco".to_string()];
 
         // ParseArgs will succeed when app == "loco" and test == "true"
-        let result = tasks.run(&app_context, "parse_args", &vars).await;
+        let result = tasks.run(&app_context, "parse_args", &args).await;
         assert!(result.is_ok());
     }
 
@@ -231,9 +358,9 @@ mod tests {
     async fn test_tasks_run_not_found() {
         let tasks = Tasks::default();
         let app_context = tests_cfg::app::get_app_context().await;
-        let vars = Vars::default();
+        let args: Vec<String> = vec![];
 
-        let result = tasks.run(&app_context, "non_existent_task", &vars).await;
+        let result = tasks.run(&app_context, "non_existent_task", &args).await;
         assert!(result.is_err());
 
         match result {
@@ -258,7 +385,7 @@ mod tests {
                 }
             }
 
-            async fn run(&self, _app_context: &AppContext, _vars: &Vars) -> Result<()> {
+            async fn run(&self, _app_context: &AppContext, _args: &[String]) -> Result<()> {
                 Ok(())
             }
         }

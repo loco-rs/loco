@@ -37,7 +37,7 @@ use crate::{
     config::Config,
     doctor,
     environment::{resolve_from_env, Environment, DEFAULT_ENVIRONMENT},
-    logger, task, Error,
+    logger, Error,
 };
 
 #[derive(Parser)]
@@ -105,9 +105,9 @@ enum Commands {
     Task {
         /// Task name (identifier)
         name: Option<String>,
-        /// Task params (e.g. <`my_task`> foo:bar baz:qux)
-        #[clap(value_parser = parse_key_val::<String,String>)]
-        params: Vec<(String, String)>,
+        /// Arguments passed to the task
+        #[clap(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
     },
     #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
     /// Managing jobs queue.
@@ -781,10 +781,9 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                 println!("{:<22} (disabled)", middleware.id.bold().dimmed(),);
             }
         }
-        Commands::Task { name, params } => {
-            let vars = task::Vars::from_cli_args(params);
+        Commands::Task { name, args } => {
             let app_context = create_context::<H>(&environment, app_context.config).await?;
-            run_task::<H>(&app_context, name.as_ref(), &vars).await?;
+            run_task::<H>(&app_context, name.as_ref(), &args).await?;
         }
         Commands::Scheduler {
             name,
@@ -916,9 +915,8 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
                 println!("{:<22} (disabled)", middleware.id.bold().dimmed(),);
             }
         }
-        Commands::Task { name, params } => {
-            let vars = task::Vars::from_cli_args(params);
-            run_task::<H>(&app_context, name.as_ref(), &vars).await?;
+        Commands::Task { name, args } => {
+            run_task::<H>(&app_context, name.as_ref(), &args).await?;
         }
         #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
         Commands::Jobs { command } => {
