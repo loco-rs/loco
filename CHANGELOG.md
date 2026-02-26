@@ -18,6 +18,7 @@
 - Add priority support to SQLite and Redis background workers ([#1693](https://github.com/loco-rs/loco/pull/1693))
   - SQLite: Priority column automatically migrated on startup
   - Redis: **BREAKING CHANGE** - Migrated from Lists to Sorted Sets (ZSET) for priority support
+  - Redis upgrade action required: drain Redis queues before upgrading, or accept queued job loss
   - Priority API: Use `perform_later_with_priority(ctx, args, Some(priority))` or pass priority to `queue.enqueue()`
   - Higher numbers = higher priority (consistent across all backends)
 
@@ -28,6 +29,10 @@
 PR: [#1693](https://github.com/loco-rs/loco/pull/1693)
 
 The Redis queue implementation has been migrated from Lists to Sorted Sets (ZSET) to support job priorities. Jobs stored in the old List format are not compatible with the new ZSET format. See the [upgrade guide](docs-site/content/docs/extras/upgrades.md) for migration instructions.
+
+Upgrade instructions:
+- Option 1 (recommended): stop enqueueing new jobs, let workers drain all existing Redis queue jobs, then upgrade and restart workers.
+- Option 2: upgrade immediately and accept that Redis jobs already queued in List format will not be processed after upgrade.
 
 **View Engine Initializer**
 
