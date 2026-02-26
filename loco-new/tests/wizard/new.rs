@@ -8,22 +8,22 @@ use loco::{
     OS,
 };
 
-// #[cfg(feature = "test-wizard")]
-// #[rstest::rstest]
-// fn test_all_combinations(
-//     #[values(DBOption::None, DBOption::Sqlite)] db: DBOption,
-//     #[values(
-//         BackgroundOption::Async,
-//         BackgroundOption::Queue,
-//         BackgroundOption::Blocking,
-//         BackgroundOption::None
-//     )]
-//     background: BackgroundOption,
-//     #[values(AssetsOption::Serverside, AssetsOption::Clientside,
-// AssetsOption::None)]     asset: AssetsOption,
-// ) {
-//     test_combination(db, background, asset, true);
-// }
+#[cfg(feature = "test-wizard")]
+#[rstest::rstest]
+fn test_all_combinations(
+    #[values(DBOption::None, DBOption::Sqlite)] db: DBOption,
+    #[values(
+        BackgroundOption::Async,
+        BackgroundOption::Queue,
+        BackgroundOption::Blocking,
+        BackgroundOption::None
+    )]
+    background: BackgroundOption,
+    #[values(AssetsOption::Serverside, AssetsOption::Clientside, AssetsOption::None)]
+    asset: AssetsOption,
+) {
+    test_combination(db, background, asset, true);
+}
 
 // when running locally set LOCO_DEV_MODE_PATH=<to local loco path>
 #[rstest::rstest]
