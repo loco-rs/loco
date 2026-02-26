@@ -80,7 +80,7 @@ mailer:
       password: "your-sendgrid-api-key"
 ```
 
-### Default Email Address
+### Default Email Address and Queue Priority
 
 Other than specifying email addresses for every email sending task, you can override a default email address per-mailer.
 
@@ -91,11 +91,16 @@ impl Mailer for AuthMailer {
     fn opts() -> MailerOpts {
         MailerOpts {
             from: // set your from email,
+            priority: 100, // default is 100
             ..Default::default()
         }
     }
 }
 ```
+
+The `priority` value controls the queue priority used by `MailerWorker`.
+By default, mailers enqueue jobs with priority `100`, and you can override it per mailer via `MailerOpts`.
+Higher priority values are processed sooner (for example, priority `100` is processed before priority `10`).
 
 ### Using a mail catcher in development
 
