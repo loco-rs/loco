@@ -8,7 +8,9 @@ use std::{
 use clap::{Parser, Subcommand};
 use duct::cmd;
 use loco::{
-    generator::{executer, extract_default_template, Generator},
+    generator::{
+        executer, extract_default_template, extract_tree_template, read_file_contents, Generator,
+    },
     settings::Settings,
     wizard, Result, OS,
 };
@@ -51,6 +53,10 @@ enum Commands {
         #[arg(long)]
         assets: Option<wizard::AssetsOption>,
 
+        /// Starter template path
+        #[arg(short, long)]
+        template_dir: Option<String>,
+
         /// Create the starter in target git repository
         #[arg(short, long)]
         allow_in_git_repo: bool,
@@ -66,6 +72,7 @@ const DEFAULT_OS: &str = "linux";
 #[cfg(not(unix))]
 const DEFAULT_OS: &str = "windows";
 
+#[allow(clippy::too_many_lines)]
 #[allow(clippy::cognitive_complexity)]
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -84,10 +91,21 @@ fn main() -> Result<()> {
             bg,
             assets,
             name,
+            template_dir,
             allow_in_git_repo,
             os,
         } => {
-            tracing::debug!(path = ?path, db = ?db, bg=?bg, assets=?assets,name=?name, allow_in_git_repo=allow_in_git_repo, os=?os, "CLI options");
+            tracing::debug!(
+                path = ?path,
+                db = ?db,
+                bg=?bg,
+                assets=?assets,
+                name=?name,
+                allow_in_git_repo=allow_in_git_repo,
+                os=?os,
+                template_dir=template_dir,
+                "CLI options"
+            );
             if !allow_in_git_repo && is_a_git_repo(path.as_path()).unwrap_or(false) {
                 tracing::debug!("the target directory is a Git repository");
                 wizard::warn_if_in_git_repo()?;
@@ -109,11 +127,23 @@ fn main() -> Result<()> {
                 let args = wizard::ArgsPlaceholder { db, bg, assets };
                 let user_selection = wizard::start(&args)?;
 
-                let generator_tmp_folder = extract_default_template()?;
+                let prompt_template_dir = template_dir
+                    .as_ref()
+                    .map_or("base_template", |template_dir_str| {
+                        template_dir_str.as_str()
+                    });
+
+                let settings = Settings::from_wizard(&app_name, &user_selection, os);
+                let template_path = Path::new(&prompt_template_dir);
+
+                let generator_tmp_folder = if template_dir.is_some() {
+                    extract_tree_template(template_path)?
+                } else {
+                    extract_default_template()?
+                };
                 tracing::debug!(
                     dir = %generator_tmp_folder.root.display(),
                     "temporary template folder created",
-
                 );
 
                 let executor = executer::FileSystem::new(
@@ -121,13 +151,29 @@ fn main() -> Result<()> {
                     temp_to.root.as_path(),
                 );
 
-                let settings = Settings::from_wizard(&app_name, &user_selection, os);
-
                 if let Ok(path) = env::var("LOCO_DEV_MODE_PATH") {
                     println!("⚠️ NOTICE: working in dev mode, pointing to local Loco on '{path}'");
                 }
 
-                let res = match Generator::new(Arc::new(executor), settings).run() {
+                let dynamic_script_owner: Option<String> = if let Some(path) = template_dir {
+                    let setup_filepath = format!("{path}/setup.rhai"); // Your line 168
+
+                    // Read the file and store the *owned String* in our `Option`.
+                    // We return the `Result` and `?` will propagate the error.
+                    Some(read_file_contents(setup_filepath.as_str())?)
+                } else {
+                    None
+                };
+
+                // 2. NOW, we can safely create the `script` borrow.
+                let script = dynamic_script_owner
+                    .as_ref()
+                    .map_or(include_str!("../../setup.rhai"), |contents| {
+                        contents.as_str()
+                    });
+
+                let res = match Generator::new(Arc::new(executor), settings).run_from_script(script)
+                {
                     Ok(()) => {
                         std::fs::create_dir_all(&to)?;
                         let copy_options = fs_extra::dir::CopyOptions::new().content_only(true);
@@ -154,7 +200,11 @@ fn main() -> Result<()> {
                         ))
                     }
                     Err(err) => {
-                        tracing::error!(error = %err, args = format!("{args:?}"), "app generation failed due to template error.");
+                        tracing::error!(
+                            error = %err,
+                            args = format!("{args:?}"),
+                            "app generation failed due to template error."
+                        );
                         CmdExit::error_with_message("generate template failed")
                     }
                 };
