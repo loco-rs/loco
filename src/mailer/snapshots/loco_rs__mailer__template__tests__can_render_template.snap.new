@@ -1,0 +1,12 @@
+---
+source: src/mailer/template.rs
+assertion_line: 94
+expression: "Template::new(&include_dir!(\"tests/fixtures/email_template/test\")).render(&args)"
+---
+Ok(
+    Content {
+        subject: "Test Can render test template\r\n",
+        text: "Welcome to test: Can render test template,\r\n\r\n  http://localhost/verify/<%= verifyToken %>\r\n",
+        html: ";<html>\r\n\r\n<body>\r\n  This is a test content\r\n  <a href=\"http://localhost:/verify/1111-2222-3333-4444\">\r\n    Some test\r\n  </a>\r\n</body>\r\n\r\n</html>\r\n",
+    },
+)

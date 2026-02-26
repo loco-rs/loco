@@ -6,6 +6,7 @@ use crate::{
     },
     views::auth::{CurrentResponse, LoginResponse},
 };
+use axum::debug_handler;
 use loco_rs::prelude::*;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -130,6 +131,26 @@ async fn reset(State(ctx): State<AppContext>, Json(params): Json<ResetParams>) -
         .await?;
 
     format::json(())
+}
+
+/// Updates user data and returns the current user with updated data.
+/// Returns an error if username or email already exist.
+#[debug_handler]
+async fn update(
+    auth: auth::JWT,
+    State(ctx): State<AppContext>,
+    Json(params): Json<RegisterParams>,
+) -> Result<Response> {
+    if users::Model::find_by_email(&ctx.db, &params.email).await.is_ok() {
+        return Err(Error::Message("Email already exists".to_string()));
+    }
+    let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid)
+        .await?
+        .into_active_model()
+        .update_user_data(&ctx.db, params)
+        .await?;
+
+    format::json(CurrentResponse::new(&user))
 }
 
 /// Creates a user login and returns a token
@@ -266,6 +287,7 @@ pub fn routes() -> Routes {
         .add("/login", post(login))
         .add("/forgot", post(forgot))
         .add("/reset", post(reset))
+        .add("/update", post(update))
         .add("/current", get(current))
         .add("/magic-link", post(magic_link))
         .add("/magic-link/{token}", get(magic_link_verify))

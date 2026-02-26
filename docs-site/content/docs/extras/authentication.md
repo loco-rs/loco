@@ -37,6 +37,7 @@ $ cargo loco routes
 [POST] /api/auth/forgot
 [POST] /api/auth/login
 [POST] /api/auth/register
+[POST] /api/auth/update
 [POST] /api/auth/reset
 [GET] /api/auth/verify
 [GET] /api/auth/current
@@ -145,6 +146,24 @@ curl --location --request GET '127.0.0.1:5150/api/auth/current' \
      --header 'Content-Type: application/json' \
      --header 'Authorization: Bearer TOKEN'
 ```
+
+#### Update current user
+
+To update user data in the database, send name, email and password to update in the `update` endpoint.
+
+##### Example Curl request:
+
+```sh
+curl --location '127.0.0.1:5150/api/auth/update' \
+     --header 'Content-Type: application/json' \
+     --header 'Authorization: Bearer TOKEN'
+     --data '{
+         "name": "new-name",
+         "email": "new-email@loco.rs",
+         "password": "new-password"
+     }'
+```
+Loco will check if the new username and email already exist. If so, it will not update and return an error.
 
 ### Creating an Authenticated Endpoint
 
