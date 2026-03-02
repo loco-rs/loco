@@ -8,10 +8,9 @@ use std::{
 use clap::{Parser, Subcommand};
 use duct::cmd;
 use loco::{
-    generator::{
-        executer, extract_default_template, extract_tree_template, read_file_contents, Generator,
-    },
+    generator::{executer, extract_default_template, merge_with_default_template, Generator},
     settings::Settings,
+    starter,
     wizard, Result, OS,
 };
 use tracing::level_filters::LevelFilter;
@@ -53,9 +52,14 @@ enum Commands {
         #[arg(long)]
         assets: Option<wizard::AssetsOption>,
 
-        /// Starter template path
-        #[arg(short, long)]
-        template_dir: Option<String>,
+        /// Custom starter to scaffold from (local path, git URL, or .zip URL).
+        /// Git URLs support an optional @branch/tag suffix, e.g. https://github.com/user/repo@main
+        #[arg(long)]
+        from: Option<String>,
+
+        /// Force re-fetch of a remote --from source, ignoring the /tmp cache
+        #[arg(long, default_value_t = false)]
+        refresh: bool,
 
         /// Create the starter in target git repository
         #[arg(short, long)]
@@ -91,7 +95,8 @@ fn main() -> Result<()> {
             bg,
             assets,
             name,
-            template_dir,
+            from,
+            refresh,
             allow_in_git_repo,
             os,
         } => {
@@ -103,7 +108,8 @@ fn main() -> Result<()> {
                 name=?name,
                 allow_in_git_repo=allow_in_git_repo,
                 os=?os,
-                template_dir=template_dir,
+                from=from,
+                refresh=refresh,
                 "CLI options"
             );
             if !allow_in_git_repo && is_a_git_repo(path.as_path()).unwrap_or(false) {
@@ -127,20 +133,18 @@ fn main() -> Result<()> {
                 let args = wizard::ArgsPlaceholder { db, bg, assets };
                 let user_selection = wizard::start(&args)?;
 
-                let prompt_template_dir = template_dir
-                    .as_ref()
-                    .map_or("base_template", |template_dir_str| {
-                        template_dir_str.as_str()
-                    });
-
                 let settings = Settings::from_wizard(&app_name, &user_selection, os);
-                let template_path = Path::new(&prompt_template_dir);
 
-                let generator_tmp_folder = if template_dir.is_some() {
-                    extract_tree_template(template_path)?
+                let (generator_tmp_folder, custom_script) = if let Some(ref from_str) = from {
+                    let resolved = starter::resolve_from(from_str, refresh)?;
+                    starter::validate_setup_rhai(&resolved)?;
+                    let script = std::fs::read_to_string(resolved.join("setup.rhai"))?;
+                    let tree = merge_with_default_template(&resolved)?;
+                    (tree, Some(script))
                 } else {
-                    extract_default_template()?
+                    (extract_default_template()?, None)
                 };
+
                 tracing::debug!(
                     dir = %generator_tmp_folder.root.display(),
                     "temporary template folder created",
@@ -155,22 +159,9 @@ fn main() -> Result<()> {
                     println!("⚠️ NOTICE: working in dev mode, pointing to local Loco on '{path}'");
                 }
 
-                let dynamic_script_owner: Option<String> = if let Some(path) = template_dir {
-                    let setup_filepath = format!("{path}/setup.rhai"); // Your line 168
-
-                    // Read the file and store the *owned String* in our `Option`.
-                    // We return the `Result` and `?` will propagate the error.
-                    Some(read_file_contents(setup_filepath.as_str())?)
-                } else {
-                    None
-                };
-
-                // 2. NOW, we can safely create the `script` borrow.
-                let script = dynamic_script_owner
-                    .as_ref()
-                    .map_or(include_str!("../../setup.rhai"), |contents| {
-                        contents.as_str()
-                    });
+                let script = custom_script
+                    .as_deref()
+                    .unwrap_or(include_str!("../../setup.rhai"));
 
                 let res = match Generator::new(Arc::new(executor), settings).run_from_script(script)
                 {

@@ -4,6 +4,7 @@ use strum::Display;
 
 pub mod generator;
 pub mod settings;
+pub mod starter;
 pub mod wizard;
 
 pub type Result<T> = std::result::Result<T, Error>;

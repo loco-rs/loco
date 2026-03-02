@@ -42,6 +42,8 @@ colored = { version = "2" }
 duct = { version = "0.13.6" }
 rand = { version = "0.8.5" }
 tree-fs = { version = "0.3" }
+ureq = { version = "2" }
+zip = { version = "2" }
 
 [dev-dependencies]
 uuid = { version = "1.11.0", features = ["v4", "fast-rng"] }

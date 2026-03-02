@@ -73,6 +73,30 @@ pub fn extract_tree_template(source_path: &Path) -> std::io::Result<tree_fs::Tre
     Ok(generator_tmp_folder)
 }
 
+/// Extracts the default template and overlays files from `custom_path` on top.
+///
+/// Files present in both the default template and `custom_path` are overwritten
+/// by the custom version. Files only in the default template are preserved.
+///
+/// # Errors
+///
+/// Returns an error if the default template cannot be extracted or the custom
+/// files cannot be copied.
+pub fn merge_with_default_template(custom_path: &Path) -> std::io::Result<tree_fs::Tree> {
+    let generator_tmp_folder = extract_default_template()?;
+
+    let options = CopyOptions::new().content_only(true).overwrite(true);
+    fs_extra::dir::copy(custom_path, &generator_tmp_folder.root, &options).map_err(|e| {
+        std::io::Error::other(format!(
+            "Failed to merge custom template from '{}': {}",
+            custom_path.display(),
+            e
+        ))
+    })?;
+
+    Ok(generator_tmp_folder)
+}
+
 /// Reads the content of a file at the given path into a string.
 ///
 /// # Errors
