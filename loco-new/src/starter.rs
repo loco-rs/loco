@@ -10,7 +10,7 @@ use std::{
 };
 
 /// The source of a custom starter template.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StarterSource {
     Local(PathBuf),
     Git { url: String, branch: Option<String> },
@@ -23,9 +23,13 @@ impl StarterSource {
     /// - HTTP/HTTPS URLs ending in `.zip` → `Zip`
     /// - HTTP/HTTPS or SSH git URLs (optionally with `@branch`) → `Git`
     /// - Everything else → `Local`
+    #[must_use]
     pub fn detect(from: &str) -> Self {
         if from.starts_with("http://") || from.starts_with("https://") {
-            if from.ends_with(".zip") {
+            if std::path::Path::new(from)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("zip"))
+            {
                 return Self::Zip(from.to_string());
             }
             let (base_url, branch) = split_git_ref(from);
@@ -116,11 +120,9 @@ pub fn validate_setup_rhai(template_path: &Path) -> io::Result<()> {
 /// Sanitizes a URL and optional branch/tag into a safe `/tmp` cache directory name.
 ///
 /// Example: `("https://github.com/user/repo", Some("v1.2"))` → `"loco_https___github_com_user_repo_v1_2"`
+#[must_use]
 pub fn sanitize_cache_key(url: &str, branch: Option<&str>) -> String {
-    let raw = match branch {
-        Some(b) => format!("loco_{url}_{b}"),
-        None => format!("loco_{url}"),
-    };
+    let raw = branch.map_or_else(|| format!("loco_{url}"), |b| format!("loco_{url}_{b}"));
     raw.chars()
         .map(|c| {
             if c.is_alphanumeric() || c == '_' {
@@ -137,27 +139,30 @@ pub fn sanitize_cache_key(url: &str, branch: Option<&str>) -> String {
 /// Only looks for `@` in the path component (not in the `git@host` or `user@` part).
 /// Returns `(base_url, Some(branch))` or `(url.to_string(), None)`.
 fn split_git_ref(url: &str) -> (String, Option<String>) {
-    let path_start = if let Some(pos) = url.find("://") {
-        // https://github.com/user/repo → skip past host
-        url[pos + 3..]
-            .find('/')
-            .map(|i| pos + 3 + i)
-            .unwrap_or(url.len())
-    } else if url.starts_with("git@") {
-        // git@github.com:user/repo → skip past colon
-        url.find(':').map(|i| i + 1).unwrap_or(url.len())
-    } else {
-        0
-    };
+    let path_start = url.find("://").map_or_else(
+        || {
+            if url.starts_with("git@") {
+                // git@github.com:user/repo → skip past colon
+                url.find(':').map_or(url.len(), |i| i + 1)
+            } else {
+                0
+            }
+        },
+        |pos| {
+            // https://github.com/user/repo → skip past host
+            url[pos + 3..].find('/').map_or(url.len(), |i| pos + 3 + i)
+        },
+    );
 
-    if let Some(at_offset) = url[path_start..].rfind('@') {
-        let split_pos = path_start + at_offset;
-        let base = url[..split_pos].to_string();
-        let branch = url[split_pos + 1..].to_string();
-        (base, Some(branch))
-    } else {
-        (url.to_string(), None)
-    }
+    url[path_start..].rfind('@').map_or_else(
+        || (url.to_string(), None),
+        |at_offset| {
+            let split_pos = path_start + at_offset;
+            let base = url[..split_pos].to_string();
+            let branch = url[split_pos + 1..].to_string();
+            (base, Some(branch))
+        },
+    )
 }
 
 /// Clones a git repository to `target`. Uses `--branch` + `--depth 1` when a ref is given.

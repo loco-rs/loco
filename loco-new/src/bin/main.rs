@@ -52,7 +52,7 @@ enum Commands {
         assets: Option<wizard::AssetsOption>,
 
         /// Custom starter to scaffold from (local path, git URL, or .zip URL).
-        /// Git URLs support an optional @branch/tag suffix, e.g. https://github.com/user/repo@main
+        /// Git URLs support an optional @branch/tag suffix, e.g. <https://github.com/user/repo@main>
         #[arg(long)]
         from: Option<String>,
 
