@@ -10,8 +10,7 @@ use duct::cmd;
 use loco::{
     generator::{executer, extract_default_template, merge_with_default_template, Generator},
     settings::Settings,
-    starter,
-    wizard, Result, OS,
+    starter, wizard, Result, OS,
 };
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;

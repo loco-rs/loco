@@ -13,10 +13,7 @@ use std::{
 #[derive(Debug, Clone, PartialEq)]
 pub enum StarterSource {
     Local(PathBuf),
-    Git {
-        url: String,
-        branch: Option<String>,
-    },
+    Git { url: String, branch: Option<String> },
     Zip(String),
 }
 
@@ -32,11 +29,17 @@ impl StarterSource {
                 return Self::Zip(from.to_string());
             }
             let (base_url, branch) = split_git_ref(from);
-            return Self::Git { url: base_url, branch };
+            return Self::Git {
+                url: base_url,
+                branch,
+            };
         }
         if from.starts_with("git@") {
             let (base_url, branch) = split_git_ref(from);
-            return Self::Git { url: base_url, branch };
+            return Self::Git {
+                url: base_url,
+                branch,
+            };
         }
         Self::Local(PathBuf::from(from))
     }
@@ -119,7 +122,13 @@ pub fn sanitize_cache_key(url: &str, branch: Option<&str>) -> String {
         None => format!("loco_{url}"),
     };
     raw.chars()
-        .map(|c| if c.is_alphanumeric() || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
@@ -160,7 +169,10 @@ fn clone_git(url: &str, branch: Option<&str>, target: &Path) -> io::Result<()> {
     }
     cmd.arg(url).arg(target);
 
-    let status = cmd.status()?;
+    let status = cmd.status().map_err(|e| match e.kind() {
+        io::ErrorKind::NotFound => io::Error::other("git is not installed or not found in PATH"),
+        _ => e,
+    })?;
     if !status.success() {
         return Err(io::Error::other(format!("git clone failed for '{url}'")));
     }
@@ -169,9 +181,9 @@ fn clone_git(url: &str, branch: Option<&str>, target: &Path) -> io::Result<()> {
 
 /// Downloads and extracts a `.zip` archive from `url` into `target`.
 fn download_zip(url: &str, target: &Path) -> io::Result<()> {
-    let response = ureq::get(url).call().map_err(|e| {
-        io::Error::other(format!("Failed to download '{url}': {e}"))
-    })?;
+    let response = ureq::get(url)
+        .call()
+        .map_err(|e| io::Error::other(format!("Failed to download '{url}': {e}")))?;
 
     let mut bytes = Vec::new();
     response.into_reader().read_to_end(&mut bytes)?;
@@ -184,9 +196,9 @@ fn download_zip(url: &str, target: &Path) -> io::Result<()> {
         )
     })?;
 
-    archive.extract(target).map_err(|e| {
-        io::Error::other(format!("Failed to extract zip from '{url}': {e}"))
-    })?;
+    archive
+        .extract(target)
+        .map_err(|e| io::Error::other(format!("Failed to extract zip from '{url}': {e}")))?;
 
     Ok(())
 }
@@ -364,5 +376,35 @@ mod tests {
         let err = result.unwrap_err();
         assert_eq!(err.kind(), io::ErrorKind::NotFound);
         assert!(err.to_string().contains("setup.rhai"));
+    }
+
+    // --- resolve_from (git, no git binary) ---
+
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    #[test]
+    fn test_resolve_git_url_fails_when_git_not_installed() {
+        let _guard = ENV_LOCK.lock().unwrap();
+
+        let original_path = std::env::var("PATH").unwrap_or_default();
+        let empty_dir = tree_fs::TreeBuilder::default().create().unwrap();
+        std::env::set_var("PATH", empty_dir.root.to_str().unwrap());
+
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let result = resolve_from(&format!("https://github.com/test/repo-{nanos}"), false);
+
+        std::env::set_var("PATH", &original_path);
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("git is not installed"),
+            "expected 'git is not installed' error"
+        );
     }
 }

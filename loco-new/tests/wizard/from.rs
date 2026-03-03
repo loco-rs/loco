@@ -27,10 +27,11 @@ fn test_from_valid_template_with_setup_rhai() {
     let resolved = resolve_from(custom_template.root.to_str().unwrap(), false)
         .expect("resolve_from should succeed for a valid local path");
 
-    validate_setup_rhai(&resolved).expect("validate_setup_rhai should succeed when setup.rhai exists");
+    validate_setup_rhai(&resolved)
+        .expect("validate_setup_rhai should succeed when setup.rhai exists");
 
-    let merged = merge_with_default_template(&resolved)
-        .expect("merge_with_default_template should succeed");
+    let merged =
+        merge_with_default_template(&resolved).expect("merge_with_default_template should succeed");
 
     let output_dir = tree_fs::TreeBuilder::default()
         .create()
@@ -38,13 +39,14 @@ fn test_from_valid_template_with_setup_rhai() {
 
     let executor = FileSystem::new(merged.root.as_path(), output_dir.root.as_path());
 
-    let script = std::fs::read_to_string(resolved.join("setup.rhai"))
-        .expect("read setup.rhai");
+    let script = std::fs::read_to_string(resolved.join("setup.rhai")).expect("read setup.rhai");
 
-    let result = Generator::new(Arc::new(executor), default_settings())
-        .run_from_script(&script);
+    let result = Generator::new(Arc::new(executor), default_settings()).run_from_script(&script);
 
-    assert!(result.is_ok(), "generator should succeed with a valid custom template");
+    assert!(
+        result.is_ok(),
+        "generator should succeed with a valid custom template"
+    );
     assert!(
         output_dir.root.join(".gitignore").exists(),
         ".gitignore should be present in the generated output"
@@ -63,7 +65,10 @@ fn test_from_missing_setup_rhai() {
 
     let result = validate_setup_rhai(&resolved);
 
-    assert!(result.is_err(), "validate_setup_rhai should fail when setup.rhai is missing");
+    assert!(
+        result.is_err(),
+        "validate_setup_rhai should fail when setup.rhai is missing"
+    );
     let err = result.unwrap_err();
     assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
     assert!(
@@ -76,6 +81,9 @@ fn test_from_missing_setup_rhai() {
 fn test_from_nonexistent_directory() {
     let result = resolve_from("/tmp/loco_test_nonexistent_from_dir_xyz987", false);
 
-    assert!(result.is_err(), "resolve_from should fail for a nonexistent path");
+    assert!(
+        result.is_err(),
+        "resolve_from should fail for a nonexistent path"
+    );
     assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::NotFound);
 }
