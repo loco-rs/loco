@@ -8,7 +8,7 @@
 - Add tests for auth extractor ([#1671](https://github.com/loco-rs/loco/pull/1671))
 - Fix Clippy warnings for Rust 1.92 ([#1705](https://github.com/loco-rs/loco/pull/1705))
 - Add email headers support to mailer ([#1700](https://github.com/loco-rs/loco/pull/1700))
-- Wrap `TeraView` in `Arc` to reduce release binary size ([#1703](https://github.com/loco-rs/loco/pull/1703))
+- Wrap `TeraView` in `Arc` to reduce runtime memory usage ([#1703](https://github.com/loco-rs/loco/pull/1703))
 - Allow overriding a secure header ([#1659](https://github.com/loco-rs/loco/pull/1659))
 - Add “create user” task ([#1670](https://github.com/loco-rs/loco/pull/1670))
 - Add `UuidUniqWithDefault` and `UuidWithDefault` types ([#1642](https://github.com/loco-rs/loco/pull/1642))
