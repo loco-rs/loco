@@ -73,6 +73,9 @@ pub struct Config {
     pub settings: Option<serde_json::Value>,
 
     pub scheduler: Option<scheduler::Config>,
+
+    /// AWS Lambda deployment configuration
+    pub lambda: Option<Lambda>,
 }
 
 /// Logger configuration
@@ -550,6 +553,115 @@ pub struct Mailer {
 ///       Replace 'google' with your provider's name if different, must be
 ///       unique within the oauth2 config. ... # other fields
 pub type Initializers = BTreeMap<String, serde_json::Value>;
+
+/// AWS Lambda deployment configuration
+///
+/// Similar to Zappa configuration for Python applications, this struct defines
+/// settings for deploying your Loco application to AWS Lambda using Cargo Lambda.
+///
+/// Example:
+/// ```yaml
+/// # config/development.yaml
+/// lambda:
+///   project_name: my-loco-app
+///   memory_size: 256
+///   timeout: 30
+///   region: us-east-1
+///   profile_name: default
+///   architecture: arm64
+///   environment:
+///     RUST_LOG: info
+/// ```
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct Lambda {
+    /// The name of your Lambda project. This will be used as the function name.
+    /// Defaults to the package name from Cargo.toml if not specified.
+    pub project_name: Option<String>,
+
+    /// Memory size in MB for the Lambda function.
+    /// Valid values: 128 MB to 10,240 MB (in 1 MB increments).
+    /// Default: 256
+    #[serde(default = "lambda_default_memory_size")]
+    pub memory_size: u32,
+
+    /// Function timeout in seconds.
+    /// Maximum: 900 seconds (15 minutes).
+    /// Default: 30
+    #[serde(default = "lambda_default_timeout")]
+    pub timeout: u32,
+
+    /// AWS region where the Lambda function will be deployed.
+    /// Default: us-east-1
+    #[serde(default = "lambda_default_region")]
+    pub region: String,
+
+    /// AWS CLI profile name to use for deployment.
+    /// Uses the default profile if not specified.
+    pub profile_name: Option<String>,
+
+    /// Lambda function architecture.
+    /// Options: "x86_64" or "arm64"
+    /// Default: arm64 (better price/performance)
+    #[serde(default = "lambda_default_architecture")]
+    pub architecture: String,
+
+    /// Environment variables to pass to the Lambda function.
+    #[serde(default)]
+    pub environment: BTreeMap<String, String>,
+
+    /// IAM role ARN for the Lambda function.
+    /// If not provided, a new role will be created with basic execution permissions.
+    pub role_arn: Option<String>,
+
+    /// Enable Lambda function URL for direct HTTP access.
+    /// Default: true
+    #[serde(default = "lambda_default_function_url")]
+    pub function_url: bool,
+
+    /// Loco environment to use in Lambda (development, production, test).
+    /// This sets the LOCO_ENV environment variable.
+    /// Default: development
+    #[serde(default = "lambda_default_loco_env")]
+    pub loco_env: String,
+}
+
+fn lambda_default_memory_size() -> u32 {
+    256
+}
+
+fn lambda_default_timeout() -> u32 {
+    30
+}
+
+fn lambda_default_region() -> String {
+    "us-east-1".to_string()
+}
+
+fn lambda_default_architecture() -> String {
+    "arm64".to_string()
+}
+
+fn lambda_default_function_url() -> bool {
+    true
+}
+
+fn lambda_default_loco_env() -> String {
+    "development".to_string()
+}
+
+impl Lambda {
+    /// Get the effective project name, falling back to the provided default
+    #[must_use]
+    pub fn effective_project_name(&self, default: &str) -> String {
+        self.project_name.clone().unwrap_or_else(|| default.to_string())
+    }
+
+    /// Build AWS CLI profile argument if profile_name is set
+    #[must_use]
+    pub fn profile_arg(&self) -> Option<String> {
+        self.profile_name.as_ref().map(|p| format!("--profile={}", p))
+    }
+}
 
 /// SMTP mailer configuration structure.
 #[derive(Debug, Clone, Deserialize, Serialize)]

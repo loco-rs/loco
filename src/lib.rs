@@ -29,6 +29,8 @@ pub mod cache;
 pub mod cli;
 pub mod config;
 pub mod controller;
+#[cfg(feature = "cli")]
+pub mod deploy;
 mod env_vars;
 pub mod environment;
 pub mod errors;
