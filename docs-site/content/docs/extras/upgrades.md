@@ -33,6 +33,71 @@ These are the major ones:
 - [SeaORM](https://www.sea-ql.org/SeaORM), [CHANGELOG](https://github.com/SeaQL/sea-orm/blob/master/CHANGELOG.md)
 - [Axum](https://github.com/tokio-rs/axum), [CHANGELOG](https://github.com/tokio-rs/axum/blob/main/axum/CHANGELOG.md)
 
+## Upgrade from 0.16.x to X.X.X
+
+### Mailer Template Improvements
+
+The mailer template system has been upgraded to support full Tera template features, including inheritance (`{% extends %}`) and blocks. This enables better code reuse across email templates.
+
+#### Breaking Changes
+
+If you are manually instantiating `Template` using `Template::new`, note that the signature has changed to return a `Result`:
+
+```diff
+- let template = Template::new(&dir);
++ let template = Template::new(&dir)?;
+```
+
+Standard usage via `Mailer::mail_template` remains unchanged and fully backward compatible.
+
+#### New Features
+
+##### Shared Templates Across Mailers
+
+You can now use `Template::new_with_shared` to share templates between mailers:
+
+```rust
+use loco_rs::mailer::template::Template;
+
+// Shared base template directory
+static shared_base: Dir<'_> = include_dir!("src/mailers/shared");
+
+// Welcome mailer templates
+static welcome: Dir<'_> = include_dir!("src/mailers/auth/welcome");
+
+// Create template with shared base templates
+let template = Template::new_with_shared(&welcome, &[&shared_base])?;
+```
+
+##### Template Inheritance
+
+Templates can now extend other templates using Tera's inheritance syntax:
+
+**shared/base.t** (shared template):
+```tera
+<!DOCTYPE html>
+<html>
+<head><title>{% block title %}Email{% endblock %}</title></head>
+<body>
+    {% block body %}{% endblock %}
+</body>
+</html>
+```
+
+**welcome/html.t** (mailer-specific template):
+```tera
+{% extends "base.t" %}
+{% block title %}Welcome Email{% endblock %}
+{% block body %}
+<h1>Hello {{ name }}!</h1>
+{% endblock %}
+```
+
+This allows you to:
+- Create consistent email layouts across all mailers
+- Override specific blocks in individual mailer templates
+- Share common email components and styling
+
 ## Upgrade from 0.15.x to 0.16.x
 
 ### Use `AppContext` instead of `Config` in `init_logger` in the `Hooks` trait
