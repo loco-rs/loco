@@ -44,6 +44,8 @@ pub struct Job {
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
     pub tags: Option<Vec<String>>,
+    #[serde(default)]
+    pub priority: i32,
 }
 
 pub struct JobRegistry {
@@ -230,24 +232,58 @@ async fn connect(cfg: &PostgresQueueConfig) -> Result<PgPool> {
 /// This function will return an error if it fails
 pub async fn initialize_database(pool: &PgPool) -> Result<()> {
     debug!("Initializing job database tables");
-    sqlx::raw_sql(&format!(
-        r"
-            CREATE TABLE IF NOT EXISTS pg_loco_queue (
-                id VARCHAR NOT NULL,
-                name VARCHAR NOT NULL,
-                task_data JSONB NOT NULL,
-                status VARCHAR NOT NULL DEFAULT '{}',
-                run_at TIMESTAMPTZ NOT NULL,
-                interval BIGINT,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                tags JSONB
-            );
-            ",
-        JobStatus::Queued
-    ))
-    .execute(pool)
+
+    // First, check if the table exists
+    let table_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_name = 'pg_loco_queue'
+        )",
+    )
+    .fetch_one(pool)
     .await?;
+
+    if table_exists {
+        // Check if priority column exists
+        let priority_exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_name = 'pg_loco_queue' 
+                AND column_name = 'priority'
+            )",
+        )
+        .fetch_one(pool)
+        .await?;
+
+        if !priority_exists {
+            debug!("Adding priority column to existing pg_loco_queue table");
+            sqlx::query("ALTER TABLE pg_loco_queue ADD COLUMN priority INT NOT NULL DEFAULT 0")
+                .execute(pool)
+                .await?;
+        }
+    } else {
+        // Create the table with all columns including priority
+        sqlx::raw_sql(&format!(
+            r"
+                CREATE TABLE pg_loco_queue (
+                    id VARCHAR NOT NULL,
+                    name VARCHAR NOT NULL,
+                    task_data JSONB NOT NULL,
+                    status VARCHAR NOT NULL DEFAULT '{}',
+                    run_at TIMESTAMPTZ NOT NULL,
+                    interval BIGINT,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    tags JSONB,
+                    priority INT NOT NULL DEFAULT 0
+                );
+                ",
+            JobStatus::Queued
+        ))
+        .execute(pool)
+        .await?;
+    }
+
     Ok(())
 }
 
@@ -263,6 +299,7 @@ pub async fn enqueue(
     run_at: DateTime<Utc>,
     interval: Option<Duration>,
     tags: Option<Vec<String>>,
+    priority: Option<i32>,
 ) -> Result<JobId> {
     let data_json = serde_json::to_value(data)?;
     let tags_json = tags
@@ -275,8 +312,8 @@ pub async fn enqueue(
     let id = Ulid::new().to_string();
     debug!(job_id = %id, job_name = %name, run_at = %run_at, tags = ?tags, "Enqueueing job");
     sqlx::query(
-        "INSERT INTO pg_loco_queue (id, task_data, name, run_at, interval, tags) VALUES ($1, $2, $3, \
-         $4, $5, $6)",
+        "INSERT INTO pg_loco_queue (id, task_data, name, run_at, interval, tags, priority) VALUES ($1, $2, $3, \
+         $4, $5, $6, $7)",
     )
     .bind(id.clone())
     .bind(data_json)
@@ -284,6 +321,7 @@ pub async fn enqueue(
     .bind(run_at)
     .bind(interval_ms)
     .bind(tags_json)
+    .bind(priority.unwrap_or(0))
     .execute(pool)
     .await?;
     Ok(id)
@@ -294,7 +332,7 @@ async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>>
 
     // Base query
     let mut query = String::from(
-        "SELECT id, name, task_data, status, run_at, interval, tags FROM pg_loco_queue WHERE status = $1 AND run_at <= NOW() "
+        "SELECT id, name, task_data, status, run_at, interval, tags, priority FROM pg_loco_queue WHERE status = $1 AND run_at <= NOW() "
     );
 
     // Apply tag filtering logic
@@ -321,7 +359,7 @@ async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>>
         }
     }
 
-    query.push_str(" ORDER BY run_at LIMIT 1 FOR UPDATE SKIP LOCKED");
+    query.push_str(" ORDER BY priority DESC, run_at, id LIMIT 1 FOR UPDATE SKIP LOCKED");
 
     // Create the query
     let mut db_query = sqlx::query(&query).bind(JobStatus::Queued.to_string());
@@ -338,7 +376,7 @@ async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>>
         .flatten();
 
     if let Some(job) = row {
-        trace!(job_id = %job.id, job_name = %job.name, job_tags = ?job.tags, "Dequeueing job for processing");
+        debug!(job_id = %job.id, job_name = %job.name, job_tags = ?job.tags, job_priority = %job.priority, "Dequeueing job for processing");
         sqlx::query("UPDATE pg_loco_queue SET status = $1, updated_at = NOW() WHERE id = $2")
             .bind(JobStatus::Processing.to_string())
             .bind(&job.id)
@@ -612,6 +650,7 @@ fn to_job(row: &PgRow) -> Result<Job> {
         created_at: row.try_get("created_at").unwrap_or_default(),
         updated_at: row.try_get("updated_at").unwrap_or_default(),
         tags,
+        priority: row.get("priority"),
     })
 }
 
@@ -750,6 +789,7 @@ mod tests {
             job_data,
             run_at,
             None,
+            None,
             None
         )
         .await
@@ -781,6 +821,7 @@ mod tests {
             "PasswordChangeNotification",
             job_data,
             run_at,
+            None,
             None,
             None
         )
@@ -1125,11 +1166,55 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn can_dequeue_with_priority_extremes_and_ties() {
+        let (pool, _container) = setup_pg_test().await;
+        let base_time = Utc::now() - chrono::Duration::minutes(10);
+
+        let scenarios = [
+            ("PriorityMax", i32::MAX, 4_i64, 1_i32),
+            ("PriorityTieEarly", 42_i32, 1_i64, 2_i32),
+            ("PriorityTieLate", 42_i32, 3_i64, 3_i32),
+            ("PriorityZero", 0_i32, 0_i64, 4_i32),
+            ("PriorityMin", i32::MIN, 2_i64, 5_i32),
+        ];
+
+        for (name, priority, minute_offset, index) in scenarios {
+            enqueue(
+                &pool,
+                name,
+                serde_json::json!({ "index": index }),
+                base_time + chrono::Duration::minutes(minute_offset),
+                None,
+                None,
+                Some(priority),
+            )
+            .await
+            .expect("enqueue test job");
+        }
+
+        for expected_index in [1, 2, 3, 4, 5] {
+            let job = dequeue(&pool, &[]).await.expect("dequeue failed");
+            assert!(job.is_some());
+            let job = job.unwrap();
+            assert_eq!(
+                job.data.get("index"),
+                Some(&serde_json::json!(expected_index))
+            );
+            complete_job(&pool, &job.id, None)
+                .await
+                .expect("complete job");
+        }
+
+        let job = dequeue(&pool, &[]).await.expect("dequeue failed");
+        assert!(job.is_none());
+    }
+
+    #[tokio::test]
     async fn can_handle_worker_panic() {
         let (pool, _container) = setup_pg_test().await;
 
         let job_data: JobData = serde_json::json!(null);
-        let job_id = enqueue(&pool, "PanicJob", job_data, Utc::now(), None, None)
+        let job_id = enqueue(&pool, "PanicJob", job_data, Utc::now(), None, None, None)
             .await
             .expect("Failed to enqueue job");
 
@@ -1205,6 +1290,7 @@ mod tests {
             run_at,
             None,
             email_tags,
+            None,
         )
         .await
         .expect("Failed to enqueue email job");
@@ -1218,6 +1304,7 @@ mod tests {
             run_at,
             None,
             sms_tags,
+            None,
         )
         .await
         .expect("Failed to enqueue sms job");
@@ -1231,6 +1318,7 @@ mod tests {
             run_at,
             None,
             multi_tags,
+            None,
         )
         .await
         .expect("Failed to enqueue multi-tag job");
@@ -1241,6 +1329,7 @@ mod tests {
             "GenericNotification",
             job_data.clone(),
             run_at,
+            None,
             None,
             None,
         )

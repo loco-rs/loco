@@ -16,6 +16,7 @@ use super::{app::AppContext, Result};
 use crate::prelude::BackgroundWorker;
 
 pub const DEFAULT_FROM_SENDER: &str = "System <system@example.com>";
+pub const DEFAULT_MAILER_PRIORITY: i32 = 100;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EmailHeaders {
@@ -61,11 +62,22 @@ pub struct Email {
 }
 
 /// The options struct for configuring the email sender.
-#[derive(Default, Debug)]
+#[derive(Debug)]
 #[allow(clippy::module_name_repetitions)]
 pub struct MailerOpts {
     pub from: String,
     pub reply_to: Option<String>,
+    pub priority: i32,
+}
+
+impl Default for MailerOpts {
+    fn default() -> Self {
+        Self {
+            from: DEFAULT_FROM_SENDER.to_string(),
+            reply_to: None,
+            priority: DEFAULT_MAILER_PRIORITY,
+        }
+    }
 }
 
 /// The `Mailer` trait defines methods for sending emails and processing email
@@ -75,10 +87,7 @@ pub trait Mailer {
     /// Returns default options for the mailer.
     #[must_use]
     fn opts() -> MailerOpts {
-        MailerOpts {
-            from: DEFAULT_FROM_SENDER.to_string(),
-            ..Default::default()
-        }
+        MailerOpts::default()
     }
 
     /// Sends an email using the provided [`AppContext`] and email details.
@@ -89,7 +98,7 @@ pub trait Mailer {
         email.from = Some(email.from.unwrap_or_else(|| opts.from.clone()));
         email.reply_to = email.reply_to.or_else(|| opts.reply_to.clone());
 
-        MailerWorker::perform_later(ctx, email.clone()).await?;
+        MailerWorker::perform_later_with_priority(ctx, email.clone(), Some(opts.priority)).await?;
         Ok(())
     }
 

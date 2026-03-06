@@ -94,6 +94,11 @@ impl Queue {
     /// # Errors
     ///
     /// This function will return an error if fails
+    ///
+    /// Priority semantics for all queue backends:
+    /// - Higher value means higher urgency.
+    /// - Valid range is full `i32` (`-2_147_483_648..=2_147_483_647`).
+    /// - Ties are resolved by earlier `run_at`, then by stable job id ordering.
     #[allow(unused_variables)]
     pub async fn enqueue<A: Serialize + Send + Sync>(
         &self,
@@ -101,12 +106,13 @@ impl Queue {
         queue: Option<String>,
         args: A,
         tags: Option<Vec<String>>,
+        priority: Option<i32>,
     ) -> Result<()> {
         tracing::debug!(worker = class, queue = ?queue, tags = ?tags, "Enqueuing background job");
         match self {
             #[cfg(feature = "bg_redis")]
             Self::Redis(pool, _, _, _) => {
-                redis::enqueue(pool, class, queue, args, tags).await?;
+                redis::enqueue(pool, class, queue, args, tags, priority).await?;
             }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, _, _, _) => {
@@ -117,6 +123,7 @@ impl Queue {
                     chrono::Utc::now(),
                     None,
                     tags,
+                    priority,
                 )
                 .await
                 .map_err(Box::from)?;
@@ -130,6 +137,7 @@ impl Queue {
                     chrono::Utc::now(),
                     None,
                     tags,
+                    priority,
                 )
                 .await
                 .map_err(Box::from)?;
@@ -553,7 +561,8 @@ impl Queue {
             Self::Postgres(_, _, _, _) => {
                 let jobs: Vec<pg::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.clone(), None, job.data, None).await?;
+                    self.enqueue(job.name.clone(), None, job.data, None, Some(job.priority))
+                        .await?;
                 }
 
                 Ok(())
@@ -562,7 +571,8 @@ impl Queue {
             Self::Sqlite(_, _, _, _) => {
                 let jobs: Vec<sqlt::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.clone(), None, job.data, None).await?;
+                    self.enqueue(job.name.clone(), None, job.data, None, Some(job.priority))
+                        .await?;
                 }
                 Ok(())
             }
@@ -570,7 +580,8 @@ impl Queue {
             Self::Redis(_, _, _, _) => {
                 let jobs: Vec<redis::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.clone(), None, job.data, None).await?;
+                    self.enqueue(job.name.clone(), None, job.data, None, Some(job.priority))
+                        .await?;
                 }
                 Ok(())
             }
@@ -616,13 +627,30 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
     where
         Self: Sized,
     {
+        Self::perform_later_with_priority(ctx, args, None).await
+    }
+
+    async fn perform_later_with_priority(
+        ctx: &AppContext,
+        args: A,
+        priority: Option<i32>,
+    ) -> crate::Result<()>
+    where
+        Self: Sized,
+    {
         match &ctx.config.workers.mode {
             WorkerMode::BackgroundQueue => {
                 if let Some(p) = &ctx.queue_provider {
                     let tags = Self::tags();
                     let tags_option = if tags.is_empty() { None } else { Some(tags) };
-                    p.enqueue(Self::class_name(), Self::queue(), args, tags_option)
-                        .await?;
+                    p.enqueue(
+                        Self::class_name(),
+                        Self::queue(),
+                        args,
+                        tags_option,
+                        priority,
+                    )
+                    .await?;
                 } else {
                     tracing::error!(
                         "perform_later: background queue is selected, but queue was not populated \
