@@ -27,7 +27,7 @@ To configure `postgres` instead of `sqlite`, go into your `config/development.ya
 
 ```yaml
 database:
-  uri: "{{ get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/myapp_development") }"
+  uri: "{{ get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/myapp_development") }}"
 ```
 
 <div class="infobox">

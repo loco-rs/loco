@@ -500,7 +500,7 @@ mod tests {
             .create()
             .unwrap();
 
-        let v = TeraView::from_custom_dir(&tree_fs.root).unwrap();
+        let v = TeraView::from_custom_dir(&tree_fs.root, |_| Ok(())).unwrap();
 
         assert_debug_snapshot!(view(&v, "template/none.html", serde_json::json!({})));
         let response = view(&v, "template/test.html", serde_json::json!({"foo": "loco"})).unwrap();
@@ -593,7 +593,7 @@ mod tests {
             .create()
             .unwrap();
 
-        let v = TeraView::from_custom_dir(&tree_fs.root).unwrap();
+        let v = TeraView::from_custom_dir(&tree_fs.root, |_| Ok(())).unwrap();
 
         assert_debug_snapshot!(view(&v, "template/none.html", serde_json::json!({})));
         let response = render()

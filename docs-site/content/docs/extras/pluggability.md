@@ -333,7 +333,7 @@ This is why we added a new _App level hook_, called `init_logger`, which you can
 impl Hooks for App {
     // return `Ok(true)` if you took over initializing logger
     // otherwise, return `Ok(false)` to use the Loco logging stack.
-    fn init_logger(_config: &config::Config, _env: &Environment) -> Result<bool> {
+    fn init_logger(_ctx: &AppContext) -> Result<bool> {
         Ok(false)
     }
 }

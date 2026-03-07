@@ -3,7 +3,7 @@ source: loco-gen/tests/templates/deployment.rs
 expression: "fs::read_to_string(tree_fs.root.join(\"Dockerfile\")).expect(\"Dockerfile missing\")"
 snapshot_kind: text
 ---
-FROM rust:[version]-slim as builder
+FROM rust:[version]-slim AS builder
 
 WORKDIR /usr/src/
 

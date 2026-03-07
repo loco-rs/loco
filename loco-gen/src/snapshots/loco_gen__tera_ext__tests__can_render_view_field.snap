@@ -1,0 +1,256 @@
+---
+source: loco-gen/src/tera_ext.rs
+expression: "all_results.join(\"\\n\")"
+snapshot_kind: text
+---
+Field: array!.big_int (type: Option<Vec<i64>>)
+{{item.array!}}
+
+Field: array!.bool (type: Option<Vec<bool>>)
+{{item.array!}}
+
+Field: array!.double (type: Option<Vec<f64>>)
+{{item.array!}}
+
+Field: array!.float (type: Option<Vec<f32>>)
+{{item.array!}}
+
+Field: array!.int (type: Option<Vec<i32>>)
+{{item.array!}}
+
+Field: array!.string (type: Option<Vec<String>>)
+{{item.array!}}
+
+Field: array.big_int (type: Option<Vec<i64>>)
+{{item.array}}
+
+Field: array.bool (type: Option<Vec<bool>>)
+{{item.array}}
+
+Field: array.double (type: Option<Vec<f64>>)
+{{item.array}}
+
+Field: array.float (type: Option<Vec<f32>>)
+{{item.array}}
+
+Field: array.int (type: Option<Vec<i32>>)
+{{item.array}}
+
+Field: array.string (type: Option<Vec<String>>)
+{{item.array}}
+
+Field: array^.big_int (type: Option<Vec<i64>>)
+{{item.array^}}
+
+Field: array^.bool (type: Option<Vec<bool>>)
+{{item.array^}}
+
+Field: array^.double (type: Option<Vec<f64>>)
+{{item.array^}}
+
+Field: array^.float (type: Option<Vec<f32>>)
+{{item.array^}}
+
+Field: array^.int (type: Option<Vec<i32>>)
+{{item.array^}}
+
+Field: array^.string (type: Option<Vec<String>>)
+{{item.array^}}
+
+Field: big_int!.big_int! (type: i64)
+{{item.big_int!}}
+
+Field: big_int.big_int (type: Option<i64>)
+{{item.big_int}}
+
+Field: big_int^.big_int^ (type: i64)
+{{item.big_int^}}
+
+Field: big_unsigned!.big_unsigned! (type: i64)
+{{item.big_unsigned!}}
+
+Field: big_unsigned.big_unsigned (type: Option<i64>)
+{{item.big_unsigned}}
+
+Field: big_unsigned^.big_unsigned^ (type: i64)
+{{item.big_unsigned^}}
+
+Field: binary_len!.binary_len! (type: Vec<u8>)
+{{item.binary_len!}}
+
+Field: binary_len.binary_len (type: Option<Vec<u8>>)
+{{item.binary_len}}
+
+Field: binary_len^.binary_len^ (type: Vec<u8>)
+{{item.binary_len^}}
+
+Field: blob!.blob! (type: Vec<u8>)
+{{item.blob!}}
+
+Field: blob.blob (type: Option<Vec<u8>>)
+{{item.blob}}
+
+Field: blob^.blob^ (type: Vec<u8>)
+{{item.blob^}}
+
+Field: bool!.bool! (type: bool)
+{% if item.bool! %}{{item.bool!}}{% else %}false{% endif %}
+
+Field: bool.bool (type: Option<bool>)
+{% if item.bool %}{{item.bool}}{% else %}false{% endif %}
+
+Field: date!.date! (type: Date)
+{{item.date!}}
+
+Field: date.date (type: Option<Date>)
+{{item.date}}
+
+Field: date^.date^ (type: Date)
+{{item.date^}}
+
+Field: date_time!.date_time! (type: DateTime)
+{{item.date_time!}}
+
+Field: date_time.date_time (type: Option<DateTime>)
+{{item.date_time}}
+
+Field: date_time^.date_time^ (type: DateTime)
+{{item.date_time^}}
+
+Field: decimal!.decimal! (type: Decimal)
+{{item.decimal!}}
+
+Field: decimal.decimal (type: Option<Decimal>)
+{{item.decimal}}
+
+Field: decimal^.decimal^ (type: Decimal)
+{{item.decimal^}}
+
+Field: decimal_len!.decimal_len! (type: Decimal)
+{{item.decimal_len!}}
+
+Field: decimal_len.decimal_len (type: Option<Decimal>)
+{{item.decimal_len}}
+
+Field: decimal_len^.decimal_len^ (type: Decimal)
+{{item.decimal_len^}}
+
+Field: double!.double! (type: f64)
+{{item.double!}}
+
+Field: double.double (type: Option<f64>)
+{{item.double}}
+
+Field: double^.double^ (type: f64)
+{{item.double^}}
+
+Field: float!.float! (type: f32)
+{{item.float!}}
+
+Field: float.float (type: Option<f32>)
+{{item.float}}
+
+Field: float^.float^ (type: f32)
+{{item.float^}}
+
+Field: int!.int! (type: i32)
+{{item.int!}}
+
+Field: int.int (type: Option<i32>)
+{{item.int}}
+
+Field: int^.int^ (type: i32)
+{{item.int^}}
+
+Field: json!.json! (type: serde_json::Value)
+{{item.json! | escape }}
+
+Field: json.json (type: Option<serde_json::Value>)
+{{item.json | escape }}
+
+Field: jsonb!.jsonb! (type: serde_json::Value)
+{{item.jsonb! | escape }}
+
+Field: jsonb.jsonb (type: Option<serde_json::Value>)
+{{item.jsonb | escape }}
+
+Field: jsonb^.jsonb^ (type: serde_json::Value)
+{{item.jsonb^ | escape }}
+
+Field: money!.money! (type: Decimal)
+{{item.money!}}
+
+Field: money.money (type: Option<Decimal>)
+{{item.money}}
+
+Field: money^.money^ (type: Decimal)
+{{item.money^}}
+
+Field: small_int!.small_int! (type: i16)
+{{item.small_int!}}
+
+Field: small_int.small_int (type: Option<i16>)
+{{item.small_int}}
+
+Field: small_int^.small_int^ (type: i16)
+{{item.small_int^}}
+
+Field: small_unsigned!.small_unsigned! (type: i16)
+{{item.small_unsigned!}}
+
+Field: small_unsigned.small_unsigned (type: Option<i16>)
+{{item.small_unsigned}}
+
+Field: small_unsigned^.small_unsigned^ (type: i16)
+{{item.small_unsigned^}}
+
+Field: string!.string! (type: String)
+{{item.string! | escape }}
+
+Field: string.string (type: Option<String>)
+{{item.string | escape }}
+
+Field: string^.string^ (type: String)
+{{item.string^ | escape }}
+
+Field: text!.text! (type: String)
+{{item.text! | escape }}
+
+Field: text.text (type: Option<String>)
+{{item.text | escape }}
+
+Field: text^.text^ (type: String)
+{{item.text^ | escape }}
+
+Field: tstz!.tstz! (type: DateTimeWithTimeZone)
+{{item.tstz!}}
+
+Field: tstz.tstz (type: Option<DateTimeWithTimeZone>)
+{{item.tstz}}
+
+Field: unsigned!.unsigned! (type: i32)
+{{item.unsigned!}}
+
+Field: unsigned.unsigned (type: Option<i32>)
+{{item.unsigned}}
+
+Field: unsigned^.unsigned^ (type: i32)
+{{item.unsigned^}}
+
+Field: uuid!.uuid! (type: Uuid)
+{{item.uuid! | escape }}
+
+Field: uuid.uuid (type: Option<Uuid>)
+{{item.uuid | escape }}
+
+Field: uuid^.uuid^ (type: Uuid)
+{{item.uuid^ | escape }}
+
+Field: var_binary!.var_binary! (type: Vec<u8>)
+{{item.var_binary!}}
+
+Field: var_binary.var_binary (type: Option<Vec<u8>>)
+{{item.var_binary}}
+
+Field: var_binary^.var_binary^ (type: Vec<u8>)
+{{item.var_binary^}}

@@ -1,6 +1,5 @@
 ---
 source: tests/templates/mailer.rs
 expression: "content.get(\"dependencies\").unwrap()"
-snapshot_kind: text
 ---
 { async-trait = { version = "0.1" }, axum = { version = "0.8" }, loco-rs = { workspace = true }, regex = { version = "1.11" }, serde = { features = ["derive"], version = "1" }, serde_json = { version = "1" }, tokio = { default-features = false, features = ["rt-multi-thread"], version = "1.45" }, tracing = { version = "0.1" }, tracing-subscriber = { features = ["env-filter", "json"], version = "0.3" } }

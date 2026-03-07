@@ -43,7 +43,7 @@ movie
                         </td>
                         <td
                             class="p-2 align-middle  font-medium">
-                            {{item.user_id | escape }}
+                            {{item.user_id}}
                         </td>
                         <td>
                             <a href="/movies/{{ item.id }}/edit">Edit</a>

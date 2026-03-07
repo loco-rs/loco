@@ -43,7 +43,6 @@ To create the Docker image for our app, we will use the loco CLI. The `cargo loc
 $ cargo loco generate deployment
 ? ❯ Choose your deployment ›
 ❯ Docker
-  Shuttle
 
 added: "Dockerfile"
 added: ".dockerignore"
