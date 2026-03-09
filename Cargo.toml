@@ -23,6 +23,7 @@ rust-version.workspace = true
 [features]
 default = [
     "auth_jwt",
+    "jwt_aws_lc_rs",
     "cli",
     "with-db",
     "cache_inmem",
@@ -31,6 +32,8 @@ default = [
     "bg_sqlt",
 ]
 auth_jwt = ["dep:jsonwebtoken"]
+jwt_aws_lc_rs = ["dep:jsonwebtoken", "jsonwebtoken/aws_lc_rs"]
+jwt_rustcrypto = ["dep:jsonwebtoken", "jsonwebtoken/rust_crypto"]
 cli = ["dep:clap"]
 testing = ["dep:axum-test", "dep:scraper", "dep:tree-fs"]
 with-db = [
@@ -112,11 +115,11 @@ byte-unit = "4.0.19"
 
 argon2 = { version = "0.5", features = ["std"] }
 rand = { version = "0.9", features = ["std"] }
-jsonwebtoken = { version = "9.3.0", optional = true }
+jsonwebtoken = { version = "10.3.0", optional = true }
 validator = { version = "0.20.0", features = ["derive"] }
 futures-util = "0.3"
 tower = { workspace = true }
-bytes = "1.1"
+bytes = "1.11"
 ipnetwork = "0.20.0"
 semver = "1"
 
@@ -215,4 +218,4 @@ sqlx = { version = "0.8.2", default-features = false, features = [
     "sqlite",
     "migrate",
 ] }
-testcontainers = { version = "0.23.3" }
+testcontainers = { version = "0.27.1" }
