@@ -6,4 +6,3 @@ pub mod jwt;
     not(feature = "auth_jwt")
 ))]
 compile_error!("jwt_aws_lc_rs and jwt_rustcrypto features require auth_jwt feature");
-
