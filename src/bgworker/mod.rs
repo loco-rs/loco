@@ -8,8 +8,8 @@ use std::{
 use async_trait::async_trait;
 #[cfg(feature = "cli")]
 use clap::ValueEnum;
-use serde::{Deserialize, Serialize};
 use dashmap::DashMap;
+use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
 use tokio::task::Id as TaskId;
 use ulid::Ulid;
