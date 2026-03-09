@@ -2,19 +2,23 @@
 use crate::bgworker;
 use std::path::PathBuf;
 
+#[cfg(any(feature = "bg_pg", feature = "bg_sqlt"))]
+fn queue_jobs_fixture_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("fixtures")
+        .join("queue")
+        .join("jobs.yaml")
+}
+
 #[cfg(feature = "bg_pg")]
 /// # Panics
 ///
 /// This function will panic if it fails to prepare or insert the seed data, causing the tests to fail quickly
 /// and preventing further test execution with incomplete setup.
 pub async fn postgres_seed_data(pool: &sqlx::PgPool) {
-    let yaml_tasks = std::fs::read_to_string(
-        PathBuf::from("tests")
-            .join("fixtures")
-            .join("queue")
-            .join("jobs.yaml"),
-    )
-    .expect("Failed to read YAML file");
+    let yaml_tasks =
+        std::fs::read_to_string(queue_jobs_fixture_path()).expect("Failed to read YAML file");
 
     let tasks: Vec<bgworker::pg::Job> =
         serde_yaml::from_str(&yaml_tasks).expect("Failed to parse YAML");
@@ -43,13 +47,8 @@ pub async fn postgres_seed_data(pool: &sqlx::PgPool) {
 /// This function will panic if it fails to prepare or insert the seed data, causing the tests to fail quickly
 /// and preventing further test execution with incomplete setup.
 pub async fn sqlite_seed_data(pool: &sqlx::Pool<sqlx::Sqlite>) {
-    let yaml_tasks = std::fs::read_to_string(
-        PathBuf::from("tests")
-            .join("fixtures")
-            .join("queue")
-            .join("jobs.yaml"),
-    )
-    .expect("Failed to read YAML file");
+    let yaml_tasks =
+        std::fs::read_to_string(queue_jobs_fixture_path()).expect("Failed to read YAML file");
 
     let tasks: Vec<bgworker::sqlt::Job> =
         serde_yaml::from_str(&yaml_tasks).expect("Failed to parse YAML");
