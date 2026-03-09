@@ -9,7 +9,9 @@ use async_trait::async_trait;
 #[cfg(feature = "cli")]
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
+use dashmap::DashMap;
 use serde_variant::to_variant_name;
+use tokio::task::Id as TaskId;
 use ulid::Ulid;
 #[cfg(feature = "bg_pg")]
 pub mod pg;
@@ -26,6 +28,34 @@ use crate::{
     },
     Error, Result,
 };
+
+/// Maps ULID job IDs to tokio task IDs for `BackgroundAsync` workers.
+///
+/// This provides consistent ULID-based job IDs across all worker modes while
+/// retaining access to the underlying tokio task ID when needed.
+#[derive(Default, Debug)]
+pub struct AsyncJobTaskMap {
+    // Use DashMap for concurrent access with fine-grained locking
+    inner: DashMap<String, TaskId>,
+}
+
+impl AsyncJobTaskMap {
+    /// Insert a mapping from a ULID job ID to a tokio task ID.
+    pub fn insert(&self, job_id: String, task_id: TaskId) {
+        self.inner.insert(job_id, task_id);
+    }
+
+    /// Get the tokio task ID for a given ULID job ID.
+    #[must_use]
+    pub fn get(&self, job_id: &str) -> Option<TaskId> {
+        self.inner.get(job_id).map(|r| *r.value())
+    }
+
+    /// Remove a mapping by ULID job ID.
+    pub fn remove(&self, job_id: &str) -> Option<TaskId> {
+        self.inner.remove(job_id).map(|(_, v)| v)
+    }
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "cli", derive(ValueEnum))]
@@ -656,10 +686,11 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
                         .await?
                         .unwrap_or_else(|| Ulid::new().to_string())
                 } else {
-                    return Err(Error::string(
-                        "perform_later: background queue is selected, but queue was not populated \
-                         in context",
-                    ));
+                    tracing::error!(
+                        "perform_later: background queue is selected, but queue was not \
+                         populated in context"
+                    );
+                    Ulid::new().to_string()
                 }
             }
             WorkerMode::ForegroundBlocking => {
@@ -668,14 +699,17 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
                 job_id
             }
             WorkerMode::BackgroundAsync => {
+                let job_id = Ulid::new().to_string();
                 let dx = ctx.clone();
-                tokio::spawn(async move {
+                let handle = tokio::spawn(async move {
                     if let Err(err) = Self::build(&dx).perform(args).await {
                         tracing::error!(err = err.to_string(), "worker failed to perform job");
                     }
-                })
-                .id()
-                .to_string()
+                });
+                if let Some(task_map) = ctx.shared_store.get_ref::<AsyncJobTaskMap>() {
+                    task_map.insert(job_id.clone(), handle.id());
+                }
+                job_id
             }
         };
         Ok(job_id)
