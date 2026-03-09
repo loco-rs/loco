@@ -23,6 +23,7 @@ rust-version.workspace = true
 [features]
 default = [
     "auth_jwt",
+    "jwt_aws_lc_rs",
     "cli",
     "with-db",
     "cache_inmem",
@@ -31,6 +32,8 @@ default = [
     "bg_sqlt",
 ]
 auth_jwt = ["dep:jsonwebtoken"]
+jwt_aws_lc_rs = ["dep:jsonwebtoken", "jsonwebtoken/aws_lc_rs"]
+jwt_rustcrypto = ["dep:jsonwebtoken", "jsonwebtoken/rust_crypto"]
 cli = ["dep:clap"]
 testing = ["dep:axum-test", "dep:scraper", "dep:tree-fs"]
 with-db = [
