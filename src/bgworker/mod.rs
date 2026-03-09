@@ -52,6 +52,7 @@ impl AsyncJobTaskMap {
     }
 
     /// Remove a mapping by ULID job ID.
+    #[must_use]
     pub fn remove(&self, job_id: &str) -> Option<TaskId> {
         self.inner.remove(job_id).map(|(_, v)| v)
     }
