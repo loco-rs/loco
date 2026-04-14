@@ -739,7 +739,7 @@ dependencies = [
  "include_dir",
  "insta",
  "mockall",
- "rand 0.8.5",
+ "rand 0.9.2",
  "regex",
  "rhai",
  "rstest",
