@@ -84,6 +84,23 @@ impl CargoConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::{Path, PathBuf};
+
+    struct CwdGuard(PathBuf);
+
+    impl CwdGuard {
+        fn set_to(path: &Path) -> Self {
+            let previous = std::env::current_dir().expect("Failed to get current directory");
+            std::env::set_current_dir(path).expect("Failed to change directory");
+            Self(previous)
+        }
+    }
+
+    impl Drop for CwdGuard {
+        fn drop(&mut self) {
+            let _ = std::env::set_current_dir(&self.0);
+        }
+    }
 
     const TEST_CARGO_TOML: &str = r#"
 [package]
@@ -144,7 +161,7 @@ version = "1.0.0"
     #[test]
     fn test_from_current_dir() {
         let tree = setup_test_dir(None);
-        std::env::set_current_dir(&tree.root).expect("Failed to change directory");
+        let _cwd_guard = CwdGuard::set_to(&tree.root);
 
         let config = CargoConfig::from_current_dir().expect("Failed to read from current dir");
         assert_eq!(config.toml["package"]["name"].as_str(), Some("test-app"));
@@ -153,7 +170,7 @@ version = "1.0.0"
     #[test]
     fn test_lock_from_current_dir() {
         let tree = setup_test_dir_with_lock(None, None);
-        std::env::set_current_dir(&tree.root).expect("Failed to change directory");
+        let _cwd_guard = CwdGuard::set_to(&tree.root);
 
         let config = CargoConfig::lock_from_current_dir().expect("Failed to read Cargo.lock");
         let packages = config
