@@ -9,7 +9,7 @@ use lettre::{
 };
 use tracing::error;
 
-use super::{Email, Result, DEFAULT_FROM_SENDER};
+use super::{Email, MultiEmail, Result, DEFAULT_FROM_SENDER};
 use crate::{config, errors::Error};
 
 /// An enumeration representing the possible transport methods for sending
@@ -144,6 +144,66 @@ impl EmailSender {
                 error
             })?;
 
+        self.send(msg).await
+    }
+
+    /// Sends an email with multiple recipients using the configured transport
+    /// method.
+    ///
+    /// # Errors
+    ///
+    /// When email doesn't send successfully or has an error to build the
+    /// message
+    pub async fn mail_multi(&self, email: &MultiEmail) -> Result<()> {
+        let content = MultiPart::alternative_plain_html(email.text.clone(), email.html.clone());
+        let mut builder = Message::builder().from(
+            email
+                .from
+                .clone()
+                .unwrap_or_else(|| DEFAULT_FROM_SENDER.to_string())
+                .parse()?,
+        );
+
+        for to in &email.to {
+            builder = builder.to(to.parse()?);
+        }
+
+        for bcc in &email.bcc {
+            builder = builder.bcc(bcc.parse()?);
+        }
+
+        for cc in &email.cc {
+            builder = builder.cc(cc.parse()?);
+        }
+
+        if let Some(reply_to) = &email.reply_to {
+            builder = builder.reply_to(reply_to.parse()?);
+        }
+
+        if let Some(headers) = &email.headers {
+            if let Some(references) = &headers.references {
+                builder = builder.header(header::References::from(references.clone()));
+            }
+            if let Some(in_reply_to) = &headers.in_reply_to {
+                builder = builder.header(header::InReplyTo::from(in_reply_to.clone()));
+            }
+            if let Some(message_id) = &headers.message_id {
+                builder = builder.header(header::MessageId::from(message_id.clone()));
+            }
+        }
+
+        let msg = builder
+            .subject(email.subject.clone())
+            .multipart(content)
+            .map_err(|error| {
+                error!(err.msg = %error, err.detail = ?error, "email_building_error");
+                error
+            })?;
+
+        self.send(msg).await
+    }
+
+    async fn send(&self, msg: lettre::Message) -> Result<()> {
         match &self.transport {
             EmailTransport::Smtp(xp) => {
                 xp.send(msg).await?;
@@ -235,6 +295,86 @@ mod tests {
         };
         assert!(sender.mail(&data).await.is_ok());
 
+        with_settings!({filters => vec![
+            (r"[0-9A-Za-z]+{40}", "IDENTIFIER"),
+            (r"\w+, \d{1,2} \w+ \d{4} \d{2}:\d{2}:\d{2} [+-]\d{4}", "DATE")
+        ]}, {
+            assert_debug_snapshot!(stub.messages());
+        });
+    }
+
+    #[tokio::test]
+    async fn can_send_multi_email_with_multiple_to_recipients() {
+        let stub = StubTransport::new_ok();
+        let sender = EmailSender {
+            transport: EmailTransport::Test(stub.clone()),
+        };
+        let data = MultiEmail {
+            from: Some("test@framework.com".to_string()),
+            to: vec![
+                "user1@framework.com".to_string(),
+                "user2@framework.com".to_string(),
+            ],
+            subject: "Multi-To".to_string(),
+            text: "Hello".to_string(),
+            html: "<html><body>Hello</body></html>".to_string(),
+            ..Default::default()
+        };
+        assert!(sender.mail_multi(&data).await.is_ok());
+        with_settings!({filters => vec![
+            (r"[0-9A-Za-z]+{40}", "IDENTIFIER"),
+            (r"\w+, \d{1,2} \w+ \d{4} \d{2}:\d{2}:\d{2} [+-]\d{4}", "DATE")
+        ]}, {
+            assert_debug_snapshot!(stub.messages());
+        });
+    }
+
+    #[tokio::test]
+    async fn can_send_multi_email_with_multiple_bcc_recipients() {
+        let stub = StubTransport::new_ok();
+        let sender = EmailSender {
+            transport: EmailTransport::Test(stub.clone()),
+        };
+        let data = MultiEmail {
+            from: Some("test@framework.com".to_string()),
+            to: vec!["user1@framework.com".to_string()],
+            bcc: vec![
+                "bcc1@framework.com".to_string(),
+                "bcc2@framework.com".to_string(),
+            ],
+            subject: "Multi-BCC".to_string(),
+            text: "Hello".to_string(),
+            html: "<html><body>Hello</body></html>".to_string(),
+            ..Default::default()
+        };
+        assert!(sender.mail_multi(&data).await.is_ok());
+        with_settings!({filters => vec![
+            (r"[0-9A-Za-z]+{40}", "IDENTIFIER"),
+            (r"\w+, \d{1,2} \w+ \d{4} \d{2}:\d{2}:\d{2} [+-]\d{4}", "DATE")
+        ]}, {
+            assert_debug_snapshot!(stub.messages());
+        });
+    }
+
+    #[tokio::test]
+    async fn can_send_multi_email_with_multiple_cc_recipients() {
+        let stub = StubTransport::new_ok();
+        let sender = EmailSender {
+            transport: EmailTransport::Test(stub.clone()),
+        };
+        let data = MultiEmail {
+            from: Some("test@framework.com".to_string()),
+            to: vec!["user1@framework.com".to_string()],
+            cc: vec![
+                "cc1@framework.com".to_string(),
+                "cc2@framework.com".to_string(),
+            ],
+            subject: "Multi-CC".to_string(),
+            text: "Hello".to_string(),
+            html: "<html><body>Hello</body></html>".to_string(),
+            ..Default::default()
+        };
+        assert!(sender.mail_multi(&data).await.is_ok());
         with_settings!({filters => vec![
             (r"[0-9A-Za-z]+{40}", "IDENTIFIER"),
             (r"\w+, \d{1,2} \w+ \d{4} \d{2}:\d{2}:\d{2} [+-]\d{4}", "DATE")
