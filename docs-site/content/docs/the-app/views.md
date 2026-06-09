@@ -99,7 +99,7 @@ assets/
 │   │   └── main.ftl
 │   ├── en-US
 │   │   └── main.ftl
-│   └── shared.ftl
+│   └── _shared.ftl
 ├── static
 │   ├── 404.html
 │   └── image.png
