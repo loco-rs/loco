@@ -577,38 +577,39 @@ async fn create_table_impl(
             | ColType::EnumNull(enum_name, variants)
             | ColType::EnumWithDefault(enum_name, variants, _)
             | ColType::EnumNullWithDefault(enum_name, variants, _)
-                if !enum_types.contains(enum_name) => {
-                    enum_types.insert(enum_name.clone());
+                if !enum_types.contains(enum_name) =>
+            {
+                enum_types.insert(enum_name.clone());
 
-                    // Check if enum type already exists
-                    let enum_exists = check_enum_exists(m, enum_name).await?;
+                // Check if enum type already exists
+                let enum_exists = check_enum_exists(m, enum_name).await?;
 
-                    if !enum_exists {
-                        // Create enum type with provided variants
-                        match m.get_database_backend() {
-                            sea_orm::DatabaseBackend::Postgres => {
-                                let variant_aliases: Vec<Alias> =
-                                    variants.iter().map(Alias::new).collect();
-                                m.create_type(
-                                    sea_query::extension::postgres::Type::create()
-                                        .as_enum(Alias::new(enum_name))
-                                        .values(variant_aliases)
-                                        .to_owned(),
-                                )
-                                .await?;
-                            }
-                            #[allow(clippy::match_same_arms)]
-                            sea_orm::DatabaseBackend::Sqlite => {
-                                // SQLite doesn't support native enum types
-                                // The enum behavior will be handled by the column definition
-                                // which will create a TEXT column with CHECK constraints
-                            }
-                            sea_orm::DatabaseBackend::MySql => {
-                                // MySql not supporting
-                            }
+                if !enum_exists {
+                    // Create enum type with provided variants
+                    match m.get_database_backend() {
+                        sea_orm::DatabaseBackend::Postgres => {
+                            let variant_aliases: Vec<Alias> =
+                                variants.iter().map(Alias::new).collect();
+                            m.create_type(
+                                sea_query::extension::postgres::Type::create()
+                                    .as_enum(Alias::new(enum_name))
+                                    .values(variant_aliases)
+                                    .to_owned(),
+                            )
+                            .await?;
+                        }
+                        #[allow(clippy::match_same_arms)]
+                        sea_orm::DatabaseBackend::Sqlite => {
+                            // SQLite doesn't support native enum types
+                            // The enum behavior will be handled by the column definition
+                            // which will create a TEXT column with CHECK constraints
+                        }
+                        sea_orm::DatabaseBackend::MySql => {
+                            // MySql not supporting
                         }
                     }
                 }
+            }
             _ => {}
         }
     }
