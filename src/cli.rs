@@ -740,7 +740,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             let boot_result =
                 create_app::<H, M>(start_mode, &environment, app_context.config).await?;
             let serve_params = ServeParams {
-                port: port.map_or(boot_result.app_context.config.server.port, |p| p),
+                port: port.unwrap_or(boot_result.app_context.config.server.port),
                 binding: binding
                     .unwrap_or_else(|| boot_result.app_context.config.server.binding.clone()),
             };
@@ -778,7 +778,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             }
             println!("\n");
             for middleware in middlewares.iter().filter(|m| !m.enabled) {
-                println!("{:<22} (disabled)", middleware.id.bold().dimmed(),);
+                println!("{:<22} (disabled)", middleware.id.bold().dimmed());
             }
         }
         Commands::Task { name, params } => {
@@ -804,8 +804,8 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             production,
         } => {
             if config_arg {
-                println!("{}", &app_context.config);
-                println!("Environment: {}", &environment);
+                println!("{}", app_context.config);
+                println!("Environment: {}", environment);
             } else {
                 let mut should_exit = false;
                 for (_, check) in doctor::run_all::<H>(&app_context, production).await? {
@@ -820,7 +820,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             }
         }
         Commands::Version {} => {
-            println!("{}", H::app_version(),);
+            println!("{}", H::app_version());
         }
 
         Commands::Watch {

@@ -576,8 +576,8 @@ async fn create_table_impl(
             ColType::Enum(enum_name, variants)
             | ColType::EnumNull(enum_name, variants)
             | ColType::EnumWithDefault(enum_name, variants, _)
-            | ColType::EnumNullWithDefault(enum_name, variants, _) => {
-                if !enum_types.contains(enum_name) {
+            | ColType::EnumNullWithDefault(enum_name, variants, _)
+                if !enum_types.contains(enum_name) => {
                     enum_types.insert(enum_name.clone());
 
                     // Check if enum type already exists
@@ -609,7 +609,6 @@ async fn create_table_impl(
                         }
                     }
                 }
-            }
             _ => {}
         }
     }

@@ -51,9 +51,7 @@ impl Template {
     #[must_use]
     pub fn is_template(&self, path: &Path) -> bool {
         path.extension()
-            .and_then(|ext| ext.to_str())
-            .filter(|&ext| ext == TEMPLATE_EXTENSION)
-            .is_some()
+            .and_then(|ext| ext.to_str()).as_ref().is_some_and(|&ext| ext == TEMPLATE_EXTENSION)
     }
 
     // Method to register filters in the Tera instance.
