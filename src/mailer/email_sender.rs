@@ -44,16 +44,31 @@ impl EmailSender {
     ///
     /// when could not initialize SMTP transport
     pub fn smtp(config: &config::SmtpMailer) -> Result<Self> {
-        let mut email_builder = if config.secure {
-            lettre::AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&config.host)
-                .map_err(|error| {
-                    error!(err.msg = %error, err.detail = ?error, "smtp_init_error");
-                    error
-                })?
-                .port(config.port)
-        } else {
-            lettre::AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&config.host)
-                .port(config.port)
+        let host = &config.host;
+        let mut email_builder = match config.tls_mode() {
+            // Opportunistic upgrade on a cleartext connection (STARTTLS, port 587).
+            config::MailerTls::Starttls => {
+                lettre::AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(host)
+                    .map_err(|error| {
+                        error!(err.msg = %error, err.detail = ?error, "smtp_init_error");
+                        error
+                    })?
+                    .port(config.port)
+            }
+            // Implicit TLS — encrypted from the first byte (SMTPS, port 465).
+            config::MailerTls::Implicit => {
+                lettre::AsyncSmtpTransport::<Tokio1Executor>::relay(host)
+                    .map_err(|error| {
+                        error!(err.msg = %error, err.detail = ?error, "smtp_init_error");
+                        error
+                    })?
+                    .port(config.port)
+            }
+            // Cleartext (no TLS).
+            config::MailerTls::None => {
+                lettre::AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(host)
+                    .port(config.port)
+            }
         };
 
         if let Some(auth) = config.auth.as_ref() {
@@ -164,6 +179,35 @@ mod tests {
     use lettre::transport::stub::StubTransport;
 
     use super::*;
+
+    #[test]
+    fn smtp_builds_for_each_tls_mode() {
+        use crate::config::{MailerTls, SmtpMailer};
+
+        let cfg = |tls: Option<MailerTls>, secure: bool| SmtpMailer {
+            enable: true,
+            host: "smtp.example.com".to_string(),
+            port: 465,
+            secure,
+            tls,
+            auth: None,
+            hello_name: None,
+        };
+
+        // Every explicit TLS mode builds a transport (incl. implicit TLS for 465 — the case
+        // that was previously impossible: `secure: true` only ever did STARTTLS).
+        assert!(EmailSender::smtp(&cfg(Some(MailerTls::Starttls), false)).is_ok());
+        assert!(EmailSender::smtp(&cfg(Some(MailerTls::Implicit), false)).is_ok());
+        assert!(EmailSender::smtp(&cfg(Some(MailerTls::None), false)).is_ok());
+
+        // Legacy `secure` flag keeps mapping as before when `tls` is unset.
+        assert_eq!(cfg(None, true).tls_mode(), MailerTls::Starttls);
+        assert_eq!(cfg(None, false).tls_mode(), MailerTls::None);
+        assert!(EmailSender::smtp(&cfg(None, true)).is_ok());
+
+        // Explicit `tls` takes precedence over `secure`.
+        assert_eq!(cfg(Some(MailerTls::Implicit), true).tls_mode(), MailerTls::Implicit);
+    }
 
     #[tokio::test]
     async fn can_send_email() {
