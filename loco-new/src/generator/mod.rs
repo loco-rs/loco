@@ -7,14 +7,7 @@ pub mod template;
 use std::sync::Arc;
 
 use include_dir::{include_dir, Dir};
-use rhai::{
-    export_module, exported_module,
-    plugin::{
-        Dynamic, FnNamespace, FuncRegistration, Module, NativeCallContext, PluginFunc, RhaiResult,
-        TypeId,
-    },
-    Engine, Scope,
-};
+use rhai::{export_module, exported_module, Engine, Scope};
 
 use crate::wizard::AssetsOption;
 use crate::{settings, OS};
