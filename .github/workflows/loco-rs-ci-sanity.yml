@@ -50,6 +50,7 @@ jobs:
           cd myappdb
           cargo check
           cargo build --release
+          cargo test --all-features
         env:
           LOCO_DEV_MODE_PATH: ${{ github.workspace }}
           
@@ -58,6 +59,7 @@ jobs:
           cd myapp
           cargo check
           cargo build --release
+          cargo test --all-features
         env:
           LOCO_DEV_MODE_PATH: ${{ github.workspace }}
 

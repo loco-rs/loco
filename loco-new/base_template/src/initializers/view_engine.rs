@@ -9,7 +9,10 @@ use loco_rs::{
 use tracing::info;
 
 const I18N_DIR: &str = "assets/i18n";
-const I18N_SHARED: &str = "assets/i18n/shared.ftl";
+// NOTE: must live OUTSIDE `I18N_DIR` so the locale scan doesn't also pick it up;
+// otherwise the shared resource is registered twice and bundle building fails
+// ("Failed to add FTL resources to the bundle"). See loco-rs/loco#1749.
+const I18N_SHARED: &str = "assets/shared.ftl";
 #[allow(clippy::module_name_repetitions)]
 pub struct ViewEngineInitializer;
 
