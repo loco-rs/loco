@@ -30,7 +30,11 @@ default = [
     "bg_pg",
     "bg_sqlt",
 ]
-auth_jwt = ["dep:jsonwebtoken"]
+# jsonwebtoken 10 no longer bundles a crypto backend, so `auth_jwt` selects the
+# pure-Rust `rust_crypto` one. This keeps `auth_jwt` self-contained (enabling it
+# alone still builds, even with default-features = false) and needs no C
+# toolchain — matching Loco's zero-friction onboarding.
+auth_jwt = ["dep:jsonwebtoken", "jsonwebtoken/rust_crypto"]
 cli = ["dep:clap"]
 testing = ["dep:axum-test", "dep:scraper", "dep:tree-fs"]
 with-db = [
@@ -112,11 +116,11 @@ byte-unit = "4.0.19"
 
 argon2 = { version = "0.5", features = ["std"] }
 rand = { version = "0.9", features = ["std"] }
-jsonwebtoken = { version = "9.3.0", optional = true }
+jsonwebtoken = { version = "10.3.0", optional = true, default-features = false }
 validator = { version = "0.20.0", features = ["derive"] }
 futures-util = "0.3"
 tower = { workspace = true }
-bytes = "1.1"
+bytes = "1.11"
 ipnetwork = "0.20.0"
 semver = "1"
 
