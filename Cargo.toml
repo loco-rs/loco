@@ -4,7 +4,9 @@ exclude = ["starters"]
 
 [workspace.package]
 edition = "2021"
-rust-version = "1.70"
+# MSRV floor raised to 1.85 for Sea-ORM 2.0 (which requires Rust 1.85+). Edition
+# stays 2021 for now — moving Loco to edition 2024 is separate modernization.
+rust-version = "1.85"
 license = "Apache-2.0"
 
 [package]
