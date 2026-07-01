@@ -13,7 +13,7 @@ use serde_json::Value as JsonValue;
 pub use sqlx::PgPool;
 use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions, PgRow},
-    ConnectOptions, Row,
+    AssertSqlSafe, ConnectOptions, Row,
 };
 use std::fmt::Write;
 use tokio::{task::JoinHandle, time::sleep};
@@ -230,7 +230,7 @@ async fn connect(cfg: &PostgresQueueConfig) -> Result<PgPool> {
 /// This function will return an error if it fails
 pub async fn initialize_database(pool: &PgPool) -> Result<()> {
     debug!("Initializing job database tables");
-    sqlx::raw_sql(&format!(
+    sqlx::raw_sql(AssertSqlSafe(format!(
         r"
             CREATE TABLE IF NOT EXISTS pg_loco_queue (
                 id VARCHAR NOT NULL,
@@ -245,7 +245,7 @@ pub async fn initialize_database(pool: &PgPool) -> Result<()> {
             );
             ",
         JobStatus::Queued
-    ))
+    )))
     .execute(pool)
     .await?;
     Ok(())
@@ -324,7 +324,7 @@ async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>>
     query.push_str(" ORDER BY run_at LIMIT 1 FOR UPDATE SKIP LOCKED");
 
     // Create the query
-    let mut db_query = sqlx::query(&query).bind(JobStatus::Queued.to_string());
+    let mut db_query = sqlx::query(AssertSqlSafe(query)).bind(JobStatus::Queued.to_string());
 
     // Bind tag parameters
     for tag in worker_tags {
@@ -511,7 +511,7 @@ pub async fn requeue(pool: &PgPool, age_minutes: &i64) -> Result<()> {
     );
 
     debug!(age_minutes = age_minutes, "Requeueing stalled jobs");
-    sqlx::query(&query)
+    sqlx::query(AssertSqlSafe(query))
         .bind(JobStatus::Queued.to_string())
         .bind(JobStatus::Processing.to_string())
         .execute(pool)
@@ -567,7 +567,7 @@ pub async fn get_jobs(
     }
 
     debug!(status = ?status, age_days = ?age_days, "Retrieving jobs");
-    let rows = sqlx::query(&query).fetch_all(pool).await?;
+    let rows = sqlx::query(AssertSqlSafe(query)).fetch_all(pool).await?;
     let jobs = rows.iter().filter_map(|row| to_job(row).ok()).collect();
     debug!(job_count = rows.len(), "Retrieved jobs from database");
     Ok(jobs)
@@ -687,7 +687,9 @@ mod tests {
     }
 
     async fn get_job(pool: &PgPool, id: &str) -> Job {
-        sqlx::query(&format!("select * from pg_loco_queue where id = '{id}'"))
+        sqlx::query(AssertSqlSafe(format!(
+            "select * from pg_loco_queue where id = '{id}'"
+        )))
             .fetch_all(pool)
             .await
             .expect("get jobs")

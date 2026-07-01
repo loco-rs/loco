@@ -2,7 +2,7 @@ use crate::{
     app::{AppContext, Hooks},
     db, hash, Error, Result,
 };
-use sqlx::{Pool, Postgres};
+use sqlx::{AssertSqlSafe, Pool, Postgres};
 use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -100,7 +100,7 @@ impl TestSupport for PostgresTest {
                 .expect("db connection should success");
             let query = format!("CREATE DATABASE {};", self.schema_name);
 
-            sqlx::query(&query)
+            sqlx::query(AssertSqlSafe(query))
                 .execute(&pool)
                 .await
                 .expect("create DB schema");
@@ -119,7 +119,7 @@ impl TestSupport for PostgresTest {
                     .await
                     .expect("db connection should success");
                 let query = format!("drop database if exists {table_name};");
-                sqlx::query(&query)
+                sqlx::query(AssertSqlSafe(query))
                     .execute(&pool)
                     .await
                     .expect("Drop database");

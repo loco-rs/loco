@@ -37,7 +37,7 @@ const QUEUE_CONN_FAILED: &str = "queue connection: failed";
 const QUEUE_NOT_CONFIGURED: &str = "queue not configured?";
 
 // versions health
-const MIN_SEAORMCLI_VER: &str = "1.1.0";
+const MIN_SEAORMCLI_VER: &str = "2.0.0-rc";
 static MIN_DEP_VERSIONS: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
 static RE_CRATE_VERSION: OnceLock<Regex> = OnceLock::new();
 
@@ -50,7 +50,7 @@ fn get_min_dep_versions() -> &'static HashMap<&'static str, &'static str> {
         let mut min_vers = HashMap::new();
 
         min_vers.insert("tokio", "1.33.0");
-        min_vers.insert("sea-orm", "1.1.0");
+        min_vers.insert("sea-orm", "2.0.0-rc");
         min_vers.insert("validator", "0.20.0");
         min_vers.insert("axum", "0.8.1");
 

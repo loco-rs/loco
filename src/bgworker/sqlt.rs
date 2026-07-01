@@ -13,7 +13,7 @@ use serde_json::Value as JsonValue;
 pub use sqlx::SqlitePool;
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqlitePoolOptions, SqliteRow},
-    ConnectOptions, QueryBuilder, Row,
+    AssertSqlSafe, ConnectOptions, QueryBuilder, Row,
 };
 use std::fmt::Write;
 use tokio::{task::JoinHandle, time::sleep};
@@ -228,8 +228,7 @@ async fn connect(cfg: &SqliteQueueConfig) -> Result<SqlitePool> {
 /// This function will return an error if it fails
 pub async fn initialize_database(pool: &SqlitePool) -> Result<()> {
     debug!("Initializing job database tables");
-    sqlx::query(
-        &format!(r"
+    sqlx::query(AssertSqlSafe(format!(r"
             CREATE TABLE IF NOT EXISTS sqlt_loco_queue (
                 id TEXT NOT NULL,
                 name TEXT NOT NULL,
@@ -252,7 +251,7 @@ pub async fn initialize_database(pool: &SqlitePool) -> Result<()> {
 
             CREATE INDEX IF NOT EXISTS idx_sqlt_queue_status_run_at ON sqlt_loco_queue(status, run_at);
             ", JobStatus::Queued),
-    )
+    ))
     .execute(pool)
     .await?;
     Ok(())
@@ -348,7 +347,7 @@ async fn dequeue(client: &SqlitePool, worker_tags: &[String]) -> Result<Option<J
 
     query.push_str(" ORDER BY run_at LIMIT 1");
 
-    let mut db_query = sqlx::query(&query).bind(JobStatus::Queued.to_string());
+    let mut db_query = sqlx::query(AssertSqlSafe(query)).bind(JobStatus::Queued.to_string());
 
     // Add tag parameters to the query with proper JSON wildcard format
     for tag in worker_tags {
@@ -508,9 +507,9 @@ pub async fn clear_by_status(pool: &SqlitePool, status: Vec<JobStatus>) -> Resul
         .join(",");
 
     debug!(status = ?status, "Clearing jobs by status");
-    sqlx::query(&format!(
+    sqlx::query(AssertSqlSafe(format!(
         "DELETE FROM sqlt_loco_queue WHERE status IN ({status_in})"
-    ))
+    )))
     .execute(pool)
     .await?;
 
@@ -532,7 +531,7 @@ pub async fn requeue(pool: &SqlitePool, age_minutes: &i64) -> Result<()> {
     );
 
     debug!(age_minutes = age_minutes, "Requeueing stalled jobs");
-    sqlx::query(&query)
+    sqlx::query(AssertSqlSafe(query))
         .bind(JobStatus::Queued.to_string())
         .bind(JobStatus::Processing.to_string())
         .execute(pool)
@@ -656,7 +655,7 @@ pub async fn get_jobs(
     }
 
     debug!(status = ?status, age_days = ?age_days, "Retrieving jobs");
-    let rows = sqlx::query(&query).fetch_all(pool).await?;
+    let rows = sqlx::query(AssertSqlSafe(query)).fetch_all(pool).await?;
     let jobs = rows.iter().filter_map(|row| to_job(row).ok()).collect();
     debug!(job_count = rows.len(), "Retrieved jobs from database");
     Ok(jobs)
@@ -782,7 +781,9 @@ mod tests {
     }
 
     async fn get_job(pool: &SqlitePool, id: &str) -> Job {
-        sqlx::query(&format!("select * from sqlt_loco_queue where id = '{id}'"))
+        sqlx::query(AssertSqlSafe(format!(
+            "select * from sqlt_loco_queue where id = '{id}'"
+        )))
             .fetch_all(pool)
             .await
             .expect("get jobs")
@@ -803,7 +804,7 @@ mod tests {
 
         for table in ["sqlt_loco_queue", "sqlt_loco_queue_lock"] {
             let table_info: Vec<TableInfo> =
-                query_as::<_, TableInfo>(&format!("PRAGMA table_info({table})"))
+                query_as::<_, TableInfo>(AssertSqlSafe(format!("PRAGMA table_info({table})")))
                     .fetch_all(&pool)
                     .await
                     .unwrap();

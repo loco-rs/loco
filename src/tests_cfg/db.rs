@@ -27,7 +27,7 @@ use crate::{
 pub async fn get_value(conn: &sea_orm::DatabaseConnection, query: &str) -> String {
     // Execute query and get the result row
     let row = conn
-        .query_one(Statement::from_string(
+        .query_one_raw(Statement::from_string(
             conn.get_database_backend(),
             query.to_owned(),
         ))
@@ -75,8 +75,6 @@ pub async fn fail_connection() -> sea_orm::DatabaseConnection {
 }
 
 pub mod test_db {
-    use std::fmt;
-
     use sea_orm::entity::prelude::*;
 
     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -89,26 +87,11 @@ pub mod test_db {
         pub updated_at: DateTime,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, DeriveIden)]
     pub enum Loco {
         Table,
         Id,
         Name,
-    }
-
-    impl Iden for Loco {
-        fn unquoted(&self, s: &mut dyn fmt::Write) {
-            write!(
-                s,
-                "{}",
-                match self {
-                    Self::Table => "loco",
-                    Self::Id => "id",
-                    Self::Name => "name",
-                }
-            )
-            .unwrap();
-        }
     }
 
     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
