@@ -778,7 +778,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             }
             println!("\n");
             for middleware in middlewares.iter().filter(|m| !m.enabled) {
-                println!("{:<22} (disabled)", middleware.id.bold().dimmed(),);
+                println!("{:<22} (disabled)", middleware.id.bold().dimmed());
             }
         }
         Commands::Task { name, params } => {
@@ -820,7 +820,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             }
         }
         Commands::Version {} => {
-            println!("{}", H::app_version(),);
+            println!("{}", H::app_version());
         }
 
         Commands::Watch {

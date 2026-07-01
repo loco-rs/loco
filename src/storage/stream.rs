@@ -24,7 +24,7 @@ impl BytesStream {
 
         // Convert opendal::Error to std::io::Error for uniform error handling
         let mapped_stream = stream
-            .map(|result| result.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e)));
+            .map(|result| result.map_err(std::io::Error::other));
 
         Ok(Self {
             inner: Box::pin(mapped_stream),
