@@ -44,6 +44,8 @@ pub struct Job {
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
     pub tags: Option<Vec<String>>,
+    #[serde(default)]
+    pub priority: i32,
 }
 
 pub struct JobRegistry {
@@ -238,7 +240,8 @@ pub async fn initialize_database(pool: &SqlitePool) -> Result<()> {
                 interval INTEGER,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                tags JSON
+                tags JSON,
+                priority INTEGER NOT NULL DEFAULT 0
             );
 
             CREATE TABLE IF NOT EXISTS sqlt_loco_queue_lock (
@@ -254,6 +257,23 @@ pub async fn initialize_database(pool: &SqlitePool) -> Result<()> {
     ))
     .execute(pool)
     .await?;
+
+    // Auto-migrate: add the priority column to pre-existing databases.
+    let priority_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS (
+            SELECT 1 FROM pragma_table_info('sqlt_loco_queue')
+            WHERE name = 'priority'
+        )",
+    )
+    .fetch_one(pool)
+    .await?;
+    if !priority_exists {
+        debug!("Adding priority column to existing sqlt_loco_queue table");
+        sqlx::query("ALTER TABLE sqlt_loco_queue ADD COLUMN priority INTEGER NOT NULL DEFAULT 0")
+            .execute(pool)
+            .await?;
+    }
+
     Ok(())
 }
 
@@ -269,6 +289,7 @@ pub async fn enqueue(
     run_at: DateTime<Utc>,
     interval: Option<Duration>,
     tags: Option<Vec<String>>,
+    priority: Option<i32>,
 ) -> Result<JobId> {
     let data = serde_json::to_value(data)?;
     let tags_json = match &tags {
@@ -280,10 +301,10 @@ pub async fn enqueue(
     let interval_ms: Option<i64> = interval.map(|i| i.as_millis() as i64);
 
     let id = Ulid::new().to_string();
-    debug!(job_id = %id, job_name = %name, run_at = %run_at, tags = ?tags, "Enqueueing job");
+    debug!(job_id = %id, job_name = %name, run_at = %run_at, tags = ?tags, priority = ?priority, "Enqueueing job");
     sqlx::query(
-        "INSERT INTO sqlt_loco_queue (id, task_data, name, run_at, interval, tags) VALUES ($1, $2, $3, \
-         DATETIME($4), $5, $6)",
+        "INSERT INTO sqlt_loco_queue (id, task_data, name, run_at, interval, tags, priority) VALUES \
+         ($1, $2, $3, DATETIME($4), $5, $6, $7)",
     )
     .bind(id.clone())
     .bind(data)
@@ -291,6 +312,7 @@ pub async fn enqueue(
     .bind(run_at)
     .bind(interval_ms)
     .bind(tags_json)
+    .bind(priority.unwrap_or(0))
     .execute(pool)
     .await?;
     Ok(id)
@@ -317,7 +339,7 @@ async fn dequeue(client: &SqlitePool, worker_tags: &[String]) -> Result<Option<J
 
     // Build the query with tag filtering
     let mut query = String::from(
-        "SELECT id, name, task_data, status, run_at, interval, tags
+        "SELECT id, name, task_data, status, run_at, interval, tags, priority
         FROM sqlt_loco_queue
         WHERE
             status = ? AND
@@ -345,7 +367,7 @@ async fn dequeue(client: &SqlitePool, worker_tags: &[String]) -> Result<Option<J
         }
     }
 
-    query.push_str(" ORDER BY run_at LIMIT 1");
+    query.push_str(" ORDER BY priority DESC, run_at, id LIMIT 1");
 
     let mut db_query = sqlx::query(AssertSqlSafe(query)).bind(JobStatus::Queued.to_string());
 
@@ -700,6 +722,7 @@ fn to_job(row: &SqliteRow) -> Result<Job> {
         created_at: row.try_get("created_at").unwrap_or_default(),
         updated_at: row.try_get("updated_at").unwrap_or_default(),
         tags,
+        priority: row.get("priority"),
     })
 }
 
@@ -784,12 +807,12 @@ mod tests {
         sqlx::query(AssertSqlSafe(format!(
             "select * from sqlt_loco_queue where id = '{id}'"
         )))
-            .fetch_all(pool)
-            .await
-            .expect("get jobs")
-            .first()
-            .and_then(|row| to_job(row).ok())
-            .expect("job not found")
+        .fetch_all(pool)
+        .await
+        .expect("get jobs")
+        .first()
+        .and_then(|row| to_job(row).ok())
+        .expect("job not found")
     }
 
     #[tokio::test]
@@ -841,7 +864,8 @@ mod tests {
             job_data,
             run_at,
             None,
-            tags
+            tags,
+            None
         )
         .await
         .is_ok());
@@ -891,6 +915,7 @@ mod tests {
             "PasswordChangeNotification",
             job_data,
             run_at,
+            None,
             None,
             None
         )
@@ -1298,6 +1323,100 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn can_dequeue_with_priority_ordering() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let pool = init(&tree_fs.root).await;
+
+        assert!(initialize_database(&pool).await.is_ok());
+
+        // Enqueue jobs with different priorities and timestamps.
+        // All jobs are in the past so they're ready to be dequeued.
+        let base_time = Utc::now() - chrono::Duration::minutes(10);
+
+        // priority 10, later timestamp
+        let run_at_1 = base_time + chrono::Duration::minutes(3);
+        let job_id_1 = enqueue(
+            &pool,
+            "Task1",
+            serde_json::json!({"task": "low_priority_late"}),
+            run_at_1,
+            None,
+            None,
+            Some(10),
+        )
+        .await
+        .expect("enqueue job 1");
+
+        // priority 20, later timestamp (highest priority → first)
+        let run_at_2 = base_time + chrono::Duration::minutes(2);
+        let job_id_2 = enqueue(
+            &pool,
+            "Task2",
+            serde_json::json!({"task": "high_priority_late"}),
+            run_at_2,
+            None,
+            None,
+            Some(20),
+        )
+        .await
+        .expect("enqueue job 2");
+
+        // priority 10, earlier timestamp (same priority, earlier run_at → before job 1)
+        let run_at_3 = base_time + chrono::Duration::minutes(1);
+        let job_id_3 = enqueue(
+            &pool,
+            "Task3",
+            serde_json::json!({"task": "low_priority_early"}),
+            run_at_3,
+            None,
+            None,
+            Some(10),
+        )
+        .await
+        .expect("enqueue job 3");
+
+        // priority 5, earliest timestamp (lowest priority → last)
+        let run_at_4 = base_time;
+        let job_id_4 = enqueue(
+            &pool,
+            "Task4",
+            serde_json::json!({"task": "lowest_priority_early"}),
+            run_at_4,
+            None,
+            None,
+            Some(5),
+        )
+        .await
+        .expect("enqueue job 4");
+
+        // Expected dequeue order: job 2 (prio 20), job 3 (prio 10, earlier),
+        // job 1 (prio 10, later), job 4 (prio 5).
+        for (expected_id, expected_priority) in [
+            (&job_id_2, 20),
+            (&job_id_3, 10),
+            (&job_id_1, 10),
+            (&job_id_4, 5),
+        ] {
+            let job = dequeue(&pool, &[])
+                .await
+                .expect("dequeue failed")
+                .expect("expected a job");
+            assert_eq!(&job.id, expected_id);
+            assert_eq!(job.priority, expected_priority);
+            complete_job(&pool, &job.id, None)
+                .await
+                .expect("Failed to complete job");
+        }
+
+        // No more jobs
+        let job = dequeue(&pool, &[]).await.expect("dequeue failed");
+        assert!(job.is_none());
+    }
+
+    #[tokio::test]
     async fn can_handle_worker_panic() {
         let tree_fs = tree_fs::TreeBuilder::default()
             .drop(true)
@@ -1308,7 +1427,7 @@ mod tests {
         assert!(initialize_database(&pool).await.is_ok());
 
         let job_data = serde_json::json!(null);
-        let job_id = enqueue(&pool, "PanicJob", job_data, Utc::now(), None, None)
+        let job_id = enqueue(&pool, "PanicJob", job_data, Utc::now(), None, None, None)
             .await
             .expect("Failed to enqueue job");
 
@@ -1389,6 +1508,7 @@ mod tests {
             run_at,
             None,
             email_tags,
+            None,
         )
         .await
         .expect("Failed to enqueue email job");
@@ -1402,6 +1522,7 @@ mod tests {
             run_at,
             None,
             sms_tags,
+            None,
         )
         .await
         .expect("Failed to enqueue sms job");
@@ -1415,6 +1536,7 @@ mod tests {
             run_at,
             None,
             multi_tags,
+            None,
         )
         .await
         .expect("Failed to enqueue multi-tag job");
@@ -1425,6 +1547,7 @@ mod tests {
             "GenericNotification",
             job_data.clone(),
             run_at,
+            None,
             None,
             None,
         )

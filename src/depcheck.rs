@@ -136,8 +136,7 @@ version = "0.8.4"
         min_versions.insert("tokio", "1.0");
         min_versions.insert("rand", "0.8.0");
 
-        let mut result =
-            check_crate_versions(tree.root.join("Cargo.lock"), min_versions).unwrap();
+        let mut result = check_crate_versions(tree.root.join("Cargo.lock"), min_versions).unwrap();
         result.sort();
         assert_eq!(
             result,
@@ -221,8 +220,7 @@ version = "1.0.130"
         let mut min_versions = HashMap::new();
         min_versions.insert("serde", "1.0.130");
 
-        let mut result =
-            check_crate_versions(tree.root.join("Cargo.lock"), min_versions).unwrap();
+        let mut result = check_crate_versions(tree.root.join("Cargo.lock"), min_versions).unwrap();
         result.sort();
         assert_eq!(
             result,

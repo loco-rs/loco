@@ -142,6 +142,27 @@ match err {
 Most apps use `Result<T>` / `?` and never match on `Error` directly, so no change
 is needed.
 
+### Background job priorities (Redis backend is breaking)
+
+Background jobs now support a **priority** (higher numbers run first). You can
+enqueue with an explicit priority:
+
+```rust
+DownloadWorker::perform_later_with_priority(&ctx, args, Some(42)).await?;
+```
+
+- **Postgres / SQLite: no action needed.** A `priority` column is added to the
+  queue table automatically on startup; existing jobs default to priority `0`.
+- **Redis: breaking.** To order by priority, the Redis backend now stores the
+  queue as a **Sorted Set (ZSET)** instead of a List. Jobs already sitting in the
+  old List-based queue keys will not be picked up after upgrading. **Drain your
+  Redis queues before deploying 0.17.0** (let workers finish in-flight jobs on
+  the old version, or clear the queue if you can re-enqueue). Newly enqueued jobs
+  use the ZSET format automatically.
+
+Mailer jobs enqueue at priority `100` by default; override per mailer via
+`MailerOpts { priority, .. }`.
+
 ## Upgrade from 0.15.x to 0.16.x
 
 ### Use `AppContext` instead of `Config` in `init_logger` in the `Hooks` trait

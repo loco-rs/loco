@@ -98,6 +98,11 @@ impl Queue {
     /// # Errors
     ///
     /// This function will return an error if the enqueue operation fails.
+    ///
+    /// Priority semantics for all queue backends:
+    /// - Higher value means higher urgency.
+    /// - Valid range is full `i32` (`-2_147_483_648..=2_147_483_647`).
+    /// - Ties are resolved by earlier `run_at`, then by stable job id ordering.
     #[allow(unused_variables)]
     pub async fn enqueue<A: Serialize + Send + Sync>(
         &self,
@@ -105,11 +110,14 @@ impl Queue {
         queue: Option<String>,
         args: A,
         tags: Option<Vec<String>>,
+        priority: Option<i32>,
     ) -> Result<Option<String>> {
         tracing::debug!(worker = class, queue = ?queue, tags = ?tags, "Enqueuing background job");
         let job_id = match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _, _, _) => Some(redis::enqueue(pool, class, queue, args, tags).await?),
+            Self::Redis(pool, _, _, _) => {
+                Some(redis::enqueue(pool, class, queue, args, tags, priority).await?)
+            }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, _, _, _) => Some(
                 pg::enqueue(
@@ -119,6 +127,7 @@ impl Queue {
                     chrono::Utc::now(),
                     None,
                     tags,
+                    priority,
                 )
                 .await
                 .map_err(Box::from)?,
@@ -132,6 +141,7 @@ impl Queue {
                     chrono::Utc::now(),
                     None,
                     tags,
+                    priority,
                 )
                 .await
                 .map_err(Box::from)?,
@@ -555,7 +565,8 @@ impl Queue {
             Self::Postgres(_, _, _, _) => {
                 let jobs: Vec<pg::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.clone(), None, job.data, None).await?;
+                    self.enqueue(job.name.clone(), None, job.data, None, Some(job.priority))
+                        .await?;
                 }
 
                 Ok(())
@@ -564,7 +575,8 @@ impl Queue {
             Self::Sqlite(_, _, _, _) => {
                 let jobs: Vec<sqlt::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.clone(), None, job.data, None).await?;
+                    self.enqueue(job.name.clone(), None, job.data, None, Some(job.priority))
+                        .await?;
                 }
                 Ok(())
             }
@@ -572,7 +584,8 @@ impl Queue {
             Self::Redis(_, _, _, _) => {
                 let jobs: Vec<redis::Job> = serde_yaml::from_reader(File::open(path)?)?;
                 for job in jobs {
-                    self.enqueue(job.name.clone(), None, job.data, None).await?;
+                    self.enqueue(job.name.clone(), None, job.data, None, Some(job.priority))
+                        .await?;
                 }
                 Ok(())
             }
@@ -614,12 +627,28 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
         let name = type_name.split("::").last().unwrap_or(type_name);
         name.to_upper_camel_case()
     }
-    /// Enqueue (or run) the job and return its ID.
+    /// Enqueue (or run) the job at the default priority and return its ID.
+    ///
+    /// Convenience wrapper over [`BackgroundWorker::perform_later_with_priority`]
+    /// with no explicit priority.
+    async fn perform_later(ctx: &AppContext, args: A) -> crate::Result<String>
+    where
+        Self: Sized,
+    {
+        Self::perform_later_with_priority(ctx, args, None).await
+    }
+
+    /// Enqueue (or run) the job with an explicit priority and return its ID.
     ///
     /// In `BackgroundQueue` mode the ID is the one assigned by the queue
     /// provider. In foreground/async modes (or when no provider is configured)
     /// a fresh ID is generated so callers always get a stable handle back.
-    async fn perform_later(ctx: &AppContext, args: A) -> crate::Result<String>
+    /// Higher `priority` values are dequeued first (see [`Queue::enqueue`]).
+    async fn perform_later_with_priority(
+        ctx: &AppContext,
+        args: A,
+        priority: Option<i32>,
+    ) -> crate::Result<String>
     where
         Self: Sized,
     {
@@ -628,9 +657,15 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
                 if let Some(p) = &ctx.queue_provider {
                     let tags = Self::tags();
                     let tags_option = if tags.is_empty() { None } else { Some(tags) };
-                    p.enqueue(Self::class_name(), Self::queue(), args, tags_option)
-                        .await?
-                        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string())
+                    p.enqueue(
+                        Self::class_name(),
+                        Self::queue(),
+                        args,
+                        tags_option,
+                        priority,
+                    )
+                    .await?
+                    .unwrap_or_else(|| uuid::Uuid::new_v4().to_string())
                 } else {
                     tracing::error!(
                         "perform_later: background queue is selected, but queue was not populated \

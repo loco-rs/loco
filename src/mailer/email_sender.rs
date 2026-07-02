@@ -206,7 +206,10 @@ mod tests {
         assert!(EmailSender::smtp(&cfg(None, true)).is_ok());
 
         // Explicit `tls` takes precedence over `secure`.
-        assert_eq!(cfg(Some(MailerTls::Implicit), true).tls_mode(), MailerTls::Implicit);
+        assert_eq!(
+            cfg(Some(MailerTls::Implicit), true).tls_mode(),
+            MailerTls::Implicit
+        );
     }
 
     #[tokio::test]

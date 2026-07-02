@@ -1,7 +1,6 @@
 ---
 source: src/bgworker/sqlt.rs
 expression: table_info
-snapshot_kind: text
 ---
 [
     TableInfo {
@@ -80,6 +79,16 @@ snapshot_kind: text
         _type: "JSON",
         notnull: false,
         dflt_value: None,
+        pk: false,
+    },
+    TableInfo {
+        cid: 9,
+        name: "priority",
+        _type: "INTEGER",
+        notnull: true,
+        dflt_value: Some(
+            "0",
+        ),
         pk: false,
     },
 ]

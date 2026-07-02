@@ -13,6 +13,13 @@
   Required by Sea-ORM 2.0 (SQLite integers map to `i64`) and the modern
   bigint-by-default convention. Only affects newly generated code; existing
   tables are untouched. See the upgrade guide.
+- **Priority queues.** Background jobs now support a priority (higher runs
+  first). New `Worker::perform_later_with_priority(ctx, args, Some(prio))`;
+  `Queue::enqueue` gains a priority argument; mailer jobs default to priority
+  `100`. Postgres/SQLite add a `priority` column (auto-migrated on startup — no
+  action needed). **BREAKING for Redis:** the Redis backend moved from Lists to
+  Sorted Sets (ZSET) to support priority — drain existing Redis queues before
+  upgrading (see the upgrade guide). ([#1693](https://github.com/loco-rs/loco/pull/1693))
 - **BREAKING: `Worker::perform_later()` now returns the job ID** (`Result<String>`
   instead of `Result<()>`) for status tracking, and `Queue::enqueue()` returns
   `Result<Option<String>>`. Existing `perform_later(...).await?;` call sites keep

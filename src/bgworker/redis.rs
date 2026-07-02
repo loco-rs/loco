@@ -45,6 +45,8 @@ pub struct Job {
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
     pub tags: Option<Vec<String>>,
+    #[serde(default)]
+    pub priority: i32,
 }
 
 // Implementation for job creation and serialization
@@ -61,6 +63,7 @@ impl Job {
             created_at: Some(now),
             updated_at: Some(now),
             tags: None,
+            priority: 0,
         }
     }
 
@@ -264,6 +267,7 @@ pub async fn enqueue(
     queue: Option<String>,
     args: impl serde::Serialize + Send,
     tags: Option<Vec<String>>,
+    priority: Option<i32>,
 ) -> Result<JobId> {
     let mut conn = get_connection(client).await?;
     let queue_name = queue.unwrap_or_else(|| "default".to_string());
@@ -278,34 +282,45 @@ pub async fn enqueue(
     // Create job
     let mut job = Job::new(job_id.clone(), class, args_json);
     job.tags = tags;
+    job.priority = priority.unwrap_or(0);
 
     // Serialize job for Redis storage
     let job_json = job.to_json()?;
 
-    // Store job in Redis queue and in job key
+    // Store job in Redis queue (ZSET, scored by priority) and in its job key.
+    let score = calculate_score(job.priority);
     let job_key = format!("{JOB_KEY_PREFIX}{}", job.id);
     let _: () = conn.set(&job_key, &job_json).await?;
-    let _: () = conn.rpush(&queue_key, &job.id).await?;
+    let _: () = conn.zadd(&queue_key, &job.id, score).await?;
 
     Ok(job_id)
 }
 
-const DEQUEUE_SCRIPT: &str = r#"
+/// Redis ZSET score for a job, derived from priority only.
+///
+/// We deliberately use only the priority in the score to preserve exact
+/// ordering across the full `i32` range (a combined priority+timestamp score
+/// would lose precision). The score is negated so that a plain ascending
+/// `ZRANGE` yields the highest-priority jobs first. Timestamp/id tie-breaking
+/// for equal priorities is handled explicitly in `dequeue_with_conn`.
+fn calculate_score(priority: i32) -> f64 {
+    -f64::from(priority)
+}
+
+const ACQUIRE_JOB_SCRIPT: &str = r"
 local queue_key = KEYS[1]
 local processing_key = KEYS[2]
-local job_id = redis.call('LPOP', queue_key)
-if job_id then
-    local added = redis.call('SADD', processing_key, job_id)
-    if added == 1 then
-        return job_id
-    else
-        redis.log(redis.LOG_WARNING, "Job already in processing: " .. job_id)
-        return nil
-    end
+local job_id = ARGV[1]
+
+local score = redis.call('ZSCORE', queue_key, job_id)
+if score then
+    redis.call('ZREM', queue_key, job_id)
+    redis.call('SADD', processing_key, job_id)
+    return score
 else
     return nil
 end
-"#;
+";
 
 async fn dequeue_with_conn(
     conn: &mut Connection,
@@ -316,58 +331,101 @@ async fn dequeue_with_conn(
         return Ok(None);
     }
 
-    let script = Script::new(DEQUEUE_SCRIPT);
+    // Paging bounds for scanning the priority-ordered queue.
+    const BATCH_SIZE: isize = 50;
+    const MAX_SEARCH: isize = 1000;
 
-    // Try to get a job from each queue in order (round-robin is more complex)
+    let script = Script::new(ACQUIRE_JOB_SCRIPT);
+
     for queue_name in queues {
         let queue_key = format!("{QUEUE_KEY_PREFIX}{queue_name}");
         let processing_key = format!("{PROCESSING_KEY_PREFIX}{queue_name}");
 
-        let job_id: Option<String> = script
-            .key(&queue_key)
-            .key(&processing_key)
-            .invoke_async(conn)
-            .await?;
+        // Page through the queue (ordered by ZSET score = priority) collecting
+        // jobs whose tags match the worker's tag filter.
+        let mut offset = 0;
+        let mut candidates: Vec<(String, Job)> = Vec::new();
+        while offset < MAX_SEARCH {
+            let job_ids: Vec<String> = conn
+                .zrange(&queue_key, offset, offset + BATCH_SIZE - 1)
+                .await?;
+            if job_ids.is_empty() {
+                break;
+            }
 
-        if let Some(job_id) = job_id {
-            let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
-            let job_json: Option<String> = conn.get(&job_key).await?;
+            // Batch-fetch job data to minimize round trips.
+            let mut pipe = redis::pipe();
+            for job_id in &job_ids {
+                pipe.get(format!("{JOB_KEY_PREFIX}{job_id}"));
+            }
+            let job_jsons: Vec<Option<String>> = pipe.query_async(conn).await?;
 
-            if let Some(json) = job_json {
-                match Job::from_json(&json) {
-                    Ok(job) => {
-                        let should_process = if tags.is_empty() {
-                            job.tags.is_none() || job.tags.as_ref().is_none_or(Vec::is_empty)
-                        } else {
-                            job.tags.as_ref().is_some_and(|job_tags| {
-                                job_tags.iter().any(|tag| tags.contains(tag))
-                            })
-                        };
+            for (job_id, job_json_opt) in job_ids.iter().zip(job_jsons) {
+                if let Some(json) = job_json_opt {
+                    match Job::from_json(&json) {
+                        Ok(job) => {
+                            let should_process = if tags.is_empty() {
+                                job.tags.is_none() || job.tags.as_ref().is_none_or(Vec::is_empty)
+                            } else {
+                                job.tags.as_ref().is_some_and(|job_tags| {
+                                    job_tags.iter().any(|tag| tags.contains(tag))
+                                })
+                            };
 
-                        if should_process {
-                            return Ok(Some((job, queue_name.clone())));
+                            if should_process {
+                                candidates.push((job_id.clone(), job));
+                            } else {
+                                trace!(
+                                    job_id = job_id,
+                                    job_tags = ?job.tags,
+                                    worker_tags = ?tags,
+                                    "Job doesn't match tag criteria, skipping"
+                                );
+                            }
                         }
-                        let _: () = conn.srem(&processing_key, &job_id).await?;
-                        let _: () = conn.rpush(&queue_key, &job_id).await?;
-                        trace!(
-                            job_id = job_id,
-                            job_tags = ?job.tags,
-                            worker_tags = ?tags,
-                            "Job doesn't match tag criteria, returned to queue"
-                        );
+                        Err(err) => {
+                            error!(
+                                err = err.to_string(),
+                                job_id = job_id,
+                                "Failed to parse job JSON"
+                            );
+                            // Skip corrupted jobs during the scan; don't remove
+                            // them here, to avoid data loss on transient issues.
+                        }
                     }
-                    Err(err) => {
-                        error!(
-                            err = err.to_string(),
-                            job_id = job_id,
-                            "Failed to parse job JSON"
-                        );
-                        let _: () = conn.srem(&processing_key, &job_id).await?;
-                    }
+                } else {
+                    error!(job_id = job_id, queue = queue_name, "Job data not found.");
+                    // Job ID exists in the queue but its data is gone: clean up.
+                    let _: () = conn.zrem(&queue_key, job_id).await?;
                 }
-            } else {
-                error!(job_id = job_id, queue = queue_name, "Job data not found.");
-                let _: () = conn.srem(&processing_key, &job_id).await?;
+            }
+            offset += BATCH_SIZE;
+        }
+
+        // Deterministic ordering:
+        // 1. Higher priority first.
+        // 2. Earlier `run_at` first for equal priority.
+        // 3. Smaller id first as a final deterministic tiebreaker.
+        candidates.sort_by(|(id_a, job_a), (id_b, job_b)| {
+            job_b
+                .priority
+                .cmp(&job_a.priority)
+                .then_with(|| job_a.run_at.cmp(&job_b.run_at))
+                .then_with(|| id_a.cmp(id_b))
+        });
+
+        for (job_id, job) in candidates {
+            // Atomically claim the job: move it from the queue ZSET to the
+            // processing set. Returns None if another worker took it first.
+            let result: Option<f64> = script
+                .key(&queue_key)
+                .key(&processing_key)
+                .arg(&job_id)
+                .invoke_async(conn)
+                .await?;
+
+            if result.is_some() {
+                return Ok(Some((job, queue_name.clone())));
             }
         }
     }
@@ -391,9 +449,10 @@ async fn complete_job_with_conn(
                 job.status = JobStatus::Queued;
                 let new_json = job.to_json()?;
                 let queue_key = format!("{QUEUE_KEY_PREFIX}{queue_name}");
+                let score = calculate_score(job.priority);
                 let _: () = redis::pipe()
                     .set(&job_key, &new_json)
-                    .rpush(&queue_key, id)
+                    .zadd(&queue_key, id, score)
                     .query_async(conn)
                     .await?;
             } else {
@@ -476,7 +535,7 @@ pub async fn get_jobs(
 
     // Collect jobs from queues
     for queue_key in queue_keys {
-        let job_ids: Vec<String> = conn.lrange(&queue_key, 0, -1).await?;
+        let job_ids: Vec<String> = conn.zrange(&queue_key, 0, -1).await?;
         for job_id in job_ids {
             let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
             let job_json: Option<String> = conn.get(&job_key).await?;
@@ -568,7 +627,7 @@ pub async fn clear_by_status(client: &RedisPool, status: Vec<JobStatus>) -> Resu
     // Process queues
     for queue_key in queue_keys {
         // Get all jobs in the queue
-        let job_ids: Vec<String> = conn.lrange(&queue_key, 0, -1).await?;
+        let job_ids: Vec<String> = conn.zrange(&queue_key, 0, -1).await?;
 
         // Process each job individually
         for job_id in job_ids {
@@ -659,7 +718,7 @@ pub async fn clear_jobs_older_than(
     // Process queues
     for queue_key in queue_keys {
         // Get all jobs in the queue
-        let job_ids: Vec<String> = conn.lrange(&queue_key, 0, -1).await?;
+        let job_ids: Vec<String> = conn.zrange(&queue_key, 0, -1).await?;
 
         // Process each job individually
         for job_id in job_ids {
@@ -767,9 +826,10 @@ pub async fn requeue(client: &RedisPool, age_minutes: &i64) -> Result<()> {
                         job.status = JobStatus::Queued;
                         job.updated_at = Some(Utc::now());
                         let updated_json = job.to_json()?;
+                        let score = calculate_score(job.priority);
                         let _: () = conn.srem(&processing_key, &job_id).await?;
                         let _: () = conn.set(&job_key, &updated_json).await?;
-                        let _: () = conn.rpush(&queue_key, &job_id).await?;
+                        let _: () = conn.zadd(&queue_key, &job_id, score).await?;
                         *requeued_counts.entry(queue_name.clone()).or_insert(0) += 1;
                     }
                 }
@@ -802,9 +862,10 @@ pub async fn requeue(client: &RedisPool, age_minutes: &i64) -> Result<()> {
                         job.status = JobStatus::Queued;
                         job.updated_at = Some(Utc::now());
                         let updated_json = job.to_json()?;
+                        let score = calculate_score(job.priority);
                         let _: () = conn.srem(&failed_key, &job_id).await?;
                         let _: () = conn.set(&job_key, &updated_json).await?;
-                        let _: () = conn.rpush(&queue_key, &job_id).await?;
+                        let _: () = conn.zadd(&queue_key, &job_id, score).await?;
                         *requeued_counts.entry(queue_name.clone()).or_insert(0) += 1;
                     }
                 }
@@ -842,7 +903,7 @@ pub async fn cancel_jobs_by_name(client: &RedisPool, job_name: &str) -> Result<(
     // Process each queue
     for queue_key in queue_keys {
         // Get all jobs in the queue
-        let job_ids: Vec<String> = conn.lrange(&queue_key, 0, -1).await?;
+        let job_ids: Vec<String> = conn.zrange(&queue_key, 0, -1).await?;
         for job_id in job_ids {
             let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
             let job_json: Option<String> = conn.get(&job_key).await?;
@@ -953,6 +1014,7 @@ mod tests {
                 created_at: Some(now - chrono::Duration::days(15)),
                 updated_at: Some(now - chrono::Duration::days(15)),
                 tags: None,
+                priority: 0,
             };
 
             let mut conn = get_connection(client).await?;
@@ -964,7 +1026,7 @@ mod tests {
 
         // Create queued jobs
         let args = serde_json::json!({"hello": "world"});
-        enqueue(client, "TestJob".to_string(), None, args, None).await?;
+        enqueue(client, "TestJob".to_string(), None, args, None, None).await?;
 
         // Create job with tags
         let args = serde_json::json!({"hello": "tagged"});
@@ -974,6 +1036,7 @@ mod tests {
             None,
             args,
             Some(vec!["important".to_string(), "urgent".to_string()]),
+            None,
         )
         .await?;
 
@@ -1039,7 +1102,7 @@ mod tests {
         // Test enqueue
         let args = serde_json::json!({"user_id": 42});
         assert!(
-            enqueue(&client, "PasswordReset".to_string(), None, args, None)
+            enqueue(&client, "PasswordReset".to_string(), None, args, None, None)
                 .await
                 .is_ok()
         );
@@ -1065,6 +1128,7 @@ mod tests {
             "EmailNotification".to_string(),
             Some("mailer".to_string()),
             args,
+            None,
             None
         )
         .await
@@ -1073,7 +1137,7 @@ mod tests {
         // Verify job was created in correct queue first
         let mut conn = get_test_connection(&client).await;
         let queue_key = format!("{QUEUE_KEY_PREFIX}mailer");
-        let queue_len: i64 = conn.llen(&queue_key).await.expect("get queue length");
+        let queue_len: i64 = conn.zcard(&queue_key).await.expect("get queue length");
         assert_eq!(queue_len, 1);
 
         // Test dequeue from mailer queue
@@ -1083,7 +1147,7 @@ mod tests {
             .expect("dequeue");
 
         // Queue should now be empty
-        let queue_len: i64 = conn.llen(&queue_key).await.expect("get queue length");
+        let queue_len: i64 = conn.zcard(&queue_key).await.expect("get queue length");
         assert_eq!(queue_len, 0);
     }
 
@@ -1093,9 +1157,11 @@ mod tests {
 
         // Add job
         let args = serde_json::json!({"task": "test"});
-        assert!(enqueue(&client, "TestJob".to_string(), None, args, None)
-            .await
-            .is_ok());
+        assert!(
+            enqueue(&client, "TestJob".to_string(), None, args, None, None)
+                .await
+                .is_ok()
+        );
 
         // Dequeue job
         let queues = vec!["default".to_string()];
@@ -1136,7 +1202,7 @@ mod tests {
         // Add job
         let args = serde_json::json!({"task": "recurring"});
         assert!(
-            enqueue(&client, "RecurringJob".to_string(), None, args, None)
+            enqueue(&client, "RecurringJob".to_string(), None, args, None, None)
                 .await
                 .is_ok()
         );
@@ -1158,11 +1224,12 @@ mod tests {
 
         // Verify job is back in queue
         let queue_key = format!("{QUEUE_KEY_PREFIX}{queue}");
-        let queue_len: i64 = conn.llen(&queue_key).await.expect("get queue length");
+        let queue_len: i64 = conn.zcard(&queue_key).await.expect("get queue length");
         assert_eq!(queue_len, 1);
 
-        // Get the job ID from the queue
-        let job_id: String = conn.lindex(&queue_key, 0).await.expect("get job id");
+        // Get the job ID from the queue (ZSET - first element by score)
+        let job_ids: Vec<String> = conn.zrange(&queue_key, 0, 0).await.expect("get job id");
+        let job_id = job_ids.first().expect("job should exist").clone();
 
         // Get the job data using the ID
         let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
@@ -1179,9 +1246,11 @@ mod tests {
 
         // Add job
         let args = serde_json::json!({"task": "test"});
-        assert!(enqueue(&client, "TestJob".to_string(), None, args, None)
-            .await
-            .is_ok());
+        assert!(
+            enqueue(&client, "TestJob".to_string(), None, args, None, None)
+                .await
+                .is_ok()
+        );
 
         // Dequeue job
         let queues = vec!["default".to_string()];
@@ -1282,9 +1351,11 @@ mod tests {
 
         // Add job
         let args = serde_json::json!("test args");
-        assert!(enqueue(&client, "TestJob".to_string(), None, args, None)
-            .await
-            .is_ok());
+        assert!(
+            enqueue(&client, "TestJob".to_string(), None, args, None, None)
+                .await
+                .is_ok()
+        );
 
         // Run registry with worker for a short time
         let opts = RunOpts {
@@ -1320,7 +1391,8 @@ mod tests {
             "TaggedJob".to_string(),
             Some("default".to_string()),
             args1,
-            Some(vec!["tag1".to_string(), "common".to_string()])
+            Some(vec!["tag1".to_string(), "common".to_string()]),
+            None
         )
         .await
         .is_ok());
@@ -1331,7 +1403,8 @@ mod tests {
             "TaggedJob".to_string(),
             Some("default".to_string()),
             args2,
-            Some(vec!["tag2".to_string(), "common".to_string()])
+            Some(vec!["tag2".to_string(), "common".to_string()]),
+            None
         )
         .await
         .is_ok());
@@ -1342,7 +1415,8 @@ mod tests {
             "TaggedJob".to_string(),
             Some("default".to_string()),
             args3,
-            Some(vec!["tag3".to_string()])
+            Some(vec!["tag3".to_string()]),
+            None
         )
         .await
         .is_ok());
@@ -1443,6 +1517,7 @@ mod tests {
             created_at: Some(Utc::now() - chrono::Duration::days(15)),
             updated_at: Some(Utc::now() - chrono::Duration::days(15)),
             tags: None,
+            priority: 0,
         };
 
         // Create an old completed job (older than 10 days)
@@ -1456,6 +1531,7 @@ mod tests {
             created_at: Some(Utc::now() - chrono::Duration::days(15)),
             updated_at: Some(Utc::now() - chrono::Duration::days(15)),
             tags: None,
+            priority: 0,
         };
 
         // Store both jobs directly
@@ -1528,5 +1604,200 @@ mod tests {
                 assert!(created_at <= Utc::now() - chrono::Duration::days(10));
             }
         }
+    }
+
+    #[tokio::test]
+    async fn test_priority_ordering_redis() {
+        let (client, _container) = setup_redis().await;
+        assert!(clear(&client).await.is_ok());
+
+        // Base time in the past so all jobs are ready. Expected dequeue order by
+        // `index`: 1) i32::MAX, 2) prio 42 (earlier), 3) prio 42 (later),
+        // 4) prio 0, 5) i32::MIN.
+        let base_time = Utc::now() - chrono::Duration::minutes(10);
+        let mut conn = get_test_connection(&client).await;
+        let queue_key = format!("{QUEUE_KEY_PREFIX}default");
+
+        let seeds = [
+            ("job1", "Task1", i32::MAX, 4_i64, 1),
+            ("job2", "Task2", 42, 1, 2),
+            ("job3", "Task3", 42, 3, 3),
+            ("job4", "Task4", 0, 0, 4),
+            ("job5", "Task5", i32::MIN, 2, 5),
+        ];
+        for (id, name, priority, minute_offset, index) in seeds {
+            let mut job = Job::new(
+                id.to_string(),
+                name.to_string(),
+                serde_json::json!({ "index": index }),
+            );
+            job.priority = priority;
+            job.run_at = base_time + chrono::Duration::minutes(minute_offset);
+            let score = calculate_score(job.priority);
+            let _: () = conn
+                .set(format!("{JOB_KEY_PREFIX}{id}"), job.to_json().unwrap())
+                .await
+                .unwrap();
+            let _: () = conn.zadd(&queue_key, id, score).await.unwrap();
+        }
+
+        let queues = vec!["default".to_string()];
+        for expected_index in [1, 2, 3, 4, 5] {
+            let (job, _) = dequeue_with_conn(&mut conn, &queues, &[])
+                .await
+                .expect("dequeue failed")
+                .expect("expected a job");
+            assert_eq!(
+                job.data.get("index"),
+                Some(&serde_json::json!(expected_index))
+            );
+            complete_job_with_conn(&mut conn, &job.id, "default", None)
+                .await
+                .expect("complete job");
+        }
+
+        let job_opt = dequeue_with_conn(&mut conn, &queues, &[])
+            .await
+            .expect("dequeue failed");
+        assert!(job_opt.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_enqueue_with_priority_redis() {
+        let (client, _container) = setup_redis().await;
+        assert!(clear(&client).await.is_ok());
+
+        let args = serde_json::json!({"user_id": 1});
+        enqueue(
+            &client,
+            "PriorityJob".to_string(),
+            None,
+            args.clone(),
+            None,
+            Some(42),
+        )
+        .await
+        .expect("enqueue with priority");
+        enqueue(
+            &client,
+            "DefaultPriorityJob".to_string(),
+            None,
+            args,
+            None,
+            None,
+        )
+        .await
+        .expect("enqueue without priority");
+
+        let jobs = get_all_jobs(&client).await;
+        assert_eq!(jobs.len(), 2);
+        assert_eq!(
+            jobs.iter()
+                .find(|j| j.name == "PriorityJob")
+                .expect("PriorityJob")
+                .priority,
+            42
+        );
+        assert_eq!(
+            jobs.iter()
+                .find(|j| j.name == "DefaultPriorityJob")
+                .expect("DefaultPriorityJob")
+                .priority,
+            0
+        );
+    }
+
+    #[tokio::test]
+    async fn test_negative_priority_redis() {
+        let (client, _container) = setup_redis().await;
+        assert!(clear(&client).await.is_ok());
+
+        enqueue(
+            &client,
+            "NegativePriorityJob".to_string(),
+            None,
+            serde_json::json!({"task": "negative_priority"}),
+            None,
+            Some(-10),
+        )
+        .await
+        .expect("enqueue negative priority");
+        enqueue(
+            &client,
+            "ZeroPriorityJob".to_string(),
+            None,
+            serde_json::json!({"task": "zero_priority"}),
+            None,
+            Some(0),
+        )
+        .await
+        .expect("enqueue zero priority");
+
+        let queues = vec!["default".to_string()];
+        let mut conn = get_test_connection(&client).await;
+
+        // Zero priority is dequeued before the negative one.
+        let (job, _) = dequeue_with_conn(&mut conn, &queues, &[])
+            .await
+            .expect("dequeue failed")
+            .expect("expected a job");
+        assert_eq!(job.priority, 0);
+        assert_eq!(job.name, "ZeroPriorityJob");
+        complete_job_with_conn(&mut conn, &job.id, "default", None)
+            .await
+            .expect("complete job");
+
+        let (job, _) = dequeue_with_conn(&mut conn, &queues, &[])
+            .await
+            .expect("dequeue failed")
+            .expect("expected a job");
+        assert_eq!(job.priority, -10);
+        assert_eq!(job.name, "NegativePriorityJob");
+    }
+
+    #[tokio::test]
+    async fn test_dequeue_skips_mismatched_tags_no_infinite_loop() {
+        let (client, _container) = setup_redis().await;
+        assert!(clear(&client).await.is_ok());
+
+        let mut conn = get_test_connection(&client).await;
+        let queue_key = format!("{QUEUE_KEY_PREFIX}default");
+
+        // A tagged job at the front (older run_at) that a no-tag worker skips.
+        let mut job1 = Job::new(
+            "job1".to_string(),
+            "TaggedJob".to_string(),
+            serde_json::json!({"task": "tagged"}),
+        );
+        job1.tags = Some(vec!["tag1".to_string()]);
+        job1.run_at = Utc::now() - chrono::Duration::hours(1);
+        let score1 = calculate_score(job1.priority);
+        let _: () = conn
+            .set(format!("{JOB_KEY_PREFIX}job1"), job1.to_json().unwrap())
+            .await
+            .unwrap();
+        let _: () = conn.zadd(&queue_key, "job1", score1).await.unwrap();
+
+        // An untagged job behind it that should be picked up.
+        let mut job2 = Job::new(
+            "job2".to_string(),
+            "UntaggedJob".to_string(),
+            serde_json::json!({"task": "untagged"}),
+        );
+        job2.tags = None;
+        job2.run_at = Utc::now() - chrono::Duration::minutes(30);
+        let score2 = calculate_score(job2.priority);
+        let _: () = conn
+            .set(format!("{JOB_KEY_PREFIX}job2"), job2.to_json().unwrap())
+            .await
+            .unwrap();
+        let _: () = conn.zadd(&queue_key, "job2", score2).await.unwrap();
+
+        let queues = vec!["default".to_string()];
+        let (job, _) = dequeue_with_conn(&mut conn, &queues, &[])
+            .await
+            .expect("dequeue")
+            .expect("should have dequeued the untagged job");
+        assert_eq!(job.id, "job2", "Should have picked job2");
     }
 }
