@@ -190,7 +190,7 @@ tower-http = { version = "0.6.8", features = [
     "set-header",
     "compression-full",
 ] }
-heck = "0.4.0"
+heck = "0.5.0"
 duct = { version = "1.0.0" }
 
 [dependencies.sea-orm-migration]
