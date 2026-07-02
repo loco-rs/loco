@@ -110,21 +110,21 @@
     },
     {
       "name": "int",
-      "rust": "Option<i32>",
-      "schema": "integer_null",
-      "col_type": "IntegerNull"
+      "rust": "Option<i64>",
+      "schema": "big_integer_null",
+      "col_type": "BigIntegerNull"
     },
     {
       "name": "int!",
-      "rust": "i32",
-      "schema": "integer",
-      "col_type": "Integer"
+      "rust": "i64",
+      "schema": "big_integer",
+      "col_type": "BigInteger"
     },
     {
       "name": "int^",
-      "rust": "i32",
-      "schema": "integer_uniq",
-      "col_type": "IntegerUniq"
+      "rust": "i64",
+      "schema": "big_integer_uniq",
+      "col_type": "BigIntegerUniq"
     },
     {
       "name": "big_int",
@@ -347,21 +347,21 @@
     },
     {
       "name": "unsigned!",
-      "rust": "i32",
-      "schema": "unsigned",
-      "col_type": "Unsigned"
+      "rust": "i64",
+      "schema": "big_unsigned",
+      "col_type": "BigUnsigned"
     },
     {
       "name": "unsigned",
-      "rust": "Option<i32>",
-      "schema": "unsigned_null",
-      "col_type": "UnsignedNull"
+      "rust": "Option<i64>",
+      "schema": "big_unsigned_null",
+      "col_type": "BigUnsignedNull"
     },
     {
       "name": "unsigned^",
-      "rust": "i32",
-      "schema": "unsigned_uniq",
-      "col_type": "UnsignedUniq"
+      "rust": "i64",
+      "schema": "big_unsigned_uniq",
+      "col_type": "BigUnsignedUniq"
     },
     {
       "name": "binary_len!",

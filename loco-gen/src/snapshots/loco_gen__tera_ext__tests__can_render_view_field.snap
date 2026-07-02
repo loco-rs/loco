@@ -1,7 +1,6 @@
 ---
 source: loco-gen/src/tera_ext.rs
 expression: "all_results.join(\"\\n\")"
-snapshot_kind: text
 ---
 Field: array!.big_int (type: Option<Vec<i64>>)
 {{item.array!}}
@@ -153,13 +152,13 @@ Field: float.float (type: Option<f32>)
 Field: float^.float^ (type: f32)
 {{item.float^}}
 
-Field: int!.int! (type: i32)
+Field: int!.int! (type: i64)
 {{item.int!}}
 
-Field: int.int (type: Option<i32>)
+Field: int.int (type: Option<i64>)
 {{item.int}}
 
-Field: int^.int^ (type: i32)
+Field: int^.int^ (type: i64)
 {{item.int^}}
 
 Field: json!.json! (type: serde_json::Value)
@@ -228,13 +227,13 @@ Field: tstz!.tstz! (type: DateTimeWithTimeZone)
 Field: tstz.tstz (type: Option<DateTimeWithTimeZone>)
 {{item.tstz}}
 
-Field: unsigned!.unsigned! (type: i32)
+Field: unsigned!.unsigned! (type: i64)
 {{item.unsigned!}}
 
-Field: unsigned.unsigned (type: Option<i32>)
+Field: unsigned.unsigned (type: Option<i64>)
 {{item.unsigned}}
 
-Field: unsigned^.unsigned^ (type: i32)
+Field: unsigned^.unsigned^ (type: i64)
 {{item.unsigned^}}
 
 Field: uuid!.uuid! (type: Uuid)

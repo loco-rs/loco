@@ -327,7 +327,9 @@ impl ColType {
     #[allow(clippy::too_many_lines)]
     fn to_def(&self, name: impl IntoIden) -> ColumnDef {
         match self {
-            Self::PkAuto => pk_auto(name),
+            // 64-bit auto PK by default (Sea-ORM 2.0 maps SQLite integers to i64,
+            // and bigint PKs are the modern default a la Rails 5.1+).
+            Self::PkAuto => big_pk_auto(name),
             Self::PkUuid => pk_uuid(name),
             Self::CharLen(len) => char_len(name, *len),
             Self::CharLenNull(len) => char_len_null(name, *len),
@@ -671,10 +673,11 @@ async fn create_table_impl(
         };
         // Only add the column if it doesn't already exist in cols
         if !cols.iter().any(|(col_name, _)| *col_name == nz_ref_name) {
+            // FK columns must match the referenced 64-bit (`big_pk_auto`) PK.
             let col_type = if is_nullable {
-                ColType::IntegerNull
+                ColType::BigIntegerNull
             } else {
-                ColType::Integer
+                ColType::BigInteger
             };
             stmt.col(col_type.to_def(Alias::new(&nz_ref_name)));
         }
@@ -774,7 +777,8 @@ pub async fn add_reference(
         refname.to_string()
     };
     let bk = m.get_database_backend();
-    let col = ColType::Integer.to_def(Alias::new(&nz_ref_name));
+    // FK column must match the referenced 64-bit (`big_pk_auto`) PK.
+    let col = ColType::BigInteger.to_def(Alias::new(&nz_ref_name));
     let fk = TableForeignKey::new()
         // fk-movies-user_id-to-users
         .name(format!("fk-{nz_fromtbl}-{nz_ref_name}-to-{nz_totbl}"))
