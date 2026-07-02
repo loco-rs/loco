@@ -30,7 +30,7 @@ Nothing here is posted yet — GitHub is untouched.
 | #1774 mailer implicit TLS (SMTPS/465) | zmilan | 🟢 **Adopted** (commit e1f4311) — close on release | Fixes #1773. |
 | #1764 MultiEmail / multi-recipient | YtimoDeng | 🔵 Feature decision (not in the 5) | Overlaps #1694/#1652; revisit post-adoption. |
 | #1694 Tera inheritance in emails | jtwaleson | 🔵 Feature decision (not in the 5) | Overlaps #1652. |
-| #1693 Priority queue | jtwaleson | 🟡 **Adopt — pending** (largest port) | +1115/21 files. Redis List→ZSET (breaking), PG/SQLite priority column auto-migrated, `perform_later_with_priority`, mailer default prio 100. Layers onto #1624 enqueue. Needs snapshot regen + pg/sqlite/redis integration tests. |
+| #1693 Priority queue | jtwaleson | 🟢 **Adopted** (commit a685266) — close on release | Redis List→ZSET (breaking, documented), PG/SQLite priority column auto-migrated, `perform_later_with_priority`, mailer prio 100. 54 bgworker tests green. |
 | #1742 scheduler/server without worker | mccormickt | 🟢 **Adopted** (commit 8b92b67) — close on release | Fixes #1737. |
 | #1624 return job IDs from perform_later | NewtTheWolf | 🟢 **Adopted** (commit eae5ed2) — close on release | Fixes #1623. 48 bgworker tests green. |
 | #1699 AWS Lambda deploy | SMCodesP | 🔵 Feature decision (not in the 5) | Large surface. |
