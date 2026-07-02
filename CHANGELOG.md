@@ -13,6 +13,10 @@
   Required by Sea-ORM 2.0 (SQLite integers map to `i64`) and the modern
   bigint-by-default convention. Only affects newly generated code; existing
   tables are untouched. See the upgrade guide.
+- **BREAKING: `Worker::perform_later()` now returns the job ID** (`Result<String>`
+  instead of `Result<()>`) for status tracking, and `Queue::enqueue()` returns
+  `Result<Option<String>>`. Existing `perform_later(...).await?;` call sites keep
+  working (the returned ID is simply ignored). ([#1624](https://github.com/loco-rs/loco/pull/1624), fixes [#1623](https://github.com/loco-rs/loco/issues/1623))
 - **Mailer: implicit TLS (SMTPS / port 465).** New `tls:` mailer config field
   (`implicit` for SMTPS, `starttls`, or `none`); `secure: true` remains STARTTLS.
   Backward-compatible (defaults to prior behavior). ([#1774](https://github.com/loco-rs/loco/pull/1774), fixes [#1773](https://github.com/loco-rs/loco/issues/1773))

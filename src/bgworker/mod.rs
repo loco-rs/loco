@@ -89,11 +89,15 @@ pub enum Queue {
 }
 
 impl Queue {
-    /// Add a job to the queue
+    /// Add a job to the queue.
+    ///
+    /// Returns the job ID when the configured provider supports it
+    /// (`Some(String)` for Redis / `PostgreSQL` / `SQLite`), or `None` when no
+    /// queue provider is configured.
     ///
     /// # Errors
     ///
-    /// This function will return an error if fails
+    /// This function will return an error if the enqueue operation fails.
     #[allow(unused_variables)]
     pub async fn enqueue<A: Serialize + Send + Sync>(
         &self,
@@ -101,15 +105,13 @@ impl Queue {
         queue: Option<String>,
         args: A,
         tags: Option<Vec<String>>,
-    ) -> Result<()> {
+    ) -> Result<Option<String>> {
         tracing::debug!(worker = class, queue = ?queue, tags = ?tags, "Enqueuing background job");
-        match self {
+        let job_id = match self {
             #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _, _, _) => {
-                redis::enqueue(pool, class, queue, args, tags).await?;
-            }
+            Self::Redis(pool, _, _, _) => Some(redis::enqueue(pool, class, queue, args, tags).await?),
             #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _, _) => {
+            Self::Postgres(pool, _, _, _) => Some(
                 pg::enqueue(
                     pool,
                     &class,
@@ -119,10 +121,10 @@ impl Queue {
                     tags,
                 )
                 .await
-                .map_err(Box::from)?;
-            }
+                .map_err(Box::from)?,
+            ),
             #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _, _) => {
+            Self::Sqlite(pool, _, _, _) => Some(
                 sqlt::enqueue(
                     pool,
                     &class,
@@ -132,11 +134,11 @@ impl Queue {
                     tags,
                 )
                 .await
-                .map_err(Box::from)?;
-            }
-            _ => {}
-        }
-        Ok(())
+                .map_err(Box::from)?,
+            ),
+            _ => None,
+        };
+        Ok(job_id)
     }
 
     /// Register a worker
@@ -612,26 +614,34 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
         let name = type_name.split("::").last().unwrap_or(type_name);
         name.to_upper_camel_case()
     }
-    async fn perform_later(ctx: &AppContext, args: A) -> crate::Result<()>
+    /// Enqueue (or run) the job and return its ID.
+    ///
+    /// In `BackgroundQueue` mode the ID is the one assigned by the queue
+    /// provider. In foreground/async modes (or when no provider is configured)
+    /// a fresh ID is generated so callers always get a stable handle back.
+    async fn perform_later(ctx: &AppContext, args: A) -> crate::Result<String>
     where
         Self: Sized,
     {
-        match &ctx.config.workers.mode {
+        let job_id = match &ctx.config.workers.mode {
             WorkerMode::BackgroundQueue => {
                 if let Some(p) = &ctx.queue_provider {
                     let tags = Self::tags();
                     let tags_option = if tags.is_empty() { None } else { Some(tags) };
                     p.enqueue(Self::class_name(), Self::queue(), args, tags_option)
-                        .await?;
+                        .await?
+                        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string())
                 } else {
                     tracing::error!(
                         "perform_later: background queue is selected, but queue was not populated \
                          in context"
                     );
+                    uuid::Uuid::new_v4().to_string()
                 }
             }
             WorkerMode::ForegroundBlocking => {
                 Self::build(ctx).perform(args).await?;
+                uuid::Uuid::new_v4().to_string()
             }
             WorkerMode::BackgroundAsync => {
                 let dx = ctx.clone();
@@ -640,9 +650,10 @@ pub trait BackgroundWorker<A: Send + Sync + serde::Serialize + 'static>: Send + 
                         tracing::error!(err = err.to_string(), "worker failed to perform job");
                     }
                 });
+                uuid::Uuid::new_v4().to_string()
             }
-        }
-        Ok(())
+        };
+        Ok(job_id)
     }
 
     async fn perform(&self, args: A) -> crate::Result<()>;

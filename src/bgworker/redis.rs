@@ -264,7 +264,7 @@ pub async fn enqueue(
     queue: Option<String>,
     args: impl serde::Serialize + Send,
     tags: Option<Vec<String>>,
-) -> Result<()> {
+) -> Result<JobId> {
     let mut conn = get_connection(client).await?;
     let queue_name = queue.unwrap_or_else(|| "default".to_string());
     let queue_key = format!("{QUEUE_KEY_PREFIX}{queue_name}");
@@ -287,7 +287,7 @@ pub async fn enqueue(
     let _: () = conn.set(&job_key, &job_json).await?;
     let _: () = conn.rpush(&queue_key, &job.id).await?;
 
-    Ok(())
+    Ok(job_id)
 }
 
 const DEQUEUE_SCRIPT: &str = r#"
