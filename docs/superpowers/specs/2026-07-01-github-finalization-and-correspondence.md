@@ -27,15 +27,15 @@ Nothing here is posted yet — GitHub is untouched.
 | #1754 bump yaml (docs-site npm) | dependabot | 🔵 **Merge directly on GitHub** | Transitive npm dep in docs-site pnpm-lock (yaml 2.5.0, parent-constrained). Not reconcilable offline without risking a half-written lock; dependabot regenerates the lock correctly on merge. Docs-site tooling only — orthogonal to the Rust release. |
 | #1657 replace trait fn bounds w/ impl AsyncFn | alwayys-afk | 🟡 Epic B (API modernization) | On the B list already. |
 | #1762 migrate 8 READMEs → single NRG template | andriishin | 🟡 Epic D (README consolidation) | |
-| #1774 mailer implicit TLS (SMTPS/465) | zmilan | 🔵 Feature — decide for 0.17 vs later | Fixes #1773. |
-| #1764 MultiEmail / multi-recipient | YtimoDeng | 🔵 Feature decision | Overlaps #1694/#1652. |
-| #1694 Tera inheritance in emails | jtwaleson | 🔵 Feature decision | Overlaps #1652. |
-| #1693 Priority queue | jtwaleson | 🔵 Feature decision | |
-| #1742 scheduler/server without worker | mccormickt | 🔵 Feature decision | Fixes #1737. |
-| #1624 return job IDs from perform_later | NewtTheWolf | 🔵 Feature decision | Fixes #1623. |
-| #1699 AWS Lambda deploy | SMCodesP | 🔵 Feature decision | Large surface. |
+| #1774 mailer implicit TLS (SMTPS/465) | zmilan | 🟡 **Adopt in 0.17.0** (credit) | Fixes #1773. Decision 2026-07-02: adopt all 5 feature PRs. |
+| #1764 MultiEmail / multi-recipient | YtimoDeng | 🔵 Feature decision (not in the 5) | Overlaps #1694/#1652; revisit post-adoption. |
+| #1694 Tera inheritance in emails | jtwaleson | 🔵 Feature decision (not in the 5) | Overlaps #1652. |
+| #1693 Priority queue | jtwaleson | 🟡 **Adopt in 0.17.0** (credit) | Reconcile vs bgworker dedup. |
+| #1742 scheduler/server without worker | mccormickt | 🟡 **Adopt in 0.17.0** (credit) | Fixes #1737. |
+| #1624 return job IDs from perform_later | NewtTheWolf | 🟡 **Adopt in 0.17.0** (credit) | Fixes #1623. |
+| #1699 AWS Lambda deploy | SMCodesP | 🔵 Feature decision (not in the 5) | Large surface. |
 | #1708 add popular tasks | floscodes | 🔵 Review | |
-| #1685 PagerMeta on PageResponse | GoCoder7 | 🔵 API-shape — reconcile in B | Fixes #1683. |
+| #1685 PagerMeta on PageResponse | GoCoder7 | 🟡 **Adopt in 0.17.0** (credit) | Fixes #1683. |
 | #1732 Vars::cli_arg → Result<&str> | dsgallups | 🔵 API-shape — reconcile in B | |
 | #1730 Tasks API take [&String] (DRAFT) | pweaver | 🔵 API-shape — reconcile in B | |
 | #1771 auto-formatting | D-system | 🔵 Review (may be superseded) | |
