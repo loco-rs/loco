@@ -74,11 +74,12 @@ where
     s.parse().map_err(serde::de::Error::custom)
 }
 
+use crate::controller::views::pagination::PagerMeta;
+
 #[derive(Debug)]
 pub struct PageResponse<T> {
     pub page: Vec<T>,
-    pub total_pages: u64,
-    pub total_items: u64,
+    pub meta: PagerMeta,
 }
 
 use crate::Result as LocoResult;
@@ -165,8 +166,12 @@ where
 
     let paginated_response = PageResponse {
         page,
-        total_pages: total_pages_and_items.number_of_pages,
-        total_items: total_pages_and_items.number_of_items,
+        meta: PagerMeta {
+            page: pagination_query.page,
+            page_size: pagination_query.page_size,
+            total_pages: total_pages_and_items.number_of_pages,
+            total_items: total_pages_and_items.number_of_items,
+        },
     };
 
     Ok(paginated_response)
@@ -213,7 +218,11 @@ where
 
     Ok(PageResponse {
         page,
-        total_pages: total_pages_and_items.number_of_pages,
-        total_items: total_pages_and_items.number_of_items,
+        meta: PagerMeta {
+            page: pagination_query.page,
+            page_size: pagination_query.page_size,
+            total_pages: total_pages_and_items.number_of_pages,
+            total_items: total_pages_and_items.number_of_items,
+        },
     })
 }

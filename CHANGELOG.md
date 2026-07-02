@@ -13,6 +13,9 @@
   Required by Sea-ORM 2.0 (SQLite integers map to `i64`) and the modern
   bigint-by-default convention. Only affects newly generated code; existing
   tables are untouched. See the upgrade guide.
+- **BREAKING: `PageResponse<T>` now exposes a `meta: PagerMeta`** instead of flat
+  `total_pages`/`total_items` fields (also carries `page`/`page_size`). Access via
+  `response.meta.total_pages` etc. ([#1685](https://github.com/loco-rs/loco/pull/1685), fixes [#1683](https://github.com/loco-rs/loco/issues/1683))
 - **BREAKING: `loco_rs::Error` is now `#[non_exhaustive]`.** Future error
   variants can be added without a breaking change. If you `match` on `Error`
   exhaustively, add a wildcard `_ => ...` arm. Removed the dead `loco-cli` crate
