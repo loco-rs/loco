@@ -115,7 +115,6 @@ tracing-subscriber = { version = "0.3.16", default-features = false, features = 
 tracing-appender = { version = "0.2.3", default-features = false }
 
 duct = { workspace = true }
-duct_sh = { version = "1.0.0" }
 
 tower-http = { workspace = true }
 byte-unit = "5.1"

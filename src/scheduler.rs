@@ -194,8 +194,13 @@ impl JobDescription {
     /// In addition to all the IO errors possible
     pub fn run(&self) -> io::Result<std::process::Output> {
         tracing::info!(command = &self.command, "execute job command");
-        let mut exec_job =
-            duct_sh::sh_dangerous(&self.command).env("LOCO_ENV", self.environment.to_string());
+        // Run the command through the platform shell (previously `duct_sh`).
+        let shell = if cfg!(windows) {
+            duct::cmd!("cmd.exe", "/C", &self.command)
+        } else {
+            duct::cmd!("/bin/sh", "-c", &self.command)
+        };
+        let mut exec_job = shell.env("LOCO_ENV", self.environment.to_string());
         exec_job = match self.output {
             Output::Silent => exec_job.stdout_null().stderr_null(),
             Output::STDOUT => exec_job,
