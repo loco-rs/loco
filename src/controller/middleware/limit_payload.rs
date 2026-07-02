@@ -53,9 +53,9 @@ where
     match s.as_str() {
         "disable" => Ok(DefaultBodyLimitKind::Disable),
         limit => {
-            let bytes = byte_unit::Byte::from_str(limit)
+            let bytes = byte_unit::Byte::parse_str(limit, true)
                 .map_err(|err| serde::de::Error::custom(err.to_string()))?
-                .get_bytes();
+                .as_u64();
             Ok(DefaultBodyLimitKind::Limit(bytes as usize))
         }
     }

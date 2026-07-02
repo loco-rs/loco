@@ -116,7 +116,7 @@ duct = { workspace = true }
 duct_sh = { version = "1.0.0" }
 
 tower-http = { workspace = true }
-byte-unit = "4.0.19"
+byte-unit = "5.1"
 
 argon2 = { version = "0.5", features = ["std"] }
 rand = { version = "0.9", features = ["std"] }
@@ -125,7 +125,7 @@ validator = { version = "0.20.0", features = ["derive"] }
 futures-util = "0.3"
 tower = { workspace = true }
 bytes = "1.11"
-ipnetwork = "0.20.0"
+ipnetwork = "0.21"
 semver = "1"
 
 axum-test = { version = "17.0.1", optional = true }
