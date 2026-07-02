@@ -23,7 +23,6 @@ use std::{
 
 use crate::{
     bgworker,
-    cargo_config::CargoConfig,
     config::{self, Config},
     depcheck, Error, Result,
 };
@@ -221,10 +220,8 @@ pub async fn run_all<H: crate::app::Hooks>(
 /// # Errors
 /// Returns error if fails
 pub fn check_deps() -> Result<Check> {
-    let cargolock = CargoConfig::lock_from_current_dir()?;
-
     let crate_statuses =
-        depcheck::check_crate_versions(&cargolock, get_min_dep_versions().clone())?;
+        depcheck::check_crate_versions("Cargo.lock", get_min_dep_versions().clone())?;
     let mut report = String::new();
     let _ = write!(report, "Dependencies");
     let mut all_ok = true;

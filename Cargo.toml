@@ -128,6 +128,7 @@ tower = { workspace = true }
 bytes = "1.11"
 ipnetwork = "0.21"
 semver = "1"
+cargo-lock = { version = "11", default-features = false }
 
 axum-test = { version = "17.0.1", optional = true }
 tree-fs = { version = "0.3", optional = true }

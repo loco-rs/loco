@@ -3,6 +3,9 @@
 //! This module provides functionality to read and parse Cargo.toml files,
 //! with specific support for accessing database entity configuration
 //! under the `[package.metadata.db.entity]` section.
+//!
+//! (Cargo.lock parsing lives in [`crate::depcheck`], backed by the `cargo-lock`
+//! crate.)
 
 use crate::errors::Error;
 use crate::Result as AppResult;
@@ -25,15 +28,6 @@ impl CargoConfig {
     /// * If the file contains invalid TOML
     pub fn from_current_dir() -> AppResult<Self> {
         Self::from_path("Cargo.toml")
-    }
-
-    /// Creates a new [`CargoConfig`] by reading the Cargo.lock file from the current directory
-    ///
-    /// # Errors
-    /// * If the Cargo.lock file cannot be read
-    /// * If the file contains invalid TOML
-    pub fn lock_from_current_dir() -> AppResult<Self> {
-        Self::from_path("Cargo.lock")
     }
 
     /// Creates a new [`CargoConfig`] by reading and parsing a TOML file from the specified path
@@ -66,18 +60,6 @@ impl CargoConfig {
             .and_then(|d| d.as_table())
             .and_then(|d| d.get("entity"))
             .and_then(|e| e.as_table())
-    }
-
-    /// Gets the package array from Cargo.lock
-    ///
-    /// # Errors
-    /// Returns an error if the package array is missing or invalid
-    pub fn get_package_array(&self) -> AppResult<&[toml::Value]> {
-        self.toml
-            .get("package")
-            .and_then(|v| v.as_array())
-            .map(std::vec::Vec::as_slice)
-            .ok_or_else(|| Error::Message("Missing package array in Cargo.lock".to_string()))
     }
 }
 
@@ -112,38 +94,9 @@ with-serde = "serialize"
 compact-format = true
 "#;
 
-    const TEST_CARGO_LOCK: &str = r#"
-[[package]]
-name = "test-app"
-version = "0.1.0"
-dependencies = [
- "serde",
- "tokio",
-]
-
-[[package]]
-name = "serde"
-version = "1.0.130"
-
-[[package]]
-name = "tokio"
-version = "1.0.0"
-"#;
-
     fn setup_test_dir(cargo_toml: Option<&str>) -> tree_fs::Tree {
         tree_fs::TreeBuilder::default()
             .add_file("Cargo.toml", cargo_toml.unwrap_or(TEST_CARGO_TOML))
-            .create()
-            .expect("Failed to create test directory structure")
-    }
-
-    fn setup_test_dir_with_lock(
-        cargo_toml: Option<&str>,
-        cargo_lock: Option<&str>,
-    ) -> tree_fs::Tree {
-        tree_fs::TreeBuilder::default()
-            .add_file("Cargo.toml", cargo_toml.unwrap_or(TEST_CARGO_TOML))
-            .add_file("Cargo.lock", cargo_lock.unwrap_or(TEST_CARGO_LOCK))
             .create()
             .expect("Failed to create test directory structure")
     }
@@ -165,38 +118,6 @@ version = "1.0.0"
 
         let config = CargoConfig::from_current_dir().expect("Failed to read from current dir");
         assert_eq!(config.toml["package"]["name"].as_str(), Some("test-app"));
-    }
-
-    #[test]
-    fn test_lock_from_current_dir() {
-        let tree = setup_test_dir_with_lock(None, None);
-        let _cwd_guard = CwdGuard::set_to(&tree.root);
-
-        let config = CargoConfig::lock_from_current_dir().expect("Failed to read Cargo.lock");
-        let packages = config
-            .get_package_array()
-            .expect("Failed to get package array");
-        assert_eq!(packages.len(), 3);
-        assert_eq!(
-            packages[0].as_table().unwrap()["name"].as_str(),
-            Some("test-app")
-        );
-    }
-
-    #[test]
-    fn test_get_package_array() {
-        let tree = setup_test_dir_with_lock(None, None);
-        let config = CargoConfig::from_path(tree.root.join("Cargo.lock"))
-            .expect("Failed to read Cargo.lock");
-
-        let packages = config
-            .get_package_array()
-            .expect("Failed to get package array");
-        assert_eq!(packages.len(), 3);
-        assert_eq!(
-            packages[1].as_table().unwrap()["name"].as_str(),
-            Some("serde")
-        );
     }
 
     #[test]
