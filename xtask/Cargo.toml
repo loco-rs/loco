@@ -19,7 +19,7 @@ duct = { workspace = true }
 cargo_metadata = "0.18.1"
 requestty = "0.5.0"
 regex = { version = "1.10.2" }
-thiserror = "1"
+thiserror = "2"
 tabled = "0.14.0"
 colored = { version = "3.0" }
 
