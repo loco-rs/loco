@@ -112,6 +112,19 @@ migrations differ. See the Sea-ORM 2.0 migration guide for the
 For the full upstream detail see the
 [Sea-ORM 2.0 migration guide](https://www.sea-ql.org/blog/2026-01-12-sea-orm-2.0/).
 
+### Generated code now uses 64-bit primary keys
+
+Newly **generated** models and scaffolds now use `i64` (BIGINT) primary keys and
+foreign keys, and the `int`/`unsigned` field types generate 64-bit columns. This
+is required by Sea-ORM 2.0 (its codegen maps SQLite integers to `i64`) and
+matches the modern bigint-by-default convention.
+
+This only affects code you generate *after* upgrading — your existing tables,
+migrations, and entities are untouched. If you scaffold new resources and want
+them to relate to older `i32`-keyed tables, make the key types match (either
+widen the old ones with a migration, or hand-edit the new `id`/foreign-key
+fields back to `i32`).
+
 ## Upgrade from 0.15.x to 0.16.x
 
 ### Use `AppContext` instead of `Config` in `init_logger` in the `Hooks` trait

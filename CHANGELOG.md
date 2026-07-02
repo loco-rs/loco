@@ -9,6 +9,10 @@
   bump direct `sqlx` to `0.9`, and update the Sea-ORM CLI (`cargo install
   sea-orm-cli`). See the [0.16 → 0.17 upgrade guide](https://loco.rs/docs/extras/upgrades/)
   for the full migration. (Adopted from the SeaQL fork and [#1698](https://github.com/loco-rs/loco/pull/1698).)
+- **BREAKING: Generated primary/foreign keys are now 64-bit (BIGINT/`i64`).**
+  Required by Sea-ORM 2.0 (SQLite integers map to `i64`) and the modern
+  bigint-by-default convention. Only affects newly generated code; existing
+  tables are untouched. See the upgrade guide.
 - Fix `cargo fmt` error in `loco-new` ([#1669](https://github.com/loco-rs/loco/pull/1669))
 - Fix UUID pattern in form field generation ([#1665](https://github.com/loco-rs/loco/pull/1665))
 - Add tests for auth extractor ([#1671](https://github.com/loco-rs/loco/pull/1671))
