@@ -15,8 +15,9 @@
   tables are untouched. See the upgrade guide.
 - **BREAKING: Dependency modernization.** Major bumps across the tree:
   `thiserror` 1→2, `tower` 0.4→0.5, `heck` unified to 0.5, `byte-unit` 4→5,
-  `ipnetwork` 0.20→0.21, `strum` 0.26→0.27. Transitive for most apps; only
-  affects you if you use these crates directly through Loco's public API.
+  `ipnetwork` 0.20→0.21, `strum` 0.26→0.27, `redis` 0.31→1, `bb8-redis`
+  0.23→0.26, `opendal` 0.54→0.57. Transitive for most apps; only affects you if
+  you use these crates directly through Loco's public API.
 - Fix `cargo fmt` error in `loco-new` ([#1669](https://github.com/loco-rs/loco/pull/1669))
 - Fix UUID pattern in form field generation ([#1665](https://github.com/loco-rs/loco/pull/1665))
 - Add tests for auth extractor ([#1671](https://github.com/loco-rs/loco/pull/1671))
