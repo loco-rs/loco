@@ -21,10 +21,10 @@ Nothing here is posted yet — GitHub is untouched.
 |----|--------|-----------------|-------|
 | #1698 Sea ORM 2.0 | elcoosp | 🟢 **Close as adopted** | Work incorporated via SeaQL-fork diff; credited in CHANGELOG + commit trailers. Draft reply below. |
 | #1752 update bytes + jsonwebtoken (DRAFT) | AnthonyMichaelTDM | 🟡 Fold into Epic B security sweep | Security-relevant. Reconcile with dep upgrades. |
-| #1772 bump actions/checkout 6→7 | dependabot | 🟡 Fold into Epic B CI/dep sweep | |
-| #1760 bump sccache-action | dependabot | 🟡 Fold into Epic B | |
-| #1757 bump rand 0.8→0.9 (loco-new) | dependabot | 🟡 Fold into Epic B | |
-| #1754 bump yaml (docs-site npm) | dependabot | 🟡 Fold into Epic B / docs | |
+| #1772 bump actions/checkout 6→7 | dependabot | 🟢 **Adopted** (checkout v6→v7, all workflows) — close as done | Commit 3df22fc. |
+| #1760 bump sccache-action | dependabot | 🟢 **Adopted** (v0.0.9→v0.0.10) — close as done | Commit 3df22fc. |
+| #1757 bump rand 0.8→0.9 (loco-new) | dependabot | 🟢 **Adopted** (folded into version-skew unify) — close as done | Commit 787af3a. |
+| #1754 bump yaml (docs-site npm) | dependabot | 🔵 **Merge directly on GitHub** | Transitive npm dep in docs-site pnpm-lock (yaml 2.5.0, parent-constrained). Not reconcilable offline without risking a half-written lock; dependabot regenerates the lock correctly on merge. Docs-site tooling only — orthogonal to the Rust release. |
 | #1657 replace trait fn bounds w/ impl AsyncFn | alwayys-afk | 🟡 Epic B (API modernization) | On the B list already. |
 | #1762 migrate 8 READMEs → single NRG template | andriishin | 🟡 Epic D (README consolidation) | |
 | #1774 mailer implicit TLS (SMTPS/465) | zmilan | 🔵 Feature — decide for 0.17 vs later | Fixes #1773. |
