@@ -104,7 +104,10 @@ impl StoreDriver for OpendalAdapter {
         let from = from.display().to_string();
         let to = to.display().to_string();
         if self.opendal_impl.info().full_capability().copy {
-            Ok(self.opendal_impl.copy(&from, &to).await?)
+            // opendal 0.57's `copy` returns the destination `Metadata`; we
+            // don't surface it.
+            self.opendal_impl.copy(&from, &to).await?;
+            Ok(())
         } else {
             let mut reader = self
                 .opendal_impl
