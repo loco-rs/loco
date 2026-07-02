@@ -13,6 +13,9 @@
   Required by Sea-ORM 2.0 (SQLite integers map to `i64`) and the modern
   bigint-by-default convention. Only affects newly generated code; existing
   tables are untouched. See the upgrade guide.
+- **Run the scheduler without a worker.** New `--scheduler` flag for `cargo loco
+  start` and new `StartMode::ServerAndScheduler` / `StartMode::WorkerAndScheduler`
+  boot modes. ([#1742](https://github.com/loco-rs/loco/pull/1742), fixes [#1737](https://github.com/loco-rs/loco/issues/1737))
 - **BREAKING: `PageResponse<T>` now exposes a `meta: PagerMeta`** instead of flat
   `total_pages`/`total_items` fields (also carries `page`/`page_size`). Access via
   `response.meta.total_pages` etc. ([#1685](https://github.com/loco-rs/loco/pull/1685), fixes [#1683](https://github.com/loco-rs/loco/issues/1683))

@@ -76,6 +76,9 @@ enum Commands {
         /// Start the server, worker, and scheduler in the same process
         #[arg(short, long, action, conflicts_with_all = &["worker", "server_and_worker"])]
         all: bool,
+        /// Run the scheduler
+        #[arg(long, action, conflicts_with = "all")]
+        scheduler: bool,
         /// server bind address
         #[arg(short, long, action)]
         binding: Option<String>,
@@ -161,6 +164,9 @@ enum Commands {
         /// start same-process server and worker
         #[arg(short, long, action)]
         server_and_worker: bool,
+        /// Run the scheduler
+        #[arg(long, action)]
+        scheduler: bool,
     },
 }
 
@@ -722,20 +728,26 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             worker,
             server_and_worker,
             all,
+            scheduler,
             binding,
             port,
             no_banner,
         } => {
-            let start_mode = worker.map_or(
-                if server_and_worker {
-                    StartMode::ServerAndWorker
-                } else if all {
-                    StartMode::All
+            let start_mode = if all || (server_and_worker && scheduler) {
+                StartMode::All
+            } else if server_and_worker {
+                StartMode::ServerAndWorker
+            } else if let Some(tags) = worker {
+                if scheduler {
+                    StartMode::WorkerAndScheduler { tags }
                 } else {
-                    StartMode::ServerOnly
-                },
-                |tags| StartMode::WorkerOnly { tags },
-            );
+                    StartMode::WorkerOnly { tags }
+                }
+            } else if scheduler {
+                StartMode::ServerAndScheduler
+            } else {
+                StartMode::ServerOnly
+            };
 
             let boot_result =
                 create_app::<H, M>(start_mode, &environment, app_context.config).await?;
@@ -826,6 +838,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         Commands::Watch {
             worker,
             server_and_worker,
+            scheduler,
         } => {
             // cargo-watch  -s 'cargo loco start'
             let mut cmd_str = String::from("cargo loco start");
@@ -839,6 +852,9 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                 }
             } else if server_and_worker {
                 cmd_str.push_str(" --server-and-worker");
+            }
+            if scheduler {
+                cmd_str.push_str(" --scheduler");
             }
 
             cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
@@ -872,20 +888,26 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             worker,
             server_and_worker,
             all,
+            scheduler,
             binding,
             port,
             no_banner,
         } => {
-            let start_mode = worker.map_or(
-                if server_and_worker {
-                    StartMode::ServerAndWorker
-                } else if all {
-                    StartMode::All
+            let start_mode = if all || (server_and_worker && scheduler) {
+                StartMode::All
+            } else if server_and_worker {
+                StartMode::ServerAndWorker
+            } else if let Some(tags) = worker {
+                if scheduler {
+                    StartMode::WorkerAndScheduler { tags }
                 } else {
-                    StartMode::ServerOnly
-                },
-                |tags| StartMode::WorkerOnly { tags },
-            );
+                    StartMode::WorkerOnly { tags }
+                }
+            } else if scheduler {
+                StartMode::ServerAndScheduler
+            } else {
+                StartMode::ServerOnly
+            };
 
             let boot_result = create_app::<H>(start_mode, &environment, app_context.config).await?;
             let serve_params = ServeParams {
@@ -962,6 +984,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
         Commands::Watch {
             worker,
             server_and_worker,
+            scheduler,
         } => {
             // cargo-watch  -s 'cargo loco start'
             let mut cmd_str = String::from("cargo loco start");
@@ -975,6 +998,9 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
                 }
             } else if server_and_worker {
                 cmd_str.push_str(" --server-and-worker");
+            }
+            if scheduler {
+                cmd_str.push_str(" --scheduler");
             }
 
             cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
