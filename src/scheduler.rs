@@ -443,9 +443,8 @@ jobs:
 
     #[test]
     pub fn can_load_from_config_local_config() {
+        // Succeeds as long as loading the config doesn't panic or error.
         let (_, _tree) = setup_scheduler_config();
-        // If we got here, the setup was successful
-        assert!(true);
     }
 
     #[tokio::test]
