@@ -13,6 +13,9 @@
   Required by Sea-ORM 2.0 (SQLite integers map to `i64`) and the modern
   bigint-by-default convention. Only affects newly generated code; existing
   tables are untouched. See the upgrade guide.
+- **Mailer: implicit TLS (SMTPS / port 465).** New `tls:` mailer config field
+  (`implicit` for SMTPS, `starttls`, or `none`); `secure: true` remains STARTTLS.
+  Backward-compatible (defaults to prior behavior). ([#1774](https://github.com/loco-rs/loco/pull/1774), fixes [#1773](https://github.com/loco-rs/loco/issues/1773))
 - **Run the scheduler without a worker.** New `--scheduler` flag for `cargo loco
   start` and new `StartMode::ServerAndScheduler` / `StartMode::WorkerAndScheduler`
   boot modes. ([#1742](https://github.com/loco-rs/loco/pull/1742), fixes [#1737](https://github.com/loco-rs/loco/issues/1737))
