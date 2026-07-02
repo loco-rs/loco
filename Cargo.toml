@@ -83,7 +83,9 @@ tokio-util = "0.7"
 
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_yaml = "0.9"
+# serde_yaml (dtolnay) is archived; serde_yaml_ng is the maintained, drop-in
+# continuation. Kept under the `serde_yaml` name so source paths are unchanged.
+serde_yaml = { package = "serde_yaml_ng", version = "0.10" }
 serde_variant = "0.1.2"
 toml = "0.8"
 

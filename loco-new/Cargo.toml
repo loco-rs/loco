@@ -45,7 +45,7 @@ tree-fs = { version = "0.3" }
 
 [dev-dependencies]
 uuid = { version = "1.11.0", features = ["v4", "fast-rng"] }
-serde_yaml = { version = "0.9" }
+serde_yaml = { package = "serde_yaml_ng", version = "0.10" }
 insta = { version = "1.41.1", features = ["redactions", "yaml", "filters"] }
 rstest = { version = "0.26.1" }
 mockall = "0.13.0"
