@@ -218,12 +218,11 @@ checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
 
 [[package]]
 name = "colored"
-version = "2.2.0"
+version = "3.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "117725a109d387c937a1533ce01b450cbde6b88abceea8473c4d7a85853cda3c"
+checksum = "faf9468729b8cbcea668e36183cb69d317348c2e08e994829fb56ebfdfbaac34"
 dependencies = [
- "lazy_static",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -352,14 +351,14 @@ checksum = "1435fa1053d8b2fbbe9be7e97eca7f33d37b28409959813daefc1446a14247f1"
 
 [[package]]
 name = "duct"
-version = "0.13.7"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4ab5718d1224b63252cd0c6f74f6480f9ffeb117438a2e0f5cf6d9a4798929c"
+checksum = "7e66e9c0c03d094e1a0ba1be130b849034aa80c3a2ab8ee94316bc809f3fa684"
 dependencies = [
  "libc",
- "once_cell",
  "os_pipe",
  "shared_child",
+ "shared_thread",
 ]
 
 [[package]]
@@ -678,7 +677,7 @@ dependencies = [
  "include_dir",
  "insta",
  "mockall",
- "rand 0.8.5",
+ "rand 0.9.2",
  "regex",
  "rhai",
  "rstest",
@@ -1263,6 +1262,12 @@ dependencies = [
  "sigchld",
  "windows-sys 0.60.2",
 ]
+
+[[package]]
+name = "shared_thread"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52b86057fcb5423f5018e331ac04623e32d6b5ce85e33300f92c79a1973928b0"
 
 [[package]]
 name = "shell-words"
