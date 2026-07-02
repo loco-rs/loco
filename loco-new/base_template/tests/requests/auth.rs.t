@@ -22,7 +22,7 @@ macro_rules! configure_insta {
 async fn can_register() {
     configure_insta!();
 
-    request::<App, _, _>(|request, ctx| async move {
+    request::<App>(|request, ctx| async move {
         let email = "test@loco.com";
         let payload = serde_json::json!({
             "name": "loco",
@@ -60,7 +60,7 @@ async fn can_register() {
 async fn can_login_with_verify(#[case] test_name: &str, #[case] password: &str) {
     configure_insta!();
 
-    request::<App, _, _>(|request, ctx| async move {
+    request::<App>(|request, ctx| async move {
         let email = "test@loco.com";
         let register_payload = serde_json::json!({
             "name": "loco",
@@ -115,7 +115,7 @@ async fn can_login_with_verify(#[case] test_name: &str, #[case] password: &str) 
 async fn login_with_un_existing_email() {
     configure_insta!();
 
-    request::<App, _, _>(|request, _ctx| async move {
+    request::<App>(|request, _ctx| async move {
 
         let login_response = request
             .post("/api/auth/login")
@@ -136,7 +136,7 @@ async fn login_with_un_existing_email() {
 async fn can_login_without_verify() {
     configure_insta!();
 
-    request::<App, _, _>(|request, _ctx| async move {
+    request::<App>(|request, _ctx| async move {
         let email = "test@loco.com";
         let password = "12341234";
         let register_payload = serde_json::json!({
@@ -178,7 +178,7 @@ async fn can_login_without_verify() {
 async fn invalid_verification_token() {
     configure_insta!();
 
-    request::<App, _, _>(|request, _ctx| async move {
+    request::<App>(|request, _ctx| async move {
         let response = request
             .get("/api/auth/verify/invalid-token")
             .await;
@@ -198,7 +198,7 @@ async fn invalid_verification_token() {
 async fn can_reset_password() {
     configure_insta!();
 
-    request::<App, _, _>(|request, ctx| async move {
+    request::<App>(|request, ctx| async move {
         let login_data = prepare_data::init_user_login(&request, &ctx).await;
 
         let forgot_payload = serde_json::json!({
@@ -264,7 +264,7 @@ async fn can_reset_password() {
 async fn can_get_current_user() {
     configure_insta!();
 
-    request::<App, _, _>(|request, ctx| async move {
+    request::<App>(|request, ctx| async move {
         let user = prepare_data::init_user_login(&request, &ctx).await;
 
         let (auth_key, auth_value) = prepare_data::auth_header(&user.token);
@@ -288,7 +288,7 @@ async fn can_get_current_user() {
 #[serial]
 async fn can_auth_with_magic_link() {
     configure_insta!();
-    request::<App, _, _>(|request, ctx| async move {
+    request::<App>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
 
         let payload = serde_json::json!({
@@ -334,7 +334,7 @@ async fn can_auth_with_magic_link() {
 #[serial]
 async fn can_reject_invalid_email() {
     configure_insta!();
-    request::<App, _, _>(|request, _ctx| async move {
+    request::<App>(|request, _ctx| async move {
         let invalid_email = "user1@temp-mail.com";
         let payload = serde_json::json!({
             "email": invalid_email,
@@ -353,7 +353,7 @@ async fn can_reject_invalid_email() {
 #[serial]
 async fn can_reject_invalid_magic_link_token() {
     configure_insta!();
-    request::<App, _, _>(|request, ctx| async move {
+    request::<App>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
 
         let magic_link_response = request.get("/api/auth/magic-link/invalid-token").await;
@@ -372,7 +372,7 @@ async fn can_reject_invalid_magic_link_token() {
 async fn can_resend_verification_email() {
     configure_insta!();
 
-    request::<App, _, _>(|request, ctx| async move {
+    request::<App>(|request, ctx| async move {
         let email = "test@loco.com";
         let payload = serde_json::json!({
             "name": "loco",
@@ -421,7 +421,7 @@ async fn can_resend_verification_email() {
 async fn cannot_resend_email_if_already_verified() {
     configure_insta!();
 
-    request::<App, _, _>(|request, ctx| async move {
+    request::<App>(|request, ctx| async move {
         let email = "verified@loco.com";
         let payload = serde_json::json!({
             "name": "verified",

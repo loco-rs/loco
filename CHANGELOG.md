@@ -13,6 +13,12 @@
   Required by Sea-ORM 2.0 (SQLite integers map to `i64`) and the modern
   bigint-by-default convention. Only affects newly generated code; existing
   tables are untouched. See the upgrade guide.
+- **BREAKING: test request helpers take `impl AsyncFnOnce`.** `request`,
+  `request_with_config`, `request_with_create_db`, and
+  `request_config_with_create_db` now use `impl AsyncFnOnce(TestServer,
+  AppContext)` instead of `F, Fut` generic bounds — call them as
+  `request::<App>(...)` (drop the `, _, _` turbofish). Generated tests already
+  use the new form. ([#1657](https://github.com/loco-rs/loco/pull/1657))
 - **Priority queues.** Background jobs now support a priority (higher runs
   first). New `Worker::perform_later_with_priority(ctx, args, Some(prio))`;
   `Queue::enqueue` gains a priority argument; mailer jobs default to priority
