@@ -125,6 +125,23 @@ them to relate to older `i32`-keyed tables, make the key types match (either
 widen the old ones with a migration, or hand-edit the new `id`/foreign-key
 fields back to `i32`).
 
+### `loco_rs::Error` is now `#[non_exhaustive]`
+
+The framework's `Error` enum is marked `#[non_exhaustive]` so new variants can be
+added in the future without a breaking change. If you `match` on `loco_rs::Error`
+(or `loco_rs::prelude::Error`) exhaustively, add a wildcard arm:
+
+```rust
+match err {
+    Error::NotFound => { /* ... */ }
+    // ...handle the variants you care about...
+    _ => { /* fallback */ }
+}
+```
+
+Most apps use `Result<T>` / `?` and never match on `Error` directly, so no change
+is needed.
+
 ## Upgrade from 0.15.x to 0.16.x
 
 ### Use `AppContext` instead of `Config` in `init_logger` in the `Hooks` trait

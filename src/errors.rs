@@ -28,6 +28,7 @@ impl From<serde_json::Error> for Error {
 }
 
 #[derive(thiserror::Error, Debug)]
+#[non_exhaustive]
 pub enum Error {
     #[error("{inner}\n{backtrace}")]
     WithBacktrace {

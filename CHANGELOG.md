@@ -13,6 +13,10 @@
   Required by Sea-ORM 2.0 (SQLite integers map to `i64`) and the modern
   bigint-by-default convention. Only affects newly generated code; existing
   tables are untouched. See the upgrade guide.
+- **BREAKING: `loco_rs::Error` is now `#[non_exhaustive]`.** Future error
+  variants can be added without a breaking change. If you `match` on `Error`
+  exhaustively, add a wildcard `_ => ...` arm. Removed the dead `loco-cli` crate
+  (superseded by `loco-new`, the published `loco` binary).
 - **BREAKING: Dependency modernization.** Major bumps across the tree:
   `thiserror` 1→2, `tower` 0.4→0.5, `heck` unified to 0.5, `byte-unit` 4→5,
   `ipnetwork` 0.20→0.21, `strum` 0.26→0.27, `redis` 0.31→1, `bb8-redis`
