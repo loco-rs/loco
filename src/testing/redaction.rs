@@ -70,11 +70,10 @@ pub fn get_cleanup_mail() -> &'static Vec<(&'static str, &'static str)> {
 /// ```rust,ignore
 /// use myapp::app::App;
 /// use loco_rs::testing::prelude::*;
-/// use migration::Migrator;
 ///
 /// #[tokio::test]
 /// async fn test_create_user() {
-///     let boot = boot_test::<App, Migrator>().await;
+///     let boot = boot_test::<App>().await;
 ///
 ///     // Create a user and save into the database.
 ///

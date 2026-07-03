@@ -71,7 +71,7 @@ pub struct Workers {
 #[derive(Clone, Default, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum WorkerMode {
     /// Workers operate asynchronously in the background, processing queued
-    /// tasks. **Requires a Redis connection**.
+    /// tasks. Requires a configured queue backend (Redis, Postgres, or SQLite).
     #[default]
     BackgroundQueue,
     /// Workers operate in the foreground in the same process and block until

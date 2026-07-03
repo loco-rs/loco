@@ -305,14 +305,14 @@ pub trait Hooks: Send {
     ///
     /// With DB:
     /// ```rust,ignore
-    /// async fn boot(mode: StartMode, environment: &str, config: Config) -> Result<BootResult> {
+    /// async fn boot(mode: StartMode, environment: &Environment, config: Config) -> Result<BootResult> {
     ///     create_app::<Self, Migrator>(mode, environment, config).await
     /// }
     /// ````
     ///
     /// Without DB:
     /// ```rust,ignore
-    /// async fn boot(mode: StartMode, environment: &str, config: Config) -> Result<BootResult> {
+    /// async fn boot(mode: StartMode, environment: &Environment, config: Config) -> Result<BootResult> {
     ///     create_app::<Self>(mode, environment, config).await
     /// }
     /// ````

@@ -682,9 +682,13 @@ async fn create_table_impl(
             };
             stmt.col(col_type.to_def(Alias::new(&nz_ref_name)));
         }
-        // Set FK actions based on nullability
+        // Set FK actions based on nullability.
+        // Name the constraint from the child table to the referenced (parent)
+        // table so it matches `add_reference`/`remove_reference`
+        // (`fk-{child}-{ref}-to-{parent}`); otherwise a FK created here could not
+        // be dropped by `remove_reference`.
         let mut fk = sea_query::ForeignKey::create();
-        fk.name(format!("fk-{nz_from_table}-{nz_ref_name}-to-{nz_table}"));
+        fk.name(format!("fk-{nz_table}-{nz_ref_name}-to-{nz_from_table}"));
         fk.from(Alias::new(&nz_table), Alias::new(&nz_ref_name));
         fk.to(Alias::new(nz_from_table), Alias::new("id"));
         if is_nullable {

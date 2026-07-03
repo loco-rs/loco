@@ -127,6 +127,7 @@ impl From<RequestConfig> for TestServerConfig {
         Self {
             default_content_type: request_config.default_content_type,
             save_cookies: request_config.save_cookies,
+            default_scheme: Some(request_config.default_scheme),
             ..Default::default()
         }
     }

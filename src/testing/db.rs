@@ -22,11 +22,10 @@ use tree_fs::TreeBuilder;
 /// ```rust,ignore
 /// use myapp::app::App;
 /// use loco_rs::testing::prelude::*;
-/// use migration::Migrator;
 ///
 /// #[tokio::test]
 /// async fn test_create_user() {
-///     let boot = boot_test::<App, Migrator>().await;
+///     let boot = boot_test::<App>().await;
 ///     seed::<App>(&boot.app_context).await.unwrap();
 ///
 ///     /// .....
