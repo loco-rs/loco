@@ -104,63 +104,59 @@ static NONBLOCKING_WORK_GUARD_KEEP: OnceLock<WorkerGuard> = OnceLock::new();
 pub fn init<H: Hooks>(config: &config::Logger) -> Result<()> {
     let mut layers: Vec<Box<dyn Layer<Registry> + Sync + Send>> = Vec::new();
 
-    if let Some(file_appender_config) = config.file_appender.as_ref() {
-        if file_appender_config.enable {
-            let dir = file_appender_config
-                .dir
-                .as_ref()
-                .map_or_else(|| "./logs".to_string(), ToString::to_string);
+    if let Some(file_appender_config) = config.file_appender.as_ref()
+        && file_appender_config.enable
+    {
+        let dir = file_appender_config
+            .dir
+            .as_ref()
+            .map_or_else(|| "./logs".to_string(), ToString::to_string);
 
-            let mut rolling_builder = tracing_appender::rolling::Builder::default()
-                .max_log_files(file_appender_config.max_log_files);
+        let mut rolling_builder = tracing_appender::rolling::Builder::default()
+            .max_log_files(file_appender_config.max_log_files);
 
-            rolling_builder = match file_appender_config.rotation {
-                Rotation::Minutely => {
-                    rolling_builder.rotation(tracing_appender::rolling::Rotation::MINUTELY)
-                }
-                Rotation::Hourly => {
-                    rolling_builder.rotation(tracing_appender::rolling::Rotation::HOURLY)
-                }
-                Rotation::Daily => {
-                    rolling_builder.rotation(tracing_appender::rolling::Rotation::DAILY)
-                }
-                Rotation::Never => {
-                    rolling_builder.rotation(tracing_appender::rolling::Rotation::NEVER)
-                }
-            };
+        rolling_builder = match file_appender_config.rotation {
+            Rotation::Minutely => {
+                rolling_builder.rotation(tracing_appender::rolling::Rotation::MINUTELY)
+            }
+            Rotation::Hourly => {
+                rolling_builder.rotation(tracing_appender::rolling::Rotation::HOURLY)
+            }
+            Rotation::Daily => rolling_builder.rotation(tracing_appender::rolling::Rotation::DAILY),
+            Rotation::Never => rolling_builder.rotation(tracing_appender::rolling::Rotation::NEVER),
+        };
 
-            let file_appender = rolling_builder
-                .filename_prefix(
-                    file_appender_config
-                        .filename_prefix
-                        .as_ref()
-                        .map_or_else(String::new, ToString::to_string),
-                )
-                .filename_suffix(
-                    file_appender_config
-                        .filename_suffix
-                        .as_ref()
-                        .map_or_else(String::new, ToString::to_string),
-                )
-                .build(dir)
-                .map_err(Error::msg)?;
+        let file_appender = rolling_builder
+            .filename_prefix(
+                file_appender_config
+                    .filename_prefix
+                    .as_ref()
+                    .map_or_else(String::new, ToString::to_string),
+            )
+            .filename_suffix(
+                file_appender_config
+                    .filename_suffix
+                    .as_ref()
+                    .map_or_else(String::new, ToString::to_string),
+            )
+            .build(dir)
+            .map_err(Error::msg)?;
 
-            let file_appender_layer = if file_appender_config.non_blocking {
-                let (non_blocking_file_appender, work_guard) =
-                    tracing_appender::non_blocking(file_appender);
-                NONBLOCKING_WORK_GUARD_KEEP
-                    .set(work_guard)
-                    .map_err(|_| Error::string("cannot lock for appender"))?;
-                init_layer(
-                    non_blocking_file_appender,
-                    &file_appender_config.format,
-                    false,
-                )
-            } else {
-                init_layer(file_appender, &file_appender_config.format, false)
-            };
-            layers.push(file_appender_layer);
-        }
+        let file_appender_layer = if file_appender_config.non_blocking {
+            let (non_blocking_file_appender, work_guard) =
+                tracing_appender::non_blocking(file_appender);
+            NONBLOCKING_WORK_GUARD_KEEP
+                .set(work_guard)
+                .map_err(|_| Error::string("cannot lock for appender"))?;
+            init_layer(
+                non_blocking_file_appender,
+                &file_appender_config.format,
+                false,
+            )
+        } else {
+            init_layer(file_appender, &file_appender_config.format, false)
+        };
+        layers.push(file_appender_layer);
     }
 
     if config.enable {

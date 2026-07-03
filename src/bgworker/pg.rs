@@ -151,32 +151,32 @@ impl JobRegistry {
                         debug!(job_id = %job.id, job_name = %job.name, "Processing job");
                         if let Some(handler) = handlers.get(&job.name) {
                             match handler(job.id.clone(), job.data.clone()).await {
-                                Ok(()) => {
-                                    if let Err(err) =
-                                        complete_job(&pool, &job.id, job.interval).await
-                                    {
+                                Ok(()) => match complete_job(&pool, &job.id, job.interval).await {
+                                    Err(err) => {
                                         error!(
                                             error = %err,
                                             job_id = %job.id,
                                             job_name = %job.name,
                                             "Failed to mark job as completed"
                                         );
-                                    } else {
+                                    }
+                                    _ => {
                                         debug!(job_id = %job.id, "Job completed successfully");
                                     }
-                                }
-                                Err(err) => {
-                                    if let Err(fail_err) = fail_job(&pool, &job.id, &err).await {
+                                },
+                                Err(err) => match fail_job(&pool, &job.id, &err).await {
+                                    Err(fail_err) => {
                                         error!(
                                             error = %fail_err,
                                             job_id = %job.id,
                                             job_name = %job.name,
                                             "Failed to mark job as failed"
                                         );
-                                    } else {
+                                    }
+                                    _ => {
                                         debug!(job_id = %job.id, error = %err, "Job execution failed");
                                     }
-                                }
+                                },
                             }
                         } else {
                             error!(job_name = %job.name, "No handler registered for job");
@@ -331,7 +331,7 @@ async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>>
 
     // Base query
     let mut query = String::from(
-        "SELECT id, name, task_data, status, run_at, interval, tags, priority FROM pg_loco_queue WHERE status = $1 AND run_at <= NOW() "
+        "SELECT id, name, task_data, status, run_at, interval, tags, priority FROM pg_loco_queue WHERE status = $1 AND run_at <= NOW() ",
     );
 
     // Apply tag filtering logic
@@ -513,16 +513,16 @@ pub async fn clear_jobs_older_than(
 
     query_builder.push_bind(age_days);
 
-    if let Some(status_list) = status {
-        if !status_list.is_empty() {
-            let status_in = status_list
-                .iter()
-                .map(|s| format!("'{s}'"))
-                .collect::<Vec<String>>()
-                .join(",");
+    if let Some(status_list) = status
+        && !status_list.is_empty()
+    {
+        let status_in = status_list
+            .iter()
+            .map(|s| format!("'{s}'"))
+            .collect::<Vec<String>>()
+            .join(",");
 
-            query_builder.push(format!(" AND status IN ({status_in})"));
-        }
+        query_builder.push(format!(" AND status IN ({status_in})"));
     }
 
     debug!(age_days = age_days, status = ?status, "Clearing older jobs");

@@ -105,15 +105,20 @@ mod tests {
     fn test_resolve_env() {
         let original = env::var("LOCO_ENV");
 
-        env::remove_var(LOCO_ENV);
-        env::remove_var(RAILS_ENV);
-        env::remove_var(NODE_ENV);
+        // SAFETY: test-local env setup; no other thread reads the environment during this test.
+        unsafe { env::remove_var(LOCO_ENV) };
+        // SAFETY: test-local env setup; no other thread reads the environment during this test.
+        unsafe { env::remove_var(RAILS_ENV) };
+        // SAFETY: test-local env setup; no other thread reads the environment during this test.
+        unsafe { env::remove_var(NODE_ENV) };
         assert_eq!(resolve_from_env(), "development");
-        env::set_var("LOCO_ENV", "custom");
+        // SAFETY: test-local env setup; no other thread reads the environment during this test.
+        unsafe { env::set_var("LOCO_ENV", "custom") };
         assert_eq!(resolve_from_env(), "custom");
 
         if let Ok(v) = original {
-            env::set_var(LOCO_ENV, v);
+            // SAFETY: test-local env setup; no other thread reads the environment during this test.
+            unsafe { env::set_var(LOCO_ENV, v) };
         }
     }
 

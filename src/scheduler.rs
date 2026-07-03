@@ -278,10 +278,10 @@ impl Scheduler {
                     return name == job_name;
                 }
 
-                if let Some(tag) = &include_jobs.tag {
-                    if let Some(job_tags) = &job.tags {
-                        return job_tags.contains(tag);
-                    }
+                if let Some(tag) = &include_jobs.tag
+                    && let Some(job_tags) = &job.tags
+                {
+                    return job_tags.contains(tag);
                 }
 
                 true

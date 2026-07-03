@@ -202,11 +202,11 @@ pub fn assert_attribute_eq(html: &str, selector: &str, attribute: &str, expected
     let mut found = false;
 
     for element in document.select(&parsed_selector) {
-        if let Some(attr_value) = element.value().attr(attribute) {
-            if attr_value == expected_value {
-                found = true;
-                break;
-            }
+        if let Some(attr_value) = element.value().attr(attribute)
+            && attr_value == expected_value
+        {
+            found = true;
+            break;
         }
     }
 
@@ -563,6 +563,11 @@ mod tests {
             select(html, ".some-class"),
             vec!["<div class=\"some-class\">Some content here</div>"]
         );
-        assert_eq!(select(html, "ul"), vec!["<ul id=\"posts\">\n                <li>Post 1</li>\n                <li>Post 2</li>\n                <li>Post 3</li>\n            </ul>"]);
+        assert_eq!(
+            select(html, "ul"),
+            vec![
+                "<ul id=\"posts\">\n                <li>Post 1</li>\n                <li>Post 2</li>\n                <li>Post 3</li>\n            </ul>"
+            ]
+        );
     }
 }

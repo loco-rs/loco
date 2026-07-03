@@ -3,11 +3,11 @@ members = ["xtask", "loco-gen"]
 exclude = ["starters"]
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
 # MSRV floor raised for Sea-ORM 2.0 + sqlx 0.9. The 2.0 stable target is 1.85,
 # but the current 2.0.0-rc.41 / sqlx 0.9 dep tree requires rustc 1.94 — so we
 # pin 1.94 honestly for now and re-evaluate down to 1.85 when 2.0.0 ships stable.
-# Edition stays 2021 (moving Loco to edition 2024 is separate modernization).
+# Edition 2024 needs rustc >= 1.85, satisfied by the 1.94 floor above.
 rust-version = "1.94"
 license = "Apache-2.0"
 

@@ -53,14 +53,14 @@ pub async fn readiness(State(ctx): State<AppContext>) -> (StatusCode, Response) 
     }
 
     // Check queue connection
-    if let Some(queue) = &ctx.queue_provider {
-        if let Err(error) = queue.ping().await {
-            tracing::error!(err.msg = %error, err.detail = ?error, "readiness_queue_ping_error");
-            return (
-                StatusCode::SERVICE_UNAVAILABLE,
-                format::json(Health { ok: false }).into_response(),
-            );
-        }
+    if let Some(queue) = &ctx.queue_provider
+        && let Err(error) = queue.ping().await
+    {
+        tracing::error!(err.msg = %error, err.detail = ?error, "readiness_queue_ping_error");
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            format::json(Health { ok: false }).into_response(),
+        );
     }
 
     // Check cache connection

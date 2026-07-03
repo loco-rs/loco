@@ -264,7 +264,7 @@ impl tera::Function for FormField {
             _ => {
                 return Err(tera::Error::msg(format!(
                     "rust_type: `{rust_type}` not implemented"
-                )))
+                )));
             }
         };
 

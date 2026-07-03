@@ -442,27 +442,27 @@ async fn complete_job_with_conn(
     let processing_key = format!("{PROCESSING_KEY_PREFIX}{queue_name}");
 
     let job_json: Option<String> = conn.get(&job_key).await?;
-    if let Some(json) = job_json {
-        if let Ok(mut job) = Job::from_json(&json) {
-            if let Some(interval) = interval_ms {
-                job.run_at = Utc::now() + chrono::Duration::milliseconds(interval);
-                job.status = JobStatus::Queued;
-                let new_json = job.to_json()?;
-                let queue_key = format!("{QUEUE_KEY_PREFIX}{queue_name}");
-                let score = calculate_score(job.priority);
-                let _: () = redis::pipe()
-                    .set(&job_key, &new_json)
-                    .zadd(&queue_key, id, score)
-                    .query_async(conn)
-                    .await?;
-            } else {
-                job.status = JobStatus::Completed;
-                job.updated_at = Some(Utc::now());
-                let updated_json = job.to_json()?;
-                let _: () = conn.set(&job_key, &updated_json).await?;
-            }
-            let _: () = conn.srem(&processing_key, id).await?;
+    if let Some(json) = job_json
+        && let Ok(mut job) = Job::from_json(&json)
+    {
+        if let Some(interval) = interval_ms {
+            job.run_at = Utc::now() + chrono::Duration::milliseconds(interval);
+            job.status = JobStatus::Queued;
+            let new_json = job.to_json()?;
+            let queue_key = format!("{QUEUE_KEY_PREFIX}{queue_name}");
+            let score = calculate_score(job.priority);
+            let _: () = redis::pipe()
+                .set(&job_key, &new_json)
+                .zadd(&queue_key, id, score)
+                .query_async(conn)
+                .await?;
+        } else {
+            job.status = JobStatus::Completed;
+            job.updated_at = Some(Utc::now());
+            let updated_json = job.to_json()?;
+            let _: () = conn.set(&job_key, &updated_json).await?;
         }
+        let _: () = conn.srem(&processing_key, id).await?;
     }
     Ok(())
 }
@@ -477,15 +477,15 @@ async fn fail_job_with_conn(
     let processing_key = format!("{PROCESSING_KEY_PREFIX}{queue_name}");
 
     let job_json: Option<String> = conn.get(&job_key).await?;
-    if let Some(json) = job_json {
-        if let Ok(mut job) = Job::from_json(&json) {
-            let error_json = serde_json::json!({ "error": error.to_string() });
-            job.data = error_json;
-            job.status = JobStatus::Failed;
-            job.updated_at = Some(Utc::now());
-            let updated_json = job.to_json()?;
-            let _: () = conn.set(&job_key, &updated_json).await?;
-        }
+    if let Some(json) = job_json
+        && let Ok(mut job) = Job::from_json(&json)
+    {
+        let error_json = serde_json::json!({ "error": error.to_string() });
+        job.data = error_json;
+        job.status = JobStatus::Failed;
+        job.updated_at = Some(Utc::now());
+        let updated_json = job.to_json()?;
+        let _: () = conn.set(&job_key, &updated_json).await?;
     }
     let _: () = conn.srem(&processing_key, id).await?;
     Ok(())
@@ -539,12 +539,11 @@ pub async fn get_jobs(
         for job_id in job_ids {
             let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
             let job_json: Option<String> = conn.get(&job_key).await?;
-            if let Some(json) = job_json {
-                if let Ok(job) = Job::from_json(&json) {
-                    if should_include_job(&job, status, age_days) {
-                        jobs.push(job);
-                    }
-                }
+            if let Some(json) = job_json
+                && let Ok(job) = Job::from_json(&json)
+                && should_include_job(&job, status, age_days)
+            {
+                jobs.push(job);
             }
         }
     }
@@ -556,15 +555,15 @@ pub async fn get_jobs(
             // Get the job from the job_key using the ID
             let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
             let job_json: Option<String> = conn.get(&job_key).await?;
-            if let Some(json) = job_json {
-                if let Ok(mut job) = Job::from_json(&json) {
-                    // Jobs in processing sets have status "queued" but should be "processing"
-                    if job.status == JobStatus::Queued {
-                        job.status = JobStatus::Processing;
-                    }
-                    if should_include_job(&job, status, age_days) {
-                        jobs.push(job);
-                    }
+            if let Some(json) = job_json
+                && let Ok(mut job) = Job::from_json(&json)
+            {
+                // Jobs in processing sets have status "queued" but should be "processing"
+                if job.status == JobStatus::Queued {
+                    job.status = JobStatus::Processing;
+                }
+                if should_include_job(&job, status, age_days) {
+                    jobs.push(job);
                 }
             }
         }
@@ -575,17 +574,17 @@ pub async fn get_jobs(
 
 // Helper function to check if a job matches the filter criteria
 fn should_include_job(job: &Job, status: Option<&Vec<JobStatus>>, age_days: Option<i64>) -> bool {
-    if let Some(status_list) = status {
-        if !status_list.contains(&job.status) {
-            return false;
-        }
+    if let Some(status_list) = status
+        && !status_list.contains(&job.status)
+    {
+        return false;
     }
-    if let Some(age_days) = age_days {
-        if let Some(created_at) = job.created_at {
-            let cutoff_date = Utc::now() - chrono::Duration::days(age_days);
-            if created_at > cutoff_date {
-                return false;
-            }
+    if let Some(age_days) = age_days
+        && let Some(created_at) = job.created_at
+    {
+        let cutoff_date = Utc::now() - chrono::Duration::days(age_days);
+        if created_at > cutoff_date {
+            return false;
         }
     }
     true
@@ -633,13 +632,12 @@ pub async fn clear_by_status(client: &RedisPool, status: Vec<JobStatus>) -> Resu
         for job_id in job_ids {
             let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
             let job_json: Option<String> = conn.get(&job_key).await?;
-            if let Some(json) = job_json {
-                if let Ok(job) = Job::from_json(&json) {
-                    if status.contains(&job.status) {
-                        let _: () = conn.lrem(&queue_key, 1, &job_id).await?;
-                        let _: () = conn.del(&job_key).await?;
-                    }
-                }
+            if let Some(json) = job_json
+                && let Ok(job) = Job::from_json(&json)
+                && status.contains(&job.status)
+            {
+                let _: () = conn.lrem(&queue_key, 1, &job_id).await?;
+                let _: () = conn.del(&job_key).await?;
             }
         }
     }
@@ -649,15 +647,15 @@ pub async fn clear_by_status(client: &RedisPool, status: Vec<JobStatus>) -> Resu
         for job_id in job_ids {
             let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
             let job_json: Option<String> = conn.get(&job_key).await?;
-            if let Some(json) = job_json {
-                if let Ok(mut job) = Job::from_json(&json) {
-                    if job.status == JobStatus::Queued {
-                        job.status = JobStatus::Processing;
-                    }
-                    if status.contains(&job.status) {
-                        let _: () = conn.srem(&processing_key, &job_id).await?;
-                        let _: () = conn.del(&job_key).await?;
-                    }
+            if let Some(json) = job_json
+                && let Ok(mut job) = Job::from_json(&json)
+            {
+                if job.status == JobStatus::Queued {
+                    job.status = JobStatus::Processing;
+                }
+                if status.contains(&job.status) {
+                    let _: () = conn.srem(&processing_key, &job_id).await?;
+                    let _: () = conn.del(&job_key).await?;
                 }
             }
         }
@@ -665,12 +663,11 @@ pub async fn clear_by_status(client: &RedisPool, status: Vec<JobStatus>) -> Resu
 
     for job_key in job_keys {
         let job_json: Option<String> = conn.get(&job_key).await?;
-        if let Some(json) = job_json {
-            if let Ok(job) = Job::from_json(&json) {
-                if status.contains(&job.status) {
-                    let _: () = conn.del(&job_key).await?;
-                }
-            }
+        if let Some(json) = job_json
+            && let Ok(job) = Job::from_json(&json)
+            && status.contains(&job.status)
+        {
+            let _: () = conn.del(&job_key).await?;
         }
     }
 
@@ -724,15 +721,15 @@ pub async fn clear_jobs_older_than(
         for job_id in job_ids {
             let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
             let job_json: Option<String> = conn.get(&job_key).await?;
-            if let Some(json) = job_json {
-                if let Ok(job) = Job::from_json(&json) {
-                    let should_remove = job.created_at.is_some_and(|created_at| {
-                        created_at < cutoff_date && status.is_none_or(|s| s.contains(&job.status))
-                    });
-                    if should_remove {
-                        let _: () = conn.lrem(&queue_key, 1, &job_id).await?;
-                        let _: () = conn.del(&job_key).await?;
-                    }
+            if let Some(json) = job_json
+                && let Ok(job) = Job::from_json(&json)
+            {
+                let should_remove = job.created_at.is_some_and(|created_at| {
+                    created_at < cutoff_date && status.is_none_or(|s| s.contains(&job.status))
+                });
+                if should_remove {
+                    let _: () = conn.lrem(&queue_key, 1, &job_id).await?;
+                    let _: () = conn.del(&job_key).await?;
                 }
             }
         }
@@ -743,18 +740,18 @@ pub async fn clear_jobs_older_than(
         for job_id in job_ids {
             let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
             let job_json: Option<String> = conn.get(&job_key).await?;
-            if let Some(json) = job_json {
-                if let Ok(mut job) = Job::from_json(&json) {
-                    if job.status == JobStatus::Queued {
-                        job.status = JobStatus::Processing;
-                    }
-                    let should_remove = job.created_at.is_some_and(|created_at| {
-                        created_at < cutoff_date && status.is_none_or(|s| s.contains(&job.status))
-                    });
-                    if should_remove {
-                        let _: () = conn.srem(&processing_key, &job_id).await?;
-                        let _: () = conn.del(&job_key).await?;
-                    }
+            if let Some(json) = job_json
+                && let Ok(mut job) = Job::from_json(&json)
+            {
+                if job.status == JobStatus::Queued {
+                    job.status = JobStatus::Processing;
+                }
+                let should_remove = job.created_at.is_some_and(|created_at| {
+                    created_at < cutoff_date && status.is_none_or(|s| s.contains(&job.status))
+                });
+                if should_remove {
+                    let _: () = conn.srem(&processing_key, &job_id).await?;
+                    let _: () = conn.del(&job_key).await?;
                 }
             }
         }
@@ -762,14 +759,14 @@ pub async fn clear_jobs_older_than(
 
     for job_key in job_keys {
         let job_json: Option<String> = conn.get(&job_key).await?;
-        if let Some(json) = job_json {
-            if let Ok(job) = Job::from_json(&json) {
-                let should_remove = job.created_at.is_some_and(|created_at| {
-                    created_at < cutoff_date && status.is_none_or(|s| s.contains(&job.status))
-                });
-                if should_remove {
-                    let _: () = conn.del(&job_key).await?;
-                }
+        if let Some(json) = job_json
+            && let Ok(job) = Job::from_json(&json)
+        {
+            let should_remove = job.created_at.is_some_and(|created_at| {
+                created_at < cutoff_date && status.is_none_or(|s| s.contains(&job.status))
+            });
+            if should_remove {
+                let _: () = conn.del(&job_key).await?;
             }
         }
     }
@@ -813,25 +810,25 @@ pub async fn requeue(client: &RedisPool, age_minutes: &i64) -> Result<()> {
         for job_id in job_ids {
             let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
             let job_json: Option<String> = conn.get(&job_key).await?;
-            if let Some(json) = job_json {
-                if let Ok(mut job) = Job::from_json(&json) {
-                    let should_requeue = if let Some(updated_at) = job.updated_at {
-                        updated_at < cutoff_time
-                    } else if let Some(created_at) = job.created_at {
-                        created_at < cutoff_time
-                    } else {
-                        false
-                    };
-                    if should_requeue {
-                        job.status = JobStatus::Queued;
-                        job.updated_at = Some(Utc::now());
-                        let updated_json = job.to_json()?;
-                        let score = calculate_score(job.priority);
-                        let _: () = conn.srem(&processing_key, &job_id).await?;
-                        let _: () = conn.set(&job_key, &updated_json).await?;
-                        let _: () = conn.zadd(&queue_key, &job_id, score).await?;
-                        *requeued_counts.entry(queue_name.clone()).or_insert(0) += 1;
-                    }
+            if let Some(json) = job_json
+                && let Ok(mut job) = Job::from_json(&json)
+            {
+                let should_requeue = if let Some(updated_at) = job.updated_at {
+                    updated_at < cutoff_time
+                } else if let Some(created_at) = job.created_at {
+                    created_at < cutoff_time
+                } else {
+                    false
+                };
+                if should_requeue {
+                    job.status = JobStatus::Queued;
+                    job.updated_at = Some(Utc::now());
+                    let updated_json = job.to_json()?;
+                    let score = calculate_score(job.priority);
+                    let _: () = conn.srem(&processing_key, &job_id).await?;
+                    let _: () = conn.set(&job_key, &updated_json).await?;
+                    let _: () = conn.zadd(&queue_key, &job_id, score).await?;
+                    *requeued_counts.entry(queue_name.clone()).or_insert(0) += 1;
                 }
             }
         }
@@ -851,23 +848,23 @@ pub async fn requeue(client: &RedisPool, age_minutes: &i64) -> Result<()> {
         for job_id in job_ids {
             let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
             let job_json: Option<String> = conn.get(&job_key).await?;
-            if let Some(json) = job_json {
-                if let Ok(mut job) = Job::from_json(&json) {
-                    let should_requeue = if let Some(updated_at) = job.updated_at {
-                        updated_at < cutoff_time && job.status == JobStatus::Failed
-                    } else {
-                        false
-                    };
-                    if should_requeue {
-                        job.status = JobStatus::Queued;
-                        job.updated_at = Some(Utc::now());
-                        let updated_json = job.to_json()?;
-                        let score = calculate_score(job.priority);
-                        let _: () = conn.srem(&failed_key, &job_id).await?;
-                        let _: () = conn.set(&job_key, &updated_json).await?;
-                        let _: () = conn.zadd(&queue_key, &job_id, score).await?;
-                        *requeued_counts.entry(queue_name.clone()).or_insert(0) += 1;
-                    }
+            if let Some(json) = job_json
+                && let Ok(mut job) = Job::from_json(&json)
+            {
+                let should_requeue = if let Some(updated_at) = job.updated_at {
+                    updated_at < cutoff_time && job.status == JobStatus::Failed
+                } else {
+                    false
+                };
+                if should_requeue {
+                    job.status = JobStatus::Queued;
+                    job.updated_at = Some(Utc::now());
+                    let updated_json = job.to_json()?;
+                    let score = calculate_score(job.priority);
+                    let _: () = conn.srem(&failed_key, &job_id).await?;
+                    let _: () = conn.set(&job_key, &updated_json).await?;
+                    let _: () = conn.zadd(&queue_key, &job_id, score).await?;
+                    *requeued_counts.entry(queue_name.clone()).or_insert(0) += 1;
                 }
             }
         }
@@ -907,21 +904,21 @@ pub async fn cancel_jobs_by_name(client: &RedisPool, job_name: &str) -> Result<(
         for job_id in job_ids {
             let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
             let job_json: Option<String> = conn.get(&job_key).await?;
-            if let Some(json) = job_json {
-                if let Ok(mut job) = Job::from_json(&json) {
-                    if job.name == job_name && job.status == JobStatus::Queued {
-                        job.status = JobStatus::Cancelled;
-                        job.updated_at = Some(Utc::now());
-                        let updated_json = job.to_json()?;
-                        let _: () = conn.lrem(&queue_key, 1, &job_id).await?;
-                        let _: () = conn.set(&job_key, &updated_json).await?;
-                        let cancelled_key = format!(
-                            "cancelled:{}",
-                            queue_key.trim_start_matches(QUEUE_KEY_PREFIX)
-                        );
-                        let _: () = conn.sadd(&cancelled_key, &job_id).await?;
-                    }
-                }
+            if let Some(json) = job_json
+                && let Ok(mut job) = Job::from_json(&json)
+                && job.name == job_name
+                && job.status == JobStatus::Queued
+            {
+                job.status = JobStatus::Cancelled;
+                job.updated_at = Some(Utc::now());
+                let updated_json = job.to_json()?;
+                let _: () = conn.lrem(&queue_key, 1, &job_id).await?;
+                let _: () = conn.set(&job_key, &updated_json).await?;
+                let cancelled_key = format!(
+                    "cancelled:{}",
+                    queue_key.trim_start_matches(QUEUE_KEY_PREFIX)
+                );
+                let _: () = conn.sadd(&cancelled_key, &job_id).await?;
             }
         }
     }

@@ -189,7 +189,7 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
             return Err(DbErr::BackendNotSupported {
                 db: bk.as_str(),
                 ctx: "connect",
-            })
+            });
         }
     }
 
@@ -790,7 +790,7 @@ pub async fn get_tables(db: &DatabaseConnection) -> AppResult<Vec<String>> {
                 db: bk.as_str(),
                 ctx: "get_tables",
             }
-            .into())
+            .into());
         }
     };
 
@@ -810,13 +810,14 @@ pub async fn get_tables(db: &DatabaseConnection) -> AppResult<Vec<String>> {
                 _ => unreachable!(),
             };
 
-            if let Ok(table_name) = row.try_get::<String>("", col) {
-                if IGNORED_TABLES.contains(&table_name.as_str()) {
-                    return None;
+            match row.try_get::<String>("", col) {
+                Ok(table_name) => {
+                    if IGNORED_TABLES.contains(&table_name.as_str()) {
+                        return None;
+                    }
+                    Some(table_name)
                 }
-                Some(table_name)
-            } else {
-                None
+                _ => None,
             }
         })
         .collect())
@@ -896,11 +897,11 @@ pub async fn dump_tables(
     tracing::info!(tables = ?tables, "found tables");
 
     for table in tables {
-        if let Some(ref only_tables) = only_tables {
-            if !only_tables.contains(&table) {
-                tracing::info!(table, "skipping table as it is not in the specified list");
-                continue;
-            }
+        if let Some(ref only_tables) = only_tables
+            && !only_tables.contains(&table)
+        {
+            tracing::info!(table, "skipping table as it is not in the specified list");
+            continue;
         }
 
         tracing::info!(table, "get table data");
@@ -979,12 +980,11 @@ pub async fn dump_tables(
                     .ok();
 
                 if let Some(mut value) = value_result {
-                    if boolean_columns.contains(&col_name) {
-                        if let serde_json::Value::Number(num) = &value {
-                            if let Some(i) = num.as_i64() {
-                                value = serde_json::Value::Bool(i != 0);
-                            }
-                        }
+                    if boolean_columns.contains(&col_name)
+                        && let serde_json::Value::Number(num) = &value
+                        && let Some(i) = num.as_i64()
+                    {
+                        value = serde_json::Value::Bool(i != 0);
                     }
 
                     row_data.insert(col_name, value);
@@ -1080,7 +1080,7 @@ pub async fn dump_schema(ctx: &AppContext, fname: &str) -> crate::Result<()> {
                 db: db.as_str(),
                 ctx: "dump_schema",
             }
-            .into())
+            .into());
         }
     };
     // Serialize schema info to JSON format

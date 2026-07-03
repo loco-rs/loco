@@ -832,7 +832,7 @@ pub async fn add_reference(
             return Err(DbErr::BackendNotSupported {
                 db: bk.as_str(),
                 ctx: "add_reference",
-            })
+            });
         }
     }
     Ok(())
@@ -885,7 +885,7 @@ pub async fn remove_reference(
             return Err(DbErr::BackendNotSupported {
                 db: bk.as_str(),
                 ctx: "remove_reference",
-            })
+            });
         }
     }
     Ok(())

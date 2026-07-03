@@ -102,7 +102,7 @@ impl Mappings {
     pub fn rust_field_with_params(&self, field: &str, params: &Vec<String>) -> Result<&str> {
         match field {
             "array" | "array^" | "array!" => {
-                if let RustType::Map(ref map) = self.rust_field_kind(field)? {
+                if let RustType::Map(map) = self.rust_field_kind(field)? {
                     if let [single] = params.as_slice() {
                         let keys: Vec<&String> = map.keys().collect();
                         Ok(map
@@ -498,7 +498,7 @@ pub fn copy_template(path: &Path, to: &Path) -> Result<Vec<PathBuf>> {
                 return Err(Error::Message(format!(
                     "could not get parent folder of {}",
                     copy_to.display()
-                )))
+                )));
             }
         }
 

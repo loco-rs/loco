@@ -289,8 +289,8 @@ pub async fn check_db(config: &crate::config::Database) -> Check {
 
 /// Checks the Redis connection.
 pub async fn check_queue(config: &Config) -> Check {
-    if let Ok(Some(queue)) = bgworker::create_queue_provider(config).await {
-        match queue.ping().await {
+    match bgworker::create_queue_provider(config).await {
+        Ok(Some(queue)) => match queue.ping().await {
             Ok(()) => Check {
                 status: CheckStatus::Ok,
                 message: format!("{}: {}", queue.describe(), QUEUE_CONN_OK),
@@ -301,13 +301,12 @@ pub async fn check_queue(config: &Config) -> Check {
                 message: format!("{}: {}", queue.describe(), QUEUE_CONN_FAILED),
                 description: Some(err.to_string()),
             },
-        }
-    } else {
-        Check {
+        },
+        _ => Check {
             status: CheckStatus::NotConfigure,
             message: QUEUE_NOT_CONFIGURED.to_string(),
             description: None,
-        }
+        },
     }
 }
 

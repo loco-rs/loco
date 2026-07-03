@@ -366,7 +366,10 @@ pub async fn create_context<H: Hooks>(
     config: Config,
 ) -> Result<AppContext> {
     if config.logger.pretty_backtrace {
-        std::env::set_var("RUST_BACKTRACE", "1");
+        // SAFETY: `create_context` runs during boot, before the server or any
+        // background-worker threads are spawned, so no other thread is reading
+        // or writing the environment concurrently.
+        unsafe { std::env::set_var("RUST_BACKTRACE", "1") };
         warn!(
             "pretty backtraces are enabled (this is great for development but has a runtime cost \
              for production. disable with `logger.pretty_backtrace` in your config yaml)"
@@ -599,10 +602,10 @@ fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
     if config.stub {
         return Ok(Some(EmailSender::stub()));
     }
-    if let Some(smtp) = config.smtp.as_ref() {
-        if smtp.enable {
-            return Ok(Some(EmailSender::smtp(smtp)?));
-        }
+    if let Some(smtp) = config.smtp.as_ref()
+        && smtp.enable
+    {
+        return Ok(Some(EmailSender::smtp(smtp)?));
     }
     Ok(None)
 }

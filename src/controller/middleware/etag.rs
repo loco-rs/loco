@@ -91,15 +91,14 @@ where
         let res_fut = async move {
             let response = future.await?;
             let etag_from_response = response.headers().get(ETAG).cloned();
-            if let Some(etag_in_request) = ifnm {
-                if let Some(etag_from_response) = etag_from_response {
-                    if etag_in_request == etag_from_response {
-                        return Ok(Response::builder()
-                            .status(StatusCode::NOT_MODIFIED)
-                            .body(Body::empty())
-                            .unwrap());
-                    }
-                }
+            if let Some(etag_in_request) = ifnm
+                && let Some(etag_from_response) = etag_from_response
+                && etag_in_request == etag_from_response
+            {
+                return Ok(Response::builder()
+                    .status(StatusCode::NOT_MODIFIED)
+                    .body(Body::empty())
+                    .unwrap());
             }
             Ok(response)
         };

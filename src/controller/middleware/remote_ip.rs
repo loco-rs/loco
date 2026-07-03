@@ -276,8 +276,7 @@ where
         let xff_ip = maybe_get_forwarded(req.headers(), layer.trusted_proxies.as_ref());
         let remote_ip = xff_ip.map_or_else(
             || {
-                let ip = req
-                    .extensions()
+                req.extensions()
                     .get::<ConnectInfo<SocketAddr>>()
                     .map_or_else(
                         || {
@@ -288,8 +287,7 @@ where
                             RemoteIP::None
                         },
                         |info| RemoteIP::Socket(info.ip()),
-                    );
-                ip
+                    )
             },
             RemoteIP::Forwarded,
         );

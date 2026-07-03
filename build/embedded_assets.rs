@@ -275,10 +275,10 @@ pub fn generate_asset_code(
             if processed.contains(key) {
                 continue;
             }
-            if let Some(parent) = parent {
-                if processed.contains(parent) {
-                    level_templates.push(key.clone());
-                }
+            if let Some(parent) = parent
+                && processed.contains(parent)
+            {
+                level_templates.push(key.clone());
             }
         }
 
