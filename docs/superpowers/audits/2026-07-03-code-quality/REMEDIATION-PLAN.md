@@ -24,6 +24,11 @@ then Opus review before commit.
   regression surface; belong in their own brainstorm→spec→plan cycle, not a hardening sweep.*
 - **#12 visibility-timeout reaper.** *New feature (needs timeout config + per-backend design), not a bug fix.*
 - **#13 test-db cleanup race.** *Subtle async-in-Drop change to test infra; low blast radius, defer to the DRY cycle.*
+- **H11 doctor `ureq`+`semver` (dropped, governor override of the audit rec).** *On reading the real code:
+  `doctor.rs` already uses `semver` and shells out to `cargo search` (no HTTP client), and `reqwest` is
+  dev-only. The only real limitation is that `cargo search` can't see pre-release versions. Fixing that via
+  `ureq` would add a NEW runtime HTTP+TLS dependency to every Loco binary for a dev-time advisory check —
+  the exact dep-bloat KPI7 warns against. Proven-feasible ≠ worth-it. Left as-is.*
 
 ## Dependency changes (Opus applies centrally to avoid Cargo.toml merge churn)
 - add `url = "2"` (transitive via sqlx → no new download) — T1
