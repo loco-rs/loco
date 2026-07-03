@@ -7,6 +7,7 @@ draft = false
 weight = 12
 sort_by = "weight"
 template = "docs/page.html"
+aliases = ["/docs/the-app/views/"]
 
 [extra]
 lead = ""

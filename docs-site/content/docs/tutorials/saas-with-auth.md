@@ -181,7 +181,7 @@ $ curl -X POST -H "Content-Type: application/json" \
 
 ## Next
 
-- [Authentication](@/docs/extras/authentication.md) — the full endpoint-by-endpoint reference: forgot/reset password, email verification, magic links, and API-key auth as an alternative to JWTs.
+- [Protect a Route with JWT](@/docs/how-to/jwt-auth.md) — the full endpoint-by-endpoint reference: forgot/reset password, email verification, magic links, and API-key auth as an alternative to JWTs.
 - [Configuration reference](@/docs/reference/configuration.md) — every `auth:` and `mailer:` YAML key.
 - [The Tour](@/docs/tutorials/the-tour.md) — if you haven't yet, see models, workers, and tasks covered end to end.
 - [Add a model](@/docs/how-to/add-model.md) — keep building out `notes` (or your own resource) with relations and validation.

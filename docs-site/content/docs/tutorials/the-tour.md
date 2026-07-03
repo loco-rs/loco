@@ -7,6 +7,7 @@ draft = false
 weight = 2
 sort_by = "weight"
 template = "docs/page.html"
+aliases = ["/docs/getting-started/tour/"]
 
 [extra]
 lead = ""
@@ -216,7 +217,7 @@ pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> R
 
 Because you generated this app with `--bg async`, `workers.mode` in `config/development.yaml` is `BackgroundAsync` — the job runs in-process, no extra `--worker` process needed. Restart with `cargo loco start`, `POST` a new post, and watch the worker's `println!` appear in the same terminal.
 
-Async-in-process is a development convenience. For a real deployment you'd typically move to a Redis-, Postgres-, or SQLite-backed queue and run workers as their own process(es) with `cargo loco start --worker`; see [Workers](@/docs/processing/workers.md) for the async-vs-queue tradeoff.
+Async-in-process is a development convenience. For a real deployment you'd typically move to a Redis-, Postgres-, or SQLite-backed queue and run workers as their own process(es) with `cargo loco start --worker`; see [Add a background worker](@/docs/how-to/add-worker.md) for the async-vs-queue tradeoff.
 
 ## Tasks: a one-off, run from the CLI
 
@@ -264,7 +265,7 @@ $ cargo loco task posts_report
 done: 1 posts
 ```
 
-Tasks are compiled into your app binary and are environment-aware (`cargo loco task posts_report -e production` runs against production config) — a safer alternative to ad-hoc SQL against a live database. Tasks can also be triggered on a schedule; see [Tasks](@/docs/processing/task.md) and [Scheduler](@/docs/processing/scheduler.md).
+Tasks are compiled into your app binary and are environment-aware (`cargo loco task posts_report -e production` runs against production config) — a safer alternative to ad-hoc SQL against a live database. Tasks can also be triggered on a schedule; see [Write a one-off task](@/docs/how-to/write-task.md) and [Schedule recurring jobs](@/docs/how-to/schedule-jobs.md).
 
 ## See everything you just wired
 
@@ -279,4 +280,4 @@ lists every route across every controller — the scaffolded `posts` CRUD, the h
 - [Build a small authenticated app](@/docs/tutorials/saas-with-auth.md) — use that bundled auth suite for real: register, log in, and protect a route with a JWT.
 - [Add a model](@/docs/how-to/add-model.md) and [Generators & field types](@/docs/reference/generators.md) — the full field-type mini-language you saw a slice of here.
 - [Schema & ColType DSL](@/docs/reference/schema-dsl.md) — every column type the migration DSL supports.
-- [Workers](@/docs/processing/workers.md), [Tasks](@/docs/processing/task.md), [Scheduler](@/docs/processing/scheduler.md) — the full picture behind this tour's background-job and task sections.
+- [Add a background worker](@/docs/how-to/add-worker.md), [Write a one-off task](@/docs/how-to/write-task.md), [Schedule recurring jobs](@/docs/how-to/schedule-jobs.md) — the full picture behind this tour's background-job and task sections.

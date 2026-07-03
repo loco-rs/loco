@@ -7,6 +7,7 @@ draft = false
 weight = 1
 sort_by = "weight"
 template = "docs/page.html"
+aliases = ["/docs/the-app/models/"]
 
 [extra]
 lead = ""
@@ -129,4 +130,4 @@ assert_eq!(post.title, "hello");
 ## Next
 
 - [Query data](@/docs/how-to/query-data.md) with the `ConditionBuilder` DSL.
-- [Add relationships and validation](@/docs/the-app/models.md) beyond a single table.
+- [Foreign-key relationships](@/docs/reference/schema-dsl.md#table-level-operations) and [request/model validation](@/docs/how-to/validate-requests.md) beyond a single table.

@@ -7,6 +7,7 @@ draft = false
 weight = 7
 sort_by = "weight"
 template = "docs/page.html"
+aliases = ["/docs/getting-started/axum-users/"]
 
 [extra]
 lead = ""
@@ -14,7 +15,7 @@ toc = true
 top = false
 +++
 
-If you already know [Axum](https://crates.io/crates/axum), you already know most of Loco — the framework compiles down to a real `axum::Router<AppContext>`, uses the same `FromRequestParts`/`FromRequest` extractor model, and pins Axum 0.8. This page is about the delta: what Loco pre-wires on top, and how the concepts you already have a mental model for (extractors, `State`, the `Router`) map onto Loco's names for the same things. For a hands-on walk through moving a real Axum codebase over, see [Axum vs Loco](@/docs/getting-started/axum-users.md); for the request lifecycle these concepts sit inside, see [Architecture](@/docs/explanation/architecture.md).
+If you already know [Axum](https://crates.io/crates/axum), you already know most of Loco — the framework compiles down to a real `axum::Router<AppContext>`, uses the same `FromRequestParts`/`FromRequest` extractor model, and pins Axum 0.8. This page is about the delta: what Loco pre-wires on top, and how the concepts you already have a mental model for (extractors, `State`, the `Router`) map onto Loco's names for the same things, plus the mechanics of moving a real Axum codebase over; for the request lifecycle these concepts sit inside, see [Architecture](@/docs/explanation/architecture.md).
 
 ## The core claim: nothing is hidden, a lot is pre-decided
 

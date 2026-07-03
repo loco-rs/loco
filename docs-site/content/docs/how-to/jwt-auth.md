@@ -7,6 +7,7 @@ draft = false
 weight = 40
 sort_by = "weight"
 template = "docs/page.html"
+aliases = ["/docs/extras/authentication/"]
 
 [extra]
 lead = ""

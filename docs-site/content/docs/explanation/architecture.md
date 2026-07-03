@@ -7,6 +7,7 @@ draft = false
 weight = 2
 sort_by = "weight"
 template = "docs/page.html"
+aliases = ["/docs/the-app/your-project/"]
 
 [extra]
 lead = ""
@@ -110,10 +111,10 @@ Once boot finishes, `AppRoutes::to_router` has compiled your routes plus the mid
 
 So the coding/config order and the runtime order are opposites: routes are added first (they become the innermost core of the onion — the thing every layer eventually wraps), and the *last* middleware added (`powered_by`, at the bottom of the default list) is the *first* thing an inbound request actually passes through. `request_id` is deliberately near the end of the list (so it's near the *outside* at runtime) precisely because every request needs its ID assigned as early in its life as possible.
 
-This matters practically whenever you reach for `Routes::layer(...)` to attach a `tower::Layer` to one controller, or override `Hooks::middlewares` to reorder the default stack — get the direction backwards and a middleware that's supposed to run before authentication ends up running after it. The full ordered list, with each middleware's config key and default-enabled state, is in the [middleware catalog reference](@/docs/reference/middleware.md); [extras/pluggability.md](@/docs/extras/pluggability.md) shows how to hand-write a `tower::Layer` middleware of your own that participates in the same onion.
+This matters practically whenever you reach for `Routes::layer(...)` to attach a `tower::Layer` to one controller, or override `Hooks::middlewares` to reorder the default stack — get the direction backwards and a middleware that's supposed to run before authentication ends up running after it. The full ordered list, with each middleware's config key and default-enabled state, is in the [middleware catalog reference](@/docs/reference/middleware.md); [Add middleware § 5](@/docs/how-to/add-middleware.md#5-write-a-custom-middleware) shows how to hand-write a `tower::Layer` middleware of your own that participates in the same onion.
 
 ## Where this leaves the handler
 
 By the time your handler runs, it's just a normal Axum handler function taking normal Axum extractors (`State<AppContext>`, `Json<T>`, `Path<T>`, and so on — nothing Loco-specific is required). The response side of the onion is symmetric: your `impl IntoResponse` (or Loco's `format::` helpers) produces a `Response`, which then unwinds back out through the same middleware stack in reverse, each layer getting a chance to post-process it (compression, headers, logging the outcome) before it leaves the process.
 
-For the mechanics of how routes get their axum `Router<AppContext>` shape (`AppRoutes`, `Routes`, prefixing, nesting) see [`the-app/controller.md`](@/docs/the-app/controller.md); for how this whole model maps onto plain Axum concepts you already know, see [Coming from Axum](@/docs/explanation/coming-from-axum.md).
+For the mechanics of how routes get their axum `Router<AppContext>` shape (`AppRoutes`, `Routes`, prefixing, nesting) see [Add a controller](@/docs/how-to/add-controller.md); for how this whole model maps onto plain Axum concepts you already know, see [Coming from Axum](@/docs/explanation/coming-from-axum.md).

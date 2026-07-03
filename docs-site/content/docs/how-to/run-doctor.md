@@ -83,7 +83,7 @@ This complements the [configuration reference](@/docs/reference/configuration.md
 
 ## 5. Add your own checks
 
-If you ship a custom [`Initializer`](@/docs/extras/pluggability.md#initializers), implement its `check` method and `doctor` will pick it up automatically — no extra wiring needed:
+If you ship a custom [`Initializer`](@/docs/how-to/add-middleware.md), implement its `check` method and `doctor` will pick it up automatically — no extra wiring needed:
 
 ```rust
 use loco_rs::doctor::{Check, CheckStatus};

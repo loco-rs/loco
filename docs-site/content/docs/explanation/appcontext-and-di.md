@@ -45,7 +45,7 @@ The full field-by-field reference — types, feature gates, purpose — lives in
 
 `AppContext`'s eight fields cover what *every* Loco app needs. They obviously can't cover what *your* app needs — a third-party API client, a feature-flag SDK handle, an app-specific cache of precomputed data. Two options exist, and they aren't in tension, they're the same design carried into two different lifecycles:
 
-- **`Initializer`** (see [`extras/pluggability.md`](@/docs/extras/pluggability.md)) is the *install-time* extension point: a trait with `before_run`, `after_routes`, and `check` hooks, used to wire a whole piece of infrastructure into the app (register an Axum `Extension`, mount a session layer, install a doctor health check).
+- **`Initializer`** (see [Add middleware](@/docs/how-to/add-middleware.md)) is the *install-time* extension point: a trait with `before_run`, `after_routes`, and `check` hooks, used to wire a whole piece of infrastructure into the app (register an Axum `Extension`, mount a session layer, install a doctor health check).
 - **`SharedStore`** is the *storage* extension point: a place to actually hold a value of a type Loco has never heard of, so it can be read back out in a handler, a worker, or anywhere else `AppContext` reaches.
 
 In practice they compose: you typically construct the value you want to share and call `ctx.shared_store.insert(..)` from inside `Hooks::after_context` (the same hook that runs once, right after the context is built), then read it back with the extractor below.
@@ -90,4 +90,4 @@ The alternative designs are familiar from other ecosystems — a service locator
 
 `SharedStore` is intentionally closer to "a typed, thread-safe `HashMap<TypeId, Box<dyn Any>>` you're handed for free" than a general DI framework — it doesn't manage lifecycles, doesn't resolve dependencies between the things you store, and doesn't enforce a registration order. That's the trade: less power, but no new mental model to learn, and it composes with ordinary Rust ownership rather than working around it. For most apps, "stash a client in `after_context`, extract it with `SharedStore<T>`" is the entire pattern.
 
-See the [AppContext & prelude reference](@/docs/reference/app-context.md) for the exhaustive field/method signatures, and [`extras/pluggability.md`](@/docs/extras/pluggability.md) for a worked example (a clonable and a non-clonable service, inserted in `after_context`, read back both ways).
+See the [AppContext & prelude reference](@/docs/reference/app-context.md) for the exhaustive field/method signatures, and [Add middleware](@/docs/how-to/add-middleware.md) for a related worked example (a custom `MiddlewareLayer`/`Initializer`-style extension wired into the app).

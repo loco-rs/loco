@@ -7,6 +7,7 @@ draft = false
 weight = 24
 sort_by = "weight"
 template = "docs/page.html"
+aliases = ["/docs/processing/mailers/"]
 
 [extra]
 lead = ""

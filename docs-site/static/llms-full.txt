@@ -1,33 +1,46 @@
-# Loco — full reference for building apps (0.17.x)
+# Loco — full reference for building apps (1.0.x)
 
 This is a complete, single-file guide for building **Loco** (loco.rs)
 applications, sized for large-context models. Loco is an all-in-one,
-batteries-included Rust web framework — "Rails for Rust". One binary and one set
-of conventions give you routing, a Sea-ORM database layer, background jobs, a
-scheduler, mailers, tasks, storage, caching, and testing.
+batteries-included Rust web framework — "Rails for Rust". One binary and one
+set of conventions give you routing, a Sea-ORM database layer, background
+jobs, a scheduler, mailers, tasks, storage, caching, and testing.
 
-Version target: **Loco 0.17.x** — Sea-ORM 2.0, sqlx 0.9, edition 2021,
-64-bit (`i64`) primary keys. Prose docs: https://loco.rs/docs.
+Version target: **Loco 1.0** — Sea-ORM 2.0, sqlx 0.9, **edition 2024** for the
+framework itself (generated apps are still edition 2021), **64-bit (`i64`)**
+primary keys and foreign keys. Prose docs: https://loco.rs/docs.
 
 The prime directive: **Loco already integrates the infrastructure. Prefer its
-built-ins and generators over adding external crates and wiring servers, pools,
-or job runners by hand.** Everything is reached through `AppContext` (`ctx`).
+built-ins and generators over adding external crates and wiring servers,
+pools, or job runners by hand.** Everything is reached through `AppContext`
+(`ctx`).
 
 ---
 
 ## 1. Bootstrapping a project
 
 ```sh
-# install the generator CLI
+# install the generator CLI (a separate binary crate, "loco", not loco-rs)
 cargo install loco
 
-# create an app (interactive wizard: SaaS/API/lightweight, DB, workers, assets)
+# create an app — interactive wizard by default
 loco new
 
-# run it
+# or drive it non-interactively
+loco new -n myapp --db sqlite --bg async --assets serverside --allow-in-git-repo
+
 cd myapp
 cargo loco start
 ```
+
+`loco new` flags (`loco-new/src/bin/main.rs`): `-n/--name`, `--db <sqlite|
+postgres|none>`, `--bg <async|queue|blocking>`, `--assets <serverside|
+clientside|none>`, `--os <linux|windows|macos>`, `-a/--allow-in-git-repo`,
+`-p/--path`. **There is no `-t/--template` and no `-v/--verbose` flag** —
+template choice (SaaS server-rendered, SaaS client-rendered, Rest API,
+Lightweight, Advanced) is interactive-only, selected after the DB/bg/assets
+prompts (or skipped entirely if `--db`+`--bg`+`--assets` are all supplied).
+`--db none` disables DB, auth, and mailer generation in the new app.
 
 A generated app has this shape:
 
@@ -50,70 +63,115 @@ tests/               # request/model/task tests
 assets/ frontend/    # static/SPA (optional)
 ```
 
+Generated apps pin `edition = "2021"` (independent of the framework's own
+edition 2024) and depend on `loco-rs = "1.0"` (dev-mode path override via
+`LOCO_DEV_MODE_PATH` env var).
+
 ## 2. The `Hooks` trait (`src/app.rs`) — the wiring hub
 
-Everything becomes active by being registered here. Generators update this file
-for you; when wiring by hand, this is the file to edit.
+Everything becomes active by being registered here (`impl Hooks for App`,
+typically in `src/app.rs`). Generators update this file for you.
 
-```rust
-use loco_rs::prelude::*;
+**Required** (no default): `app_name() -> &'static str`, `async fn boot(mode:
+StartMode, environment: &Environment, config: Config) -> Result<BootResult>`
+(note: `&Environment`, **not** `&str` — some stale snippets show `&str`),
+`fn routes(_ctx: &AppContext) -> AppRoutes`, `async fn connect_workers(ctx,
+queue: &Queue) -> Result<()>`, `fn register_tasks(tasks: &mut Tasks)`, and
+(only with `with-db`) `async fn truncate(ctx) -> Result<()>` / `async fn
+seed(ctx, path: &Path) -> Result<()>`.
 
-pub struct App;
+**Provided** (override to change behavior):
 
-#[async_trait]
-impl Hooks for App {
-    fn app_name() -> &'static str { env!("CARGO_CRATE_NAME") }
+| Method | Default | Purpose |
+|---|---|---|
+| `app_version()` | `"dev"` | version string reported by `cargo loco version` |
+| `serve(app, ctx, params)` | binds `TcpListener`, `axum::serve(.., app.into_make_service_with_connect_info::<SocketAddr>())` + graceful shutdown → `on_shutdown` | the HTTP serve loop; preserve `into_make_service_with_connect_info` or `remote_ip`/connect-info extraction breaks |
+| `init_logger(ctx) -> Result<bool>` | `Ok(false)` | return `Ok(true)` to suppress Loco's own tracing init and own the stack yourself |
+| `load_config(env) -> Result<Config>` | `env.load()` | override to source config from elsewhere |
+| `before_routes(ctx)` | empty router | install a fallback/pre-middleware handler |
+| `after_routes(router, ctx)` | unchanged | post-process the built router |
+| `initializers(ctx)` | `vec![]` | register `Initializer`s |
+| `middlewares(ctx)` | `middleware::default_middleware_stack(ctx)` | replace the whole middleware stack |
+| `before_run(ctx) -> Result<()>` | no-op | pre-run resource loading (server AND task/job runs) |
+| `after_context(ctx: AppContext) -> Result<AppContext>` | unchanged | the only hook that can replace fields on `AppContext` itself, after db/cache/storage/mailer/queue are wired |
+| `on_shutdown(ctx)` | no-op | graceful-shutdown cleanup |
 
-    fn routes(_ctx: &AppContext) -> AppRoutes {
-        AppRoutes::with_default_routes()
-            .add_route(controllers::posts::routes())
-            .add_route(controllers::auth::routes())
-    }
+`StartMode`: `ServerOnly | ServerAndWorker | ServerAndScheduler | WorkerOnly{tags}
+| WorkerAndScheduler{tags} | All`.
 
-    async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {
-        queue.register(workers::downloader::DownloadWorker::build(ctx)).await?;
-        Ok(())
-    }
+## 3. `AppContext` and the prelude
 
-    fn register_tasks(tasks: &mut Tasks) {
-        tasks.register(tasks::user_report::UserReport);
-    }
+`AppContext` (`#[derive(Clone, FromRef)]`) has **8 fields**, passed to every
+handler/worker/task/initializer:
 
-    // migrations, initializers, truncate/seed for tests, etc.
-}
-```
+| Field | Type | Gate |
+|---|---|---|
+| `environment` | `Environment` | — |
+| `db` | `DatabaseConnection` (Sea-ORM 2.0) | `with-db` (field doesn't exist otherwise) |
+| `queue_provider` | `Option<Arc<bgworker::Queue>>` | — |
+| `config` | `Config` | — |
+| `mailer` | `Option<EmailSender>` | — |
+| `storage` | `Arc<Storage>` | — |
+| `cache` | `Arc<cache::Cache>` | — |
+| `shared_store` | `Arc<SharedStore>` | — |
 
-## 3. `AppContext` — the service hub
+`FromRef` lets a handler extract a single field, e.g. `State<DatabaseConnection>`
+instead of always `State<AppContext>`. Never construct your own DB pool, HTTP
+server, mailer, or job queue — read them from `ctx`.
 
-Passed to handlers, workers, tasks, and initializers. Key fields:
+**`shared_store`** is a `TypeId`-keyed DI container (`insert`, `remove`,
+`get_ref` (borrowed via `RefGuard`), `get` (cloning), `contains`) for stashing
+app-defined services with no dedicated `AppContext` field. Read it back in a
+handler with the extractor `controller::extractor::shared_store::SharedStore<T>(pub
+T)` (`FromRequestParts`, errors `Error::InternalServerError` if `T` was never
+inserted). Two distinct types share the name `SharedStore` — the container
+(`app::SharedStore`) and the extractor — both reachable via the prelude.
 
-- `ctx.db` — Sea-ORM `DatabaseConnection`.
-- `ctx.config` — the loaded per-environment `Config`.
-- `ctx.mailer` — the configured mailer (if enabled).
-- `ctx.storage` — object storage (local/S3/Azure/GCS via OpenDAL).
-- `ctx.cache` — cache (in-memory or Redis).
-- `ctx.queue_provider` — the background-job queue.
-
-Never construct your own DB pool, HTTP server, mailer, or job queue — read them
-from `ctx`.
+`use loco_rs::prelude::*;` brings in: axum plumbing (`Form/Multipart/Path/
+Query/State`, routing verbs, `IntoResponse`/`Response`); `AppContext`,
+`Initializer`, `BackgroundWorker`, `Queue`, `format`, `Json`, `Routes`,
+`Error`/`Result`, `mailer::Mailer`, `Task`/`TaskInfo`,
+`validation::{Validatable, ValidatorTrait}`, `controller::{bad_request,
+not_found, unauthorized}`, `middleware::{Format, RespondTo, RemoteIP}`,
+`extractor::shared_store::SharedStore`, `extractor::validate::{JsonValidate,
+JsonValidateWithMessage}`, `views::{TeraView, ViewEngine, ViewRenderer}`;
+`serde_json::json` aliased as `data`. Feature-gated: `#[cfg(auth_jwt)]` the
+whole `controller::extractor::auth` module (`JWT`, `JWTWithUser`, `ApiToken`,
+`UserClaims`); `#[cfg(with-db)]` Sea-ORM traits (`ActiveModelTrait,
+EntityTrait, Set, ColumnTrait, QueryFilter, ...`), scalar re-exports (`Date,
+DateTimeUtc, Decimal, Uuid`), and `model::{query, Authenticable, ModelError,
+ModelResult}`; `#[cfg(testing)]` `testing::prelude::*`.
 
 ## 4. Models & migrations (Sea-ORM 2.0)
 
 Generate a model (writes a migration and regenerates the entity):
 
 ```sh
-cargo loco generate model posts title:string content:text published:bool user:references
+cargo loco generate model posts title:string! content:text published:bool user:references
 cargo loco db migrate      # apply
 cargo loco db entities     # regenerate entities from the DB schema
 ```
 
-Field types include `string`, `text`, `int`, `big_int`, `bool`, `ts`, `tstz`,
-`uuid`, `decimal`, `json`, `jsonb`, `references` (FK). Suffixes: `!` = required
-(non-null), `^` = unique. **Primary keys and `references` are `i64` (BIGINT) in
-0.17+.**
+**1.0 headline change: `int` is now `i64`/`BIGINT`, not `i32`.** The default
+auto-generated primary key (`ColType::PkAuto`) is a 64-bit `BIGINT`
+(`i64`), and every `references`/FK column generated to match it is
+`BigInteger`/`BigIntegerNull`. Suffixes across the field-type mini-language:
+**(none)** = nullable `Option<T>`, **`!`** = required, **`^`** = unique
+(non-null).
 
-Entities are generated into `src/models/_entities/<name>.rs`. Put custom logic
-in `src/models/<name>.rs`:
+Selected field types (full ~50-entry table in the generators reference):
+`string`/`text` (+`!`/`^`), `small_int`→i16, **`int`/`big_int`→i64 (BIGINT)**,
+`unsigned`/`big_unsigned`→i64, `float`→f32, `double`→f64, `decimal`/`money`
+→Decimal, `decimal_len:p:s` (2 args), `bool` (no `^`), `date`, `date_time`,
+`tstz` (`DateTimeWithTimeZone`, no `^`), `json`/`jsonb`, `blob`,
+`binary_len:n`/`var_binary:n`, `uuid`, `array:<elem>` (e.g. `tags:array:string`
+→ `Option<Vec<String>>`; ⚠ `array:int`'s element stays `i32`, unlike the
+scalar `int`), and `<name>:references[?][:custom_col]` for belongs-to FKs
+(`?` = nullable FK). `--without-tz` (not `--without-timestamps`) skips
+`created_at`/`updated_at`.
+
+Entities are generated into `src/models/_entities/<name>.rs` (**do not
+hand-edit**) — put custom logic in `src/models/<name>.rs`:
 
 ```rust
 use loco_rs::prelude::*;
@@ -132,46 +190,124 @@ impl Model {
 }
 ```
 
-Common queries:
+The entity generator strips a hand-editable `ActiveModelBehavior` stub into
+`src/models/<name>.rs`, and auto-touches `updated_at` in `before_save` when
+the entity has that column.
+
+Common queries and mutations:
 
 ```rust
 Entity::find_by_id(id).one(&ctx.db).await?;                 // Option<Model>
 Entity::find().all(&ctx.db).await?;                         // Vec<Model>
 Entity::find().filter(Column::Published.eq(true)).all(&ctx.db).await?;
 
-let mut item = ActiveModel { title: Set("hi".to_string()), ..Default::default() };
-let item = item.insert(&ctx.db).await?;                     // create
+let item = ActiveModel { title: Set("hi".to_string()), ..Default::default() };
+let item = item.insert(&ctx.db).await?;                      // create
 let mut a = item.into_active_model(); a.title = Set("x".into()); a.update(&ctx.db).await?;
 ```
 
-Pagination returns a `PageResponse<T>` whose metadata is in
-`response.meta` (`meta.page`, `meta.page_size`, `meta.total_pages`,
-`meta.total_items`) in 0.17+.
+### Query DSL (`loco_rs::model::query`, reached as `query::` via the prelude)
 
-Sea-ORM 2.0 note: raw-`Statement` execution uses `_raw`-suffixed methods
-(`execute_raw`, `query_one_raw`, `query_all_raw`). Migrations pass SeaQuery
-statements by reference; the generators emit correct code.
+`ConditionBuilder` — a fluent wrapper over Sea-ORM `Condition`, ~18 operators,
+each available as a free fn `query::<op>(col, ..)` (shorthand for
+`condition().<op>(..)`) and as a chainable method:
+
+```rust
+use loco_rs::prelude::*;
+let cond = query::condition().eq(Column::Id, 1).contains(Column::Name, "loco").build();
+Entity::find().filter(cond).all(&ctx.db).await?;
+```
+
+Operators: `eq`/`ne`, `gt`/`gte`/`lt`/`lte`, `between`/`not_between`,
+`like`/`not_like`, `starts_with`/`ends_with`/`contains`, `is_null`/
+`is_not_null`, `is_in`/`is_not_in`, and `date_range(col)` (returns a
+`DateRangeBuilder`, not `Self`, until `.dates(from,to)`/`.from()`/`.to()`/
+`.build()`). Boundary rule: a single-ended `date_range` is **strict** (`>`/`<`),
+a double-ended one is **inclusive** (`BETWEEN`). `SortDirection {Asc, Desc}`
+has an `.order() -> sea_orm::Order` for `.order_by(col, dir.order())`.
+
+### Pagination
+
+```rust
+let pq = query::PaginationQuery { page: 2, page_size: 20 };          // page is 1-based
+let cond = query::condition().contains(Column::Name, "x").build();
+let res = query::paginate(&ctx.db, Entity::find(), Some(cond), &pq).await?;
+// res.page: Vec<Model>; res.meta: PagerMeta { page, page_size, total_pages, total_items }
+
+// or, for a pre-built selector implementing PaginatorTrait (no separate condition arg):
+let res = query::fetch_page(&ctx.db, Entity::find().order_by_asc(Column::Id), &pq).await?;
+```
+
+`PaginationQuery` defaults `page_size=25, page=1` and deserializes numeric
+query-string params safely via `#[serde(flatten)]` in an axum `Query<T>`
+struct. `PageResponse<T> { page: Vec<T>, meta: PagerMeta }`.
+
+### Migration schema DSL (`loco_rs::schema::*`, `with-db`)
+
+`ColType` (~140 variants) covers every SQL type family (string/text, all
+integer widths, decimal/float/money, bool, date/time/tstz/interval,
+binary/blob, json/jsonb, uuid, varbit, array, enum) with `*Null`/`*Uniq`/
+`*WithDefault`/`*Len` modifiers per family. Table ops (async, take a
+`&SchemaManager`): `create_table`, `create_join_table` (composite PK),
+`create_table_without_timestamps` / `create_join_table_without_timestamps`,
+`add_column`, `remove_column`, `add_reference`, `remove_reference`,
+`drop_table`, `add_enum_values`, `drop_enum_type`. Table names are
+auto-pluralized + snake-cased (`cruet`); FK constraint name is
+`fk-{from}-{ref}-to-{to}`; a `?`-suffixed ref table name (in the `refs` tuple)
+makes the FK nullable → `ON DELETE SET NULL`, else `ON DELETE CASCADE`.
+SQLite cannot add/drop an FK on an existing table (`add_reference`/
+`remove_reference` are documented no-ops there). Postgres auto-creates
+missing enum types; SQLite/MySQL store enums as plain columns.
+
+```rust
+create_table(m, "movies", &[("title", ColType::StringNull)], &[("director", "")]).await?;
+add_reference(m, "movies", "users", "").await?;   // "movies belongs-to users"
+```
+
+### DB config & connection
+
+`database:` YAML keys: `uri`, `enable_logging`, `min_connections`,
+`max_connections`, `connect_timeout`, `idle_timeout`, `acquire_timeout`
+(optional), `auto_migrate` (default false — runs pending migrations on
+boot), `dangerously_truncate`, `dangerously_recreate`, `run_on_start`
+(arbitrary SQL/PRAGMA on connect). If `run_on_start` is unset, SQLite gets
+Loco's own PRAGMA defaults (`foreign_keys=ON`, `journal_mode=WAL`,
+`synchronous=NORMAL`, `mmap_size=134217728`, `journal_size_limit=67108864`,
+`cache_size=2000`, `busy_timeout=5000`).
+
+Seeding: `Hooks::seed(ctx, path)` → `db::seed::<ActiveModel>(&ctx.db,
+path)`. CLI: `db seed [-r/--reset] [-d/--dump] [--dump-tables <csv>] [--from
+<dir>]` (default `src/fixtures`). `db schema` dumps the schema; `IGNORED_TABLES`
+(`seaql_migrations`, `pg_loco_queue`, `sqlt_loco_queue*`) are skipped.
+
+Model-layer errors are distinct from the crate-wide `Error`:
+`ModelError { EntityAlreadyExists, EntityNotFound, Validation(..), Jwt(..)
+(auth_jwt), DbErr(..), Any(..), Message(String) }`, `type ModelResult<T,
+E=ModelError>` — **not** `#[non_exhaustive]`. `loco_rs::Error::Model(#[from]
+ModelError)` converts it at a controller boundary via `?`.
+
+`Authenticable` (implement on your user model for the auth extractors below):
+
+```rust
+pub trait Authenticable: Clone {
+    async fn find_by_api_key(db: &DatabaseConnection, api_key: &str) -> ModelResult<Self>;
+    async fn find_by_claims_key(db: &DatabaseConnection, claims_key: &str) -> ModelResult<Self>;
+}
+```
 
 ## 5. Controllers, routing, extractors, responses
 
 ```rust
 use loco_rs::prelude::*;
-use serde::{Deserialize, Serialize};
 use crate::models::_entities::posts::{ActiveModel, Entity, Model};
-
-#[derive(Deserialize, Serialize)]
-pub struct Params { pub title: String, pub content: Option<String> }
-
-async fn load_item(ctx: &AppContext, id: i64) -> Result<Model> {
-    Entity::find_by_id(id).one(&ctx.db).await?.ok_or_else(|| Error::NotFound)
-}
 
 pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
     format::json(Entity::find().all(&ctx.db).await?)
 }
 
 pub async fn get_one(Path(id): Path<i64>, State(ctx): State<AppContext>) -> Result<Response> {
-    format::json(load_item(&ctx, id).await?)
+    let item = Entity::find_by_id(id).one(&ctx.db).await?.ok_or(Error::NotFound)?;
+    format::json(item)
 }
 
 pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Response> {
@@ -188,24 +324,78 @@ pub fn routes() -> Routes {
 }
 ```
 
-- Handlers are `async fn(...) -> Result<Response>`. Extractors: `State(ctx):
-  State<AppContext>`, `Path(id): Path<i64>`, `Json(body): Json<T>`,
-  `Query(q): Query<T>`, plus Loco's `JsonValidate`/`JsonValidateWithMessage`
-  (validate with the `validator` derive), `RemoteIP`, `SharedStore`, auth
-  extractors (`auth::JWT`, `auth::ApiToken`).
-- Responses: `format::json(x)`, `format::html(s)`, `format::empty()`, or the
-  view layer. Errors: return `Error::NotFound`, `Error::Unauthorized(..)`,
-  `bad_request(..)`, `unauthorized(..)`, etc.
-- Register the `Routes` in `app.rs` `Hooks::routes` via
-  `.add_route(controllers::posts::routes())`.
-- Middleware (CORS, compression, timeouts, secure headers, limits, etc.) is
-  configured in `config/*.yaml` under `server.middlewares`.
+`Routes` also has `.merge(Routes)` / `.merge_all(Vec<Routes>)` and
+`.layer<L>(layer)` (per-route tower layer). `AppRoutes` (built in `Hooks::
+routes`) has `.add_route`, `.add_routes`, `.nest_route`/`.nest_routes`,
+`.prefix`/`.nest_prefix`. `AppRoutes::with_default_routes()` also mounts the
+built-in monitoring routes.
+
+**Extractors:** `State(ctx): State<AppContext>`, `Path`, `Json`, `Query`,
+`Form`, `Multipart`; Loco's `JsonValidate<T>`/`JsonValidateWithMessage<T>`
+(+ `Form`/`Query` variants) for `validator`-derive validation;
+`middleware::RemoteIP` (computed client IP, needs the `remote_ip` middleware
++ `into_make_service_with_connect_info`); `middleware::Format`/`RespondTo`
+(content negotiation); `extractor::shared_store::SharedStore<T>` (DI, §3);
+and the auth extractors `auth::JWT`, `auth::JWTWithUser<T>`, `auth::
+ApiToken<T>` (§12).
+
+**Responses:** `format::json(x)`, `format::html(s)`, `format::text(s)`,
+`format::empty()`/`empty_json()`, `format::yaml(s)`, `format::redirect(url)`,
+`format::view`/`format::template` (Tera), or the chained
+`format::render() -> RenderBuilder` (`.status()`, `.header()`, `.etag()`,
+`.cookies()`, `.redirect_with_header_key()` e.g. `HX-Redirect`, `.response()`
+escape hatch to the raw axum builder). Errors: `Error::NotFound`,
+`Error::Unauthorized(msg)`, `Error::BadRequest(msg)`, `Error::CustomError
+(StatusCode, ErrorDetail)`, or the helper fns `not_found()`, `unauthorized
+(msg)`, `bad_request(msg)`.
+
+**Error → HTTP status map** (`impl IntoResponse for Error`; only 7 variants
+matched explicitly, everything else → 500): `NotFound`→404, `Unauthorized`→401
+(logs the message server-side only), `CustomError`→passthrough, `WithBacktrace`
+→400 (prints backtrace to stdout), `BadRequest`→400, `JsonRejection`→axum's own
+status, `Validation(ModelValidationErrors)`→400 with `{"errors": ..}`; **every
+other variant (DB, Model, IO, Redis, Sqlx, Any, Message, ...) → 500** with
+`{"error":"internal_server_error","description":"Internal Server Error"}`.
+Body shape is always `ErrorDetail { error: Option<String>, description:
+Option<String>, errors: Option<Value> }`, wrapped in Loco's `Json<T>`.
+
+**Monitoring** (auto-mounted by `with_default_routes()`): `GET /_ping` (liveness),
+`GET /_health`, `GET /_readiness` (pings DB/queue/cache; 503 on any failure).
+
+**Middleware** — 13 built-ins under `server.middlewares.<key>` in YAML, all
+implementing `MiddlewareLayer`. Request order is **LIFO**: the framework
+builds the stack `limit_payload → cors → catch_panic → etag → remote_ip →
+compression → timeout_request → static → secure_headers → logger →
+request_id → fallback → powered_by`, then wraps each as an *outer* axum
+layer in that order — so an inbound request actually meets `powered_by`
+first and `limit_payload` last (right before the handler).
+
+| Middleware | Default | Notes |
+|---|---|---|
+| `limit_payload` | on, 2mb | `body_limit: "5mb"` or `"disable"` |
+| `cors` | off | `allow_origins/headers/methods`, `expose_headers` (plural!), `allow_credentials`, `max_age`, `vary` |
+| `catch_panic` | on | 500 instead of a dropped connection |
+| `etag` | on | 304 on `If-None-Match` |
+| `remote_ip` | off | `trusted_proxies` (default RFC-1918 + loopback) |
+| `compression` | off | response body compression |
+| `timeout_request` | off | `timeout` ms, default 5000 |
+| `static` (`static_assets`, key `"static"`) | off | `folder.{uri,path}`, `fallback`, `precompressed`, `cache_control`; swapped for an embedded variant under `embedded_assets` |
+| `secure_headers` | off | `preset` (`github`/`owasp`/`empty`), `overrides` |
+| `logger` | on | request tracing (method/URI/user-agent/request-id) |
+| `request_id` | on | `x-request-id`, exposed as `LocoRequestId` |
+| `fallback` | on outside Production | custom 404/SPA-fallback body (`file`/`not_found`/bundled `fallback.html`) |
+| `powered_by` | on | controlled by `server.ident`, **not** an `enable` flag; empty string disables it |
+
+**Gotcha:** writing a middleware's config key at all (even `{}`) switches from
+the framework's own enabled-by-default value to the struct's `#[serde(default)]`,
+which resolves `enable` to `false` unless you set it explicitly.
+
+`cargo loco middleware [--config]` lists the resolved stack.
 
 ## 6. Background workers
 
 ```rust
 use loco_rs::prelude::*;
-use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DownloadWorkerArgs { pub user_id: i64 }
@@ -215,45 +405,56 @@ pub struct DownloadWorker;
 #[async_trait]
 impl BackgroundWorker<DownloadWorkerArgs> for DownloadWorker {
     fn build(ctx: &AppContext) -> Self { Self }
-    async fn perform(&self, args: DownloadWorkerArgs) -> Result<()> {
-        // do work using services from the captured ctx
-        Ok(())
-    }
+    fn queue() -> Option<String> { None }        // named/priority Redis queue
+    async fn perform(&self, args: DownloadWorkerArgs) -> Result<()> { Ok(()) }
 }
 ```
 
-Enqueue:
+Enqueue — `perform_later`/`perform_later_with_priority` return the **job id**
+(`Result<String>`), not `Result<()>`:
 
 ```rust
 let job_id = DownloadWorker::perform_later(&ctx, DownloadWorkerArgs { user_id }).await?;
-DownloadWorker::perform_later_with_priority(&ctx, args, Some(42)).await?; // higher = sooner
+DownloadWorker::perform_later_with_priority(&ctx, args, Some(100)).await?; // higher = sooner
 ```
 
-- Backends: Postgres (`bg_pg`), SQLite (`bg_sqlt`), Redis (`bg_redis`). Choose
-  via config `workers.mode` (`BackgroundQueue` / `BackgroundAsync` /
-  `ForegroundBlocking`) and `queue.kind`. Register in
-  `Hooks::connect_workers`.
-- **0.17+:** `perform_later` returns the job id (`Result<String>`); priority is
-  supported on all backends (mailer jobs default to `100`); the **Redis backend
-  moved from Lists to Sorted Sets** — drain old Redis queues before upgrading.
-- Run workers: `cargo loco start --worker` (dedicated) or
-  `--server-and-worker`, or `--all`.
+- Backends, all sharing the same API: **Postgres** (`bg_pg`), **SQLite**
+  (`bg_sqlt`), **Redis** (`bg_redis`) — all three on by default. Choose via
+  `workers.mode` (`BackgroundQueue` (default) / `ForegroundBlocking` /
+  `BackgroundAsync`) + `queue.kind`. Register in `Hooks::connect_workers`.
+- **Priority queues work on all three backends**: higher `i32` priority
+  dequeues first; ties break by `run_at` then job id. Postgres/SQLite
+  auto-migrate a `priority` column on existing tables. Redis stores priority
+  in a ZSET score. Mailer jobs default to priority `100`.
+- **Redis fully supports job admin** (cancel/clear/requeue/dump/import/
+  get_jobs) — this is no longer Postgres/SQLite-only.
+- Redis-only: named/priority `queue.queues` list (`Worker::queue()` selects
+  which named queue a job lands in); default queues `["default", "mailer"]`.
+- Run workers: `cargo loco start --worker[=tags]` (dedicated),
+  `--server-and-worker`, `--scheduler` combos, or `--all`.
+- Manage jobs: `cargo loco jobs cancel --name <n> | tidy | purge [--max-age
+  90] [--status ..] [--dump <path>] | dump [-f <dir>] | import -f <file> |
+  requeue [--from-age 0]`.
 
 ## 7. Scheduler
 
-Define in `config/*.yaml`:
+Define in `config/*.yaml` (or a dedicated file via `SCHEDULER_CONFIG`):
 
 ```yaml
 scheduler:
   jobs:
     write_content:
-      run: "echo hello"      # a shell command, or a registered task
+      run: "echo hello"      # a shell command, or a registered task name
       shell: true
-      cron: "*/5 * * * *"
+      cron: "*/5 * * * *"    # English phrases also accepted; 7-field UTC cron
+      run_on_start: false
+      tags: [maintenance]
 ```
 
-Run with `cargo loco scheduler` or `cargo loco start --scheduler` (0.17+ lets
-you run the scheduler without a worker).
+Run with `cargo loco scheduler [--name][--tag][--config <path>][--list]` or
+`cargo loco start --scheduler` (composable with `--worker`/`--server-and-worker`
+via `WorkerAndScheduler`/`ServerAndScheduler`/`All` start modes). Each fire
+spawns a subprocess (`/bin/sh -c`), with `LOCO_ENV` propagated.
 
 ## 8. Mailers
 
@@ -276,19 +477,31 @@ impl AuthMailer {
 }
 ```
 
-Mailer jobs are enqueued (default priority `100`). Configure SMTP in config,
-including implicit TLS:
+Mail is delivered by a background `MailerWorker` (queue name `"mailer"`,
+default priority `100`). `Args`/`Email` support `bcc`, `cc`, and custom
+`headers: EmailHeaders { references, in_reply_to, message_id }` for threading.
+Templates need 3 files per mailer dir: `subject.t`, `html.t`, `text.t`.
+
+**TLS modes override the legacy `secure` bool** — the single most important
+1.0 mailer change:
 
 ```yaml
 mailer:
+  stub: false            # true = capture instead of sending (testing)
   smtp:
+    enable: true
     host: smtp.example.com
     port: 465
-    tls: implicit               # or "starttls" / "none"; secure:true == starttls
+    tls: implicit         # starttls | implicit | none — WINS over `secure` if set
     auth:
       user: "{{ get_env(name='SMTP_USER') }}"
       password: "{{ get_env(name='SMTP_PASSWORD') }}"
+    hello_name: mg.example.com   # optional EHLO client id
 ```
+
+`secure: true` alone only ever selects `starttls` (port 587) — it **cannot**
+express implicit TLS/SMTPS on port 465. If a provider requires port 465, you
+must set `tls: implicit` explicitly.
 
 ## 9. Tasks
 
@@ -303,32 +516,173 @@ impl Task for UserReport {
         TaskInfo { name: "user_report".to_string(), detail: "generate a report".to_string() }
     }
     async fn run(&self, ctx: &AppContext, vars: &task::Vars) -> Result<()> {
-        // full AppContext available
+        let name = vars.cli_arg("name")?; // full AppContext available
         Ok(())
     }
 }
 ```
 
-Register in `Hooks::register_tasks`; run with `cargo loco task user_report`.
+Register in `Hooks::register_tasks`; run with `cargo loco task user_report
+key:value`. Re-registering a name overrides the previous entry.
 
-## 10. Configuration
+## 10. Storage & cache
 
-`config/{development,production,test}.yaml`, selected by `LOCO_ENV`. Read via
-`ctx.config`. Secrets come from the environment through the `get_env` Tera
-helper **inside the YAML**, not scattered `std::env::var` calls. Typical
-sections: `server`, `database`, `queue`, `workers`, `mailer`, `auth`,
-`logger`, `scheduler`, `storage`, `cache`, `settings` (your app-specific
-values).
+`ctx.storage: Arc<Storage>` — a multi-driver abstraction over Apache OpenDAL
+with pluggable strategies and streaming. Default `Null` driver (errors on
+every op); wired via the `after_context` hook, **not** YAML — cloud
+credentials are code, not config.
 
-## 11. Storage & cache
+Drivers (constructors, exact arity):
 
-- `ctx.storage` — unified object storage over OpenDAL: in-memory, filesystem,
-  S3, Azure Blob, GCS. `ctx.storage.upload(path, &bytes).await?`,
-  `.download(path)`, `.delete(path)`, plus streaming.
-- `ctx.cache` — `ctx.cache.get_or_insert(...)`, `.insert`, `.get`, `.remove`;
-  in-memory (moka) or Redis backend.
+| Driver | Constructor | Feature |
+|---|---|---|
+| Local FS | `local::new()` / `new_with_prefix(prefix)` | none |
+| In-memory | `mem::new()` | none |
+| Null (default) | `null::new()` | none |
+| AWS S3 | `aws::new(bucket, region)` / `with_credentials(bucket, region, cred)` / `with_credentials_and_endpoint(..)` | `storage_aws_s3` |
+| Azure Blob | `azure::new(container, account_name, access_key, endpoint)` | `storage_azure` |
+| GCP GCS | `gcp::new(bucket, credential_path)` | `storage_gcp` |
 
-## 12. Testing
+Strategies: `SingleStrategy::new(primary)`, `MirrorStrategy::new(primary,
+secondaries, FailureMode::{MirrorAll, AllowMirrorFailure})`,
+`BackupStrategy::new(primary, secondaries, FailureMode::{BackupAll,
+AllowBackupFailure, AtLeastOneFailure, CountFailure(n)})`.
+
+```rust
+ctx.storage.upload(&path, &bytes).await?;
+ctx.storage.download::<Vec<u8>>(&path).await?;
+ctx.storage.delete(&path).await?;
+
+// streaming — memory-efficient large files, axum Body integration
+let stream = ctx.storage.download_stream(&path).await?;
+Response::builder().body(stream.into_body())?;
+ctx.storage.upload_stream(&path, incoming_body_stream).await?;
+```
+
+The storage trait is `StoreDriver` (not "StorageDriver"). No cloud storage
+feature (`storage_aws_s3`/`storage_azure`/`storage_gcp`/`all_storage`) is on
+by default.
+
+`ctx.cache: Arc<cache::Cache>` — key→JSON cache, default `Null` driver:
+
+```rust
+ctx.cache.get::<T>("key").await?;
+ctx.cache.insert(&"key", &value).await?;
+ctx.cache.insert_with_expiry(&"key", &value, Duration::from_secs(60)).await?;
+ctx.cache.get_or_insert("key", async { compute().await }).await?;
+ctx.cache.get_or_insert_with_expiry("key", Duration::from_secs(60), async { .. }).await?;
+ctx.cache.remove("key").await?;
+ctx.cache.ping().await?;
+ctx.cache.clear().await?;   // Redis: issues FLUSHDB — flushes the WHOLE Redis DB, not just app keys
+```
+
+Backends: `InMem` (moka, `cache_inmem`, on by default, `max_capacity` default
+32 MiB) or `Redis` (`cache_redis`, off by default, `uri` + `max_size` pool).
+
+## 11. Authentication (feature `auth_jwt`)
+
+`auth_jwt` is a **default** feature (pulls `jsonwebtoken` 10 with its
+pure-Rust `rust_crypto` backend — no C toolchain needed). Three extractors in
+`loco_rs::controller::extractor::auth`, re-exported via the prelude:
+
+- **`auth::JWT { claims: UserClaims }`** — validates the token, gives you
+  claims only. Works with no database.
+- **`auth::JWTWithUser<T: Authenticable> { claims, user: T }`** — validates
+  AND loads the user via `T::find_by_claims_key`. Needs `with-db`.
+- **`auth::ApiToken<T: Authenticable> { user: T }`** — reads a bearer key and
+  loads the user via `T::find_by_api_key`. Needs `with-db`. **Always** reads
+  from the `Authorization: Bearer <key>` header — the `location` config does
+  **not** apply to `ApiToken`, only to the two JWT extractors.
+
+```rust
+use loco_rs::prelude::*;
+use loco_rs::controller::extractor::auth;
+
+async fn current(auth: auth::JWTWithUser<users::Model>) -> Result<Response> {
+    format::json(&auth.user)
+}
+```
+
+Config (`auth.jwt` in YAML):
+
+```yaml
+auth:
+  jwt:
+    location:                  # optional, default Bearer
+      from: Bearer              # or {from: Query, name: ..} / {from: Cookie, name: ..}
+    secret: "{{ get_env(name='JWT_SECRET') }}"  # required — MUST be valid base64
+    expiration: 604800          # required, seconds
+```
+
+**Default algorithm is HS512** (not HS256) — a code-only setting
+(`JWT::algorithm(..)`), not a YAML key. **The secret must be valid base64**
+(`from_base64_secret`) — a plain string fails at token-generation/validation
+time, not at config-load time. `location` can be a single map or a list
+(`JWTLocationConfig::Multiple`), tried in order until one yields a token.
+
+Generate a token:
+
+```rust
+let jwt_config = ctx.config.get_jwt_config()?;
+let token = loco_rs::auth::jwt::JWT::new(&jwt_config.secret)
+    .generate_token(jwt_config.expiration, user.pid.to_string(), serde_json::Map::new())?;
+```
+
+`Authenticable` contract user models implement for `JWTWithUser`/`ApiToken`:
+
+```rust
+pub trait Authenticable: Clone {
+    async fn find_by_api_key(db: &DatabaseConnection, api_key: &str) -> ModelResult<Self>;
+    async fn find_by_claims_key(db: &DatabaseConnection, claims_key: &str) -> ModelResult<Self>;
+}
+```
+
+Note on scope: `loco-gen` ships no auth/user template — the full register/
+login/verify/reset-password flow and an `Authenticable` impl live in the SaaS
+starter template chosen via `loco new`, not in the framework itself.
+
+`loco_rs::hash` (Argon2id, always compiled, no feature gate):
+`hash_password(pass) -> Result<String>`, `verify_password(pass, hashed) ->
+bool` (`false` on any error, never surfaces a parse failure), `random_string
+(len) -> String` (alphanumeric — handy for API keys / reset tokens).
+
+## 12. Configuration
+
+`config/{development,production,test}.yaml`, selected by `LOCO_ENV` →
+`RAILS_ENV` → `NODE_ENV` → `"development"`. Per-environment file precedence:
+`{env}.local.yaml` wins over `{env}.yaml` if both exist. Every YAML file is
+rendered as a **Tera template** before parsing — `get_env(name=.., default=..)`
+is Tera's own built-in function, not Loco-registered. Override the config
+folder with `LOCO_CONFIG_FOLDER`.
+
+Top-level keys: `logger` (required), `server` (required), `database`
+(required iff `with-db`), `cache` (optional, default `Null`), `queue`
+(optional), `auth` (optional), `workers` (optional, default `mode:
+BackgroundQueue`), `mailer` (optional), `initializers` (optional free-form
+map), `settings` (optional free-form JSON, your app's own config, at
+`ctx.config.settings`), `scheduler` (optional).
+
+Highlights not shown elsewhere in this file:
+
+- `server.binding` (default `"localhost"`), `server.port`, `server.host`,
+  `server.ident` (overrides the `Server`/`X-Powered-By` header — empty string
+  disables `powered_by`), `server.middlewares` (§5).
+- `logger.level`/`format`/`override_filter` (an `EnvFilter` directive),
+  `logger.pretty_backtrace` (forces `RUST_BACKTRACE=1`), `logger.file_appender`
+  (rotation, dir, max_log_files, ...).
+- `queue.kind: Redis|Postgres|Sqlite`, each with its own knob set (§6);
+  Postgres/SQLite share `db_*`-style defaults (`max_connections=20`,
+  `min_connections=1`, `poll_interval_sec=1`).
+- `cache.kind: InMem|Redis|Null` (default `Null`).
+- Env vars: `LOCO_ENV`/`RAILS_ENV`/`NODE_ENV`, `LOCO_CONFIG_FOLDER`,
+  `LOCO_DATA`, `LOCO_POSTGRES_DB_OPTIONS`, `SCHEDULER_CONFIG`,
+  `RUST_BACKTRACE`. Secrets (JWT secret, SMTP password, DB uri credentials)
+  are plain `String` fields — inject via `{{ get_env(name="...") }}`, never
+  hardcode.
+
+Full exhaustive key-by-key reference: https://loco.rs/docs/reference/configuration/.
+
+## 13. Testing
 
 ```rust
 use loco_rs::testing::prelude::*;
@@ -336,7 +690,7 @@ use loco_rs::testing::prelude::*;
 #[tokio::test]
 #[serial]
 async fn can_list_posts() {
-    request::<App>(|request, _ctx| async move {   // 0.17+: ::<App>, not ::<App, _, _>
+    request::<App>(|request, _ctx| async move {   // single generic: ::<App>, not ::<App, _, _>
         let res = request.get("/api/posts/").await;
         assert_eq!(res.status_code(), 200);
     })
@@ -344,54 +698,178 @@ async fn can_list_posts() {
 }
 ```
 
-- Helpers (0.17+ take `impl AsyncFnOnce`): `request::<App>`,
-  `request_with_config::<App>`, `request_with_create_db::<App>`,
-  `request_config_with_create_db::<App>`.
-- DB tests use `request_with_create_db`, seed via fixtures, and assert with
-  `insta` snapshots. Mark DB tests `#[serial]`.
-- Model/task tests use `boot_test`/`testing::prelude` helpers and a seeded DB.
+- Feature `testing` (off by default; add `axum-test`/`scraper`/`tree-fs`).
+- Boot helpers: `boot_test<H: Hooks>()`, `boot_test_with_create_db::<H>()`
+  (with-db, fresh DB per test, auto-cleaned on drop), `boot_test_unique_port
+  ::<H>(port)`. **`boot_test` takes a single generic `<H>`** — `boot_test::
+  <App, Migrator>()` does not compile.
+- Request helpers: `request::<App>`, `request_with_config::<App>`,
+  `request_with_create_db::<App>` (with-db, fresh DB), `request_config_
+  with_create_db::<App>`. `RequestConfigBuilder` sets `save_cookies`,
+  `default_content_type`, `default_scheme`.
+- DB test support (`testing::db`, with-db): `seed::<App>(&ctx)` (reads
+  `src/fixtures`), `init_test_db_creation`, `PostgresTest`/`SqliteTest`
+  (uniquely-named throwaway DB per run, auto-cleaned).
+- HTML assertions (`testing::selector`, scraper-based): `assert_css_exists`,
+  `assert_css_not_exists`, `assert_css_eq`, `assert_link`,
+  `assert_attribute_exists`/`assert_attribute_eq`, `assert_count`,
+  `assert_css_eq_list`, `select(html, selector)`.
+- Snapshot redaction for `insta` (`testing::redaction`): `cleanup_user_model()`
+  and `cleanup_email()` return filter tables (PID/UUID→`PID`, password→
+  `PASSWORD`, JWT→`TOKEN`, timestamps→`DATE`).
+- Mark DB-backed tests `#[serial]`.
 
-## 13. CLI reference
+## 14. Error model
+
+`pub type Result<T, E = Error> = std::result::Result<T, E>`. `Error` is
+**`#[non_exhaustive]`** — any `match Error { .. }` outside the crate must
+carry a `_ =>` arm. **Removed in 1.0** (do not use): `EnvVar`, `Hash`,
+`SemVer`, `TaskJoinError`. Hashing failures now surface as `Error::Message`
+via `Error::msg(..)`; env-var errors surface as raw `std::env::VarError`
+(not modeled in `Error` at all).
+
+Constructors: `Error::wrap(err)` (any `std::error::Error` → `Error::Any`),
+`Error::msg(err)` (→ `Error::Message(err.to_string())`), `Error::string(s)`,
+`Error::bt(self)` (captures a backtrace only when `RUST_BACKTRACE` is set).
+Free helper fns (all return `Result<U>`, i.e. always `Err`): `unauthorized
+(msg)`, `bad_request(msg)`, `not_found()`.
+
+~30 variants total; feature-gated ones: `DB`/`Model` (`with-db`), `Redis`
+(`bg_redis`), `Sqlx` (`bg_pg`/`bg_sqlt`), `Generators` (`debug_assertions`).
+See §5 for the HTTP status map.
+
+## 15. Feature flags
+
+```toml
+default = ["auth_jwt", "cli", "with-db", "cache_inmem", "bg_redis", "bg_pg", "bg_sqlt"]
+```
+
+| Flag | Default | Enables |
+|---|---|---|
+| `auth_jwt` | ON | JWT extractors/signer; `jsonwebtoken/rust_crypto` |
+| `cli` | ON | the `cargo loco` runtime CLI |
+| `with-db` | ON | Sea-ORM 2.0, `db` CLI subcommand, `model`/`migration`/`scaffold` generators |
+| `testing` | off | `axum-test`/`scraper`/`tree-fs` test harness |
+| `cache_inmem` | ON | in-memory (moka) cache |
+| `cache_redis` | off | Redis cache pool |
+| `bg_redis` / `bg_pg` / `bg_sqlt` | ON | the three background-worker/queue backends |
+| `all_storage` / `storage_aws_s3` / `storage_azure` / `storage_gcp` | off | OpenDAL cloud storage backends |
+| `embedded_assets` | off | embeds `assets/` into the binary; swaps the static-assets middleware AND the Tera view engine for embedded variants |
+| `integration_test` | off | empty test-gating marker |
+
+Interactions: any of `bg_redis`/`bg_pg`/`bg_sqlt` unlocks `cargo loco jobs`.
+`debug_assertions` (not a Cargo feature) gates `generate` and `db entities` —
+unavailable in `--release` builds regardless of features. To trim a DB-less
+app: `loco-rs = { version = "1", default-features = false, features = ["cli"] }`
+(this is exactly what `loco new --db none` emits, plus `bg_redis` if a Redis
+queue was picked).
+
+## 16. CLI reference
+
+`loco new` — see §1. `cargo loco` (built into every generated app):
 
 ```
-cargo loco start [--server-and-worker | --worker | --scheduler | --all]
-cargo loco generate model|scaffold|controller|worker|task|scheduler|mailer|migration|deployment
-cargo loco db migrate|entities|reset|seed|status
-cargo loco task <name> [key:value ...]
-cargo loco scheduler
+cargo loco start [-w/--worker[=tags] | -s/--server-and-worker | -a/--all]
+                  [--scheduler] [-b/--binding] [-p/--port] [-n/--no-banner]
+cargo loco db create|migrate|down [N]|reset|status|entities|truncate|schema
+                  | seed [-r/--reset] [-d/--dump] [--dump-tables <csv>] [--from <dir>]
 cargo loco routes
-cargo loco doctor          # verify environment, DB, and tool versions
+cargo loco middleware [-c/--config]
+cargo loco task [<name>] [key:value ...]
+cargo loco jobs cancel --name <n> | tidy | purge [--max-age 90] [--status ..]
+                 [--dump <p>] | dump [-f <dir>] | import -f <file> | requeue [--from-age 0]
+cargo loco scheduler [-n/--name] [-t/--tag] [-c/--config <path>] [-l/--list]
+cargo loco generate model|migration|scaffold|controller|task|scheduler|worker|
+                 mailer|data|deployment|override ...   # debug builds only
+cargo loco doctor [-c/--config] [-p/--production]
 cargo loco version
+cargo loco watch [-w/--worker[=tags] | -s/--server-and-worker] [--scheduler]
 ```
 
-## 14. Upgrading 0.16 → 0.17 (highlights)
+`start`/`watch`'s `worker`/`server-and-worker`/`all` flags are mutually
+exclusive; `db`/`jobs` subcommands require `with-db`/a `bg_*` feature
+respectively; `generate` requires a debug build. `doctor` checks DB, queue,
+`sea-orm-cli` version, `Cargo.lock` dep versions, and the published crates.io
+version (skipped with `--production`); `--config` instead dumps the resolved
+config and skips checks.
 
-- **Sea-ORM 2.0 + sqlx 0.9** — bump `sea-orm`/`sea-orm-migration` to `2.0` and
-  `sqlx` to `0.9`; update `sea-orm-cli`; regenerate entities. Raw-`Statement`
-  calls gain `_raw`.
-- **64-bit keys** — generated `id`/`references` are now `i64` (BIGINT). Only
-  affects newly generated code; existing tables are untouched.
-- **`perform_later` returns the job id**; new `perform_later_with_priority`.
-- **Priority queues** — Postgres/SQLite auto-migrate a `priority` column; **the
-  Redis backend switched Lists → Sorted Sets (drain old Redis queues first).**
-- **`PageResponse` carries `meta: PagerMeta`** instead of flat fields.
-- **`request::<App>`** — test helpers take `impl AsyncFnOnce` (drop `, _, _`).
-- **`loco_rs::Error` is `#[non_exhaustive]`** — add a `_ =>` arm to exhaustive
-  matches.
-- Dependency majors bumped (thiserror 2, tower 0.5, redis 1, opendal 0.57,
-  etc.); most are transitive for apps. Full details:
-  https://loco.rs/docs/extras/upgrades/.
+## 17. Generators & field types
 
-## 15. Common pitfalls (avoid)
+`cargo loco generate <kind>` (alias `g`), compiled only in debug builds;
+`model`/`migration`/`scaffold` additionally need `with-db`.
 
-- ❌ Adding axum/sqlx/tokio/lettre/a job runner directly and wiring servers/pools
-  by hand → ✅ use `ctx` and generators.
+| Kind | Syntax | Notes |
+|---|---|---|
+| `model` | `model <name> [field:type...] [--without-tz]` | entity + model + migration + tests |
+| `migration` | `migration <name> [field:type...] [--without-tz]` | name-based op inference: `Create<T>`, `Add<Ref>RefTo<T>`, `Add<Cols>To<T>`, `Remove<Cols>From<T>`, `CreateJoinTable<A>And<B>`, else empty stub |
+| `scaffold` | `scaffold <name> [field:type...] (--api\|--html\|--htmx) [--without-tz]` | full CRUD: entity+migration+controller+views(html/htmx)+tests |
+| `controller` | `controller <name> [action...] (--api\|--html\|--htmx)` | controller+routes+tests only |
+| `task` / `worker` / `mailer` / `data` | `<kind> <name>` | stub + auto-registration in `app.rs`/`mod.rs` |
+| `scheduler` | `scheduler` | writes `config/scheduler.yaml` |
+| `deployment` | `deployment docker\|nginx` (**positional**, no `--kind`) | inspects static-assets config + `frontend/package.json` |
+| `override` | `override [template_path] [--info]` | copies a built-in `.t` template into `.loco-templates/` for local customization; no path lists all |
+
+**`scaffold`/`controller` require exactly one of `-k/--kind <api|html|htmx>`,
+`--api`, `--html`, or `--htmx` — there is no default**; omitting all of them
+is a hard CLI error.
+
+Field-type suffixes: (none)=nullable, `!`=required, `^`=unique. Selected
+entries (full ~50-type table on the site): `string`/`text`, `small_int`→i16,
+**`int`/`big_int`→i64 (BIGINT — 1.0 change, was i32)**, `unsigned`/
+`big_unsigned`→i64, `float`→f32, `double`→f64, `decimal`/`money`→Decimal,
+`decimal_len:p:s`, `bool` (no `^`), `date`, `date_time`, `tstz` (no `^`),
+`json`/`jsonb`, `blob`, `binary_len:n`/`var_binary:n`, `uuid`,
+`array:<string|int|big_int|float|double|bool>`, `<name>:references[?][:col]`.
+`created_at`/`updated_at`/`create_at`/`update_at` are auto-added and silently
+skipped if you type them explicitly.
+
+## 18. Upgrading to 1.0 (highlights)
+
+- **Sea-ORM 2.0 + sqlx 0.9** — bump `sea-orm`/`sea-orm-migration` to `2.0`,
+  `sqlx` to `0.9`; regenerate entities; raw-`Statement` execution methods now
+  carry an `_raw` suffix (`execute_raw`, `query_one_raw`, `query_all_raw`).
+- **64-bit keys** — generated `id`/`references` columns and the `int` field
+  type are now `i64`/`BIGINT` (was `i32`). Only affects newly generated
+  code/migrations; existing tables are untouched until you migrate.
+- **Priority queues** on all three worker backends; `perform_later`/
+  `perform_later_with_priority` return the job id (`Result<String>`); Redis
+  admin ops (cancel/clear/requeue/dump/import) now fully supported.
+- **Mailer `tls` modes** (`starttls`/`implicit`/`none`, port 465) override
+  the legacy `secure` bool — required for providers needing implicit TLS.
+- **`auth_jwt`** is the real feature name (not `auth`); default algorithm
+  HS512; secret must be base64; JWT location is configurable
+  (Bearer/Query/Cookie, single or multiple).
+- **`loco_rs::Error` is `#[non_exhaustive]`**, with `EnvVar`/`Hash`/`SemVer`/
+  `TaskJoinError` removed — add a `_ =>` arm to any exhaustive match.
+- **Edition 2024** for the framework — any `std::env::set_var` snippet needs
+  `unsafe {}`. Generated apps remain edition 2021.
+- **`embedded_assets`** swaps the view engine + static-assets middleware for
+  embedded (binary-baked) variants.
+- Test helpers take `impl AsyncFnOnce` — `request::<App>(...)`, not the old
+  `request::<App, _, _>(...)`; `boot_test<H>()` is single-generic, not
+  `boot_test::<App, Migrator>()`.
+
+## 19. Common pitfalls (avoid)
+
+- ❌ Adding axum/sqlx/tokio/lettre/a job runner directly and wiring
+  servers/pools by hand → ✅ use `ctx` and generators.
 - ❌ Hand-editing `_entities/` → ✅ generate via migrations.
-- ❌ `i32` keys / `Path<i32>` → ✅ `i64` in 0.17+.
-- ❌ `request::<App, _, _>` → ✅ `request::<App>`.
-- ❌ Routes not registered in `app.rs` → ✅ return `Routes` and add in `Hooks::routes`.
+- ❌ `i32` keys / `Path<i32>` → ✅ `i64` in 1.0.
+- ❌ `request::<App, _, _>` / `boot_test::<App, Migrator>()` → ✅
+  `request::<App>(...)` / `boot_test::<H>()`.
+- ❌ Routes not registered in `app.rs` → ✅ return `Routes` and add via
+  `Hooks::routes` / `AppRoutes::add_route`.
 - ❌ Custom error enums for app code → ✅ `loco_rs::Result` + `?`.
 - ❌ Ad-hoc `std::env::var` → ✅ YAML config + `ctx.config` + `get_env`.
+- ❌ Assuming `secure: true` covers implicit TLS → ✅ set `tls: implicit`
+  for port 465/SMTPS providers.
+- ❌ Calling the feature `auth` → ✅ it's `auth_jwt`.
+- ❌ Matching `Error` exhaustively without a `_ =>` arm → ✅ required
+  (`#[non_exhaustive]`).
+- ❌ `scaffold`/`controller` with no kind flag → ✅ one of `--api`/`--html`/
+  `--htmx` is mandatory.
+- ❌ Inventing `loco new --template`/`--verbose` → ✅ those flags don't
+  exist; template choice is interactive, verbosity is global `-l/--log`.
 
-When unsure, generate the thing and read the produced code — it is the canonical
-pattern for this version.
+When unsure, generate the thing and read the produced code — it is the
+canonical pattern for this version.

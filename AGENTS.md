@@ -8,27 +8,31 @@ testing. Because it is batteries-included, the single most common failure mode
 for LLMs is **reaching for external crates and hand-wiring infrastructure that
 Loco already provides**. Prefer Loco's built-ins and generators.
 
-This guide targets **Loco 0.17.x** (Sea-ORM 2.0, sqlx 0.9, edition 2021, MSRV
-per the workspace `Cargo.toml`). For prose docs see https://loco.rs/docs, and
-for a single-file reference see https://loco.rs/llms-full.txt.
+This guide targets **Loco 1.0** (Sea-ORM 2.0, sqlx 0.9, edition 2024 for the
+framework itself — generated apps are still edition 2021). For prose docs see
+https://loco.rs/docs, and for a single-file reference see
+https://loco.rs/llms-full.txt.
 
 ## Golden rules
 
 1. **Use the generators.** `cargo loco generate model|scaffold|controller|
-   worker|task|scheduler|mailer|migration ...` writes correct, convention-
-   following code. Generate, then edit — don't hand-write boilerplate.
+   worker|task|scheduler|mailer|migration|deployment|override ...` writes
+   correct, convention-following code. Generate, then edit — don't hand-write
+   boilerplate. `scaffold`/`controller` require exactly one of `--api`/
+   `--html`/`--htmx` (no default; omitting all is a hard error).
 2. **Everything hangs off `AppContext`.** Handlers, workers, tasks, and
-   initializers receive `&AppContext` (`ctx`). `ctx.db` is the Sea-ORM
-   connection; `ctx.config`, `ctx.mailer`, `ctx.storage`, `ctx.cache`,
-   `ctx.queue_provider` are the other services. Do not create your own DB pool,
-   HTTP server, or job queue.
+   initializers receive `&AppContext` (`ctx`), with 8 fields: `db` (`with-db`
+   only), `config`, `mailer`, `storage`, `cache`, `queue_provider`,
+   `shared_store` (a type-keyed DI container), `environment`. Do not create
+   your own DB pool, HTTP server, or job queue.
 3. **`use loco_rs::prelude::*;`** at the top of controllers/models/workers/tasks
    brings in the common types (`AppContext`, `Result`, `Routes`, `Json`,
-   `State`, the Sea-ORM traits, etc.). If a common type is "missing", it is
-   almost always in the prelude.
+   `State`, the Sea-ORM traits, JWT auth extractors under `auth_jwt`, etc.).
+   If a common type is "missing", it is almost always in the prelude.
 4. **`Result<T>` is `loco_rs::Result<T>`** and `Error` is `loco_rs::Error`
-   (now `#[non_exhaustive]` — match with a `_ =>` arm). Use `?`; don't invent
-   your own error enum for app code.
+   (`#[non_exhaustive]` — match with a `_ =>` arm; `EnvVar`/`Hash`/`SemVer`/
+   `TaskJoinError` were removed). Use `?`; don't invent your own error enum
+   for app code.
 5. **Config is YAML per-environment** in `config/*.yaml`, read through
    `ctx.config`. Don't read env vars ad hoc; use the config + `get_env` Tera
    helper inside the YAML.
@@ -57,20 +61,27 @@ assets/ frontend/        # static assets / SPA (optional)
 The `App` type implements the `Hooks` trait in `src/app.rs`. That is where you
 **register** routes, workers, tasks, and initializers — a newly generated
 controller/worker/task is not active until it is wired in there (the generators
-do this for you).
+do this for you). `Hooks::boot`'s second parameter is `environment:
+&Environment` (the enum), not `&str` — copy from generated code, not memory.
 
 ## Models & migrations (Sea-ORM 2.0)
 
-- Generate: `cargo loco generate model posts title:string content:text
+- Generate: `cargo loco generate model posts title:string! content:text
   user:references`. This writes a migration and regenerates the entity.
 - Apply: `cargo loco db migrate`; regenerate entities: `cargo loco db entities`.
-- **Primary and foreign keys are 64-bit (`i64` / BIGINT) in 0.17+.** Generated
-  `id` columns and `references` are `i64`. Match key types when relating tables.
+- **Primary and foreign keys are 64-bit (`i64` / BIGINT) in 1.0.** The `int`
+  field type is also `i64`/BIGINT now (it was `i32` pre-1.0) — match key
+  types when relating tables. `small_int` still maps to `i16` if you need it.
 - Entities live in `src/models/_entities/` and are **generated** — put custom
   logic in `src/models/<name>.rs` (e.g. `ActiveModelBehavior`, finders).
 - Query with Sea-ORM: `Entity::find_by_id(id).one(&ctx.db).await?`,
   `Entity::find().filter(Column::Field.eq(x)).all(&ctx.db).await?`. Create/update
-  via `ActiveModel` + `.insert`/`.update`/`.save`.
+  via `ActiveModel` + `.insert`/`.update`/`.save`. For ad-hoc filters, prefer
+  Loco's `query::condition()...build()` DSL (`eq`, `like`, `contains`,
+  `is_in`, `date_range`, ~18 ops) over hand-rolling `Condition`s.
+- Pagination: `query::paginate(&ctx.db, Entity::find(), Some(condition),
+  &pagination_query).await?` → `PageResponse { page, meta: PagerMeta { page,
+  page_size, total_pages, total_items } }`.
 - Sea-ORM 2.0 note: raw-`Statement` execution methods carry a `_raw` suffix
   (`execute_raw`, `query_one_raw`, `query_all_raw`); most apps never touch these.
 
@@ -99,7 +110,22 @@ pub fn routes() -> Routes {
   return it from `routes()`; register it in `app.rs` `Hooks::routes`.
 - Shape responses with `format::json(...)`, `format::html(...)`, or the view
   layer. Validate request bodies with the `JsonValidate` extractor + `validator`
-  derive.
+  derive. Errors map to HTTP: `NotFound`→404, `Unauthorized`→401,
+  `BadRequest`/`Validation`→400, everything else (DB, IO, etc.)→500.
+
+## Authentication (`auth_jwt`, default feature)
+
+- Feature is named **`auth_jwt`**, not `auth`. Default signing algorithm is
+  **HS512**; `auth.jwt.secret` **must be valid base64** — plain strings fail
+  at token-generate/validate time, not config-load time.
+- Extractors: `auth::JWT` (claims only, no DB needed), `auth::JWTWithUser<T>`
+  (claims + loaded user, needs `with-db`), `auth::ApiToken<T>` (bearer API
+  key → user, needs `with-db`; always reads the `Authorization: Bearer`
+  header regardless of `auth.jwt.location`).
+- `JWTWithUser`/`ApiToken` require your user model to implement
+  `loco_rs::model::Authenticable` (`find_by_api_key`, `find_by_claims_key`).
+- Password hashing: `loco_rs::hash::{hash_password, verify_password,
+  random_string}` (Argon2id, always compiled).
 
 ## Background workers (with priority)
 
@@ -116,15 +142,18 @@ impl BackgroundWorker<DownloadWorkerArgs> for DownloadWorker {
 
 // enqueue (returns the job id):
 let job_id = DownloadWorker::perform_later(&ctx, args).await?;
-// enqueue at a priority (higher runs first):
-DownloadWorker::perform_later_with_priority(&ctx, args, Some(42)).await?;
+// enqueue at a priority (higher runs first), on ANY backend:
+DownloadWorker::perform_later_with_priority(&ctx, args, Some(100)).await?;
 ```
 
-- Backends: Postgres, SQLite, or Redis (config `workers.mode` +
-  `queue.kind`). Register workers in `app.rs` `Hooks::connect_workers`.
-- **0.17+:** `perform_later` returns the job id (`Result<String>`); priority is
-  supported on all backends (mailer jobs default to priority `100`). The Redis
-  backend uses a Sorted Set — drain old Redis queues when upgrading from 0.16.
+- Backends: Postgres, SQLite, or Redis — all three ship by default (config
+  `workers.mode` + `queue.kind`). Register workers in `app.rs`
+  `Hooks::connect_workers`.
+- `perform_later`/`perform_later_with_priority` return the job id
+  (`Result<String>`). Priority (full `i32` range) works on all three
+  backends. Redis fully supports job admin now (cancel/clear/requeue/dump/
+  import) — it is not Postgres/SQLite-only.
+- Manage from the CLI: `cargo loco jobs cancel|tidy|purge|dump|import|requeue`.
 
 ## Scheduler, mailers, tasks
 
@@ -132,18 +161,21 @@ DownloadWorker::perform_later_with_priority(&ctx, args, Some(42)).await?;
   `cargo loco scheduler` or `cargo loco start --scheduler`. Jobs run shell
   commands or registered tasks.
 - **Mailers:** generate with `cargo loco generate mailer`; send with
-  `Mailer::mail(&ctx, &email)`. Templates live under `src/mailers/<name>/`.
-  Configure SMTP (incl. implicit TLS via `mailer.smtp.tls: implicit`) in config.
+  `Mailer::mail`/`mail_template`. Templates live under `src/mailers/<name>/`.
+  Configure SMTP TLS explicitly — `mailer.smtp.tls: starttls|implicit|none`
+  **overrides** the legacy `secure` bool; implicit TLS / port 465 (SMTPS)
+  needs `tls: implicit`, since `secure: true` alone only ever means STARTTLS.
 - **Tasks:** implement the `Task` trait; run with `cargo loco task <name>`.
   Great for admin/data operations that need `AppContext`.
 
 ## Configuration
 
 `config/development.yaml`, `production.yaml`, `test.yaml`. Selected by
-`LOCO_ENV`. Access through `ctx.config`. Secrets come from the environment via
-the `get_env` Tera helper *inside* the YAML, e.g.
-`password: "{{ get_env(name='SMTP_PASSWORD') }}"`. Don't scatter `std::env::var`
-calls through app code.
+`LOCO_ENV` → `RAILS_ENV` → `NODE_ENV` → `development`. `{env}.local.yaml`
+overrides `{env}.yaml` when both exist. Access through `ctx.config`. Secrets
+come from the environment via the `get_env` Tera helper *inside* the YAML,
+e.g. `password: "{{ get_env(name='SMTP_PASSWORD') }}"`. Don't scatter
+`std::env::var` calls through app code.
 
 ## Testing
 
@@ -161,10 +193,15 @@ async fn can_list() {
 }
 ```
 
-- **0.17+:** the request helpers take an `impl AsyncFnOnce` — call
-  `request::<App>(...)` (drop the old `::<App, _, _>` turbofish).
-- Use `request_with_create_db::<App>(...)` for DB-backed tests, seed with
-  fixtures, and snapshot with `insta`. `#[serial]` DB tests that share state.
+- Requires the `testing` feature (off by default in a plain lib dep, on for
+  the generated app's dev-dependencies).
+- Request helpers take an `impl AsyncFnOnce` — call `request::<App>(...)`
+  (drop the old `::<App, _, _>` turbofish). Boot helper `boot_test::<H>()` is
+  **single-generic** (not `boot_test::<App, Migrator>()`).
+- Use `request_with_create_db::<App>(...)` for DB-backed tests (fresh DB,
+  auto-cleaned), seed with fixtures, and snapshot with `insta` (use
+  `testing::redaction::cleanup_user_model()`/`cleanup_email()` filters).
+  `#[serial]` DB tests that share state.
 
 ## Common LLM pitfalls (avoid these)
 
@@ -172,24 +209,38 @@ async fn can_list() {
   wiring a server by hand. ✅ They're already integrated behind Loco — use
   `ctx` and the generators.
 - ❌ Hand-writing entities in `_entities/`. ✅ Generate via migrations.
-- ❌ `i32` primary keys / `Path<i32>`. ✅ `i64` in 0.17+.
-- ❌ `request::<App, _, _>(...)`. ✅ `request::<App>(...)` in 0.17+.
+- ❌ `i32` primary keys / `Path<i32>`, or assuming `int` fields are 32-bit.
+  ✅ `i64` everywhere in 1.0 (keys, FKs, and the `int` field type).
+- ❌ `request::<App, _, _>(...)` / `boot_test::<App, Migrator>()`. ✅
+  `request::<App>(...)` / `boot_test::<H>()` in 1.0.
 - ❌ Building routes without registering them in `app.rs`. ✅ Return `Routes`
   from `routes()` and register in `Hooks::routes`.
 - ❌ Custom error types for handlers. ✅ Return `loco_rs::Result<Response>` and
-  use `?`.
+  use `?`; match `Error` with a `_ =>` arm (it's `#[non_exhaustive]`).
 - ❌ Reading env vars directly. ✅ YAML config + `ctx.config` + `get_env`.
+- ❌ Calling the auth feature `auth`, or assuming `secure: true` covers
+  implicit TLS. ✅ It's `auth_jwt`; use `tls: implicit` for port 465.
+- ❌ `scaffold`/`controller` generation without a kind flag. ✅ pass one of
+  `--api`/`--html`/`--htmx` — there's no default.
 
 ## The CLI you will use most
 
 ```
 cargo loco start [--server-and-worker | --worker | --scheduler | --all]
-cargo loco generate model|scaffold|controller|worker|task|scheduler|mailer|migration
+cargo loco generate model|scaffold|controller|worker|task|scheduler|mailer|
+                 migration|deployment|override [--api|--html|--htmx]
 cargo loco db migrate|entities|reset|seed
 cargo loco task <name>
+cargo loco jobs cancel|tidy|purge|dump|import|requeue
 cargo loco routes         # list all routes
 cargo loco doctor         # check environment / versions
 ```
+
+`loco new` (the separate app-generator binary, `cargo install loco`) flags:
+`--name --db <sqlite|postgres|none> --bg <async|queue|blocking> --assets
+<serverside|clientside|none> --os <linux|windows|macos> --allow-in-git-repo`.
+There is **no `--template`/`--verbose`** flag — template choice is
+interactive-only.
 
 When unsure, run `cargo loco generate <thing> --help` and read the produced code
 — it is the canonical, up-to-date pattern.
