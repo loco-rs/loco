@@ -2,7 +2,7 @@
 {% set module_name = file_name | pascal_case -%}
 to: "src/tasks/{{file_name}}.rs"
 skip_exists: true
-message: "A Task `{{module_name}}` was added successfully. Run with `cargo run task {{name}}`."
+message: "A Task `{{module_name}}` was added successfully. Run with `cargo loco task {{name}}`."
 injections:
 - into: "src/tasks/mod.rs"
   append: true

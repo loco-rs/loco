@@ -43,7 +43,7 @@ fn can_generate() {
 
     assert_eq!(
         collect_messages(&gen_result),
-        r"* A Task `Cleanup` was added successfully. Run with `cargo run task cleanup`.
+        r"* A Task `Cleanup` was added successfully. Run with `cargo loco task cleanup`.
 * Tests for task `Cleanup` was added successfully. Run `cargo test`.
 "
     );

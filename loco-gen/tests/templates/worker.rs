@@ -43,7 +43,7 @@ fn can_generate() {
     assert_eq!(
         collect_messages(&gen_result),
         r"* Test for worker `RegisterEmail` was added successfully. Run `cargo test`.
-* A worker `RegisterEmail` was added successfully. Run with `cargo run start --worker`.
+* A worker `RegisterEmail` was added successfully. Run with `cargo loco start --worker`.
 "
     );
 
