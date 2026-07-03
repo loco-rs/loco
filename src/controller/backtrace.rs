@@ -15,24 +15,6 @@ fn get_name_blocklist() -> &'static Vec<Regex> {
             "^__clone",
             "^<loco_rs::errors::Error as",
             "^loco_rs::errors::Error::bt",
-            /*
-            "^<?tokio",
-            "^<?future",
-            "^<?tower",
-            "^<?futures",
-            "^<?hyper",
-            "^<?axum",
-            "<F as futures_core",
-            "^<F as axum::",
-            "^<?std::panic",
-            "^<?core::",
-            "^rust_panic",
-            "^rayon",
-            "^rust_begin_unwind",
-            "^start_thread",
-            "^call_once",
-            "^catch_unwind",
-            */
         ]
         .iter()
         .map(|s| Regex::new(s).unwrap())
