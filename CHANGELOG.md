@@ -14,6 +14,13 @@
   `Job`/`JobRegistry`/`RunOpts` now live in one module behind a `Driver` trait
   (internal refactor, no behavior or API-path change).
 
+### Fixed
+
+- `llms.txt`: two `Core concepts` links pointed at doc pages that don't exist
+  (`the-app/configuration/`, `the-app/testing/`); repointed to the sections that
+  actually document them. A new `cargo xtask llms-check` CI step now verifies the
+  curated LLM docs against the docs tree so these links can't drift silently.
+
 ### Removed
 
 - **`Error` enum narrowing.** Removed four low-value/dependency-leaking variants
