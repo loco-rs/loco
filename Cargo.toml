@@ -1,6 +1,6 @@
 [workspace]
 members = ["xtask", "loco-gen"]
-exclude = ["starters"]
+exclude = ["starters", "examples"]
 
 [workspace.package]
 edition = "2024"
