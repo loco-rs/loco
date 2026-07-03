@@ -75,6 +75,8 @@ use colored::Colorize;
 pub use routes::Routes;
 use serde::Serialize;
 
+#[cfg(feature = "with-db")]
+use crate::model::ModelError;
 use crate::{errors::Error, Result};
 
 mod app_routes;
@@ -177,6 +179,22 @@ impl<T: Serialize> IntoResponse for Json<T> {
     }
 }
 
+/// Build the `(StatusCode, ErrorDetail)` pair for a validation error, shared
+/// by [`Error::Validation`] and [`Error::Model`]`(`[`ModelError::Validation`]`)`
+/// so both report the same shape.
+fn validation_error_response(
+    errors: &crate::validation::ModelValidationErrors,
+) -> (StatusCode, ErrorDetail) {
+    (
+        StatusCode::BAD_REQUEST,
+        ErrorDetail {
+            error: None,
+            description: None,
+            errors: Some(serde_json::to_value(&errors.errors).unwrap_or_default()),
+        },
+    )
+}
+
 impl IntoResponse for Error {
     /// Convert an `Error` into an HTTP response.
     #[allow(clippy::cognitive_complexity)]
@@ -233,15 +251,26 @@ impl IntoResponse for Error {
                 tracing::debug!(err = err.body_text(), "json rejection");
                 (err.status(), ErrorDetail::with_reason("Bad Request"))
             }
+            Self::AxumFormRejection(err) => {
+                tracing::debug!(err = err.body_text(), "form rejection");
+                (err.status(), ErrorDetail::with_reason("Bad Request"))
+            }
 
-            Self::Validation(ref errors) => (
-                StatusCode::BAD_REQUEST,
-                ErrorDetail {
-                    error: None,
-                    description: None,
-                    errors: Some(serde_json::to_value(&errors.errors).unwrap_or_default()),
-                },
+            Self::Validation(ref errors) => validation_error_response(errors),
+
+            #[cfg(feature = "with-db")]
+            Self::Model(ModelError::EntityNotFound) => (
+                StatusCode::NOT_FOUND,
+                ErrorDetail::new("not_found", "Resource was not found"),
             ),
+            #[cfg(feature = "with-db")]
+            Self::Model(ModelError::EntityAlreadyExists) => (
+                StatusCode::CONFLICT,
+                ErrorDetail::new("conflict", "Resource already exists"),
+            ),
+            #[cfg(feature = "with-db")]
+            Self::Model(ModelError::Validation(ref errors)) => validation_error_response(errors),
+
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ErrorDetail::new("internal_server_error", "Internal Server Error"),
@@ -249,5 +278,124 @@ impl IntoResponse for Error {
         };
 
         (public_facing_error.0, Json(public_facing_error.1)).into_response()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::body::to_bytes;
+
+    use super::*;
+
+    async fn response_json(err: Error) -> (StatusCode, serde_json::Value) {
+        let response = err.into_response();
+        let status = response.status();
+        let body = to_bytes(response.into_body(), 1024 * 1024)
+            .await
+            .expect("failed to read response body");
+        let json: serde_json::Value =
+            serde_json::from_slice(&body).expect("response body is not valid JSON");
+        (status, json)
+    }
+
+    #[cfg(feature = "with-db")]
+    #[tokio::test]
+    async fn model_entity_not_found_maps_to_404() {
+        let (status, json) = response_json(Error::Model(ModelError::EntityNotFound)).await;
+
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        assert_eq!(
+            json,
+            serde_json::json!({
+                "error": "not_found",
+                "description": "Resource was not found"
+            })
+        );
+    }
+
+    #[cfg(feature = "with-db")]
+    #[tokio::test]
+    async fn model_entity_already_exists_maps_to_409() {
+        let (status, json) = response_json(Error::Model(ModelError::EntityAlreadyExists)).await;
+
+        assert_eq!(status, StatusCode::CONFLICT);
+        assert_eq!(
+            json,
+            serde_json::json!({
+                "error": "conflict",
+                "description": "Resource already exists"
+            })
+        );
+    }
+
+    #[cfg(feature = "with-db")]
+    #[tokio::test]
+    async fn model_validation_maps_same_as_top_level_validation() {
+        use crate::validation::{ModelValidationErrors, ValidationError};
+        use std::collections::BTreeMap;
+
+        let mut errors: BTreeMap<String, Vec<ValidationError>> = BTreeMap::new();
+        errors.insert(
+            "username".to_string(),
+            vec![ValidationError {
+                code: "length".to_string(),
+                message: Some("username must be at least 3 characters".to_string()),
+                params: std::collections::HashMap::new(),
+            }],
+        );
+        let model_errors = ModelValidationErrors {
+            errors: errors.clone(),
+        };
+
+        let (model_status, model_json) =
+            response_json(Error::Model(ModelError::Validation(model_errors))).await;
+        let (top_level_status, top_level_json) =
+            response_json(Error::Validation(ModelValidationErrors { errors })).await;
+
+        assert_eq!(model_status, StatusCode::BAD_REQUEST);
+        assert_eq!(model_status, top_level_status);
+        assert_eq!(model_json, top_level_json);
+    }
+
+    #[tokio::test]
+    async fn axum_form_rejection_maps_to_4xx_not_500() {
+        #[derive(Debug, serde::Deserialize)]
+        struct Data {
+            #[allow(dead_code)]
+            email: String,
+        }
+
+        let request = axum::http::Request::builder()
+            .method(axum::http::Method::POST)
+            .uri("/")
+            .header(
+                axum::http::header::CONTENT_TYPE,
+                "application/x-www-form-urlencoded",
+            )
+            .body(axum::body::Body::from(""))
+            .unwrap();
+
+        let rejection = axum::extract::Form::<Data>::from_request(request, &())
+            .await
+            .expect_err("expected a form rejection for a missing required field");
+
+        let (status, json) = response_json(Error::AxumFormRejection(rejection)).await;
+
+        assert!(status.is_client_error(), "expected 4xx, got {status}");
+        assert_eq!(json, serde_json::json!({ "error": "Bad Request" }));
+    }
+
+    #[tokio::test]
+    async fn not_found_still_maps_to_404() {
+        let (status, json) = response_json(Error::NotFound).await;
+
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        assert_eq!(
+            json,
+            serde_json::json!({
+                "error": "not_found",
+                "description": "Resource was not found"
+            })
+        );
     }
 }

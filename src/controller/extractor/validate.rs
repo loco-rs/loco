@@ -568,17 +568,18 @@ mod tests {
         let result = FormValidate::<TestUser>::from_request(request, &()).await;
         assert!(result.is_err());
 
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err, Error::AxumFormRejection(_)),
+            "expected a form rejection, got: {err:?}"
+        );
+
         let expected = json!({
-            "error": "internal_server_error",
-            "description": "Internal Server Error"
+            "error": "Bad Request",
+            // "description": "Failed to deserialize form body: ..."
         });
 
-        assert_response_status_and_body(
-            result.unwrap_err(),
-            StatusCode::INTERNAL_SERVER_ERROR,
-            expected,
-        )
-        .await;
+        assert_response_status_and_body(err, StatusCode::UNPROCESSABLE_ENTITY, expected).await;
     }
 
     // Custom validator that does not rely on the `validator` crate
