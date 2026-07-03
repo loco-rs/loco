@@ -23,6 +23,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - name: Verify curated LLM docs (llms.txt / llms-full.txt) against docs tree
+        run: cargo run -p xtask -- llms-check
       - run: cargo install snipdoc --features exec
       - run: snipdoc check
         continue-on-error: true

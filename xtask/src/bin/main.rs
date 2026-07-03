@@ -34,6 +34,10 @@ enum Commands {
         #[arg(name = "VERSION")]
         new_version: Version,
     },
+    /// Verify the hand-curated LLM docs files (llms.txt / llms-full.txt)
+    /// against the real docs tree: broken links, orphan pages, version
+    /// markers. Verifies only — never regenerates the curated files.
+    LlmsCheck,
 }
 
 fn main() -> eyre::Result<()> {
@@ -88,6 +92,10 @@ fn main() -> eyre::Result<()> {
                 versions::bump_version(&new_version.to_string())?;
             }
             xtask::CmdExit::ok()
+        }
+        Commands::LlmsCheck => {
+            xtask::llms::run(&project_dir)?;
+            xtask::CmdExit::ok_with_message("llms-check passed")
         }
     };
 

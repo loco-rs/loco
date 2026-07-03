@@ -29,8 +29,8 @@ Current line: Loco 0.17.x — Sea-ORM 2.0, sqlx 0.9, 64-bit (`i64`) primary keys
 - [Controllers & routing](https://loco.rs/docs/the-app/controller/): handlers, `Routes`, extractors, responses.
 - [Models & migrations](https://loco.rs/docs/the-app/models/): Sea-ORM entities, migrations, queries.
 - [Views & responses](https://loco.rs/docs/the-app/views/): JSON and server-side rendering.
-- [Configuration](https://loco.rs/docs/the-app/configuration/): per-environment YAML, secrets via `get_env`.
-- [Testing](https://loco.rs/docs/the-app/testing/): `request::<App>` helpers, DB tests, fixtures, snapshots.
+- [Configuration](https://loco.rs/docs/the-app/your-project/#your-app-configuration): per-environment YAML, secrets via `get_env`.
+- [Testing](https://loco.rs/docs/the-app/models/#testing): `request::<App>` helpers, DB tests, fixtures, snapshots.
 
 ## Processing & infrastructure
 
