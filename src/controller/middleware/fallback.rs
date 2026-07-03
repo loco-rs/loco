@@ -37,7 +37,7 @@ pub struct Fallback {
 }
 
 fn default_status_code() -> StatusCode {
-    StatusCode::OK
+    StatusCode::NOT_FOUND
 }
 
 impl Default for Fallback {
@@ -98,5 +98,15 @@ impl MiddlewareLayer for Fallback {
             app.fallback(move || async move { (status_code, Html(content)) })
         };
         Ok(app)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_code_is_not_found() {
+        assert_eq!(Fallback::default().code, StatusCode::NOT_FOUND);
     }
 }

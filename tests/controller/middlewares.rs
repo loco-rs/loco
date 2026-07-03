@@ -414,8 +414,13 @@ async fn fallback(
 
     if let Some(code) = code {
         assert_eq!(res.status(), code);
-    } else {
+    } else if maybe_file.is_some() {
+        // the file fallback is served via `ServeFile`, which reports its own
+        // status (200 OK for a found file) regardless of the configured
+        // `code`.
         assert_eq!(res.status(), StatusCode::OK);
+    } else {
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
     }
 
     let response_text = res.text().await.expect("response text");
