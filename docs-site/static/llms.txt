@@ -1,0 +1,47 @@
+# Loco
+
+> Loco is an all-in-one, batteries-included Rust web framework ("Rails for
+> Rust"). A single binary and one set of conventions provide routing, a Sea-ORM
+> database layer, background jobs, a scheduler, mailers, tasks, storage, caching,
+> and testing. Build APIs and fullstack apps from zero to production quickly.
+
+Because Loco is batteries-included, the key to using it well is to prefer its
+built-ins and code generators over hand-wiring external crates. Everything
+hangs off `AppContext` (`ctx`): `ctx.db`, `ctx.config`, `ctx.mailer`,
+`ctx.storage`, `ctx.cache`, `ctx.queue_provider`. This file follows the
+llms.txt convention (https://llmstxt.org).
+
+Current line: Loco 0.17.x — Sea-ORM 2.0, sqlx 0.9, 64-bit (`i64`) primary keys.
+
+## Start here
+
+- [Agent guide (how to build Loco apps)](https://loco.rs/AGENTS.md): concise,
+  agent-oriented rules, patterns, and common pitfalls.
+- [Full single-file reference](https://loco.rs/llms-full.txt): the complete
+  guide in one file, sized for large-context models.
+- [Getting started](https://loco.rs/docs/getting-started/guide/): build your
+  first app.
+- [The Tour](https://loco.rs/docs/getting-started/tour/): a fast end-to-end walkthrough.
+
+## Core concepts
+
+- [The app & `Hooks`](https://loco.rs/docs/the-app/your-project/): project layout and wiring.
+- [Controllers & routing](https://loco.rs/docs/the-app/controller/): handlers, `Routes`, extractors, responses.
+- [Models & migrations](https://loco.rs/docs/the-app/models/): Sea-ORM entities, migrations, queries.
+- [Views & responses](https://loco.rs/docs/the-app/views/): JSON and server-side rendering.
+- [Configuration](https://loco.rs/docs/the-app/configuration/): per-environment YAML, secrets via `get_env`.
+- [Testing](https://loco.rs/docs/the-app/testing/): `request::<App>` helpers, DB tests, fixtures, snapshots.
+
+## Processing & infrastructure
+
+- [Background workers](https://loco.rs/docs/processing/workers/): Postgres/SQLite/Redis queues, priority, job ids.
+- [Scheduler](https://loco.rs/docs/processing/scheduler/): cron-like jobs.
+- [Mailers](https://loco.rs/docs/processing/mailers/): email, templates, SMTP/TLS.
+- [Tasks](https://loco.rs/docs/processing/task/): admin/data operations with `AppContext`.
+- [Storage](https://loco.rs/docs/infrastructure/storage/) and [Cache](https://loco.rs/docs/infrastructure/cache/): files and caching.
+- [Deployment](https://loco.rs/docs/infrastructure/deployment/): shipping to production.
+
+## Upgrading
+
+- [Upgrade guide](https://loco.rs/docs/extras/upgrades/): version-to-version
+  migration, including 0.16 → 0.17 (Sea-ORM 2.0, 64-bit keys, priority queues).

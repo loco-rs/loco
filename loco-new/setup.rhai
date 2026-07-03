@@ -5,7 +5,7 @@
 // to the Rust environment, GitHub actions, and formatting settings.
 
 gen.copy_template(".github/workflows/ci.yaml.t");     // Actions ci template
-gen.copy_files([".gitignore", ".rustfmt.toml", "README.md"]);
+gen.copy_files([".gitignore", ".rustfmt.toml", "README.md", "AGENTS.md"]);
 
 gen.copy_template_dir(".cargo");
 

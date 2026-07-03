@@ -1,0 +1,397 @@
+# Loco — full reference for building apps (0.17.x)
+
+This is a complete, single-file guide for building **Loco** (loco.rs)
+applications, sized for large-context models. Loco is an all-in-one,
+batteries-included Rust web framework — "Rails for Rust". One binary and one set
+of conventions give you routing, a Sea-ORM database layer, background jobs, a
+scheduler, mailers, tasks, storage, caching, and testing.
+
+Version target: **Loco 0.17.x** — Sea-ORM 2.0, sqlx 0.9, edition 2021,
+64-bit (`i64`) primary keys. Prose docs: https://loco.rs/docs.
+
+The prime directive: **Loco already integrates the infrastructure. Prefer its
+built-ins and generators over adding external crates and wiring servers, pools,
+or job runners by hand.** Everything is reached through `AppContext` (`ctx`).
+
+---
+
+## 1. Bootstrapping a project
+
+```sh
+# install the generator CLI
+cargo install loco
+
+# create an app (interactive wizard: SaaS/API/lightweight, DB, workers, assets)
+loco new
+
+# run it
+cd myapp
+cargo loco start
+```
+
+A generated app has this shape:
+
+```
+src/
+  app.rs             # impl Hooks for App: the wiring hub
+  bin/main.rs        # entrypoint
+  controllers/       # HTTP handlers grouped into Routes
+  models/
+    _entities/       # GENERATED Sea-ORM entities — do not hand-edit
+    *.rs             # your model logic
+  views/             # response shaping
+  workers/           # background jobs
+  tasks/             # one-off/CLI tasks
+  mailers/           # email
+  initializers/      # startup hooks
+migration/           # Sea-ORM migration crate
+config/              # development.yaml / production.yaml / test.yaml
+tests/               # request/model/task tests
+assets/ frontend/    # static/SPA (optional)
+```
+
+## 2. The `Hooks` trait (`src/app.rs`) — the wiring hub
+
+Everything becomes active by being registered here. Generators update this file
+for you; when wiring by hand, this is the file to edit.
+
+```rust
+use loco_rs::prelude::*;
+
+pub struct App;
+
+#[async_trait]
+impl Hooks for App {
+    fn app_name() -> &'static str { env!("CARGO_CRATE_NAME") }
+
+    fn routes(_ctx: &AppContext) -> AppRoutes {
+        AppRoutes::with_default_routes()
+            .add_route(controllers::posts::routes())
+            .add_route(controllers::auth::routes())
+    }
+
+    async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {
+        queue.register(workers::downloader::DownloadWorker::build(ctx)).await?;
+        Ok(())
+    }
+
+    fn register_tasks(tasks: &mut Tasks) {
+        tasks.register(tasks::user_report::UserReport);
+    }
+
+    // migrations, initializers, truncate/seed for tests, etc.
+}
+```
+
+## 3. `AppContext` — the service hub
+
+Passed to handlers, workers, tasks, and initializers. Key fields:
+
+- `ctx.db` — Sea-ORM `DatabaseConnection`.
+- `ctx.config` — the loaded per-environment `Config`.
+- `ctx.mailer` — the configured mailer (if enabled).
+- `ctx.storage` — object storage (local/S3/Azure/GCS via OpenDAL).
+- `ctx.cache` — cache (in-memory or Redis).
+- `ctx.queue_provider` — the background-job queue.
+
+Never construct your own DB pool, HTTP server, mailer, or job queue — read them
+from `ctx`.
+
+## 4. Models & migrations (Sea-ORM 2.0)
+
+Generate a model (writes a migration and regenerates the entity):
+
+```sh
+cargo loco generate model posts title:string content:text published:bool user:references
+cargo loco db migrate      # apply
+cargo loco db entities     # regenerate entities from the DB schema
+```
+
+Field types include `string`, `text`, `int`, `big_int`, `bool`, `ts`, `tstz`,
+`uuid`, `decimal`, `json`, `jsonb`, `references` (FK). Suffixes: `!` = required
+(non-null), `^` = unique. **Primary keys and `references` are `i64` (BIGINT) in
+0.17+.**
+
+Entities are generated into `src/models/_entities/<name>.rs`. Put custom logic
+in `src/models/<name>.rs`:
+
+```rust
+use loco_rs::prelude::*;
+use super::_entities::posts::{ActiveModel, Entity, Model, Column};
+
+#[async_trait::async_trait]
+impl ActiveModelBehavior for ActiveModel {
+    async fn before_save<C: ConnectionTrait>(self, _db: &C, insert: bool)
+        -> std::result::Result<Self, DbErr> { Ok(self) }
+}
+
+impl Model {
+    pub async fn find_by_title(db: &DatabaseConnection, title: &str) -> Result<Option<Self>> {
+        Ok(Entity::find().filter(Column::Title.eq(title)).one(db).await?)
+    }
+}
+```
+
+Common queries:
+
+```rust
+Entity::find_by_id(id).one(&ctx.db).await?;                 // Option<Model>
+Entity::find().all(&ctx.db).await?;                         // Vec<Model>
+Entity::find().filter(Column::Published.eq(true)).all(&ctx.db).await?;
+
+let mut item = ActiveModel { title: Set("hi".to_string()), ..Default::default() };
+let item = item.insert(&ctx.db).await?;                     // create
+let mut a = item.into_active_model(); a.title = Set("x".into()); a.update(&ctx.db).await?;
+```
+
+Pagination returns a `PageResponse<T>` whose metadata is in
+`response.meta` (`meta.page`, `meta.page_size`, `meta.total_pages`,
+`meta.total_items`) in 0.17+.
+
+Sea-ORM 2.0 note: raw-`Statement` execution uses `_raw`-suffixed methods
+(`execute_raw`, `query_one_raw`, `query_all_raw`). Migrations pass SeaQuery
+statements by reference; the generators emit correct code.
+
+## 5. Controllers, routing, extractors, responses
+
+```rust
+use loco_rs::prelude::*;
+use serde::{Deserialize, Serialize};
+use crate::models::_entities::posts::{ActiveModel, Entity, Model};
+
+#[derive(Deserialize, Serialize)]
+pub struct Params { pub title: String, pub content: Option<String> }
+
+async fn load_item(ctx: &AppContext, id: i64) -> Result<Model> {
+    Entity::find_by_id(id).one(&ctx.db).await?.ok_or_else(|| Error::NotFound)
+}
+
+pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
+    format::json(Entity::find().all(&ctx.db).await?)
+}
+
+pub async fn get_one(Path(id): Path<i64>, State(ctx): State<AppContext>) -> Result<Response> {
+    format::json(load_item(&ctx, id).await?)
+}
+
+pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Response> {
+    let item = ActiveModel { title: Set(params.title), ..Default::default() };
+    format::json(item.insert(&ctx.db).await?)
+}
+
+pub fn routes() -> Routes {
+    Routes::new()
+        .prefix("api/posts/")
+        .add("/", get(list))
+        .add("/", post(add))
+        .add("{id}", get(get_one))
+}
+```
+
+- Handlers are `async fn(...) -> Result<Response>`. Extractors: `State(ctx):
+  State<AppContext>`, `Path(id): Path<i64>`, `Json(body): Json<T>`,
+  `Query(q): Query<T>`, plus Loco's `JsonValidate`/`JsonValidateWithMessage`
+  (validate with the `validator` derive), `RemoteIP`, `SharedStore`, auth
+  extractors (`auth::JWT`, `auth::ApiToken`).
+- Responses: `format::json(x)`, `format::html(s)`, `format::empty()`, or the
+  view layer. Errors: return `Error::NotFound`, `Error::Unauthorized(..)`,
+  `bad_request(..)`, `unauthorized(..)`, etc.
+- Register the `Routes` in `app.rs` `Hooks::routes` via
+  `.add_route(controllers::posts::routes())`.
+- Middleware (CORS, compression, timeouts, secure headers, limits, etc.) is
+  configured in `config/*.yaml` under `server.middlewares`.
+
+## 6. Background workers
+
+```rust
+use loco_rs::prelude::*;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DownloadWorkerArgs { pub user_id: i64 }
+
+pub struct DownloadWorker;
+
+#[async_trait]
+impl BackgroundWorker<DownloadWorkerArgs> for DownloadWorker {
+    fn build(ctx: &AppContext) -> Self { Self }
+    async fn perform(&self, args: DownloadWorkerArgs) -> Result<()> {
+        // do work using services from the captured ctx
+        Ok(())
+    }
+}
+```
+
+Enqueue:
+
+```rust
+let job_id = DownloadWorker::perform_later(&ctx, DownloadWorkerArgs { user_id }).await?;
+DownloadWorker::perform_later_with_priority(&ctx, args, Some(42)).await?; // higher = sooner
+```
+
+- Backends: Postgres (`bg_pg`), SQLite (`bg_sqlt`), Redis (`bg_redis`). Choose
+  via config `workers.mode` (`BackgroundQueue` / `BackgroundAsync` /
+  `ForegroundBlocking`) and `queue.kind`. Register in
+  `Hooks::connect_workers`.
+- **0.17+:** `perform_later` returns the job id (`Result<String>`); priority is
+  supported on all backends (mailer jobs default to `100`); the **Redis backend
+  moved from Lists to Sorted Sets** — drain old Redis queues before upgrading.
+- Run workers: `cargo loco start --worker` (dedicated) or
+  `--server-and-worker`, or `--all`.
+
+## 7. Scheduler
+
+Define in `config/*.yaml`:
+
+```yaml
+scheduler:
+  jobs:
+    write_content:
+      run: "echo hello"      # a shell command, or a registered task
+      shell: true
+      cron: "*/5 * * * *"
+```
+
+Run with `cargo loco scheduler` or `cargo loco start --scheduler` (0.17+ lets
+you run the scheduler without a worker).
+
+## 8. Mailers
+
+```sh
+cargo loco generate mailer auth
+```
+
+```rust
+use loco_rs::prelude::*;
+
+impl Mailer for AuthMailer {}
+impl AuthMailer {
+    pub async fn send_welcome(ctx: &AppContext, to: &str) -> Result<()> {
+        Self::mail_template(ctx, &EMAIL_TEMPLATE, mailer::Args {
+            to: to.to_string(),
+            locals: serde_json::json!({}),
+            ..Default::default()
+        }).await
+    }
+}
+```
+
+Mailer jobs are enqueued (default priority `100`). Configure SMTP in config,
+including implicit TLS:
+
+```yaml
+mailer:
+  smtp:
+    host: smtp.example.com
+    port: 465
+    tls: implicit               # or "starttls" / "none"; secure:true == starttls
+    auth:
+      user: "{{ get_env(name='SMTP_USER') }}"
+      password: "{{ get_env(name='SMTP_PASSWORD') }}"
+```
+
+## 9. Tasks
+
+```rust
+use loco_rs::prelude::*;
+
+pub struct UserReport;
+
+#[async_trait]
+impl Task for UserReport {
+    fn task(&self) -> TaskInfo {
+        TaskInfo { name: "user_report".to_string(), detail: "generate a report".to_string() }
+    }
+    async fn run(&self, ctx: &AppContext, vars: &task::Vars) -> Result<()> {
+        // full AppContext available
+        Ok(())
+    }
+}
+```
+
+Register in `Hooks::register_tasks`; run with `cargo loco task user_report`.
+
+## 10. Configuration
+
+`config/{development,production,test}.yaml`, selected by `LOCO_ENV`. Read via
+`ctx.config`. Secrets come from the environment through the `get_env` Tera
+helper **inside the YAML**, not scattered `std::env::var` calls. Typical
+sections: `server`, `database`, `queue`, `workers`, `mailer`, `auth`,
+`logger`, `scheduler`, `storage`, `cache`, `settings` (your app-specific
+values).
+
+## 11. Storage & cache
+
+- `ctx.storage` — unified object storage over OpenDAL: in-memory, filesystem,
+  S3, Azure Blob, GCS. `ctx.storage.upload(path, &bytes).await?`,
+  `.download(path)`, `.delete(path)`, plus streaming.
+- `ctx.cache` — `ctx.cache.get_or_insert(...)`, `.insert`, `.get`, `.remove`;
+  in-memory (moka) or Redis backend.
+
+## 12. Testing
+
+```rust
+use loco_rs::testing::prelude::*;
+
+#[tokio::test]
+#[serial]
+async fn can_list_posts() {
+    request::<App>(|request, _ctx| async move {   // 0.17+: ::<App>, not ::<App, _, _>
+        let res = request.get("/api/posts/").await;
+        assert_eq!(res.status_code(), 200);
+    })
+    .await;
+}
+```
+
+- Helpers (0.17+ take `impl AsyncFnOnce`): `request::<App>`,
+  `request_with_config::<App>`, `request_with_create_db::<App>`,
+  `request_config_with_create_db::<App>`.
+- DB tests use `request_with_create_db`, seed via fixtures, and assert with
+  `insta` snapshots. Mark DB tests `#[serial]`.
+- Model/task tests use `boot_test`/`testing::prelude` helpers and a seeded DB.
+
+## 13. CLI reference
+
+```
+cargo loco start [--server-and-worker | --worker | --scheduler | --all]
+cargo loco generate model|scaffold|controller|worker|task|scheduler|mailer|migration|deployment
+cargo loco db migrate|entities|reset|seed|status
+cargo loco task <name> [key:value ...]
+cargo loco scheduler
+cargo loco routes
+cargo loco doctor          # verify environment, DB, and tool versions
+cargo loco version
+```
+
+## 14. Upgrading 0.16 → 0.17 (highlights)
+
+- **Sea-ORM 2.0 + sqlx 0.9** — bump `sea-orm`/`sea-orm-migration` to `2.0` and
+  `sqlx` to `0.9`; update `sea-orm-cli`; regenerate entities. Raw-`Statement`
+  calls gain `_raw`.
+- **64-bit keys** — generated `id`/`references` are now `i64` (BIGINT). Only
+  affects newly generated code; existing tables are untouched.
+- **`perform_later` returns the job id**; new `perform_later_with_priority`.
+- **Priority queues** — Postgres/SQLite auto-migrate a `priority` column; **the
+  Redis backend switched Lists → Sorted Sets (drain old Redis queues first).**
+- **`PageResponse` carries `meta: PagerMeta`** instead of flat fields.
+- **`request::<App>`** — test helpers take `impl AsyncFnOnce` (drop `, _, _`).
+- **`loco_rs::Error` is `#[non_exhaustive]`** — add a `_ =>` arm to exhaustive
+  matches.
+- Dependency majors bumped (thiserror 2, tower 0.5, redis 1, opendal 0.57,
+  etc.); most are transitive for apps. Full details:
+  https://loco.rs/docs/extras/upgrades/.
+
+## 15. Common pitfalls (avoid)
+
+- ❌ Adding axum/sqlx/tokio/lettre/a job runner directly and wiring servers/pools
+  by hand → ✅ use `ctx` and generators.
+- ❌ Hand-editing `_entities/` → ✅ generate via migrations.
+- ❌ `i32` keys / `Path<i32>` → ✅ `i64` in 0.17+.
+- ❌ `request::<App, _, _>` → ✅ `request::<App>`.
+- ❌ Routes not registered in `app.rs` → ✅ return `Routes` and add in `Hooks::routes`.
+- ❌ Custom error enums for app code → ✅ `loco_rs::Result` + `?`.
+- ❌ Ad-hoc `std::env::var` → ✅ YAML config + `ctx.config` + `get_env`.
+
+When unsure, generate the thing and read the produced code — it is the canonical
+pattern for this version.

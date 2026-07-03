@@ -13,6 +13,10 @@
   Required by Sea-ORM 2.0 (SQLite integers map to `i64`) and the modern
   bigint-by-default convention. Only affects newly generated code; existing
   tables are untouched. See the upgrade guide.
+- **First-class LLM / agent support.** New `AGENTS.md` teaches agents how to
+  build Loco 0.17 apps (the all-in-one model + common pitfalls); `llms.txt` and
+  `llms-full.txt` are served from the site (llmstxt.org convention). Every app
+  created with `loco new` now ships an app-level `AGENTS.md`.
 - **BREAKING: test request helpers take `impl AsyncFnOnce`.** `request`,
   `request_with_config`, `request_with_create_db`, and
   `request_config_with_create_db` now use `impl AsyncFnOnce(TestServer,
