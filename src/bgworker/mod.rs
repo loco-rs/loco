@@ -8,7 +8,9 @@ use std::{
 use async_trait::async_trait;
 #[cfg(feature = "cli")]
 use clap::ValueEnum;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 use serde_variant::to_variant_name;
 #[cfg(feature = "bg_pg")]
 pub mod pg;
@@ -62,6 +64,27 @@ impl std::fmt::Display for JobStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         to_variant_name(self).expect("only enum supported").fmt(f)
     }
+}
+
+pub type JobId = String;
+pub type JobData = JsonValue;
+
+/// A background job, shared between the SQL-based (Postgres/`SQLite`) and
+/// Redis queue providers.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Job {
+    pub id: JobId,
+    pub name: String,
+    #[serde(rename = "task_data")]
+    pub data: JobData,
+    pub status: JobStatus,
+    pub run_at: DateTime<Utc>,
+    pub interval: Option<i64>,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
+    pub tags: Option<Vec<String>>,
+    #[serde(default)]
+    pub priority: i32,
 }
 
 // Queue struct now holds both a QueueProvider and QueueRegistrar

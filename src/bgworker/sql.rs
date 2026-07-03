@@ -10,19 +10,15 @@ use std::{
     time::Duration,
 };
 
-use chrono::{DateTime, Utc};
 use futures_util::FutureExt;
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
 use tokio::{task::JoinHandle, time::sleep};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, trace};
 
-use super::{BackgroundWorker, JobStatus};
+use super::BackgroundWorker;
+pub use super::{Job, JobData, JobId};
 use crate::{Error, Result};
-
-pub type JobId = String;
-pub type JobData = JsonValue;
 
 pub(crate) type JobHandler = Box<
     dyn Fn(
@@ -32,22 +28,6 @@ pub(crate) type JobHandler = Box<
         + Send
         + Sync,
 >;
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Job {
-    pub id: JobId,
-    pub name: String,
-    #[serde(rename = "task_data")]
-    pub data: JobData,
-    pub status: JobStatus,
-    pub run_at: DateTime<Utc>,
-    pub interval: Option<i64>,
-    pub created_at: Option<DateTime<Utc>>,
-    pub updated_at: Option<DateTime<Utc>>,
-    pub tags: Option<Vec<String>>,
-    #[serde(default)]
-    pub priority: i32,
-}
 
 #[derive(Debug)]
 pub struct RunOpts {

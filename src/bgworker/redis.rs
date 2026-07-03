@@ -5,8 +5,9 @@ use std::{
 };
 
 use super::{BackgroundWorker, JobStatus, Queue};
+pub use super::{Job, JobData, JobId};
 use crate::{config::RedisQueueConfig, Error, Result};
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use futures_util::FutureExt;
 use redis::{aio::MultiplexedConnection as Connection, AsyncCommands, Client, Script};
 use serde::{Deserialize, Serialize};
@@ -17,8 +18,6 @@ use tracing::{debug, error, trace};
 use ulid::Ulid;
 
 pub type RedisPool = Client;
-type JobId = String;
-type JobData = JsonValue;
 
 const QUEUE_KEY_PREFIX: &str = "queue:";
 const JOB_KEY_PREFIX: &str = "job:";
@@ -32,22 +31,6 @@ type JobHandler = Box<
         + Send
         + Sync,
 >;
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Job {
-    pub id: JobId,
-    pub name: String,
-    #[serde(rename = "task_data")]
-    pub data: JobData,
-    pub status: JobStatus,
-    pub run_at: DateTime<Utc>,
-    pub interval: Option<i64>,
-    pub created_at: Option<DateTime<Utc>>,
-    pub updated_at: Option<DateTime<Utc>>,
-    pub tags: Option<Vec<String>>,
-    #[serde(default)]
-    pub priority: i32,
-}
 
 // Implementation for job creation and serialization
 impl Job {
