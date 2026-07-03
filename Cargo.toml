@@ -146,7 +146,7 @@ opendal = { version = "0.57", default-features = false, features = [
 ] }
 
 # cache
-moka = { version = "0.12.7", features = ["sync"], optional = true }
+moka = { version = "0.12.7", features = ["sync", "future"], optional = true }
 bb8-redis = { version = "0.26", optional = true }
 bb8 = { version = "0.9", optional = true }
 
