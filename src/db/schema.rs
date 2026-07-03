@@ -203,6 +203,24 @@ pub async fn dump_tables(
                         row.try_get::<String>("", &col_name)
                             .map(serde_json::Value::String)
                     })
+                    // Postgres decodes its native BOOLEAN as a distinct wire type that
+                    // does not fall back to the numeric arms below (unlike SQLite,
+                    // where booleans are stored as an INTEGER and already decode via
+                    // the i8 arm), so without this arm PG boolean columns would be
+                    // silently dropped from the dump entirely. Gate this on
+                    // `boolean_columns` (rather than trying it unconditionally) because
+                    // SQLite is dynamically typed and would happily decode any
+                    // INTEGER column (e.g. `counter`, `id`) as a bool too.
+                    .or_else(|_| {
+                        if boolean_columns.contains(&col_name) {
+                            row.try_get::<bool>("", &col_name)
+                                .map(serde_json::Value::Bool)
+                        } else {
+                            Err(DbErr::Custom(format!(
+                                "`{col_name}` is not a boolean column"
+                            )))
+                        }
+                    })
                     .or_else(|_| {
                         row.try_get::<i8>("", &col_name)
                             .map(serde_json::Value::from)
@@ -503,6 +521,97 @@ mod tests {
         assert_snapshot!(
             "dump_tables_sqlite_all_types_roundtrip",
             serde_json::to_string_pretty(&roundtripped).unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn postgres_dump_tables_boolean_column() {
+        use crate::tests_cfg::postgres::setup_postgres_container;
+
+        // Arrange: spin up a real Postgres container and create a table with a
+        // native BOOLEAN column. This reproduces the defect where PG BOOLEAN
+        // values are silently dropped from dump_tables because the decode
+        // probe chain had no `bool` arm (PG bools don't fall back to the
+        // numeric arms the way SQLite's integer-backed booleans do).
+        let (pg_url, _container) = setup_postgres_container().await;
+
+        let mut config = crate::tests_cfg::config::get_database_config();
+        config.uri = pg_url;
+        config.min_connections = 1;
+        config.max_connections = 5;
+
+        let db = crate::db::connect(&config)
+            .await
+            .expect("Failed to connect to PostgreSQL test database");
+        let backend = db.get_database_backend();
+        assert_eq!(backend, DatabaseBackend::Postgres);
+
+        let table_name = "dump_bool_types";
+
+        db.execute_raw(Statement::from_string(
+            backend,
+            format!(
+                "CREATE TABLE {table_name} (
+                    id SERIAL PRIMARY KEY,
+                    active BOOLEAN NOT NULL,
+                    name TEXT NOT NULL
+                );"
+            ),
+        ))
+        .await
+        .expect("Failed to create dump_bool_types table");
+
+        db.execute_raw(Statement::from_string(
+            backend,
+            format!(
+                "INSERT INTO {table_name} (active, name) VALUES
+                    (true, 'foo'),
+                    (false, 'bar');"
+            ),
+        ))
+        .await
+        .expect("Failed to insert test data into dump_bool_types table");
+
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let dump_dir = tree_fs.root.join("dump");
+        std::fs::create_dir_all(&dump_dir).expect("Failed to create dump directory");
+
+        dump_tables(&db, dump_dir.as_path(), Some(vec![table_name.to_string()]))
+            .await
+            .expect("dump_tables failed");
+
+        let yaml_path = dump_dir.join(format!("{table_name}.yaml"));
+        let yaml_content = std::fs::read_to_string(&yaml_path)
+            .unwrap_or_else(|e| panic!("Failed to read YAML dump at {yaml_path:?}: {e}"));
+
+        let parsed: Vec<BTreeMap<String, serde_json::Value>> =
+            serde_yaml::from_str(&yaml_content).expect("dumped YAML should parse");
+
+        assert_eq!(parsed.len(), 2, "expected two dumped rows");
+
+        // The `active` column must be present (not dropped) and decoded as a
+        // real JSON boolean, not a number or missing entirely.
+        let foo_row = parsed
+            .iter()
+            .find(|row| row.get("name") == Some(&serde_json::Value::String("foo".to_string())))
+            .expect("row with name=foo should be present in the dump");
+        assert_eq!(
+            foo_row.get("active"),
+            Some(&serde_json::Value::Bool(true)),
+            "boolean column 'active' should be dumped as `true`, got: {foo_row:?}"
+        );
+
+        let bar_row = parsed
+            .iter()
+            .find(|row| row.get("name") == Some(&serde_json::Value::String("bar".to_string())))
+            .expect("row with name=bar should be present in the dump");
+        assert_eq!(
+            bar_row.get("active"),
+            Some(&serde_json::Value::Bool(false)),
+            "boolean column 'active' should be dumped as `false`, got: {bar_row:?}"
         );
     }
 }
