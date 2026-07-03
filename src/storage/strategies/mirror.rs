@@ -680,8 +680,14 @@ mod tests {
 
         // Upload directly to the underlying stores so the missing secondary
         // doesn't cause the setup itself to fail.
-        assert!(store_1.upload(orig_path.as_path(), &file_content).await.is_ok());
-        assert!(store_2.upload(orig_path.as_path(), &file_content).await.is_ok());
+        assert!(store_1
+            .upload(orig_path.as_path(), &file_content)
+            .await
+            .is_ok());
+        assert!(store_2
+            .upload(orig_path.as_path(), &file_content)
+            .await
+            .is_ok());
 
         let result = storage
             .rename(orig_path.as_path(), new_path.as_path())
@@ -829,8 +835,14 @@ mod tests {
         let new_path = PathBuf::from("data-2").join("data").join("2.txt");
         let file_content = Bytes::from("file content");
 
-        assert!(store_1.upload(orig_path.as_path(), &file_content).await.is_ok());
-        assert!(store_2.upload(orig_path.as_path(), &file_content).await.is_ok());
+        assert!(store_1
+            .upload(orig_path.as_path(), &file_content)
+            .await
+            .is_ok());
+        assert!(store_2
+            .upload(orig_path.as_path(), &file_content)
+            .await
+            .is_ok());
 
         let result = storage.copy(orig_path.as_path(), new_path.as_path()).await;
         assert!(result.is_err());
