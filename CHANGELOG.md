@@ -4,6 +4,31 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+- **Fallback middleware defaults to `404`.** When the built-in fallback is
+  enabled without an explicit `code`, it now returns `404 Not Found` (matching
+  its docs and the bundled not-found page) instead of `200 OK`. Apps that relied
+  on the enabled fallback returning `200` must set `code: 200` explicitly. The
+  file-based fallback is unaffected (`ServeFile` reports its own status).
+- **`{env}.local.yaml` now deep-merges over `{env}.yaml`.** Previously the first
+  existing file won and the other was ignored, so a `.local.yaml` had to restate
+  the whole config. Both files are now layered with local precedence: mappings
+  merge recursively; scalars and sequences in local replace the base value
+  (sequences are not concatenated). Base keys now persist unless explicitly
+  overridden.
+- **More accurate HTTP status codes for errors.** `IntoResponse for Error`
+  previously collapsed ~28 of 35 variants to `500`. `Model(EntityNotFound)` now
+  returns `404`, `Model(EntityAlreadyExists)` returns `409`, model validation
+  and form-body rejections return `4xx` (matching JSON rejections) instead of
+  `500`. Genuinely-internal errors still return a generic `500`. Handlers that
+  asserted on the old `500`s will observe the corrected codes.
+- **`JWT::algorithm()` restricted to the HMAC family.** It now takes a new
+  `loco_rs::auth::jwt::JWTAlgorithm` enum (`HS256`/`HS384`/`HS512`) instead of
+  `jsonwebtoken::Algorithm`. Asymmetric algorithms — which could never work with
+  Loco's shared base64 secret and silently produced broken tokens — are no longer
+  representable.
+
 ### Changed
 
 - **Rust edition 2024.** `loco-rs`, `loco-gen`, `xtask`, and the `loco` new-app
@@ -13,9 +38,42 @@
 - Deduplicated the Postgres and SQLite background-queue providers: the shared
   `Job`/`JobRegistry`/`RunOpts` now live in one module behind a `Driver` trait
   (internal refactor, no behavior or API-path change).
+- In-memory cache now uses `moka::future::Cache` instead of wrapping the
+  synchronous cache behind `#[async_trait]` (removes a sync-behind-async smell;
+  no API change).
+- Cookie token extraction now uses `axum_extra`'s `Cookie::value()` instead of
+  hand-parsing the cookie string (byte-identical behavior).
 
 ### Fixed
 
+- **Storage mirror fan-out no longer stops at the first failing secondary.**
+  `rename`, `copy`, and `upload_stream` checked the failure mode *inside* the
+  secondary loop and returned early on the first failure, silently leaving later
+  mirrors stale (`upload`/`delete` were already correct). All five mutating
+  methods now share one helper that attempts every secondary (concurrently) and
+  applies the failure mode once.
+- **Postgres `BOOLEAN` columns are no longer dropped from `dump_tables`.** The
+  decode probe chain had no `bool` arm, so PG booleans (which don't fall back to
+  the numeric arms like SQLite's integer-backed booleans) were silently omitted.
+- **`Hooks::on_shutdown` now runs in worker-only start modes.** `WorkerOnly` and
+  `WorkerAndScheduler` bypassed `H::serve` (the hook's only caller); the shutdown
+  hook is now invoked on their shutdown path too.
+- **Postgres admin/maintenance URI is derived with the `url` crate.** Building it
+  via `db_uri.replace(db_name, "/postgres")` corrupted the URI when the database
+  name also appeared in the host or credentials.
+- **Foreign-key names are normalized consistently.** `reference_id` received a
+  normalized table name in `create_table` but raw names in
+  `add_reference`/`remove_reference`, so irregular plurals produced mismatched FK
+  column/constraint names between creation and later add/remove.
+- `ViewEngine` extractor now rejects gracefully (HTTP `500`) when the opt-in Tera
+  layer is absent, instead of declaring `Infallible` and then panicking.
+- `cargo loco routes` lists every HTTP verb of a multi-method route (route
+  introspection previously reported only the first).
+- Removed a fossilized 3-second `sleep` on every Redis queue boot (a leaked
+  test-isolation artifact; Postgres/SQLite had no equivalent).
+- Password redaction in test snapshots (`cleanup_user_model`) now targets the
+  quoted value precisely; the previous pattern had a degenerate quantifier that
+  swallowed the field following `password`.
 - `llms.txt`: two `Core concepts` links pointed at doc pages that don't exist
   (`the-app/configuration/`, `the-app/testing/`); repointed to the sections that
   actually document them. A new `cargo xtask llms-check` CI step now verifies the
@@ -28,6 +86,9 @@
   `Error::SemVer`, `Error::TaskJoinError`, and `Error::Hash` (hashing errors now
   surface as `Error::Message`). `Error` remains `#[non_exhaustive]`, so exhaustive
   matches already require a wildcard arm and are unaffected.
+- Deleted shipped-but-dead code: the never-compiled
+  `controller/middleware/_archive/content_etag.rs` module and a commented-out
+  block of backtrace-blocklist regexes.
 
 ## 0.17.0
 
