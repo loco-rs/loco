@@ -707,8 +707,6 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
 /// }
 /// ```
 #[cfg(feature = "with-db")]
-#[allow(clippy::too_many_lines)]
-#[allow(clippy::cognitive_complexity)]
 pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
     let cli: Cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
@@ -766,16 +764,25 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                 run_db::<H, M>(&app_context, command.into()).await?;
             }
         }
-        #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
-        Commands::Jobs { command } => {
-            handle_job_command::<H>(command, &environment, app_context.config).await?;
-        }
-        Commands::Routes {} => {
-            let app_context = create_context::<H>(&environment, app_context.config).await?;
-            show_list_endpoints::<H>(&app_context);
-        }
+        command => dispatch_common::<H>(command, &environment, app_context).await?,
+    }
+    Ok(())
+}
+
+/// Handles every CLI command whose behavior does not depend on the `with-db`
+/// feature (i.e. does not need the `M: MigratorTrait` generic), given an
+/// already-initialized [`AppContext`]. Shared by both the `with-db` and
+/// non-`with-db` flavors of [`main`].
+#[allow(clippy::too_many_lines)]
+#[allow(clippy::cognitive_complexity)]
+async fn dispatch_common<H: Hooks>(
+    command: Commands,
+    environment: &Environment,
+    app_context: AppContext,
+) -> crate::Result<()> {
+    match command {
+        Commands::Routes {} => show_list_endpoints::<H>(&app_context),
         Commands::Middleware { show_config } => {
-            let app_context = create_context::<H>(&environment, app_context.config).await?;
             let middlewares = list_middlewares::<H>(&app_context);
             for middleware in middlewares.iter().filter(|m| m.enabled) {
                 println!(
@@ -795,8 +802,11 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         }
         Commands::Task { name, params } => {
             let vars = task::Vars::from_cli_args(params);
-            let app_context = create_context::<H>(&environment, app_context.config).await?;
             run_task::<H>(&app_context, name.as_ref(), &vars).await?;
+        }
+        #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+        Commands::Jobs { command } => {
+            handle_job_command::<H>(command, environment, app_context.config).await?;
         }
         Commands::Scheduler {
             name,
@@ -804,7 +814,6 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             tag,
             list,
         } => {
-            let app_context = create_context::<H>(&environment, app_context.config).await?;
             run_scheduler::<H>(&app_context, config_path.as_ref(), name, tag, list).await?;
         }
         #[cfg(debug_assertions)]
@@ -817,7 +826,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         } => {
             if config_arg {
                 println!("{}", &app_context.config);
-                println!("Environment: {}", &environment);
+                println!("Environment: {environment}");
             } else {
                 let mut should_exit = false;
                 for (_, check) in doctor::run_all::<H>(&app_context, production).await? {
@@ -834,7 +843,6 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
         Commands::Version {} => {
             println!("{}", H::app_version());
         }
-
         Commands::Watch {
             worker,
             server_and_worker,
@@ -864,6 +872,10 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                 ))
             })?;
         }
+        // `Start` and (with `with-db`) `Db` are handled by the caller before
+        // delegating here.
+        #[allow(unreachable_patterns)]
+        _ => unreachable!("Start/Db commands are handled by the caller"),
     }
     Ok(())
 }
@@ -912,104 +924,12 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             let boot_result = create_app::<H>(start_mode, &environment, app_context.config).await?;
             let serve_params = ServeParams {
                 port: port.map_or(boot_result.app_context.config.server.port, |p| p),
-                binding: binding.map_or(
-                    boot_result.app_context.config.server.binding.to_string(),
-                    |b| b,
-                ),
+                binding: binding
+                    .unwrap_or_else(|| boot_result.app_context.config.server.binding.clone()),
             };
             start::<H>(boot_result, serve_params, no_banner).await?;
         }
-        Commands::Routes {} => show_list_endpoints::<H>(&app_context),
-        Commands::Middleware { show_config } => {
-            let middlewares = list_middlewares::<H>(&app_context);
-            for middleware in middlewares.iter().filter(|m| m.enabled) {
-                println!(
-                    "{:<22} {}",
-                    middleware.id.bold(),
-                    if show_config {
-                        middleware.detail.as_str()
-                    } else {
-                        ""
-                    }
-                );
-            }
-            println!("\n");
-            for middleware in middlewares.iter().filter(|m| !m.enabled) {
-                println!("{:<22} (disabled)", middleware.id.bold().dimmed(),);
-            }
-        }
-        Commands::Task { name, params } => {
-            let vars = task::Vars::from_cli_args(params);
-            run_task::<H>(&app_context, name.as_ref(), &vars).await?;
-        }
-        #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
-        Commands::Jobs { command } => {
-            handle_job_command::<H>(command, &environment, app_context.config).await?
-        }
-        Commands::Scheduler {
-            name,
-            config_path,
-            tag,
-            list,
-        } => {
-            run_scheduler::<H>(&app_context, config_path.as_ref(), name, tag, list).await?;
-        }
-        #[cfg(debug_assertions)]
-        Commands::Generate { component } => {
-            handle_generate_command::<H>(component, &app_context.config)?;
-        }
-        Commands::Doctor {
-            config: config_arg,
-            production,
-        } => {
-            if config_arg {
-                println!("{}", &app_context.config);
-                println!("Environment: {}", &environment);
-            } else {
-                let mut should_exit = false;
-                for (_, check) in doctor::run_all::<H>(&app_context, production).await? {
-                    if !should_exit && !check.valid() {
-                        should_exit = true;
-                    }
-                    println!("{check}");
-                }
-                if should_exit {
-                    exit(1);
-                }
-            }
-        }
-        Commands::Version {} => {
-            println!("{}", H::app_version(),);
-        }
-        Commands::Watch {
-            worker,
-            server_and_worker,
-            scheduler,
-        } => {
-            // cargo-watch  -s 'cargo loco start'
-            let mut cmd_str = String::from("cargo loco start");
-
-            if let Some(worker_tags) = worker {
-                if worker_tags.is_empty() {
-                    cmd_str.push_str(" --worker");
-                } else {
-                    write!(cmd_str, " --worker={}", worker_tags.join(","))
-                        .expect("Failed to write to string");
-                }
-            } else if server_and_worker {
-                cmd_str.push_str(" --server-and-worker");
-            }
-            if scheduler {
-                cmd_str.push_str(" --scheduler");
-            }
-
-            cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
-                Error::Message(format!(
-                    "failed to start with `cargo-watch`. Did you `cargo install \
-                         cargo-watch`?. error details: `{err}`",
-                ))
-            })?;
-        }
+        command => dispatch_common::<H>(command, &environment, app_context).await?,
     }
     Ok(())
 }
