@@ -29,6 +29,14 @@
   Loco's shared base64 secret and silently produced broken tokens — are no longer
   representable.
 
+### Added
+
+- **Opt-in background-job reaper (visibility timeout).** Each queue backend's
+  config accepts a `reaper: { age_minutes, interval_seconds }` block. When set,
+  the worker periodically requeues jobs stranded in `Processing` (e.g. by a
+  crashed worker) back to `Queued`, instead of requiring a manual
+  `cargo loco jobs requeue`. Disabled by default — existing behavior is unchanged.
+
 ### Changed
 
 - **Rust edition 2024.** `loco-rs`, `loco-gen`, `xtask`, and the `loco` new-app
@@ -43,6 +51,17 @@
   no API change).
 - Cookie token extraction now uses `axum_extra`'s `Cookie::value()` instead of
   hand-parsing the cookie string (byte-identical behavior).
+- Internal de-duplication pass (no public-API-path or behavior change unless
+  noted): the response helpers in `format` are now single-sourced through
+  `RenderBuilder`; the `JWT`/`JWTWithUser` extractors share one validate/decode
+  helper; the six validate extractors are generated from shared decoder fns +
+  two error-tier macros; the byte-identical `Job` struct is shared across the
+  SQL and Redis queue backends; the twin `cli::main` functions share one
+  `dispatch_common`; and duplicate env-var name constants were removed.
+- `format`'s two response paths were converged onto axum's canonical behavior:
+  `RenderBuilder::json` and `RenderBuilder::redirect_with_header_key` are now
+  infallible with respect to bad input (they return a `500` response, matching
+  `axum::Json` / `axum::response::Redirect`) instead of returning `Err`.
 
 ### Fixed
 
@@ -74,6 +93,13 @@
 - Password redaction in test snapshots (`cleanup_user_model`) now targets the
   quoted value precisely; the previous pattern had a degenerate quantifier that
   swallowed the field following `password`.
+- Postgres test-database cleanup now completes synchronously (a joined worker
+  thread) instead of a fire-and-forget task, so parallel test runs no longer
+  leak databases; `PostgresTest` also builds its connection strings with the
+  `url` crate rather than a corruption-prone substring replace.
+- `RenderBuilder::template` now threads the builder's chained `status`/`header`/
+  `etag`/`cookies` through to the response; it previously delegated to the free
+  `html()` and silently dropped them.
 - `llms.txt`: two `Core concepts` links pointed at doc pages that don't exist
   (`the-app/configuration/`, `the-app/testing/`); repointed to the sections that
   actually document them. A new `cargo xtask llms-check` CI step now verifies the
