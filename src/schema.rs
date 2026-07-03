@@ -777,7 +777,7 @@ pub async fn add_reference(
     let nz_totbl = normalize_table(totbl);
     // user_id
     let nz_ref_name = if refname.is_empty() {
-        reference_id(totbl)
+        reference_id(&nz_totbl)
     } else {
         refname.to_string()
     };
@@ -862,7 +862,7 @@ pub async fn remove_reference(
     let nz_totbl = normalize_table(totbl);
     // user_id
     let nz_ref_name = if refname.is_empty() {
-        reference_id(totbl)
+        reference_id(&nz_totbl)
     } else {
         refname.to_string()
     };
@@ -988,4 +988,103 @@ pub async fn drop_enum_type(m: &SchemaManager<'_>, enum_name: &str) -> Result<()
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reference_id_is_pure_and_normalization_helpers_compose() {
+        // Sanity-check the pure helpers directly: reference_id derives the
+        // same column name regardless of how many times normalize_table is
+        // (correctly) applied beforehand, i.e. the fix is about *where*
+        // normalization happens (all three call sites), not changing what
+        // normalize_table/reference_id themselves compute.
+        assert_eq!(reference_id(&normalize_table("user")), "user_id");
+        assert_eq!(reference_id(&normalize_table("users")), "user_id");
+    }
+
+    #[tokio::test]
+    async fn create_add_remove_reference_agree_on_fk_naming_for_irregular_plural() {
+        use crate::tests_cfg::postgres::setup_postgres_container;
+
+        // "person" is an irregular plural (person/people). `create_table_impl`
+        // ALWAYS normalizes the referenced table name (via `normalize_table`)
+        // before deriving the FK column/constraint name via `reference_id`.
+        // Before the fix, `add_reference`/`remove_reference` derived the FK
+        // name from the RAW totbl instead, so for an irregular plural like
+        // "person" they'd compute a different name than `create_table_impl`
+        // actually used on disk (e.g. "person_id" vs "people_id"). This test
+        // cross-checks against `create_table`'s *actual* database artifact,
+        // not just against each other (add_reference and remove_reference
+        // shared the same bug, so they always agreed with each other even
+        // when broken -- the real defect only shows up against create_table).
+        let (pg_url, _container) = setup_postgres_container().await;
+
+        let mut config = crate::tests_cfg::config::get_database_config();
+        config.uri = pg_url;
+        config.min_connections = 1;
+        config.max_connections = 5;
+
+        let db = crate::db::connect(&config)
+            .await
+            .expect("Failed to connect to PostgreSQL test database");
+
+        let manager = sea_orm_migration::SchemaManager::new(&db);
+
+        // Ground truth: the FK column name create_table_impl actually derives
+        // for a `person` reference.
+        let expected_ref_col = reference_id(&normalize_table("person"));
+
+        create_table(&manager, "people", &[("id", ColType::PkAuto)], &[])
+            .await
+            .expect("failed to create people table");
+
+        // create_table's inline `refs` mechanism creates the FK column and a
+        // `fk-movies-{expected_ref_col}-to-people` constraint on `movies`.
+        create_table(
+            &manager,
+            "movies",
+            &[("id", ColType::PkAuto)],
+            &[("person", "")],
+        )
+        .await
+        .expect("failed to create movies table with an inline person reference");
+
+        // remove_reference must derive the exact same FK constraint name that
+        // create_table_impl actually created on `movies`, or dropping it here
+        // fails with a "constraint does not exist" DbErr -- this is the
+        // concrete failure mode of the original defect.
+        remove_reference(&manager, "movies", "person", "")
+            .await
+            .expect("remove_reference should find and drop the FK create_table created");
+
+        // add_reference on a separate bare table must derive the identical FK
+        // column name create_table used for the same reference.
+        create_table_without_timestamps(&manager, "reviews", &[("id", ColType::PkAuto)], &[])
+            .await
+            .expect("failed to create bare reviews table");
+
+        add_reference(&manager, "reviews", "person", "")
+            .await
+            .expect("add_reference should succeed");
+
+        let rows = db
+            .query_all_raw(sea_orm::Statement::from_string(
+                sea_orm::DatabaseBackend::Postgres,
+                format!(
+                    "SELECT column_name FROM information_schema.columns \
+                     WHERE table_name = 'reviews' AND column_name = '{expected_ref_col}'"
+                ),
+            ))
+            .await
+            .expect("querying reviews columns should succeed");
+        assert_eq!(
+            rows.len(),
+            1,
+            "add_reference should have created column `{expected_ref_col}` on `reviews`, \
+             matching create_table's naming for the same reference"
+        );
+    }
 }
