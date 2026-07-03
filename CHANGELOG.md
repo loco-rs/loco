@@ -10,6 +10,9 @@
   generator now compile on edition 2024 (MSRV floor unchanged at 1.94; edition
   2024 needs ≥ 1.85). Editions are per-crate, so apps depending on Loco need not
   change. Newly generated apps stay on edition 2021 for now.
+- Deduplicated the Postgres and SQLite background-queue providers: the shared
+  `Job`/`JobRegistry`/`RunOpts` now live in one module behind a `Driver` trait
+  (internal refactor, no behavior or API-path change).
 
 ### Removed
 
