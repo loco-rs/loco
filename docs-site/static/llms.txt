@@ -41,6 +41,21 @@ Current line: Loco 0.17.x — Sea-ORM 2.0, sqlx 0.9, 64-bit (`i64`) primary keys
 - [Storage](https://loco.rs/docs/infrastructure/storage/) and [Cache](https://loco.rs/docs/infrastructure/cache/): files and caching.
 - [Deployment](https://loco.rs/docs/infrastructure/deployment/): shipping to production.
 
+## Reference
+
+Exact keys, flags, types, and signatures — verified against the codebase:
+
+- [Configuration](https://loco.rs/docs/reference/configuration/): every config YAML key, per environment.
+- [CLI](https://loco.rs/docs/reference/cli/): `cargo loco` and `loco new` commands and flags.
+- [Generators & field types](https://loco.rs/docs/reference/generators/): every `generate` kind + the field-type mini-language.
+- [Feature flags](https://loco.rs/docs/reference/feature-flags/): the full Cargo feature matrix.
+- [Middleware catalog](https://loco.rs/docs/reference/middleware/): every built-in middleware and its config keys.
+- [AppContext & prelude](https://loco.rs/docs/reference/app-context/): shared state and the one-import surface.
+- [Hooks trait](https://loco.rs/docs/reference/hooks/): the application lifecycle contract.
+- [Error model](https://loco.rs/docs/reference/errors/): the `Error` enum and its HTTP status mapping.
+- [Schema & ColType DSL](https://loco.rs/docs/reference/schema-dsl/): migration column and table operations.
+- [Query DSL & pagination](https://loco.rs/docs/reference/query-pagination/): the model query builder and pagination.
+
 ## Upgrading
 
 - [Upgrade guide](https://loco.rs/docs/extras/upgrades/): version-to-version
