@@ -1,5 +1,5 @@
 ---
-source: src/db.rs
+source: src/db/schema.rs
 expression: "serde_json::to_string_pretty(&roundtripped).unwrap()"
 snapshot_kind: text
 ---

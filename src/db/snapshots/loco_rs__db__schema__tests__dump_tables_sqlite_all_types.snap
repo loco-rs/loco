@@ -1,5 +1,5 @@
 ---
-source: src/db.rs
+source: src/db/schema.rs
 expression: yaml_content
 snapshot_kind: text
 ---
