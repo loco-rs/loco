@@ -56,7 +56,7 @@ The methods below are the least-documented parts of `Hooks`. Each entry states e
 
 ### `init_logger` — own your tracing stack
 
-```rust,ignore
+```rust
 fn init_logger(_ctx: &AppContext) -> Result<bool>
 ```
 
@@ -64,7 +64,7 @@ Runs once during boot, before the rest of the app context is wired up. Returning
 
 ### `load_config` — replace the config loader
 
-```rust,ignore
+```rust
 async fn load_config(env: &Environment) -> Result<Config>
 ```
 
@@ -72,7 +72,7 @@ Runs during boot to produce the `Config` passed into `boot`. The default is `env
 
 ### `after_context` — post-process `AppContext`
 
-```rust,ignore
+```rust
 async fn after_context(ctx: AppContext) -> Result<AppContext>
 ```
 
@@ -80,7 +80,7 @@ Runs after `AppContext` has been fully constructed (db, cache, storage, mailer, 
 
 ### `before_run` — pre-run resource loading
 
-```rust,ignore
+```rust
 async fn before_run(_app_context: &AppContext) -> Result<()>
 ```
 
@@ -88,7 +88,7 @@ Runs before the app starts serving/running (applies to the server and to other r
 
 ### `serve` — the HTTP serve loop
 
-```rust,ignore
+```rust
 async fn serve(app: AxumRouter, ctx: &AppContext, serve_params: &ServeParams) -> Result<()>
 ```
 
@@ -96,7 +96,7 @@ Runs when the app is started in server mode. The default binds a `TcpListener` a
 
 ### `app_version` — composite version string
 
-```rust,ignore
+```rust
 fn app_version() -> String
 ```
 
@@ -106,7 +106,7 @@ Called wherever Loco reports its version (e.g. `cargo loco version`, `/_ping`/`/
 
 `boot`'s second parameter is `environment: &Environment` — a reference to the `Environment` enum, **not** `&str`:
 
-```rust,ignore
+```rust
 async fn boot(mode: StartMode, environment: &Environment, config: Config) -> Result<BootResult>
 ```
 

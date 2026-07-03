@@ -195,7 +195,7 @@ create_table(m, "movies", vec![
     ("title", ColType::String)
 ], vec![]).await;
 ```
-```shell
+```sh
 loco g migration CreateMovies title:string user:references
 loco g migration CreateMovies title:string user:references:admin_id
 ```
@@ -246,7 +246,7 @@ remove_reference(m, "movies", "users", "").await;
 
 The generator CLI flag that maps to the `_without_timestamps` functions is **`--without-tz`** (not `--without-timestamps`):
 
-```shell
+```sh
 loco g migration CreatePosts title:string --without-tz
 loco g migration CreateJoinTableUsersAndGroups count:int --without-tz
 loco g scaffold posts title:string! user:references --api --without-tz
