@@ -265,6 +265,9 @@ queue:
   dangerously_flush: false              # optional, default false
   queues: [high, low]                   # optional — priority order, first = most important
   num_workers: 2                        # optional, default 2
+  # reaper:                             # optional, disabled by default (opt-in)
+  #   age_minutes: 10                   # requeue jobs stuck in `processing` for longer than this
+  #   interval_seconds: 60              # optional, default 60 — how often to sweep
 
 # kind: Postgres
 queue:
@@ -278,13 +281,16 @@ queue:
   idle_timeout: 500                     # optional, default 500 (ms)
   poll_interval_sec: 1                  # optional, default 1
   num_workers: 2                        # optional, default 2
+  # reaper:                             # optional, disabled by default (opt-in)
+  #   age_minutes: 10                   # requeue jobs stuck in `processing` for longer than this
+  #   interval_seconds: 60              # optional, default 60 — how often to sweep
 
 # kind: Sqlite (same shape as Postgres)
 queue:
   kind: Sqlite
   uri: sqlite://...
   poll_interval_sec: 1                  # optional, default 1 (own default fn)
-  # ...remaining keys identical to Postgres
+  # ...remaining keys identical to Postgres, including the optional `reaper`
 ```
 
 | Key | Type | Required? | Notes |
@@ -295,6 +301,7 @@ queue:
 | `queue.dangerously_flush` | `bool` | optional — `#[serde(default)]` | `queue.rs:20` |
 | `queue.queues` | `Option<Vec<String>>` | optional | `queue.rs:24`. Declares named priority queues; first entry is most important |
 | `queue.num_workers` | `u32` | optional, default `2` (`num_workers()`) | `queue.rs:26-27` |
+| `queue.reaper` | `Option<ReaperConfig>` | optional, default `None` (disabled) | `queue.rs:29-31`. See below |
 | **Postgres** (`PostgresQueueConfig`, `queue.rs:30-57`) | | | |
 | `queue.uri` | `String` | required | `queue.rs:32` |
 | `queue.dangerously_flush` | `bool` | optional, default `false` | `queue.rs:34-35` |
@@ -305,8 +312,12 @@ queue:
 | `queue.idle_timeout` | `u64` (ms) | optional, default `500` (`db_idle_timeout()`) | `queue.rs:49-50` |
 | `queue.poll_interval_sec` | `u32` | optional, default `1` (`pgq_poll_interval()`) | `queue.rs:52-53` |
 | `queue.num_workers` | `u32` | optional, default `2` | `queue.rs:55-56` |
+| `queue.reaper` | `Option<ReaperConfig>` | optional, default `None` (disabled) | `queue.rs:57-59`. See below |
 | **Sqlite** (`SqliteQueueConfig`, `queue.rs:59-86`) | | | |
-| — | identical fields to Postgres | | `poll_interval_sec` defaults via its own `sqlt_poll_interval()=1` (`queue.rs:81-82,92-94`); all other defaults are shared with Postgres via the same `db_*` helper functions |
+| — | identical fields to Postgres, including `queue.reaper` | | `poll_interval_sec` defaults via its own `sqlt_poll_interval()=1` (`queue.rs:81-82,92-94`); all other defaults are shared with Postgres via the same `db_*` helper functions |
+| **`ReaperConfig`** (`queue.rs`, all three backends) | | | Opt-in visibility-timeout reaper: when set, the queue provider spawns a background task that periodically requeues jobs stuck in `processing` (e.g. after a worker crash), reusing the same logic as `cargo loco jobs requeue`. Leaving it unset keeps the previous behavior — no automatic requeue. |
+| `queue.reaper.age_minutes` | `i64` | required (only if `reaper` is set) | Requeue jobs that have been `processing` for longer than this many minutes |
+| `queue.reaper.interval_seconds` | `u64` | optional, default `60` (`default_reaper_interval_seconds()`) | How often the reaper sweeps for stale jobs |
 
 ## `cache`
 

@@ -6,7 +6,10 @@ use std::{
 
 use super::{BackgroundWorker, JobStatus, Queue};
 pub use super::{Job, JobData, JobId};
-use crate::{config::RedisQueueConfig, Error, Result};
+use crate::{
+    config::{RedisQueueConfig, ReaperConfig},
+    Error, Result,
+};
 use chrono::Utc;
 use futures_util::FutureExt;
 use redis::{aio::MultiplexedConnection as Connection, AsyncCommands, Client, Script};
@@ -929,6 +932,9 @@ pub struct RunOpts {
     pub num_workers: u32,
     pub poll_interval_sec: u32,
     pub queues: Option<Vec<String>>,
+    /// Opt-in visibility-timeout reaper settings, populated from the queue
+    /// config. `None` disables the reaper (default, backward-compatible).
+    pub reaper: Option<ReaperConfig>,
 }
 
 /// Create this provider
@@ -945,6 +951,7 @@ pub async fn create_provider(qcfg: &RedisQueueConfig) -> Result<Queue> {
         num_workers: qcfg.num_workers,
         poll_interval_sec: 1,
         queues: qcfg.queues.clone(),
+        reaper: qcfg.reaper.clone(),
     };
     debug!(
         queues = ?qcfg.queues,
@@ -1341,6 +1348,7 @@ mod tests {
             num_workers: 1,
             poll_interval_sec: 1,
             queues: None,
+            reaper: None,
         };
 
         let token = CancellationToken::new();
@@ -1778,5 +1786,52 @@ mod tests {
             .expect("dequeue")
             .expect("should have dequeued the untagged job");
         assert_eq!(job.id, "job2", "Should have picked job2");
+    }
+
+    // `Client::open` does not eagerly connect, so these wiring tests don't
+    // need a running Redis instance.
+    #[tokio::test]
+    async fn create_provider_wires_reaper_config() {
+        let qcfg = RedisQueueConfig {
+            uri: "redis://127.0.0.1:6379".to_string(),
+            dangerously_flush: false,
+            queues: None,
+            num_workers: 1,
+            reaper: Some(ReaperConfig {
+                age_minutes: 5,
+                interval_seconds: 30,
+            }),
+        };
+
+        let queue = create_provider(&qcfg).await.expect("create provider");
+
+        match queue {
+            Queue::Redis(_, _, run_opts, _) => {
+                let reaper = run_opts.reaper.expect("reaper should be wired from config");
+                assert_eq!(reaper.age_minutes, 5);
+                assert_eq!(reaper.interval_seconds, 30);
+            }
+            _ => panic!("expected a Redis queue"),
+        }
+    }
+
+    #[tokio::test]
+    async fn create_provider_defaults_reaper_to_none() {
+        let qcfg = RedisQueueConfig {
+            uri: "redis://127.0.0.1:6379".to_string(),
+            dangerously_flush: false,
+            queues: None,
+            num_workers: 1,
+            reaper: None,
+        };
+
+        let queue = create_provider(&qcfg).await.expect("create provider");
+
+        match queue {
+            Queue::Redis(_, _, run_opts, _) => {
+                assert!(run_opts.reaper.is_none());
+            }
+            _ => panic!("expected a Redis queue"),
+        }
     }
 }

@@ -420,6 +420,7 @@ mod tests {
             dangerously_flush: false,
             queues: None,
             num_workers: 1,
+            reaper: None,
         }));
 
         // Create Redis queue provider directly with failing Redis connection
@@ -429,6 +430,7 @@ mod tests {
                 dangerously_flush: false,
                 queues: None,
                 num_workers: 1,
+                reaper: None,
             })
             .await
             .expect("Failed to create Redis queue provider"),

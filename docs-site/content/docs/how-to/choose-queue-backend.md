@@ -119,6 +119,22 @@ cargo loco jobs requeue --from-age 0  # move stuck "processing" jobs back to "qu
 
 See the full flag list in the [CLI reference](@/docs/reference/cli.md#2-3-jobs-subcommands).
 
+### Automatic requeue (reaper)
+
+Running `cargo loco jobs requeue` by hand recovers jobs stranded in `processing` after a worker crash, but nothing does this automatically by default. To have the running worker process do it periodically, opt in with a `reaper` block under `queue:` (all three backends support it):
+
+```yaml
+queue:
+  kind: Postgres
+  uri: "{{ get_env(name='PGQ_URL', default='postgres://localhost:5432/mydb') }}"
+  # ...
+  reaper:
+    age_minutes: 10 # requeue jobs stuck in "processing" for longer than this
+    interval_seconds: 60 # optional, default 60 — how often to sweep
+```
+
+Leaving `reaper` unset (the default) keeps prior behavior unchanged — no background sweep runs, and stranded jobs stay in `processing` until you run `cargo loco jobs requeue` yourself.
+
 ## Choosing between the three
 
 - **Redis** — lowest latency, named/priority queues, no extra schema. Good default if you already run Redis.

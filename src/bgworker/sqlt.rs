@@ -469,6 +469,7 @@ pub async fn create_provider(qcfg: &SqliteQueueConfig) -> Result<Queue> {
         RunOpts {
             num_workers: qcfg.num_workers,
             poll_interval_sec: qcfg.poll_interval_sec,
+            reaper: qcfg.reaper.clone(),
         },
         token,
     ))
@@ -609,6 +610,7 @@ mod tests {
             idle_timeout: 500,
             poll_interval_sec: 1,
             num_workers: 1,
+            reaper: None,
         };
 
         let pool = connect(&qcfg).await.unwrap();
@@ -1155,6 +1157,75 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn create_provider_wires_reaper_config() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let qcfg = SqliteQueueConfig {
+            uri: format!(
+                "sqlite://{}?mode=rwc",
+                tree_fs.root.join("reaper.sqlite").display()
+            ),
+            dangerously_flush: false,
+            enable_logging: false,
+            max_connections: 1,
+            min_connections: 1,
+            connect_timeout: 500,
+            idle_timeout: 500,
+            poll_interval_sec: 1,
+            num_workers: 1,
+            reaper: Some(crate::config::ReaperConfig {
+                age_minutes: 5,
+                interval_seconds: 30,
+            }),
+        };
+
+        let queue = create_provider(&qcfg).await.expect("create provider");
+
+        match queue {
+            Queue::Sqlite(_, _, run_opts, _) => {
+                let reaper = run_opts.reaper.expect("reaper should be wired from config");
+                assert_eq!(reaper.age_minutes, 5);
+                assert_eq!(reaper.interval_seconds, 30);
+            }
+            _ => panic!("expected a Sqlite queue"),
+        }
+    }
+
+    #[tokio::test]
+    async fn create_provider_defaults_reaper_to_none() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let qcfg = SqliteQueueConfig {
+            uri: format!(
+                "sqlite://{}?mode=rwc",
+                tree_fs.root.join("no_reaper.sqlite").display()
+            ),
+            dangerously_flush: false,
+            enable_logging: false,
+            max_connections: 1,
+            min_connections: 1,
+            connect_timeout: 500,
+            idle_timeout: 500,
+            poll_interval_sec: 1,
+            num_workers: 1,
+            reaper: None,
+        };
+
+        let queue = create_provider(&qcfg).await.expect("create provider");
+
+        match queue {
+            Queue::Sqlite(_, _, run_opts, _) => {
+                assert!(run_opts.reaper.is_none());
+            }
+            _ => panic!("expected a Sqlite queue"),
+        }
+    }
+
+    #[tokio::test]
     async fn can_dequeue_with_priority_ordering() {
         let tree_fs = tree_fs::TreeBuilder::default()
             .drop(true)
@@ -1287,6 +1358,7 @@ mod tests {
         let opts = RunOpts {
             num_workers: 1,
             poll_interval_sec: 1,
+            reaper: None,
         };
         let token = CancellationToken::new();
         let handles = registry.run::<SqliteDriver>(&pool, &opts, &token, &[]);

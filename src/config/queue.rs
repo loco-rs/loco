@@ -25,6 +25,10 @@ pub struct RedisQueueConfig {
 
     #[serde(default = "num_workers")]
     pub num_workers: u32,
+
+    /// Opt-in visibility-timeout reaper. See [`ReaperConfig`].
+    #[serde(default)]
+    pub reaper: Option<ReaperConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -54,6 +58,10 @@ pub struct PostgresQueueConfig {
 
     #[serde(default = "num_workers")]
     pub num_workers: u32,
+
+    /// Opt-in visibility-timeout reaper. See [`ReaperConfig`].
+    #[serde(default)]
+    pub reaper: Option<ReaperConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -83,6 +91,41 @@ pub struct SqliteQueueConfig {
 
     #[serde(default = "num_workers")]
     pub num_workers: u32,
+
+    /// Opt-in visibility-timeout reaper. See [`ReaperConfig`].
+    #[serde(default)]
+    pub reaper: Option<ReaperConfig>,
+}
+
+/// Configuration for an opt-in visibility-timeout reaper.
+///
+/// When set on a queue config, the queue provider spawns a background task
+/// that periodically requeues jobs stuck in `Processing` for longer than
+/// `age_minutes` (for example, because the worker that dequeued them
+/// crashed before completing or failing them). It reuses the same requeue
+/// logic as `cargo loco jobs requeue`.
+///
+/// This is entirely opt-in: leaving `reaper` unset (`None`, the default)
+/// keeps existing behavior unchanged and no background task is spawned.
+///
+/// ```yaml
+/// queue:
+///   kind: Postgres
+///   uri: "{{ get_env(name=\"LOCO_QUEUE_URL\", default=\"postgres://localhost:5432/loco_app\") }}"
+///   # Optional: automatically requeue jobs stuck in `processing` (e.g. after a worker crash).
+///   # reaper:
+///   #   age_minutes: 10
+///   #   interval_seconds: 60
+/// ```
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ReaperConfig {
+    /// Requeue jobs that have been in the `processing` state for longer than
+    /// this many minutes.
+    pub age_minutes: i64,
+
+    /// How often, in seconds, the reaper sweeps for stale jobs.
+    #[serde(default = "default_reaper_interval_seconds")]
+    pub interval_seconds: u64,
 }
 
 fn pgq_poll_interval() -> u32 {
@@ -95,4 +138,8 @@ fn sqlt_poll_interval() -> u32 {
 
 fn num_workers() -> u32 {
     2
+}
+
+fn default_reaper_interval_seconds() -> u64 {
+    60
 }

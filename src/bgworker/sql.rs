@@ -18,7 +18,7 @@ use tracing::{debug, error, trace};
 
 use super::BackgroundWorker;
 pub use super::{Job, JobData, JobId};
-use crate::{Error, Result};
+use crate::{config::ReaperConfig, Error, Result};
 
 pub(crate) type JobHandler = Box<
     dyn Fn(
@@ -33,6 +33,9 @@ pub(crate) type JobHandler = Box<
 pub struct RunOpts {
     pub num_workers: u32,
     pub poll_interval_sec: u32,
+    /// Opt-in visibility-timeout reaper settings, populated from the queue
+    /// config. `None` disables the reaper (default, backward-compatible).
+    pub reaper: Option<ReaperConfig>,
 }
 
 /// Abstracts the backend-coupled operations of the SQL-based job queue

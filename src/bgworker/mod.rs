@@ -222,6 +222,23 @@ impl Queue {
         match self {
             #[cfg(feature = "bg_redis")]
             Self::Redis(pool, registry, run_opts, token) => {
+                if let Some(reaper) = run_opts.reaper.clone() {
+                    let pool = pool.clone();
+                    let token = token.clone();
+                    tokio::spawn(async move {
+                        let interval = std::time::Duration::from_secs(reaper.interval_seconds);
+                        loop {
+                            tokio::select! {
+                                () = token.cancelled() => break,
+                                () = tokio::time::sleep(interval) => {
+                                    if let Err(err) = redis::requeue(&pool, &reaper.age_minutes).await {
+                                        tracing::error!(error = %err, "reaper: failed to requeue stale jobs");
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
                 let handles = registry
                     .lock()
                     .await
@@ -230,6 +247,23 @@ impl Queue {
             }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, registry, run_opts, token) => {
+                if let Some(reaper) = run_opts.reaper.clone() {
+                    let pool = pool.clone();
+                    let token = token.clone();
+                    tokio::spawn(async move {
+                        let interval = std::time::Duration::from_secs(reaper.interval_seconds);
+                        loop {
+                            tokio::select! {
+                                () = token.cancelled() => break,
+                                () = tokio::time::sleep(interval) => {
+                                    if let Err(err) = pg::requeue(&pool, &reaper.age_minutes).await {
+                                        tracing::error!(error = %err, "reaper: failed to requeue stale jobs");
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
                 let handles = registry.lock().await.run::<pg::PgDriver>(
                     pool,
                     run_opts,
@@ -240,6 +274,23 @@ impl Queue {
             }
             #[cfg(feature = "bg_sqlt")]
             Self::Sqlite(pool, registry, run_opts, token) => {
+                if let Some(reaper) = run_opts.reaper.clone() {
+                    let pool = pool.clone();
+                    let token = token.clone();
+                    tokio::spawn(async move {
+                        let interval = std::time::Duration::from_secs(reaper.interval_seconds);
+                        loop {
+                            tokio::select! {
+                                () = token.cancelled() => break,
+                                () = tokio::time::sleep(interval) => {
+                                    if let Err(err) = sqlt::requeue(&pool, &reaper.age_minutes).await {
+                                        tracing::error!(error = %err, "reaper: failed to requeue stale jobs");
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
                 let handles = registry.lock().await.run::<sqlt::SqliteDriver>(
                     pool,
                     run_opts,
@@ -741,6 +792,7 @@ pub async fn converge(queue: &Queue, config: &QueueConfig) -> Result<()> {
             poll_interval_sec: _,
             num_workers: _,
             min_connections: _,
+            reaper: _,
         })
         | QueueConfig::Sqlite(SqliteQueueConfig {
             dangerously_flush,
@@ -752,12 +804,14 @@ pub async fn converge(queue: &Queue, config: &QueueConfig) -> Result<()> {
             poll_interval_sec: _,
             num_workers: _,
             min_connections: _,
+            reaper: _,
         })
         | QueueConfig::Redis(RedisQueueConfig {
             dangerously_flush,
             uri: _,
             queues: _,
             num_workers: _,
+            reaper: _,
         }) => {
             if *dangerously_flush {
                 tracing::warn!("Flush mode enabled - clearing all jobs from queue");
@@ -834,6 +888,7 @@ mod tests {
             idle_timeout: 500,
             poll_interval_sec: 1,
             num_workers: 1,
+            reaper: None,
         }
     }
 

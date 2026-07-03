@@ -507,6 +507,7 @@ pub async fn create_provider(qcfg: &PostgresQueueConfig) -> Result<Queue> {
         RunOpts {
             num_workers: qcfg.num_workers,
             poll_interval_sec: qcfg.poll_interval_sec,
+            reaper: qcfg.reaper.clone(),
         },
         token, // Pass the token
     ))
@@ -999,6 +1000,63 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn create_provider_wires_reaper_config() {
+        let (pg_url, _container) = tests_cfg::postgres::setup_postgres_container().await;
+        let qcfg = PostgresQueueConfig {
+            uri: pg_url,
+            dangerously_flush: false,
+            enable_logging: false,
+            max_connections: 1,
+            min_connections: 1,
+            connect_timeout: 500,
+            idle_timeout: 500,
+            poll_interval_sec: 1,
+            num_workers: 1,
+            reaper: Some(crate::config::ReaperConfig {
+                age_minutes: 5,
+                interval_seconds: 30,
+            }),
+        };
+
+        let queue = create_provider(&qcfg).await.expect("create provider");
+
+        match queue {
+            Queue::Postgres(_, _, run_opts, _) => {
+                let reaper = run_opts.reaper.expect("reaper should be wired from config");
+                assert_eq!(reaper.age_minutes, 5);
+                assert_eq!(reaper.interval_seconds, 30);
+            }
+            _ => panic!("expected a Postgres queue"),
+        }
+    }
+
+    #[tokio::test]
+    async fn create_provider_defaults_reaper_to_none() {
+        let (pg_url, _container) = tests_cfg::postgres::setup_postgres_container().await;
+        let qcfg = PostgresQueueConfig {
+            uri: pg_url,
+            dangerously_flush: false,
+            enable_logging: false,
+            max_connections: 1,
+            min_connections: 1,
+            connect_timeout: 500,
+            idle_timeout: 500,
+            poll_interval_sec: 1,
+            num_workers: 1,
+            reaper: None,
+        };
+
+        let queue = create_provider(&qcfg).await.expect("create provider");
+
+        match queue {
+            Queue::Postgres(_, _, run_opts, _) => {
+                assert!(run_opts.reaper.is_none());
+            }
+            _ => panic!("expected a Postgres queue"),
+        }
+    }
+
+    #[tokio::test]
     async fn can_dequeue_with_priority_extremes_and_ties() {
         let (pool, _container) = setup_pg_test().await;
         let base_time = Utc::now() - chrono::Duration::minutes(10);
@@ -1075,6 +1133,7 @@ mod tests {
         let opts = RunOpts {
             num_workers: 1,
             poll_interval_sec: 1,
+            reaper: None,
         };
         let token = CancellationToken::new();
         let handles = registry.run::<PgDriver>(&pool, &opts, &token, &[]);
