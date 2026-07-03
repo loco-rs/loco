@@ -26,7 +26,7 @@ Nothing here is posted yet — GitHub is untouched.
 | #1757 bump rand 0.8→0.9 (loco-new) | dependabot | 🟢 **Adopted** (folded into version-skew unify) — close as done | Commit 787af3a. |
 | #1754 bump yaml (docs-site npm) | dependabot | 🔵 **Merge directly on GitHub** | Transitive npm dep in docs-site pnpm-lock (yaml 2.5.0, parent-constrained). Not reconcilable offline without risking a half-written lock; dependabot regenerates the lock correctly on merge. Docs-site tooling only — orthogonal to the Rust release. |
 | #1657 replace trait fn bounds w/ impl AsyncFn | alwayys-afk | 🟢 **Adopted** (commit 575f278) — close on release | Extended to all base_template test templates + snapshots. |
-| #1762 migrate 8 READMEs → single NRG template | andriishin | 🟡 Epic D (README consolidation) | |
+| #1762 migrate 8 READMEs → single NRG template | andriishin | 🔵 **Merge directly on GitHub** | Adds `nrg` generation tool + CI workflow (+922). Docs-infra, orthogonal to 0.17 correctness; deferred from Epic D by design (see spec 2026-07-03). |
 | #1774 mailer implicit TLS (SMTPS/465) | zmilan | 🟢 **Adopted** (commit e1f4311) — close on release | Fixes #1773. |
 | #1764 MultiEmail / multi-recipient | YtimoDeng | 🔵 Feature decision (not in the 5) | Overlaps #1694/#1652; revisit post-adoption. |
 | #1694 Tera inheritance in emails | jtwaleson | 🔵 Feature decision (not in the 5) | Overlaps #1652. |
