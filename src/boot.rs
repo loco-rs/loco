@@ -138,6 +138,7 @@ pub async fn start<H: Hooks>(
             };
 
             shutdown_signal().await;
+            H::on_shutdown(&app_context).await;
 
             if let Some(handle) = handle {
                 shutdown_and_await_queue_worker(&app_context, handle).await?;
