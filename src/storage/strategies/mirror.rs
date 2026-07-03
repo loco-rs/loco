@@ -24,7 +24,9 @@ use std::{collections::BTreeMap, path::Path};
 
 use bytes::Bytes;
 
-use crate::storage::{strategies::StorageStrategy, Storage, StorageError, StorageResult};
+use crate::storage::{
+    drivers::StoreDriver, strategies::StorageStrategy, Storage, StorageError, StorageResult,
+};
 
 /// Enum representing the failure mode for the [`MirrorStrategy`].
 #[derive(Clone, Debug)]
@@ -66,21 +68,9 @@ impl StorageStrategy for MirrorStrategy {
             .upload(path, content)
             .await?;
 
-        let mut collect_errors: BTreeMap<String, String> = BTreeMap::new();
-        if let Some(secondaries) = self.secondaries.as_ref() {
-            for secondary_store in secondaries {
-                match storage.as_store_err(secondary_store) {
-                    Ok(store) => {
-                        if let Err(err) = store.upload(path, content).await {
-                            collect_errors.insert(secondary_store.clone(), err.to_string());
-                        }
-                    }
-                    Err(err) => {
-                        collect_errors.insert(secondary_store.clone(), err.to_string());
-                    }
-                };
-            }
-        }
+        let collect_errors = self
+            .mirror_to_secondaries(storage, |store| store.upload(path, content))
+            .await;
 
         if self.failure_mode.should_fail(&collect_errors) {
             return Err(StorageError::Multi(collect_errors));
@@ -122,21 +112,10 @@ impl StorageStrategy for MirrorStrategy {
     async fn delete(&self, storage: &Storage, path: &Path) -> StorageResult<()> {
         storage.as_store_err(&self.primary)?.delete(path).await?;
 
-        let mut collect_errors: BTreeMap<String, String> = BTreeMap::new();
-        if let Some(secondaries) = self.secondaries.as_ref() {
-            for secondary_store in secondaries {
-                match storage.as_store_err(secondary_store) {
-                    Ok(store) => {
-                        if let Err(err) = store.delete(path).await {
-                            collect_errors.insert(secondary_store.clone(), err.to_string());
-                        }
-                    }
-                    Err(err) => {
-                        collect_errors.insert(secondary_store.clone(), err.to_string());
-                    }
-                };
-            }
-        }
+        let collect_errors = self
+            .mirror_to_secondaries(storage, |store| store.delete(path))
+            .await;
+
         if self.failure_mode.should_fail(&collect_errors) {
             return Err(StorageError::Multi(collect_errors));
         }
@@ -157,24 +136,12 @@ impl StorageStrategy for MirrorStrategy {
             .rename(from, to)
             .await?;
 
-        if let Some(secondaries) = self.secondaries.as_ref() {
-            let mut collect_errors: BTreeMap<String, String> = BTreeMap::new();
-            for secondary_store in secondaries {
-                match storage.as_store_err(secondary_store) {
-                    Ok(store) => {
-                        if let Err(err) = store.rename(from, to).await {
-                            collect_errors.insert(secondary_store.clone(), err.to_string());
-                        }
-                    }
-                    Err(err) => {
-                        collect_errors.insert(secondary_store.clone(), err.to_string());
-                    }
-                }
+        let collect_errors = self
+            .mirror_to_secondaries(storage, |store| store.rename(from, to))
+            .await;
 
-                if self.failure_mode.should_fail(&collect_errors) {
-                    return Err(StorageError::Multi(collect_errors));
-                }
-            }
+        if self.failure_mode.should_fail(&collect_errors) {
+            return Err(StorageError::Multi(collect_errors));
         }
 
         Ok(())
@@ -188,24 +155,12 @@ impl StorageStrategy for MirrorStrategy {
     async fn copy(&self, storage: &Storage, from: &Path, to: &Path) -> StorageResult<()> {
         storage.as_store_err(&self.primary)?.copy(from, to).await?;
 
-        if let Some(secondaries) = self.secondaries.as_ref() {
-            let mut collect_errors: BTreeMap<String, String> = BTreeMap::new();
-            for secondary_store in secondaries {
-                match storage.as_store_err(secondary_store) {
-                    Ok(store) => {
-                        if let Err(err) = store.copy(from, to).await {
-                            collect_errors.insert(secondary_store.clone(), err.to_string());
-                        }
-                    }
-                    Err(err) => {
-                        collect_errors.insert(secondary_store.clone(), err.to_string());
-                    }
-                }
+        let collect_errors = self
+            .mirror_to_secondaries(storage, |store| store.copy(from, to))
+            .await;
 
-                if self.failure_mode.should_fail(&collect_errors) {
-                    return Err(StorageError::Multi(collect_errors));
-                }
-            }
+        if self.failure_mode.should_fail(&collect_errors) {
+            return Err(StorageError::Multi(collect_errors));
         }
 
         Ok(())
@@ -267,24 +222,12 @@ impl StorageStrategy for MirrorStrategy {
             .await?;
 
         // Upload to secondaries if configured
-        if let Some(secondaries) = self.secondaries.as_ref() {
-            let mut collect_errors: BTreeMap<String, String> = BTreeMap::new();
-            for secondary_store in secondaries {
-                match storage.as_store_err(secondary_store) {
-                    Ok(store) => {
-                        if let Err(err) = store.upload(path, &content).await {
-                            collect_errors.insert(secondary_store.clone(), err.to_string());
-                        }
-                    }
-                    Err(err) => {
-                        collect_errors.insert(secondary_store.clone(), err.to_string());
-                    }
-                }
+        let collect_errors = self
+            .mirror_to_secondaries(storage, |store| store.upload(path, &content))
+            .await;
 
-                if self.failure_mode.should_fail(&collect_errors) {
-                    return Err(StorageError::Multi(collect_errors));
-                }
-            }
+        if self.failure_mode.should_fail(&collect_errors) {
+            return Err(StorageError::Multi(collect_errors));
         }
 
         Ok(())
@@ -310,6 +253,45 @@ impl MirrorStrategy {
     ) -> StorageResult<Bytes> {
         let store = storage.as_store_err(store_name)?;
         store.get(path).await?.bytes().await
+    }
+
+    /// Fans `op` out to every secondary store concurrently and collects every
+    /// error (including a secondary that fails to resolve via
+    /// [`Storage::as_store_err`]) keyed by the secondary store name.
+    ///
+    /// Every secondary is always attempted, regardless of whether an earlier
+    /// secondary failed. The caller is responsible for deciding whether to
+    /// fail overall (via [`FailureMode::should_fail`]) once all secondaries
+    /// have been attempted.
+    async fn mirror_to_secondaries<'a, F, Fut, T>(
+        &self,
+        storage: &'a Storage,
+        op: F,
+    ) -> BTreeMap<String, String>
+    where
+        F: Fn(&'a dyn StoreDriver) -> Fut,
+        Fut: std::future::Future<Output = StorageResult<T>>,
+    {
+        let Some(secondaries) = self.secondaries.as_ref() else {
+            return BTreeMap::new();
+        };
+
+        let op = &op;
+        let tasks = secondaries.iter().map(|secondary_store| async move {
+            let result = match storage.as_store_err(secondary_store) {
+                Ok(store) => op(store).await,
+                Err(err) => Err(err),
+            };
+            result
+                .err()
+                .map(|err| (secondary_store.clone(), err.to_string()))
+        });
+
+        futures_util::future::join_all(tasks)
+            .await
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 
@@ -663,6 +645,66 @@ mod tests {
         assert!(store_3.exists(new_path.as_path()).await.unwrap());
     }
 
+    // Regression test for a short-circuit bug: `rename` used to check
+    // `should_fail` *inside* the secondary loop and return as soon as the
+    // first secondary errored, leaving any later secondaries un-mirrored.
+    // Here the first secondary ("missing_store") does not exist in the
+    // `Storage`, so `as_store_err` fails for it immediately. Under the buggy
+    // behavior the loop returned before ever attempting "store_2", so
+    // "store_2" would still hold stale data at `orig_path` and never receive
+    // the rename to `new_path`.
+    #[tokio::test]
+    async fn rename_attempts_all_secondaries_even_when_first_secondary_fails() {
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::mem::new();
+
+        let strategy: Box<dyn StorageStrategy> = Box::new(MirrorStrategy::new(
+            "store_1",
+            Some(vec!["missing_store".to_string(), "store_2".to_string()]),
+            FailureMode::MirrorAll,
+        )) as Box<dyn StorageStrategy>;
+
+        let storage = Storage::new(
+            BTreeMap::from([
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+            ]),
+            strategy,
+        );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+
+        let orig_path = PathBuf::from("users").join("data").join("1.txt");
+        let new_path = PathBuf::from("data-2").join("data").join("2.txt");
+        let file_content = Bytes::from("file content");
+
+        // Upload directly to the underlying stores so the missing secondary
+        // doesn't cause the setup itself to fail.
+        assert!(store_1.upload(orig_path.as_path(), &file_content).await.is_ok());
+        assert!(store_2.upload(orig_path.as_path(), &file_content).await.is_ok());
+
+        let result = storage
+            .rename(orig_path.as_path(), new_path.as_path())
+            .await;
+        assert!(result.is_err());
+
+        // "missing_store" failing to resolve is still collected as an error.
+        if let Err(StorageError::Multi(errors)) = result {
+            assert!(errors.contains_key("missing_store"));
+        } else {
+            panic!("expected a StorageError::Multi error");
+        }
+
+        // The primary always succeeds.
+        assert!(!store_1.exists(orig_path.as_path()).await.unwrap());
+        assert!(store_1.exists(new_path.as_path()).await.unwrap());
+
+        // The regression: store_2 must still be attempted (and succeed) even
+        // though the earlier "missing_store" secondary failed.
+        assert!(!store_2.exists(orig_path.as_path()).await.unwrap());
+        assert!(store_2.exists(new_path.as_path()).await.unwrap());
+    }
+
     #[tokio::test]
     async fn copy_should_pass_when_primary_is_ok() {
         let store_1 = drivers::mem::new();
@@ -757,6 +799,104 @@ mod tests {
             .copy(orig_path.as_path(), new_path.as_path())
             .await
             .is_err());
+    }
+
+    // Regression test mirroring `rename_attempts_all_secondaries_even_when_
+    // first_secondary_fails` for `copy`: the first secondary fails to resolve
+    // via `as_store_err`, and the second secondary must still be attempted.
+    #[tokio::test]
+    async fn copy_attempts_all_secondaries_even_when_first_secondary_fails() {
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::mem::new();
+
+        let strategy: Box<dyn StorageStrategy> = Box::new(MirrorStrategy::new(
+            "store_1",
+            Some(vec!["missing_store".to_string(), "store_2".to_string()]),
+            FailureMode::MirrorAll,
+        )) as Box<dyn StorageStrategy>;
+
+        let storage = Storage::new(
+            BTreeMap::from([
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+            ]),
+            strategy,
+        );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+
+        let orig_path = PathBuf::from("users").join("data").join("1.txt");
+        let new_path = PathBuf::from("data-2").join("data").join("2.txt");
+        let file_content = Bytes::from("file content");
+
+        assert!(store_1.upload(orig_path.as_path(), &file_content).await.is_ok());
+        assert!(store_2.upload(orig_path.as_path(), &file_content).await.is_ok());
+
+        let result = storage.copy(orig_path.as_path(), new_path.as_path()).await;
+        assert!(result.is_err());
+
+        if let Err(StorageError::Multi(errors)) = result {
+            assert!(errors.contains_key("missing_store"));
+        } else {
+            panic!("expected a StorageError::Multi error");
+        }
+
+        // The regression: store_2 must still receive the copy even though
+        // the earlier "missing_store" secondary failed.
+        assert!(store_2.exists(new_path.as_path()).await.unwrap());
+    }
+
+    // Regression test mirroring the rename/copy ones, but for `upload_stream`,
+    // which had the same in-loop short-circuit bug. The payload is buffered
+    // into `Bytes` before fan-out, so every secondary can be attempted. The
+    // first secondary ("missing_store") fails to resolve; "store_2" must still
+    // receive the streamed upload.
+    #[tokio::test]
+    async fn upload_stream_attempts_all_secondaries_even_when_first_secondary_fails() {
+        use crate::storage::stream::BytesStream;
+
+        let store_1 = drivers::mem::new();
+        let store_2 = drivers::mem::new();
+
+        let strategy: Box<dyn StorageStrategy> = Box::new(MirrorStrategy::new(
+            "store_1",
+            Some(vec!["missing_store".to_string(), "store_2".to_string()]),
+            FailureMode::MirrorAll,
+        )) as Box<dyn StorageStrategy>;
+
+        let storage = Storage::new(
+            BTreeMap::from([
+                ("store_1".to_string(), store_1),
+                ("store_2".to_string(), store_2),
+            ]),
+            strategy,
+        );
+        let store_1 = storage.as_store("store_1").unwrap();
+        let store_2 = storage.as_store("store_2").unwrap();
+
+        let path = PathBuf::from("users").join("data").join("1.txt");
+        let file_content = Bytes::from("file content");
+
+        let stream = BytesStream::from_body_stream(futures_util::stream::once({
+            let file_content = file_content.clone();
+            async move { Ok(file_content) }
+        }));
+
+        let result = storage.upload_stream(path.as_path(), stream).await;
+        assert!(result.is_err());
+
+        if let Err(StorageError::Multi(errors)) = result {
+            assert!(errors.contains_key("missing_store"));
+        } else {
+            panic!("expected a StorageError::Multi error");
+        }
+
+        // The primary always succeeds.
+        assert!(store_1.exists(path.as_path()).await.unwrap());
+
+        // The regression: store_2 must still receive the streamed upload even
+        // though the earlier "missing_store" secondary failed.
+        assert!(store_2.exists(path.as_path()).await.unwrap());
     }
 
     #[tokio::test]
