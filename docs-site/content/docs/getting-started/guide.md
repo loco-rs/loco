@@ -539,7 +539,7 @@ impl Params {
     }
 }
 
-async fn load_item(ctx: &AppContext, id: i32) -> Result<Model> {
+async fn load_item(ctx: &AppContext, id: i64) -> Result<Model> {
     let item = Entity::find_by_id(id).one(&ctx.db).await?;
     item.ok_or_else(|| Error::NotFound)
 }
@@ -556,7 +556,7 @@ pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> R
 }
 
 pub async fn update(
-    Path(id): Path<i32>,
+    Path(id): Path<i64>,
     State(ctx): State<AppContext>,
     Json(params): Json<Params>,
 ) -> Result<Response> {
@@ -567,12 +567,12 @@ pub async fn update(
     format::json(item)
 }
 
-pub async fn remove(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Response> {
+pub async fn remove(Path(id): Path<i64>, State(ctx): State<AppContext>) -> Result<Response> {
     load_item(&ctx, id).await?.delete(&ctx.db).await?;
     format::empty()
 }
 
-pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Response> {
+pub async fn get_one(Path(id): Path<i64>, State(ctx): State<AppContext>) -> Result<Response> {
     format::json(load_item(&ctx, id).await?)
 }
 
@@ -590,7 +590,7 @@ pub fn routes() -> Routes {
 A few items to note:
 
 - `Params` is a strongly typed required params data holder, and is similar in concept to Rails' _strongparams_, just safer.
-- `Path(id): Path<i32>` extracts the `:id` component from a URL.
+- `Path(id): Path<i64>` extracts the `:id` component from a URL.
 - Order of extractors is important and follows `axum`'s documentation (parameters, state, body).
 - It's always better to create a `load_item` helper function and use it in all singular-item routes.
 - While `use loco_rs::prelude::*` brings in anything you need to build a controller, you should note to import `crate::models::_entities::articles::{ActiveModel, Entity, Model}` as well as `Serialize, Deserialize` for params.
@@ -684,7 +684,7 @@ Also adjust the Params & update functions in `src/controllers/comments.rs`, by u
 ```rust
 pub struct Params {
     pub content: Option<String>,
-    pub article_id: i32, // <- add this
+    pub article_id: i64, // <- add this
 }
 
 impl Params {
@@ -715,7 +715,7 @@ use crate::models::_entities::{
 };
 
 pub async fn comments(
-    Path(id): Path<i32>,
+    Path(id): Path<i64>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
     let item = load_item(&ctx, id).await?;

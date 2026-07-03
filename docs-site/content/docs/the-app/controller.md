@@ -211,7 +211,7 @@ Use the `Format` extractor for this:
 ```rust
 pub async fn get_one(
     respond_to: RespondTo,
-    Path(id): Path<i32>,
+    Path(id): Path<i64>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
     let res = load_item(&ctx, id).await?;
@@ -230,7 +230,7 @@ different formats AND ALSO, render differently based on kinds of errors you got.
 ````rust
 pub async fn get_one(
     respond_to: RespondTo,
-    Path(id): Path<i32>,
+    Path(id): Path<i64>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
     // having `load_item` is useful because inside the function you can call and use
@@ -1198,7 +1198,7 @@ use crate::models::_entities::notes;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ListResponse {
-    id: i32,
+    id: i64,
     title: Option<String>,
     content: Option<String>,
 }
@@ -1339,7 +1339,7 @@ use loco_rs::testing::prelude::*;
 async fn can_print_echo() {
     configure_insta!();
 
-    request::<App, _, _>(|request, _ctx| async move {
+    request::<App>(|request, _ctx| async move {
         let response = request
             .post("/example")
             .json(&serde_json::json!({"site": "Loco"}))
@@ -1394,7 +1394,7 @@ use super::prepare_data;
 async fn can_get_current_user() {
     configure_insta!();
 
-    request::<App, _, _>(|request, ctx| async move {
+    request::<App>(|request, ctx| async move {
         // Initialize the user
         let user = prepare_data::init_user_login(&request, &ctx).await;
         let (auth_key, auth_value) = prepare_data::auth_header(&user.token);

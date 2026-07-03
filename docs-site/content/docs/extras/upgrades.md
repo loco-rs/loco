@@ -163,6 +163,54 @@ DownloadWorker::perform_later_with_priority(&ctx, args, Some(42)).await?;
 Mailer jobs enqueue at priority `100` by default; override per mailer via
 `MailerOpts { priority, .. }`.
 
+### `perform_later` returns the job id
+
+`Worker::perform_later` now returns the enqueued job's id
+(`Result<String>` instead of `Result<()>`), and `Queue::enqueue` returns
+`Result<Option<String>>`. Existing call sites keep working — `perform_later(..)
+.await?;` simply ignores the returned id. Capture it when you want to track
+status:
+
+```rust
+let job_id = DownloadWorker::perform_later(&ctx, args).await?;
+```
+
+### `PageResponse` carries a `meta: PagerMeta`
+
+Pagination results moved the flat `total_pages` / `total_items` fields into a
+`meta: PagerMeta` (which also carries `page` and `page_size`):
+
+```rust
+// before
+let total = page.total_pages;
+// after
+let total = page.meta.total_pages;   // also: page.meta.page, page.meta.page_size, page.meta.total_items
+```
+
+### Test request helpers: drop the `, _, _` turbofish
+
+The test request helpers now take an `impl AsyncFnOnce(TestServer, AppContext)`,
+so the two inferred type parameters are gone:
+
+```rust
+// before
+request::<App, _, _>(|request, ctx| async move { /* ... */ }).await;
+// after
+request::<App>(|request, ctx| async move { /* ... */ }).await;
+```
+
+This applies to `request`, `request_with_config`, `request_with_create_db`, and
+`request_config_with_create_db`. Generated tests already use the new form.
+
+### Dependency majors
+
+0.17 bumps several dependency majors. These are transitive for most apps — you
+only need to act if you use one of these crates **directly** through Loco's
+public API: `thiserror` 1→2, `tower` 0.4→0.5, `heck`→0.5, `byte-unit` 4→5,
+`ipnetwork` 0.20→0.21, `strum`→0.27, `redis` 0.31→1, `bb8-redis`→0.26,
+`opendal` 0.54→0.57. `serde_yaml` (archived) was replaced by the maintained
+`serde_yaml_ng` fork.
+
 ## Upgrade from 0.15.x to 0.16.x
 
 ### Use `AppContext` instead of `Config` in `init_logger` in the `Hooks` trait
@@ -498,7 +546,7 @@ from:
 
 ```rust
 async fn load_page() {
-    request::<App, _, _>(|request, ctx| async move {
+    request::<App>(|request, ctx| async move {
         seed::<App>(&ctx.db).await.unwrap();
         ...
     })
@@ -510,7 +558,7 @@ to
 
 ```rust
 async fn load_page() {
-    request::<App, _, _>(|request, ctx| async move {
+    request::<App>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
         ...
     })

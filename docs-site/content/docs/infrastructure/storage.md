@@ -197,7 +197,7 @@ use loco_rs::testing::prelude::*;
 #[tokio::test]
 #[serial]
 async fn can_register() {
-    request::<App, _, _>(|request, ctx| async move {
+    request::<App>(|request, ctx| async move {
         let file_content = "loco file upload";
         let file_part = Part::bytes(file_content.as_bytes()).file_name("loco.txt");
 
