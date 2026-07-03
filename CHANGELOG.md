@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+### Changed
+
+- **Rust edition 2024.** `loco-rs`, `loco-gen`, `xtask`, and the `loco` new-app
+  generator now compile on edition 2024 (MSRV floor unchanged at 1.94; edition
+  2024 needs ≥ 1.85). Editions are per-crate, so apps depending on Loco need not
+  change. Newly generated apps stay on edition 2021 for now.
+
 ## 0.17.0
 
 0.17.0 is a large, intentionally-breaking release. Its headline is the move to
