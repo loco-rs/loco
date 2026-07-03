@@ -14,6 +14,8 @@ use serde_variant::to_variant_name;
 pub mod pg;
 #[cfg(feature = "bg_redis")]
 pub mod redis;
+#[cfg(any(feature = "bg_pg", feature = "bg_sqlt"))]
+pub(crate) mod sql;
 #[cfg(feature = "bg_sqlt")]
 pub mod sqlt;
 
@@ -205,18 +207,22 @@ impl Queue {
             }
             #[cfg(feature = "bg_pg")]
             Self::Postgres(pool, registry, run_opts, token) => {
-                let handles = registry
-                    .lock()
-                    .await
-                    .run(pool, run_opts, &token.clone(), &tags);
+                let handles = registry.lock().await.run::<pg::PgDriver>(
+                    pool,
+                    run_opts,
+                    &token.clone(),
+                    &tags,
+                );
                 Self::process_worker_handles(handles).await?;
             }
             #[cfg(feature = "bg_sqlt")]
             Self::Sqlite(pool, registry, run_opts, token) => {
-                let handles = registry
-                    .lock()
-                    .await
-                    .run(pool, run_opts, &token.clone(), &tags);
+                let handles = registry.lock().await.run::<sqlt::SqliteDriver>(
+                    pool,
+                    run_opts,
+                    &token.clone(),
+                    &tags,
+                );
                 Self::process_worker_handles(handles).await?;
             }
             _ => {
