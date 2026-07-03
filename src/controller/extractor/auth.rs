@@ -227,9 +227,7 @@ pub fn extract_token_from_cookie(name: &str, parts: &Parts) -> LocoResult<String
     Ok(jar
         .get(name)
         .ok_or(Error::Unauthorized("token is not found".to_string()))?
-        .to_string()
-        .strip_prefix(&format!("{name}="))
-        .ok_or_else(|| Error::Unauthorized("error strip value".to_string()))?
+        .value()
         .to_string())
 }
 /// Extract a token value from query
@@ -420,6 +418,38 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("token is not found"));
+    }
+
+    #[test]
+    fn test_extract_token_from_cookie_quoted_value() {
+        // `Cookie::value()` does not strip surrounding quotes (same as the
+        // previous hand-parsing behavior), so a quoted cookie value comes
+        // back with its quotes intact.
+        let request = axum::http::Request::builder()
+            .header("Cookie", r#"auth_token="quoted_value_123""#)
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token_from_cookie("auth_token", &parts);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "\"quoted_value_123\"");
+    }
+
+    #[test]
+    fn test_extract_token_from_cookie_multiple_cookies() {
+        let request = axum::http::Request::builder()
+            .header(
+                "Cookie",
+                "session=abc; auth_token=cookie_value_123; other=xyz",
+            )
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token_from_cookie("auth_token", &parts);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "cookie_value_123");
     }
 
     #[test]
