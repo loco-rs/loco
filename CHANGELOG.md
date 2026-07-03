@@ -11,6 +11,14 @@
   2024 needs ≥ 1.85). Editions are per-crate, so apps depending on Loco need not
   change. Newly generated apps stay on edition 2021 for now.
 
+### Removed
+
+- **`Error` enum narrowing.** Removed four low-value/dependency-leaking variants
+  that all mapped to HTTP 500 and were never matched: `Error::EnvVar`,
+  `Error::SemVer`, `Error::TaskJoinError`, and `Error::Hash` (hashing errors now
+  surface as `Error::Message`). `Error` remains `#[non_exhaustive]`, so exhaustive
+  matches already require a wildcard arm and are unaffected.
+
 ## 0.17.0
 
 0.17.0 is a large, intentionally-breaking release. Its headline is the move to

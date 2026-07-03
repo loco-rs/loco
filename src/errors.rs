@@ -69,9 +69,6 @@ pub enum Error {
     #[error(transparent)]
     YAML(#[from] serde_yaml::Error),
 
-    #[error(transparent)]
-    EnvVar(#[from] std::env::VarError),
-
     #[error("Error sending email: '{0}'")]
     EmailSender(#[from] lettre::error::Error),
 
@@ -90,9 +87,6 @@ pub enum Error {
 
     #[error(transparent)]
     ParseAddress(#[from] AddressError),
-
-    #[error("{0}")]
-    Hash(String),
 
     // API
     #[error("{0}")]
@@ -120,9 +114,6 @@ pub enum Error {
     #[error(transparent)]
     InvalidMethod(#[from] InvalidMethod),
 
-    #[error(transparent)]
-    TaskJoinError(#[from] tokio::task::JoinError),
-
     #[cfg(feature = "with-db")]
     // Model
     #[error(transparent)]
@@ -148,9 +139,6 @@ pub enum Error {
 
     #[error(transparent)]
     VersionCheck(#[from] depcheck::VersionCheckError),
-
-    #[error(transparent)]
-    SemVer(#[from] semver::Error),
 
     #[error(transparent)]
     Any(#[from] Box<dyn std::error::Error + Send + Sync>),
