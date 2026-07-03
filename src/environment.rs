@@ -19,9 +19,6 @@ use serde_variant::to_variant_name;
 use std::{path::Path, str::FromStr};
 
 pub const DEFAULT_ENVIRONMENT: &str = "development";
-pub const LOCO_ENV: &str = "LOCO_ENV";
-pub const RAILS_ENV: &str = "RAILS_ENV";
-pub const NODE_ENV: &str = "NODE_ENV";
 
 impl From<String> for Environment {
     fn from(env: String) -> Self {
@@ -106,19 +103,19 @@ mod tests {
         let original = env::var("LOCO_ENV");
 
         // SAFETY: test-local env setup; no other thread reads the environment during this test.
-        unsafe { env::remove_var(LOCO_ENV) };
+        unsafe { env::remove_var(env_vars::LOCO_ENV) };
         // SAFETY: test-local env setup; no other thread reads the environment during this test.
-        unsafe { env::remove_var(RAILS_ENV) };
+        unsafe { env::remove_var(env_vars::RAILS_ENV) };
         // SAFETY: test-local env setup; no other thread reads the environment during this test.
-        unsafe { env::remove_var(NODE_ENV) };
+        unsafe { env::remove_var(env_vars::NODE_ENV) };
         assert_eq!(resolve_from_env(), "development");
         // SAFETY: test-local env setup; no other thread reads the environment during this test.
-        unsafe { env::set_var("LOCO_ENV", "custom") };
+        unsafe { env::set_var(env_vars::LOCO_ENV, "custom") };
         assert_eq!(resolve_from_env(), "custom");
 
         if let Ok(v) = original {
             // SAFETY: test-local env setup; no other thread reads the environment during this test.
-            unsafe { env::set_var(LOCO_ENV, v) };
+            unsafe { env::set_var(env_vars::LOCO_ENV, v) };
         }
     }
 
