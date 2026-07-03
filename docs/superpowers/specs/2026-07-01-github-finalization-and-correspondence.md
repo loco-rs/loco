@@ -99,17 +99,84 @@ the change is made, never reconstruct at the end.
 
 ## Stream 3 — Finalization runbook (user executes)
 
-**Gate:** Sea-ORM 2.0.0 stable published. Confirm sea-schema bound fixed
-(see migration-notes 2026-07-02 blocker). Then:
+**Prep state (done, on branch `release/0.17.0`):** all epics complete; versions
+bumped to 0.17.0 (loco-rs, loco-gen, loco `=loco-new`, `LOCO_VERSION`, loco-gen
+path pin); CHANGELOG assembled; migration guide complete; green gate passing
+(fmt, clippy, `cargo hack --each-feature` 18/18, `test --all-features` 597,
+loco-gen 29). Everything below is for **you** — I do not push/tag/publish.
 
-1. **Finalize versions** — bump workspace crates to 0.17.0; resolve MSRV to the
-   stable number; drop the rc pins.
-2. **Green gate** — full matrix + wizard build + generated-app boot on stable.
-3. **Publish order (dependency-ordered):** `loco-gen` → `loco-rs` → `loco-new`.
-4. **Merge/close PRs** — per Stream 1 table (merge folded PRs or close-as-adopted with credit).
-5. **Close issues** — verified-fixed cluster closed referencing the release;
-   declined items closed with rationale; roadmap items labeled.
-6. **Tag + release** — git tag, GitHub release using Stream 2 announcement copy.
-7. **Post correspondence** — Stream 1 draft replies.
+**Publish gate:** Sea-ORM **2.0.0 stable** on crates.io (today only
+`2.0.0-rc.41` exists) with a `sea-schema` bound that fixes the 0.18.1 `?Send`
+break (see migration-notes 2026-07-02). Until then, a *freshly generated* app
+can't compile sea-orm; our committed lockfile (sea-schema 0.18.0) builds.
 
-Detailed per-item ordering finalized in Epic E once all outcomes are known.
+### Step 1 — When Sea-ORM 2.0.0 ships
+
+```sh
+# in the loco repo, on release/0.17.0
+# flip rc → stable pins:
+#   Cargo.toml:            sea-orm "2.0.0-rc" -> "2.0", sea-orm-migration "2.0.0-rc" -> "2.0"
+#   loco-new/base_template/Cargo.toml.t + migration/Cargo.toml.t: same
+#   src/doctor.rs:         MIN_SEAORMCLI_VER / min sea-orm "2.0.0-rc" -> "2.0"
+# re-evaluate MSRV: workspace rust-version "1.94" -> "1.85" (the 2.0.0 target) if the stable tree allows.
+cargo update -p sea-orm -p sea-orm-migration
+cargo install sea-orm-cli --force        # 2.0 stable
+```
+
+### Step 2 — Full green gate on stable
+
+```sh
+export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock"
+cargo fmt --all --check
+cargo clippy --workspace --all-features --tests -- -D warnings
+cargo hack check --each-feature
+cargo test --all-features
+cargo test -p loco-gen                    # incl. test_migrations_flow (was upstream-blocked)
+(cd loco-new && cargo test)               # wizard/matrix + generated-app boot (was upstream-blocked)
+# sanity: loco new -> cargo build -> cargo loco start on a scratch app
+```
+
+### Step 3 — Publish (dependency order)
+
+```sh
+cargo publish -p loco-gen
+cargo publish -p loco-rs
+(cd loco-new && cargo publish)            # crate name: loco
+```
+
+### Step 4 — Tag + GitHub release
+
+```sh
+git push origin release/0.17.0            # then open/merge the release PR to master
+git tag v0.17.0 && git push origin v0.17.0
+gh release create v0.17.0 --notes-file <CHANGELOG 0.17.0 section>
+```
+
+### Step 5 — Community PRs (close with credit — all adopted locally)
+
+Close as adopted, crediting the author (work is in 0.17.0):
+**#1698** (Sea-ORM 2.0 seed), **#1685**, **#1742**, **#1774**, **#1624**,
+**#1693**, **#1657**, dependabot **#1772/#1760/#1757**.
+Merge directly on GitHub (not reconciled locally): **#1754** (docs-site npm
+`yaml`), **#1762** (README `nrg` tooling — deferred docs-infra).
+
+### Step 6 — Issues
+
+- Close as fixed by 0.17.0 (verify on the stable build first): the onboarding
+  cluster #1768/#1749/#1758/#1770/#1759, and #1755/#1729/#1736 (schema/gen)
+  — confirm against the generated-app boot in Step 2.
+- Fixed-by-adopted-PR: #1773 (→#1774), #1737 (→#1742), #1623 (→#1624),
+  #1683 (→#1685).
+- Triage remaining feature/roadmap issues (#1766, #1761, #1720, #1674, #1673,
+  #1640, #1691, TLS #1341/#1191) into the 0.18 milestone; close #1739 (empty).
+
+### Step 7 — Post correspondence
+
+Post the Stream 1 draft replies as each PR/issue is closed.
+
+### Deferred to 0.18 (documented in the design spec)
+
+bgworker backend dedup · inflection consolidation · `db.rs`/`config.rs` splits ·
+edition 2024 · snipdoc-blocking flip + orphaned-snippet restoration + generated
+`llms.txt` pipeline · IA docs restructure · the non-"big-5" feature PRs
+(#1764/#1694/#1693-adjacent/#1699/#1708) · `Error` narrowing.
