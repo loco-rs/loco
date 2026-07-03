@@ -25,7 +25,7 @@ use std::convert::TryInto;
 use axum::{
     body::Body,
     http::{header, response::Builder, HeaderName, HeaderValue, StatusCode},
-    response::{Html, IntoResponse, Redirect, Response},
+    response::{IntoResponse, Response},
 };
 use axum_extra::extract::cookie::Cookie;
 use bytes::{BufMut, BytesMut};
@@ -33,10 +33,7 @@ use serde::Serialize;
 use serde_json::json;
 
 use crate::{
-    controller::{
-        views::{self, ViewRenderer},
-        Json,
-    },
+    controller::views::{self, ViewRenderer},
     Result,
 };
 
@@ -58,7 +55,7 @@ use crate::{
 /// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn empty() -> Result<Response> {
-    Ok(().into_response())
+    render().empty()
 }
 
 /// Returns a response containing the provided text.
@@ -79,7 +76,7 @@ pub fn empty() -> Result<Response> {
 /// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn text(t: &str) -> Result<Response> {
-    Ok(t.to_string().into_response())
+    render().text(t)
 }
 
 /// Returns a JSON response containing the provided data.
@@ -108,7 +105,7 @@ pub fn text(t: &str) -> Result<Response> {
 /// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn json<T: Serialize>(t: T) -> Result<Response> {
-    Ok(Json(t).into_response())
+    render().json(t)
 }
 
 /// Respond with empty json (`{}`)
@@ -137,7 +134,7 @@ pub fn empty_json() -> Result<Response> {
 /// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn html(content: &str) -> Result<Response> {
-    Ok(Html(content.to_string()).into_response())
+    render().html(content)
 }
 
 /// Returns a YAML response
@@ -180,7 +177,7 @@ pub fn yaml(content: &str) -> Result<Response> {
 /// Currently this function doesn't return any error. this is for feature
 /// functionality
 pub fn redirect(to: &str) -> Result<Response> {
-    Ok(Redirect::to(to).into_response())
+    render().redirect(to)
 }
 
 /// Render template located by `key`
@@ -193,8 +190,7 @@ where
     V: ViewRenderer,
     S: Serialize,
 {
-    let res = v.render(key, data)?;
-    html(&res)
+    render().view(v, key, data)
 }
 
 /// Render template from string
@@ -206,7 +202,7 @@ pub fn template<S>(template: &str, data: S) -> Result<Response>
 where
     S: Serialize,
 {
-    html(&views::template(template, data)?)
+    render().template(template, data)
 }
 
 #[derive(Debug)]
@@ -328,7 +324,8 @@ impl RenderBuilder {
     where
         S: Serialize,
     {
-        html(&views::template(template, data)?)
+        let content = views::template(template, data)?;
+        self.html(&content)
     }
 
     /// Finalize and return a HTML response
@@ -348,23 +345,41 @@ impl RenderBuilder {
 
     /// Finalize and return a JSON response
     ///
+    /// Mirrors `axum::Json`'s behavior: this is infallible with respect to
+    /// serialization. If `item` fails to serialize, a `500 Internal Server
+    /// Error` response with a `text/plain` body describing the error is
+    /// returned instead of propagating an `Err`, exactly like
+    /// `axum::Json::into_response` does.
+    ///
     /// # Errors
     ///
-    /// This function will return an error if IO fails
+    /// This function will return an error if IO fails while writing the
+    /// response (e.g. an invalid status/header was set earlier on this
+    /// builder). It will not return an error due to `item` failing to
+    /// serialize.
     pub fn json<T>(self, item: T) -> Result<Response>
     where
         T: Serialize,
     {
         let mut buf = BytesMut::with_capacity(128).writer();
-        serde_json::to_writer(&mut buf, &item)?;
-        let body = Body::from(buf.into_inner().freeze());
-        Ok(self
-            .response
-            .header(
-                header::CONTENT_TYPE,
-                HeaderValue::from_static("application/json"),
+        match serde_json::to_writer(&mut buf, &item) {
+            Ok(()) => Ok(self
+                .response
+                .header(
+                    header::CONTENT_TYPE,
+                    HeaderValue::from_static("application/json"),
+                )
+                .body(Body::from(buf.into_inner().freeze()))?),
+            Err(err) => Ok((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                [(
+                    header::CONTENT_TYPE,
+                    HeaderValue::from_static("text/plain; charset=utf-8"),
+                )],
+                err.to_string(),
             )
-            .body(body)?)
+                .into_response()),
+        }
     }
 
     /// Finalize and redirect request
@@ -379,6 +394,11 @@ impl RenderBuilder {
     /// Finalizes the HTTP response and redirects to a specified location using
     /// a dynamic header key.
     ///
+    /// Mirrors `axum::response::Redirect`'s behavior: if `to` is not a legal
+    /// header value, this returns a `500 Internal Server Error` text response
+    /// (matching `axum::response::Redirect::into_response`) instead of
+    /// propagating an `Err`.
+    ///
     /// # Errors
     ///
     /// This function will return an error if IO fails
@@ -387,11 +407,14 @@ impl RenderBuilder {
         K: TryInto<HeaderName>,
         <K as TryInto<HeaderName>>::Error: Into<axum::http::Error>,
     {
-        Ok(self
-            .response
-            .status(StatusCode::SEE_OTHER)
-            .header(key, to)
-            .body(Body::empty())?)
+        match HeaderValue::try_from(to) {
+            Ok(location) => Ok(self
+                .response
+                .status(StatusCode::SEE_OTHER)
+                .header(key, location)
+                .body(Body::empty())?),
+            Err(err) => Ok((StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response()),
+        }
     }
 }
 
@@ -651,5 +674,152 @@ mod tests {
 
         assert_debug_snapshot!(response);
         assert_eq!(response_body_to_string(response).await, String::new());
+    }
+
+    // -- Pinning tests: both entry points (free fn vs. `render().x()`) must
+    // produce byte-identical responses (status, headers, body). These guard
+    // the collapse of the doubled response-construction API.
+
+    /// A type whose `Serialize` impl always fails, used to exercise the JSON
+    /// serialization-error path (which `axum::Json` handles infallibly).
+    struct FailSerialize;
+
+    impl serde::Serialize for FailSerialize {
+        fn serialize<S>(&self, _serializer: S) -> std::result::Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            Err(serde::ser::Error::custom("boom"))
+        }
+    }
+
+    async fn response_signature(
+        response: Response<Body>,
+    ) -> (axum::http::StatusCode, Vec<(String, String)>, String) {
+        let status = response.status();
+        let mut headers: Vec<(String, String)> = response
+            .headers()
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_str().unwrap().to_string()))
+            .collect();
+        headers.sort();
+        let body = response_body_to_string(response).await;
+        (status, headers, body)
+    }
+
+    #[tokio::test]
+    async fn free_and_builder_agree_on_empty() {
+        assert_eq!(
+            response_signature(empty().unwrap()).await,
+            response_signature(render().empty().unwrap()).await
+        );
+    }
+
+    #[tokio::test]
+    async fn free_and_builder_agree_on_text() {
+        assert_eq!(
+            response_signature(text("loco").unwrap()).await,
+            response_signature(render().text("loco").unwrap()).await
+        );
+    }
+
+    #[tokio::test]
+    async fn free_and_builder_agree_on_html() {
+        assert_eq!(
+            response_signature(html("<h1>loco</h1>").unwrap()).await,
+            response_signature(render().html("<h1>loco</h1>").unwrap()).await
+        );
+    }
+
+    #[tokio::test]
+    async fn free_and_builder_agree_on_json_success() {
+        let payload = serde_json::json!({"loco": "app"});
+        assert_eq!(
+            response_signature(json(&payload).unwrap()).await,
+            response_signature(render().json(&payload).unwrap()).await
+        );
+    }
+
+    #[tokio::test]
+    async fn free_and_builder_agree_on_empty_json() {
+        assert_eq!(
+            response_signature(empty_json().unwrap()).await,
+            response_signature(render().json(serde_json::json!({})).unwrap()).await
+        );
+    }
+
+    #[tokio::test]
+    async fn free_and_builder_agree_on_redirect() {
+        assert_eq!(
+            response_signature(redirect("https://loco.rs").unwrap()).await,
+            response_signature(render().redirect("https://loco.rs").unwrap()).await
+        );
+    }
+
+    #[tokio::test]
+    async fn free_and_builder_agree_on_template() {
+        let data = serde_json::json!({"foo": "loco"});
+        assert_eq!(
+            response_signature(template("- {{foo}}", data.clone()).unwrap()).await,
+            response_signature(render().template("- {{foo}}", data).unwrap()).await
+        );
+    }
+
+    #[cfg(not(feature = "embedded_assets"))]
+    #[tokio::test]
+    async fn free_and_builder_agree_on_view() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .add_file("template/test.html", "- {{foo}}")
+            .create()
+            .unwrap();
+        let v = TeraView::from_custom_dir(&tree_fs.root, |_| Ok(())).unwrap();
+        let data = serde_json::json!({"foo": "loco"});
+
+        assert_eq!(
+            response_signature(view(&v, "template/test.html", data.clone()).unwrap()).await,
+            response_signature(render().view(&v, "template/test.html", data).unwrap()).await
+        );
+    }
+
+    /// Previously-divergent path: on JSON serialization failure, the free
+    /// `json()` (backed by `axum::Json`) always returned `Ok` with an
+    /// internal 500 response, while `RenderBuilder::json` propagated a Rust
+    /// `Err` via `?` on `serde_json::to_writer`. Both are now converged onto
+    /// `axum::Json`'s infallible behavior.
+    #[tokio::test]
+    async fn json_serialization_failure_converges_on_axum_json_shape() {
+        let via_free = json(FailSerialize).unwrap();
+        let via_builder = render().json(FailSerialize).unwrap();
+        let via_axum_json = crate::controller::Json(FailSerialize).into_response();
+
+        assert_eq!(via_free.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(
+            response_signature(via_free).await,
+            response_signature(via_builder).await
+        );
+        assert_eq!(
+            response_signature(json(FailSerialize).unwrap()).await,
+            response_signature(via_axum_json).await
+        );
+    }
+
+    /// Previously-divergent path: an invalid redirect target (illegal header
+    /// value bytes) made the free `redirect()` (backed by
+    /// `axum::response::Redirect`) fall back to an `Ok` 500 response, while
+    /// `RenderBuilder::redirect` propagated a Rust `Err` from the deferred
+    /// `http::response::Builder` header error. Both are now converged onto
+    /// `axum::response::Redirect`'s infallible fallback behavior.
+    #[tokio::test]
+    async fn redirect_invalid_target_converges_on_axum_redirect_shape() {
+        let bad_target = "https://loco.rs/\n";
+
+        let via_free = redirect(bad_target).unwrap();
+        let via_builder = render().redirect(bad_target).unwrap();
+
+        assert_eq!(via_free.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(
+            response_signature(via_free).await,
+            response_signature(via_builder).await
+        );
     }
 }
