@@ -67,35 +67,23 @@ where
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
         let ctx: AppContext = AppContext::from_ref(state);
 
-        let token = extract_token(get_jwt_from_config(&ctx)?, parts)?;
+        let claims = validate_jwt(&ctx, parts)?;
 
-        let jwt_secret = ctx.config.get_jwt_config()?;
+        let user = T::find_by_claims_key(&ctx.db, &claims.pid)
+            .await
+            .map_err(|e| match e {
+                ModelError::EntityNotFound => Error::Unauthorized("not found".to_string()),
+                ModelError::DbErr(db_err) => {
+                    tracing::error!("Database error during authentication: {}", db_err);
+                    Error::InternalServerError
+                }
+                _ => {
+                    tracing::error!("Authentication error: {}", e);
+                    Error::Unauthorized("could not authorize".to_string())
+                }
+            })?;
 
-        match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
-            Ok(claims) => {
-                let user = T::find_by_claims_key(&ctx.db, &claims.claims.pid)
-                    .await
-                    .map_err(|e| match e {
-                        ModelError::EntityNotFound => Error::Unauthorized("not found".to_string()),
-                        ModelError::DbErr(db_err) => {
-                            tracing::error!("Database error during authentication: {}", db_err);
-                            Error::InternalServerError
-                        }
-                        _ => {
-                            tracing::error!("Authentication error: {}", e);
-                            Error::Unauthorized("could not authorize".to_string())
-                        }
-                    })?;
-                Ok(Self {
-                    claims: claims.claims,
-                    user,
-                })
-            }
-            Err(err) => {
-                tracing::error!("JWT validation error: {}", err);
-                Err(Error::Unauthorized("token is not valid".to_string()))
-            }
-        }
+        Ok(Self { claims, user })
     }
 }
 
@@ -128,21 +116,35 @@ where
     AppContext: FromRef<S>,
     S: Send + Sync,
 {
-    let ctx: AppContext = AppContext::from_ref(state); // change to ctx
+    let ctx: AppContext = AppContext::from_ref(state);
 
-    let token = extract_token(get_jwt_from_config(&ctx)?, parts)?;
+    let claims = validate_jwt(&ctx, parts)?;
+
+    Ok(JWT { claims })
+}
+
+/// Extract, and validate a JWT token from request `parts` against the given `ctx`, returning the
+/// decoded claims.
+///
+/// This is the shared token-validate-and-decode step used by both [`JWT`] and `JWTWithUser`
+/// extraction: locate the token in one of the configured locations (bearer header / cookie /
+/// query, tried in the configured order), then verify its signature and decode its claims.
+///
+/// # Errors
+/// Return an error when JWT token not configured, the token cannot be found in any of the
+/// configured locations, or when the token is not valid
+fn validate_jwt(ctx: &AppContext, parts: &Parts) -> Result<auth::jwt::UserClaims, Error> {
+    let token = extract_token(get_jwt_from_config(ctx)?, parts)?;
 
     let jwt_secret = ctx.config.get_jwt_config()?;
 
-    match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
-        Ok(claims) => Ok(JWT {
-            claims: claims.claims,
-        }),
-        Err(err) => {
+    auth::jwt::JWT::new(&jwt_secret.secret)
+        .validate(&token)
+        .map(|claims| claims.claims)
+        .map_err(|err| {
             tracing::error!("JWT validation error: {}", err);
-            Err(Error::Unauthorized("token is not valid".to_string()))
-        }
-    }
+            Error::Unauthorized("token is not valid".to_string())
+        })
 }
 
 /// extract JWT token from context configuration

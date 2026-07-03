@@ -40,20 +40,6 @@ use crate::Error;
 #[derive(Debug, Clone, Copy, Default)]
 pub struct JsonValidateWithMessage<T>(pub T);
 
-impl<T, S> FromRequest<S> for JsonValidateWithMessage<T>
-where
-    T: DeserializeOwned + ValidatorTrait,
-    S: Send + Sync,
-{
-    type Rejection = Error;
-
-    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        let Json(value) = Json::<T>::from_request(req, state).await?;
-        value.validate().map_err(Error::Validation)?;
-        Ok(Self(value))
-    }
-}
-
 /// Axum middleware for validating form data
 ///
 /// # Example:
@@ -84,20 +70,6 @@ where
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct FormValidateWithMessage<T>(pub T);
-
-impl<T, S> FromRequest<S> for FormValidateWithMessage<T>
-where
-    T: DeserializeOwned + ValidatorTrait,
-    S: Send + Sync,
-{
-    type Rejection = Error;
-
-    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        let Form(value) = Form::<T>::from_request(req, state).await?;
-        value.validate().map_err(Error::Validation)?;
-        Ok(Self(value))
-    }
-}
 
 /// Axum middleware for validating JSON request bodies with simplified error
 /// handling
@@ -131,23 +103,6 @@ where
 #[derive(Debug, Clone, Copy, Default)]
 pub struct JsonValidate<T>(pub T);
 
-impl<T, S> FromRequest<S> for JsonValidate<T>
-where
-    T: DeserializeOwned + ValidatorTrait,
-    S: Send + Sync,
-{
-    type Rejection = Error;
-
-    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        let Json(value) = Json::<T>::from_request(req, state).await?;
-        value.validate().map_err(|err| {
-            tracing::debug!(err = ?err, "request validation error occurred");
-            Error::BadRequest(String::new())
-        })?;
-        Ok(Self(value))
-    }
-}
-
 /// Axum middleware for validating form data with simplified error handling
 ///
 /// # Example:
@@ -179,23 +134,6 @@ where
 #[derive(Debug, Clone, Copy, Default)]
 pub struct FormValidate<T>(pub T);
 
-impl<T, S> FromRequest<S> for FormValidate<T>
-where
-    T: DeserializeOwned + ValidatorTrait,
-    S: Send + Sync,
-{
-    type Rejection = Error;
-
-    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        let Form(value) = Form::<T>::from_request(req, state).await?;
-        value.validate().map_err(|err| {
-            tracing::debug!(err = ?err, "request validation error occurred");
-            Error::BadRequest(String::new())
-        })?;
-        Ok(Self(value))
-    }
-}
-
 /// Axum middleware for validating query parameters
 ///
 /// # Example:
@@ -226,22 +164,6 @@ where
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct QueryValidateWithMessage<T>(pub T);
-
-impl<T, S> FromRequest<S> for QueryValidateWithMessage<T>
-where
-    T: DeserializeOwned + ValidatorTrait,
-    S: Send + Sync,
-{
-    type Rejection = Error;
-
-    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        let Query(value) = Query::<T>::from_request(req, state)
-            .await
-            .map_err(|rejection| Error::BadRequest(format!("Invalid query string: {rejection}")))?;
-        value.validate().map_err(Error::Validation)?;
-        Ok(Self(value))
-    }
-}
 
 /// Axum middleware for validating query parameters with simplified error
 /// handling
@@ -275,24 +197,116 @@ where
 #[derive(Debug, Clone, Copy, Default)]
 pub struct QueryValidate<T>(pub T);
 
-impl<T, S> FromRequest<S> for QueryValidate<T>
+// ---------------------------------------
+//
+// Shared `FromRequest` implementation
+//
+// Each extractor above is the combination of two independent axes:
+//   * how the value is decoded from the request: JSON body / form body / query string
+//   * which error tier a failed `validate()` call reports as:
+//       - "with message": field-level detail via `Error::Validation` (`{"errors": {...}}`)
+//       - opaque: `Error::BadRequest(String::new())` (`{"error": "Bad Request"}`)
+//
+// The decoding step is factored into the `extract_*` functions below, and the two error
+// tiers are factored into the `impl_validate_with_message!` / `impl_validate_opaque!` macros,
+// so each of the 6 combinations only needs to name its decoder (and, for the opaque tier,
+// its log message).
+//
+// ---------------------------------------
+
+/// Decode a JSON request body into `T`, without validating it.
+///
+/// # Errors
+/// Returns an error when the request body cannot be decoded as JSON into `T`.
+async fn extract_json_value<T, S>(req: Request, state: &S) -> Result<T, Error>
 where
-    T: DeserializeOwned + ValidatorTrait,
+    T: DeserializeOwned,
     S: Send + Sync,
 {
-    type Rejection = Error;
-
-    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        let Query(value) = Query::<T>::from_request(req, state)
-            .await
-            .map_err(|rejection| Error::BadRequest(format!("Invalid query string: {rejection}")))?;
-        value.validate().map_err(|err| {
-            tracing::debug!(err = ?err, "query validation error occurred");
-            Error::BadRequest(String::new())
-        })?;
-        Ok(Self(value))
-    }
+    let Json(value) = Json::<T>::from_request(req, state).await?;
+    Ok(value)
 }
+
+/// Decode a form-urlencoded request body into `T`, without validating it.
+///
+/// # Errors
+/// Returns an error when the request body cannot be decoded as form data into `T`.
+async fn extract_form_value<T, S>(req: Request, state: &S) -> Result<T, Error>
+where
+    T: DeserializeOwned,
+    S: Send + Sync,
+{
+    let Form(value) = Form::<T>::from_request(req, state).await?;
+    Ok(value)
+}
+
+/// Decode the query string into `T`, without validating it.
+///
+/// # Errors
+/// Returns an error when the query string cannot be decoded into `T`.
+async fn extract_query_value<T, S>(req: Request, state: &S) -> Result<T, Error>
+where
+    T: DeserializeOwned,
+    S: Send + Sync,
+{
+    let Query(value) = Query::<T>::from_request(req, state)
+        .await
+        .map_err(|rejection| Error::BadRequest(format!("Invalid query string: {rejection}")))?;
+    Ok(value)
+}
+
+/// Implement `FromRequest` for a validate extractor in the "with message" error tier: a failed
+/// `validate()` call is reported with full field-level detail (`Error::Validation`, i.e.
+/// `{"errors": {...}}`).
+macro_rules! impl_validate_with_message {
+    ($name:ident, $extract:ident) => {
+        impl<T, S> FromRequest<S> for $name<T>
+        where
+            T: DeserializeOwned + ValidatorTrait,
+            S: Send + Sync,
+        {
+            type Rejection = Error;
+
+            async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+                let value = $extract::<T, S>(req, state).await?;
+                value.validate().map_err(Error::Validation)?;
+                Ok(Self(value))
+            }
+        }
+    };
+}
+
+/// Implement `FromRequest` for a validate extractor in the opaque error tier: a failed
+/// `validate()` call is reported without detail (`Error::BadRequest(String::new())`, i.e.
+/// `{"error": "Bad Request"}`), logging `$log_msg` at debug level for diagnosis.
+macro_rules! impl_validate_opaque {
+    ($name:ident, $extract:ident, $log_msg:literal) => {
+        impl<T, S> FromRequest<S> for $name<T>
+        where
+            T: DeserializeOwned + ValidatorTrait,
+            S: Send + Sync,
+        {
+            type Rejection = Error;
+
+            async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+                let value = $extract::<T, S>(req, state).await?;
+                value.validate().map_err(|err| {
+                    tracing::debug!(err = ?err, $log_msg);
+                    Error::BadRequest(String::new())
+                })?;
+                Ok(Self(value))
+            }
+        }
+    };
+}
+
+impl_validate_with_message!(JsonValidateWithMessage, extract_json_value);
+impl_validate_with_message!(FormValidateWithMessage, extract_form_value);
+impl_validate_with_message!(QueryValidateWithMessage, extract_query_value);
+
+impl_validate_opaque!(JsonValidate, extract_json_value, "request validation error occurred");
+impl_validate_opaque!(FormValidate, extract_form_value, "request validation error occurred");
+impl_validate_opaque!(QueryValidate, extract_query_value, "query validation error occurred");
 
 #[cfg(test)]
 mod tests {
