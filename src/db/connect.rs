@@ -5,6 +5,7 @@ use sea_orm::{
     ConnectOptions, ConnectionTrait, Database, DatabaseBackend, DatabaseConnection,
     DatabaseConnectionType, DbConn, DbErr, ExprTrait, Statement,
 };
+use url::Url;
 
 use crate::{config, env_vars, errors::Error, Result as AppResult};
 
@@ -152,6 +153,25 @@ pub fn extract_db_name(conn_str: &str) -> AppResult<&str> {
         .and_then(|cap| cap.get(1).map(|db| db.as_str()))
         .ok_or_else(|| Error::string("could not extract db_name"))
 }
+
+/// Derives the admin/maintenance connection URI for a Postgres `db_uri` by
+/// swapping only the path (database name) for `/postgres`, preserving the
+/// scheme, credentials, host, port, and query params.
+///
+/// A naive whole-string `.replace(db_name, "/postgres")` would corrupt the
+/// URI whenever the db name also appears as a substring of the host or
+/// credentials (e.g. db "loco" with user "loco_admin@loco.host/loco").
+///
+/// # Errors
+///
+/// Returns an error if `db_uri` cannot be parsed as a URL.
+fn admin_postgres_uri(db_uri: &str) -> AppResult<String> {
+    let mut url = Url::parse(db_uri)
+        .map_err(|err| Error::string(&format!("could not parse Postgres database URI: {err}")))?;
+    url.set_path("/postgres");
+    Ok(url.to_string())
+}
+
 ///  Create a new database. This functionality is currently exclusive to Postgre
 /// databases.
 ///
@@ -170,7 +190,7 @@ pub async fn create(db_uri: &str) -> AppResult<()> {
         Error::string("The specified table name was not found in the given Postgres database URI")
     })?;
 
-    let conn = db_uri.replace(db_name, "/postgres");
+    let conn = admin_postgres_uri(db_uri)?;
     let db = Database::connect(conn).await?;
 
     Ok(create_postgres_database(db_name, &db).await?)
@@ -411,6 +431,39 @@ mod tests {
                 "Expected error but got success for {conn_str}"
             );
         }
+    }
+
+    #[test]
+    fn test_admin_postgres_uri_does_not_corrupt_when_db_name_is_substring_of_host_or_user() {
+        // The db name "loco" is also a substring of the user ("loco") and the
+        // host ("loco-db.host"). A naive `db_uri.replace(db_name, "/postgres")`
+        // would corrupt those occurrences too. Assert only the path changes.
+        let db_uri = "postgres://loco:pass@loco-db.host:5432/loco";
+
+        let admin_uri = admin_postgres_uri(db_uri).expect("should parse and derive admin URI");
+
+        let parsed = Url::parse(&admin_uri).expect("derived admin URI should be a valid URL");
+        assert_eq!(parsed.path(), "/postgres");
+        assert_eq!(parsed.username(), "loco");
+        assert_eq!(parsed.password(), Some("pass"));
+        assert_eq!(parsed.host_str(), Some("loco-db.host"));
+        assert_eq!(parsed.port(), Some(5432));
+    }
+
+    #[test]
+    fn test_admin_postgres_uri_preserves_query_params() {
+        let db_uri =
+            "postgres://user:pass@localhost:5432/mydb?sslmode=require&application_name=loco";
+
+        let admin_uri = admin_postgres_uri(db_uri).expect("should parse and derive admin URI");
+
+        let parsed = Url::parse(&admin_uri).expect("derived admin URI should be a valid URL");
+        assert_eq!(parsed.path(), "/postgres");
+        assert_eq!(
+            parsed.query(),
+            Some("sslmode=require&application_name=loco")
+        );
+        assert_eq!(parsed.host_str(), Some("localhost"));
     }
 
     #[tokio::test]
