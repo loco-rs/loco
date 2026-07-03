@@ -2,90 +2,78 @@
 
 
 
-##  Unreleased
-- **BREAKING: Migrate to Sea-ORM 2.0 and sqlx 0.9.** Loco now targets Sea-ORM
-  2.0 (MSRV raised to 1.85; the current 2.0 pre-release requires 1.94). Bump
-  `sea-orm`/`sea-orm-migration` to `2.0` in your app and `migration` crate,
-  bump direct `sqlx` to `0.9`, and update the Sea-ORM CLI (`cargo install
-  sea-orm-cli`). See the [0.16 → 0.17 upgrade guide](https://loco.rs/docs/extras/upgrades/)
-  for the full migration. (Adopted from the SeaQL fork and [#1698](https://github.com/loco-rs/loco/pull/1698).)
-- **BREAKING: Generated primary/foreign keys are now 64-bit (BIGINT/`i64`).**
-  Required by Sea-ORM 2.0 (SQLite integers map to `i64`) and the modern
-  bigint-by-default convention. Only affects newly generated code; existing
-  tables are untouched. See the upgrade guide.
-- **First-class LLM / agent support.** New `AGENTS.md` teaches agents how to
-  build Loco 0.17 apps (the all-in-one model + common pitfalls); `llms.txt` and
-  `llms-full.txt` are served from the site (llmstxt.org convention). Every app
-  created with `loco new` now ships an app-level `AGENTS.md`.
-- **BREAKING: test request helpers take `impl AsyncFnOnce`.** `request`,
-  `request_with_config`, `request_with_create_db`, and
-  `request_config_with_create_db` now use `impl AsyncFnOnce(TestServer,
-  AppContext)` instead of `F, Fut` generic bounds — call them as
-  `request::<App>(...)` (drop the `, _, _` turbofish). Generated tests already
-  use the new form. ([#1657](https://github.com/loco-rs/loco/pull/1657))
-- **Priority queues.** Background jobs now support a priority (higher runs
-  first). New `Worker::perform_later_with_priority(ctx, args, Some(prio))`;
-  `Queue::enqueue` gains a priority argument; mailer jobs default to priority
-  `100`. Postgres/SQLite add a `priority` column (auto-migrated on startup — no
-  action needed). **BREAKING for Redis:** the Redis backend moved from Lists to
-  Sorted Sets (ZSET) to support priority — drain existing Redis queues before
-  upgrading (see the upgrade guide). ([#1693](https://github.com/loco-rs/loco/pull/1693))
-- **BREAKING: `Worker::perform_later()` now returns the job ID** (`Result<String>`
-  instead of `Result<()>`) for status tracking, and `Queue::enqueue()` returns
-  `Result<Option<String>>`. Existing `perform_later(...).await?;` call sites keep
-  working (the returned ID is simply ignored). ([#1624](https://github.com/loco-rs/loco/pull/1624), fixes [#1623](https://github.com/loco-rs/loco/issues/1623))
-- **Mailer: implicit TLS (SMTPS / port 465).** New `tls:` mailer config field
-  (`implicit` for SMTPS, `starttls`, or `none`); `secure: true` remains STARTTLS.
-  Backward-compatible (defaults to prior behavior). ([#1774](https://github.com/loco-rs/loco/pull/1774), fixes [#1773](https://github.com/loco-rs/loco/issues/1773))
-- **Run the scheduler without a worker.** New `--scheduler` flag for `cargo loco
-  start` and new `StartMode::ServerAndScheduler` / `StartMode::WorkerAndScheduler`
-  boot modes. ([#1742](https://github.com/loco-rs/loco/pull/1742), fixes [#1737](https://github.com/loco-rs/loco/issues/1737))
-- **BREAKING: `PageResponse<T>` now exposes a `meta: PagerMeta`** instead of flat
-  `total_pages`/`total_items` fields (also carries `page`/`page_size`). Access via
-  `response.meta.total_pages` etc. ([#1685](https://github.com/loco-rs/loco/pull/1685), fixes [#1683](https://github.com/loco-rs/loco/issues/1683))
-- **BREAKING: `loco_rs::Error` is now `#[non_exhaustive]`.** Future error
-  variants can be added without a breaking change. If you `match` on `Error`
-  exhaustively, add a wildcard `_ => ...` arm. Removed the dead `loco-cli` crate
-  (superseded by `loco-new`, the published `loco` binary).
-- **BREAKING: Dependency modernization.** Major bumps across the tree:
-  `thiserror` 1→2, `tower` 0.4→0.5, `heck` unified to 0.5, `byte-unit` 4→5,
-  `ipnetwork` 0.20→0.21, `strum` 0.26→0.27, `redis` 0.31→1, `bb8-redis`
-  0.23→0.26, `opendal` 0.54→0.57. Transitive for most apps; only affects you if
-  you use these crates directly through Loco's public API.
-- Fix `cargo fmt` error in `loco-new` ([#1669](https://github.com/loco-rs/loco/pull/1669))
-- Fix UUID pattern in form field generation ([#1665](https://github.com/loco-rs/loco/pull/1665))
-- Add tests for auth extractor ([#1671](https://github.com/loco-rs/loco/pull/1671))
-- Fix Clippy warnings for Rust 1.92 ([#1705](https://github.com/loco-rs/loco/pull/1705))
-- Add email headers support to mailer ([#1700](https://github.com/loco-rs/loco/pull/1700))
-- Wrap `TeraView` in `Arc` to reduce runtime memory usage ([#1703](https://github.com/loco-rs/loco/pull/1703))
-- Allow overriding a secure header ([#1659](https://github.com/loco-rs/loco/pull/1659))
-- Add “create user” task ([#1670](https://github.com/loco-rs/loco/pull/1670))
-- Add `UuidUniqWithDefault` and `UuidWithDefault` types ([#1642](https://github.com/loco-rs/loco/pull/1642))
-- Refactor users model to reuse `find_by_api_key` in `Authenticable` ([#1706](https://github.com/loco-rs/loco/pull/1706))
-- Split error detail generic parameters ([#1709](https://github.com/loco-rs/loco/pull/1709))
-- Update `loco-new` for new Rhai version ([#1704](https://github.com/loco-rs/loco/pull/1704))
+## Unreleased
+
+## 0.17.0
+
+0.17.0 is a large, intentionally-breaking release. Its headline is the move to
+**Sea-ORM 2.0**, alongside first-class LLM/agent support, priority queues, and a
+broad dependency modernization. Follow the step-by-step
+[0.16 → 0.17 upgrade guide](https://loco.rs/docs/extras/upgrades/).
 
 ### Breaking Changes
-In file `src/initializers/view_engine.rs`, modify the code lines in `after_routes`:
 
-Before
+- **Sea-ORM 2.0 + sqlx 0.9.** Bump `sea-orm`/`sea-orm-migration` to `2.0` (app +
+  `migration` crate), direct `sqlx` to `0.9`, update the Sea-ORM CLI, and
+  regenerate entities. Raw-`Statement` calls gain a `_raw` suffix; runtime SQL
+  strings need `AssertSqlSafe`. MSRV raised (1.85 for 2.0.0 stable). (Adopted
+  from the SeaQL fork and [#1698](https://github.com/loco-rs/loco/pull/1698).)
+- **Generated primary/foreign keys are now 64-bit (BIGINT / `i64`).** Also the
+  `int`/`unsigned` field types generate 64-bit columns. Only affects newly
+  generated code; existing tables are untouched.
+- **Priority queues — Redis backend change.** The Redis worker moved from Lists
+  to Sorted Sets (ZSET) to support priority; **drain existing Redis queues before
+  upgrading**. Postgres/SQLite auto-migrate a `priority` column (no action).
+  ([#1693](https://github.com/loco-rs/loco/pull/1693))
+- **`Worker::perform_later()` returns the job ID** (`Result<String>`), and
+  `Queue::enqueue()` returns `Result<Option<String>>`. Existing
+  `perform_later(...).await?;` keeps working. ([#1624](https://github.com/loco-rs/loco/pull/1624), fixes [#1623](https://github.com/loco-rs/loco/issues/1623))
+- **`PageResponse<T>` exposes `meta: PagerMeta`** instead of flat
+  `total_pages`/`total_items` (also carries `page`/`page_size`). ([#1685](https://github.com/loco-rs/loco/pull/1685), fixes [#1683](https://github.com/loco-rs/loco/issues/1683))
+- **Test request helpers take `impl AsyncFnOnce`** — call `request::<App>(...)`
+  (drop the `, _, _` turbofish). Applies to `request`, `request_with_config`,
+  `request_with_create_db`, `request_config_with_create_db`. ([#1657](https://github.com/loco-rs/loco/pull/1657))
+- **`loco_rs::Error` is `#[non_exhaustive]`.** Add a wildcard `_ => ...` arm to
+  exhaustive matches.
+- **View engine:** use `engines::TeraView::build_with_post_process(...)` instead
+  of `TeraView::build()?.post_process(...)` in `after_routes`.
+- **Dependency majors:** `thiserror` 1→2, `tower` 0.4→0.5, `heck`→0.5,
+  `byte-unit` 4→5, `ipnetwork` 0.20→0.21, `strum`→0.27, `redis` 0.31→1,
+  `bb8-redis`→0.26, `opendal` 0.54→0.57; `serde_yaml`→`serde_yaml_ng`.
+  Transitive for most apps.
+- Removed the dead `loco-cli` crate (superseded by `loco-new`, the published
+  `loco` binary).
 
-```rust
-async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
-                :
-    engines::TeraView::build()?.post_process(move |tera| {
-                :
-```
+### Added
 
-After (use `build_with_post_process` instead of `post_process`)
+- **First-class LLM / agent support.** Root `AGENTS.md` teaches agents to build
+  Loco 0.17 apps; `llms.txt` / `llms-full.txt` are served from the site
+  (llmstxt.org). Every `loco new` app ships an app-level `AGENTS.md`.
+- **Priority queues** with `Worker::perform_later_with_priority(...)`; mailer
+  jobs default to priority `100`. ([#1693](https://github.com/loco-rs/loco/pull/1693))
+- **Mailer implicit TLS (SMTPS / port 465)** via `mailer.smtp.tls`. ([#1774](https://github.com/loco-rs/loco/pull/1774), fixes [#1773](https://github.com/loco-rs/loco/issues/1773))
+- **Run the scheduler without a worker** — `--scheduler` flag +
+  `StartMode::ServerAndScheduler`/`WorkerAndScheduler`. ([#1742](https://github.com/loco-rs/loco/pull/1742), fixes [#1737](https://github.com/loco-rs/loco/issues/1737))
+- Email headers support in the mailer ([#1700](https://github.com/loco-rs/loco/pull/1700)).
+- "Create user" task ([#1670](https://github.com/loco-rs/loco/pull/1670)).
+- `UuidUniqWithDefault` and `UuidWithDefault` types ([#1642](https://github.com/loco-rs/loco/pull/1642)).
+- Allow overriding a secure header ([#1659](https://github.com/loco-rs/loco/pull/1659)).
 
-```rust
-async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
-                :
-    engines::TeraView::build_with_post_process(move |tera| {
-                :
-}
-```
+### Changed
+
+- Wrap `TeraView` in `Arc` to reduce runtime memory usage ([#1703](https://github.com/loco-rs/loco/pull/1703)).
+- Refactor users model to reuse `find_by_api_key` in `Authenticable` ([#1706](https://github.com/loco-rs/loco/pull/1706)).
+- Split error detail generic parameters ([#1709](https://github.com/loco-rs/loco/pull/1709)).
+- Update `loco-new` for the new Rhai version ([#1704](https://github.com/loco-rs/loco/pull/1704)).
+- Replaced hand-rolled `Cargo.lock` parsing with the `cargo-lock` crate; retired
+  `duct_sh`.
+
+### Fixed
+
+- `cargo fmt` error in `loco-new` ([#1669](https://github.com/loco-rs/loco/pull/1669)).
+- UUID pattern in form field generation ([#1665](https://github.com/loco-rs/loco/pull/1665)).
+- Clippy warnings for recent Rust ([#1705](https://github.com/loco-rs/loco/pull/1705)).
+- Add tests for the auth extractor ([#1671](https://github.com/loco-rs/loco/pull/1671)).
 
 
 
