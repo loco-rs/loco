@@ -968,7 +968,6 @@ pub async fn create_provider(qcfg: &RedisQueueConfig) -> Result<Queue> {
         num_workers = qcfg.num_workers,
         "creating Redis queue provider"
     );
-    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
     Ok(Queue::Redis(
         client,
         Arc::new(tokio::sync::Mutex::new(registry)),
