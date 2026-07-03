@@ -304,9 +304,21 @@ impl_validate_with_message!(JsonValidateWithMessage, extract_json_value);
 impl_validate_with_message!(FormValidateWithMessage, extract_form_value);
 impl_validate_with_message!(QueryValidateWithMessage, extract_query_value);
 
-impl_validate_opaque!(JsonValidate, extract_json_value, "request validation error occurred");
-impl_validate_opaque!(FormValidate, extract_form_value, "request validation error occurred");
-impl_validate_opaque!(QueryValidate, extract_query_value, "query validation error occurred");
+impl_validate_opaque!(
+    JsonValidate,
+    extract_json_value,
+    "request validation error occurred"
+);
+impl_validate_opaque!(
+    FormValidate,
+    extract_form_value,
+    "request validation error occurred"
+);
+impl_validate_opaque!(
+    QueryValidate,
+    extract_query_value,
+    "query validation error occurred"
+);
 
 #[cfg(test)]
 mod tests {

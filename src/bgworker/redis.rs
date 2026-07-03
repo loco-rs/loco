@@ -7,7 +7,7 @@ use std::{
 use super::{BackgroundWorker, JobStatus, Queue};
 pub use super::{Job, JobData, JobId};
 use crate::{
-    config::{RedisQueueConfig, ReaperConfig},
+    config::{ReaperConfig, RedisQueueConfig},
     Error, Result,
 };
 use chrono::Utc;

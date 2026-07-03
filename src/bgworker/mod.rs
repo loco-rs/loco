@@ -6,9 +6,9 @@ use std::{
 };
 
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 #[cfg(feature = "cli")]
 use clap::ValueEnum;
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use serde_variant::to_variant_name;

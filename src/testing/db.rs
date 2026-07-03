@@ -88,12 +88,16 @@ impl PostgresTest {
         // URI whenever the db name is also a substring of the host or
         // credentials (e.g. db "loco" with user/host containing "loco").
         let mut root_url = Url::parse(conn_str).map_err(|err| {
-            Error::string(&format!("could not parse Postgres connection string: {err}"))
+            Error::string(&format!(
+                "could not parse Postgres connection string: {err}"
+            ))
         })?;
         root_url.set_path("/postgres");
 
         let mut test_url = Url::parse(conn_str).map_err(|err| {
-            Error::string(&format!("could not parse Postgres connection string: {err}"))
+            Error::string(&format!(
+                "could not parse Postgres connection string: {err}"
+            ))
         })?;
         test_url.set_path(&format!("/{test_schema_name}"));
 
