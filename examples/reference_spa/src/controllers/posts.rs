@@ -41,6 +41,7 @@ fn not_found(message: &str) -> Response {
 
 #[debug_handler]
 async fn list(
+    _auth: auth::JWT,
     State(ctx): State<AppContext>,
     Query(params): Query<ListParams>,
 ) -> Result<Json<Page<PostDto>>> {
@@ -66,7 +67,11 @@ async fn list(
 }
 
 #[debug_handler]
-async fn get_one(State(ctx): State<AppContext>, Path(id): Path<i64>) -> Result<Response> {
+async fn get_one(
+    _auth: auth::JWT,
+    State(ctx): State<AppContext>,
+    Path(id): Path<i64>,
+) -> Result<Response> {
     let item = Entity::find_by_id(id).one(&ctx.db).await?;
     match item {
         Some(model) => Ok(Json(PostDto::from(model)).into_response()),
@@ -76,6 +81,7 @@ async fn get_one(State(ctx): State<AppContext>, Path(id): Path<i64>) -> Result<R
 
 #[debug_handler]
 async fn create(
+    _auth: auth::JWT,
     State(ctx): State<AppContext>,
     Json(params): Json<CreatePost>,
 ) -> Result<Response> {
@@ -94,6 +100,7 @@ async fn create(
 
 #[debug_handler]
 async fn update(
+    _auth: auth::JWT,
     State(ctx): State<AppContext>,
     Path(id): Path<i64>,
     Json(params): Json<UpdatePost>,
@@ -113,7 +120,11 @@ async fn update(
 }
 
 #[debug_handler]
-async fn remove(State(ctx): State<AppContext>, Path(id): Path<i64>) -> Result<Response> {
+async fn remove(
+    _auth: auth::JWT,
+    State(ctx): State<AppContext>,
+    Path(id): Path<i64>,
+) -> Result<Response> {
     let Some(model) = Entity::find_by_id(id).one(&ctx.db).await? else {
         return Ok(not_found("post not found"));
     };
