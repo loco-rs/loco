@@ -82,6 +82,10 @@
 
 ### Added
 
+- **`Mailer::deliver_now` / `mail_template_now` for synchronous sends.**
+  Complements `Mailer::mail`/`mail_template` (which enqueue via the background
+  worker, like Rails `deliver_later`) with an inline send that bypasses the
+  queue (Rails `deliver_now`).
 - **`MiddlewareStackExt` for surgical middleware-stack edits.** Inside
   `Hooks::middlewares`, tweak the default stack instead of rebuilding it:
   `stack.insert_before("cors", ..)`, `.insert_after(..)`, `.replace(..)`, and
