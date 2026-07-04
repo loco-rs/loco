@@ -79,7 +79,6 @@ impl Routes {
     /// ````
     #[must_use]
     pub fn add(mut self, uri: &str, method: axum::routing::MethodRouter<AppContext>) -> Self {
-        describe::method_action(&method);
         self.handlers.push(Handler {
             uri: uri.to_owned(),
             actions: describe::method_action(&method),

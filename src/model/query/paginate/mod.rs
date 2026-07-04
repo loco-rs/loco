@@ -153,28 +153,13 @@ where
     E: EntityTrait,
     <E as EntityTrait>::Model: Sync,
 {
-    let page = pagination_query.page.saturating_sub(1);
     let entity = if let Some(condition) = condition {
         entity.filter(condition)
     } else {
         entity
     };
 
-    let query = entity.paginate(db, pagination_query.page_size);
-    let total_pages_and_items = query.num_items_and_pages().await?;
-    let page: Vec<<E as EntityTrait>::Model> = query.fetch_page(page).await?;
-
-    let paginated_response = PageResponse {
-        page,
-        meta: PagerMeta {
-            page: pagination_query.page,
-            page_size: pagination_query.page_size,
-            total_pages: total_pages_and_items.number_of_pages,
-            total_items: total_pages_and_items.number_of_items,
-        },
-    };
-
-    Ok(paginated_response)
+    fetch_page(db, entity, pagination_query).await
 }
 
 /// Fetching a page from a selector.

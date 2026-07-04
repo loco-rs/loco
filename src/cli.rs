@@ -731,21 +731,7 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             port,
             no_banner,
         } => {
-            let start_mode = if all || (server_and_worker && scheduler) {
-                StartMode::All
-            } else if server_and_worker {
-                StartMode::ServerAndWorker
-            } else if let Some(tags) = worker {
-                if scheduler {
-                    StartMode::WorkerAndScheduler { tags }
-                } else {
-                    StartMode::WorkerOnly { tags }
-                }
-            } else if scheduler {
-                StartMode::ServerAndScheduler
-            } else {
-                StartMode::ServerOnly
-            };
+            let start_mode = start_mode_from_flags(all, server_and_worker, worker, scheduler);
 
             let boot_result =
                 create_app::<H, M>(start_mode, &environment, app_context.config).await?;
@@ -806,7 +792,7 @@ async fn dispatch_common<H: Hooks>(
         }
         #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
         Commands::Jobs { command } => {
-            handle_job_command::<H>(command, environment, app_context.config).await?;
+            handle_job_command(command, &app_context).await?;
         }
         Commands::Scheduler {
             name,
@@ -918,21 +904,7 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             port,
             no_banner,
         } => {
-            let start_mode = if all || (server_and_worker && scheduler) {
-                StartMode::All
-            } else if server_and_worker {
-                StartMode::ServerAndWorker
-            } else if let Some(tags) = worker {
-                if scheduler {
-                    StartMode::WorkerAndScheduler { tags }
-                } else {
-                    StartMode::WorkerOnly { tags }
-                }
-            } else if scheduler {
-                StartMode::ServerAndScheduler
-            } else {
-                StartMode::ServerOnly
-            };
+            let start_mode = start_mode_from_flags(all, server_and_worker, worker, scheduler);
 
             let boot_result = create_app::<H>(start_mode, &environment, app_context.config).await?;
             let serve_params = ServeParams {
@@ -1169,14 +1141,34 @@ fn create_root_span(environment: &Environment) -> tracing::Span {
     tracing::span!(tracing::Level::DEBUG, "app", environment = %environment)
 }
 
+/// Resolves the [`StartMode`] from the `Commands::Start` CLI flags. Shared by
+/// the `with-db` and non-`with-db` flavors of `main`.
+fn start_mode_from_flags(
+    all: bool,
+    server_and_worker: bool,
+    worker: Option<Vec<String>>,
+    scheduler: bool,
+) -> StartMode {
+    if all || (server_and_worker && scheduler) {
+        StartMode::All
+    } else if server_and_worker {
+        StartMode::ServerAndWorker
+    } else if let Some(tags) = worker {
+        if scheduler {
+            StartMode::WorkerAndScheduler { tags }
+        } else {
+            StartMode::WorkerOnly { tags }
+        }
+    } else if scheduler {
+        StartMode::ServerAndScheduler
+    } else {
+        StartMode::ServerOnly
+    }
+}
+
 #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
-async fn handle_job_command<H: Hooks>(
-    command: JobsCommands,
-    environment: &Environment,
-    config: Config,
-) -> crate::Result<()> {
-    let app_context = create_context::<H>(environment, config).await?;
-    let queue = app_context.queue_provider.unwrap_or_else(|| {
+async fn handle_job_command(command: JobsCommands, app_context: &AppContext) -> crate::Result<()> {
+    let queue = app_context.queue_provider.clone().unwrap_or_else(|| {
         println!("queue not configured");
         exit(1);
     });
