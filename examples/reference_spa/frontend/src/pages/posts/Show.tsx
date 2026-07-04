@@ -1,0 +1,48 @@
+import { Link, useParams } from "react-router";
+import { usePost } from "../../api/posts";
+
+export function Show() {
+  const { id: idParam } = useParams<{ id: string }>();
+  const id = Number(idParam);
+  const isValidId = Number.isFinite(id) && id > 0;
+
+  const { data, isLoading, isError, error } = usePost(isValidId ? id : NaN);
+
+  if (!isValidId) {
+    return <p role="alert">Invalid post id.</p>;
+  }
+
+  if (isLoading) {
+    return <p>Loading…</p>;
+  }
+
+  if (isError) {
+    return <p role="alert">{error.message}</p>;
+  }
+
+  if (!data) {
+    return <p>Post not found.</p>;
+  }
+
+  return (
+    <div>
+      <h1>{data.title}</h1>
+      <dl>
+        <dt>Status</dt>
+        <dd>{data.status}</dd>
+        <dt>Price</dt>
+        <dd>{data.price}</dd>
+        <dt>Content</dt>
+        <dd>{data.content}</dd>
+        <dt>Published at</dt>
+        <dd>{data.published_at ?? "—"}</dd>
+        <dt>Created at</dt>
+        <dd>{data.created_at}</dd>
+      </dl>
+      <p>
+        <Link to={`/posts/${data.id}/edit`}>Edit</Link>{" "}
+        <Link to="/posts">Back to list</Link>
+      </p>
+    </div>
+  );
+}
