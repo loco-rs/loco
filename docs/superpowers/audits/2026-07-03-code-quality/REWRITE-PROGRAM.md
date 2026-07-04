@@ -45,6 +45,31 @@ Sonnet implements sequentially, Opus governs/verifies/commits.
 7. **bgworker full rewrite** — biggest; test suite rebuilt with the new harness.
 8. **Shell coverage + footguns** — fold in throughout; final sweep.
 
+## OUTCOME (2026-07-04) — program complete
+
+**Shipped (11 commits, all local, all verified):**
+- Test harness: `sleep(2s)` → readiness poll (middleware suite 50s → 3.3s).
+- `remote_ip` → axum-client-ip (−42 LOC, dropped `ipnetwork`, breaking: single trusted-edge).
+- `errors.rs`: exhaustive Error→HTTP mapping (no silent-500 wildcard; found 4 nested ModelError
+  variants; non-breaking).
+- Footgun batch: mutex-poison recovery, exhaustive cli match, dead moka `sync` dropped,
+  serial_test, stale `XXX` deleted, clippy `-D warnings` now clean.
+- Route introspection: additive verb-explicit `Routes::{get,post,…}` methods.
+- bgworker: SAFE subset — hoist `to_job`/`ping` + fix 2 real pg/sqlt inconsistencies (enqueue
+  tag-error, complete_job run_at). `dequeue`/`initialize_database` left untouched.
+- Coverage: logger.rs (0→7 tests), on_shutdown worker-mode guard (behavior-identical seam).
+
+**Rejected on "prove why not" review (governor calls, reported to Jondot):**
+- **num-format** — new dep, incumbent already correct; ~14 LOC for a whole dep tree.
+- **validate.rs / axum-valid** — validate.rs already DRY; `validator` (present) already does the
+  job; axum-valid adds nothing but a dep + drops the `ValidatorTrait` feature for flat LOC.
+- **format.rs** — already single-sourced in the prior remediation; a second rewrite is churn.
+- **bgworker FULL unification** — UNSAFE: pg `SKIP LOCKED` vs sqlite advisory-lock `dequeue` are
+  different concurrency primitives; forcing them risks job double-processing. Real win was ~40 LOC
+  + the 2 bug fixes, not the ~−1,000 the duplication's size implied.
+
+**Final gate:** fmt clean · clippy `-D warnings` clean (lib+tests, all backends) · 460 lib tests pass.
+
 ## Gate (every step)
 `cargo fmt --check` · `cargo clippy --all-features --all-targets -- -D warnings` ·
 targeted `cargo test --all-features`. Atomic commit per step. Update CHANGELOG for each
