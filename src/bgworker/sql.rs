@@ -20,6 +20,83 @@ use super::BackgroundWorker;
 pub use super::{Job, JobData, JobId};
 use crate::{config::ReaperConfig, Error, Result};
 
+/// Pings the job queue database by selecting a single row's `id` from the
+/// given `table`, shared between the Postgres and `SQLite` backends (which
+/// only differ in table name and pool/executor type).
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub(crate) async fn ping<'e, E>(executor: E, table: &str) -> Result<()>
+where
+    E: sqlx::Executor<'e>,
+    <E::Database as sqlx::Database>::Arguments: sqlx::IntoArguments<E::Database>,
+{
+    trace!("Pinging job queue database");
+    sqlx::query(sqlx::AssertSqlSafe(format!(
+        "SELECT id from {table} LIMIT 1"
+    )))
+    .execute(executor)
+    .await?;
+    Ok(())
+}
+
+/// Converts a database row into a [`Job`] object.
+///
+/// This function manually extracts the necessary fields from a row to populate a
+/// [`Job`] object, shared between the Postgres and `SQLite` backends (their row
+/// layouts and column types line up, so the mapping logic is identical).
+///
+/// **Note:** This function manually extracts values from the database row instead of using
+/// the `FromRow` trait, which would require enabling the 'macros' feature in the dependencies.
+/// The decision to avoid `FromRow` is made to keep the build smaller and faster, as the 'macros'
+/// feature is unnecessary in the current dependency tree.
+pub(crate) fn to_job<R>(row: &R) -> Result<Job>
+where
+    R: sqlx::Row,
+    for<'a> &'a str: sqlx::ColumnIndex<R>,
+    for<'r> String: sqlx::Decode<'r, R::Database> + sqlx::Type<R::Database>,
+    for<'r> serde_json::Value: sqlx::Decode<'r, R::Database> + sqlx::Type<R::Database>,
+    for<'r> Option<serde_json::Value>: sqlx::Decode<'r, R::Database> + sqlx::Type<R::Database>,
+    for<'r> chrono::DateTime<chrono::Utc>: sqlx::Decode<'r, R::Database> + sqlx::Type<R::Database>,
+    for<'r> Option<chrono::DateTime<chrono::Utc>>:
+        sqlx::Decode<'r, R::Database> + sqlx::Type<R::Database>,
+    for<'r> Option<i64>: sqlx::Decode<'r, R::Database> + sqlx::Type<R::Database>,
+    for<'r> i32: sqlx::Decode<'r, R::Database> + sqlx::Type<R::Database>,
+{
+    let tags_json: Option<serde_json::Value> = row.try_get("tags").unwrap_or_default();
+    let tags = tags_json.and_then(|json_val| {
+        if json_val.is_array() {
+            let tags_vec: Vec<String> =
+                serde_json::from_value(json_val).unwrap_or_else(|_| Vec::new());
+            if tags_vec.is_empty() {
+                None
+            } else {
+                Some(tags_vec)
+            }
+        } else {
+            None
+        }
+    });
+
+    Ok(Job {
+        id: row.get("id"),
+        name: row.get("name"),
+        data: row.get("task_data"),
+        status: row.get::<String, _>("status").parse().map_err(|err| {
+            let status: String = row.get("status");
+            tracing::error!(status, err = %err, "Unsupported job status in database");
+            Error::string("invalid job status")
+        })?,
+        run_at: row.get("run_at"),
+        interval: row.get("interval"),
+        created_at: row.try_get("created_at").unwrap_or_default(),
+        updated_at: row.try_get("updated_at").unwrap_or_default(),
+        tags,
+        priority: row.get("priority"),
+    })
+}
+
 pub(crate) type JobHandler = Box<
     dyn Fn(
             JobId,

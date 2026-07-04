@@ -2,13 +2,16 @@
 use std::time::Duration;
 
 pub use super::sql::{Job, JobData, JobId, JobRegistry, RunOpts};
-use super::{sql::Driver, JobStatus, Queue};
-use crate::{config::PostgresQueueConfig, Error, Result};
+use super::{
+    sql::{to_job, Driver},
+    JobStatus, Queue,
+};
+use crate::{config::PostgresQueueConfig, Result};
 use chrono::{DateTime, Utc};
 pub use sqlx::PgPool;
 use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions, PgRow},
-    AssertSqlSafe, ConnectOptions, Row,
+    AssertSqlSafe, ConnectOptions,
 };
 use std::fmt::Write;
 use std::sync::Arc;
@@ -135,9 +138,10 @@ pub async fn enqueue(
     priority: Option<i32>,
 ) -> Result<JobId> {
     let data_json = serde_json::to_value(data)?;
-    let tags_json = tags
-        .as_ref()
-        .map(|t| serde_json::to_value(t).unwrap_or(serde_json::Value::Null));
+    let tags_json = match &tags {
+        Some(tags) => Some(serde_json::to_value(tags)?),
+        None => None,
+    };
 
     #[allow(clippy::cast_possible_truncation)]
     let interval_ms: Option<i64> = interval.map(|i| i.as_millis() as i64);
@@ -225,31 +229,30 @@ async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>>
 }
 
 async fn complete_job(pool: &PgPool, id: &JobId, interval_ms: Option<i64>) -> Result<()> {
-    let (status, run_at) = interval_ms.map_or_else(
-        || (JobStatus::Completed.to_string(), Utc::now()),
-        |interval_ms| {
-            (
-                JobStatus::Queued.to_string(),
-                Utc::now() + chrono::Duration::milliseconds(interval_ms),
-            )
-        },
-    );
-
-    trace!(
-        job_id = %id,
-        status = %status,
-        run_at = %run_at,
-        "Marking job as completed"
-    );
-
-    sqlx::query(
-        "UPDATE pg_loco_queue SET status = $1, updated_at = NOW(), run_at = $2 WHERE id = $3",
-    )
-    .bind(status)
-    .bind(run_at)
-    .bind(id)
-    .execute(pool)
-    .await?;
+    if let Some(interval_ms) = interval_ms {
+        let next_run_at = Utc::now() + chrono::Duration::milliseconds(interval_ms);
+        trace!(
+            job_id = %id,
+            status = "queued",
+            run_at = %next_run_at,
+            "Rescheduling recurring job"
+        );
+        sqlx::query(
+            "UPDATE pg_loco_queue SET status = $1, updated_at = NOW(), run_at = $2 WHERE id = $3",
+        )
+        .bind(JobStatus::Queued.to_string())
+        .bind(next_run_at)
+        .bind(id)
+        .execute(pool)
+        .await?;
+    } else {
+        trace!(job_id = %id, status = "completed", "Marking job as completed");
+        sqlx::query("UPDATE pg_loco_queue SET status = $1, updated_at = NOW() WHERE id = $2")
+            .bind(JobStatus::Completed.to_string())
+            .bind(id)
+            .execute(pool)
+            .await?;
+    }
 
     Ok(())
 }
@@ -397,11 +400,7 @@ pub async fn requeue(pool: &PgPool, age_minutes: &i64) -> Result<()> {
 ///
 /// This function will return an error if it fails
 pub async fn ping(pool: &PgPool) -> Result<()> {
-    trace!("Pinging job queue database");
-    sqlx::query("SELECT id from pg_loco_queue LIMIT 1")
-        .execute(pool)
-        .await?;
-    Ok(())
+    super::sql::ping(pool, "pg_loco_queue").await
 }
 
 /// Retrieves a list of jobs from the `pg_loco_queue` table in the database.
@@ -442,49 +441,6 @@ pub async fn get_jobs(
     let jobs = rows.iter().filter_map(|row| to_job(row).ok()).collect();
     debug!(job_count = rows.len(), "Retrieved jobs from database");
     Ok(jobs)
-}
-
-/// Converts a row from the database into a [`Job`] object.
-///
-/// This function takes a row from the `Postgres` database and manually extracts the necessary
-/// fields to populate a [`Job`] object.
-///
-/// **Note:** This function manually extracts values from the database row instead of using
-/// the `FromRow` trait, which would require enabling the 'macros' feature in the dependencies.
-/// The decision to avoid `FromRow` is made to keep the build smaller and faster, as the 'macros'
-/// feature is unnecessary in the current dependency tree.
-fn to_job(row: &PgRow) -> Result<Job> {
-    let tags_json: Option<serde_json::Value> = row.try_get("tags").unwrap_or_default();
-    let tags = tags_json.and_then(|json_val| {
-        if json_val.is_array() {
-            let tags_vec: Vec<String> =
-                serde_json::from_value(json_val).unwrap_or_else(|_| Vec::new());
-            if tags_vec.is_empty() {
-                None
-            } else {
-                Some(tags_vec)
-            }
-        } else {
-            None
-        }
-    });
-
-    Ok(Job {
-        id: row.get("id"),
-        name: row.get("name"),
-        data: row.get("task_data"),
-        status: row.get::<String, _>("status").parse().map_err(|err| {
-            let status: String = row.get("status");
-            tracing::error!(status, err = %err, "Unsupported job status in database");
-            Error::string("invalid job status")
-        })?,
-        run_at: row.get("run_at"),
-        interval: row.get("interval"),
-        created_at: row.try_get("created_at").unwrap_or_default(),
-        updated_at: row.try_get("updated_at").unwrap_or_default(),
-        tags,
-        priority: row.get("priority"),
-    })
 }
 
 /// Create this provider
@@ -696,11 +652,16 @@ mod tests {
         let job = get_job(&pool, "01JDM0X8EVAM823JZBGKYNBA99").await;
 
         assert_eq!(job.status, JobStatus::Queued);
+        let run_at_before = job.run_at;
         assert!(complete_job(&pool, &job.id, None).await.is_ok());
 
         let job = get_job(&pool, "01JDM0X8EVAM823JZBGKYNBA99").await;
 
         assert_eq!(job.status, JobStatus::Completed);
+        // Completing a one-shot job (no interval) must not rewrite `run_at`:
+        // it's inert once the job is done, and should match the SQLite
+        // backend's behavior.
+        assert_eq!(job.run_at, run_at_before);
     }
 
     #[tokio::test]
@@ -724,6 +685,9 @@ mod tests {
             after_complete_job.updated_at,
             before_complete_job.updated_at
         );
+        // Rescheduling a recurring job (with an interval) legitimately
+        // advances `run_at`.
+        assert_ne!(after_complete_job.run_at, before_complete_job.run_at);
         with_settings!({
                 filters => reduction().iter().map(|&(pattern, replacement)| (pattern,
         replacement)),     }, {

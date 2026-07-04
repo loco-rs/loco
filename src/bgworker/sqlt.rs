@@ -2,13 +2,16 @@
 use std::time::Duration;
 
 pub use super::sql::{Job, JobData, JobId, JobRegistry, RunOpts};
-use super::{sql::Driver, JobStatus, Queue};
-use crate::{config::SqliteQueueConfig, Error, Result};
+use super::{
+    sql::{to_job, Driver},
+    JobStatus, Queue,
+};
+use crate::{config::SqliteQueueConfig, Result};
 use chrono::{DateTime, Utc};
 pub use sqlx::SqlitePool;
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqlitePoolOptions, SqliteRow},
-    AssertSqlSafe, ConnectOptions, QueryBuilder, Row,
+    AssertSqlSafe, ConnectOptions, QueryBuilder,
 };
 use std::fmt::Write;
 use std::sync::Arc;
@@ -442,11 +445,7 @@ pub async fn clear_jobs_older_than(
 ///
 /// This function will return an error if it fails
 pub async fn ping(pool: &SqlitePool) -> Result<()> {
-    trace!("Pinging job queue database");
-    sqlx::query("SELECT id from sqlt_loco_queue LIMIT 1")
-        .execute(pool)
-        .await?;
-    Ok(())
+    super::sql::ping(pool, "sqlt_loco_queue").await
 }
 
 /// Create this provider
@@ -512,49 +511,6 @@ pub async fn get_jobs(
     let jobs = rows.iter().filter_map(|row| to_job(row).ok()).collect();
     debug!(job_count = rows.len(), "Retrieved jobs from database");
     Ok(jobs)
-}
-
-/// Converts a row from the database into a [`Job`] object.
-///
-/// This function takes a row from the `SQLite` database and manually extracts the necessary
-/// fields to populate a [`Job`] object.
-///
-/// **Note:** This function manually extracts values from the database row instead of using
-/// the `FromRow` trait, which would require enabling the 'macros' feature in the dependencies.
-/// The decision to avoid `FromRow` is made to keep the build smaller and faster, as the 'macros'
-/// feature is unnecessary in the current dependency tree.
-fn to_job(row: &SqliteRow) -> Result<Job> {
-    let tags_json: Option<serde_json::Value> = row.try_get("tags").unwrap_or_default();
-    let tags = tags_json.and_then(|json_val| {
-        if json_val.is_array() {
-            let tags_vec: Vec<String> =
-                serde_json::from_value(json_val).unwrap_or_else(|_| Vec::new());
-            if tags_vec.is_empty() {
-                None
-            } else {
-                Some(tags_vec)
-            }
-        } else {
-            None
-        }
-    });
-
-    Ok(Job {
-        id: row.get("id"),
-        name: row.get("name"),
-        data: row.get("task_data"),
-        status: row.get::<String, _>("status").parse().map_err(|err| {
-            let status: String = row.get("status");
-            tracing::error!(status, err = %err, "Unsupported job status in database");
-            Error::string("invalid job status")
-        })?,
-        run_at: row.get("run_at"),
-        interval: row.get("interval"),
-        created_at: row.try_get("created_at").unwrap_or_default(),
-        updated_at: row.try_get("updated_at").unwrap_or_default(),
-        tags,
-        priority: row.get("priority"),
-    })
 }
 
 #[cfg(test)]
@@ -795,11 +751,15 @@ mod tests {
         let job = get_job(&pool, "01JDM0X8EVAM823JZBGKYNBA99").await;
 
         assert_eq!(job.status, JobStatus::Queued);
+        let run_at_before = job.run_at;
         assert!(complete_job(&pool, &job.id, None).await.is_ok());
 
         let job = get_job(&pool, "01JDM0X8EVAM823JZBGKYNBA99").await;
 
         assert_eq!(job.status, JobStatus::Completed);
+        // Completing a one-shot job (no interval) must not rewrite `run_at`:
+        // it's inert once the job is done.
+        assert_eq!(job.run_at, run_at_before);
     }
 
     #[tokio::test]
@@ -828,6 +788,9 @@ mod tests {
             after_complete_job.updated_at,
             before_complete_job.updated_at
         );
+        // Rescheduling a recurring job (with an interval) legitimately
+        // advances `run_at`.
+        assert_ne!(after_complete_job.run_at, before_complete_job.run_at);
         with_settings!({
             filters => reduction().iter().map(|&(pattern, replacement)| (pattern, replacement)),
         }, {

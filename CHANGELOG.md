@@ -95,6 +95,14 @@
 
 ### Fixed
 
+- **Postgres/SQLite queue backends now behave consistently.** Two divergences
+  between the Postgres and SQLite job backends are fixed: (1) `enqueue` on
+  Postgres previously *swallowed* a tag-serialization error (storing `tags =
+  null`); it now propagates the error like SQLite. (2) `complete_job` without a
+  repeat interval on Postgres stamped `run_at = NOW()` on the completed row while
+  SQLite left it untouched; Postgres now leaves `run_at` as-is, matching SQLite
+  (the interval path still reschedules `run_at` on both). The shared `to_job` row
+  mapper is now single-sourced across both backends.
 - **Storage mirror fan-out no longer stops at the first failing secondary.**
   `rename`, `copy`, and `upload_stream` checked the failure mode *inside* the
   secondary loop and returned early on the first failure, silently leaving later
