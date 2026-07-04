@@ -189,3 +189,35 @@ commits only; atomic commit per item; gate = fmt + clippy `-D warnings` (all bac
     `map_auth_model_error`; delete dead `#[async_trait]`)
 
 CHANGELOG updated per breaking item with the crystallized behavior delta.
+
+## OUTCOME (2026-07-04) — program complete
+
+All 10 greenlit items shipped (local commits on `release/1.0.0`), plus 2 fixes
+surfaced during the work. Final gate: fmt clean · clippy `-D warnings` clean
+(all backend combos, lib+tests) · **473 lib tests pass** (+13 new) · zero
+snapshot drift.
+
+| # | Item | Commit | Note |
+|---|---|---|---|
+| 1 | Coherence sweep + bugs B4/B5 | `40ff0665` | job-context reuse, dead route call, start-mode dedup, paginate |
+| 2 | Tera factory unify (B3) | `96e5211b` | filters now reach mailer + inline views |
+| 3 | PG/SQLite-only policy (B2) | `9e59267a` | doc-only; kept dump_schema's working MySQL arm |
+| 4 | Remove `ExtraDbInitializer` | `1ec53d20` | BREAKING — **Jondot re-confirmed** after I surfaced it was a real documented feature, not a trivial n=1 dup |
+| 5 | `AppContext` `#[non_exhaustive]` + builder | `7e49c1c5` | BREAKING; future fields now non-breaking |
+| — | gate `process_worker_handles` | `d6235ef5` | latent dead-code lint found during #5 |
+| 6 | Storage `ReplicatedStrategy` merge | `b0cf2bb2` | BREAKING — flagship; ~−300 LOC, fixes B1 (backup writes now concurrent), 35 tests ported |
+| 7 | `MiddlewareStackExt` | `cacb54c7` | additive; named `delete` (not `remove`) to dodge `Vec::remove` collision — found mid-impl |
+| 8 | `render_form_field` macro data-drive | `8834e5d8` | internal, behavior-identical, −74 LOC, zero snapshot drift |
+| 9 | Mailer `deliver_now` | `8a18e4e0` | additive; also dedups worker `perform` |
+| 10 | Optional JWT + auth error-map dedup + dead attrs | `853ec531` | `Option<JWT>` via `OptionalFromRequestParts` |
+
+**Declined on prove-why-not (reported, not done):** middleware registry macro
+(hurts greppability per its own audit) and static-assets source dedup (cosmetic,
+touches the embedded cfg split) — both folded out of #7. TIER 3 stays deferred.
+
+**Two defects caught by governance, not the plan:** #7's `remove`→`Vec::remove`
+name collision (renamed to `delete`, more Rails-faithful anyway), and #4's
+mischaracterization as a trivial duplicate (surfaced to Jondot, re-confirmed).
+
+Pre-existing, out-of-scope (untouched): `sea-orm 2.0.0-rc` E0053 breaks
+`loco-gen/tests/db.rs` — the exact incompatibility the 1.0 publish is gated on.
