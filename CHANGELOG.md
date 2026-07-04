@@ -6,6 +6,16 @@
 
 ### Breaking Changes
 
+- **Background queue reworked into a `QueueProvider` adapter interface.** The
+  `bgworker::Queue` enum (`Postgres`/`Sqlite`/`Redis`/`None`) is now a newtype
+  over `Arc<dyn QueueProvider>`, so backends are pluggable (implement
+  `QueueProvider` and wrap with `Queue::from_provider`). All existing methods
+  (`enqueue`, `register`, `run`, `ping`, `cancel_jobs`, `clear_by_status`,
+  `requeue`, …) keep the same signatures and behavior. Only two source-level
+  changes affect callers: construct a no-op queue with `Queue::empty()` instead
+  of `Queue::None`, and code that pattern-matched the enum variants (e.g.
+  `Queue::Postgres(pool, ..)` to reach the raw pool) no longer compiles — use the
+  provider methods instead.
 - **Fallback middleware defaults to `404`.** When the built-in fallback is
   enabled without an explicit `code`, it now returns `404 Not Found` (matching
   its docs and the bundled not-found page) instead of `200 OK`. Apps that relied
