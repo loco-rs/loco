@@ -9,6 +9,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 #[cfg(feature = "cli")]
 use clap::ValueEnum;
+use futures_util::FutureExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use serde_variant::to_variant_name;
@@ -87,33 +88,305 @@ pub struct Job {
     pub priority: i32,
 }
 
-// Queue struct now holds both a QueueProvider and QueueRegistrar
-pub enum Queue {
-    #[cfg(feature = "bg_redis")]
-    Redis(
-        redis::RedisPool,
-        Arc<tokio::sync::Mutex<redis::JobRegistry>>,
-        redis::RunOpts,
-        tokio_util::sync::CancellationToken,
-    ),
-    #[cfg(feature = "bg_pg")]
-    Postgres(
-        pg::PgPool,
-        std::sync::Arc<tokio::sync::Mutex<pg::JobRegistry>>,
-        pg::RunOpts,
-        tokio_util::sync::CancellationToken,
-    ),
-    #[cfg(feature = "bg_sqlt")]
-    Sqlite(
-        sqlt::SqlitePool,
-        std::sync::Arc<tokio::sync::Mutex<sqlt::JobRegistry>>,
-        sqlt::RunOpts,
-        tokio_util::sync::CancellationToken,
-    ),
-    None,
+/// A boxed, type-erased job handler: takes a job's id and data and runs the
+/// worker's `perform`, shared between every queue backend's registry.
+pub type JobHandler = Box<
+    dyn Fn(
+            JobId,
+            JobData,
+        )
+            -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), crate::Error>> + Send>>
+        + Send
+        + Sync,
+>;
+
+/// Erases a [`BackgroundWorker`]'s argument type into a [`JobHandler`] that
+/// can be stored in a backend's job registry alongside handlers for other,
+/// differently-typed workers.
+///
+/// This closure body used to be duplicated byte-for-byte between the
+/// Postgres/`SQLite` registry (`sql.rs`) and the Redis registry (`redis.rs`);
+/// it now lives here once.
+pub(crate) fn erase_worker<Args, W>(worker: W) -> JobHandler
+where
+    Args: Send + Serialize + Sync + 'static + for<'de> Deserialize<'de>,
+    W: BackgroundWorker<Args> + 'static,
+{
+    let worker = Arc::new(worker);
+    Box::new(move |_job_id: JobId, job_data: JobData| {
+        let w = worker.clone();
+        Box::pin(async move {
+            let args = serde_json::from_value::<Args>(job_data);
+            match args {
+                Ok(args) => {
+                    // Wrap the perform call in catch_unwind to handle panics
+                    match std::panic::AssertUnwindSafe(w.perform(args))
+                        .catch_unwind()
+                        .await
+                    {
+                        Ok(result) => result,
+                        Err(panic) => {
+                            let panic_msg = panic
+                                .downcast_ref::<String>()
+                                .map(String::as_str)
+                                .or_else(|| panic.downcast_ref::<&str>().copied())
+                                .unwrap_or("Unknown panic occurred");
+                            tracing::error!(err = panic_msg, "worker panicked");
+                            Err(Error::string(panic_msg))
+                        }
+                    }
+                }
+                Err(err) => Err(err.into()),
+            }
+        })
+            as std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), crate::Error>> + Send>>
+    })
 }
 
+/// Object-safe interface implemented by every queue backend (Postgres,
+/// `SQLite`, Redis, and the built-in no-op). [`Queue`] is a thin newtype
+/// wrapper around `Arc<dyn QueueProvider>` that forwards every call here.
+#[async_trait]
+pub trait QueueProvider: Send + Sync {
+    /// Add a job to the queue. See [`Queue::enqueue`] for the full contract.
+    ///
+    /// # Errors
+    /// This function will return an error if the enqueue operation fails.
+    async fn enqueue(
+        &self,
+        class: String,
+        queue: Option<String>,
+        args: JsonValue,
+        tags: Option<Vec<String>>,
+        priority: Option<i32>,
+    ) -> Result<Option<String>>;
+
+    /// Registers a pre-erased job handler under `name`.
+    ///
+    /// # Errors
+    /// This function will return an error if it fails to register.
+    async fn register_handler(&self, name: String, handler: JobHandler) -> Result<()>;
+
+    /// Runs the worker loop for this provider.
+    ///
+    /// # Errors
+    /// This function will return an error if it fails.
+    async fn run(&self, tags: Vec<String>) -> Result<()>;
+
+    /// Runs the setup of this provider.
+    ///
+    /// # Errors
+    /// This function will return an error if it fails.
+    async fn setup(&self) -> Result<()>;
+
+    /// Clears all jobs from this provider.
+    ///
+    /// # Errors
+    /// This function will return an error if it fails.
+    async fn clear(&self) -> Result<()>;
+
+    /// Pings this provider.
+    ///
+    /// # Errors
+    /// This function will return an error if it fails.
+    async fn ping(&self) -> Result<()>;
+
+    /// Retrieves jobs from this provider, optionally filtered.
+    ///
+    /// # Errors
+    /// This function will return an error if it fails.
+    async fn get_jobs(
+        &self,
+        status: Option<&Vec<JobStatus>>,
+        age_days: Option<i64>,
+    ) -> Result<Vec<Job>>;
+
+    /// Cancels queued jobs by name.
+    ///
+    /// # Errors
+    /// This function will return an error if it fails.
+    async fn cancel_jobs_by_name(&self, name: &str) -> Result<()>;
+
+    /// Clears jobs matching any of the given statuses.
+    ///
+    /// # Errors
+    /// This function will return an error if it fails.
+    async fn clear_by_status(&self, status: Vec<JobStatus>) -> Result<()>;
+
+    /// Clears jobs older than `age_days`, optionally filtered by status.
+    ///
+    /// # Errors
+    /// This function will return an error if it fails.
+    async fn clear_jobs_older_than(
+        &self,
+        age_days: i64,
+        status: Option<&Vec<JobStatus>>,
+    ) -> Result<()>;
+
+    /// Requeues jobs stuck in processing for longer than `age_minutes`.
+    ///
+    /// # Errors
+    /// This function will return an error if it fails.
+    async fn requeue(&self, age_minutes: &i64) -> Result<()>;
+
+    /// A short, human-readable description of this provider.
+    fn describe(&self) -> String;
+
+    /// Signals this provider's worker loop to stop.
+    ///
+    /// # Errors
+    /// Does not currently return an error, but implementations might, so
+    /// using Result here as return type.
+    fn shutdown(&self) -> Result<()>;
+}
+
+/// Process worker task handles and handle any errors.
+///
+/// Shared by every backend's [`QueueProvider::run`] implementation.
+///
+/// # Errors
+/// This function will return an error if a worker task fails to join
+pub(crate) async fn process_worker_handles(
+    handles: Vec<tokio::task::JoinHandle<()>>,
+) -> Result<()> {
+    let handle_count = handles.len();
+    tracing::debug!(worker_count = handle_count, "Processing worker handles");
+
+    for (index, handle) in handles.into_iter().enumerate() {
+        if let Err(e) = handle.await {
+            if e.is_cancelled() {
+                tracing::debug!(
+                    worker_index = index,
+                    "Worker task cancelled during shutdown"
+                );
+            } else if e.is_panic() {
+                tracing::error!(worker_index = index, "Worker task panicked");
+                std::panic::resume_unwind(e.into_panic());
+            } else {
+                tracing::error!(worker_index = index, error = ?e, "Worker task failed to join");
+                return Err(crate::Error::Worker(format!("Worker join error: {e}")));
+            }
+        }
+    }
+    tracing::info!(
+        worker_count = handle_count,
+        "All worker tasks finished successfully"
+    );
+    Ok(())
+}
+
+/// No-op queue provider used when no queue backend is configured (or none
+/// was compiled in). Reproduces the old `Queue` enum's `None`/`_` match-arm
+/// behavior exactly, method for method.
+struct NoopQueue;
+
+#[async_trait]
+impl QueueProvider for NoopQueue {
+    async fn enqueue(
+        &self,
+        _class: String,
+        _queue: Option<String>,
+        _args: JsonValue,
+        _tags: Option<Vec<String>>,
+        _priority: Option<i32>,
+    ) -> Result<Option<String>> {
+        Ok(None)
+    }
+
+    async fn register_handler(&self, _name: String, _handler: JobHandler) -> Result<()> {
+        Ok(())
+    }
+
+    async fn run(&self, _tags: Vec<String>) -> Result<()> {
+        tracing::error!(
+            "No queue provider is configured: compile with at least one queue provider feature"
+        );
+        Ok(())
+    }
+
+    async fn setup(&self) -> Result<()> {
+        Ok(())
+    }
+
+    async fn clear(&self) -> Result<()> {
+        Ok(())
+    }
+
+    async fn ping(&self) -> Result<()> {
+        Ok(())
+    }
+
+    async fn get_jobs(
+        &self,
+        _status: Option<&Vec<JobStatus>>,
+        _age_days: Option<i64>,
+    ) -> Result<Vec<Job>> {
+        tracing::error!(
+            "No queue provider is configured: compile with at least one queue provider feature"
+        );
+        Err(Error::string("provider not configured"))
+    }
+
+    async fn cancel_jobs_by_name(&self, _name: &str) -> Result<()> {
+        tracing::error!(
+            "No queue provider is configured: compile with at least one queue provider feature"
+        );
+        Err(Error::string("provider not configured"))
+    }
+
+    async fn clear_by_status(&self, _status: Vec<JobStatus>) -> Result<()> {
+        tracing::error!(
+            "No queue provider is configured: compile with at least one queue provider feature"
+        );
+        Err(Error::string("provider not configured"))
+    }
+
+    async fn clear_jobs_older_than(
+        &self,
+        _age_days: i64,
+        _status: Option<&Vec<JobStatus>>,
+    ) -> Result<()> {
+        tracing::error!(
+            "No queue provider is configured: compile with at least one queue provider feature"
+        );
+        Err(Error::string("provider not configured"))
+    }
+
+    async fn requeue(&self, _age_minutes: &i64) -> Result<()> {
+        tracing::error!(
+            "No queue provider is configured: compile with at least one queue provider feature"
+        );
+        Err(Error::string("provider not configured"))
+    }
+
+    fn describe(&self) -> String {
+        "no queue".to_string()
+    }
+
+    fn shutdown(&self) -> Result<()> {
+        Ok(())
+    }
+}
+
+/// A handle to a background job queue. Newtype facade over `Arc<dyn
+/// QueueProvider>`: every operation is a thin delegate to the configured
+/// provider (Postgres, `SQLite`, Redis, or [`Queue::empty`]'s no-op).
+pub struct Queue(Arc<dyn QueueProvider>);
+
 impl Queue {
+    /// Wraps a third-party (or built-in) [`QueueProvider`] as a [`Queue`].
+    #[must_use]
+    pub fn from_provider(provider: Arc<dyn QueueProvider>) -> Self {
+        Self(provider)
+    }
+
+    /// A [`Queue`] with no configured provider. Replaces the old
+    /// `Queue::None` enum variant.
+    #[must_use]
+    pub fn empty() -> Self {
+        Self(Arc::new(NoopQueue))
+    }
+
     /// Add a job to the queue.
     ///
     /// Returns the job ID when the configured provider supports it
@@ -128,7 +401,6 @@ impl Queue {
     /// - Higher value means higher urgency.
     /// - Valid range is full `i32` (`-2_147_483_648..=2_147_483_647`).
     /// - Ties are resolved by earlier `run_at`, then by stable job id ordering.
-    #[allow(unused_variables)]
     pub async fn enqueue<A: Serialize + Send + Sync>(
         &self,
         class: String,
@@ -138,42 +410,9 @@ impl Queue {
         priority: Option<i32>,
     ) -> Result<Option<String>> {
         tracing::debug!(worker = class, queue = ?queue, tags = ?tags, "Enqueuing background job");
-        let job_id = match self {
-            #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _, _, _) => {
-                Some(redis::enqueue(pool, class, queue, args, tags, priority).await?)
-            }
-            #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _, _) => Some(
-                pg::enqueue(
-                    pool,
-                    &class,
-                    serde_json::to_value(args)?,
-                    chrono::Utc::now(),
-                    None,
-                    tags,
-                    priority,
-                )
-                .await
-                .map_err(Box::from)?,
-            ),
-            #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _, _) => Some(
-                sqlt::enqueue(
-                    pool,
-                    &class,
-                    serde_json::to_value(args)?,
-                    chrono::Utc::now(),
-                    None,
-                    tags,
-                    priority,
-                )
-                .await
-                .map_err(Box::from)?,
-            ),
-            _ => None,
-        };
-        Ok(job_id)
+        self.0
+            .enqueue(class, queue, serde_json::to_value(args)?, tags, priority)
+            .await
     }
 
     /// Register a worker
@@ -181,7 +420,6 @@ impl Queue {
     /// # Errors
     ///
     /// This function will return an error if fails
-    #[allow(unused_variables)]
     pub async fn register<
         A: Serialize + Send + Sync + 'static + for<'de> serde::Deserialize<'de>,
         W: BackgroundWorker<A> + 'static,
@@ -190,25 +428,9 @@ impl Queue {
         worker: W,
     ) -> Result<()> {
         tracing::info!(worker = W::class_name(), "Registering background worker");
-        match self {
-            #[cfg(feature = "bg_redis")]
-            Self::Redis(_, p, _, _) => {
-                let mut p = p.lock().await;
-                p.register_worker(W::class_name(), worker)?;
-            }
-            #[cfg(feature = "bg_pg")]
-            Self::Postgres(_, registry, _, _) => {
-                let mut r = registry.lock().await;
-                r.register_worker(W::class_name(), worker)?;
-            }
-            #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(_, registry, _, _) => {
-                let mut r = registry.lock().await;
-                r.register_worker(W::class_name(), worker)?;
-            }
-            _ => {}
-        }
-        Ok(())
+        let name = W::class_name();
+        let handler = erase_worker(worker);
+        self.0.register_handler(name, handler).await
     }
 
     /// Runs the worker loop for this [`Queue`].
@@ -216,128 +438,9 @@ impl Queue {
     /// # Errors
     ///
     /// This function will return an error if fails
-    #[allow(unused_variables)]
     pub async fn run(&self, tags: Vec<String>) -> Result<()> {
         tracing::info!("Starting background job processing");
-        match self {
-            #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, registry, run_opts, token) => {
-                if let Some(reaper) = run_opts.reaper.clone() {
-                    let pool = pool.clone();
-                    let token = token.clone();
-                    tokio::spawn(async move {
-                        let interval = std::time::Duration::from_secs(reaper.interval_seconds);
-                        loop {
-                            tokio::select! {
-                                () = token.cancelled() => break,
-                                () = tokio::time::sleep(interval) => {
-                                    if let Err(err) = redis::requeue(&pool, &reaper.age_minutes).await {
-                                        tracing::error!(error = %err, "reaper: failed to requeue stale jobs");
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }
-                let handles = registry
-                    .lock()
-                    .await
-                    .run(pool, run_opts, &token.clone(), &tags);
-                Self::process_worker_handles(handles).await?;
-            }
-            #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, registry, run_opts, token) => {
-                if let Some(reaper) = run_opts.reaper.clone() {
-                    let pool = pool.clone();
-                    let token = token.clone();
-                    tokio::spawn(async move {
-                        let interval = std::time::Duration::from_secs(reaper.interval_seconds);
-                        loop {
-                            tokio::select! {
-                                () = token.cancelled() => break,
-                                () = tokio::time::sleep(interval) => {
-                                    if let Err(err) = pg::requeue(&pool, &reaper.age_minutes).await {
-                                        tracing::error!(error = %err, "reaper: failed to requeue stale jobs");
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }
-                let handles = registry.lock().await.run::<pg::PgDriver>(
-                    pool,
-                    run_opts,
-                    &token.clone(),
-                    &tags,
-                );
-                Self::process_worker_handles(handles).await?;
-            }
-            #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, registry, run_opts, token) => {
-                if let Some(reaper) = run_opts.reaper.clone() {
-                    let pool = pool.clone();
-                    let token = token.clone();
-                    tokio::spawn(async move {
-                        let interval = std::time::Duration::from_secs(reaper.interval_seconds);
-                        loop {
-                            tokio::select! {
-                                () = token.cancelled() => break,
-                                () = tokio::time::sleep(interval) => {
-                                    if let Err(err) = sqlt::requeue(&pool, &reaper.age_minutes).await {
-                                        tracing::error!(error = %err, "reaper: failed to requeue stale jobs");
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }
-                let handles = registry.lock().await.run::<sqlt::SqliteDriver>(
-                    pool,
-                    run_opts,
-                    &token.clone(),
-                    &tags,
-                );
-                Self::process_worker_handles(handles).await?;
-            }
-            _ => {
-                tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
-                );
-            }
-        }
-        Ok(())
-    }
-
-    /// Process worker task handles and handle any errors
-    ///
-    /// # Errors
-    /// This function will return an error if a worker task fails to join
-    #[allow(dead_code)]
-    async fn process_worker_handles(handles: Vec<tokio::task::JoinHandle<()>>) -> Result<()> {
-        let handle_count = handles.len();
-        tracing::debug!(worker_count = handle_count, "Processing worker handles");
-
-        for (index, handle) in handles.into_iter().enumerate() {
-            if let Err(e) = handle.await {
-                if e.is_cancelled() {
-                    tracing::debug!(
-                        worker_index = index,
-                        "Worker task cancelled during shutdown"
-                    );
-                } else if e.is_panic() {
-                    tracing::error!(worker_index = index, "Worker task panicked");
-                    std::panic::resume_unwind(e.into_panic());
-                } else {
-                    tracing::error!(worker_index = index, error = ?e, "Worker task failed to join");
-                    return Err(crate::Error::Worker(format!("Worker join error: {e}")));
-                }
-            }
-        }
-        tracing::info!(
-            worker_count = handle_count,
-            "All worker tasks finished successfully"
-        );
-        Ok(())
+        self.0.run(tags).await
     }
 
     /// Runs the setup of this [`Queue`].
@@ -346,20 +449,7 @@ impl Queue {
     ///
     /// This function will return an error if fails
     pub async fn setup(&self) -> Result<()> {
-        match self {
-            #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, _, _) => {}
-            #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _, _) => {
-                pg::initialize_database(pool).await.map_err(Box::from)?;
-            }
-            #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _, _) => {
-                sqlt::initialize_database(pool).await.map_err(Box::from)?;
-            }
-            _ => {}
-        }
-        Ok(())
+        self.0.setup().await
     }
 
     /// Performs clear on this [`Queue`].
@@ -369,22 +459,7 @@ impl Queue {
     /// This function will return an error if fails
     pub async fn clear(&self) -> Result<()> {
         tracing::info!("Clearing all jobs from queue");
-        match self {
-            #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _, _, _) => {
-                redis::clear(pool).await?;
-            }
-            #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _, _) => {
-                pg::clear(pool).await.map_err(Box::from)?;
-            }
-            #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _, _) => {
-                sqlt::clear(pool).await.map_err(Box::from)?;
-            }
-            _ => {}
-        }
-        Ok(())
+        self.0.clear().await
     }
 
     /// Returns a ping of this [`Queue`].
@@ -394,35 +469,12 @@ impl Queue {
     /// This function will return an error if fails
     pub async fn ping(&self) -> Result<()> {
         tracing::trace!("Pinging job queue");
-        match self {
-            #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _, _, _) => {
-                redis::ping(pool).await?;
-            }
-            #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _, _) => {
-                pg::ping(pool).await.map_err(Box::from)?;
-            }
-            #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _, _) => {
-                sqlt::ping(pool).await.map_err(Box::from)?;
-            }
-            _ => {}
-        }
-        Ok(())
+        self.0.ping().await
     }
 
     #[must_use]
     pub fn describe(&self) -> String {
-        match self {
-            #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, _, _) => "redis queue".to_string(),
-            #[cfg(feature = "bg_pg")]
-            Self::Postgres(_, _, _, _) => "postgres queue".to_string(),
-            #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(_, _, _, _) => "sqlite queue".to_string(),
-            _ => "no queue".to_string(),
-        }
+        self.0.describe()
     }
 
     /// # Errors
@@ -431,53 +483,16 @@ impl Queue {
     /// queue implementations might, so using Result here as return type.
     pub fn shutdown(&self) -> Result<()> {
         tracing::info!("Shutting down background job processing");
-        match self {
-            #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, _, cancellation_token) => cancellation_token.cancel(),
-            #[cfg(feature = "bg_pg")]
-            Self::Postgres(_, _, _, cancellation_token) => cancellation_token.cancel(),
-            #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(_, _, _, cancellation_token) => cancellation_token.cancel(),
-            _ => {}
-        }
-
-        Ok(())
+        self.0.shutdown()
     }
 
     async fn get_jobs(
         &self,
         status: Option<&Vec<JobStatus>>,
         age_days: Option<i64>,
-    ) -> Result<serde_json::Value> {
+    ) -> Result<Vec<Job>> {
         tracing::info!(status = ?status, age_days = ?age_days, "Retrieving jobs");
-        match self {
-            #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _, _) => {
-                let jobs = pg::get_jobs(pool, status, age_days)
-                    .await
-                    .map_err(Box::from)?;
-                Ok(serde_json::to_value(jobs)?)
-            }
-            #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _, _) => {
-                let jobs = sqlt::get_jobs(pool, status, age_days)
-                    .await
-                    .map_err(Box::from)?;
-
-                Ok(serde_json::to_value(jobs)?)
-            }
-            #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _, _, _) => {
-                let jobs = redis::get_jobs(pool, status, age_days).await?;
-                Ok(serde_json::to_value(jobs)?)
-            }
-            Self::None => {
-                tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
-                );
-                Err(Error::string("provider not configured"))
-            }
-        }
+        self.0.get_jobs(status, age_days).await
     }
 
     /// Cancels jobs based on the given job name for the configured queue provider.
@@ -489,21 +504,7 @@ impl Queue {
     ///
     pub async fn cancel_jobs(&self, job_name: &str) -> Result<()> {
         tracing::info!(job_name = job_name, "Cancelling jobs by name");
-
-        match self {
-            #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _, _) => pg::cancel_jobs_by_name(pool, job_name).await,
-            #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _, _) => sqlt::cancel_jobs_by_name(pool, job_name).await,
-            #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _, _, _) => redis::cancel_jobs_by_name(pool, job_name).await,
-            Self::None => {
-                tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
-                );
-                Err(Error::string("provider not configured"))
-            }
-        }
+        self.0.cancel_jobs_by_name(job_name).await
     }
 
     /// Clears jobs older than a specified number of days for the configured queue provider.
@@ -519,27 +520,7 @@ impl Queue {
         status: &Vec<JobStatus>,
     ) -> Result<()> {
         tracing::info!(age_days = age_days, status = ?status, "Clearing older jobs");
-
-        match self {
-            #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _, _) => {
-                pg::clear_jobs_older_than(pool, age_days, Some(status)).await
-            }
-            #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _, _) => {
-                sqlt::clear_jobs_older_than(pool, age_days, Some(status)).await
-            }
-            #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _, _, _) => {
-                redis::clear_jobs_older_than(pool, age_days, Some(status)).await
-            }
-            Self::None => {
-                tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
-                );
-                Err(Error::string("provider not configured"))
-            }
-        }
+        self.0.clear_jobs_older_than(age_days, Some(status)).await
     }
 
     /// Clears jobs based on their status for the configured queue provider.
@@ -550,20 +531,7 @@ impl Queue {
     /// - Any error in the underlying provider's job clearing logic will propagate from the respective function.
     pub async fn clear_by_status(&self, status: Vec<JobStatus>) -> Result<()> {
         tracing::info!(status = ?status, "Clearing jobs by status");
-        match self {
-            #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _, _) => pg::clear_by_status(pool, status).await,
-            #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _, _) => sqlt::clear_by_status(pool, status).await,
-            #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _, _, _) => redis::clear_by_status(pool, status).await,
-            Self::None => {
-                tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
-                );
-                Err(Error::string("provider not configured"))
-            }
-        }
+        self.0.clear_by_status(status).await
     }
 
     /// Requeued job with the given minutes ages.
@@ -574,26 +542,13 @@ impl Queue {
     /// - Any error in the underlying provider's job clearing logic will propagate from the respective function.
     pub async fn requeue(&self, age_minutes: &i64) -> Result<()> {
         tracing::info!(age_minutes = age_minutes, "Requeuing stale jobs");
-        match self {
-            #[cfg(feature = "bg_pg")]
-            Self::Postgres(pool, _, _, _) => pg::requeue(pool, age_minutes).await,
-            #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(pool, _, _, _) => sqlt::requeue(pool, age_minutes).await,
-            #[cfg(feature = "bg_redis")]
-            Self::Redis(pool, _, _, _) => redis::requeue(pool, age_minutes).await,
-            Self::None => {
-                tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
-                );
-                Err(Error::string("provider not configured"))
-            }
-        }
+        self.0.requeue(age_minutes).await
     }
 
     /// Dumps the list of jobs to a YAML file at the specified path.
     ///
-    /// This function retrieves jobs from the queue, optionally filtered by their status, and
-    /// writes the job data to a YAML file.
+    /// This function retrieves jobs from the queue, optionally filtered by their
+    /// status, and writes the job data to a YAML file.
     ///
     /// # Errors
     /// - If the specified path cannot be created, an error will be returned.
@@ -619,7 +574,7 @@ impl Queue {
 
         let jobs = self.get_jobs(status, age_days).await?;
 
-        let data = serde_yaml::to_string(&jobs)?;
+        let data = serde_yaml::to_string(&serde_json::to_value(jobs)?)?;
         let mut file = File::create(&dump_file)?;
         file.write_all(data.as_bytes())?;
 
@@ -634,48 +589,17 @@ impl Queue {
     ///
     /// # Errors
     /// - If there is an issue opening or reading the YAML file, an error will be returned.
-    /// - If the queue provider is Redis or none, an error will be returned indicating the lack of support.
     /// - If any issues occur while enqueuing the jobs, the function will return an error.
-    ///
     pub async fn import(&self, path: &Path) -> Result<()> {
         tracing::info!(path = %path.display(), "Importing jobs from file");
 
-        match &self {
-            #[cfg(feature = "bg_pg")]
-            Self::Postgres(_, _, _, _) => {
-                let jobs: Vec<pg::Job> = serde_yaml::from_reader(File::open(path)?)?;
-                for job in jobs {
-                    self.enqueue(job.name.clone(), None, job.data, None, Some(job.priority))
-                        .await?;
-                }
-
-                Ok(())
-            }
-            #[cfg(feature = "bg_sqlt")]
-            Self::Sqlite(_, _, _, _) => {
-                let jobs: Vec<sqlt::Job> = serde_yaml::from_reader(File::open(path)?)?;
-                for job in jobs {
-                    self.enqueue(job.name.clone(), None, job.data, None, Some(job.priority))
-                        .await?;
-                }
-                Ok(())
-            }
-            #[cfg(feature = "bg_redis")]
-            Self::Redis(_, _, _, _) => {
-                let jobs: Vec<redis::Job> = serde_yaml::from_reader(File::open(path)?)?;
-                for job in jobs {
-                    self.enqueue(job.name.clone(), None, job.data, None, Some(job.priority))
-                        .await?;
-                }
-                Ok(())
-            }
-            Self::None => {
-                tracing::error!(
-                    "No queue provider is configured: compile with at least one queue provider feature"
-                );
-                Err(Error::string("provider not configured"))
-            }
+        let jobs: Vec<Job> = serde_yaml::from_reader(File::open(path)?)?;
+        for job in jobs {
+            self.enqueue(job.name.clone(), None, job.data, None, Some(job.priority))
+                .await?;
         }
+
+        Ok(())
     }
 }
 

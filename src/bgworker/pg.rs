@@ -4,9 +4,10 @@ use std::time::Duration;
 pub use super::sql::{Job, JobData, JobId, JobRegistry, RunOpts};
 use super::{
     sql::{to_job, Driver},
-    JobStatus, Queue,
+    JobHandler, JobStatus, Queue, QueueProvider,
 };
 use crate::{config::PostgresQueueConfig, Result};
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 pub use sqlx::PgPool;
 use sqlx::{
@@ -44,6 +45,129 @@ impl Driver for PgDriver {
 
     async fn fail_job(pool: &Self::Pool, id: &JobId, error: &crate::Error) -> crate::Result<()> {
         fail_job(pool, id, error).await
+    }
+}
+
+/// Postgres [`QueueProvider`]: holds the pool, job registry, run options and
+/// cancellation token that used to live in the `Queue::Postgres(..)` enum
+/// tuple.
+pub struct PgQueue {
+    pub pool: PgPool,
+    pub registry: Arc<tokio::sync::Mutex<JobRegistry>>,
+    pub run_opts: RunOpts,
+    pub token: CancellationToken,
+}
+
+#[async_trait]
+impl QueueProvider for PgQueue {
+    async fn enqueue(
+        &self,
+        class: String,
+        _queue: Option<String>,
+        args: serde_json::Value,
+        tags: Option<Vec<String>>,
+        priority: Option<i32>,
+    ) -> Result<Option<String>> {
+        Ok(Some(
+            enqueue(
+                &self.pool,
+                &class,
+                args,
+                chrono::Utc::now(),
+                None,
+                tags,
+                priority,
+            )
+            .await
+            .map_err(Box::from)?,
+        ))
+    }
+
+    async fn register_handler(&self, name: String, handler: JobHandler) -> Result<()> {
+        let mut registry = self.registry.lock().await;
+        registry.insert_handler(name, handler)
+    }
+
+    async fn run(&self, tags: Vec<String>) -> Result<()> {
+        if let Some(reaper) = self.run_opts.reaper.clone() {
+            let pool = self.pool.clone();
+            let token = self.token.clone();
+            tokio::spawn(async move {
+                let interval = std::time::Duration::from_secs(reaper.interval_seconds);
+                loop {
+                    tokio::select! {
+                        () = token.cancelled() => break,
+                        () = tokio::time::sleep(interval) => {
+                            if let Err(err) = requeue(&pool, &reaper.age_minutes).await {
+                                tracing::error!(error = %err, "reaper: failed to requeue stale jobs");
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        let handles = self.registry.lock().await.run::<PgDriver>(
+            &self.pool,
+            &self.run_opts,
+            &self.token.clone(),
+            &tags,
+        );
+        super::process_worker_handles(handles).await
+    }
+
+    async fn setup(&self) -> Result<()> {
+        initialize_database(&self.pool).await.map_err(Box::from)?;
+        Ok(())
+    }
+
+    async fn clear(&self) -> Result<()> {
+        clear(&self.pool).await.map_err(Box::from)?;
+        Ok(())
+    }
+
+    async fn ping(&self) -> Result<()> {
+        ping(&self.pool).await.map_err(Box::from)?;
+        Ok(())
+    }
+
+    async fn get_jobs(
+        &self,
+        status: Option<&Vec<JobStatus>>,
+        age_days: Option<i64>,
+    ) -> Result<Vec<Job>> {
+        let jobs = get_jobs(&self.pool, status, age_days)
+            .await
+            .map_err(Box::from)?;
+        Ok(jobs)
+    }
+
+    async fn cancel_jobs_by_name(&self, name: &str) -> Result<()> {
+        cancel_jobs_by_name(&self.pool, name).await
+    }
+
+    async fn clear_by_status(&self, status: Vec<JobStatus>) -> Result<()> {
+        clear_by_status(&self.pool, status).await
+    }
+
+    async fn clear_jobs_older_than(
+        &self,
+        age_days: i64,
+        status: Option<&Vec<JobStatus>>,
+    ) -> Result<()> {
+        clear_jobs_older_than(&self.pool, age_days, status).await
+    }
+
+    async fn requeue(&self, age_minutes: &i64) -> Result<()> {
+        requeue(&self.pool, age_minutes).await
+    }
+
+    fn describe(&self) -> String {
+        "postgres queue".to_string()
+    }
+
+    fn shutdown(&self) -> Result<()> {
+        self.token.cancel();
+        Ok(())
     }
 }
 
@@ -443,12 +567,10 @@ pub async fn get_jobs(
     Ok(jobs)
 }
 
-/// Create this provider
-///
-/// # Errors
-///
-/// This function will return an error if it fails
-pub async fn create_provider(qcfg: &PostgresQueueConfig) -> Result<Queue> {
+/// Builds the [`PgQueue`] provider (pool, registry, run options, token) from
+/// config. Factored out of [`create_provider`] so tests can inspect the
+/// resulting `run_opts` without needing to downcast the opaque [`Queue`].
+async fn build_provider(qcfg: &PostgresQueueConfig) -> Result<PgQueue> {
     debug!(
         num_workers = qcfg.num_workers,
         poll_interval = qcfg.poll_interval_sec,
@@ -457,16 +579,25 @@ pub async fn create_provider(qcfg: &PostgresQueueConfig) -> Result<Queue> {
     let pool = connect(qcfg).await.map_err(Box::from)?;
     let registry = JobRegistry::new();
     let token = CancellationToken::new(); // Create the token
-    Ok(Queue::Postgres(
+    Ok(PgQueue {
         pool,
-        Arc::new(tokio::sync::Mutex::new(registry)),
-        RunOpts {
+        registry: Arc::new(tokio::sync::Mutex::new(registry)),
+        run_opts: RunOpts {
             num_workers: qcfg.num_workers,
             poll_interval_sec: qcfg.poll_interval_sec,
             reaper: qcfg.reaper.clone(),
         },
         token, // Pass the token
-    ))
+    })
+}
+
+/// Create this provider
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub async fn create_provider(qcfg: &PostgresQueueConfig) -> Result<Queue> {
+    Ok(Queue::from_provider(Arc::new(build_provider(qcfg).await?)))
 }
 
 #[cfg(test)]
@@ -982,16 +1113,13 @@ mod tests {
             }),
         };
 
-        let queue = create_provider(&qcfg).await.expect("create provider");
-
-        match queue {
-            Queue::Postgres(_, _, run_opts, _) => {
-                let reaper = run_opts.reaper.expect("reaper should be wired from config");
-                assert_eq!(reaper.age_minutes, 5);
-                assert_eq!(reaper.interval_seconds, 30);
-            }
-            _ => panic!("expected a Postgres queue"),
-        }
+        let provider = build_provider(&qcfg).await.expect("build provider");
+        let reaper = provider
+            .run_opts
+            .reaper
+            .expect("reaper should be wired from config");
+        assert_eq!(reaper.age_minutes, 5);
+        assert_eq!(reaper.interval_seconds, 30);
     }
 
     #[tokio::test]
@@ -1010,14 +1138,8 @@ mod tests {
             reaper: None,
         };
 
-        let queue = create_provider(&qcfg).await.expect("create provider");
-
-        match queue {
-            Queue::Postgres(_, _, run_opts, _) => {
-                assert!(run_opts.reaper.is_none());
-            }
-            _ => panic!("expected a Postgres queue"),
-        }
+        let provider = build_provider(&qcfg).await.expect("build provider");
+        assert!(provider.run_opts.reaper.is_none());
     }
 
     #[tokio::test]
@@ -1085,8 +1207,9 @@ mod tests {
         }
 
         let mut registry = JobRegistry::new();
+        let handler = crate::bgworker::erase_worker(PanicWorker);
         assert!(registry
-            .register_worker("PanicJob".to_string(), PanicWorker)
+            .insert_handler("PanicJob".to_string(), handler)
             .is_ok());
 
         // Get the initial job state

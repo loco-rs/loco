@@ -1,19 +1,15 @@
 /// Redis based background job queue provider
-use std::{
-    collections::HashMap, future::Future, panic::AssertUnwindSafe, pin::Pin, sync::Arc,
-    time::Duration,
-};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use super::{BackgroundWorker, JobStatus, Queue};
 pub use super::{Job, JobData, JobId};
+use super::{JobHandler, JobStatus, Queue, QueueProvider};
 use crate::{
     config::{ReaperConfig, RedisQueueConfig},
     Error, Result,
 };
+use async_trait::async_trait;
 use chrono::Utc;
-use futures_util::FutureExt;
 use redis::{aio::MultiplexedConnection as Connection, AsyncCommands, Client, Script};
-use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use tokio::{task::JoinHandle, time::sleep};
 use tokio_util::sync::CancellationToken;
@@ -25,15 +21,6 @@ pub type RedisPool = Client;
 const QUEUE_KEY_PREFIX: &str = "queue:";
 const JOB_KEY_PREFIX: &str = "job:";
 const PROCESSING_KEY_PREFIX: &str = "processing:";
-
-type JobHandler = Box<
-    dyn Fn(
-            JobId,
-            JobData,
-        ) -> Pin<Box<dyn std::future::Future<Output = Result<(), crate::Error>> + Send>>
-        + Send
-        + Sync,
->;
 
 // Implementation for job creation and serialization
 impl Job {
@@ -77,45 +64,16 @@ impl JobRegistry {
         }
     }
 
-    /// Registers a job handler with the provided name.
+    /// Inserts a pre-erased job handler under `name` (see
+    /// [`super::erase_worker`]).
     ///
     /// # Errors
     ///
     /// Fails if cannot register worker
-    pub fn register_worker<Args, W>(&mut self, name: String, worker: W) -> Result<()>
-    where
-        Args: Send + Serialize + Sync + 'static,
-        W: BackgroundWorker<Args> + 'static,
-        for<'de> Args: Deserialize<'de>,
-    {
-        let worker = Arc::new(worker);
-        let wrapped_handler = move |_job_id: String, job_data: JobData| {
-            let w = worker.clone();
-            Box::pin(async move {
-                let args = serde_json::from_value::<Args>(job_data);
-                match args {
-                    Ok(args) => {
-                        // Wrap the perform call in catch_unwind to handle panics
-                        match AssertUnwindSafe(w.perform(args)).catch_unwind().await {
-                            Ok(result) => result,
-                            Err(panic) => {
-                                let panic_msg = panic
-                                    .downcast_ref::<String>()
-                                    .map(String::as_str)
-                                    .or_else(|| panic.downcast_ref::<&str>().copied())
-                                    .unwrap_or("Unknown panic occurred");
-                                error!(err = panic_msg, "worker panicked");
-                                Err(Error::string(panic_msg))
-                            }
-                        }
-                    }
-                    Err(err) => Err(err.into()),
-                }
-            }) as Pin<Box<dyn Future<Output = Result<(), crate::Error>> + Send>>
-        };
+    pub fn insert_handler(&mut self, name: String, handler: JobHandler) -> Result<()> {
         Arc::get_mut(&mut self.handlers)
             .ok_or_else(|| Error::string("cannot register worker"))?
-            .insert(name, Box::new(wrapped_handler));
+            .insert(name, handler);
         Ok(())
     }
 
@@ -937,13 +895,118 @@ pub struct RunOpts {
     pub reaper: Option<ReaperConfig>,
 }
 
-/// Create this provider
-///
-/// # Errors
-///
-/// This function will return an error if it fails
+/// Redis [`QueueProvider`]: holds the client, job registry, run options and
+/// cancellation token that used to live in the `Queue::Redis(..)` enum
+/// tuple.
+pub struct RedisQueue {
+    pub client: RedisPool,
+    pub registry: Arc<tokio::sync::Mutex<JobRegistry>>,
+    pub run_opts: RunOpts,
+    pub token: CancellationToken,
+}
+
+#[async_trait]
+impl QueueProvider for RedisQueue {
+    async fn enqueue(
+        &self,
+        class: String,
+        queue: Option<String>,
+        args: JsonValue,
+        tags: Option<Vec<String>>,
+        priority: Option<i32>,
+    ) -> Result<Option<String>> {
+        Ok(Some(
+            enqueue(&self.client, class, queue, args, tags, priority).await?,
+        ))
+    }
+
+    async fn register_handler(&self, name: String, handler: JobHandler) -> Result<()> {
+        let mut registry = self.registry.lock().await;
+        registry.insert_handler(name, handler)
+    }
+
+    async fn run(&self, tags: Vec<String>) -> Result<()> {
+        if let Some(reaper) = self.run_opts.reaper.clone() {
+            let pool = self.client.clone();
+            let token = self.token.clone();
+            tokio::spawn(async move {
+                let interval = std::time::Duration::from_secs(reaper.interval_seconds);
+                loop {
+                    tokio::select! {
+                        () = token.cancelled() => break,
+                        () = tokio::time::sleep(interval) => {
+                            if let Err(err) = requeue(&pool, &reaper.age_minutes).await {
+                                tracing::error!(error = %err, "reaper: failed to requeue stale jobs");
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        let handles = self.registry.lock().await.run(
+            &self.client,
+            &self.run_opts,
+            &self.token.clone(),
+            &tags,
+        );
+        super::process_worker_handles(handles).await
+    }
+
+    async fn setup(&self) -> Result<()> {
+        Ok(())
+    }
+
+    async fn clear(&self) -> Result<()> {
+        clear(&self.client).await
+    }
+
+    async fn ping(&self) -> Result<()> {
+        ping(&self.client).await
+    }
+
+    async fn get_jobs(
+        &self,
+        status: Option<&Vec<JobStatus>>,
+        age_days: Option<i64>,
+    ) -> Result<Vec<Job>> {
+        get_jobs(&self.client, status, age_days).await
+    }
+
+    async fn cancel_jobs_by_name(&self, name: &str) -> Result<()> {
+        cancel_jobs_by_name(&self.client, name).await
+    }
+
+    async fn clear_by_status(&self, status: Vec<JobStatus>) -> Result<()> {
+        clear_by_status(&self.client, status).await
+    }
+
+    async fn clear_jobs_older_than(
+        &self,
+        age_days: i64,
+        status: Option<&Vec<JobStatus>>,
+    ) -> Result<()> {
+        clear_jobs_older_than(&self.client, age_days, status).await
+    }
+
+    async fn requeue(&self, age_minutes: &i64) -> Result<()> {
+        requeue(&self.client, age_minutes).await
+    }
+
+    fn describe(&self) -> String {
+        "redis queue".to_string()
+    }
+
+    fn shutdown(&self) -> Result<()> {
+        self.token.cancel();
+        Ok(())
+    }
+}
+
+/// Builds the [`RedisQueue`] provider (client, registry, run options, token)
+/// from config. Factored out of [`create_provider`] so tests can inspect the
+/// resulting `run_opts` without needing to downcast the opaque [`Queue`].
 #[allow(clippy::unused_async)]
-pub async fn create_provider(qcfg: &RedisQueueConfig) -> Result<Queue> {
+async fn build_provider(qcfg: &RedisQueueConfig) -> Result<RedisQueue> {
     let client = connect(&qcfg.uri)?;
     let registry = JobRegistry::new();
     let token = CancellationToken::new();
@@ -958,18 +1021,27 @@ pub async fn create_provider(qcfg: &RedisQueueConfig) -> Result<Queue> {
         num_workers = qcfg.num_workers,
         "creating Redis queue provider"
     );
-    Ok(Queue::Redis(
+    Ok(RedisQueue {
         client,
-        Arc::new(tokio::sync::Mutex::new(registry)),
+        registry: Arc::new(tokio::sync::Mutex::new(registry)),
         run_opts,
         token,
-    ))
+    })
+}
+
+/// Create this provider
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub async fn create_provider(qcfg: &RedisQueueConfig) -> Result<Queue> {
+    Ok(Queue::from_provider(Arc::new(build_provider(qcfg).await?)))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests_cfg::redis::setup_redis_container;
+    use crate::{bgworker::BackgroundWorker, tests_cfg::redis::setup_redis_container};
     use chrono::Utc;
     use testcontainers::{ContainerAsync, GenericImage};
 
@@ -1331,8 +1403,9 @@ mod tests {
         }
 
         // Register worker
+        let handler = crate::bgworker::erase_worker(TestWorker);
         assert!(registry
-            .register_worker("TestJob".to_string(), TestWorker)
+            .insert_handler("TestJob".to_string(), handler)
             .is_ok());
 
         // Add job
@@ -1803,16 +1876,13 @@ mod tests {
             }),
         };
 
-        let queue = create_provider(&qcfg).await.expect("create provider");
-
-        match queue {
-            Queue::Redis(_, _, run_opts, _) => {
-                let reaper = run_opts.reaper.expect("reaper should be wired from config");
-                assert_eq!(reaper.age_minutes, 5);
-                assert_eq!(reaper.interval_seconds, 30);
-            }
-            _ => panic!("expected a Redis queue"),
-        }
+        let provider = build_provider(&qcfg).await.expect("build provider");
+        let reaper = provider
+            .run_opts
+            .reaper
+            .expect("reaper should be wired from config");
+        assert_eq!(reaper.age_minutes, 5);
+        assert_eq!(reaper.interval_seconds, 30);
     }
 
     #[tokio::test]
@@ -1825,13 +1895,7 @@ mod tests {
             reaper: None,
         };
 
-        let queue = create_provider(&qcfg).await.expect("create provider");
-
-        match queue {
-            Queue::Redis(_, _, run_opts, _) => {
-                assert!(run_opts.reaper.is_none());
-            }
-            _ => panic!("expected a Redis queue"),
-        }
+        let provider = build_provider(&qcfg).await.expect("build provider");
+        assert!(provider.run_opts.reaper.is_none());
     }
 }

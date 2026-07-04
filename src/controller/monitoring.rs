@@ -381,7 +381,7 @@ mod tests {
         let mut ctx = tests_cfg::app::get_app_context().await;
         // simulate background queue mode with a no-op provider
         ctx.config.workers.mode = config::WorkerMode::BackgroundQueue;
-        ctx.queue_provider = Some(std::sync::Arc::new(bgworker::Queue::None));
+        ctx.queue_provider = Some(std::sync::Arc::new(bgworker::Queue::empty()));
 
         // Create a router with the readiness route
         let router = axum::Router::new()

@@ -5,19 +5,13 @@
 /// `JobRegistry` (worker registration + run loop), and `RunOpts`. Each
 /// backend supplies its own pool type and the three DB-coupled operations
 /// (`dequeue`/`complete_job`/`fail_job`) through the [`Driver`] trait.
-use std::{
-    collections::HashMap, future::Future, panic::AssertUnwindSafe, pin::Pin, sync::Arc,
-    time::Duration,
-};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use futures_util::FutureExt;
-use serde::{Deserialize, Serialize};
 use tokio::{task::JoinHandle, time::sleep};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, trace};
 
-use super::BackgroundWorker;
-pub use super::{Job, JobData, JobId};
+pub use super::{Job, JobData, JobHandler, JobId};
 use crate::{config::ReaperConfig, Error, Result};
 
 /// Pings the job queue database by selecting a single row's `id` from the
@@ -97,15 +91,6 @@ where
     })
 }
 
-pub(crate) type JobHandler = Box<
-    dyn Fn(
-            JobId,
-            JobData,
-        ) -> Pin<Box<dyn std::future::Future<Output = Result<(), crate::Error>> + Send>>
-        + Send
-        + Sync,
->;
-
 #[derive(Debug)]
 pub struct RunOpts {
     pub num_workers: u32,
@@ -154,45 +139,15 @@ impl JobRegistry {
         }
     }
 
-    /// Registers a job handler with the provided name.
+    /// Inserts a pre-erased job handler under `name` (see
+    /// [`super::erase_worker`]).
+    ///
     /// # Errors
     /// Fails if cannot register worker
-    pub fn register_worker<Args, W>(&mut self, name: String, worker: W) -> Result<()>
-    where
-        Args: Send + Serialize + Sync + 'static,
-        W: BackgroundWorker<Args> + 'static,
-        for<'de> Args: Deserialize<'de>,
-    {
-        let worker = Arc::new(worker);
-        let wrapped_handler = move |_job_id: String, job_data: JobData| {
-            let w = worker.clone();
-
-            Box::pin(async move {
-                let args = serde_json::from_value::<Args>(job_data);
-                match args {
-                    Ok(args) => {
-                        // Wrap the perform call in catch_unwind to handle panics
-                        match AssertUnwindSafe(w.perform(args)).catch_unwind().await {
-                            Ok(result) => result,
-                            Err(panic) => {
-                                let panic_msg = panic
-                                    .downcast_ref::<String>()
-                                    .map(String::as_str)
-                                    .or_else(|| panic.downcast_ref::<&str>().copied())
-                                    .unwrap_or("Unknown panic occurred");
-                                error!(err = panic_msg, "worker panicked");
-                                Err(Error::string(panic_msg))
-                            }
-                        }
-                    }
-                    Err(err) => Err(err.into()),
-                }
-            }) as Pin<Box<dyn Future<Output = Result<(), crate::Error>> + Send>>
-        };
-
+    pub fn insert_handler(&mut self, name: String, handler: JobHandler) -> Result<()> {
         Arc::get_mut(&mut self.handlers)
             .ok_or_else(|| Error::string("cannot register worker"))?
-            .insert(name, Box::new(wrapped_handler));
+            .insert(name, handler);
         Ok(())
     }
 
