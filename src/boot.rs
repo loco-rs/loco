@@ -137,8 +137,7 @@ pub async fn start<H: Hooks>(
                 None
             };
 
-            shutdown_signal().await;
-            H::on_shutdown(&app_context).await;
+            await_shutdown_then_run_hook::<H>(&app_context, shutdown_signal()).await;
 
             if let Some(handle) = handle {
                 shutdown_and_await_queue_worker(&app_context, handle).await?;
@@ -147,6 +146,22 @@ pub async fn start<H: Hooks>(
         _ => {}
     }
     Ok(())
+}
+
+/// Waits for `shutdown` to resolve, then runs [`Hooks::on_shutdown`].
+///
+/// This is used by the worker-only / worker-and-scheduler start modes, which
+/// (unlike the server modes) have no Axum graceful-shutdown hook of their own
+/// to invoke `on_shutdown` from. Extracted out of [`start`] purely so the
+/// "wait, then hook" sequence can be exercised in tests with an
+/// already-resolved `shutdown` future, instead of the real
+/// [`shutdown_signal`] (which blocks on OS signals).
+async fn await_shutdown_then_run_hook<H: Hooks>(
+    app_context: &AppContext,
+    shutdown: impl std::future::Future<Output = ()>,
+) {
+    shutdown.await;
+    H::on_shutdown(app_context).await;
 }
 
 fn start_queue_worker(app_context: &AppContext, tags: Vec<String>) -> Result<JoinHandle<()>> {
@@ -609,4 +624,111 @@ fn create_mailer(config: &config::Mailer) -> Result<Option<EmailSender>> {
         return Ok(Some(EmailSender::smtp(smtp)?));
     }
     Ok(None)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    use async_trait::async_trait;
+
+    use super::*;
+    use crate::{bgworker::Queue, controller::AppRoutes, tests_cfg::app::get_app_context};
+
+    /// A `Hooks` impl whose only interesting behavior is `on_shutdown`: it
+    /// flips a flag stashed in the `AppContext`'s `shared_store` so tests can
+    /// observe whether the hook actually ran. Every other method is an
+    /// unreachable stub because `await_shutdown_then_run_hook` never calls
+    /// them.
+    struct ShutdownFlagHooks;
+
+    #[async_trait]
+    impl Hooks for ShutdownFlagHooks {
+        fn app_name() -> &'static str {
+            "shutdown_flag_hooks_test"
+        }
+
+        async fn boot(
+            _mode: StartMode,
+            _environment: &Environment,
+            _config: Config,
+        ) -> Result<BootResult> {
+            unreachable!("not exercised by this test")
+        }
+
+        async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {
+            unreachable!("not exercised by this test")
+        }
+
+        fn register_tasks(_tasks: &mut task::Tasks) {
+            unreachable!("not exercised by this test")
+        }
+
+        async fn truncate(_ctx: &AppContext) -> Result<()> {
+            unreachable!("not exercised by this test")
+        }
+
+        async fn seed(_ctx: &AppContext, _path: &Path) -> Result<()> {
+            unreachable!("not exercised by this test")
+        }
+
+        fn routes(_ctx: &AppContext) -> AppRoutes {
+            unreachable!("not exercised by this test")
+        }
+
+        async fn on_shutdown(ctx: &AppContext) {
+            if let Some(flag) = ctx.shared_store.get::<Arc<AtomicBool>>() {
+                flag.store(true, Ordering::SeqCst);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_await_shutdown_then_run_hook_invokes_on_shutdown() {
+        let app_context = get_app_context().await;
+        let shutdown_hook_fired = Arc::new(AtomicBool::new(false));
+        app_context.shared_store.insert(shutdown_hook_fired.clone());
+
+        // An already-resolved future stands in for `shutdown_signal()`, so
+        // the test doesn't have to wait on (or fake) an OS signal.
+        await_shutdown_then_run_hook::<ShutdownFlagHooks>(&app_context, std::future::ready(()))
+            .await;
+
+        assert!(
+            shutdown_hook_fired.load(Ordering::SeqCst),
+            "on_shutdown should fire once the shutdown future resolves"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_await_shutdown_then_run_hook_waits_for_shutdown_before_running_hook() {
+        let app_context = get_app_context().await;
+        let shutdown_hook_fired = Arc::new(AtomicBool::new(false));
+        app_context.shared_store.insert(shutdown_hook_fired.clone());
+
+        let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+        let shutdown = async move {
+            let _ = rx.await;
+        };
+
+        let fut = await_shutdown_then_run_hook::<ShutdownFlagHooks>(&app_context, shutdown);
+        futures_util::pin_mut!(fut);
+
+        // Poll once: the shutdown future hasn't resolved yet, so the hook
+        // must not have run.
+        let still_pending = futures_util::poll!(&mut fut);
+        assert!(matches!(still_pending, std::task::Poll::Pending));
+        assert!(
+            !shutdown_hook_fired.load(Ordering::SeqCst),
+            "on_shutdown must not fire before shutdown resolves"
+        );
+
+        tx.send(()).expect("receiver dropped");
+        fut.await;
+
+        assert!(
+            shutdown_hook_fired.load(Ordering::SeqCst),
+            "on_shutdown should fire after shutdown resolves"
+        );
+    }
 }

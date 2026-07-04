@@ -222,3 +222,198 @@ where
             .boxed(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        env,
+        io::Write,
+        sync::{Arc, Mutex},
+    };
+
+    use serial_test::serial;
+
+    use super::*;
+    use crate::tests_cfg::db::AppHook;
+
+    // A `MakeWriter` that captures everything written to it in an in-memory
+    // buffer so we can inspect the *shape* of the formatted output produced
+    // by `init_layer` (compact vs. pretty vs. json) without touching stdout
+    // or the filesystem, and *without* installing a global subscriber.
+    #[derive(Clone, Default)]
+    struct BufferWriter {
+        buf: Arc<Mutex<Vec<u8>>>,
+    }
+
+    impl BufferWriter {
+        fn contents(&self) -> String {
+            String::from_utf8(self.buf.lock().expect("lock").clone()).expect("utf8 log output")
+        }
+    }
+
+    struct BufferWriterHandle(Arc<Mutex<Vec<u8>>>);
+
+    impl Write for BufferWriterHandle {
+        fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().expect("lock").extend_from_slice(data);
+            Ok(data.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    impl<'a> MakeWriter<'a> for BufferWriter {
+        type Writer = BufferWriterHandle;
+
+        fn make_writer(&'a self) -> Self::Writer {
+            BufferWriterHandle(self.buf.clone())
+        }
+    }
+
+    /// Builds the layer for `format`, emits a single tracing event through it
+    /// with a *scoped* (non-global) default subscriber, and returns whatever
+    /// got written. This never touches the process-wide global subscriber
+    /// (which can only be installed once), so it's safe to call from any
+    /// number of tests.
+    fn capture_layer_output(format: &Format) -> String {
+        let writer = BufferWriter::default();
+        let layer = init_layer(writer.clone(), format, false);
+        let subscriber = tracing_subscriber::registry().with(layer);
+
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::info!(field = "value", "hello world");
+        });
+
+        writer.contents()
+    }
+
+    #[test]
+    fn test_init_layer_json_emits_json_object() {
+        let output = capture_layer_output(&Format::Json);
+        let trimmed = output.trim();
+        assert!(
+            trimmed.starts_with('{') && trimmed.ends_with('}'),
+            "expected a json object, got: {output}"
+        );
+        assert!(output.contains("hello world"), "output: {output}");
+        assert!(output.contains("\"field\":\"value\""), "output: {output}");
+    }
+
+    #[test]
+    fn test_init_layer_compact_emits_single_line_non_json() {
+        let output = capture_layer_output(&Format::Compact);
+        let trimmed = output.trim();
+        assert!(!trimmed.is_empty());
+        assert_eq!(
+            output.lines().count(),
+            1,
+            "compact format should render on a single line, got: {output}"
+        );
+        assert!(
+            !trimmed.starts_with('{'),
+            "compact format should not be json, got: {output}"
+        );
+        assert!(output.contains("hello world"), "output: {output}");
+    }
+
+    #[test]
+    fn test_init_layer_pretty_emits_multi_line() {
+        let output = capture_layer_output(&Format::Pretty);
+        assert!(
+            output.lines().count() > 1,
+            "pretty format should render across multiple lines, got: {output}"
+        );
+        assert!(output.contains("hello world"), "output: {output}");
+    }
+
+    fn restore_rust_log(original: std::result::Result<String, env::VarError>) {
+        match original {
+            Ok(v) => {
+                // SAFETY: test-local env restore; serialized via #[serial] so
+                // no other test observes `RUST_LOG` concurrently.
+                unsafe { env::set_var("RUST_LOG", v) };
+            }
+            Err(_) => {
+                // SAFETY: test-local env restore; serialized via #[serial] so
+                // no other test observes `RUST_LOG` concurrently.
+                unsafe { env::remove_var("RUST_LOG") };
+            }
+        }
+    }
+
+    #[test]
+    #[serial(rust_log_env)]
+    fn test_init_env_filter_default_whitelist_uses_configured_level() {
+        let original = env::var("RUST_LOG");
+        // SAFETY: test-local env setup; serialized via #[serial] so no other
+        // test observes `RUST_LOG` concurrently.
+        unsafe { env::remove_var("RUST_LOG") };
+
+        let filter = init_env_filter::<AppHook>(None, &LogLevel::Warn);
+        let rendered = filter.to_string();
+
+        for module in MODULE_WHITELIST {
+            assert!(
+                rendered.contains(&format!("{module}=warn")),
+                "expected a `{module}=warn` directive in `{rendered}`"
+            );
+        }
+        assert!(
+            rendered.contains(&format!("{}=warn", AppHook::app_name())),
+            "expected an app-name directive in `{rendered}`"
+        );
+
+        restore_rust_log(original);
+    }
+
+    #[test]
+    #[serial(rust_log_env)]
+    fn test_init_env_filter_override_filter_replaces_whitelist_when_no_rust_log() {
+        let original = env::var("RUST_LOG");
+        // SAFETY: test-local env setup; serialized via #[serial] so no other
+        // test observes `RUST_LOG` concurrently.
+        unsafe { env::remove_var("RUST_LOG") };
+
+        let override_filter = "my_crate=trace".to_string();
+        let filter = init_env_filter::<AppHook>(Some(&override_filter), &LogLevel::Info);
+        let rendered = filter.to_string();
+
+        assert_eq!(rendered, "my_crate=trace");
+        // the whitelist should be entirely bypassed when an override is set
+        assert!(!rendered.contains("loco_rs="), "rendered: {rendered}");
+
+        restore_rust_log(original);
+    }
+
+    #[test]
+    #[serial(rust_log_env)]
+    fn test_init_env_filter_rust_log_takes_precedence_over_override_and_whitelist() {
+        let original = env::var("RUST_LOG");
+        // SAFETY: test-local env setup; serialized via #[serial] so no other
+        // test observes `RUST_LOG` concurrently.
+        unsafe { env::set_var("RUST_LOG", "error") };
+
+        let override_filter = "debug".to_string();
+        let filter = init_env_filter::<AppHook>(Some(&override_filter), &LogLevel::Info);
+        let rendered = filter.to_string();
+
+        assert_eq!(
+            rendered, "error",
+            "RUST_LOG should win over override_filter"
+        );
+
+        restore_rust_log(original);
+    }
+
+    #[test]
+    fn test_log_level_display() {
+        assert_eq!(LogLevel::Off.to_string(), "off");
+        assert_eq!(LogLevel::Trace.to_string(), "trace");
+        assert_eq!(LogLevel::Debug.to_string(), "debug");
+        assert_eq!(LogLevel::Info.to_string(), "info");
+        assert_eq!(LogLevel::Warn.to_string(), "warn");
+        assert_eq!(LogLevel::Error.to_string(), "error");
+    }
+}
