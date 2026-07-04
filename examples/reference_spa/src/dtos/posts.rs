@@ -20,6 +20,19 @@ impl From<String> for PostStatus {
     }
 }
 
+impl PostStatus {
+    /// Returns the `snake_case` string used to persist this status in the
+    /// `posts.status` column (kept in sync with the `serde` representation).
+    #[must_use]
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Draft => "draft",
+            Self::Published => "published",
+            Self::Archived => "archived",
+        }
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize, TS)]
 #[ts(export, export_to = "../frontend/src/bindings/")]
 pub struct PostDto {
