@@ -873,9 +873,22 @@ async fn dispatch_common<H: Hooks>(
             })?;
         }
         // `Start` and (with `with-db`) `Db` are handled by the caller before
-        // delegating here.
-        #[allow(unreachable_patterns)]
-        _ => unreachable!("Start/Db commands are handled by the caller"),
+        // delegating here. Map them to an explicit error instead of a
+        // wildcard arm so the match stays exhaustive against future
+        // `Commands` variants.
+        Commands::Start { .. } => {
+            return Err(Error::string(
+                "internal error: `Start` command must be handled by the caller, not \
+                 `dispatch_common`",
+            ));
+        }
+        #[cfg(feature = "with-db")]
+        Commands::Db { .. } => {
+            return Err(Error::string(
+                "internal error: `Db` command must be handled by the caller, not \
+                 `dispatch_common`",
+            ));
+        }
     }
     Ok(())
 }

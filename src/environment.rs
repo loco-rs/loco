@@ -97,8 +97,11 @@ impl FromStr for Environment {
 mod tests {
     use std::env;
 
+    use serial_test::serial;
+
     use super::*;
     #[test]
+    #[serial]
     fn test_resolve_env() {
         let original = env::var("LOCO_ENV");
 

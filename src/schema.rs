@@ -789,7 +789,7 @@ pub async fn add_reference(
         .name(format!("fk-{nz_fromtbl}-{nz_ref_name}-to-{nz_totbl}"))
         // from movies#user_id
         .from_tbl(Alias::new(&nz_fromtbl))
-        .from_col(Alias::new(&nz_ref_name)) // xxx fix
+        .from_col(Alias::new(&nz_ref_name))
         // to users#id
         .to_tbl(Alias::new(nz_totbl))
         .to_col(Alias::new("id"))
@@ -802,7 +802,7 @@ pub async fn add_reference(
             m.alter_table(
                 alter(Alias::new(&nz_fromtbl))
                     // add movies#user_id (the user_id column is new)
-                    .add_column(col.clone()) // XXX fix, totbl_id
+                    .add_column(col.clone())
                     // add fk on movies#user_id
                     .add_foreign_key(&fk)
                     .to_owned(),
@@ -814,7 +814,7 @@ pub async fn add_reference(
             m.alter_table(
                 alter(Alias::new(&nz_fromtbl))
                     // add movies#user_id (the user_id column is new)
-                    .add_column(col.clone()) // XXX fix, totbl_id
+                    .add_column(col.clone())
                     .to_owned(),
             )
             .await?;
