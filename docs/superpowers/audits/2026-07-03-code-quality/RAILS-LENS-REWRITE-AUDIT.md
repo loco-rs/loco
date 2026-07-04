@@ -160,6 +160,15 @@ If TIER 1 + TIER 2 ship: roughly **−400 to −500 shipped LOC**, three real bu
 one latent bug decided (B2), plus two additive Rails-parity wins (`insert_before`, `deliver_now`) and
 the future-proofing `#[non_exhaustive]`. No Sea-ORM-2.0-gated code is touched except where explicitly noted.
 
+> **LOC correction (post-implementation, 2026-07-04):** the −400/−500 projection was WRONG,
+> in the same way the bgworker projection was. Actual net across `src/`+`loco-gen/`: **≈ +20 LOC**.
+> The dedup/rewrite items DID remove ~452 lines (storage merge −320, `render_form_field` −72,
+> coherence −24, extra_db −36), but the additive Rails-parity features and their tests added ~472
+> (`MiddlewareStackExt` +178, `AppContext` builder +104, `deliver_now` +100, optional-JWT/auth +65,
+> Tera factory +25). The honest value is **one flagship dedup, 3 bugs fixed, 1 policy decided,
+> 4 robustness/parity features added with full test coverage** — NOT a line reduction. Do not imply
+> otherwise.
+
 The bgworker lesson held up as a filter: it correctly GREENLIT the storage merge (interface over a
 non-hard part) and correctly REJECTED the cli/validate/schema/ColType rewrites (the "duplication" was
 either a contract, disjoint, or already collapsed). The net is a much smaller, sharper program than a
