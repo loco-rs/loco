@@ -1,5 +1,0 @@
----
-source: loco-gen/tests/templates/scaffold.rs
-expression: "fs::read_to_string(controllers_path.join(\"mod.rs\")).expect(\"mod.rs injection failed\")"
----
-pub mod movie;

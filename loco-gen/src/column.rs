@@ -1,15 +1,14 @@
 //! A single, compiler-checked source of truth for column type information.
 //!
-//! This module replaces the four parallel tables in `mappings.json`
-//! (`rust`, `schema`, `col_type`, `arity`) with one Rust enum (`ScalarType`)
-//! and four small, exhaustively-matched derivation functions on [`Column`].
-//! Every derivation is a `match` over the type model, so adding a new
-//! `ScalarType` variant without updating a derivation is a compile error,
-//! not a silently-stale JSON row.
+//! This module replaces the four parallel tables the old field-type-mapping
+//! JSON file used to carry (`rust`, `schema`, `col_type`, `arity`) with one
+//! Rust enum (`ScalarType`) and four small, exhaustively-matched derivation
+//! functions on [`Column`]. Every derivation is a `match` over the type
+//! model, so adding a new `ScalarType` variant without updating a derivation
+//! is a compile error, not a silently-stale JSON row.
 //!
-//! This module is standalone: it is not yet wired into the generators
-//! (migration/model/scaffold still use `mappings.json` via `get_mappings()`).
-//! That wiring is a follow-up step.
+//! It is the single source of truth for column type information used by the
+//! migration/model/scaffold generators.
 
 use cruet::Inflector;
 use heck::ToUpperCamelCase;
@@ -126,7 +125,8 @@ impl Flag {
 /// * `references` / `references?` / `references:custom_fk` /
 ///   `references?:custom_fk` => a 64-bit foreign key (`references` is
 ///   `NOT NULL`, `references?` is nullable -- the opposite bare-is-nullable
-///   convention on purpose, matching the old `infer::parse_field_type`)
+///   convention on purpose, matching the retired field-type parser this
+///   replaced)
 /// * `enum:a,b,c` (+ `!`/`^`)          => `ScalarType::Enum`
 /// * `decimal_len:P:S` (+ `!`/`^`)     => `ScalarType::DecimalLen`
 /// * `var_binary:N` (+ `!`/`^`)        => `ScalarType::VarBinary`
@@ -283,12 +283,13 @@ pub fn parse_column(name: &str, spec: &str) -> Result<Column> {
 
 /// Maps a bare scalar DSL base name to its `ScalarType`.
 ///
-/// Preserves `mappings.json` semantics for every name **except** the
-/// deliberate 1.0 fix: `int` now means a real 32-bit `Integer` (was
-/// `BigInteger`/i64 in `mappings.json`); use `big_int` for 64-bit. `unsigned`
-/// is kept as an alias of `big_unsigned` (both mapped to `BigUnsigned`/i64 in
-/// `mappings.json`) -- see the module-level note in the report for why the
-/// dedicated `ScalarType::Unsigned` variant is not reachable from this name.
+/// Preserves the retired field-type-mapping JSON's semantics for every name
+/// **except** the deliberate 1.0 fix: `int` now means a real 32-bit
+/// `Integer` (was `BigInteger`/i64 previously); use `big_int` for 64-bit.
+/// `unsigned` is kept as an alias of `big_unsigned` (both mapped to
+/// `BigUnsigned`/i64 previously) -- see the module-level note in the report
+/// for why the dedicated `ScalarType::Unsigned` variant is not reachable
+/// from this name.
 ///
 /// # Errors
 /// Returns `Error::Message` when `name` is not a recognized base type.
@@ -324,8 +325,9 @@ fn scalar_from_base_name(name: &str) -> Result<ScalarType> {
 }
 
 /// The restricted subset of scalar types an `array:inner` column may hold,
-/// matching the inner types `mappings.json`'s `array` rust-type map already
-/// enumerated (`string`/`int`/`big_int`/`float`/`double`/`bool`).
+/// matching the inner types the retired field-type-mapping JSON's `array`
+/// rust-type map already enumerated
+/// (`string`/`int`/`big_int`/`float`/`double`/`bool`).
 ///
 /// # Errors
 /// Returns `Error::Message` when `name` is not one of the six supported
@@ -1313,11 +1315,11 @@ mod tests {
     fn unsigned_scalar_type_derivations_are_reachable_even_though_dsl_does_not_expose_it() {
         // `ScalarType::Unsigned` is part of the type model (mirroring
         // `schema.rs`'s `ColType::Unsigned`) but the `unsigned` DSL keyword
-        // is kept as an alias of `big_unsigned` to preserve exact
-        // `mappings.json` semantics (see `scalar_from_base_name`). Directly
-        // construct a `Column` to verify the variant's own derivations still
-        // hold, so the type stays exercised even though nothing in the
-        // parser can reach it today.
+        // is kept as an alias of `big_unsigned` to preserve the retired
+        // field-type-mapping JSON's exact semantics (see
+        // `scalar_from_base_name`). Directly construct a `Column` to verify
+        // the variant's own derivations still hold, so the type stays
+        // exercised even though nothing in the parser can reach it today.
         let required = Column {
             name: "small_qty".to_string(),
             kind: ColumnKind::Scalar(ScalarType::Unsigned),

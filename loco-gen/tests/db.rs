@@ -1,6 +1,5 @@
 use duct::cmd;
 use insta::assert_snapshot;
-use loco_gen::get_mappings;
 use rstest::rstest;
 use serial_test::serial;
 use std::{collections::HashMap, env::current_dir, fs::read_to_string};
@@ -50,16 +49,41 @@ fn test_migrations_flow(#[values("postgres", "sqlite")] db_kind: &str) {
     .expect("new");
 
     // build a mega long all-types "title:string ..." pairs for all types from
-    // mappings.json name of column is name of type adjusted with unique, or
-    // nonnull, etc arity arguments get manual treatment
-    let mappings = get_mappings();
-    let mut type_names = mappings
-        .all_names()
-        .iter()
-        // only take non-argument types because its easy
-        .filter(|n| mappings.col_type_arity(n).unwrap_or_default() == 0)
-        .map(|t| format!("{}:{t}", t.replace('!', "_nonull").replace('^', "_uniq")))
-        .collect::<Vec<_>>();
+    // `column::scalar_from_base_name`'s recognized base names (the successor to
+    // the now-removed `mappings.json`); name of column is name of type
+    // adjusted with unique, or nonnull, etc. arity arguments get manual
+    // treatment. `bool`/`tstz` have no `^` (unique) variant -- see
+    // `column::parse_column`'s rejection of `bool^`/`tstz^`.
+    let base_names = [
+        "string",
+        "text",
+        "uuid",
+        "bool",
+        "date",
+        "time",
+        "date_time",
+        "tstz",
+        "json",
+        "jsonb",
+        "blob",
+        "money",
+        "decimal",
+        "float",
+        "double",
+        "small_int",
+        "small_unsigned",
+        "unsigned",
+        "int",
+        "big_int",
+    ];
+    let mut type_names = Vec::new();
+    for base in base_names {
+        type_names.push(format!("{base}:{base}"));
+        type_names.push(format!("{base}_nonull:{base}!"));
+        if base != "bool" && base != "tstz" {
+            type_names.push(format!("{base}_uniq:{base}^"));
+        }
+    }
 
     // push arity arguments manually
     type_names.push("age:decimal_len:8:24".to_string());
@@ -79,8 +103,8 @@ fn test_migrations_flow(#[values("postgres", "sqlite")] db_kind: &str) {
         "loco db reset",
         "loco g model user name:string",
         "loco g model user_without_tz name:string --without-tz",
-        &format!("loco g scaffold playlists {types_line} --htmx"),
-        &format!("loco g scaffold playlists_without_tz {types_line} --htmx --without-tz"),
+        &format!("loco g scaffold playlists {types_line}"),
+        &format!("loco g scaffold playlists_without_tz {types_line} --without-tz"),
         &format!("loco g model movies {types_line} playlist:references user:references?"),
         "loco g migration AddContentToMovies content:string",
         "loco g migration CreateActors foobar:string",

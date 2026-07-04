@@ -195,8 +195,9 @@ mod tests {
 
     #[test]
     fn test_int_is_32_bit_integer_not_64_bit() {
-        // The deliberate 1.0 fix: `int` used to map to `BigInteger` via
-        // `mappings.json`; it now means a real 32-bit `Integer`.
+        // The deliberate 1.0 fix: `int` used to map to `BigInteger` via the
+        // retired field-type-mapping JSON; it now means a real 32-bit
+        // `Integer`.
         let fields = [to_field("hits", "int!")];
         let res = get_columns_and_references(&fields).expect("Failed to parse fields");
         assert_eq!(res, (vec![to_field("hits", "Integer")], vec![]));

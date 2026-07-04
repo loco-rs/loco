@@ -262,9 +262,9 @@ After running the migration, follow these steps to complete the process:
     #[cfg(feature = "with-db")]
     /// Generates a CRUD scaffold, model and controller
     #[command(after_help = format!("{}
- $ cargo loco g model posts title:string! user:references --api
+ $ cargo loco g model posts title:string! user:references
 
- $ cargo loco g scaffold posts title:string! user:references --api --without-tz", "Examples:".bold().underline()))]
+ $ cargo loco g scaffold posts title:string! user:references --without-tz", "Examples:".bold().underline()))]
     Scaffold {
         /// Name of the thing to generate
         name: String,
@@ -276,31 +276,15 @@ After running the migration, follow these steps to complete the process:
         /// Model fields, eg. title:string hits:int
         #[clap(value_parser = parse_key_val::<String,String>)]
         fields: Vec<(String, String)>,
-
-        /// The kind of scaffold to generate
-        #[clap(short, long, value_enum, group = "scaffold_kind_group")]
-        kind: Option<loco_gen::ScaffoldKind>,
-
-        /// Use HTMX scaffold
-        #[clap(long, group = "scaffold_kind_group")]
-        htmx: bool,
-
-        /// Use HTML scaffold
-        #[clap(long, group = "scaffold_kind_group")]
-        html: bool,
-
-        /// Use API scaffold
-        #[clap(long, group = "scaffold_kind_group")]
-        api: bool,
     },
     /// Generate a new controller with the given controller name, and test file.
     #[command(after_help = format!(
-    "{}  
+    "{}
   - Generate an empty controller:
-      $ cargo loco generate controller posts --api
+      $ cargo loco generate controller posts
 
   - Generate a controller with actions:
-      $ cargo loco generate controller posts --api list remove update
+      $ cargo loco generate controller posts list remove update
 ",
     "Examples:".bold().underline()
 ))]
@@ -310,22 +294,6 @@ After running the migration, follow these steps to complete the process:
 
         /// Actions
         actions: Vec<String>,
-
-        /// The kind of controller actions to generate
-        #[clap(short, long, value_enum, group = "scaffold_kind_group")]
-        kind: Option<loco_gen::ScaffoldKind>,
-
-        /// Use HTMX controller actions
-        #[clap(long, group = "scaffold_kind_group")]
-        htmx: bool,
-
-        /// Use HTML controller actions
-        #[clap(long, group = "scaffold_kind_group")]
-        html: bool,
-
-        /// Use API controller actions
-        #[clap(long, group = "scaffold_kind_group")]
-        api: bool,
     },
     /// Generate a Task based on the given name
     Task {
@@ -364,7 +332,7 @@ After running the migration, follow these steps to complete the process:
       * cargo loco generate override migration/add_columns.t
 
   - Override All Files in a Folder:
-      * cargo loco generate override scaffold/htmx
+      * cargo loco generate override scaffold/api
       * cargo loco generate override task
 
   - Override All templates:
@@ -410,59 +378,13 @@ impl ComponentArg {
                 name,
                 without_tz,
                 fields,
-                kind,
-                htmx,
-                html,
-                api,
-            } => {
-                let kind = if let Some(kind) = kind {
-                    kind
-                } else if htmx {
-                    loco_gen::ScaffoldKind::Htmx
-                } else if html {
-                    loco_gen::ScaffoldKind::Html
-                } else if api {
-                    loco_gen::ScaffoldKind::Api
-                } else {
-                    return Err(crate::Error::string(
-                        "Error: generating this component requires one of `--kind`, `--htmx`, `--html`, or `--api` to be specified. Run with `--help` for more information.",
-                    ));
-                };
-
-                Ok(loco_gen::Component::Scaffold {
-                    name,
-                    with_tz: !without_tz,
-                    fields,
-                    kind,
-                })
-            }
-            Self::Controller {
+            } => Ok(loco_gen::Component::Scaffold {
                 name,
-                actions,
-                kind,
-                htmx,
-                html,
-                api,
-            } => {
-                let kind = if let Some(kind) = kind {
-                    kind
-                } else if htmx {
-                    loco_gen::ScaffoldKind::Htmx
-                } else if html {
-                    loco_gen::ScaffoldKind::Html
-                } else if api {
-                    loco_gen::ScaffoldKind::Api
-                } else {
-                    return Err(crate::Error::string(
-                        "Error: One of `kind`, `htmx`, `html`, or `api` must be specified.",
-                    ));
-                };
-
-                Ok(loco_gen::Component::Controller {
-                    name,
-                    actions,
-                    kind,
-                })
+                with_tz: !without_tz,
+                fields,
+            }),
+            Self::Controller { name, actions } => {
+                Ok(loco_gen::Component::Controller { name, actions })
             }
             Self::Task { name } => Ok(loco_gen::Component::Task { name }),
             Self::Scheduler {} => Ok(loco_gen::Component::Scheduler {}),
@@ -1340,7 +1262,7 @@ pub fn format_templates_as_tree(paths: Vec<PathBuf>) -> String {
     let _ = writeln!(
         output,
         " * cargo loco generate override {}",
-        "scaffold/htmx".yellow()
+        "scaffold/api".yellow()
     );
 
     let _ = writeln!(

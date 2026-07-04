@@ -14,8 +14,6 @@
 //! it is tuned to the tokens this parser matches; do not swap it for `heck`.
 use cruet::{case::snake::to_snake_case, Inflector};
 
-use crate::{Error, Result};
-
 #[derive(Debug, PartialEq, Eq)]
 pub enum MigrationType {
     CreateTable { table: String },
@@ -26,33 +24,6 @@ pub enum MigrationType {
     Empty,
 }
 
-pub enum FieldType {
-    Reference,
-    ReferenceWithCustomField(String),
-    NullableReference,
-    NullableReferenceWithCustomField(String),
-    Type(String),
-    TypeWithParameters(String, Vec<String>),
-}
-
-pub fn parse_field_type(ftype: &str) -> Result<FieldType> {
-    let parts: Vec<&str> = ftype.split(':').collect();
-
-    match parts.as_slice() {
-        ["references?"] => Ok(FieldType::NullableReference),
-        ["references?", f] => Ok(FieldType::NullableReferenceWithCustomField(
-            (*f).to_string(),
-        )),
-        ["references"] => Ok(FieldType::Reference),
-        ["references", f] => Ok(FieldType::ReferenceWithCustomField((*f).to_string())),
-        [t] => Ok(FieldType::Type((*t).to_string())),
-        [t, params @ ..] => Ok(FieldType::TypeWithParameters(
-            (*t).to_string(),
-            params.iter().map(ToString::to_string).collect::<Vec<_>>(),
-        )),
-        [] => Err(Error::Message(format!("cannot parse type: `{ftype}`"))),
-    }
-}
 pub fn guess_migration_type(migration_name: &str) -> MigrationType {
     let normalized_name = to_snake_case(migration_name);
     let parts: Vec<&str> = normalized_name.split('_').collect();
