@@ -55,6 +55,14 @@
 
 ### Changed
 
+- **`Error` → HTTP-status mapping is now exhaustive.** The `IntoResponse for
+  Error` match dropped its trailing `_ => 500` wildcard: every variant (and every
+  nested `ModelError` variant) is now classified explicitly, so adding a new
+  error variant is a compile error until its status is chosen — it can no longer
+  silently default to `500`. The `Error` enum is also reorganized into
+  client-facing vs internal/infra regions. Behavior is unchanged (all infra
+  errors still map to `500`); no variant was renamed, so existing code is
+  unaffected.
 - **Rust edition 2024.** `loco-rs`, `loco-gen`, `xtask`, and the `loco` new-app
   generator now compile on edition 2024 (MSRV floor unchanged at 1.94; edition
   2024 needs ≥ 1.85). Editions are per-crate, so apps depending on Loco need not

@@ -271,7 +271,78 @@ impl IntoResponse for Error {
             #[cfg(feature = "with-db")]
             Self::Model(ModelError::Validation(ref errors)) => validation_error_response(errors),
 
-            _ => (
+            // --- Internal / infrastructure errors: deliberately no `_` arm.
+            //
+            // `Error` is `#[non_exhaustive]` for downstream crates, but this
+            // match lives inside `loco_rs` itself, where an exhaustive match
+            // over a local enum is allowed. Keeping it exhaustive (instead of
+            // a trailing wildcard) means that adding a new `Error` variant
+            // anywhere in the crate is a compile error here until someone
+            // deliberately decides which HTTP status it should map to, rather
+            // than silently defaulting to 500. Every variant below is an
+            // internal/infrastructure error, so they are all mapped to the
+            // same generic 500 response.
+            Self::Message(_)
+            | Self::InternalServerError
+            | Self::QueueProviderMissing
+            | Self::TaskNotFound(_)
+            | Self::Scheduler(_)
+            | Self::Axum(_)
+            | Self::Tera(_)
+            | Self::JSON(_)
+            | Self::YAMLFile(_, _)
+            | Self::YAML(_)
+            | Self::EmailSender(_)
+            | Self::Smtp(_)
+            | Self::Worker(_)
+            | Self::IO(_)
+            | Self::ParseAddress(_)
+            | Self::InvalidHeaderValue(_)
+            | Self::InvalidHeaderName(_)
+            | Self::InvalidMethod(_)
+            | Self::Storage(_)
+            | Self::Cache(_)
+            | Self::VersionCheck(_)
+            | Self::Any(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorDetail::new("internal_server_error", "Internal Server Error"),
+            ),
+
+            #[cfg(feature = "with-db")]
+            Self::DB(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorDetail::new("internal_server_error", "Internal Server Error"),
+            ),
+
+            // Other `ModelError` variants are internal/infrastructure errors
+            // (DB, generic `Any`, free-form `Message`, and, when `auth_jwt`
+            // is enabled, `Jwt`) and are collapsed to 500 like their
+            // top-level counterparts.
+            #[cfg(feature = "with-db")]
+            Self::Model(ModelError::DbErr(_) | ModelError::Any(_) | ModelError::Message(_)) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorDetail::new("internal_server_error", "Internal Server Error"),
+            ),
+            #[cfg(all(feature = "with-db", feature = "auth_jwt"))]
+            Self::Model(ModelError::Jwt(_)) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorDetail::new("internal_server_error", "Internal Server Error"),
+            ),
+
+            #[cfg(feature = "bg_redis")]
+            Self::Redis(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorDetail::new("internal_server_error", "Internal Server Error"),
+            ),
+
+            #[cfg(any(feature = "bg_pg", feature = "bg_sqlt"))]
+            Self::Sqlx(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorDetail::new("internal_server_error", "Internal Server Error"),
+            ),
+
+            #[cfg(debug_assertions)]
+            Self::Generators(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ErrorDetail::new("internal_server_error", "Internal Server Error"),
             ),
@@ -395,6 +466,39 @@ mod tests {
             serde_json::json!({
                 "error": "not_found",
                 "description": "Resource was not found"
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn infra_error_maps_to_500_with_standard_body() {
+        for err in [
+            Error::Message("boom".to_string()),
+            Error::InternalServerError,
+        ] {
+            let (status, json) = response_json(err).await;
+
+            assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+            assert_eq!(
+                json,
+                serde_json::json!({
+                    "error": "internal_server_error",
+                    "description": "Internal Server Error"
+                })
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn bad_request_still_maps_to_400() {
+        let (status, json) = response_json(Error::BadRequest("x".to_string())).await;
+
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(
+            json,
+            serde_json::json!({
+                "error": "Bad Request",
+                "description": "x"
             })
         );
     }

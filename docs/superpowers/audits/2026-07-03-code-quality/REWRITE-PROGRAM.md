@@ -19,6 +19,16 @@ Sonnet implements sequentially, Opus governs/verifies/commits.
 | Shell coverage + footguns | boot/cli/logger tests; mutex-poison→error; restore exhaustive match (drop `unreachable!()`); serial_test; docker-skip; dead moka `sync` feature; stale `XXX` comments |
 | Small libs (num-format / axum-valid / tower-http request-id) | **Re-spike first** on the net-LOC bar, then decide |
 
+## Decisions (2026-07-04, after re-spikes)
+
+- **errors.rs**: ONE restructured enum — group client-facing vs infra, exhaustive structural
+  status mapping (remove the `_ => 500` catch-all), keep variant names (non-breaking).
+- **validate.rs**: **adopt axum-valid** (−41% LOC); keep Loco's two error tiers via thin wrappers.
+  BREAKING: drops the custom `ValidatorTrait` (validate-without-`validator`-derive).
+- **route introspection**: **additive** verb-aware get/post wrappers; old code keeps the regex fallback.
+- **num-format**: ADOPT (−50% LOC) with the one-line negative-zero fix. Folds into views/format work.
+- **tower-http request-id**: REJECT (−1 LOC wash + layer-order footgun). Keep hand-rolled.
+
 ## Execution order (dependency + risk)
 
 0. **Re-spikes** (parallel, scratchpad-only) — real LOC for the 3 small libs → fold into scope.
