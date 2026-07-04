@@ -1,1 +1,3 @@
 mod users;
+
+mod posts;
