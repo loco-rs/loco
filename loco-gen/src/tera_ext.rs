@@ -16,7 +16,6 @@ struct FormField;
 struct ViewField;
 
 impl tera::Function for FormField {
-    #[allow(clippy::too_many_lines)]
     fn call(&self, args: &HashMap<String, Value>) -> tera::Result<Value> {
         let fname = args
             .get("fname")
@@ -54,6 +53,41 @@ impl tera::Function for FormField {
         let is_required = ftype.ends_with('!') || ftype.ends_with('^');
         let required_value = if is_required { "required" } else { "" };
 
+        macro_rules! num_input {
+            ($ty:ty, $extra:expr) => {
+                input_number(
+                    fname,
+                    &value,
+                    is_required,
+                    input_class,
+                    Some((<$ty>::MIN, <$ty>::MAX)),
+                    Some($extra),
+                )
+            };
+        }
+
+        macro_rules! num_array_input {
+            ($ty:ty, $extra:expr) => {{
+                let edit_input = input_number(
+                    fname,
+                    "{{val}}",
+                    is_required,
+                    input_class,
+                    Some((<$ty>::MIN, <$ty>::MAX)),
+                    Some($extra),
+                );
+                let create_input = input_number(
+                    fname,
+                    &value,
+                    is_required,
+                    input_class,
+                    Some((<$ty>::MIN, <$ty>::MAX)),
+                    Some($extra),
+                );
+                input_group(fname, &create_input, &edit_input)
+            }};
+        }
+
         let element = match rust_type {
             "Uuid" | "Option<Uuid>" => {
                 let desc = input_description("e.g: 11111111-1111-1111-1111-111111111111.");
@@ -80,38 +114,10 @@ impl tera::Function for FormField {
                 input_string(fname, &value, is_required, input_class, None)
             }
 
-            "i8" | "Option<i8>" => input_number(
-                fname,
-                &value,
-                is_required,
-                input_class,
-                Some((i8::MIN, i8::MAX)),
-                Some(r#"step="1""#),
-            ),
-            "i16" | "Option<i16>" => input_number(
-                fname,
-                &value,
-                is_required,
-                input_class,
-                Some((i16::MIN, i16::MAX)),
-                Some(r#"step="1""#),
-            ),
-            "i32" | "Option<i32>" => input_number(
-                fname,
-                &value,
-                is_required,
-                input_class,
-                Some((i32::MIN, i32::MAX)),
-                Some(r#"step="1""#),
-            ),
-            "i64" | "Option<i64>" => input_number(
-                fname,
-                &value,
-                is_required,
-                input_class,
-                Some((i64::MIN, i64::MAX)),
-                Some(r#"step="1""#),
-            ),
+            "i8" | "Option<i8>" => num_input!(i8, r#"step="1""#),
+            "i16" | "Option<i16>" => num_input!(i16, r#"step="1""#),
+            "i32" | "Option<i32>" => num_input!(i32, r#"step="1""#),
+            "i64" | "Option<i64>" => num_input!(i64, r#"step="1""#),
             "Decimal" | "Option<Decimal>" => input_number::<i128>(
                 fname,
                 &value,
@@ -123,22 +129,8 @@ impl tera::Function for FormField {
                 )),
                 Some(r#"step="0.1""#),
             ),
-            "f32" | "Option<f32>" => input_number(
-                fname,
-                &value,
-                is_required,
-                input_class,
-                Some((f32::MIN, f32::MAX)),
-                Some(r#"step="0.1""#),
-            ),
-            "f64" | "Option<f64>" => input_number(
-                fname,
-                &value,
-                is_required,
-                input_class,
-                Some((f64::MIN, f64::MAX)),
-                Some(r#"step="0.1""#),
-            ),
+            "f32" | "Option<f32>" => num_input!(f32, r#"step="0.1""#),
+            "f64" | "Option<f64>" => num_input!(f64, r#"step="0.1""#),
             "DateTimeWithTimeZone"
             | "Option<DateTimeWithTimeZone>"
             | "DateTime"
@@ -185,80 +177,16 @@ impl tera::Function for FormField {
                 )
             }
             "Vec<f32>" | "Option<Vec<f32>>" => {
-                let edit_input = input_number(
-                    fname,
-                    "{{val}}",
-                    is_required,
-                    input_class,
-                    Some((f32::MIN, f32::MAX)),
-                    Some(r#"custom_type="array" step="0.1""#),
-                );
-                let create_input = input_number(
-                    fname,
-                    &value,
-                    is_required,
-                    input_class,
-                    Some((f32::MIN, f32::MAX)),
-                    Some(r#"custom_type="array" step="0.1""#),
-                );
-                input_group(fname, &create_input, &edit_input)
+                num_array_input!(f32, r#"custom_type="array" step="0.1""#)
             }
             "Vec<f64>" | "Option<Vec<f64>>" => {
-                let edit_input = input_number(
-                    fname,
-                    "{{val}}",
-                    is_required,
-                    input_class,
-                    Some((f64::MIN, f64::MAX)),
-                    Some(r#"custom_type="array""#),
-                );
-                let create_input = input_number(
-                    fname,
-                    &value,
-                    is_required,
-                    input_class,
-                    Some((f64::MIN, f64::MAX)),
-                    Some(r#"custom_type="array""#),
-                );
-                input_group(fname, &create_input, &edit_input)
+                num_array_input!(f64, r#"custom_type="array""#)
             }
             "Vec<i32>" | "Option<Vec<i32>>" => {
-                let edit_input = input_number(
-                    fname,
-                    "{{val}}",
-                    is_required,
-                    input_class,
-                    Some((i32::MIN, i32::MAX)),
-                    Some(r#"custom_type="array""#),
-                );
-                let create_input = input_number(
-                    fname,
-                    &value,
-                    is_required,
-                    input_class,
-                    Some((i32::MIN, i32::MAX)),
-                    Some(r#"custom_type="array""#),
-                );
-                input_group(fname, &create_input, &edit_input)
+                num_array_input!(i32, r#"custom_type="array""#)
             }
             "Vec<i64>" | "Option<Vec<i64>>" => {
-                let edit_input = input_number(
-                    fname,
-                    "{{val}}",
-                    is_required,
-                    input_class,
-                    Some((i64::MIN, i64::MAX)),
-                    Some(r#"custom_type="array""#),
-                );
-                let create_input = input_number(
-                    fname,
-                    &value,
-                    is_required,
-                    input_class,
-                    Some((i64::MIN, i64::MAX)),
-                    Some(r#"custom_type="array""#),
-                );
-                input_group(fname, &create_input, &edit_input)
+                num_array_input!(i64, r#"custom_type="array""#)
             }
             "Vec<bool>" | "Option<Vec<bool>>" => String::new(),
             _ => {
