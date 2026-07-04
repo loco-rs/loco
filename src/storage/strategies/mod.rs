@@ -1,5 +1,4 @@
-pub mod backup;
-pub mod mirror;
+pub mod replicated;
 pub mod single;
 
 use std::path::Path;

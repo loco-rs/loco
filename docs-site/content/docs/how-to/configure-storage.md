@@ -92,22 +92,22 @@ let store = aws::with_credentials("my-app-uploads", "us-east-1", credential)?;
 
 For redundancy across providers, set up several named stores and a `StorageStrategy` that decides how operations fan out across them.
 
-**Mirror** — replicates uploads/deletes/renames/copies to every store; download tries the primary, then falls through to secondaries on failure.
+**Mirror** — replicates uploads/deletes/renames/copies to every store; download tries the primary, then falls through to secondaries on failure. This is `ReplicatedStrategy::mirror`.
 
 ```rust
 use std::collections::BTreeMap;
 use loco_rs::storage::{
     drivers, Storage,
-    strategies::{mirror::MirrorStrategy, mirror::FailureMode, StorageStrategy},
+    strategies::{replicated::{ReplicatedStrategy, FailurePolicy}, StorageStrategy},
 };
 
 let primary = drivers::aws::new("bucket-primary", "us-east-1")?;
 let mirror = drivers::azure::new("container", "account", "access-key", "https://account.blob.core.windows.net")?;
 
-let strategy: Box<dyn StorageStrategy> = Box::new(MirrorStrategy::new(
+let strategy: Box<dyn StorageStrategy> = Box::new(ReplicatedStrategy::mirror(
     "primary",
     Some(vec!["mirror".to_string()]),
-    FailureMode::MirrorAll, // or AllowMirrorFailure
+    FailurePolicy::FailIfAny, // or AllowAll
 ));
 
 let storage = Storage::new(
@@ -119,21 +119,21 @@ let storage = Storage::new(
 );
 ```
 
-`FailureMode::MirrorAll` requires every secondary to succeed (errors bubble up as `StorageError::Multi`); `AllowMirrorFailure` swallows secondary failures.
+`FailurePolicy::FailIfAny` requires every secondary to succeed (errors bubble up as `StorageError::Multi`); `AllowAll` swallows secondary failures.
 
-**Backup** — the primary must always succeed for writes; secondary failures are governed by a separate failure mode, and downloads *always* come from the primary only.
+**Backup** — the primary must always succeed for writes; secondary failures are governed by a separate failure policy, and downloads *always* come from the primary only. This is `ReplicatedStrategy::backup`.
 
 ```rust
-use loco_rs::storage::strategies::backup::{BackupStrategy, FailureMode};
+use loco_rs::storage::strategies::replicated::{ReplicatedStrategy, FailurePolicy};
 
-let strategy: Box<dyn StorageStrategy> = Box::new(BackupStrategy::new(
+let strategy: Box<dyn StorageStrategy> = Box::new(ReplicatedStrategy::backup(
     "primary",
     Some(vec!["backup_store".to_string()]),
-    FailureMode::AllowBackupFailure, // also: BackupAll, AtLeastOneFailure, CountFailure(n)
+    FailurePolicy::AllowAll, // also: FailIfAny, AllowSingleFailure, FailAtFailures(n)
 ));
 ```
 
-Both strategies expose a `_with_policy`/`_with_strategy` variant on every `Storage` method (`upload_with_strategy`, `download_with_policy`, ...) if you need to override the strategy for a single call.
+Mirror and backup are both `ReplicatedStrategy`, differing only in the constructor used (`mirror` vs `backup`) and the `FailurePolicy` you pick. It exposes a `_with_policy`/`_with_strategy` variant on every `Storage` method (`upload_with_strategy`, `download_with_policy`, ...) if you need to override the strategy for a single call.
 
 ## 4. Upload and download in a controller
 
@@ -204,7 +204,7 @@ async fn upload_video(State(ctx): State<AppContext>, body: axum::body::Body) -> 
 
 If you need the whole payload as one `Bytes` buffer anyway, `BytesStream::collect()` gives you that — but at that point you've given up the memory benefit of streaming.
 
-**Strategy caveat:** streaming isn't uniformly "true streaming" once a strategy other than `SingleStrategy` is involved. `MirrorStrategy` downloads from the primary only when streaming (falls back to secondaries only for the buffered `download`/`upload`), and buffers the whole payload before fanning an `upload_stream` out to secondaries. `BackupStrategy` also streams downloads from the primary only, and buffers via `collect()` before writing `upload_stream` to primary + secondaries. If you need guaranteed zero-buffering streaming to every store, stick to a single driver with `SingleStrategy` (the default).
+**Strategy caveat:** streaming isn't uniformly "true streaming" once a strategy other than `SingleStrategy` is involved. `ReplicatedStrategy` unifies the former mirror/backup behavior: reads (both the buffered `download` and `download_stream`) fall back to secondaries when `read_from_secondaries` is set — i.e. constructed via `ReplicatedStrategy::mirror` — and are served from the primary only when constructed via `ReplicatedStrategy::backup`. Either way, `upload_stream` buffers the whole payload once via `collect()` and then fans out concurrently to secondaries. If you need guaranteed zero-buffering streaming to a single store, stick to `SingleStrategy` (the default).
 
 ## 6. Verify
 

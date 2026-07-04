@@ -20,6 +20,17 @@
   matches on `AppContext` from outside the crate no longer compile; field
   access (`ctx.db`, `ctx.config`, `State`/`FromRef` extraction) is unchanged.
   This makes future context fields non-breaking to add.
+- **Storage `MirrorStrategy` and `BackupStrategy` merged into `ReplicatedStrategy`.**
+  The two strategies were the same primary-plus-secondaries replication engine;
+  they are now one `storage::strategies::replicated::ReplicatedStrategy` with a
+  single `FailurePolicy` enum. Migrate: `MirrorStrategy::new(p, s, MirrorAll)` →
+  `ReplicatedStrategy::mirror(p, s, FailurePolicy::FailIfAny)`;
+  `BackupStrategy::new(p, s, BackupAll)` → `ReplicatedStrategy::backup(p, s,
+  FailurePolicy::FailIfAny)`. Old `FailureMode` maps: `AllowMirrorFailure`/
+  `AllowBackupFailure` → `AllowAll`, `AtLeastOneFailure` → `AllowSingleFailure`,
+  `CountFailure(n)` → `FailAtFailures(n)`. Secondary writes for the former
+  backup strategy now run concurrently (previously sequential); the collected
+  errors and failure decision are unchanged.
 - **Background queue reworked into a `QueueProvider` adapter interface.** The
   `bgworker::Queue` enum (`Postgres`/`Sqlite`/`Redis`/`None`) is now a newtype
   over `Arc<dyn QueueProvider>`, so backends are pluggable (implement
