@@ -56,7 +56,7 @@ pub fn template<S>(template: &str, data: S) -> Result<String>
 where
     S: Serialize,
 {
-    let mut tera = tera::Tera::default();
+    let mut tera = crate::tera::instance();
     Ok(tera.render_str(template, &tera::Context::from_serialize(data)?)?)
 }
 

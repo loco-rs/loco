@@ -66,9 +66,9 @@ impl<'a> Template<'a> {
         let html_t = embedded_file(self.dir, HTML)?;
 
         // TODO(consider): check+consider offloading to tokio async this work
-        let text = tera::render_string(&text_t, locals)?;
-        let html = tera::render_string(&html_t, locals)?;
-        let subject = tera::render_string(&subject_t, locals)?;
+        let text = tera::render(&text_t, locals)?;
+        let html = tera::render(&html_t, locals)?;
+        let subject = tera::render(&subject_t, locals)?;
         Ok(Content {
             subject,
             text,
