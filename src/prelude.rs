@@ -36,6 +36,7 @@ pub use crate::{
         middleware::{
             format::{Format, RespondTo},
             remote_ip::RemoteIP,
+            MiddlewareStackExt,
         },
         not_found, unauthorized,
         views::{engines::TeraView, ViewEngine, ViewRenderer},

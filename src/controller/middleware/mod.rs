@@ -170,6 +170,82 @@ pub fn default_middleware_stack(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer
     ]
 }
 
+/// Ergonomic, Rails-style edits to a middleware stack
+/// (`Vec<Box<dyn MiddlewareLayer>>`), for use inside
+/// [`crate::app::Hooks::middlewares`] when you want to tweak the default stack
+/// (from [`default_middleware_stack`]) rather than rebuild it.
+///
+/// Middlewares are matched by [`MiddlewareLayer::name`]. Positions are relative
+/// to the stack `Vec`. Note the application order: the stack is applied in `Vec`
+/// order and each middleware wraps the router, so a middleware **later** in the
+/// `Vec` runs **earlier** in request processing (tower is LIFO).
+///
+/// If no middleware matches `name`, the operation logs a warning; `insert_before`
+/// / `insert_after` still append the new middleware (so it is not silently
+/// dropped), while `replace` / `delete` leave the stack unchanged.
+pub trait MiddlewareStackExt {
+    /// Insert `middleware` immediately before the first middleware named `name`.
+    fn insert_before(&mut self, name: &str, middleware: Box<dyn MiddlewareLayer>) -> &mut Self;
+    /// Insert `middleware` immediately after the first middleware named `name`.
+    fn insert_after(&mut self, name: &str, middleware: Box<dyn MiddlewareLayer>) -> &mut Self;
+    /// Replace the first middleware named `name` with `middleware`.
+    fn replace(&mut self, name: &str, middleware: Box<dyn MiddlewareLayer>) -> &mut Self;
+    /// Remove the first middleware named `name`.
+    fn delete(&mut self, name: &str) -> &mut Self;
+}
+
+impl MiddlewareStackExt for Vec<Box<dyn MiddlewareLayer>> {
+    fn insert_before(&mut self, name: &str, middleware: Box<dyn MiddlewareLayer>) -> &mut Self {
+        if let Some(idx) = self.iter().position(|m| m.name() == name) {
+            self.insert(idx, middleware);
+        } else {
+            tracing::warn!(
+                middleware = name,
+                "insert_before: no middleware named `{name}` in the stack; appending instead"
+            );
+            self.push(middleware);
+        }
+        self
+    }
+
+    fn insert_after(&mut self, name: &str, middleware: Box<dyn MiddlewareLayer>) -> &mut Self {
+        if let Some(idx) = self.iter().position(|m| m.name() == name) {
+            self.insert(idx + 1, middleware);
+        } else {
+            tracing::warn!(
+                middleware = name,
+                "insert_after: no middleware named `{name}` in the stack; appending instead"
+            );
+            self.push(middleware);
+        }
+        self
+    }
+
+    fn replace(&mut self, name: &str, middleware: Box<dyn MiddlewareLayer>) -> &mut Self {
+        if let Some(idx) = self.iter().position(|m| m.name() == name) {
+            self[idx] = middleware;
+        } else {
+            tracing::warn!(
+                middleware = name,
+                "replace: no middleware named `{name}` in the stack; leaving stack unchanged"
+            );
+        }
+        self
+    }
+
+    fn delete(&mut self, name: &str) -> &mut Self {
+        if let Some(idx) = self.iter().position(|m| m.name() == name) {
+            self.remove(idx);
+        } else {
+            tracing::warn!(
+                middleware = name,
+                "delete: no middleware named `{name}` in the stack; leaving stack unchanged"
+            );
+        }
+        self
+    }
+}
+
 /// Server middleware configuration structure.
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
@@ -211,4 +287,105 @@ pub struct Config {
 
     /// Request ID
     pub request_id: Option<request_id::RequestId>,
+}
+
+#[cfg(test)]
+mod stack_ext_tests {
+    use super::{MiddlewareLayer, MiddlewareStackExt};
+
+    struct DummyMw(&'static str);
+    impl MiddlewareLayer for DummyMw {
+        fn name(&self) -> &'static str {
+            self.0
+        }
+        fn config(&self) -> serde_json::Result<serde_json::Value> {
+            Ok(serde_json::Value::Null)
+        }
+        fn apply(
+            &self,
+            app: axum::Router<crate::app::AppContext>,
+        ) -> crate::Result<axum::Router<crate::app::AppContext>> {
+            Ok(app)
+        }
+    }
+
+    fn stack(names: &[&'static str]) -> Vec<Box<dyn MiddlewareLayer>> {
+        names
+            .iter()
+            .map(|n| Box::new(DummyMw(n)) as Box<dyn MiddlewareLayer>)
+            .collect()
+    }
+
+    fn names(stack: &[Box<dyn MiddlewareLayer>]) -> Vec<&'static str> {
+        stack.iter().map(|m| m.name()).collect()
+    }
+
+    #[test]
+    fn insert_before_hit() {
+        let mut s = stack(&["a", "b", "c"]);
+        s.insert_before("b", Box::new(DummyMw("x")));
+        assert_eq!(names(&s), vec!["a", "x", "b", "c"]);
+    }
+
+    #[test]
+    fn insert_after_hit() {
+        let mut s = stack(&["a", "b", "c"]);
+        s.insert_after("b", Box::new(DummyMw("x")));
+        assert_eq!(names(&s), vec!["a", "b", "x", "c"]);
+    }
+
+    #[test]
+    fn insert_before_miss_appends() {
+        let mut s = stack(&["a", "b", "c"]);
+        s.insert_before("nope", Box::new(DummyMw("x")));
+        assert_eq!(names(&s), vec!["a", "b", "c", "x"]);
+    }
+
+    #[test]
+    fn insert_after_miss_appends() {
+        let mut s = stack(&["a", "b", "c"]);
+        s.insert_after("nope", Box::new(DummyMw("x")));
+        assert_eq!(names(&s), vec!["a", "b", "c", "x"]);
+    }
+
+    #[test]
+    fn replace_hit() {
+        let mut s = stack(&["a", "b", "c"]);
+        s.replace("b", Box::new(DummyMw("x")));
+        assert_eq!(names(&s), vec!["a", "x", "c"]);
+        assert_eq!(s.len(), 3);
+    }
+
+    #[test]
+    fn replace_miss_no_op() {
+        let mut s = stack(&["a", "b", "c"]);
+        s.replace("nope", Box::new(DummyMw("x")));
+        assert_eq!(names(&s), vec!["a", "b", "c"]);
+    }
+
+    #[test]
+    fn delete_hit() {
+        let mut s = stack(&["a", "b", "c"]);
+        s.delete("b");
+        assert_eq!(names(&s), vec!["a", "c"]);
+        assert_eq!(s.len(), 2);
+    }
+
+    #[test]
+    fn delete_miss_no_op() {
+        let mut s = stack(&["a", "b", "c"]);
+        s.delete("nope");
+        assert_eq!(names(&s), vec!["a", "b", "c"]);
+        assert_eq!(s.len(), 3);
+    }
+
+    #[test]
+    fn chaining_returns_mut_self() {
+        let mut s = stack(&["a", "b", "c"]);
+        s.insert_before("a", Box::new(DummyMw("x")))
+            .insert_after("c", Box::new(DummyMw("y")))
+            .replace("b", Box::new(DummyMw("z")))
+            .delete("a");
+        assert_eq!(names(&s), vec!["x", "z", "c", "y"]);
+    }
 }
