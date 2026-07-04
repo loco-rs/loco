@@ -47,6 +47,12 @@
 
 ### Added
 
+- **Ergonomic verb-explicit route methods.** `Routes` now has `get`/`post`/
+  `put`/`delete`/`patch`/`head`/`options`/`trace` builder methods —
+  `Routes::new().get("/ping", ping)` alongside the existing
+  `.add("/ping", get(ping))`. They record the HTTP verb directly (exact
+  `cargo loco routes` output without relying on the debug-format regex).
+  Purely additive; `add` is unchanged.
 - **Opt-in background-job reaper (visibility timeout).** Each queue backend's
   config accepts a `reaper: { age_minutes, interval_seconds }` block. When set,
   the worker periodically requeues jobs stranded in `Processing` (e.g. by a
