@@ -26,7 +26,11 @@ Sonnet implements sequentially, Opus governs/verifies/commits.
 - **validate.rs**: **adopt axum-valid** (−41% LOC); keep Loco's two error tiers via thin wrappers.
   BREAKING: drops the custom `ValidatorTrait` (validate-without-`validator`-derive).
 - **route introspection**: **additive** verb-aware get/post wrappers; old code keeps the regex fallback.
-- **num-format**: ADOPT (−50% LOC) with the one-line negative-zero fix. Folds into views/format work.
+- **num-format**: ~~ADOPT~~ **REJECTED on implementation review.** It's a NEW dep (not
+  transitive), the incumbent grouping is already correct (`-0.123` → `"-0.123"` verified — the
+  `-0` bug was introduced *by* num-format, which drops the sign), and it saves only ~14 LOC of
+  trivial grouping while forcing sign-handling back in. Net: a dep tree for negligible gain,
+  against the lean-dep value. `number.rs` unchanged.
 - **tower-http request-id**: REJECT (−1 LOC wash + layer-order footgun). Keep hand-rolled.
 
 ## Execution order (dependency + risk)
