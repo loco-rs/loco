@@ -2,12 +2,12 @@ use std::{collections::HashMap, env::current_dir, path::Path};
 
 use chrono::Utc;
 use duct::cmd;
-use heck::ToUpperCamelCase;
 use rrgen::RRgen;
 use serde_json::json;
 
 use crate::{
-    get_mappings, infer::parse_field_type, render_template, AppInfo, Error, GenerateResults, Result,
+    column::{self, ColumnKind},
+    render_template, AppInfo, Error, GenerateResults, Result,
 };
 
 /// skipping some fields from the generated models.
@@ -19,77 +19,34 @@ pub const IGNORE_FIELDS: &[&str] = &["created_at", "updated_at", "create_at", "u
 /// references are <to table, id col in from table>: ("user", `user_id`)
 ///  parsed from e.g.: model article content:string user:references
 ///  puts a `user_id` in articles, then fk to users
+///
+/// Parses every field through [`column::parse_column`] (via
+/// [`column::columns_from_fields`]), the single source of truth for column
+/// type information, then partitions the result: references never appear in
+/// the returned `columns` list -- they are always emitted as a `BigInteger`
+/// (i64) foreign key by the `create_table`/schema helper's own fk path, which
+/// reads the `references` tuples returned here.
 #[allow(clippy::type_complexity)]
 pub fn get_columns_and_references(
     fields: &[(String, String)],
 ) -> Result<(Vec<(String, String)>, Vec<(String, String)>)> {
     let mut columns = Vec::new();
     let mut references = Vec::new();
-    for (fname, ftype) in fields {
-        if IGNORE_FIELDS.contains(&fname.as_str()) {
-            tracing::warn!(
-                field = fname,
-                "note that a redundant field was specified, it is already generated automatically"
-            );
-            continue;
-        }
-        let field_type = parse_field_type(ftype)?;
-        match field_type {
-            crate::infer::FieldType::Reference => {
-                // (users, "")
-                references.push((fname.clone(), String::new()));
-            }
-            crate::infer::FieldType::ReferenceWithCustomField(refname) => {
-                references.push((fname.clone(), refname.clone()));
-            }
-            crate::infer::FieldType::NullableReference => {
-                references.push((format!("{fname}?"), String::new()));
-            }
-            crate::infer::FieldType::NullableReferenceWithCustomField(refname) => {
-                references.push((format!("{fname}?"), refname.clone()));
-            }
-            crate::infer::FieldType::Type(ftype) => {
-                let mappings = get_mappings();
-                let col_type = mappings.col_type_field(ftype.as_str())?;
-                columns.push((fname.clone(), col_type.to_string()));
-            }
-            crate::infer::FieldType::TypeWithParameters(ftype, params) => {
-                let mappings = get_mappings();
-                let col_type = mappings.col_type_field(ftype.as_str())?;
-                let arity = mappings.col_type_arity(ftype.as_str()).unwrap_or_default();
-                if params.len() != arity {
-                    return Err(Error::Message(format!(
-                        "type: `{ftype}` requires specifying {arity} parameters, but only {} were \
-                         given (`{}`).",
-                        params.len(),
-                        params.join(",")
-                    )));
-                }
-
-                let col = match ftype.as_ref() {
-                    "array" | "array^" | "array!" => {
-                        let array_kind = match params.as_slice() {
-                            [array_kind] => Ok(array_kind),
-                            _ => Err(Error::Message(format!(
-                                "type: `{ftype}` requires exactly {arity} parameter{}, but {} were given (`{}`).",
-                                if arity == 1 { "" } else { "s" },
-                                params.len(),
-                                params.join(",")
-                            ))),
-                        }?;
-
-                        format!(
-                            r"{}(ArrayColType::{})",
-                            col_type,
-                            array_kind.to_upper_camel_case()
-                        )
-                    }
-                    &_ => {
-                        format!("{}({})", col_type, params.join(","))
-                    }
+    for col in column::columns_from_fields(fields)? {
+        match &col.kind {
+            ColumnKind::Reference { target, fk_field } => {
+                // A trailing `?` on the reference name is how the
+                // `create_table` schema helper is told the FK is nullable;
+                // see `column::parse_column`'s doc comment for the DSL.
+                let ref_name = if col.nullable {
+                    format!("{target}?")
+                } else {
+                    target.clone()
                 };
-
-                columns.push((fname.clone(), col));
+                references.push((ref_name, fk_field.clone().unwrap_or_default()));
+            }
+            _ => {
+                columns.push((col.name.clone(), col.col_type()));
             }
         }
     }
@@ -169,10 +126,13 @@ mod tests {
     }
     #[test]
     fn test_get_columns_with_array_types() {
+        // Note: the `!`/`^` suffix now trails the *whole* spec (matching
+        // every other type's grammar in `column::parse_column`), not the
+        // `array` keyword -- i.e. `array:string!`, not the old `array!:string`.
         let fields = [
             to_field("expect_array_null", "array:string"),
-            to_field("expect_array", "array!:string"),
-            to_field("expect_array_uniq", "array^:string"),
+            to_field("expect_array", "array:string!"),
+            to_field("expect_array_uniq", "array:string^"),
         ];
         let res = get_columns_and_references(&fields).expect("Failed to parse fields");
 
@@ -217,30 +177,58 @@ mod tests {
     }
 
     #[test]
-    fn validate_arity() {
-        // field not expected arity, but given 2
+    fn unknown_or_malformed_types_are_rejected() {
+        // `string` takes no parameters; `column::parse_column` doesn't
+        // recognize the extra `:2` segment and rejects it as an unknown type
+        // rather than an arity mismatch (there is no longer a generic
+        // per-type arity table -- `parse_column`'s grammar is matched
+        // exhaustively per type).
         let fields = vec![to_field("name", "string:2")];
-        let res = get_columns_and_references(&fields);
-        if let Err(err) = res {
-            assert_eq!(
-                err.to_string(),
-                "type: `string` requires specifying 0 parameters, but only 1 were given (`2`)."
-            );
-        } else {
-            panic!("Expected Err, but got Ok: {res:?}");
-        }
+        assert!(get_columns_and_references(&fields).is_err());
 
-        // references not expected arity, but given 2
-        let references = vec![to_field("post:2", "")];
-        let res = get_columns_and_references(&references);
-        if let Err(err) = res {
-            let mappings = get_mappings();
-            assert_eq!(
-                err.to_string(),
-                mappings.error_unrecognized_default_field("").to_string()
-            );
-        } else {
-            panic!("Expected Err, but got Ok: {res:?}");
-        }
+        // an empty spec is not a recognized base type name either.
+        let fields = vec![to_field("post", "")];
+        assert!(get_columns_and_references(&fields).is_err());
+    }
+
+    // ---- 1.0 canonical-value fixes -----------------------------------------
+
+    #[test]
+    fn test_int_is_32_bit_integer_not_64_bit() {
+        // The deliberate 1.0 fix: `int` used to map to `BigInteger` via
+        // `mappings.json`; it now means a real 32-bit `Integer`.
+        let fields = [to_field("hits", "int!")];
+        let res = get_columns_and_references(&fields).expect("Failed to parse fields");
+        assert_eq!(res, (vec![to_field("hits", "Integer")], vec![]));
+    }
+
+    #[test]
+    fn test_big_int_is_64_bit_big_integer() {
+        let fields = [to_field("views", "big_int!")];
+        let res = get_columns_and_references(&fields).expect("Failed to parse fields");
+        assert_eq!(res, (vec![to_field("views", "BigInteger")], vec![]));
+    }
+
+    #[test]
+    fn test_reference_is_never_a_column_and_fk_is_64_bit() {
+        let fields = [to_field("user", "references")];
+        let res = get_columns_and_references(&fields).expect("Failed to parse fields");
+        // references never appear in the columns list -- the schema helper's
+        // fk path (fed by the `references` tuples) always emits the fk
+        // column itself, as a 64-bit `BigInteger`.
+        assert_eq!(res, (vec![], vec![to_field("user", "")]));
+        assert_eq!(
+            crate::column::parse_column("user", "references")
+                .expect("failed to parse")
+                .col_type(),
+            "BigInteger"
+        );
+    }
+
+    #[test]
+    fn test_decimal_required() {
+        let fields = [to_field("price", "decimal!")];
+        let res = get_columns_and_references(&fields).expect("Failed to parse fields");
+        assert_eq!(res, (vec![to_field("price", "Decimal")], vec![]));
     }
 }
