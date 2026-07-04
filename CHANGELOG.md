@@ -12,6 +12,14 @@
   one-entry `initializers.multi_db` map instead, and extract the connection with
   `Extension<MultiDb>` + `multi_db.get("<name>")`. This collapses two
   near-identical initializers into one named-connections abstraction.
+- **`AppContext` is now `#[non_exhaustive]`.** Construct it with
+  `AppContext::builder(environment, db, config)` (or `builder(environment,
+  config)` without the `with-db` feature) followed by optional
+  `.queue_provider(..)`/`.mailer(..)`/`.storage(..)`/`.cache(..)`/`.shared_store(..)`
+  and `.build()`. Direct struct-literal construction and exhaustive pattern
+  matches on `AppContext` from outside the crate no longer compile; field
+  access (`ctx.db`, `ctx.config`, `State`/`FromRef` extraction) is unchanged.
+  This makes future context fields non-breaking to add.
 - **Background queue reworked into a `QueueProvider` adapter interface.** The
   `bgworker::Queue` enum (`Postgres`/`Sqlite`/`Redis`/`None`) is now a newtype
   over `Arc<dyn QueueProvider>`, so backends are pluggable (implement

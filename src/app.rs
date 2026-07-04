@@ -25,7 +25,7 @@ use crate::{
     },
     environment::Environment,
     mailer::EmailSender,
-    storage::Storage,
+    storage::{self, Storage},
     task::Tasks,
     Result,
 };
@@ -252,6 +252,7 @@ impl<T: 'static + Send + Sync> std::ops::Deref for RefGuard<'_, T> {
 /// lifetime.
 #[derive(Clone, FromRef)]
 #[allow(clippy::module_name_repetitions)]
+#[non_exhaustive]
 pub struct AppContext {
     /// The environment in which the application is running.
     pub environment: Environment,
@@ -270,6 +271,109 @@ pub struct AppContext {
     pub cache: Arc<cache::Cache>,
     /// Shared store for arbitrary application data
     pub shared_store: Arc<SharedStore>,
+}
+
+/// Builder for [`AppContext`]. Because `AppContext` is `#[non_exhaustive]`,
+/// external crates must construct it through this builder (or the framework's
+/// boot path) rather than a struct literal — so new fields added in future
+/// releases are non-breaking. Required components are constructor arguments;
+/// optional components default to no-op providers unless set.
+#[must_use]
+pub struct AppContextBuilder {
+    environment: Environment,
+    #[cfg(feature = "with-db")]
+    db: DatabaseConnection,
+    config: Config,
+    queue_provider: Option<Arc<bgworker::Queue>>,
+    mailer: Option<EmailSender>,
+    storage: Option<Arc<Storage>>,
+    cache: Option<Arc<cache::Cache>>,
+    shared_store: Option<Arc<SharedStore>>,
+}
+
+impl AppContext {
+    /// Start building an [`AppContext`]. (with-db)
+    #[cfg(feature = "with-db")]
+    pub fn builder(
+        environment: Environment,
+        db: DatabaseConnection,
+        config: Config,
+    ) -> AppContextBuilder {
+        AppContextBuilder {
+            environment,
+            db,
+            config,
+            queue_provider: None,
+            mailer: None,
+            storage: None,
+            cache: None,
+            shared_store: None,
+        }
+    }
+
+    /// Start building an [`AppContext`]. (no-db)
+    #[cfg(not(feature = "with-db"))]
+    pub fn builder(environment: Environment, config: Config) -> AppContextBuilder {
+        AppContextBuilder {
+            environment,
+            config,
+            queue_provider: None,
+            mailer: None,
+            storage: None,
+            cache: None,
+            shared_store: None,
+        }
+    }
+}
+
+impl AppContextBuilder {
+    /// Set the background-queue provider (default: none).
+    pub fn queue_provider(mut self, queue_provider: Arc<bgworker::Queue>) -> Self {
+        self.queue_provider = Some(queue_provider);
+        self
+    }
+    /// Set the email sender (default: none).
+    pub fn mailer(mut self, mailer: EmailSender) -> Self {
+        self.mailer = Some(mailer);
+        self
+    }
+    /// Set the storage (default: single null driver).
+    pub fn storage(mut self, storage: Arc<Storage>) -> Self {
+        self.storage = Some(storage);
+        self
+    }
+    /// Set the cache (default: null cache).
+    pub fn cache(mut self, cache: Arc<cache::Cache>) -> Self {
+        self.cache = Some(cache);
+        self
+    }
+    /// Set the shared store (default: empty).
+    pub fn shared_store(mut self, shared_store: Arc<SharedStore>) -> Self {
+        self.shared_store = Some(shared_store);
+        self
+    }
+    /// Finalize the [`AppContext`], filling any unset optional component with a
+    /// no-op default.
+    #[must_use]
+    pub fn build(self) -> AppContext {
+        AppContext {
+            environment: self.environment,
+            #[cfg(feature = "with-db")]
+            db: self.db,
+            queue_provider: self.queue_provider,
+            config: self.config,
+            mailer: self.mailer,
+            storage: self
+                .storage
+                .unwrap_or_else(|| Storage::single(storage::drivers::null::new()).into()),
+            cache: self
+                .cache
+                .unwrap_or_else(|| cache::Cache::new(cache::drivers::null::new()).into()),
+            shared_store: self
+                .shared_store
+                .unwrap_or_else(|| Arc::new(SharedStore::default())),
+        }
+    }
 }
 
 /// A trait that defines hooks for customizing and extending the behavior of a
