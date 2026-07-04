@@ -15,6 +15,7 @@ use std::{
     sync::OnceLock,
 };
 
+pub mod column;
 #[cfg(feature = "with-db")]
 mod infer;
 #[cfg(feature = "with-db")]
