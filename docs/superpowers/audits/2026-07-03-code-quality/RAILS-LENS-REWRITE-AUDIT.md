@@ -164,3 +164,28 @@ The bgworker lesson held up as a filter: it correctly GREENLIT the storage merge
 non-hard part) and correctly REJECTED the cli/validate/schema/ColType rewrites (the "duplication" was
 either a contract, disjoint, or already collapsed). The net is a much smaller, sharper program than a
 naive "rewrite everything" pass — which is the point.
+
+---
+
+## GREENLIT (2026-07-04, Jondot)
+
+**Scope:** TIER 1 + TIER 2 (all 9 items). **B2 (MySQL):** document PG/SQLite-only —
+make unsupported-backend errors uniform + explicit, no new backend maintained.
+TIER 3 stays deferred. Sonnet implements sequentially, Opus governs/gates/commits; local
+commits only; atomic commit per item; gate = fmt + clippy `-D warnings` (all backend combos)
++ targeted tests + zero snapshot drift.
+
+**Execution order (isolated/safe first → breaking/large → additive):**
+1. T2.5 coherence sweep + bugs B4, B5 (+ Start dedup, StartMode ladder, paginate/fetch_page)
+2. T1.3 Tera factory unify (fixes B3)
+3. B2 document PG/SQLite-only (uniform unsupported-backend errors)
+4. T1.4 `extra_db` → `multi_db` consolidation (breaking: drops `ExtraDbInitializer`)
+5. T1.2 `AppContext` `#[non_exhaustive]` + builder (breaking: struct-literal construction)
+6. T1.1 storage `ReplicatedStrategy` merge (breaking: two public types→one; fixes B1)
+7. T2.1 middleware `insert_before`/`swap`/`remove` (additive) + registry/static-assets dedup
+8. T2.2 `loco-gen` `render_form_field` data-drive + `GenerateResults::merge`
+9. T2.3 mailer `deliver_now` (verify bgworker sync path first)
+10. T2.4 auth/testing small wins (`OptionalJWT` — verify axum `Option<T>` blanket first;
+    `map_auth_model_error`; delete dead `#[async_trait]`)
+
+CHANGELOG updated per breaking item with the crystallized behavior delta.
