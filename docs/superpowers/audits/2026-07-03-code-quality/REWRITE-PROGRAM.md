@@ -67,6 +67,15 @@ Sonnet implements sequentially, Opus governs/verifies/commits.
 - **bgworker FULL unification** — UNSAFE: pg `SKIP LOCKED` vs sqlite advisory-lock `dequeue` are
   different concurrency primitives; forcing them risks job double-processing. Real win was ~40 LOC
   + the 2 bug fixes, not the ~−1,000 the duplication's size implied.
+  **REVISED 2026-07-04 (Jondot overruled the framing):** that rejection conflated "unify the
+  `dequeue` SQL body" (correctly unsafe) with "re-evaluate the abstract interface, ActiveJob-style"
+  (the actual rewrite). The latter was done — see `BGWORKER-ADAPTER-DESIGN.md` and commit
+  5cb1c720: a `QueueProvider` adapter trait + `Queue` newtype, collapsing the 13× match dispatch,
+  deduplicating worker-erasure, and making third-party backends implementable. Each backend's
+  `dequeue` stays separate behind the trait, so the concurrency finding is preserved and simply
+  irrelevant to the interface. Honest note: it is an extensibility win, **+189 LOC** (not a
+  reduction). The follow-on SQL dialect hoist (Phase 2) was spiked and rejected as net-negative
+  on both LOC and clarity (dynamic-SQL regression + heavy generic bounds).
 
 **Final gate:** fmt clean · clippy `-D warnings` clean (lib+tests, all backends) · 460 lib tests pass.
 

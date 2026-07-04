@@ -78,14 +78,48 @@ pub trait QueueProvider: Send + Sync {
 ## Scope
 
 - **Phase 1 (this change):** the trait + newtype + dispatch collapse + erasure hoist.
-  Highest value, lowest risk (no SQL touched). Expected mod.rs ~967 → ~350–450 LOC.
-- **Phase 2 (assessed separately, only if Phase 1 lands clean):** hoist the
-  dialect-parameterized CRUD bodies (`enqueue`, `cancel_jobs_by_name`, `clear_by_status`,
-  `clear_jobs_older_than`, `requeue`, `get_jobs`) from pg/sqlt into `sql.rs`. They differ
-  only in dialect tokens (`NOW()`/`CURRENT_TIMESTAMP`, `$n`/`?`, `= ANY`/`IN`, date math,
-  JSON-merge ops). Real LOC, but genuine SQL-injection/correctness risk per fragment —
-  each must be verified against snapshots. `dequeue`/`initialize_database`/`connect` stay
-  per-driver forever (genuinely different).
+  Highest value, lowest risk (no SQL touched).
+- **Phase 2 (assessed, then REJECTED — see Outcome):** hoist the dialect-parameterized
+  CRUD bodies from pg/sqlt into `sql.rs`.
+
+## OUTCOME (2026-07-04)
+
+**Phase 1 — SHIPPED (commit 5cb1c720).** The `QueueProvider` trait + `Queue` newtype
+facade land; 13× 4-way match dispatch gone; worker-erasure deduplicated; third-party
+backends now implementable via `Queue::from_provider`. Gate green: fmt, clippy
+`-D warnings` (all backend combos), 60/60 bgworker tests (pg+sqlt+redis containers),
+monitoring readiness, zero snapshot drift.
+
+**Honest LOC reality:** Phase 1 is **+189 LOC** across the module (mod.rs 967→891, but
+four explicit ~14-method trait impls outweigh the terse match arms). This rewrite is an
+**architecture/extensibility win, not a line-count win** — it passes Jondot's
+"cleaner, precise, clearer, extensible" bar (adding an operation is now one trait method
++ impls, not edits to 13 match blocks; a new backend is one `impl`), but it does **not**
+reduce lines, and it was wrong of me to imply it would.
+
+**Phase 2 — REJECTED on a concrete spike (prove-why-not, and this time the "not" holds).**
+The pg/sqlt CRUD bodies (`enqueue`, `cancel_jobs_by_name`, `clear_by_status`,
+`clear_jobs_older_than`, `requeue`, `get_jobs`) differ only in dialect tokens, so a
+generic-over-executor hoist *looks* like free LOC. It is net-negative:
+
+- **The generic-executor pattern carries heavy bounds.** The existing `sql::ping`
+  precedent needs a 3-line `where E: sqlx::Executor<'e>, <E::Database as Database>::
+  Arguments: IntoArguments<E::Database>` clause to share a **one-line** body, plus a
+  per-backend wrapper each. For `cancel_jobs_by_name`: 2×~8 lines of dead-simple code
+  → ~14 shared (mostly bounds) + 2×3 wrappers = **~20 lines, and more indirection.**
+- **It regresses static SQL into dynamic SQL.** Each hoist turns a `sqlx::query("…literal…")`
+  into `sqlx::query(AssertSqlSafe(format!("…{table}…{now}…")))` — widening the
+  string-interpolation surface for a class of query that today is a self-evidently-safe
+  literal. Worse on both LOC and safety.
+- Each function has a **different signature/shape**, so they can't amortize one generic;
+  the date-math ones (`requeue`/`get_jobs`/`clear_jobs_older_than`) need extra per-dialect
+  cutoff fragments, and `clear_by_status` (`= ANY($1)` bind vs `IN (…)` inline) /
+  `complete_job`/`fail_job` (`json_patch` vs `|| ::jsonb`) are genuinely different logic.
+
+Verdict: the CRUD duplication is real but each function is short, static-SQL, tested, and
+correct at a glance. Replacing it with a dialect-fragment abstraction makes every query
+**harder** to read for a worse LOC count. Leaving it per-driver is the cleaner outcome.
+`dequeue`/`initialize_database`/`connect` stay per-driver forever (genuinely different).
 
 ## Gate (per phase)
 
