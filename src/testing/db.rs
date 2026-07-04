@@ -109,7 +109,6 @@ impl PostgresTest {
     }
 }
 
-#[async_trait::async_trait]
 impl TestSupport for PostgresTest {
     fn get_connection_str(&self) -> &str {
         &self.connection_string
@@ -192,7 +191,6 @@ impl SqliteTest {
     }
 }
 
-#[async_trait::async_trait]
 impl TestSupport for SqliteTest {
     fn get_connection_str(&self) -> &str {
         &self.connection_string

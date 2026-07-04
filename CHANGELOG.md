@@ -91,6 +91,10 @@
   `stack.insert_before("cors", ..)`, `.insert_after(..)`, `.replace(..)`, and
   `.delete("logger")` — matched by middleware name (Rails'
   `config.middleware.insert_before`/`delete`). Available via the prelude.
+- **Optional JWT extraction.** `JWT` now implements `OptionalFromRequestParts`,
+  so a handler can take `Option<JWT>` to serve authenticated and anonymous
+  callers from one endpoint (`Some` when a valid token is present, `None`
+  otherwise).
 - **Ergonomic verb-explicit route methods.** `Routes` now has `get`/`post`/
   `put`/`delete`/`patch`/`head`/`options`/`trace` builder methods —
   `Routes::new().get("/ping", ping)` alongside the existing

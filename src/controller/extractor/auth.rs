@@ -71,19 +71,27 @@ where
 
         let user = T::find_by_claims_key(&ctx.db, &claims.pid)
             .await
-            .map_err(|e| match e {
-                ModelError::EntityNotFound => Error::Unauthorized("not found".to_string()),
-                ModelError::DbErr(db_err) => {
-                    tracing::error!("Database error during authentication: {}", db_err);
-                    Error::InternalServerError
-                }
-                _ => {
-                    tracing::error!("Authentication error: {}", e);
-                    Error::Unauthorized("could not authorize".to_string())
-                }
-            })?;
+            .map_err(|e| map_auth_model_error(e, "jwt"))?;
 
         Ok(Self { claims, user })
+    }
+}
+
+/// Maps a model-lookup error from an auth extractor into an HTTP [`Error`]:
+/// not-found → 401, DB failure → 500, anything else → 401. `context` labels the
+/// auth path in the error log.
+#[cfg(feature = "with-db")]
+fn map_auth_model_error(err: ModelError, context: &str) -> Error {
+    match err {
+        ModelError::EntityNotFound => Error::Unauthorized("not found".to_string()),
+        ModelError::DbErr(db_err) => {
+            tracing::error!(context, error = %db_err, "database error during authentication");
+            Error::InternalServerError
+        }
+        _ => {
+            tracing::error!(context, error = %err, "authentication error");
+            Error::Unauthorized("could not authorize".to_string())
+        }
     }
 }
 
@@ -104,6 +112,25 @@ where
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
         extract_jwt_from_request_parts(parts, state)
+    }
+}
+
+/// Optional JWT extraction: yields `Some(JWT)` when a valid token is present
+/// and `None` otherwise (missing, malformed, or invalid). Lets a handler take
+/// `Option<JWT>` for endpoints that serve both authenticated and anonymous
+/// callers. Never rejects.
+impl<S> axum::extract::OptionalFromRequestParts<S> for JWT
+where
+    AppContext: FromRef<S>,
+    S: Send + Sync,
+{
+    type Rejection = std::convert::Infallible;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &S,
+    ) -> Result<Option<Self>, Self::Rejection> {
+        Ok(extract_jwt_from_request_parts(parts, state).ok())
     }
 }
 
@@ -280,17 +307,7 @@ where
         // Retrieve user information based on the API key from the database.
         let user = T::find_by_api_key(&state.db, &api_key)
             .await
-            .map_err(|e| match e {
-                ModelError::EntityNotFound => Error::Unauthorized("not found".to_string()),
-                ModelError::DbErr(db_err) => {
-                    tracing::error!("Database error during API key authentication: {}", db_err);
-                    Error::InternalServerError
-                }
-                _ => {
-                    tracing::error!("API key authentication error: {}", e);
-                    Error::Unauthorized("could not authorize".to_string())
-                }
-            })?;
+            .map_err(|e| map_auth_model_error(e, "api_key"))?;
 
         Ok(Self { user })
     }
@@ -861,6 +878,56 @@ mod tests {
         let result = extract_token(&jwt_config, &parts);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "query_token_value");
+    }
+
+    #[tokio::test]
+    async fn optional_jwt_returns_some_for_valid_token() {
+        let mut ctx = crate::tests_cfg::app::get_app_context().await;
+        let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
+        ctx.config.auth = Some(crate::config::Auth {
+            jwt: Some(JWTConfig {
+                location: None,
+                secret: secret.clone(),
+                expiration: 3600,
+            }),
+        });
+
+        let token = auth::jwt::JWT::new(&secret)
+            .generate_token(3600, "test_pid_123".to_string(), serde_json::Map::new())
+            .expect("generate token");
+
+        let request = axum::http::Request::builder()
+            .header(AUTH_HEADER, format!("{TOKEN_PREFIX}{token}"))
+            .body(())
+            .unwrap();
+        let (mut parts, ()) = request.into_parts();
+
+        let result =
+            <JWT as axum::extract::OptionalFromRequestParts<AppContext>>::from_request_parts(
+                &mut parts, &ctx,
+            )
+            .await
+            .expect("optional extraction never rejects");
+
+        let jwt = result.expect("expected Some(JWT) for a valid token");
+        assert_eq!(jwt.claims.pid, "test_pid_123");
+    }
+
+    #[tokio::test]
+    async fn optional_jwt_returns_none_without_auth_header() {
+        let ctx = crate::tests_cfg::app::get_app_context().await;
+
+        let request = axum::http::Request::builder().body(()).unwrap();
+        let (mut parts, ()) = request.into_parts();
+
+        let result =
+            <JWT as axum::extract::OptionalFromRequestParts<AppContext>>::from_request_parts(
+                &mut parts, &ctx,
+            )
+            .await
+            .expect("optional extraction never rejects");
+
+        assert!(result.is_none());
     }
 
     #[test]
