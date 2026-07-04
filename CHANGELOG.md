@@ -6,6 +6,12 @@
 
 ### Breaking Changes
 
+- **`ExtraDbInitializer` removed; use `MultiDbInitializer`.** The
+  single-extra-connection initializer (`initializers.extra_db`, which layered a
+  bare `Extension<DatabaseConnection>`) is gone. Use `MultiDbInitializer` with a
+  one-entry `initializers.multi_db` map instead, and extract the connection with
+  `Extension<MultiDb>` + `multi_db.get("<name>")`. This collapses two
+  near-identical initializers into one named-connections abstraction.
 - **Background queue reworked into a `QueueProvider` adapter interface.** The
   `bgworker::Queue` enum (`Postgres`/`Sqlite`/`Redis`/`None`) is now a newtype
   over `Arc<dyn QueueProvider>`, so backends are pluggable (implement

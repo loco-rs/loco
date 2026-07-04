@@ -1,6 +1,6 @@
 +++
 title = "Connect a second database"
-description = "Attach an extra database connection, or several, using the built-in extra_db and multi_db initializers."
+description = "Attach an extra database connection, or several, using the built-in multi_db initializer."
 date = 2021-05-01T18:10:00+00:00
 updated = 2021-05-01T18:10:00+00:00
 draft = false
@@ -16,64 +16,28 @@ top = false
 
 **Goal:** query a second (or third+) database from a controller, alongside the app's primary `ctx.db` connection — for example, a read replica, a legacy database, or per-tenant databases.
 
-Loco ships two ready-made [initializers](@/docs/how-to/add-middleware.md) for this: `ExtraDbInitializer` (exactly one extra connection) and `MultiDbInitializer` (a named map of connections). Both live under `loco_rs::initializers::{extra_db, multi_db}` and are gated behind the `with-db` feature. Each config entry accepts the same keys as the primary `database:` block — see [Configuration § database](@/docs/reference/configuration.md) for the full list (`uri`, `enable_logging`, `min_connections`, `max_connections`, `connect_timeout`, `idle_timeout`, `acquire_timeout`, `auto_migrate`, `dangerously_truncate`, `dangerously_recreate`, `run_on_start`).
+Loco ships a ready-made [initializer](@/docs/how-to/add-middleware.md) for this: `MultiDbInitializer`, a named map of connections. It lives under `loco_rs::initializers::multi_db` and is gated behind the `with-db` feature. Each config entry accepts the same keys as the primary `database:` block — see [Configuration § database](@/docs/reference/configuration.md) for the full list (`uri`, `enable_logging`, `min_connections`, `max_connections`, `connect_timeout`, `idle_timeout`, `acquire_timeout`, `auto_migrate`, `dangerously_truncate`, `dangerously_recreate`, `run_on_start`).
 
-## Option A: one extra database
+## Configure each named database
 
-### 1. Configure it
-
-Add an `extra_db` entry under the top-level `initializers` key in your environment config:
+Add one or more entries under a `multi_db` map, nested under the top-level `initializers` key in your environment config. A single extra connection is just a one-entry map:
 
 ```yaml
 initializers:
-  extra_db:
-    uri: postgres://loco:loco@localhost:5432/legacy_app
-    enable_logging: false
-    connect_timeout: 500
-    idle_timeout: 500
-    min_connections: 1
-    max_connections: 1
-    auto_migrate: false
-    dangerously_truncate: false
-    dangerously_recreate: false
+  multi_db:
+    secondary_db:
+      uri: postgres://loco:loco@localhost:5432/loco_app
+      enable_logging: false
+      connect_timeout: 500
+      idle_timeout: 500
+      min_connections: 1
+      max_connections: 1
+      auto_migrate: false
+      dangerously_truncate: false
+      dangerously_recreate: false
 ```
 
-### 2. Register the initializer
-
-```rust
-use loco_rs::app::{AppContext, Initializer};
-
-async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
-    let initializers: Vec<Box<dyn Initializer>> = vec![
-        Box::new(loco_rs::initializers::extra_db::ExtraDbInitializer),
-    ];
-
-    Ok(initializers)
-}
-```
-
-`ExtraDbInitializer` reads the `extra_db` config, opens the connection with `db::connect`, and layers it onto the router as an axum `Extension<DatabaseConnection>`.
-
-### 3. Use it in a controller
-
-```rust
-use sea_orm::{DatabaseConnection, EntityTrait};
-use axum::{response::IntoResponse, Extension};
-
-pub async fn list(
-    State(ctx): State<AppContext>,
-    Extension(legacy_db): Extension<DatabaseConnection>,
-) -> Result<impl IntoResponse> {
-    let res = Entity::find().all(&legacy_db).await;
-    format::json(res)
-}
-```
-
-## Option B: several named databases
-
-If you need more than one secondary connection, use `multi_db` instead — it's a map of arbitrary names to database configs.
-
-### 1. Configure each named database
+Add more entries to open more connections:
 
 ```yaml
 initializers:
@@ -100,7 +64,7 @@ initializers:
       dangerously_recreate: false
 ```
 
-### 2. Register the initializer
+## Register the initializer
 
 ```rust
 use loco_rs::app::{AppContext, Initializer};
@@ -114,7 +78,7 @@ async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
 }
 ```
 
-### 3. Look connections up by name
+## Look connections up by name
 
 `MultiDbInitializer` layers a `loco_rs::db::MultiDb` (a thin `HashMap<String, DatabaseConnection>` wrapper) as an axum `Extension`:
 
@@ -137,7 +101,15 @@ pub async fn list(
 
 ## Result
 
-`ctx.db` remains your app's primary connection (used for auto-migration, boot-time checks, etc.); the extra connection(s) arrive purely through axum `Extension` and only in handlers that ask for them. Register **either** `ExtraDbInitializer` **or** `MultiDbInitializer` — they read different config keys (`extra_db` vs `multi_db`) and layer different extension types, so pick the one matching the number of secondary databases you need.
+`ctx.db` remains your app's primary connection (used for auto-migration, boot-time checks, etc.); the extra connection(s) arrive purely through the `MultiDb` axum `Extension` and only in handlers that ask for them.
+
+## Migrating from `extra_db`
+
+`ExtraDbInitializer` has been removed in favor of `MultiDbInitializer`. To migrate:
+
+- Config: former `initializers.extra_db: { ... }` becomes `initializers.multi_db: { <name>: { ... } }` — pick a name for your connection and nest the same keys under it.
+- Registration: swap `Box::new(loco_rs::initializers::extra_db::ExtraDbInitializer)` for `Box::new(loco_rs::initializers::multi_db::MultiDbInitializer)`.
+- Handlers: change `Extension(db): Extension<DatabaseConnection>` to `Extension(multi_db): Extension<MultiDb>`, then look up the connection with `let db = multi_db.get("<name>")?;`.
 
 ## Next
 
