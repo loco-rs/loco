@@ -246,6 +246,7 @@ pub trait QueueProvider: Send + Sync {
 ///
 /// # Errors
 /// This function will return an error if a worker task fails to join
+#[cfg(any(feature = "bg_pg", feature = "bg_sqlt", feature = "bg_redis"))]
 pub(crate) async fn process_worker_handles(
     handles: Vec<tokio::task::JoinHandle<()>>,
 ) -> Result<()> {
