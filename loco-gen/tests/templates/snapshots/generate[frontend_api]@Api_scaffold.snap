@@ -1,0 +1,111 @@
+---
+source: loco-gen/tests/templates/scaffold.rs
+expression: "fs::read_to_string(frontend_path.join(\"api\").join(\"posts.ts\")).expect(\"frontend api file missing\")"
+---
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationResult,
+  type UseQueryResult,
+} from "@tanstack/react-query";
+import type { CreatePost } from "../bindings/CreatePost";
+import type { Page } from "../bindings/Page";
+import type { PostDto } from "../bindings/PostDto";
+import type { UpdatePost } from "../bindings/UpdatePost";
+import { ApiClientError, del, get, post, put } from "./client";
+
+export interface ListPostsParams {
+  page?: number;
+  per_page?: number;
+}
+
+export const postKeys = {
+  all: ["posts"] as const,
+  list: (params?: ListPostsParams) =>
+    ["posts", "list", params ?? {}] as const,
+  detail: (id: number) => ["posts", "detail", id] as const,
+};
+
+function buildQueryString(params?: ListPostsParams): string {
+  if (!params) {
+    return "";
+  }
+  const search = new URLSearchParams();
+  if (params.page !== undefined) {
+    search.set("page", String(params.page));
+  }
+  if (params.per_page !== undefined) {
+    search.set("per_page", String(params.per_page));
+  }
+  const qs = search.toString();
+  return qs ? `?${qs}` : "";
+}
+
+export function useListPosts(
+  params?: ListPostsParams,
+): UseQueryResult<Page<PostDto>, ApiClientError> {
+  return useQuery({
+    queryKey: postKeys.list(params),
+    queryFn: () => get<Page<PostDto>>(`/api/posts${buildQueryString(params)}`),
+  });
+}
+
+export function usePost(id: number): UseQueryResult<PostDto, ApiClientError> {
+  return useQuery({
+    queryKey: postKeys.detail(id),
+    queryFn: () => get<PostDto>(`/api/posts/${id}`),
+    enabled: Number.isFinite(id) && id > 0,
+  });
+}
+
+export function useCreatePost(): UseMutationResult<
+  PostDto,
+  ApiClientError,
+  CreatePost
+> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreatePost) => post<PostDto>("/api/posts", data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: postKeys.all });
+    },
+  });
+}
+
+export interface UpdatePostVariables {
+  id: number;
+  data: UpdatePost;
+}
+
+export function useUpdatePost(): UseMutationResult<
+  PostDto,
+  ApiClientError,
+  UpdatePostVariables
+> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: UpdatePostVariables) =>
+      put<PostDto>(`/api/posts/${id}`, data),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: postKeys.all });
+      void queryClient.invalidateQueries({
+        queryKey: postKeys.detail(variables.id),
+      });
+    },
+  });
+}
+
+export function useRemovePost(): UseMutationResult<
+  void,
+  ApiClientError,
+  number
+> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => del(`/api/posts/${id}`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: postKeys.all });
+    },
+  });
+}

@@ -6,3 +6,8 @@ expression: collect_messages(&gen_result)
 * A test for model `Posts` was added. Run with `cargo test`.
 * Controller `Post` was added successfully.
 * DTO `PostDto` was added successfully.
+* Frontend API hooks `posts.ts` were added successfully.
+* Frontend `Edit` page for `Post` was added successfully.
+* Frontend `List` page for `Post` was added successfully.
+* Frontend `New` page for `Post` was added successfully.
+* Frontend `Show` page for `Post` was added successfully.

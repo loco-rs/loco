@@ -44,6 +44,36 @@ async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {
     }
 ";
 
+/// A minimal `frontend/src/routes.tsx` fixture mirroring the shape of
+/// `examples/reference_spa/frontend/src/routes.tsx`, but carrying the
+/// `// scaffold:imports` / `// scaffold:routes` anchor comments the Api
+/// scaffold's `frontend_list.t` injects into. The once-per-app base
+/// `routes.tsx` (workstream 2c) must ship these two markers for real apps.
+pub const ROUTES_TSX_FIXTURE: &str = r"import { createBrowserRouter } from 'react-router'
+import { App } from './App'
+import { Login } from './auth/Login'
+import { RequireAuth } from './auth/RequireAuth'
+import { Home } from './pages/Home'
+// scaffold:imports
+
+export const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <App />,
+    children: [
+      { index: true, element: <Home /> },
+      { path: 'login', element: <Login /> },
+      {
+        element: <RequireAuth />,
+        children: [
+          // scaffold:routes
+        ],
+      },
+    ],
+  },
+])
+";
+
 pub fn guess_file_by_time(path: &Path, file_format: &str, max_attempts: u32) -> Option<PathBuf> {
     let now = Utc::now();
 

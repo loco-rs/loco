@@ -1,4 +1,4 @@
-use super::utils::{guess_file_by_time, APP_ROUTS, MIGRATION_SRC_LIB};
+use super::utils::{guess_file_by_time, APP_ROUTS, MIGRATION_SRC_LIB, ROUTES_TSX_FIXTURE};
 use insta::{assert_snapshot, with_settings};
 use loco_gen::{collect_messages, generate, tera_ext, AppInfo, Component, ScaffoldKind};
 use rrgen::RRgen;
@@ -179,6 +179,7 @@ fn can_generate_api_scaffold() {
         .add_empty("tests/models/mod.rs")
         .add("migration/src/lib.rs", MIGRATION_SRC_LIB)
         .add("src/app.rs", APP_ROUTS)
+        .add("frontend/src/routes.tsx", ROUTES_TSX_FIXTURE)
         .create()
         .unwrap();
 
@@ -250,6 +251,28 @@ fn can_generate_api_scaffold() {
         "inject[app_rs]",
         fs::read_to_string(tree_fs.root.join("src").join("app.rs"))
             .expect("app.rs injection failed")
+    );
+
+    // FRONTEND
+    let frontend_path = tree_fs.root.join("frontend").join("src");
+    assert_snapshot!(
+        "generate[frontend_api]",
+        fs::read_to_string(frontend_path.join("api").join("posts.ts"))
+            .expect("frontend api file missing")
+    );
+
+    let pages_path = frontend_path.join("pages").join("posts");
+    for page in ["List", "New", "Edit", "Show"] {
+        assert_snapshot!(
+            format!("generate[frontend_page_{page}]"),
+            fs::read_to_string(pages_path.join(format!("{page}.tsx")))
+                .unwrap_or_else(|_| panic!("frontend {page}.tsx file missing"))
+        );
+    }
+
+    assert_snapshot!(
+        "inject[routes_tsx]",
+        fs::read_to_string(frontend_path.join("routes.tsx")).expect("routes.tsx injection failed")
     );
 
     // no `tests/requests/<plural>.rs` is generated for the API scaffold: a

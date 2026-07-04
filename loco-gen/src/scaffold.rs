@@ -1,7 +1,7 @@
 use std::{collections::BTreeSet, path::Path};
 
 use cruet::Inflector;
-use heck::ToUpperCamelCase;
+use heck::{ToLowerCamelCase, ToUpperCamelCase};
 use rrgen::RRgen;
 use serde_json::{json, Value};
 
@@ -130,23 +130,95 @@ const fn prelude_import_for(col: &Column) -> Option<&'static str> {
     }
 }
 
+/// Human-friendly label for a column, used by the frontend List/New/Edit/Show
+/// templates, e.g. `published_at` -> `Published at` (only the leading
+/// character is capitalized -- matches `examples/reference_spa`'s
+/// hand-written labels such as "Created at").
+fn humanize_label(field_name: &str) -> String {
+    let mut label = field_name.replace('_', " ");
+    if let Some(first) = label.get_mut(0..1) {
+        first.make_ascii_uppercase();
+    }
+    label
+}
+
+/// The HTML form control the frontend New/Edit templates should render for
+/// this column. Finer-grained than `column::FormKind`: splits `Date` from
+/// `Time`/`DateTime`/`DateTimeTz` (only a bare `Date` column gets
+/// `type="date"`, the rest get `type="datetime-local"`), and splits
+/// `Decimal`/`DecimalLen`/`Money` -- which round-trip through TS as plain
+/// strings, so the reference SPA edits them as text, not `type="number"` --
+/// from true numeric types.
+fn frontend_input_kind(col: &Column) -> &'static str {
+    match &col.kind {
+        ColumnKind::Reference { .. } => "number",
+        ColumnKind::Array(_) => "textarea",
+        ColumnKind::Scalar(scalar) => match scalar {
+            ScalarType::Enum { .. } => "select",
+            ScalarType::Bool => "checkbox",
+            ScalarType::Date => "date",
+            ScalarType::Time | ScalarType::DateTime | ScalarType::DateTimeTz => "datetime",
+            ScalarType::Decimal | ScalarType::DecimalLen { .. } | ScalarType::Money => {
+                "text_number"
+            }
+            ScalarType::Text
+            | ScalarType::Json
+            | ScalarType::Jsonb
+            | ScalarType::Blob
+            | ScalarType::VarBinary { .. }
+            | ScalarType::BinaryLen { .. } => "textarea",
+            ScalarType::SmallInt
+            | ScalarType::Int
+            | ScalarType::BigInt
+            | ScalarType::SmallUnsigned
+            | ScalarType::Unsigned
+            | ScalarType::BigUnsigned
+            | ScalarType::Float
+            | ScalarType::Double => "number",
+            ScalarType::String | ScalarType::Uuid => "text",
+        },
+    }
+}
+
+/// The `New.tsx` initial-state JS literal for a non-enum column: `bool` gets
+/// `false`, any nullable column gets `null`, numeric-input columns get `0`,
+/// everything else (text/textarea/text_number/date/datetime) gets `""`. Enum
+/// columns are handled separately by the caller (first enum value wins,
+/// ahead of this nullable/number/string fallback chain).
+fn frontend_initial_value(col: &Column, input_kind: &str) -> String {
+    if matches!(&col.kind, ColumnKind::Scalar(ScalarType::Bool)) {
+        "false".to_string()
+    } else if col.nullable {
+        "null".to_string()
+    } else if input_kind == "number" {
+        "0".to_string()
+    } else {
+        "\"\"".to_string()
+    }
+}
+
 /// Builds the per-column template context for one user column (`fields` in
-/// the DTO/controller templates), plus the enum definition it carries when
-/// it's an enum column.
+/// the DTO/controller/frontend templates), plus the enum definition it
+/// carries when it's an enum column.
 ///
 /// See the module-level docs on the generator rebuild plan for the exact
 /// derivation rules: field naming, resource-prefixed enum types
 /// (`{PascalSingular}{UpperCamel(column)}`, e.g. `PostStatus`), and the
-/// `From<Model>`/`Set(...)` expressions per column shape.
+/// `From<Model>`/`Set(...)` expressions per column shape. The `label`/
+/// `is_enum`/`enum_type`/`options_const`/`nullable`/`input_kind`/
+/// `initial_value` keys are frontend-only additions consumed by the
+/// `frontend_*.t` templates (`loco-gen/src/templates/scaffold/api/`).
 fn build_field(col: &Column, pascal_singular: &str) -> (Value, Option<Value>) {
     let field_name = match &col.kind {
         ColumnKind::Reference { target, .. } => format!("{target}_id"),
         _ => col.name.clone(),
     };
+    let label = humanize_label(&field_name);
 
     if let ColumnKind::Scalar(ScalarType::Enum { values }) = &col.kind {
         let enum_base = col.name.to_singular().to_upper_camel_case();
         let enum_type = format!("{pascal_singular}{enum_base}");
+        let options_const = format!("{}_OPTIONS", col.name.to_uppercase());
 
         let variants: Vec<Value> = values
             .iter()
@@ -180,15 +252,26 @@ fn build_field(col: &Column, pascal_singular: &str) -> (Value, Option<Value>) {
             "ts_override": Value::Null,
             "from_expr": from_expr,
             "set_expr": set_expr,
+            "label": label,
+            "nullable": col.nullable,
+            "is_enum": true,
+            "enum_type": enum_type,
+            "options_const": options_const,
+            "input_kind": "select",
+            "initial_value": format!("\"{}\"", values[0]),
         });
         let enum_entry = json!({
             "enum_type": enum_type,
             "variants": variants,
             "match_arms": match_arms,
             "fallback_variant": fallback_variant,
+            "options_const": options_const,
         });
         return (field, Some(enum_entry));
     }
+
+    let input_kind = frontend_input_kind(col);
+    let initial_value = frontend_initial_value(col, input_kind);
 
     let field = json!({
         "field_name": field_name,
@@ -196,6 +279,13 @@ fn build_field(col: &Column, pascal_singular: &str) -> (Value, Option<Value>) {
         "ts_override": col.ts_type(),
         "from_expr": format!("m.{field_name}"),
         "set_expr": format!("params.{field_name}"),
+        "label": label,
+        "nullable": col.nullable,
+        "is_enum": false,
+        "enum_type": Value::Null,
+        "options_const": Value::Null,
+        "input_kind": input_kind,
+        "initial_value": initial_value,
     });
     (field, None)
 }
@@ -219,6 +309,12 @@ fn build_api_context(
     // cruet owns plural/singular only).
     let snake_plural = heck::ToSnakeCase::to_snake_case(plural_raw.as_str());
     let snake_singular = heck::ToSnakeCase::to_snake_case(singular_raw.as_str());
+    // Frontend-only resource-name forms: `pascal_plural` for
+    // `ListPostsParams`/`useListPosts`/the `List.tsx` `<h1>`, `camel_singular`
+    // for the `postKeys` query-key object and the `List.tsx` row-lambda
+    // binding.
+    let pascal_plural = plural_raw.to_upper_camel_case();
+    let camel_singular = singular_raw.to_lower_camel_case();
 
     let mut fields = Vec::new();
     let mut enums = Vec::new();
@@ -246,8 +342,48 @@ fn build_api_context(
         Value::String(format!("use sea_orm::prelude::{{{joined}}};"))
     };
 
+    // `Show.tsx`'s `<h1>` picks the first bare (non-`text`, non-nullable-vs-
+    // nullable-agnostic) `string` column as the "title" -- e.g. `title` in
+    // the reference `post` resource -- and the `<dl>` below it renders every
+    // *other* field. Falls back to the first column at all when no bare
+    // `string` column exists, so the template always has something to head
+    // the page with.
+    let title_field_name = columns
+        .iter()
+        .find(|c| matches!(c.kind, ColumnKind::Scalar(ScalarType::String)))
+        .or_else(|| columns.first())
+        .map(|c| c.name.clone());
+
+    // Route-injection payloads for `frontend/src/routes.tsx` (see
+    // `frontend_list.t`'s `injections`): built here, rather than looped in
+    // the template, because YAML block-scalar indentation inside a Tera
+    // frontmatter is fragile -- a single quoted flow scalar with `\n`
+    // (literal backslash-n, decoded to a real newline by `serde_yaml`) per
+    // line sidesteps that entirely. `frontend/src/routes.tsx` must carry the
+    // `// scaffold:imports` / `// scaffold:routes` anchor comments (a 2c
+    // dependency on the once-per-app base `routes.tsx`).
+    let frontend_imports_injection = ["Edit", "List", "New", "Show"]
+        .iter()
+        .map(|component| format!("import {{ {component} }} from './pages/{snake_plural}/{component}'"))
+        .collect::<Vec<_>>()
+        .join("\\n");
+    let frontend_routes_injection = [
+        (String::new(), "List"),
+        ("/new".to_string(), "New"),
+        ("/:id".to_string(), "Show"),
+        ("/:id/edit".to_string(), "Edit"),
+    ]
+    .iter()
+    .map(|(suffix, component)| {
+        format!("          {{ path: '{snake_plural}{suffix}', element: <{component} /> }},")
+    })
+    .collect::<Vec<_>>()
+    .join("\\n");
+
     json!({
         "pascal_singular": pascal_singular,
+        "pascal_plural": pascal_plural,
+        "camel_singular": camel_singular,
         "snake_plural": snake_plural,
         "snake_singular": snake_singular,
         "pkg_name": appinfo.app_name,
@@ -255,5 +391,8 @@ fn build_api_context(
         "prelude_use": prelude_use,
         "fields": fields,
         "enums": enums,
+        "title_field_name": title_field_name,
+        "frontend_imports_injection": frontend_imports_injection,
+        "frontend_routes_injection": frontend_routes_injection,
     })
 }
