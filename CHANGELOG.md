@@ -28,6 +28,22 @@
   `jsonwebtoken::Algorithm`. Asymmetric algorithms — which could never work with
   Loco's shared base64 secret and silently produced broken tokens — are no longer
   representable.
+- **`remote_ip` middleware rebuilt on `axum-client-ip`; `trusted_proxies`
+  removed.** Previously this middleware walked `X-Forwarded-For` right-to-left,
+  skipping any address in a configurable `trusted_proxies` CIDR list (or a
+  built-in RFC-1918 + loopback list), so it could see through a chain of one or
+  more trusted proxies. It now trusts exactly **one** configured source
+  (`source: ClientIpSource`, default `RightmostXForwardedFor`) and does **no**
+  CIDR filtering — for the default it takes the last comma-separated value of the
+  last `X-Forwarded-For` header verbatim, private or not. Single reverse-proxy
+  deployments are unaffected. **Multi-hop topologies (CDN → LB → ingress) must
+  now configure their innermost hop to set the client IP (e.g. nginx
+  `set_real_ip_from`/`real_ip_recursive`), or point `source` at a provider header
+  (`CfConnectingIp`, `CloudFrontViewerAddress`, `XRealIp`, `ConnectInfo`, …).**
+  Note: an old config's `trusted_proxies:` key is silently ignored (unknown
+  field), so review `remote_ip` before upgrading — this is a silent
+  security-relevant behavior change, not a load error. The `RemoteIP` extractor
+  and its `Display` output are unchanged.
 
 ### Added
 

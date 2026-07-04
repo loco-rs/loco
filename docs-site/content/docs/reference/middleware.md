@@ -120,17 +120,19 @@ Table order = coding/config order (`default_middleware_stack`, `mod.rs:80-169`).
 
 ### 5. `remote_ip`
 
-- **Config key:** `remote_ip` · **Struct:** `remote_ip::RemoteIpMiddleware { enable, trusted_proxies }` (`remote_ip.rs:95-102`)
+- **Config key:** `remote_ip` · **Struct:** `remote_ip::RemoteIpMiddleware { enable, source }` (`remote_ip.rs`)
 - **Default:** **disabled**.
-- **Purpose:** infers the client IP from `X-Forwarded-For`, skipping trusted proxies.
+- **Purpose:** resolves the client IP from a single, trusted source (a proxy header, or the raw socket address). Implemented as a thin wrapper over the [`axum-client-ip`](https://docs.rs/axum-client-ip) crate.
 - **Knobs:**
 
 | Name | Type | Default |
 |---|---|---|
 | `enable` | `bool` | `false` |
-| `trusted_proxies` | `Option<Vec<String>>` | `None` → built-in RFC-1918 + loopback ranges (`remote_ip.rs:39-46`) |
+| `source` | `axum_client_ip::ClientIpSource` | `RightmostXForwardedFor` |
 
-> `is_enabled()` is actually `enable && (trusted_proxies is None or non-empty)` — setting `trusted_proxies: []` disables the middleware even if `enable: true` (`remote_ip.rs:110-115`).
+`source` selects exactly one trusted source — there is no proxy-chain walking and no CIDR trust list. Valid values (serialized as the bare variant name, e.g. `source: XRealIp`): `RightmostXForwardedFor` (last value of the last `X-Forwarded-For` header, taken verbatim), `RightmostForwarded` (RFC 7239 `Forwarded` header), `CfConnectingIp` (Cloudflare), `CloudFrontViewerAddress` (AWS CloudFront), `FlyClientIp` (Fly.io), `TrueClientIp` (Akamai/Cloudflare), `XEnvoyExternalAddress` (Envoy/Istio), `XRealIp` (nginx), or `ConnectInfo` (the raw socket peer address, no header involved).
+
+> **BREAKING (was `trusted_proxies: Option<Vec<String>>`):** the old middleware hand-rolled `X-Forwarded-For` parsing, walking the header right-to-left and skipping any IP in a configurable trusted-proxy CIDR list (or a built-in RFC-1918 + loopback list) — i.e. it could see through a chain of one or more trusted proxies. The new `source` field trusts exactly **one** hop and applies no CIDR filtering at all. If you run multiple hops (CDN → load balancer → ingress), configure your innermost hop to compute and set the correct client IP itself, and point `source` at whatever header it writes (or pick a provider-specific source like `CfConnectingIp`).
 
 ### 6. `compression`
 

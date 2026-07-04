@@ -201,7 +201,9 @@ pub struct Config {
     /// Sets a set of secure headers
     pub secure_headers: Option<secure_headers::SecureHeader>,
 
-    /// Calculates a remote IP based on `X-Forwarded-For` when behind a proxy
+    /// Resolves the client's remote IP from a single, configured, trusted
+    /// source (a header such as `X-Forwarded-For`, or the raw socket) when
+    /// behind a proxy or load balancer.
     pub remote_ip: Option<remote_ip::RemoteIpMiddleware>,
 
     /// Configure fallback behavior when hitting a missing URL

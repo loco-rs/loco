@@ -82,10 +82,27 @@ async fn etag(#[case] enable: bool) {
 }
 
 #[rstest]
-#[case(true, "remote: 51.50.51.50")]
-#[case(false, "--")]
+// Enabled with the default `RightmostXForwardedFor` source: the rightmost
+// (last) value of `X-Forwarded-For` is taken verbatim, with **no**
+// trusted-proxy CIDR skipping (that behavior no longer exists) — so the
+// last hop (`192.1.1.1` here) wins, even though the old middleware would
+// have treated it as a trusted proxy and skipped it.
+#[case(true, None, "remote: 192.1.1.1")]
+// Configuring an alternative source picks a different header entirely.
+#[case(
+    true,
+    Some(middleware::remote_ip::ClientIpSource::XRealIp),
+    "remote: 9.9.9.9"
+)]
+// Disabled: no `ClientIpSource` extension is inserted into the router at
+// all, so the extractor resolves to `RemoteIP::None`.
+#[case(false, None, "--")]
 #[tokio::test]
-async fn remote_ip(#[case] enable: bool, #[case] expected: &str) {
+async fn remote_ip(
+    #[case] enable: bool,
+    #[case] source: Option<middleware::remote_ip::ClientIpSource>,
+    #[case] expected: &str,
+) {
     #[allow(clippy::items_after_statements)]
     async fn action(remote_ip: RemoteIP) -> Result<Response> {
         format::text(&remote_ip.to_string())
@@ -93,10 +110,14 @@ async fn remote_ip(#[case] enable: bool, #[case] expected: &str) {
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
-    ctx.config.server.middlewares.remote_ip = Some(middleware::remote_ip::RemoteIpMiddleware {
+    let mut middleware_config = middleware::remote_ip::RemoteIpMiddleware {
         enable,
-        trusted_proxies: Some(vec!["192.1.1.1/8".to_string()]),
-    });
+        ..Default::default()
+    };
+    if let Some(source) = source {
+        middleware_config.source = source;
+    }
+    ctx.config.server.middlewares.remote_ip = Some(middleware_config);
 
     let port = get_available_port().await;
     let handle = infra_cfg::server::start_with_route(ctx, "/", get(action), Some(port)).await;
@@ -106,6 +127,10 @@ async fn remote_ip(#[case] enable: bool, #[case] expected: &str) {
         .header(
             "x-forwarded-for",
             reqwest::header::HeaderValue::from_static("51.50.51.50,192.1.1.1"),
+        )
+        .header(
+            "x-real-ip",
+            reqwest::header::HeaderValue::from_static("9.9.9.9"),
         )
         .send()
         .await

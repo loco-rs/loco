@@ -126,7 +126,7 @@ validator = { version = "0.20.0", features = ["derive"] }
 futures-util = "0.3"
 tower = { workspace = true }
 bytes = "1.11"
-ipnetwork = "0.21"
+axum-client-ip = { version = "1.3", features = ["forwarded-header"] }
 semver = "1"
 url = "2"
 cargo-lock = { version = "11", default-features = false }

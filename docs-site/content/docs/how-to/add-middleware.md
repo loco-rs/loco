@@ -47,7 +47,7 @@ limit_payload          {"body_limit":{"Limit":2000000}}
 cors                   (disabled)
 catch_panic            {"enable":true}
 etag                   {"enable":true}
-remote_ip              {"enable":true,"trusted_proxies":null}
+remote_ip              {"enable":true,"source":"RightmostXForwardedFor"}
 compression            {"enable":true}
 timeout_request        (disabled)
 static                 (disabled)
