@@ -41,6 +41,12 @@ sea-orm = { version = "2.0.0-rc", features = [
 chrono = { version = "0.4" }
 validator = { version = "0.20" }
 uuid = { version = "1.6", features = ["v4"] }
+# pin: 0.18.1 breaks sea-orm 2.0.0-rc.41's ?Send Connection impl; remove once Sea-ORM 2.0 is stable
+sea-schema = "=0.18.0"
+# ts-rs derives the TypeScript bindings for the `dtos` (the typed JSON API
+# contract). Present for every db app; the SPA frontend consumes the exports,
+# and a headless app can still emit them for external consumers.
+ts-rs = { version = "12", features = ["chrono-impl", "serde-compat"] }
 {%- endif %}
 
 {%- if settings.mailer %}

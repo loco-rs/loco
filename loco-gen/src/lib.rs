@@ -99,6 +99,11 @@ pub enum Component {
 
         /// Model and params fields, eg. title:string hits:int
         fields: Vec<(String, String)>,
+
+        /// Whether to also emit the React-SPA frontend (hooks + pages + routes
+        /// injection). Set when the app has a clientside `frontend/`; when
+        /// `false` only the typed backend (DTO + controller) is emitted.
+        frontend: bool,
     },
     Controller {
         /// Name of the thing to generate
@@ -163,7 +168,8 @@ pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Resul
             name,
             with_tz,
             fields,
-        } => scaffold::generate(rrgen, &name, with_tz, &fields, appinfo)?,
+            frontend,
+        } => scaffold::generate(rrgen, &name, with_tz, &fields, frontend, appinfo)?,
         #[cfg(feature = "with-db")]
         Component::Migration {
             name,

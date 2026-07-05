@@ -56,6 +56,10 @@ if db {
     gen.copy_template("migration/Cargo.toml.t");                  // Database migrations Cargo configuration
     gen.copy_template("migration/src/lib.rs.t");                  // Database migrations library
 
+    // Typed JSON API contract (Page<T>, ApiError) — DTOs derive the ts-rs
+    // bindings; present for every db app, consumed by the SPA frontend.
+    gen.copy_dir("src/dtos");
+
     // Entity modules for database models
     gen.copy_template("src/models/_entities/mod.rs.t");            // Root module for database entities
     gen.copy_template("src/models/_entities/prelude.rs.t");            // Root module for database entities

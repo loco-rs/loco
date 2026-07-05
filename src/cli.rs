@@ -382,6 +382,10 @@ impl ComponentArg {
                 name,
                 with_tz: !without_tz,
                 fields,
+                // Adaptive: emit the React-SPA frontend only when this is a
+                // clientside app (its once-per-app `frontend/src/routes.tsx`
+                // exists). Headless/serverside apps get the typed backend only.
+                frontend: std::path::Path::new("frontend/src/routes.tsx").exists(),
             }),
             Self::Controller { name, actions } => {
                 Ok(loco_gen::Component::Controller { name, actions })

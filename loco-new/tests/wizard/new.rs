@@ -33,10 +33,11 @@ use loco::{
 #[case(DBOption::Sqlite, AssetsOption::None)]
 // SaaS, serverside
 #[case(DBOption::None, AssetsOption::Serverside)]
-// SaaS, clientside
+// SaaS, clientside (no db)
 #[case(DBOption::None, AssetsOption::Clientside)]
-// test only DB
-#[case(DBOption::Sqlite, AssetsOption::None)]
+// full-stack SPA: db + clientside — the flagship `generate scaffold` path
+// (typed backend DTO+controller + React Query hooks/pages + routes injection)
+#[case(DBOption::Sqlite, AssetsOption::Clientside)]
 fn test_starter_combinations(#[case] db: DBOption, #[case] asset: AssetsOption) {
     test_combination(db, asset, true);
 }
@@ -76,34 +77,8 @@ fn test_combination(db: DBOption, asset: AssetsOption, test_generator: bool) {
         .expect("run test after create new project");
 
     if test_generator {
-        // Generate API controller
-        tester.run_generate(&vec![
-            "controller",
-            "notes_api",
-            "--api",
-            "create_note",
-            "get_note",
-        ]);
-
-        if asset.enable() {
-            // Generate HTMX controller
-            tester.run_generate(&vec![
-                "controller",
-                "notes_htmx",
-                "--htmx",
-                "create_note",
-                "get_note",
-            ]);
-
-            // Generate HTML controller
-            tester.run_generate(&vec![
-                "controller",
-                "notes_html",
-                "--html",
-                "create_note",
-                "get_note",
-            ]);
-        }
+        // Generate controller
+        tester.run_generate(&vec!["controller", "notes_api", "create_note", "get_note"]);
 
         // Generate Task
         tester.run_generate(&vec!["task", "list_users"]);
@@ -135,33 +110,12 @@ fn test_combination(db: DBOption, asset: AssetsOption, test_generator: bool) {
             }
             tester.run_generate(&vec!["model", "movies", "title:string", "user:references"]);
 
-            if asset.enable() {
-                // Generate HTMX Scaffold
-                tester.run_generate(&vec![
-                    "scaffold",
-                    "movies_htmx",
-                    "title:string",
-                    "user:references",
-                    "--htmx",
-                ]);
-
-                // Generate HTML Scaffold
-                tester.run_generate(&vec![
-                    "scaffold",
-                    "movies_html",
-                    "title:string",
-                    "user:references",
-                    "--html",
-                ]);
-            }
-
-            // Generate API Scaffold
+            // Generate Scaffold
             tester.run_generate(&vec![
                 "scaffold",
                 "movies_api",
                 "title:string",
                 "user:references",
-                "--api",
             ]);
 
             // Generate CreatePosts migration

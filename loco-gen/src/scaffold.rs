@@ -10,16 +10,21 @@ use crate::{
     model, render_template, AppInfo, GenerateResults, Result,
 };
 
-/// Loco 1.0 ships a single scaffold flavor: DTO + controller + React-SPA
-/// frontend (`src/dtos/<plural>.rs` + `src/controllers/<plural>.rs` +
-/// `frontend/src/pages/<plural>/*.tsx`), built straight from
+/// Loco 1.0 ships a single scaffold flavor built straight from
 /// `column::Column` (the single source of truth for column type
-/// information) via [`build_api_context`].
+/// information) via [`build_api_context`]. It is **adaptive**: the typed
+/// backend (`src/dtos/<plural>.rs` + `src/controllers/<plural>.rs`) is always
+/// emitted, so a headless/REST app gets a typed resource; the React-SPA
+/// frontend (`frontend/src/api/<plural>.ts` + `frontend/src/pages/<plural>/
+/// *.tsx` + the `routes.tsx` injection) is emitted only when `frontend` is
+/// `true` -- i.e. the app has a clientside `frontend/` -- so non-SPA apps get
+/// no orphan frontend files.
 pub fn generate(
     rrgen: &RRgen,
     name: &str,
     with_tz: bool,
     fields: &[(String, String)],
+    frontend: bool,
     appinfo: &AppInfo,
 ) -> Result<GenerateResults> {
     // - scaffold is never a link table
@@ -29,9 +34,19 @@ pub fn generate(
 
     let api_columns = column::columns_from_fields(fields)?;
     let api_vars = build_api_context(name, &api_columns, with_tz, appinfo);
+
+    // Backend (DTO + controller) -- always emitted.
     let res = render_template(rrgen, Path::new("scaffold/api"), &api_vars)?;
     gen_result.rrgen.extend(res.rrgen);
     gen_result.local_templates.extend(res.local_templates);
+
+    // Frontend (React Query hooks + pages + routes injection) -- only when the
+    // app has a clientside frontend.
+    if frontend {
+        let fres = render_template(rrgen, Path::new("scaffold/frontend"), &api_vars)?;
+        gen_result.rrgen.extend(fres.rrgen);
+        gen_result.local_templates.extend(fres.local_templates);
+    }
 
     Ok(gen_result)
 }

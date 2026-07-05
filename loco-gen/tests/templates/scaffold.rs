@@ -32,6 +32,7 @@ fn can_generate() {
             ("price".to_string(), "decimal!".to_string()),
             ("published_at".to_string(), "tstz".to_string()),
         ],
+        frontend: true,
     };
 
     let tree_fs = tree_fs::TreeBuilder::default()
@@ -141,4 +142,57 @@ fn can_generate() {
     // non-compiling generated controller test is worse than none (see
     // `api/test.t`'s removal).
     assert!(!tree_fs.root.join("tests/requests").exists());
+}
+
+/// Adaptive scaffold, headless path: with `frontend: false` (a non-clientside
+/// app, no `frontend/`), only the typed backend (DTO + controller) is emitted
+/// and NO frontend files/dir are created.
+#[test]
+fn can_generate_backend_only_without_frontend() {
+    // SAFETY: test-local env setup; no other thread reads the environment during this test.
+    unsafe { std::env::set_var("SKIP_MIGRATION", "") };
+
+    let component = Component::Scaffold {
+        name: "post".to_string(),
+        with_tz: true,
+        fields: vec![
+            ("title".to_string(), "string!".to_string()),
+            ("content".to_string(), "text!".to_string()),
+            (
+                "status".to_string(),
+                "enum:draft,published,archived!".to_string(),
+            ),
+            ("price".to_string(), "decimal!".to_string()),
+            ("published_at".to_string(), "tstz".to_string()),
+        ],
+        frontend: false,
+    };
+
+    // note: NO `frontend/src/routes.tsx` fixture -- this is a headless app.
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add_empty("src/controllers/mod.rs")
+        .add_empty("src/dtos/mod.rs")
+        .add_empty("tests/models/mod.rs")
+        .add("migration/src/lib.rs", MIGRATION_SRC_LIB)
+        .add("src/app.rs", APP_ROUTS)
+        .create()
+        .unwrap();
+
+    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+
+    generate(
+        &rrgen,
+        component,
+        &AppInfo {
+            app_name: "tester".to_string(),
+        },
+    )
+    .expect("Generation failed");
+
+    // backend emitted
+    assert!(tree_fs.root.join("src/dtos/posts.rs").exists());
+    assert!(tree_fs.root.join("src/controllers/posts.rs").exists());
+    // frontend NOT emitted -- no orphan files or `frontend/` dir
+    assert!(!tree_fs.root.join("frontend").exists());
 }
