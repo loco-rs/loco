@@ -27,7 +27,7 @@ serial_test = "*"
 insta = { version = "*", features = ["redactions"] }
 ```
 
-## 2. Write a request test with `request::<App>()`
+## 2. Write a request test with `request::<App, _, _>()`
 
 `request` boots your app in `Environment::Test` and gives you an in-memory `TestServer` plus the app's `AppContext` — no DB is created:
 
@@ -39,7 +39,7 @@ use serial_test::serial;
 #[tokio::test]
 #[serial]
 async fn can_get_notes() {
-    request::<App>(|request, _ctx| async move {
+    request::<App, _, _>(|request, _ctx| async move {
         let res = request.get("/api/notes/").await;
         assert_eq!(res.status_code(), 200);
     })
@@ -79,7 +79,7 @@ let config = RequestConfigBuilder::new()
     .default_content_type("application/json")
     .build();
 
-request_with_config::<App>(config, |request, _ctx| async move {
+request_with_config::<App, _, _>(config, |request, _ctx| async move {
     // cookies set by one call are sent on subsequent calls in this closure
     request.post("/session/login").json(&payload).await;
     let res = request.get("/session/me").await;

@@ -187,21 +187,6 @@ let total = page.total_pages;
 let total = page.meta.total_pages;   // also: page.meta.page, page.meta.page_size, page.meta.total_items
 ```
 
-### Test request helpers: drop the `, _, _` turbofish
-
-The test request helpers now take an `impl AsyncFnOnce(TestServer, AppContext)`,
-so the two inferred type parameters are gone:
-
-```rust
-// before
-request::<App, _, _>(|request, ctx| async move { /* ... */ }).await;
-// after
-request::<App>(|request, ctx| async move { /* ... */ }).await;
-```
-
-This applies to `request`, `request_with_config`, `request_with_create_db`, and
-`request_config_with_create_db`. Generated tests already use the new form.
-
 ### Dependency majors
 
 0.17 bumps several dependency majors. These are transitive for most apps — you
@@ -546,7 +531,7 @@ from:
 
 ```rust
 async fn load_page() {
-    request::<App>(|request, ctx| async move {
+    request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx.db).await.unwrap();
         ...
     })
@@ -558,7 +543,7 @@ to
 
 ```rust
 async fn load_page() {
-    request::<App>(|request, ctx| async move {
+    request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
         ...
     })

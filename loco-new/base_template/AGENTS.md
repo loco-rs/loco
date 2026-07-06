@@ -34,7 +34,7 @@ tests/                # request/model/task tests
 - Config is YAML in `config/`; secrets come from the environment via the
   `get_env` Tera helper inside the YAML.
 - Primary/foreign keys are `i64` (this is Loco 0.17+).
-- Tests: `request::<App>(|request, ctx| async move { ... }).await;`.
+- Tests: `request::<App, _, _>(|request, ctx| async move { ... }).await;`.
 
 ## Useful commands
 

@@ -26,7 +26,7 @@ Prelude (`src/testing/prelude.rs:1-3`): re-exports `db::*` (with-db only), `reda
 ### A.2 Request helpers — `src/testing/request.rs`
 | Fn | file:line | Notes |
 |---|---|---|
-| `request<H: Hooks>(callback)` | `:302` | Default `RequestConfig`, no DB creation. Callback is `AsyncFnOnce(TestServer, AppContext)`. |
+| `request<H: Hooks, F, Fut>(callback)` | `:302` | Default `RequestConfig`, no DB creation. Callback is `FnOnce(TestServer, AppContext) -> Fut` where `Fut: Future<Output = ()>`. |
 | `request_with_config<H>(config, callback)` | `:347` | Custom `RequestConfig`. |
 | `request_with_create_db<H>(callback)` | `:327` | with-db only; fresh DB. |
 | `request_config_with_create_db<H>(config, callback)` | `:373` | with-db only; custom config + fresh DB. |

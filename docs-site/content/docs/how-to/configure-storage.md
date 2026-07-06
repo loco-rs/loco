@@ -214,7 +214,7 @@ use loco_rs::testing::prelude::*;
 #[tokio::test]
 #[serial]
 async fn can_upload_and_download() {
-    request::<App>(|request, ctx| async move {
+    request::<App, _, _>(|request, ctx| async move {
         let file_content = "loco file upload";
         let file_part = Part::bytes(file_content.as_bytes()).file_name("loco.txt");
         let multipart_form = MultipartForm::new().add_part("file", file_part);

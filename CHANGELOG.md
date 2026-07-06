@@ -228,9 +228,6 @@ broad dependency modernization. Follow the step-by-step
   `perform_later(...).await?;` keeps working. ([#1624](https://github.com/loco-rs/loco/pull/1624), fixes [#1623](https://github.com/loco-rs/loco/issues/1623))
 - **`PageResponse<T>` exposes `meta: PagerMeta`** instead of flat
   `total_pages`/`total_items` (also carries `page`/`page_size`). ([#1685](https://github.com/loco-rs/loco/pull/1685), fixes [#1683](https://github.com/loco-rs/loco/issues/1683))
-- **Test request helpers take `impl AsyncFnOnce`** — call `request::<App>(...)`
-  (drop the `, _, _` turbofish). Applies to `request`, `request_with_config`,
-  `request_with_create_db`, `request_config_with_create_db`. ([#1657](https://github.com/loco-rs/loco/pull/1657))
 - **`loco_rs::Error` is `#[non_exhaustive]`.** Add a wildcard `_ => ...` arm to
   exhaustive matches.
 - **View engine:** use `engines::TeraView::build_with_post_process(...)` instead

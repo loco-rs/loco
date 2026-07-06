@@ -195,10 +195,10 @@ async fn can_list() {
 
 - Requires the `testing` feature (off by default in a plain lib dep, on for
   the generated app's dev-dependencies).
-- Request helpers take an `impl AsyncFnOnce` — call `request::<App>(...)`
-  (drop the old `::<App, _, _>` turbofish). Boot helper `boot_test::<H>()` is
+- Request helpers take a callback `|request, ctx| async move { ... }` — call
+  `request::<App, _, _>(...)`. Boot helper `boot_test::<H>()` is
   **single-generic** (not `boot_test::<App, Migrator>()`).
-- Use `request_with_create_db::<App>(...)` for DB-backed tests (fresh DB,
+- Use `request_with_create_db::<App, _, _>(...)` for DB-backed tests (fresh DB,
   auto-cleaned), seed with fixtures, and snapshot with `insta` (use
   `testing::redaction::cleanup_user_model()`/`cleanup_email()` filters).
   `#[serial]` DB tests that share state.
@@ -211,8 +211,8 @@ async fn can_list() {
 - ❌ Hand-writing entities in `_entities/`. ✅ Generate via migrations.
 - ❌ `i32` primary keys / `Path<i32>`, or assuming `int` fields are 32-bit.
   ✅ `i64` everywhere in 1.0 (keys, FKs, and the `int` field type).
-- ❌ `request::<App, _, _>(...)` / `boot_test::<App, Migrator>()`. ✅
-  `request::<App>(...)` / `boot_test::<H>()` in 1.0.
+- ❌ `boot_test::<App, Migrator>()` (the old two-generic boot helper). ✅
+  `boot_test::<H>()` in 1.0.
 - ❌ Building routes without registering them in `app.rs`. ✅ Return `Routes`
   from `routes()` and register in `Hooks::routes`.
 - ❌ Custom error types for handlers. ✅ Return `loco_rs::Result<Response>` and

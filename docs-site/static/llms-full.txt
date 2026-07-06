@@ -690,7 +690,7 @@ use loco_rs::testing::prelude::*;
 #[tokio::test]
 #[serial]
 async fn can_list_posts() {
-    request::<App>(|request, _ctx| async move {   // single generic: ::<App>, not ::<App, _, _>
+    request::<App, _, _>(|request, _ctx| async move {   // single generic: ::<App>, not ::<App, _, _>
         let res = request.get("/api/posts/").await;
         assert_eq!(res.status_code(), 200);
     })
@@ -703,8 +703,8 @@ async fn can_list_posts() {
   (with-db, fresh DB per test, auto-cleaned on drop), `boot_test_unique_port
   ::<H>(port)`. **`boot_test` takes a single generic `<H>`** — `boot_test::
   <App, Migrator>()` does not compile.
-- Request helpers: `request::<App>`, `request_with_config::<App>`,
-  `request_with_create_db::<App>` (with-db, fresh DB), `request_config_
+- Request helpers: `request::<App, _, _>`, `request_with_config::<App, _, _>`,
+  `request_with_create_db::<App, _, _>` (with-db, fresh DB), `request_config_
   with_create_db::<App>`. `RequestConfigBuilder` sets `save_cookies`,
   `default_content_type`, `default_scheme`.
 - DB test support (`testing::db`, with-db): `seed::<App>(&ctx)` (reads
@@ -845,8 +845,8 @@ skipped if you type them explicitly.
   `unsafe {}`. Generated apps remain edition 2021.
 - **`embedded_assets`** swaps the view engine + static-assets middleware for
   embedded (binary-baked) variants.
-- Test helpers take `impl AsyncFnOnce` — `request::<App>(...)`, not the old
-  `request::<App, _, _>(...)`; `boot_test<H>()` is single-generic, not
+- Test request helpers take a callback `|request, ctx| async move { ... }` —
+  call `request::<App, _, _>(...)`; `boot_test<H>()` is single-generic, not
   `boot_test::<App, Migrator>()`.
 
 ## 19. Common pitfalls (avoid)
@@ -855,8 +855,8 @@ skipped if you type them explicitly.
   servers/pools by hand → ✅ use `ctx` and generators.
 - ❌ Hand-editing `_entities/` → ✅ generate via migrations.
 - ❌ `i32` keys / `Path<i32>` → ✅ `i64` in 1.0.
-- ❌ `request::<App, _, _>` / `boot_test::<App, Migrator>()` → ✅
-  `request::<App>(...)` / `boot_test::<H>()`.
+- ❌ `boot_test::<App, Migrator>()` (old two-generic boot helper) → ✅
+  `boot_test::<H>()`.
 - ❌ Routes not registered in `app.rs` → ✅ return `Routes` and add via
   `Hooks::routes` / `AppRoutes::add_route`.
 - ❌ Custom error enums for app code → ✅ `loco_rs::Result` + `?`.
