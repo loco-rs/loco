@@ -34,11 +34,24 @@ where
     // Deserialize YAML file into a vector of JSON values
     let seed_data: Vec<Value> = serde_yaml::from_reader(File::open(path)?)?;
 
-    // Insert each row
+    // Insert each row.
+    //
+    // NOTE: we deserialize the fixture row straight into the entity `Model` and
+    // then convert, instead of `ActiveModelTrait::from_json`. On sea-orm
+    // 2.0.0-rc.41, `from_json` first merges every column's *default* value via
+    // `sea_query::sea_value_to_json_value`, which renders chrono datetimes as
+    // SQL-literal strings (`'1970-01-01 00:00:00.000000 +00:00'`) and NULLs as
+    // the literal string `"NULL"`. Those then fail chrono's RFC3339 serde parse
+    // ("input contains invalid characters") when the merged object is
+    // deserialized back into the `Model`, which breaks seeding for ANY entity
+    // with datetime columns. Deserializing the row directly skips the broken
+    // default-merge (fixtures already carry every required column). Revisit once
+    // the upstream sea-orm fix lands.
     let mut seed_models = Vec::new();
     for row in seed_data {
-        let model = A::from_json(row)?;
-        seed_models.push(model);
+        let model: <<A as ActiveModelTrait>::Entity as EntityTrait>::Model =
+            serde_json::from_value(row)?;
+        seed_models.push(model.into_active_model());
     }
     A::Entity::insert_many(seed_models).exec(db).await?;
 
