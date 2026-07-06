@@ -12,11 +12,11 @@ use crate::{
     models::_entities::posts::{ActiveModel, Column, Entity},
 };
 
-fn default_page() -> u64 {
+const fn default_page() -> u64 {
     1
 }
 
-fn default_per_page() -> u64 {
+const fn default_per_page() -> u64 {
     25
 }
 
@@ -60,9 +60,9 @@ async fn list(
 
     Ok(Json(Page {
         items: items.into_iter().map(PostDto::from).collect(),
-        total: total as i64,
-        page: page as i64,
-        per_page: per_page as i64,
+        total: i64::try_from(total).unwrap_or(i64::MAX),
+        page: i64::try_from(page).unwrap_or(i64::MAX),
+        per_page: i64::try_from(per_page).unwrap_or(i64::MAX),
     }))
 }
 
@@ -72,11 +72,10 @@ async fn get_one(
     State(ctx): State<AppContext>,
     Path(id): Path<i64>,
 ) -> Result<Response> {
-    let item = Entity::find_by_id(id).one(&ctx.db).await?;
-    match item {
-        Some(model) => Ok(Json(PostDto::from(model)).into_response()),
-        None => Ok(not_found("post not found")),
-    }
+    let Some(model) = Entity::find_by_id(id).one(&ctx.db).await? else {
+        return Ok(not_found("post not found"));
+    };
+    Ok(Json(PostDto::from(model)).into_response())
 }
 
 #[debug_handler]

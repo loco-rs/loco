@@ -50,9 +50,9 @@ impl Task for UserCreate {
                     user_email = &register_params.email,
                     "could not create user via task"
                 );
-                return Err(Error::string(
-                    &format!("Failed to create user. err: {err}",),
-                ));
+                return Err(Error::string(&format!(
+                    "Failed to create user. err: {err}"
+                )));
             }
         };
 

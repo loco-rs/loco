@@ -27,7 +27,7 @@ impl From<String> for {{ e.enum_type }} {
 
 impl {{ e.enum_type }} {
     #[must_use]
-    pub fn as_str(&self) -> &'static str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
 {% for v in e.variants %}            Self::{{ v.variant }} => "{{ v.value }}",
 {% endfor %}        }
