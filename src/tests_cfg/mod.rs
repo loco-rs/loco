@@ -5,7 +5,7 @@ pub mod controllers;
 pub mod db;
 #[cfg(test)]
 pub mod postgres;
-#[cfg(any(feature = "bg_pg", feature = "bg_sqlt"))]
+#[cfg(feature = "worker")]
 pub mod queue;
 #[cfg(test)]
 pub mod redis;

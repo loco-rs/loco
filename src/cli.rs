@@ -24,7 +24,7 @@ use std::fmt::Write;
 use std::process::exit;
 use std::{collections::BTreeMap, path::PathBuf};
 
-#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+#[cfg(feature = "worker")]
 use crate::bgworker::JobStatus;
 #[cfg(debug_assertions)]
 use crate::controller;
@@ -112,7 +112,7 @@ enum Commands {
         #[clap(value_parser = parse_key_val::<String,String>)]
         params: Vec<(String, String)>,
     },
-    #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+    #[cfg(feature = "worker")]
     /// Managing jobs queue.
     Jobs {
         #[command(subcommand)]
@@ -521,7 +521,7 @@ impl DeploymentKind {
     }
 }
 
-#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+#[cfg(feature = "worker")]
 #[derive(Subcommand)]
 enum JobsCommands {
     /// Cancels jobs with the specified names, setting their status to
@@ -716,7 +716,7 @@ async fn dispatch_common<H: Hooks>(
             let vars = task::Vars::from_cli_args(params);
             run_task::<H>(&app_context, name.as_ref(), &vars).await?;
         }
-        #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+        #[cfg(feature = "worker")]
         Commands::Jobs { command } => {
             handle_job_command(command, &app_context).await?;
         }
@@ -1092,7 +1092,7 @@ fn start_mode_from_flags(
     }
 }
 
-#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+#[cfg(feature = "worker")]
 async fn handle_job_command(command: JobsCommands, app_context: &AppContext) -> crate::Result<()> {
     let queue = app_context.queue_provider.clone().unwrap_or_else(|| {
         println!("queue not configured");

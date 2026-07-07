@@ -407,7 +407,7 @@ mod tests {
         assert_eq!(res_json["ok"], true);
     }
 
-    #[cfg(feature = "bg_redis")]
+    #[cfg(feature = "worker_redis")]
     #[tokio::test]
     async fn readiness_with_queue_present_failure() {
         let mut ctx = tests_cfg::app::get_app_context().await;

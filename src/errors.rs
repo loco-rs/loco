@@ -147,11 +147,11 @@ pub enum Error {
     #[error(transparent)]
     InvalidMethod(#[from] InvalidMethod),
 
-    #[cfg(feature = "bg_redis")]
+    #[cfg(feature = "worker_redis")]
     #[error(transparent)]
     Redis(#[from] redis::RedisError),
 
-    #[cfg(any(feature = "bg_pg", feature = "bg_sqlt"))]
+    #[cfg(feature = "worker")]
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
 

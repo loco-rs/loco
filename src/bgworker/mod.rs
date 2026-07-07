@@ -13,13 +13,13 @@ use futures_util::FutureExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use serde_variant::to_variant_name;
-#[cfg(feature = "bg_pg")]
+#[cfg(feature = "worker")]
 pub mod pg;
-#[cfg(feature = "bg_redis")]
+#[cfg(feature = "worker_redis")]
 pub mod redis;
-#[cfg(any(feature = "bg_pg", feature = "bg_sqlt"))]
+#[cfg(feature = "worker")]
 pub(crate) mod sql;
-#[cfg(feature = "bg_sqlt")]
+#[cfg(feature = "worker")]
 pub mod sqlt;
 
 use crate::{
@@ -246,7 +246,7 @@ pub trait QueueProvider: Send + Sync {
 ///
 /// # Errors
 /// This function will return an error if a worker task fails to join
-#[cfg(any(feature = "bg_pg", feature = "bg_sqlt", feature = "bg_redis"))]
+#[cfg(feature = "worker")]
 pub(crate) async fn process_worker_handles(
     handles: Vec<tokio::task::JoinHandle<()>>,
 ) -> Result<()> {
@@ -757,17 +757,17 @@ pub async fn create_queue_provider(config: &Config) -> Result<Option<Arc<Queue>>
     if config.workers.mode == config::WorkerMode::BackgroundQueue {
         if let Some(queue) = &config.queue {
             match queue {
-                #[cfg(feature = "bg_redis")]
+                #[cfg(feature = "worker_redis")]
                 config::QueueConfig::Redis(qcfg) => {
                     tracing::debug!("Creating Redis queue provider");
                     Ok(Some(Arc::new(redis::create_provider(qcfg).await?)))
                 }
-                #[cfg(feature = "bg_pg")]
+                #[cfg(feature = "worker")]
                 config::QueueConfig::Postgres(qcfg) => {
                     tracing::debug!("Creating Postgres queue provider");
                     Ok(Some(Arc::new(pg::create_provider(qcfg).await?)))
                 }
-                #[cfg(feature = "bg_sqlt")]
+                #[cfg(feature = "worker")]
                 config::QueueConfig::Sqlite(qcfg) => {
                     tracing::debug!("Creating SQLite queue provider");
                     Ok(Some(Arc::new(sqlt::create_provider(qcfg).await?)))

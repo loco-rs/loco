@@ -1,8 +1,8 @@
-#[cfg(any(feature = "bg_pg", feature = "bg_sqlt"))]
+#[cfg(feature = "worker")]
 use crate::bgworker;
 use std::path::PathBuf;
 
-#[cfg(any(feature = "bg_pg", feature = "bg_sqlt"))]
+#[cfg(feature = "worker")]
 fn queue_jobs_fixture_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
@@ -11,7 +11,7 @@ fn queue_jobs_fixture_path() -> PathBuf {
         .join("jobs.yaml")
 }
 
-#[cfg(feature = "bg_pg")]
+#[cfg(feature = "worker")]
 /// # Panics
 ///
 /// This function will panic if it fails to prepare or insert the seed data, causing the tests to fail quickly
@@ -41,7 +41,7 @@ pub async fn postgres_seed_data(pool: &sqlx::PgPool) {
     }
 }
 
-#[cfg(feature = "bg_sqlt")]
+#[cfg(feature = "worker")]
 /// # Panics
 ///
 /// This function will panic if it fails to prepare or insert the seed data, causing the tests to fail quickly

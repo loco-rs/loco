@@ -329,13 +329,13 @@ impl IntoResponse for Error {
                 ErrorDetail::new("internal_server_error", "Internal Server Error"),
             ),
 
-            #[cfg(feature = "bg_redis")]
+            #[cfg(feature = "worker_redis")]
             Self::Redis(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ErrorDetail::new("internal_server_error", "Internal Server Error"),
             ),
 
-            #[cfg(any(feature = "bg_pg", feature = "bg_sqlt"))]
+            #[cfg(feature = "worker")]
             Self::Sqlx(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ErrorDetail::new("internal_server_error", "Internal Server Error"),

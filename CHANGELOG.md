@@ -81,6 +81,10 @@
   and its `Display` output are unchanged.
 - **`auth_jwt` feature renamed to `auth`.** Update `features = ["auth_jwt"]` → `["auth"]`
   (it gates JWT auth and the `ApiToken` extractor, as before).
+- **Background-queue features collapsed.** `bg_pg`/`bg_sqlt` → `worker`
+  (Postgres+SQLite; free once `sqlx` is compiled), `bg_redis` → `worker_redis`
+  (adds `dep:redis`). `default` now has `worker` (not Redis). A Redis queue needs
+  `worker_redis`; the queue backend is selected at runtime by `queue.kind`.
 
 ### Added
 

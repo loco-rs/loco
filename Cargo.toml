@@ -30,9 +30,7 @@ default = [
     "cli",
     "with-db",
     "cache_inmem",
-    "bg_redis",
-    "bg_pg",
-    "bg_sqlt",
+    "worker",
 ]
 # jsonwebtoken 10 no longer bundles a crypto backend, so `auth` selects the
 # pure-Rust `rust_crypto` one. This keeps `auth` self-contained (enabling it
@@ -55,9 +53,8 @@ storage_gcp = ["opendal/services-gcs"]
 # Cache feature
 cache_inmem = ["dep:moka"]
 cache_redis = ["dep:bb8-redis", "dep:bb8"]
-bg_redis = ["dep:redis", "dep:ulid"]
-bg_pg = ["dep:sqlx", "dep:ulid"]
-bg_sqlt = ["dep:sqlx", "dep:ulid"]
+worker = ["dep:sqlx", "dep:ulid"]
+worker_redis = ["worker", "dep:redis"]
 # Embed assets into binary
 embedded_assets = []
 
@@ -152,8 +149,7 @@ bb8 = { version = "0.9", optional = true }
 tokio-cron-scheduler = { version = "0.15", features = ["signal"] }
 english-to-cron = { version = "0.1.2" }
 
-# bg_sqlt: sqlite workers
-# bg_pg: postgres workers
+# worker: pg + sqlite backed queue workers
 sqlx = { version = "0.9", default-features = false, features = [
     "json",
     "postgres",
@@ -162,7 +158,7 @@ sqlx = { version = "0.9", default-features = false, features = [
 ], optional = true }
 ulid = { version = "1", optional = true }
 
-# bg_redis: redis workers
+# worker_redis: redis backed queue workers
 redis = { version = "1", features = ["aio", "tokio-comp"], optional = true }
 
 scraper = { version = "0.25.0", features = ["deterministic"], optional = true }
