@@ -43,7 +43,7 @@ Source: `loco-new/src/bin/main.rs:30-62`.
 | `-p, --path <PATH>` | `PathBuf` | `.` | Local directory to generate into (`main.rs:34-36`) |
 | `-n, --name <NAME>` | `Option<String>` | none — prompts | App name (`main.rs:38-40`) |
 | `--db <DB>` | `wizard::DBOption` | none — prompts | DB provider: `sqlite` \| `postgres` \| `none` (`main.rs:42-44`) |
-| `--bg <BG>` | `wizard::BackgroundOption` | none — prompts | Background-worker mode: `async` \| `queue` \| `blocking` (`main.rs:46-48`) |
+| `--bg <BG>` | `wizard::BackgroundOption` | none — prompts | Background-worker mode: `async` \| `queue-redis` \| `queue-postgres` \| `queue-sqlite` \| `blocking` (`main.rs:46-48`) |
 | `--assets <ASSETS>` | `wizard::AssetsOption` | none — prompts | Asset serving: `serverside` \| `clientside` \| `none` (`main.rs:50-52`) |
 | `-a, --allow-in-git-repo` | `bool` | `false` | Skip the "you're inside a git repo, continue?" abort prompt (`main.rs:54-56`) |
 | `--os <OS>` | `wizard::OS` | `linux` on Unix, `windows` otherwise | Generate a Unix- or Windows-optimized starter: `windows` \| `linux` \| `macos` (`main.rs:58-60`, `DEFAULT_OS` `main.rs:64-67`) |
@@ -82,11 +82,13 @@ Source: `wizard.rs:12-27`, branch logic `wizard.rs:304-333`.
 | `postgres` | `postgres://loco:loco@localhost:5432/NAME_ENV` | warns a running Postgres instance is required |
 | `none` | — | `enable()` is `false`; disables DB, auth, and mailer generation |
 
-**`BackgroundOption`** — `wizard.rs:81-125` — clap `--bg` values: `async` (default), `queue`, `blocking`.
+**`BackgroundOption`** — `wizard.rs:81-125` — clap `--bg` values: `async` (default), `queue-redis`, `queue-postgres`, `queue-sqlite`, `blocking`.
 | Value | Menu label | Notes |
 |---|---|---|
 | `async` | "Async (in-process tokio async tasks)" | default |
-| `queue` | "Queue (standalone workers using Redis)" | warns a running Redis/Valkey instance is required |
+| `queue-redis` | "Queue: Redis (standalone workers)" | warns the selected queue backend must be reachable; generates with the `worker_redis` feature |
+| `queue-postgres` | "Queue: Postgres (standalone workers)" | warns the selected queue backend must be reachable; generates with the `worker` feature |
+| `queue-sqlite` | "Queue: SQLite (standalone workers)" | warns the selected queue backend must be reachable; generates with the `worker` feature |
 | `blocking` | "Blocking (run tasks in foreground)" | warns it **blocks requests** until the task completes |
 
 **`AssetsOption`** — `wizard.rs:127-162` — clap `--assets` values: `serverside` (default), `clientside`, `none`.
@@ -103,7 +105,7 @@ Source: `wizard.rs:12-27`, branch logic `wizard.rs:304-333`.
 Source: `loco-new/src/settings.rs:58-89`.
 
 - DB enabled → `Features::default()` (loco-rs default features apply to the generated app).
-- DB **disabled** (Lightweight template, or `--db none`) → `default-features = false`, feature names = `["cli"]`; if background is `queue`, `"bg_redis"` is appended.
+- DB **disabled** (Lightweight template, or `--db none`) → `default-features = false`, feature names = `["cli"]`; if background is `queue-redis`, `"worker_redis"` is appended; if background is `queue-postgres` or `queue-sqlite`, `"worker"` is appended.
 - `auth` and `mailer` scaffolding are enabled iff DB is enabled.
 - Serverside assets → generated `Initializers { view_engine: true }`.
 - `loco_version_text`: normally `version = "0.17"`; when env var `LOCO_DEV_MODE_PATH` is set, becomes `version = "*", path = "<that path>"` — this is how the local framework checkout is dogfooded.
@@ -124,7 +126,7 @@ Source: `src/cli.rs:64-171` (`enum Commands`).
 | `routes` | — | — | none | Print all application endpoints as a tree (`cli.rs:98-99`) |
 | `middleware` | — | — | `-c/--config` | List middlewares (enabled first, then disabled); `--config` also prints each one's resolved config (`cli.rs:101-105`) |
 | `task` | `t` | — | `[name]`, `key:val...` params | Run a custom task by name, with `key:value` params (`cli.rs:107-114`) |
-| `jobs` | — | `#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]` | see §2.3 | Manage the background jobs queue (`cli.rs:115-120`) |
+| `jobs` | — | `#[cfg(feature = "worker")]` | see §2.3 | Manage the background jobs queue (`cli.rs:115-120`) |
 | `scheduler` | — | — | `-n/--name <NAME>`, `-t/--tag <TAG>`, `-c/--config <PATH>`, `-l/--list` | Run or inspect the scheduler (`cli.rs:121-137`) |
 | `generate` | `g` | `#[cfg(debug_assertions)]` | see §2.4 | Code generation (`cli.rs:138-146`) |
 | `doctor` | — | — | `-c/--config`, `-p/--production` | Validate/diagnose the app; `--config` instead dumps the resolved config + environment and skips checks (`cli.rs:147-154`, `814-832`) |
@@ -151,7 +153,7 @@ Source: `src/cli.rs:64-171` (`enum Commands`).
 
 ### 2.3 `jobs` subcommands
 
-`enum JobsCommands`, `src/cli.rs:598-647` — only present when `bg_redis`, `bg_pg`, or `bg_sqlt` is enabled.
+`enum JobsCommands`, `src/cli.rs:598-647` — only present when the `worker` feature is enabled (`worker_redis` implies `worker`).
 
 | Command | Flags | Purpose |
 |---|---|---|

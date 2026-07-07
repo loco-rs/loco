@@ -196,6 +196,15 @@ public API: `thiserror` 1→2, `tower` 0.4→0.5, `heck`→0.5, `byte-unit` 4→
 `opendal` 0.54→0.57. `serde_yaml` (archived) was replaced by the maintained
 `serde_yaml_ng` fork.
 
+### Feature-flag changes (0.17)
+
+- `auth_jwt` → `auth`.
+- `bg_redis` → `worker_redis`; `bg_pg`/`bg_sqlt` → `worker`. `default` now includes
+  `worker` (Postgres+SQLite queues); add `worker_redis` for a Redis queue.
+- `integration_test` removed (was dead).
+- `loco new` now offers Redis/Postgres/SQLite queue backends and (serverside)
+  embedded assets.
+
 ## Upgrade from 0.15.x to 0.16.x
 
 ### Use `AppContext` instead of `Config` in `init_logger` in the `Hooks` trait

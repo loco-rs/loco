@@ -28,28 +28,39 @@ use loco::{
 // when running locally set LOCO_DEV_MODE_PATH=<to local loco path>
 #[rstest::rstest]
 // lightweight service
-#[case(DBOption::None, AssetsOption::None)]
+#[case(DBOption::None, AssetsOption::None, BackgroundOption::Async)]
 // REST API
-#[case(DBOption::Sqlite, AssetsOption::None)]
+#[case(DBOption::Sqlite, AssetsOption::None, BackgroundOption::Async)]
 // SaaS, serverside
-#[case(DBOption::None, AssetsOption::Serverside)]
+#[case(DBOption::None, AssetsOption::Serverside, BackgroundOption::Async)]
 // SaaS, clientside (no db)
-#[case(DBOption::None, AssetsOption::Clientside)]
+#[case(DBOption::None, AssetsOption::Clientside, BackgroundOption::Async)]
 // full-stack SPA: db + clientside — the flagship `generate scaffold` path
 // (typed backend DTO+controller + React Query hooks/pages + routes injection)
-#[case(DBOption::Sqlite, AssetsOption::Clientside)]
-fn test_starter_combinations(#[case] db: DBOption, #[case] asset: AssetsOption) {
-    test_combination(db, asset, true);
+#[case(DBOption::Sqlite, AssetsOption::Clientside, BackgroundOption::Async)]
+// full-stack SPA with a SQLite queue backend (-> worker feature)
+#[case(DBOption::Sqlite, AssetsOption::Clientside, BackgroundOption::QueueSqlite)]
+fn test_starter_combinations(
+    #[case] db: DBOption,
+    #[case] asset: AssetsOption,
+    #[case] background: BackgroundOption,
+) {
+    test_combination(db, asset, background, true);
 }
 
-fn test_combination(db: DBOption, asset: AssetsOption, test_generator: bool) {
+fn test_combination(
+    db: DBOption,
+    asset: AssetsOption,
+    background: BackgroundOption,
+    test_generator: bool,
+) {
     let test_dir = tree_fs::TreeBuilder::default().drop(true);
 
     let executor = FileSystem::new(&PathBuf::from("base_template"), &test_dir.root);
 
     let wizard_selection = wizard::Selections {
         db: db.clone(),
-        background: BackgroundOption::Async,
+        background,
         asset: asset.clone(),
     };
     let settings =
@@ -157,6 +168,18 @@ fn embedded_assets_with_clientside_is_rejected() {
     };
     // embedded requested with clientside must be an error
     assert!(settings::Settings::from_wizard_checked("x", &sel, OS::default(), /*embedded=*/ true).is_err());
+}
+
+#[test]
+fn embedded_assets_serverside_enables_feature() {
+    let sel = wizard::Selections {
+        db: DBOption::None,
+        background: BackgroundOption::Async,
+        asset: AssetsOption::Serverside,
+    };
+    let s = settings::Settings::from_wizard_checked("x", &sel, OS::default(), true)
+        .expect("serverside+embedded is valid");
+    assert!(s.features.names.contains(&"embedded_assets".to_string()));
 }
 
 struct Tester {
