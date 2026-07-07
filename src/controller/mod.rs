@@ -315,7 +315,7 @@ impl IntoResponse for Error {
             ),
 
             // Other `ModelError` variants are internal/infrastructure errors
-            // (DB, generic `Any`, free-form `Message`, and, when `auth_jwt`
+            // (DB, generic `Any`, free-form `Message`, and, when `auth`
             // is enabled, `Jwt`) and are collapsed to 500 like their
             // top-level counterparts.
             #[cfg(feature = "with-db")]
@@ -323,7 +323,7 @@ impl IntoResponse for Error {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ErrorDetail::new("internal_server_error", "Internal Server Error"),
             ),
-            #[cfg(all(feature = "with-db", feature = "auth_jwt"))]
+            #[cfg(all(feature = "with-db", feature = "auth"))]
             Self::Model(ModelError::Jwt(_)) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ErrorDetail::new("internal_server_error", "Internal Server Error"),

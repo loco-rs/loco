@@ -79,6 +79,8 @@
   field), so review `remote_ip` before upgrading — this is a silent
   security-relevant behavior change, not a load error. The `RemoteIP` extractor
   and its `Display` output are unchanged.
+- **`auth_jwt` feature renamed to `auth`.** Update `features = ["auth_jwt"]` → `["auth"]`
+  (it gates JWT auth and the `ApiToken` extractor, as before).
 
 ### Added
 

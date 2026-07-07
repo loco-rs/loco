@@ -26,7 +26,7 @@ rust-version.workspace = true
 
 [features]
 default = [
-    "auth_jwt",
+    "auth",
     "cli",
     "with-db",
     "cache_inmem",
@@ -34,11 +34,11 @@ default = [
     "bg_pg",
     "bg_sqlt",
 ]
-# jsonwebtoken 10 no longer bundles a crypto backend, so `auth_jwt` selects the
-# pure-Rust `rust_crypto` one. This keeps `auth_jwt` self-contained (enabling it
+# jsonwebtoken 10 no longer bundles a crypto backend, so `auth` selects the
+# pure-Rust `rust_crypto` one. This keeps `auth` self-contained (enabling it
 # alone still builds, even with default-features = false) and needs no C
 # toolchain — matching Loco's zero-friction onboarding.
-auth_jwt = ["dep:jsonwebtoken", "jsonwebtoken/rust_crypto"]
+auth = ["dep:jsonwebtoken", "jsonwebtoken/rust_crypto"]
 cli = ["dep:clap"]
 testing = ["dep:axum-test", "dep:scraper", "dep:tree-fs"]
 with-db = [
