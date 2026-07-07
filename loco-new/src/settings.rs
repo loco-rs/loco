@@ -26,6 +26,7 @@ pub struct Settings {
     pub features: Features,
     pub loco_version_text: String,
     pub os: OS,
+    pub embedded_assets: bool,
 }
 
 impl From<DBOption> for Option<Db> {
@@ -99,7 +100,35 @@ impl Settings {
             features,
             loco_version_text: get_loco_version_text(),
             os,
+            embedded_assets: false,
         }
+    }
+
+    /// Creates a new [`Settings`] instance based on prompt selections, with a
+    /// guard against invalid combinations (e.g. embedding assets into the
+    /// binary for a clientside app, which has no `assets/` dir to embed).
+    ///
+    /// # Errors
+    /// when `embedded` is requested together with a clientside asset
+    /// configuration.
+    pub fn from_wizard_checked(
+        name: &str,
+        sel: &wizard::Selections,
+        os: OS,
+        embedded: bool,
+    ) -> crate::Result<Self> {
+        if embedded && sel.asset == AssetsOption::Clientside {
+            return Err(crate::Error::msg(
+                "embedded_assets cannot be combined with a clientside app (no assets/ dir to \
+                 embed)",
+            ));
+        }
+        let mut s = Self::from_wizard(name, sel, os);
+        if embedded {
+            s.features.names.push("embedded_assets".to_string());
+            s.embedded_assets = true;
+        }
+        Ok(s)
     }
 }
 impl Default for Settings {
@@ -117,6 +146,7 @@ impl Default for Settings {
             features: Default::default(),
             loco_version_text: get_loco_version_text(),
             os: Default::default(),
+            embedded_assets: Default::default(),
         }
     }
 }

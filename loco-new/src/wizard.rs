@@ -386,3 +386,21 @@ fn select_asset(args: &ArgsPlaceholder) -> crate::Result<AssetsOption> {
     };
     Ok(assetopt)
 }
+
+/// Prompts whether to embed static assets into the binary. Only meaningful
+/// for a serverside asset configuration (a clientside app has no `assets/`
+/// dir to embed), so any other asset option is `false` without prompting.
+///
+/// # Errors
+/// when could not show user selection
+pub fn select_embedded_assets(asset: &AssetsOption) -> crate::Result<bool> {
+    if *asset != AssetsOption::Serverside {
+        return Ok(false);
+    }
+
+    let answer = Confirm::with_theme(&ColorfulTheme::default())
+        .with_prompt("❯ Embed static assets into the binary?")
+        .default(false)
+        .interact()?;
+    Ok(answer)
+}

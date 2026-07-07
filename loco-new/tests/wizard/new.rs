@@ -148,6 +148,17 @@ fn test_combination(db: DBOption, asset: AssetsOption, test_generator: bool) {
     }
 }
 
+#[test]
+fn embedded_assets_with_clientside_is_rejected() {
+    let sel = wizard::Selections {
+        db: DBOption::None,
+        background: BackgroundOption::Async,
+        asset: AssetsOption::Clientside,
+    };
+    // embedded requested with clientside must be an error
+    assert!(settings::Settings::from_wizard_checked("x", &sel, OS::default(), /*embedded=*/ true).is_err());
+}
+
 struct Tester {
     dir: PathBuf,
     env_map: HashMap<String, String>,
