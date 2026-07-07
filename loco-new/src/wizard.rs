@@ -86,9 +86,15 @@ pub enum BackgroundOption {
     #[strum(to_string = "Async (in-process tokio async tasks)")]
     #[serde(rename = "BackgroundAsync")]
     Async,
-    #[strum(to_string = "Queue (standalone workers using Redis)")]
-    #[serde(rename = "BackgroundQueue")]
-    Queue,
+    #[strum(to_string = "Queue: Redis (standalone workers)")]
+    #[serde(rename = "QueueRedis")]
+    QueueRedis,
+    #[strum(to_string = "Queue: Postgres (standalone workers)")]
+    #[serde(rename = "QueuePostgres")]
+    QueuePostgres,
+    #[strum(to_string = "Queue: SQLite (standalone workers)")]
+    #[serde(rename = "QueueSqlite")]
+    QueueSqlite,
     #[strum(to_string = "Blocking (run tasks in foreground)")]
     #[serde(rename = "ForegroundBlocking")]
     Blocking,
@@ -98,9 +104,9 @@ impl BackgroundOption {
     #[must_use]
     pub fn user_message(&self) -> Option<String> {
         match self {
-            Self::Queue => Some(format!(
-                "{}: You've selected `{}` for your background worker configuration (you should \
-                 have a Redis/valkey instance to connect to)",
+            Self::QueueRedis | Self::QueuePostgres | Self::QueueSqlite => Some(format!(
+                "{}: You've selected `{}` for your background worker configuration (ensure the \
+                 selected queue backend is reachable)",
                 "workers".underline(),
                 "queue".yellow()
             )),
@@ -118,7 +124,9 @@ impl BackgroundOption {
     pub const fn prompt_view(&self) -> &str {
         match self {
             Self::Async => "Async",
-            Self::Queue => "BackgroundQueue",
+            Self::QueueRedis => "QueueRedis",
+            Self::QueuePostgres => "QueuePostgres",
+            Self::QueueSqlite => "QueueSqlite",
             Self::Blocking => "ForegroundBlocking",
         }
     }

@@ -57,16 +57,28 @@ workers:
   #   - BackgroundQueue - Workers operate asynchronously in the background, processing queued.
   #   - ForegroundBlocking - Workers operate in the foreground and block until tasks are completed.
   #   - BackgroundAsync - Workers operate asynchronously in the background, processing tasks with async capabilities.
-  mode: {{settings.background.kind}}
+  mode: {{settings.background.mode}}
 
-  {% if settings.background.kind == "BackgroundQueue"%}
+  {% if settings.background.mode == "BackgroundQueue" %}
 # Queue Configuration
 queue:
-  kind: Redis
+  kind: {{settings.background.queue_kind}}
+  {% if settings.background.queue_kind == "Redis" %}
   # Redis connection URI
   uri: {% raw %}{{{% endraw %} get_env(name="REDIS_URL", default="redis://127.0.0.1") {% raw %}}}{% endraw %}
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_flush: false
+  {% elif settings.background.queue_kind == "Postgres" %}
+  # Postgres connection URI
+  uri: {% raw %}{{{% endraw %} get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_development") {% raw %}}}{% endraw %}
+  # Dangerously flush all data in the queue table on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
+  dangerously_flush: false
+  {% elif settings.background.queue_kind == "Sqlite" %}
+  # SQLite connection URI
+  uri: {% raw %}{{{% endraw %} get_env(name="QUEUE_URL", default="sqlite://loco_development.sqlite?mode=rwc") {% raw %}}}{% endraw %}
+  # Dangerously flush all data in the queue table on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
+  dangerously_flush: false
+  {% endif %}
   {%- endif %}
 {%- endif -%}
 
