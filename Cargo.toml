@@ -58,8 +58,6 @@ cache_redis = ["dep:bb8-redis", "dep:bb8"]
 bg_redis = ["dep:redis", "dep:ulid"]
 bg_pg = ["dep:sqlx", "dep:ulid"]
 bg_sqlt = ["dep:sqlx", "dep:ulid"]
-## Testing feature flags
-integration_test = []
 # Embed assets into binary
 embedded_assets = []
 
