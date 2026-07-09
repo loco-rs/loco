@@ -198,4 +198,4 @@ Put worker tests under `tests/workers/` — the generator does this for you auto
 
 - Every `queue:`/`workers:` YAML key: [Configuration reference](@/docs/reference/configuration.md#queue)
 - `cargo loco start`/`jobs` flags: [CLI reference](@/docs/reference/cli.md)
-- `bg_redis`/`bg_pg`/`bg_sqlt` feature flags: [Feature flags reference](@/docs/reference/feature-flags.md)
+- `worker`/`worker_redis` feature flags: [Feature flags reference](@/docs/reference/feature-flags.md)

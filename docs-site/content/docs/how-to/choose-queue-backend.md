@@ -34,6 +34,8 @@ workers:
 
 If you only need `BackgroundAsync` or `ForegroundBlocking`, you can stop here — skip the `queue:` config entirely.
 
+The `loco new` wizard asks for this up front, offering `Async`, `Queue: Redis`, `Queue: Postgres`, `Queue: SQLite`, or `Blocking`; picking one of the three `Queue: *` options wires up the matching `workers.mode: BackgroundQueue` config, `queue.kind`, and Cargo feature (`worker` for Postgres/SQLite, `worker_redis` for Redis) for you.
+
 ## 2. Pick and configure a backend
 
 All three backends share the same `perform_later` API and priority semantics; switching is a config change, not a code change. Set `queue.kind` in your environment YAML:
@@ -49,7 +51,13 @@ queue:
   num_workers: 2 # concurrent job handlers
 ```
 
-Requires the `bg_redis` feature (on by default). `setup()` is a no-op for Redis — there's no schema to create.
+Requires the `worker_redis` Cargo feature. Unlike Postgres/SQLite, this one is **not** in the default feature set — enable it explicitly (`worker_redis` implies `worker`, so you don't need to list both):
+
+```toml
+loco-rs = { version = "...", features = ["worker_redis"] }
+```
+
+`setup()` is a no-op for Redis — there's no schema to create.
 
 ### Postgres
 
@@ -67,7 +75,7 @@ queue:
   num_workers: 2
 ```
 
-Requires the `bg_pg` feature (on by default). Jobs live in a `pg_loco_queue` table; the table (and a `priority` column, for pre-1.0 tables) is created/migrated automatically on boot.
+Requires the `worker` Cargo feature (on by default — no extra `features = [...]` needed for a plain `loco-rs` dependency). Jobs live in a `pg_loco_queue` table; the table (and a `priority` column, for pre-1.0 tables) is created/migrated automatically on boot.
 
 ### SQLite
 
@@ -81,9 +89,9 @@ queue:
   # remaining keys identical to Postgres
 ```
 
-Requires the `bg_sqlt` feature (on by default). Uses `sqlt_loco_queue` (+ a lock table, since SQLite has no `SELECT ... FOR UPDATE SKIP LOCKED`).
+Requires the `worker` Cargo feature (on by default) — the same flag that gates the Postgres backend above; both share the `sqlx`-based provider and are picked between at runtime by `queue.kind`. Uses `sqlt_loco_queue` (+ a lock table, since SQLite has no `SELECT ... FOR UPDATE SKIP LOCKED`).
 
-For the exhaustive key list (defaults included), see [Configuration reference → queue](@/docs/reference/configuration.md#queue). For flag names and how to trim the default feature set, see [Feature flags reference](@/docs/reference/feature-flags.md).
+The upshot: `worker` covers Postgres and SQLite queues (already in the default feature set), while `worker_redis` adds the Redis queue on top. Which backend actually runs is a runtime choice — `queue.kind: Postgres | Sqlite | Redis` — not a per-database feature flag. For the exhaustive key list (defaults included), see [Configuration reference → queue](@/docs/reference/configuration.md#queue). For flag names and how to trim the default feature set, see [Feature flags reference](@/docs/reference/feature-flags.md).
 
 ## 3. Run the worker process
 
@@ -106,7 +114,7 @@ Redis additionally supports **named** queues via `queue.queues` — `Worker::que
 
 ## Managing jobs from the CLI
 
-Once `bg_redis`, `bg_pg`, or `bg_sqlt` is enabled, `cargo loco jobs` is available for all three backends — including Redis, which now fully supports admin operations (cancel, clear, requeue, dump/import are no longer Postgres/SQLite-only):
+Once `worker` (Postgres/SQLite) or `worker_redis` (Redis) is enabled, `cargo loco jobs` is available for all three backends — including Redis, which now fully supports admin operations (cancel, clear, requeue, dump/import are no longer Postgres/SQLite-only):
 
 ```sh
 cargo loco jobs cancel --name <NAME>

@@ -211,7 +211,7 @@ pub enum ModelError {
     EntityAlreadyExists,
     EntityNotFound,
     Validation(ModelValidationErrors),      // #[from]
-    #[cfg(feature = "auth_jwt")]
+    #[cfg(feature = "auth")]
     Jwt(jsonwebtoken::errors::Error),        // #[from]
     DbErr(sea_orm::DbErr),                   // #[from]
     Any(Box<dyn std::error::Error + Send + Sync>), // #[from]
@@ -222,7 +222,7 @@ pub type ModelResult<T, E = ModelError> = std::result::Result<T, E>;
 ```
 (`src/model/mod.rs:13-35` for the enum, `:38` for the alias)
 
-Note: `ModelError` is **not** `#[non_exhaustive]` (unlike the crate-wide `Error`) — this is the model layer's own, smaller error enum, not the one documented on the [error model reference](@/docs/reference/errors.md) page. `Jwt` only exists when the `auth_jwt` feature is enabled (`mod.rs:23-25`).
+Note: `ModelError` is **not** `#[non_exhaustive]` (unlike the crate-wide `Error`) — this is the model layer's own, smaller error enum, not the one documented on the [error model reference](@/docs/reference/errors.md) page. `Jwt` only exists when the `auth` feature is enabled (`mod.rs:23-25`).
 
 Constructors:
 
@@ -245,6 +245,6 @@ pub trait Authenticable: Clone {
 ```
 (`src/model/mod.rs:56-60`)
 
-A user model (typically the `users` entity) implements `Authenticable` so the auth extractors (`JWT`, `JWTWithUser`, `ApiToken` under `prelude::auth`, feature `auth_jwt`) can look the caller up: `find_by_claims_key` resolves a JWT's claims subject to a model instance; `find_by_api_key` resolves a bearer/API-key header the same way. Both are `async` (the trait itself is `#[async_trait]`) and return `ModelResult<Self>`, so a lookup failure surfaces as a `ModelError` (typically `EntityNotFound` or `DbErr`).
+A user model (typically the `users` entity) implements `Authenticable` so the auth extractors (`JWT`, `JWTWithUser`, `ApiToken` under `prelude::auth`, feature `auth`) can look the caller up: `find_by_claims_key` resolves a JWT's claims subject to a model instance; `find_by_api_key` resolves a bearer/API-key header the same way. Both are `async` (the trait itself is `#[async_trait]`) and return `ModelResult<Self>`, so a lookup failure surfaces as a `ModelError` (typically `EntityNotFound` or `DbErr`).
 
 All four items (`query`, `ModelError`, `ModelResult`, `Authenticable`) are re-exported from `loco_rs::prelude` (`prelude.rs:29-30`, `with-db`-gated).

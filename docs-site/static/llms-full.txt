@@ -135,7 +135,7 @@ Query/State`, routing verbs, `IntoResponse`/`Response`); `AppContext`,
 not_found, unauthorized}`, `middleware::{Format, RespondTo, RemoteIP}`,
 `extractor::shared_store::SharedStore`, `extractor::validate::{JsonValidate,
 JsonValidateWithMessage}`, `views::{TeraView, ViewEngine, ViewRenderer}`;
-`serde_json::json` aliased as `data`. Feature-gated: `#[cfg(auth_jwt)]` the
+`serde_json::json` aliased as `data`. Feature-gated: `#[cfg(auth)]` the
 whole `controller::extractor::auth` module (`JWT`, `JWTWithUser`, `ApiToken`,
 `UserClaims`); `#[cfg(with-db)]` Sea-ORM traits (`ActiveModelTrait,
 EntityTrait, Set, ColumnTrait, QueryFilter, ...`), scalar re-exports (`Date,
@@ -282,7 +282,7 @@ path)`. CLI: `db seed [-r/--reset] [-d/--dump] [--dump-tables <csv>] [--from
 
 Model-layer errors are distinct from the crate-wide `Error`:
 `ModelError { EntityAlreadyExists, EntityNotFound, Validation(..), Jwt(..)
-(auth_jwt), DbErr(..), Any(..), Message(String) }`, `type ModelResult<T,
+(auth), DbErr(..), Any(..), Message(String) }`, `type ModelResult<T,
 E=ModelError>` — **not** `#[non_exhaustive]`. `loco_rs::Error::Model(#[from]
 ModelError)` converts it at a controller boundary via `?`.
 
@@ -418,10 +418,12 @@ let job_id = DownloadWorker::perform_later(&ctx, DownloadWorkerArgs { user_id })
 DownloadWorker::perform_later_with_priority(&ctx, args, Some(100)).await?; // higher = sooner
 ```
 
-- Backends, all sharing the same API: **Postgres** (`bg_pg`), **SQLite**
-  (`bg_sqlt`), **Redis** (`bg_redis`) — all three on by default. Choose via
+- Backends, all sharing the same API: **Postgres** and **SQLite** (feature
+  `worker`, on by default), **Redis** (feature `worker_redis`, adds `worker`;
+  not on by default — enable it explicitly). Choose the running backend via
   `workers.mode` (`BackgroundQueue` (default) / `ForegroundBlocking` /
-  `BackgroundAsync`) + `queue.kind`. Register in `Hooks::connect_workers`.
+  `BackgroundAsync`) + `queue.kind` (`Postgres`/`Sqlite`/`Redis`). Register in
+  `Hooks::connect_workers`.
 - **Priority queues work on all three backends**: higher `i32` priority
   dequeues first; ties break by `run_at` then job id. Postgres/SQLite
   auto-migrate a `priority` column on existing tables. Redis stores priority
@@ -579,9 +581,9 @@ ctx.cache.clear().await?;   // Redis: issues FLUSHDB — flushes the WHOLE Redis
 Backends: `InMem` (moka, `cache_inmem`, on by default, `max_capacity` default
 32 MiB) or `Redis` (`cache_redis`, off by default, `uri` + `max_size` pool).
 
-## 11. Authentication (feature `auth_jwt`)
+## 11. Authentication (feature `auth`)
 
-`auth_jwt` is a **default** feature (pulls `jsonwebtoken` 10 with its
+`auth` is a **default** feature (pulls `jsonwebtoken` 10 with its
 pure-Rust `rust_crypto` backend — no C toolchain needed). Three extractors in
 `loco_rs::controller::extractor::auth`, re-exported via the prelude:
 
@@ -735,34 +737,35 @@ Free helper fns (all return `Result<U>`, i.e. always `Err`): `unauthorized
 (msg)`, `bad_request(msg)`, `not_found()`.
 
 ~30 variants total; feature-gated ones: `DB`/`Model` (`with-db`), `Redis`
-(`bg_redis`), `Sqlx` (`bg_pg`/`bg_sqlt`), `Generators` (`debug_assertions`).
+(`worker_redis`), `Sqlx` (`worker`), `Generators` (`debug_assertions`).
 See §5 for the HTTP status map.
 
 ## 15. Feature flags
 
 ```toml
-default = ["auth_jwt", "cli", "with-db", "cache_inmem", "bg_redis", "bg_pg", "bg_sqlt"]
+default = ["auth", "cli", "with-db", "cache_inmem", "worker"]
 ```
 
 | Flag | Default | Enables |
 |---|---|---|
-| `auth_jwt` | ON | JWT extractors/signer; `jsonwebtoken/rust_crypto` |
+| `auth` | ON | JWT extractors/signer; `jsonwebtoken/rust_crypto` |
 | `cli` | ON | the `cargo loco` runtime CLI |
 | `with-db` | ON | Sea-ORM 2.0, `db` CLI subcommand, `model`/`migration`/`scaffold` generators |
 | `testing` | off | `axum-test`/`scraper`/`tree-fs` test harness |
 | `cache_inmem` | ON | in-memory (moka) cache |
 | `cache_redis` | off | Redis cache pool |
-| `bg_redis` / `bg_pg` / `bg_sqlt` | ON | the three background-worker/queue backends |
+| `worker` | ON | Postgres + SQLite queue/worker backends (backend picked at runtime via `queue.kind`) |
+| `worker_redis` | off | adds the Redis queue/worker backend (implies `worker`) |
 | `all_storage` / `storage_aws_s3` / `storage_azure` / `storage_gcp` | off | OpenDAL cloud storage backends |
 | `embedded_assets` | off | embeds `assets/` into the binary; swaps the static-assets middleware AND the Tera view engine for embedded variants |
-| `integration_test` | off | empty test-gating marker |
 
-Interactions: any of `bg_redis`/`bg_pg`/`bg_sqlt` unlocks `cargo loco jobs`.
+Interactions: `worker` unlocks `cargo loco jobs` (available for all three
+queue backends, since `worker_redis` implies `worker`).
 `debug_assertions` (not a Cargo feature) gates `generate` and `db entities` —
 unavailable in `--release` builds regardless of features. To trim a DB-less
 app: `loco-rs = { version = "1", default-features = false, features = ["cli"] }`
-(this is exactly what `loco new --db none` emits, plus `bg_redis` if a Redis
-queue was picked).
+(this is exactly what `loco new --db none` emits, plus `worker_redis` if a
+Redis queue was picked, or `worker` for a Postgres/SQLite queue).
 
 ## 16. CLI reference
 
@@ -836,7 +839,7 @@ skipped if you type them explicitly.
   admin ops (cancel/clear/requeue/dump/import) now fully supported.
 - **Mailer `tls` modes** (`starttls`/`implicit`/`none`, port 465) override
   the legacy `secure` bool — required for providers needing implicit TLS.
-- **`auth_jwt`** is the real feature name (not `auth`); default algorithm
+- **`auth`** is the feature name (renamed from `auth_jwt`); default algorithm
   HS512; secret must be base64; JWT location is configurable
   (Bearer/Query/Cookie, single or multiple).
 - **`loco_rs::Error` is `#[non_exhaustive]`**, with `EnvVar`/`Hash`/`SemVer`/
@@ -863,7 +866,9 @@ skipped if you type them explicitly.
 - ❌ Ad-hoc `std::env::var` → ✅ YAML config + `ctx.config` + `get_env`.
 - ❌ Assuming `secure: true` covers implicit TLS → ✅ set `tls: implicit`
   for port 465/SMTPS providers.
-- ❌ Calling the feature `auth` → ✅ it's `auth_jwt`.
+- ❌ Assuming worker/queue backends need a per-database feature → ✅ `worker`
+  covers Postgres and SQLite (in default); `worker_redis` adds Redis. Pick
+  the running backend at runtime with `queue.kind`.
 - ❌ Matching `Error` exhaustively without a `_ =>` arm → ✅ required
   (`#[non_exhaustive]`).
 - ❌ `scaffold`/`controller` with no kind flag → ✅ one of `--api`/`--html`/

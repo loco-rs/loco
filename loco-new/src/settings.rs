@@ -26,7 +26,6 @@ pub struct Settings {
     pub features: Features,
     pub loco_version_text: String,
     pub os: OS,
-    pub embedded_assets: bool,
 }
 
 impl From<DBOption> for Option<Db> {
@@ -100,7 +99,6 @@ impl Settings {
             features,
             loco_version_text: get_loco_version_text(),
             os,
-            embedded_assets: false,
         }
     }
 
@@ -126,7 +124,6 @@ impl Settings {
         let mut s = Self::from_wizard(name, sel, os);
         if embedded {
             s.features.names.push("embedded_assets".to_string());
-            s.embedded_assets = true;
         }
         Ok(s)
     }
@@ -146,7 +143,6 @@ impl Default for Settings {
             features: Default::default(),
             loco_version_text: get_loco_version_text(),
             os: Default::default(),
-            embedded_assets: Default::default(),
         }
     }
 }

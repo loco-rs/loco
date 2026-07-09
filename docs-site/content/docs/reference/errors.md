@@ -120,8 +120,8 @@ The complete `#[non_exhaustive] enum Error` (`src/errors.rs:32-151`), with featu
 | `InvalidHeaderName(#[from] InvalidHeaderName)` | — |
 | `InvalidMethod(#[from] InvalidMethod)` | — |
 | `Model(#[from] crate::model::ModelError)` | `with-db` |
-| `Redis(#[from] redis::RedisError)` | `bg_redis` |
-| `Sqlx(#[from] sqlx::Error)` | `bg_pg` or `bg_sqlt` |
+| `Redis(#[from] redis::RedisError)` | `worker_redis` |
+| `Sqlx(#[from] sqlx::Error)` | `worker` |
 | `Storage(#[from] crate::storage::StorageError)` | — |
 | `Cache(#[from] crate::cache::CacheError)` | — |
 | `Generators(#[from] loco_gen::Error)` | `debug_assertions` |

@@ -27,7 +27,7 @@ https://loco.rs/llms-full.txt.
    your own DB pool, HTTP server, or job queue.
 3. **`use loco_rs::prelude::*;`** at the top of controllers/models/workers/tasks
    brings in the common types (`AppContext`, `Result`, `Routes`, `Json`,
-   `State`, the Sea-ORM traits, JWT auth extractors under `auth_jwt`, etc.).
+   `State`, the Sea-ORM traits, JWT auth extractors under `auth`, etc.).
    If a common type is "missing", it is almost always in the prelude.
 4. **`Result<T>` is `loco_rs::Result<T>`** and `Error` is `loco_rs::Error`
    (`#[non_exhaustive]` — match with a `_ =>` arm; `EnvVar`/`Hash`/`SemVer`/
@@ -113,9 +113,9 @@ pub fn routes() -> Routes {
   derive. Errors map to HTTP: `NotFound`→404, `Unauthorized`→401,
   `BadRequest`/`Validation`→400, everything else (DB, IO, etc.)→500.
 
-## Authentication (`auth_jwt`, default feature)
+## Authentication (`auth`, default feature)
 
-- Feature is named **`auth_jwt`**, not `auth`. Default signing algorithm is
+- Feature is named **`auth`**. Default signing algorithm is
   **HS512**; `auth.jwt.secret` **must be valid base64** — plain strings fail
   at token-generate/validate time, not config-load time.
 - Extractors: `auth::JWT` (claims only, no DB needed), `auth::JWTWithUser<T>`
@@ -146,7 +146,8 @@ let job_id = DownloadWorker::perform_later(&ctx, args).await?;
 DownloadWorker::perform_later_with_priority(&ctx, args, Some(100)).await?;
 ```
 
-- Backends: Postgres, SQLite, or Redis — all three ship by default (config
+- Backends: Postgres and SQLite ship by default (feature `worker`); Redis needs
+  the `worker_redis` feature. The backend is chosen at runtime (config
   `workers.mode` + `queue.kind`). Register workers in `app.rs`
   `Hooks::connect_workers`.
 - `perform_later`/`perform_later_with_priority` return the job id
@@ -218,8 +219,8 @@ async fn can_list() {
 - ❌ Custom error types for handlers. ✅ Return `loco_rs::Result<Response>` and
   use `?`; match `Error` with a `_ =>` arm (it's `#[non_exhaustive]`).
 - ❌ Reading env vars directly. ✅ YAML config + `ctx.config` + `get_env`.
-- ❌ Calling the auth feature `auth`, or assuming `secure: true` covers
-  implicit TLS. ✅ It's `auth_jwt`; use `tls: implicit` for port 465.
+- ❌ Assuming `secure: true` covers implicit TLS. ✅ Use `tls: implicit` for
+  port 465.
 - ❌ `scaffold`/`controller` generation without a kind flag. ✅ pass one of
   `--api`/`--html`/`--htmx` — there's no default.
 

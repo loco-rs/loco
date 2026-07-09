@@ -22,16 +22,16 @@ Loco ships two axum extractors for JWT-protected routes:
 - `auth::JWT` — validates the token and gives you the claims. Works without a database.
 - `auth::JWTWithUser<T>` — validates the token **and** loads the user record from the database via your model's [`Authenticable`](#the-authenticable-contract) implementation. Requires the `with-db` feature.
 
-Both live in `loco_rs::controller::extractor::auth` and are re-exported through `loco_rs::prelude::*` whenever the `auth_jwt` feature is on.
+Both live in `loco_rs::controller::extractor::auth` and are re-exported through `loco_rs::prelude::*` whenever the `auth` feature is on.
 
-If you generated your app with `loco new` and picked a database-backed starter, `with-db` and `auth_jwt` are already on by default — see the [feature flags reference](@/docs/reference/feature-flags.md) if you need to check or change that.
+If you generated your app with `loco new` and picked a database-backed starter, `with-db` and `auth` are already on by default — see the [feature flags reference](@/docs/reference/feature-flags.md) if you need to check or change that.
 
-## 1. Enable the `auth_jwt` feature
+## 1. Enable the `auth` feature
 
-`auth_jwt` is a **default** feature (`Cargo.toml`): it pulls in `jsonwebtoken` with its pure-Rust `rust_crypto` backend, so no C toolchain is required even in a minimal build. If you depend on `loco-rs` with `default-features = false`, add it back explicitly:
+`auth` is a **default** feature (`Cargo.toml`): it pulls in `jsonwebtoken` with its pure-Rust `rust_crypto` backend, so no C toolchain is required even in a minimal build. If you depend on `loco-rs` with `default-features = false`, add it back explicitly:
 
 ```toml
-loco-rs = { version = "...", default-features = false, features = ["auth_jwt", "with-db"] }
+loco-rs = { version = "...", default-features = false, features = ["auth", "with-db"] }
 ```
 
 ## 2. Configure the secret and expiration
@@ -159,5 +159,5 @@ A missing, malformed, or expired token returns `401 Unauthorized`. A valid token
 - [Protect a route with an API key](@/docs/how-to/api-key-auth.md) — `ApiToken<T>`, a separate always-Bearer-header mechanism.
 - [Hash and verify passwords](@/docs/how-to/hash-passwords.md) — for the login handler that issues the token above.
 - [Configuration reference](@/docs/reference/configuration.md#auth) — every `auth.jwt` key.
-- [Feature flags reference](@/docs/reference/feature-flags.md) — `auth_jwt` / `with-db` defaults and interactions.
-- [AppContext & prelude reference](@/docs/reference/app-context.md) — what `loco_rs::prelude::*` brings in under `auth_jwt`.
+- [Feature flags reference](@/docs/reference/feature-flags.md) — `auth` / `with-db` defaults and interactions.
+- [AppContext & prelude reference](@/docs/reference/app-context.md) — what `loco_rs::prelude::*` brings in under `auth`.

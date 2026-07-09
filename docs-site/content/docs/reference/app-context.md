@@ -105,7 +105,7 @@ To read a stashed value from inside a handler, use the extractor of the same nam
 - `controller::{Json, Routes}`
 
 **Feature-gated**
-- `#[cfg(feature = "auth_jwt")] controller::extractor::auth` (the whole `auth` extractor module: `JWT`, `JWTWithUser`, `ApiToken`, `UserClaims`, token-extraction helpers)
+- `#[cfg(feature = "auth")] controller::extractor::auth` (the whole `auth` extractor module: `JWT`, `JWTWithUser`, `ApiToken`, `UserClaims`, token-extraction helpers)
 - `#[cfg(feature = "with-db")]`:
   - Sea-ORM traits and types: `ActiveModelBehavior, ActiveModelTrait, ActiveValue, ColumnTrait, ConnectionTrait, DatabaseConnection, DbErr, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, Set, TransactionTrait`
   - Sea-ORM scalar re-exports: `sea_orm::prelude::{Date, DateTimeUtc, DateTimeWithTimeZone, Decimal, Uuid}`
