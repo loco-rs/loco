@@ -175,6 +175,8 @@ pub struct ArgsPlaceholder {
     pub db: Option<DBOption>,
     pub bg: Option<BackgroundOption>,
     pub assets: Option<AssetsOption>,
+    /// `--embedded-assets`: embed static assets into the binary (serverside only).
+    pub embedded_assets: bool,
 }
 
 /// Holds the user's configuration selections.
@@ -393,9 +395,18 @@ fn select_asset(args: &ArgsPlaceholder) -> crate::Result<AssetsOption> {
 ///
 /// # Errors
 /// when could not show user selection
-pub fn select_embedded_assets(asset: &AssetsOption) -> crate::Result<bool> {
+pub fn select_embedded_assets(args: &ArgsPlaceholder, asset: &AssetsOption) -> crate::Result<bool> {
     if *asset != AssetsOption::Serverside {
         return Ok(false);
+    }
+
+    // Never prompt when the run is non-interactive (all core options supplied via
+    // flags) or when `--embedded-assets` was passed explicitly — honor the flag.
+    // This keeps `loco new --db .. --bg .. --assets serverside` fully scriptable.
+    if args.embedded_assets
+        || (args.db.is_some() && args.bg.is_some() && args.assets.is_some())
+    {
+        return Ok(args.embedded_assets);
     }
 
     let answer = Confirm::with_theme(&ColorfulTheme::default())

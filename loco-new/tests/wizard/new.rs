@@ -196,6 +196,34 @@ fn embedded_assets_serverside_enables_feature() {
     assert!(s.features.names.contains(&"embedded_assets".to_string()));
 }
 
+// Regression: a fully flag-driven (non-interactive) `loco new ... --assets
+// serverside` must NOT block on the embedded-assets Confirm prompt. With all
+// core options supplied, `select_embedded_assets` honors the flag and never
+// prompts. (Calling it here in a non-tty test would hang if it prompted.)
+#[test]
+fn embedded_assets_non_interactive_serverside_does_not_prompt() {
+    let base = wizard::ArgsPlaceholder {
+        db: Some(DBOption::None),
+        bg: Some(BackgroundOption::Async),
+        assets: Some(AssetsOption::Serverside),
+        embedded_assets: false,
+    };
+    // no flag -> default false, no prompt
+    assert!(
+        !wizard::select_embedded_assets(&base, &AssetsOption::Serverside).unwrap(),
+        "non-interactive serverside without --embedded-assets should be false"
+    );
+    // explicit --embedded-assets -> true, still no prompt
+    let with_flag = wizard::ArgsPlaceholder {
+        embedded_assets: true,
+        ..base
+    };
+    assert!(
+        wizard::select_embedded_assets(&with_flag, &AssetsOption::Serverside).unwrap(),
+        "--embedded-assets should enable embedding without prompting"
+    );
+}
+
 struct Tester {
     dir: PathBuf,
     env_map: HashMap<String, String>,

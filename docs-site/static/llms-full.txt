@@ -34,9 +34,11 @@ cargo loco start
 ```
 
 `loco new` flags (`loco-new/src/bin/main.rs`): `-n/--name`, `--db <sqlite|
-postgres|none>`, `--bg <async|queue|blocking>`, `--assets <serverside|
-clientside|none>`, `--os <linux|windows|macos>`, `-a/--allow-in-git-repo`,
-`-p/--path`. **There is no `-t/--template` and no `-v/--verbose` flag** —
+postgres|none>`, `--bg <async|queue-redis|queue-postgres|queue-sqlite|blocking>`,
+`--assets <serverside|clientside|none>`, `--embedded-assets` (embed static
+assets into the binary; serverside only), `--os <linux|windows|macos>`,
+`-a/--allow-in-git-repo`, `-p/--path`. **There is no `-t/--template` and no
+`-v/--verbose` flag** —
 template choice (SaaS server-rendered, SaaS client-rendered, Rest API,
 Lightweight, Advanced) is interactive-only, selected after the DB/bg/assets
 prompts (or skipped entirely if `--db`+`--bg`+`--assets` are all supplied).

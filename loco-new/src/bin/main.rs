@@ -51,6 +51,10 @@ enum Commands {
         #[arg(long)]
         assets: Option<wizard::AssetsOption>,
 
+        /// Embed static assets into the binary (serverside apps only)
+        #[arg(long)]
+        embedded_assets: bool,
+
         /// Create the starter in target git repository
         #[arg(short, long)]
         allow_in_git_repo: bool,
@@ -83,6 +87,7 @@ fn main() -> Result<()> {
             db,
             bg,
             assets,
+            embedded_assets,
             name,
             allow_in_git_repo,
             os,
@@ -106,9 +111,14 @@ fn main() -> Result<()> {
                 tracing::debug!(dir = %to.display(), "creating application directory");
                 let temp_to = tree_fs::TreeBuilder::default().create()?;
 
-                let args = wizard::ArgsPlaceholder { db, bg, assets };
+                let args = wizard::ArgsPlaceholder {
+                    db,
+                    bg,
+                    assets,
+                    embedded_assets,
+                };
                 let user_selection = wizard::start(&args)?;
-                let embedded_assets = wizard::select_embedded_assets(&user_selection.asset)?;
+                let embedded_assets = wizard::select_embedded_assets(&args, &user_selection.asset)?;
 
                 let generator_tmp_folder = extract_default_template()?;
                 tracing::debug!(

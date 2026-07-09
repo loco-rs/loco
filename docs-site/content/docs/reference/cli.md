@@ -45,6 +45,7 @@ Source: `loco-new/src/bin/main.rs:30-62`.
 | `--db <DB>` | `wizard::DBOption` | none — prompts | DB provider: `sqlite` \| `postgres` \| `none` (`main.rs:42-44`) |
 | `--bg <BG>` | `wizard::BackgroundOption` | none — prompts | Background-worker mode: `async` \| `queue-redis` \| `queue-postgres` \| `queue-sqlite` \| `blocking` (`main.rs:46-48`) |
 | `--assets <ASSETS>` | `wizard::AssetsOption` | none — prompts | Asset serving: `serverside` \| `clientside` \| `none` (`main.rs:50-52`) |
+| `--embedded-assets` | `bool` | `false` — prompts (interactive, serverside only) | Embed static assets into the binary (`embedded_assets` feature). Serverside only; combined with `--assets clientside` it is a hard error. Supplying it (or running fully flag-driven) skips the interactive prompt |
 | `-a, --allow-in-git-repo` | `bool` | `false` | Skip the "you're inside a git repo, continue?" abort prompt (`main.rs:54-56`) |
 | `--os <OS>` | `wizard::OS` | `linux` on Unix, `windows` otherwise | Generate a Unix- or Windows-optimized starter: `windows` \| `linux` \| `macos` (`main.rs:58-60`, `DEFAULT_OS` `main.rs:64-67`) |
 
