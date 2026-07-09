@@ -27,6 +27,9 @@ use loco::{
 
 // when running locally set LOCO_DEV_MODE_PATH=<to local loco path>
 #[rstest::rstest]
+// Serialized: every combo builds into one shared CARGO_TARGET_DIR (see
+// test_combination), so the heavy end-to-end cases must not run concurrently.
+#[serial_test::serial]
 // lightweight service
 #[case(DBOption::None, AssetsOption::None, BackgroundOption::Async)]
 // REST API
@@ -73,6 +76,17 @@ fn test_combination(
     env_map.insert("RUSTFLAGS".into(), "-D warnings".into());
     env_map.insert("DB_CONNECT_TIMEOUT".into(), "2000".into());
     env_map.insert("DB_IDLE_TIMEOUT".into(), "2000".into());
+    // Build every generated app into ONE shared, persistent target dir instead
+    // of a fresh multi-GB `target/` inside each (ephemeral) tree_fs dir. This
+    // keeps the dependency build cache warm across combos (loco-rs is compiled
+    // once, not per-combo) and — crucially — means an aborted/killed run leaks
+    // only small source temp dirs, never gigabytes of build artifacts. The
+    // combos run sequentially, so the shared target dir sees no concurrent use.
+    let shared_target = std::env::temp_dir().join("loco-new-wizard-target");
+    env_map.insert(
+        "CARGO_TARGET_DIR".into(),
+        shared_target.to_string_lossy().into_owned(),
+    );
 
     let tester = Tester {
         dir: test_dir.root,
