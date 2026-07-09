@@ -20,6 +20,11 @@
 English · [中文](./README-zh_CN.md) · [Français](./README.fr.md) · [Portuguese (Brazil)](./README-pt_BR.md) ・ [日本語](./README.ja.md) · [한국어](./README.ko.md) · [Русский](./README.ru.md) · [Español](./README.es.md)
 
 
+## Fork Notice
+
+This repository is a community fork of [Loco](https://github.com/loco-rs/loco). The original framework, project name, documentation, and contributor history belong to the Loco maintainers and contributors. This fork exists to continue maintenance and experimentation while preserving clear attribution to the upstream project.
+
+
 ## What's Loco?
 `Loco` is strongly inspired by Rails. If you know Rails and Rust, you'll feel at home. If you only know Rails and new to Rust, you'll find Loco refreshing. We do not assume you know Rails.
 
