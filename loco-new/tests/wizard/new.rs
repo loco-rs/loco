@@ -42,7 +42,11 @@ use loco::{
 // (typed backend DTO+controller + React Query hooks/pages + routes injection)
 #[case(DBOption::Sqlite, AssetsOption::Clientside, BackgroundOption::Async)]
 // full-stack SPA with a SQLite queue backend (-> worker feature)
-#[case(DBOption::Sqlite, AssetsOption::Clientside, BackgroundOption::QueueSqlite)]
+#[case(
+    DBOption::Sqlite,
+    AssetsOption::Clientside,
+    BackgroundOption::QueueSqlite
+)]
 fn test_starter_combinations(
     #[case] db: DBOption,
     #[case] asset: AssetsOption,
@@ -181,7 +185,13 @@ fn embedded_assets_with_clientside_is_rejected() {
         asset: AssetsOption::Clientside,
     };
     // embedded requested with clientside must be an error
-    assert!(settings::Settings::from_wizard_checked("x", &sel, OS::default(), /*embedded=*/ true).is_err());
+    assert!(settings::Settings::from_wizard_checked(
+        "x",
+        &sel,
+        OS::default(),
+        /*embedded=*/ true
+    )
+    .is_err());
 }
 
 #[test]

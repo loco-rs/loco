@@ -403,9 +403,7 @@ pub fn select_embedded_assets(args: &ArgsPlaceholder, asset: &AssetsOption) -> c
     // Never prompt when the run is non-interactive (all core options supplied via
     // flags) or when `--embedded-assets` was passed explicitly — honor the flag.
     // This keeps `loco new --db .. --bg .. --assets serverside` fully scriptable.
-    if args.embedded_assets
-        || (args.db.is_some() && args.bg.is_some() && args.assets.is_some())
-    {
+    if args.embedded_assets || (args.db.is_some() && args.bg.is_some() && args.assets.is_some()) {
         return Ok(args.embedded_assets);
     }
 

@@ -1391,6 +1391,9 @@ mod tests {
 
     #[test]
     fn columns_from_fields_empty_input_is_empty_output() {
-        assert_eq!(columns_from_fields(&[]).expect("failed to parse fields"), vec![]);
+        assert_eq!(
+            columns_from_fields(&[]).expect("failed to parse fields"),
+            vec![]
+        );
     }
 }

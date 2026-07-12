@@ -234,12 +234,7 @@ fn build_field(col: &Column, pascal_singular: &str) -> (Value, Option<Value>) {
 /// templates: resource name forms (`cruet` for plural/singular, `heck` for
 /// case -- see `infer.rs`'s inflection note), per-column field data, enum
 /// definitions, and the `sea_orm::prelude` import line.
-fn build_api_context(
-    name: &str,
-    columns: &[Column],
-    with_tz: bool,
-    appinfo: &AppInfo,
-) -> Value {
+fn build_api_context(name: &str, columns: &[Column], with_tz: bool, appinfo: &AppInfo) -> Value {
     let singular_raw = name.to_singular();
     let plural_raw = name.to_plural();
     let pascal_singular = singular_raw.to_upper_camel_case();
@@ -304,7 +299,9 @@ fn build_api_context(
     // dependency on the once-per-app base `routes.tsx`).
     let frontend_imports_injection = ["Edit", "List", "New", "Show"]
         .iter()
-        .map(|component| format!("import {{ {component} }} from './pages/{snake_plural}/{component}'"))
+        .map(|component| {
+            format!("import {{ {component} }} from './pages/{snake_plural}/{component}'")
+        })
         .collect::<Vec<_>>()
         .join("\\n");
     let frontend_routes_injection = [
