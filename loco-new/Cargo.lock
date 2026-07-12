@@ -686,7 +686,7 @@ dependencies = [
 
 [[package]]
 name = "loco"
-version = "0.17.0"
+version = "1.0.0"
 dependencies = [
  "clap",
  "colored",
