@@ -165,15 +165,30 @@ pub fn parse_column(name: &str, spec: &str) -> Result<Column> {
         });
     }
 
-    let (base, nullable, unique) = if let Some(stripped) = spec.strip_suffix('^') {
-        (stripped, false, true)
-    } else if let Some(stripped) = spec.strip_suffix('!') {
-        (stripped, false, false)
+    // A `!` (non-null) or `^` (unique) flag may sit at the very end of the spec
+    // (`string!`, `enum:a,b!`, `decimal_len:8:24!`) OR be attached to the base
+    // type name of a parametrized type (`decimal_len!:8:24`, `var_binary^:16`).
+    // Strip it from whichever position it occupies so both forms parse.
+    let (stripped, mut nullable, mut unique) = if let Some(s) = spec.strip_suffix('^') {
+        (s, false, true)
+    } else if let Some(s) = spec.strip_suffix('!') {
+        (s, false, false)
     } else {
         (spec, true, false)
     };
 
-    let parts: Vec<&str> = base.split(':').collect();
+    let mut parts: Vec<&str> = stripped.split(':').collect();
+    if nullable && parts.len() > 1 {
+        if let Some(b) = parts[0].strip_suffix('^') {
+            parts[0] = b;
+            nullable = false;
+            unique = true;
+        } else if let Some(b) = parts[0].strip_suffix('!') {
+            parts[0] = b;
+            nullable = false;
+        }
+    }
+    let base = parts.join(":");
     let kind = match parts.as_slice() {
         ["array", rest @ ..] => {
             let [inner_name] = rest else {
@@ -283,13 +298,15 @@ pub fn parse_column(name: &str, spec: &str) -> Result<Column> {
 
 /// Maps a bare scalar DSL base name to its `ScalarType`.
 ///
-/// Preserves the retired field-type-mapping JSON's semantics for every name
-/// **except** the deliberate 1.0 fix: `int` now means a real 32-bit
-/// `Integer` (was `BigInteger`/i64 previously); use `big_int` for 64-bit.
-/// `unsigned` is kept as an alias of `big_unsigned` (both mapped to
-/// `BigUnsigned`/i64 previously) -- see the module-level note in the report
-/// for why the dedicated `ScalarType::Unsigned` variant is not reachable
-/// from this name.
+/// Preserves the retired field-type-mapping JSON's semantics for every name.
+/// `int` maps to a 64-bit `BigInteger`/i64 (same as `big_int`): SQLite has no
+/// 32-bit integer affinity -- every `INTEGER` column round-trips as `i64` via
+/// `sea-orm-cli` -- so a 32-bit `int` produces a generated model whose `i64`
+/// field mismatches the `i32` DTO/params, and scaffolding an `int` column on
+/// SQLite fails to compile. 64-bit keeps the scaffold portable across
+/// SQLite/Postgres. `unsigned` is kept as an alias of `big_unsigned` (both
+/// `BigUnsigned`/i64) -- see the module-level note for why the dedicated
+/// `ScalarType::Unsigned` variant is not reachable from this name.
 ///
 /// # Errors
 /// Returns `Error::Message` when `name` is not a recognized base type.
@@ -401,7 +418,9 @@ impl Column {
                 ScalarType::Text => flag.suffixed("Text"),
                 ScalarType::Uuid => flag.suffixed("Uuid"),
                 ScalarType::SmallInt => flag.suffixed("SmallInteger"),
-                ScalarType::Int => flag.suffixed("Integer"),
+                // `int` is 64-bit (see `scalar_from_base_name`): portable across
+                // SQLite (no 32-bit integer affinity) and Postgres.
+                ScalarType::Int => flag.suffixed("BigInteger"),
                 ScalarType::BigInt => flag.suffixed("BigInteger"),
                 ScalarType::SmallUnsigned => flag.suffixed("SmallUnsigned"),
                 ScalarType::Unsigned => flag.suffixed("Unsigned"),
@@ -483,7 +502,9 @@ impl Column {
 /// (no panic) even if that invariant were ever broken.
 fn array_col_type_name(scalar: &ScalarType) -> &'static str {
     match scalar {
-        ScalarType::Int => "Int",
+        // `int` is 64-bit, so `array:int` is a BigInt array (matches the scalar
+        // `int` -> i64 mapping and stays consistent on Postgres int arrays).
+        ScalarType::Int => "BigInt",
         ScalarType::BigInt => "BigInt",
         ScalarType::Float => "Float",
         ScalarType::Double => "Double",
@@ -500,8 +521,7 @@ fn scalar_rust_type(scalar: &ScalarType, column_name: &str) -> String {
         ScalarType::String | ScalarType::Text => "String".to_string(),
         ScalarType::Uuid => "Uuid".to_string(),
         ScalarType::SmallInt | ScalarType::SmallUnsigned => "i16".to_string(),
-        ScalarType::Int => "i32".to_string(),
-        ScalarType::BigInt | ScalarType::BigUnsigned => "i64".to_string(),
+        ScalarType::Int | ScalarType::BigInt | ScalarType::BigUnsigned => "i64".to_string(),
         ScalarType::Unsigned => "u32".to_string(),
         ScalarType::Float => "f32".to_string(),
         ScalarType::Double => "f64".to_string(),
@@ -714,6 +734,31 @@ mod tests {
     }
 
     #[test]
+    fn parametrized_type_flag_after_base_name_parses() {
+        // `!`/`^` may attach to the base name of a parametrized type, not only
+        // to the end of the whole spec (regression: `decimal_len!:8:24` used to
+        // fail with "unknown column type").
+        let nn = col("age", "decimal_len!:8:24");
+        assert_eq!(
+            nn.kind,
+            ColumnKind::Scalar(ScalarType::DecimalLen {
+                precision: 8,
+                scale: 24
+            })
+        );
+        assert!(!nn.nullable && !nn.unique);
+
+        let uniq = col("sku", "var_binary^:16");
+        assert_eq!(uniq.kind, ColumnKind::Scalar(ScalarType::VarBinary { len: 16 }));
+        assert!(!uniq.nullable && uniq.unique);
+
+        // the trailing-flag form still works and is equivalent
+        let trailing = col("age", "decimal_len:8:24!");
+        assert_eq!(trailing.kind, nn.kind);
+        assert!(!trailing.nullable);
+    }
+
+    #[test]
     fn var_binary_parses_len() {
         let c = col("data", "var_binary:16");
         assert_eq!(
@@ -878,20 +923,21 @@ mod tests {
                 ts_type: Some("number | null"),
                 form: FormKind::Number,
             },
-            // int -- the deliberate 1.0 fix: 32-bit, not BigInteger
+            // int -- 64-bit (BigInteger/i64): SQLite has no 32-bit integer, so a
+            // portable scaffold must not emit a 32-bit `int`.
             Case {
                 name: "hits",
                 spec: "int!",
-                col_type: "Integer",
-                dto_rust_type: "i32",
+                col_type: "BigInteger",
+                dto_rust_type: "i64",
                 ts_type: Some("number"),
                 form: FormKind::Number,
             },
             Case {
                 name: "hits",
                 spec: "int",
-                col_type: "IntegerNull",
-                dto_rust_type: "Option<i32>",
+                col_type: "BigIntegerNull",
+                dto_rust_type: "Option<i64>",
                 ts_type: Some("number | null"),
                 form: FormKind::Number,
             },
