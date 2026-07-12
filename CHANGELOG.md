@@ -2,10 +2,42 @@
 
 
 
-## Unreleased
+## 1.0.0
+
+1.0.0 is the first stable Loco release — a single, intentionally-breaking
+milestone. Its headline is the move to **Sea-ORM 2.0**, alongside first-class
+LLM/agent support, priority queues, a broad dependency modernization, and a deep
+hardening pass across the queue, storage, config, error, remote-IP, and
+middleware subsystems. Follow the step-by-step
+[0.16 → 1.0 upgrade guide](https://loco.rs/docs/extras/upgrades/).
 
 ### Breaking Changes
 
+- **Sea-ORM 2.0 + sqlx 0.9.** Bump `sea-orm`/`sea-orm-migration` to `2.0` (app +
+  `migration` crate), direct `sqlx` to `0.9`, update the Sea-ORM CLI, and
+  regenerate entities. Raw-`Statement` calls gain a `_raw` suffix; runtime SQL
+  strings need `AssertSqlSafe`. MSRV raised (1.85 for 2.0.0 stable). (Adopted
+  from the SeaQL fork and [#1698](https://github.com/loco-rs/loco/pull/1698).)
+- **Generated primary/foreign keys are now 64-bit (BIGINT / `i64`).** Also the
+  `int`/`unsigned` field types generate 64-bit columns. Only affects newly
+  generated code; existing tables are untouched.
+- **Priority queues — Redis backend change.** The Redis worker moved from Lists
+  to Sorted Sets (ZSET) to support priority; **drain existing Redis queues before
+  upgrading**. Postgres/SQLite auto-migrate a `priority` column (no action).
+  ([#1693](https://github.com/loco-rs/loco/pull/1693))
+- **`Worker::perform_later()` returns the job ID** (`Result<String>`), and
+  `Queue::enqueue()` returns `Result<Option<String>>`. Existing
+  `perform_later(...).await?;` keeps working. ([#1624](https://github.com/loco-rs/loco/pull/1624), fixes [#1623](https://github.com/loco-rs/loco/issues/1623))
+- **`PageResponse<T>` exposes `meta: PagerMeta`** instead of flat
+  `total_pages`/`total_items` (also carries `page`/`page_size`). ([#1685](https://github.com/loco-rs/loco/pull/1685), fixes [#1683](https://github.com/loco-rs/loco/issues/1683))
+- **View engine:** use `engines::TeraView::build_with_post_process(...)` instead
+  of `TeraView::build()?.post_process(...)` in `after_routes`.
+- **Dependency majors:** `thiserror` 1→2, `tower` 0.4→0.5, `heck`→0.5,
+  `byte-unit` 4→5, `ipnetwork` 0.20→0.21, `strum`→0.27, `redis` 0.31→1,
+  `bb8-redis`→0.26, `opendal` 0.54→0.57; `serde_yaml`→`serde_yaml_ng`.
+  Transitive for most apps.
+- Removed the dead `loco-cli` crate (superseded by `loco-new`, the published
+  `loco` binary).
 - **`ExtraDbInitializer` removed; use `MultiDbInitializer`.** The
   single-extra-connection initializer (`initializers.extra_db`, which layered a
   bare `Extension<DatabaseConnection>`) is gone. Use `MultiDbInitializer` with a
@@ -88,6 +120,18 @@
 
 ### Added
 
+- **First-class LLM / agent support.** Root `AGENTS.md` teaches agents to build
+  Loco apps; `llms.txt` / `llms-full.txt` are served from the site
+  (llmstxt.org). Every `loco new` app ships an app-level `AGENTS.md`.
+- **Priority queues** with `Worker::perform_later_with_priority(...)`; mailer
+  jobs default to priority `100`. ([#1693](https://github.com/loco-rs/loco/pull/1693))
+- **Mailer implicit TLS (SMTPS / port 465)** via `mailer.smtp.tls`. ([#1774](https://github.com/loco-rs/loco/pull/1774), fixes [#1773](https://github.com/loco-rs/loco/issues/1773))
+- **Run the scheduler without a worker** — `--scheduler` flag +
+  `StartMode::ServerAndScheduler`/`WorkerAndScheduler`. ([#1742](https://github.com/loco-rs/loco/pull/1742), fixes [#1737](https://github.com/loco-rs/loco/issues/1737))
+- Email headers support in the mailer ([#1700](https://github.com/loco-rs/loco/pull/1700)).
+- "Create user" task ([#1670](https://github.com/loco-rs/loco/pull/1670)).
+- `UuidUniqWithDefault` and `UuidWithDefault` types ([#1642](https://github.com/loco-rs/loco/pull/1642)).
+- Allow overriding a secure header ([#1659](https://github.com/loco-rs/loco/pull/1659)).
 - **`Mailer::deliver_now` / `mail_template_now` for synchronous sends.**
   Complements `Mailer::mail`/`mail_template` (which enqueue via the background
   worker, like Rails `deliver_later`) with an inline send that bypasses the
@@ -115,6 +159,12 @@
 
 ### Changed
 
+- Wrap `TeraView` in `Arc` to reduce runtime memory usage ([#1703](https://github.com/loco-rs/loco/pull/1703)).
+- Refactor users model to reuse `find_by_api_key` in `Authenticable` ([#1706](https://github.com/loco-rs/loco/pull/1706)).
+- Split error detail generic parameters ([#1709](https://github.com/loco-rs/loco/pull/1709)).
+- Update `loco-new` for the new Rhai version ([#1704](https://github.com/loco-rs/loco/pull/1704)).
+- Replaced hand-rolled `Cargo.lock` parsing with the `cargo-lock` crate; retired
+  `duct_sh`.
 - **`Error` → HTTP-status mapping is now exhaustive.** The `IntoResponse for
   Error` match dropped its trailing `_ => 500` wildcard: every variant (and every
   nested `ModelError` variant) is now classified explicitly, so adding a new
@@ -149,6 +199,10 @@
 
 ### Fixed
 
+- `cargo fmt` error in `loco-new` ([#1669](https://github.com/loco-rs/loco/pull/1669)).
+- UUID pattern in form field generation ([#1665](https://github.com/loco-rs/loco/pull/1665)).
+- Clippy warnings for recent Rust ([#1705](https://github.com/loco-rs/loco/pull/1705)).
+- Add tests for the auth extractor ([#1671](https://github.com/loco-rs/loco/pull/1671)).
 - **Postgres/SQLite queue backends now behave consistently.** Two divergences
   between the Postgres and SQLite job backends are fixed: (1) `enqueue` on
   Postgres previously *swallowed* a tag-serialization error (storing `tags =
@@ -207,76 +261,6 @@
 - Deleted shipped-but-dead code: the never-compiled
   `controller/middleware/_archive/content_etag.rs` module and a commented-out
   block of backtrace-blocklist regexes.
-
-## 0.17.0
-
-0.17.0 is a large, intentionally-breaking release. Its headline is the move to
-**Sea-ORM 2.0**, alongside first-class LLM/agent support, priority queues, and a
-broad dependency modernization. Follow the step-by-step
-[0.16 → 0.17 upgrade guide](https://loco.rs/docs/extras/upgrades/).
-
-### Breaking Changes
-
-- **Sea-ORM 2.0 + sqlx 0.9.** Bump `sea-orm`/`sea-orm-migration` to `2.0` (app +
-  `migration` crate), direct `sqlx` to `0.9`, update the Sea-ORM CLI, and
-  regenerate entities. Raw-`Statement` calls gain a `_raw` suffix; runtime SQL
-  strings need `AssertSqlSafe`. MSRV raised (1.85 for 2.0.0 stable). (Adopted
-  from the SeaQL fork and [#1698](https://github.com/loco-rs/loco/pull/1698).)
-- **Generated primary/foreign keys are now 64-bit (BIGINT / `i64`).** Also the
-  `int`/`unsigned` field types generate 64-bit columns. Only affects newly
-  generated code; existing tables are untouched.
-- **Priority queues — Redis backend change.** The Redis worker moved from Lists
-  to Sorted Sets (ZSET) to support priority; **drain existing Redis queues before
-  upgrading**. Postgres/SQLite auto-migrate a `priority` column (no action).
-  ([#1693](https://github.com/loco-rs/loco/pull/1693))
-- **`Worker::perform_later()` returns the job ID** (`Result<String>`), and
-  `Queue::enqueue()` returns `Result<Option<String>>`. Existing
-  `perform_later(...).await?;` keeps working. ([#1624](https://github.com/loco-rs/loco/pull/1624), fixes [#1623](https://github.com/loco-rs/loco/issues/1623))
-- **`PageResponse<T>` exposes `meta: PagerMeta`** instead of flat
-  `total_pages`/`total_items` (also carries `page`/`page_size`). ([#1685](https://github.com/loco-rs/loco/pull/1685), fixes [#1683](https://github.com/loco-rs/loco/issues/1683))
-- **`loco_rs::Error` is `#[non_exhaustive]`.** Add a wildcard `_ => ...` arm to
-  exhaustive matches.
-- **View engine:** use `engines::TeraView::build_with_post_process(...)` instead
-  of `TeraView::build()?.post_process(...)` in `after_routes`.
-- **Dependency majors:** `thiserror` 1→2, `tower` 0.4→0.5, `heck`→0.5,
-  `byte-unit` 4→5, `ipnetwork` 0.20→0.21, `strum`→0.27, `redis` 0.31→1,
-  `bb8-redis`→0.26, `opendal` 0.54→0.57; `serde_yaml`→`serde_yaml_ng`.
-  Transitive for most apps.
-- Removed the dead `loco-cli` crate (superseded by `loco-new`, the published
-  `loco` binary).
-
-### Added
-
-- **First-class LLM / agent support.** Root `AGENTS.md` teaches agents to build
-  Loco 0.17 apps; `llms.txt` / `llms-full.txt` are served from the site
-  (llmstxt.org). Every `loco new` app ships an app-level `AGENTS.md`.
-- **Priority queues** with `Worker::perform_later_with_priority(...)`; mailer
-  jobs default to priority `100`. ([#1693](https://github.com/loco-rs/loco/pull/1693))
-- **Mailer implicit TLS (SMTPS / port 465)** via `mailer.smtp.tls`. ([#1774](https://github.com/loco-rs/loco/pull/1774), fixes [#1773](https://github.com/loco-rs/loco/issues/1773))
-- **Run the scheduler without a worker** — `--scheduler` flag +
-  `StartMode::ServerAndScheduler`/`WorkerAndScheduler`. ([#1742](https://github.com/loco-rs/loco/pull/1742), fixes [#1737](https://github.com/loco-rs/loco/issues/1737))
-- Email headers support in the mailer ([#1700](https://github.com/loco-rs/loco/pull/1700)).
-- "Create user" task ([#1670](https://github.com/loco-rs/loco/pull/1670)).
-- `UuidUniqWithDefault` and `UuidWithDefault` types ([#1642](https://github.com/loco-rs/loco/pull/1642)).
-- Allow overriding a secure header ([#1659](https://github.com/loco-rs/loco/pull/1659)).
-
-### Changed
-
-- Wrap `TeraView` in `Arc` to reduce runtime memory usage ([#1703](https://github.com/loco-rs/loco/pull/1703)).
-- Refactor users model to reuse `find_by_api_key` in `Authenticable` ([#1706](https://github.com/loco-rs/loco/pull/1706)).
-- Split error detail generic parameters ([#1709](https://github.com/loco-rs/loco/pull/1709)).
-- Update `loco-new` for the new Rhai version ([#1704](https://github.com/loco-rs/loco/pull/1704)).
-- Replaced hand-rolled `Cargo.lock` parsing with the `cargo-lock` crate; retired
-  `duct_sh`.
-
-### Fixed
-
-- `cargo fmt` error in `loco-new` ([#1669](https://github.com/loco-rs/loco/pull/1669)).
-- UUID pattern in form field generation ([#1665](https://github.com/loco-rs/loco/pull/1665)).
-- Clippy warnings for recent Rust ([#1705](https://github.com/loco-rs/loco/pull/1705)).
-- Add tests for the auth extractor ([#1671](https://github.com/loco-rs/loco/pull/1671)).
-
-
 
 ## v0.16.4 
 - Feat: decouple JWT authentication from database dependency. [https://github.com/loco-rs/loco/pull/1546](https://github.com/loco-rs/loco/pull/1546)

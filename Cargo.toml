@@ -13,7 +13,7 @@ license = "Apache-2.0"
 
 [package]
 name = "loco-rs"
-version = "0.17.0"
+version = "1.0.0"
 description = "The one-person framework for Rust"
 homepage = "https://loco.rs/"
 documentation = "https://docs.rs/loco-rs"
@@ -59,13 +59,13 @@ worker_redis = ["worker", "dep:redis"]
 embedded_assets = []
 
 [dependencies]
-loco-gen = { version = "0.17.0", path = "./loco-gen" }
+loco-gen = { version = "1.0.0", path = "./loco-gen" }
 backtrace_printer = { version = "1.3.0" }
 
 # cli
 clap = { version = "4.4.7", features = ["derive"], optional = true }
 colored = { workspace = true }
-sea-orm = { version = "2.0.0-rc", features = [
+sea-orm = { version = "=2.0.0-rc.41", features = [
     "sqlx-postgres",        # `DATABASE_DRIVER` feature
     "sqlx-sqlite",
     "runtime-tokio-rustls",
@@ -193,7 +193,7 @@ duct = { version = "1.0.0" }
 
 [dependencies.sea-orm-migration]
 optional = true
-version = "2.0.0-rc"
+version = "=2.0.0-rc.41"
 features = [
     # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.
     # View the list of supported features at https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime.
