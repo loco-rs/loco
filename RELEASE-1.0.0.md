@@ -169,9 +169,34 @@ All work below is **on `release/1.0.0`**, so every "adopted" reply is truthful o
 
 ---
 
-## Verification log (fill during Part A)
+## Verification log (Part A)
 
-- A3 serverside/sqlite smoke: _pending_
-- A3 clientside/queue-sqlite smoke: _pending_
-- A4 green gate (fmt/clippy/hack/test/loco-gen/loco-new): _pending_
-- A4 formerly-gated tests (test_migrations_flow, wizard matrix) on rc.41: _pending_
+**Commits so far:** `5f286ed8` (fmt), `53915e9f` (1.0.0 bump + exact-pin),
+`116f3a92` (generator fixes), `8aea4165` (loco-new lock).
+
+- ✅ **A1** version bump 0.17.0 → 1.0.0 (5 sites) + CHANGELOG merged into one `## 1.0.0`.
+- ✅ **A2** exact-pin `sea-orm =2.0.0-rc.41` (4 sites); lockfiles regenerated.
+- ✅ **A3** fresh serverside/sqlite app: compiles on rc.41, `db migrate` applies,
+  boots — `/_health` 200, `/_ping` 200.
+- ✅ **A4 (partial)** fmt clean; clippy `--all-features -D warnings` clean;
+  `cargo hack --each-feature` exit 0; loco-gen lib 36 tests pass.
+- ⏳ **A4** `cargo test --all-features` (loco-rs) + loco-new wizard matrix: not yet run.
+- ⏳ **test_migrations_flow sqlite**: full flow ran to completion on rc.41; snapshot
+  accepted after verification; a confirming green re-run was interrupted (killed).
+- ⏳ **test_migrations_flow postgres**: needs `DATABASE_URL`; snapshot also stale
+  (regenerate against a running PG — validates int→BIGINT on Postgres too).
+
+### Findings surfaced while un-gating test_migrations_flow (all real, all fixed)
+
+1. **Exact-pin was a required correctness fix, not hygiene.** rc.42 shipped; the
+   old loose `2.0.0-rc` caret drifted a fresh `loco new` to rc.42, which collides
+   with the pinned `sea-schema =0.18.0` (`?Send` break) → every fresh app failed
+   to compile. `=2.0.0-rc.41` fixes it. (`53915e9f`)
+2. **`int` was broken on SQLite** — 32-bit DTO vs i64 entity → non-compiling
+   scaffold. Now 64-bit. **DECISION (surface):** `int` ≡ `big_int` now (both i64);
+   there is no 32-bit scaffold DSL type. Forced by SQLite + matches CHANGELOG.
+   Overridable. (`116f3a92`)
+3. **`decimal_len!:8:24` didn't parse** (flag-after-base-name). Fixed. (`116f3a92`)
+
+These were invisible to the wizard-matrix tests (they only scaffold
+string/references columns) — the exhaustive migration-flow test is what caught them.
