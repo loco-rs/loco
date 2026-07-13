@@ -210,10 +210,14 @@ MultiEmail), `b081cb32` (CHANGELOG + drop dead `tera::render`), `4293aa95`
   **`cargo check` compiled clean** (exit 0). Scaffold reverted; tree clean.
 - ✅ **Hygiene:** committed HEAD's `examples/demo` + `examples/reference_spa`
   lockfiles still pinned loco-rs 0.17.0 (A2 gap); refreshed both to 1.0.0.
-- 🟡 **loco-new wizard matrix:** NOT relaunched (repeatedly stopped; only scaffolds
-  string/reference columns and plain `mail_template`, so it does not exercise the
-  A5 mailer changes). Generated-app compile is instead guaranteed by the
-  reference_spa generate-mailer-and-compile check above + A3 smoke.
+- ✅ **loco-new wizard matrix: 6/6 combos pass, 0 fail** (`test_starter_combinations`,
+  ~21.5 min, exit 0). Ran end-to-end against `LOCO_DEV_MODE_PATH` (local loco-rs +
+  loco-gen). Each combo generates a full app, runs clippy `-D warnings` + its test
+  suite (32 pass each), then generates controller/task/scheduler/worker/**mailer**/
+  scaffold/model/**`age:int` migrations** and recompiles. This DOES exercise the A5
+  #1694 mailer scaffold (`src/mailers/shared/base.t` + `mail_template_with_shared`
+  generated and compiled) and the int→bigint fix. Zero `error[E…]`, zero
+  "could not compile" across the full 5.8k-line log.
 
 - ✅ **A1** version bump 0.17.0 → 1.0.0 (5 sites) + CHANGELOG merged into one `## 1.0.0`.
 - ✅ **A2** exact-pin `sea-orm =2.0.0-rc.41` (4 sites); lockfiles regenerated.
