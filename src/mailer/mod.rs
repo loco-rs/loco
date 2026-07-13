@@ -41,6 +41,18 @@ pub struct Args {
     pub headers: Option<EmailHeaders>,
 }
 
+/// The arguments struct for specifying email details with multiple recipients.
+#[derive(Debug, Clone, Default)]
+pub struct MultiArgs {
+    pub from: Option<String>,
+    pub to: Vec<String>,
+    pub reply_to: Option<String>,
+    pub locals: serde_json::Value,
+    pub bcc: Vec<String>,
+    pub cc: Vec<String>,
+    pub headers: Option<EmailHeaders>,
+}
+
 /// The structure representing an email details.
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Email {
@@ -60,6 +72,29 @@ pub struct Email {
     pub bcc: Option<String>,
     /// CC header to message
     pub cc: Option<String>,
+    /// Custom headers for the email (e.g., References, In-Reply-To, Message-ID)
+    pub headers: Option<EmailHeaders>,
+}
+
+/// The structure representing an email with multiple recipients.
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct MultiEmail {
+    /// Mailbox to `From` header
+    pub from: Option<String>,
+    /// Mailboxes to `To` header
+    pub to: Vec<String>,
+    /// Mailbox to `ReplyTo` header
+    pub reply_to: Option<String>,
+    /// Subject header to message
+    pub subject: String,
+    /// Plain text message
+    pub text: String,
+    /// HTML template
+    pub html: String,
+    /// Mailboxes to `BCC` header
+    pub bcc: Vec<String>,
+    /// Mailboxes to `CC` header
+    pub cc: Vec<String>,
     /// Custom headers for the email (e.g., References, In-Reply-To, Message-ID)
     pub headers: Option<EmailHeaders>,
 }
@@ -109,6 +144,22 @@ pub trait Mailer {
         Ok(())
     }
 
+    /// Sends an email to multiple recipients using the provided [`AppContext`]
+    /// and email details.
+    ///
+    /// # Errors
+    /// Returns an error if enqueuing the email fails.
+    async fn mail_multi(ctx: &AppContext, email: &MultiEmail) -> Result<()> {
+        let opts = Self::opts();
+        let mut email = email.clone();
+
+        email.from = Some(email.from.unwrap_or_else(|| opts.from.clone()));
+        email.reply_to = email.reply_to.or_else(|| opts.reply_to.clone());
+
+        MultiMailerWorker::perform_later(ctx, email.clone()).await?;
+        Ok(())
+    }
+
     /// Renders and sends an email using the provided [`AppContext`], template
     /// directory, and arguments.
     async fn mail_template(ctx: &AppContext, dir: &Dir<'_>, args: Args) -> Result<()> {
@@ -135,6 +186,30 @@ pub trait Mailer {
         Self::mail(
             ctx,
             &Email {
+                from: args.from.clone(),
+                to: args.to.clone(),
+                reply_to: args.reply_to.clone(),
+                subject: content.subject,
+                text: content.text,
+                html: content.html,
+                bcc: args.bcc.clone(),
+                cc: args.cc.clone(),
+                headers: args.headers.clone(),
+            },
+        )
+        .await
+    }
+
+    /// Renders and sends an email to multiple recipients using the provided
+    /// [`AppContext`], template directory, and arguments.
+    ///
+    /// # Errors
+    /// Returns an error if a template is missing/invalid or enqueuing fails.
+    async fn mail_template_multi(ctx: &AppContext, dir: &Dir<'_>, args: MultiArgs) -> Result<()> {
+        let content = Template::new(dir)?.render(&args.locals)?;
+        Self::mail_multi(
+            ctx,
+            &MultiEmail {
                 from: args.from.clone(),
                 to: args.to.clone(),
                 reply_to: args.reply_to.clone(),
@@ -228,6 +303,48 @@ impl BackgroundWorker<Email> for MailerWorker {
     /// and email details.
     async fn perform(&self, email: Email) -> crate::Result<()> {
         send_now(&self.ctx, &email).await
+    }
+}
+
+/// Sends an already-prepared multi-recipient email synchronously through the
+/// context's configured [`EmailSender`], bypassing the background queue. Errors
+/// if no mailer is configured.
+async fn send_multi_now(ctx: &AppContext, email: &MultiEmail) -> Result<()> {
+    if let Some(mailer) = &ctx.mailer {
+        mailer.mail_multi(email).await.inspect_err(|err| {
+            error!(err = err.to_string(), "mailer error");
+        })
+    } else {
+        let err = crate::Error::Message(
+            "attempting to send email but no email sender configured".to_string(),
+        );
+        error!(err = err.to_string(), "mailer error");
+        Err(err)
+    }
+}
+
+/// The [`MultiMailerWorker`] struct represents a worker responsible for
+/// asynchronous multi-recipient email processing.
+#[allow(clippy::module_name_repetitions)]
+pub struct MultiMailerWorker {
+    pub ctx: AppContext,
+}
+
+/// Implementation of the [`Worker`] trait for the [`MultiMailerWorker`].
+#[async_trait]
+impl BackgroundWorker<MultiEmail> for MultiMailerWorker {
+    fn queue() -> Option<String> {
+        Some("mailer".to_string())
+    }
+
+    fn build(ctx: &AppContext) -> Self {
+        Self { ctx: ctx.clone() }
+    }
+
+    /// Performs the multi-recipient email sending operation using the provided
+    /// [`AppContext`] and email details.
+    async fn perform(&self, email: MultiEmail) -> crate::Result<()> {
+        send_multi_now(&self.ctx, &email).await
     }
 }
 
