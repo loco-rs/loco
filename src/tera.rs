@@ -13,15 +13,6 @@ pub fn instance() -> Tera {
     tera
 }
 
-/// Renders an app-facing template string with Loco's built-in filters available.
-///
-/// # Errors
-/// Returns an error if the template fails to render.
-pub fn render(tera_template: &str, locals: &serde_json::Value) -> Result<String> {
-    let mut tera = instance();
-    Ok(tera.render_str(tera_template, &Context::from_serialize(locals)?)?)
-}
-
 /// Renders a raw template string WITHOUT app filters. Used for infra rendering
 /// such as config/env YAML, where app filters must not apply.
 ///

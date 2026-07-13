@@ -117,6 +117,13 @@ middleware subsystems. Follow the step-by-step
   (Postgres+SQLite; free once `sqlx` is compiled), `bg_redis` → `worker_redis`
   (adds `dep:redis`). `default` now has `worker` (not Redis). A Redis queue needs
   `worker_redis`; the queue backend is selected at runtime by `queue.kind`.
+- **Mailer `Template::new(dir)` now returns `Result`** (call `Template::new(dir)?`).
+  Email templates render through a full Tera instance so they support inheritance
+  and shared templates. Standard usage via `Mailer::mail_template` is unchanged.
+  ([#1694](https://github.com/loco-rs/loco/pull/1694))
+- **`Vars::cli_arg` returns `Result<&str>`** (was `Result<&String>`). Callers that
+  relied on `&String` (e.g. `.clone()` into a `String`) should use `.to_owned()`.
+  ([#1732](https://github.com/loco-rs/loco/pull/1732))
 
 ### Added
 
@@ -129,6 +136,14 @@ middleware subsystems. Follow the step-by-step
 - **Run the scheduler without a worker** — `--scheduler` flag +
   `StartMode::ServerAndScheduler`/`WorkerAndScheduler`. ([#1742](https://github.com/loco-rs/loco/pull/1742), fixes [#1737](https://github.com/loco-rs/loco/issues/1737))
 - Email headers support in the mailer ([#1700](https://github.com/loco-rs/loco/pull/1700)).
+- **Multi-recipient emails.** `Mailer::mail_multi` / `mail_template_multi` and the
+  `MultiEmail` / `MultiArgs` types send one email to multiple To/CC/BCC
+  recipients (processed by a dedicated `MultiMailerWorker`). ([#1764](https://github.com/loco-rs/loco/pull/1764))
+- **Email template inheritance & shared templates.** Mailer templates support
+  Tera `{% extends %}` / `{% block %}` and can share a common layout via
+  `Mailer::mail_template_with_shared` / `Template::new_with_shared`. `loco generate
+  mailer` now scaffolds a `src/mailers/shared/` base layout that the welcome
+  template extends. ([#1694](https://github.com/loco-rs/loco/pull/1694))
 - "Create user" task ([#1670](https://github.com/loco-rs/loco/pull/1670)).
 - `UuidUniqWithDefault` and `UuidWithDefault` types ([#1642](https://github.com/loco-rs/loco/pull/1642)).
 - Allow overriding a secure header ([#1659](https://github.com/loco-rs/loco/pull/1659)).
