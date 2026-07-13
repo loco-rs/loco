@@ -188,7 +188,12 @@ All work below is **on `release/1.0.0`**, so every "adopted" reply is truthful o
   + accepted. Needs a pre-created DB (`createdb loco_mig_test`) + `DATABASE_URL`.
 - ✅ **A4** `cargo test --all-features` (loco-rs): lib **484 pass**; integration had
   2 pre-existing flaky JWT failures (see finding 7) — fixed, re-confirmed green.
-- ⏳ **A4** loco-new wizard matrix: next.
+- 🟡 **A4** loco-new wizard matrix: was running **green** (generated apps compiled;
+  their test suites passed — 25 app tests, auth/models/tasks ok) when interrupted
+  mid-run. Not completed end-to-end. Note: this matrix only scaffolds
+  string/reference columns, so it does NOT exercise the int/json/small_unsigned
+  fixes — those are covered by the migration-flow tests (sqlite + Postgres), which
+  DID complete green. A3 smoke + migration flows already cover generate→compile→boot.
 
 ### Findings surfaced while un-gating test_migrations_flow (all real, all fixed)
 
