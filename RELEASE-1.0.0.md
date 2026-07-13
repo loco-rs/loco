@@ -180,13 +180,18 @@ All work below is **on `release/1.0.0`**, so every "adopted" reply is truthful o
   boots — `/_health` 200, `/_ping` 200.
 - ✅ **A4 (partial)** fmt clean; clippy `--all-features -D warnings` clean;
   `cargo hack --each-feature` exit 0; loco-gen lib 36 tests pass.
-- ⏳ **A4** `cargo test --all-features` (loco-rs) + loco-new wizard matrix: not yet run.
-- ⏳ **test_migrations_flow sqlite**: full flow ran to completion on rc.41; snapshot
-  accepted after verification; a confirming green re-run was interrupted (killed).
-- ⏳ **test_migrations_flow postgres**: needs `DATABASE_URL`; snapshot also stale
-  (regenerate against a running PG — validates int→BIGINT on Postgres too).
+- ✅ **test_migrations_flow sqlite**: full flow runs end-to-end on rc.41; snapshot
+  regenerated + verified + accepted.
+- ✅ **test_migrations_flow postgres** (Postgres.app, PG 17.5): full flow runs
+  end-to-end on rc.41; snapshot regenerated + verified (int→bigint,
+  small_unsigned→smallint, array_int→bigint[], json_uniq gone, jsonb_uniq kept)
+  + accepted. Needs a pre-created DB (`createdb loco_mig_test`) + `DATABASE_URL`.
+- ⏳ **A4** `cargo test --all-features` (loco-rs): running. loco-new wizard matrix: next.
 
 ### Findings surfaced while un-gating test_migrations_flow (all real, all fixed)
+
+Un-gating the exhaustive migration test — invisible to the wizard-matrix tests,
+which only scaffold string/reference columns — caught **six** real bugs:
 
 1. **Exact-pin was a required correctness fix, not hygiene.** rc.42 shipped; the
    old loose `2.0.0-rc` caret drifted a fresh `loco new` to rc.42, which collides
@@ -197,6 +202,17 @@ All work below is **on `release/1.0.0`**, so every "adopted" reply is truthful o
    there is no 32-bit scaffold DSL type. Forced by SQLite + matches CHANGELOG.
    Overridable. (`116f3a92`)
 3. **`decimal_len!:8:24` didn't parse** (flag-after-base-name). Fixed. (`116f3a92`)
+4. **`json^` (unique json) failed at migrate on Postgres** (no btree opclass,
+   SQLSTATE 42704). Now rejected at generation with a "use jsonb" message; jsonb^
+   stays valid. (`c70724cf`)
+5. **`small_unsigned` didn't compile on Postgres** (sea-orm `SmallUnsigned`
+   round-trips i16 on SQLite but i32 on PG). Now a signed `SmallInteger` (i16),
+   matching the DTO + existing SQLite behavior. (`c70724cf`)
+6. (arrays) `array:int` follows int→64-bit (`bigint[]`/`Vec<i64>`), verified on PG.
 
-These were invisible to the wizard-matrix tests (they only scaffold
-string/references columns) — the exhaustive migration-flow test is what caught them.
+**Type-portability note (context for the `int`/`small_unsigned` decisions):** only
+`smallint`(i16) and `bigint`(i64) introspect consistently across SQLite+Postgres;
+32-bit `integer` does not (SQLite widens to i64, PG keeps i32), and neither DB has
+native unsigned ints. So the portable scaffold DSL now resolves to: small_int/
+small_unsigned→i16, int/big_int/unsigned/big_unsigned→i64. This is a deliberate,
+overridable simplification.
