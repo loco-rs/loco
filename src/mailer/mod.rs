@@ -112,7 +112,26 @@ pub trait Mailer {
     /// Renders and sends an email using the provided [`AppContext`], template
     /// directory, and arguments.
     async fn mail_template(ctx: &AppContext, dir: &Dir<'_>, args: Args) -> Result<()> {
-        let content = Template::new(dir).render(&args.locals)?;
+        Self::mail_template_with_shared(ctx, dir, &[], args).await
+    }
+
+    /// Renders and sends an email using the provided [`AppContext`], template
+    /// directory, shared template directories, and arguments.
+    ///
+    /// This lets multiple mailers share common templates (e.g. a base HTML
+    /// layout). Templates from `shared_dirs` are loaded first, then templates
+    /// from the main directory, so main-directory templates can extend shared
+    /// ones and override any with the same name.
+    ///
+    /// # Errors
+    /// Returns an error if a template is missing/invalid or the send fails.
+    async fn mail_template_with_shared(
+        ctx: &AppContext,
+        dir: &Dir<'_>,
+        shared_dirs: &[&Dir<'_>],
+        args: Args,
+    ) -> Result<()> {
+        let content = Template::new_with_shared(dir, shared_dirs)?.render(&args.locals)?;
         Self::mail(
             ctx,
             &Email {
@@ -151,7 +170,7 @@ pub trait Mailer {
     /// # Errors
     /// Returns an error if rendering fails, no mailer is configured, or the send fails.
     async fn mail_template_now(ctx: &AppContext, dir: &Dir<'_>, args: Args) -> Result<()> {
-        let content = Template::new(dir).render(&args.locals)?;
+        let content = Template::new(dir)?.render(&args.locals)?;
         Self::deliver_now(
             ctx,
             &Email {
