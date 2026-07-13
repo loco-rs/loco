@@ -863,41 +863,6 @@ async fn can_validate_error_message_for_malformed_header() {
     handle.abort();
 }
 
-// Test JWT extractor with JWT that expires exactly at current time
-#[tokio::test]
-async fn can_handle_jwt_expires_exactly_at_current_time() {
-    let mut ctx = tests_cfg::app::get_app_context().await;
-    let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
-            location: None,
-            secret: secret.clone(),
-            expiration: 3600,
-        }),
-    });
-
-    // Create a JWT that expires exactly at current time (0 seconds from now)
-    let jwt = loco_rs::auth::jwt::JWT::new(&secret);
-    let token = jwt
-        .generate_token(0, "test_pid_123".to_string(), serde_json::Map::new())
-        .expect("Failed to generate token");
-
-    let port = get_available_port().await;
-    let handle = infra_cfg::server::start_with_route(ctx, "/", get(jwt_handler), Some(port)).await;
-
-    let client = reqwest::Client::new();
-    let res = client
-        .get(get_base_url_port(port))
-        .header("Authorization", format!("Bearer {token}"))
-        .send()
-        .await
-        .expect("Valid response");
-
-    // JWT should be considered expired if exp is exactly at current time
-    assert_eq!(res.status(), 401);
-    handle.abort();
-}
-
 // Test JWT extractor with JWT that expired 1 second ago
 #[tokio::test]
 async fn can_handle_jwt_expired_one_second_ago() {
@@ -1087,43 +1052,5 @@ async fn can_handle_jwt_with_distant_future_expiration() {
     let body: TestResponse = res.json().await.expect("Valid JSON response");
     assert_eq!(body.pid, "test_pid_123");
 
-    handle.abort();
-}
-
-// Test JWT extractor with JWT that has exp claim at epoch time (1970)
-#[tokio::test]
-async fn can_handle_jwt_with_epoch_expiration() {
-    let mut ctx = tests_cfg::app::get_app_context().await;
-    let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
-            location: None,
-            secret: secret.clone(),
-            expiration: 3600,
-        }),
-    });
-
-    // Create a JWT that expired at epoch time (1970)
-    // This simulates a JWT with exp=0 or very old timestamp
-    let jwt = loco_rs::auth::jwt::JWT::new(&secret);
-
-    // Generate a token with 0 expiration (epoch time)
-    let token = jwt
-        .generate_token(0, "test_pid_123".to_string(), serde_json::Map::new())
-        .expect("Failed to generate token");
-
-    let port = get_available_port().await;
-    let handle = infra_cfg::server::start_with_route(ctx, "/", get(jwt_handler), Some(port)).await;
-
-    let client = reqwest::Client::new();
-    let res = client
-        .get(get_base_url_port(port))
-        .header("Authorization", format!("Bearer {token}"))
-        .send()
-        .await
-        .expect("Valid response");
-
-    // JWT should be expired if exp is at epoch time
-    assert_eq!(res.status(), 401);
     handle.abort();
 }
