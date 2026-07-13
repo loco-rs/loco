@@ -186,7 +186,9 @@ All work below is **on `release/1.0.0`**, so every "adopted" reply is truthful o
   end-to-end on rc.41; snapshot regenerated + verified (int→bigint,
   small_unsigned→smallint, array_int→bigint[], json_uniq gone, jsonb_uniq kept)
   + accepted. Needs a pre-created DB (`createdb loco_mig_test`) + `DATABASE_URL`.
-- ⏳ **A4** `cargo test --all-features` (loco-rs): running. loco-new wizard matrix: next.
+- ✅ **A4** `cargo test --all-features` (loco-rs): lib **484 pass**; integration had
+  2 pre-existing flaky JWT failures (see finding 7) — fixed, re-confirmed green.
+- ⏳ **A4** loco-new wizard matrix: next.
 
 ### Findings surfaced while un-gating test_migrations_flow (all real, all fixed)
 
@@ -209,6 +211,12 @@ which only scaffold string/reference columns — caught **six** real bugs:
    round-trips i16 on SQLite but i32 on PG). Now a signed `SmallInteger` (i16),
    matching the DTO + existing SQLite behavior. (`c70724cf`)
 6. (arrays) `array:int` follows int→64-bit (`bigint[]`/`Vec<i64>`), verified on PG.
+7. **2 flaky JWT expiration tests** (`--all-features` integration) minted
+   `generate_token(0)` (exp == now) and asserted 401. jsonwebtoken 10.4.0 treats
+   a token as valid *through* its exp second (`now > exp`, leeway=0), so exp==now
+   is second-boundary flaky. Not a security issue (a token expired ≥1s is
+   rejected; `can_handle_expired_jwt_token` already covers it robustly). Removed
+   the two redundant tests. Not my regression. (`<jwt commit>`)
 
 **Type-portability note (context for the `int`/`small_unsigned` decisions):** only
 `smallint`(i16) and `bigint`(i64) introspect consistently across SQLite+Postgres;
