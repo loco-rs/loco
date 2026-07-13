@@ -44,11 +44,11 @@ Status: ✅ confirmed · 🟡 recommended-default (proceeding unless overridden)
 | D4 | #1732 `Vars::cli_arg -> Result<&str>` | **Adopted + committed** (`c948dcc4`) | ✅ |
 | D5 | #1730 Tasks API `[&String]` | **Defer** (still a draft upstream) | 🟡 |
 | D6 | #1699 AWS Lambda deploy | **Defer** (large surface, own release) | 🟡 |
-| D7 | #1657 AsyncFn request helpers | **Adopted then REVERTED** (broke generated auth tests, E0282). Reply = "deferred, not rejected." Confirm wording. | 🔵 |
-| D8 | #1714 donate `rhai-loco` to org | **Accept** — Jondot's org call | 🔵 |
-| D9 | #1655 Vietnamese README (non-English README policy) | **Accept** | 🔵 |
-| D10 | #1762 NRG README-generation tooling | **Defer** (docs-infra, merge on GitHub later) | 🔵 |
-| D11 | #1754 docs-site npm `yaml` bump | **Merge on GitHub** (regenerates lockfile) | 🔵 |
+| D7 | #1657 AsyncFn request helpers | **CONFIRMED: close as deferred, with credit** (E0282 in generated auth tests). Post the "deferred, not rejected" reply. | ✅ |
+| D8 | #1714 donate `rhai-loco` to org | **CONFIRMED: accept into the org** | ✅ |
+| D9 | #1655 Vietnamese README (non-English README policy) | **CONFIRMED: accept** (sets translated-README policy) | ✅ |
+| D10 | #1762 NRG README-generation tooling | **CONFIRMED: defer** to post-1.0 docs-infra pass | ✅ |
+| D11 | #1754 docs-site npm `yaml` bump | **CONFIRMED: merge on GitHub** (regenerates lockfile) | ✅ |
 
 ---
 
