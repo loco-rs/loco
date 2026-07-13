@@ -80,7 +80,9 @@ fn test_migrations_flow(#[values("postgres", "sqlite")] db_kind: &str) {
     for base in base_names {
         type_names.push(format!("{base}:{base}"));
         type_names.push(format!("{base}_nonull:{base}!"));
-        if base != "bool" && base != "tstz" {
+        // bool/tstz have no unique column type; `json` has no btree operator
+        // class on Postgres (use `jsonb`). See `column::parse_column`'s rejects.
+        if base != "bool" && base != "tstz" && base != "json" {
             type_names.push(format!("{base}_uniq:{base}^"));
         }
     }

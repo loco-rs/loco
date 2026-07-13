@@ -266,10 +266,12 @@ pub fn parse_column(name: &str, spec: &str) -> Result<Column> {
         }
     };
 
-    // No `ColType::BooleanUniq` / `ColType::TimestampWithTimeZoneUniq` exist
-    // (checked against `schema.rs`), so reject the combination up front
-    // instead of emitting a `col_type()` string for a variant that isn't
-    // there.
+    // Reject unique (`^`) for types that can't back a portable unique index:
+    // `bool`/`tstz` have no `ColType::…Uniq` variant in `schema.rs`, and `json`
+    // has no btree operator class on Postgres (a unique index on `json` errors
+    // at migrate time with SQLSTATE 42704) -- use `jsonb` if you need a unique
+    // JSON column. SQLite would accept all three, but the scaffold keeps one
+    // portable contract across backends.
     if unique {
         match &kind {
             ColumnKind::Scalar(ScalarType::Bool) => {
@@ -281,6 +283,13 @@ pub fn parse_column(name: &str, spec: &str) -> Result<Column> {
             ColumnKind::Scalar(ScalarType::DateTimeTz) => {
                 return Err(Error::Message(
                     "type `tstz` cannot be unique (`^`): no unique timestamptz column type exists"
+                        .to_string(),
+                ));
+            }
+            ColumnKind::Scalar(ScalarType::Json) => {
+                return Err(Error::Message(
+                    "type `json` cannot be unique (`^`): Postgres has no btree operator class \
+                     for `json`. Use `jsonb` for a unique JSON column."
                         .to_string(),
                 ));
             }
@@ -422,7 +431,13 @@ impl Column {
                 // SQLite (no 32-bit integer affinity) and Postgres.
                 ScalarType::Int => flag.suffixed("BigInteger"),
                 ScalarType::BigInt => flag.suffixed("BigInteger"),
-                ScalarType::SmallUnsigned => flag.suffixed("SmallUnsigned"),
+                // Emit a signed `SmallInteger` (i16), not sea-orm's leaky
+                // `SmallUnsigned`: neither SQLite nor Postgres has native
+                // unsigned ints, and `SmallUnsigned` round-trips as i16 on
+                // SQLite but i32 on Postgres, so the generated model/DTO don't
+                // compile on Postgres. i16 matches the DTO and the existing
+                // SQLite behavior (SQLite already stored small_unsigned as i16).
+                ScalarType::SmallUnsigned => flag.suffixed("SmallInteger"),
                 ScalarType::Unsigned => flag.suffixed("Unsigned"),
                 ScalarType::BigUnsigned => flag.suffixed("BigUnsigned"),
                 ScalarType::Float => flag.suffixed("Float"),
@@ -795,6 +810,14 @@ mod tests {
     }
 
     #[test]
+    fn json_unique_is_rejected() {
+        // Postgres has no btree operator class for `json` (use `jsonb`).
+        assert!(parse_column("payload", "json^").is_err());
+        // jsonb unique is fine (jsonb has a btree opclass).
+        assert!(parse_column("payload", "jsonb^").is_ok());
+    }
+
+    #[test]
     fn enum_empty_value_list_is_rejected() {
         assert!(parse_column("status", "enum:").is_err());
     }
@@ -958,11 +981,13 @@ mod tests {
                 ts_type: Some("number | null"),
                 form: FormKind::Number,
             },
-            // small_unsigned
+            // small_unsigned -> signed SmallInteger (i16) for cross-backend
+            // portability (sea-orm's SmallUnsigned is i16 on SQLite but i32 on
+            // Postgres, breaking the generated model/DTO on Postgres).
             Case {
                 name: "small_qty",
                 spec: "small_unsigned!",
-                col_type: "SmallUnsigned",
+                col_type: "SmallInteger",
                 dto_rust_type: "i16",
                 ts_type: Some("number"),
                 form: FormKind::Number,
@@ -970,7 +995,7 @@ mod tests {
             Case {
                 name: "small_qty",
                 spec: "small_unsigned",
-                col_type: "SmallUnsignedNull",
+                col_type: "SmallIntegerNull",
                 dto_rust_type: "Option<i16>",
                 ts_type: Some("number | null"),
                 form: FormKind::Number,
