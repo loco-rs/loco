@@ -764,7 +764,10 @@ mod tests {
         assert!(!nn.nullable && !nn.unique);
 
         let uniq = col("sku", "var_binary^:16");
-        assert_eq!(uniq.kind, ColumnKind::Scalar(ScalarType::VarBinary { len: 16 }));
+        assert_eq!(
+            uniq.kind,
+            ColumnKind::Scalar(ScalarType::VarBinary { len: 16 })
+        );
         assert!(!uniq.nullable && uniq.unique);
 
         // the trailing-flag form still works and is equivalent
