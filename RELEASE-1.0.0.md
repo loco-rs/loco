@@ -81,16 +81,13 @@ Status: ✅ confirmed · 🟡 recommended-default (proceeding unless overridden)
 - [ ] Repeat for `--assets clientside --db sqlite --bg queue-sqlite` (flagship SPA + worker path).
 - [ ] Record results in this file under "Verification log" below. No commit (scratch app); delete `/tmp/loco-smoke*`.
 
-### A4. Full green gate on the release branch — ✅ DONE (⚠️ one re-run pending, see note)
+### A4. Full green gate on the release branch — ✅ DONE (final post-A5 re-run clean)
 
-> **Post-A5 re-run pending:** the full `cargo test --all-features` *integration*
-> suite and `cargo hack --each-feature` were last run at the pre-A5 "484 lib + 84
-> integration" state. Since A5 I re-ran fmt, clippy `--all-features` (loco-rs +
-> loco-gen), loco-rs lib (490), loco-gen, and the full loco-new wizard matrix —
-> all green. A5's blast radius is the mailer module (lib) + loco-gen; no
-> integration test renders mailer templates (only `src/boot.rs` references the
-> worker), so regression risk is low. A single final full-gate run on the final
-> tree is the clean closer before publish.
+> **Final full gate re-run on the post-A5 tree (2026-07-14):** `cargo test
+> --all-features` → lib **490 pass**, integration **84 pass** + **113 pass** (32
+> ignored = DB/redis container tests), 0 failed; `cargo hack --each-feature` →
+> **16/16** feature combos check clean; fmt + clippy `--all-features -D warnings`
+> clean; loco-new wizard matrix **6/6**. Both gate halves exit 0. Part A closed.
 - [ ] Run the green-gate block (top of file) — record pass counts in Verification log.
 - [ ] Confirm previously-"upstream-gated" tests now run against rc.41: `loco-gen test_migrations_flow`, `loco-new` wizard matrix. If any genuinely cannot pass on rc (not just slow), note precisely why + whether it blocks 1.0.
 
