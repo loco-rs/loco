@@ -101,23 +101,39 @@ These are the only PRs where I owe you a *judgment*, not just a reply.
 | 36 | #1736 seed dump fails on SQLite | Reproduce seed-dump on SQLite; may still be open | 🔎+🔒 | 5 |
 | 37 | #1727 development.yml YAML evals/prettier | serde_yaml_ng parse of eval/long-line YAML; may still be open | 🔎+🔒 | 5 |
 
-## 8. Issues → triage to post-1.0 (ack reply + milestone label; you apply label)
+## 8. Issues → RE-SCORED on value + build-confidence (2026-07-14)
 
-Each is a real feature request: the action is an acknowledgement + a
-"post-1.0" milestone. None is a code change for 1.0.0.
+The 10 "post-1.0 triage" issues were re-evaluated purely on **feature value**
+and **my confidence in a correct implementation** (scope/effort ignored, per
+owner). Four crossed the bar and are **BUILT for 1.0.0** (committed locally,
+green-gated); replies drafted in `RELEASE-1.0.0-newwork-replies.md`. The rest
+stay out for evidenced reasons (superseded / contested-pattern / genuine design
+uncertainty), not hand-waving.
 
-| # | Issue | Type | Conf |
-|---|-------|------|-----|
-| 38 | #1766 Rails-style migrations | ✍️+🔒 | 8 |
-| 39 | #1761 api+template scaffold | ✍️+🔒 | 8 |
-| 40 | #1720 custom field types | ✍️+🔒 | 8 |
-| 41 | #1691 more reliable seed dumping | ✍️+🔒 | 8 |
-| 42 | #1674 multi-layer cache | ✍️+🔒 | 8 |
-| 43 | #1673 `--service` flag | ✍️+🔒 | 8 |
-| 44 | #1640 multi-tenant / multi-app | ✍️+🔒 | 8 |
-| 45 | #1753 make internals public | ✍️+🔒 | 7 |
-| 46 | #1341 Redis over TLS | ✍️+🔒 | 7 |
-| 47 | #1191 Postgres TLS/SSL setup | ✍️+🔒 | 7 |
+**Built for 1.0.0 — close as fixed/implemented (reply drafts ready):**
+
+| # | Issue | Value | Conf | Commit |
+|---|-------|:---:|:---:|--------|
+| 46 | #1341 Redis over TLS | 8 | 9 | `3f773108` |
+| 47 | #1191 Postgres TLS/SSL | 7 | 9 | `3f773108` |
+| 41 | #1691 reliable seed dumping (+ #1736 bug) | 7 | 8 | `551e82fa` |
+| 45 | #1753 make internals public (narrow: logger) | — | 9 | `fb545ed9` |
+
+**Stay post-1.0 — ack reply + milestone (you apply label):**
+
+| # | Issue | Value | Conf | Why not now |
+|---|-------|:---:|:---:|-------------|
+| 40 | #1720 custom field types | 5 | 5 | SeaORM 2.0 entity-first may moot the mechanism; docs workaround exists |
+| 42 | #1674 multi-layer cache | 5 | 7* | conf drops if cross-instance coherence required; thin demand |
+| 44 | #1640 multi-tenant / multi-app | 5 | 5 | conflated ask; needs an AppContext design spike (RLS vs pool-per-tenant) |
+| 38 | #1766 "Rails-style" migrations | 4 | 8 | actually a `ColType` enum-bloat cleanup; low value, unvalidated demand |
+
+**Decline (evidenced):**
+
+| # | Issue | Value | Conf | Why |
+|---|-------|:---:|:---:|-----|
+| 43 | #1673 `--service` flag | 3 | 5 | contested pattern, contradicts loco's fat-model convention; offer docs recipe |
+| 39 | #1761 api+template scaffold | 2 | 4 | superseded by adaptive SPA scaffold (commit `d3d9eeed` deleted html/htmx kinds) |
 
 ## 9. Issues → close as invalid
 
