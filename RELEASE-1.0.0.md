@@ -108,6 +108,34 @@ Status: ✅ confirmed · 🟡 recommended-default (proceeding unless overridden)
 - [x] CHANGELOG: Added (multi-recipient, template inheritance/shared) + Breaking
   (`cli_arg`, `Template::new` fallible). Commit `b081cb32`.
 
+### A6. Re-scored §8 issues → 4 built for 1.0.0 (2026-07-14) — ✅ DONE
+
+Owner directive: re-evaluate the 10 "post-1.0" issues on **feature value** +
+**build-confidence** only (scope/effort ignored). Researched each (issue thread +
+codebase + framework prior art via subagents); 4 crossed the bar and were built,
+green-gated, and committed. Reply drafts: `RELEASE-1.0.0-newwork-replies.md`.
+
+- [x] **#1341 Redis TLS + #1191 Postgres TLS** (`3f773108`). PG TLS works via the
+  URL (`sslmode=`, already-compiled rustls) with no flag; added defensive TLS on
+  the worker-only sqlx pool. New `redis_tls` feature (arms queue+cache, webpki
+  roots, pure-Rust `ring` — verified no `aws-lc` in tree). New how-to
+  `docs-site/.../connect-over-tls.md`.
+- [x] **#1691 typed `db::dump` + #1736 datetime bug** (`551e82fa`). Reproduced
+  #1736 first (`Json("premature end of input")` on SQLite `CURRENT_TIMESTAMP`
+  text), then fixed via RFC3339 normalization in `dump_tables`; added typed
+  streaming `db::dump::<A>()` + `Hooks::dump` + `--dump` routing. Tests pass on
+  SQLite **and** Postgres.
+- [x] **#1753 logger internals** (`fb545ed9`). `logger::init_layer` /
+  `init_env_filter` now `pub` (narrow scope; declined the broad ask + banner).
+- [x] CHANGELOG updated (`48a181e3`); re-scored §8 + drafts (`063ec040`).
+- [x] **Green gate re-run (full):** loco-rs `--all-features` **492 + 84 + 113,
+  0 failed**; `cargo hack --each-feature` **17/17**; clippy/fmt clean; both
+  examples compile; **fresh generated app migrates + compiles** (`test_migrations_flow`
+  sqlite green after reinstalling the stale local `loco` CLI — see finding 8).
+- **Stay post-1.0:** #1720 (SeaORM-2.0 entity-first may moot), #1674 (coherence
+  scoping), #1640 (design spike), #1766 (low-value ColType cleanup). **Decline:**
+  #1673 (contested/fat-model conflict), #1761 (superseded by SPA scaffold).
+
 ---
 
 ## PART B — Correspondence (Claude drafts; Jondot posts)
@@ -160,10 +188,11 @@ All work below is **on `release/1.0.0`**, so every "adopted" reply is truthful o
 - [ ] **#1655** Vietnamese README → **accept** (D9). Sets the non-English README policy.
 
 ### B6. Issues
-- [ ] **Close as fixed by 1.0.0** (verify against A3 generated-app boot first): onboarding cluster #1768, #1749, #1759, #1755, #1729, #1736; i18n #1770.
+- [ ] **Close as fixed/implemented in 1.0.0 (built this session, A6 — drafts in `RELEASE-1.0.0-newwork-replies.md`):** #1191, #1341 (TLS); #1691 + #1736 (typed `db::dump` + datetime fix); #1753 (logger pub).
+- [ ] **Close as fixed by 1.0.0** (verify against A3 generated-app boot first): onboarding cluster #1768, #1749, #1759, #1755, #1729; i18n #1770.
 - [ ] **Close as fixed-by-adopted-PR:** #1773→#1774, #1737→#1742, #1623→#1624, #1683→#1685.
 - [ ] **Close as addressed:** #1751 (better error handling → `#[non_exhaustive]` Error + error narrowing shipped in 1.0.0).
-- [ ] **Triage to a post-1.0 milestone:** #1766 Rails migrations, #1761 api+template scaffold, #1720 custom field types, #1674 multi-layer cache, #1673 `--service` flag, #1640 multi-tenant, #1691 seed dumping, #1753 public internals, TLS #1341/#1191.
+- [ ] **Triage to a post-1.0 milestone:** #1766 Rails migrations, #1720 custom field types, #1674 multi-layer cache, #1640 multi-tenant. **Decline (evidenced):** #1673 `--service` flag (contested/fat-model conflict), #1761 api+template scaffold (superseded by SPA scaffold).
 - [ ] **Close as invalid:** #1739 (empty "Hello,").
 
 ---
@@ -269,6 +298,14 @@ which only scaffold string/reference columns — caught **six** real bugs:
    is second-boundary flaky. Not a security issue (a token expired ≥1s is
    rejected; `can_handle_expired_jwt_token` already covers it robustly). Removed
    the two redundant tests. Not my regression. (`<jwt commit>`)
+8. **`test_migrations_flow` failed on a stale local CLI (2026-07-14, A6).** The
+   test drives the *installed* `loco` binary; the one in PATH was dated Jul 12 —
+   a day before A5's `cli_arg` base_template `.to_owned()` fix (`c948dcc4`,
+   Jul 13) — so it generated pre-A5 `.clone()` code → 3× `E0308` in
+   `tasks/user_create.rs`. **Not a code regression** (both examples compile; my
+   A6 commits never touch that area). Fixed by `cargo install --path loco-new
+   --force`; re-ran → **green** (1 passed, exit 0). Reminder for the publish
+   env: reinstall the `loco` CLI before running generator tests.
 
 **Type-portability note (context for the `int`/`small_unsigned` decisions):** only
 `smallint`(i16) and `bigint`(i64) introspect consistently across SQLite+Postgres;
