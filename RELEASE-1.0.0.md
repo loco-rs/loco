@@ -160,6 +160,29 @@ reply drafts: `RELEASE-1.0.0-verification-replies.md`. Two needed code:
   (reviewed: only `Integer`→`BigInteger` + id-line whitespace) and fixed the test
   (`47d03916`). **Green-gate command updated to loco-gen `--all-features`.**
 
+**STALE-SNAPSHOT PATTERN (important — verify before publish).** Two release
+changes updated templates/code but left snapshot tests unregenerated, and the
+gate as-run masked both:
+  1. **int→i64** (`116f3a92`): loco-gen migration/model/scaffold snapshots + unit
+     test — fixed in `47d03916`.
+  2. **A2 exact-pin** (`53915e9f`): loco-new `templates::db::test_cargo_toml`
+     snapshots still said `sea-orm = "2.0.0-rc"` vs the pinned `=2.0.0-rc.41` —
+     fixed in `b…` (loco-new snapshot commit).
+  Both are now green. **Before publishing, run the FULL gate once more** (all
+  crates, loco-gen `--all-features`) to catch any remaining drift.
+
+**WIZARD-MATRIX ENV PREREQS (three non-code gotchas found this session, all
+local build-env state, none a code defect):**
+  1. Reinstall the CLI first: `cargo install --path loco-new --force` (a stale
+     `loco` in PATH generates pre-A5 code → E0308).
+  2. Export `LOCO_DEV_MODE_PATH=/Users/jondot/projects/loco` (else generated apps
+     can't resolve the unpublished `loco-rs = "^1.0"`).
+  3. Clear the shared wizard target if a sqlite case fails on `libsqlite3-sys`
+     `bindgen.rs` (`rm -rf $TMPDIR/loco-new-wizard-target`) — incremental-cache
+     corruption of the C-bindings crate, DB-less cases pass, sqlite cases fail.
+  With all three, a fresh sqlite+serverside app passes pedantic/nursery clippy
+  with zero warnings (verified manually).
+
 ---
 
 ## PART B — Correspondence (Claude drafts; Jondot posts)
