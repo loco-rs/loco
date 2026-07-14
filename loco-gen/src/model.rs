@@ -194,13 +194,16 @@ mod tests {
     // ---- 1.0 canonical-value fixes -----------------------------------------
 
     #[test]
-    fn test_int_is_32_bit_integer_not_64_bit() {
-        // The deliberate 1.0 fix: `int` used to map to `BigInteger` via the
-        // retired field-type-mapping JSON; it now means a real 32-bit
-        // `Integer`.
+    fn test_int_is_64_bit_big_integer() {
+        // `int` maps to a 64-bit `BigInteger`. An earlier 1.0 iteration made it
+        // a 32-bit `Integer`, but that broke on SQLite (32-bit DTO vs the i64
+        // entity sea-orm generates → a non-compiling scaffold), so `int` was
+        // settled as i64, equal to `big_int`. Only `small_int` is 16-bit.
+        // Documented in the CHANGELOG ("the `int`/`unsigned` field types
+        // generate 64-bit columns").
         let fields = [to_field("hits", "int!")];
         let res = get_columns_and_references(&fields).expect("Failed to parse fields");
-        assert_eq!(res, (vec![to_field("hits", "Integer")], vec![]));
+        assert_eq!(res, (vec![to_field("hits", "BigInteger")], vec![]));
     }
 
     #[test]
