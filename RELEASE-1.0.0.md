@@ -54,7 +54,7 @@ Status: ✅ confirmed · 🟡 recommended-default (proceeding unless overridden)
 
 ## PART A — Engineering (Claude; local commits)
 
-### A1. Version bump 0.17.0 → 1.0.0
+### A1. Version bump 0.17.0 → 1.0.0 — ✅ DONE (`53915e9f`)
 - [ ] `Cargo.toml:16` — `version = "0.17.0"` → `"1.0.0"`
 - [ ] `Cargo.toml:62` — `loco-gen = { version = "0.17.0", ... }` → `"1.0.0"`
 - [ ] `loco-gen/Cargo.toml:3` — `version = "0.17.0"` → `"1.0.0"`
@@ -64,7 +64,7 @@ Status: ✅ confirmed · 🟡 recommended-default (proceeding unless overridden)
 - [ ] Rename `## Unreleased` in `CHANGELOG.md` → `## 1.0.0 - <date at publish>`; retitle the header from 0.17.0 to 1.0.0
 - [ ] Commit: `chore(release)!: bump workspace to 1.0.0`
 
-### A2. Exact-pin Sea-ORM to rc.41 (reproducible fresh-app builds)
+### A2. Exact-pin Sea-ORM to rc.41 (reproducible fresh-app builds) — ✅ DONE (`53915e9f`, `8aea4165`, `4293aa95`)
 - [ ] `Cargo.toml:68` — `sea-orm = { version = "2.0.0-rc", ... }` → `"=2.0.0-rc.41"`
 - [ ] `Cargo.toml:196` — `sea-orm-migration version = "2.0.0-rc"` → `"=2.0.0-rc.41"`
 - [ ] `loco-new/base_template/Cargo.toml.t:35` — `sea-orm ... "2.0.0-rc"` → `"=2.0.0-rc.41"`
@@ -74,14 +74,23 @@ Status: ✅ confirmed · 🟡 recommended-default (proceeding unless overridden)
 - [ ] `cargo update -p sea-orm -p sea-orm-migration` → confirm lockfile resolves to rc.41; commit updated `Cargo.lock`s (examples/demo, examples/reference_spa, loco-new).
 - [ ] Commit: `chore(deps): exact-pin sea-orm 2.0.0-rc.41 for reproducible fresh-app builds`
 
-### A3. Prove a freshly generated app compiles + boots on rc.41 (kills the last "unverified" caveat)
+### A3. Prove a freshly generated app compiles + boots on rc.41 (kills the last "unverified" caveat) — ✅ DONE
 - [ ] `cd loco-new && LOCO_DEV_MODE_PATH=/Users/jondot/projects/loco cargo run -- new --path /tmp/loco-smoke --name smoke --db sqlite --bg async --assets serverside` (non-interactive)
 - [ ] In the generated app: `cargo build` → compiles clean against `=2.0.0-rc.41`
 - [ ] `cargo loco db migrate` then `cargo loco start` → boots; hit `/` → 200. Kill.
 - [ ] Repeat for `--assets clientside --db sqlite --bg queue-sqlite` (flagship SPA + worker path).
 - [ ] Record results in this file under "Verification log" below. No commit (scratch app); delete `/tmp/loco-smoke*`.
 
-### A4. Full green gate on the release branch
+### A4. Full green gate on the release branch — ✅ DONE (⚠️ one re-run pending, see note)
+
+> **Post-A5 re-run pending:** the full `cargo test --all-features` *integration*
+> suite and `cargo hack --each-feature` were last run at the pre-A5 "484 lib + 84
+> integration" state. Since A5 I re-ran fmt, clippy `--all-features` (loco-rs +
+> loco-gen), loco-rs lib (490), loco-gen, and the full loco-new wizard matrix —
+> all green. A5's blast radius is the mailer module (lib) + loco-gen; no
+> integration test renders mailer templates (only `src/boot.rs` references the
+> worker), so regression risk is low. A single final full-gate run on the final
+> tree is the clean closer before publish.
 - [ ] Run the green-gate block (top of file) — record pass counts in Verification log.
 - [ ] Confirm previously-"upstream-gated" tests now run against rc.41: `loco-gen test_migrations_flow`, `loco-new` wizard matrix. If any genuinely cannot pass on rc (not just slow), note precisely why + whether it blocks 1.0.
 
@@ -233,12 +242,8 @@ MultiEmail), `b081cb32` (CHANGELOG + drop dead `tera::render`), `4293aa95`
   + accepted. Needs a pre-created DB (`createdb loco_mig_test`) + `DATABASE_URL`.
 - ✅ **A4** `cargo test --all-features` (loco-rs): lib **484 pass**; integration had
   2 pre-existing flaky JWT failures (see finding 7) — fixed, re-confirmed green.
-- 🟡 **A4** loco-new wizard matrix: was running **green** (generated apps compiled;
-  their test suites passed — 25 app tests, auth/models/tasks ok) when interrupted
-  mid-run. Not completed end-to-end. Note: this matrix only scaffolds
-  string/reference columns, so it does NOT exercise the int/json/small_unsigned
-  fixes — those are covered by the migration-flow tests (sqlite + Postgres), which
-  DID complete green. A3 smoke + migration flows already cover generate→compile→boot.
+  (superseded — the wizard matrix later completed 6/6 green end-to-end; see the
+  A5 verification block above.)
 
 ### Findings surfaced while un-gating test_migrations_flow (all real, all fixed)
 
