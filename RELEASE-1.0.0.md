@@ -26,7 +26,9 @@ branch-folding is required.** The old branches are historical.
   cargo clippy --workspace --all-features --tests -- -D warnings
   cargo hack check --each-feature
   cargo test --all-features
-  cargo test -p loco-gen
+  cargo test -p loco-gen --all-features   # NOTE: --all-features — default features
+                                          # skip the with-db template/model tests
+                                          # (masked stale int→i64 snapshots; see A7)
   (cd loco-new && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test)
   ```
 
@@ -136,6 +138,28 @@ green-gated, and committed. Reply drafts: `RELEASE-1.0.0-newwork-replies.md`.
   scoping), #1640 (design spike), #1766 (low-value ColType cleanup). **Decline:**
   #1673 (contested/fat-model conflict), #1761 (superseded by SPA scaffold).
 
+### A7. Verification block: 4 triage PRs + onboarding-cluster issues (2026-07-14) — ✅ DONE
+
+Verified each open PR/issue against the branch (subagents). Verdicts + finished
+reply drafts: `RELEASE-1.0.0-verification-replies.md`. Two needed code:
+
+- [x] **#1755** (model/scaffold with no fields omits the `id` PK → non-compiling
+  entity) — was a **real, still-open bug**. Fixed (`47d03916`): `id` unconditional
+  in `model.t` + regression test. Credit @labike.
+- [x] **#1771** (auto-formatting) — adopted the 5 still-applicable clippy fixes
+  (`11ce376e`, credit @D-system); rest superseded by the rebuild.
+- [x] **Verified fixed-in-1.0.0** (close w/ credit): #1758/#1749 + #1770/#1759
+  (i18n `shared.ftl`, `0e6fe874`), #1768 (`cargo install`, rhai 1.25 `a640a97f`),
+  #1729 (FK naming, `f9b87a68`+`5a44657c`).
+- [x] **#1708** (popular tasks) — **defer** (injects an unexplained `groups` table
+  + comments out a wizard assertion; root cause never found). Reply drafted.
+- [x] **Gate-gap fix + stale-snapshot cleanup:** running `cargo test -p loco-gen
+  **--all-features**` surfaced stale int→i64 snapshots + a stale unit test
+  (`test_int_is_32_bit...`) left over from `116f3a92`; the release gate ran
+  loco-gen with *default* features and masked them. Regenerated snapshots
+  (reviewed: only `Integer`→`BigInteger` + id-line whitespace) and fixed the test
+  (`47d03916`). **Green-gate command updated to loco-gen `--all-features`.**
+
 ---
 
 ## PART B — Correspondence (Claude drafts; Jondot posts)
@@ -178,10 +202,10 @@ All work below is **on `release/1.0.0`**, so every "adopted" reply is truthful o
 | #1732 cli_arg Result | dsgallups | Adopt (A5) | "Adopted in 1.0.0 (breaking, in the migration guide). Thanks!" |
 | #1730 Tasks API [&String] | pweaver | Defer | "Looks promising — it's still a draft; let's finish it post-1.0. Keeping open." |
 | #1699 AWS Lambda | SMCodesP | Defer | "Big, valuable surface — deferring to its own release so it gets proper docs/tests. Keeping open." |
-| #1708 popular tasks | floscodes | Review | (triage — needs a look) |
-| #1771 auto-formatting | D-system | Review | (may be superseded by generator changes — verify vs branch) |
-| #1770 i18n boot fix | D-system | Verify vs 1.0.0 | if already fixed on branch: "Fixed on the 1.0.0 branch — thanks for the report/fix." |
-| #1758 new-project generator fix | zjom | Verify vs 1.0.0 | fixes #1749; likely already covered by generator rebuild — verify then credit/close |
+| #1708 popular tasks | floscodes | **DEFER** (A7) | reply in verification-replies.md |
+| #1771 auto-formatting | D-system | **PARTIAL-ADOPTED** (A7, `11ce376e`) | reply in verification-replies.md |
+| #1770 i18n boot fix | D-system | **FIXED-in-1.0.0** (A7, `0e6fe874`) | close as superseded; reply drafted |
+| #1758 new-project generator fix | zjom | **FIXED-in-1.0.0** (A7, `0e6fe874`) | close w/ credit; reply drafted |
 
 ### B5. Social / org (Jondot only)
 - [ ] **#1714** donate `rhai-loco` → **accept** (D8). "Happy to bring it into the org — thank you."
@@ -189,7 +213,7 @@ All work below is **on `release/1.0.0`**, so every "adopted" reply is truthful o
 
 ### B6. Issues
 - [ ] **Close as fixed/implemented in 1.0.0 (built this session, A6 — drafts in `RELEASE-1.0.0-newwork-replies.md`):** #1191, #1341 (TLS); #1691 + #1736 (typed `db::dump` + datetime fix); #1753 (logger pub).
-- [ ] **Close as fixed by 1.0.0** (verify against A3 generated-app boot first): onboarding cluster #1768, #1749, #1759, #1755, #1729; i18n #1770.
+- [x] **Close as fixed by 1.0.0 — VERIFIED (A7, drafts in `RELEASE-1.0.0-verification-replies.md`):** #1768 (rhai 1.25), #1749 + #1759 + #1770 (i18n `shared.ftl`), #1729 (FK naming), #1755 (field-less-model id PK — was a real bug, fixed `47d03916`).
 - [ ] **Close as fixed-by-adopted-PR:** #1773→#1774, #1737→#1742, #1623→#1624, #1683→#1685.
 - [ ] **Close as addressed:** #1751 (better error handling → `#[non_exhaustive]` Error + error narrowing shipped in 1.0.0).
 - [ ] **Triage to a post-1.0 milestone:** #1766 Rails migrations, #1720 custom field types, #1674 multi-layer cache, #1640 multi-tenant. **Decline (evidenced):** #1673 `--service` flag (contested/fat-model conflict), #1761 api+template scaffold (superseded by SPA scaffold).
