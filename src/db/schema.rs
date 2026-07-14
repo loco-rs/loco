@@ -6,7 +6,7 @@ use std::{
     path::Path,
 };
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use sea_orm::{
     ConnectionTrait, DatabaseBackend, DatabaseConnection, DbBackend, DbErr, EntityTrait, Statement,
 };
@@ -134,12 +134,52 @@ async fn get_boolean_columns(
     Ok(bool_cols)
 }
 
+/// Normalize a SQLite-native datetime string to RFC3339.
+///
+/// SQLite has no native datetime type; Loco's `timestamptz` columns default to
+/// `CURRENT_TIMESTAMP`, which SQLite writes as `"YYYY-MM-DD HH:MM:SS"` (space
+/// separator, optional fractional seconds, no offset). Left verbatim in a dump,
+/// that text fails chrono's RFC3339 parse when re-seeded into a typed
+/// `DateTimeWithTimeZone` model (`Json("premature end of input")`, #1736). This
+/// recognizes that space-separated form — interpreting a missing offset as UTC,
+/// matching SQLite's `CURRENT_TIMESTAMP` — and returns its RFC3339 rendering.
+///
+/// Returns `None` for input already in RFC3339 (left untouched, so no dump
+/// churn) and for anything that is not a datetime at all (`parse_from_str`
+/// requires the whole string to match, so ids, uuids and free text fall
+/// through).
+fn normalize_sqlite_datetime(s: &str) -> Option<String> {
+    // Already RFC3339 (has `T` plus offset/`Z`): re-seeds fine, leave as-is.
+    if DateTime::parse_from_rfc3339(s).is_ok() {
+        return None;
+    }
+    // Space-separated but carrying an explicit offset.
+    for fmt in [
+        "%Y-%m-%d %H:%M:%S%.f%:z",
+        "%Y-%m-%d %H:%M:%S%:z",
+        "%Y-%m-%d %H:%M:%S%.f %:z",
+        "%Y-%m-%d %H:%M:%S %:z",
+    ] {
+        if let Ok(dt) = DateTime::parse_from_str(s, fmt) {
+            return Some(dt.to_rfc3339());
+        }
+    }
+    // Naive `YYYY-MM-DD HH:MM:SS[.f]`, interpreted as UTC (SQLite CURRENT_TIMESTAMP).
+    for fmt in ["%Y-%m-%d %H:%M:%S%.f", "%Y-%m-%d %H:%M:%S"] {
+        if let Ok(naive) = NaiveDateTime::parse_from_str(s, fmt) {
+            return Some(DateTime::<Utc>::from_naive_utc_and_offset(naive, Utc).to_rfc3339());
+        }
+    }
+    None
+}
+
 /// Dumps the contents of specified database tables into YAML files.
 ///
-/// # Errors
 /// This function retrieves data from all tables in the database, filters them
 /// if `only_tables` is provided, and writes each table's content to a separate
 /// YAML file in the specified directory.
+///
+/// # Errors
 ///
 /// Returns an error if the operation fails for any reason or could not save the
 /// content into a file.
@@ -261,6 +301,15 @@ pub async fn dump_tables(
                         && let Some(i) = num.as_i64()
                     {
                         value = serde_json::Value::Bool(i != 0);
+                    }
+
+                    // Normalize SQLite's space-separated datetime text to RFC3339 so
+                    // the dump re-seeds cleanly into typed DateTimeWithTimeZone models
+                    // (#1736). No-op for RFC3339 and non-datetime strings.
+                    if let serde_json::Value::String(s) = &value
+                        && let Some(normalized) = normalize_sqlite_datetime(s)
+                    {
+                        value = serde_json::Value::String(normalized);
                     }
 
                     row_data.insert(col_name, value);
@@ -521,6 +570,101 @@ mod tests {
         assert_snapshot!(
             "dump_tables_sqlite_all_types_roundtrip",
             serde_json::to_string_pretty(&roundtripped).unwrap()
+        );
+    }
+
+    // Minimal entity with a real `DateTimeWithTimeZone` column, used to
+    // reproduce #1736: a datetime dumped by the generic `dump_tables` must
+    // re-seed cleanly.
+    mod dt_entity {
+        use sea_orm::entity::prelude::*;
+
+        #[derive(
+            Clone, Debug, PartialEq, DeriveEntityModel, serde::Serialize, serde::Deserialize,
+        )]
+        #[sea_orm(table_name = "dt_reseed")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+            pub created_at: DateTimeWithTimeZone,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter)]
+        pub enum Relation {}
+
+        impl RelationTrait for Relation {
+            fn def(&self) -> RelationDef {
+                panic!("no relations for dt_entity::Relation")
+            }
+        }
+
+        impl ActiveModelBehavior for ActiveModel {}
+    }
+
+    /// Regression for #1736: a `DateTimeWithTimeZone` column dumped through the
+    /// generic `dump_tables` must re-seed cleanly. Loco's `timestamps_tz`
+    /// columns carry `DEFAULT CURRENT_TIMESTAMP`, so SQLite fills them with its
+    /// own `"YYYY-MM-DD HH:MM:SS"` text (space separator, no `T`, no offset).
+    /// The dump captured that string verbatim (the string probe ran before the
+    /// datetime probe), and re-seeding it into the typed `Model` then failed
+    /// chrono's RFC3339 parse with `Json("premature end of input")`.
+    #[tokio::test]
+    async fn sqlite_dump_datetime_reseedable_regression_1736() {
+        use crate::tests_cfg::config::get_sqlite_test_config;
+
+        let (config, tree_fs) = get_sqlite_test_config("dt_reseed");
+        let db = crate::db::connect(&config).await.expect("connect sqlite");
+        let backend = db.get_database_backend();
+        assert_eq!(backend, DatabaseBackend::Sqlite);
+
+        // Model the real failing column exactly: a timestamptz-backed column
+        // whose value comes from SQLite's `CURRENT_TIMESTAMP` default.
+        db.execute_raw(Statement::from_string(
+            backend,
+            "CREATE TABLE dt_reseed (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);".to_string(),
+        ))
+        .await
+        .expect("create dt_reseed table");
+
+        // Insert letting the DEFAULT fill created_at with the SQLite-native
+        // `"YYYY-MM-DD HH:MM:SS"` form — the exact bytes a real app stores.
+        db.execute_raw(Statement::from_string(
+            backend,
+            "INSERT INTO dt_reseed (created_at) VALUES ('2026-01-31 19:34:29');".to_string(),
+        ))
+        .await
+        .expect("insert row");
+
+        let dump_dir = tree_fs.root.join("dump");
+        std::fs::create_dir_all(&dump_dir).expect("create dump dir");
+        dump_tables(&db, dump_dir.as_path(), Some(vec!["dt_reseed".to_string()]))
+            .await
+            .expect("dump_tables failed");
+        let yaml_path = dump_dir.join("dt_reseed.yaml");
+
+        db.execute_raw(Statement::from_string(
+            backend,
+            "DELETE FROM dt_reseed;".to_string(),
+        ))
+        .await
+        .expect("truncate dt_reseed");
+
+        crate::db::seed::<dt_entity::ActiveModel>(&db, yaml_path.to_str().expect("utf8 path"))
+            .await
+            .expect("re-seed of dumped datetime must succeed (#1736)");
+
+        let rows = dt_entity::Entity::find()
+            .all(&db)
+            .await
+            .expect("select after reseed");
+        assert_eq!(rows.len(), 1, "exactly one row should be re-seeded");
+        // The instant must be preserved (SQLite CURRENT_TIMESTAMP is UTC).
+        assert_eq!(
+            rows[0].created_at.to_utc(),
+            DateTime::parse_from_rfc3339("2026-01-31T19:34:29+00:00")
+                .expect("parse expected")
+                .to_utc(),
+            "the re-seeded datetime must equal the original instant"
         );
     }
 

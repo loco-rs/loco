@@ -1,5 +1,10 @@
-use std::{fs::File, path::Path};
+use std::{
+    fs::File,
+    io::{BufWriter, Write},
+    path::Path,
+};
 
+use futures_util::TryStreamExt;
 use sea_orm::{
     ActiveModelTrait, ConnectionTrait, DatabaseBackend, DatabaseConnection, DbErr, EntityName,
     EntityTrait, IntoActiveModel, Statement,
@@ -64,6 +69,72 @@ where
     // Reset auto-increment
     reset_autoincrement(db_backend, &table_name, db).await?;
 
+    Ok(())
+}
+
+/// Dump an entity's rows to a YAML fixture at `path`, symmetric to [`seed`].
+///
+/// Rows are streamed from the database and serialized one at a time straight to
+/// a buffered writer, so memory stays bounded to a single row regardless of
+/// table size (unlike [`crate::db::dump_tables`], which loads and buffers the
+/// whole table). Because each row is serialized through its typed entity
+/// `Model`, datetimes, UUIDs, JSON and booleans are emitted exactly as [`seed`]
+/// expects to read them back — the dump/seed round-trip is symmetric by
+/// construction (see #1691).
+///
+/// Wire it into [`crate::app::Hooks::dump`] to control which entities are
+/// dumped and in what order:
+///
+/// ```ignore
+/// async fn dump(ctx: &AppContext, base: &Path) -> Result<()> {
+///     db::dump::<users::ActiveModel>(&ctx.db, &base.join("users.yaml").to_string_lossy()).await?;
+///     Ok(())
+/// }
+/// ```
+///
+/// # Errors
+///
+/// Returns an error if the query stream fails or the file cannot be written.
+pub async fn dump<A>(db: &DatabaseConnection, path: &str) -> crate::Result<()>
+where
+    <<A as ActiveModelTrait>::Entity as EntityTrait>::Model: serde::Serialize,
+    A: ActiveModelTrait + Send + Sync,
+    <A as ActiveModelTrait>::Entity: EntityName,
+{
+    let file = File::create(path)?;
+    let mut writer = BufWriter::new(file);
+
+    let mut stream = A::Entity::find().stream(db).await?;
+    let mut wrote_any = false;
+    while let Some(model) = stream.try_next().await? {
+        // Serialize each row on its own, then re-emit it as a `- `-prefixed YAML
+        // sequence item. Per-row `to_string` keeps memory bounded and avoids
+        // serde_yaml's streaming `Serializer`, which cannot be held across the
+        // stream's awaits.
+        let yaml = serde_yaml::to_string(&model)?;
+        let mut first = true;
+        for line in yaml.lines() {
+            // serde_yaml emits a plain mapping (no `---`), but guard anyway.
+            if line == "---" {
+                continue;
+            }
+            if first {
+                writeln!(writer, "- {line}")?;
+                first = false;
+            } else {
+                // Indent continuation lines two spaces to nest under the item.
+                writeln!(writer, "  {line}")?;
+            }
+        }
+        wrote_any = true;
+    }
+
+    // An empty table is a valid, re-seedable empty sequence.
+    if !wrote_any {
+        writer.write_all(b"[]\n")?;
+    }
+
+    writer.flush()?;
     Ok(())
 }
 
@@ -234,10 +305,127 @@ pub async fn run_app_seed<H: Hooks>(ctx: &AppContext, path: &Path) -> AppResult<
     H::seed(ctx, path).await
 }
 
+/// Execute a dump from the given base directory via [`Hooks::dump`].
+///
+/// # Errors
+///
+/// When the dump process fails.
+pub async fn run_app_dump<H: Hooks>(ctx: &AppContext, base: &Path) -> AppResult<()> {
+    H::dump(ctx, base).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::tests_cfg::postgres::setup_postgres_container;
+
+    // Entity with datetime + JSON columns to prove the typed `dump` round-trips
+    // through `seed` with full fidelity.
+    mod typed_dump_entity {
+        use sea_orm::entity::prelude::*;
+
+        #[derive(
+            Clone, Debug, PartialEq, DeriveEntityModel, serde::Serialize, serde::Deserialize,
+        )]
+        #[sea_orm(table_name = "typed_dump")]
+        pub struct Model {
+            #[sea_orm(primary_key)]
+            pub id: i32,
+            pub name: String,
+            pub created_at: DateTimeWithTimeZone,
+            pub payload: Json,
+        }
+
+        #[derive(Copy, Clone, Debug, EnumIter)]
+        pub enum Relation {}
+
+        impl RelationTrait for Relation {
+            fn def(&self) -> RelationDef {
+                panic!("no relations for typed_dump_entity::Relation")
+            }
+        }
+
+        impl ActiveModelBehavior for ActiveModel {}
+    }
+
+    #[tokio::test]
+    async fn sqlite_typed_dump_roundtrips() {
+        use sea_orm::{ActiveValue::Set, QueryOrder};
+
+        let (config, tree_fs) = crate::tests_cfg::config::get_sqlite_test_config("typed_dump");
+        let db = crate::db::connect(&config).await.expect("connect sqlite");
+        let backend = db.get_database_backend();
+
+        db.execute_raw(Statement::from_string(
+            backend,
+            "CREATE TABLE typed_dump (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, created_at TEXT NOT NULL, payload TEXT NOT NULL);".to_string(),
+        ))
+        .await
+        .expect("create typed_dump table");
+
+        let ts =
+            chrono::DateTime::parse_from_rfc3339("2026-02-01T08:00:00+00:00").expect("parse ts");
+        for (name, n) in [("alice", 1), ("bob", 2)] {
+            typed_dump_entity::ActiveModel {
+                name: Set(name.to_string()),
+                created_at: Set(ts),
+                payload: Set(serde_json::json!({ "n": n })),
+                ..Default::default()
+            }
+            .insert(&db)
+            .await
+            .expect("insert row");
+        }
+
+        let dump_dir = tree_fs.root.join("dump");
+        std::fs::create_dir_all(&dump_dir).expect("create dump dir");
+        let path = dump_dir.join("typed_dump.yaml");
+        let path_str = path.to_str().expect("utf8 path");
+
+        crate::db::dump::<typed_dump_entity::ActiveModel>(&db, path_str)
+            .await
+            .expect("typed dump failed");
+
+        // The typed dump must parse as a YAML sequence and carry an RFC3339
+        // datetime (serialized through the typed Model, not raw SQLite text).
+        let contents = std::fs::read_to_string(&path).expect("read dump");
+        let parsed: Vec<serde_json::Value> =
+            serde_yaml::from_str(&contents).expect("dump must be a valid YAML sequence");
+        assert_eq!(parsed.len(), 2, "two rows dumped");
+        // Serialized through the typed Model, so it is valid RFC3339 (chrono
+        // renders UTC as `Z`) rather than raw SQLite text.
+        let dumped_dt = parsed[0]["created_at"].as_str().expect("created_at string");
+        assert_eq!(
+            chrono::DateTime::parse_from_rfc3339(dumped_dt)
+                .expect("dumped datetime is RFC3339")
+                .to_utc(),
+            ts.to_utc(),
+            "dumped datetime must equal the original instant, got {dumped_dt}"
+        );
+
+        // Round-trip: truncate, re-seed from the dump, and compare.
+        db.execute_raw(Statement::from_string(
+            backend,
+            "DELETE FROM typed_dump;".to_string(),
+        ))
+        .await
+        .expect("truncate");
+        crate::db::seed::<typed_dump_entity::ActiveModel>(&db, path_str)
+            .await
+            .expect("re-seed from typed dump");
+
+        let rows = typed_dump_entity::Entity::find()
+            .order_by_asc(typed_dump_entity::Column::Id)
+            .all(&db)
+            .await
+            .expect("select after seed");
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].name, "alice");
+        assert_eq!(rows[0].created_at, ts);
+        assert_eq!(rows[0].payload, serde_json::json!({ "n": 1 }));
+        assert_eq!(rows[1].name, "bob");
+        assert_eq!(rows[1].payload, serde_json::json!({ "n": 2 }));
+    }
 
     #[tokio::test]
     async fn test_postgres_has_id_column() {

@@ -355,8 +355,13 @@ pub async fn run_db<H: Hooks, M: MigratorTrait>(
         } => {
             tracing::warn!(reset = reset, from = %from.display(), "seed:");
 
-            if dump || dump_tables.is_some() {
-                db::dump_tables(&app_context.db, from.as_path(), dump_tables).await?;
+            if let Some(tables) = dump_tables {
+                // Explicit table list: schema-introspection dump of just those tables.
+                db::dump_tables(&app_context.db, from.as_path(), Some(tables)).await?;
+            } else if dump {
+                // Plain `--dump`: route through Hooks::dump so apps can override
+                // it with typed, streaming db::dump per entity.
+                db::run_app_dump::<H>(app_context, &from).await?;
             } else {
                 if reset {
                     db::reset::<M>(&app_context.db).await?;

@@ -540,6 +540,25 @@ pub trait Hooks: Send {
     #[cfg(feature = "with-db")]
     async fn seed(_ctx: &AppContext, path: &Path) -> Result<()>;
 
+    /// Dumps database tables to YAML fixtures under `base`, the counterpart to
+    /// [`Hooks::seed`] used by `cargo loco db seed --dump`.
+    ///
+    /// The default implementation dumps every table via schema introspection
+    /// ([`crate::db::dump_tables`]). Override it to dump specific entities with
+    /// the typed, streaming [`crate::db::dump`] for full type fidelity and
+    /// bounded memory:
+    ///
+    /// ```ignore
+    /// async fn dump(ctx: &AppContext, base: &Path) -> Result<()> {
+    ///     db::dump::<users::ActiveModel>(&ctx.db, &base.join("users.yaml").to_string_lossy()).await?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[cfg(feature = "with-db")]
+    async fn dump(ctx: &AppContext, base: &Path) -> Result<()> {
+        crate::db::dump_tables(&ctx.db, base, None).await
+    }
+
     /// Called when the application is shutting down.
     /// This function allows users to perform any necessary cleanup or final
     /// actions before the application stops completely.
