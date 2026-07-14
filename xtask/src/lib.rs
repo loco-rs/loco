@@ -42,7 +42,7 @@ impl CmdExit {
     pub fn exit(&self) {
         if let Some(message) = &self.message {
             eprintln!("{message}");
-        };
+        }
 
         exit(self.code);
     }
