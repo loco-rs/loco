@@ -174,7 +174,16 @@ pub fn init<H: Hooks>(config: &config::Logger) -> Result<()> {
     Ok(())
 }
 
-fn init_env_filter<H: Hooks>(override_filter: Option<&String>, level: &LogLevel) -> EnvFilter {
+/// Builds the [`EnvFilter`] Loco applies to its tracing subscriber, following
+/// the same precedence [`init`] uses: `RUST_LOG` wins, then `override_filter`,
+/// then the built-in module whitelist at `level`.
+///
+/// Exposed as a building block so an application overriding
+/// [`crate::app::Hooks::init_logger`] can reuse Loco's exact filter policy
+/// while composing its own layers (e.g. adding `tracing-flame` or an OTLP
+/// exporter) instead of re-deriving the whitelist by hand.
+#[must_use]
+pub fn init_env_filter<H: Hooks>(override_filter: Option<&String>, level: &LogLevel) -> EnvFilter {
     EnvFilter::try_from_default_env()
         .or_else(|_| {
             // user wanted a specific filter, don't care about our internal whitelist
@@ -196,7 +205,15 @@ fn init_env_filter<H: Hooks>(override_filter: Option<&String>, level: &LogLevel)
         .expect("logger initialization failed")
 }
 
-fn init_layer<W2>(
+/// Builds a single boxed tracing [`Layer`] for `make_writer` in the given
+/// [`Format`], with ANSI colouring toggled by `ansi` — the same layer [`init`]
+/// installs for stdout and the file appender.
+///
+/// Exposed as a building block so an application overriding
+/// [`crate::app::Hooks::init_logger`] can attach Loco's formatted layer to a
+/// custom writer (a socket, an in-memory buffer, a second sink) without
+/// reimplementing the compact/pretty/json formatting choice.
+pub fn init_layer<W2>(
     make_writer: W2,
     format: &Format,
     ansi: bool,
