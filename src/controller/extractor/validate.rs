@@ -16,7 +16,7 @@ use crate::Error;
 /// ```
 /// use axum::{routing::post, Router};
 /// use serde::{Deserialize, Serialize};
-/// use loco_rs::controller::extractor::validate::JsonValidateWithMessage;
+/// use roco_rs::controller::extractor::validate::JsonValidateWithMessage;
 /// use validator::Validate;
 ///
 /// #[derive(Serialize, Deserialize, Validate)]
@@ -61,7 +61,7 @@ where
 /// ```
 /// use axum::{routing::post, Router};
 /// use serde::{Deserialize, Serialize};
-/// use loco_rs::controller::extractor::validate::FormValidateWithMessage;
+/// use roco_rs::controller::extractor::validate::FormValidateWithMessage;
 /// use validator::Validate;
 ///
 /// #[derive(Serialize, Deserialize, Validate)]
@@ -107,7 +107,7 @@ where
 /// ```
 /// use axum::{routing::post, Router};
 /// use serde::{Deserialize, Serialize};
-/// use loco_rs::controller::extractor::validate::JsonValidate;
+/// use roco_rs::controller::extractor::validate::JsonValidate;
 /// use validator::Validate;
 ///
 /// #[derive(Serialize, Deserialize, Validate)]
@@ -155,7 +155,7 @@ where
 /// ```
 /// use axum::{routing::post, Router};
 /// use serde::{Deserialize, Serialize};
-/// use loco_rs::controller::extractor::validate::FormValidate;
+/// use roco_rs::controller::extractor::validate::FormValidate;
 /// use validator::Validate;
 ///
 /// #[derive(Serialize, Deserialize, Validate)]
@@ -203,7 +203,7 @@ where
 /// ```
 /// use axum::{routing::get, Router};
 /// use serde::{Deserialize, Serialize};
-/// use loco_rs::controller::extractor::validate::QueryValidateWithMessage;
+/// use roco_rs::controller::extractor::validate::QueryValidateWithMessage;
 /// use validator::Validate;
 ///
 /// #[derive(Serialize, Deserialize, Validate)]
@@ -251,7 +251,7 @@ where
 /// ```
 /// use axum::{routing::get, Router};
 /// use serde::{Deserialize, Serialize};
-/// use loco_rs::controller::extractor::validate::QueryValidate;
+/// use roco_rs::controller::extractor::validate::QueryValidate;
 /// use validator::Validate;
 ///
 /// #[derive(Serialize, Deserialize, Validate)]

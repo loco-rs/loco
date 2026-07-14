@@ -1,4 +1,4 @@
-use loco_rs::{prelude::*, tests_cfg};
+use roco_rs::{prelude::*, tests_cfg};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 

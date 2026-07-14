@@ -32,7 +32,7 @@ By default loco initialize a `Null` provider, meaning any work with the storage 
 Add the `after_context` function as a Hook in the `app.rs` file and import the `storage` module from `loco_rs`.
 
 ```rust
-use loco_rs::storage;
+use roco_rs::storage;
 
 async fn after_context(ctx: AppContext) -> Result<AppContext> {
     Ok(ctx)
@@ -58,7 +58,7 @@ Storage can be configured with a single driver or multiple drivers.
 In this example, we initialize the in-memory driver and create a new storage with the single function.
 
 ```rust
-use loco_rs::storage;
+use roco_rs::storage;
 
 async fn after_context(ctx: AppContext) -> Result<AppContext> {
     Ok(AppContext {
@@ -155,7 +155,7 @@ In case you have a specific strategy, you can easily create it by implementing t
 Follow this example, make sure you enable `multipart` feature in axum crate.
 
 ```rust
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 
 async fn upload_file(
     State(ctx): State<AppContext>,
@@ -192,7 +192,7 @@ async fn upload_file(
 By testing file storage in your controller you can follow this example:
 
 ```rust
-use loco_rs::testing::prelude::*;
+use roco_rs::testing::prelude::*;
 
 #[tokio::test]
 #[serial]

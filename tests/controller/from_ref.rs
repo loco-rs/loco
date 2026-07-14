@@ -1,5 +1,5 @@
 use axum::extract::FromRef;
-use loco_rs::{
+use roco_rs::{
     app::{AppContext, SharedStore},
     cache,
     prelude::*,

@@ -587,7 +587,7 @@ impl Config {
     /// # Example
     ///
     /// ```rust
-    /// use loco_rs::{
+    /// use roco_rs::{
     ///     config::Config,
     ///     environment::Environment,
     /// };
@@ -611,7 +611,7 @@ impl Config {
     /// # Example
     ///
     /// ```rust
-    /// use loco_rs::{
+    /// use roco_rs::{
     ///     config::Config,
     ///     environment::Environment,
     /// };

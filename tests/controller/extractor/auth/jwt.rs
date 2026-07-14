@@ -1,4 +1,4 @@
-use loco_rs::{controller::extractor::auth, prelude::*, tests_cfg};
+use roco_rs::{controller::extractor::auth, prelude::*, tests_cfg};
 use serde::{Deserialize, Serialize};
 
 use crate::infra_cfg;
@@ -20,14 +20,14 @@ async fn jwt_handler(auth: auth::JWT) -> Result<Response> {
 async fn can_extract_jwt_with_valid_token() {
     let mut ctx = tests_cfg::app::get_app_context().await;
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
         }),
     });
-    let jwt = loco_rs::auth::jwt::JWT::new(&secret);
+    let jwt = roco_rs::auth::jwt::JWT::new(&secret);
     let token = jwt
         .generate_token(3600, "test_pid_123".to_string(), serde_json::Map::new())
         .expect("Failed to generate token");
@@ -54,8 +54,8 @@ async fn can_extract_jwt_with_valid_token() {
 async fn can_handle_invalid_jwt_token() {
     let mut ctx = tests_cfg::app::get_app_context().await;
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
@@ -82,8 +82,8 @@ async fn can_handle_invalid_jwt_token() {
 async fn can_handle_missing_jwt_token() {
     let mut ctx = tests_cfg::app::get_app_context().await;
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
@@ -109,14 +109,14 @@ async fn can_handle_missing_jwt_token() {
 async fn can_handle_expired_jwt_token() {
     let mut ctx = tests_cfg::app::get_app_context().await;
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
         }),
     });
-    let jwt = loco_rs::auth::jwt::JWT::new(&secret);
+    let jwt = roco_rs::auth::jwt::JWT::new(&secret);
     let token = jwt
         .generate_token(1, "test_pid_123".to_string(), serde_json::Map::new())
         .expect("Failed to generate token");
@@ -142,8 +142,8 @@ async fn can_handle_expired_jwt_token() {
 async fn can_handle_malformed_authorization_header() {
     let mut ctx = tests_cfg::app::get_app_context().await;
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
@@ -194,10 +194,10 @@ async fn can_extract_jwt_from_cookie() {
 
     // Configure JWT auth to use Cookie location
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
-            location: Some(loco_rs::config::JWTLocationConfig::Single(
-                loco_rs::config::JWTLocation::Cookie {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
+            location: Some(roco_rs::config::JWTLocationConfig::Single(
+                roco_rs::config::JWTLocation::Cookie {
                     name: "auth_token".to_string(),
                 },
             )),
@@ -207,7 +207,7 @@ async fn can_extract_jwt_from_cookie() {
     });
 
     // Create a valid JWT token
-    let jwt = loco_rs::auth::jwt::JWT::new(&secret);
+    let jwt = roco_rs::auth::jwt::JWT::new(&secret);
     let token = jwt
         .generate_token(3600, "test_pid_123".to_string(), serde_json::Map::new())
         .expect("Failed to generate token");
@@ -238,10 +238,10 @@ async fn can_extract_jwt_from_query() {
 
     // Configure JWT auth to use Query location
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
-            location: Some(loco_rs::config::JWTLocationConfig::Single(
-                loco_rs::config::JWTLocation::Query {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
+            location: Some(roco_rs::config::JWTLocationConfig::Single(
+                roco_rs::config::JWTLocation::Query {
                     name: "token".to_string(),
                 },
             )),
@@ -251,7 +251,7 @@ async fn can_extract_jwt_from_query() {
     });
 
     // Create a valid JWT token
-    let jwt = loco_rs::auth::jwt::JWT::new(&secret);
+    let jwt = roco_rs::auth::jwt::JWT::new(&secret);
     let token = jwt
         .generate_token(3600, "test_pid_123".to_string(), serde_json::Map::new())
         .expect("Failed to generate token");
@@ -281,13 +281,13 @@ async fn can_extract_jwt_with_multiple_locations_cookie_fallback() {
 
     // Configure JWT auth to use multiple locations (Cookie first, then Query)
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
-            location: Some(loco_rs::config::JWTLocationConfig::Multiple(vec![
-                loco_rs::config::JWTLocation::Cookie {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
+            location: Some(roco_rs::config::JWTLocationConfig::Multiple(vec![
+                roco_rs::config::JWTLocation::Cookie {
                     name: "nonexistent_cookie".to_string(), // This will fail
                 },
-                loco_rs::config::JWTLocation::Query {
+                roco_rs::config::JWTLocation::Query {
                     name: "token".to_string(), // This will succeed
                 },
             ])),
@@ -297,7 +297,7 @@ async fn can_extract_jwt_with_multiple_locations_cookie_fallback() {
     });
 
     // Create a valid JWT token
-    let jwt = loco_rs::auth::jwt::JWT::new(&secret);
+    let jwt = roco_rs::auth::jwt::JWT::new(&secret);
     let token = jwt
         .generate_token(3600, "test_pid_123".to_string(), serde_json::Map::new())
         .expect("Failed to generate token");
@@ -327,13 +327,13 @@ async fn can_extract_jwt_with_multiple_locations_query_fallback() {
 
     // Configure JWT auth to use multiple locations (Query first, then Bearer)
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
-            location: Some(loco_rs::config::JWTLocationConfig::Multiple(vec![
-                loco_rs::config::JWTLocation::Query {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
+            location: Some(roco_rs::config::JWTLocationConfig::Multiple(vec![
+                roco_rs::config::JWTLocation::Query {
                     name: "missing_param".to_string(), // This will fail
                 },
-                loco_rs::config::JWTLocation::Bearer, // This will succeed
+                roco_rs::config::JWTLocation::Bearer, // This will succeed
             ])),
             secret: secret.clone(),
             expiration: 3600,
@@ -341,7 +341,7 @@ async fn can_extract_jwt_with_multiple_locations_query_fallback() {
     });
 
     // Create a valid JWT token
-    let jwt = loco_rs::auth::jwt::JWT::new(&secret);
+    let jwt = roco_rs::auth::jwt::JWT::new(&secret);
     let token = jwt
         .generate_token(3600, "test_pid_123".to_string(), serde_json::Map::new())
         .expect("Failed to generate token");
@@ -372,13 +372,13 @@ async fn can_handle_multiple_locations_all_fail() {
 
     // Configure JWT auth to use multiple locations that will all fail
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
-            location: Some(loco_rs::config::JWTLocationConfig::Multiple(vec![
-                loco_rs::config::JWTLocation::Cookie {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
+            location: Some(roco_rs::config::JWTLocationConfig::Multiple(vec![
+                roco_rs::config::JWTLocation::Cookie {
                     name: "nonexistent_cookie".to_string(),
                 },
-                loco_rs::config::JWTLocation::Query {
+                roco_rs::config::JWTLocation::Query {
                     name: "missing_param".to_string(),
                 },
             ])),
@@ -409,10 +409,10 @@ async fn can_handle_cookie_location_missing_cookie() {
 
     // Configure JWT auth to use Cookie location
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
-            location: Some(loco_rs::config::JWTLocationConfig::Single(
-                loco_rs::config::JWTLocation::Cookie {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
+            location: Some(roco_rs::config::JWTLocationConfig::Single(
+                roco_rs::config::JWTLocation::Cookie {
                     name: "auth_token".to_string(),
                 },
             )),
@@ -443,10 +443,10 @@ async fn can_handle_query_location_missing_param() {
 
     // Configure JWT auth to use Query location
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
-            location: Some(loco_rs::config::JWTLocationConfig::Single(
-                loco_rs::config::JWTLocation::Query {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
+            location: Some(roco_rs::config::JWTLocationConfig::Single(
+                roco_rs::config::JWTLocation::Query {
                     name: "token".to_string(),
                 },
             )),
@@ -475,8 +475,8 @@ async fn can_handle_query_location_missing_param() {
 async fn can_handle_jwt_with_wrong_algorithm() {
     let mut ctx = tests_cfg::app::get_app_context().await;
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
@@ -486,7 +486,7 @@ async fn can_handle_jwt_with_wrong_algorithm() {
     // Create a JWT with different secret (simulating wrong algorithm)
     // Use a valid base64-encoded secret
     let different_secret = "DifferentSecretKey123456789012345678901234567890".to_string();
-    let jwt = loco_rs::auth::jwt::JWT::new(&different_secret);
+    let jwt = roco_rs::auth::jwt::JWT::new(&different_secret);
     let token = jwt
         .generate_token(3600, "test_pid_123".to_string(), serde_json::Map::new())
         .expect("Failed to generate token");
@@ -511,8 +511,8 @@ async fn can_handle_jwt_with_wrong_algorithm() {
 async fn can_handle_jwt_with_invalid_signature() {
     let mut ctx = tests_cfg::app::get_app_context().await;
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
@@ -520,7 +520,7 @@ async fn can_handle_jwt_with_invalid_signature() {
     });
 
     // Create a valid JWT then modify it to have invalid signature
-    let jwt = loco_rs::auth::jwt::JWT::new(&secret);
+    let jwt = roco_rs::auth::jwt::JWT::new(&secret);
     let mut token = jwt
         .generate_token(3600, "test_pid_123".to_string(), serde_json::Map::new())
         .expect("Failed to generate token");
@@ -552,8 +552,8 @@ async fn can_handle_jwt_with_invalid_signature() {
 async fn can_handle_malformed_jwt_structure() {
     let mut ctx = tests_cfg::app::get_app_context().await;
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
@@ -582,10 +582,10 @@ async fn can_extract_jwt_from_cookie_with_special_chars() {
 
     // Configure JWT auth to use Cookie location
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
-            location: Some(loco_rs::config::JWTLocationConfig::Single(
-                loco_rs::config::JWTLocation::Cookie {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
+            location: Some(roco_rs::config::JWTLocationConfig::Single(
+                roco_rs::config::JWTLocation::Cookie {
                     name: "auth_token".to_string(),
                 },
             )),
@@ -595,7 +595,7 @@ async fn can_extract_jwt_from_cookie_with_special_chars() {
     });
 
     // Create a valid JWT token
-    let jwt = loco_rs::auth::jwt::JWT::new(&secret);
+    let jwt = roco_rs::auth::jwt::JWT::new(&secret);
     let token = jwt
         .generate_token(3600, "test_pid_123".to_string(), serde_json::Map::new())
         .expect("Failed to generate token");
@@ -626,10 +626,10 @@ async fn can_handle_cookie_with_empty_value() {
 
     // Configure JWT auth to use Cookie location
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
-            location: Some(loco_rs::config::JWTLocationConfig::Single(
-                loco_rs::config::JWTLocation::Cookie {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
+            location: Some(roco_rs::config::JWTLocationConfig::Single(
+                roco_rs::config::JWTLocation::Cookie {
                     name: "auth_token".to_string(),
                 },
             )),
@@ -660,10 +660,10 @@ async fn can_extract_jwt_from_query_with_special_chars() {
 
     // Configure JWT auth to use Query location
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
-            location: Some(loco_rs::config::JWTLocationConfig::Single(
-                loco_rs::config::JWTLocation::Query {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
+            location: Some(roco_rs::config::JWTLocationConfig::Single(
+                roco_rs::config::JWTLocation::Query {
                     name: "token".to_string(),
                 },
             )),
@@ -673,7 +673,7 @@ async fn can_extract_jwt_from_query_with_special_chars() {
     });
 
     // Create a valid JWT token
-    let jwt = loco_rs::auth::jwt::JWT::new(&secret);
+    let jwt = roco_rs::auth::jwt::JWT::new(&secret);
     let token = jwt
         .generate_token(3600, "test_pid_123".to_string(), serde_json::Map::new())
         .expect("Failed to generate token");
@@ -703,10 +703,10 @@ async fn can_handle_query_with_empty_value() {
 
     // Configure JWT auth to use Query location
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
-            location: Some(loco_rs::config::JWTLocationConfig::Single(
-                loco_rs::config::JWTLocation::Query {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
+            location: Some(roco_rs::config::JWTLocationConfig::Single(
+                roco_rs::config::JWTLocation::Query {
                     name: "token".to_string(),
                 },
             )),
@@ -736,10 +736,10 @@ async fn can_handle_query_with_spaces() {
 
     // Configure JWT auth to use Query location
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
-            location: Some(loco_rs::config::JWTLocationConfig::Single(
-                loco_rs::config::JWTLocation::Query {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
+            location: Some(roco_rs::config::JWTLocationConfig::Single(
+                roco_rs::config::JWTLocation::Query {
                     name: "token".to_string(),
                 },
             )),
@@ -770,8 +770,8 @@ async fn can_handle_query_with_spaces() {
 async fn can_validate_error_message_for_missing_token() {
     let mut ctx = tests_cfg::app::get_app_context().await;
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
@@ -802,8 +802,8 @@ async fn can_validate_error_message_for_missing_token() {
 async fn can_validate_error_message_for_invalid_token() {
     let mut ctx = tests_cfg::app::get_app_context().await;
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
@@ -835,8 +835,8 @@ async fn can_validate_error_message_for_invalid_token() {
 async fn can_validate_error_message_for_malformed_header() {
     let mut ctx = tests_cfg::app::get_app_context().await;
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
@@ -868,8 +868,8 @@ async fn can_validate_error_message_for_malformed_header() {
 async fn can_handle_jwt_expires_exactly_at_current_time() {
     let mut ctx = tests_cfg::app::get_app_context().await;
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
@@ -877,7 +877,7 @@ async fn can_handle_jwt_expires_exactly_at_current_time() {
     });
 
     // Create a JWT that expires exactly at current time (0 seconds from now)
-    let jwt = loco_rs::auth::jwt::JWT::new(&secret);
+    let jwt = roco_rs::auth::jwt::JWT::new(&secret);
     let token = jwt
         .generate_token(0, "test_pid_123".to_string(), serde_json::Map::new())
         .expect("Failed to generate token");
@@ -903,8 +903,8 @@ async fn can_handle_jwt_expires_exactly_at_current_time() {
 async fn can_handle_jwt_expired_one_second_ago() {
     let mut ctx = tests_cfg::app::get_app_context().await;
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
@@ -913,7 +913,7 @@ async fn can_handle_jwt_expired_one_second_ago() {
 
     // Create a JWT that expired 1 second ago
     // We'll use a negative expiration to simulate past expiration
-    let jwt = loco_rs::auth::jwt::JWT::new(&secret);
+    let jwt = roco_rs::auth::jwt::JWT::new(&secret);
     let token = jwt
         .generate_token(0, "test_pid_123".to_string(), serde_json::Map::new())
         .expect("Failed to generate token");
@@ -941,8 +941,8 @@ async fn can_handle_jwt_expired_one_second_ago() {
 async fn can_handle_jwt_expires_in_one_second() {
     let mut ctx = tests_cfg::app::get_app_context().await;
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
@@ -950,7 +950,7 @@ async fn can_handle_jwt_expires_in_one_second() {
     });
 
     // Create a JWT that expires in 5 seconds to account for test setup time
-    let jwt = loco_rs::auth::jwt::JWT::new(&secret);
+    let jwt = roco_rs::auth::jwt::JWT::new(&secret);
     let token = jwt
         .generate_token(5, "test_pid_123".to_string(), serde_json::Map::new())
         .expect("Failed to generate token");
@@ -980,8 +980,8 @@ async fn can_handle_jwt_expires_in_one_second() {
 async fn can_handle_jwt_with_missing_exp_claim() {
     let mut ctx = tests_cfg::app::get_app_context().await;
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
@@ -990,7 +990,7 @@ async fn can_handle_jwt_with_missing_exp_claim() {
 
     // Create a JWT manually without exp claim
     // This simulates a JWT that was created without proper exp handling
-    let _jwt = loco_rs::auth::jwt::JWT::new(&secret);
+    let _jwt = roco_rs::auth::jwt::JWT::new(&secret);
 
     // For this test, we'll use an invalid JWT structure that would fail validation
     // since we can't easily create a JWT without exp claim using the current API
@@ -1016,8 +1016,8 @@ async fn can_handle_jwt_with_missing_exp_claim() {
 async fn can_handle_jwt_with_invalid_exp_claim() {
     let mut ctx = tests_cfg::app::get_app_context().await;
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
@@ -1026,7 +1026,7 @@ async fn can_handle_jwt_with_invalid_exp_claim() {
 
     // Create a JWT with invalid exp claim format
     // This simulates a JWT with malformed exp claim
-    let _jwt = loco_rs::auth::jwt::JWT::new(&secret);
+    let _jwt = roco_rs::auth::jwt::JWT::new(&secret);
 
     // Corrupt the JWT to simulate invalid exp claim
     // This will make the JWT invalid
@@ -1052,8 +1052,8 @@ async fn can_handle_jwt_with_invalid_exp_claim() {
 async fn can_handle_jwt_with_distant_future_expiration() {
     let mut ctx = tests_cfg::app::get_app_context().await;
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
@@ -1061,7 +1061,7 @@ async fn can_handle_jwt_with_distant_future_expiration() {
     });
 
     // Create a JWT that expires in 10 years (very distant future)
-    let jwt = loco_rs::auth::jwt::JWT::new(&secret);
+    let jwt = roco_rs::auth::jwt::JWT::new(&secret);
     let token = jwt
         .generate_token(
             315_360_000,
@@ -1095,8 +1095,8 @@ async fn can_handle_jwt_with_distant_future_expiration() {
 async fn can_handle_jwt_with_epoch_expiration() {
     let mut ctx = tests_cfg::app::get_app_context().await;
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
@@ -1105,7 +1105,7 @@ async fn can_handle_jwt_with_epoch_expiration() {
 
     // Create a JWT that expired at epoch time (1970)
     // This simulates a JWT with exp=0 or very old timestamp
-    let jwt = loco_rs::auth::jwt::JWT::new(&secret);
+    let jwt = roco_rs::auth::jwt::JWT::new(&secret);
 
     // Generate a token with 0 expiration (epoch time)
     let token = jwt

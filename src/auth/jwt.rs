@@ -26,7 +26,7 @@ pub struct UserClaims {
 ///
 /// # Example
 /// ```rust
-/// use loco_rs::auth;
+/// use roco_rs::auth;
 ///
 /// auth::jwt::JWT::new("PqRwLF2rhHe8J22oBeHy");
 /// ```
@@ -63,7 +63,7 @@ impl JWT {
     /// # Example
     /// ```rust
     /// use serde_json::Map;
-    /// use loco_rs::auth;
+    /// use roco_rs::auth;
     ///
     /// auth::jwt::JWT::new("PqRwLF2rhHe8J22oBeHy").generate_token(604800, "PID".to_string(), Map::new());
     /// ```
@@ -96,7 +96,7 @@ impl JWT {
     ///
     /// # Example
     /// ```rust
-    /// use loco_rs::auth;
+    /// use roco_rs::auth;
     /// auth::jwt::JWT::new("PqRwLF2rhHe8J22oBeHy").validate("JWT-TOKEN");
     /// ```
     pub fn validate(&self, token: &str) -> JWTResult<TokenData<UserClaims>> {

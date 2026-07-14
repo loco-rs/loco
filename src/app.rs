@@ -42,7 +42,7 @@ impl SharedStore {
     ///
     /// # Example
     /// ```
-    /// # use loco_rs::app::SharedStore;
+    /// # use roco_rs::app::SharedStore;
     /// let shared_store = SharedStore::default();
     ///
     /// #[derive(Debug)]
@@ -69,7 +69,7 @@ impl SharedStore {
     ///
     /// # Example
     /// ```
-    /// # use loco_rs::app::SharedStore;
+    /// # use roco_rs::app::SharedStore;
     /// let shared_store = SharedStore::default();
     ///
     /// struct TestService {
@@ -117,7 +117,7 @@ impl SharedStore {
     ///
     /// # Example
     /// ```
-    /// # use loco_rs::app::SharedStore;
+    /// # use roco_rs::app::SharedStore;
     /// let shared_store = SharedStore::default();
     ///
     /// #[derive(Clone)]
@@ -166,7 +166,7 @@ impl SharedStore {
     ///
     /// # Example
     /// ```
-    /// # use loco_rs::app::SharedStore;
+    /// # use roco_rs::app::SharedStore;
     /// let shared_store = SharedStore::default();
     ///
     /// #[derive(Clone)]
@@ -200,7 +200,7 @@ impl SharedStore {
     ///
     /// # Example
     /// ```
-    /// # use loco_rs::app::SharedStore;
+    /// # use roco_rs::app::SharedStore;
     /// let shared_store = SharedStore::default();
     ///
     /// struct TestService {

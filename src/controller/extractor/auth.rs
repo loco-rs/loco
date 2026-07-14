@@ -3,10 +3,10 @@
 //! # Example:
 //!
 //! ```
-//! use loco_rs::prelude::*;
+//! use roco_rs::prelude::*;
 //! use serde::Serialize;
 //! use axum::extract::State;
-//! use loco_rs::controller::extractor::auth;
+//! use roco_rs::controller::extractor::auth;
 //!
 //! #[derive(Serialize)]
 //! pub struct TestResponse {
@@ -30,7 +30,7 @@ use axum_extra::extract::cookie;
 use serde::{Deserialize, Serialize};
 use tracing;
 
-use crate::{app::AppContext, auth, config::JWT as JWTConfig, errors::Error, Result as LocoResult};
+use crate::{app::AppContext, auth, config::JWT as JWTConfig, errors::Error, Result as RocoResult};
 
 #[cfg(feature = "with-db")]
 use crate::model::{Authenticable, ModelError};
@@ -149,7 +149,7 @@ where
 ///
 /// # Errors
 /// Return an error when JWT token not configured
-pub fn get_jwt_from_config(ctx: &AppContext) -> LocoResult<&JWTConfig> {
+pub fn get_jwt_from_config(ctx: &AppContext) -> RocoResult<&JWTConfig> {
     ctx.config
         .auth
         .as_ref()
@@ -164,7 +164,7 @@ pub fn get_jwt_from_config(ctx: &AppContext) -> LocoResult<&JWTConfig> {
 ///
 /// Returns an error when the token cannot be extracted from any of the configured locations,
 /// such as missing headers, invalid formats, or inaccessible request data.
-pub fn extract_token(jwt_config: &JWTConfig, parts: &Parts) -> LocoResult<String> {
+pub fn extract_token(jwt_config: &JWTConfig, parts: &Parts) -> RocoResult<String> {
     let locations = get_jwt_locations(jwt_config.location.as_ref());
 
     for location in &locations {
@@ -192,7 +192,7 @@ fn get_jwt_locations(
 fn extract_token_from_location(
     location: &crate::config::JWTLocation,
     parts: &Parts,
-) -> LocoResult<String> {
+) -> RocoResult<String> {
     match location {
         crate::config::JWTLocation::Query { name } => extract_token_from_query(name, parts),
         crate::config::JWTLocation::Cookie { name } => extract_token_from_cookie(name, parts),
@@ -205,7 +205,7 @@ fn extract_token_from_location(
 /// # Errors
 ///
 /// When token is not valid or not found
-pub fn extract_token_from_header(headers: &HeaderMap) -> LocoResult<String> {
+pub fn extract_token_from_header(headers: &HeaderMap) -> RocoResult<String> {
     let token = headers
         .get(AUTH_HEADER)
         .ok_or_else(|| Error::Unauthorized(format!("header {AUTH_HEADER} token not found")))?
@@ -221,7 +221,7 @@ pub fn extract_token_from_header(headers: &HeaderMap) -> LocoResult<String> {
 ///
 /// # Errors
 /// when token value from cookie is not found
-pub fn extract_token_from_cookie(name: &str, parts: &Parts) -> LocoResult<String> {
+pub fn extract_token_from_cookie(name: &str, parts: &Parts) -> RocoResult<String> {
     // LogoResult
     let jar: cookie::CookieJar = cookie::CookieJar::from_headers(&parts.headers);
     Ok(jar
@@ -236,7 +236,7 @@ pub fn extract_token_from_cookie(name: &str, parts: &Parts) -> LocoResult<String
 ///
 /// # Errors
 /// when token value from cookie is not found
-pub fn extract_token_from_query(name: &str, parts: &Parts) -> LocoResult<String> {
+pub fn extract_token_from_query(name: &str, parts: &Parts) -> RocoResult<String> {
     // LogoResult
     let parameters: Query<HashMap<String, String>> =
         Query::try_from_uri(&parts.uri).map_err(|err| Error::Unauthorized(err.to_string()))?;

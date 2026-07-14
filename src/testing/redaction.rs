@@ -69,7 +69,7 @@ pub fn get_cleanup_mail() -> &'static Vec<(&'static str, &'static str)> {
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
-/// use loco_rs::testing::prelude::*;
+/// use roco_rs::testing::prelude::*;
 /// use migration::Migrator;
 ///
 /// #[tokio::test]

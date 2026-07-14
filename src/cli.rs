@@ -6,7 +6,7 @@
 //!
 //! ```rust,ignore
 //! use myapp::app::App;
-//! use loco_rs::cli;
+//! use roco_rs::cli;
 //! use migration::Migrator;
 //!
 //! #[tokio::main]
@@ -173,18 +173,18 @@ enum ComponentArg {
     #[command(after_help = format!(
     "{}  
   - Generate empty model:
-      $ cargo loco g model posts
+      $ cargo roco g model posts
 
   - Generate model with fields:
-      $ cargo loco g model posts title:string! content:text
+      $ cargo roco g model posts title:string! content:text
 
   - Generate model with references:
-      $ cargo loco g model movies long_title:string director:references award:references:prize_id
+      $ cargo roco g model movies long_title:string director:references award:references:prize_id
       # 'director:references' references the 'directors' table with 'director_id' on 'movies'
       # 'award:references:prize_id' references the 'awards' table with 'prize_id' on 'movies'
 
   - Generate model without timestamps:
-      $ cargo loco g model posts title:string content:text --without-tz
+      $ cargo roco g model posts title:string content:text --without-tz
 ",
     "Examples:".bold().underline()
 ))]
@@ -204,42 +204,42 @@ enum ComponentArg {
     /// Generates a new migration file
     #[command(after_help = format!("{}
   - Create a new table:
-      $ cargo loco g migration CreatePosts title:string
+      $ cargo roco g migration CreatePosts title:string
       # Creates a migration to add a 'posts' table with a 'title' column of type string.
 
   - Add columns to an existing table:
-      $ cargo loco g migration AddNameAndAgeToUsers name:string age:int
+      $ cargo roco g migration AddNameAndAgeToUsers name:string age:int
       # Adds 'name' (string) and 'age' (integer) columns to the 'users' table.
 
   - Remove columns from a table:
-      $ cargo loco g migration RemoveNameAndAgeFromUsers name:string age:int
+      $ cargo roco g migration RemoveNameAndAgeFromUsers name:string age:int
       # Removes 'name' and 'age' columns from the 'users' table.
 
   - Add a foreign key reference:
-      $ cargo loco g migration AddUserRefToPosts user:references
+      $ cargo roco g migration AddUserRefToPosts user:references
       # Adds a reference to the 'users' table in the 'posts' table.
 
   - Create a join table:
-      $ cargo loco g migration CreateJoinTableUsersAndGroups count:int
+      $ cargo roco g migration CreateJoinTableUsersAndGroups count:int
       # Creates a join table 'users_groups' with an additional 'count' column.
 
   - Create an empty migration:
-      $ cargo loco g migration FixUsersTable
+      $ cargo roco g migration FixUsersTable
       # Creates a blank migration file for custom edits to the 'users' table.
 
   - Create migration without timestamps:
-      $ cargo loco g migration CreatePosts title:string --without-tz
+      $ cargo roco g migration CreatePosts title:string --without-tz
       # Creates a migration without timestamp columns
 
   - Create join table without timestamps:
-      $ cargo loco g migration CreateJoinTableUsersAndGroups count:int --without-tz
+      $ cargo roco g migration CreateJoinTableUsersAndGroups count:int --without-tz
       # Creates a join table without timestamp columns
 
 After running the migration, follow these steps to complete the process:
   - Apply the migration:
-    $ cargo loco db migrate
+    $ cargo roco db migrate
   - Generate the model entities:
-    $ cargo loco db entities
+    $ cargo roco db entities
 ", "Examples:".bold().underline()))]
     Migration {
         /// Name of the migration to generate
@@ -256,9 +256,9 @@ After running the migration, follow these steps to complete the process:
     #[cfg(feature = "with-db")]
     /// Generates a CRUD scaffold, model and controller
     #[command(after_help = format!("{}
- $ cargo loco g model posts title:string! user:references --api
+ $ cargo roco g model posts title:string! user:references --api
 
- $ cargo loco g scaffold posts title:string! user:references --api --without-tz", "Examples:".bold().underline()))]
+ $ cargo roco g scaffold posts title:string! user:references --api --without-tz", "Examples:".bold().underline()))]
     Scaffold {
         /// Name of the thing to generate
         name: String,
@@ -273,7 +273,7 @@ After running the migration, follow these steps to complete the process:
 
         /// The kind of scaffold to generate
         #[clap(short, long, value_enum, group = "scaffold_kind_group")]
-        kind: Option<loco_gen::ScaffoldKind>,
+        kind: Option<roco_gen::ScaffoldKind>,
 
         /// Use HTMX scaffold
         #[clap(long, group = "scaffold_kind_group")]
@@ -291,10 +291,10 @@ After running the migration, follow these steps to complete the process:
     #[command(after_help = format!(
     "{}  
   - Generate an empty controller:
-      $ cargo loco generate controller posts --api
+      $ cargo roco generate controller posts --api
 
   - Generate a controller with actions:
-      $ cargo loco generate controller posts --api list remove update
+      $ cargo roco generate controller posts --api list remove update
 ",
     "Examples:".bold().underline()
 ))]
@@ -307,7 +307,7 @@ After running the migration, follow these steps to complete the process:
 
         /// The kind of controller actions to generate
         #[clap(short, long, value_enum, group = "scaffold_kind_group")]
-        kind: Option<loco_gen::ScaffoldKind>,
+        kind: Option<roco_gen::ScaffoldKind>,
 
         /// Use HTMX controller actions
         #[clap(long, group = "scaffold_kind_group")]
@@ -354,15 +354,15 @@ After running the migration, follow these steps to complete the process:
     /// always go back when deleting the local template.
     #[command(after_help = format!("{}
   - Override a Specific File:
-      * cargo loco generate override scaffold/api/controller.t
-      * cargo loco generate override migration/add_columns.t
+      * cargo roco generate override scaffold/api/controller.t
+      * cargo roco generate override migration/add_columns.t
 
   - Override All Files in a Folder:
-      * cargo loco generate override scaffold/htmx
-      * cargo loco generate override task
+      * cargo roco generate override scaffold/htmx
+      * cargo roco generate override task
 
   - Override All templates:
-      * cargo loco generate override .
+      * cargo roco generate override .
 ", "Examples:".bold().underline()))]
     Override {
         /// The path to a specific template or directory to copy.
@@ -377,14 +377,14 @@ After running the migration, follow these steps to complete the process:
 
 #[cfg(debug_assertions)]
 impl ComponentArg {
-    fn into_gen_component(self, config: &Config) -> crate::Result<loco_gen::Component> {
+    fn into_gen_component(self, config: &Config) -> crate::Result<roco_gen::Component> {
         match self {
             #[cfg(feature = "with-db")]
             Self::Model {
                 name,
                 without_tz,
                 fields,
-            } => Ok(loco_gen::Component::Model {
+            } => Ok(roco_gen::Component::Model {
                 name,
                 with_tz: !without_tz,
                 fields,
@@ -394,7 +394,7 @@ impl ComponentArg {
                 name,
                 without_tz,
                 fields,
-            } => Ok(loco_gen::Component::Migration {
+            } => Ok(roco_gen::Component::Migration {
                 name,
                 with_tz: !without_tz,
                 fields,
@@ -412,18 +412,18 @@ impl ComponentArg {
                 let kind = if let Some(kind) = kind {
                     kind
                 } else if htmx {
-                    loco_gen::ScaffoldKind::Htmx
+                    roco_gen::ScaffoldKind::Htmx
                 } else if html {
-                    loco_gen::ScaffoldKind::Html
+                    roco_gen::ScaffoldKind::Html
                 } else if api {
-                    loco_gen::ScaffoldKind::Api
+                    roco_gen::ScaffoldKind::Api
                 } else {
                     return Err(crate::Error::string(
                         "Error: generating this component requires one of `--kind`, `--htmx`, `--html`, or `--api` to be specified. Run with `--help` for more information.",
                     ));
                 };
 
-                Ok(loco_gen::Component::Scaffold {
+                Ok(roco_gen::Component::Scaffold {
                     name,
                     with_tz: !without_tz,
                     fields,
@@ -441,28 +441,28 @@ impl ComponentArg {
                 let kind = if let Some(kind) = kind {
                     kind
                 } else if htmx {
-                    loco_gen::ScaffoldKind::Htmx
+                    roco_gen::ScaffoldKind::Htmx
                 } else if html {
-                    loco_gen::ScaffoldKind::Html
+                    roco_gen::ScaffoldKind::Html
                 } else if api {
-                    loco_gen::ScaffoldKind::Api
+                    roco_gen::ScaffoldKind::Api
                 } else {
                     return Err(crate::Error::string(
                         "Error: One of `kind`, `htmx`, `html`, or `api` must be specified.",
                     ));
                 };
 
-                Ok(loco_gen::Component::Controller {
+                Ok(roco_gen::Component::Controller {
                     name,
                     actions,
                     kind,
                 })
             }
-            Self::Task { name } => Ok(loco_gen::Component::Task { name }),
-            Self::Scheduler {} => Ok(loco_gen::Component::Scheduler {}),
-            Self::Worker { name } => Ok(loco_gen::Component::Worker { name }),
-            Self::Mailer { name } => Ok(loco_gen::Component::Mailer { name }),
-            Self::Data { name } => Ok(loco_gen::Component::Data { name }),
+            Self::Task { name } => Ok(roco_gen::Component::Task { name }),
+            Self::Scheduler {} => Ok(roco_gen::Component::Scheduler {}),
+            Self::Worker { name } => Ok(roco_gen::Component::Worker { name }),
+            Self::Mailer { name } => Ok(roco_gen::Component::Mailer { name }),
+            Self::Data { name } => Ok(roco_gen::Component::Data { name }),
             Self::Deployment { kind } => Ok(kind.to_generator_component(config)),
             Self::Override {
                 template_path: _,
@@ -553,7 +553,7 @@ pub enum DeploymentKind {
 
 impl DeploymentKind {
     #[cfg(debug_assertions)]
-    fn to_generator_component(&self, config: &Config) -> loco_gen::Component {
+    fn to_generator_component(&self, config: &Config) -> roco_gen::Component {
         let kind = match self {
             Self::Docker => {
                 let mut copy_paths = vec![];
@@ -575,17 +575,17 @@ impl DeploymentKind {
                 let is_client_side_rendering =
                     PathBuf::from("frontend").join("package.json").exists();
 
-                loco_gen::DeploymentKind::Docker {
+                roco_gen::DeploymentKind::Docker {
                     copy_paths,
                     is_client_side_rendering,
                 }
             }
-            Self::Nginx => loco_gen::DeploymentKind::Nginx {
+            Self::Nginx => roco_gen::DeploymentKind::Nginx {
                 host: config.server.host.clone(),
                 port: config.server.port,
             },
         };
-        loco_gen::Component::Deployment { kind }
+        roco_gen::Component::Deployment { kind }
     }
 }
 
@@ -692,7 +692,7 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
-/// use loco_rs::cli;
+/// use roco_rs::cli;
 /// use migration::Migrator;
 ///
 /// #[tokio::main]
@@ -827,8 +827,8 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             worker,
             server_and_worker,
         } => {
-            // cargo-watch  -s 'cargo loco start'
-            let mut cmd_str = String::from("cargo loco start");
+            // cargo-watch  -s 'cargo roco start'
+            let mut cmd_str = String::from("cargo roco start");
 
             if let Some(worker_tags) = worker {
                 if worker_tags.is_empty() {
@@ -963,8 +963,8 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             worker,
             server_and_worker,
         } => {
-            // cargo-watch  -s 'cargo loco start'
-            let mut cmd_str = String::from("cargo loco start");
+            // cargo-watch  -s 'cargo roco start'
+            let mut cmd_str = String::from("cargo roco start");
 
             if let Some(worker_tags) = worker {
                 if worker_tags.is_empty() {
@@ -1281,21 +1281,21 @@ fn handle_generate_command<H: Hooks>(
             // If no template path is provided, display the available templates,
             // ignoring the `--info` flag.
             (None, true | false) => {
-                let templates = loco_gen::template::collect();
+                let templates = roco_gen::template::collect();
                 println!("{}", format_templates_as_tree(templates));
             }
             // If a template path is provided and `--info` is enabled,
             // display the templates from the specified path.
             (Some(path), true) => {
-                let templates = loco_gen::template::collect_files_path(Path::new(&path)).unwrap();
+                let templates = roco_gen::template::collect_files_path(Path::new(&path)).unwrap();
                 println!("{}", format_templates_as_tree(templates));
             }
             // If a template path is provided and `--info` is disabled,
             // copy the template to the default local template path.
             (Some(path), false) => {
-                let copied_files = loco_gen::copy_template(
+                let copied_files = roco_gen::copy_template(
                     Path::new(&path),
-                    Path::new(loco_gen::template::DEFAULT_LOCAL_TEMPLATE),
+                    Path::new(roco_gen::template::DEFAULT_LOCAL_TEMPLATE),
                 )?;
                 if copied_files.is_empty() {
                     println!("{}", "No templates were found to copy.".red());
@@ -1311,14 +1311,14 @@ fn handle_generate_command<H: Hooks>(
             }
         }
     } else {
-        let get_result = loco_gen::generate(
-            &loco_gen::new_generator(),
+        let get_result = roco_gen::generate(
+            &roco_gen::new_generator(),
             component.into_gen_component(config)?,
-            &loco_gen::AppInfo {
+            &roco_gen::AppInfo {
                 app_name: H::app_name().to_string(),
             },
         )?;
-        let messages = loco_gen::collect_messages(&get_result);
+        let messages = roco_gen::collect_messages(&get_result);
         println!("{messages}");
     }
     Ok(())
@@ -1376,30 +1376,30 @@ pub fn format_templates_as_tree(paths: Vec<PathBuf>) -> String {
 
     let _ = writeln!(
         output,
-        " * cargo loco generate override {}",
+        " * cargo roco generate override {}",
         "scaffold/api/controller.t".yellow()
     );
     let _ = writeln!(
         output,
-        " * cargo loco generate override {}",
+        " * cargo roco generate override {}",
         "migration/add_columns.t".yellow()
     );
     let _ = writeln!(output);
     let _ = writeln!(output, "{}", "Override All Files in a Folder:".bold());
     let _ = writeln!(
         output,
-        " * cargo loco generate override {}",
+        " * cargo roco generate override {}",
         "scaffold/htmx".yellow()
     );
 
     let _ = writeln!(
         output,
-        " * cargo loco generate override {}",
+        " * cargo roco generate override {}",
         "task".yellow()
     );
     let _ = writeln!(output);
     let _ = writeln!(output, "{}", "Override All templates:".bold());
-    let _ = writeln!(output, " * cargo loco generate override {}", ".".yellow());
+    let _ = writeln!(output, " * cargo roco generate override {}", ".".yellow());
 
     output
 }

@@ -8,7 +8,7 @@
 //!
 //! ```rust
 //! use async_trait::async_trait;
-//! use loco_rs::{
+//! use roco_rs::{
 //!    app::{AppContext, Hooks},
 //!    boot::{create_app, BootResult, StartMode},
 //!    config::Config,
@@ -99,7 +99,7 @@ pub mod views;
 /// # Example
 ///
 /// ```rust
-/// use loco_rs::prelude::*;
+/// use roco_rs::prelude::*;
 ///
 /// async fn login() -> Result<Response> {
 ///     let valid = false;

@@ -7,7 +7,7 @@ use crate::storage::{drivers::opendal_adapter::OpendalAdapter, StorageResult};
 ///
 /// # Examples
 ///```
-/// use loco_rs::storage::drivers::azure;
+/// use roco_rs::storage::drivers::azure;
 /// let azure_driver = azure::new("name", "account_name", "access_key", "endpoint");
 /// ```
 ///

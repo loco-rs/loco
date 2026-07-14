@@ -1,6 +1,6 @@
 //! Doctor module for health checks and diagnostics.
 //!
-//! This module provides health checks for various components of a Loco application.
+//! This module provides health checks for various components of a Roco application.
 //!
 //! # Initializer Health Checks
 //!
@@ -8,7 +8,7 @@
 //! on the `Initializer` trait. This allows each initializer to validate its configuration
 //! and test its connections during the doctor command.
 //!
-//! When you run `cargo loco doctor`, any initializers that implement the `check` method
+//! When you run `cargo roco doctor`, any initializers that implement the `check` method
 //! will have their health checks executed and displayed in the output.
 
 use colored::Colorize;
@@ -104,7 +104,7 @@ pub enum Resource {
     Database,
     Queue,
     Deps,
-    PublishedLocoVersion,
+    PublishedRocoVersion,
     Initializer(String),
 }
 
@@ -207,15 +207,15 @@ pub async fn run_all<H: crate::app::Hooks>(
         checks.insert(Resource::Deps, check_deps()?);
         checks.insert(Resource::SeaOrmCLI, check_seaorm_cli()?);
         checks.insert(
-            Resource::PublishedLocoVersion,
-            check_published_loco_version()?,
+            Resource::PublishedRocoVersion,
+            check_published_roco_version()?,
         );
     }
 
     Ok(checks)
 }
 
-/// Checks "blessed" / major dependencies in a Loco app Cargo.toml, and
+/// Checks "blessed" / major dependencies in a Roco app Cargo.toml, and
 /// recommend to update.
 /// Only if a dep exists, we check it against a min version
 /// # Errors
@@ -365,27 +365,27 @@ pub fn check_seaorm_cli() -> Result<Check> {
     }
 }
 
-/// Check for the latest Loco version
+/// Check for the latest Roco version
 ///
 /// # Errors
 ///
 /// This function will return an error if it fails
-pub fn check_published_loco_version() -> Result<Check> {
+pub fn check_published_roco_version() -> Result<Check> {
     let compiled_version = env!("CARGO_PKG_VERSION");
-    match check_cratesio_version("loco-rs", compiled_version) {
+    match check_cratesio_version("roco-rs", compiled_version) {
         Ok(Some(v)) => Ok(Check {
             status: CheckStatus::NotOk,
-            message: format!("Loco version: `{compiled_version}`, latest version: `{v}`"),
-            description: Some("It is recommended to upgrade your main Loco version.".to_string()),
+            message: format!("Roco version: `{compiled_version}`, latest version: `{v}`"),
+            description: Some("It is recommended to upgrade your main Roco version.".to_string()),
         }),
         Ok(None) => Ok(Check {
             status: CheckStatus::Ok,
-            message: "Loco version: latest".to_string(),
+            message: "Roco version: latest".to_string(),
             description: None,
         }),
         Err(e) => Ok(Check {
             status: CheckStatus::NotOk,
-            message: format!("Checking Loco version failed: {e}"),
+            message: format!("Checking Roco version failed: {e}"),
             description: None,
         }),
     }

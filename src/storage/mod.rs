@@ -61,7 +61,7 @@ impl Storage {
     ///
     /// # Examples
     ///```
-    /// use loco_rs::storage;
+    /// use roco_rs::storage;
     ///
     /// let storage = storage::Storage::single(storage::drivers::mem::new());
     /// ```
@@ -89,7 +89,7 @@ impl Storage {
     ///
     /// # Examples
     ///```
-    /// use loco_rs::storage;
+    /// use roco_rs::storage;
     /// use std::path::Path;
     /// use bytes::Bytes;
     /// pub async fn upload() {
@@ -135,7 +135,7 @@ impl Storage {
     ///
     /// # Examples
     ///```
-    /// use loco_rs::storage;
+    /// use roco_rs::storage;
     /// use std::path::Path;
     /// use bytes::Bytes;
     /// pub async fn download() {
@@ -189,7 +189,7 @@ impl Storage {
     ///
     /// # Examples
     ///```
-    /// use loco_rs::storage;
+    /// use roco_rs::storage;
     /// use std::path::Path;
     /// use bytes::Bytes;
     /// pub async fn download() {
@@ -235,7 +235,7 @@ impl Storage {
     ///
     /// # Examples
     ///```
-    /// use loco_rs::storage;
+    /// use roco_rs::storage;
     /// use std::path::Path;
     /// use bytes::Bytes;
     /// pub async fn download() {
@@ -285,7 +285,7 @@ impl Storage {
     ///
     /// # Examples
     ///```
-    /// use loco_rs::storage;
+    /// use roco_rs::storage;
     /// use std::path::Path;
     /// use bytes::Bytes;
     /// pub async fn download() {
@@ -332,7 +332,7 @@ impl Storage {
     ///
     /// # Examples
     ///```
-    /// use loco_rs::storage;
+    /// use roco_rs::storage;
     /// use std::path::Path;
     /// use bytes::Bytes;
     /// pub async fn download() {
@@ -353,7 +353,7 @@ impl Storage {
     ///
     /// # Examples
     ///```
-    /// use loco_rs::storage;
+    /// use roco_rs::storage;
     /// use std::path::Path;
     /// use bytes::Bytes;
     /// pub async fn download() {
@@ -379,7 +379,7 @@ impl Storage {
     ///
     /// # Examples
     ///```
-    /// use loco_rs::storage;
+    /// use roco_rs::storage;
     /// use std::path::Path;
     /// pub async fn stream_download() {
     ///     let storage = storage::Storage::single(storage::drivers::mem::new());
@@ -421,7 +421,7 @@ impl Storage {
     ///
     /// # Examples
     ///```
-    /// use loco_rs::storage;
+    /// use roco_rs::storage;
     /// use std::path::Path;
     /// pub async fn stream_upload(stream: storage::stream::BytesStream) {
     ///     let storage = storage::Storage::single(storage::drivers::mem::new());

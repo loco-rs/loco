@@ -17,7 +17,7 @@ pub const BANNER: &str = r"
  ██████  █████   ███  ████   ███ █████   ███ ████▀
    ▀▀▀██▄ ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀▀▀▀ ██▀  
        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀    
-                https://loco.rs
+                https://rsonroco.com
 ";
 
 pub fn print_banner(boot_result: &BootResult, server_config: &ServeParams) {

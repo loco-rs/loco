@@ -1,9 +1,0 @@
----
-source: loco-gen/tests/templates/worker.rs
-expression: "fs::read_to_string(tree_fs.root.join(\"src\").join(\"app.rs\")).expect(\"Failed to read updated app file: app.rs\")"
----
-async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {
-        queue.register(crate::workers::register_email::Worker::build(ctx)).await?;
-    queue.register(DownloadWorker::build(ctx)).await?;
-        Ok(())
-    }

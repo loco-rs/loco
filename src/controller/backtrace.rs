@@ -13,8 +13,8 @@ fn get_name_blocklist() -> &'static Vec<Regex> {
             "^___rust_try",
             "^__pthread",
             "^__clone",
-            "^<loco_rs::errors::Error as",
-            "^loco_rs::errors::Error::bt",
+            "^<roco_rs::errors::Error as",
+            "^roco_rs::errors::Error::bt",
             /*
             "^<?tokio",
             "^<?future",

@@ -61,9 +61,9 @@ impl MiddlewareLayer for RequestId {
 
 /// Wrapper struct for storing the request ID in the request's extensions.
 #[derive(Debug, Clone)]
-pub struct LocoRequestId(String);
+pub struct RocoRequestId(String);
 
-impl LocoRequestId {
+impl RocoRequestId {
     /// Retrieves the request ID as a string slice.
     #[must_use]
     pub fn get(&self) -> &str {
@@ -82,7 +82,7 @@ pub async fn request_id_middleware(mut request: Request, next: Next) -> Response
     let request_id = make_request_id(header_request_id);
     request
         .extensions_mut()
-        .insert(LocoRequestId(request_id.clone()));
+        .insert(RocoRequestId(request_id.clone()));
     let mut res = next.run(request).await;
 
     if let Ok(v) = HeaderValue::from_str(request_id.as_str()) {

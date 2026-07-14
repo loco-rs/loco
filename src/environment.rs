@@ -5,7 +5,7 @@
 //!
 //! ```rust
 //! use std::str::FromStr;
-//! use loco_rs::environment::Environment;
+//! use roco_rs::environment::Environment;
 //!
 //! pub fn load(environment: &str) {
 //!  let environment = Environment::from_str(environment).unwrap_or(Environment::Any(environment.to_string()));
@@ -19,6 +19,8 @@ use serde_variant::to_variant_name;
 use std::{path::Path, str::FromStr};
 
 pub const DEFAULT_ENVIRONMENT: &str = "development";
+pub const ROCO_ENV: &str = "ROCO_ENV";
+/// Legacy application environment key retained for Loco compatibility.
 pub const LOCO_ENV: &str = "LOCO_ENV";
 pub const RAILS_ENV: &str = "RAILS_ENV";
 pub const NODE_ENV: &str = "NODE_ENV";
@@ -31,7 +33,8 @@ impl From<String> for Environment {
 
 #[must_use]
 pub fn resolve_from_env() -> String {
-    env_vars::get(env_vars::LOCO_ENV)
+    env_vars::get(env_vars::ROCO_ENV)
+        .or_else(|_| env_vars::get(env_vars::LOCO_ENV))
         .or_else(|_| env_vars::get(env_vars::RAILS_ENV))
         .or_else(|_| env_vars::get(env_vars::NODE_ENV))
         .unwrap_or_else(|_| DEFAULT_ENVIRONMENT.to_string())
@@ -57,10 +60,12 @@ impl Environment {
     /// Returns error if an error occurs during loading
     /// configuration file an parse into [`Config`] struct.
     pub fn load(&self) -> Result<Config> {
-        env_vars::get(env_vars::CONFIG_FOLDER).map_or_else(
-            |_| Config::new(self),
-            |config_folder| self.load_from_folder(Path::new(&config_folder)),
-        )
+        env_vars::get(env_vars::ROCO_CONFIG_FOLDER)
+            .or_else(|_| env_vars::get(env_vars::LOCO_CONFIG_FOLDER))
+            .map_or_else(
+                |_| Config::new(self),
+                |config_folder| self.load_from_folder(Path::new(&config_folder)),
+            )
     }
 
     /// Load environment variables from the given config path
@@ -103,17 +108,22 @@ mod tests {
     use super::*;
     #[test]
     fn test_resolve_env() {
-        let original = env::var("LOCO_ENV");
+        let originals = [ROCO_ENV, LOCO_ENV, RAILS_ENV, NODE_ENV].map(|key| (key, env::var(key)));
 
-        env::remove_var(LOCO_ENV);
-        env::remove_var(RAILS_ENV);
-        env::remove_var(NODE_ENV);
+        for key in [ROCO_ENV, LOCO_ENV, RAILS_ENV, NODE_ENV] {
+            env::remove_var(key);
+        }
         assert_eq!(resolve_from_env(), "development");
-        env::set_var("LOCO_ENV", "custom");
+        env::set_var(LOCO_ENV, "legacy");
+        assert_eq!(resolve_from_env(), "legacy");
+        env::set_var(ROCO_ENV, "custom");
         assert_eq!(resolve_from_env(), "custom");
 
-        if let Ok(v) = original {
-            env::set_var(LOCO_ENV, v);
+        for (key, original) in originals {
+            match original {
+                Ok(value) => env::set_var(key, value),
+                Err(_) => env::remove_var(key),
+            }
         }
     }
 

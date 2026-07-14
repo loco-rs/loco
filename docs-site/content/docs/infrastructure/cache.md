@@ -72,7 +72,7 @@ All items are cached as serialized values with string keys.
 
 ```rust
 use std::time::Duration;
-use loco_rs::cache;
+use roco_rs::cache;
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize)]

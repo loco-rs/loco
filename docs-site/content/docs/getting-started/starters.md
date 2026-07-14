@@ -24,7 +24,7 @@ cargo install sea-orm-cli # Only when DB is needed
 
 Create a starter:
 
-<!-- <snip id="loco-cli-new-from-template" inject_from="yaml" template="sh"> -->
+<!-- <snip id="roco-cli-new-from-template" inject_from="yaml" template="sh"> -->
 ```sh
 ❯ loco new
 ✔ ❯ App name? · myapp

@@ -13,7 +13,7 @@ use tower_http::{add_extension::AddExtensionLayer, trace::TraceLayer};
 
 use crate::{
     app::AppContext,
-    controller::middleware::{request_id::LocoRequestId, MiddlewareLayer},
+    controller::middleware::{request_id::RocoRequestId, MiddlewareLayer},
     environment::Environment,
     Result,
 };
@@ -72,7 +72,7 @@ impl MiddlewareLayer for Middleware {
                 TraceLayer::new_for_http().make_span_with(|request: &http::Request<_>| {
                     let ext = request.extensions();
                     let request_id = ext
-                        .get::<LocoRequestId>()
+                        .get::<RocoRequestId>()
                         .map_or_else(|| "req-id-none".to_string(), |r| r.get().to_string());
                     let user_agent = request
                         .headers()

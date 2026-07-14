@@ -174,9 +174,9 @@ impl IntoCondition for ConditionBuilder {
 ///
 /// # Examples
 /// ```
-/// use loco_rs::tests_cfg::db::test_db;
+/// use roco_rs::tests_cfg::db::test_db;
 /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-/// use loco_rs::prelude::*;
+/// use roco_rs::prelude::*;
 /// let date = chrono::NaiveDateTime::parse_from_str("2024-03-01 22:10:57", "%Y-%m-%d %H:%M:%S").unwrap();
 ///
 /// let query_str = test_db::Entity::find()
@@ -196,9 +196,9 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::test_db;
+    /// use roco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
@@ -215,9 +215,9 @@ impl ConditionBuilder {
     ///
     /// On string field
     /// ```
-    /// use loco_rs::tests_cfg::db::test_db;
+    /// use roco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
@@ -240,9 +240,9 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::test_db;
+    /// use roco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
@@ -265,9 +265,9 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::test_db;
+    /// use roco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
@@ -291,9 +291,9 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::test_db;
+    /// use roco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
@@ -317,9 +317,9 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::test_db;
+    /// use roco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
@@ -343,9 +343,9 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::test_db;
+    /// use roco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
@@ -369,9 +369,9 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::test_db;
+    /// use roco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
@@ -395,9 +395,9 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::test_db;
+    /// use roco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
@@ -421,9 +421,9 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::test_db;
+    /// use roco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
@@ -447,9 +447,9 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::test_db;
+    /// use roco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
@@ -473,9 +473,9 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::test_db;
+    /// use roco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
@@ -499,9 +499,9 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::test_db;
+    /// use roco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
@@ -525,9 +525,9 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::test_db;
+    /// use roco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
@@ -551,9 +551,9 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::test_db;
+    /// use roco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
@@ -578,9 +578,9 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::test_db;
+    /// use roco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
@@ -605,9 +605,9 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::test_db;
+    /// use roco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
@@ -636,9 +636,9 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::test_db;
+    /// use roco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     ///
     /// let query_str = test_db::Entity::find()
     ///         .select_only()
@@ -667,9 +667,9 @@ impl ConditionBuilder {
     ///
     /// # Examples
     /// ```
-    /// use loco_rs::tests_cfg::db::test_db;
+    /// use roco_rs::tests_cfg::db::test_db;
     /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     ///
     /// let from_date = chrono::NaiveDateTime::parse_from_str("2024-03-01
     /// 22:10:57", "%Y-%m-%d %H:%M:%S").unwrap(); let to_date =

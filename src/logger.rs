@@ -70,12 +70,12 @@ impl std::fmt::Display for LogLevel {
 
 // Function to initialize the logger based on the provided configuration
 const MODULE_WHITELIST: &[&str] = &[
-    "loco_rs",
+    "roco_rs",
     "sea_orm_migration",
     "tower_http",
     "sqlx::query",
     "playground",
-    "loco_gen",
+    "roco_gen",
 ];
 
 // Keep nonblocking file appender work guard

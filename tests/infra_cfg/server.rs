@@ -6,7 +6,7 @@
 //! custom route. These utilities are designed for test environments and use
 //! hardcoded ports and bindings.
 
-use loco_rs::{boot, controller::AppRoutes, prelude::*, tests_cfg::db::AppHook};
+use roco_rs::{boot, controller::AppRoutes, prelude::*, tests_cfg::db::AppHook};
 
 /// A simple asynchronous handler for GET requests.
 async fn get_action() -> Result<Response> {

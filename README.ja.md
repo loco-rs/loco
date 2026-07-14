@@ -5,7 +5,7 @@
    <h1>Locoへようこそ</h1>
 
    <h3>
-🚂 LocoはRust on Railsです。
+🚂 RocoはRust on Railsです。
    </h3>
 
    [![crate](https://img.shields.io/crates/v/loco-rs.svg)](https://crates.io/crates/loco-rs)

@@ -1,6 +1,0 @@
----
-source: loco-gen/tests/templates/controller.rs
-expression: collect_messages(&gen_result)
----
-* Controller `Movie` was added successfully.
-* Tests for controller `Movie` was added successfully. Run `cargo test`.

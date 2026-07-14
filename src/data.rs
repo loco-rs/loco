@@ -1,12 +1,13 @@
-use std::{env, path::Path};
-
 use serde::de::DeserializeOwned;
+use std::path::Path;
 
 use crate::{env_vars, Error, Result};
 
 const DEFAULT_DATA_FOLDER: &str = "data";
 fn data_folder() -> String {
-    env::var(env_vars::LOCO_DATA_FOLDER_ENV).unwrap_or_else(|_| DEFAULT_DATA_FOLDER.to_string())
+    env_vars::get(env_vars::ROCO_DATA_FOLDER_ENV)
+        .or_else(|_| env_vars::get(env_vars::LOCO_DATA_FOLDER_ENV))
+        .unwrap_or_else(|_| DEFAULT_DATA_FOLDER.to_string())
 }
 
 /// Load a data JSON file synchronously

@@ -154,7 +154,7 @@ Consider the following example in Rust:
 
 ```rust
 use axum::{extract::State, Json};
-use loco_rs::{
+use roco_rs::{
     app::AppContext,
     controller::extractor::auth,
     Result,
@@ -224,8 +224,8 @@ To set up an API-authenticated endpoint, import `controller::extractor::auth` fr
 Consider the following example in Rust:
 
 ```rust
-use loco_rs::prelude::*;
-use loco_rs::controller::extractor::auth;
+use roco_rs::prelude::*;
+use roco_rs::controller::extractor::auth;
 use crate::{models::_entities::users, views::user::CurrentResponse};
 
 async fn current_by_api_key(

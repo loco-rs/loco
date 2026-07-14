@@ -35,7 +35,7 @@ impl Routes {
     /// _ping endpoint HOST/status/_ping.
     ///
     /// ```rust
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     /// use serde::Serialize;;
     ///
     /// #[derive(Serialize)]
@@ -64,7 +64,7 @@ impl Routes {
     /// This example preset how to add a get endpoint int the Router.
     ///
     /// ```rust
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     /// use serde::Serialize;
     ///
     /// #[derive(Serialize)]
@@ -98,7 +98,7 @@ impl Routes {
     /// # Example
     ///
     /// ```rust
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     /// use axum::routing::{get, post};
     ///
     /// async fn list_users() -> Result<Response> {
@@ -159,7 +159,7 @@ impl Routes {
     /// # Example
     ///
     /// ```rust
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     /// use axum::routing::{get, post};
     ///
     /// async fn list_users() -> Result<Response> {
@@ -211,7 +211,7 @@ impl Routes {
     /// _ping endpoint HOST/status/_ping.
     ///
     /// ```rust
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     /// use serde::Serialize;
     ///
     /// #[derive(Serialize)]
@@ -238,7 +238,7 @@ impl Routes {
     /// In the following example, we are adding a layer to the routes.
     ///
     /// ```rust
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     /// use tower::{Layer, Service};
     /// use tower_http::timeout::TimeoutLayer;
     /// async fn ping() -> Result<Response> {
@@ -279,7 +279,7 @@ impl Routes {
     /// # Example
     ///
     /// ```rust
-    /// use loco_rs::prelude::*;
+    /// use roco_rs::prelude::*;
     /// use axum::routing::{get, post, delete, patch};
     ///
     /// // Define user-related handlers

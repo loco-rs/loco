@@ -96,7 +96,7 @@ Start by creating a new file under the path `src/tasks`. For example, let's crea
 
 <!-- <snip id="task-code-example" inject_from="code" template="rust"> -->
 ```rust
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 
 pub struct Foo;
 #[async_trait]

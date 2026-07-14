@@ -108,8 +108,8 @@ pub fn routes() -> Routes {
 #[cfg(test)]
 mod tests {
     use axum::routing::get;
-    use loco_rs::tests_cfg::db::fail_connection;
-    use loco_rs::{bgworker, cache, config, controller::monitoring, tests_cfg};
+    use roco_rs::tests_cfg::db::fail_connection;
+    use roco_rs::{bgworker, cache, config, controller::monitoring, tests_cfg};
     use serde_json::Value;
     use tower::ServiceExt;
 
@@ -265,7 +265,7 @@ mod tests {
     async fn readiness_with_cache_inmem() {
         let mut ctx = tests_cfg::app::get_app_context().await;
 
-        ctx.cache = cache::drivers::inmem::new(&loco_rs::config::InMemCacheConfig {
+        ctx.cache = cache::drivers::inmem::new(&roco_rs::config::InMemCacheConfig {
             max_capacity: 32 * 1024 * 1024,
         })
         .into();
@@ -339,7 +339,7 @@ mod tests {
         let mut ctx = tests_cfg::app::get_app_context().await;
         let failour_redis_url = "redis://127.0.0.2:0";
         // Force config to Redis to ensure ping path executes, but swap driver to Null (which errors on ping)
-        ctx.config.cache = config::CacheConfig::Redis(loco_rs::config::RedisCacheConfig {
+        ctx.config.cache = config::CacheConfig::Redis(roco_rs::config::RedisCacheConfig {
             uri: failour_redis_url.to_string(),
             max_size: 10,
         });

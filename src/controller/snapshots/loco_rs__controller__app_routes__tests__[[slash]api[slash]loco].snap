@@ -1,6 +1,0 @@
----
-source: src/controller/app_routes.rs
-assertion_line: 388
-expression: "format!(\"{:?} {}\", route.actions, route.uri)"
----
-"[GET] /api/loco"

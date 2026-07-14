@@ -218,7 +218,7 @@ Test Description:
 - Retrieve the mailer instance from the context and call the deliveries() function, which contains information about the number of sent emails and their content.
 
 ```rust
-use loco_rs::testing::prelude::*;
+use roco_rs::testing::prelude::*;
 
 #[tokio::test]
 #[serial]

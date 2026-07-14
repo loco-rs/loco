@@ -230,7 +230,7 @@ pub async fn initialize_database(pool: &SqlitePool) -> Result<()> {
     debug!("Initializing job database tables");
     sqlx::query(
         &format!(r"
-            CREATE TABLE IF NOT EXISTS sqlt_loco_queue (
+            CREATE TABLE IF NOT EXISTS sqlt_roco_queue (
                 id TEXT NOT NULL,
                 name TEXT NOT NULL,
                 task_data JSON NOT NULL,
@@ -242,15 +242,15 @@ pub async fn initialize_database(pool: &SqlitePool) -> Result<()> {
                 tags JSON
             );
 
-            CREATE TABLE IF NOT EXISTS sqlt_loco_queue_lock (
+            CREATE TABLE IF NOT EXISTS sqlt_roco_queue_lock (
                 id INTEGER PRIMARY KEY CHECK (id = 1),
                 is_locked BOOLEAN NOT NULL DEFAULT FALSE,
                 locked_at TIMESTAMP NULL
             );
 
-            INSERT OR IGNORE INTO sqlt_loco_queue_lock (id, is_locked) VALUES (1, FALSE);
+            INSERT OR IGNORE INTO sqlt_roco_queue_lock (id, is_locked) VALUES (1, FALSE);
 
-            CREATE INDEX IF NOT EXISTS idx_sqlt_queue_status_run_at ON sqlt_loco_queue(status, run_at);
+            CREATE INDEX IF NOT EXISTS idx_sqlt_queue_status_run_at ON sqlt_roco_queue(status, run_at);
             ", JobStatus::Queued),
     )
     .execute(pool)
@@ -283,7 +283,7 @@ pub async fn enqueue(
     let id = Ulid::new().to_string();
     debug!(job_id = %id, job_name = %name, run_at = %run_at, tags = ?tags, "Enqueueing job");
     sqlx::query(
-        "INSERT INTO sqlt_loco_queue (id, task_data, name, run_at, interval, tags) VALUES ($1, $2, $3, \
+        "INSERT INTO sqlt_roco_queue (id, task_data, name, run_at, interval, tags) VALUES ($1, $2, $3, \
          DATETIME($4), $5, $6)",
     )
     .bind(id.clone())
@@ -301,7 +301,7 @@ async fn dequeue(client: &SqlitePool, worker_tags: &[String]) -> Result<Option<J
     let mut tx = client.begin().await?;
 
     let acquired_write_lock = sqlx::query(
-        "UPDATE sqlt_loco_queue_lock SET
+        "UPDATE sqlt_roco_queue_lock SET
             is_locked = TRUE,
             locked_at = CURRENT_TIMESTAMP
         WHERE id = 1 AND is_locked = FALSE",
@@ -319,7 +319,7 @@ async fn dequeue(client: &SqlitePool, worker_tags: &[String]) -> Result<Option<J
     // Build the query with tag filtering
     let mut query = String::from(
         "SELECT id, name, task_data, status, run_at, interval, tags
-        FROM sqlt_loco_queue
+        FROM sqlt_roco_queue
         WHERE
             status = ? AND
             run_at <= CURRENT_TIMESTAMP",
@@ -365,7 +365,7 @@ async fn dequeue(client: &SqlitePool, worker_tags: &[String]) -> Result<Option<J
     if let Some(job) = row {
         trace!(job_id = %job.id, job_name = %job.name, job_tags = ?job.tags, "Dequeueing job for processing");
         sqlx::query(
-            "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+            "UPDATE sqlt_roco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
         )
         .bind(JobStatus::Processing.to_string())
         .bind(&job.id)
@@ -374,7 +374,7 @@ async fn dequeue(client: &SqlitePool, worker_tags: &[String]) -> Result<Option<J
 
         // Release the write lock
         sqlx::query(
-            "UPDATE sqlt_loco_queue_lock 
+            "UPDATE sqlt_roco_queue_lock
               SET is_locked = FALSE,
                   locked_at = NULL
               WHERE id = 1",
@@ -389,7 +389,7 @@ async fn dequeue(client: &SqlitePool, worker_tags: &[String]) -> Result<Option<J
         trace!("No jobs available for processing");
         // Release the write lock, no job found
         sqlx::query(
-            "UPDATE sqlt_loco_queue_lock 
+            "UPDATE sqlt_roco_queue_lock
               SET is_locked = FALSE,
                   locked_at = NULL
               WHERE id = 1",
@@ -412,7 +412,7 @@ async fn complete_job(pool: &SqlitePool, id: &JobId, interval_ms: Option<i64>) -
             "Rescheduling recurring job"
         );
         sqlx::query(
-            "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP, run_at = \
+            "UPDATE sqlt_roco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP, run_at = \
              DATETIME($2) WHERE id = $3",
         )
         .bind(JobStatus::Queued.to_string())
@@ -423,7 +423,7 @@ async fn complete_job(pool: &SqlitePool, id: &JobId, interval_ms: Option<i64>) -
     } else {
         trace!(job_id = %id, status = "completed", "Marking job as completed");
         sqlx::query(
-            "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+            "UPDATE sqlt_roco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
         )
         .bind(JobStatus::Completed.to_string())
         .bind(id)
@@ -438,7 +438,7 @@ async fn fail_job(pool: &SqlitePool, id: &JobId, error: &crate::Error) -> Result
     debug!(job_id = %id, error = %msg, "Marking job as failed");
     let error_json = serde_json::json!({ "error": msg });
     sqlx::query(
-        "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP, task_data = \
+        "UPDATE sqlt_roco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP, task_data = \
          json_patch(task_data, $2) WHERE id = $3",
     )
     .bind(JobStatus::Failed.to_string())
@@ -449,7 +449,7 @@ async fn fail_job(pool: &SqlitePool, id: &JobId, error: &crate::Error) -> Result
     Ok(())
 }
 
-/// Cancels jobs in the `sqlt_loco_queue` table by their name.
+/// Cancels jobs in the `sqlt_roco_queue` table by their name.
 ///
 /// This function updates the status of all jobs with the given `name` and a status of
 /// [`JobStatus::Queued`] to [`JobStatus::Cancelled`]. The update also sets the `updated_at` timestamp to the
@@ -461,7 +461,7 @@ async fn fail_job(pool: &SqlitePool, id: &JobId, error: &crate::Error) -> Result
 pub async fn cancel_jobs_by_name(pool: &SqlitePool, name: &str) -> Result<()> {
     debug!(job_name = %name, "Cancelling queued jobs by name");
     sqlx::query(
-        "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE name = $2 \
+        "UPDATE sqlt_roco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE name = $2 \
          AND status = $3",
     )
     .bind(JobStatus::Cancelled.to_string())
@@ -481,8 +481,8 @@ pub async fn clear(pool: &SqlitePool) -> Result<()> {
     // Clear all rows in the relevant tables
     sqlx::query(
         "
-        DELETE FROM sqlt_loco_queue;
-        DELETE FROM sqlt_loco_queue_lock;
+        DELETE FROM sqlt_roco_queue;
+        DELETE FROM sqlt_roco_queue_lock;
         ",
     )
     .execute(pool)
@@ -491,7 +491,7 @@ pub async fn clear(pool: &SqlitePool) -> Result<()> {
     Ok(())
 }
 
-/// Deletes jobs from the `sqlt_loco_queue` table based on their status.
+/// Deletes jobs from the `sqlt_roco_queue` table based on their status.
 ///
 /// This function removes all jobs with a status that matches any of the statuses provided
 /// in the `status` argument. The statuses are checked against the `status` column in the
@@ -509,7 +509,7 @@ pub async fn clear_by_status(pool: &SqlitePool, status: Vec<JobStatus>) -> Resul
 
     debug!(status = ?status, "Clearing jobs by status");
     sqlx::query(&format!(
-        "DELETE FROM sqlt_loco_queue WHERE status IN ({status_in})"
+        "DELETE FROM sqlt_roco_queue WHERE status IN ({status_in})"
     ))
     .execute(pool)
     .await?;
@@ -528,7 +528,7 @@ pub async fn clear_by_status(pool: &SqlitePool, status: Vec<JobStatus>) -> Resul
 /// This function will return an error if it fails
 pub async fn requeue(pool: &SqlitePool, age_minutes: &i64) -> Result<()> {
     let query = format!(
-        "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE status = $2 AND updated_at <= DATETIME('now', '-{age_minutes} minute')"
+        "UPDATE sqlt_roco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE status = $2 AND updated_at <= DATETIME('now', '-{age_minutes} minute')"
     );
 
     debug!(age_minutes = age_minutes, "Requeueing stalled jobs");
@@ -541,7 +541,7 @@ pub async fn requeue(pool: &SqlitePool, age_minutes: &i64) -> Result<()> {
     Ok(())
 }
 
-/// Deletes jobs from the `sqlt_loco_queue` table that are older than a specified number of days.
+/// Deletes jobs from the `sqlt_roco_queue` table that are older than a specified number of days.
 ///
 /// This function removes jobs that have a `created_at` timestamp older than the provided
 /// number of days. Additionally, if a `status` is provided, only jobs with a status matching
@@ -559,7 +559,7 @@ pub async fn clear_jobs_older_than(
     let threshold_date = cutoff_date.format("%+").to_string();
 
     let mut query_builder =
-        QueryBuilder::<sqlx::Sqlite>::new("DELETE FROM sqlt_loco_queue WHERE created_at <= ");
+        QueryBuilder::<sqlx::Sqlite>::new("DELETE FROM sqlt_roco_queue WHERE created_at <= ");
     query_builder.push_bind(threshold_date);
 
     if let Some(status_list) = status {
@@ -586,7 +586,7 @@ pub async fn clear_jobs_older_than(
 /// This function will return an error if it fails
 pub async fn ping(pool: &SqlitePool) -> Result<()> {
     trace!("Pinging job queue database");
-    sqlx::query("SELECT id from sqlt_loco_queue LIMIT 1")
+    sqlx::query("SELECT id from sqlt_roco_queue LIMIT 1")
         .execute(pool)
         .await?;
     Ok(())
@@ -623,7 +623,7 @@ pub async fn create_provider(qcfg: &SqliteQueueConfig) -> Result<Queue> {
     ))
 }
 
-/// Retrieves a list of jobs from the `sqlt_loco_queue` table in the database.
+/// Retrieves a list of jobs from the `sqlt_roco_queue` table in the database.
 ///
 /// This function queries the database for jobs, optionally filtering by their
 /// `status`. If a status is provided, only jobs with statuses included in the
@@ -638,7 +638,7 @@ pub async fn get_jobs(
     status: Option<&Vec<JobStatus>>,
     age_days: Option<i64>,
 ) -> Result<Vec<Job>> {
-    let mut query = String::from("SELECT * FROM sqlt_loco_queue WHERE 1 = 1 ");
+    let mut query = String::from("SELECT * FROM sqlt_roco_queue WHERE 1 = 1 ");
 
     if let Some(status) = status {
         let status_in = status
@@ -760,8 +760,8 @@ mod tests {
         let pool = connect(&qcfg).await.unwrap();
         sqlx::raw_sql(
             r"
-        DROP TABLE IF EXISTS sqlt_loco_queue;
-        DROP TABLE IF EXISTS sqlt_loco_queue_lock;
+        DROP TABLE IF EXISTS sqlt_roco_queue;
+        DROP TABLE IF EXISTS sqlt_roco_queue_lock;
         ",
         )
         .execute(&pool)
@@ -772,7 +772,7 @@ mod tests {
     }
 
     async fn get_all_jobs(pool: &SqlitePool) -> Vec<Job> {
-        sqlx::query("select * from sqlt_loco_queue")
+        sqlx::query("select * from sqlt_roco_queue")
             .fetch_all(pool)
             .await
             .expect("get jobs")
@@ -782,7 +782,7 @@ mod tests {
     }
 
     async fn get_job(pool: &SqlitePool, id: &str) -> Job {
-        sqlx::query(&format!("select * from sqlt_loco_queue where id = '{id}'"))
+        sqlx::query(&format!("select * from sqlt_roco_queue where id = '{id}'"))
             .fetch_all(pool)
             .await
             .expect("get jobs")
@@ -801,7 +801,7 @@ mod tests {
 
         assert!(initialize_database(&pool).await.is_ok());
 
-        for table in ["sqlt_loco_queue", "sqlt_loco_queue_lock"] {
+        for table in ["sqlt_roco_queue", "sqlt_roco_queue_lock"] {
             let table_info: Vec<TableInfo> =
                 query_as::<_, TableInfo>(&format!("PRAGMA table_info({table})"))
                     .fetch_all(&pool)
@@ -856,7 +856,7 @@ mod tests {
 
         // validate lock status
         let job_lock: JobQueueLock =
-            query_as::<_, JobQueueLock>("select * from sqlt_loco_queue_lock")
+            query_as::<_, JobQueueLock>("select * from sqlt_roco_queue_lock")
                 .fetch_one(&pool)
                 .await
                 .unwrap();
@@ -1051,11 +1051,11 @@ mod tests {
         assert!(initialize_database(&pool).await.is_ok());
         tests_cfg::queue::sqlite_seed_data(&pool).await;
 
-        let job_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlt_loco_queue")
+        let job_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlt_roco_queue")
             .fetch_one(&pool)
             .await
             .unwrap();
-        let lock_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlt_loco_queue_lock")
+        let lock_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlt_roco_queue_lock")
             .fetch_one(&pool)
             .await
             .unwrap();
@@ -1063,11 +1063,11 @@ mod tests {
         assert_ne!(lock_count, 0);
 
         assert!(clear(&pool).await.is_ok());
-        let job_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlt_loco_queue")
+        let job_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlt_roco_queue")
             .fetch_one(&pool)
             .await
             .unwrap();
-        let lock_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlt_loco_queue_lock")
+        let lock_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlt_roco_queue_lock")
             .fetch_one(&pool)
             .await
             .unwrap();
@@ -1135,7 +1135,7 @@ mod tests {
         assert!(initialize_database(&pool).await.is_ok());
 
         sqlx::query(
-            r"INSERT INTO sqlt_loco_queue (id, name, task_data, status,run_at, created_at, updated_at) VALUES
+            r"INSERT INTO sqlt_roco_queue (id, name, task_data, status,run_at, created_at, updated_at) VALUES
             ('job1', 'Test Job 1', '{}', 'queued', CURRENT_TIMESTAMP,DATETIME('now', '-15 days'), CURRENT_TIMESTAMP),
             ('job2', 'Test Job 2', '{}', 'queued', CURRENT_TIMESTAMP, DATETIME('now', '-5 days'), CURRENT_TIMESTAMP),
             ('job3', 'Test Job 3', '{}', 'queued', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
@@ -1160,7 +1160,7 @@ mod tests {
         assert!(initialize_database(&pool).await.is_ok());
 
         sqlx::query(
-            r"INSERT INTO sqlt_loco_queue (id, name, task_data, status,run_at, created_at, updated_at) VALUES
+            r"INSERT INTO sqlt_roco_queue (id, name, task_data, status,run_at, created_at, updated_at) VALUES
             ('job1', 'Test Job 1', '{}', 'completed', CURRENT_TIMESTAMP,DATETIME('now', '-20 days'), CURRENT_TIMESTAMP),
             ('job2', 'Test Job 2', '{}', 'failed', CURRENT_TIMESTAMP,DATETIME('now', '-15 days'), CURRENT_TIMESTAMP),
             ('job3', 'Test Job 3', '{}', 'completed', CURRENT_TIMESTAMP, DATETIME('now', '-5 days'), CURRENT_TIMESTAMP),
@@ -1226,7 +1226,7 @@ mod tests {
         assert!(initialize_database(&pool).await.is_ok());
 
         sqlx::query(
-            r"INSERT INTO sqlt_loco_queue (id, name, task_data, status,run_at, created_at, updated_at) VALUES
+            r"INSERT INTO sqlt_roco_queue (id, name, task_data, status,run_at, created_at, updated_at) VALUES
             ('job1', 'Test Job 1', '{}', 'completed', CURRENT_TIMESTAMP,DATETIME('now', '-20 days'), CURRENT_TIMESTAMP),
             ('job2', 'Test Job 2', '{}', 'failed', CURRENT_TIMESTAMP,DATETIME('now', '-15 days'), CURRENT_TIMESTAMP),
             ('job3', 'Test Job 3', '{}', 'completed', CURRENT_TIMESTAMP, DATETIME('now', '-5 days'), CURRENT_TIMESTAMP),
@@ -1258,7 +1258,7 @@ mod tests {
 
         assert!(initialize_database(&pool).await.is_ok());
         sqlx::query(
-            r"INSERT INTO sqlt_loco_queue (id, name, task_data, status,run_at, created_at, updated_at) VALUES
+            r"INSERT INTO sqlt_roco_queue (id, name, task_data, status,run_at, created_at, updated_at) VALUES
             ('job1', 'Test Job 1', '{}', 'processing', CURRENT_TIMESTAMP,CURRENT_TIMESTAMP, DATETIME('now', '-20 minute')),
             ('job2', 'Test Job 2', '{}', 'processing', CURRENT_TIMESTAMP,CURRENT_TIMESTAMP, DATETIME('now', '-5 minute')),
             ('job3', 'Test Job 3', '{}', 'completed', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, DATETIME('now', '-5 minute')),

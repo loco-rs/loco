@@ -18,7 +18,7 @@ const fn default_page() -> u64 {
 ///
 /// ```
 /// use serde::{Deserialize, Serialize};
-/// use loco_rs::prelude::model::*;
+/// use roco_rs::prelude::model::*;
 ///
 /// #[derive(Debug, Deserialize)]
 /// pub struct ListQueryParams {
@@ -81,7 +81,7 @@ pub struct PageResponse<T> {
     pub total_items: u64,
 }
 
-use crate::Result as LocoResult;
+use crate::Result as RocoResult;
 
 /// Paginate function for fetching paginated data from the database.
 ///
@@ -89,9 +89,9 @@ use crate::Result as LocoResult;
 ///
 /// Without conditions
 /// ```
-/// use loco_rs::tests_cfg::db;
+/// use roco_rs::tests_cfg::db;
 /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-/// use loco_rs::prelude::*;
+/// use roco_rs::prelude::*;
 ///
 /// async fn example() {
 ///     let db = db::dummy_connection().await;
@@ -105,9 +105,9 @@ use crate::Result as LocoResult;
 /// ````
 /// With conditions
 /// ```
-/// use loco_rs::tests_cfg::db;
+/// use roco_rs::tests_cfg::db;
 /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-/// use loco_rs::prelude::*;
+/// use roco_rs::prelude::*;
 ///
 /// async fn example() {
 ///     let db = db::dummy_connection().await;
@@ -121,9 +121,9 @@ use crate::Result as LocoResult;
 /// ````
 /// With Order By
 /// ```
-/// use loco_rs::tests_cfg::db;
+/// use roco_rs::tests_cfg::db;
 /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait, sea_query::Order, QueryOrder};
-/// use loco_rs::prelude::*;
+/// use roco_rs::prelude::*;
 ///
 /// async fn example() {
 ///     let db = db::dummy_connection().await;
@@ -140,14 +140,14 @@ use crate::Result as LocoResult;
 ///
 /// # Errors
 ///
-/// Returns a `LocoResult` indicating any errors that occur
+/// Returns a `RocoResult` indicating any errors that occur
 /// during pagination.
 pub async fn paginate<E>(
     db: &DatabaseConnection,
     entity: Select<E>,
     condition: Option<Condition>,
     pagination_query: &PaginationQuery,
-) -> LocoResult<PageResponse<E::Model>>
+) -> RocoResult<PageResponse<E::Model>>
 where
     E: EntityTrait,
     <E as EntityTrait>::Model: Sync,
@@ -178,9 +178,9 @@ where
 ///
 /// From Entity
 /// ```
-/// use loco_rs::tests_cfg::db;
+/// use roco_rs::tests_cfg::db;
 /// use sea_orm::{EntityTrait, QueryFilter, QuerySelect, QueryTrait};
-/// use loco_rs::prelude::*;
+/// use roco_rs::prelude::*;
 ///
 /// async fn example() {
 ///     let db = db::dummy_connection().await;
@@ -194,13 +194,13 @@ where
 ///
 /// # Errors
 ///
-/// Returns a `LocoResult` indicating any errors that occur
+/// Returns a `RocoResult` indicating any errors that occur
 /// during the fetch.
 pub async fn fetch_page<'db, C, S>(
     db: &'db C,
     selector: S,
     pagination_query: &PaginationQuery,
-) -> LocoResult<PageResponse<<<S as PaginatorTrait<'db, C>>::Selector as SelectorTrait>::Item>>
+) -> RocoResult<PageResponse<<<S as PaginatorTrait<'db, C>>::Selector as SelectorTrait>::Item>>
 where
     C: ConnectionTrait + Sync,
     S: PaginatorTrait<'db, C> + Send,

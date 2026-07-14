@@ -7,7 +7,7 @@ use crate::storage::{drivers::opendal_adapter::OpendalAdapter, StorageResult};
 ///
 /// # Examples
 ///```
-/// use loco_rs::storage::drivers::local;
+/// use roco_rs::storage::drivers::local;
 /// let file_system_driver = local::new();
 /// ```
 ///
@@ -28,7 +28,7 @@ pub fn new() -> Box<dyn StoreDriver> {
 ///
 /// # Examples
 ///```
-/// use loco_rs::storage::drivers::local;
+/// use roco_rs::storage::drivers::local;
 /// let file_system_driver = local::new_with_prefix("users");
 /// ```
 ///

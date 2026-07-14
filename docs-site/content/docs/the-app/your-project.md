@@ -19,7 +19,7 @@ flair =[]
 
 Create your starter app:
 
-<!-- <snip id="loco-cli-new-from-template" inject_from="yaml" template="sh"> -->
+<!-- <snip id="roco-cli-new-from-template" inject_from="yaml" template="sh"> -->
 ```sh
 ❯ loco new
 ✔ ❯ App name? · myapp
@@ -211,7 +211,7 @@ When nothing is given, the default value is `development`.
 The `Loco` framework allows support for custom environments in addition to the default environment. To add a custom environment, create a configuration file with a name matching the environment identifier used in the preceding example.
 
 ### Overriding the Default Configuration Path
-To use a custom configuration directory, set the `LOCO_CONFIG_FOLDER` environment variable to the desired folder path. This will instruct `loco` to load configuration files from the specified directory instead of the default `config/` folder.
+To use a custom configuration directory, set the `ROCO_CONFIG_FOLDER` environment variable to the desired folder path. This will instruct `loco` to load configuration files from the specified directory instead of the default `config/` folder.
 
 ### Placeholders / variables in config
 

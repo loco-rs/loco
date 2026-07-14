@@ -21,7 +21,7 @@ use tree_fs::TreeBuilder;
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
-/// use loco_rs::testing::prelude::*;
+/// use roco_rs::testing::prelude::*;
 /// use migration::Migrator;
 ///
 /// #[tokio::test]

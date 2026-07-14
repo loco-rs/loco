@@ -32,9 +32,9 @@ use tracing::info;
 pub static EXTRACT_DB_NAME: OnceLock<Regex> = OnceLock::new();
 const IGNORED_TABLES: &[&str] = &[
     "seaql_migrations",
-    "pg_loco_queue",
-    "sqlt_loco_queue",
-    "sqlt_loco_queue_lock",
+    "pg_roco_queue",
+    "sqlt_roco_queue",
+    "sqlt_roco_queue_lock",
 ];
 
 fn re_extract_db_name() -> &'static Regex {
@@ -720,7 +720,7 @@ pub async fn run_app_seed<H: Hooks>(ctx: &AppContext, path: &Path) -> AppResult<
 
 /// Create a Postgres database from the given db name.
 ///
-/// To create the database with `LOCO_POSTGRES_DB_OPTIONS`
+/// To create the database with `ROCO_POSTGRES_DB_OPTIONS`
 async fn create_postgres_database(
     db_name: &str,
     db: &DatabaseConnection,
@@ -743,7 +743,9 @@ async fn create_postgres_database(
         return Err(sea_orm::DbErr::Custom("database already exists".to_owned()));
     }
 
-    let with_options = env_vars::get_or_default(env_vars::POSTGRES_DB_OPTIONS, "ENCODING='UTF8'");
+    let with_options = env_vars::get(env_vars::ROCO_POSTGRES_DB_OPTIONS)
+        .or_else(|_| env_vars::get(env_vars::LOCO_POSTGRES_DB_OPTIONS))
+        .unwrap_or_else(|_| "ENCODING='UTF8'".to_string());
 
     let query = format!("CREATE DATABASE {db_name} WITH {with_options}");
     tracing::info!(query, "creating postgres database");
@@ -1803,7 +1805,7 @@ mod tests {
         let cmd = EntityCmd::new(&get_database_config());
 
         let expected = "generate entity --database-url sqlite::memory: --ignore-tables \
-            seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock --output-dir \
+            seaql_migrations,pg_roco_queue,sqlt_roco_queue,sqlt_roco_queue_lock --output-dir \
             src/models/_entities --with-copy-enums --with-serde both";
         assert_eq!(cmd.command().join(" "), expected);
     }
@@ -1821,7 +1823,7 @@ model-extra-derives = "ts_rs::Ts"
         let cmd = EntityCmd::merge_with_config(&get_database_config(), &config);
 
         let expected = "generate entity --database-url sqlite::memory: --ignore-tables \
-            seaql_migrations,pg_loco_queue,sqlt_loco_queue,sqlt_loco_queue_lock,table1,table2 \
+            seaql_migrations,pg_roco_queue,sqlt_roco_queue,sqlt_roco_queue_lock,table1,table2 \
             --max-connections 1 --model-extra-derives ts_rs::Ts --output-dir src/models/_entities \
             --with-copy-enums --with-serde none";
         assert_eq!(cmd.command().join(" "), expected);

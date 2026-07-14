@@ -1,5 +1,0 @@
----
-source: loco-gen/tests/templates/task.rs
-expression: "fs::read_to_string(tests_task_path.join(\"mod.rs\")).expect(\"Failed to read updated tests task mod file: mod.rs\")"
----
-pub mod cleanup;

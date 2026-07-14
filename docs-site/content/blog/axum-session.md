@@ -79,7 +79,7 @@ Open the `src/controllers/mysession.rs` file created by the controller generator
 ```rust
 #![allow(clippy::unused_async)]
 use axum_session::{Session, SessionNullPool};
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 
 pub async fn get_session(session: Session<SessionNullPool>) -> Result<()> {
     println!("{:#?}", session);
@@ -114,7 +114,7 @@ The `connect_to_database` getting an `Database` configuration and returns a PgPo
 
 ```rust
 use sqlx::postgres::PgPool;
-use loco_rs::{
+use roco_rs::{
     config::Database,
     errors::Error,
     Result,
@@ -181,7 +181,7 @@ and replace the content of `src/controllers/mysession.rs` with the provided code
 ```rust
 #![allow(clippy::unused_async)]
 use axum_session::{Session, SessionPgPool};
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 
 pub async fn get_session(session: Session<SessionPgPool>) -> Result<()> {
     println!("{:#?}", session);

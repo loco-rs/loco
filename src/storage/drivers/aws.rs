@@ -18,7 +18,7 @@ pub struct Credential {
 ///
 /// # Examples
 ///```
-/// use loco_rs::storage::drivers::aws;
+/// use roco_rs::storage::drivers::aws;
 /// let aws_driver = aws::new("bucket_name", "region");
 /// ```
 ///
@@ -35,7 +35,7 @@ pub fn new(bucket_name: &str, region: &str) -> StorageResult<Box<dyn StoreDriver
 /// # Examples
 ///
 /// ```
-/// use loco_rs::storage::drivers::aws;
+/// use roco_rs::storage::drivers::aws;
 ///
 /// let credential = aws::Credential {
 ///     key_id: "".to_string(),
@@ -74,7 +74,7 @@ pub fn with_credentials_and_endpoint(
 ///
 /// # Examples
 ///```
-/// use loco_rs::storage::drivers::aws;
+/// use roco_rs::storage::drivers::aws;
 /// let credential = aws::Credential {
 ///    key_id: "".to_string(),
 ///    secret_key: "".to_string(),

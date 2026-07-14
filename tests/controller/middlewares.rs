@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 use axum::http::StatusCode;
 use insta::assert_debug_snapshot;
-use loco_rs::{controller::middleware, prelude::*, tests_cfg};
+use roco_rs::{controller::middleware, prelude::*, tests_cfg};
 use rstest::rstest;
 
 use crate::infra_cfg;
@@ -55,7 +55,7 @@ async fn panic(#[case] enable: bool) {
 #[tokio::test]
 async fn etag(#[case] enable: bool) {
     async fn action() -> Result<Response> {
-        format::render().etag("loco-etag")?.text("content")
+        format::render().etag("roco-etag")?.text("content")
     }
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
@@ -67,7 +67,7 @@ async fn etag(#[case] enable: bool) {
 
     let res = reqwest::Client::new()
         .get(get_base_url_port(port))
-        .header("if-none-match", "loco-etag")
+        .header("if-none-match", "roco-etag")
         .send()
         .await
         .expect("response");
@@ -124,7 +124,7 @@ async fn timeout(#[case] enable: bool) {
     #[allow(clippy::items_after_statements)]
     async fn action() -> Result<Response> {
         tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-        format::render().text("loco")
+        format::render().text("roco")
     }
 
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
@@ -162,7 +162,7 @@ async fn cors(
     #[case] allow_methods: Option<Vec<String>>,
     #[case] max_age: Option<u64>,
 ) {
-    use loco_rs::controller::middleware::cors::Cors;
+    use roco_rs::controller::middleware::cors::Cors;
 
     configure_insta!();
 
@@ -323,7 +323,7 @@ async fn secure_headers(
     let mut ctx: AppContext = tests_cfg::app::get_app_context().await;
 
     ctx.config.server.middlewares.secure_headers = Some(
-        loco_rs::controller::middleware::secure_headers::SecureHeader {
+        roco_rs::controller::middleware::secure_headers::SecureHeader {
             enable: true,
             preset: preset.clone().unwrap_or_else(|| "github".to_string()),
             overrides: overrides.clone(),
@@ -452,7 +452,7 @@ async fn powered_by_header(#[case] ident: Option<String>) {
     if let Some(ident_str) = ident {
         assert_eq!(header_value.to_str().expect("value"), ident_str);
     } else {
-        assert_eq!(header_value.to_str().expect("value"), "loco.rs");
+        assert_eq!(header_value.to_str().expect("value"), "rsonroco.com");
     }
 
     handle.abort();

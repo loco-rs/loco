@@ -5,7 +5,7 @@
    <h1>Loco에 오신 것을 환영합니다</h1>
 
    <h3>
-   🚂 Loco는 Rust on Rails입니다.
+   🚂 Roco는 Rust on Rails입니다.
    </h3>
 
    [![crate](https://img.shields.io/crates/v/loco-rs.svg)](https://crates.io/crates/loco-rs)
@@ -58,7 +58,7 @@ cargo install sea-orm-cli # Only when DB is needed
 이제 새로운 앱을 만들 수 있습니다 ("`SaaS 앱`" 선택).
 
 
-<!-- <snip id="loco-cli-new-from-template" inject_from="yaml" template="sh"> -->
+<!-- <snip id="roco-cli-new-from-template" inject_from="yaml" template="sh"> -->
 ```sh
 ❯ loco new
 ✔ ❯ App name? · myapp

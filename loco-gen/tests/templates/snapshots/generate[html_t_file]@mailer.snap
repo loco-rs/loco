@@ -1,5 +1,0 @@
----
-source: loco-gen/tests/templates/mailer.rs
-expression: "fs::read_to_string(path).unwrap_or_else(|_| panic!(\"{name} missing\"))"
----
-welcome to <em>acmeworld!</em>

@@ -318,7 +318,7 @@ Additionally, you can leverage the [worker generator](@/docs/processing/workers.
 Here's an example of how the test should be structured:
 
 ```rust
-use loco_rs::testing::prelude::*;
+use roco_rs::testing::prelude::*;
 
 #[tokio::test]
 #[serial]

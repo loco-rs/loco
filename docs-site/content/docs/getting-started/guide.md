@@ -61,7 +61,7 @@ cargo install sea-orm-cli # Only when DB is needed
 
 Now you can create your new app (choose "SaaS app" for built-in authentication).
 
-<!-- <snip id="loco-cli-new-from-template" inject_from="yaml" template="sh"> -->
+<!-- <snip id="roco-cli-new-from-template" inject_from="yaml" template="sh"> -->
 ```sh
 ❯ loco new
 ✔ ❯ App name? · myapp
@@ -157,7 +157,7 @@ This is the generated controller body:
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 
 #[debug_handler]
 pub async fn index(State(_ctx): State<AppContext>) -> Result<Response> {
@@ -215,7 +215,7 @@ Next, set up a _hello_ route, this is the contents of `home.rs`:
 
 ```rust
 // src/controllers/home.rs
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 
 // _ctx contains your database connection, as well as other app resource that you'll need
 async fn hello(State(_ctx): State<AppContext>) -> Result<Response> {
@@ -405,12 +405,12 @@ Let's fetch data using your models, using `playground.rs`:
 ```rust
 // located in examples/playground.rs
 // use this file to experiment with stuff
-use loco_rs::{cli::playground, prelude::*};
+use roco_rs::{cli::playground, prelude::*};
 // to refer to articles::ActiveModel, your imports should look like this:
 use myapp::{app::App, models::_entities::articles};
 
 #[tokio::main]
-async fn main() -> loco_rs::Result<()> {
+async fn main() -> roco_rs::Result<()> {
     let ctx = playground::<App>().await?;
 
     // add this:
@@ -442,7 +442,7 @@ $ cargo playground
 Now, let's insert one item:
 
 ```rust
-async fn main() -> loco_rs::Result<()> {
+async fn main() -> roco_rs::Result<()> {
     let ctx = playground::<App>().await?;
 
     // add this:
@@ -482,7 +482,7 @@ Edit `src/controllers/articles.rs`:
 
 ```rust
 #![allow(clippy::unused_async)]
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 
 use crate::models::_entities::articles;
 
@@ -521,7 +521,7 @@ Replace the contents of `articles.rs` with this:
 // this is src/controllers/articles.rs
 
 #![allow(clippy::unused_async)]
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::models::_entities::articles::{ActiveModel, Entity, Model};
@@ -593,7 +593,7 @@ A few items to note:
 - `Path(id): Path<i32>` extracts the `:id` component from a URL.
 - Order of extractors is important and follows `axum`'s documentation (parameters, state, body).
 - It's always better to create a `load_item` helper function and use it in all singular-item routes.
-- While `use loco_rs::prelude::*` brings in anything you need to build a controller, you should note to import `crate::models::_entities::articles::{ActiveModel, Entity, Model}` as well as `Serialize, Deserialize` for params.
+- While `use roco_rs::prelude::*` brings in anything you need to build a controller, you should note to import `crate::models::_entities::articles::{ActiveModel, Entity, Model}` as well as `Serialize, Deserialize` for params.
 
 
 <div class="infobox">
@@ -792,8 +792,8 @@ In `src/tasks/user_report.rs` you'll see the task that was generated for you. Re
 ```rust
 // find it in `src/tasks/user_report.rs`
 
-use loco_rs::prelude::*;
-use loco_rs::task::Vars;
+use roco_rs::prelude::*;
+use roco_rs::task::Vars;
 
 use crate::models::users;
 

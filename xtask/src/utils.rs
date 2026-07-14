@@ -5,7 +5,7 @@ use std::{
 
 pub const FOLDER_EXAMPLES: &str = "examples";
 pub const FOLDER_STARTERS: &str = "starters";
-pub const FOLDER_LOCO_CLI: &str = "loco-cli";
+pub const FOLDER_ROCO_CLI: &str = "roco-cli";
 
 /// return a lost of cargo project in the given path
 ///

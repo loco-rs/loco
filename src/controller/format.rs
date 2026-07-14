@@ -8,7 +8,7 @@
 //! Rust struct.
 //!
 //! ```rust
-//! use loco_rs::prelude::*;
+//! use roco_rs::prelude::*;
 //! use serde::Serialize;
 //!
 //! #[derive(Serialize)]
@@ -46,7 +46,7 @@ use crate::{
 ///
 /// This example illustrates how to return an empty response.
 /// ```rust
-/// use loco_rs::prelude::*;
+/// use roco_rs::prelude::*;
 ///
 /// async fn endpoint() -> Result<Response> {
 ///    format::empty()
@@ -67,7 +67,7 @@ pub fn empty() -> Result<Response> {
 ///
 /// This example illustrates how to return an text response.
 /// ```rust
-/// use loco_rs::prelude::*;
+/// use roco_rs::prelude::*;
 ///
 /// async fn endpoint() -> Result<Response> {
 ///    format::text("MESSAGE-RESPONSE")
@@ -90,7 +90,7 @@ pub fn text(t: &str) -> Result<Response> {
 /// Rust struct.
 ///
 /// ```rust
-/// use loco_rs::prelude::*;
+/// use roco_rs::prelude::*;
 /// use serde::Serialize;
 ///
 /// #[derive(Serialize)]
@@ -125,7 +125,7 @@ pub fn empty_json() -> Result<Response> {
 /// # Example:
 ///
 /// ```rust
-/// use loco_rs::prelude::*;
+/// use roco_rs::prelude::*;
 ///
 /// async fn endpoint() -> Result<Response> {
 ///    format::html("hello, world")
@@ -145,7 +145,7 @@ pub fn html(content: &str) -> Result<Response> {
 /// # Example:
 ///
 /// ```rust
-/// use loco_rs::prelude::*;
+/// use roco_rs::prelude::*;
 ///
 /// pub async fn openapi_spec_yaml() -> Result<Response> {
 ///     format::yaml("openapi: 3.1.0\ninfo:\n  title: Loco Demo\n  ")
@@ -168,7 +168,7 @@ pub fn yaml(content: &str) -> Result<Response> {
 /// # Example:
 ///
 /// ```rust
-/// use loco_rs::prelude::*;
+/// use roco_rs::prelude::*;
 ///
 /// async fn login() -> Result<Response> {
 ///    format::redirect("/dashboard")
@@ -486,7 +486,7 @@ mod tests {
 
     #[tokio::test]
     async fn redirect_response() {
-        let response = redirect("https://loco.rs").unwrap();
+        let response = redirect("https://rsonroco.com").unwrap();
 
         assert_debug_snapshot!(response);
         assert_eq!(response_body_to_string(response).await, String::new());
@@ -637,7 +637,7 @@ mod tests {
 
     #[tokio::test]
     async fn builder_redirect_response() {
-        let response = render().redirect("https://loco.rs").unwrap();
+        let response = render().redirect("https://rsonroco.com").unwrap();
 
         assert_debug_snapshot!(response);
         assert_eq!(response_body_to_string(response).await, String::new());
@@ -646,7 +646,7 @@ mod tests {
     #[tokio::test]
     async fn builder_redirect_with_custom_header_response() {
         let response = render()
-            .redirect_with_header_key("HX-Redirect", "https://loco.rs")
+            .redirect_with_header_key("HX-Redirect", "https://rsonroco.com")
             .unwrap();
 
         assert_debug_snapshot!(response);

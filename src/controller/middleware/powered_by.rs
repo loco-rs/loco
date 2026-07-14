@@ -19,7 +19,7 @@ use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 static DEFAULT_IDENT_HEADER_VALUE: OnceLock<HeaderValue> = OnceLock::new();
 
 fn get_default_ident_header_value() -> &'static HeaderValue {
-    DEFAULT_IDENT_HEADER_VALUE.get_or_init(|| HeaderValue::from_static("loco.rs"))
+    DEFAULT_IDENT_HEADER_VALUE.get_or_init(|| HeaderValue::from_static("rsonroco.com"))
 }
 
 /// [`Middleware`] struct responsible for managing the identifier value for the

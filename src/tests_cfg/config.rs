@@ -40,7 +40,7 @@ pub fn test_config() -> Config {
             jobs: HashMap::from([(
                 "job 1".to_string(),
                 scheduler::Job {
-                    run: "echo loco".to_string(),
+                    run: "echo roco".to_string(),
                     shell: true,
                     run_on_start: false,
                     cron: "*/5 * * * * *".to_string(),

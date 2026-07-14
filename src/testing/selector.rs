@@ -6,7 +6,7 @@ use scraper::{Html, Selector};
 /// # Example
 ///
 /// ```rust
-/// use loco_rs::testing::prelude::*;
+/// use roco_rs::testing::prelude::*;
 ///
 /// let html = r#"
 ///   <html>
@@ -36,7 +36,7 @@ pub fn assert_css_exists(html: &str, selector: &str) {
 /// # Example
 ///
 /// ```rust
-/// use loco_rs::testing::prelude::*;
+/// use roco_rs::testing::prelude::*;
 ///
 /// let html = r#"
 ///   <html>
@@ -66,7 +66,7 @@ pub fn assert_css_not_exists(html: &str, selector: &str) {
 /// # Example
 ///
 /// ```rust
-/// use loco_rs::testing::prelude::*;
+/// use roco_rs::testing::prelude::*;
 ///
 /// let html = r#"
 ///   <html>
@@ -107,7 +107,7 @@ pub fn assert_css_eq(html: &str, selector: &str, expected_text: &str) {
 /// # Example
 ///
 /// ```rust
-/// use loco_rs::testing::prelude::*;
+/// use roco_rs::testing::prelude::*;
 ///
 /// let html = r#"
 ///   <html>
@@ -135,7 +135,7 @@ pub fn assert_link(html: &str, selector: &str, expected_href: &str) {
 /// # Example
 ///
 /// ```rust
-/// use loco_rs::testing::prelude::*;
+/// use roco_rs::testing::prelude::*;
 ///
 /// let html = r#"
 ///   <html>
@@ -177,7 +177,7 @@ pub fn assert_attribute_exists(html: &str, selector: &str, attribute: &str) {
 /// # Example
 ///
 /// ```rust
-/// use loco_rs::testing::prelude::*;
+/// use roco_rs::testing::prelude::*;
 ///
 /// let html = r#"
 ///   <html>
@@ -223,7 +223,7 @@ pub fn assert_attribute_eq(html: &str, selector: &str, attribute: &str, expected
 /// # Example
 ///
 /// ```rust
-/// use loco_rs::testing::prelude::*;
+/// use roco_rs::testing::prelude::*;
 ///
 /// let html = r#"
 ///   <html>
@@ -261,7 +261,7 @@ pub fn assert_count(html: &str, selector: &str, expected_count: usize) {
 /// # Example
 ///
 /// ```rust
-/// use loco_rs::testing::prelude::*;
+/// use roco_rs::testing::prelude::*;
 ///
 /// let html = r#"
 ///   <html>
@@ -300,7 +300,7 @@ pub fn assert_css_eq_list(html: &str, selector: &str, expected_texts: &[&str]) {
 /// # Examples
 ///
 /// ```rust
-/// use loco_rs::testing::prelude::*;
+/// use roco_rs::testing::prelude::*;
 ///
 /// let html = r#"
 ///     <html>

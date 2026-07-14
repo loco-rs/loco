@@ -25,7 +25,7 @@ pub async fn postgres_seed_data(pool: &sqlx::PgPool) {
     for task in tasks {
         sqlx::query(
             r"
-            INSERT INTO pg_loco_queue (id, name, task_data, status, run_at, interval, created_at, updated_at)
+            INSERT INTO pg_roco_queue (id, name, task_data, status, run_at, interval, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, NULL, $6, $7)
             ",
         )
@@ -55,7 +55,7 @@ pub async fn sqlite_seed_data(pool: &sqlx::Pool<sqlx::Sqlite>) {
     for task in tasks {
         sqlx::query(
             r"
-            INSERT INTO sqlt_loco_queue (id, name, task_data, status, run_at, interval, created_at, updated_at)
+            INSERT INTO sqlt_roco_queue (id, name, task_data, status, run_at, interval, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, NULL, ?, ?)
             "
         )
@@ -72,7 +72,7 @@ pub async fn sqlite_seed_data(pool: &sqlx::Pool<sqlx::Sqlite>) {
 
     sqlx::query(
         r"
-                INSERT INTO sqlt_loco_queue_lock (id, is_locked, locked_at)
+                INSERT INTO sqlt_roco_queue_lock (id, is_locked, locked_at)
     VALUES (1, FALSE, NULL)
     ON CONFLICT (id) DO NOTHING;
 

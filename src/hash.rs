@@ -14,7 +14,7 @@ use rand::{distr::Alphanumeric, rng, Rng};
 ///
 /// # Example
 /// ```rust
-/// use loco_rs::hash;
+/// use roco_rs::hash;
 ///
 /// hash::hash_password("password-to-hash");
 /// ```
@@ -40,7 +40,7 @@ pub fn hash_password(pass: &str) -> Result<String> {
 ///
 /// # Example
 /// ```rust
-/// use loco_rs::hash;
+/// use roco_rs::hash;
 ///
 /// hash::verify_password("password", "hashed-password");
 /// ```
@@ -62,7 +62,7 @@ pub fn verify_password(pass: &str, hashed_password: &str) -> bool {
 /// # Example
 ///
 /// ```rust
-/// use loco_rs::hash;
+/// use roco_rs::hash;
 ///
 /// let rand_str = hash::random_string(10);
 /// assert_eq!(rand_str.len(), 10);

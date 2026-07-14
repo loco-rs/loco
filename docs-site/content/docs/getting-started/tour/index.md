@@ -30,7 +30,7 @@ cargo install sea-orm-cli # Only when DB is needed
 
  Now you can create your new app (choose "`SaaS` app"). Select SaaS app with client side rendering:
 
-<!-- <snip id="loco-cli-new-from-template" inject_from="yaml" template="sh"> -->
+<!-- <snip id="roco-cli-new-from-template" inject_from="yaml" template="sh"> -->
 ```sh
 ❯ loco new
 ✔ ❯ App name? · myapp

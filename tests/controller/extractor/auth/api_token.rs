@@ -1,7 +1,7 @@
-use loco_rs::{controller::extractor::auth, prelude::*, tests_cfg};
+use roco_rs::{controller::extractor::auth, prelude::*, tests_cfg};
 use serde::{Deserialize, Serialize};
 
-use loco_rs::model::{Authenticable, ModelError};
+use roco_rs::model::{Authenticable, ModelError};
 
 use crate::infra_cfg;
 

@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use tokio_cron_scheduler::{JobScheduler, JobSchedulerError};
 use uuid::Uuid;
 
-use crate::{app::Hooks, environment::Environment, task::Tasks};
+use crate::{app::Hooks, env_vars, environment::Environment, task::Tasks};
 
 static RE_IS_CRON_SYNTAX: OnceLock<Regex> = OnceLock::new();
 
@@ -194,8 +194,8 @@ impl JobDescription {
     /// In addition to all the IO errors possible
     pub fn run(&self) -> io::Result<std::process::Output> {
         tracing::info!(command = &self.command, "execute job command");
-        let mut exec_job =
-            duct_sh::sh_dangerous(&self.command).env("LOCO_ENV", self.environment.to_string());
+        let mut exec_job = duct_sh::sh_dangerous(&self.command)
+            .env(env_vars::ROCO_ENV, self.environment.to_string());
         exec_job = match self.output {
             Output::Silent => exec_job.stdout_null().stderr_null(),
             Output::STDOUT => exec_job,
@@ -402,7 +402,7 @@ jobs:
       - echo
 
   write_to_file:
-    run: "echo loco >> ./scheduler.txt"
+    run: "echo roco >> ./scheduler.txt"
     shell: true
     schedule: "*/5 * * * * *"
     tags:
@@ -490,8 +490,8 @@ jobs:
     }
 
     #[rstest]
-    #[case("shell", "echo loco", true)]
-    #[case("task", "foo LOCO_ENV:test SCHEDULER:true", false)]
+    #[case("shell", "echo roco", true)]
+    #[case("task", "foo ROCO_ENV:test SCHEDULER:true", false)]
     pub fn can_prepare_command(#[case] test_name: &str, #[case] run: &str, #[case] shell: bool) {
         let job = Job {
             run: run.to_string(),
@@ -552,7 +552,7 @@ jobs:
                 "test".to_string(),
                 Job {
                     run: format!(
-                        "echo loco >> {}",
+                        "echo roco >> {}",
                         tree_fs.root.join("scheduler.txt").display()
                     ),
                     shell: true,
@@ -566,7 +566,7 @@ jobs:
                 "test_2".to_string(),
                 Job {
                     run: format!(
-                        "echo loco >> {}",
+                        "echo roco >> {}",
                         tree_fs.root.join("scheduler2.txt").display()
                     ),
                     shell: true,
@@ -580,7 +580,7 @@ jobs:
                 "test_3".to_string(),
                 Job {
                     run: format!(
-                        "echo loco >> {}",
+                        "echo roco >> {}",
                         tree_fs.root.join("scheduler3.txt").display()
                     ),
                     shell: true,

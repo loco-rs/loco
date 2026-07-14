@@ -1,7 +1,7 @@
-use loco_rs::{controller::extractor::auth, prelude::*, tests_cfg};
+use roco_rs::{controller::extractor::auth, prelude::*, tests_cfg};
 use serde::{Deserialize, Serialize};
 
-use loco_rs::model::{Authenticable, ModelError};
+use roco_rs::model::{Authenticable, ModelError};
 
 use crate::infra_cfg;
 
@@ -68,8 +68,8 @@ async fn can_extract_jwt_with_user_valid_token() {
 
     // Configure JWT auth
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
@@ -77,7 +77,7 @@ async fn can_extract_jwt_with_user_valid_token() {
     });
 
     // Create a valid JWT token with known PID
-    let jwt = loco_rs::auth::jwt::JWT::new(&secret);
+    let jwt = roco_rs::auth::jwt::JWT::new(&secret);
     let token = jwt
         .generate_token(3600, "test_pid_123".to_string(), serde_json::Map::new())
         .expect("Failed to generate token");
@@ -111,8 +111,8 @@ async fn can_handle_jwt_with_user_invalid_token() {
 
     // Configure JWT auth
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
@@ -143,8 +143,8 @@ async fn can_handle_jwt_with_user_nonexistent_user() {
 
     // Configure JWT auth
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,
@@ -152,7 +152,7 @@ async fn can_handle_jwt_with_user_nonexistent_user() {
     });
 
     // Create a valid JWT token with unknown PID
-    let jwt = loco_rs::auth::jwt::JWT::new(&secret);
+    let jwt = roco_rs::auth::jwt::JWT::new(&secret);
     let token = jwt
         .generate_token(3600, "unknown_pid".to_string(), serde_json::Map::new())
         .expect("Failed to generate token");
@@ -181,8 +181,8 @@ async fn can_handle_jwt_with_user_missing_token() {
 
     // Configure JWT auth
     let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
-    ctx.config.auth = Some(loco_rs::config::Auth {
-        jwt: Some(loco_rs::config::JWT {
+    ctx.config.auth = Some(roco_rs::config::Auth {
+        jwt: Some(roco_rs::config::JWT {
             location: None,
             secret: secret.clone(),
             expiration: 3600,

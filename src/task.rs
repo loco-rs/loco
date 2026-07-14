@@ -26,7 +26,7 @@ impl Vars {
     /// # Example
     ///
     /// ```
-    /// use loco_rs::task::Vars;
+    /// use roco_rs::task::Vars;
     ///
     /// let args = vec![("key1".to_string(), "value".to_string())];
     /// let vars = Vars::from_cli_args(args);
@@ -47,7 +47,7 @@ impl Vars {
     /// # Example
     ///
     /// ```
-    /// use loco_rs::task::Vars;
+    /// use roco_rs::task::Vars;
     ///
     /// let args = vec![("key1".to_string(), "value".to_string())];
     /// let vars = Vars::from_cli_args(args);

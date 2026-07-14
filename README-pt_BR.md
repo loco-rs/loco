@@ -6,7 +6,7 @@
 
    <h3>
    <!-- <snip id="description" inject_from="yaml"> -->
-🚂 Loco is Rust on Rails.
+🚂 Roco is Rust on Rails.
 <!--</snip> -->
    </h3>
 
@@ -62,7 +62,7 @@ cargo install sea-orm-cli # Only when DB is needed
 Agora você pode criar seu novo aplicativo (escolha "`SaaS` app").
 
 
-<!-- <snip id="loco-cli-new-from-template" inject_from="yaml" template="sh"> -->
+<!-- <snip id="roco-cli-new-from-template" inject_from="yaml" template="sh"> -->
 ```sh
 ❯ loco new
 ✔ ❯ App name? · myapp

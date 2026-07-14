@@ -120,7 +120,7 @@ impl AppRoutes {
     /// In the following example you are adding api as a prefix for all routes
     ///
     /// ```rust
-    /// use loco_rs::controller::AppRoutes;
+    /// use roco_rs::controller::AppRoutes;
     ///
     /// AppRoutes::with_default_routes().prefix("api");
     /// ```
@@ -146,8 +146,8 @@ impl AppRoutes {
     /// In the following example, you are adding `api` as a prefix and then nesting `v1` within it:
     ///
     /// ```rust
-    /// use loco_rs::controller::AppRoutes;
-    /// use loco_rs::tests_cfg::*;
+    /// use roco_rs::controller::AppRoutes;
+    /// use roco_rs::tests_cfg::*;
     ///
     /// let app_routes = AppRoutes::with_default_routes()
     ///      .prefix("api")
@@ -177,7 +177,7 @@ impl AppRoutes {
     ///
     /// ```rust
     /// use axum::routing::get;
-    /// use loco_rs::controller::{AppRoutes, Routes};
+    /// use roco_rs::controller::{AppRoutes, Routes};
     ///
     /// let route = Routes::new().add("/notes", get(|| async { "notes" }));
     /// let app_routes = AppRoutes::with_default_routes()
@@ -205,7 +205,7 @@ impl AppRoutes {
     ///
     /// ```rust
     /// use axum::routing::get;
-    /// use loco_rs::controller::{AppRoutes, Routes};
+    /// use roco_rs::controller::{AppRoutes, Routes};
     ///
     /// let routes = vec![
     ///     Routes::new().add("/notes", get(|| async { "notes" })),
@@ -323,7 +323,7 @@ mod tests {
     use tower::ServiceExt;
 
     async fn action() -> Result<Response> {
-        format::json("loco")
+        format::json("roco")
     }
 
     #[test]
@@ -350,7 +350,7 @@ mod tests {
             .prefix("/normalizer")
             .add("no-slash", get(action))
             .add("/", post(action))
-            .add("//loco///rs//", delete(action))
+            .add("//roco///rs//", delete(action))
             .add("//////multiple-start", head(action))
             .add("multiple-end/////", trace(action));
 
@@ -374,8 +374,8 @@ mod tests {
     #[test]
     fn can_load_routes_with_root_prefix() {
         let router_without_prefix = Routes::new()
-            .add("/loco", get(action))
-            .add("loco-rs", get(action));
+            .add("/roco", get(action))
+            .add("roco-rs", get(action));
 
         let app_router = AppRoutes::empty()
             .prefix("api")

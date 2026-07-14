@@ -1,5 +1,5 @@
 use axum::extract::State;
-use loco_rs::{controller::format, prelude::*, tests_cfg};
+use roco_rs::{controller::format, prelude::*, tests_cfg};
 use rstest::rstest;
 use serde::{Deserialize, Serialize};
 

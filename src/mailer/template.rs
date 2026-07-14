@@ -7,7 +7,7 @@
 //!
 //! ```rust, ignore
 //! use include_dir::{include_dir, Dir};
-//! use loco_rs::mailer::template::Template;
+//! use roco_rs::mailer::template::Template;
 //!
 //! static welcome: Dir<'_> = include_dir!("src/mailers/auth/welcome");
 //! let args = serde_json::json!({"name": "framework"});

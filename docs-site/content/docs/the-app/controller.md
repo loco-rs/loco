@@ -68,8 +68,8 @@ This command will provide you with a comprehensive overview of the controllers c
 You can add routes from different controllers to `AppRoutes`:
 
 ```rust
-use loco_rs::controller::AppRoutes;
-use loco_rs::prelude::*;
+use roco_rs::controller::AppRoutes;
+use roco_rs::prelude::*;
 use axum::routing::get;
 
 fn routes(_ctx: &AppContext) -> AppRoutes {
@@ -84,8 +84,8 @@ fn routes(_ctx: &AppContext) -> AppRoutes {
 Apply a common prefix to a group of routes:
 
 ```rust
-use loco_rs::controller::AppRoutes;
-use loco_rs::prelude::*;
+use roco_rs::controller::AppRoutes;
+use roco_rs::prelude::*;
 use axum::routing::get;
 
 fn routes(_ctx: &AppContext) -> AppRoutes {
@@ -102,8 +102,8 @@ AppRoutes allows you to nest routes, making it easier to organize and manage com
 This is particularly useful when you have a set of related routes that share a common prefix.
 
 ```rust
- use loco_rs::controller::AppRoutes;
-use loco_rs::prelude::*;
+ use roco_rs::controller::AppRoutes;
+use roco_rs::prelude::*;
 use axum::routing::get;
 
 fn routes(_ctx: &AppContext) -> AppRoutes {
@@ -554,7 +554,7 @@ Token not found in any of the configured locations: [Bearer header, Cookie 'sess
 In your controller parameters, use `auth::JWT` for authentication. This triggers authentication validation based on the configured settings.
 
 ```rust
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 
 async fn current(
     auth: auth::JWT,
@@ -571,7 +571,7 @@ Additionally, you can fetch the current user by replacing auth::JWT with `auth::
 For API Key authentication, use auth::ApiToken. This middleware validates the API key against the user database record and loads the corresponding user into the authentication parameter.
 
 ```rust
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 
 async fn current(
     auth: auth::ApiToken<users::Model>,
@@ -625,7 +625,7 @@ middlewares:
 In your controller parameters, use `axum::body::Bytes`.
 
 ```rust
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 
 async fn current(_body: axum::body::Bytes,) -> Result<Response> {
     // Your implementation here
@@ -983,7 +983,7 @@ pub struct DataParams {
 Alternatively, implement the `ValidatorTrait` for full control without using the `validator` crate:
 
 ```rust
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 use serde::Deserialize;
 use std::collections::{BTreeMap, HashMap};
 
@@ -1046,7 +1046,7 @@ Loco extractors validate data within HTTP handlers, proceeding with validated da
 #### Example 1: JSON Validation with `JsonValidate`
 
 ```rust
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 
 #[debug_handler]
 pub async fn index(
@@ -1063,7 +1063,7 @@ pub async fn index(
 #### Example 2: Query Validation with `QueryValidate`
 
 ```rust
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 
 #[debug_handler]
 pub async fn index(
@@ -1080,7 +1080,7 @@ pub async fn index(
 #### Example 3: Form Validation with `FormValidateWithMessage`
 
 ```rust
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 
 #[debug_handler]
 pub async fn index(
@@ -1149,7 +1149,7 @@ We assume you have a `notes` entity and/or scaffold (replace this with any entit
 ## Using pagination
 
 ```rust
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 
 let res = query::fetch_page(&ctx.db, notes::Entity::find(), &query::PaginationQuery::page(2)).await;
 ```
@@ -1157,7 +1157,7 @@ let res = query::fetch_page(&ctx.db, notes::Entity::find(), &query::PaginationQu
 ## Using pagination With Filter
 
 ```rust
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 
 let pagination_query = query::PaginationQuery {
     page_size: 100,
@@ -1188,7 +1188,7 @@ Define the data you're returning to the user in Loco views. If you're not famili
 Create a notes view file in `src/view/notes` with the following code:
 
 ```rust
-use loco_rs::{
+use roco_rs::{
     controller::views::pagination::{Pager, PagerMeta},
     prelude::model::query::PaginatedResponse,
 };
@@ -1246,10 +1246,10 @@ use axum::{
     extract::FromRef,
     http::{request::Parts, StatusCode},
 };
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 use sea_orm::{EntityTrait, DatabaseConnection};
 
-use loco_rs::app::AppContext;
+use roco_rs::app::AppContext;
 use crate::models::_entities::companies; // Adjust to your strucuture
 
 #[derive(Debug, Clone)]
@@ -1327,12 +1327,12 @@ More information about extractors can be found in the <a href="https://docs.rs/a
 
 When testing controllers, the goal is to call the router's controller endpoint and verify the HTTP response, including the status code, response content, headers, and more.
 
-To initialize a test request, use `use loco_rs::testing::prelude::*;`, which prepares your app routers, providing the request instance and the application context.
+To initialize a test request, use `use roco_rs::testing::prelude::*;`, which prepares your app routers, providing the request instance and the application context.
 
 In the following example, we have a POST endpoint that returns the data sent in the POST request.
 
 ```rust
-use loco_rs::testing::prelude::*;
+use roco_rs::testing::prelude::*;
 
 #[tokio::test]
 #[serial]
@@ -1363,7 +1363,7 @@ Instead of using `request`, as described in the documentation for synchronous te
 Note: If you cancel the test run midway (e.g., by pressing `Ctrl + C`), the cleanup process will not execute, and the database tables will remain. In such cases, you will need to manually remove them.
 
 ```rust
-use loco_rs::testing::prelude::*;
+use roco_rs::testing::prelude::*;
 
 #[tokio::test]
 async fn can_print_echo() {
@@ -1386,7 +1386,7 @@ async fn can_print_echo() {
 The following example works for both JWT and API_KEY Authentication.
 
 ```rust
-use loco_rs::testing::prelude::*;
+use roco_rs::testing::prelude::*;
 use super::prepare_data;
 
 #[tokio::test]

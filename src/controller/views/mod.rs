@@ -44,7 +44,7 @@ impl<E> ViewEngine<E> {
 /// # Example
 /// ```
 /// use serde_json::json;
-/// use loco_rs::controller::views;
+/// use roco_rs::controller::views;
 /// let render = views::template("{{name}} website", json!({"name": "Loco"})).unwrap();
 /// assert_eq!(render, "Loco website");
 /// ```

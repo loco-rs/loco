@@ -411,10 +411,10 @@ $ cargo loco generate model movies long_title:string user:references:added_by di
 
 ### Authoring migrations
 
-To use the migrations DSL, make sure you have the following `loco_rs::schema::*` import and SeaORM `prelude`.
+To use the migrations DSL, make sure you have the following `roco_rs::schema::*` import and SeaORM `prelude`.
 
 ```rust
-use loco_rs::schema::*;
+use roco_rs::schema::*;
 use sea_orm_migration::prelude::*;
 ```
 
@@ -539,7 +539,7 @@ Enum types allow you to create columns with a predefined set of values. While en
 To create enum types, you need to manually write a migration. Here's an example:
 
 ```rust
-use loco_rs::schema::*;
+use roco_rs::schema::*;
 use sea_orm_migration::prelude::*;
 
 #[derive(DeriveMigrationName)]
@@ -838,7 +838,7 @@ Options:
 2. In your test section, follow the example below:
 
 ```rust
-use loco_rs::testing::prelude::*;
+use roco_rs::testing::prelude::*;
 
 #[tokio::test]
 #[serial]
@@ -877,7 +877,7 @@ Load this [initializer](@/docs/extras/pluggability.md#initializers) into `initia
 ```rs
 async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
         let  initializers: Vec<Box<dyn Initializer>> = vec![
-            Box::new(loco_rs::initializers::extra_db::ExtraDbInitializer),
+            Box::new(roco_rs::initializers::extra_db::ExtraDbInitializer),
         ];
 
         Ok(initializers)
@@ -932,7 +932,7 @@ Next load this [initializer](@/docs/extras/pluggability.md#initializers) into `i
 ```rs
 async fn initializers(ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
         let  initializers: Vec<Box<dyn Initializer>> = vec![
-            Box::new(loco_rs::initializers::multi_db::MultiDbInitializer),
+            Box::new(roco_rs::initializers::multi_db::MultiDbInitializer),
         ];
 
         Ok(initializers)
@@ -944,7 +944,7 @@ Now, you can use the multiple databases in your controller:
 ```rust
 use sea_orm::DatabaseConnection;
 use axum::{response::IntoResponse, Extension};
-use loco_rs::db::MultiDb;
+use roco_rs::db::MultiDb;
 
 pub async fn list(
     State(ctx): State<AppContext>,
@@ -962,7 +962,7 @@ If you used the generator to crate a model migration, you should also have an au
 A typical test contains everything you need to set up test data, boot the app, and reset the database automatically before the testing code runs. It looks like this:
 
 ```rust
-use loco_rs::testing::prelude::*;
+use roco_rs::testing::prelude::*;
 
 #[tokio::test]
 #[serial]
@@ -1020,7 +1020,7 @@ Instead of using `boot_test`, as described in the documentation for synchronous 
 Note: If you cancel the test run midway (e.g., by pressing `Ctrl + C`), the cleanup process will not execute, and the database tables will remain. In such cases, you will need to manually remove them.
 
 ```rust
-use loco_rs::testing::prelude::*;
+use roco_rs::testing::prelude::*;
 
 #[tokio::test]
 async fn boot_test_with_create_db() {
@@ -1031,7 +1031,7 @@ async fn boot_test_with_create_db() {
 ## Seeding
 
 ```rust
-use loco_rs::testing::prelude::*;
+use roco_rs::testing::prelude::*;
 
 #[tokio::test]
 #[serial]
@@ -1056,7 +1056,7 @@ Example using [insta](https://crates.io/crates/insta) for snapshots.
 in the following example you can use `cleanup_user_model` which clean all user model data.
 
 ```rust
-use loco_rs::testing::prelude::*;
+use roco_rs::testing::prelude::*;
 
 #[tokio::test]
 #[serial]

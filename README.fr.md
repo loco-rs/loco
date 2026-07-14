@@ -5,7 +5,7 @@
    <h1>Loco vous souhaite la bienvenue</h1>
 
    <h3>
-🚂 Loco c'est Rust on Rails.
+🚂 Roco c'est Rust on Rails.
    </h3>
 
    [![crate](https://img.shields.io/crates/v/loco-rs.svg)](https://crates.io/crates/loco-rs)
@@ -56,7 +56,7 @@ cargo install sea-orm-cli # Only when DB is needed
 Vous pouvez maintenant créer votre nouvelle application (choisissez "`SaaS` app").
 
 
-<!-- <snip id="loco-cli-new-from-template" inject_from="yaml" template="sh"> -->
+<!-- <snip id="roco-cli-new-from-template" inject_from="yaml" template="sh"> -->
 ```sh
 ❯ loco new
 ✔ ❯ App name? · myapp

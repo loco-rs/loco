@@ -1,0 +1,46 @@
+name: "[roco-gen-deploy]"
+on:
+  schedule:
+    - cron: "0 0 * * *"
+
+env:
+  RUST_TOOLCHAIN: stable
+  TOOLCHAIN_PROFILE: minimal
+
+jobs:
+  g-deploy-docker:
+    # This workflow creates a new roco application and builds a Docker image
+    # We only want this to run on the main repository (roco-rs/roco) and not on forks because:
+    # 1. It consumes GitHub Actions minutes unnecessarily on forks
+    # 2. The Docker build and deployment is specific to the main repository
+    # 3. Forks typically don't need to run this automated deployment process
+    if: github.repository == 'roco-rs/roco'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install seaorm cli
+        run: cargo install sea-orm-cli
+
+      - name: install 'roco new'
+        run: |
+          cargo install roco
+
+      - name: create myapp
+        run: |
+          roco new -n myapp --db sqlite --bg async --assets serverside -a
+
+      - name:
+        run: cargo roco generate deployment docker && docker build -t demo .
+        working-directory: ./myapp
+

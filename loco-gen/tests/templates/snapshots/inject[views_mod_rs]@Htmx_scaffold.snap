@@ -1,5 +1,0 @@
----
-source: loco-gen/tests/templates/scaffold.rs
-expression: "fs::read_to_string(base_views_path.join(\"mod.rs\")).expect(\"Failed to read mod.rs\")"
----
-pub mod movie;

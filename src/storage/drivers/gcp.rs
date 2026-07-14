@@ -7,7 +7,7 @@ use crate::storage::{drivers::opendal_adapter::OpendalAdapter, StorageResult};
 ///
 /// # Examples
 ///```
-/// use loco_rs::storage::drivers::gcp;
+/// use roco_rs::storage::drivers::gcp;
 /// let gcp_driver = gcp::new("key", "credential_path");
 /// ```
 ///

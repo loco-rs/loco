@@ -80,7 +80,7 @@ You'll be mostly looking at your terminal for errors while developing your app, 
 
 ```bash
 2024-02-xxx DEBUG http-request: tower_http::trace::on_request: started processing request http.method=GET http.uri=/notes http.version=HTTP/1.1 http.user_agent=curl/8.1.2 environment=development request_id=8622e624-9bda-49ce-9730-876f2a8a9a46
-2024-02-xxx11T12:19:25.295954Z ERROR http-request: loco_rs::controller: controller_error error.msg=invalid type: string "foo", expected a sequence error.details=JSON(Error("invalid type: string \"foo\", expected a sequence", line: 0, column: 0)) error.chain="" http.method=GET http.uri=/notes http.version=HTTP/1.1 http.user_agent=curl/8.1.2 environment=development request_id=8622e624-9bda-49ce-9730-876f2a8a9a46
+2024-02-xxx11T12:19:25.295954Z ERROR http-request: roco_rs::controller: controller_error error.msg=invalid type: string "foo", expected a sequence error.details=JSON(Error("invalid type: string \"foo\", expected a sequence", line: 0, column: 0)) error.chain="" http.method=GET http.uri=/notes http.version=HTTP/1.1 http.user_agent=curl/8.1.2 environment=development request_id=8622e624-9bda-49ce-9730-876f2a8a9a46
 ```
 
 Usually you can expect the following from errors:
@@ -226,8 +226,8 @@ To add health checks to your initializer, implement the `check` method:
 
 ```rust
 use async_trait::async_trait;
-use loco_rs::app::{AppContext, Initializer};
-use loco_rs::doctor::{Check, CheckStatus};
+use roco_rs::app::{AppContext, Initializer};
+use roco_rs::doctor::{Check, CheckStatus};
 
 struct MyCustomInitializer;
 
@@ -237,11 +237,11 @@ impl Initializer for MyCustomInitializer {
         "my_custom_initializer".to_string()
     }
 
-    async fn check(&self, app_context: &AppContext) -> loco_rs::Result<Option<Check>> {
+    async fn check(&self, app_context: &AppContext) -> roco_rs::Result<Option<Check>> {
         // Check if your configuration exists
         let config = app_context.config.initializers.as_ref()
             .and_then(|init| init.get("my_custom_initializer"))
-            .ok_or_else(|| loco_rs::Error::Message("Configuration not found".to_string()))?;
+            .ok_or_else(|| roco_rs::Error::Message("Configuration not found".to_string()))?;
 
         // Perform your health check
         match self.test_connection(config).await {
@@ -407,7 +407,7 @@ use axum::{
     response::Response,
 };
 use futures_util::future::BoxFuture;
-use loco_rs::prelude::{auth::JWTWithUser, *};
+use roco_rs::prelude::{auth::JWTWithUser, *};
 use tower::{Layer, Service};
 
 use crate::models::{users};
@@ -658,7 +658,7 @@ use axum::{
     response::Response,
 };
 use futures_util::future::BoxFuture;
-use loco_rs::prelude::{auth::JWTWithUser, *};
+use roco_rs::prelude::{auth::JWTWithUser, *};
 use tower::{Layer, Service};
 
 use crate::models::{users};
@@ -882,7 +882,7 @@ You have two main ways to retrieve data in your controllers:
 
   ```rust
   // In src/controllers/some_controller.rs
-  use loco_rs::prelude::*;
+  use roco_rs::prelude::*;
   use crate::app::MyClonableService; // Or wherever it's defined
 
   #[debug_handler]
@@ -900,7 +900,7 @@ You have two main ways to retrieve data in your controllers:
 
   ```rust
   // In src/controllers/some_controller.rs
-  use loco_rs::prelude::*;
+  use roco_rs::prelude::*;
   use crate::app::MyNonClonableService; // Or wherever it's defined
 
   #[debug_handler]

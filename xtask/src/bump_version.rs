@@ -15,11 +15,11 @@ use crate::{
     out, utils,
 };
 
-static REPLACE_LOCO_LIB_VERSION_: OnceLock<Regex> = OnceLock::new();
-static REPLACE_LOCO_PACKAGE_VERSION: OnceLock<Regex> = OnceLock::new();
+static REPLACE_ROCO_LIB_VERSION_: OnceLock<Regex> = OnceLock::new();
+static REPLACE_ROCO_PACKAGE_VERSION: OnceLock<Regex> = OnceLock::new();
 
-fn get_replace_loco_lib_version() -> &'static Regex {
-    REPLACE_LOCO_LIB_VERSION_.get_or_init(|| {
+fn get_replace_roco_lib_version() -> &'static Regex {
+    REPLACE_ROCO_LIB_VERSION_.get_or_init(|| {
         Regex::new(
             r#"(?P<name>name\s*=\s*".+\s+version\s*=\s*")(?P<version>[0-9]+\.[0-9]+\.[0-9]+)"#,
         )
@@ -27,9 +27,9 @@ fn get_replace_loco_lib_version() -> &'static Regex {
     })
 }
 
-fn get_replace_loco_package_version() -> &'static Regex {
-    REPLACE_LOCO_PACKAGE_VERSION
-        .get_or_init(|| Regex::new(r#"loco-rs = \{ (version|path) = "[^"]+""#).unwrap())
+fn get_replace_roco_package_version() -> &'static Regex {
+    REPLACE_ROCO_PACKAGE_VERSION
+        .get_or_init(|| Regex::new(r#"roco-rs = \{ (version|path) = "[^"]+""#).unwrap())
 }
 pub struct BumpVersion {
     pub base_dir: PathBuf,
@@ -38,21 +38,21 @@ pub struct BumpVersion {
 }
 
 impl BumpVersion {
-    /// Bump all necessary loco resources with the given version.
+    /// Bump all necessary roco resources with the given version.
     ///
     /// # Errors
     /// Returns an error when it could not update one of the resources.
     pub fn run(&self) -> Result<()> {
-        self.bump_loco_framework(".")?;
-        self.bump_loco_framework("loco-gen")?;
-        self.bump_subcrates_version(&["loco-gen"])?;
+        self.bump_roco_framework(".")?;
+        self.bump_roco_framework("roco-gen")?;
+        self.bump_subcrates_version(&["roco-gen"])?;
 
         // change starters from fixed (v0.1.x) to local ("../../") in order
         // to test all starters against what is going to be released
         // when finished successfully, you're allowed to bump all starters to the new
         // version
         if self.bump_starters {
-            self.modify_starters_loco_version("loco-rs = { path = \"../../\"")?;
+            self.modify_starters_roco_version("roco-rs = { path = \"../../\"")?;
 
             println!("Testing starters CI");
 
@@ -70,23 +70,23 @@ impl BumpVersion {
                 }
             }
 
-            self.modify_starters_loco_version(&format!(
-                "loco-rs = {{ version = \"{}\"",
+            self.modify_starters_roco_version(&format!(
+                "roco-rs = {{ version = \"{}\"",
                 self.version
             ))?;
-            println!("{}", "Bump loco starters finished successfully".green());
+            println!("{}", "Bump roco starters finished successfully".green());
         }
 
         Ok(())
     }
 
-    /// Bump the version of the loco library in the root package's Cargo.toml
+    /// Bump the version of the roco library in the root package's Cargo.toml
     /// file.
     ///
     /// # Errors
-    /// Returns an error when it could not parse the loco Cargo.toml file or has
+    /// Returns an error when it could not parse the roco Cargo.toml file or has
     /// an error updating the file.
-    fn bump_loco_framework(&self, path: &str) -> Result<()> {
+    fn bump_roco_framework(&self, path: &str) -> Result<()> {
         println!("bumping to `{}` on `{path}`", self.version);
 
         let mut content = String::new();
@@ -94,14 +94,14 @@ impl BumpVersion {
         let cargo_toml_file = self.base_dir.join(path).join("Cargo.toml");
         fs::File::open(&cargo_toml_file)?.read_to_string(&mut content)?;
 
-        if !get_replace_loco_lib_version().is_match(&content) {
+        if !get_replace_roco_lib_version().is_match(&content) {
             return Err(Error::BumpVersion {
                 path: cargo_toml_file,
                 package: "root_package".to_string(),
             });
         }
 
-        let content = get_replace_loco_lib_version()
+        let content = get_replace_roco_lib_version()
             .replace(&content, |captures: &regex::Captures<'_>| {
                 format!("{}{}", &captures["name"], self.version)
             });
@@ -151,35 +151,35 @@ impl BumpVersion {
         Ok(())
     }
 
-    /// Update the dependencies of loco-rs in all starter projects to the given
+    /// Update the dependencies of roco-rs in all starter projects to the given
     /// version.
     ///
     /// # Errors
-    /// Returns an error when it could not parse a loco Cargo.toml file or has
+    /// Returns an error when it could not parse a roco Cargo.toml file or has
     /// an error updating the file.
-    pub fn modify_starters_loco_version(&self, replace_with: &str) -> Result<()> {
+    pub fn modify_starters_roco_version(&self, replace_with: &str) -> Result<()> {
         let starter_projects =
             utils::get_cargo_folders(&self.base_dir.join(utils::FOLDER_STARTERS))?;
 
         for starter_project in starter_projects {
-            Self::replace_loco_rs_version(&starter_project, replace_with)?;
+            Self::replace_roco_rs_version(&starter_project, replace_with)?;
         }
 
         Ok(())
     }
 
-    fn replace_loco_rs_version(path: &Path, replace_with: &str) -> Result<()> {
+    fn replace_roco_rs_version(path: &Path, replace_with: &str) -> Result<()> {
         let mut content = String::new();
         let cargo_toml_file = path.join("Cargo.toml");
         fs::File::open(&cargo_toml_file)?.read_to_string(&mut content)?;
 
-        if !get_replace_loco_package_version().is_match(&content) {
+        if !get_replace_roco_package_version().is_match(&content) {
             return Err(Error::BumpVersion {
                 path: cargo_toml_file,
-                package: "loco-rs".to_string(),
+                package: "roco-rs".to_string(),
             });
         }
-        content = get_replace_loco_package_version()
+        content = get_replace_roco_package_version()
             .replace_all(&content, |_captures: &regex::Captures<'_>| {
                 replace_with.to_string()
             })

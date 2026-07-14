@@ -38,6 +38,13 @@ async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<Ax
 }
 ```
 
+## v0.17.0
+- First Roco Release
+- Fork from 0.16.4 [Loco](https://github.com/loco-rs/loco)
+- Package / import / CLI renames
+- ROCO_ENV primary with LOCO_ENV compatibility.
+- Known breaking changes and migration instructions.
+- Clear attribution for inherited Loco changes.
 
 
 ## v0.16.4 

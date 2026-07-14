@@ -232,7 +232,7 @@ pub async fn initialize_database(pool: &PgPool) -> Result<()> {
     debug!("Initializing job database tables");
     sqlx::raw_sql(&format!(
         r"
-            CREATE TABLE IF NOT EXISTS pg_loco_queue (
+            CREATE TABLE IF NOT EXISTS pg_roco_queue (
                 id VARCHAR NOT NULL,
                 name VARCHAR NOT NULL,
                 task_data JSONB NOT NULL,
@@ -275,7 +275,7 @@ pub async fn enqueue(
     let id = Ulid::new().to_string();
     debug!(job_id = %id, job_name = %name, run_at = %run_at, tags = ?tags, "Enqueueing job");
     sqlx::query(
-        "INSERT INTO pg_loco_queue (id, task_data, name, run_at, interval, tags) VALUES ($1, $2, $3, \
+        "INSERT INTO pg_roco_queue (id, task_data, name, run_at, interval, tags) VALUES ($1, $2, $3, \
          $4, $5, $6)",
     )
     .bind(id.clone())
@@ -294,7 +294,7 @@ async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>>
 
     // Base query
     let mut query = String::from(
-        "SELECT id, name, task_data, status, run_at, interval, tags FROM pg_loco_queue WHERE status = $1 AND run_at <= NOW() "
+        "SELECT id, name, task_data, status, run_at, interval, tags FROM pg_roco_queue WHERE status = $1 AND run_at <= NOW() "
     );
 
     // Apply tag filtering logic
@@ -339,7 +339,7 @@ async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>>
 
     if let Some(job) = row {
         trace!(job_id = %job.id, job_name = %job.name, job_tags = ?job.tags, "Dequeueing job for processing");
-        sqlx::query("UPDATE pg_loco_queue SET status = $1, updated_at = NOW() WHERE id = $2")
+        sqlx::query("UPDATE pg_roco_queue SET status = $1, updated_at = NOW() WHERE id = $2")
             .bind(JobStatus::Processing.to_string())
             .bind(&job.id)
             .execute(&mut *tx)
@@ -372,7 +372,7 @@ async fn complete_job(pool: &PgPool, id: &JobId, interval_ms: Option<i64>) -> Re
     );
 
     sqlx::query(
-        "UPDATE pg_loco_queue SET status = $1, updated_at = NOW(), run_at = $2 WHERE id = $3",
+        "UPDATE pg_roco_queue SET status = $1, updated_at = NOW(), run_at = $2 WHERE id = $3",
     )
     .bind(status)
     .bind(run_at)
@@ -388,7 +388,7 @@ async fn fail_job(pool: &PgPool, id: &JobId, error: &crate::Error) -> Result<()>
     debug!(job_id = %id, error = %msg, "Marking job as failed");
     let error_json = serde_json::json!({ "error": msg });
     sqlx::query(
-        "UPDATE pg_loco_queue SET status = $1, updated_at = NOW(), task_data = task_data || \
+        "UPDATE pg_roco_queue SET status = $1, updated_at = NOW(), task_data = task_data || \
          $2::jsonb WHERE id = $3",
     )
     .bind(JobStatus::Failed.to_string())
@@ -399,7 +399,7 @@ async fn fail_job(pool: &PgPool, id: &JobId, error: &crate::Error) -> Result<()>
     Ok(())
 }
 
-/// Cancels jobs in the `pg_loco_queue` table by their name.
+/// Cancels jobs in the `pg_roco_queue` table by their name.
 ///
 /// This function updates the status of all jobs with the given `name` and a status of
 /// [`JobStatus::Queued`] to [`JobStatus::Cancelled`]. The update also sets the `updated_at` timestamp to the
@@ -411,7 +411,7 @@ async fn fail_job(pool: &PgPool, id: &JobId, error: &crate::Error) -> Result<()>
 pub async fn cancel_jobs_by_name(pool: &PgPool, name: &str) -> Result<()> {
     debug!(job_name = %name, "Cancelling queued jobs by name");
     sqlx::query(
-        "UPDATE pg_loco_queue SET status = $1, updated_at = NOW() WHERE name = $2 AND status = $3",
+        "UPDATE pg_roco_queue SET status = $1, updated_at = NOW() WHERE name = $2 AND status = $3",
     )
     .bind(JobStatus::Cancelled.to_string())
     .bind(name)
@@ -427,13 +427,13 @@ pub async fn cancel_jobs_by_name(pool: &PgPool, name: &str) -> Result<()> {
 ///
 /// This function will return an error if it fails
 pub async fn clear(pool: &PgPool) -> Result<()> {
-    sqlx::query("DELETE FROM pg_loco_queue")
+    sqlx::query("DELETE FROM pg_roco_queue")
         .execute(pool)
         .await?;
     Ok(())
 }
 
-/// Deletes jobs from the `pg_loco_queue` table based on their status.
+/// Deletes jobs from the `pg_roco_queue` table based on their status.
 ///
 /// This function removes all jobs with a status that matches any of the statuses provided
 /// in the `status` argument. The statuses are checked against the `status` column in the
@@ -449,14 +449,14 @@ pub async fn clear_by_status(pool: &PgPool, status: Vec<JobStatus>) -> Result<()
         .collect::<Vec<String>>();
 
     debug!(status = ?status, "Clearing jobs by status");
-    sqlx::query("DELETE FROM pg_loco_queue WHERE status = ANY($1)")
+    sqlx::query("DELETE FROM pg_roco_queue WHERE status = ANY($1)")
         .bind(status_in)
         .execute(pool)
         .await?;
     Ok(())
 }
 
-/// Deletes jobs from the `pg_loco_queue` table that are older than a specified number of days.
+/// Deletes jobs from the `pg_roco_queue` table that are older than a specified number of days.
 ///
 /// This function removes jobs that have a `created_at` timestamp older than the provided
 /// number of days. Additionally, if a `status` is provided, only jobs with a status matching
@@ -471,7 +471,7 @@ pub async fn clear_jobs_older_than(
     status: Option<&Vec<JobStatus>>,
 ) -> Result<()> {
     let mut query_builder = sqlx::query_builder::QueryBuilder::<sqlx::Postgres>::new(
-        "DELETE FROM pg_loco_queue WHERE created_at < NOW() - INTERVAL '1 day' * ",
+        "DELETE FROM pg_roco_queue WHERE created_at < NOW() - INTERVAL '1 day' * ",
     );
 
     query_builder.push_bind(age_days);
@@ -507,7 +507,7 @@ pub async fn requeue(pool: &PgPool, age_minutes: &i64) -> Result<()> {
     let interval = format!("{age_minutes} MINUTE");
 
     let query = format!(
-        "UPDATE pg_loco_queue SET status = $1, updated_at = NOW() WHERE status = $2 AND updated_at <= NOW() - INTERVAL '{interval}'"
+        "UPDATE pg_roco_queue SET status = $1, updated_at = NOW() WHERE status = $2 AND updated_at <= NOW() - INTERVAL '{interval}'"
     );
 
     debug!(age_minutes = age_minutes, "Requeueing stalled jobs");
@@ -527,13 +527,13 @@ pub async fn requeue(pool: &PgPool, age_minutes: &i64) -> Result<()> {
 /// This function will return an error if it fails
 pub async fn ping(pool: &PgPool) -> Result<()> {
     trace!("Pinging job queue database");
-    sqlx::query("SELECT id from pg_loco_queue LIMIT 1")
+    sqlx::query("SELECT id from pg_roco_queue LIMIT 1")
         .execute(pool)
         .await?;
     Ok(())
 }
 
-/// Retrieves a list of jobs from the `pg_loco_queue` table in the database.
+/// Retrieves a list of jobs from the `pg_roco_queue` table in the database.
 ///
 /// This function queries the database for jobs, optionally filtering by their
 /// `status`. If a status is provided, only jobs with statuses included in the
@@ -548,7 +548,7 @@ pub async fn get_jobs(
     status: Option<&Vec<JobStatus>>,
     age_days: Option<i64>,
 ) -> Result<Vec<Job>, sqlx::Error> {
-    let mut query = String::from("SELECT * FROM pg_loco_queue where true");
+    let mut query = String::from("SELECT * FROM pg_roco_queue where true");
 
     if let Some(status) = status {
         let status_in = status
@@ -677,7 +677,7 @@ mod tests {
     }
 
     async fn get_all_jobs(pool: &PgPool) -> Vec<Job> {
-        sqlx::query("select * from pg_loco_queue")
+        sqlx::query("select * from pg_roco_queue")
             .fetch_all(pool)
             .await
             .expect("get jobs")
@@ -687,7 +687,7 @@ mod tests {
     }
 
     async fn get_job(pool: &PgPool, id: &str) -> Job {
-        sqlx::query(&format!("select * from pg_loco_queue where id = '{id}'"))
+        sqlx::query(&format!("select * from pg_roco_queue where id = '{id}'"))
             .fetch_all(pool)
             .await
             .expect("get jobs")
@@ -720,7 +720,7 @@ mod tests {
 
         let table_info: Vec<TableInfo> = query_as::<_, TableInfo>(
             "SELECT * FROM information_schema.columns WHERE table_name =
-    'pg_loco_queue'",
+    'pg_roco_queue'",
         )
         .fetch_all(&pool)
         .await
@@ -914,7 +914,7 @@ mod tests {
         let (pool, _container) = setup_pg_test().await;
         tests_cfg::queue::postgres_seed_data(&pool).await;
 
-        let job_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM pg_loco_queue")
+        let job_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM pg_roco_queue")
             .fetch_one(&pool)
             .await
             .unwrap();
@@ -922,7 +922,7 @@ mod tests {
         assert_ne!(job_count, 0);
 
         assert!(clear(&pool).await.is_ok());
-        let job_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM pg_loco_queue")
+        let job_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM pg_roco_queue")
             .fetch_one(&pool)
             .await
             .unwrap();
@@ -978,7 +978,7 @@ mod tests {
         let (pool, _container) = setup_pg_test().await;
 
         sqlx::query(
-           r"INSERT INTO pg_loco_queue (id, name, task_data, status, run_at,created_at, updated_at) VALUES
+           r"INSERT INTO pg_roco_queue (id, name, task_data, status, run_at,created_at, updated_at) VALUES
              ('job1', 'Test Job 1', '{}', 'queued', NOW(), NOW() - INTERVAL '15days', NOW()),
              ('job2', 'Test Job 2', '{}', 'queued', NOW(),NOW() - INTERVAL '5 days', NOW()),
              ('job3', 'Test Job 3', '{}','queued', NOW(), NOW(), NOW())"
@@ -997,7 +997,7 @@ mod tests {
         let (pool, _container) = setup_pg_test().await;
 
         sqlx::query(
-           r"INSERT INTO pg_loco_queue (id, name, task_data, status, run_at,created_at, updated_at) VALUES
+           r"INSERT INTO pg_roco_queue (id, name, task_data, status, run_at,created_at, updated_at) VALUES
              ('job1', 'Test Job 1', '{}', 'completed', NOW(), NOW() - INTERVAL '20days', NOW()),
              ('job2', 'Test Job 2', '{}', 'failed', NOW(),NOW() - INTERVAL '15 days', NOW()),
              ('job3', 'Test Job 3', '{}', 'completed', NOW(),NOW() - INTERVAL '5 days', NOW()),
@@ -1053,7 +1053,7 @@ mod tests {
         let (pool, _container) = setup_pg_test().await;
 
         sqlx::query(
-            r"INSERT INTO pg_loco_queue (id, name, task_data, status, run_at,created_at, updated_at) VALUES
+            r"INSERT INTO pg_roco_queue (id, name, task_data, status, run_at,created_at, updated_at) VALUES
              ('job1', 'Test Job 1', '{}', 'completed', NOW(), NOW() - INTERVAL '20days', NOW()),
              ('job2', 'Test Job 2', '{}', 'failed', NOW(),NOW() - INTERVAL '15 days', NOW()),
              ('job3', 'Test Job 3', '{}', 'completed', NOW(),NOW() - INTERVAL '5 days', NOW()),
@@ -1080,7 +1080,7 @@ mod tests {
         let (pool, _container) = setup_pg_test().await;
 
         sqlx::query(
-            r"INSERT INTO pg_loco_queue (id, name, task_data, status, run_at,created_at, updated_at) VALUES
+            r"INSERT INTO pg_roco_queue (id, name, task_data, status, run_at,created_at, updated_at) VALUES
              ('job1', 'Test Job 1', '{}', 'processing', NOW(),NOW(), NOW() - INTERVAL '20 minutes'),
              ('job2', 'Test Job 2', '{}', 'processing', NOW(),NOW(), NOW() - INTERVAL '5 minutes'),
              ('job3', 'Test Job 3', '{}', 'completed', NOW(),NOW(),NOW() - INTERVAL '5 minutes'),

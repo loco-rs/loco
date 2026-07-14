@@ -41,15 +41,15 @@ fn bump_version_in_file(
 }
 
 pub fn bump_version(version: &str) -> Result<()> {
-    // testing loco-new will test 4 combinations of starters
-    // sets LOCO_DEV_MODE_PATH=/<path-to>/projects/loco/ and shared cargo build path
-    let new_path = Path::new("loco-new");
+    // testing roco-new will test 4 combinations of starters
+    // sets ROCO_DEV_MODE_PATH=/<path-to>/projects/roco/ and shared cargo build path
+    let new_path = Path::new("roco-new");
     cargo_fmt(new_path)?;
     cargo_clippy(new_path)?;
-    if env::var("LOCO_DEV_MODE_PATH").is_err() {
-        let loco_path = current_dir()?.to_string_lossy().to_string();
-        println!("setting LOCO_DEV_MODE_PATH to `{loco_path}`");
-        env::set_var("LOCO_DEV_MODE_PATH", loco_path);
+    if env::var("ROCO_DEV_MODE_PATH").is_err() {
+        let roco_path = current_dir()?.to_string_lossy().to_string();
+        println!("setting ROCO_DEV_MODE_PATH to `{roco_path}`");
+        env::set_var("ROCO_DEV_MODE_PATH", roco_path);
 
         // this should accelerate starters compilation
         println!("setting CARGO_SHARED_PATH");
@@ -66,22 +66,22 @@ pub fn bump_version(version: &str) -> Result<()> {
     bump_version_in_file("Cargo.toml", r"(?m)^version.*$", &version_replacement, true);
 
     bump_version_in_file(
-        "loco-gen/Cargo.toml",
+        "roco-gen/Cargo.toml",
         r"(?m)^version.*$",
         &version_replacement,
         true,
     );
 
     // sync new version to subcrates in main Cargo.toml
-    let loco_gen_dep = format!(r#"loco-gen = {{ version = "{version}","#);
-    bump_version_in_file("Cargo.toml", r"(?m)^loco-gen [^,]*,", &loco_gen_dep, false);
+    let roco_gen_dep = format!(r#"roco-gen = {{ version = "{version}","#);
+    bump_version_in_file("Cargo.toml", r"(?m)^roco-gen [^,]*,", &roco_gen_dep, false);
 
-    // replace the loco new version pointer
-    // pub const LOCO_VERSION: &str = "0.13";
-    let const_version_replacement = format!(r#"pub const LOCO_VERSION: &str = "{version}";"#);
+    // replace the roco new version pointer
+    // pub const ROCO_VERSION: &str = "0.17";
+    let const_version_replacement = format!(r#"pub const ROCO_VERSION: &str = "{version}";"#);
     bump_version_in_file(
-        "loco-new/src/lib.rs",
-        r#"(?m)^pub const LOCO_VERSION: &str = "0.13";$"#,
+        "roco-new/src/lib.rs",
+        r#"(?m)^pub const ROCO_VERSION: &str = "0.17";$"#,
         &const_version_replacement,
         true,
     );
@@ -92,12 +92,12 @@ pub fn bump_version(version: &str) -> Result<()> {
     
     = framework = 
     
-    $ cd loco-gen && cargo publish
+    $ cd roco-gen && cargo publish
     $ cargo publish
     
-    = loco 'new' CLI =
+    = roco 'new' CLI =
     
-    $ cd loco-new && cargo-publish
+    $ cd roco-new && cargo-publish
     
     = docs =
 

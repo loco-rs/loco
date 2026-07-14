@@ -1,5 +1,0 @@
----
-source: loco-gen/tests/templates/worker.rs
-expression: "fs::read_to_string(worker_path.join(\"mod.rs\")).expect(\"Failed to read updated worker mod file: mod.rs\")"
----
-pub mod register_email;

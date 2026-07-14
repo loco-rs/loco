@@ -136,7 +136,7 @@ Now create a strongly typed `view` to encapsulate this template in `src/views/da
 
 ```rust
 // src/views/dashboard.rs
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 
 pub fn home(v: impl ViewRenderer) -> Result<impl IntoResponse> {
     format::render().view(&v, "home/hello.html", data!({}))
@@ -154,7 +154,7 @@ Next, go to your controller and use the view:
 
 ```rust
 // src/controllers/dashboard.rs
-use loco_rs::prelude::*;
+use roco_rs::prelude::*;
 
 use crate::views;
 
@@ -201,8 +201,8 @@ $ cargo loco routes
 
 ### How does it work?
 
-- `ViewEngine` is an extractor that's available to you via `loco_rs::prelude::*`
-- `TeraView` is the Tera view engine that we supply with Loco also available via `loco_rs::prelude::*`
+- `ViewEngine` is an extractor that's available to you via `roco_rs::prelude::*`
+- `TeraView` is the Tera view engine that we supply with Loco also available via `roco_rs::prelude::*`
 - Controllers need to deal with getting a request, calling some model logic, and then supplying a view with **models and other data**, not caring about how the view does its thing
 - `views::dashboard::home` is an opaque call, it hides the details of how a view works, or how the bytes find their way into a browser, which is a _Good Thing_
 - Should you ever want to swap a view engine, the encapsulation here works like magic. You can change the extractor type: `ViewEngine<Foobar>` and everything works, because `v` is eventually just a `ViewRenderer` trait
@@ -261,7 +261,7 @@ Here's an example for a dummy "Hello" view engine. It's a view engine that alway
 // src/initializers/hello_view_engine.rs
 use axum::{Extension, Router as AxumRouter};
 use async_trait::async_trait;
-use loco_rs::{
+use roco_rs::{
     app::{AppContext, Initializer},
     controller::views::{ViewEngine, ViewRenderer},
     Result,
@@ -339,7 +339,7 @@ loco-rs = { version = "...", features = ["embedded_assets"] }
 
 You can easily switch between using embedded assets and serving assets from the filesystem without any code changes in your controllers or views. The switch is handled by the presence or absence of the `embedded_assets` feature flag.
 
-However, to ensure Tera functions correctly when _not_ using embedded assets (i.e., serving from the filesystem), you need to ensure that your `src/initializers/view_engine.rs` file only contains the necessary Tera function registration if you had customized it previously. Specifically, for the translation function `t`, ensure your initializer looks like this if you are not using `loco_rs::tera_helpers::FluentLoader`:
+However, to ensure Tera functions correctly when _not_ using embedded assets (i.e., serving from the filesystem), you need to ensure that your `src/initializers/view_engine.rs` file only contains the necessary Tera function registration if you had customized it previously. Specifically, for the translation function `t`, ensure your initializer looks like this if you are not using `roco_rs::tera_helpers::FluentLoader`:
 
 ```rust
 tera_engine

@@ -7,7 +7,7 @@ use crate::storage::drivers::opendal_adapter::OpendalAdapter;
 ///
 /// # Examples
 ///```
-/// use loco_rs::storage::drivers::mem;
+/// use roco_rs::storage::drivers::mem;
 /// let mem_storage = mem::new();
 /// ```
 ///

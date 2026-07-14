@@ -5,7 +5,7 @@
 //!
 //! In the following example you can see how you can validate a user model
 //! ```rust,ignore
-//! use loco_rs::prelude::*;
+//! use roco_rs::prelude::*;
 //! pub use myapp::_entities::users::ActiveModel;
 //!
 //! // Validation structure

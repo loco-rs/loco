@@ -35,15 +35,15 @@ impl RunResults {
     }
 }
 
-/// Run CI on all Loco resources (lib, cli, starters, examples, etc.).
+/// Run CI on all Roco resources (lib, cli, starters, examples, etc.).
 ///
 /// # Errors
 /// when could not run ci on the given resource
 pub fn all_resources(base_dir: &Path) -> Result<Vec<RunResults>> {
     let mut result = vec![];
-    result.push(run(base_dir).expect("loco lib mast be tested"));
+    result.push(run(base_dir).expect("roco lib mast be tested"));
     result.extend(run_all_in_folder(&base_dir.join("examples"))?);
-    result.extend(run_all_in_folder(&base_dir.join("loco-new"))?);
+    result.extend(run_all_in_folder(&base_dir.join("roco-new"))?);
 
     Ok(result)
 }

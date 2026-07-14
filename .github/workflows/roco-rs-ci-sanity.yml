@@ -1,0 +1,64 @@
+# To optimize CI runtime:
+# A simpler "sanity check" workflow is introduced. 
+# This workflow only runs if changes in the PR do NOT include 
+# the `roco-gen` or `roco-new` paths.
+# (When changes are made to `roco-gen` or `roco-new`,
+# we run comprehensive tests to validate every generator command 
+# and template option.)
+
+# Purpose of the sanity check:
+# It performs basic validation by comparing the local changes 
+# against the templates. 
+# If any breaking changes are detected in the templates, 
+# the sanity check will fail, signaling an issue.
+
+name: "[roco_rs:sanity]"
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+env:
+  RUST_TOOLCHAIN: stable
+  TOOLCHAIN_PROFILE: minimal
+
+jobs:
+  sanity:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install seaorm cli
+        run: cargo install sea-orm-cli
+        
+      - run: cargo install --path roco-new
+      
+      - run: |
+          roco new -n myappdb --db sqlite --bg async --assets serverside -a
+          cd myappdb
+          cargo check
+          cargo build --release
+        env:
+          ROCO_DEV_MODE_PATH: ${{ github.workspace }}
+          
+      - run: |
+          roco new -n myapp --db none --bg async --assets none -a
+          cd myapp
+          cargo check
+          cargo build --release
+        env:
+          ROCO_DEV_MODE_PATH: ${{ github.workspace }}
+
+      

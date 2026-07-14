@@ -521,7 +521,7 @@ impl Queue {
         }
 
         let dump_file = path.join(format!(
-            "loco-dump-jobs-{}.yaml",
+            "roco-dump-jobs-{}.yaml",
             chrono::Utc::now().format("%Y-%m-%d-%H-%M-%S")
         ));
 
@@ -809,7 +809,7 @@ mod tests {
 
         queue.setup().await.expect("setup sqlite db");
 
-        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlt_loco_queue")
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlt_roco_queue")
             .fetch_one(&pool)
             .await
             .unwrap();
@@ -827,7 +827,7 @@ mod tests {
             .await
             .expect("dump import");
 
-        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlt_loco_queue")
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlt_roco_queue")
             .fetch_one(&pool)
             .await
             .unwrap();

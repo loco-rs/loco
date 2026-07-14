@@ -1,7 +1,0 @@
----
-source: loco-gen/tests/templates/controller.rs
-expression: collect_messages(&gen_result)
----
-* Controller `Movie` was added successfully.
-* movie/GET view was added successfully.
-* movie/POST view was added successfully.

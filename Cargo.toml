@@ -1,5 +1,5 @@
 [workspace]
-members = ["xtask", "loco-gen"]
+members = ["xtask", "roco-gen"]
 exclude = ["starters"]
 
 [workspace.package]
@@ -8,12 +8,12 @@ rust-version = "1.70"
 license = "Apache-2.0"
 
 [package]
-name = "loco-rs"
-version = "0.16.4"
+name = "roco-rs"
+version = "0.17.0"
 description = "The one-person framework for Rust"
-homepage = "https://loco.rs/"
-documentation = "https://docs.rs/loco-rs"
-repository = "https://github.com/loco-rs/loco"
+homepage = "https://rsonroco.com/"
+documentation = "https://docs.rs/roco-rs"
+repository = "https://github.com/roco-rs/roco"
 license.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -37,7 +37,7 @@ with-db = [
     "dep:sea-orm",
     "dep:sea-orm-migration",
     "dep:sqlx",
-    "loco-gen/with-db",
+    "roco-gen/with-db",
 ]
 # Storage features
 all_storage = ["storage_aws_s3", "storage_azure", "storage_gcp"]
@@ -56,7 +56,7 @@ integration_test = []
 embedded_assets = []
 
 [dependencies]
-loco-gen = { version = "0.16.1", path = "./loco-gen" }
+roco-gen = { version = "0.17.0", path = "./roco-gen" }
 backtrace_printer = { version = "1.3.0" }
 
 # cli
@@ -201,7 +201,7 @@ features = [
 features = ["testing"]
 
 [dev-dependencies]
-loco-rs = { path = ".", features = ["testing"] }
+roco-rs = { path = ".", features = ["testing"] }
 rstest = "0.21.0"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
 tree-fs = { version = "0.3" }

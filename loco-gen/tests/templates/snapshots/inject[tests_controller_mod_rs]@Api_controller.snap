@@ -1,5 +1,0 @@
----
-source: loco-gen/tests/templates/controller.rs
-expression: "fs::read_to_string(test_controllers_path.join(\"mod.rs\")).expect(\"test mod.rs missing\")"
----
-pub mod movie;

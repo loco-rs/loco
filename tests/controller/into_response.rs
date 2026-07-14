@@ -1,4 +1,4 @@
-use loco_rs::{controller, prelude::*, tests_cfg};
+use roco_rs::{controller, prelude::*, tests_cfg};
 use serde::{Deserialize, Serialize};
 
 use crate::infra_cfg;

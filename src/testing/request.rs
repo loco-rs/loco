@@ -172,7 +172,7 @@ pub async fn get_available_port() -> i32 {
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
-/// use loco_rs::testing::prelude::*;
+/// use roco_rs::testing::prelude::*;
 ///
 /// #[tokio::test]
 /// async fn test_create_user() {
@@ -195,7 +195,7 @@ pub async fn boot_test<H: Hooks>() -> Result<BootResult> {
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
-/// use loco_rs::testing::prelude::*;
+/// use roco_rs::testing::prelude::*;
 ///
 /// #[tokio::test]
 /// async fn test_create_user() {
@@ -235,7 +235,7 @@ pub async fn boot_test_with_create_db<H: Hooks>() -> Result<BootResultWrapper> {
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
-/// use loco_rs::testing::prelude::*;
+/// use roco_rs::testing::prelude::*;
 ///
 /// #[tokio::test]
 /// async fn test_create_user() {
@@ -287,7 +287,7 @@ where
 ///
 /// ```rust,ignore
 /// use myapp::app::App;
-/// use loco_rs::testing::prelude::*;
+/// use roco_rs::testing::prelude::*;
 ///
 /// #[tokio::test]
 /// #[serial]

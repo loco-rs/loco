@@ -9,7 +9,7 @@ use serde::{de::DeserializeOwned, Serialize};
 
 pub use self::drivers::CacheDriver;
 use crate::config;
-use crate::Result as LocoResult;
+use crate::Result as RocoResult;
 use std::sync::Arc;
 
 /// Errors related to cache operations
@@ -78,8 +78,8 @@ impl Cache {
     ///
     /// # Example
     /// ```
-    /// use loco_rs::cache::{self, CacheResult};
-    /// use loco_rs::config::InMemCacheConfig;
+    /// use roco_rs::cache::{self, CacheResult};
+    /// use roco_rs::config::InMemCacheConfig;
     ///
     /// pub async fn ping() -> CacheResult<()> {
     ///     let config = InMemCacheConfig { max_capacity: 100 };
@@ -98,8 +98,8 @@ impl Cache {
     ///
     /// # Example
     /// ```
-    /// use loco_rs::cache::{self, CacheResult};
-    /// use loco_rs::config::InMemCacheConfig;
+    /// use roco_rs::cache::{self, CacheResult};
+    /// use roco_rs::config::InMemCacheConfig;
     ///
     /// pub async fn contains_key() -> CacheResult<bool> {
     ///     let config = InMemCacheConfig { max_capacity: 100 };
@@ -118,8 +118,8 @@ impl Cache {
     ///
     /// # Example
     /// ```
-    /// use loco_rs::cache::{self, CacheResult};
-    /// use loco_rs::config::InMemCacheConfig;
+    /// use roco_rs::cache::{self, CacheResult};
+    /// use roco_rs::config::InMemCacheConfig;
     /// use serde::Deserialize;
     ///
     /// #[derive(Deserialize)]
@@ -137,8 +137,8 @@ impl Cache {
     ///
     /// # Example with String
     /// ```
-    /// use loco_rs::cache::{self, CacheResult};
-    /// use loco_rs::config::InMemCacheConfig;
+    /// use roco_rs::cache::{self, CacheResult};
+    /// use roco_rs::config::InMemCacheConfig;
     ///
     /// pub async fn get_string() -> CacheResult<Option<String>> {
     ///     let config = InMemCacheConfig { max_capacity: 100 };
@@ -165,8 +165,8 @@ impl Cache {
     ///
     /// # Example
     /// ```
-    /// use loco_rs::cache::{self, CacheResult};
-    /// use loco_rs::config::InMemCacheConfig;
+    /// use roco_rs::cache::{self, CacheResult};
+    /// use roco_rs::config::InMemCacheConfig;
     /// use serde::Serialize;
     ///
     /// #[derive(Serialize)]
@@ -185,8 +185,8 @@ impl Cache {
     ///
     /// # Example with String
     /// ```
-    /// use loco_rs::cache::{self, CacheResult};
-    /// use loco_rs::config::InMemCacheConfig;
+    /// use roco_rs::cache::{self, CacheResult};
+    /// use roco_rs::config::InMemCacheConfig;
     ///
     /// pub async fn insert_string() -> CacheResult<()> {
     ///     let config = InMemCacheConfig { max_capacity: 100 };
@@ -213,8 +213,8 @@ impl Cache {
     /// # Example
     /// ```
     /// use std::time::Duration;
-    /// use loco_rs::cache::{self, CacheResult};
-    /// use loco_rs::config::InMemCacheConfig;
+    /// use roco_rs::cache::{self, CacheResult};
+    /// use roco_rs::config::InMemCacheConfig;
     /// use serde::Serialize;
     ///
     /// #[derive(Serialize)]
@@ -234,8 +234,8 @@ impl Cache {
     /// # Example with String
     /// ```
     /// use std::time::Duration;
-    /// use loco_rs::cache::{self, CacheResult};
-    /// use loco_rs::config::InMemCacheConfig;
+    /// use roco_rs::cache::{self, CacheResult};
+    /// use roco_rs::config::InMemCacheConfig;
     ///
     /// pub async fn insert_string() -> CacheResult<()> {
     ///     let config = InMemCacheConfig { max_capacity: 100 };
@@ -266,8 +266,8 @@ impl Cache {
     ///
     /// # Example
     /// ```
-    /// use loco_rs::{app::AppContext};
-    /// use loco_rs::tests_cfg::app::*;
+    /// use roco_rs::{app::AppContext};
+    /// use roco_rs::tests_cfg::app::*;
     /// use serde::{Serialize, Deserialize};
     ///
     /// #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -287,8 +287,8 @@ impl Cache {
     ///
     /// # Example with String
     /// ```
-    /// use loco_rs::{app::AppContext};
-    /// use loco_rs::tests_cfg::app::*;
+    /// use roco_rs::{app::AppContext};
+    /// use roco_rs::tests_cfg::app::*;
     ///
     /// pub async fn get_or_insert_string(){
     ///    let app_ctx = get_app_context().await;
@@ -301,11 +301,11 @@ impl Cache {
     ///
     /// # Errors
     ///
-    /// A [`LocoResult`] indicating the success of the operation.
-    pub async fn get_or_insert<T, F>(&self, key: &str, f: F) -> LocoResult<T>
+    /// A [`RocoResult`] indicating the success of the operation.
+    pub async fn get_or_insert<T, F>(&self, key: &str, f: F) -> RocoResult<T>
     where
         T: Serialize + DeserializeOwned + Send + Sync,
-        F: Future<Output = LocoResult<T>> + Send,
+        F: Future<Output = RocoResult<T>> + Send,
     {
         if let Some(value) = self.get::<T>(key).await? {
             Ok(value)
@@ -323,8 +323,8 @@ impl Cache {
     /// # Example
     /// ```
     /// use std::time::Duration;
-    /// use loco_rs::{app::AppContext};
-    /// use loco_rs::tests_cfg::app::*;
+    /// use roco_rs::{app::AppContext};
+    /// use roco_rs::tests_cfg::app::*;
     /// use serde::{Serialize, Deserialize};
     ///
     /// #[derive(Serialize, Deserialize, PartialEq, Debug)]
@@ -345,8 +345,8 @@ impl Cache {
     /// # Example with String
     /// ```
     /// use std::time::Duration;
-    /// use loco_rs::{app::AppContext};
-    /// use loco_rs::tests_cfg::app::*;
+    /// use roco_rs::{app::AppContext};
+    /// use roco_rs::tests_cfg::app::*;
     ///
     /// pub async fn get_or_insert_string(){
     ///    let app_ctx = get_app_context().await;
@@ -359,16 +359,16 @@ impl Cache {
     ///
     /// # Errors
     ///
-    /// A [`LocoResult`] indicating the success of the operation.
+    /// A [`RocoResult`] indicating the success of the operation.
     pub async fn get_or_insert_with_expiry<T, F>(
         &self,
         key: &str,
         duration: Duration,
         f: F,
-    ) -> LocoResult<T>
+    ) -> RocoResult<T>
     where
         T: Serialize + DeserializeOwned + Send + Sync,
-        F: Future<Output = LocoResult<T>> + Send,
+        F: Future<Output = RocoResult<T>> + Send,
     {
         if let Some(value) = self.get::<T>(key).await? {
             Ok(value)
@@ -383,8 +383,8 @@ impl Cache {
     ///
     /// # Example
     /// ```
-    /// use loco_rs::cache::{self, CacheResult};
-    /// use loco_rs::config::InMemCacheConfig;
+    /// use roco_rs::cache::{self, CacheResult};
+    /// use roco_rs::config::InMemCacheConfig;
     ///
     /// pub async fn remove() -> CacheResult<()> {
     ///     let config = InMemCacheConfig { max_capacity: 100 };
@@ -404,8 +404,8 @@ impl Cache {
     ///
     /// # Example
     /// ```
-    /// use loco_rs::cache::{self, CacheResult};
-    /// use loco_rs::config::InMemCacheConfig;
+    /// use roco_rs::cache::{self, CacheResult};
+    /// use roco_rs::config::InMemCacheConfig;
     ///
     /// pub async fn clear() -> CacheResult<()> {
     ///     let config = InMemCacheConfig { max_capacity: 100 };

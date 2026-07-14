@@ -1,0 +1,5 @@
+---
+source: src/scheduler.rs
+expression: "format!(\"{scheduler}\")"
+---
+"#      job_name       run_on_start      schedule               tags               run\n1      print_task      false        */5 * * * * *          base, echo         \"foo\"\n2      run_on_start_task true         every 24 hours         start              \"echo \\\"Does this run on start?\\\" >> ./run_on_start.txt \"\n3      write_to_file   false        */5 * * * * *          base, write        \"echo roco >> ./scheduler.txt\"\n"

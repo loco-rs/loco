@@ -143,7 +143,7 @@ pub enum Error {
 
     #[cfg(debug_assertions)]
     #[error(transparent)]
-    Generators(#[from] loco_gen::Error),
+    Generators(#[from] roco_gen::Error),
 
     #[error(transparent)]
     VersionCheck(#[from] depcheck::VersionCheckError),
