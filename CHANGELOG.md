@@ -171,6 +171,20 @@ middleware subsystems. Follow the step-by-step
   the worker periodically requeues jobs stranded in `Processing` (e.g. by a
   crashed worker) back to `Queued`, instead of requiring a manual
   `cargo loco jobs requeue`. Disabled by default — existing behavior is unchanged.
+- **TLS to managed Postgres and Redis.** Postgres TLS works via the connection
+  URL (`sslmode=require`, `sslrootcert=...`) with no feature flag, and a new
+  `redis_tls` feature enables `rediss://` for both the queue and cache Redis
+  backends (webpki roots, pure-Rust `ring` provider — no C toolchain). New
+  how-to: "Connect to Postgres and Redis over TLS". ([#1191](https://github.com/loco-rs/loco/issues/1191), [#1341](https://github.com/loco-rs/loco/issues/1341))
+- **Typed, streaming `db::dump::<A>()`** — counterpart to `db::seed::<A>()` that
+  streams rows through their entity `Model` straight to disk (memory bounded to
+  a single row) with full type fidelity. New `Hooks::dump` (default dumps every
+  table; override it to call `db::dump` per entity) backs `cargo loco db seed
+  --dump`. ([#1691](https://github.com/loco-rs/loco/issues/1691))
+- **`logger::init_layer` / `logger::init_env_filter` are now public** building
+  blocks, so an app overriding `Hooks::init_logger` can reuse Loco's formatting
+  and filter policy while adding its own layers (e.g. `tracing-flame`, OTLP).
+  ([#1753](https://github.com/loco-rs/loco/issues/1753))
 
 ### Changed
 
@@ -214,6 +228,12 @@ middleware subsystems. Follow the step-by-step
 
 ### Fixed
 
+- **`db seed --dump` datetime round-trip on SQLite.** Loco's timestamptz columns
+  default to `CURRENT_TIMESTAMP`, which SQLite stores as space-separated text
+  (`"YYYY-MM-DD HH:MM:SS"`); dumps captured that verbatim and then failed
+  chrono's RFC3339 parse on re-seed (`Json("premature end of input")`). Dumps now
+  normalize such datetimes to RFC3339 (already-RFC3339 text is untouched).
+  ([#1736](https://github.com/loco-rs/loco/issues/1736), [#1691](https://github.com/loco-rs/loco/issues/1691))
 - `cargo fmt` error in `loco-new` ([#1669](https://github.com/loco-rs/loco/pull/1669)).
 - UUID pattern in form field generation ([#1665](https://github.com/loco-rs/loco/pull/1665)).
 - Clippy warnings for recent Rust ([#1705](https://github.com/loco-rs/loco/pull/1705)).
