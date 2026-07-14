@@ -55,6 +55,13 @@ cache_inmem = ["dep:moka"]
 cache_redis = ["dep:bb8-redis", "dep:bb8"]
 worker = ["dep:sqlx", "dep:ulid"]
 worker_redis = ["worker", "dep:redis"]
+# Redis over TLS (`rediss://`) for managed providers (ElastiCache, Upstash,
+# Azure Cache, ...). Arms both the worker and cache redis paths — the same
+# `redis` crate, unified by Cargo — with webpki-bundled roots (portable to
+# slim/distroless images). Enable alongside `worker_redis`/`cache_redis` and
+# use a `rediss://` URL in config; no code changes required. See `dep:rustls`
+# above for why the provider is pinned to ring.
+redis_tls = ["redis/tokio-rustls-comp", "redis/tls-rustls-webpki-roots", "dep:rustls"]
 # Embed assets into binary
 embedded_assets = []
 
@@ -149,17 +156,33 @@ bb8 = { version = "0.9", optional = true }
 tokio-cron-scheduler = { version = "0.15", features = ["signal"] }
 english-to-cron = { version = "0.1.2" }
 
-# worker: pg + sqlite backed queue workers
+# worker: pg + sqlite backed queue workers.
+# `tls-rustls-ring-webpki` gives the standalone pg/sqlite worker pool a TLS
+# backend on its own (matching sea-orm's `runtime-tokio-rustls`), so a
+# worker-only build — a pg queue without `with-db` — can still reach a
+# TLS-only managed Postgres. In `with-db` builds this unifies with sea-orm's
+# ring-based rustls. Managed Postgres TLS is then opt-in purely via the
+# connection URL (`sslmode=require`, `sslrootcert=...`); see the how-to docs.
 sqlx = { version = "0.9", default-features = false, features = [
     "json",
     "postgres",
     "chrono",
     "sqlite",
+    "tls-rustls-ring-webpki",
 ], optional = true }
 ulid = { version = "1", optional = true }
 
 # worker_redis: redis backed queue workers
 redis = { version = "1", features = ["aio", "tokio-comp"], optional = true }
+# `redis_tls` only: redis' TLS path calls `rustls::ClientConfig::builder()`,
+# which resolves rustls' *process-default* crypto provider at build time. redis
+# pulls rustls with no provider of its own, so we bring rustls with the
+# pure-Rust `ring` provider (no C toolchain — matching Loco's zero-friction
+# onboarding) to guarantee a provider is compiled in even for redis-only builds.
+# Unifies with sea-orm/sqlx, which also select ring.
+rustls = { version = "0.23", default-features = false, features = [
+    "ring",
+], optional = true }
 
 scraper = { version = "0.25.0", features = ["deterministic"], optional = true }
 
