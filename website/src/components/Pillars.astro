@@ -1,0 +1,191 @@
+---
+// Ported verbatim from the reference `.pillars`/`.pc`/`.applied`/`#stampInk`
+// blocks (markup + styles), see
+// docs/superpowers/specs/2026-07-17-homepage-direction-a-reference.html.
+//
+// The `.applied` stamp is a static, distressed rubber-stamp silhouette of
+// the Loco mark — grayscaled, contrast-boosted, and multiplied through the
+// `#stampInk` SVG filter (roughened edges + speckled ink loss). It has NO
+// entrance/fall-in animation (explicitly rejected in the plan) and is
+// positioned to clip at the card's top-right corner via the card's own
+// `overflow:hidden`.
+//
+// The reference inlines the mark as a base64 data: URI; here it's the
+// existing `/loco-mark.svg` static asset instead — same visual result,
+// no giant inline blob.
+const PILLARS = [
+  {icon:'🔋', title:'Batteries included', copy:'Service, data, emails, background jobs, tasks, and a CLI to drive it all — in the box from day one.'},
+  {icon:'◆', title:'Rails is great', copy:'Loco follows Rails. There, we said it — its concepts, carefully adapted to idiomatic Rust.'},
+  {icon:'✓', title:'Deliver with confidence', copy:'Unapologetically optimized for the solo developer. Complexity and heavy lifting tucked away.'},
+  {icon:'⚡', title:'Scale when needed', copy:'Split, reconfigure, or use only the parts of Loco you need. Grow without a rewrite.'},
+  {icon:'▲', title:'Build incrementally', copy:'Just a service. Or with a database. Or a background worker. Or a task. Use what you need.'},
+  {icon:'▦', title:'Test-driven everything', copy:'Models, controllers, jobs — test the whole app with very little effort. Ship fast, stay safe.'},
+];
+---
+
+<svg width="0" height="0" aria-hidden="true" style="position:absolute">
+  <filter id="stampInk" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="2" seed="4" result="warp"></feTurbulence>
+    <feDisplacementMap in="SourceGraphic" in2="warp" scale="5" xChannelSelector="R" yChannelSelector="G" result="rough"></feDisplacementMap>
+    <feTurbulence type="fractalNoise" baseFrequency="0.5 0.55" numOctaves="2" seed="11" result="grain"></feTurbulence>
+    <feColorMatrix in="grain" type="luminanceToAlpha" result="grainA"></feColorMatrix>
+    <feComponentTransfer in="grainA" result="mask"><feFuncA type="discrete" tableValues="1 1 0 1 0 1 1 0 1"></feFuncA></feComponentTransfer>
+    <feComposite in="rough" in2="mask" operator="in"></feComposite>
+  </filter>
+</svg>
+
+<section class="pillars">
+  <div class="wrap">
+    <div class="sec-head" data-reveal>
+      <h2>Empower the one-person team.</h2>
+      <p>Loco follows Rails — carefully adapted to modern Rust. The heavy lifting is tucked away so you can move fast, and pulled back out the moment you need to scale.</p>
+    </div>
+    <div class="grid">
+      {PILLARS.map((p) => (
+        <div class="pc" data-reveal>
+          <div class="ic">{p.icon}</div>
+          <span class="applied"><img src="/loco-mark.svg" alt="" /></span>
+          <h3>{p.title}</h3>
+          <div class="ln"></div>
+          <p>{p.copy}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .wrap {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 0 32px;
+    width: 100%;
+  }
+  section.pillars {
+    padding: 88px 0 34px;
+  }
+  .sec-head {
+    max-width: 52ch;
+  }
+  .sec-head h2 {
+    font-size: 38px;
+    letter-spacing: -0.03em;
+    font-weight: 800;
+    margin-top: 12px;
+    line-height: 1.08;
+  }
+  .sec-head p {
+    font-size: 17px;
+    color: var(--ink-2);
+    margin-top: 14px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 26px 24px;
+    margin-top: 52px;
+  }
+
+  .pc {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 30px 24px 26px;
+    box-shadow: 0 14px 30px -20px rgba(28, 23, 18, 0.32);
+    transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    overflow: hidden;
+  }
+  .pc:nth-child(odd) {
+    transform: rotate(-0.8deg);
+  }
+  .pc:nth-child(even) {
+    transform: rotate(0.8deg);
+  }
+  .pc:hover {
+    transform: rotate(0) translateY(-5px);
+    box-shadow: 0 26px 44px -22px rgba(28, 23, 18, 0.4);
+    border-color: rgba(252, 56, 32, 0.4);
+  }
+  .pc::before {
+    content: '';
+    position: absolute;
+    inset: 8px;
+    border: 1px dashed rgba(28, 23, 18, 0.15);
+    border-radius: 4px;
+    pointer-events: none;
+  }
+  /* feature icon */
+  .pc .ic {
+    position: relative;
+    width: 52px;
+    height: 58px;
+    background: rgba(252, 56, 32, 0.09);
+    border: 1.5px dashed rgba(252, 56, 32, 0.5);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: var(--red-ink);
+    transform: rotate(-5deg);
+    box-shadow: 0 4px 10px -6px rgba(28, 23, 18, 0.4);
+  }
+  .pc .ic::after {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border: 1px solid rgba(252, 56, 32, 0.28);
+    border-radius: 2px;
+  }
+  /* gray rubber-stamp silhouette of the logo, clipped at the card's corner
+     via the card's own overflow:hidden. Static — no entrance animation. */
+  .pc .applied {
+    position: absolute;
+    top: -14px;
+    right: -12px;
+    width: 82px;
+    height: 82px;
+    opacity: 0.52;
+    transform: rotate(-10deg);
+    pointer-events: none;
+  }
+  .pc .applied img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    filter: grayscale(1) contrast(1.15) url(#stampInk);
+    mix-blend-mode: multiply;
+  }
+  .pc .applied::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border: 3px solid #4a4a4a;
+    border-radius: 50%;
+    filter: url(#stampInk);
+    mix-blend-mode: multiply;
+  }
+  .pc h3 {
+    font-size: 17.5px;
+    margin: 20px 0 0;
+    letter-spacing: -0.01em;
+  }
+  .pc .ln {
+    height: 0;
+    border-top: 1px dashed rgba(28, 23, 18, 0.18);
+    margin: 11px 0 12px;
+    width: 44px;
+  }
+  .pc p {
+    font-size: 14.5px;
+    color: var(--ink-2);
+    line-height: 1.55;
+  }
+
+  @media (max-width: 900px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
