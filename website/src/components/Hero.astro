@@ -1,0 +1,271 @@
+---
+// Ported verbatim from the reference `.hero` block (markup + styles), see
+// docs/superpowers/specs/2026-07-17-homepage-direction-a-reference.html.
+//
+// The `.art` wrapper (position + the floating `.code` terminal card) lives
+// here; the `.frame` postcard itself is PostcardFrame.astro (Task 5) —
+// placed directly inside `.art` so `.art .frame` resolves at runtime for
+// home.ts's parallax code (`document.querySelector('.art .frame')`).
+//
+// `#term`/`.codebody` starts empty and is streamed into by `home.ts`'s
+// `initHome` (wired in Task 8); its fixed `height:104px; overflow:hidden`
+// below is what keeps scroll-streamed content from growing the card.
+import PostcardFrame from './PostcardFrame.astro';
+---
+
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <span class="eyebrow" data-reveal>● Batteries-included Rust · v1.0</span>
+      <h1 data-reveal>The <span class="u">one-person</span><br />framework for Rust.</h1>
+      <p class="lede" data-reveal>Everything you need to take a side-project or startup from an idea to production — models, controllers, jobs, mailers, auth — generated and wired together.</p>
+      <div class="cta-row" data-reveal>
+        <a class="btn btn-primary" href="#">Start building →</a>
+        <div class="install" data-copy="cargo install loco"><span><span class="dollar">$</span> cargo install loco</span><span class="cp">⧉ copy</span></div>
+      </div>
+      <div class="trust" data-reveal>
+        <div><b>1.0</b> Sea-ORM 2.0 · edition 2024</div>
+        <div><b>6.9k ★</b> on GitHub</div>
+        <div><b>0 → prod</b> in one command</div>
+      </div>
+    </div>
+
+    <div class="art" data-reveal>
+      <PostcardFrame caption="// all aboard">
+        <img src="/loco-illustration.png" alt="Loco illustration" />
+      </PostcardFrame>
+      <div class="code">
+        <div class="codebar">
+          <i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"
+          ></i><span class="fn">terminal</span>
+        </div>
+        <pre class="codebody" id="term"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .wrap {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 0 32px;
+    width: 100%;
+  }
+  .hero {
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 52px;
+    align-items: center;
+    padding: 76px 0 56px;
+  }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--red-ink);
+    background: rgba(252, 56, 32, 0.08);
+    border: 1px solid rgba(252, 56, 32, 0.18);
+    padding: 6px 12px;
+    border-radius: 999px;
+  }
+  h1 {
+    font-size: 60px;
+    line-height: 1.02;
+    letter-spacing: -0.035em;
+    font-weight: 820;
+    margin: 22px 0 0;
+  }
+  h1 .u {
+    color: var(--red);
+    position: relative;
+    white-space: nowrap;
+  }
+  h1 .u::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 2px;
+    height: 10px;
+    width: 0;
+    background: rgba(252, 56, 32, 0.18);
+    border-radius: 4px;
+    z-index: -1;
+    animation: draw 0.9s 0.35s ease forwards;
+  }
+  @keyframes draw {
+    to {
+      width: 100%;
+    }
+  }
+  .lede {
+    font-size: 19px;
+    color: var(--ink-2);
+    margin-top: 22px;
+    max-width: 34ch;
+  }
+  .cta-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 30px;
+  }
+  /* .btn/.btn-primary are Nav.astro-scoped (Task 5); Astro CSS scoping is
+     per-file, so the hero's own CTA needs the same rules duplicated here —
+     matching the existing .wrap duplication pattern in Nav/Footer. */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 650;
+    font-size: 14.5px;
+    padding: 10px 18px;
+    border-radius: 10px;
+    transition: 0.15s;
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+  }
+  .btn-primary {
+    background: var(--red);
+    color: #fff;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 8px 20px -8px rgba(252, 56, 32, 0.55);
+  }
+  .btn-primary:hover {
+    background: var(--red-ink);
+    transform: translateY(-1px);
+  }
+  .install {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 14px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    padding: 11px 15px;
+    border-radius: 11px;
+    color: var(--ink);
+    cursor: pointer;
+    transition: 0.15s;
+  }
+  .install:hover {
+    border-color: rgba(252, 56, 32, 0.45);
+  }
+  .install .dollar {
+    color: var(--red);
+  }
+  .install .cp {
+    margin-left: 6px;
+    color: var(--ink-2);
+    font-size: 12px;
+    border-left: 1px solid var(--line);
+    padding-left: 10px;
+    white-space: nowrap;
+  }
+  .install .cp.ok {
+    color: #2f9e44;
+    font-weight: 700;
+  }
+  .trust {
+    display: flex;
+    gap: 26px;
+    margin-top: 34px;
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+  .trust b {
+    color: var(--ink);
+    font-weight: 750;
+    font-size: 15px;
+    display: block;
+  }
+
+  /* HERO ART */
+  .art {
+    position: relative;
+  }
+  .art .code {
+    position: absolute;
+    right: -22px;
+    bottom: -40px;
+    width: 66%;
+    transform: rotate(1.8deg);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 24px 50px -20px rgba(28, 23, 18, 0.5);
+    border: 1px solid #2a2320;
+  }
+  .codebar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #241d19;
+    padding: 9px 12px;
+  }
+  .codebar i {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: block;
+  }
+  .codebar .fn {
+    margin-left: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #a89a8c;
+  }
+  pre.codebody {
+    background: #1b1512;
+    padding: 12px 14px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.75;
+    color: #e9ddcf;
+    white-space: pre;
+    height: 104px;
+    overflow: hidden;
+  }
+  /* The spans/cursor below are injected at runtime by home.ts's
+     terminalHtml() via innerHTML — they never exist in this component's
+     static template, so Astro never stamps them with its scope hash.
+     :global() is required or these rules would silently never match. */
+  .codebody :global(.c) {
+    color: #7d7266;
+  }
+  .codebody :global(.g) {
+    color: #89d185;
+  }
+  .codebody :global(.t) {
+    color: #82aaff;
+  }
+  .codebody :global(.cur) {
+    display: inline-block;
+    width: 7px;
+    height: 13px;
+    background: var(--red);
+    vertical-align: -2px;
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .hero {
+      grid-template-columns: 1fr;
+    }
+    h1 {
+      font-size: 44px;
+    }
+    .art .code {
+      display: none;
+    }
+  }
+</style>
