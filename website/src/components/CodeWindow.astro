@@ -1,0 +1,99 @@
+---
+// Ported verbatim from the reference `.codewin`/`.codebar` treatment
+// (markup + styles), see
+// docs/superpowers/specs/2026-07-17-homepage-direction-a-reference.html
+// (the showcase/deck-panel `.codewin`, not the static hero `.art .code`
+// terminal card).
+//
+// `copyValue` isn't in the reference literally — the reference hardcodes
+// `data-copy="deck"` on this exact element because it only ever appears
+// once, in the deck. It's exposed here as a prop (default "deck") so any
+// future non-deck usage of this component can carry its own copy payload;
+// home.ts's generic `[data-copy]` handler (Task 4) reads it at click time.
+interface Props {
+  file: string;
+  copyValue?: string;
+}
+const { file, copyValue = 'deck' } = Astro.props;
+---
+
+<div class="codewin">
+  <div class="codebar">
+    <i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"
+    ></i>
+    <span class="fn" id="dfile">{file}</span>
+    <span class="cp2" id="dcopy" data-copy={copyValue}>⧉ copy</span>
+  </div>
+  <slot />
+</div>
+
+<style>
+  .codewin {
+    display: flex;
+    flex-direction: column;
+    background: #1b1512;
+  }
+  .codewin .codebar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #241d19;
+    padding: 9px 12px;
+    border-bottom: 1px solid #2a2320;
+  }
+  .codewin .codebar i {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: block;
+  }
+  .codewin .codebar .fn {
+    margin-left: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #a89a8c;
+  }
+  .codewin .cp2 {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #a89a8c;
+    cursor: pointer;
+    border: 1px solid #3a322d;
+    border-radius: 6px;
+    padding: 2px 9px;
+  }
+  .codewin .cp2.ok {
+    color: #89d185;
+    border-color: #2f5e3a;
+  }
+  .codewin :global(pre.bigcode) {
+    padding: 20px 24px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.72;
+    color: #e9ddcf;
+    white-space: pre;
+    overflow: auto;
+    flex: 1;
+    margin: 0;
+  }
+  .codewin :global(.bigcode .k) {
+    color: #ff8f6b;
+  }
+  .codewin :global(.bigcode .s) {
+    color: #c3e88d;
+  }
+  .codewin :global(.bigcode .c) {
+    color: #7d7266;
+  }
+  .codewin :global(.bigcode .t) {
+    color: #82aaff;
+  }
+  .codewin :global(.bigcode .fn) {
+    color: #ffd479;
+  }
+  .codewin :global(.bigcode .n) {
+    color: #f5b784;
+  }
+</style>

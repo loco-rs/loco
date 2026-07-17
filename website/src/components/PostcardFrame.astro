@@ -1,0 +1,41 @@
+---
+// Ported verbatim from the reference `.art .frame` treatment (markup +
+// styles), see
+// docs/superpowers/specs/2026-07-17-homepage-direction-a-reference.html.
+// The `.art` wrapper itself (position + the floating `.code` terminal card)
+// belongs to the hero composition (Task 6) — this component is just the
+// framed postcard: rotation, border, shadow, and an optional caption.
+interface Props {
+  caption?: string;
+}
+const { caption } = Astro.props;
+---
+
+<div class="frame">
+  <slot />
+  {caption && <div class="cap">{caption}</div>}
+</div>
+
+<style>
+  .frame {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 14px 14px 10px;
+    box-shadow: 0 30px 60px -30px rgba(28, 23, 18, 0.35);
+    transform: rotate(-1.4deg);
+  }
+  .frame :global(img) {
+    width: 100%;
+    display: block;
+    border-radius: 10px;
+  }
+  .cap {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    text-align: left;
+    margin-top: 9px;
+    padding-left: 4px;
+  }
+</style>

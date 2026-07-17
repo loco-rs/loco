@@ -1,13 +1,24 @@
 ---
 import Base from '../layouts/Base.astro';
-import ThemeToggle from '../components/ThemeToggle.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import PostcardFrame from '../components/PostcardFrame.astro';
+import CodeWindow from '../components/CodeWindow.astro';
 ---
 <Base title="Loco — the one-person framework for Rust" description="Loco is the one-person framework for Rust.">
-  <ThemeToggle />
+  <Nav />
   <div style="background:var(--paper); color:var(--ink); padding:2rem;">
     <h1>Loco — placeholder</h1>
-    <div style="background:var(--card); border:1px solid var(--line); padding:1rem; margin-top:1rem;">
-      Token swatch card
+    <div style="max-width:420px; margin-top:2rem;">
+      <PostcardFrame caption="// all aboard">
+        <img src="/loco-illustration.png" alt="Loco illustration" />
+      </PostcardFrame>
+    </div>
+    <div style="max-width:640px; margin-top:2rem;">
+      <CodeWindow file="src/controllers/articles.rs">
+        <pre class="bigcode" id="dcode">pub async fn list() -&gt; Result&lt;Response&gt; {'{'} ... {'}'}</pre>
+      </CodeWindow>
     </div>
   </div>
+  <Footer />
 </Base>
