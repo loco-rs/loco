@@ -17,8 +17,13 @@ import '../styles/global.css';
   <meta name="twitter:description" content={description} />
   <link rel="icon" href="/favicon-32x32.png" />
   <script is:inline>
-    const t = localStorage.getItem('theme');
-    if (t) document.documentElement.setAttribute('data-theme', t);
+    // Theme restore is best-effort: localStorage can throw (sandboxed
+    // iframes, strict privacy modes), and that must never block the
+    // .js class add below.
+    try {
+      const t = localStorage.getItem('theme');
+      if (t) document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
     // Gate JS-only styling (e.g. scroll-reveal fade-ups) behind this class so
     // content is never hidden when JavaScript is unavailable.
     document.documentElement.classList.add('js');

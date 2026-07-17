@@ -171,6 +171,27 @@ const PILLARS = [
     filter: url(#stampInk);
     mix-blend-mode: multiply;
   }
+  /* `multiply` collapses to near-black against the dark card (--card is
+     #221A14 in dark mode), so the stamp nearly disappears. `screen`
+     lightens instead of darkens, keeping the distressed ink visible on
+     dark; the ring border is lightened to read as light-grey ink. Light
+     mode is untouched. */
+  :global(:root[data-theme="dark"]) .pc .applied img,
+  :global(:root[data-theme="dark"]) .pc .applied::before {
+    mix-blend-mode: screen;
+  }
+  :global(:root[data-theme="dark"]) .pc .applied::before {
+    border-color: #b8b0a6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme="light"])) .pc .applied img,
+    :global(:root:not([data-theme="light"])) .pc .applied::before {
+      mix-blend-mode: screen;
+    }
+    :global(:root:not([data-theme="light"])) .pc .applied::before {
+      border-color: #b8b0a6;
+    }
+  }
   .pc h3 {
     font-size: 17.5px;
     margin: 20px 0 0;

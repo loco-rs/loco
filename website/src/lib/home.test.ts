@@ -23,6 +23,9 @@ describe('slides data', () => {
   it('stripTags removes span markup but keeps code text', () => {
     expect(stripTags('<span class="k">use</span> loco;')).toBe('use loco;');
   });
+  it('stripTags decodes &lt; &gt; &amp; entities', () => {
+    expect(stripTags('State&lt;AppContext&gt; &amp; more')).toBe('State<AppContext> & more');
+  });
 });
 
 describe('terminal streaming', () => {
