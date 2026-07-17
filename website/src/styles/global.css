@@ -4,3 +4,15 @@
 html{scroll-behavior:smooth;}
 body{background:var(--paper); color:var(--ink); font-family:var(--sans); line-height:1.5; -webkit-font-smoothing:antialiased;}
 a{color:inherit; text-decoration:none;}
+
+/* Scroll-reveal fade-ups (ported from the reference). Gated behind html.js
+   so content is NEVER hidden when JavaScript is unavailable or hasn't run
+   yet — the JS-off / no-flash default is fully visible, static content. */
+html.js [data-reveal]{opacity:0; transform:translateY(14px); transition:opacity .6s ease, transform .6s ease;}
+html.js [data-reveal].in{opacity:1; transform:none;}
+
+/* Visible keyboard focus for interactive elements (buttons, links). */
+a:focus-visible, button:focus-visible, [data-copy]:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}

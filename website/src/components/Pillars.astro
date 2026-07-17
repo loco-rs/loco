@@ -36,7 +36,7 @@ const PILLARS = [
 
 <section class="pillars">
   <div class="wrap">
-    <div class="sec-head" data-reveal>
+    <div class="sec-head" data-reveal data-par="0.04">
       <h2>Empower the one-person team.</h2>
       <p>Loco follows Rails — carefully adapted to modern Rust. The heavy lifting is tucked away so you can move fast, and pulled back out the moment you need to scale.</p>
     </div>
@@ -96,14 +96,19 @@ const PILLARS = [
     transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.25s ease;
     overflow: hidden;
   }
+  /* !important: global.css's `html.js [data-reveal].in{transform:none}`
+     (scroll-reveal fade-up) outranks these otherwise-equal-specificity
+     scoped rules because of its `html` type selector — without this the
+     reveal would flatten the postcards' alternating tilt once they come
+     into view. The tilt must always win over the reveal. */
   .pc:nth-child(odd) {
-    transform: rotate(-0.8deg);
+    transform: rotate(-0.8deg) !important;
   }
   .pc:nth-child(even) {
-    transform: rotate(0.8deg);
+    transform: rotate(0.8deg) !important;
   }
   .pc:hover {
-    transform: rotate(0) translateY(-5px);
+    transform: rotate(0) translateY(-5px) !important;
     box-shadow: 0 26px 44px -22px rgba(28, 23, 18, 0.4);
     border-color: rgba(252, 56, 32, 0.4);
   }

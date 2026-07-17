@@ -22,7 +22,7 @@ const { file, copyValue = 'deck' } = Astro.props;
     <i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"
     ></i>
     <span class="fn" id="dfile">{file}</span>
-    <span class="cp2" id="dcopy" data-copy={copyValue}>⧉ copy</span>
+    <span class="cp2" id="dcopy" data-copy={copyValue} role="button" tabindex="0" aria-label="Copy code">⧉ copy</span>
   </div>
   <slot />
 </div>

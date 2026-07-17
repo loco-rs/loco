@@ -115,7 +115,7 @@ export function initHome(doc: Document): void {
 
   // ---- copy-to-clipboard for anything with data-copy ----
   doc.querySelectorAll('[data-copy]').forEach((el) => {
-    el.addEventListener('click', () => {
+    const activate = (): void => {
       const key = el.getAttribute('data-copy');
       const v = key === 'deck' ? stripTags(CODE[SLIDES[di].k].html) : key ?? '';
       if (win?.navigator?.clipboard) win.navigator.clipboard.writeText(v);
@@ -127,6 +127,16 @@ export function initHome(doc: Document): void {
         tag.textContent = prev;
         tag.classList.remove('ok');
       }, 1300);
+    };
+    el.addEventListener('click', activate);
+    // Non-native "button" (div/span with role="button") — wire Enter/Space
+    // so it's keyboard-operable, matching its aria-label/tabindex.
+    el.addEventListener('keydown', (e) => {
+      const ke = e as KeyboardEvent;
+      if (ke.key === 'Enter' || ke.key === ' ') {
+        ke.preventDefault();
+        activate();
+      }
     });
   });
 
@@ -199,4 +209,28 @@ export function initHome(doc: Document): void {
   }
 
   onScroll();
+
+  // ---- fade-in reveals (opacity/translateY only — positions are
+  // scroll-driven). Ported verbatim from the reference `<script>` block; the
+  // hiding CSS is gated behind `html.js` (see global.css) so content is
+  // never invisible without JS. ----
+  const rev = [...doc.querySelectorAll('[data-reveal]')] as HTMLElement[];
+  doc.querySelectorAll('.grid .pc').forEach((el, i) => {
+    (el as HTMLElement).style.transitionDelay = ((i % 3) * 70) + 'ms';
+  });
+  if (win && 'IntersectionObserver' in win) {
+    const io = new win.IntersectionObserver(
+      (es) =>
+        es.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add('in');
+            io.unobserve(e.target);
+          }
+        }),
+      { threshold: 0.15 },
+    );
+    rev.forEach((el) => io.observe(el));
+  } else {
+    rev.forEach((el) => el.classList.add('in'));
+  }
 }

@@ -9,10 +9,19 @@ import '../styles/global.css';
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{title}</title>
   <meta name="description" content={description} />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content={title} />
+  <meta name="twitter:description" content={description} />
   <link rel="icon" href="/favicon-32x32.png" />
   <script is:inline>
     const t = localStorage.getItem('theme');
     if (t) document.documentElement.setAttribute('data-theme', t);
+    // Gate JS-only styling (e.g. scroll-reveal fade-ups) behind this class so
+    // content is never hidden when JavaScript is unavailable.
+    document.documentElement.classList.add('js');
   </script>
 </head>
 <body><slot /></body>

@@ -208,6 +208,16 @@ const code = CODE[slide.k];
   .deck-panel :global(#dcode.swap) {
     opacity: 0;
   }
+  /* CodeWindow.astro's `.codewin` is a flex column with no min-width, which
+     lets long code lines push the grid track wider than the fixed panel
+     split; and `.codebar` (traffic lights + filename + copy) must stay put
+     rather than shrink when the code column is squeezed. */
+  .deck-panel :global(.codewin) {
+    min-width: 0;
+  }
+  .deck-panel :global(.codebar) {
+    flex-shrink: 0;
+  }
 
   @media (max-width: 900px) {
     .deck-panel {
