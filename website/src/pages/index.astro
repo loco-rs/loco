@@ -1,4 +1,13 @@
 ---
+import Base from '../layouts/Base.astro';
+import ThemeToggle from '../components/ThemeToggle.astro';
 ---
-<html lang="en"><head><meta charset="utf-8"><title>Loco</title></head>
-<body><h1>Loco — placeholder</h1></body></html>
+<Base title="Loco — the one-person framework for Rust" description="Loco is the one-person framework for Rust.">
+  <ThemeToggle />
+  <div style="background:var(--paper); color:var(--ink); padding:2rem;">
+    <h1>Loco — placeholder</h1>
+    <div style="background:var(--card); border:1px solid var(--line); padding:1rem; margin-top:1rem;">
+      Token swatch card
+    </div>
+  </div>
+</Base>
