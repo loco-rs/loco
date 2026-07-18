@@ -33,6 +33,9 @@ importers:
       jsdom:
         specifier: ^25.0.0
         version: 25.0.1
+      smol-toml:
+        specifier: ^1.7.0
+        version: 1.7.0
       typescript:
         specifier: ^5.5.0
         version: 5.9.3

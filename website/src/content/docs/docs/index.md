@@ -1,5 +1,6 @@
 ---
-title: Loco Docs
-description: Documentation home (content migrated in a later plan).
+title: Docs
+description: Docs for loco
+sidebar:
+  order: 1
 ---
-Docs content is migrated in a later plan.
