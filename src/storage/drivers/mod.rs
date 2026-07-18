@@ -23,26 +23,66 @@ pub struct UploadResponse {
     pub version: Option<String>,
 }
 
-/// TODO: Add more methods to `GetResponse` to read the content in different
-/// ways
+impl UploadResponse {
+    /// Builds an `UploadResponse` from upload metadata.
+    ///
+    /// Custom [`StoreDriver`] implementations use this to return the result of
+    /// an `upload` without relying on struct-literal construction, so the
+    /// fields can later evolve behind the constructor.
+    #[must_use]
+    pub fn new(e_tag: Option<String>, version: Option<String>) -> Self {
+        Self { e_tag, version }
+    }
+}
+
+/// The response of a [`StoreDriver::get`] call.
 ///
-/// For example, we can read a specific range of bytes from the stream.
+/// Internally this is either an `OpenDAL` reader (used by the built-in,
+/// opendal-backed drivers) or an already-materialized byte buffer (used by
+/// custom [`StoreDriver`] implementations built via [`GetResponse::from_bytes`]).
+///
+/// TODO: Add more methods to `GetResponse` to read the content in different
+/// ways — e.g. read a specific range of bytes from an opendal-backed response.
 pub struct GetResponse {
-    stream: Reader,
+    inner: GetResponseInner,
+}
+
+enum GetResponseInner {
+    /// An opendal reader — the built-in opendal-backed drivers use this path.
+    Reader(Reader),
+    /// A fully-materialized buffer — custom drivers built from bytes use this.
+    Bytes(Bytes),
 }
 
 impl GetResponse {
     pub(crate) fn new(stream: Reader) -> Self {
-        Self { stream }
+        Self {
+            inner: GetResponseInner::Reader(stream),
+        }
     }
 
-    /// Read all content from the stream and return as `Bytes`.
+    /// Builds a `GetResponse` from an already-materialized byte buffer.
+    ///
+    /// This is the constructor for custom [`StoreDriver`] implementations: it
+    /// lets an external driver return content from `get` without depending on
+    /// `opendal` types. The built-in drivers use the opendal reader path.
+    #[must_use]
+    pub fn from_bytes(content: Bytes) -> Self {
+        Self {
+            inner: GetResponseInner::Bytes(content),
+        }
+    }
+
+    /// Read all content and return it as `Bytes`.
     ///
     /// # Errors
     ///
     /// Returns a `StorageError` with the reason for the failure.
     pub async fn bytes(&self) -> StorageResult<Bytes> {
-        Ok(self.stream.read(..).await?.to_bytes())
+        match &self.inner {
+            GetResponseInner::Reader(reader) => Ok(reader.read(..).await?.to_bytes()),
+            GetResponseInner::Bytes(bytes) => Ok(bytes.clone()),
+        }
     }
 
     /// Convert the response into a streaming bytes reader.
@@ -54,7 +94,12 @@ impl GetResponse {
     ///
     /// Returns a `StorageError` if the stream cannot be created.
     pub async fn into_stream(self) -> StorageResult<BytesStream> {
-        BytesStream::from_reader(self.stream).await
+        match self.inner {
+            GetResponseInner::Reader(reader) => BytesStream::from_reader(reader).await,
+            GetResponseInner::Bytes(bytes) => Ok(BytesStream::from_body_stream(
+                futures_util::stream::once(async move { Ok::<_, std::io::Error>(bytes) }),
+            )),
+        }
     }
 }
 

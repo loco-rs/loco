@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 /// Cache configurations for the application
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 #[serde(tag = "kind")]
+#[non_exhaustive]
 pub enum CacheConfig {
     #[cfg(feature = "cache_inmem")]
     /// In-memory cache

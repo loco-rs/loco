@@ -4,6 +4,7 @@ use super::database::{db_connect_timeout, db_idle_timeout, db_max_conn, db_min_c
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "kind")]
+#[non_exhaustive]
 pub enum QueueConfig {
     /// Redis queue
     Redis(RedisQueueConfig),

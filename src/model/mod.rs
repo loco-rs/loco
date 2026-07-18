@@ -10,6 +10,7 @@ use crate::validation::ModelValidationErrors;
 
 #[derive(thiserror::Error, Debug)]
 #[allow(clippy::module_name_repetitions)]
+#[non_exhaustive]
 pub enum ModelError {
     #[error("Entity already exists")]
     EntityAlreadyExists,

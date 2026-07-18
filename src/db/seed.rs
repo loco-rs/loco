@@ -36,8 +36,11 @@ where
     sea_orm::Insert<A>: Send + Sync,
     <A as ActiveModelTrait>::Entity: EntityName,
 {
-    // Deserialize YAML file into a vector of JSON values
-    let seed_data: Vec<Value> = serde_yaml::from_reader(File::open(path)?)?;
+    // Deserialize YAML file into a vector of JSON values. Read the file
+    // asynchronously (whole-file into memory — seed fixtures are small) rather
+    // than blocking the async runtime on a synchronous `File`/`from_reader`.
+    let seed_bytes = tokio::fs::read(path).await?;
+    let seed_data: Vec<Value> = serde_yaml::from_slice(&seed_bytes)?;
 
     // Insert each row.
     //

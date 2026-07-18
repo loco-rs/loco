@@ -33,6 +33,7 @@ use crate::{
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "cli", derive(ValueEnum))]
+#[non_exhaustive]
 pub enum JobStatus {
     #[serde(rename = "queued")]
     Queued,
@@ -594,7 +595,10 @@ impl Queue {
     pub async fn import(&self, path: &Path) -> Result<()> {
         tracing::info!(path = %path.display(), "Importing jobs from file");
 
-        let jobs: Vec<Job> = serde_yaml::from_reader(File::open(path)?)?;
+        // Read the file asynchronously rather than blocking the runtime on a
+        // synchronous `File`/`from_reader`.
+        let import_bytes = tokio::fs::read(path).await?;
+        let jobs: Vec<Job> = serde_yaml::from_slice(&import_bytes)?;
         for job in jobs {
             self.enqueue(
                 job.name.clone(),

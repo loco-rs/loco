@@ -60,6 +60,7 @@ fn get_default_folder() -> &'static PathBuf {
 /// This struct encapsulates various configuration settings. The configuration
 /// can be customized through YAML files for different environments.
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct Config {
     pub logger: Logger,
     pub server: Server,
