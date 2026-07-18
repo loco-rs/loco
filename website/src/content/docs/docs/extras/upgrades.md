@@ -422,7 +422,7 @@ PR: [#1197](https://github.com/loco-rs/loco/pull/1197)
 
 The pagination response now includes the `total_items` field, providing the total number of items available.
 
-```JSON
+```json
 {"results":[],"pagination":{"page":0,"page_size":0,"total_pages":0,"total_items":0}}
 ```
 
