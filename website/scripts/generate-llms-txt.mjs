@@ -50,14 +50,14 @@ function unquote(value) {
 /**
  * Minimal parser for the flat YAML frontmatter this site's docs actually
  * produce (see scripts/convert-frontmatter.mjs): a `---` delimited block of
- * `title:`, `description:`, and `sidebar:\n  order: N\n  hidden: true`.
+ * `title:`, `description:`, and `sidebar:\n  order: N`.
  *
  * @param {string} raw
- * @returns {{ title: string, description: string, order: number, hidden: boolean, body: string }}
+ * @returns {{ title: string, description: string, order: number, body: string }}
  */
 export function parseDoc(raw) {
   const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
-  if (!match) return { title: '', description: '', order: 999, hidden: false, body: raw };
+  if (!match) return { title: '', description: '', order: 999, body: raw };
 
   const fm = match[1];
   const body = raw.slice(match[0].length).trim();
@@ -65,9 +65,8 @@ export function parseDoc(raw) {
   const title = unquote(fm.match(/^title:\s*(.+)$/m)?.[1] ?? '');
   const description = unquote(fm.match(/^description:\s*(.*)$/m)?.[1] ?? '');
   const order = Number(fm.match(/^\s+order:\s*(\d+)/m)?.[1] ?? 999);
-  const hidden = /^\s+hidden:\s*true/m.test(fm);
 
-  return { title, description, order, hidden, body };
+  return { title, description, order, body };
 }
 
 export function urlFor(relPath) {
@@ -103,6 +102,10 @@ function buildLlmsTxt(pages) {
   const lines = ['# Loco', ''];
   lines.push(`> ${root?.description || 'Loco is a Rust web framework for full-stack productivity, batteries included.'}`);
   lines.push('');
+  if (root) {
+    lines.push(`- [${root.title}](${SITE}${root.url})${root.description ? `: ${root.description}` : ''}`);
+    lines.push('');
+  }
 
   for (const section of SECTION_ORDER) {
     const sectionPages = pages.filter((p) => p.section === section);

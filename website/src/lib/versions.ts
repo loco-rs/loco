@@ -8,7 +8,7 @@ export interface DocVersion {
 }
 
 // Every published docs version, newest first. Loco docs are single-version
-// today — this array has one entry — but `VersionSwitcher.astro` always
+// today — this array has one entry — but `SiteTitleWithVersion.astro` always
 // renders it as a dropdown (see that component), so it is already wired for
 // more without any template changes.
 //
@@ -26,6 +26,6 @@ export interface DocVersion {
 //          { label: 'v2.0', href: '/docs/', current: true },
 //          { label: 'v1.0', href: '/v1.0/docs/' },
 //        ];
-//   3. That's the whole change — `VersionSwitcher.astro` maps over this
+//   3. That's the whole change — `SiteTitleWithVersion.astro` maps over this
 //      array unmodified.
 export const docVersions: DocVersion[] = [{ label: 'v1.0', href: '/docs/', current: true }];

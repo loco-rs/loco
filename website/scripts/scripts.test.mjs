@@ -70,21 +70,19 @@ describe('url-parity', () => {
 });
 
 describe('generate-llms-txt', () => {
-  it('parses title/description/order/hidden out of the migrated YAML frontmatter', () => {
+  it('parses title/description/order out of the migrated YAML frontmatter', () => {
     const raw = '---\ntitle: Add a model\ndescription: Generate a model.\nsidebar:\n  order: 1\n---\n\nBody text.\n';
     expect(parseDoc(raw)).toEqual({
       title: 'Add a model',
       description: 'Generate a model.',
       order: 1,
-      hidden: false,
       body: 'Body text.',
     });
   });
 
-  it('respects sidebar.hidden and tolerates an empty description', () => {
-    const raw = '---\ntitle: Extras\ndescription: ""\nsidebar:\n  order: 5\n  hidden: true\n---\nBody.\n';
+  it('tolerates an empty description', () => {
+    const raw = '---\ntitle: Extras\ndescription: ""\nsidebar:\n  order: 5\n---\nBody.\n';
     const doc = parseDoc(raw);
-    expect(doc.hidden).toBe(true);
     expect(doc.description).toBe('');
   });
 
