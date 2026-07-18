@@ -1,0 +1,120 @@
+---
+// A single cast (screencast) page — title, meta row (episode + date), a
+// responsive 16:9 YouTube embed (youtube-nocookie.com, so the privacy-
+// enhanced embed is used and no cookies are set until playback), then the
+// notes body (rendered markdown) inside ProseArticle, same as blog/[slug].
+import { getCollection, render } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Nav from '../../components/Nav.astro';
+import Footer from '../../components/Footer.astro';
+import ProseArticle from '../../components/ProseArticle.astro';
+
+export async function getStaticPaths() {
+  const casts = await getCollection('casts');
+  return casts.map((cast) => ({
+    params: { slug: cast.id },
+    props: { cast },
+  }));
+}
+
+interface Props {
+  cast: CollectionEntry<'casts'>;
+}
+
+const { cast } = Astro.props;
+const { Content } = await render(cast);
+
+const dateStr = cast.data.pubDate.toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+---
+
+<Base title={`${cast.data.title} — Loco Screencasts`} description={cast.data.description}>
+  <Nav />
+  <article class="cast">
+    <div class="wrap">
+      <div class="cast-head">
+        <h1>{cast.data.title}</h1>
+        <div class="meta">
+          <span class="episode">Episode #{cast.data.episode}</span>
+          <span class="dot">·</span>
+          <time datetime={cast.data.pubDate.toISOString()}>{dateStr}</time>
+        </div>
+      </div>
+      <div class="embed-wrap">
+        <iframe
+          src={`https://www.youtube-nocookie.com/embed/${cast.data.youtube}`}
+          title={cast.data.title}
+          loading="lazy"
+          allowfullscreen
+        ></iframe>
+      </div>
+      <ProseArticle>
+        <Content />
+      </ProseArticle>
+    </div>
+  </article>
+  <Footer />
+</Base>
+
+<style>
+  .wrap {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 0 32px;
+    width: 100%;
+  }
+  article.cast {
+    padding: 64px 0 80px;
+  }
+  .cast-head {
+    max-width: 68ch;
+    margin: 0 auto 32px;
+  }
+  .cast-head h1 {
+    font-size: 40px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    color: var(--ink);
+  }
+  .cast-head .meta {
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    color: var(--ink-3);
+  }
+  .cast-head .dot {
+    opacity: 0.6;
+  }
+  .embed-wrap {
+    max-width: 68ch;
+    margin: 0 auto 40px;
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .embed-wrap iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  @media (max-width: 640px) {
+    .cast-head h1 {
+      font-size: 30px;
+    }
+  }
+</style>
