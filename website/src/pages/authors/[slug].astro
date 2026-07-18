@@ -1,0 +1,118 @@
+---
+// An author's page — name, bio (rendered markdown body via `render`), and
+// the list of their blog posts as PostCards.
+//
+// Only authors with an entry in the `authors` collection get a page here —
+// `getStaticPaths` iterates that collection, so slugs referenced by posts
+// but with no author file (e.g. `antonio-souza` on deploy-aws.md) never
+// get a page. That matches the blog byline (Task 2), which renders those
+// as plain, unlinked text for the same reason.
+import { getCollection, render } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Nav from '../../components/Nav.astro';
+import Footer from '../../components/Footer.astro';
+import ProseArticle from '../../components/ProseArticle.astro';
+import PostCard from '../../components/PostCard.astro';
+
+export async function getStaticPaths() {
+  const authors = await getCollection('authors');
+  return authors.map((author) => ({
+    params: { slug: author.id },
+    props: { author },
+  }));
+}
+
+interface Props {
+  author: CollectionEntry<'authors'>;
+}
+
+const { author } = Astro.props;
+const { Content } = await render(author);
+
+const posts = (await getCollection('blog'))
+  .filter((post) => post.data.authors.includes(author.id))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+---
+
+<Base
+  title={`${author.data.name} — Loco Blog`}
+  description={author.data.description}
+>
+  <Nav />
+  <article class="author">
+    <div class="wrap">
+      <div class="author-head">
+        <h1>{author.data.name}</h1>
+        <ProseArticle>
+          <Content />
+        </ProseArticle>
+      </div>
+      <div class="posts">
+        <h2>Posts</h2>
+        {
+          posts.length > 0 ? (
+            <div class="grid">
+              {posts.map((post) => <PostCard post={post} />)}
+            </div>
+          ) : (
+            <p class="empty">No posts yet.</p>
+          )
+        }
+      </div>
+    </div>
+  </article>
+  <Footer />
+</Base>
+
+<style>
+  .wrap {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 0 32px;
+    width: 100%;
+  }
+  article.author {
+    padding: 64px 0 80px;
+  }
+  .author-head {
+    max-width: 68ch;
+    margin: 0 auto 56px;
+  }
+  .author-head h1 {
+    font-size: 40px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    color: var(--ink);
+    margin-bottom: 24px;
+  }
+  .posts {
+    max-width: 1160px;
+    margin: 0 auto;
+  }
+  .posts h2 {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 24px;
+  }
+  .posts .empty {
+    font-size: 15px;
+    color: var(--ink-3);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+  @media (max-width: 640px) {
+    .author-head h1 {
+      font-size: 30px;
+    }
+    .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
