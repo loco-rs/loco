@@ -324,7 +324,13 @@ impl Scheduler {
                             let job_description = job_description.clone();
                             let job_name = job_name.clone();
                             Box::pin(async move {
-                                execute_job(job_name.as_str(), uuid, &job_description);
+                                // `job_description.run()` blocks the thread for the
+                                // whole child-process lifetime; keep it off the
+                                // async runtime's worker threads.
+                                let _ = tokio::task::spawn_blocking(move || {
+                                    execute_job(job_name.as_str(), uuid, &job_description);
+                                })
+                                .await;
                             })
                         },
                     )?)
@@ -339,7 +345,13 @@ impl Scheduler {
                         let job_description = job_description.clone();
                         let job_name = job_name.clone();
                         Box::pin(async move {
-                            execute_job(job_name.as_str(), uuid, &job_description);
+                            // `job_description.run()` blocks the thread for the whole
+                            // child-process lifetime; keep it off the async runtime's
+                            // worker threads.
+                            let _ = tokio::task::spawn_blocking(move || {
+                                execute_job(job_name.as_str(), uuid, &job_description);
+                            })
+                            .await;
                         })
                     },
                 )?)

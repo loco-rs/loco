@@ -197,7 +197,11 @@ where
 {
     let page = pagination_query.page.saturating_sub(1);
 
-    let query = selector.paginate(db, pagination_query.page_size);
+    // Clamp to at least 1 to avoid a divide-by-zero panic inside sea-orm's
+    // paginator when a client sends `page_size=0` (see `PaginationQuery`).
+    let page_size = pagination_query.page_size.max(1);
+
+    let query = selector.paginate(db, page_size);
     let total_pages_and_items = query.num_items_and_pages().await?;
     let page = query.fetch_page(page).await?;
 
@@ -205,7 +209,7 @@ where
         page,
         meta: PagerMeta {
             page: pagination_query.page,
-            page_size: pagination_query.page_size,
+            page_size,
             total_pages: total_pages_and_items.number_of_pages,
             total_items: total_pages_and_items.number_of_items,
         },

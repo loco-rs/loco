@@ -9,6 +9,7 @@ pub use super::_entities::users::{self, ActiveModel, Entity, Model};
 
 pub const MAGIC_LINK_LENGTH: i8 = 32;
 pub const MAGIC_LINK_EXPIRATION_MIN: i8 = 5;
+pub const RESET_TOKEN_EXPIRATION_MIN: i64 = 30;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct LoginParams {
@@ -157,7 +158,25 @@ impl Model {
             )
             .one(db)
             .await?;
-        user.ok_or_else(|| ModelError::EntityNotFound)
+
+        let user = user.ok_or_else(|| ModelError::EntityNotFound)?;
+        if let Some(sent_at) = user.reset_sent_at {
+            if sent_at + Duration::minutes(RESET_TOKEN_EXPIRATION_MIN) >= Local::now() {
+                Ok(user)
+            } else {
+                tracing::debug!(
+                    user_pid = user.pid.to_string(),
+                    "reset token expired for the user."
+                );
+                Err(ModelError::msg("reset token expired"))
+            }
+        } else {
+            tracing::error!(
+                user_pid = user.pid.to_string(),
+                "reset token sent time does not exist"
+            );
+            Err(ModelError::msg("reset token sent time not exists"))
+        }
     }
 
     /// finds a user by the provided pid
@@ -306,6 +325,8 @@ impl ActiveModel {
     /// when has DB query error
     pub async fn verified(mut self, db: &DatabaseConnection) -> ModelResult<Model> {
         self.email_verified_at = ActiveValue::set(Some(Local::now().into()));
+        // Invalidate the verification token so it cannot be replayed after use.
+        self.email_verification_token = ActiveValue::Set(None);
         self.update(db).await.map_err(ModelError::from)
     }
 

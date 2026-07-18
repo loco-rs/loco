@@ -1,10 +1,7 @@
 //! # In-Memory Cache Driver
 //!
 //! This module implements a cache driver using an in-memory cache.
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
 use moka::{future::Cache, Expiry};
@@ -86,10 +83,7 @@ impl CacheDriver for Inmem {
     /// Returns a `CacheError` if there is an error during the operation.
     async fn insert(&self, key: &str, value: &str) -> CacheResult<()> {
         self.cache
-            .insert(
-                key.to_string(),
-                (Expiration::Never, Arc::new(value).to_string()),
-            )
+            .insert(key.to_string(), (Expiration::Never, value.to_string()))
             .await;
         Ok(())
     }
@@ -110,10 +104,7 @@ impl CacheDriver for Inmem {
         self.cache
             .insert(
                 key.to_string(),
-                (
-                    Expiration::AfterDuration(duration),
-                    Arc::new(value).to_string(),
-                ),
+                (Expiration::AfterDuration(duration), value.to_string()),
             )
             .await;
         Ok(())

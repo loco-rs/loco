@@ -596,8 +596,14 @@ impl Queue {
 
         let jobs: Vec<Job> = serde_yaml::from_reader(File::open(path)?)?;
         for job in jobs {
-            self.enqueue(job.name.clone(), None, job.data, None, Some(job.priority))
-                .await?;
+            self.enqueue(
+                job.name.clone(),
+                None,
+                job.data,
+                job.tags.clone(),
+                Some(job.priority),
+            )
+            .await?;
         }
 
         Ok(())

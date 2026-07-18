@@ -238,10 +238,10 @@ impl IntoResponse for Error {
             Self::WithBacktrace { inner, backtrace } => {
                 println!("\n{}", inner.to_string().red().underline());
                 backtrace::print_backtrace(&backtrace).unwrap();
-                (
-                    StatusCode::BAD_REQUEST,
-                    ErrorDetail::with_reason("Bad Request"),
-                )
+                // Delegate to the wrapped error's own response so the real HTTP
+                // status is preserved (e.g. internal errors stay 500) instead of
+                // being flattened to 400 whenever a backtrace was captured.
+                return (*inner).into_response();
             }
             Self::BadRequest(err) => (
                 StatusCode::BAD_REQUEST,

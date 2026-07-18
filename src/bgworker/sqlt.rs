@@ -540,7 +540,10 @@ pub async fn clear_jobs_older_than(
     status: Option<&Vec<JobStatus>>,
 ) -> Result<()> {
     let cutoff_date = Utc::now() - chrono::Duration::days(age_days);
-    let threshold_date = cutoff_date.format("%+").to_string();
+    // Match SQLite's stored `created_at` format (`CURRENT_TIMESTAMP` ->
+    // `YYYY-MM-DD HH:MM:SS`). Using RFC3339 (`%+`) here produces a `T` separator and
+    // offset, which sorts incorrectly against the stored value in a TEXT comparison.
+    let threshold_date = cutoff_date.format("%Y-%m-%d %H:%M:%S").to_string();
 
     let mut query_builder =
         QueryBuilder::<sqlx::Sqlite>::new("DELETE FROM sqlt_loco_queue WHERE created_at <= ");
@@ -633,7 +636,9 @@ pub async fn get_jobs(
 
     if let Some(age_days) = age_days {
         let cutoff_date = Utc::now() - chrono::Duration::days(age_days);
-        let threshold_date = cutoff_date.format("%+").to_string();
+        // Match SQLite's stored `created_at` format (`YYYY-MM-DD HH:MM:SS`); RFC3339
+        // (`%+`) would sort incorrectly against it in a TEXT comparison.
+        let threshold_date = cutoff_date.format("%Y-%m-%d %H:%M:%S").to_string();
         let _ = write!(query, " AND created_at <= '{threshold_date}' ");
     }
 

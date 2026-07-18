@@ -12,14 +12,29 @@
 //! middleware will not function as intended.
 
 use axum::Router as AXRouter;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Deserialize)]
 pub enum DefaultBodyLimitKind {
     Disable,
     Limit(usize),
+}
+
+/// Serialize symmetrically with [`deserialize_body_limit`]: emit `"disable"` or
+/// a byte-count string (rather than the derived `{"Limit": N}`/`"Disable"`), so
+/// a serialized config round-trips back through the custom deserializer.
+impl Serialize for DefaultBodyLimitKind {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Self::Disable => serializer.serialize_str("disable"),
+            Self::Limit(bytes) => serializer.serialize_str(&bytes.to_string()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

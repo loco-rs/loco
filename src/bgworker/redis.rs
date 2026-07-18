@@ -316,15 +316,24 @@ async fn dequeue_with_conn(
                                 })
                             };
 
-                            if should_process {
-                                candidates.push((job_id.clone(), job));
-                            } else {
+                            if !should_process {
                                 trace!(
                                     job_id = job_id,
                                     job_tags = ?job.tags,
                                     worker_tags = ?tags,
                                     "Job doesn't match tag criteria, skipping"
                                 );
+                            } else if job.run_at > Utc::now() {
+                                // Not yet due (e.g. an interval-rescheduled job):
+                                // mirror the SQL backends' `run_at <= NOW()` filter
+                                // so it isn't re-run before its scheduled time.
+                                trace!(
+                                    job_id = job_id,
+                                    run_at = ?job.run_at,
+                                    "Job not due yet, skipping"
+                                );
+                            } else {
+                                candidates.push((job_id.clone(), job));
                             }
                         }
                         Err(err) => {
@@ -424,8 +433,17 @@ async fn fail_job_with_conn(
     if let Some(json) = job_json
         && let Ok(mut job) = Job::from_json(&json)
     {
-        let error_json = serde_json::json!({ "error": error.to_string() });
-        job.data = error_json;
+        // Preserve the original task arguments and attach the error alongside
+        // them, mirroring the SQL backends (`task_data = task_data || {error}`)
+        // instead of overwriting the args with the error payload.
+        if let Some(obj) = job.data.as_object_mut() {
+            obj.insert(
+                "error".to_string(),
+                serde_json::Value::String(error.to_string()),
+            );
+        } else {
+            job.data = serde_json::json!({ "args": job.data, "error": error.to_string() });
+        }
         job.status = JobStatus::Failed;
         job.updated_at = Some(Utc::now());
         let updated_json = job.to_json()?;
@@ -580,7 +598,7 @@ pub async fn clear_by_status(client: &RedisPool, status: Vec<JobStatus>) -> Resu
                 && let Ok(job) = Job::from_json(&json)
                 && status.contains(&job.status)
             {
-                let _: () = conn.lrem(&queue_key, 1, &job_id).await?;
+                let _: () = conn.zrem(&queue_key, &job_id).await?;
                 let _: () = conn.del(&job_key).await?;
             }
         }
@@ -672,7 +690,7 @@ pub async fn clear_jobs_older_than(
                     created_at < cutoff_date && status.is_none_or(|s| s.contains(&job.status))
                 });
                 if should_remove {
-                    let _: () = conn.lrem(&queue_key, 1, &job_id).await?;
+                    let _: () = conn.zrem(&queue_key, &job_id).await?;
                     let _: () = conn.del(&job_key).await?;
                 }
             }
@@ -856,7 +874,7 @@ pub async fn cancel_jobs_by_name(client: &RedisPool, job_name: &str) -> Result<(
                 job.status = JobStatus::Cancelled;
                 job.updated_at = Some(Utc::now());
                 let updated_json = job.to_json()?;
-                let _: () = conn.lrem(&queue_key, 1, &job_id).await?;
+                let _: () = conn.zrem(&queue_key, &job_id).await?;
                 let _: () = conn.set(&job_key, &updated_json).await?;
                 let cancelled_key = format!(
                     "cancelled:{}",
