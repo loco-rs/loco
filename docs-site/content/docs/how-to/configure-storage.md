@@ -52,7 +52,7 @@ Every driver is built by a plain constructor function under `loco_rs::storage::d
 
 | Driver | Feature | Constructor | Notes |
 |---|---|---|---|
-| Local filesystem | none | `drivers::local::new()` — rooted at `/`<br>`drivers::local::new_with_prefix(prefix) -> StorageResult<Box<dyn StoreDriver>>` | `new_with_prefix` errors if the prefix path doesn't exist |
+| Local filesystem | none | `drivers::local::new()` — rooted at the current working directory<br>`drivers::local::new_with_prefix(prefix) -> StorageResult<Box<dyn StoreDriver>>` | `new_with_prefix` errors if the prefix path doesn't exist |
 | In-memory | none | `drivers::mem::new()` | Good for tests; data doesn't survive process exit |
 | Null | none | `drivers::null::new()` | The framework default; every op errors |
 | AWS S3 | `storage_aws_s3` | `drivers::aws::new(bucket, region) -> StorageResult<...>`<br>`drivers::aws::with_credentials(bucket, region, cred) -> StorageResult<...>`<br>`drivers::aws::with_credentials_and_endpoint(bucket, region, endpoint, cred) -> StorageResult<...>` | `Credential { key_id, secret_key, token: Option<String> }` |
