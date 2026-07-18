@@ -6,6 +6,7 @@ import { convertFrontmatter } from './convert-frontmatter.mjs';
 import { rewriteLinks } from './rewrite-links.mjs';
 import { oldDocUrls, newDocUrls } from './url-parity.mjs';
 import { parseDoc, urlFor } from './generate-llms-txt.mjs';
+import { convertBlogFrontmatter } from './migrate-blog-casts.mjs';
 
 it('maps title/description/weight and drops zola-only keys', () => {
   const zola = `+++\ntitle = "Add a worker"\ndescription = "How to add a worker"\nsort_by = "weight"\nweight = 30\ntemplate = "docs/page.html"\n+++\n\n# Body\ntext {{ get_env(name='X') }}\n`;
@@ -90,5 +91,23 @@ describe('generate-llms-txt', () => {
     expect(urlFor('index.md')).toBe('/docs/');
     expect(urlFor('how-to/index.md')).toBe('/docs/how-to/');
     expect(urlFor('how-to/add-model.md')).toBe('/docs/how-to/add-model/');
+  });
+});
+
+describe('migrate-blog-casts', () => {
+  it('blog: maps date→pubDate, taxonomy authors→slug array, drops template', () => {
+    const z = `+++\ntitle = "Hello"\ndescription = "d"\ndate = 2024-01-25T18:03:52+01:00\ndraft = false\ntemplate = "blog/page.html"\n[taxonomies]\nauthors = ["Team Loco"]\n+++\n\nbody\n`;
+    const out = convertBlogFrontmatter(z, 'blog');
+    expect(out).toContain('title: Hello');
+    expect(out).toContain('pubDate: 2024-01-25');
+    expect(out).toContain('authors:\n  - team-loco');
+    expect(out).not.toContain('template');
+    expect(out).toContain('\nbody\n');
+  });
+  it('cast: maps extra.num→episode and extra.id→youtube', () => {
+    const z = `+++\ntitle = "T"\ndescription = "d"\ndate = 2024-06-27T14:20:42+00:00\ntemplate = "casts/page.html"\n[taxonomies]\nauthors = ["Team Loco"]\n[extra]\nnum = "007"\nid = "OWUvUSC1KvY"\n+++\nnotes\n`;
+    const out = convertBlogFrontmatter(z, 'cast');
+    expect(out).toContain('episode: "007"');
+    expect(out).toContain('youtube: OWUvUSC1KvY');
   });
 });
