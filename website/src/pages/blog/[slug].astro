@@ -1,0 +1,134 @@
+---
+// A single blog post — title, meta row (date + author byline), then the
+// rendered markdown body inside ProseArticle.
+//
+// Author byline: `post.data.authors` is an array of author *slugs*, not
+// display names. Most resolve to a real entry in the `authors` collection
+// (Task 1) and get linked to `/authors/<slug>/` (that page itself ships in
+// Task 4 — linking to it now is fine, it exists by the time the site is
+// fully built). Some historical posts reference an author with no author
+// file at all — e.g. deploy-aws.md's `antonio-souza` — and for those we
+// must NOT emit a link (there is nothing at /authors/antonio-souza/ and
+// never will be), so unresolved slugs render as plain text, title-cased
+// from the slug for a readable name.
+import { getCollection, getEntry, render } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Nav from '../../components/Nav.astro';
+import Footer from '../../components/Footer.astro';
+import ProseArticle from '../../components/ProseArticle.astro';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog');
+  return posts.map((post) => ({
+    params: { slug: post.id },
+    props: { post },
+  }));
+}
+
+interface Props {
+  post: CollectionEntry<'blog'>;
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+
+function titleCase(slug: string) {
+  return slug
+    .split('-')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+const authors = await Promise.all(
+  post.data.authors.map(async (slug) => {
+    const author = await getEntry('authors', slug);
+    return author
+      ? { name: author.data.name, href: `/authors/${slug}/` }
+      : { name: titleCase(slug), href: null as string | null };
+  })
+);
+
+const dateStr = post.data.pubDate.toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+---
+
+<Base title={`${post.data.title} — Loco Blog`} description={post.data.description}>
+  <Nav />
+  <article class="post">
+    <div class="wrap">
+      <div class="post-head">
+        <h1>{post.data.title}</h1>
+        <div class="meta">
+          <time datetime={post.data.pubDate.toISOString()}>{dateStr}</time>
+          <span class="dot">·</span>
+          <span class="byline">
+            {authors.map((a, i) => (
+              <Fragment>
+                {a.href ? <a href={a.href}>{a.name}</a> : <span>{a.name}</span>}
+                {i < authors.length - 1 && <span>, </span>}
+              </Fragment>
+            ))}
+          </span>
+        </div>
+      </div>
+      <ProseArticle>
+        <Content />
+      </ProseArticle>
+    </div>
+  </article>
+  <Footer />
+</Base>
+
+<style>
+  .wrap {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 0 32px;
+    width: 100%;
+  }
+  article.post {
+    padding: 64px 0 80px;
+  }
+  .post-head {
+    max-width: 68ch;
+    margin: 0 auto 40px;
+  }
+  .post-head h1 {
+    font-size: 40px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    color: var(--ink);
+  }
+  .post-head .meta {
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    color: var(--ink-3);
+  }
+  .post-head .dot {
+    opacity: 0.6;
+  }
+  .post-head .byline a {
+    color: var(--ink-3);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .post-head .byline a:hover {
+    color: var(--red-ink);
+  }
+
+  @media (max-width: 640px) {
+    .post-head h1 {
+      font-size: 30px;
+    }
+  }
+</style>

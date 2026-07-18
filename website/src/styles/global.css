@@ -1,5 +1,52 @@
 @import './tokens.css';
 
+/* Expressive Code block chrome: warm-dark palette, matching the docs.
+ *
+ * Starlight's `expressiveCode` integration registers itself as a remark
+ * plugin for the WHOLE Astro build, not just the `docs` collection — so
+ * blog/cast markdown bodies (rendered via `render(entry)` in
+ * ProseArticle.astro's consumers) get the exact same Expressive Code
+ * `<figure class="expressive-code">` markup as docs pages, using the same
+ * `locoCodeTheme` (astro.config.mjs). That theme only supplies
+ * `editor.background`/`editor.foreground`, so EC's own per-theme defaults
+ * already make the code body warm-dark (`#1b1512`) everywhere — but the
+ * *frame chrome* (titlebar bg, tab colors, border radius) has no such
+ * per-theme default and falls back to EC's generic dark-gray theme unless
+ * overridden.
+ *
+ * starlight.css carries the same override (its own `:root{--ec-*}` block)
+ * for Starlight's page bundle, which loads on `/docs/**` only. This is a
+ * deliberate duplicate, not a stray one: Base.astro (home/blog/casts) and
+ * Starlight's layout are two separate CSS entry points that never share a
+ * bundle, so each needs its own copy of these vars to reach its pages.
+ * Keep both blocks identical if the palette ever changes.
+ */
+:root {
+  --ec-codeBg: #1b1512;
+  --ec-codeFg: #e9ddcf;
+  --ec-brdCol: #2a2320;
+  --ec-brdRad: 12px;
+  --ec-frm-edBg: #1b1512;
+  --ec-frm-edTabBarBg: #241d19;
+  --ec-frm-edTabBarBrdBtmCol: #2a2320;
+  --ec-frm-edTabBarBrdCol: #2a2320;
+  --ec-frm-edActTabBg: #241d19;
+  --ec-frm-edActTabFg: #e9ddcf;
+  --ec-frm-edActTabBrdCol: var(--red);
+  --ec-frm-edActTabIndTopCol: var(--red);
+  --ec-frm-edActTabIndBtmCol: var(--red);
+  --ec-frm-trmBg: #1b1512;
+  --ec-frm-trmTtbBg: #241d19;
+  --ec-frm-trmTtbBrdBtmCol: #2a2320;
+  --ec-frm-trmTtbFg: #a89a8c;
+  --ec-frm-trmTtbDotsFg: #7d7266;
+  --ec-frm-inlBtnFg: #e9ddcf;
+  --ec-frm-inlBtnBg: #ffffff17;
+  --ec-frm-frameBoxShdCssVal: 0 18px 34px -24px rgba(28, 23, 18, 0.5);
+  --ec-gtrBrdCol: #2a2320;
+  --ec-gtrFg: #7d7266;
+}
+
 *{box-sizing:border-box; margin:0; padding:0;}
 html{scroll-behavior:smooth;}
 body{background:var(--paper); color:var(--ink); font-family:var(--sans); line-height:1.5; -webkit-font-smoothing:antialiased;}

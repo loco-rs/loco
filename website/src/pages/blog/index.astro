@@ -1,0 +1,71 @@
+---
+// The blog listing — under Base+Nav+Footer like the homepage, newest posts
+// first. Card grid reuses PostCard.astro (warm postcard, editorial not the
+// stamped-pillar treatment).
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Nav from '../../components/Nav.astro';
+import Footer from '../../components/Footer.astro';
+import PostCard from '../../components/PostCard.astro';
+
+const posts = (await getCollection('blog')).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+);
+---
+
+<Base
+  title="Blog — Loco"
+  description="Notes, tutorials, and updates from the Loco community — the one-person framework for Rust."
+>
+  <Nav />
+  <section class="blog-index">
+    <div class="wrap">
+      <div class="head">
+        <h1>Blog</h1>
+        <p>Tutorials, deep dives, and updates on building with Loco.</p>
+      </div>
+      <div class="grid">
+        {posts.map((post) => <PostCard post={post} />)}
+      </div>
+    </div>
+  </section>
+  <Footer />
+</Base>
+
+<style>
+  .wrap {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 0 32px;
+    width: 100%;
+  }
+  section.blog-index {
+    padding: 64px 0 40px;
+  }
+  .head {
+    max-width: 60ch;
+    margin-bottom: 48px;
+  }
+  .head h1 {
+    font-size: 44px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    color: var(--ink);
+  }
+  .head p {
+    margin-top: 14px;
+    font-size: 17px;
+    color: var(--ink-2);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+  @media (max-width: 760px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -1,0 +1,95 @@
+---
+// A warm, editorial postcard-style summary for a single blog post — reuses
+// the homepage's card idiom (var(--card) bg, 1px var(--line) border, subtle
+// lift on hover) but WITHOUT the Pillars.astro stamp/tilt treatment, per the
+// task 2 brief ("tasteful/editorial, not the heavy stamp treatment").
+//
+// A post's `authors` frontmatter field is an array of author slugs, not
+// display names. Most slugs resolve to a real entry in the `authors`
+// collection (Task 1), but some historical posts reference an author with
+// no author file (e.g. `antonio-souza` on deploy-aws.md) — for the card's
+// meta line we always want a readable name, so unresolved slugs fall back
+// to a title-cased rendering of the slug. This mirrors the byline logic in
+// blog/[slug].astro, except the card never links the name (see that file's
+// comment for why a link is appropriate there but not here).
+import { getEntry } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  post: CollectionEntry<'blog'>;
+}
+const { post } = Astro.props;
+
+function titleCase(slug: string) {
+  return slug
+    .split('-')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+const authorNames = await Promise.all(
+  post.data.authors.map(async (slug) => {
+    const author = await getEntry('authors', slug);
+    return author ? author.data.name : titleCase(slug);
+  })
+);
+
+const dateStr = post.data.pubDate.toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+---
+
+<a class="postcard" href={`/blog/${post.id}/`}>
+  <h3>{post.data.title}</h3>
+  <p class="desc">{post.data.description}</p>
+  <div class="meta">
+    <time datetime={post.data.pubDate.toISOString()}>{dateStr}</time>
+    <span class="dot">·</span>
+    <span>{authorNames.join(', ')}</span>
+  </div>
+</a>
+
+<style>
+  .postcard {
+    display: block;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 28px 26px 24px;
+    box-shadow: 0 12px 26px -20px rgba(28, 23, 18, 0.32);
+    transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+  .postcard:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 22px 38px -22px rgba(28, 23, 18, 0.4);
+    border-color: rgba(252, 56, 32, 0.35);
+  }
+  .postcard h3 {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.28;
+    color: var(--ink);
+  }
+  .postcard .desc {
+    margin-top: 10px;
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+  .postcard .meta {
+    margin-top: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    color: var(--ink-3);
+  }
+  .postcard .dot {
+    opacity: 0.6;
+  }
+</style>
