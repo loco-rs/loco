@@ -1,6 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { describe, it, expect, afterEach } from 'vitest';
 import { convertFrontmatter } from './convert-frontmatter.mjs';
 import { rewriteLinks } from './rewrite-links.mjs';
+import { oldDocUrls, newDocUrls } from './url-parity.mjs';
+import { parseDoc, urlFor } from './generate-llms-txt.mjs';
 
 it('maps title/description/weight and drops zola-only keys', () => {
   const zola = `+++\ntitle = "Add a worker"\ndescription = "How to add a worker"\nsort_by = "weight"\nweight = 30\ntemplate = "docs/page.html"\n+++\n\n# Body\ntext {{ get_env(name='X') }}\n`;
@@ -34,4 +39,58 @@ it('rewrites @/docs links embedded in raw HTML href attributes too', () => {
   expect(
     rewriteLinks('<a href="@/docs/reference/query-pagination.md#daterangebuilder">x</a>')
   ).toBe('<a href="/docs/reference/query-pagination#daterangebuilder">x</a>');
+});
+
+describe('url-parity', () => {
+  let dir;
+  afterEach(() => {
+    if (dir) rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('maps old Zola paths to /docs/<section>/<slug>/, with _index.md as the section root', () => {
+    dir = mkdtempSync(path.join(tmpdir(), 'old-docs-'));
+    writeFileSync(path.join(dir, '_index.md'), 'x');
+    mkdirSync(path.join(dir, 'how-to'));
+    writeFileSync(path.join(dir, 'how-to', '_index.md'), 'x');
+    writeFileSync(path.join(dir, 'how-to', 'add-model.md'), 'x');
+
+    expect(oldDocUrls(dir).sort()).toEqual(['/docs/', '/docs/how-to/', '/docs/how-to/add-model/']);
+  });
+
+  it('maps new dist/docs/**/index.html paths to the same /docs/.../ URL shape', () => {
+    dir = mkdtempSync(path.join(tmpdir(), 'new-docs-'));
+    writeFileSync(path.join(dir, 'index.html'), 'x');
+    mkdirSync(path.join(dir, 'how-to'));
+    writeFileSync(path.join(dir, 'how-to', 'index.html'), 'x');
+    mkdirSync(path.join(dir, 'how-to', 'add-model'));
+    writeFileSync(path.join(dir, 'how-to', 'add-model', 'index.html'), 'x');
+
+    expect(newDocUrls(dir).sort()).toEqual(['/docs/', '/docs/how-to/', '/docs/how-to/add-model/']);
+  });
+});
+
+describe('generate-llms-txt', () => {
+  it('parses title/description/order/hidden out of the migrated YAML frontmatter', () => {
+    const raw = '---\ntitle: Add a model\ndescription: Generate a model.\nsidebar:\n  order: 1\n---\n\nBody text.\n';
+    expect(parseDoc(raw)).toEqual({
+      title: 'Add a model',
+      description: 'Generate a model.',
+      order: 1,
+      hidden: false,
+      body: 'Body text.',
+    });
+  });
+
+  it('respects sidebar.hidden and tolerates an empty description', () => {
+    const raw = '---\ntitle: Extras\ndescription: ""\nsidebar:\n  order: 5\n  hidden: true\n---\nBody.\n';
+    const doc = parseDoc(raw);
+    expect(doc.hidden).toBe(true);
+    expect(doc.description).toBe('');
+  });
+
+  it('derives /docs/... URLs the same way for index and non-index pages', () => {
+    expect(urlFor('index.md')).toBe('/docs/');
+    expect(urlFor('how-to/index.md')).toBe('/docs/how-to/');
+    expect(urlFor('how-to/add-model.md')).toBe('/docs/how-to/add-model/');
+  });
 });

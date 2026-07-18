@@ -72,6 +72,14 @@ export default defineConfig({
     starlight({
       title: 'Loco',
       customCss: ['./src/styles/starlight.css'],
+      // Adds a `v1.0` badge/dropdown next to the wordmark, matching the
+      // docs reference's `<span class="ver">v1.0 ▾</span>`. See
+      // src/lib/versions.ts for the single-source version list this reads
+      // (and how to add a version later) and
+      // src/components/SiteTitleWithVersion.astro for the override itself.
+      components: {
+        SiteTitle: './src/components/SiteTitleWithVersion.astro',
+      },
       // Six Diátaxis groups. Content is migrated in a later task — until
       // then each `docs/<section>` directory is empty and its group
       // simply renders with no entries.

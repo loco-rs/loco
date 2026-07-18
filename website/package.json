@@ -4,11 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "astro dev",
+    "prebuild": "node scripts/generate-llms-txt.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
     "test": "vitest run",
-    "migrate:docs": "node scripts/migrate-docs.mjs"
+    "migrate:docs": "node scripts/migrate-docs.mjs",
+    "generate:llms": "node scripts/generate-llms-txt.mjs",
+    "url-parity": "node scripts/url-parity.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.0.0",
