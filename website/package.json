@@ -11,9 +11,11 @@
     "test": "vitest run",
     "migrate:docs": "node scripts/migrate-docs.mjs",
     "generate:llms": "node scripts/generate-llms-txt.mjs",
-    "url-parity": "node scripts/url-parity.mjs"
+    "url-parity": "node scripts/url-parity.mjs",
+    "url-parity-blog": "node scripts/url-parity-blog.mjs"
   },
   "dependencies": {
+    "@astrojs/rss": "^4.0.19",
     "@astrojs/sitemap": "^3.0.0",
     "@astrojs/starlight": "^0.30.0",
     "@astrojs/tailwind": "^5.1.0",

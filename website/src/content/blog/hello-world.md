@@ -8,7 +8,7 @@ authors:
 ---
 
 <center>
-<img width="150" src="/icon.svg"/> 
+<img width="150" src="/icon.svg" alt="Loco icon"/> 
 
 
 **What if [Rails](https://rubyonrails.org) was built on Rust and not Ruby?**
