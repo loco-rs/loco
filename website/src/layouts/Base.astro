@@ -20,9 +20,17 @@ import '../styles/global.css';
     // Theme restore is best-effort: localStorage can throw (sandboxed
     // iframes, strict privacy modes), and that must never block the
     // .js class add below.
+    //
+    // Shares Starlight's own `starlight-theme` localStorage key (see
+    // @astrojs/starlight/components/ThemeProvider.astro) so the theme
+    // picked on a marketing page persists into /docs and vice versa —
+    // both surfaces set `data-theme` on <html>, but without a shared key
+    // the choice wouldn't survive navigation between them. Starlight
+    // stores '' for "auto"; treat that the same as "unset" and fall back
+    // to the prefers-color-scheme rule in tokens.css, same as before.
     try {
-      const t = localStorage.getItem('theme');
-      if (t) document.documentElement.setAttribute('data-theme', t);
+      const t = localStorage.getItem('starlight-theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
     } catch (e) {}
     // Gate JS-only styling (e.g. scroll-reveal fade-ups) behind this class so
     // content is never hidden when JavaScript is unavailable.

@@ -1,0 +1,114 @@
+/* website/src/styles/starlight.css
+ *
+ * Themes Starlight (the /docs surface) to the Loco warm identity.
+ * Imports the shared design tokens, then remaps Starlight's own
+ * `--sl-color-*` custom properties onto them.
+ *
+ * Var names verified against the installed `@astrojs/starlight@0.30.6`
+ * (see node_modules/@astrojs/starlight/style/props.css and the component
+ * styles that consume each variable — e.g. `--sl-color-hairline-shade` is
+ * what actually draws the header/sidebar borders, not `--sl-color-hairline`
+ * alone; the sidebar's active-item styling uses `--sl-color-text-accent` /
+ * `--sl-color-text-invert`, not a dedicated "sidebar active" variable).
+ *
+ * Theme-state note: Starlight's own theme picker persists to
+ * `localStorage['starlight-theme']` (see
+ * node_modules/@astrojs/starlight/components/ThemeProvider.astro /
+ * ThemeSelect.astro), while the marketing pages' ThemeToggle originally used
+ * a separate `localStorage['theme']` key. Both write `data-theme` on
+ * `<html>`, so these tokens apply correctly either way — but the two
+ * surfaces wouldn't *remember* each other's choice on navigation. Reconciled
+ * by pointing the marketing ThemeToggle/Base restore script at the same
+ * `starlight-theme` key (see src/components/ThemeToggle.astro and
+ * src/layouts/Base.astro) rather than inventing a third mechanism.
+ */
+@import './tokens.css';
+
+/* IMPORTANT: Starlight's own props.css re-declares several of these vars
+ * inside a `:root[data-theme='light']` block (attribute selector ⇒ higher
+ * specificity than a plain `:root`). A plain `:root { --sl-color-accent: … }`
+ * override is therefore silently beaten in light mode no matter what order
+ * the stylesheets load in — confirmed by inspecting computed styles on the
+ * built page (`--sl-color-accent` stayed Starlight's default blue in light
+ * mode until this selector was widened). Matching `[data-theme='light']` /
+ * `[data-theme='dark']` here (same specificity as Starlight's block, so our
+ * later source order wins) is what actually makes every var below take
+ * effect in both themes; the referenced tokens (`--paper`, `--ink`, …) are
+ * still the single source of the actual color values per theme.
+ */
+:root,
+:root[data-theme='light'],
+:root[data-theme='dark'] {
+  /* Accent (red) */
+  --sl-color-accent-low: color-mix(in srgb, var(--red) 12%, transparent);
+  --sl-color-accent: var(--red);
+  --sl-color-accent-high: var(--red-ink);
+  --sl-color-text-accent: var(--red-ink);
+  --sl-color-bg-accent: var(--red);
+
+  /* Backgrounds */
+  --sl-color-bg: var(--paper);
+  --sl-color-bg-nav: var(--paper);
+  --sl-color-bg-sidebar: var(--paper-2);
+  --sl-color-bg-inline-code: var(--paper-2);
+
+  /* Text / gray ramp */
+  --sl-color-white: var(--ink);
+  --sl-color-black: var(--paper);
+  --sl-color-text: var(--ink);
+  --sl-color-text-invert: var(--paper);
+  --sl-color-gray-1: var(--ink);
+  --sl-color-gray-2: var(--ink-2);
+  --sl-color-gray-3: var(--ink-3);
+  --sl-color-gray-4: var(--ink-3);
+  --sl-color-gray-5: var(--line);
+  --sl-color-gray-6: var(--paper-2);
+  --sl-color-gray-7: var(--paper-2);
+
+  /* Hairlines (header/sidebar/content-panel borders all key off the
+     "-shade"/"-light" variants, not the bare `--sl-color-hairline`) */
+  --sl-color-hairline: var(--line);
+  --sl-color-hairline-light: var(--line);
+  --sl-color-hairline-shade: var(--line);
+
+  --sl-font: var(--sans);
+  --sl-font-mono: var(--mono);
+}
+
+/* Inline `code` text tint, matching the docs reference (`main p code{color:var(--red-ink)}`). */
+.sl-markdown-content code:not(:where(.not-content *)) {
+  color: var(--red-ink);
+  border: 1px solid var(--line);
+}
+
+/* Expressive Code block chrome: warm-dark palette in BOTH site themes
+ * (code blocks always look like the homepage's dark code window,
+ * regardless of light/dark toggle — matches the docs reference).
+ * Variable names read from the built `--ec-*` custom properties Expressive
+ * Code actually emits (verified in the built CSS output).
+ */
+:root {
+  --ec-codeBg: #1b1512;
+  --ec-codeFg: #e9ddcf;
+  --ec-brdCol: #2a2320;
+  --ec-brdRad: 12px;
+  --ec-frm-edBg: #1b1512;
+  --ec-frm-edTabBarBg: #241d19;
+  --ec-frm-edTabBarBrdBtmCol: #2a2320;
+  --ec-frm-edTabBarBrdCol: #2a2320;
+  --ec-frm-edActTabBg: #241d19;
+  --ec-frm-edActTabFg: #e9ddcf;
+  --ec-frm-edActTabBrdCol: var(--red);
+  --ec-frm-edActTabIndTopCol: var(--red);
+  --ec-frm-edActTabIndBtmCol: var(--red);
+  --ec-frm-trmBg: #1b1512;
+  --ec-frm-trmTtbBg: #241d19;
+  --ec-frm-trmTtbBrdBtmCol: #2a2320;
+  --ec-frm-trmTtbFg: #a89a8c;
+  --ec-frm-trmTtbDotsFg: #7d7266;
+  --ec-frm-inlBtnFg: #e9ddcf;
+  --ec-frm-inlBtnBg: #ffffff17;
+  --ec-frm-frameBoxShdCssVal: 0 18px 34px -24px rgba(28, 23, 18, 0.5);
+  --ec-gtrBrdCol: #2a2320;
+  --ec-gtrFg: #7d7266;
+}
