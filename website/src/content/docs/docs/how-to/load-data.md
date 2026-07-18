@@ -7,7 +7,7 @@ sidebar:
 
 Goal: give your app access to read-only data that lives in a JSON file — loaded once and kept in memory — without standing up a database table or hand-rolling file I/O.
 
-This is a good fit for data that's read far more often than it changes: machine learning hyperparameters, an IP banlist, calendar events, stock data, security policies, per-container configuration. If the data changes on every request, reach for the [cache](@/docs/how-to/use-cache.md) or the database instead.
+This is a good fit for data that's read far more often than it changes: machine learning hyperparameters, an IP banlist, calendar events, stock data, security policies, per-container configuration. If the data changes on every request, reach for the [cache](/docs/how-to/use-cache) or the database instead.
 
 ## 1. Generate a data loader
 
@@ -60,4 +60,4 @@ Whatever machine runs the binary needs a `data/` folder (or the `LOCO_DATA` path
 
 ## Updating the data
 
-Because the in-memory copy is loaded once per process, picking up new data means restarting the process — conceptually similar to a deploy, but without rebuilding or shipping new code, so it's fast. If you need to refresh without a restart, call the `read()` function directly and cache the result yourself using the [cache](@/docs/how-to/use-cache.md) system.
+Because the in-memory copy is loaded once per process, picking up new data means restarting the process — conceptually similar to a deploy, but without rebuilding or shipping new code, so it's fast. If you need to refresh without a restart, call the `read()` function directly and cache the result yourself using the [cache](/docs/how-to/use-cache) system.

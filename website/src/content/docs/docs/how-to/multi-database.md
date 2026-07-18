@@ -7,7 +7,7 @@ sidebar:
 
 **Goal:** query a second (or third+) database from a controller, alongside the app's primary `ctx.db` connection — for example, a read replica, a legacy database, or per-tenant databases.
 
-Loco ships a ready-made [initializer](@/docs/how-to/add-middleware.md) for this: `MultiDbInitializer`, a named map of connections. It lives under `loco_rs::initializers::multi_db` and is gated behind the `with-db` feature. Each config entry accepts the same keys as the primary `database:` block — see [Configuration § database](@/docs/reference/configuration.md) for the full list (`uri`, `enable_logging`, `min_connections`, `max_connections`, `connect_timeout`, `idle_timeout`, `acquire_timeout`, `auto_migrate`, `dangerously_truncate`, `dangerously_recreate`, `run_on_start`).
+Loco ships a ready-made [initializer](/docs/how-to/add-middleware) for this: `MultiDbInitializer`, a named map of connections. It lives under `loco_rs::initializers::multi_db` and is gated behind the `with-db` feature. Each config entry accepts the same keys as the primary `database:` block — see [Configuration § database](/docs/reference/configuration) for the full list (`uri`, `enable_logging`, `min_connections`, `max_connections`, `connect_timeout`, `idle_timeout`, `acquire_timeout`, `auto_migrate`, `dangerously_truncate`, `dangerously_recreate`, `run_on_start`).
 
 ## Configure each named database
 
@@ -104,5 +104,5 @@ pub async fn list(
 
 ## Next
 
-- [Configuration reference](@/docs/reference/configuration.md) for every key a `database:`-shaped block accepts.
-- [Add middleware](@/docs/how-to/add-middleware.md) for how the `initializers`/middleware hooks work.
+- [Configuration reference](/docs/reference/configuration) for every key a `database:`-shaped block accepts.
+- [Add middleware](/docs/how-to/add-middleware) for how the `initializers`/middleware hooks work.

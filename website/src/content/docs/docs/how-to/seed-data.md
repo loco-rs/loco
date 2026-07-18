@@ -7,7 +7,7 @@ sidebar:
 
 **Goal:** populate a freshly-migrated database with known rows from YAML fixture files — for local development, tests, and reproducing an environment's data elsewhere.
 
-This assumes a working model (see [Add a model](@/docs/how-to/add-model.md)).
+This assumes a working model (see [Add a model](/docs/how-to/add-model)).
 
 ## 1. Write a fixture file
 

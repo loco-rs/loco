@@ -7,7 +7,7 @@ sidebar:
 
 **Goal:** return the right response shape (JSON, HTML, plain text, YAML, a redirect, an empty body) from a handler, and — when a single endpoint must serve more than one format — pick the shape based on the request's `Content-Type`/`Accept` header.
 
-This assumes a working controller — see [Add a controller](@/docs/how-to/add-controller.md). All helpers live in the `format` module (`loco_rs::controller::format`, re-exported as `format` from the prelude). Keep handlers returning `Result<impl IntoResponse>` (or `Result<Response>`) so you can freely swap which `format::*` call you return.
+This assumes a working controller — see [Add a controller](/docs/how-to/add-controller). All helpers live in the `format` module (`loco_rs::controller::format`, re-exported as `format` from the prelude). Keep handlers returning `Result<impl IntoResponse>` (or `Result<Response>`) so you can freely swap which `format::*` call you return.
 
 ## 1. Simple responses
 
@@ -44,7 +44,7 @@ async fn go_elsewhere() -> Result<Response> {
 }
 ```
 
-`format::view`/`format::template` render HTML from a Tera view or an inline template string — see [Render server-side views](@/docs/how-to/render-views.md).
+`format::view`/`format::template` render HTML from a Tera view or an inline template string — see [Render server-side views](/docs/how-to/render-views).
 
 ## 2. When you need more than a one-liner: `format::render()`
 
@@ -126,7 +126,7 @@ pub async fn get_one(
 }
 ```
 
-See [Handle errors](@/docs/how-to/handle-errors.md) for what "the framework's default error rendering" produces for each `Error` variant.
+See [Handle errors](/docs/how-to/handle-errors) for what "the framework's default error rendering" produces for each `Error` variant.
 
 ## Verify
 
@@ -137,6 +137,6 @@ curl -s localhost:5150/notes/1 -H 'accept: text/html'
 
 ## Next
 
-- [Render server-side views](@/docs/how-to/render-views.md)
-- [Handle errors](@/docs/how-to/handle-errors.md)
-- [Validate requests](@/docs/how-to/validate-requests.md)
+- [Render server-side views](/docs/how-to/render-views)
+- [Handle errors](/docs/how-to/handle-errors)
+- [Validate requests](/docs/how-to/validate-requests)

@@ -66,7 +66,7 @@ $ curl localhost:5150/_ping
 `/_ping` is one of three built-in monitoring endpoints (`/_ping`, `/_health`, `/_readiness`) mounted unconditionally by `AppRoutes::with_default_routes()` in `src/app.rs`.
 
 <div class="infobox">
-Because you picked a database (<code>--db sqlite</code>), this app was also generated with a complete, ready-to-use authentication suite mounted at <code>/api/auth/*</code> (register, login, current user, and more) — any Loco app with a database gets one, it isn't specific to a particular starter "template". This lesson doesn't use it; if you want to explore it, see <a href="@/docs/tutorials/saas-with-auth.md">Build a small authenticated app</a>.
+Because you picked a database (<code>--db sqlite</code>), this app was also generated with a complete, ready-to-use authentication suite mounted at <code>/api/auth/*</code> (register, login, current user, and more) — any Loco app with a database gets one, it isn't specific to a particular starter "template". This lesson doesn't use it; if you want to explore it, see <a href="/docs/tutorials/saas-with-auth">Build a small authenticated app</a>.
 </div>
 
 Stop the server with `Ctrl+C` before continuing — you'll restart it after generating code.
@@ -99,7 +99,7 @@ migration/
   src/mYYYYMMDD_HHMMSS_posts.rs
 ```
 
-`title:string` and `content:text` are both nullable columns here (no `!`/`^` suffix) — that's intentional to keep this first pass simple. The field-type suffixes (required, unique) and the full type list are covered in [Generators & field types](@/docs/reference/generators.md).
+`title:string` and `content:text` are both nullable columns here (no `!`/`^` suffix) — that's intentional to keep this first pass simple. The field-type suffixes (required, unique) and the full type list are covered in [Generators & field types](/docs/reference/generators).
 
 ## 5. Run it and hit your new endpoint
 
@@ -138,7 +138,7 @@ In a few minutes, without writing a line of Rust yourself, you:
 
 ## Next
 
-- [The Tour](@/docs/tutorials/the-tour.md) — a faster walkthrough that also covers models with relations, hand-editing a controller, background workers, and tasks.
-- [Add a model](@/docs/how-to/add-model.md) — the how-to version of what you just did, with the field-type mini-language spelled out.
-- [Build a small authenticated app](@/docs/tutorials/saas-with-auth.md) — start from the SaaS starter path instead, with registration, login, and JWT-protected routes baked in.
-- [CLI reference](@/docs/reference/cli.md) and [Generators & field types](@/docs/reference/generators.md) — the exhaustive dictionaries behind everything you just ran.
+- [The Tour](/docs/tutorials/the-tour) — a faster walkthrough that also covers models with relations, hand-editing a controller, background workers, and tasks.
+- [Add a model](/docs/how-to/add-model) — the how-to version of what you just did, with the field-type mini-language spelled out.
+- [Build a small authenticated app](/docs/tutorials/saas-with-auth) — start from the SaaS starter path instead, with registration, login, and JWT-protected routes baked in.
+- [CLI reference](/docs/reference/cli) and [Generators & field types](/docs/reference/generators) — the exhaustive dictionaries behind everything you just ran.

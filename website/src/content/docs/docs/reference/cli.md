@@ -157,7 +157,7 @@ Source: `src/cli.rs:64-171` (`enum Commands`).
 
 ### 2.4 `generate` subcommands
 
-`enum ComponentArg`, `src/cli.rs:173-382` — only present in debug builds (`#[cfg(debug_assertions)]` on `Commands::Generate`). `model`/`migration`/`scaffold` are additionally gated on `#[cfg(feature = "with-db")]`. Full field-type syntax is covered in the [Generators & field types](@/docs/reference/generators.md) reference; this table lists CLI shape only.
+`enum ComponentArg`, `src/cli.rs:173-382` — only present in debug builds (`#[cfg(debug_assertions)]` on `Commands::Generate`). `model`/`migration`/`scaffold` are additionally gated on `#[cfg(feature = "with-db")]`. Full field-type syntax is covered in the [Generators & field types](/docs/reference/generators) reference; this table lists CLI shape only.
 
 | Command | Gated | Args / flags | Notes |
 |---|---|---|---|

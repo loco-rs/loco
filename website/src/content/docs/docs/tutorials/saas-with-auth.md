@@ -7,7 +7,7 @@ sidebar:
 
 Every Loco app generated with a database ships with a complete authentication suite: registration, login, email verification, password reset, magic links, and a JWT-protected "current user" endpoint — no extra generator, no starter template to hunt for. This lesson generates one, exercises the built-in auth flow end to end, then protects a resource of your own with the same JWT extractor the built-in endpoints use.
 
-You should already be comfortable with the basics from [Your First App](@/docs/tutorials/your-first-app.md).
+You should already be comfortable with the basics from [Your First App](/docs/tutorials/your-first-app).
 
 ## 1. Generate the app
 
@@ -166,13 +166,13 @@ $ curl -X POST -H "Content-Type: application/json" \
 
 ## What's actually enforced, and what isn't
 
-- The JWT secret and expiration live in `config/development.yaml` under `auth.jwt`. Every environment (`development`, `test`, `production`) gets its own generated secret — never share one across environments. See the [Configuration reference](@/docs/reference/configuration.md) for every key under `auth:`.
+- The JWT secret and expiration live in `config/development.yaml` under `auth.jwt`. Every environment (`development`, `test`, `production`) gets its own generated secret — never share one across environments. See the [Configuration reference](/docs/reference/configuration) for every key under `auth:`.
 - Tokens are signed HS512 by default, and the configured secret must be valid base64 — this is handled for you in the generated config, but matters if you ever hand-roll one.
 - `auth::JWT` only checks that the token is valid and unexpired; it does not check `is_verified`. If your app needs "must have verified their email" as a business rule, check `user.email_verified_at.is_some()` yourself inside the handler, the same way you looked up the user by `pid` above.
 
 ## Next
 
-- [Protect a Route with JWT](@/docs/how-to/jwt-auth.md) — the full endpoint-by-endpoint reference: forgot/reset password, email verification, magic links, and API-key auth as an alternative to JWTs.
-- [Configuration reference](@/docs/reference/configuration.md) — every `auth:` and `mailer:` YAML key.
-- [The Tour](@/docs/tutorials/the-tour.md) — if you haven't yet, see models, workers, and tasks covered end to end.
-- [Add a model](@/docs/how-to/add-model.md) — keep building out `notes` (or your own resource) with relations and validation.
+- [Protect a Route with JWT](/docs/how-to/jwt-auth) — the full endpoint-by-endpoint reference: forgot/reset password, email verification, magic links, and API-key auth as an alternative to JWTs.
+- [Configuration reference](/docs/reference/configuration) — every `auth:` and `mailer:` YAML key.
+- [The Tour](/docs/tutorials/the-tour) — if you haven't yet, see models, workers, and tasks covered end to end.
+- [Add a model](/docs/how-to/add-model) — keep building out `notes` (or your own resource) with relations and validation.

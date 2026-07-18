@@ -38,11 +38,11 @@ async fn can_get_notes() {
 }
 ```
 
-The callback receives `(TestServer, AppContext)` — `request` (an [axum-test](https://crates.io/crates/axum-test) `TestServer`) drives HTTP calls (`.get`, `.post`, `.json(...)`, etc.), and `ctx` gives you the same `AppContext` your controllers see (DB connection, config, mailer, ...) — see the [AppContext reference](@/docs/reference/app-context.md).
+The callback receives `(TestServer, AppContext)` — `request` (an [axum-test](https://crates.io/crates/axum-test) `TestServer`) drives HTTP calls (`.get`, `.post`, `.json(...)`, etc.), and `ctx` gives you the same `AppContext` your controllers see (DB connection, config, mailer, ...) — see the [AppContext reference](/docs/reference/app-context).
 
 Mark tests `#[serial]` (from the `serial_test` crate) whenever they share app-level or DB-level state with other tests, so they don't run concurrently against the same fixtures.
 
-If your test needs a real, freshly created database (registering a user, then reading it back), use `request_with_create_db` instead — see [DB model tests](@/docs/how-to/model-tests.md) for the full story on DB-backed tests and cleanup.
+If your test needs a real, freshly created database (registering a user, then reading it back), use `request_with_create_db` instead — see [DB model tests](/docs/how-to/model-tests) for the full story on DB-backed tests and cleanup.
 
 ## 3. Assert on the response
 
@@ -56,7 +56,7 @@ response.assert_json(&serde_json::json!({ "token": "..." }));
 let body: LoginResponse = serde_json::from_str(&response.text()).unwrap();
 ```
 
-For HTML/HTMX responses, parse `response.text()` with the [HTML selector assertions](@/docs/how-to/fixtures-snapshots.md#html-assertions-with-select) (`assert_css_exists`, `assert_css_eq`, `select`, ...) instead of string-matching raw markup.
+For HTML/HTMX responses, parse `response.text()` with the [HTML selector assertions](/docs/how-to/fixtures-snapshots#html-assertions-with-select) (`assert_css_exists`, `assert_css_eq`, `select`, ...) instead of string-matching raw markup.
 
 ## 4. Customize the request with `RequestConfigBuilder`
 
@@ -104,10 +104,10 @@ async fn test_something() {
 | Function | Use when |
 |---|---|
 | `boot_test::<App>()` | You need `AppContext` without a DB, and without HTTP. |
-| `boot_test_with_create_db::<App>()` | You need `AppContext` backed by a **fresh, throwaway database** (with-db only). See [DB model tests](@/docs/how-to/model-tests.md). |
+| `boot_test_with_create_db::<App>()` | You need `AppContext` backed by a **fresh, throwaway database** (with-db only). See [DB model tests](/docs/how-to/model-tests). |
 | `boot_test_unique_port::<App>(port)` | You need the server actually bound to a TCP port (rare — most tests should use `request`/`TestServer` instead). |
 
-`request`/`boot_test` both boot with `Environment::Test`, so they read `config/test.yaml` — see [configuration precedence](@/docs/reference/configuration.md#loading-precedence) for how the config folder and environment name are resolved.
+`request`/`boot_test` both boot with `Environment::Test`, so they read `config/test.yaml` — see [configuration precedence](/docs/reference/configuration#loading-precedence) for how the config folder and environment name are resolved.
 
 ## Verify it
 

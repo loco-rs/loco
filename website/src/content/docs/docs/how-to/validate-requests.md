@@ -7,7 +7,7 @@ sidebar:
 
 **Goal:** reject malformed input before your handler logic runs, and return either a simple `400 Bad Request` or a structured, field-by-field JSON error body.
 
-This assumes a working controller — see [Add a controller](@/docs/how-to/add-controller.md) if you need one first. All six extractors live in `loco_rs::controller::extractor::validate` (`JsonValidate`/`JsonValidateWithMessage` are re-exported from `loco_rs::prelude`).
+This assumes a working controller — see [Add a controller](/docs/how-to/add-controller) if you need one first. All six extractors live in `loco_rs::controller::extractor::validate` (`JsonValidate`/`JsonValidateWithMessage` are re-exported from `loco_rs::prelude`).
 
 ## 1. Pick an extractor
 
@@ -92,7 +92,7 @@ The `*WithMessage` variants return the field-by-field detail, under an `errors` 
 }
 ```
 
-This is the same `Validation` branch of the [error → HTTP status map](@/docs/reference/errors.md) (always `400`) — the `WithMessage` extractors populate `errors`, the plain ones map validation failures to a message-less `Error::BadRequest`.
+This is the same `Validation` branch of the [error → HTTP status map](/docs/reference/errors) (always `400`) — the `WithMessage` extractors populate `errors`, the plain ones map validation failures to a message-less `Error::BadRequest`.
 
 Malformed input the extractor itself can't even deserialize (bad JSON, an unparsable query string) also returns `400`, before validation runs at all.
 
@@ -138,5 +138,5 @@ curl -s -X POST localhost:5150/api/notes -H 'content-type: application/json' -d 
 
 ## Next
 
-- [Handle errors](@/docs/how-to/handle-errors.md) — the full error → status map and `CustomError`
-- [Respond with different formats](@/docs/how-to/respond-formats.md)
+- [Handle errors](/docs/how-to/handle-errors) — the full error → status map and `CustomError`
+- [Respond with different formats](/docs/how-to/respond-formats)

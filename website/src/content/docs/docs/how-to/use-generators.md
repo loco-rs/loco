@@ -51,15 +51,15 @@ Every generator writes files relative to your project root and prints what it cr
 | `mailer` | no | Mailer struct + embedded `subject`/`html`/`text` templates |
 | `data` | no | Data-loader struct + a static `data/<name>/data.json` |
 | `deployment` | no | `docker` or `nginx` deployment files |
-| `override` | no | Copies a built-in template locally so you can edit it — see [Override built-in templates](@/docs/how-to/override-templates.md) |
+| `override` | no | Copies a built-in template locally so you can edit it — see [Override built-in templates](/docs/how-to/override-templates) |
 
 `scaffold` and `controller` both require **exactly one** of `--api`, `--html`, or `--htmx` — there's no default; omitting all of them is a hard CLI error.
 
-This is a summary for orientation only — the exhaustive, verified dictionary of every kind, every flag, and migration-name inference rules is the [Generators & field types reference](@/docs/reference/generators.md); the raw CLI flag shapes are also in the [CLI reference](@/docs/reference/cli.md#2-4-generate-subcommands).
+This is a summary for orientation only — the exhaustive, verified dictionary of every kind, every flag, and migration-name inference rules is the [Generators & field types reference](/docs/reference/generators); the raw CLI flag shapes are also in the [CLI reference](/docs/reference/cli#2-4-generate-subcommands).
 
 ## 4. Use the field-type mini-language
 
-`model`, `migration`, and `scaffold` all take `name:type` pairs after the resource name. The full table of ~50 base types (with their `!`/`^` suffix variants, arities, and Rust types) lives in the [field-type mini-language reference](@/docs/reference/generators.md#field-type-mini-language) — check it before guessing a type name. A few load-bearing facts to keep in mind while typing field lists:
+`model`, `migration`, and `scaffold` all take `name:type` pairs after the resource name. The full table of ~50 base types (with their `!`/`^` suffix variants, arities, and Rust types) lives in the [field-type mini-language reference](/docs/reference/generators#field-type-mini-language) — check it before guessing a type name. A few load-bearing facts to keep in mind while typing field lists:
 
 - No suffix = nullable (`Option<T>`); `!` = required; `^` = unique (implies required). Not every type has a `^` form (`bool`, `tstz`, `json` don't).
 - **`int` is `i64`/`BIGINT`** in Loco 1.0 (it was `i32` before) — `big_int` is just an alias. Use `small_int`/`small_unsigned` if you need a 16-bit column.

@@ -7,7 +7,7 @@ sidebar:
 
 Goal: exercise your Sea-ORM models against a real database in a test, with fixture data loaded and the database cleaned up afterwards — with no manual teardown code.
 
-This page covers the `with-db` half of the `testing` feature (`db.rs`): `boot_test`, `seed`, and the two DB-lifecycle strategies Loco supports. For HTTP-level tests, see [request tests](@/docs/how-to/request-tests.md); for insta snapshots/redactions, see [Fixtures & snapshots](@/docs/how-to/fixtures-snapshots.md).
+This page covers the `with-db` half of the `testing` feature (`db.rs`): `boot_test`, `seed`, and the two DB-lifecycle strategies Loco supports. For HTTP-level tests, see [request tests](/docs/how-to/request-tests); for insta snapshots/redactions, see [Fixtures & snapshots](/docs/how-to/fixtures-snapshots).
 
 ## 1. Enable the features
 
@@ -98,11 +98,11 @@ How the unique DB is provisioned depends on the scheme of `config.database.uri` 
 seed::<App>(&boot.app_context).await.expect("failed to seed");
 ```
 
-This is the same fixture format used by `cargo loco db seed` — see the [`db seed` CLI reference](@/docs/reference/cli.md#2-2-db-subcommands) for the on-disk layout and the `--from <DIR>` flag if you keep fixtures elsewhere.
+This is the same fixture format used by `cargo loco db seed` — see the [`db seed` CLI reference](/docs/reference/cli#2-2-db-subcommands) for the on-disk layout and the `--from <DIR>` flag if you keep fixtures elsewhere.
 
 ## 4. Generated model tests already do this for you
 
-`cargo loco generate model <name> ...` (and `scaffold`) scaffold a starter test in `tests/models/<name>.rs` that already follows pattern A above — `boot_test::<App>()`, `seed::<App>()`, a local `configure_insta!()` macro for snapshot naming, and a commented-out `assert_debug_snapshot!` call for you to fill in. See [Using generators](@/docs/how-to/use-generators.md).
+`cargo loco generate model <name> ...` (and `scaffold`) scaffold a starter test in `tests/models/<name>.rs` that already follows pattern A above — `boot_test::<App>()`, `seed::<App>()`, a local `configure_insta!()` macro for snapshot naming, and a commented-out `assert_debug_snapshot!` call for you to fill in. See [Using generators](/docs/how-to/use-generators).
 
 ## Verify it
 

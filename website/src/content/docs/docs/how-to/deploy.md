@@ -57,7 +57,7 @@ logger:
   format: json
 ```
 
-See [Configure logging](@/docs/how-to/configure-logging.md) for the full picture.
+See [Configure logging](/docs/how-to/configure-logging) for the full picture.
 
 **Server** — bind to all interfaces and inject the port from the environment:
 
@@ -91,7 +91,7 @@ auth:
     expiration: 604800
 ```
 
-**Queue / mailer** — same pattern: point `uri`/`host` at env vars. See the [Configuration reference](@/docs/reference/configuration.md) for every key across all of these sections.
+**Queue / mailer** — same pattern: point `uri`/`host` at env vars. See the [Configuration reference](/docs/reference/configuration) for every key across all of these sections.
 
 ## 5. Run `loco doctor` before going live
 
@@ -122,5 +122,5 @@ ssh user@server '/opt/myapp/myapp-cli start'
 
 ## Reference
 
-- `generate deployment` CLI shape (`docker`/`nginx` as `kind`): [CLI reference](@/docs/reference/cli.md)
-- Every config key referenced above (`logger`, `server`, `database`, `auth`, `mailer`, `queue`): [Configuration reference](@/docs/reference/configuration.md)
+- `generate deployment` CLI shape (`docker`/`nginx` as `kind`): [CLI reference](/docs/reference/cli)
+- Every config key referenced above (`logger`, `server`, `database`, `auth`, `mailer`, `queue`): [Configuration reference](/docs/reference/configuration)

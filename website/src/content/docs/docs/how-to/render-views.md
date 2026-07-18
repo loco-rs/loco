@@ -59,7 +59,7 @@ pub fn routes() -> Routes {
 }
 ```
 
-Register the controller's routes as usual — see [Add a controller](@/docs/how-to/add-controller.md).
+Register the controller's routes as usual — see [Add a controller](/docs/how-to/add-controller).
 
 `ViewEngine<E>` requires a `TeraLayer` `Extension` to be installed on the router; it panics with `"TeraLayer missing. Is the TeraLayer installed?"` if it isn't. This is wired up by the `ViewEngineInitializer` in `src/initializers/view_engine.rs` (present by default in HTML/HTMX starters) — see step 5 if you need to add it.
 
@@ -84,7 +84,7 @@ pub fn home(v: impl ViewRenderer) -> Result<impl IntoResponse> {
 }
 ```
 
-`format::render()` also has a `.response()` escape hatch that returns the underlying `axum::http::response::Builder` if you need something the chain doesn't cover, and `.redirect(to)` / `.redirect_with_header_key(key, to)` for redirects (see [Respond with different formats](@/docs/how-to/respond-formats.md)).
+`format::render()` also has a `.response()` escape hatch that returns the underlying `axum::http::response::Builder` if you need something the chain doesn't cover, and `.redirect(to)` / `.redirect_with_header_key(key, to)` for redirects (see [Respond with different formats](/docs/how-to/respond-formats)).
 
 For an inline template string with no file on disk, use `format::template(tmpl, data)` (or the builder's `.template(...)`) instead of `.view(...)`.
 
@@ -129,7 +129,7 @@ async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
 
 ## 6. Serving static assets referenced by your templates
 
-Templates that reference `<img src="/static/...">` need the `static` middleware — see [Serve static & SPA assets](@/docs/how-to/serve-assets.md).
+Templates that reference `<img src="/static/...">` need the `static` middleware — see [Serve static & SPA assets](/docs/how-to/serve-assets).
 
 ## 7. Use a different template engine entirely
 
@@ -144,6 +144,6 @@ curl -s localhost:5150/home
 
 ## Next
 
-- [Respond with different formats](@/docs/how-to/respond-formats.md) — JSON/HTML/YAML and content negotiation
-- [Serve static & SPA assets](@/docs/how-to/serve-assets.md)
-- [Handle errors](@/docs/how-to/handle-errors.md)
+- [Respond with different formats](/docs/how-to/respond-formats) — JSON/HTML/YAML and content negotiation
+- [Serve static & SPA assets](/docs/how-to/serve-assets)
+- [Handle errors](/docs/how-to/handle-errors)

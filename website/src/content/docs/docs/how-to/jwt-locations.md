@@ -7,9 +7,9 @@ sidebar:
 
 Goal: control where the `JWT` and `JWTWithUser<T>` extractors look for the token in an incoming request — the `Authorization` header (default), a query string parameter, a cookie, or a fallback list of several.
 
-This setting is `auth.jwt.location` in your config file. It applies only to the JWT extractors (`auth::JWT`, `auth::JWTWithUser<T>`); it has **no effect** on `auth::ApiToken<T>`, which always reads a `Bearer` header regardless of this config — see [Protect a route with an API key](@/docs/how-to/api-key-auth.md#3-send-the-key-as-a-bearer-token).
+This setting is `auth.jwt.location` in your config file. It applies only to the JWT extractors (`auth::JWT`, `auth::JWTWithUser<T>`); it has **no effect** on `auth::ApiToken<T>`, which always reads a `Bearer` header regardless of this config — see [Protect a route with an API key](/docs/how-to/api-key-auth#3-send-the-key-as-a-bearer-token).
 
-If you haven't set up JWT auth yet, start with [Protect a route with JWT](@/docs/how-to/jwt-auth.md); this page only covers the `location` key.
+If you haven't set up JWT auth yet, start with [Protect a route with JWT](/docs/how-to/jwt-auth); this page only covers the `location` key.
 
 ## Default: no configuration needed
 
@@ -108,6 +108,6 @@ Each should succeed independently; a request with no token in any of the three s
 
 ## Related
 
-- [Protect a route with JWT](@/docs/how-to/jwt-auth.md) — the extractors this setting controls, and how to generate tokens.
-- [Protect a route with an API key](@/docs/how-to/api-key-auth.md) — a separate, always-Bearer-header mechanism this setting does not affect.
-- [Configuration reference](@/docs/reference/configuration.md#auth) — the full `auth.jwt` key table, including `JWTLocation`/`JWTLocationConfig` shapes.
+- [Protect a route with JWT](/docs/how-to/jwt-auth) — the extractors this setting controls, and how to generate tokens.
+- [Protect a route with an API key](/docs/how-to/api-key-auth) — a separate, always-Bearer-header mechanism this setting does not affect.
+- [Configuration reference](/docs/reference/configuration#auth) — the full `auth.jwt` key table, including `JWTLocation`/`JWTLocationConfig` shapes.

@@ -5,7 +5,7 @@ sidebar:
   order: 3
 ---
 
-`cargo loco generate <kind>` (alias `cargo loco g <kind>`) scaffolds application code from templates baked into the `loco-gen` crate. The `generate` subcommand itself is compiled only under `#[cfg(debug_assertions)]` (`src/cli.rs:140`) — it is available in ordinary (dev/debug) builds but is compiled out of `--release` binaries. The kinds that touch the database (`model`, `migration`, `scaffold`) are additionally gated behind the `with-db` Cargo feature (on by default) — see [feature flags](@/docs/reference/feature-flags.md).
+`cargo loco generate <kind>` (alias `cargo loco g <kind>`) scaffolds application code from templates baked into the `loco-gen` crate. The `generate` subcommand itself is compiled only under `#[cfg(debug_assertions)]` (`src/cli.rs:140`) — it is available in ordinary (dev/debug) builds but is compiled out of `--release` binaries. The kinds that touch the database (`model`, `migration`, `scaffold`) are additionally gated behind the `with-db` Cargo feature (on by default) — see [feature flags](/docs/reference/feature-flags).
 
 This page is the exhaustive dictionary of generator kinds and the field-type mini-language (`name:type`) they all share. It transcribes `loco-gen/src/lib.rs` (the `Component` and `ScaffoldKind` enums), `loco-gen/src/mappings.json` (the field-type table), `loco-gen/src/infer.rs` (naming/inflection conventions), and `src/cli.rs` (the CLI surface), re-verified against `HEAD`.
 
@@ -187,5 +187,5 @@ Documented at `loco-gen/src/infer.rs:1-14`: **`cruet`** is used *only* for plura
 
 ## Related reference pages
 
-- [Feature flags](@/docs/reference/feature-flags.md) — `with-db` and the other Cargo features gating generators.
+- [Feature flags](/docs/reference/feature-flags) — `with-db` and the other Cargo features gating generators.
 - Schema/`ColType` migration DSL and query pagination reference pages cover the migration-writer side (`add_column`, `add_reference`, `ColType`) in depth.

@@ -42,7 +42,7 @@ Source: root `Cargo.toml:27-64`.
 - **`all_storage` is a pure umbrella.** It has no dependency of its own; it just turns on `storage_aws_s3`, `storage_azure`, and `storage_gcp` together.
 - **`auth` selects `jsonwebtoken/rust_crypto`.** Because jsonwebtoken 10 unbundled its crypto backend, `auth` explicitly enables the `rust_crypto` sub-feature so JWT support keeps working without requiring a system C toolchain (e.g. OpenSSL).
 - **`with-db` is a prerequisite, not an implication.** Enabling `worker` does not itself pull in `with-db`; the two are independent flags that happen to share the `sqlx` dependency.
-- **The queue backend is chosen at runtime, not by feature flag.** `worker` builds in the Postgres and SQLite queue providers; which one actually runs is decided by `queue.kind` (`Postgres` or `Sqlite`) in your app config. `worker_redis` adds the Redis provider, selected the same way with `queue.kind: Redis`. See [Choose a queue backend](@/docs/how-to/choose-queue-backend.md).
+- **The queue backend is chosen at runtime, not by feature flag.** `worker` builds in the Postgres and SQLite queue providers; which one actually runs is decided by `queue.kind` (`Postgres` or `Sqlite`) in your app config. `worker_redis` adds the Redis provider, selected the same way with `queue.kind: Redis`. See [Choose a queue backend](/docs/how-to/choose-queue-backend).
 
 ## Disabling defaults
 

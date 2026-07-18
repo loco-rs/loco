@@ -107,4 +107,4 @@ You should see much more verbose output than `logger.level` alone would produce 
 
 ## Reference
 
-- Every `logger:` YAML key, including all `file_appender` sub-keys: [Configuration reference § logger](@/docs/reference/configuration.md#logger)
+- Every `logger:` YAML key, including all `file_appender` sub-keys: [Configuration reference § logger](/docs/reference/configuration#logger)

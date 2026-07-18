@@ -5,7 +5,7 @@ sidebar:
   order: 23
 ---
 
-Goal: run an ad-hoc, CLI-invokable operation (data fix, report, one-time migration) with typed access to your app's `AppContext` — without building a UI for it. Tasks can also be invoked on a schedule, see [Schedule recurring jobs](@/docs/how-to/schedule-jobs.md).
+Goal: run an ad-hoc, CLI-invokable operation (data fix, report, one-time migration) with typed access to your app's `AppContext` — without building a UI for it. Tasks can also be invoked on a schedule, see [Schedule recurring jobs](/docs/how-to/schedule-jobs).
 
 ## 1. Generate a task
 
@@ -118,5 +118,5 @@ Running `task` with no name lists every task currently registered via `register_
 
 ## Reference
 
-- Run tasks on a schedule instead of manually: [Schedule recurring jobs](@/docs/how-to/schedule-jobs.md)
-- `cargo loco task` / `cargo loco generate task` flags: [CLI reference](@/docs/reference/cli.md)
+- Run tasks on a schedule instead of manually: [Schedule recurring jobs](/docs/how-to/schedule-jobs)
+- `cargo loco task` / `cargo loco generate task` flags: [CLI reference](/docs/reference/cli)

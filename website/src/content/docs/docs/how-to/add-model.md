@@ -7,7 +7,7 @@ sidebar:
 
 **Goal:** add a new database-backed model to a Loco app — a migration, a Sea-ORM entity, and your own model file to extend it — using the model generator.
 
-This assumes a working Loco app with the `with-db` feature enabled (the default). For the full field-type mini-language and every generator kind, see [Generators & field types](@/docs/reference/generators.md). For the migration DSL used under the hood, see [Schema & ColType DSL](@/docs/reference/schema-dsl.md).
+This assumes a working Loco app with the `with-db` feature enabled (the default). For the full field-type mini-language and every generator kind, see [Generators & field types](/docs/reference/generators). For the migration DSL used under the hood, see [Schema & ColType DSL](/docs/reference/schema-dsl).
 
 ## 1. Generate the model
 
@@ -48,7 +48,7 @@ Each `field:type` pair follows a small suffix convention:
 
 So `title:string!` is a required `String`, and `content:text` is a nullable `Option<String>`.
 
-`user:references` is special: it doesn't name a column type, it declares a belongs-to foreign key. It adds a required `user_id` column referencing the `users` table (`user:references?` makes it nullable; `user:references:author_id` picks a custom column name). See [Generators & field types § References](@/docs/reference/generators.md#references-belongs-to-foreign-keys) for the full syntax.
+`user:references` is special: it doesn't name a column type, it declares a belongs-to foreign key. It adds a required `user_id` column referencing the `users` table (`user:references?` makes it nullable; `user:references:author_id` picks a custom column name). See [Generators & field types § References](/docs/reference/generators#references-belongs-to-foreign-keys) for the full syntax.
 
 <div class="infobox">
 1.0 change: the generator's <code>int</code>/<code>int!</code>/<code>int^</code> field type now maps to <b>i64 / BIGINT</b> (<code>big_integer</code>), not <code>i32</code> as in earlier Loco versions — matching the framework's i64 auto-increment primary keys. Use <code>small_int</code> if you specifically need a 16-bit column.
@@ -119,5 +119,5 @@ assert_eq!(post.title, "hello");
 
 ## Next
 
-- [Query data](@/docs/how-to/query-data.md) with the `ConditionBuilder` DSL.
-- [Foreign-key relationships](@/docs/reference/schema-dsl.md#table-level-operations) and [request/model validation](@/docs/how-to/validate-requests.md) beyond a single table.
+- [Query data](/docs/how-to/query-data) with the `ConditionBuilder` DSL.
+- [Foreign-key relationships](/docs/reference/schema-dsl#table-level-operations) and [request/model validation](/docs/how-to/validate-requests) beyond a single table.

@@ -12,8 +12,8 @@ Loco provides `auth::ApiToken<T>`, an axum extractor that reads a key from the `
 ## Prerequisites
 
 - The `with-db` feature (on by default) — `ApiToken<T>` is compiled only under `#[cfg(feature = "with-db")]`.
-- Your user model implements `loco_rs::model::Authenticable`, in particular `find_by_api_key`. See [the `Authenticable` contract](@/docs/how-to/jwt-auth.md#the-authenticable-contract) for the trait shape and an example implementation.
-- A column on your user model to store the key (e.g. `api_key`), and a way to populate it — `loco_rs::hash::random_string` is a convenient generator; see [Hash and verify passwords](@/docs/how-to/hash-passwords.md#generate-random-tokens).
+- Your user model implements `loco_rs::model::Authenticable`, in particular `find_by_api_key`. See [the `Authenticable` contract](/docs/how-to/jwt-auth#the-authenticable-contract) for the trait shape and an example implementation.
+- A column on your user model to store the key (e.g. `api_key`), and a way to populate it — `loco_rs::hash::random_string` is a convenient generator; see [Hash and verify passwords](/docs/how-to/hash-passwords#generate-random-tokens).
 
 Unlike JWT auth, `ApiToken<T>` needs **no `auth.jwt` configuration at all** — it doesn't call into `auth.jwt.secret`/`expiration`/`location`. It only needs a database and an `Authenticable` implementation.
 
@@ -64,7 +64,7 @@ pub fn routes() -> Routes {
 
 ## 3. Send the key as a Bearer token
 
-**`ApiToken<T>` always reads the key from the `Authorization: Bearer <key>` header, and only from there.** This is a hard-coded read (`extract_token_from_header`), independent of any `auth.jwt.location` setting — the `location` config (`Bearer`/`Query`/`Cookie`, described in [Configure where Loco looks for the JWT](@/docs/how-to/jwt-locations.md)) applies to the `JWT`/`JWTWithUser` extractors only, never to `ApiToken`.
+**`ApiToken<T>` always reads the key from the `Authorization: Bearer <key>` header, and only from there.** This is a hard-coded read (`extract_token_from_header`), independent of any `auth.jwt.location` setting — the `location` config (`Bearer`/`Query`/`Cookie`, described in [Configure where Loco looks for the JWT](/docs/how-to/jwt-locations)) applies to the `JWT`/`JWTWithUser` extractors only, never to `ApiToken`.
 
 ```sh
 curl --location '127.0.0.1:5150/api/user/current-api' \
@@ -79,7 +79,7 @@ curl --location '127.0.0.1:5150/api/user/current-api' \
 
 ## Related
 
-- [Protect a route with JWT](@/docs/how-to/jwt-auth.md) — the `Authenticable` contract in full, plus the `JWT` / `JWTWithUser<T>` extractors.
-- [Configure where Loco looks for the JWT](@/docs/how-to/jwt-locations.md) — applies to JWT auth, not to `ApiToken`.
-- [Hash and verify passwords](@/docs/how-to/hash-passwords.md) — generate the random key value to store per user.
-- [Feature flags reference](@/docs/reference/feature-flags.md) — `with-db` default and what it gates.
+- [Protect a route with JWT](/docs/how-to/jwt-auth) — the `Authenticable` contract in full, plus the `JWT` / `JWTWithUser<T>` extractors.
+- [Configure where Loco looks for the JWT](/docs/how-to/jwt-locations) — applies to JWT auth, not to `ApiToken`.
+- [Hash and verify passwords](/docs/how-to/hash-passwords) — generate the random key value to store per user.
+- [Feature flags reference](/docs/reference/feature-flags) — `with-db` default and what it gates.

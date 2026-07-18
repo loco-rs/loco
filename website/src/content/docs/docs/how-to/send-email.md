@@ -7,7 +7,7 @@ sidebar:
 
 Goal: send a transactional email (welcome message, password reset, notification) from a controller or task, without blocking the request while SMTP does its thing.
 
-A mailer delivers over SMTP in the background, using the same [background worker](@/docs/how-to/add-worker.md) infrastructure — calling a mailer enqueues a `MailerWorker` job (on the `"mailer"` queue) and returns immediately.
+A mailer delivers over SMTP in the background, using the same [background worker](/docs/how-to/add-worker) infrastructure — calling a mailer enqueues a `MailerWorker` job (on the `"mailer"` queue) and returns immediately.
 
 ## 1. Generate a mailer
 
@@ -133,7 +133,7 @@ impl Mailer for AuthMailer {
 }
 ```
 
-Mailer jobs enqueue at priority `100` by default (`DEFAULT_MAILER_PRIORITY`) — see [Choose a queue backend](@/docs/how-to/choose-queue-backend.md#priority-queues) for what priority means across queue backends. Raise it if a particular mailer's messages (e.g. password resets) should jump ahead of lower-priority background work.
+Mailer jobs enqueue at priority `100` by default (`DEFAULT_MAILER_PRIORITY`) — see [Choose a queue backend](/docs/how-to/choose-queue-backend#priority-queues) for what priority means across queue backends. Raise it if a particular mailer's messages (e.g. password resets) should jump ahead of lower-priority background work.
 
 ## 5. CC, BCC, and threading headers
 
@@ -204,5 +204,5 @@ async fn can_register() {
 
 ## Reference
 
-- All `mailer:` YAML keys: [Configuration reference](@/docs/reference/configuration.md#mailer)
-- Worker modes and running a worker process: [Add a background worker](@/docs/how-to/add-worker.md)
+- All `mailer:` YAML keys: [Configuration reference](/docs/reference/configuration#mailer)
+- Worker modes and running a worker process: [Add a background worker](/docs/how-to/add-worker)

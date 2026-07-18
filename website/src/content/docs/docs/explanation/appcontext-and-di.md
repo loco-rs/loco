@@ -9,7 +9,7 @@ Rust doesn't let you reach for a mutable global app instance the way Rails or Dj
 
 ## `AppContext` as the one shared-state object
 
-Every handler, background worker, task, and scheduled job in a Loco app receives the same `AppContext` value — assembled once at boot (see [Architecture](@/docs/explanation/architecture.md)) and cloned cheaply wherever it's needed, because most of its fields are already `Arc<...>`-wrapped or otherwise cheap to clone. It carries eight fields:
+Every handler, background worker, task, and scheduled job in a Loco app receives the same `AppContext` value — assembled once at boot (see [Architecture](/docs/explanation/architecture)) and cloned cheaply wherever it's needed, because most of its fields are already `Arc<...>`-wrapped or otherwise cheap to clone. It carries eight fields:
 
 ```rust
 #[derive(Clone, FromRef)]
@@ -26,7 +26,7 @@ pub struct AppContext {
 }
 ```
 
-The full field-by-field reference — types, feature gates, purpose — lives in [AppContext & prelude](@/docs/reference/app-context.md). What's worth explaining here is the *design*, not the field list:
+The full field-by-field reference — types, feature gates, purpose — lives in [AppContext & prelude](/docs/reference/app-context). What's worth explaining here is the *design*, not the field list:
 
 - **One struct, not seven services.** Rather than injecting the DB pool, the cache, the mailer, storage, and the queue as five separate pieces of Axum state, Loco bundles them into one `AppContext` and derives `FromRef` on it. That derive is what lets a handler ask for exactly the piece it needs — `State<DatabaseConnection>` or `State<Arc<cache::Cache>>` — while a background worker or the boot sequence can still ask for the whole thing. You get the ergonomics of narrow, single-purpose extraction without the boilerplate of hand-writing `FromRef` impls for every field.
 - **`db` is the only field that's compiled away, not just empty.** Every other field degrades gracefully when unconfigured (`None` for `mailer`/`queue_provider`, a `Null` driver for `cache`/`storage`) — an app with no mailer configured still has a `mailer: Option<EmailSender>` field, just set to `None`. `db` is different: with the `with-db` feature off, the field doesn't exist on the struct at all, which is a compile-time way of saying "this deployment shape genuinely has no database," rather than a runtime `Option` a caller could forget to check.
@@ -36,7 +36,7 @@ The full field-by-field reference — types, feature gates, purpose — lives in
 
 `AppContext`'s eight fields cover what *every* Loco app needs. They obviously can't cover what *your* app needs — a third-party API client, a feature-flag SDK handle, an app-specific cache of precomputed data. Two options exist, and they aren't in tension, they're the same design carried into two different lifecycles:
 
-- **`Initializer`** (see [Add middleware](@/docs/how-to/add-middleware.md)) is the *install-time* extension point: a trait with `before_run`, `after_routes`, and `check` hooks, used to wire a whole piece of infrastructure into the app (register an Axum `Extension`, mount a session layer, install a doctor health check).
+- **`Initializer`** (see [Add middleware](/docs/how-to/add-middleware)) is the *install-time* extension point: a trait with `before_run`, `after_routes`, and `check` hooks, used to wire a whole piece of infrastructure into the app (register an Axum `Extension`, mount a session layer, install a doctor health check).
 - **`SharedStore`** is the *storage* extension point: a place to actually hold a value of a type Loco has never heard of, so it can be read back out in a handler, a worker, or anywhere else `AppContext` reaches.
 
 In practice they compose: you typically construct the value you want to share and call `ctx.shared_store.insert(..)` from inside `Hooks::after_context` (the same hook that runs once, right after the context is built), then read it back with the extractor below.
@@ -81,4 +81,4 @@ The alternative designs are familiar from other ecosystems — a service locator
 
 `SharedStore` is intentionally closer to "a typed, thread-safe `HashMap<TypeId, Box<dyn Any>>` you're handed for free" than a general DI framework — it doesn't manage lifecycles, doesn't resolve dependencies between the things you store, and doesn't enforce a registration order. That's the trade: less power, but no new mental model to learn, and it composes with ordinary Rust ownership rather than working around it. For most apps, "stash a client in `after_context`, extract it with `SharedStore<T>`" is the entire pattern.
 
-See the [AppContext & prelude reference](@/docs/reference/app-context.md) for the exhaustive field/method signatures, and [Add middleware](@/docs/how-to/add-middleware.md) for a related worked example (a custom `MiddlewareLayer`/`Initializer`-style extension wired into the app).
+See the [AppContext & prelude reference](/docs/reference/app-context) for the exhaustive field/method signatures, and [Add middleware](/docs/how-to/add-middleware) for a related worked example (a custom `MiddlewareLayer`/`Initializer`-style extension wired into the app).

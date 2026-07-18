@@ -34,7 +34,7 @@ cache:
   kind: Null
 ```
 
-`InMem` needs the `cache_inmem` feature (on by default); `Redis` needs `cache_redis` (off by default — add it to your `Cargo.toml`). See the [feature flags reference](@/docs/reference/feature-flags.md).
+`InMem` needs the `cache_inmem` feature (on by default); `Redis` needs `cache_redis` (off by default — add it to your `Cargo.toml`). See the [feature flags reference](/docs/reference/feature-flags).
 
 If you omit `cache` from the config file altogether, Loco silently falls back to the **`Null` driver**: `get()` always returns `None`, and every mutating operation (`insert`, `insert_with_expiry`, `remove`, `clear`, `ping`) returns an error. This is a fail-fast default for "you haven't configured a real cache" — don't ship it to production by accident.
 
@@ -140,5 +140,5 @@ async fn can_get_or_insert() {
 
 ## Reference
 
-- Every `cache:` YAML key (`kind`, `max_capacity`, `uri`, `max_size`): [Configuration reference § cache](@/docs/reference/configuration.md#cache)
-- `cache_inmem` / `cache_redis` feature flags: [Feature flags reference](@/docs/reference/feature-flags.md)
+- Every `cache:` YAML key (`kind`, `max_capacity`, `uri`, `max_size`): [Configuration reference § cache](/docs/reference/configuration#cache)
+- `cache_inmem` / `cache_redis` feature flags: [Feature flags reference](/docs/reference/feature-flags)

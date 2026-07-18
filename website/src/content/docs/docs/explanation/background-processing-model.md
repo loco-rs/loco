@@ -5,7 +5,7 @@ sidebar:
   order: 5
 ---
 
-Loco lets you write one `BackgroundWorker` implementation and one `perform_later` call site, then choose — by config, not by code change — whether jobs are durably queued in Redis, Postgres, or SQLite, or not durably queued at all. This page explains the design that makes that swap safe, not the step-by-step of adding a worker (that's [Add a background worker](@/docs/how-to/add-worker.md)) or the exhaustive config keys (that's the [Configuration reference](@/docs/reference/configuration.md#queue) and [Choose a queue backend](@/docs/how-to/choose-queue-backend.md)).
+Loco lets you write one `BackgroundWorker` implementation and one `perform_later` call site, then choose — by config, not by code change — whether jobs are durably queued in Redis, Postgres, or SQLite, or not durably queued at all. This page explains the design that makes that swap safe, not the step-by-step of adding a worker (that's [Add a background worker](/docs/how-to/add-worker)) or the exhaustive config keys (that's the [Configuration reference](/docs/reference/configuration#queue) and [Choose a queue backend](/docs/how-to/choose-queue-backend)).
 
 ## One trait, one call site, three backends
 
@@ -18,7 +18,7 @@ pub trait BackgroundWorker<A> {
 }
 ```
 
-You implement `perform`, register the worker in `connect_workers`, and enqueue work with `MyWorker::perform_later(&ctx, args).await?`. Nothing in that call references which backend is active — that's decided entirely by `queue.kind` in config (`Redis` | `Postgres` | `Sqlite`), read at boot by `create_queue_provider`. This is the same "config over code" bias covered in [Why batteries included](@/docs/explanation/why-batteries-included.md), applied to durability and delivery semantics: swapping backends is an operational decision (what's already running in your infrastructure, what latency/throughput profile you need), not a rewrite.
+You implement `perform`, register the worker in `connect_workers`, and enqueue work with `MyWorker::perform_later(&ctx, args).await?`. Nothing in that call references which backend is active — that's decided entirely by `queue.kind` in config (`Redis` | `Postgres` | `Sqlite`), read at boot by `create_queue_provider`. This is the same "config over code" bias covered in [Why batteries included](/docs/explanation/why-batteries-included), applied to durability and delivery semantics: swapping backends is an operational decision (what's already running in your infrastructure, what latency/throughput profile you need), not a rewrite.
 
 `perform_later` (and its sibling `perform_later_with_priority`) returns `Result<String>` — the job's id — rather than `Result<()>`. That return value matters because it's what you'd hand to `cargo loco jobs cancel`/`requeue` or log for later correlation; treat any `perform_later` call site that discards its return value as intentionally choosing not to track the job, not as the only option.
 
@@ -69,4 +69,4 @@ There's no universally correct choice — the three backends trade off along rea
 - **Postgres** — no new infrastructure if your app's primary database is already Postgres, and `FOR UPDATE SKIP LOCKED` gives solid concurrent-worker throughput.
 - **SQLite** — zero extra infrastructure at all, good for small deployments or local development; the lock-table fallback for concurrency makes it less suited to a large number of concurrent workers than the other two.
 
-See [Choose a queue backend](@/docs/how-to/choose-queue-backend.md) for the concrete config for each, and the [Configuration reference](@/docs/reference/configuration.md#queue) for every field and its default.
+See [Choose a queue backend](/docs/how-to/choose-queue-backend) for the concrete config for each, and the [Configuration reference](/docs/reference/configuration#queue) for every field and its default.

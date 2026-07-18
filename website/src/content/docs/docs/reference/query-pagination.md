@@ -193,7 +193,7 @@ let res = query::fetch_page(&db, Entity::find(), &query::PaginationQuery::page(2
 
 ## Model-layer error types
 
-`src/model/mod.rs` — the error type returned by model/authn code (distinct from the crate-wide `loco_rs::errors::Error`; see the [error model reference](@/docs/reference/errors.md)).
+`src/model/mod.rs` — the error type returned by model/authn code (distinct from the crate-wide `loco_rs::errors::Error`; see the [error model reference](/docs/reference/errors)).
 
 ### `ModelError` / `ModelResult`
 
@@ -213,7 +213,7 @@ pub type ModelResult<T, E = ModelError> = std::result::Result<T, E>;
 ```
 (`src/model/mod.rs:13-35` for the enum, `:38` for the alias)
 
-Note: `ModelError` is **not** `#[non_exhaustive]` (unlike the crate-wide `Error`) — this is the model layer's own, smaller error enum, not the one documented on the [error model reference](@/docs/reference/errors.md) page. `Jwt` only exists when the `auth` feature is enabled (`mod.rs:23-25`).
+Note: `ModelError` is **not** `#[non_exhaustive]` (unlike the crate-wide `Error`) — this is the model layer's own, smaller error enum, not the one documented on the [error model reference](/docs/reference/errors) page. `Jwt` only exists when the `auth` feature is enabled (`mod.rs:23-25`).
 
 Constructors:
 

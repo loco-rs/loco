@@ -7,7 +7,7 @@ sidebar:
 
 Goal: change what `cargo loco generate <kind>` produces — e.g. add a header to every generated controller, or tweak the HTMX scaffold views — without forking Loco.
 
-Every generator kind covered in [Using generators](@/docs/how-to/use-generators.md) is driven by `.t` template files baked into the `loco-gen` crate. `cargo loco generate override` copies one of those templates (or a whole folder of them) into your app's own `.loco-templates/` directory; from then on, generation runs read your copy instead of the built-in one.
+Every generator kind covered in [Using generators](/docs/how-to/use-generators) is driven by `.t` template files baked into the `loco-gen` crate. `cargo loco generate override` copies one of those templates (or a whole folder of them) into your app's own `.loco-templates/` directory; from then on, generation runs read your copy instead of the built-in one.
 
 ## 1. List what's overridable
 
@@ -64,4 +64,4 @@ cargo loco generate controller widgets index --api
 
 Confirm the generated `src/controllers/widgets.rs` reflects your edited template (e.g. the header/comment you added), not the stock output.
 
-See the [Generators & field types reference](@/docs/reference/generators.md#override) for the exact `override` CLI shape, and the [CLI reference](@/docs/reference/cli.md#2-4-generate-subcommands) for how `override` fits among the other `generate` subcommands.
+See the [Generators & field types reference](/docs/reference/generators#override) for the exact `override` CLI shape, and the [CLI reference](/docs/reference/cli#2-4-generate-subcommands) for how `override` fits among the other `generate` subcommands.

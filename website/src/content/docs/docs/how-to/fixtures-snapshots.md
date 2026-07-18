@@ -87,7 +87,7 @@ async fn can_find_by_pid() {
 }
 ```
 
-`cargo loco generate model`/`scaffold` already scaffold this macro (without the suffix line) into the generated `tests/models/<name>.rs` — see [Using generators](@/docs/how-to/use-generators.md).
+`cargo loco generate model`/`scaffold` already scaffold this macro (without the suffix line) into the generated `tests/models/<name>.rs` — see [Using generators](/docs/how-to/use-generators).
 
 ## HTML assertions with `select()`
 

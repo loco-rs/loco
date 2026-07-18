@@ -7,7 +7,7 @@ sidebar:
 
 **Goal:** turn on one of Loco's 13 built-in middlewares, or write your own when none of them fit, and confirm it's actually running.
 
-This assumes a working app. For the full config-key/knob table for every built-in middleware, see the [Middleware catalog reference](@/docs/reference/middleware.md).
+This assumes a working app. For the full config-key/knob table for every built-in middleware, see the [Middleware catalog reference](/docs/reference/middleware).
 
 ## 1. Enable a built-in middleware via config
 
@@ -80,7 +80,7 @@ server:
       max_age: 3600
 ```
 
-Serve static assets or an SPA — see [Serve static & SPA assets](@/docs/how-to/serve-assets.md) for the full walkthrough:
+Serve static assets or an SPA — see [Serve static & SPA assets](/docs/how-to/serve-assets) for the full walkthrough:
 
 ```yaml
 server:
@@ -106,7 +106,7 @@ pub async fn list(ip: RemoteIP, State(ctx): State<AppContext>) -> Result<Respons
 
 ## 4. Apply a middleware to a single route instead of globally
 
-Config-driven middleware always applies to every route in the app. To scope a `tower::Layer` to one controller or route, use `Routes::layer` — see [Add a controller § 7](@/docs/how-to/add-controller.md#7-apply-a-tower-layer-to-just-one-controller-or-route).
+Config-driven middleware always applies to every route in the app. To scope a `tower::Layer` to one controller or route, use `Routes::layer` — see [Add a controller § 7](/docs/how-to/add-controller#7-apply-a-tower-layer-to-just-one-controller-or-route).
 
 ## 5. Write a custom middleware
 
@@ -173,7 +173,7 @@ impl Hooks for App {
 }
 ```
 
-Remember the ordering rule: `AppRoutes::to_router` applies this `Vec` one `.layer(...)` call at a time, and each new layer wraps the router as the **outer** layer — so the middleware **last** in the vec is the **first** to see an incoming request (LIFO). Push your custom middleware onto whichever end of the vec matches where it needs to sit relative to `logger`/`catch_panic`/etc. See the [Middleware catalog § stack ordering](@/docs/reference/middleware.md#stack-ordering-build-order-vs-request-order-lifo) for the full explanation and the built-in coding order.
+Remember the ordering rule: `AppRoutes::to_router` applies this `Vec` one `.layer(...)` call at a time, and each new layer wraps the router as the **outer** layer — so the middleware **last** in the vec is the **first** to see an incoming request (LIFO). Push your custom middleware onto whichever end of the vec matches where it needs to sit relative to `logger`/`catch_panic`/etc. See the [Middleware catalog § stack ordering](/docs/reference/middleware#stack-ordering-build-order-vs-request-order-lifo) for the full explanation and the built-in coding order.
 
 ## Verify
 
@@ -184,6 +184,6 @@ curl -i localhost:5150/          # confirm the custom header/behavior shows up
 
 ## Next
 
-- [Middleware catalog reference](@/docs/reference/middleware.md) — every built-in middleware's config key and knobs
-- [Serve static & SPA assets](@/docs/how-to/serve-assets.md)
-- [Handle errors](@/docs/how-to/handle-errors.md)
+- [Middleware catalog reference](/docs/reference/middleware) — every built-in middleware's config key and knobs
+- [Serve static & SPA assets](/docs/how-to/serve-assets)
+- [Handle errors](/docs/how-to/handle-errors)

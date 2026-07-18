@@ -43,7 +43,7 @@ let reset_token = hash::random_string(32);
 let api_key = hash::random_string(40);
 ```
 
-`random_string(length)` returns an alphanumeric string of exactly `length` characters, suitable for password-reset tokens or per-user API keys — see [Protect a route with an API key](@/docs/how-to/api-key-auth.md) for wiring a generated key into `Authenticable::find_by_api_key`.
+`random_string(length)` returns an alphanumeric string of exactly `length` characters, suitable for password-reset tokens or per-user API keys — see [Protect a route with an API key](/docs/how-to/api-key-auth) for wiring a generated key into `Authenticable::find_by_api_key`.
 
 ## Verify it works
 
@@ -59,6 +59,6 @@ assert!(!hash::verify_password("wrong password", &hashed));
 
 ## Related
 
-- [Protect a route with an API key](@/docs/how-to/api-key-auth.md) — use `random_string` to mint the key, `find_by_api_key` to look it up.
-- [Protect a route with JWT](@/docs/how-to/jwt-auth.md) — issue a token once `verify_password` confirms the login.
-- [Error model reference](@/docs/reference/errors.md) — how `Error::msg`/`Error::Message` fit into the crate's error type.
+- [Protect a route with an API key](/docs/how-to/api-key-auth) — use `random_string` to mint the key, `find_by_api_key` to look it up.
+- [Protect a route with JWT](/docs/how-to/jwt-auth) — issue a token once `verify_password` confirms the login.
+- [Error model reference](/docs/reference/errors) — how `Error::msg`/`Error::Message` fit into the crate's error type.

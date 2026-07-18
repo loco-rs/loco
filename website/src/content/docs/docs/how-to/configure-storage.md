@@ -17,7 +17,7 @@ Local, in-memory, and null storage work with no extra Cargo features. Cloud driv
 loco-rs = { version = "...", features = ["storage_aws_s3"] } # or storage_azure, storage_gcp, all_storage
 ```
 
-See the [feature flags reference](@/docs/reference/feature-flags.md) for the full matrix.
+See the [feature flags reference](/docs/reference/feature-flags) for the full matrix.
 
 ## 1. Wire up a single driver
 
@@ -224,5 +224,5 @@ async fn can_upload_and_download() {
 
 ## Reference
 
-- `storage_aws_s3` / `storage_azure` / `storage_gcp` / `all_storage` feature flags: [Feature flags reference](@/docs/reference/feature-flags.md)
-- Storage has no YAML configuration surface — everything above is the complete configuration story; there is no `storage:` key to look up in the [Configuration reference](@/docs/reference/configuration.md)
+- `storage_aws_s3` / `storage_azure` / `storage_gcp` / `all_storage` feature flags: [Feature flags reference](/docs/reference/feature-flags)
+- Storage has no YAML configuration surface — everything above is the complete configuration story; there is no `storage:` key to look up in the [Configuration reference](/docs/reference/configuration)

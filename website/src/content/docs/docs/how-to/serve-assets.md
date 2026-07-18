@@ -7,7 +7,7 @@ sidebar:
 
 **Goal:** serve files (images, CSS, JS, a compiled SPA bundle) directly from Loco, either from disk or embedded into the compiled binary.
 
-This assumes a working app. For the full knob table, see the `static` entry in the [Middleware catalog reference](@/docs/reference/middleware.md).
+This assumes a working app. For the full knob table, see the `static` entry in the [Middleware catalog reference](/docs/reference/middleware).
 
 ## 1. Put files under `assets/static/`
 
@@ -128,6 +128,6 @@ curl -I localhost:5150/static/does-not-exist.png   # falls back per `fallback` c
 
 ## Next
 
-- [Render server-side views](@/docs/how-to/render-views.md)
-- [Add middleware](@/docs/how-to/add-middleware.md)
-- [Middleware catalog reference](@/docs/reference/middleware.md)
+- [Render server-side views](/docs/how-to/render-views)
+- [Add middleware](/docs/how-to/add-middleware)
+- [Middleware catalog reference](/docs/reference/middleware)

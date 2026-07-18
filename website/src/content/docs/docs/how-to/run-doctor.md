@@ -70,11 +70,11 @@ cargo loco doctor --config
 Environment: development
 ```
 
-This complements the [configuration reference](@/docs/reference/configuration.md#loading-precedence) — if a setting doesn't look like what you expect, `doctor --config` shows you the config *after* file precedence, environment resolution, and Tera templating have all been applied, not just what's on disk.
+This complements the [configuration reference](/docs/reference/configuration#loading-precedence) — if a setting doesn't look like what you expect, `doctor --config` shows you the config *after* file precedence, environment resolution, and Tera templating have all been applied, not just what's on disk.
 
 ## 5. Add your own checks
 
-If you ship a custom [`Initializer`](@/docs/how-to/add-middleware.md), implement its `check` method and `doctor` will pick it up automatically — no extra wiring needed:
+If you ship a custom [`Initializer`](/docs/how-to/add-middleware), implement its `check` method and `doctor` will pick it up automatically — no extra wiring needed:
 
 ```rust
 use loco_rs::doctor::{Check, CheckStatus};
@@ -98,4 +98,4 @@ cargo loco doctor --production
 cargo loco doctor --config
 ```
 
-See the [CLI reference](@/docs/reference/cli.md#2-1-top-level-subcommands) for the exact flag list alongside every other `cargo loco` subcommand.
+See the [CLI reference](/docs/reference/cli#2-1-top-level-subcommands) for the exact flag list alongside every other `cargo loco` subcommand.

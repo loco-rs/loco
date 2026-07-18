@@ -5,7 +5,7 @@ sidebar:
   order: 22
 ---
 
-Goal: run a [task](@/docs/how-to/write-task.md) or a shell command on a recurring schedule, without hand-rolling `crontab`.
+Goal: run a [task](/docs/how-to/write-task) or a shell command on a recurring schedule, without hand-rolling `crontab`.
 
 ## 1. Create a scheduler config
 
@@ -107,6 +107,6 @@ LOCO_ENV=production cargo loco scheduler --tag 'base'
 
 ## Reference
 
-- Writing the task a scheduler job invokes: [Write a task](@/docs/how-to/write-task.md)
-- `scheduler`/`SCHEDULER_CONFIG` config keys: [Configuration reference](@/docs/reference/configuration.md)
-- `cargo loco scheduler` flags: [CLI reference](@/docs/reference/cli.md)
+- Writing the task a scheduler job invokes: [Write a task](/docs/how-to/write-task)
+- `scheduler`/`SCHEDULER_CONFIG` config keys: [Configuration reference](/docs/reference/configuration)
+- `cargo loco scheduler` flags: [CLI reference](/docs/reference/cli)

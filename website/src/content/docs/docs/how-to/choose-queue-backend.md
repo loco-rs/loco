@@ -5,7 +5,7 @@ sidebar:
   order: 21
 ---
 
-Goal: decide how background jobs (see [Add a background worker](@/docs/how-to/add-worker.md)) are enqueued, stored, and processed, and configure it.
+Goal: decide how background jobs (see [Add a background worker](/docs/how-to/add-worker)) are enqueued, stored, and processed, and configure it.
 
 ## 1. Pick a worker mode
 
@@ -82,7 +82,7 @@ queue:
 
 Requires the `worker` Cargo feature (on by default) — the same flag that gates the Postgres backend above; both share the `sqlx`-based provider and are picked between at runtime by `queue.kind`. Uses `sqlt_loco_queue` (+ a lock table, since SQLite has no `SELECT ... FOR UPDATE SKIP LOCKED`).
 
-The upshot: `worker` covers Postgres and SQLite queues (already in the default feature set), while `worker_redis` adds the Redis queue on top. Which backend actually runs is a runtime choice — `queue.kind: Postgres | Sqlite | Redis` — not a per-database feature flag. For the exhaustive key list (defaults included), see [Configuration reference → queue](@/docs/reference/configuration.md#queue). For flag names and how to trim the default feature set, see [Feature flags reference](@/docs/reference/feature-flags.md).
+The upshot: `worker` covers Postgres and SQLite queues (already in the default feature set), while `worker_redis` adds the Redis queue on top. Which backend actually runs is a runtime choice — `queue.kind: Postgres | Sqlite | Redis` — not a per-database feature flag. For the exhaustive key list (defaults included), see [Configuration reference → queue](/docs/reference/configuration#queue). For flag names and how to trim the default feature set, see [Feature flags reference](/docs/reference/feature-flags).
 
 ## 3. Run the worker process
 
@@ -91,7 +91,7 @@ cargo loco start --worker           # dedicated worker process
 cargo loco start --server-and-worker # server + worker, one process
 ```
 
-See [Add a background worker](@/docs/how-to/add-worker.md#5-run-the-worker-process) for tag filtering.
+See [Add a background worker](/docs/how-to/add-worker#5-run-the-worker-process) for tag filtering.
 
 ## Priority queues
 
@@ -116,7 +116,7 @@ cargo loco jobs import -f <file>
 cargo loco jobs requeue --from-age 0  # move stuck "processing" jobs back to "queued"
 ```
 
-See the full flag list in the [CLI reference](@/docs/reference/cli.md#2-3-jobs-subcommands).
+See the full flag list in the [CLI reference](/docs/reference/cli#2-3-jobs-subcommands).
 
 ### Automatic requeue (reaper)
 
