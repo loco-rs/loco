@@ -49,6 +49,7 @@ const dateStr = cast.data.pubDate.toLocaleDateString('en-US', {
           src={`https://www.youtube-nocookie.com/embed/${cast.data.youtube}`}
           title={cast.data.title}
           loading="lazy"
+          allow="accelerated-motion; encrypted-media; picture-in-picture; web-share; fullscreen"
           allowfullscreen
         ></iframe>
       </div>

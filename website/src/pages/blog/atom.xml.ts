@@ -44,6 +44,7 @@ export async function GET(context: APIContext) {
   <link href="${new URL('/blog/', site).href}" />
   <id>${new URL('/blog/', site).href}</id>
   <updated>${feedUpdated}</updated>
+  <author><name>Loco</name></author>
 ${entries}
 </feed>
 `;
