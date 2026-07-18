@@ -63,6 +63,13 @@ middleware subsystems. Follow the step-by-step
   `CountFailure(n)` → `FailAtFailures(n)`. Secondary writes for the former
   backup strategy now run concurrently (previously sequential); the collected
   errors and failure decision are unchanged.
+- **Local storage driver no longer defaults its root to `/`.**
+  `storage::drivers::local::new()` previously rooted the filesystem store at
+  `/`, so any key — including one derived from user input — resolved against the
+  whole disk (e.g. downloading key `etc/passwd` read `/etc/passwd`). It now roots
+  at the current working directory. Apps that relied on absolute-path keys should
+  switch to `local::new_with_prefix("/your/root")` to opt back into an explicit
+  absolute root.
 - **Background queue reworked into a `QueueProvider` adapter interface.** The
   `bgworker::Queue` enum (`Postgres`/`Sqlite`/`Redis`/`None`) is now a newtype
   over `Arc<dyn QueueProvider>`, so backends are pluggable (implement

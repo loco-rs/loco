@@ -3,7 +3,12 @@ use opendal::{services::Fs, Operator};
 use super::StoreDriver;
 use crate::storage::{drivers::opendal_adapter::OpendalAdapter, StorageResult};
 
-/// Create new filesystem storage with no prefix
+/// Create new filesystem storage rooted at the current working directory.
+///
+/// Keys are resolved relative to the process working directory, so a key such
+/// as `uploads/avatar.png` lands under the app directory rather than at the
+/// filesystem root. To root the store elsewhere (including an absolute path),
+/// use [`new_with_prefix`].
 ///
 /// # Examples
 ///```
@@ -16,7 +21,7 @@ use crate::storage::{drivers::opendal_adapter::OpendalAdapter, StorageResult};
 /// Panics if the filesystem service built failed.
 #[must_use]
 pub fn new() -> Box<dyn StoreDriver> {
-    let fs = Fs::default().root("/");
+    let fs = Fs::default().root(".");
     Box::new(OpendalAdapter::new(
         Operator::new(fs)
             .expect("fs service should build with success")
