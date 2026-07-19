@@ -15,7 +15,7 @@ flair =[]
 
 [English](./index.md) - Français
 
-<img style="width:100%; max-width:640px" src="tour.png"/>
+<img style="width:100%; max-width:640px" src="tour.png" width="1024" height="1024"/>
 <br/>
 <br/>
 <br/>

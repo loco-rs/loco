@@ -4,7 +4,8 @@
 	<div class="container relative flex h-14 md:grid md:grid-cols-[240px_minmax(0,1fr)] xl:max-w-[80rem]">
 		<div class="mr-4 hidden sm:flex">
 			<a class="flex mr-4  items-center space-x-2" href="/">
-				<img src="/icon.svg" width="30px" />
+				{% set icon_meta = get_image_metadata(path="icon.svg") %}
+				<img class="w-[30px] h-[30px]" src="/icon.svg" width="{{ icon_meta.width }}" height="{{ icon_meta.height }}" />
 			</a>
 			<nav class="flex w-full bg-transparent items-center gap-4 text-sm">
 				{% if lang == config.default_language %}
@@ -51,7 +52,8 @@
 				<div class="absolute mt-[106px] left-0 right-0">
 						<nav id="menu-toggle" class="flex hidden bg-background  items-center gap-4 text-sm py-[15px] px-2 w-full">
 							<a class="flex items-center" href="/">
-								<img src="/icon.svg" width="30px" />
+								{% set icon_meta = get_image_metadata(path="icon.svg") %}
+								<img class="w-[30px] h-[30px]" src="/icon.svg" width="{{ icon_meta.width }}" height="{{ icon_meta.height }}" />
 							</a>
 							{% if lang == config.default_language %}
 							{% set rootsectionpath = "_index.md" %}

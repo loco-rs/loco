@@ -10,5 +10,5 @@
 {% endmacro %}
 
 {% macro thumb(id, class=false) %}
-<img class="max-w-[200px] max-h-[230px] rounded-md" {% if class %}class="{{class}}"{% endif %} src="https://i3.ytimg.com/vi/{{id}}/hqdefault.jpg" />
+<img class="max-w-[200px] max-h-[230px] rounded-md" {% if class %}class="{{class}}"{% endif %} src="https://i3.ytimg.com/vi/{{id}}/hqdefault.jpg" width="480" height="360" />
 {% endmacro %}

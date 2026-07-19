@@ -262,7 +262,7 @@ workers:
 ## Manage a Workers From UI
 
 You can manage the jobs queue with the [Loco admin job project](https://github.com/loco-rs/admin-jobs).
-![<img style="width:100%; max-width:640px" src="tour.png"/>](https://github.com/loco-rs/admin-jobs/raw/main/media/screenshot.png)
+<img src="https://github.com/loco-rs/admin-jobs/raw/main/media/screenshot.png" width="1276" height="964" />
 
 ### Managing Job Queues via CLI
 

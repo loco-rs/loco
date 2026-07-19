@@ -2,7 +2,8 @@
 <div class="section bg-redrust dark:bg-zinc-800 pt-8">
   <div class="container flex flex-col items-center text-center text-background py-8 pb-12">
       <div class="mb-8">
-      <img src="/icon.svg" width="130px" />
+      {% set icon_meta = get_image_metadata(path="icon.svg") %}
+      <img class="w-[130px] h-[130px]" src="/icon.svg" width="{{ icon_meta.width }}" height="{{ icon_meta.height }}" />
       </div>
       <div class="footer-links">
           <a href="https://github.com/loco-rs/loco">

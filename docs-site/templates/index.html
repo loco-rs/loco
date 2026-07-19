@@ -28,7 +28,8 @@
 <div class="prose dark:prose-invert max-w-[100%]">
 
 <div class="relative bg-left-bottom mt-12 md:mt-0">
-    <img class="m-0 mt-[-60px] w-full" src="header.svg"/>
+    {% set header_meta = get_image_metadata(path="header.svg") %}
+    <img class="m-0 mt-[-60px] w-full" src="header.svg" width="{{ header_meta.width }}" height="{{ header_meta.height }}"/>
 </div>
 
 
@@ -111,7 +112,8 @@ compilation: <span class="text-yellow-400">debug</span>
     </div>
     <div class="py-6"></div>
 
-    <img src="/cloud.svg" class="absolute right-0 bottom-0 m-0" />
+    {% set cloud_meta = get_image_metadata(path="cloud.svg") %}
+    <img src="/cloud.svg" class="absolute right-0 bottom-0 m-0" width="{{ cloud_meta.width }}" height="{{ cloud_meta.height }}" />
 </div>
 
 
@@ -128,15 +130,18 @@ compilation: <span class="text-yellow-400">debug</span>
 
     <div class="container">
         <div class="flex flex-col items-center rounded-lg shadow-lg bg-red-900 w-full sm:w-7/12 mx-auto">
-            <img src="bench-db-q.svg"/>
-            <img src="bench-no-db.svg"/>
+            {% set bench_db_meta = get_image_metadata(path="bench-db-q.svg") %}
+            {% set bench_no_db_meta = get_image_metadata(path="bench-no-db.svg") %}
+            <img src="bench-db-q.svg" width="{{ bench_db_meta.width }}" height="{{ bench_db_meta.height }}" />
+            <img src="bench-no-db.svg" width="{{ bench_no_db_meta.width }}" height="{{ bench_no_db_meta.height }}" />
         </div>
     </div>
 
     <div class="flex items-center justify-center py-6 z-10 relative">
         <a class="fatbtn dark:bg-foreground dark:text-background" href="/docs/getting-started/tour/">Get started &rarr;</a>
     </div>
-    <img src="/mountain-bg.svg" class="absolute left-0 top-[-490px]" />
+    {% set mountain_meta = get_image_metadata(path="mountain-bg.svg") %}
+    <img src="/mountain-bg.svg" class="absolute left-0 top-[-490px]" width="{{ mountain_meta.width }}" height="{{ mountain_meta.height }}" />
 </div>
 
 <div class="section bg-gray-100 dark:bg-background">
