@@ -156,7 +156,7 @@ compilation: <span class="text-yellow-400">debug</span>
 
             {% for val in config.extra.homepage.features %}
             <div class="col-span-2 grid items-start xl:col-span-1 text-center">
-                    <div class="overflow-auto text-sm prose min-w-[100%] text-left">
+                    <div class="overflow-auto text-sm prose dark:prose-invert min-w-[100%] text-left">
                         {{ val.example | markdown(inline=true) | safe }}
                     </div>
 
