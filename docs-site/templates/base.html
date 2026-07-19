@@ -94,6 +94,14 @@
   <link rel="apple-touch-icon" sizes="180x180" href={{ get_url(path="apple-touch-icon.png" ) }}>
   <link rel="icon" type="image/png" href={{ get_url(path="favicon-32x32.png" ) }}>
 
+  <script>
+    // enforce local storage setting but also fallback to user-agent preferences
+    if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+
+        document.documentElement.classList.add('dark');
+
+    }
+  </script>
 </head>
 
 <body class="bg-background">
