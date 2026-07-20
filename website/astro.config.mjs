@@ -79,6 +79,9 @@ export default defineConfig({
       // src/components/SiteTitleWithVersion.astro for the override itself.
       components: {
         SiteTitle: './src/components/SiteTitleWithVersion.astro',
+        // Docs header wears the marketing top bar (links + star + CTA) for
+        // cross-surface consistency; see the component for the rationale.
+        Header: './src/components/starlight/Header.astro',
       },
       // Diátaxis groups. `How-to guides` holds 35 pages: left as one flat
       // `autogenerate` it renders as an undifferentiated wall, so it's

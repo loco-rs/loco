@@ -1,0 +1,131 @@
+---
+// Overrides Starlight's default Header (registered in astro.config.mjs) so
+// the /docs surface wears the SAME top bar as the marketing site — same
+// wordmark, the Docs/Blog/Screencasts links, the GitHub star pill, and the
+// Get-started CTA — instead of Starlight's bare "logo + search + theme" bar.
+// Crossing home ↔ docs should feel like one product, not two sites.
+//
+// Starlight's own Search + ThemeSelect are reused (virtual imports) so
+// search, keyboard shortcut, theme persistence, and mobile behavior all keep
+// working. We drop Starlight's default 3-column grid (whose math aligns the
+// search box with the content column) in favor of a flex bar that mirrors
+// the marketing Nav — cross-surface consistency is the whole point here.
+import config from 'virtual:starlight/user-config';
+import Search from 'virtual:starlight/components/Search';
+import SiteTitle from 'virtual:starlight/components/SiteTitle';
+import ThemeSelect from 'virtual:starlight/components/ThemeSelect';
+
+const shouldRenderSearch =
+  config.pagefind ||
+  config.components.Search !== '@astrojs/starlight/components/Search.astro';
+---
+
+<div class="header">
+  <div class="lead sl-flex">
+    <div class="title-wrapper sl-flex">
+      <SiteTitle {...Astro.props} />
+    </div>
+    <nav class="site-links sl-hidden md:sl-flex" aria-label="Site">
+      <a href="/docs/" aria-current="page">Docs</a>
+      <a href="/blog/">Blog</a>
+      <a href="/casts/">Screencasts</a>
+    </nav>
+  </div>
+
+  <div class="search-wrapper sl-flex">
+    {shouldRenderSearch && <Search {...Astro.props} />}
+  </div>
+
+  <div class="right-group sl-flex">
+    <a
+      class="stars sl-hidden md:sl-flex"
+      href="https://github.com/loco-rs/loco"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Loco on GitHub"
+    >★ 6.9k</a>
+    <ThemeSelect {...Astro.props} />
+    <a class="cta sl-hidden md:sl-flex" href="/docs/tutorials/your-first-app/">Get started</a>
+  </div>
+</div>
+
+<style>
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    height: 100%;
+  }
+  .lead {
+    align-items: center;
+    gap: 1.75rem;
+  }
+  .title-wrapper {
+    overflow: clip;
+    padding: 0.25rem;
+    margin: -0.25rem;
+    min-width: 0;
+  }
+  .site-links {
+    gap: 1.4rem;
+    font-size: 0.92rem;
+    font-weight: 500;
+  }
+  .site-links a {
+    color: var(--sl-color-gray-2);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+  .site-links a:hover {
+    color: var(--sl-color-white);
+  }
+  .site-links a[aria-current='page'] {
+    color: var(--sl-color-white);
+    font-weight: 600;
+  }
+  .search-wrapper {
+    flex: 1;
+    align-items: center;
+  }
+  .right-group {
+    align-items: center;
+    gap: 0.85rem;
+  }
+  .stars {
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--sl-color-gray-2);
+    border: 1px solid var(--sl-color-gray-5);
+    padding: 0.4rem 0.7rem;
+    border-radius: 9px;
+    background: var(--sl-color-bg);
+    text-decoration: none;
+    white-space: nowrap;
+    transition:
+      color 0.15s ease,
+      border-color 0.15s ease;
+  }
+  .stars:hover {
+    color: var(--sl-color-white);
+    border-color: var(--sl-color-gray-4);
+  }
+  .cta {
+    font-weight: 650;
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+    background: var(--sl-color-accent);
+    color: #fff;
+    text-decoration: none;
+    white-space: nowrap;
+    transition:
+      background 0.15s ease,
+      transform 0.15s ease;
+  }
+  .cta:hover {
+    background: var(--sl-color-accent-high);
+    transform: translateY(-1px);
+  }
+</style>
