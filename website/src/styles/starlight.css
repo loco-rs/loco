@@ -81,6 +81,86 @@
   border: 1px solid var(--line);
 }
 
+/* ------------------------------------------------------------------ *
+ * Docs landing hub (src/content/docs/docs/index.md)
+ * A designed front door — Diátaxis section cards in the warm brand,
+ * so /docs/ is a hub, not a blank page. `.not-content` opts the block
+ * out of Starlight's prose styles so these cards render as authored.
+ * ------------------------------------------------------------------ */
+.docs-hub {
+  margin-top: 2.5rem;
+}
+.docs-hub .hub-sec + .hub-sec {
+  margin-top: 2.75rem;
+}
+.docs-hub .hub-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0 0 1rem;
+}
+.docs-hub .hub-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+@media (max-width: 72rem) {
+  .docs-hub .hub-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 44rem) {
+  .docs-hub .hub-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.docs-hub .hub-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 1.15rem 1.25rem 1.3rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  text-decoration: none;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.docs-hub .hub-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--red) 45%, var(--line));
+  box-shadow: 0 14px 30px -22px rgba(28, 23, 18, 0.55);
+}
+.docs-hub .hub-kicker {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--red-ink);
+}
+.docs-hub .hub-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.docs-hub .hub-desc {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.docs-hub .hub-desc code {
+  font-family: var(--mono);
+  font-size: 0.82em;
+  color: var(--red-ink);
+}
+
 /* Expressive Code block chrome: warm-dark palette in BOTH site themes
  * (code blocks always look like the homepage's dark code window,
  * regardless of light/dark toggle — matches the docs reference).

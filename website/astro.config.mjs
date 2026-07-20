@@ -80,12 +80,88 @@ export default defineConfig({
       components: {
         SiteTitle: './src/components/SiteTitleWithVersion.astro',
       },
-      // Six Diátaxis groups. Content is migrated in a later task — until
-      // then each `docs/<section>` directory is empty and its group
-      // simply renders with no entries.
+      // Diátaxis groups. `How-to guides` holds 35 pages: left as one flat
+      // `autogenerate` it renders as an undifferentiated wall, so it's
+      // hand-organized into task-themed subgroups below. Entries reference
+      // the EXISTING flat slugs (`docs/how-to/<name>`) — no files move, so
+      // every published URL stays identical (URL parity preserved).
       sidebar: [
         { label: 'Tutorials', autogenerate: { directory: 'docs/tutorials' } },
-        { label: 'How-to guides', autogenerate: { directory: 'docs/how-to' } },
+        {
+          label: 'How-to guides',
+          items: [
+            { slug: 'docs/how-to' },
+            {
+              label: 'Data & models',
+              items: [
+                { slug: 'docs/how-to/add-model' },
+                { slug: 'docs/how-to/query-data' },
+                { slug: 'docs/how-to/paginate' },
+                { slug: 'docs/how-to/seed-data' },
+                { slug: 'docs/how-to/load-data' },
+                { slug: 'docs/how-to/multi-database' },
+              ],
+            },
+            {
+              label: 'Web layer',
+              items: [
+                { slug: 'docs/how-to/add-controller' },
+                { slug: 'docs/how-to/validate-requests' },
+                { slug: 'docs/how-to/respond-formats' },
+                { slug: 'docs/how-to/render-views' },
+                { slug: 'docs/how-to/handle-errors' },
+                { slug: 'docs/how-to/add-middleware' },
+                { slug: 'docs/how-to/serve-assets' },
+                { slug: 'docs/how-to/websockets' },
+              ],
+            },
+            {
+              label: 'Background work',
+              items: [
+                { slug: 'docs/how-to/add-worker' },
+                { slug: 'docs/how-to/choose-queue-backend' },
+                { slug: 'docs/how-to/schedule-jobs' },
+                { slug: 'docs/how-to/write-task' },
+                { slug: 'docs/how-to/send-email' },
+              ],
+            },
+            {
+              label: 'Auth & security',
+              items: [
+                { slug: 'docs/how-to/jwt-auth' },
+                { slug: 'docs/how-to/api-key-auth' },
+                { slug: 'docs/how-to/jwt-locations' },
+                { slug: 'docs/how-to/hash-passwords' },
+              ],
+            },
+            {
+              label: 'Testing',
+              items: [
+                { slug: 'docs/how-to/request-tests' },
+                { slug: 'docs/how-to/model-tests' },
+                { slug: 'docs/how-to/fixtures-snapshots' },
+              ],
+            },
+            {
+              label: 'Ops & configuration',
+              items: [
+                { slug: 'docs/how-to/configure-storage' },
+                { slug: 'docs/how-to/use-cache' },
+                { slug: 'docs/how-to/configure-logging' },
+                { slug: 'docs/how-to/connect-over-tls' },
+                { slug: 'docs/how-to/deploy' },
+              ],
+            },
+            {
+              label: 'Generators & tooling',
+              items: [
+                { slug: 'docs/how-to/use-generators' },
+                { slug: 'docs/how-to/override-templates' },
+                { slug: 'docs/how-to/run-doctor' },
+              ],
+            },
+          ],
+        },
         { label: 'Reference', autogenerate: { directory: 'docs/reference' } },
         { label: 'Explanation', autogenerate: { directory: 'docs/explanation' } },
         { label: 'Extras', autogenerate: { directory: 'docs/extras' } },
