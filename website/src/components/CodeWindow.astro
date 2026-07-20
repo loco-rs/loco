@@ -1,20 +1,17 @@
 ---
-// Ported verbatim from the reference `.codewin`/`.codebar` treatment
-// (markup + styles), see
+// Ported from the reference `.codewin`/`.codebar` treatment (markup +
+// styles), see
 // docs/superpowers/specs/2026-07-17-homepage-direction-a-reference.html
 // (the showcase/deck-panel `.codewin`, not the static hero `.art .code`
 // terminal card).
 //
-// `copyValue` isn't in the reference literally — the reference hardcodes
-// `data-copy="deck"` on this exact element because it only ever appears
-// once, in the deck. It's exposed here as a prop (default "deck") so any
-// future non-deck usage of this component can carry its own copy payload;
-// home.ts's generic `[data-copy]` handler (Task 4) reads it at click time.
+// No copy button: this is a *code showcase* — the point is how ergonomic
+// the code reads, not a utility to lift it. (The hero's install command
+// keeps its copy affordance because copy-to-run is its whole purpose.)
 interface Props {
   file: string;
-  copyValue?: string;
 }
-const { file, copyValue = 'deck' } = Astro.props;
+const { file } = Astro.props;
 ---
 
 <div class="codewin">
@@ -22,7 +19,6 @@ const { file, copyValue = 'deck' } = Astro.props;
     <i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"
     ></i>
     <span class="fn" id="dfile">{file}</span>
-    <span class="cp2" id="dcopy" data-copy={copyValue} role="button" tabindex="0" aria-label="Copy code">⧉ copy</span>
   </div>
   <slot />
 </div>
@@ -52,20 +48,6 @@ const { file, copyValue = 'deck' } = Astro.props;
     font-family: var(--mono);
     font-size: 11px;
     color: #a89a8c;
-  }
-  .codewin .cp2 {
-    margin-left: auto;
-    font-family: var(--mono);
-    font-size: 11px;
-    color: #a89a8c;
-    cursor: pointer;
-    border: 1px solid #3a322d;
-    border-radius: 6px;
-    padding: 2px 9px;
-  }
-  .codewin .cp2.ok {
-    color: #89d185;
-    border-color: #2f5e3a;
   }
   .codewin :global(pre.bigcode) {
     padding: 20px 24px;

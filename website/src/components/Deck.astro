@@ -109,23 +109,34 @@ const code = CODE[slide.k];
     flex-direction: column;
     gap: 13px;
   }
-  .deck-copy li {
+  /* NOTE: home.ts repaints these <li> via innerHTML on slide change, so the
+     runtime nodes DON'T carry Astro's scope attribute. Anchor every bullet
+     rule as a :global descendant of the scoped `.deck-copy` so it applies to
+     both the SSR'd first slide and every JS-painted one. */
+  .deck-copy :global(li) {
     display: flex;
-    gap: 11px;
+    align-items: baseline;
+    gap: 14px;
     font-size: 14.5px;
     color: var(--ink-2);
-    line-height: 1.5;
+    line-height: 1.55;
   }
-  .deck-copy li :global(b) {
+  .deck-copy :global(li b) {
     color: var(--ink);
     font-weight: 700;
   }
-  .deck-copy li :global(.tick) {
+  /* Coral check in its own fixed-width column, cap-aligned to the first line
+     of text so it sits beside the label with real breathing room. */
+  .deck-copy :global(li .tick) {
     color: var(--red);
     font-weight: 800;
+    font-size: 12px;
+    line-height: 1.55;
     flex-shrink: 0;
+    width: 12px;
+    text-align: center;
   }
-  .deck-copy li :global(code) {
+  .deck-copy :global(li code) {
     font-family: var(--mono);
     font-size: 12.5px;
     background: var(--paper-2);
