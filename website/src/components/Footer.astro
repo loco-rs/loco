@@ -1,0 +1,31 @@
+---
+// Ported verbatim from the reference `<footer>` block (markup + styles), see
+// docs/superpowers/specs/2026-07-17-homepage-direction-a-reference.html.
+---
+
+<footer>
+  <div class="wrap">
+    <span>© Loco — the one-person framework for Rust</span>
+    <span>Docs · GitHub · Discord · Blog</span>
+  </div>
+</footer>
+
+<style>
+  footer {
+    border-top: 1px solid var(--line);
+    margin-top: 44px;
+    padding: 40px 0;
+    color: var(--ink-2);
+    font-size: 13.5px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .wrap {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 0 32px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+  }
+</style>

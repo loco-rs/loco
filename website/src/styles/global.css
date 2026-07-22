@@ -1,0 +1,65 @@
+@import './tokens.css';
+
+/* Expressive Code block chrome: warm-dark palette, matching the docs.
+ *
+ * Starlight's `expressiveCode` integration registers itself as a remark
+ * plugin for the WHOLE Astro build, not just the `docs` collection — so
+ * blog/cast markdown bodies (rendered via `render(entry)` in
+ * ProseArticle.astro's consumers) get the exact same Expressive Code
+ * `<figure class="expressive-code">` markup as docs pages, using the same
+ * `locoCodeTheme` (astro.config.mjs). That theme only supplies
+ * `editor.background`/`editor.foreground`, so EC's own per-theme defaults
+ * already make the code body warm-dark (`#191611`) everywhere — but the
+ * *frame chrome* (titlebar bg, tab colors, border radius) has no such
+ * per-theme default and falls back to EC's generic dark-gray theme unless
+ * overridden.
+ *
+ * starlight.css carries the same override (its own `:root{--ec-*}` block)
+ * for Starlight's page bundle, which loads on `/docs/**` only. This is a
+ * deliberate duplicate, not a stray one: Base.astro (home/blog/casts) and
+ * Starlight's layout are two separate CSS entry points that never share a
+ * bundle, so each needs its own copy of these vars to reach its pages.
+ * Keep both blocks identical if the palette ever changes.
+ */
+:root {
+  --ec-codeBg: #191611;
+  --ec-codeFg: #e7dece;
+  --ec-brdCol: #28241e;
+  --ec-brdRad: 12px;
+  --ec-frm-edBg: #191611;
+  --ec-frm-edTabBarBg: #221e18;
+  --ec-frm-edTabBarBrdBtmCol: #28241e;
+  --ec-frm-edTabBarBrdCol: #28241e;
+  --ec-frm-edActTabBg: #221e18;
+  --ec-frm-edActTabFg: #e7dece;
+  --ec-frm-edActTabBrdCol: var(--red);
+  --ec-frm-edActTabIndTopCol: var(--red);
+  --ec-frm-edActTabIndBtmCol: var(--red);
+  --ec-frm-trmBg: #191611;
+  --ec-frm-trmTtbBg: #221e18;
+  --ec-frm-trmTtbBrdBtmCol: #28241e;
+  --ec-frm-trmTtbFg: #a59c8b;
+  --ec-frm-trmTtbDotsFg: #7b7365;
+  --ec-frm-inlBtnFg: #e7dece;
+  --ec-frm-inlBtnBg: #ffffff17;
+  --ec-frm-frameBoxShdCssVal: 0 18px 34px -24px rgba(28, 23, 18, 0.5);
+  --ec-gtrBrdCol: #28241e;
+  --ec-gtrFg: #7b7365;
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--paper); color:var(--ink); font-family:var(--sans); line-height:1.5; -webkit-font-smoothing:antialiased;}
+a{color:inherit; text-decoration:none;}
+
+/* Scroll-reveal fade-ups (ported from the reference). Gated behind html.js
+   so content is NEVER hidden when JavaScript is unavailable or hasn't run
+   yet — the JS-off / no-flash default is fully visible, static content. */
+html.js [data-reveal]{opacity:0; transform:translateY(14px); transition:opacity .6s ease, transform .6s ease;}
+html.js [data-reveal].in{opacity:1; transform:none;}
+
+/* Visible keyboard focus for interactive elements (buttons, links). */
+a:focus-visible, button:focus-visible, [data-copy]:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}

@@ -1,0 +1,41 @@
+:root {
+  --paper:#FBF6EC; --paper-2:#F4ECDD; --card:#FFFDF8;
+  /* --read: the long-form READING surface (docs content, blog article body).
+     A WARM near-white: bright enough to read as "white" (L~99%) but sitting on
+     the same warm hue as --paper (R>G>B, spread ~11) so it harmonizes with the
+     cream chrome instead of reading as a cold neutral-white island. The warm
+     --paper stays on the nav/sidebar/marketing chrome around it. */
+  --read:#FFFBF3;
+  /* Every warm neutral below shares ONE hue (~83° OKLCH) with the paper family
+     above, so background and text have the same cream undertone. Values were
+     hue-unified at fixed lightness/chroma — contrast is unchanged, only the
+     undertone. --red/--red-ink are the deliberate off-hue accent (~31°). */
+  --ink:#1B1812; --ink-2:#585247; --ink-3:#888071; --line:#E7DDCB;
+  --red:#FC3820; --red-ink:#D82A12;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace;
+}
+
+/* Browser-native cross-document view transitions. This is Astro's low-overhead
+   path for smoothing multi-page (MPA) navigation — it "simply adds animations"
+   without turning the site into an SPA, adding JS, or requiring script re-init
+   (that's <ClientRouter />, which we deliberately DON'T use). Paired with the
+   built-in `prefetch` (astro.config.mjs), sidebar/nav clicks cross-fade instead
+   of flashing a cold page load. Lives in tokens.css because it's the only
+   stylesheet loaded on EVERY page (both the marketing bundle via global.css and
+   the docs bundle via starlight.css) — a cross-document transition must be
+   declared on both the outgoing and incoming document to fire. Browsers without
+   support fall back to today's instant navigation. */
+@view-transition { navigation: auto; }
+:root[data-theme="dark"] {
+  --paper:#16130D; --paper-2:#1D1912; --card:#201B13; --read:#16130D;
+  --ink:#F1E9DC; --ink-2:#C1B7A5; --ink-3:#8B8170; --line:#312A1E;
+  --red:#FF5A3D; --red-ink:#FF7355;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#16130D; --paper-2:#1D1912; --card:#201B13; --read:#16130D;
+    --ink:#F1E9DC; --ink-2:#C1B7A5; --ink-3:#8B8170; --line:#312A1E;
+    --red:#FF5A3D; --red-ink:#FF7355;
+  }
+}

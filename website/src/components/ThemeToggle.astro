@@ -1,0 +1,14 @@
+<button class="toggle" aria-label="Toggle color theme" data-theme-toggle>◐</button>
+<script>
+  // Writes the SAME 'starlight-theme' localStorage key Starlight's own
+  // theme picker uses (see src/layouts/Base.astro for why), so toggling
+  // here is remembered when navigating into /docs.
+  document.querySelector('[data-theme-toggle]')?.addEventListener('click', () => {
+    const root = document.documentElement;
+    const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try {
+      localStorage.setItem('starlight-theme', next);
+    } catch (e) {}
+  });
+</script>

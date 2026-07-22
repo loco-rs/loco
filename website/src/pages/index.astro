@@ -1,0 +1,56 @@
+---
+// Hero (Task 6) + static keyword strip, ported verbatim (markup + styles)
+// from the reference `.strip`/`.row` block — see
+// docs/superpowers/specs/2026-07-17-homepage-direction-a-reference.html.
+// Explicitly no marquee / auto-scroll (rejected in the plan's Global
+// Constraints).
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import Hero from '../components/Hero.astro';
+import Pillars from '../components/Pillars.astro';
+import Deck from '../components/Deck.astro';
+---
+<Base title="Loco — the one-person framework for Rust" description="Loco is the one-person framework for Rust.">
+  <Nav />
+  <Hero />
+  <div class="strip">
+    <div class="wrap">
+      <div class="row">
+        <span>batteries-included</span><span>·</span><span>Rails, in Rust</span><span>·</span><span>SeaORM</span><span>·</span><span>Axum</span><span>·</span><span>background jobs</span><span>·</span><span>test-driven</span>
+      </div>
+    </div>
+  </div>
+  <Pillars />
+  <Deck />
+  <Footer />
+</Base>
+
+<script>
+  import '../lib/home.entry';
+</script>
+
+<style>
+  .wrap {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 0 32px;
+    width: 100%;
+  }
+  .strip {
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 20px 0;
+    margin-top: 20px;
+  }
+  .strip .row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+    font-weight: 650;
+    color: #b7ab98;
+    font-size: 14.5px;
+  }
+</style>

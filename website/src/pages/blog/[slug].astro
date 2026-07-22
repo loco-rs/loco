@@ -1,0 +1,235 @@
+---
+// A single blog post — an editorial article layout: a back-link, a
+// date · reading-time eyebrow, the title, the frontmatter `description` as a
+// dek, an author byline, a divider, then the rendered markdown body inside
+// ProseArticle, and finally an author-bio footer.
+//
+// Author byline: `post.data.authors` is an array of author *slugs*, not
+// display names. Most resolve to a real entry in the `authors` collection
+// and get linked to `/authors/<slug>/`; the entry's `description` also feeds
+// the bio footer. Some historical posts reference an author with no author
+// file at all (e.g. deploy-aws.md's `antonio-souza`) — those render as plain
+// title-cased text with no link and no bio (there's nothing to link or show).
+import { getCollection, getEntry, render } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Nav from '../../components/Nav.astro';
+import Footer from '../../components/Footer.astro';
+import ProseArticle from '../../components/ProseArticle.astro';
+import { readingTimeMinutes } from '../../lib/reading-time';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog');
+  return posts.map((post) => ({
+    params: { slug: post.id },
+    props: { post },
+  }));
+}
+
+interface Props {
+  post: CollectionEntry<'blog'>;
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+
+function titleCase(slug: string) {
+  return slug
+    .split('-')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+const authors = await Promise.all(
+  post.data.authors.map(async (slug) => {
+    const author = await getEntry('authors', slug);
+    return author
+      ? {
+          name: author.data.name,
+          href: `/authors/${slug}/`,
+          bio: author.data.description as string | null,
+        }
+      : { name: titleCase(slug), href: null as string | null, bio: null as string | null };
+  })
+);
+
+const bios = authors.filter((a) => a.href && a.bio);
+
+const dateStr = post.data.pubDate.toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+const minutes = readingTimeMinutes(post.body ?? '');
+---
+
+<Base title={`${post.data.title} — Loco Blog`} description={post.data.description}>
+  <Nav />
+  <article class="post">
+    <header class="post-head">
+      <a class="back" href="/blog/"><span aria-hidden="true">←</span> Blog</a>
+      <div class="eyebrow">
+        <time datetime={post.data.pubDate.toISOString()}>{dateStr}</time>
+        <span class="dot">·</span>
+        <span>{minutes} min read</span>
+      </div>
+      <h1>{post.data.title}</h1>
+      <p class="dek">{post.data.description}</p>
+      <div class="byline">
+        By {authors.map((a, i) => (
+          <Fragment>
+            {a.href ? <a href={a.href}>{a.name}</a> : <span>{a.name}</span>}
+            {i < authors.length - 1 && <span>, </span>}
+          </Fragment>
+        ))}
+      </div>
+    </header>
+
+    <div class="divider"></div>
+
+    <ProseArticle>
+      <Content />
+    </ProseArticle>
+
+    {bios.length > 0 && (
+      <footer class="post-foot">
+        {bios.map((a) => (
+          <div class="bio">
+            <div class="bio-name">Written by <a href={a.href!}>{a.name}</a></div>
+            <p class="bio-text">{a.bio}</p>
+          </div>
+        ))}
+      </footer>
+    )}
+  </article>
+  <Footer />
+</Base>
+
+<style>
+  /* Near-white reading band (matches the docs content surface); the nav and
+     footer keep the warm --paper chrome around it. */
+  article.post {
+    padding: 40px 0 80px;
+    background: var(--read);
+    border-block: 1px solid var(--line);
+  }
+
+  /* Header, divider, and footer all share the SAME centered measure as the
+     ProseArticle body (68ch at 17px), so every left edge lines up. Setting
+     font-size:17px here makes `68ch` resolve to the exact prose width; the
+     per-element font sizes below are explicit and unaffected by it. */
+  .post-head,
+  .divider,
+  .post-foot {
+    max-width: 68ch;
+    font-size: 17px;
+    margin: 0 auto;
+    padding: 0 24px;
+    width: 100%;
+  }
+
+  .back {
+    display: inline-block;
+    margin-bottom: 28px;
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    color: var(--ink-3);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+  .back:hover {
+    color: var(--red-ink);
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    color: var(--ink-3);
+  }
+  .eyebrow .dot {
+    opacity: 0.55;
+  }
+
+  .post-head h1 {
+    margin-top: 16px;
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.08;
+    color: var(--ink);
+  }
+  .post-head .dek {
+    margin-top: 18px;
+    font-size: 20px;
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+  .post-head .byline {
+    margin-top: 22px;
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    color: var(--ink-3);
+  }
+  .post-head .byline a {
+    color: var(--ink-2);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .post-head .byline a:hover {
+    color: var(--red-ink);
+  }
+
+  .divider {
+    height: 0;
+    border-top: 1px solid var(--line);
+    margin-top: 34px;
+    margin-bottom: 40px;
+  }
+
+  /* Author bio footer */
+  .post-foot {
+    margin-top: 56px;
+  }
+  .bio {
+    border-top: 1px solid var(--line);
+    padding-top: 24px;
+  }
+  .bio + .bio {
+    margin-top: 8px;
+  }
+  .bio-name {
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    color: var(--ink-3);
+  }
+  .bio-name a {
+    color: var(--ink);
+    font-weight: 650;
+    text-decoration: none;
+  }
+  .bio-name a:hover {
+    color: var(--red-ink);
+  }
+  .bio-text {
+    margin-top: 8px;
+    font-size: 15.5px;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+
+  @media (max-width: 640px) {
+    .post-head h1 {
+      font-size: 31px;
+    }
+    .post-head .dek {
+      font-size: 18px;
+    }
+  }
+</style>

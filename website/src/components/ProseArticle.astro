@@ -1,0 +1,152 @@
+---
+// Styles rendered markdown (blog post bodies) for comfortable reading in
+// the warm Loco identity. A plain `<slot>` wrapper — the markdown itself
+// comes from Astro's `render(entry)`, so none of these elements are
+// authored directly in this component's template and every rule below has
+// to reach through `:global()` to affect them.
+//
+// Code blocks: Starlight's `expressiveCode` integration turns out to
+// register its remark plugin for the WHOLE Astro build, not just the
+// `docs` collection — confirmed by inspecting the built output, blog
+// markdown fences render as EC's own `<figure class="expressive-code">`
+// (title bar, copy button, tab/terminal chrome) using the same
+// `locoCodeTheme` as docs, NOT Astro's plain Shiki-in-`<pre>` output. That
+// is actually the best outcome for "match the docs/homepage code look" —
+// it's the literal same rendering. EC's per-theme defaults already make
+// the code body warm-dark everywhere; the frame chrome (title bar/tab
+// colors, border radius) has no such per-theme default, so
+// global.css carries a `:root{--ec-*}` override (same values as
+// starlight.css's own block, which only reaches `/docs/**`) so blog pages
+// get the identical warm frame. This component therefore does NOT
+// re-style `pre`/fenced blocks itself — EC fully owns that — it only adds
+// spacing around the `.expressive-code` wrapper and styles *inline*
+// `code` (backtick spans), which EC never touches.
+---
+
+<div class="prose">
+  <slot />
+</div>
+
+<style>
+  .prose {
+    max-width: 68ch;
+    margin: 0 auto;
+    font-size: 17px;
+    line-height: 1.75;
+    color: var(--ink);
+  }
+  .prose :global(p) {
+    margin: 1.1em 0;
+  }
+  .prose :global(h2) {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.22;
+    margin: 1.9em 0 0.6em;
+  }
+  .prose :global(h3) {
+    font-size: 21px;
+    font-weight: 750;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+    margin: 1.7em 0 0.5em;
+  }
+  .prose :global(h2:first-child),
+  .prose :global(h3:first-child) {
+    margin-top: 0;
+  }
+  .prose :global(a) {
+    color: var(--red-ink);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .prose :global(a:hover) {
+    text-decoration-thickness: 2px;
+  }
+  .prose :global(ul),
+  .prose :global(ol) {
+    margin: 1.1em 0;
+    padding-left: 1.4em;
+  }
+  .prose :global(li) {
+    margin: 0.45em 0;
+  }
+  .prose :global(li)::marker {
+    color: var(--ink-3);
+  }
+  .prose :global(blockquote) {
+    margin: 1.6em 0;
+    padding: 0.2em 0 0.2em 1.1em;
+    border-left: 3px solid var(--red);
+    color: var(--ink-2);
+    font-style: italic;
+  }
+  .prose :global(blockquote p) {
+    margin: 0.4em 0;
+  }
+  .prose :global(strong) {
+    color: var(--ink);
+    font-weight: 700;
+  }
+  .prose :global(hr) {
+    border: none;
+    border-top: 1px solid var(--line);
+    margin: 2.6em 0;
+  }
+  .prose :global(img) {
+    display: block;
+    max-width: 100%;
+    border-radius: 8px;
+    margin: 1.6em auto;
+  }
+  /* Inline code — `:not(pre) > code` keeps this off the `code` inside
+     Expressive Code's fenced blocks, which EC colors token-by-token and
+     fully chrome-styles itself (see the top-of-file comment). */
+  .prose :global(:not(pre) > code) {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--paper-2);
+    color: var(--red-ink);
+    border-radius: 4px;
+    padding: 2px 6px;
+  }
+  /* Fenced code blocks: EC's `.expressive-code` figure owns border,
+     radius, background, and padding entirely (via the `--ec-*` vars in
+     global.css) — this only adds the vertical rhythm between a code block
+     and the surrounding prose, which EC's own CSS doesn't set. */
+  .prose :global(.expressive-code) {
+    margin: 1.8em 0;
+  }
+  .prose :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.6em 0;
+    font-size: 15px;
+  }
+  .prose :global(th),
+  .prose :global(td) {
+    border: 1px solid var(--line);
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .prose :global(th) {
+    color: var(--ink);
+    font-weight: 700;
+  }
+
+  @media (max-width: 640px) {
+    .prose {
+      font-size: 16px;
+    }
+    .prose :global(h2) {
+      font-size: 24px;
+    }
+    .prose :global(h3) {
+      font-size: 19px;
+    }
+    .prose :global(pre) {
+      padding: 16px 16px;
+    }
+  }
+</style>
