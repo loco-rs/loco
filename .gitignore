@@ -71,3 +71,7 @@ example
 # internal working docs — never ship in a release
 .superpowers/
 docs/superpowers/
+
+# internal release-management working docs — never ship
+/RELEASE-1.0.0*.md
+/REMAINING-WORK.md
