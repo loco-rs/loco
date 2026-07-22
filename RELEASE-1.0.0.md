@@ -203,15 +203,23 @@ All work below is **on `release/1.0.0`**, so every "adopted" reply is truthful o
 | #1760 sccache-action | dependabot | — | close as done (adopted) |
 | #1757 rand 0.8→0.9 | dependabot | — | close as done (adopted) |
 
-### B2. Adopted-then-reverted — needs Jondot wording (D7)
+### B2. Adopted-then-reverted — FINALIZED (D7 ✅: close as deferred, with credit)
 - **#1657 (alwayys-afk)** — AsyncFn request helpers. We adopted it, but it makes the
   **generated auth test templates** fail to compile (E0282) on the shipping
-  toolchain, so 1.0.0 reverts to generic `FnOnce -> Fut` to keep generated apps
-  building. Draft: *"Thank you — this is the right direction. We hit a snag: with
-  it, generated apps' auth tests fail type inference (E0282) on the current
-  toolchain, so 1.0.0 keeps the generic bound to protect the generated-app path.
-  Reopening/tracking for when inference improves. Not rejected — deferred."*
-  → **Confirm you're OK closing-as-deferred with credit (vs keeping it open).**
+  toolchain, so 1.0.0 reverts to generic `FnOnce -> Fut` (`20518c62`) to keep
+  generated apps building. Close the PR as **deferred (not rejected)**, credit the
+  author, and open a tracking issue.
+
+  > **Reply (ready to post):** Thank you @alwayys-afk — this is the right direction,
+  > and genuinely cleaner than the generic bounds. We hit one snag landing it for
+  > 1.0: with `impl AsyncFn`, the auth tests we *generate* into every new app fail
+  > type inference (E0282) on the toolchain 1.0 ships against — so a fresh
+  > `loco new` app wouldn't compile its own tests. To protect that generated-app
+  > path at the 1.0 stability boundary, 1.0.0 keeps the generic `FnOnce -> Fut`
+  > bound for now (`20518c62`). This is **deferred, not rejected**: I'm closing the
+  > PR and opening a tracking issue so it's not lost, and we'll bring your change in
+  > once inference in that position improves (or we adjust the generated template).
+  > Crediting you on the tracking issue — really appreciate the contribution. 🙏
 
 ### B3. Merge directly on GitHub (Jondot; not reconcilable offline)
 - [ ] **#1754** docs-site npm `yaml` bump — click Merge; dependabot regenerates the lockfile.
