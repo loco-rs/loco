@@ -9,7 +9,7 @@
  * `<figure class="expressive-code">` markup as docs pages, using the same
  * `locoCodeTheme` (astro.config.mjs). That theme only supplies
  * `editor.background`/`editor.foreground`, so EC's own per-theme defaults
- * already make the code body warm-dark (`#1b1512`) everywhere — but the
+ * already make the code body warm-dark (`#191611`) everywhere — but the
  * *frame chrome* (titlebar bg, tab colors, border radius) has no such
  * per-theme default and falls back to EC's generic dark-gray theme unless
  * overridden.
@@ -22,29 +22,29 @@
  * Keep both blocks identical if the palette ever changes.
  */
 :root {
-  --ec-codeBg: #1b1512;
-  --ec-codeFg: #e9ddcf;
-  --ec-brdCol: #2a2320;
+  --ec-codeBg: #191611;
+  --ec-codeFg: #e7dece;
+  --ec-brdCol: #28241e;
   --ec-brdRad: 12px;
-  --ec-frm-edBg: #1b1512;
-  --ec-frm-edTabBarBg: #241d19;
-  --ec-frm-edTabBarBrdBtmCol: #2a2320;
-  --ec-frm-edTabBarBrdCol: #2a2320;
-  --ec-frm-edActTabBg: #241d19;
-  --ec-frm-edActTabFg: #e9ddcf;
+  --ec-frm-edBg: #191611;
+  --ec-frm-edTabBarBg: #221e18;
+  --ec-frm-edTabBarBrdBtmCol: #28241e;
+  --ec-frm-edTabBarBrdCol: #28241e;
+  --ec-frm-edActTabBg: #221e18;
+  --ec-frm-edActTabFg: #e7dece;
   --ec-frm-edActTabBrdCol: var(--red);
   --ec-frm-edActTabIndTopCol: var(--red);
   --ec-frm-edActTabIndBtmCol: var(--red);
-  --ec-frm-trmBg: #1b1512;
-  --ec-frm-trmTtbBg: #241d19;
-  --ec-frm-trmTtbBrdBtmCol: #2a2320;
-  --ec-frm-trmTtbFg: #a89a8c;
-  --ec-frm-trmTtbDotsFg: #7d7266;
-  --ec-frm-inlBtnFg: #e9ddcf;
+  --ec-frm-trmBg: #191611;
+  --ec-frm-trmTtbBg: #221e18;
+  --ec-frm-trmTtbBrdBtmCol: #28241e;
+  --ec-frm-trmTtbFg: #a59c8b;
+  --ec-frm-trmTtbDotsFg: #7b7365;
+  --ec-frm-inlBtnFg: #e7dece;
   --ec-frm-inlBtnBg: #ffffff17;
   --ec-frm-frameBoxShdCssVal: 0 18px 34px -24px rgba(28, 23, 18, 0.5);
-  --ec-gtrBrdCol: #2a2320;
-  --ec-gtrFg: #7d7266;
+  --ec-gtrBrdCol: #28241e;
+  --ec-gtrFg: #7b7365;
 }
 
 *{box-sizing:border-box; margin:0; padding:0;}

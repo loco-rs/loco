@@ -6,7 +6,7 @@ import sitemap from '@astrojs/sitemap';
 // A compact Shiki/VS-Code-shaped theme carrying the warm-dark code palette
 // from the homepage code windows and the docs reference
 // (docs/superpowers/specs/2026-07-17-docs-starlight-reference.html: `.cb`
-// bg #1b1512, bar #241d19, border #2a2320, `.k`/`.s`/`.c`/`.t`/`.fn` token
+// bg #191611, bar #221e18, border #28241e, `.k`/`.s`/`.c`/`.t`/`.fn` token
 // colors). Code blocks intentionally stay this warm-dark in BOTH site
 // themes — see starlight.css's `--ec-*` overrides for the surrounding
 // frame chrome, which must agree with these `colors` for a seamless block.
@@ -14,14 +14,14 @@ const locoCodeTheme = {
   name: 'loco-warm-dark',
   type: 'dark',
   colors: {
-    'editor.background': '#1b1512',
-    'editor.foreground': '#e9ddcf',
+    'editor.background': '#191611',
+    'editor.foreground': '#e7dece',
   },
   tokenColors: [
-    { settings: { foreground: '#e9ddcf' } },
+    { settings: { foreground: '#e7dece' } },
     {
       scope: ['comment'],
-      settings: { foreground: '#7d7266', fontStyle: 'italic' },
+      settings: { foreground: '#7b7365', fontStyle: 'italic' },
     },
     {
       scope: ['string', 'string.quoted', 'constant.character', 'markup.inline.raw'],
@@ -57,7 +57,7 @@ const locoCodeTheme = {
     },
     {
       scope: ['punctuation', 'meta.brace', 'punctuation.definition'],
-      settings: { foreground: '#a89a8c' },
+      settings: { foreground: '#a59c8b' },
     },
   ],
 };
