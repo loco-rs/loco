@@ -66,12 +66,25 @@ Versions are **not** workspace-inherited; keep them in lockstep by hand.
 - [ ] Stamp `## 1.0.0 - <publish date>`. Push `release/1.0.0` → release PR → merge to `master`.
 - [ ] **Publish in dependency order:** `cargo publish -p loco-gen` → `cargo publish -p loco-rs` → `(cd loco-new && cargo publish)`.
 - [ ] `git tag v1.0.0 && git push origin v1.0.0`; `gh release create v1.0.0 --notes-file <1.0.0 CHANGELOG section>`.
+- [ ] **Website deploy flip** (decision reversed — new Astro site ships *with* 1.0, not as a fast-follow). Prep is DONE and on-branch (see below); the only button is in the **hosting dashboard** (Cloudflare Pages / Netlify — external to the repo):
+  - Build command: `cd website && corepack enable && pnpm install --frozen-lockfile && pnpm build`
+  - Publish/output dir: `website/dist`
+  - Node: `22`  ·  (old Zola settings — `zola build` / `docs-site/public` — get replaced)
 - [ ] Publish the announcement; post release-tied closes/credits.
+
+### Website cutover — big-bang (DONE on-branch, 2026-07-23)
+- [x] Merge Astro site into `release/1.0.0` — `0653fc85` (0 conflicts, additive)
+- [x] Exclude 60 internal `docs/superpowers/**` planning docs from the release — `3a8608f3`
+- [x] Sync 0.16→1.0 upgrade guide into the site via `migrate-docs.mjs` → `rewrite-links.mjs` — `7ffbe7de`
+- [x] CI: `docs.yml` now builds + URL-parity-checks the Astro site — `0a8b074b`
+- [x] Local verification: `pnpm build` = **82 pages / 0 errors**, `pnpm test` = 25 pass, URL parity **0 missing** (64 docs, 18 blog/casts/authors)
+- [ ] **Deploy flip in hosting dashboard** (the one remaining button — above, in Phase 4)
+- [ ] *Post-launch follow-up (not release-blocking):* decide whether to retire `docs-site/` as the authoring source and move authoring fully into Starlight (`website/src/content/docs`), rewiring snipdoc/llms-check accordingly.
 
 ## Phase 5 — Post-publish fast-follow  ·  same day
 
 - [ ] Clean-machine smoke test: `cargo install loco` → `loco new` → boot (the real user path).
-- [ ] **Website cutover**: merge the Astro worktree; port the completed migration guide into it.
+- [ ] Confirm the new site is live and correct at loco.rs after the deploy flip (spot-check docs, blog, upgrade guide, search).
 - [ ] Backlog triage wave: label remaining ~20 PRs/issues to the post-1.0 milestone.
 
 ---

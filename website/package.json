@@ -2,6 +2,7 @@
   "name": "loco-website",
   "type": "module",
   "private": true,
+  "packageManager": "pnpm@10.12.4",
   "scripts": {
     "dev": "astro dev",
     "prebuild": "node scripts/generate-llms-txt.mjs",
