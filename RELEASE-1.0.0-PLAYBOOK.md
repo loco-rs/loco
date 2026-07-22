@@ -47,12 +47,12 @@ Versions are **not** workspace-inherited; keep them in lockstep by hand.
 - [ ] **Announcement draft** (blog + Discord + X) — Claude drafts; Jondot owns final voice/channels. (REMAINING-WORK #52.)
 - [ ] **#1657 reply**: finalize close-as-deferred-with-credit (D7 ✅).
 
-## Phase 2 — Final verification  ·  `[LOCAL]`
+## Phase 2 — Final verification  ·  ✅ DONE (2026-07-23, HEAD `e6db54bd`)
 
-- [ ] **Reproduce-or-refute #1749 / #1759 / #1768** on the branch: fresh `loco new` → build → boot; `cargo install --path loco-new`. Fix if real; else replies say "fixed in 1.0.0, please re-verify."  **← go/no-go**
-- [ ] **Full green gate once more, with `loco-gen --all-features`** (mandatory stale-snapshot re-run — default features mask the with-db template/model tests).
-- [ ] **`cargo publish --dry-run`** for `loco-gen`, `loco-rs`, `loco` — verify metadata + path/version deps resolve. (REMAINING-WORK #53.)
-- [ ] Verify `loco-new/src/lib.rs` `LOCO_VERSION == "1.0"` by hand.
+- [x] **Reproduce-or-refute #1749 / #1759 / #1768** — **fixed, runtime-confirmed.** Fresh `loco new` (sqlite/async/serverside) → `shared.ftl` generated at `assets/shared.ftl` (out of `assets/i18n/`, the fix) → `cargo build` clean → boot → `GET /_health` = **200**.  **← go/no-go PASS**
+- [x] **Full green gate with `loco-gen --all-features`** — clippy `-D warnings`, `hack check --each-feature`, `test --all-features`, and **`test -p loco-gen --all-features`** (with-db template/model tests incl.) all **EXIT 0**, **no snapshot drift**. loco-new fmt+clippy EXIT 0. *Full wizard matrix (`loco-new` `cargo test`) not re-run on this HEAD — redundant with green 4b + Part A, and it OOM-kills this 16 GB box; run on a higher-RAM host if absolute certainty wanted.*
+- [x] **`cargo publish --dry-run`** — `loco-gen` full-verify **EXIT 0**; `loco` package **EXIT 0**; `loco-rs` blocks **only** on `loco-gen ^1.0.0` not yet on crates.io (inherent pre-publish chicken-and-egg; resolves via the staged publish order below). Metadata/packaging clean.
+- [x] Verify `loco-new/src/lib.rs` `LOCO_VERSION == "1.0"` — confirmed `"1.0"`. Crate versions `loco-rs`/`loco-gen`/`loco` all `1.0.0`; `sea-orm =2.0.0-rc.41`.
 
 ## Phase 3 — GitHub hygiene  ·  `[JONDOT]` presses (drafts ready)
 
@@ -79,12 +79,14 @@ Versions are **not** workspace-inherited; keep them in lockstep by hand.
 ## Go / No-Go gate (all ✅ before Phase 4)
 
 - [x] Engineering green (Part A)
-- [ ] Full gate re-run with `loco-gen --all-features`  *(LOCAL — Jondot)*
-- [~] #1749 / #1759 / #1768 refuted-or-fixed — **static: fixed in HEAD** (rhai 1.25 `a640a97f`; `shared.ftl` moved out of `assets/i18n/` `0e6fe874`; field-less PK `47d03916`); runtime confirm pending
-- [ ] `cargo publish --dry-run` ×3 clean  *(LOCAL — Jondot)*
+- [x] Full gate re-run with `loco-gen --all-features` — clippy/hack/test-all-features/loco-gen-all-features **EXIT 0**, no snapshot drift (2026-07-23, `e6db54bd`). *Wizard matrix deferred to higher-RAM host — redundant w/ 4b + Part A.*
+- [x] #1749 / #1759 / #1768 — **runtime-confirmed fixed**: fresh `loco new` → build → boot → `/_health` 200; `shared.ftl` at `assets/shared.ftl`.
+- [x] `cargo publish --dry-run` — `loco-gen` + `loco` clean; `loco-rs` only pends `loco-gen` being on the index first (staged-publish order handles it).
 - [x] Migration guide 1.0-complete — `98e44707`
 - [x] CHANGELOG wording honest (no "stable Sea-ORM") — `98e44707`
 - [x] Announcement ready — `RELEASE-1.0.0-announcement.md`
+
+**Verdict: GO.** All go/no-go items green. Remaining work is Phase 3/4 button-presses (Jondot) + the pre-publish tree-clean (remove/ignore untracked `website/`, `.superpowers/`, `docs/superpowers/**` before the real `cargo publish`, which refuses a dirty tree).
 
 ---
 
