@@ -79,12 +79,12 @@ Versions are **not** workspace-inherited; keep them in lockstep by hand.
 ## Go / No-Go gate (all ✅ before Phase 4)
 
 - [x] Engineering green (Part A)
-- [ ] Full gate re-run with `loco-gen --all-features`
-- [ ] #1749 / #1759 / #1768 refuted-or-fixed
-- [ ] `cargo publish --dry-run` ×3 clean
-- [ ] Migration guide 1.0-complete
-- [ ] CHANGELOG wording honest (no "stable Sea-ORM")
-- [ ] Announcement ready
+- [ ] Full gate re-run with `loco-gen --all-features`  *(LOCAL — Jondot)*
+- [~] #1749 / #1759 / #1768 refuted-or-fixed — **static: fixed in HEAD** (rhai 1.25 `a640a97f`; `shared.ftl` moved out of `assets/i18n/` `0e6fe874`; field-less PK `47d03916`); runtime confirm pending
+- [ ] `cargo publish --dry-run` ×3 clean  *(LOCAL — Jondot)*
+- [x] Migration guide 1.0-complete — `98e44707`
+- [x] CHANGELOG wording honest (no "stable Sea-ORM") — `98e44707`
+- [x] Announcement ready — `RELEASE-1.0.0-announcement.md`
 
 ---
 
