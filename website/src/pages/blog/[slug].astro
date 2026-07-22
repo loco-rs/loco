@@ -90,8 +90,12 @@ const dateStr = post.data.pubDate.toLocaleDateString('en-US', {
     padding: 0 32px;
     width: 100%;
   }
+  /* Near-white reading band (matches the docs content surface); the nav and
+     footer keep the warm --paper chrome around it. */
   article.post {
     padding: 64px 0 80px;
+    background: var(--read);
+    border-block: 1px solid var(--line);
   }
   .post-head {
     max-width: 68ch;

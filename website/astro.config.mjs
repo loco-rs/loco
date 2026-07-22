@@ -67,20 +67,20 @@ export default defineConfig({
   // The old Zola-built docs used trailing slashes throughout; keep URLs
   // stable across the migration.
   trailingSlash: 'always',
+  // Prefetch internal links on hover so docs sidebar navigation loads the
+  // target page before the click resolves — kills the "content loading" flash
+  // of a cold full-page (MPA) navigation.
+  prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
   integrations: [
     tailwind({ applyBaseStyles: false }),
     starlight({
       title: 'Loco',
       customCss: ['./src/styles/starlight.css'],
-      // Adds a `v1.0` badge/dropdown next to the wordmark, matching the
-      // docs reference's `<span class="ver">v1.0 ▾</span>`. See
-      // src/lib/versions.ts for the single-source version list this reads
-      // (and how to add a version later) and
-      // src/components/SiteTitleWithVersion.astro for the override itself.
+      // The docs Header override (below) renders the marketing brand + a
+      // VersionBadge itself, so Starlight's default SiteTitle isn't used.
       components: {
-        SiteTitle: './src/components/SiteTitleWithVersion.astro',
-        // Docs header wears the marketing top bar (links + star + CTA) for
-        // cross-surface consistency; see the component for the rationale.
+        // Docs header mirrors the marketing top bar (brand, centered links,
+        // star, circular theme toggle, CTA); see the component for rationale.
         Header: './src/components/starlight/Header.astro',
       },
       // Diátaxis groups. `How-to guides` holds 35 pages: left as one flat

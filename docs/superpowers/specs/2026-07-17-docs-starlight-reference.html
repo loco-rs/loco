@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loco Docs — mockup</title>
+<style>
+  :root{ --red:#FC3820; --red-ink:#D82A12; --paper:#FBF6EC; --paper-2:#F4ECDD; --ink:#1C1712; --ink-2:#5A5148; --ink-3:#8a7f72; --line:#E7DDCB; --card:#FFFDF8;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif; --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+
+  /* top bar */
+  .topbar{display:flex;align-items:center;gap:20px;height:60px;padding:0 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(251,246,236,.9);backdrop-filter:blur(10px);z-index:20}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:18px;letter-spacing:-.02em}
+  .brand img{width:26px;height:26px}
+  .ver{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);border:1px solid var(--line);background:var(--card);padding:3px 9px;border-radius:7px}
+  .search{flex:1;max-width:420px;display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 13px;color:var(--ink-3);font-size:13.5px}
+  .search kbd{margin-left:auto;font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:5px;padding:1px 6px;background:var(--paper-2)}
+  .topnav{display:flex;gap:22px;font-size:14px;font-weight:500;color:var(--ink-2);margin-left:auto}
+  .topnav a.on{color:var(--red-ink);font-weight:700}
+
+  /* layout */
+  .layout{display:grid;grid-template-columns:250px 1fr 220px;max-width:1360px;margin:0 auto;gap:0}
+  .side{border-right:1px solid var(--line);padding:26px 18px 60px;height:calc(100vh - 60px);position:sticky;top:60px;overflow:auto}
+  .grp{font-size:11.5px;font-weight:750;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:22px 0 8px}
+  .grp:first-child{margin-top:0}
+  .side a{display:block;font-size:14px;color:var(--ink-2);padding:6px 12px;border-radius:8px;margin:1px 0}
+  .side a:hover{background:var(--paper-2);color:var(--ink)}
+  .side a.on{background:rgba(252,56,32,.1);color:var(--red-ink);font-weight:650;box-shadow:inset 2px 0 0 var(--red)}
+
+  /* main */
+  main{padding:34px 46px 80px;min-width:0}
+  .crumb{font-size:13px;color:var(--ink-3);margin-bottom:14px}
+  .crumb b{color:var(--ink-2);font-weight:600}
+  h1{font-size:38px;letter-spacing:-.03em;font-weight:820;line-height:1.1}
+  .lede{font-size:18px;color:var(--ink-2);margin-top:12px}
+  main h2{font-size:24px;letter-spacing:-.02em;margin:38px 0 12px;font-weight:750;scroll-margin-top:70px}
+  main h2 .hash{color:var(--red);opacity:0;margin-left:8px}
+  main h2:hover .hash{opacity:1}
+  main p{margin:12px 0;font-size:16px;color:#37312a}
+  main p code,li code{font-family:var(--mono);font-size:13.5px;background:var(--paper-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--red-ink)}
+  main ul{margin:12px 0 12px 22px}main li{margin:6px 0;font-size:16px;color:#37312a}
+
+  /* code block */
+  .cb{margin:18px 0;border-radius:12px;overflow:hidden;border:1px solid #2a2320;box-shadow:0 18px 34px -24px rgba(28,23,18,.5)}
+  .cb .bar{display:flex;align-items:center;background:#241d19;padding:8px 13px;gap:6px}
+  .cb .bar i{width:9px;height:9px;border-radius:50%;display:block}
+  .cb .bar span{margin-left:8px;font-family:var(--mono);font-size:11px;color:#a89a8c}
+  .cb .bar .cp{margin-left:auto;font-family:var(--mono);font-size:11px;color:#7d7266;border:1px solid #3a322d;border-radius:6px;padding:2px 8px}
+  .cb pre{background:#1b1512;padding:16px 18px;font-family:var(--mono);font-size:13.5px;line-height:1.8;color:#e9ddcf;overflow:auto}
+  .cb .k{color:#ff8f6b}.cb .s{color:#c3e88d}.cb .c{color:#7d7266}.cb .t{color:#82aaff}.cb .fn{color:#ffd479}
+
+  /* aside/callout */
+  .aside{display:flex;gap:12px;margin:20px 0;background:rgba(252,56,32,.06);border:1px solid rgba(252,56,32,.22);border-left:3px solid var(--red);border-radius:10px;padding:14px 16px}
+  .aside .ic{color:var(--red-ink);font-weight:800}
+  .aside .bd{font-size:14.5px;color:#4a4038}
+  .aside .bd b{color:var(--ink)}
+
+  /* next/prev */
+  .pager{display:flex;justify-content:space-between;gap:16px;margin-top:44px;border-top:1px solid var(--line);padding-top:24px}
+  .pager a{flex:1;border:1px solid var(--line);border-radius:12px;padding:14px 18px;background:var(--card)}
+  .pager a:hover{border-color:var(--red)}
+  .pager .l{font-size:12px;color:var(--ink-3)}
+  .pager .t{font-size:15px;font-weight:700;color:var(--ink);margin-top:3px}
+  .pager .r{text-align:right}
+
+  /* toc */
+  .toc{padding:34px 20px;height:calc(100vh - 60px);position:sticky;top:60px;font-size:13.5px}
+  .toc .h{font-size:11.5px;font-weight:750;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-bottom:12px}
+  .toc a{display:block;color:var(--ink-2);padding:4px 0 4px 12px;border-left:2px solid var(--line)}
+  .toc a.on{color:var(--red-ink);border-left-color:var(--red);font-weight:650}
+  .toc a:hover{color:var(--ink)}
+
+  .tag{position:fixed;left:16px;bottom:16px;background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:12px;padding:8px 14px;border-radius:999px;z-index:50}
+  @media(max-width:1100px){.layout{grid-template-columns:230px 1fr}.toc{display:none}}
+  @media(max-width:800px){.layout{grid-template-columns:1fr}.side{display:none}main{padding:26px 22px}}
+</style></head><body>
+
+<div class="topbar">
+  <div class="brand"><img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDEzIiBoZWlnaHQ9IjQxMyIgdmlld0JveD0iMCAwIDQxMyA0MTMiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxtYXNrIGlkPSJtYXNrMF8xOTRfMiIgc3R5bGU9Im1hc2stdHlwZTphbHBoYSIgbWFza1VuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeD0iMCIgeT0iMCIgd2lkdGg9IjQxMyIgaGVpZ2h0PSI0MTMiPgo8Y2lyY2xlIGN4PSIyMDYuNSIgY3k9IjIwNi41IiByPSIyMDYuNSIgZmlsbD0id2hpdGUiLz4KPC9tYXNrPgo8ZyBtYXNrPSJ1cmwoI21hc2swXzE5NF8yKSI+CjxjaXJjbGUgY3g9IjIwNi41IiBjeT0iMjA2LjUiIHI9IjE5NCIgZmlsbD0id2hpdGUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMjUiLz4KPHBhdGggZD0iTTIwNyAxNzhDMjUwLjA3OCAxNzggMjg1IDE0My4wNzggMjg1IDEwMEMyODUgNTYuOTIxOCAyNTAuMDc4IDIyIDIwNyAyMkMxNjMuOTIyIDIyIDEyOSA1Ni45MjE4IDEyOSAxMDBDMTI5IDE0My4wNzggMTYzLjkyMiAxNzggMjA3IDE3OFoiIGZpbGw9IiNGQzM4MjAiLz4KPHBhdGggZD0iTTQyNC43NTcgMTEuMDk2NUMzOTQuNTE3IDUwLjM0NTcgMzAzLjQ2OSAxNjQuODY4IDMwMy40NjkgMTY0Ljg2OEwzNTEuNzI3IDEyNi45MDRDMzUxLjcyNyAxMjYuOTA0IDMwOC4yOTUgMTY4LjQwOCAyOTEuNTc1IDE4Ni4wOTlDMjc0Ljg0MiAyMDMuNzg5IDIwOC4yNTEgMjg3Ljc1NiAxNzkuMjk2IDMyNC4zNkMxNTAuMzQxIDM2MC45NjMgODcuOTMzNyA0MjMuMTk1IDg3LjkzMzcgNDIzLjE5NUwzMTkuMjMyIDEzMi4zNzJDMzE5LjIzMiAxMzIuMzcyIDI5Ny4zNTggMTMwLjExNyAyNTcuNzgyIDExOC4yMjJDMjE4LjIxOCAxMDYuMzE1IDE5My40NDYgMTAxLjE3NCAxOTMuNDQ2IDEwMS4xNzRDMTkzLjQ0NiAxMDEuMTc0IDE4Ny4zMzUgMTE2LjkzNyAxNjkuOTYgMTQ2LjIwN0MxNTIuNTg0IDE3NS40NzcgMTI1Ljg4NSAyMjYuNjMzIDEyNS44ODUgMjI2LjYzM0wxNDMuOTAzIDE3My41NDlDMTQzLjkwMyAxNzMuNTQ5IDEzNS45MjcgMTc5Ljc5OSAxMjkuMTM2IDE4NS4wMDNDMTE3LjU0NCAyMDkuNzYyIDk1LjYwNzEgMjU0LjU4IDgyLjc4MDMgMjY3LjU3MUM2NC43NjIzIDI4NS44MTYgNDcuMzg2OSAyOTIuMjU1IDQ3LjM4NjkgMjkyLjI1NUM0Ny4zODY5IDI5Mi4yNTUgNzQuNDEzOSAyNzAuNjk2IDg3LjkyMTEgMjUwLjEwN0MxMDEuNDI4IDIyOS41MTkgMTA5Ljc5NSAyMTEuODI4IDEwOS43OTUgMjExLjgyOEMxMDAuNDcxIDIxMy43NTYgODIuNzY3NyAyMjQuNjkzIDcyLjE1ODUgMjI4Ljg3NkM2MS41NDkzIDIzMy4wNTkgMzEuOTUxOSAyMzAuNDg5IDMxLjk1MTkgMjMwLjQ4OUMzMS45NTE5IDIzMC40ODkgMTguNDQ0NyAyNDkuMTUgLTMuNDQxNSAyNzAuNjk2Qy0yNS4zMjc3IDI5Mi4yNDIgLTYxLjk5MzcgMzIyLjE2NyAtODcuMDgwMyAzNDkuMTk0Qy0xMTIuMTY3IDM3Ni4yMjIgLTE0MS43NjQgMzgyLjY0OCAtMTY0LjkzNiAzOTIuNjI3Qy0xODguMDk0IDQwMi41OTQgLTIyNC43NzMgNDI0LjQ4IC0yMzIuNDk3IDQ0MC41NThDLTI0MC4yMjEgNDU2LjY0OCAtMjE1LjY2MyA1MDIuMDA4IC0yMTUuNjYzIDUwMi4wMDhDLTE3OC44ODQgNTEzLjI3MyAtMTQ2LjYwMyA1MTcuNDU2IC0xMzguMjM2IDUxOC43NDFDLTEyOS44NyA1MjAuMDI2IC0xMzQuMzgxIDUyNC44NTIgLTExNy4wMDUgNTM0LjgzMUMtOTkuNjI5OSA1NDQuODExIC0xNi45NjEzIDU0OS4zMDkgNTIuODU1MyA1NTkuMjc2QzEyMi42NTkgNTY5LjI0MiAyMDUuMjY1IDU5OS4xNjcgMjA1LjI2NSA1OTkuMTY3SDQ5MS40ODdWLTY0SDQ4Ni4zNThDNDY4LjgwNyAtNDMuMzYxMSA0NDMuMDI3IC0xMi42MTY5IDQyNC43NTcgMTEuMDk2NVoiIGZpbGw9IiNGRjhGODIiLz4KPHBhdGggZD0iTTEyLjk5MTcgMzAwLjY5MUwyOTYgMjY1TDI5MCAyOTYuNUwxNy4zMzMxIDMzNC4xNDRMMTIuOTkxNyAzMDAuNjkxWiIgZmlsbD0id2hpdGUiLz4KPHBhdGggZD0iTTI4OCAyMDkuNUwyNDIuNzA0IDE5OS40MTFMLTMxLjc0MSAyNzguMzE0Qy0zMy4xNzE0IDI4OC4zNDggLTMxLjAyNTcgMzMzLjM4NCAtMzEuMDI1NyAzMzMuMzg0Qy0zMS4wMjU3IDMzMy4zODQgLTI1Ljg5MzIgMzMzLjc0MiAtMjUuMTE0OSAzMzguNTM4Qy0yNC43OTk0IDM0MC40MzEgLTI0LjUyNiAzNDIuNDkyIC0yNC4yNzM2IDM0NC4yOEwtMjIuOTY5NCAzNDQuMDQ5Qy0yMi45Njk0IDM0NC4wNDkgLTE3LjM3NCAzNTEuMTE3IC0xMC4wMzI4IDM1MC41N0MtMi42OTE1NCAzNTAuMDIzIC0wLjk2NjY2OSAzNDYuMzYzIC0wLjk2NjY2OSAzNDYuMzYzQy0wLjk2NjY2OSAzNDYuMzYzIDQuNzc1OTEgMzQ4Ljc4MiAxNC4yODM4IDM0Ny4yNjdDMjMuNzkxNiAzNDUuNzUzIDI3LjQ5MzggMzQxLjMxNCAyNy40OTM4IDM0MS4zMTRDMjcuNDkzOCAzNDEuMzE0IDQwLjc0NTggMzQ0Ljc0MyA1MS4wNTMgMzQyLjgyOUM2MS4zNjAyIDM0MC44OTQgNzYuMTg5OSAzMjguODE5IDc2LjE4OTkgMzI4LjgxOUwxMDcuMTU0IDMyNS45NTlDMTA3LjE1NCAzMjUuOTU5IDEwNy41MTEgMzMzLjMgMTIyLjE5NCAzMzAuNTg2QzEzNi44NzYgMzI3Ljg3MyAxMzYuNTE5IDMyNS4wNzUgMTM3LjU5MSAzMjMuNzA4QzEzNy41OTEgMzIzLjcwOCAxNDIuMDUxIDMyNC4xMDggMTQ4LjE1MSAzMjMuMDM1QzE1My45MTUgMzIyLjAwNCAxNTguNTQyIDMxOS45IDE2MC4xMiAzMTkuNjA2QzE2MS42OTggMzE5LjMxMiAxNjIuMTgxIDMyMy40MTMgMTc1LjE4MSAzMjIuMDI1QzE5MC4yMjEgMzIwLjQyNiAxOTAuMTE2IDMxMy40NDMgMTkzLjk2NSAzMTMuNDQzQzE5Ny44MTUgMzEzLjQ0MyAyMDAuOTcgMzE2LjMwMyAyMTEuNTMgMzE2LjMwM0MyMjIuMDg5IDMxNi4zMDMgMjI2Ljk0OCAzMDcuNDQ4IDIyNi45NDggMzA3LjQ0OEwyMzQuMTQyIDMwNi4xNDNDMjM0LjE0MiAzMDYuMTQzIDIzNC41NjMgMzA2LjE2NSAyMzUuMzIgMzA2LjIwN0MyMjguODYzIDMwMC4yMTIgMjE0LjM2OSAyODEuMjM4IDIxNC4zNjkgMjgxLjIzOEwtMjkuNjM3NSAzMjYuMzU4VjMyMi45NTFMMjE3LjQxOSAyNzcuMTE1TDI0MS45MzggMzA0Ljc0NkwyOTEuNjc5IDMwMS44ODhMMzAwLjUgMjc3LjExNUwyODggMjA5LjVaIiBmaWxsPSIjN0ExMzA3Ii8+CjxwYXRoIGQ9Ik0yNDUuMSAyMDQuNlYyMDAuNTgySDI0Ni41OTRWMTk1LjI2QzI0Ni41OTQgMTkzLjQ1MSAyNDUuMTIxIDE5MiAyNDMuMzMzIDE5MkgyNDIuMjZDMjQwLjQ1MSAxOTIgMjM5IDE5My40NzMgMjM5IDE5NS4yNlYyMDAuNjY3SDI0Mi44MDdWMjA2LjAzMUwyNDUuMSAyMDQuNloiIGZpbGw9IiM3QTEzMDciLz4KPHBhdGggZD0iTTI0NS4zNSAxNjEuODNDMjQzLjIyMSAxNTkuODM1IDI0MS41MDMgMTU4LjQ2IDI0MS41MDMgMTU4LjQ2QzI0My41NzEgMTU1LjM3OCAyNDYuNTk2IDE0Ny43MTggMjM5LjQ2NiAxNDEuNjE0QzIzMi4zMzYgMTM1LjUxIDIyMy45MTQgMTM4Ljc4OSAyMjMuOTE0IDEzOC43ODlDMjIzLjkxNCAxMzguNzg5IDIyNi4zNzcgMTIwLjgwOSAyMTAuMjAxIDExNi42NjlDMTk0LjAyNSAxMTIuNTMgMTg1LjIyMyAxMzAuMTc3IDE4NS4yMjMgMTMwLjE3N0MxODEuNDY4IDEyMC4wMjQgMTk0LjI4NCAxMTMuNDY2IDE5NC4yODQgMTEzLjQ2NkMxOTQuMjg0IDExMy40NjYgMTg2LjI1NyAxMDAuMDk1IDE2Ny40OTYgMTAwLjg2NkMxNDguNzM2IDEwMS42MzYgMTQyLjc3NyAxMjMuMjQyIDE0Mi43NzcgMTIzLjI0MkMxMzQuMjMzIDEwNy44MTYgMTQ5LjM3NSA5OS4yMDM3IDE0OS4zNzUgOTkuMjAzN0MxNDkuMzc1IDk5LjIwMzcgMTM5LjUzOSA5MC43MTI2IDEyMS4xNzQgOTcuMDEyOUMxMDIuNzk0IDEwMy4zMTMgOTcuOTEzNCAxMjYuNzE3IDk3LjkxMzQgMTI2LjcxN0M5Mi4xMjExIDEwOC41ODYgMTA2LjY4NSA5OS44MzgzIDEwNi42ODUgOTkuODM4M0M5OC42NTgzIDkxLjk5NjggNzguNzQyNyA5MS44NjA4IDYzLjcyMjQgMTA0LjA4NEM0OC43MTczIDExNi4zMDcgNTQuMjgxNiAxNDMuOTQxIDU0LjI4MTYgMTQzLjk0MUM1NC4yODE2IDE0My45NDEgNDcuMTY2NyAxMzYuNDc3IDQ0Ljg0MDYgMTI1LjQxN0M0Mi41MTQ2IDExNC4zNTggNTAuMjY4IDEwOC44MjggNTAuMjY4IDEwOC44MjhDMjUuNDI2OCA5MS43MjQ4IDMuNDI4MzkgMTM5Ljk1MiAzLjQyODM5IDEzOS45NTJDLTAuMTg5ODY1IDExNi4xNzEgMjMuMjIyMyAxMDMuMjk4IDIzLjIyMjMgMTAzLjI5OEMyMy4yMjIzIDEwMy4yOTggMjIuMzEwMiAxMDEuNSA5LjUwOTQ4IDEwMy4wNDFDLTMuMzA2NDMgMTA0LjU4MiAtMTUuMjEwMiAxMDkuODU1IC0xNS4yMTAyIDEwOS44NTVDLTE0LjgxNDkgMTA3LjgwMSAtMTAuOTM4MyAxMDMuODEyIC02LjgwMzEyIDEwMS44NjNDLTIuNjY3OTcgOTkuOTEzOCAtMi4yNzI2NCA5MC42OTc0IC0xNC40MzQ4IDg1LjgxNzNDLTI2LjU5NyA4MC45MzcyIC0zNC43NDU3IDg3LjQ5NDQgLTM0Ljc0NTcgODcuNDk0NEMtMzIuNTQxMyA3OS4xMzkyIC0yNi4xNTYyIDc3LjU1MjggLTI3Ljc1MjQgNzIuNDQ2Qy0yOS4zNDg3IDY3LjMzOTMgLTMzLjMxNjcgNjMuNjk4MSAtMzMuMzE2NyA2My42OTgxQy0zMy4zMTY3IDYzLjY5ODEgLTI2LjU2NjYgNjIuMzk4NyAtMjYuNzE4NyA1Ny4zOTc3Qy0yNi44NzA3IDUyLjM5NjcgLTMxLjM3MDcgNTEuNzQ3IC0zMS4zNzA3IDUxLjc0N0MtMzEuMzcwNyA1MS43NDcgLTIxLjU4MDIgNDguMjg3MSAtMTkuMzQ1NCA0NC43MjE0Qy0xOC40MTggNDMuMjQwOCAtMTguMDM3OSA0MS42MjQxIC0xOS4wNzE3IDQwLjQzMDVDLTIwLjQzOTkgMzkuOTkyNCAtMjIuMzQwMyAzOS44NTY0IC0yNC45MDk1IDQwLjE3MzdDLTM5LjM5NzggNDEuOTcxNiAtNTIuNTkzNyA3NS43ODUxIC01Mi45ODkgODkuMjkyM0MtNTMuMzg0MiAxMDIuOCAtNDMuMDMxMiAxMDcuODE2IC00My4wMzEyIDEwNy44MTZDLTQzLjAzMTIgMTA3LjgxNiAtNDcuNjgzMiAxMjEuNTggLTM2LjY5MTcgMTQwLjQ4MUMtMjUuNzAwMSAxNTkuMzgyIDIuODk2MjQgMTQ2LjY2IDIuODk2MjQgMTQ2LjY2QzEuODYyNDUgMTU1LjkyMiA4Ljg0MDUzIDE4My44MjggMzEuMjM0MiAxODMuMzE0QzUzLjYxMjYgMTgyLjgwMSA2NC4xMDI1IDE2OC43OCA2NC4xMDI1IDE2OC43OEM2NC4xMDI1IDE2OC43OCA3NS44Njk0IDE3OC44MTIgOTEuNzg2NyAxNzcuNjQ4QzEwNy43MDQgMTc2LjQ4NSAxMTUuMDc3IDE2Mi40NzkgMTE1LjA3NyAxNjIuNDc5QzExNS4wNzcgMTYyLjQ3OSAxMTkuODY2IDE2OC4yNjYgMTMyLjY2NyAxNjguNTIzQzE0NS40ODMgMTY4Ljc4IDE1NC4xNDggMTU2LjU3MiAxNTQuMTQ4IDE1Ni41NzJDMTU0LjE0OCAxNTYuNTcyIDE1OC4xNjIgMTY1LjMyIDE3MC40NDYgMTY1LjQ0MUMxODIuNzQ1IDE2NS41NzcgMTg5Ljg2IDE1Ni4wNTggMTg5Ljg2IDE1Ni4wNThDMTg5Ljg2IDE1Ni4wNTggMTkzLjk5NSAxNjIuNDk0IDIwMC42MzggMTY2Ljg2MUMyMDcuMjgyIDE3MS4yMjcgMjIzLjI0NSAxNjcuMzc0IDIyMy4yNDUgMTY3LjM3NEMyMjAuOTE5IDE3My40MTggMjMxLjMzMyAxODQuNzE5IDIzOC43NjcgMTgzLjk2NEMyNTIuMTMgMTgyLjU0NCAyNDcuNzUyIDE2Ny44ODggMjQ1LjM1IDE2MS44M1oiIGZpbGw9IiNCODAwMDAiLz4KPHBhdGggZD0iTTI0Ni42MTggMTQ0LjY3NkMyNDIuODQ2IDEzNC45ODggMjI5LjIwOCAxMzQuMDc3IDIyOS4yMDggMTM0LjA3N0MyMjkuMjA4IDEzNC4wNzcgMjMxLjQyMiAxMjIuOTYzIDIyMi44MzkgMTE0LjY4OEMyMTQuMjU3IDEwNi40MTMgMTk5LjA2MSAxMDkuNzg0IDE5OS4wNjEgMTA5Ljc4NEMxOTkuMDYxIDEwOS43ODQgMTk1LjI4OCA5OC4wMzE2IDE4MS42NSA5Mi44NTRDMTY3Ljk5NyA4Ny42OTE2IDE1NC40ODEgOTUuNDM1MiAxNTQuNDgxIDk1LjQzNTJDMTMyLjY0MiA3NS4yNzE0IDExMS4yIDkyLjU5NTkgMTExLjIgOTIuNTk1OUMxMTEuMiA5Mi41OTU5IDk4LjIwMzUgODAuMDU0MyA3OS4yMjAzIDgzLjY4MzFDNjAuMjM3IDg3LjI5NjggNTIuMTg4NyAxMDIuNDIgNTIuMTg4NyAxMDIuNDJDNDEuNTI4NyA5NC4wMjMyIDI3Ljg5MDYgMTAwLjk5MiAyNy44OTA2IDEwMC45OTJDMjEuNTIyMiA4OC43MDg5IDEuNTAwNDMgOTcuODk1IDEuNTAwNDMgOTcuODk1QzEuNTAwNDMgOTcuODk1IDIuNTM4ODYgOTQuNzk3NSAtNC4yMTE0MiA4Ny4wMzg3Qy0xMC45NjE3IDc5LjI3OTkgLTI1LjM5MzkgNzYuODM1MyAtMjUuMzkzOSA3Ni44MzUzQy0yNS4zOTM5IDc2LjgzNTMgLTI0LjIxNzggNzUuNTQ0NyAtMjQuNzM3MSA3MC4zNjcxQy0yNS4yNTYzIDY1LjIwNDcgLTI4LjI0OTcgNjMuMTI0NiAtMjguMjQ5NyA2My4xMjQ2Qy0yOC4yNDk3IDYzLjEyNDYgLTI0LjQ3NzUgNjEuMTgxMSAtMjQuNDc3NSA1Ny4xODc4Qy0yNC40Nzc1IDUzLjE3OTMgLTI3LjMzMzQgNTEuNjMwNiAtMjcuMzMzNCA1MS42MzA2Qy0xOC41NjcyIDUwLjc4MDMgLTEyLjg4NiA0Mi4wNDk4IC0xOS4yNTQ0IDQwQy0xOC4yMTU5IDQxLjE4NDMgLTE4LjU5NzcgNDIuODI0MSAtMTkuNTI5MyA0NC4zMTIxQy0yMS43NzQzIDQ3Ljg5NTUgLTMxLjYwOTUgNTEuMzcyNSAtMzEuNjA5NSA1MS4zNzI1Qy0zMS42MDk1IDUxLjM3MjUgLTI3LjA3MzcgNTIuMDQwNiAtMjYuOTM2MyA1Ny4wNTExQy0yNi43ODM1IDYyLjA3NjkgLTMzLjU2NDQgNjMuMzgyNyAtMzMuNTY0NCA2My4zODI3Qy0zMy41NjQ0IDYzLjM4MjcgLTI5LjU3ODQgNjcuMDQxOSAtMjcuOTc0OSA3Mi4xNzRDLTI2LjM3MTMgNzcuMzA2IC0zMi43ODU1IDc4LjkwMDMgLTM1IDg3LjI5NjhDLTM1IDg3LjI5NjggLTI2LjgxNDIgODAuNzA3MiAtMTQuNTk2NSA4NS42MTE0Qy0yLjM3ODc1IDkwLjUxNTcgLTIuNzc1NzkgOTkuNzc3NyAtNi45Mjk4MSAxMDEuNzM2Qy0xMS4wODM4IDEwMy42OTUgLTE0Ljk5MzUgMTA3LjcwNCAtMTUuMzc1MyAxMDkuNzY5Qy0xNS4zNzUzIDEwOS43NjkgLTMuNDE3MjUgMTA0LjQ2OSA5LjQ1NzE2IDEwMi45MjFDMjIuMzMxNiAxMDEuMzcyIDIzLjIzMjcgMTAzLjE3OSAyMy4yMzI3IDEwMy4xNzlDMjMuMjMyNyAxMDMuMTc5IC0wLjI4NjQ2NSAxMTYuMSAzLjM0ODMgMTQwLjAxNEMzLjM0ODMgMTQwLjAxNCAyNS40NDcxIDkxLjU2MzQgNTAuNDAxNyAxMDguNzM2QzUwLjQwMTcgMTA4LjczNiA0Mi41OTc3IDExNC4yOTMgNDQuOTQ5NiAxMjUuNDA4QzQ3LjI4NjIgMTM2LjUyMiA1NC40MzM2IDE0NC4wMjMgNTQuNDMzNiAxNDQuMDIzQzU0LjQzMzYgMTQ0LjAyMyA0OC44NDQgMTE2LjIzNyA2My45MTc2IDEwMy45NjhDNzguOTkxMiA5MS42ODQ5IDk5LjAxMyA5MS44MjE1IDEwNy4wNzcgOTkuNzAxOEMxMDcuMDc3IDk5LjcwMTggOTIuNDQ2IDEwOC40OTMgOTguMjY0NiAxMjYuNzEzQzk4LjI2NDYgMTI2LjcxMyAxMDMuMTgyIDEwMy4xOTQgMTIxLjYzMSA5Ni44NjI1QzE0MC4wOTUgOTAuNTMwOSAxNDkuOTYxIDk5LjA2NDEgMTQ5Ljk2MSA5OS4wNjQxQzE0OS45NjEgOTkuMDY0MSAxMzQuNzUgMTA3LjcxOSAxNDMuMzMzIDEyMy4yMjFDMTQzLjMzMyAxMjMuMjIxIDE0OS4zMDQgMTAxLjUwOSAxNjguMTY1IDEwMC43MzRDMTg3LjAxMSA5OS45NTk5IDE5NS4wNzUgMTEzLjM5NyAxOTUuMDc1IDExMy4zOTdDMTk1LjA3NSAxMTMuMzk3IDE4Mi4yIDExOS45ODcgMTg1Ljk3MyAxMzAuMTlDMTg1Ljk3MyAxMzAuMTkgMTk0LjgxNSAxMTIuNDU2IDIxMS4wNjUgMTE2LjYxNkMyMjcuMzE0IDEyMC43NzcgMjI0Ljg0IDEzOC44NDUgMjI0Ljg0IDEzOC44NDVDMjI0Ljg0IDEzOC44NDUgMjMzLjMwMSAxMzUuNTUgMjQwLjQ2MyAxNDEuNjg0QzI0Ny42MjYgMTQ3LjgxOSAyNDQuNTg3IDE1NS41MTcgMjQyLjUxIDE1OC42MTRDMjQyLjUxIDE1OC42MTQgMjQ0LjIzNiAxNTkuOTk2IDI0Ni4zNzQgMTYyQzI0NS43MzIgMTYwLjQwNiAyNDUuMjQ0IDE1OS4zODggMjQ1LjI0NCAxNTkuMzg4QzI0NS4yNDQgMTU5LjM4OCAyNTAuMzkgMTU0LjM2MyAyNDYuNjE4IDE0NC42NzZaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNNDY4Ljk2OCAyNzEuODYxTDMxLjM0ODYgMzMxLjY3M0wyMzUuNSA1NTIuMjk4TDQ2OC45NjggMjcxLjg2MVoiIGZpbGw9IiNCRDIxMEYiLz4KPHBhdGggZD0iTTQ3Ny4zMzcgMjkxLjEwMkwzOC4xNzM3IDMzOC4yNjZMMjM1Ljg3NiA1NjQuNjg4TDQ3Ny4zMzcgMjkxLjEwMloiIGZpbGw9IiNENDU1NDYiLz4KPGNpcmNsZSBjeD0iMjA2LjUiIGN5PSIyMDYuNSIgcj0iMjAwIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjEzIi8+CjxwYXRoIGQ9Ik0yNzcuNTAxIDIzMS4wOTZDMjc4LjMzIDIzNi4xMTkgMjc2LjQwNCAyNDAuNjIgMjczLjE5OSAyNDEuMTQ5QzI2OS45OTUgMjQxLjY3OCAyNjYuNzI1IDIzOC4wMzQgMjY1Ljg5NiAyMzMuMDExQzI2NS4wNjcgMjI3Ljk4NyAyNjYuOTkzIDIyMy40ODYgMjcwLjE5OCAyMjIuOTU3QzI3My40MDIgMjIyLjQyOSAyNzYuNjcyIDIyNi4wNzIgMjc3LjUwMSAyMzEuMDk2WiIgZmlsbD0id2hpdGUiLz4KPC9nPgo8L3N2Zz4K"> loco</div>
+  <span class="ver">v1.0 ▾</span>
+  <div class="search">🔍 Search the docs… <kbd>⌘K</kbd></div>
+  <div class="topnav"><a class="on">Docs</a><a>Guides</a><a>Blog</a><a>Casts</a><a>GitHub</a></div>
+</div>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <nav class="side">
+    <div class="grp">Tutorials</div>
+    <a>Your first app</a>
+    <a class="on">A quick tour</a>
+    <a>Build a SaaS backend</a>
+    <div class="grp">How-to guides</div>
+    <a>Add a model</a>
+    <a>Background jobs</a>
+    <a>Send email</a>
+    <a>Connect over TLS</a>
+    <a>Deploy to production</a>
+    <div class="grp">Reference</div>
+    <a>The CLI</a>
+    <a>Configuration</a>
+    <a>Controllers &amp; routing</a>
+    <a>Models &amp; migrations</a>
+    <div class="grp">Explanation</div>
+    <a>Architecture</a>
+    <a>Why Loco follows Rails</a>
+  </nav>
+
+  <!-- MAIN -->
+  <main>
+    <div class="crumb"><b>Tutorials</b> › A quick tour</div>
+    <h1>A quick tour with Loco</h1>
+    <p class="lede">In a few minutes you'll scaffold a real app, add a model, and hit a working JSON endpoint — the whole batteries-included loop.</p>
+
+    <h2 id="new">Create an app<span class="hash">#</span></h2>
+    <p>Install the CLI and generate a new project. Loco writes a complete app — database, auth, background jobs, and tests — wired together and ready to run.</p>
+    <div class="cb"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>terminal</span><span class="cp">⧉ copy</span></div>
+      <pre><span class="c">$</span> cargo install loco
+<span class="c">$</span> loco new my_app
+<span class="s">✓</span> generated 34 files · auth · migrations · workers
+<span class="c">$</span> cd my_app &amp;&amp; cargo loco start</pre></div>
+
+    <div class="aside"><span class="ic">◆</span><div class="bd"><b>Following Rails?</b> If you've used <code>rails new</code>, this will feel familiar — the concepts carry over, adapted to idiomatic Rust.</div></div>
+
+    <h2 id="model">Add a model<span class="hash">#</span></h2>
+    <p>Generate a model and its migration in one line. The DSL mirrors your columns; the generated code is yours to edit.</p>
+    <div class="cb"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>terminal</span><span class="cp">⧉ copy</span></div>
+      <pre><span class="c">$</span> loco generate model article title:string content:text</pre></div>
+
+    <h2 id="endpoint">Hit an endpoint<span class="hash">#</span></h2>
+    <p>Controllers are plain functions returning a <code>Result&lt;Response&gt;</code>. Register them in <code>routes()</code> and you're serving JSON.</p>
+    <div class="cb"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>src/controllers/articles.rs</span><span class="cp">⧉ copy</span></div>
+      <pre><span class="k">use</span> loco_rs::prelude::*;
+<span class="k">use</span> <span class="k">crate</span>::models::_entities::articles;
+
+<span class="k">pub async fn</span> <span class="fn">list</span>(State(ctx): State&lt;AppContext&gt;) -&gt; <span class="t">Result</span>&lt;Response&gt; {
+    <span class="k">let</span> items = articles::Entity::find().all(&amp;ctx.db).<span class="k">await</span>?;
+    format::json(items)
+}</pre></div>
+    <p>That's the whole loop: <code>new</code> → <code>generate</code> → serve. Next, we'll add background jobs and tests.</p>
+
+    <div class="pager">
+      <a><div class="l">← Previous</div><div class="t">Your first app</div></a>
+      <a class="r"><div class="l">Next →</div><div class="t">Build a SaaS backend</div></a>
+    </div>
+  </main>
+
+  <!-- TOC -->
+  <aside class="toc">
+    <div class="h">On this page</div>
+    <a class="on">Create an app</a>
+    <a>Add a model</a>
+    <a>Hit an endpoint</a>
+  </aside>
+</div>
+
+<div class="tag">Docs · Starlight themed in the Direction A identity</div>
+</body></html>

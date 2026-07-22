@@ -46,8 +46,9 @@
   --sl-color-text-accent: var(--red-ink);
   --sl-color-bg-accent: var(--red);
 
-  /* Backgrounds */
-  --sl-color-bg: var(--paper);
+  /* Backgrounds — the content column reads on the near-white --read surface,
+     while the nav and sidebar keep the warm --paper/--paper-2 chrome. */
+  --sl-color-bg: var(--read);
   --sl-color-bg-nav: var(--paper);
   --sl-color-bg-sidebar: var(--paper-2);
   --sl-color-bg-inline-code: var(--paper-2);
@@ -123,7 +124,8 @@
   padding: 1.15rem 1.25rem 1.3rem;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: var(--card);
+  /* warm tint so cards read as cards against the near-white content bg */
+  background: var(--paper-2);
   text-decoration: none;
   transition:
     transform 0.15s ease,

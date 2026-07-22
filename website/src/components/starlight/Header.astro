@@ -1,19 +1,19 @@
 ---
-// Overrides Starlight's default Header (registered in astro.config.mjs) so
-// the /docs surface wears the SAME top bar as the marketing site — same
-// wordmark, the Docs/Blog/Screencasts links, the GitHub star pill, and the
-// Get-started CTA — instead of Starlight's bare "logo + search + theme" bar.
-// Crossing home ↔ docs should feel like one product, not two sites.
+// Overrides Starlight's default Header so /docs wears the SAME top bar as the
+// marketing site (src/components/Nav.astro): the loco-mark + "loco" wordmark,
+// centered Docs/Blog/Screencasts links, GitHub star pill, circular
+// ThemeToggle, and Get-started CTA. Earlier this component only approximated
+// the marketing nav (red "Loco" text, left links, Starlight's "Auto ▾" theme
+// dropdown) — it did NOT match; this mirrors it precisely.
 //
-// Starlight's own Search + ThemeSelect are reused (virtual imports) so
-// search, keyboard shortcut, theme persistence, and mobile behavior all keep
-// working. We drop Starlight's default 3-column grid (whose math aligns the
-// search box with the content column) in favor of a flex bar that mirrors
-// the marketing Nav — cross-surface consistency is the whole point here.
+// Starlight's own Search is reused (virtual import) so ⌘K + Pagefind keep
+// working; it sits compact in the right group instead of a full-width middle
+// bar. The circular ThemeToggle writes the same `starlight-theme` key
+// Starlight reads (see ThemeToggle.astro), so theme state is shared.
 import config from 'virtual:starlight/user-config';
 import Search from 'virtual:starlight/components/Search';
-import SiteTitle from 'virtual:starlight/components/SiteTitle';
-import ThemeSelect from 'virtual:starlight/components/ThemeSelect';
+import ThemeToggle from '../ThemeToggle.astro';
+import VersionBadge from '../VersionBadge.astro';
 
 const shouldRenderSearch =
   config.pagefind ||
@@ -21,53 +21,72 @@ const shouldRenderSearch =
 ---
 
 <div class="header">
-  <div class="lead sl-flex">
-    <div class="title-wrapper sl-flex">
-      <SiteTitle {...Astro.props} />
-    </div>
-    <nav class="site-links sl-hidden md:sl-flex" aria-label="Site">
-      <a href="/docs/" aria-current="page">Docs</a>
-      <a href="/blog/">Blog</a>
-      <a href="/casts/">Screencasts</a>
-    </nav>
+  <div class="lead">
+    <a class="brand" href="/">
+      <img src="/loco-mark.svg" alt="" width="30" height="30" />
+      <span>loco</span>
+    </a>
+    <VersionBadge />
   </div>
 
-  <div class="search-wrapper sl-flex">
-    {shouldRenderSearch && <Search {...Astro.props} />}
-  </div>
+  <nav class="site-links sl-hidden md:sl-flex" aria-label="Site">
+    <a href="/docs/" aria-current="page">Docs</a>
+    <a href="/blog/">Blog</a>
+    <a href="/casts/">Screencasts</a>
+  </nav>
 
-  <div class="right-group sl-flex">
+  <div class="right-group">
+    {shouldRenderSearch && (
+      <div class="search-slot sl-hidden md:sl-flex">
+        <Search {...Astro.props} />
+      </div>
+    )}
     <a
-      class="stars sl-hidden md:sl-flex"
+      class="stars sl-hidden lg:sl-flex"
       href="https://github.com/loco-rs/loco"
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Loco on GitHub"
     >★ 6.9k</a>
-    <ThemeSelect {...Astro.props} />
+    <ThemeToggle />
     <a class="cta sl-hidden md:sl-flex" href="/docs/tutorials/your-first-app/">Get started</a>
   </div>
 </div>
 
 <style>
   .header {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
     gap: 1rem;
     height: 100%;
   }
   .lead {
+    display: flex;
     align-items: center;
-    gap: 1.75rem;
-  }
-  .title-wrapper {
-    overflow: clip;
-    padding: 0.25rem;
-    margin: -0.25rem;
+    gap: 0.7rem;
     min-width: 0;
   }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-weight: 800;
+    font-size: 1.25rem;
+    letter-spacing: -0.02em;
+    color: var(--sl-color-white);
+    text-decoration: none;
+  }
+  .brand img {
+    display: block;
+    width: 30px;
+    height: 30px;
+  }
+
+  /* centered links, mirroring the marketing nav */
   .site-links {
-    gap: 1.4rem;
+    justify-content: center;
+    gap: 1.75rem;
     font-size: 0.92rem;
     font-weight: 500;
   }
@@ -83,13 +102,19 @@ const shouldRenderSearch =
     color: var(--sl-color-white);
     font-weight: 600;
   }
-  .search-wrapper {
-    flex: 1;
-    align-items: center;
-  }
+
   .right-group {
+    display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 0.85rem;
+  }
+  /* Keep Starlight's search compact on the right, not a stretched middle bar. */
+  .search-slot {
+    width: clamp(9rem, 16vw, 15rem);
+  }
+  .search-slot :global(site-search) {
+    width: 100%;
   }
   .stars {
     align-items: center;
@@ -100,7 +125,7 @@ const shouldRenderSearch =
     border: 1px solid var(--sl-color-gray-5);
     padding: 0.4rem 0.7rem;
     border-radius: 9px;
-    background: var(--sl-color-bg);
+    background: var(--sl-color-bg-nav);
     text-decoration: none;
     white-space: nowrap;
     transition:
@@ -111,7 +136,26 @@ const shouldRenderSearch =
     color: var(--sl-color-white);
     border-color: var(--sl-color-gray-4);
   }
+
+  /* Circular theme toggle — the marketing nav styles `.toggle` in Nav.astro's
+     scope, so replicate it here for the docs header. */
+  .right-group :global(.toggle) {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 9px;
+    background: var(--sl-color-bg-nav);
+    cursor: pointer;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--sl-color-white);
+    flex-shrink: 0;
+  }
+
   .cta {
+    align-items: center;
     font-weight: 650;
     font-size: 0.9rem;
     padding: 0.5rem 1rem;

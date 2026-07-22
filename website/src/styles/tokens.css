@@ -1,18 +1,22 @@
 :root {
   --paper:#FBF6EC; --paper-2:#F4ECDD; --card:#FFFDF8;
+  /* --read: the long-form READING surface (docs content, blog article body).
+     Near-white in light for maximum legibility; the warm --paper stays on the
+     nav/sidebar/marketing chrome around it. */
+  --read:#FFFDFA;
   --ink:#1C1712; --ink-2:#5A5148; --ink-3:#8A7F72; --line:#E7DDCB;
   --red:#FC3820; --red-ink:#D82A12;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,system-ui,sans-serif;
   --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace;
 }
 :root[data-theme="dark"] {
-  --paper:#17120E; --paper-2:#1F1813; --card:#221A14;
+  --paper:#17120E; --paper-2:#1F1813; --card:#221A14; --read:#17120E;
   --ink:#F2E9DC; --ink-2:#C3B6A5; --ink-3:#8E8071; --line:#33291F;
   --red:#FF5A3D; --red-ink:#FF7355;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper:#17120E; --paper-2:#1F1813; --card:#221A14;
+    --paper:#17120E; --paper-2:#1F1813; --card:#221A14; --read:#17120E;
     --ink:#F2E9DC; --ink-2:#C3B6A5; --ink-3:#8E8071; --line:#33291F;
     --red:#FF5A3D; --red-ink:#FF7355;
   }
