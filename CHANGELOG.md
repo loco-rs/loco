@@ -11,13 +11,22 @@ hardening pass across the queue, storage, config, error, remote-IP, and
 middleware subsystems. Follow the step-by-step
 [0.16 → 1.0 upgrade guide](https://loco.rs/docs/extras/upgrades/).
 
+> **A note on Sea-ORM 2.0-rc.** Loco 1.0.0 pins `sea-orm =2.0.0-rc.41` exactly.
+> Sea-ORM 2.0 has not published a stable release yet; rather than hold Loco 1.0
+> back indefinitely, we ship on the rc our full test matrix is green against.
+> The pin is intentionally exact — a looser range drifts to newer rcs that break
+> against the pinned `sea-schema`, so `loco new` apps keep the same pin. We'll
+> ship a Loco patch that moves to `sea-orm 2.0` stable once it lands.
+
 ### Breaking Changes
 
-- **Sea-ORM 2.0 + sqlx 0.9.** Bump `sea-orm`/`sea-orm-migration` to `2.0` (app +
-  `migration` crate), direct `sqlx` to `0.9`, update the Sea-ORM CLI, and
-  regenerate entities. Raw-`Statement` calls gain a `_raw` suffix; runtime SQL
-  strings need `AssertSqlSafe`. MSRV raised (1.85 for 2.0.0 stable). (Adopted
-  from the SeaQL fork and [#1698](https://github.com/loco-rs/loco/pull/1698).)
+- **Sea-ORM 2.0 + sqlx 0.9.** Bump `sea-orm`/`sea-orm-migration` to
+  **`=2.0.0-rc.41`** (exact-pinned — see the note above; app + `migration`
+  crate), direct `sqlx` to `0.9`, update the Sea-ORM CLI, and regenerate
+  entities. Raw-`Statement` calls gain a `_raw` suffix; runtime SQL strings need
+  `AssertSqlSafe`. MSRV is **1.94** (raised for the rc/sqlx-0.9 toolchain; it
+  will lower toward 1.85 once Sea-ORM 2.0 ships stable). (Adopted from the SeaQL
+  fork and [#1698](https://github.com/loco-rs/loco/pull/1698).)
 - **Generated primary/foreign keys are now 64-bit (BIGINT / `i64`).** Also the
   `int`/`unsigned` field types generate 64-bit columns. Only affects newly
   generated code; existing tables are untouched.
