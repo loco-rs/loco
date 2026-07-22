@@ -68,3 +68,6 @@ starters/saas/frontend/pnpm-lock.yaml
 
 
 example
+# internal working docs — never ship in a release
+.superpowers/
+docs/superpowers/
