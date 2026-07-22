@@ -39,3 +39,38 @@ jobs:
         continue-on-error: true
         env:
           SNIPDOC_SKIP_EXEC_COMMANDS: true
+
+  # Builds the deployed site (Astro/Starlight in website/). The `check` job
+  # above still verifies the docs *source* (docs-site/, snipdoc, llms-check);
+  # this job verifies the artifact that actually ships to loco.rs.
+  website:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v7
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: website
+      - name: Unit tests (migration / link-rewrite scripts)
+        run: pnpm test
+        working-directory: website
+      - name: Build the Astro site (fails on broken links)
+        run: pnpm build
+        working-directory: website
+      - name: URL parity (old loco.rs URLs still resolve)
+        run: |
+          pnpm url-parity
+          pnpm url-parity-blog
+        working-directory: website
