@@ -23,16 +23,19 @@ These are the major ones:
 - [SeaORM](https://www.sea-ql.org/SeaORM), [CHANGELOG](https://github.com/SeaQL/sea-orm/blob/master/CHANGELOG.md)
 - [Axum](https://github.com/tokio-rs/axum), [CHANGELOG](https://github.com/tokio-rs/axum/blob/main/axum/CHANGELOG.md)
 
-## Upgrade from 0.16.x to 0.17.x
+## Upgrade from 0.16.x to 1.0
 
-0.17 is a large, intentionally-breaking release. Its headline change is the move
-to **Sea-ORM 2.0**. This section is assembled per area; start with the Sea-ORM
-steps, which affect every app that uses a database.
+1.0 is a large, intentionally-breaking release — the first stable Loco. Its
+headline change is the move to **Sea-ORM 2.0**. This section is assembled per
+area; start with the Sea-ORM steps, which affect every app that uses a database.
+Cross-check the [1.0.0 CHANGELOG](https://github.com/loco-rs/loco/blob/master/CHANGELOG.md)
+for anything specific to APIs you use directly.
 
-### Toolchain: Rust 1.85+
+### Toolchain: Rust 1.94+
 
-Sea-ORM 2.0 requires **Rust 1.85 or newer** (the 2.0 pre-release line currently
-requires 1.94; the 2.0.0 stable target is 1.85). Update your toolchain:
+Loco 1.0 pins Sea-ORM `=2.0.0-rc.41`, whose toolchain needs **Rust 1.94 or
+newer**. (When Sea-ORM 2.0 ships a stable release, this floor drops toward 1.85.)
+Update your toolchain:
 
 ```sh
 rustup update
@@ -44,13 +47,16 @@ Loco upgraded from Sea-ORM 1.1 to Sea-ORM 2.0. For most apps the migration is
 mechanical — bump the pins and the CLI — because Loco's `schema` helpers and the
 generated model/migration shapes absorb the API changes for you.
 
-**1. Bump the dependency pins.** In your app `Cargo.toml`:
+**1. Bump the dependency pins.** Pin Sea-ORM **exactly** to the rc Loco ships on
+— a looser range (`2.0`, `2.0.0-rc`) drifts to a newer rc that breaks against the
+pinned `sea-schema`, so `loco new` uses the exact pin and your app should too. In
+your app `Cargo.toml`:
 
 ```toml
 # before
 sea-orm = { version = "1.1", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls", "macros"] }
 # after
-sea-orm = { version = "2.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls", "macros"] }
+sea-orm = { version = "=2.0.0-rc.41", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls", "macros"] }
 ```
 
 And in your `migration/Cargo.toml`:
@@ -59,15 +65,16 @@ And in your `migration/Cargo.toml`:
 # before
 sea-orm-migration = { version = "1.1.0", features = [...] }
 # after
-sea-orm-migration = { version = "2.0", features = [...] }
+sea-orm-migration = { version = "=2.0.0-rc.41", features = [...] }
 ```
 
 If you depend on `sqlx` directly, bump it to `0.9`.
 
-**2. Update the Sea-ORM CLI** (used by `cargo loco db entities`):
+**2. Update the Sea-ORM CLI** (used by `cargo loco db entities`) to the matching
+2.0 rc:
 
 ```sh
-cargo install sea-orm-cli   # must be 2.0+
+cargo install sea-orm-cli --version '=2.0.0-rc.41'
 ```
 
 `cargo loco doctor` will now flag a Sea-ORM or Sea-ORM CLI older than 2.0.
@@ -115,6 +122,37 @@ them to relate to older `i32`-keyed tables, make the key types match (either
 widen the old ones with a migration, or hand-edit the new `id`/foreign-key
 fields back to `i32`).
 
+### Multi-database: `ExtraDbInitializer` → `MultiDbInitializer`
+
+The single-extra-connection initializer (`initializers.extra_db`, which layered a
+bare `Extension<DatabaseConnection>`) was removed. Use `MultiDbInitializer` with a
+one-entry `initializers.multi_db` map instead, and extract the connection with
+`Extension<MultiDb>`:
+
+```rust
+// before: Extension<DatabaseConnection>
+// after:
+let conn = multi_db.get("<name>")?;
+```
+
+Move whatever you configured under `extra_db` into a one-entry `multi_db` map.
+
+### `AppContext` is now `#[non_exhaustive]` — construct with the builder
+
+Field access (`ctx.db`, `ctx.config`, `State`/`FromRef` extraction) is unchanged,
+so most apps need no change. But direct struct-literal construction and exhaustive
+pattern matches on `AppContext` from outside the framework no longer compile (this
+makes future context fields non-breaking to add). If you built an `AppContext` by
+hand — e.g. in a custom boot or test harness — use the builder:
+
+```rust
+let ctx = AppContext::builder(environment, db, config)   // builder(environment, config) without `with-db`
+    .queue_provider(queue)
+    .mailer(mailer)
+    .storage(storage)
+    .build();
+```
+
 ### `loco_rs::Error` is now `#[non_exhaustive]`
 
 The framework's `Error` enum is marked `#[non_exhaustive]` so new variants can be
@@ -132,6 +170,14 @@ match err {
 Most apps use `Result<T>` / `?` and never match on `Error` directly, so no change
 is needed.
 
+### More accurate HTTP status codes for errors
+
+`IntoResponse for Error` previously collapsed most variants to `500`. Now
+`Model(EntityNotFound)` → `404`, `Model(EntityAlreadyExists)` → `409`, and model
+validation / form-body rejections → `4xx` (matching JSON rejections); genuinely
+internal errors still return `500`. This is behavior-only — no API changed — but
+if your tests asserted the old `500`s, update them to the corrected codes.
+
 ### Background job priorities (Redis backend is breaking)
 
 Background jobs now support a **priority** (higher numbers run first). You can
@@ -146,7 +192,7 @@ DownloadWorker::perform_later_with_priority(&ctx, args, Some(42)).await?;
 - **Redis: breaking.** To order by priority, the Redis backend now stores the
   queue as a **Sorted Set (ZSET)** instead of a List. Jobs already sitting in the
   old List-based queue keys will not be picked up after upgrading. **Drain your
-  Redis queues before deploying 0.17.0** (let workers finish in-flight jobs on
+  Redis queues before deploying 1.0** (let workers finish in-flight jobs on
   the old version, or clear the queue if you can re-enqueue). Newly enqueued jobs
   use the ZSET format automatically.
 
@@ -165,6 +211,16 @@ status:
 let job_id = DownloadWorker::perform_later(&ctx, args).await?;
 ```
 
+### Background queue is now a `QueueProvider` adapter
+
+`bgworker::Queue` is now a newtype over `Arc<dyn QueueProvider>`, so backends are
+pluggable. All queue methods keep the same signatures and behavior. Only two
+source-level changes affect callers:
+
+- Construct a no-op queue with `Queue::empty()` instead of `Queue::None`.
+- Code that pattern-matched the enum variants (e.g. `Queue::Postgres(pool, ..)` to
+  reach the raw pool) no longer compiles — use the provider methods instead.
+
 ### `PageResponse` carries a `meta: PagerMeta`
 
 Pagination results moved the flat `total_pages` / `total_items` fields into a
@@ -177,16 +233,121 @@ let total = page.total_pages;
 let total = page.meta.total_pages;   // also: page.meta.page, page.meta.page_size, page.meta.total_items
 ```
 
+### Storage: `MirrorStrategy` / `BackupStrategy` → `ReplicatedStrategy`
+
+The two strategies were the same primary-plus-secondaries replication engine and
+are now one `storage::strategies::replicated::ReplicatedStrategy` with a single
+`FailurePolicy` enum:
+
+```rust
+// MirrorStrategy::new(p, s, MirrorAll)  ->
+ReplicatedStrategy::mirror(p, s, FailurePolicy::FailIfAny);
+// BackupStrategy::new(p, s, BackupAll)  ->
+ReplicatedStrategy::backup(p, s, FailurePolicy::FailIfAny);
+```
+
+Old `FailureMode` maps: `AllowMirrorFailure` / `AllowBackupFailure` → `AllowAll`,
+`AtLeastOneFailure` → `AllowSingleFailure`, `CountFailure(n)` → `FailAtFailures(n)`.
+Former-backup secondary writes now run concurrently (were sequential); the
+collected errors and failure decision are unchanged.
+
+### Storage: local driver no longer roots at `/` (security)
+
+`storage::drivers::local::new()` previously rooted the store at `/`, so a key
+derived from user input could escape to the whole disk (key `etc/passwd` read
+`/etc/passwd`). It now roots at the current working directory. If you relied on
+absolute-path keys, opt back in explicitly:
+
+```rust
+local::new_with_prefix("/your/root")
+```
+
+### Config: `{env}.local.yaml` now deep-merges over `{env}.yaml`
+
+Previously the first existing file won and the other was ignored, so a
+`.local.yaml` had to restate the whole config. Both files now layer with local
+precedence: mappings merge recursively; scalars and sequences in local replace the
+base value (sequences are **not** concatenated). If you kept a full-config
+`.local.yaml`, trim it to just the keys you override — base keys now persist
+unless explicitly overridden.
+
+### Fallback middleware defaults to `404`
+
+When the built-in fallback is enabled without an explicit `code`, it now returns
+`404 Not Found` (matching its docs and the bundled not-found page) instead of
+`200 OK`. If you relied on the enabled fallback returning `200`, set `code: 200`
+explicitly. The file-based fallback (`ServeFile`) is unaffected.
+
+### `remote_ip` rebuilt on `axum-client-ip`; `trusted_proxies` removed (security)
+
+**This is a silent, security-relevant change.** An old config's `trusted_proxies:`
+key is now an unknown field and is **ignored without error**, so review your
+`remote_ip` config before upgrading — it will not fail to load.
+
+Previously the middleware walked `X-Forwarded-For` right-to-left, skipping any
+address in a `trusted_proxies` CIDR list (or a built-in RFC-1918 + loopback list).
+It now trusts exactly **one** configured source (`source: ClientIpSource`, default
+`RightmostXForwardedFor`) and does **no** CIDR filtering.
+
+- **Single reverse-proxy deployments:** unaffected.
+- **Multi-hop topologies (CDN → LB → ingress):** configure your innermost hop to
+  set the client IP (e.g. nginx `set_real_ip_from` / `real_ip_recursive`), or
+  point `source` at a provider header (`CfConnectingIp`, `CloudFrontViewerAddress`,
+  `XRealIp`, `ConnectInfo`, …).
+
+The `RemoteIP` extractor and its `Display` output are unchanged.
+
+### JWT: `algorithm()` restricted to the HMAC family
+
+`JWT::algorithm()` now takes `loco_rs::auth::jwt::JWTAlgorithm`
+(`HS256` / `HS384` / `HS512`) instead of `jsonwebtoken::Algorithm`. Asymmetric
+algorithms — which could never work with Loco's shared base64 secret and silently
+produced broken tokens — are no longer representable. If you passed a
+`jsonwebtoken::Algorithm`, switch to the matching `JWTAlgorithm` variant.
+
+### View engine: use `TeraView::build_with_post_process`
+
+In `after_routes`, replace `TeraView::build()?.post_process(...)` with the
+combined constructor:
+
+```rust
+// before
+engines::TeraView::build()?.post_process(move |tera| {
+    tera.register_function("t", FluentLoader::new(arc.clone()));
+    Ok(())
+})?
+// after
+engines::TeraView::build_with_post_process(move |tera| {
+    tera.register_function("t", FluentLoader::new(arc.clone()));
+    Ok(())
+})?
+```
+
+### Mailer: `Template::new(dir)` now returns `Result`
+
+Email templates render through a full Tera instance (so they support inheritance
+and shared templates). Standard usage via `Mailer::mail_template` is unchanged; if
+you called `Template::new(dir)` directly, add `?`:
+
+```rust
+let tpl = Template::new(dir)?;
+```
+
+### Tasks: `Vars::cli_arg` returns `Result<&str>`
+
+`Vars::cli_arg` now returns `Result<&str>` (was `Result<&String>`). Callers that
+relied on `&String` (e.g. `.clone()` into a `String`) should use `.to_owned()`.
+
 ### Dependency majors
 
-0.17 bumps several dependency majors. These are transitive for most apps — you
+1.0 bumps several dependency majors. These are transitive for most apps — you
 only need to act if you use one of these crates **directly** through Loco's
 public API: `thiserror` 1→2, `tower` 0.4→0.5, `heck`→0.5, `byte-unit` 4→5,
 `ipnetwork` 0.20→0.21, `strum`→0.27, `redis` 0.31→1, `bb8-redis`→0.26,
 `opendal` 0.54→0.57. `serde_yaml` (archived) was replaced by the maintained
 `serde_yaml_ng` fork.
 
-### Feature-flag changes (0.17)
+### Feature-flag changes (1.0)
 
 - `auth_jwt` → `auth`.
 - `bg_redis` → `worker_redis`; `bg_pg`/`bg_sqlt` → `worker`. `default` now includes
@@ -422,7 +583,7 @@ PR: [#1197](https://github.com/loco-rs/loco/pull/1197)
 
 The pagination response now includes the `total_items` field, providing the total number of items available.
 
-```json
+```JSON
 {"results":[],"pagination":{"page":0,"page_size":0,"total_pages":0,"total_items":0}}
 ```
 
