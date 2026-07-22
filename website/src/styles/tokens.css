@@ -1,14 +1,28 @@
 :root {
   --paper:#FBF6EC; --paper-2:#F4ECDD; --card:#FFFDF8;
   /* --read: the long-form READING surface (docs content, blog article body).
-     Near-white in light for maximum legibility; the warm --paper stays on the
-     nav/sidebar/marketing chrome around it. */
-  --read:#FFFDFA;
+     A WARM near-white: bright enough to read as "white" (L~99%) but sitting on
+     the same warm hue as --paper (R>G>B, spread ~11) so it harmonizes with the
+     cream chrome instead of reading as a cold neutral-white island. The warm
+     --paper stays on the nav/sidebar/marketing chrome around it. */
+  --read:#FEFBF3;
   --ink:#1C1712; --ink-2:#5A5148; --ink-3:#8A7F72; --line:#E7DDCB;
   --red:#FC3820; --red-ink:#D82A12;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,system-ui,sans-serif;
   --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace;
 }
+
+/* Browser-native cross-document view transitions. This is Astro's low-overhead
+   path for smoothing multi-page (MPA) navigation — it "simply adds animations"
+   without turning the site into an SPA, adding JS, or requiring script re-init
+   (that's <ClientRouter />, which we deliberately DON'T use). Paired with the
+   built-in `prefetch` (astro.config.mjs), sidebar/nav clicks cross-fade instead
+   of flashing a cold page load. Lives in tokens.css because it's the only
+   stylesheet loaded on EVERY page (both the marketing bundle via global.css and
+   the docs bundle via starlight.css) — a cross-document transition must be
+   declared on both the outgoing and incoming document to fire. Browsers without
+   support fall back to today's instant navigation. */
+@view-transition { navigation: auto; }
 :root[data-theme="dark"] {
   --paper:#17120E; --paper-2:#1F1813; --card:#221A14; --read:#17120E;
   --ink:#F2E9DC; --ink-2:#C3B6A5; --ink-3:#8E8071; --line:#33291F;
