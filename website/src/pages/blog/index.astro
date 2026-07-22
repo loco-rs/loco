@@ -1,16 +1,56 @@
 ---
-// The blog listing — under Base+Nav+Footer like the homepage, newest posts
-// first. Card grid reuses PostCard.astro (warm postcard, editorial not the
-// stamped-pillar treatment).
-import { getCollection } from 'astro:content';
+// The blog listing — an imageless editorial layout (the Loco blog has no
+// cover images, so the design leans on typography + hierarchy like the Rust
+// blog / Tailwind blog rather than an image-card grid): the newest post gets
+// a contained "featured" highlight, the rest render as a flat, divider-
+// separated reading list. Both carry a date · reading-time eyebrow and an
+// author line.
+import { getCollection, getEntry } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import Nav from '../../components/Nav.astro';
 import Footer from '../../components/Footer.astro';
-import PostCard from '../../components/PostCard.astro';
+import { readingTimeMinutes } from '../../lib/reading-time';
 
-const posts = (await getCollection('blog')).sort(
+function titleCase(slug: string) {
+  return slug
+    .split('-')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+// Resolve author slugs to display names (unresolved slugs — historical posts
+// with no author file — fall back to a title-cased slug, mirroring the byline
+// logic in [slug].astro).
+async function authorNames(slugs: string[]) {
+  return Promise.all(
+    slugs.map(async (slug) => {
+      const a = await getEntry('authors', slug);
+      return a ? a.data.name : titleCase(slug);
+    })
+  );
+}
+
+const raw = (await getCollection('blog')).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
 );
+
+// Enrich once so the template stays declarative.
+const posts = await Promise.all(
+  raw.map(async (post) => ({
+    post,
+    href: `/blog/${post.id}/`,
+    dateStr: post.data.pubDate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }),
+    minutes: readingTimeMinutes(post.body ?? ''),
+    authors: (await authorNames(post.data.authors)).join(', '),
+  }))
+);
+
+const [featured, ...rest] = posts;
 ---
 
 <Base
@@ -19,32 +59,61 @@ const posts = (await getCollection('blog')).sort(
 >
   <Nav />
   <section class="blog-index">
-    <div class="wrap">
-      <div class="head">
+    <div class="col">
+      <header class="head">
         <h1>Blog</h1>
         <p>Tutorials, deep dives, and updates on building with Loco.</p>
-      </div>
-      <div class="grid">
-        {posts.map((post) => <PostCard post={post} />)}
-      </div>
+      </header>
+
+      {featured && (
+        <a class="feat" href={featured.href}>
+          <div class="eyebrow">
+            <time datetime={featured.post.data.pubDate.toISOString()}>{featured.dateStr}</time>
+            <span class="dot">·</span>
+            <span>{featured.minutes} min read</span>
+          </div>
+          <h2>{featured.post.data.title}</h2>
+          <p class="dek">{featured.post.data.description}</p>
+          <div class="by">By {featured.authors}</div>
+          <span class="more">Read post <span aria-hidden="true">→</span></span>
+        </a>
+      )}
+
+      {rest.length > 0 && (
+        <ul class="list">
+          {rest.map((p) => (
+            <li>
+              <a class="row" href={p.href}>
+                <div class="eyebrow">
+                  <time datetime={p.post.data.pubDate.toISOString()}>{p.dateStr}</time>
+                  <span class="dot">·</span>
+                  <span>{p.minutes} min read</span>
+                </div>
+                <h3>{p.post.data.title}</h3>
+                <p class="dek">{p.post.data.description}</p>
+                <div class="by">By {p.authors}</div>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   </section>
   <Footer />
 </Base>
 
 <style>
-  .wrap {
-    max-width: 1160px;
+  section.blog-index {
+    padding: 64px 0 72px;
+  }
+  .col {
+    max-width: 720px;
     margin: 0 auto;
-    padding: 0 32px;
+    padding: 0 24px;
     width: 100%;
   }
-  section.blog-index {
-    padding: 64px 0 40px;
-  }
   .head {
-    max-width: 60ch;
-    margin-bottom: 48px;
+    margin-bottom: 40px;
   }
   .head h1 {
     font-size: 44px;
@@ -58,14 +127,124 @@ const posts = (await getCollection('blog')).sort(
     font-size: 17px;
     color: var(--ink-2);
   }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 24px;
+
+  /* Shared eyebrow + byline typography */
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    color: var(--ink-3);
   }
-  @media (max-width: 760px) {
-    .grid {
-      grid-template-columns: 1fr;
+  .eyebrow .dot {
+    opacity: 0.55;
+  }
+  .by {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    color: var(--ink-3);
+  }
+
+  /* Featured (newest) — a contained highlight above the list */
+  .feat {
+    display: block;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 30px 30px 28px;
+    box-shadow: 0 18px 40px -28px rgba(28, 23, 18, 0.4);
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.25s ease,
+      border-color 0.25s ease;
+  }
+  .feat:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 26px 50px -28px rgba(28, 23, 18, 0.48);
+    border-color: rgba(252, 56, 32, 0.35);
+  }
+  .feat h2 {
+    margin-top: 14px;
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+    color: var(--ink);
+  }
+  .feat .dek {
+    margin-top: 12px;
+    font-size: 16.5px;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+  .feat .more {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 20px;
+    font-size: 13.5px;
+    font-weight: 650;
+    color: var(--red-ink);
+  }
+  .feat:hover .more span {
+    transform: translateX(3px);
+  }
+  .feat .more span {
+    transition: transform 0.2s ease;
+  }
+
+  /* The rest — flat, divider-separated reading list */
+  .list {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+  }
+  .list li {
+    border-top: 1px solid var(--line);
+  }
+  .row {
+    display: block;
+    padding: 28px 0;
+  }
+  .row h3 {
+    margin-top: 12px;
+    font-size: 22px;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    line-height: 1.28;
+    color: var(--ink);
+    transition: color 0.15s ease;
+  }
+  .row:hover h3 {
+    color: var(--red-ink);
+  }
+  .row .dek {
+    margin-top: 9px;
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--ink-2);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  @media (max-width: 640px) {
+    .head h1 {
+      font-size: 34px;
+    }
+    .feat h2 {
+      font-size: 25px;
+    }
+    .feat {
+      padding: 24px 22px 22px;
+    }
+    .row h3 {
+      font-size: 20px;
     }
   }
 </style>
