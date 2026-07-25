@@ -2,7 +2,7 @@
 
 
 
-## 1.0.0
+## 1.0.0 - 2026-07-25
 
 1.0.0 is the first stable Loco release — a single, intentionally-breaking
 milestone. Its headline is the move to **Sea-ORM 2.0**, alongside first-class
