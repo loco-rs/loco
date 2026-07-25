@@ -4,9 +4,8 @@ exclude = ["starters", "examples"]
 
 [workspace.package]
 edition = "2024"
-# MSRV floor raised for Sea-ORM 2.0 + sqlx 0.9. The 2.0 stable target is 1.85,
-# but the current 2.0.0-rc.41 / sqlx 0.9 dep tree requires rustc 1.94 — so we
-# pin 1.94 honestly for now and re-evaluate down to 1.85 when 2.0.0 ships stable.
+# MSRV floor raised for Sea-ORM 2.0 + sqlx 0.9: sea-orm 2.0.0 declares rustc
+# 1.94 as its own MSRV, so we match it.
 # Edition 2024 needs rustc >= 1.85, satisfied by the 1.94 floor above.
 rust-version = "1.94"
 license = "Apache-2.0"
@@ -72,7 +71,7 @@ backtrace_printer = { version = "1.3.0" }
 # cli
 clap = { version = "4.4.7", features = ["derive"], optional = true }
 colored = { workspace = true }
-sea-orm = { version = "=2.0.0-rc.41", features = [
+sea-orm = { version = "2.0", features = [
     "sqlx-postgres",        # `DATABASE_DRIVER` feature
     "sqlx-sqlite",
     "runtime-tokio-rustls",
@@ -216,7 +215,7 @@ duct = { version = "1.0.0" }
 
 [dependencies.sea-orm-migration]
 optional = true
-version = "=2.0.0-rc.41"
+version = "2.0"
 features = [
     # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.
     # View the list of supported features at https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime.

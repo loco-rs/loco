@@ -46,7 +46,7 @@ where
     //
     // NOTE: we deserialize the fixture row straight into the entity `Model` and
     // then convert, instead of `ActiveModelTrait::from_json`. On sea-orm
-    // 2.0.0-rc.41, `from_json` first merges every column's *default* value via
+    // 2.0, `from_json` first merges every column's *default* value via
     // `sea_query::sea_value_to_json_value`, which renders chrono datetimes as
     // SQL-literal strings (`'1970-01-01 00:00:00.000000 +00:00'`) and NULLs as
     // the literal string `"NULL"`. Those then fail chrono's RFC3339 serde parse
