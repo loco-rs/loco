@@ -33,9 +33,7 @@ for anything specific to APIs you use directly.
 
 ### Toolchain: Rust 1.94+
 
-Loco 1.0 pins Sea-ORM `=2.0.0-rc.41`, whose toolchain needs **Rust 1.94 or
-newer**. (When Sea-ORM 2.0 ships a stable release, this floor drops toward 1.85.)
-Update your toolchain:
+Loco 1.0 uses Sea-ORM 2.0, whose MSRV is **Rust 1.94**. Update your toolchain:
 
 ```sh
 rustup update
@@ -47,16 +45,13 @@ Loco upgraded from Sea-ORM 1.1 to Sea-ORM 2.0. For most apps the migration is
 mechanical — bump the pins and the CLI — because Loco's `schema` helpers and the
 generated model/migration shapes absorb the API changes for you.
 
-**1. Bump the dependency pins.** Pin Sea-ORM **exactly** to the rc Loco ships on
-— a looser range (`2.0`, `2.0.0-rc`) drifts to a newer rc that breaks against the
-pinned `sea-schema`, so `loco new` uses the exact pin and your app should too. In
-your app `Cargo.toml`:
+**1. Bump the dependency pins.** In your app `Cargo.toml`:
 
 ```toml
 # before
 sea-orm = { version = "1.1", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls", "macros"] }
 # after
-sea-orm = { version = "=2.0.0-rc.41", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls", "macros"] }
+sea-orm = { version = "2.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls", "macros"] }
 ```
 
 And in your `migration/Cargo.toml`:
@@ -65,16 +60,15 @@ And in your `migration/Cargo.toml`:
 # before
 sea-orm-migration = { version = "1.1.0", features = [...] }
 # after
-sea-orm-migration = { version = "=2.0.0-rc.41", features = [...] }
+sea-orm-migration = { version = "2.0", features = [...] }
 ```
 
 If you depend on `sqlx` directly, bump it to `0.9`.
 
-**2. Update the Sea-ORM CLI** (used by `cargo loco db entities`) to the matching
-2.0 rc:
+**2. Update the Sea-ORM CLI** (used by `cargo loco db entities`) to 2.0:
 
 ```sh
-cargo install sea-orm-cli --version '=2.0.0-rc.41'
+cargo install sea-orm-cli --version '^2.0'
 ```
 
 `cargo loco doctor` will now flag a Sea-ORM or Sea-ORM CLI older than 2.0.

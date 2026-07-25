@@ -6,7 +6,7 @@ the Rust backend via `ts-rs`** (no OpenAPI). It is the exact target the rebuilt 
 `docs/superpowers/specs/2026-07-04-golden-reference-stack-design.md`.
 
 ## Stack
-- **Backend:** Loco/axum JSON API under `/api`; sea-orm 2.0-rc; JWT auth.
+- **Backend:** Loco/axum JSON API under `/api`; sea-orm 2.0; JWT auth.
 - **Typed contract:** Rust DTOs (`src/dtos/`) `#[derive(ts_rs::TS)]` → committed TS bindings in
   `frontend/src/bindings/`. No OpenAPI; the DTO *is* the source of truth for both sides.
 - **Frontend:** Vite + React 19 + react-router v8 + TanStack Query v5 (`frontend/`). A typed fetch
@@ -36,11 +36,6 @@ cargo test --lib export_bindings   # rewrites frontend/src/bindings/*.ts
 ```
 Bindings are committed to VCS so the frontend typechecks without a Rust build; CI should assert
 regeneration produces no diff.
-
-## Build caveat (current tree)
-`Cargo.lock` pins `sea-schema = "=0.18.0"`; `0.18.1` breaks `sea-orm 2.0.0-rc.41`'s `?Send`
-`Connection` impl. Keep the pin until Sea-ORM 2.0 stable. (This is why a stock `loco new` app does not
-currently build — a base_template issue, out of scope for the 1.0 reference.)
 
 ## Type conventions (locked)
 | Rust | TS | how |
