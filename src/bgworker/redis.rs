@@ -271,13 +271,13 @@ async fn dequeue_with_conn(
     queues: &[String],
     tags: &[String],
 ) -> Result<Option<(Job, String)>> {
-    if queues.is_empty() {
-        return Ok(None);
-    }
-
     // Paging bounds for scanning the priority-ordered queue.
     const BATCH_SIZE: isize = 50;
     const MAX_SEARCH: isize = 1000;
+
+    if queues.is_empty() {
+        return Ok(None);
+    }
 
     let script = Script::new(ACQUIRE_JOB_SCRIPT);
 

@@ -17,7 +17,7 @@ const JWT_ALGORITHM: Algorithm = Algorithm::HS512;
 /// [`JWT`] always derives its signing/verification key from a shared
 /// base64-encoded secret (see [`EncodingKey::from_base64_secret`] and
 /// [`DecodingKey::from_base64_secret`]), so only the HMAC family of
-/// algorithms can ever work here. Asymmetric algorithms (RSA, EC, EdDSA, ...)
+/// algorithms can ever work here. Asymmetric algorithms (RSA, EC, `EdDSA`, ...)
 /// require a public/private key pair, not a shared secret, so they are
 /// intentionally not exposed through [`JWT::algorithm`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

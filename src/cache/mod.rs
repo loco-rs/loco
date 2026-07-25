@@ -308,13 +308,12 @@ impl Cache {
         T: Serialize + DeserializeOwned + Send + Sync,
         F: Future<Output = LocoResult<T>> + Send,
     {
-        match self.get::<T>(key).await? {
-            Some(value) => Ok(value),
-            _ => {
-                let value = f.await?;
-                self.insert(key, &value).await?;
-                Ok(value)
-            }
+        if let Some(value) = self.get::<T>(key).await? {
+            Ok(value)
+        } else {
+            let value = f.await?;
+            self.insert(key, &value).await?;
+            Ok(value)
         }
     }
 
@@ -372,13 +371,12 @@ impl Cache {
         T: Serialize + DeserializeOwned + Send + Sync,
         F: Future<Output = LocoResult<T>> + Send,
     {
-        match self.get::<T>(key).await? {
-            Some(value) => Ok(value),
-            _ => {
-                let value = f.await?;
-                self.insert_with_expiry(key, &value, duration).await?;
-                Ok(value)
-            }
+        if let Some(value) = self.get::<T>(key).await? {
+            Ok(value)
+        } else {
+            let value = f.await?;
+            self.insert_with_expiry(key, &value, duration).await?;
+            Ok(value)
         }
     }
 

@@ -389,9 +389,11 @@ fn select_asset(args: &ArgsPlaceholder) -> crate::Result<AssetsOption> {
     Ok(assetopt)
 }
 
-/// Prompts whether to embed static assets into the binary. Only meaningful
-/// for a serverside asset configuration (a clientside app has no `assets/`
-/// dir to embed), so any other asset option is `false` without prompting.
+/// Prompts whether to embed static assets into the binary.
+///
+/// Only meaningful for a serverside asset configuration (a clientside app has
+/// no `assets/` dir to embed), so any other asset option is `false` without
+/// prompting.
 ///
 /// # Errors
 /// when could not show user selection

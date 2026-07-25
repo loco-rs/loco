@@ -170,8 +170,9 @@ pub fn default_middleware_stack(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer
     ]
 }
 
-/// Ergonomic, Rails-style edits to a middleware stack
-/// (`Vec<Box<dyn MiddlewareLayer>>`), for use inside
+/// Ergonomic, Rails-style edits to a middleware stack.
+///
+/// Operates on a `Vec<Box<dyn MiddlewareLayer>>`, for use inside
 /// [`crate::app::Hooks::middlewares`] when you want to tweak the default stack
 /// (from [`default_middleware_stack`]) rather than rebuild it.
 ///

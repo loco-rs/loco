@@ -160,7 +160,7 @@ pub fn extract_db_name(conn_str: &str) -> AppResult<&str> {
 ///
 /// A naive whole-string `.replace(db_name, "/postgres")` would corrupt the
 /// URI whenever the db name also appears as a substring of the host or
-/// credentials (e.g. db "loco" with user "loco_admin@loco.host/loco").
+/// credentials (e.g. db "loco" with user "`loco_admin@loco.host/loco`").
 ///
 /// # Errors
 ///

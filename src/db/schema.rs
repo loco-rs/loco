@@ -136,13 +136,13 @@ async fn get_boolean_columns(
 
 /// Normalize a SQLite-native datetime string to RFC3339.
 ///
-/// SQLite has no native datetime type; Loco's `timestamptz` columns default to
-/// `CURRENT_TIMESTAMP`, which SQLite writes as `"YYYY-MM-DD HH:MM:SS"` (space
+/// `SQLite` has no native datetime type; Loco's `timestamptz` columns default to
+/// `CURRENT_TIMESTAMP`, which `SQLite` writes as `"YYYY-MM-DD HH:MM:SS"` (space
 /// separator, optional fractional seconds, no offset). Left verbatim in a dump,
 /// that text fails chrono's RFC3339 parse when re-seeded into a typed
 /// `DateTimeWithTimeZone` model (`Json("premature end of input")`, #1736). This
 /// recognizes that space-separated form — interpreting a missing offset as UTC,
-/// matching SQLite's `CURRENT_TIMESTAMP` — and returns its RFC3339 rendering.
+/// matching `SQLite`'s `CURRENT_TIMESTAMP` — and returns its RFC3339 rendering.
 ///
 /// Returns `None` for input already in RFC3339 (left untouched, so no dump
 /// churn) and for anything that is not a datetime at all (`parse_from_str`
@@ -183,7 +183,9 @@ fn normalize_sqlite_datetime(s: &str) -> Option<String> {
 ///
 /// Returns an error if the operation fails for any reason or could not save the
 /// content into a file.
-#[allow(clippy::cognitive_complexity)]
+// A linear dump routine: schema probe, per-table stream, and file write read
+// most clearly as one top-to-bottom procedure.
+#[allow(clippy::cognitive_complexity, clippy::too_many_lines)]
 pub async fn dump_tables(
     db: &DatabaseConnection,
     to: &Path,

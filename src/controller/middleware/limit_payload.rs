@@ -71,7 +71,9 @@ where
             let bytes = byte_unit::Byte::parse_str(limit, true)
                 .map_err(|err| serde::de::Error::custom(err.to_string()))?
                 .as_u64();
-            Ok(DefaultBodyLimitKind::Limit(bytes as usize))
+            Ok(DefaultBodyLimitKind::Limit(
+                usize::try_from(bytes).unwrap_or(usize::MAX),
+            ))
         }
     }
 }

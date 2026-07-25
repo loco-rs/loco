@@ -89,7 +89,7 @@ fn humanize_label(field_name: &str) -> String {
 /// `Decimal`/`DecimalLen`/`Money` -- which round-trip through TS as plain
 /// strings, so the reference SPA edits them as text, not `type="number"` --
 /// from true numeric types.
-fn frontend_input_kind(col: &Column) -> &'static str {
+const fn frontend_input_kind(col: &Column) -> &'static str {
     match &col.kind {
         ColumnKind::Reference { .. } => "number",
         ColumnKind::Array(_) => "textarea",
@@ -122,7 +122,7 @@ fn frontend_input_kind(col: &Column) -> &'static str {
 
 /// The `New.tsx` initial-state JS literal for a non-enum column: `bool` gets
 /// `false`, any nullable column gets `null`, numeric-input columns get `0`,
-/// everything else (text/textarea/text_number/date/datetime) gets `""`. Enum
+/// everything else (`text/textarea/text_number/date/datetime`) gets `""`. Enum
 /// columns are handled separately by the caller (first enum value wins,
 /// ahead of this nullable/number/string fallback chain).
 fn frontend_initial_value(col: &Column, input_kind: &str) -> String {

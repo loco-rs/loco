@@ -737,7 +737,7 @@ async fn dispatch_common<H: Hooks>(
             production,
         } => {
             if config_arg {
-                println!("{}", &app_context.config);
+                println!("{}", app_context.config);
                 println!("Environment: {environment}");
             } else {
                 let mut should_exit = false;

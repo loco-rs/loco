@@ -118,6 +118,10 @@ impl ReplicatedStrategy {
     /// error (including a secondary that fails to resolve via
     /// [`Storage::as_store_err`]) keyed by the secondary store name. Every
     /// secondary is always attempted.
+    // The returned future is intentionally not `Send`: the fan-out runs on the
+    // current task via `join_all` (never spawned onto another thread), so a
+    // `Send` bound would only leak an unnecessary constraint onto every `op`.
+    #[allow(clippy::future_not_send)]
     async fn fan_out_to_secondaries<'a, F, Fut, T>(
         &self,
         storage: &'a Storage,

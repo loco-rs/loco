@@ -273,7 +273,9 @@ pub struct AppContext {
     pub shared_store: Arc<SharedStore>,
 }
 
-/// Builder for [`AppContext`]. Because `AppContext` is `#[non_exhaustive]`,
+/// Builder for [`AppContext`].
+///
+/// Because `AppContext` is `#[non_exhaustive]`,
 /// external crates must construct it through this builder (or the framework's
 /// boot path) rather than a struct literal — so new fields added in future
 /// releases are non-breaking. Required components are constructor arguments;

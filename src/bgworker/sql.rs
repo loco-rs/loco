@@ -21,7 +21,7 @@ use crate::{config::ReaperConfig, Error, Result};
 /// # Errors
 ///
 /// This function will return an error if it fails
-pub(crate) async fn ping<'e, E>(executor: E, table: &str) -> Result<()>
+pub async fn ping<'e, E>(executor: E, table: &str) -> Result<()>
 where
     E: sqlx::Executor<'e>,
     <E::Database as sqlx::Database>::Arguments: sqlx::IntoArguments<E::Database>,
@@ -45,7 +45,7 @@ where
 /// the `FromRow` trait, which would require enabling the 'macros' feature in the dependencies.
 /// The decision to avoid `FromRow` is made to keep the build smaller and faster, as the 'macros'
 /// feature is unnecessary in the current dependency tree.
-pub(crate) fn to_job<R>(row: &R) -> Result<Job>
+pub fn to_job<R>(row: &R) -> Result<Job>
 where
     R: sqlx::Row,
     for<'a> &'a str: sqlx::ColumnIndex<R>,

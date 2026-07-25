@@ -145,8 +145,10 @@ where
 }
 
 /// Object-safe interface implemented by every queue backend (Postgres,
-/// `SQLite`, Redis, and the built-in no-op). [`Queue`] is a thin newtype
-/// wrapper around `Arc<dyn QueueProvider>` that forwards every call here.
+/// `SQLite`, Redis, and the built-in no-op).
+///
+/// [`Queue`] is a thin newtype wrapper around `Arc<dyn QueueProvider>` that
+/// forwards every call here.
 #[async_trait]
 pub trait QueueProvider: Send + Sync {
     /// Add a job to the queue. See [`Queue::enqueue`] for the full contract.
@@ -370,9 +372,11 @@ impl QueueProvider for NoopQueue {
     }
 }
 
-/// A handle to a background job queue. Newtype facade over `Arc<dyn
-/// QueueProvider>`: every operation is a thin delegate to the configured
-/// provider (Postgres, `SQLite`, Redis, or [`Queue::empty`]'s no-op).
+/// A handle to a background job queue.
+///
+/// Newtype facade over `Arc<dyn QueueProvider>`: every operation is a thin
+/// delegate to the configured provider (Postgres, `SQLite`, Redis, or
+/// [`Queue::empty`]'s no-op).
 pub struct Queue(Arc<dyn QueueProvider>);
 
 impl Queue {

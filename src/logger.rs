@@ -182,6 +182,12 @@ pub fn init<H: Hooks>(config: &config::Logger) -> Result<()> {
 /// [`crate::app::Hooks::init_logger`] can reuse Loco's exact filter policy
 /// while composing its own layers (e.g. adding `tracing-flame` or an OTLP
 /// exporter) instead of re-deriving the whitelist by hand.
+///
+/// # Panics
+///
+/// Panics if the assembled filter directives are invalid. Unreachable in
+/// practice: every directive is built from the fixed module whitelist and a
+/// validated [`LogLevel`], so the constructed filter always parses.
 #[must_use]
 pub fn init_env_filter<H: Hooks>(override_filter: Option<&String>, level: &LogLevel) -> EnvFilter {
     EnvFilter::try_from_default_env()

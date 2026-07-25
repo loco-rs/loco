@@ -5,7 +5,7 @@
 //!
 //! ## Supported backends
 //!
-//! Loco officially supports **PostgreSQL** and **SQLite**. Schema
+//! Loco officially supports **`PostgreSQL`** and **`SQLite`**. Schema
 //! introspection, seeding, and autoincrement/sequence handling are implemented
 //! for those two backends only; any other backend returns
 //! [`sea_orm::DbErr::BackendNotSupported`] (with the operation name as its

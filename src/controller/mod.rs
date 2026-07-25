@@ -180,7 +180,7 @@ impl<T: Serialize> IntoResponse for Json<T> {
 }
 
 /// Build the `(StatusCode, ErrorDetail)` pair for a validation error, shared
-/// by [`Error::Validation`] and [`Error::Model`]`(`[`ModelError::Validation`]`)`
+/// by [`Error::Validation`] and <code>[Error::Model]([ModelError::Validation])</code>
 /// so both report the same shape.
 fn validation_error_response(
     errors: &crate::validation::ModelValidationErrors,
@@ -197,7 +197,7 @@ fn validation_error_response(
 
 impl IntoResponse for Error {
     /// Convert an `Error` into an HTTP response.
-    #[allow(clippy::cognitive_complexity)]
+    #[allow(clippy::cognitive_complexity, clippy::too_many_lines)]
     fn into_response(self) -> Response {
         match &self {
             Self::WithBacktrace {

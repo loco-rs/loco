@@ -70,7 +70,7 @@ use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 /// and let this middleware simply trust that hop's output. Alternatively, if
 /// you sit directly behind a well-known provider, pick its dedicated header,
 /// e.g. [`ClientIpSource::CfConnectingIp`] for Cloudflare or
-/// [`ClientIpSource::CloudFrontViewerAddress`] for AWS CloudFront.
+/// [`ClientIpSource::CloudFrontViewerAddress`] for AWS `CloudFront`.
 ///
 /// [`axum-client-ip`]: https://docs.rs/axum-client-ip
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

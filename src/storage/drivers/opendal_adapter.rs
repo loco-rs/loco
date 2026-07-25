@@ -107,7 +107,6 @@ impl StoreDriver for OpendalAdapter {
             // opendal 0.57's `copy` returns the destination `Metadata`; we
             // don't surface it.
             self.opendal_impl.copy(&from, &to).await?;
-            Ok(())
         } else {
             let mut reader = self
                 .opendal_impl
@@ -124,8 +123,8 @@ impl StoreDriver for OpendalAdapter {
                 .close()
                 .await
                 .map_err(|err| StorageError::Any(Box::new(err)))?;
-            Ok(())
         }
+        Ok(())
     }
 
     /// Checks if the content exists at the specified path in the object store.

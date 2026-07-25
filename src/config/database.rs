@@ -83,18 +83,22 @@ pub struct Database {
     pub run_on_start: Option<String>,
 }
 
-pub(crate) fn db_min_conn() -> u32 {
+#[must_use]
+pub fn db_min_conn() -> u32 {
     1
 }
 
-pub(crate) fn db_max_conn() -> u32 {
+#[must_use]
+pub fn db_max_conn() -> u32 {
     20
 }
 
-pub(crate) fn db_connect_timeout() -> u64 {
+#[must_use]
+pub fn db_connect_timeout() -> u64 {
     500
 }
 
-pub(crate) fn db_idle_timeout() -> u64 {
+#[must_use]
+pub fn db_idle_timeout() -> u64 {
     500
 }
