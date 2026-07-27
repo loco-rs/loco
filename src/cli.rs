@@ -804,8 +804,8 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             production,
         } => {
             if config_arg {
-                println!("{}", &app_context.config);
-                println!("Environment: {}", &environment);
+                println!("{}", app_context.config);
+                println!("Environment: {environment}");
             } else {
                 let mut should_exit = false;
                 for (_, check) in doctor::run_all::<H>(&app_context, production).await? {
@@ -941,8 +941,8 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             production,
         } => {
             if config_arg {
-                println!("{}", &app_context.config);
-                println!("Environment: {}", &environment);
+                println!("{}", app_context.config);
+                println!("Environment: {environment}");
             } else {
                 let mut should_exit = false;
                 for (_, check) in doctor::run_all::<H>(&app_context, production).await? {
