@@ -687,13 +687,15 @@ mod tests {
     }
 
     async fn get_job(pool: &PgPool, id: &str) -> Job {
-        sqlx::query(&format!("select * from pg_loco_queue where id = '{id}'"))
-            .fetch_all(pool)
-            .await
-            .expect("get jobs")
-            .first()
-            .and_then(|row| to_job(row).ok())
-            .expect("job not found")
+        sqlx::query(AssertSqlSafe(format!(
+            "select * from pg_loco_queue where id = '{id}'"
+        )))
+        .fetch_all(pool)
+        .await
+        .expect("get jobs")
+        .first()
+        .and_then(|row| to_job(row).ok())
+        .expect("job not found")
     }
 
     // New setup function that uses our testcontainer

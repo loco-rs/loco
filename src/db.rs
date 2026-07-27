@@ -189,8 +189,7 @@ pub async fn connect(config: &config::Database) -> Result<DbConn, sea_orm::DbErr
             return Err(DbErr::BackendNotSupported {
                 db: bk.as_str(),
                 ctx: "connect",
-            }
-            .into())
+            })
         }
     }
 
@@ -1738,7 +1737,7 @@ mod tests {
         // - uuid-like text
         // - json-like text (object)
         // - array-like text (JSON array)
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!(
                 "CREATE TABLE {table_name} (
@@ -1762,7 +1761,7 @@ mod tests {
 
         // Insert a couple of rows. For SQLite, BOOLEAN is typically stored as 0/1
         // and NULL is allowed for the optional columns.
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!(
                 "INSERT INTO {table_name} (active, counter, rating, name, created_at, uuid_col, json_col, opt_text, opt_int, opt_bool, array_col) VALUES
@@ -1790,7 +1789,7 @@ mod tests {
 
         // Round-trip validation:
         // 1) Truncate the table
-        db.execute(Statement::from_string(
+        db.execute_raw(Statement::from_string(
             backend,
             format!("DELETE FROM {table_name};"),
         ))

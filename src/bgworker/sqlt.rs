@@ -781,13 +781,15 @@ mod tests {
     }
 
     async fn get_job(pool: &SqlitePool, id: &str) -> Job {
-        sqlx::query(&format!("select * from sqlt_loco_queue where id = '{id}'"))
-            .fetch_all(pool)
-            .await
-            .expect("get jobs")
-            .first()
-            .and_then(|row| to_job(row).ok())
-            .expect("job not found")
+        sqlx::query(AssertSqlSafe(format!(
+            "select * from sqlt_loco_queue where id = '{id}'"
+        )))
+        .fetch_all(pool)
+        .await
+        .expect("get jobs")
+        .first()
+        .and_then(|row| to_job(row).ok())
+        .expect("job not found")
     }
 
     #[tokio::test]
@@ -802,7 +804,7 @@ mod tests {
 
         for table in ["sqlt_loco_queue", "sqlt_loco_queue_lock"] {
             let table_info: Vec<TableInfo> =
-                query_as::<_, TableInfo>(&format!("PRAGMA table_info({table})"))
+                query_as::<_, TableInfo>(AssertSqlSafe(format!("PRAGMA table_info({table})")))
                     .fetch_all(&pool)
                     .await
                     .unwrap();

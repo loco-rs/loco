@@ -607,6 +607,7 @@ async fn create_table_impl(
                                 // The enum behavior will be handled by the column definition
                                 // which will create a TEXT column with CHECK constraints
                             }
+                            #[allow(clippy::match_same_arms)]
                             sea_orm::DatabaseBackend::MySql => {
                                 // MySql not supporting
                             }
@@ -826,8 +827,7 @@ pub async fn add_reference(
             return Err(DbErr::BackendNotSupported {
                 db: bk.as_str(),
                 ctx: "add_reference",
-            }
-            .into())
+            })
         }
     }
     Ok(())
@@ -880,8 +880,7 @@ pub async fn remove_reference(
             return Err(DbErr::BackendNotSupported {
                 db: bk.as_str(),
                 ctx: "remove_reference",
-            }
-            .into())
+            })
         }
     }
     Ok(())
