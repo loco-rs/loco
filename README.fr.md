@@ -14,7 +14,7 @@
 
  </div>
 
-[English](./README.md) · [中文](./README-zh_CN.md) · Français · [Portuguese (Brazil)](./README-pt_BR.md) ・ [日本語](./README.ja.md) · [한국어](./README.ko.md) · [Русский](./README.ru.md) · [Español](./README.es.md)
+[English](./README.md) · [中文](./README-zh_CN.md) · Français · [Portuguese (Brazil)](./README-pt_BR.md) ・ [日本語](./README.ja.md) · [한국어](./README.ko.md) · [Русский](./README.ru.md) · [Español](./README.es.md) · [Vietnamese](./README.vi.md)
 
 ## À propos de Loco
 `Loco` est fortement inspiré de Rails. Si vous connaissez Rails et Rust, vous vous sentirez chez vous. Si vous ne connaissez que Rails et que vous êtes nouveau sur Rust, vous trouverez Loco rafraîchissant. Nous ne supposons pas que vous connaissez Rails.
