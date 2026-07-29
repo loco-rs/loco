@@ -1,17 +1,16 @@
-# SaaS Frontend
+# Frontend
 
 ## Batteries included
 
 - [TypeScript](https://www.typescriptlang.org/): A typed superset of JavaScript
-- [Rsbuild](https://rsbuild.dev/): A Rust-based web build tool
-- [Biome](https://biomejs.dev/): A Rust-based formatter and sensible linter for the web
+- [Vite](https://vitejs.dev/): A fast frontend build tool
 - [React](https://reactjs.org/): A JavaScript library for building user interfaces
-
-If you don't like React for some reason, Rsbuild makes it easy to replace it with something else!
+- [React Router](https://reactrouter.com/): Client-side routing
+- [TanStack Query](https://tanstack.com/query/latest): Data fetching and caching
 
 # Development
 
-To get started with the development of the SaaS frontend, follow these steps:
+To get started with the development of the frontend, follow these steps:
 
 ### 1. Install Packages
 
@@ -29,7 +28,7 @@ Once the packages are installed, run your frontend application in development mo
 pnpm dev
 ```
 
-This will start the development frontend server serving via vit
+This will start the development frontend server serving via Vite.
 
 ### 3. Build The application
 
@@ -39,4 +38,4 @@ To build your application run the following command:
 pnpm build
 ```
 
-After the build `dist` folder is ready to served by loco. run loco `cargo loco start` and the frontend application will served via Loco
+After the build the `dist` folder is ready to be served by loco. Run `cargo loco start` and the frontend application will be served via Loco.

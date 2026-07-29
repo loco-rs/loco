@@ -1,0 +1,24 @@
+{
+  "name": "reference-spa-frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5",
+    "react": "^19",
+    "react-dom": "^19",
+    "react-router": "^8"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "latest",
+    "typescript": "^5",
+    "vite": "latest"
+  }
+}

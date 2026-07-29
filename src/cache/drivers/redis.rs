@@ -113,8 +113,11 @@ impl CacheDriver for Redis {
         duration: Duration,
     ) -> CacheResult<()> {
         let mut conn = self.pool.get().await?;
-        // Redis expects the expiry in seconds as a u64
-        conn.set_ex::<_, _, ()>(key, value, duration.as_secs())
+        // Redis expects the expiry in seconds as a u64. `Duration::as_secs`
+        // truncates toward zero, so any sub-second TTL would round down to `0`,
+        // which Redis rejects (`SETEX 0` -> "invalid expire time"). Clamp to at
+        // least 1 second so short-lived entries are still cached.
+        conn.set_ex::<_, _, ()>(key, value, duration.as_secs().max(1))
             .await?;
         Ok(())
     }

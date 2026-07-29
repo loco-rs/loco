@@ -12,7 +12,7 @@ use axum::{
     body::Body,
     extract::Request,
     http::{
-        header::{ETAG, IF_NONE_MATCH},
+        header::{CACHE_CONTROL, CONTENT_LOCATION, DATE, ETAG, EXPIRES, IF_NONE_MATCH, VARY},
         StatusCode,
     },
     response::Response,
@@ -91,15 +91,22 @@ where
         let res_fut = async move {
             let response = future.await?;
             let etag_from_response = response.headers().get(ETAG).cloned();
-            if let Some(etag_in_request) = ifnm {
-                if let Some(etag_from_response) = etag_from_response {
-                    if etag_in_request == etag_from_response {
-                        return Ok(Response::builder()
-                            .status(StatusCode::NOT_MODIFIED)
-                            .body(Body::empty())
-                            .unwrap());
+            if let Some(etag_in_request) = ifnm
+                && let Some(etag_from_response) = etag_from_response
+                && etag_in_request == etag_from_response
+            {
+                // RFC 7232 §4.1: a 304 response must carry the header fields that a
+                // 200 would have sent for cache validation. Re-emit the validator and
+                // freshness headers from the inner response rather than dropping them.
+                let mut builder = Response::builder().status(StatusCode::NOT_MODIFIED);
+                if let Some(headers) = builder.headers_mut() {
+                    for name in [ETAG, CACHE_CONTROL, VARY, EXPIRES, DATE, CONTENT_LOCATION] {
+                        if let Some(value) = response.headers().get(&name) {
+                            headers.insert(name, value.clone());
+                        }
                     }
                 }
+                return Ok(builder.body(Body::empty()).unwrap());
             }
             Ok(response)
         };

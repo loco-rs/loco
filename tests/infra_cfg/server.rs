@@ -21,17 +21,19 @@ async fn post_action(_body: axum::body::Bytes) -> Result<Response> {
 /// Starts the server using the provided Loco [`boot::BootResult`] result.
 /// It uses hardcoded server parameters such as the port and binding address.
 ///
-/// This function spawns a server task that runs asynchronously and sleeps for 2
-/// seconds to ensure the server is fully initialized before handling requests.
+/// After spawning the server task, this polls the bound address until it
+/// accepts a TCP connection (or a bounded timeout elapses), so callers can
+/// issue requests the instant the listener is actually up — no fixed sleep.
 pub async fn start_from_boot(
     boot_result: boot::BootResult,
     port: Option<i32>,
 ) -> tokio::task::JoinHandle<()> {
+    let port = port.unwrap_or(TEST_PORT_SERVER);
     let handle = tokio::spawn(async move {
         boot::start::<AppHook>(
             boot_result,
             boot::ServeParams {
-                port: port.unwrap_or(TEST_PORT_SERVER),
+                port,
                 binding: TEST_BINDING_SERVER.to_string(),
             },
             false,
@@ -40,8 +42,23 @@ pub async fn start_from_boot(
         .expect("start the server");
     });
 
-    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+    wait_until_ready(TEST_BINDING_SERVER, port).await;
     handle
+}
+
+/// Polls `binding:port` until it accepts a TCP connection so a test can proceed
+/// the moment the server is listening, replacing a fixed-duration sleep. Gives
+/// up after a bounded number of attempts (~5s) rather than hanging a broken
+/// boot forever — a failure then surfaces as the test's own request erroring,
+/// which is the correct signal.
+async fn wait_until_ready(binding: &str, port: i32) {
+    let addr = format!("{binding}:{port}");
+    for _ in 0..200 {
+        if tokio::net::TcpStream::connect(&addr).await.is_ok() {
+            return;
+        }
+        tokio::time::sleep(tokio::time::Duration::from_millis(25)).await;
+    }
 }
 
 /// Starts the server with a basic route (GET and POST) at the root (`/`), using

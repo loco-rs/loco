@@ -1,7 +1,6 @@
 ---
 source: src/bgworker/sqlt.rs
 expression: jobs
-snapshot_kind: text
 ---
 [
     Job {
@@ -25,5 +24,6 @@ snapshot_kind: text
                 "notification",
             ],
         ),
+        priority: 0,
     },
 ]

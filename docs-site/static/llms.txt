@@ -1,0 +1,67 @@
+# Loco
+
+> Loco is an all-in-one, batteries-included Rust web framework ("Rails for
+> Rust"). A single binary and one set of conventions provide routing, a Sea-ORM
+> database layer, background jobs, a scheduler, mailers, tasks, storage, caching,
+> and testing. Build APIs and fullstack apps from zero to production quickly.
+
+Because Loco is batteries-included, the key to using it well is to prefer its
+built-ins and code generators over hand-wiring external crates. Everything
+hangs off `AppContext` (`ctx`): `ctx.db`, `ctx.config`, `ctx.mailer`,
+`ctx.storage`, `ctx.cache`, `ctx.queue_provider`, `ctx.shared_store`. This file
+follows the llms.txt convention (https://llmstxt.org). The docs are organized by
+the Diátaxis framework: Tutorials, How-to Guides, Reference, Explanation.
+
+Current line: Loco 1.0 — Sea-ORM 2.0, sqlx 0.9, edition 2024, 64-bit (`i64`)
+primary keys, priority queues.
+
+## Start here
+
+- [Agent guide (how to build Loco apps)](https://loco.rs/AGENTS.md): concise,
+  agent-oriented rules, patterns, and common pitfalls.
+- [Full single-file reference](https://loco.rs/llms-full.txt): the complete
+  guide in one file, sized for large-context models.
+- [Your first Loco app](https://loco.rs/docs/tutorials/your-first-app/): build and run an app.
+- [The Tour](https://loco.rs/docs/tutorials/the-tour/): a fast end-to-end walkthrough.
+- [Build a SaaS with auth](https://loco.rs/docs/tutorials/saas-with-auth/): an authenticated app.
+
+## How-to guides
+
+- Data: [add a model & migration](https://loco.rs/docs/how-to/add-model/), [query with the DSL](https://loco.rs/docs/how-to/query-data/), [paginate](https://loco.rs/docs/how-to/paginate/), [seed data](https://loco.rs/docs/how-to/seed-data/), [multiple databases](https://loco.rs/docs/how-to/multi-database/).
+- Web: [add a controller](https://loco.rs/docs/how-to/add-controller/), [validate requests](https://loco.rs/docs/how-to/validate-requests/), [render views](https://loco.rs/docs/how-to/render-views/), [respond in formats](https://loco.rs/docs/how-to/respond-formats/), [handle errors](https://loco.rs/docs/how-to/handle-errors/), [add middleware](https://loco.rs/docs/how-to/add-middleware/), [serve assets](https://loco.rs/docs/how-to/serve-assets/), [websockets](https://loco.rs/docs/how-to/websockets/).
+- Processing: [add a worker](https://loco.rs/docs/how-to/add-worker/), [choose a queue backend](https://loco.rs/docs/how-to/choose-queue-backend/), [schedule jobs](https://loco.rs/docs/how-to/schedule-jobs/), [write a task](https://loco.rs/docs/how-to/write-task/), [send email](https://loco.rs/docs/how-to/send-email/).
+- Infrastructure: [configure storage](https://loco.rs/docs/how-to/configure-storage/), [use the cache](https://loco.rs/docs/how-to/use-cache/), [deploy](https://loco.rs/docs/how-to/deploy/), [configure logging](https://loco.rs/docs/how-to/configure-logging/), [load static data](https://loco.rs/docs/how-to/load-data/).
+- Security: [JWT auth](https://loco.rs/docs/how-to/jwt-auth/), [API-key auth](https://loco.rs/docs/how-to/api-key-auth/), [JWT locations](https://loco.rs/docs/how-to/jwt-locations/), [hash passwords](https://loco.rs/docs/how-to/hash-passwords/).
+- Testing: [request tests](https://loco.rs/docs/how-to/request-tests/), [model tests](https://loco.rs/docs/how-to/model-tests/), [fixtures & snapshots](https://loco.rs/docs/how-to/fixtures-snapshots/).
+- Tooling: [use the generators](https://loco.rs/docs/how-to/use-generators/), [override templates](https://loco.rs/docs/how-to/override-templates/), [run doctor](https://loco.rs/docs/how-to/run-doctor/).
+
+## Reference
+
+Exact keys, flags, types, and signatures — verified against the codebase:
+
+- [Configuration](https://loco.rs/docs/reference/configuration/): every config YAML key, per environment.
+- [CLI](https://loco.rs/docs/reference/cli/): `cargo loco` and `loco new` commands and flags.
+- [Generators & field types](https://loco.rs/docs/reference/generators/): every `generate` kind + the field-type mini-language.
+- [Feature flags](https://loco.rs/docs/reference/feature-flags/): the full Cargo feature matrix.
+- [Middleware catalog](https://loco.rs/docs/reference/middleware/): every built-in middleware and its config keys.
+- [AppContext & prelude](https://loco.rs/docs/reference/app-context/): shared state and the one-import surface.
+- [Hooks trait](https://loco.rs/docs/reference/hooks/): the application lifecycle contract.
+- [Error model](https://loco.rs/docs/reference/errors/): the `Error` enum and its HTTP status mapping.
+- [Schema & ColType DSL](https://loco.rs/docs/reference/schema-dsl/): migration column and table operations.
+- [Query DSL & pagination](https://loco.rs/docs/reference/query-pagination/): the model query builder and pagination.
+
+## Explanation
+
+- [Why batteries-included](https://loco.rs/docs/explanation/why-batteries-included/): the prime directive.
+- [Architecture & request lifecycle](https://loco.rs/docs/explanation/architecture/): boot, routing, middleware order.
+- [AppContext & DI](https://loco.rs/docs/explanation/appcontext-and-di/): shared state and the `SharedStore`.
+- [Configuration model](https://loco.rs/docs/explanation/configuration-model/): environments, precedence, secrets.
+- [Background-processing model](https://loco.rs/docs/explanation/background-processing-model/): the three queue backends compared.
+- [Views & assets](https://loco.rs/docs/explanation/views-and-assets/): SSR, SPA, and embedded assets.
+- [Coming from Axum](https://loco.rs/docs/explanation/coming-from-axum/): what Loco adds on top of Axum.
+
+## Upgrading
+
+- [Upgrade guide](https://loco.rs/docs/extras/upgrades/): version-to-version
+  migration, including 0.16/0.17 → 1.0 (Sea-ORM 2.0, 64-bit keys, priority
+  queues, edition 2024).

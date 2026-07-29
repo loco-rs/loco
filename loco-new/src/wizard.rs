@@ -86,9 +86,15 @@ pub enum BackgroundOption {
     #[strum(to_string = "Async (in-process tokio async tasks)")]
     #[serde(rename = "BackgroundAsync")]
     Async,
-    #[strum(to_string = "Queue (standalone workers using Redis)")]
-    #[serde(rename = "BackgroundQueue")]
-    Queue,
+    #[strum(to_string = "Queue: Redis (standalone workers)")]
+    #[serde(rename = "QueueRedis")]
+    QueueRedis,
+    #[strum(to_string = "Queue: Postgres (standalone workers)")]
+    #[serde(rename = "QueuePostgres")]
+    QueuePostgres,
+    #[strum(to_string = "Queue: SQLite (standalone workers)")]
+    #[serde(rename = "QueueSqlite")]
+    QueueSqlite,
     #[strum(to_string = "Blocking (run tasks in foreground)")]
     #[serde(rename = "ForegroundBlocking")]
     Blocking,
@@ -98,9 +104,9 @@ impl BackgroundOption {
     #[must_use]
     pub fn user_message(&self) -> Option<String> {
         match self {
-            Self::Queue => Some(format!(
-                "{}: You've selected `{}` for your background worker configuration (you should \
-                 have a Redis/valkey instance to connect to)",
+            Self::QueueRedis | Self::QueuePostgres | Self::QueueSqlite => Some(format!(
+                "{}: You've selected `{}` for your background worker configuration (ensure the \
+                 selected queue backend is reachable)",
                 "workers".underline(),
                 "queue".yellow()
             )),
@@ -118,7 +124,9 @@ impl BackgroundOption {
     pub const fn prompt_view(&self) -> &str {
         match self {
             Self::Async => "Async",
-            Self::Queue => "BackgroundQueue",
+            Self::QueueRedis => "QueueRedis",
+            Self::QueuePostgres => "QueuePostgres",
+            Self::QueueSqlite => "QueueSqlite",
             Self::Blocking => "ForegroundBlocking",
         }
     }
@@ -167,6 +175,8 @@ pub struct ArgsPlaceholder {
     pub db: Option<DBOption>,
     pub bg: Option<BackgroundOption>,
     pub assets: Option<AssetsOption>,
+    /// `--embedded-assets`: embed static assets into the binary (serverside only).
+    pub embedded_assets: bool,
 }
 
 /// Holds the user's configuration selections.
@@ -377,4 +387,31 @@ fn select_asset(args: &ArgsPlaceholder) -> crate::Result<AssetsOption> {
         )?
     };
     Ok(assetopt)
+}
+
+/// Prompts whether to embed static assets into the binary.
+///
+/// Only meaningful for a serverside asset configuration (a clientside app has
+/// no `assets/` dir to embed), so any other asset option is `false` without
+/// prompting.
+///
+/// # Errors
+/// when could not show user selection
+pub fn select_embedded_assets(args: &ArgsPlaceholder, asset: &AssetsOption) -> crate::Result<bool> {
+    if *asset != AssetsOption::Serverside {
+        return Ok(false);
+    }
+
+    // Never prompt when the run is non-interactive (all core options supplied via
+    // flags) or when `--embedded-assets` was passed explicitly — honor the flag.
+    // This keeps `loco new --db .. --bg .. --assets serverside` fully scriptable.
+    if args.embedded_assets || (args.db.is_some() && args.bg.is_some() && args.assets.is_some()) {
+        return Ok(args.embedded_assets);
+    }
+
+    let answer = Confirm::with_theme(&ColorfulTheme::default())
+        .with_prompt("❯ Embed static assets into the binary?")
+        .default(false)
+        .interact()?;
+    Ok(answer)
 }

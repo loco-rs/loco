@@ -1,13 +1,10 @@
 //! # In-Memory Cache Driver
 //!
 //! This module implements a cache driver using an in-memory cache.
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
-use moka::{sync::Cache, Expiry};
+use moka::{future::Cache, Expiry};
 
 use super::CacheDriver;
 use crate::cache::CacheResult;
@@ -72,7 +69,7 @@ impl CacheDriver for Inmem {
     ///
     /// Returns a `CacheError` if there is an error during the operation.
     async fn get(&self, key: &str) -> CacheResult<Option<String>> {
-        let result = self.cache.get(key);
+        let result = self.cache.get(key).await;
         match result {
             None => Ok(None),
             Some(v) => Ok(Some(v.1)),
@@ -85,10 +82,9 @@ impl CacheDriver for Inmem {
     ///
     /// Returns a `CacheError` if there is an error during the operation.
     async fn insert(&self, key: &str, value: &str) -> CacheResult<()> {
-        self.cache.insert(
-            key.to_string(),
-            (Expiration::Never, Arc::new(value).to_string()),
-        );
+        self.cache
+            .insert(key.to_string(), (Expiration::Never, value.to_string()))
+            .await;
         Ok(())
     }
 
@@ -105,13 +101,12 @@ impl CacheDriver for Inmem {
         value: &str,
         duration: Duration,
     ) -> CacheResult<()> {
-        self.cache.insert(
-            key.to_string(),
-            (
-                Expiration::AfterDuration(duration),
-                Arc::new(value).to_string(),
-            ),
-        );
+        self.cache
+            .insert(
+                key.to_string(),
+                (Expiration::AfterDuration(duration), value.to_string()),
+            )
+            .await;
         Ok(())
     }
 
@@ -121,7 +116,7 @@ impl CacheDriver for Inmem {
     ///
     /// Returns a `CacheError` if there is an error during the operation.
     async fn remove(&self, key: &str) -> CacheResult<()> {
-        self.cache.remove(key);
+        self.cache.remove(key).await;
         Ok(())
     }
 

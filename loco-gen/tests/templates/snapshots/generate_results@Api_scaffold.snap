@@ -1,9 +1,13 @@
 ---
 source: loco-gen/tests/templates/scaffold.rs
 expression: collect_messages(&gen_result)
-snapshot_kind: text
 ---
-* Migration for `movie` added! You can now apply it with `$ cargo loco db migrate && cargo loco db entities`.
-* A test for model `Movies` was added. Run with `cargo test`.
-* Controller `Movie` was added successfully.
-* Tests for controller `Movie` was added successfully. Run `cargo test`.
+* Migration for `post` added! You can now apply it with `$ cargo loco db migrate && cargo loco db entities`.
+* A test for model `Posts` was added. Run with `cargo test`.
+* Controller `Post` was added successfully.
+* DTO `PostDto` was added successfully.
+* Frontend API hooks `posts.ts` were added successfully.
+* Frontend `Edit` page for `Post` was added successfully.
+* Frontend `List` page for `Post` was added successfully.
+* Frontend `New` page for `Post` was added successfully.
+* Frontend `Show` page for `Post` was added successfully.

@@ -28,7 +28,7 @@ pub fn hash_password(pass: &str) -> Result<String> {
 
     Ok(arg2
         .hash_password(pass.as_bytes(), &salt)
-        .map_err(|err| Error::Hash(err.to_string()))?
+        .map_err(Error::msg)?
         .to_string())
 }
 

@@ -25,6 +25,7 @@ use self::{drivers::StoreDriver, stream::BytesStream};
 
 #[derive(thiserror::Error, Debug)]
 #[allow(clippy::module_name_repetitions)]
+#[non_exhaustive]
 pub enum StorageError {
     #[error("store not found by the given key: {0}")]
     StoreNotFound(String),

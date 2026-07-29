@@ -1,0 +1,245 @@
+---
+// Ported from the reference `.deck-*` blocks (markup + styles) — the
+// post-fix versions already baked into the reference file: fixed panel
+// height 524px, `.deck-copy` top-aligned (`justify-content:flex-start`)
+// with the control pushed down by `margin-top:auto`, and `pre.bigcode`
+// at font-size:12px/line-height:1.72 (matches CodeWindow.astro's own
+// bigcode rules, so no override is needed here). See
+// docs/superpowers/specs/2026-07-17-homepage-direction-a-reference.html.
+// No numbered "01 · Controller" eyebrow (rejected) — left column is
+// title + bullets only.
+//
+// Hard DOM contract with home.ts (Task 4/8) — do not rename:
+// #dtitle, #dbul, .deck-ctrl (#dprev/#dnext/#ddots/#dnum), and (via
+// CodeWindow) #dfile/#dcopy/#dcode.
+//
+// `#ddots` is left empty here (matching the reference verbatim) because
+// home.ts unconditionally appends one dot button per slide on init —
+// pre-rendering dots here would double them up. Everything else
+// (title/bullets/code/filename/number) is rendered for slide 0 so the
+// panel isn't empty before hydration; home.ts's paint() overwrites these
+// via textContent/innerHTML assignment, which is idempotent for slide 0.
+import CodeWindow from './CodeWindow.astro';
+import { SLIDES, CODE } from '../lib/slides';
+
+const slide = SLIDES[0];
+const code = CODE[slide.k];
+---
+
+<section class="deck-sec" data-reveal>
+  <div class="wrap">
+    <div class="deck-head">
+      <h2>One feature, a few small files.</h2>
+    </div>
+    <div class="panel deck-panel">
+      <div class="copy deck-copy">
+        <h3 id="dtitle">{slide.title}</h3>
+        <ul id="dbul">
+          {slide.bullets.map((b) => (
+            <li set:html={`<span class="tick">✓</span><span>${b}</span>`} />
+          ))}
+        </ul>
+        <div class="deck-ctrl">
+          <div class="dnav">
+            <button class="dbtn" id="dprev" aria-label="Previous part">←</button>
+            <button class="dbtn" id="dnext" aria-label="Next part">→</button>
+          </div>
+          <div class="dots" id="ddots"></div>
+          <span class="dcount"><b id="dnum">01</b>&thinsp;/&thinsp;06</span>
+        </div>
+      </div>
+      <CodeWindow file={code.file} copyValue="deck">
+        <pre class="bigcode" id="dcode" set:html={code.html} />
+      </CodeWindow>
+    </div>
+  </div>
+</section>
+
+<style>
+  .wrap {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 0 32px;
+    width: 100%;
+  }
+  section.deck-sec {
+    padding: 80px 0 40px;
+  }
+  .deck-head {
+    margin-bottom: 24px;
+  }
+  .deck-head h2 {
+    font-size: 36px;
+    letter-spacing: -0.03em;
+    font-weight: 800;
+    line-height: 1.08;
+  }
+  /* fixed height + fixed split so nothing shifts slide-to-slide */
+  .deck-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    overflow: hidden;
+    background: var(--card);
+    height: 524px;
+  }
+  .deck-copy {
+    padding: 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    min-width: 0;
+    overflow: hidden;
+    transition: opacity 0.2s ease;
+  }
+  .deck-copy.swap {
+    opacity: 0;
+  }
+  .deck-copy h3 {
+    font-size: 27px;
+    letter-spacing: -0.02em;
+    line-height: 1.12;
+    margin: 0 0 4px;
+  }
+  .deck-copy ul {
+    list-style: none;
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+  }
+  /* NOTE: home.ts repaints these <li> via innerHTML on slide change, so the
+     runtime nodes DON'T carry Astro's scope attribute. Anchor every bullet
+     rule as a :global descendant of the scoped `.deck-copy` so it applies to
+     both the SSR'd first slide and every JS-painted one. */
+  .deck-copy :global(li) {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    font-size: 14.5px;
+    color: var(--ink-2);
+    line-height: 1.55;
+  }
+  .deck-copy :global(li b) {
+    color: var(--ink);
+    font-weight: 700;
+  }
+  /* Coral check in its own fixed-width column, cap-aligned to the first line
+     of text so it sits beside the label with real breathing room. */
+  .deck-copy :global(li .tick) {
+    color: var(--red);
+    font-weight: 800;
+    font-size: 12px;
+    line-height: 1.55;
+    flex-shrink: 0;
+    width: 12px;
+    text-align: center;
+  }
+  .deck-copy :global(li code) {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 1px 6px;
+    color: var(--red-ink);
+  }
+  /* pager — compact, inside the left column */
+  .deck-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: auto;
+    padding-top: 24px;
+  }
+  .dnav {
+    display: flex;
+    gap: 8px;
+  }
+  .dbtn {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink-2);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.15s;
+  }
+  .dbtn:hover {
+    border-color: var(--red);
+    color: var(--red-ink);
+    background: #fff;
+  }
+  .dbtn:active {
+    transform: translateY(1px);
+  }
+  .dots {
+    display: flex;
+    gap: 7px;
+  }
+  .dots :global(.dot) {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--line);
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .dots :global(.dot.on) {
+    background: var(--red);
+    transform: scale(1.3);
+  }
+  .dcount {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+    letter-spacing: 0.02em;
+  }
+  .dcount b {
+    color: var(--ink);
+    font-weight: 700;
+  }
+  .deck-panel :global(#dcode) {
+    flex: 1;
+    margin: 0;
+    min-height: 0;
+    overflow: auto;
+    transition: opacity 0.2s ease;
+  }
+  .deck-panel :global(#dcode.swap) {
+    opacity: 0;
+  }
+  /* CodeWindow.astro's `.codewin` is a flex column with no min-width, which
+     lets long code lines push the grid track wider than the fixed panel
+     split; and `.codebar` (traffic lights + filename + copy) must stay put
+     rather than shrink when the code column is squeezed. */
+  .deck-panel :global(.codewin) {
+    min-width: 0;
+  }
+  .deck-panel :global(.codebar) {
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 900px) {
+    .deck-panel {
+      grid-template-columns: 1fr;
+      height: auto;
+    }
+    .deck-copy {
+      padding: 28px;
+    }
+    .deck-panel :global(#dcode) {
+      max-height: 360px;
+    }
+  }
+</style>

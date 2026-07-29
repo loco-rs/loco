@@ -85,10 +85,13 @@ pub async fn request_id_middleware(mut request: Request, next: Next) -> Response
         .insert(LocoRequestId(request_id.clone()));
     let mut res = next.run(request).await;
 
-    if let Ok(v) = HeaderValue::from_str(request_id.as_str()) {
-        res.headers_mut().insert(X_REQUEST_ID, v);
-    } else {
-        tracing::warn!("could not set request ID into response headers: `{request_id}`",);
+    match HeaderValue::from_str(request_id.as_str()) {
+        Ok(v) => {
+            res.headers_mut().insert(X_REQUEST_ID, v);
+        }
+        _ => {
+            tracing::warn!("could not set request ID into response headers: `{request_id}`",);
+        }
     }
     res
 }

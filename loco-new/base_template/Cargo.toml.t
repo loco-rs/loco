@@ -32,7 +32,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 regex = { version = "1.11" }
 {%- if settings.db %}
 migration = { path = "migration" }
-sea-orm = { version = "1.1", features = [
+sea-orm = { version = "2.0", features = [
   "sqlx-sqlite",
   "sqlx-postgres",
   "runtime-tokio-rustls",
@@ -41,6 +41,10 @@ sea-orm = { version = "1.1", features = [
 chrono = { version = "0.4" }
 validator = { version = "0.20" }
 uuid = { version = "1.6", features = ["v4"] }
+# ts-rs derives the TypeScript bindings for the `dtos` (the typed JSON API
+# contract). Present for every db app; the SPA frontend consumes the exports,
+# and a headless app can still emit them for external consumers.
+ts-rs = { version = "12", features = ["chrono-impl", "serde-compat"] }
 {%- endif %}
 
 {%- if settings.mailer %}

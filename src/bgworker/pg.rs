@@ -1,210 +1,173 @@
 /// Postgres based background job queue provider
-use std::{
-    collections::HashMap, future::Future, panic::AssertUnwindSafe, pin::Pin, sync::Arc,
-    time::Duration,
-};
+use std::time::Duration;
 
-use super::{BackgroundWorker, JobStatus, Queue};
-use crate::{config::PostgresQueueConfig, Error, Result};
+pub use super::sql::{Job, JobData, JobId, JobRegistry, RunOpts};
+use super::{
+    sql::{to_job, Driver},
+    JobHandler, JobStatus, Queue, QueueProvider,
+};
+use crate::{config::PostgresQueueConfig, Result};
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use futures_util::FutureExt;
-use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
 pub use sqlx::PgPool;
 use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions, PgRow},
-    ConnectOptions, Row,
+    AssertSqlSafe, ConnectOptions,
 };
 use std::fmt::Write;
-use tokio::{task::JoinHandle, time::sleep};
+use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error, trace};
+use tracing::{debug, trace};
 use ulid::Ulid;
-type JobId = String;
-type JobData = JsonValue;
 
-type JobHandler = Box<
-    dyn Fn(
-            JobId,
-            JobData,
-        ) -> Pin<Box<dyn std::future::Future<Output = Result<(), crate::Error>> + Send>>
-        + Send
-        + Sync,
->;
+/// [`Driver`] implementation delegating to the Postgres-specific
+/// `dequeue`/`complete_job`/`fail_job` free functions below.
+pub struct PgDriver;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Job {
-    pub id: JobId,
-    pub name: String,
-    #[serde(rename = "task_data")]
-    pub data: JobData,
-    pub status: JobStatus,
-    pub run_at: DateTime<Utc>,
-    pub interval: Option<i64>,
-    pub created_at: Option<DateTime<Utc>>,
-    pub updated_at: Option<DateTime<Utc>>,
-    pub tags: Option<Vec<String>>,
+impl Driver for PgDriver {
+    type Pool = PgPool;
+
+    fn idle_count(pool: &Self::Pool) -> usize {
+        pool.num_idle()
+    }
+
+    async fn dequeue(pool: &Self::Pool, tags: &[String]) -> crate::Result<Option<Job>> {
+        dequeue(pool, tags).await
+    }
+
+    async fn complete_job(
+        pool: &Self::Pool,
+        id: &JobId,
+        interval: Option<i64>,
+    ) -> crate::Result<()> {
+        complete_job(pool, id, interval).await
+    }
+
+    async fn fail_job(pool: &Self::Pool, id: &JobId, error: &crate::Error) -> crate::Result<()> {
+        fail_job(pool, id, error).await
+    }
 }
 
-pub struct JobRegistry {
-    handlers: Arc<HashMap<String, JobHandler>>,
+/// Postgres [`QueueProvider`]: holds the pool, job registry, run options and
+/// cancellation token that used to live in the `Queue::Postgres(..)` enum
+/// tuple.
+pub struct PgQueue {
+    pub pool: PgPool,
+    pub registry: Arc<tokio::sync::Mutex<JobRegistry>>,
+    pub run_opts: RunOpts,
+    pub token: CancellationToken,
 }
 
-impl JobRegistry {
-    /// Creates a new `JobRegistry`.
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            handlers: Arc::new(HashMap::new()),
-        }
-    }
-
-    /// Registers a job handler with the provided name.
-    /// # Errors
-    /// Fails if cannot register worker
-    pub fn register_worker<Args, W>(&mut self, name: String, worker: W) -> Result<()>
-    where
-        Args: Send + Serialize + Sync + 'static,
-        W: BackgroundWorker<Args> + 'static,
-        for<'de> Args: Deserialize<'de>,
-    {
-        let worker = Arc::new(worker);
-        let wrapped_handler = move |_job_id: String, job_data: JobData| {
-            let w = worker.clone();
-
-            Box::pin(async move {
-                let args = serde_json::from_value::<Args>(job_data);
-                match args {
-                    Ok(args) => {
-                        // Wrap the perform call in catch_unwind to handle panics
-                        match AssertUnwindSafe(w.perform(args)).catch_unwind().await {
-                            Ok(result) => result,
-                            Err(panic) => {
-                                let panic_msg = panic
-                                    .downcast_ref::<String>()
-                                    .map(String::as_str)
-                                    .or_else(|| panic.downcast_ref::<&str>().copied())
-                                    .unwrap_or("Unknown panic occurred");
-                                error!(err = panic_msg, "worker panicked");
-                                Err(Error::string(panic_msg))
-                            }
-                        }
-                    }
-                    Err(err) => Err(err.into()),
-                }
-            }) as Pin<Box<dyn Future<Output = Result<(), crate::Error>> + Send>>
-        };
-
-        Arc::get_mut(&mut self.handlers)
-            .ok_or_else(|| Error::string("cannot register worker"))?
-            .insert(name, Box::new(wrapped_handler));
-        Ok(())
-    }
-
-    /// Returns a reference to the job handlers.
-    #[must_use]
-    pub fn handlers(&self) -> &Arc<HashMap<String, JobHandler>> {
-        &self.handlers
-    }
-
-    /// Runs the job handlers with the provided number of workers.
-    #[must_use]
-    pub fn run(
+#[async_trait]
+impl QueueProvider for PgQueue {
+    async fn enqueue(
         &self,
-        pool: &PgPool,
-        opts: &RunOpts,
-        token: &CancellationToken,
-        tags: &[String],
-    ) -> Vec<JoinHandle<()>> {
-        let mut jobs = Vec::new();
+        class: String,
+        _queue: Option<String>,
+        args: serde_json::Value,
+        tags: Option<Vec<String>>,
+        priority: Option<i32>,
+    ) -> Result<Option<String>> {
+        Ok(Some(
+            enqueue(
+                &self.pool,
+                &class,
+                args,
+                chrono::Utc::now(),
+                None,
+                tags,
+                priority,
+            )
+            .await
+            .map_err(Box::from)?,
+        ))
+    }
 
-        let interval = opts.poll_interval_sec;
-        for idx in 0..opts.num_workers {
-            let handlers = self.handlers.clone();
-            let worker_token = token.clone(); // Clone token for this worker
-            let worker_tags = tags.to_vec();
+    async fn register_handler(&self, name: String, handler: JobHandler) -> Result<()> {
+        let mut registry = self.registry.lock().await;
+        registry.insert_handler(name, handler)
+    }
 
-            let pool = pool.clone();
-            let job = tokio::spawn(async move {
+    async fn run(&self, tags: Vec<String>) -> Result<()> {
+        if let Some(reaper) = self.run_opts.reaper.clone() {
+            let pool = self.pool.clone();
+            let token = self.token.clone();
+            tokio::spawn(async move {
+                let interval = std::time::Duration::from_secs(reaper.interval_seconds);
                 loop {
-                    // Check for cancellation before potentially blocking on dequeue
-                    if worker_token.is_cancelled() {
-                        trace!(worker_id = idx, "Cancellation received, stopping worker");
-                        break;
-                    }
-                    trace!(
-                        pool_size = pool.num_idle(),
-                        worker_id = idx,
-                        "Connection pool stats"
-                    );
-                    let job_opt = match dequeue(&pool, &worker_tags).await {
-                        Ok(t) => t,
-                        Err(err) => {
-                            error!(error = %err, "Failed to fetch job from queue");
-                            None
-                        }
-                    };
-
-                    if let Some(job) = job_opt {
-                        debug!(job_id = %job.id, job_name = %job.name, "Processing job");
-                        if let Some(handler) = handlers.get(&job.name) {
-                            match handler(job.id.clone(), job.data.clone()).await {
-                                Ok(()) => {
-                                    if let Err(err) =
-                                        complete_job(&pool, &job.id, job.interval).await
-                                    {
-                                        error!(
-                                            error = %err,
-                                            job_id = %job.id,
-                                            job_name = %job.name,
-                                            "Failed to mark job as completed"
-                                        );
-                                    } else {
-                                        debug!(job_id = %job.id, "Job completed successfully");
-                                    }
-                                }
-                                Err(err) => {
-                                    if let Err(fail_err) = fail_job(&pool, &job.id, &err).await {
-                                        error!(
-                                            error = %fail_err,
-                                            job_id = %job.id,
-                                            job_name = %job.name,
-                                            "Failed to mark job as failed"
-                                        );
-                                    } else {
-                                        debug!(job_id = %job.id, error = %err, "Job execution failed");
-                                    }
-                                }
-                            }
-                        } else {
-                            error!(job_name = %job.name, "No handler registered for job");
-                        }
-                    } else {
-                        // Use tokio::select! to wait for interval or cancellation
-                        tokio::select! {
-                            biased;
-                            () = worker_token.cancelled() => {
-                                trace!(worker_id = idx, "Cancellation received during sleep, stopping worker");
-                                break;
-                            }
-                            () = sleep(Duration::from_secs(interval.into())) => {
-                                // Interval elapsed, continue loop
+                    tokio::select! {
+                        () = token.cancelled() => break,
+                        () = tokio::time::sleep(interval) => {
+                            if let Err(err) = requeue(&pool, &reaper.age_minutes).await {
+                                tracing::error!(error = %err, "reaper: failed to requeue stale jobs");
                             }
                         }
                     }
                 }
             });
-
-            jobs.push(job);
         }
-
-        jobs
+        let handles = self.registry.lock().await.run::<PgDriver>(
+            &self.pool,
+            &self.run_opts,
+            &self.token.clone(),
+            &tags,
+        );
+        super::process_worker_handles(handles).await
     }
-}
 
-impl Default for JobRegistry {
-    fn default() -> Self {
-        Self::new()
+    async fn setup(&self) -> Result<()> {
+        initialize_database(&self.pool).await.map_err(Box::from)?;
+        Ok(())
+    }
+
+    async fn clear(&self) -> Result<()> {
+        clear(&self.pool).await.map_err(Box::from)?;
+        Ok(())
+    }
+
+    async fn ping(&self) -> Result<()> {
+        ping(&self.pool).await.map_err(Box::from)?;
+        Ok(())
+    }
+
+    async fn get_jobs(
+        &self,
+        status: Option<&Vec<JobStatus>>,
+        age_days: Option<i64>,
+    ) -> Result<Vec<Job>> {
+        let jobs = get_jobs(&self.pool, status, age_days)
+            .await
+            .map_err(Box::from)?;
+        Ok(jobs)
+    }
+
+    async fn cancel_jobs_by_name(&self, name: &str) -> Result<()> {
+        cancel_jobs_by_name(&self.pool, name).await
+    }
+
+    async fn clear_by_status(&self, status: Vec<JobStatus>) -> Result<()> {
+        clear_by_status(&self.pool, status).await
+    }
+
+    async fn clear_jobs_older_than(
+        &self,
+        age_days: i64,
+        status: Option<&Vec<JobStatus>>,
+    ) -> Result<()> {
+        clear_jobs_older_than(&self.pool, age_days, status).await
+    }
+
+    async fn requeue(&self, age_minutes: &i64) -> Result<()> {
+        requeue(&self.pool, age_minutes).await
+    }
+
+    fn describe(&self) -> String {
+        "postgres queue".to_string()
+    }
+
+    fn shutdown(&self) -> Result<()> {
+        self.token.cancel();
+        Ok(())
     }
 }
 
@@ -230,24 +193,57 @@ async fn connect(cfg: &PostgresQueueConfig) -> Result<PgPool> {
 /// This function will return an error if it fails
 pub async fn initialize_database(pool: &PgPool) -> Result<()> {
     debug!("Initializing job database tables");
-    sqlx::raw_sql(&format!(
-        r"
-            CREATE TABLE IF NOT EXISTS pg_loco_queue (
-                id VARCHAR NOT NULL,
-                name VARCHAR NOT NULL,
-                task_data JSONB NOT NULL,
-                status VARCHAR NOT NULL DEFAULT '{}',
-                run_at TIMESTAMPTZ NOT NULL,
-                interval BIGINT,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                tags JSONB
-            );
-            ",
-        JobStatus::Queued
-    ))
-    .execute(pool)
+
+    // Check if the table already exists.
+    let table_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS (
+            SELECT FROM information_schema.tables
+            WHERE table_name = 'pg_loco_queue'
+        )",
+    )
+    .fetch_one(pool)
     .await?;
+
+    if table_exists {
+        // Auto-migrate: add the priority column to pre-existing tables.
+        let priority_exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS (
+                SELECT FROM information_schema.columns
+                WHERE table_name = 'pg_loco_queue'
+                AND column_name = 'priority'
+            )",
+        )
+        .fetch_one(pool)
+        .await?;
+
+        if !priority_exists {
+            debug!("Adding priority column to existing pg_loco_queue table");
+            sqlx::query("ALTER TABLE pg_loco_queue ADD COLUMN priority INT NOT NULL DEFAULT 0")
+                .execute(pool)
+                .await?;
+        }
+    } else {
+        sqlx::raw_sql(AssertSqlSafe(format!(
+            r"
+                CREATE TABLE pg_loco_queue (
+                    id VARCHAR NOT NULL,
+                    name VARCHAR NOT NULL,
+                    task_data JSONB NOT NULL,
+                    status VARCHAR NOT NULL DEFAULT '{}',
+                    run_at TIMESTAMPTZ NOT NULL,
+                    interval BIGINT,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    tags JSONB,
+                    priority INT NOT NULL DEFAULT 0
+                );
+                ",
+            JobStatus::Queued
+        )))
+        .execute(pool)
+        .await?;
+    }
+
     Ok(())
 }
 
@@ -263,11 +259,13 @@ pub async fn enqueue(
     run_at: DateTime<Utc>,
     interval: Option<Duration>,
     tags: Option<Vec<String>>,
+    priority: Option<i32>,
 ) -> Result<JobId> {
     let data_json = serde_json::to_value(data)?;
-    let tags_json = tags
-        .as_ref()
-        .map(|t| serde_json::to_value(t).unwrap_or(serde_json::Value::Null));
+    let tags_json = match &tags {
+        Some(tags) => Some(serde_json::to_value(tags)?),
+        None => None,
+    };
 
     #[allow(clippy::cast_possible_truncation)]
     let interval_ms: Option<i64> = interval.map(|i| i.as_millis() as i64);
@@ -275,8 +273,8 @@ pub async fn enqueue(
     let id = Ulid::new().to_string();
     debug!(job_id = %id, job_name = %name, run_at = %run_at, tags = ?tags, "Enqueueing job");
     sqlx::query(
-        "INSERT INTO pg_loco_queue (id, task_data, name, run_at, interval, tags) VALUES ($1, $2, $3, \
-         $4, $5, $6)",
+        "INSERT INTO pg_loco_queue (id, task_data, name, run_at, interval, tags, priority) VALUES \
+         ($1, $2, $3, $4, $5, $6, $7)",
     )
     .bind(id.clone())
     .bind(data_json)
@@ -284,6 +282,7 @@ pub async fn enqueue(
     .bind(run_at)
     .bind(interval_ms)
     .bind(tags_json)
+    .bind(priority.unwrap_or(0))
     .execute(pool)
     .await?;
     Ok(id)
@@ -294,7 +293,7 @@ async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>>
 
     // Base query
     let mut query = String::from(
-        "SELECT id, name, task_data, status, run_at, interval, tags FROM pg_loco_queue WHERE status = $1 AND run_at <= NOW() "
+        "SELECT id, name, task_data, status, run_at, interval, tags, priority FROM pg_loco_queue WHERE status = $1 AND run_at <= NOW() ",
     );
 
     // Apply tag filtering logic
@@ -321,10 +320,10 @@ async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>>
         }
     }
 
-    query.push_str(" ORDER BY run_at LIMIT 1 FOR UPDATE SKIP LOCKED");
+    query.push_str(" ORDER BY priority DESC, run_at, id LIMIT 1 FOR UPDATE SKIP LOCKED");
 
     // Create the query
-    let mut db_query = sqlx::query(&query).bind(JobStatus::Queued.to_string());
+    let mut db_query = sqlx::query(AssertSqlSafe(query)).bind(JobStatus::Queued.to_string());
 
     // Bind tag parameters
     for tag in worker_tags {
@@ -354,31 +353,30 @@ async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>>
 }
 
 async fn complete_job(pool: &PgPool, id: &JobId, interval_ms: Option<i64>) -> Result<()> {
-    let (status, run_at) = interval_ms.map_or_else(
-        || (JobStatus::Completed.to_string(), Utc::now()),
-        |interval_ms| {
-            (
-                JobStatus::Queued.to_string(),
-                Utc::now() + chrono::Duration::milliseconds(interval_ms),
-            )
-        },
-    );
-
-    trace!(
-        job_id = %id,
-        status = %status,
-        run_at = %run_at,
-        "Marking job as completed"
-    );
-
-    sqlx::query(
-        "UPDATE pg_loco_queue SET status = $1, updated_at = NOW(), run_at = $2 WHERE id = $3",
-    )
-    .bind(status)
-    .bind(run_at)
-    .bind(id)
-    .execute(pool)
-    .await?;
+    if let Some(interval_ms) = interval_ms {
+        let next_run_at = Utc::now() + chrono::Duration::milliseconds(interval_ms);
+        trace!(
+            job_id = %id,
+            status = "queued",
+            run_at = %next_run_at,
+            "Rescheduling recurring job"
+        );
+        sqlx::query(
+            "UPDATE pg_loco_queue SET status = $1, updated_at = NOW(), run_at = $2 WHERE id = $3",
+        )
+        .bind(JobStatus::Queued.to_string())
+        .bind(next_run_at)
+        .bind(id)
+        .execute(pool)
+        .await?;
+    } else {
+        trace!(job_id = %id, status = "completed", "Marking job as completed");
+        sqlx::query("UPDATE pg_loco_queue SET status = $1, updated_at = NOW() WHERE id = $2")
+            .bind(JobStatus::Completed.to_string())
+            .bind(id)
+            .execute(pool)
+            .await?;
+    }
 
     Ok(())
 }
@@ -476,16 +474,16 @@ pub async fn clear_jobs_older_than(
 
     query_builder.push_bind(age_days);
 
-    if let Some(status_list) = status {
-        if !status_list.is_empty() {
-            let status_in = status_list
-                .iter()
-                .map(|s| format!("'{s}'"))
-                .collect::<Vec<String>>()
-                .join(",");
+    if let Some(status_list) = status
+        && !status_list.is_empty()
+    {
+        let status_in = status_list
+            .iter()
+            .map(|s| format!("'{s}'"))
+            .collect::<Vec<String>>()
+            .join(",");
 
-            query_builder.push(format!(" AND status IN ({status_in})"));
-        }
+        query_builder.push(format!(" AND status IN ({status_in})"));
     }
 
     debug!(age_days = age_days, status = ?status, "Clearing older jobs");
@@ -511,7 +509,7 @@ pub async fn requeue(pool: &PgPool, age_minutes: &i64) -> Result<()> {
     );
 
     debug!(age_minutes = age_minutes, "Requeueing stalled jobs");
-    sqlx::query(&query)
+    sqlx::query(AssertSqlSafe(query))
         .bind(JobStatus::Queued.to_string())
         .bind(JobStatus::Processing.to_string())
         .execute(pool)
@@ -526,11 +524,7 @@ pub async fn requeue(pool: &PgPool, age_minutes: &i64) -> Result<()> {
 ///
 /// This function will return an error if it fails
 pub async fn ping(pool: &PgPool) -> Result<()> {
-    trace!("Pinging job queue database");
-    sqlx::query("SELECT id from pg_loco_queue LIMIT 1")
-        .execute(pool)
-        .await?;
-    Ok(())
+    super::sql::ping(pool, "pg_loco_queue").await
 }
 
 /// Retrieves a list of jobs from the `pg_loco_queue` table in the database.
@@ -567,66 +561,16 @@ pub async fn get_jobs(
     }
 
     debug!(status = ?status, age_days = ?age_days, "Retrieving jobs");
-    let rows = sqlx::query(&query).fetch_all(pool).await?;
+    let rows = sqlx::query(AssertSqlSafe(query)).fetch_all(pool).await?;
     let jobs = rows.iter().filter_map(|row| to_job(row).ok()).collect();
     debug!(job_count = rows.len(), "Retrieved jobs from database");
     Ok(jobs)
 }
 
-/// Converts a row from the database into a [`Job`] object.
-///
-/// This function takes a row from the `Postgres` database and manually extracts the necessary
-/// fields to populate a [`Job`] object.
-///
-/// **Note:** This function manually extracts values from the database row instead of using
-/// the `FromRow` trait, which would require enabling the 'macros' feature in the dependencies.
-/// The decision to avoid `FromRow` is made to keep the build smaller and faster, as the 'macros'
-/// feature is unnecessary in the current dependency tree.
-fn to_job(row: &PgRow) -> Result<Job> {
-    let tags_json: Option<serde_json::Value> = row.try_get("tags").unwrap_or_default();
-    let tags = tags_json.and_then(|json_val| {
-        if json_val.is_array() {
-            let tags_vec: Vec<String> =
-                serde_json::from_value(json_val).unwrap_or_else(|_| Vec::new());
-            if tags_vec.is_empty() {
-                None
-            } else {
-                Some(tags_vec)
-            }
-        } else {
-            None
-        }
-    });
-
-    Ok(Job {
-        id: row.get("id"),
-        name: row.get("name"),
-        data: row.get("task_data"),
-        status: row.get::<String, _>("status").parse().map_err(|err| {
-            let status: String = row.get("status");
-            tracing::error!(status, err = %err, "Unsupported job status in database");
-            Error::string("invalid job status")
-        })?,
-        run_at: row.get("run_at"),
-        interval: row.get("interval"),
-        created_at: row.try_get("created_at").unwrap_or_default(),
-        updated_at: row.try_get("updated_at").unwrap_or_default(),
-        tags,
-    })
-}
-
-#[derive(Debug)]
-pub struct RunOpts {
-    pub num_workers: u32,
-    pub poll_interval_sec: u32,
-}
-
-/// Create this provider
-///
-/// # Errors
-///
-/// This function will return an error if it fails
-pub async fn create_provider(qcfg: &PostgresQueueConfig) -> Result<Queue> {
+/// Builds the [`PgQueue`] provider (pool, registry, run options, token) from
+/// config. Factored out of [`create_provider`] so tests can inspect the
+/// resulting `run_opts` without needing to downcast the opaque [`Queue`].
+async fn build_provider(qcfg: &PostgresQueueConfig) -> Result<PgQueue> {
     debug!(
         num_workers = qcfg.num_workers,
         poll_interval = qcfg.poll_interval_sec,
@@ -635,26 +579,40 @@ pub async fn create_provider(qcfg: &PostgresQueueConfig) -> Result<Queue> {
     let pool = connect(qcfg).await.map_err(Box::from)?;
     let registry = JobRegistry::new();
     let token = CancellationToken::new(); // Create the token
-    Ok(Queue::Postgres(
+    Ok(PgQueue {
         pool,
-        Arc::new(tokio::sync::Mutex::new(registry)),
-        RunOpts {
+        registry: Arc::new(tokio::sync::Mutex::new(registry)),
+        run_opts: RunOpts {
             num_workers: qcfg.num_workers,
             poll_interval_sec: qcfg.poll_interval_sec,
+            reaper: qcfg.reaper.clone(),
         },
         token, // Pass the token
-    ))
+    })
+}
+
+/// Create this provider
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub async fn create_provider(qcfg: &PostgresQueueConfig) -> Result<Queue> {
+    Ok(Queue::from_provider(Arc::new(build_provider(qcfg).await?)))
 }
 
 #[cfg(test)]
 mod tests {
     use chrono::{NaiveDate, NaiveTime, TimeZone};
     use insta::{assert_debug_snapshot, with_settings};
+    use serde::Serialize;
     use sqlx::{query_as, FromRow};
     use tokio::time::sleep;
 
     use super::*;
-    use crate::tests_cfg::{self, postgres::setup_postgres_container};
+    use crate::{
+        bgworker::BackgroundWorker,
+        tests_cfg::{self, postgres::setup_postgres_container},
+    };
 
     fn reduction() -> &'static [(&'static str, &'static str)] {
         &[
@@ -687,13 +645,15 @@ mod tests {
     }
 
     async fn get_job(pool: &PgPool, id: &str) -> Job {
-        sqlx::query(&format!("select * from pg_loco_queue where id = '{id}'"))
-            .fetch_all(pool)
-            .await
-            .expect("get jobs")
-            .first()
-            .and_then(|row| to_job(row).ok())
-            .expect("job not found")
+        sqlx::query(AssertSqlSafe(format!(
+            "select * from pg_loco_queue where id = '{id}'"
+        )))
+        .fetch_all(pool)
+        .await
+        .expect("get jobs")
+        .first()
+        .and_then(|row| to_job(row).ok())
+        .expect("job not found")
     }
 
     // New setup function that uses our testcontainer
@@ -750,6 +710,7 @@ mod tests {
             job_data,
             run_at,
             None,
+            None,
             None
         )
         .await
@@ -781,6 +742,7 @@ mod tests {
             "PasswordChangeNotification",
             job_data,
             run_at,
+            None,
             None,
             None
         )
@@ -821,11 +783,16 @@ mod tests {
         let job = get_job(&pool, "01JDM0X8EVAM823JZBGKYNBA99").await;
 
         assert_eq!(job.status, JobStatus::Queued);
+        let run_at_before = job.run_at;
         assert!(complete_job(&pool, &job.id, None).await.is_ok());
 
         let job = get_job(&pool, "01JDM0X8EVAM823JZBGKYNBA99").await;
 
         assert_eq!(job.status, JobStatus::Completed);
+        // Completing a one-shot job (no interval) must not rewrite `run_at`:
+        // it's inert once the job is done, and should match the SQLite
+        // backend's behavior.
+        assert_eq!(job.run_at, run_at_before);
     }
 
     #[tokio::test]
@@ -849,6 +816,9 @@ mod tests {
             after_complete_job.updated_at,
             before_complete_job.updated_at
         );
+        // Rescheduling a recurring job (with an interval) legitimately
+        // advances `run_at`.
+        assert_ne!(after_complete_job.run_at, before_complete_job.run_at);
         with_settings!({
                 filters => reduction().iter().map(|&(pattern, replacement)| (pattern,
         replacement)),     }, {
@@ -1125,11 +1095,103 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn create_provider_wires_reaper_config() {
+        let (pg_url, _container) = tests_cfg::postgres::setup_postgres_container().await;
+        let qcfg = PostgresQueueConfig {
+            uri: pg_url,
+            dangerously_flush: false,
+            enable_logging: false,
+            max_connections: 1,
+            min_connections: 1,
+            connect_timeout: 500,
+            idle_timeout: 500,
+            poll_interval_sec: 1,
+            num_workers: 1,
+            reaper: Some(crate::config::ReaperConfig {
+                age_minutes: 5,
+                interval_seconds: 30,
+            }),
+        };
+
+        let provider = build_provider(&qcfg).await.expect("build provider");
+        let reaper = provider
+            .run_opts
+            .reaper
+            .expect("reaper should be wired from config");
+        assert_eq!(reaper.age_minutes, 5);
+        assert_eq!(reaper.interval_seconds, 30);
+    }
+
+    #[tokio::test]
+    async fn create_provider_defaults_reaper_to_none() {
+        let (pg_url, _container) = tests_cfg::postgres::setup_postgres_container().await;
+        let qcfg = PostgresQueueConfig {
+            uri: pg_url,
+            dangerously_flush: false,
+            enable_logging: false,
+            max_connections: 1,
+            min_connections: 1,
+            connect_timeout: 500,
+            idle_timeout: 500,
+            poll_interval_sec: 1,
+            num_workers: 1,
+            reaper: None,
+        };
+
+        let provider = build_provider(&qcfg).await.expect("build provider");
+        assert!(provider.run_opts.reaper.is_none());
+    }
+
+    #[tokio::test]
+    async fn can_dequeue_with_priority_extremes_and_ties() {
+        let (pool, _container) = setup_pg_test().await;
+        let base_time = Utc::now() - chrono::Duration::minutes(10);
+
+        let scenarios = [
+            ("PriorityMax", i32::MAX, 4_i64, 1_i32),
+            ("PriorityTieEarly", 42_i32, 1_i64, 2_i32),
+            ("PriorityTieLate", 42_i32, 3_i64, 3_i32),
+            ("PriorityZero", 0_i32, 0_i64, 4_i32),
+            ("PriorityMin", i32::MIN, 2_i64, 5_i32),
+        ];
+
+        for (name, priority, minute_offset, index) in scenarios {
+            enqueue(
+                &pool,
+                name,
+                serde_json::json!({ "index": index }),
+                base_time + chrono::Duration::minutes(minute_offset),
+                None,
+                None,
+                Some(priority),
+            )
+            .await
+            .expect("enqueue test job");
+        }
+
+        for expected_index in [1, 2, 3, 4, 5] {
+            let job = dequeue(&pool, &[]).await.expect("dequeue failed");
+            assert!(job.is_some());
+            let job = job.unwrap();
+            assert_eq!(
+                job.data.get("index"),
+                Some(&serde_json::json!(expected_index))
+            );
+            complete_job(&pool, &job.id, None)
+                .await
+                .expect("complete job");
+        }
+
+        let job = dequeue(&pool, &[]).await.expect("dequeue failed");
+        assert!(job.is_none());
+    }
+
+    #[tokio::test]
     async fn can_handle_worker_panic() {
         let (pool, _container) = setup_pg_test().await;
 
         let job_data: JobData = serde_json::json!(null);
-        let job_id = enqueue(&pool, "PanicJob", job_data, Utc::now(), None, None)
+        let job_id = enqueue(&pool, "PanicJob", job_data, Utc::now(), None, None, None)
             .await
             .expect("Failed to enqueue job");
 
@@ -1145,8 +1207,9 @@ mod tests {
         }
 
         let mut registry = JobRegistry::new();
+        let handler = crate::bgworker::erase_worker(PanicWorker);
         assert!(registry
-            .register_worker("PanicJob".to_string(), PanicWorker)
+            .insert_handler("PanicJob".to_string(), handler)
             .is_ok());
 
         // Get the initial job state
@@ -1157,9 +1220,10 @@ mod tests {
         let opts = RunOpts {
             num_workers: 1,
             poll_interval_sec: 1,
+            reaper: None,
         };
         let token = CancellationToken::new();
-        let handles = registry.run(&pool, &opts, &token, &[]);
+        let handles = registry.run::<PgDriver>(&pool, &opts, &token, &[]);
 
         // Wait a bit for the worker to process the job
         sleep(Duration::from_secs(1)).await;
@@ -1205,6 +1269,7 @@ mod tests {
             run_at,
             None,
             email_tags,
+            None,
         )
         .await
         .expect("Failed to enqueue email job");
@@ -1218,6 +1283,7 @@ mod tests {
             run_at,
             None,
             sms_tags,
+            None,
         )
         .await
         .expect("Failed to enqueue sms job");
@@ -1231,6 +1297,7 @@ mod tests {
             run_at,
             None,
             multi_tags,
+            None,
         )
         .await
         .expect("Failed to enqueue multi-tag job");
@@ -1241,6 +1308,7 @@ mod tests {
             "GenericNotification",
             job_data.clone(),
             run_at,
+            None,
             None,
             None,
         )

@@ -1,0 +1,88 @@
+---
+// A warm card for the casts (screencasts) grid — same postcard idiom as
+// PostCard.astro (var(--card) bg, 1px var(--line) border, hover lift) but
+// topped with the episode's YouTube thumbnail in a 16:9 wrapper so every
+// card in the grid aligns regardless of thumbnail aspect ratio, plus an
+// episode number badge (from the zero-padded `episode` frontmatter field,
+// e.g. "007" -> "#007") overlaid on the thumbnail.
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  cast: CollectionEntry<'casts'>;
+}
+const { cast } = Astro.props;
+
+const thumbnail = `https://img.youtube.com/vi/${cast.data.youtube}/hqdefault.jpg`;
+---
+
+<a class="castcard" href={`/casts/${cast.id}/`}>
+  <div class="thumb">
+    <img src={thumbnail} alt={cast.data.title} loading="lazy" />
+    <span class="badge">#{cast.data.episode}</span>
+  </div>
+  <div class="body">
+    <h3>{cast.data.title}</h3>
+    <p class="desc">{cast.data.description}</p>
+  </div>
+</a>
+
+<style>
+  .castcard {
+    display: block;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 12px 26px -20px rgba(28, 23, 18, 0.32);
+    transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+  .castcard:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 22px 38px -22px rgba(28, 23, 18, 0.4);
+    border-color: rgba(252, 56, 32, 0.35);
+  }
+  .thumb {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background: var(--paper-2);
+  }
+  .thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .badge {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #fff;
+    background: rgba(28, 23, 18, 0.72);
+    border-radius: 5px;
+    padding: 3px 8px;
+  }
+  .body {
+    padding: 22px 24px 24px;
+  }
+  .castcard h3 {
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.28;
+    color: var(--ink);
+  }
+  .castcard .desc {
+    margin-top: 10px;
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--ink-2);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+</style>

@@ -1,61 +1,30 @@
-//! Remote IP Middleware for inferring the client's IP address based on the
-//! `X-Forwarded-For` header.
+//! Remote IP Middleware for inferring the client's IP address.
 //!
-//! This middleware is useful when running behind proxies or load balancers that
-//! add the `X-Forwarded-For` header, which includes the original client IP
-//! address.
+//! This middleware is useful when running behind proxies or load balancers
+//! that record the original client IP in a header (e.g. `X-Forwarded-For`,
+//! `CF-Connecting-IP`, ...).
 //!
-//! The middleware provides a mechanism to configure trusted proxies and extract
-//! the most likely client IP from the `X-Forwarded-For` header, skipping any
-//! trusted proxy IPs.
-use std::{
-    fmt,
-    iter::Iterator,
-    net::{IpAddr, SocketAddr},
-    str::FromStr,
-    sync::OnceLock,
-    task::{Context, Poll},
-};
+//! This is a thin, Loco-flavored wrapper around the [`axum-client-ip`
+//! crate](https://docs.rs/axum-client-ip), which does the actual header
+//! parsing. Loco configures *which* source to trust
+//! (see [`axum_client_ip::ClientIpSource`]) and exposes the result through the
+//! familiar [`RemoteIP`] extractor.
+use std::net::{IpAddr, SocketAddr};
 
 use axum::{
-    body::Body,
-    extract::{ConnectInfo, FromRequestParts, Request},
-    http::{header::HeaderMap, request::Parts},
-    response::Response,
+    extract::{ConnectInfo, FromRequestParts},
+    http::request::Parts,
     Router as AXRouter,
 };
-use futures_util::future::BoxFuture;
-use ipnetwork::IpNetwork;
+use axum_client_ip::ClientIp;
+pub use axum_client_ip::ClientIpSource;
 use serde::{Deserialize, Serialize};
-use tower::{Layer, Service};
-use tracing::error;
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
-
-static LOCAL_TRUSTED_PROXIES: OnceLock<Vec<IpNetwork>> = OnceLock::new();
-
-fn get_local_trusted_proxies() -> &'static Vec<IpNetwork> {
-    LOCAL_TRUSTED_PROXIES.get_or_init(|| {
-        [
-            "127.0.0.0/8",   // localhost IPv4 range, per RFC-3330
-            "::1",           // localhost IPv6
-            "fc00::/7",      // private IPv6 range fc00::/7
-            "10.0.0.0/8",    // private IPv4 range 10.x.x.x
-            "172.16.0.0/12", // private IPv4 range 172.16.0.0 .. 172.31.255.255
-            "192.168.0.0/16",
-        ]
-        .iter()
-        .map(|ip| IpNetwork::from_str(ip).unwrap())
-        .collect()
-    })
-}
-
-const X_FORWARDED_FOR: &str = "X-Forwarded-For";
+use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
 
 ///
-/// Performs a remote ip "calculation", inferring the most likely
-/// client IP from the `X-Forwarded-For` header that is used by
-/// load balancers and proxies.
+/// Resolves the client's IP address from a single, configured, trusted
+/// source.
 ///
 /// WARNING
 /// =======
@@ -63,42 +32,70 @@ const X_FORWARDED_FOR: &str = "X-Forwarded-For";
 /// LIKE ANY SUCH REMOTE IP MIDDLEWARE, IN THE WRONG ARCHITECTURE IT CAN MAKE
 /// YOU VULNERABLE TO IP SPOOFING.
 ///
-/// This middleware assumes that there is at least one proxy sitting around and
-/// setting headers with the client's remote IP address. Otherwise any client
-/// can claim to have any IP address by setting the `X-Forwarded-For` header.
+/// This middleware assumes there is exactly **one** trusted edge (a proxy or
+/// load balancer you control, sitting directly in front of the app) that is
+/// responsible for setting the configured header correctly. Anything upstream
+/// of that edge (a CDN, an outer load balancer, ...) is *not* modeled here:
+/// this middleware does not walk a proxy chain, and it does not maintain a
+/// trusted-proxy CIDR allow-list. If your edge proxy blindly forwards
+/// whatever header value it received, a malicious client can forge it.
 ///
-/// DO NOT USE THIS MIDDLEWARE IF YOU DONT KNOW THAT YOU NEED IT
+/// DO NOT USE THIS MIDDLEWARE IF YOU DON'T KNOW THAT YOU NEED IT.
 ///
 /// -- But if you need it, it's crucial to use it (since it's the only way to
-/// get the original client IP)
+/// get the original client IP).
 ///
-/// This middleware is mostly implemented after the Rails `remote_ip`
-/// middleware, and looking at other production Rust services with Axum, taking
-/// the best of both worlds to balance performance and pragmatism.
+/// BREAKING CHANGE (0.17 -> next)
+/// ===============================
 ///
-/// Similarities to the Rails `remote_ip` middleware:
+/// Earlier versions of this middleware hand-rolled `X-Forwarded-For` parsing:
+/// it walked the header from right to left, skipping any IP found in a
+/// configurable `trusted_proxies` CIDR list (falling back to a built-in
+/// RFC-1918 + loopback list), and returned the first non-trusted address —
+/// i.e. it could "see through" a chain of one or more trusted proxies.
 ///
-/// * Uses `X-Forwarded-For`
-/// * Uses the same built-in trusted proxies list
-/// * You can provide a list of `trusted_proxies` which will **replace** the
-///   built-in trusted proxies
+/// This middleware is now a thin wrapper around the [`axum-client-ip`] crate.
+/// There is no more proxy-chain walking and no more `trusted_proxies`
+/// CIDR list: instead you pick *one* [`ClientIpSource`] — the single header
+/// (or the raw socket address) that your **innermost** trusted proxy is
+/// responsible for setting correctly. The default, [`ClientIpSource::RightmostXForwardedFor`],
+/// simply takes the last (rightmost) comma-separated value of the last
+/// `X-Forwarded-For` header, with **no filtering of private/internal
+/// addresses whatsoever**.
 ///
-/// Differences from the Rails `remote_ip` middleware:
+/// If you run multiple hops in front of your app (e.g. CDN -> load balancer
+/// -> ingress), configure your **innermost** hop (the one talking directly to
+/// this app) to compute and set the correct client IP itself (most reverse
+/// proxies support this, e.g. nginx's `set_real_ip_from`/`real_ip_recursive`),
+/// and let this middleware simply trust that hop's output. Alternatively, if
+/// you sit directly behind a well-known provider, pick its dedicated header,
+/// e.g. [`ClientIpSource::CfConnectingIp`] for Cloudflare or
+/// [`ClientIpSource::CloudFrontViewerAddress`] for AWS `CloudFront`.
 ///
-/// * You get an indication if the remote IP is actually resolved or is the
-///   socket IP (no `X-Forwarded-For` header or could not parse)
-/// * We do not not use the `Client-IP` header, or try to detect "spoofing"
-///   (spoofing while doing remote IP resolution is virtually non-detectable)
-/// * Order of filtering IPs from `X-Forwarded-For` is done according to [the de
-///   facto spec](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For#selecting_an_ip_address)
-///   "Trusted proxy list"
-#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+/// [`axum-client-ip`]: https://docs.rs/axum-client-ip
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct RemoteIpMiddleware {
     #[serde(default)]
     pub enable: bool,
-    /// A list of alternative proxy list IP ranges and/or network range (will
-    /// replace built-in proxy list)
-    pub trusted_proxies: Option<Vec<String>>,
+    /// The single, trusted source to resolve the client IP from.
+    ///
+    /// Defaults to [`ClientIpSource::RightmostXForwardedFor`], which matches
+    /// the common single reverse-proxy/load-balancer deployment.
+    #[serde(default = "default_source")]
+    pub source: ClientIpSource,
+}
+
+impl Default for RemoteIpMiddleware {
+    fn default() -> Self {
+        Self {
+            enable: false,
+            source: default_source(),
+        }
+    }
+}
+
+fn default_source() -> ClientIpSource {
+    ClientIpSource::RightmostXForwardedFor
 }
 
 impl MiddlewareLayer for RemoteIpMiddleware {
@@ -110,8 +107,6 @@ impl MiddlewareLayer for RemoteIpMiddleware {
     /// Returns whether the middleware is enabled or not
     fn is_enabled(&self) -> bool {
         self.enable
-            && (self.trusted_proxies.is_none()
-                || self.trusted_proxies.as_ref().is_some_and(|t| !t.is_empty()))
     }
 
     fn config(&self) -> serde_json::Result<serde_json::Value> {
@@ -119,68 +114,30 @@ impl MiddlewareLayer for RemoteIpMiddleware {
     }
 
     /// Applies the Remote IP middleware to the given Axum router.
+    ///
+    /// Under the hood this just makes the configured [`ClientIpSource`]
+    /// available in request extensions, which the [`RemoteIP`] extractor (and
+    /// [`axum_client_ip::ClientIp`] directly, if you prefer to use it)
+    /// consumes.
     fn apply(&self, app: AXRouter<AppContext>) -> Result<AXRouter<AppContext>> {
-        Ok(app.layer(RemoteIPLayer::new(self)?))
+        Ok(app.layer(self.source.clone().into_extension()))
     }
 }
 
-// implementation reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
-fn maybe_get_forwarded(
-    headers: &HeaderMap,
-    trusted_proxies: Option<&Vec<IpNetwork>>,
-) -> Option<IpAddr> {
-    /*
-    > There may be multiple X-Forwarded-For headers present in a request. The IP addresses in these headers must be treated as a single list,
-    > starting with the first IP address of the first header and continuing to the last IP address of the last header.
-    > There are two ways of making this single list:
-    > join the X-Forwarded-For full header values with commas and then split by comma into a list, or
-    > split each X-Forwarded-For header by comma into lists and then join the lists
-     */
-    let xffs = headers
-        .get_all(X_FORWARDED_FOR)
-        .iter()
-        .map(|hdr| hdr.to_str())
-        .filter_map(Result::ok)
-        .collect::<Vec<_>>();
-
-    if xffs.is_empty() {
-        return None;
-    }
-
-    let forwarded = xffs.join(",");
-
-    forwarded
-        .split(',')
-        .map(str::trim)
-        .map(str::parse)
-        .filter_map(Result::ok)
-        /*
-        > Trusted proxy list: The IPs or IP ranges of the trusted reverse proxies are configured.
-        > The X-Forwarded-For IP list is searched from the rightmost, skipping all addresses that
-        > are on the trusted proxy list. The first non-matching address is the target address.
-        */
-        /*
-        > When choosing the X-Forwarded-For client IP address closest to the client (untrustworthy
-        > and not for security-related purposes), the first IP from the leftmost that is a valid
-        > address and not private/internal should be selected.
-        >
-        NOTE:
-        > The first trustworthy X-Forwarded-For IP address may belong to an untrusted intermediate
-        > proxy rather than the actual client computer, but it is the only IP suitable for security uses.
-        */
-        .rfind(|ip| {
-            // trusted proxies provided REPLACES our default local proxies
-            let proxies = trusted_proxies.unwrap_or_else(|| get_local_trusted_proxies());
-            !proxies
-                .iter()
-                .any(|trusted_proxy| trusted_proxy.contains(*ip))
-        })
-}
-
+/// The resolved remote IP for a request, as determined by the
+/// [`RemoteIpMiddleware`] (if enabled).
 #[derive(Copy, Clone, Debug)]
 pub enum RemoteIP {
+    /// Resolved from the configured header-based [`ClientIpSource`] (e.g.
+    /// `X-Forwarded-For`, `CF-Connecting-IP`, ...).
     Forwarded(IpAddr),
+    /// Resolved from the raw socket peer address: either because the
+    /// middleware is configured with [`ClientIpSource::ConnectInfo`], or
+    /// because the configured header was missing/malformed and we fell back
+    /// to the socket address.
     Socket(IpAddr),
+    /// The remote-ip middleware is not enabled, or no IP could be resolved by
+    /// any means.
     None,
 }
 
@@ -188,16 +145,32 @@ impl<S> FromRequestParts<S> for RemoteIP
 where
     S: Send + Sync,
 {
-    type Rejection = ();
+    type Rejection = std::convert::Infallible;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let ip = parts.extensions.get::<Self>();
-        Ok(*ip.unwrap_or(&Self::None))
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        // No `ClientIpSource` in extensions means the middleware was never
+        // applied to this router (it's disabled) — nothing to resolve.
+        let Some(source) = parts.extensions.get::<ClientIpSource>().cloned() else {
+            return Ok(Self::None);
+        };
+
+        match ClientIp::from_request_parts(parts, state).await {
+            Ok(ClientIp(ip)) if source == ClientIpSource::ConnectInfo => Ok(Self::Socket(ip)),
+            Ok(ClientIp(ip)) => Ok(Self::Forwarded(ip)),
+            // The configured header was absent/malformed (or, in principle,
+            // `ConnectInfo` itself was missing) — fall back to the raw socket
+            // peer address, mirroring the old middleware's graceful
+            // degradation when no `X-Forwarded-For` header was present.
+            Err(_) => Ok(parts
+                .extensions
+                .get::<ConnectInfo<SocketAddr>>()
+                .map_or(Self::None, |ConnectInfo(addr)| Self::Socket(addr.ip()))),
+        }
     }
 }
 
-impl fmt::Display for RemoteIP {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for RemoteIP {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Forwarded(ip) => write!(f, "remote: {ip}"),
             Self::Socket(ip) => write!(f, "socket: {ip}"),
@@ -206,146 +179,121 @@ impl fmt::Display for RemoteIP {
     }
 }
 
-#[derive(Clone, Debug)]
-struct RemoteIPLayer {
-    trusted_proxies: Option<Vec<IpNetwork>>,
-}
-
-impl RemoteIPLayer {
-    /// Returns new secure headers middleware
-    ///
-    /// # Errors
-    /// Fails if invalid header values found
-    pub fn new(config: &RemoteIpMiddleware) -> Result<Self> {
-        Ok(Self {
-            trusted_proxies: config
-                .trusted_proxies
-                .as_ref()
-                .map(|proxies| {
-                    proxies
-                        .iter()
-                        .map(|proxy| {
-                            IpNetwork::from_str(proxy).map_err(|err| {
-                                Error::Message(format!(
-                                    "remote ip middleare cannot parse trusted proxy \
-                                     configuration: `{proxy}`, reason: `{err}`",
-                                ))
-                            })
-                        })
-                        .collect::<Result<Vec<_>>>()
-                })
-                .transpose()?,
-        })
-    }
-}
-
-impl<S> Layer<S> for RemoteIPLayer {
-    type Service = RemoteIPMiddleware<S>;
-
-    fn layer(&self, inner: S) -> Self::Service {
-        RemoteIPMiddleware {
-            inner,
-            layer: self.clone(),
-        }
-    }
-}
-
-/// Remote IP Detection Middleware
-#[derive(Clone, Debug)]
-#[must_use]
-pub struct RemoteIPMiddleware<S> {
-    inner: S,
-    layer: RemoteIPLayer,
-}
-
-impl<S> Service<Request<Body>> for RemoteIPMiddleware<S>
-where
-    S: Service<Request<Body>, Response = Response> + Send + 'static,
-    S::Future: Send + 'static,
-{
-    type Response = S::Response;
-    type Error = S::Error;
-    type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
-
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.inner.poll_ready(cx)
-    }
-
-    fn call(&mut self, mut req: Request<Body>) -> Self::Future {
-        let layer = self.layer.clone();
-        let xff_ip = maybe_get_forwarded(req.headers(), layer.trusted_proxies.as_ref());
-        let remote_ip = xff_ip.map_or_else(
-            || {
-                let ip = req
-                    .extensions()
-                    .get::<ConnectInfo<SocketAddr>>()
-                    .map_or_else(
-                        || {
-                            error!(
-                                "remote ip middleware cannot get socket IP (not set in axum \
-                                 extensions): setting IP to `127.0.0.1`"
-                            );
-                            RemoteIP::None
-                        },
-                        |info| RemoteIP::Socket(info.ip()),
-                    );
-                ip
-            },
-            RemoteIP::Forwarded,
-        );
-
-        req.extensions_mut().insert(remote_ip);
-
-        Box::pin(self.inner.call(req))
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    use axum::{
+        extract::{ConnectInfo, Request},
+        http::{HeaderName, HeaderValue},
+    };
 
-    use axum::http::{HeaderMap, HeaderName, HeaderValue};
-    use insta::assert_debug_snapshot;
-    use ipnetwork::IpNetwork;
+    use super::*;
 
-    use super::maybe_get_forwarded;
+    fn request(headers: &[(&str, &str)], connect_info: Option<SocketAddr>) -> Request {
+        let mut builder = Request::builder().uri("/");
+        for (name, value) in headers {
+            builder = builder.header(
+                HeaderName::from_bytes(name.as_bytes()).unwrap(),
+                HeaderValue::from_str(value).unwrap(),
+            );
+        }
+        let mut req = builder.body(axum::body::Body::empty()).unwrap();
+        if let Some(addr) = connect_info {
+            req.extensions_mut().insert(ConnectInfo(addr));
+        }
+        req
+    }
 
-    fn xff(val: &str) -> HeaderMap {
-        let mut headers = HeaderMap::new();
-
-        headers.insert(
-            HeaderName::from_static("x-forwarded-for"),
-            HeaderValue::from_str(val).unwrap(),
-        );
-        headers
+    async fn resolve(source: Option<ClientIpSource>, req: Request) -> RemoteIP {
+        let (mut parts, _body) = req.into_parts();
+        if let Some(source) = source {
+            parts.extensions.insert(source);
+        }
+        RemoteIP::from_request_parts(&mut parts, &()).await.unwrap()
     }
 
     #[test]
-    pub fn test_parsing() {
-        let res = maybe_get_forwarded(&xff(""), None);
-        assert_debug_snapshot!(res);
-        let res = maybe_get_forwarded(&xff("foobar"), None);
-        assert_debug_snapshot!(res);
-        let res = maybe_get_forwarded(&xff("192.1.1.1"), None);
-        assert_debug_snapshot!(res);
-        let res = maybe_get_forwarded(&xff("51.50.51.50,10.0.0.1,192.168.1.1"), None);
-        assert_debug_snapshot!(res);
-        let res = maybe_get_forwarded(&xff("19.84.19.84,192.168.0.1"), None);
-        assert_debug_snapshot!(res);
-        let res = maybe_get_forwarded(&xff("b51.50.51.50b,/10.0.0.1-,192.168.1.1"), None);
-        assert_debug_snapshot!(res);
-        let res = maybe_get_forwarded(
-            &xff("51.50.51.50,192.1.1.1"),
-            Some(&vec![IpNetwork::from_str("192.1.1.1/8").unwrap()]),
-        );
-        assert_debug_snapshot!(res);
+    fn default_is_disabled_with_rightmost_xff_source() {
+        let middleware = RemoteIpMiddleware::default();
+        assert!(!middleware.is_enabled());
+        assert_eq!(middleware.source, ClientIpSource::RightmostXForwardedFor);
+    }
 
-        // we replaced the proxy list, which is why 192.168.1.1 should appear as a valid
-        // remote IP and not skipped
-        let res = maybe_get_forwarded(
-            &xff("51.50.51.50,192.168.1.1"),
-            Some(&vec![IpNetwork::from_str("192.1.1.1/16").unwrap()]),
+    #[test]
+    fn is_enabled_follows_the_enable_flag() {
+        assert!(RemoteIpMiddleware {
+            enable: true,
+            source: ClientIpSource::RightmostXForwardedFor
+        }
+        .is_enabled());
+        assert!(!RemoteIpMiddleware {
+            enable: false,
+            source: ClientIpSource::RightmostXForwardedFor
+        }
+        .is_enabled());
+    }
+
+    #[tokio::test]
+    async fn disabled_middleware_yields_none() {
+        // no `ClientIpSource` extension inserted => middleware was never
+        // applied to the router.
+        let req = request(&[("x-forwarded-for", "51.50.51.50")], None);
+        let ip = resolve(None, req).await;
+        assert!(matches!(ip, RemoteIP::None));
+    }
+
+    #[tokio::test]
+    async fn rightmost_xff_takes_the_last_hop_verbatim_no_trusted_proxy_skipping() {
+        // NEW behavior: unlike the old hand-rolled middleware, nothing here
+        // is skipped for being a "trusted"/private proxy IP — the rightmost
+        // (last) value is taken as-is, even though it's a private address.
+        let req = request(
+            &[("x-forwarded-for", "51.50.51.50,10.0.0.1,192.168.1.1")],
+            None,
         );
-        assert_debug_snapshot!(res);
+        let ip = resolve(Some(ClientIpSource::RightmostXForwardedFor), req).await;
+        assert!(
+            matches!(ip, RemoteIP::Forwarded(ip) if ip == "192.168.1.1".parse::<IpAddr>().unwrap())
+        );
+    }
+
+    #[tokio::test]
+    async fn rightmost_xff_single_hop_matches_the_client() {
+        let req = request(&[("x-forwarded-for", "51.50.51.50")], None);
+        let ip = resolve(Some(ClientIpSource::RightmostXForwardedFor), req).await;
+        assert!(
+            matches!(ip, RemoteIP::Forwarded(ip) if ip == "51.50.51.50".parse::<IpAddr>().unwrap())
+        );
+    }
+
+    #[tokio::test]
+    async fn missing_header_falls_back_to_socket() {
+        let addr: SocketAddr = "127.0.0.1:8080".parse().unwrap();
+        let req = request(&[], Some(addr));
+        let ip = resolve(Some(ClientIpSource::RightmostXForwardedFor), req).await;
+        assert!(matches!(ip, RemoteIP::Socket(ip) if ip == addr.ip()));
+    }
+
+    #[tokio::test]
+    async fn missing_header_and_no_connect_info_yields_none() {
+        let req = request(&[], None);
+        let ip = resolve(Some(ClientIpSource::RightmostXForwardedFor), req).await;
+        assert!(matches!(ip, RemoteIP::None));
+    }
+
+    #[tokio::test]
+    async fn connect_info_source_is_reported_as_socket() {
+        let addr: SocketAddr = "10.1.1.1:9999".parse().unwrap();
+        let req = request(&[], Some(addr));
+        let ip = resolve(Some(ClientIpSource::ConnectInfo), req).await;
+        assert!(matches!(ip, RemoteIP::Socket(ip) if ip == addr.ip()));
+    }
+
+    #[tokio::test]
+    async fn dedicated_provider_header_is_supported() {
+        let req = request(&[("cf-connecting-ip", "8.8.8.8")], None);
+        let ip = resolve(Some(ClientIpSource::CfConnectingIp), req).await;
+        assert!(
+            matches!(ip, RemoteIP::Forwarded(ip) if ip == "8.8.8.8".parse::<IpAddr>().unwrap())
+        );
     }
 }

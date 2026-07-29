@@ -1,0 +1,196 @@
+/* website/src/styles/starlight.css
+ *
+ * Themes Starlight (the /docs surface) to the Loco warm identity.
+ * Imports the shared design tokens, then remaps Starlight's own
+ * `--sl-color-*` custom properties onto them.
+ *
+ * Var names verified against the installed `@astrojs/starlight@0.30.6`
+ * (see node_modules/@astrojs/starlight/style/props.css and the component
+ * styles that consume each variable — e.g. `--sl-color-hairline-shade` is
+ * what actually draws the header/sidebar borders, not `--sl-color-hairline`
+ * alone; the sidebar's active-item styling uses `--sl-color-text-accent` /
+ * `--sl-color-text-invert`, not a dedicated "sidebar active" variable).
+ *
+ * Theme-state note: Starlight's own theme picker persists to
+ * `localStorage['starlight-theme']` (see
+ * node_modules/@astrojs/starlight/components/ThemeProvider.astro /
+ * ThemeSelect.astro), while the marketing pages' ThemeToggle originally used
+ * a separate `localStorage['theme']` key. Both write `data-theme` on
+ * `<html>`, so these tokens apply correctly either way — but the two
+ * surfaces wouldn't *remember* each other's choice on navigation. Reconciled
+ * by pointing the marketing ThemeToggle/Base restore script at the same
+ * `starlight-theme` key (see src/components/ThemeToggle.astro and
+ * src/layouts/Base.astro) rather than inventing a third mechanism.
+ */
+@import './tokens.css';
+
+/* IMPORTANT: Starlight's own props.css re-declares several of these vars
+ * inside a `:root[data-theme='light']` block (attribute selector ⇒ higher
+ * specificity than a plain `:root`). A plain `:root { --sl-color-accent: … }`
+ * override is therefore silently beaten in light mode no matter what order
+ * the stylesheets load in — confirmed by inspecting computed styles on the
+ * built page (`--sl-color-accent` stayed Starlight's default blue in light
+ * mode until this selector was widened). Matching `[data-theme='light']` /
+ * `[data-theme='dark']` here (same specificity as Starlight's block, so our
+ * later source order wins) is what actually makes every var below take
+ * effect in both themes; the referenced tokens (`--paper`, `--ink`, …) are
+ * still the single source of the actual color values per theme.
+ */
+:root,
+:root[data-theme='light'],
+:root[data-theme='dark'] {
+  /* Accent (red) */
+  --sl-color-accent-low: color-mix(in srgb, var(--red) 12%, transparent);
+  --sl-color-accent: var(--red);
+  --sl-color-accent-high: var(--red-ink);
+  --sl-color-text-accent: var(--red-ink);
+  --sl-color-bg-accent: var(--red);
+
+  /* Backgrounds — the content column reads on the near-white --read surface,
+     while the nav and sidebar keep the warm --paper/--paper-2 chrome. */
+  --sl-color-bg: var(--read);
+  --sl-color-bg-nav: var(--paper);
+  --sl-color-bg-sidebar: var(--paper-2);
+  --sl-color-bg-inline-code: var(--paper-2);
+
+  /* Text / gray ramp */
+  --sl-color-white: var(--ink);
+  --sl-color-black: var(--paper);
+  --sl-color-text: var(--ink);
+  --sl-color-text-invert: var(--paper);
+  --sl-color-gray-1: var(--ink);
+  --sl-color-gray-2: var(--ink-2);
+  --sl-color-gray-3: var(--ink-3);
+  --sl-color-gray-4: var(--ink-3);
+  --sl-color-gray-5: var(--line);
+  --sl-color-gray-6: var(--paper-2);
+  --sl-color-gray-7: var(--paper-2);
+
+  /* Hairlines (header/sidebar/content-panel borders all key off the
+     "-shade"/"-light" variants, not the bare `--sl-color-hairline`) */
+  --sl-color-hairline: var(--line);
+  --sl-color-hairline-light: var(--line);
+  --sl-color-hairline-shade: var(--line);
+
+  --sl-font: var(--sans);
+  --sl-font-mono: var(--mono);
+}
+
+/* Inline `code` text tint, matching the docs reference (`main p code{color:var(--red-ink)}`). */
+.sl-markdown-content code:not(:where(.not-content *)) {
+  color: var(--red-ink);
+  border: 1px solid var(--line);
+}
+
+/* ------------------------------------------------------------------ *
+ * Docs landing hub (src/content/docs/docs/index.md)
+ * A designed front door — Diátaxis section cards in the warm brand,
+ * so /docs/ is a hub, not a blank page. `.not-content` opts the block
+ * out of Starlight's prose styles so these cards render as authored.
+ * ------------------------------------------------------------------ */
+.docs-hub {
+  margin-top: 2.5rem;
+}
+.docs-hub .hub-sec + .hub-sec {
+  margin-top: 2.75rem;
+}
+.docs-hub .hub-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0 0 1rem;
+}
+.docs-hub .hub-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+@media (max-width: 72rem) {
+  .docs-hub .hub-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 44rem) {
+  .docs-hub .hub-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.docs-hub .hub-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 1.15rem 1.25rem 1.3rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  /* warm tint so cards read as cards against the near-white content bg */
+  background: var(--paper-2);
+  text-decoration: none;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.docs-hub .hub-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--red) 45%, var(--line));
+  box-shadow: 0 14px 30px -22px rgba(28, 23, 18, 0.55);
+}
+.docs-hub .hub-kicker {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--red-ink);
+}
+.docs-hub .hub-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.docs-hub .hub-desc {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.docs-hub .hub-desc code {
+  font-family: var(--mono);
+  font-size: 0.82em;
+  color: var(--red-ink);
+}
+
+/* Expressive Code block chrome: warm-dark palette in BOTH site themes
+ * (code blocks always look like the homepage's dark code window,
+ * regardless of light/dark toggle — matches the docs reference).
+ * Variable names read from the built `--ec-*` custom properties Expressive
+ * Code actually emits (verified in the built CSS output).
+ */
+:root {
+  --ec-codeBg: #191611;
+  --ec-codeFg: #e7dece;
+  --ec-brdCol: #28241e;
+  --ec-brdRad: 12px;
+  --ec-frm-edBg: #191611;
+  --ec-frm-edTabBarBg: #221e18;
+  --ec-frm-edTabBarBrdBtmCol: #28241e;
+  --ec-frm-edTabBarBrdCol: #28241e;
+  --ec-frm-edActTabBg: #221e18;
+  --ec-frm-edActTabFg: #e7dece;
+  --ec-frm-edActTabBrdCol: var(--red);
+  --ec-frm-edActTabIndTopCol: var(--red);
+  --ec-frm-edActTabIndBtmCol: var(--red);
+  --ec-frm-trmBg: #191611;
+  --ec-frm-trmTtbBg: #221e18;
+  --ec-frm-trmTtbBrdBtmCol: #28241e;
+  --ec-frm-trmTtbFg: #a59c8b;
+  --ec-frm-trmTtbDotsFg: #7b7365;
+  --ec-frm-inlBtnFg: #e7dece;
+  --ec-frm-inlBtnBg: #ffffff17;
+  --ec-frm-frameBoxShdCssVal: 0 18px 34px -24px rgba(28, 23, 18, 0.5);
+  --ec-gtrBrdCol: #28241e;
+  --ec-gtrFg: #7b7365;
+}

@@ -35,6 +35,21 @@ Running all tests should be done with:
 $ cargo xtask test
 ```
 
+### Docker / testcontainers
+
+Database and Redis tests use [testcontainers](https://crates.io/crates/testcontainers),
+which spin up their own Postgres/Redis containers on demand — so you need a
+running Docker daemon, but you do **not** need to start Postgres/Redis yourself.
+
+If you use a non–Docker Desktop runtime (Colima, OrbStack, Podman, ...), the
+Docker socket is not at the default `/var/run/docker.sock` and testcontainers
+will fail with `SocketNotFoundError("/var/run/docker.sock")`. Point it at your
+socket, e.g. for Colima:
+
+```
+$ export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock"
+```
+
 ## Rebuilding your database and local generated entities
 
 This should write out a fresh DB structure (drops and migrates):

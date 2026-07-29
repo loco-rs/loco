@@ -15,6 +15,7 @@ use std::sync::Arc;
 /// Errors related to cache operations
 #[derive(thiserror::Error, Debug)]
 #[allow(clippy::module_name_repetitions)]
+#[non_exhaustive]
 pub enum CacheError {
     #[error(transparent)]
     Any(#[from] Box<dyn std::error::Error + Send + Sync>),

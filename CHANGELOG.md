@@ -2,43 +2,308 @@
 
 
 
-##  Unreleased
-- Fix `cargo fmt` error in `loco-new` ([#1669](https://github.com/loco-rs/loco/pull/1669))
-- Fix UUID pattern in form field generation ([#1665](https://github.com/loco-rs/loco/pull/1665))
-- Add tests for auth extractor ([#1671](https://github.com/loco-rs/loco/pull/1671))
-- Fix Clippy warnings for Rust 1.92 ([#1705](https://github.com/loco-rs/loco/pull/1705))
-- Add email headers support to mailer ([#1700](https://github.com/loco-rs/loco/pull/1700))
-- Wrap `TeraView` in `Arc` to reduce runtime memory usage ([#1703](https://github.com/loco-rs/loco/pull/1703))
-- Allow overriding a secure header ([#1659](https://github.com/loco-rs/loco/pull/1659))
-- Add “create user” task ([#1670](https://github.com/loco-rs/loco/pull/1670))
-- Add `UuidUniqWithDefault` and `UuidWithDefault` types ([#1642](https://github.com/loco-rs/loco/pull/1642))
-- Refactor users model to reuse `find_by_api_key` in `Authenticable` ([#1706](https://github.com/loco-rs/loco/pull/1706))
-- Split error detail generic parameters ([#1709](https://github.com/loco-rs/loco/pull/1709))
-- Update `loco-new` for new Rhai version ([#1704](https://github.com/loco-rs/loco/pull/1704))
+## 1.0.0 - 2026-07-25
+
+1.0.0 is the first stable Loco release — a single, intentionally-breaking
+milestone. Its headline is the move to **Sea-ORM 2.0**, alongside first-class
+LLM/agent support, priority queues, a broad dependency modernization, and a deep
+hardening pass across the queue, storage, config, error, remote-IP, and
+middleware subsystems. Follow the step-by-step
+[0.16 → 1.0 upgrade guide](https://loco.rs/docs/extras/upgrades/).
 
 ### Breaking Changes
-In file `src/initializers/view_engine.rs`, modify the code lines in `after_routes`:
 
-Before
+- **Sea-ORM 2.0 + sqlx 0.9.** Bump `sea-orm`/`sea-orm-migration` to **`2.0`**
+  (app + `migration` crate), direct `sqlx` to `0.9`, update the Sea-ORM CLI, and
+  regenerate entities. Raw-`Statement` calls gain a `_raw` suffix; runtime SQL
+  strings need `AssertSqlSafe`. MSRV is **1.94** (sea-orm 2.0.0 declares it).
+  (Adopted from the SeaQL fork and
+  [#1698](https://github.com/loco-rs/loco/pull/1698).)
+- **Generated primary/foreign keys are now 64-bit (BIGINT / `i64`).** Also the
+  `int`/`unsigned` field types generate 64-bit columns. Only affects newly
+  generated code; existing tables are untouched.
+- **Priority queues — Redis backend change.** The Redis worker moved from Lists
+  to Sorted Sets (ZSET) to support priority; **drain existing Redis queues before
+  upgrading**. Postgres/SQLite auto-migrate a `priority` column (no action).
+  ([#1693](https://github.com/loco-rs/loco/pull/1693))
+- **`Worker::perform_later()` returns the job ID** (`Result<String>`), and
+  `Queue::enqueue()` returns `Result<Option<String>>`. Existing
+  `perform_later(...).await?;` keeps working. ([#1624](https://github.com/loco-rs/loco/pull/1624), fixes [#1623](https://github.com/loco-rs/loco/issues/1623))
+- **`PageResponse<T>` exposes `meta: PagerMeta`** instead of flat
+  `total_pages`/`total_items` (also carries `page`/`page_size`). ([#1685](https://github.com/loco-rs/loco/pull/1685), fixes [#1683](https://github.com/loco-rs/loco/issues/1683))
+- **View engine:** use `engines::TeraView::build_with_post_process(...)` instead
+  of `TeraView::build()?.post_process(...)` in `after_routes`.
+- **Dependency majors:** `thiserror` 1→2, `tower` 0.4→0.5, `heck`→0.5,
+  `byte-unit` 4→5, `ipnetwork` 0.20→0.21, `strum`→0.27, `redis` 0.31→1,
+  `bb8-redis`→0.26, `opendal` 0.54→0.57; `serde_yaml`→`serde_yaml_ng`.
+  Transitive for most apps.
+- Removed the dead `loco-cli` crate (superseded by `loco-new`, the published
+  `loco` binary).
+- **`ExtraDbInitializer` removed; use `MultiDbInitializer`.** The
+  single-extra-connection initializer (`initializers.extra_db`, which layered a
+  bare `Extension<DatabaseConnection>`) is gone. Use `MultiDbInitializer` with a
+  one-entry `initializers.multi_db` map instead, and extract the connection with
+  `Extension<MultiDb>` + `multi_db.get("<name>")`. This collapses two
+  near-identical initializers into one named-connections abstraction.
+- **`AppContext` is now `#[non_exhaustive]`.** Construct it with
+  `AppContext::builder(environment, db, config)` (or `builder(environment,
+  config)` without the `with-db` feature) followed by optional
+  `.queue_provider(..)`/`.mailer(..)`/`.storage(..)`/`.cache(..)`/`.shared_store(..)`
+  and `.build()`. Direct struct-literal construction and exhaustive pattern
+  matches on `AppContext` from outside the crate no longer compile; field
+  access (`ctx.db`, `ctx.config`, `State`/`FromRef` extraction) is unchanged.
+  This makes future context fields non-breaking to add.
+- **Storage `MirrorStrategy` and `BackupStrategy` merged into `ReplicatedStrategy`.**
+  The two strategies were the same primary-plus-secondaries replication engine;
+  they are now one `storage::strategies::replicated::ReplicatedStrategy` with a
+  single `FailurePolicy` enum. Migrate: `MirrorStrategy::new(p, s, MirrorAll)` →
+  `ReplicatedStrategy::mirror(p, s, FailurePolicy::FailIfAny)`;
+  `BackupStrategy::new(p, s, BackupAll)` → `ReplicatedStrategy::backup(p, s,
+  FailurePolicy::FailIfAny)`. Old `FailureMode` maps: `AllowMirrorFailure`/
+  `AllowBackupFailure` → `AllowAll`, `AtLeastOneFailure` → `AllowSingleFailure`,
+  `CountFailure(n)` → `FailAtFailures(n)`. Secondary writes for the former
+  backup strategy now run concurrently (previously sequential); the collected
+  errors and failure decision are unchanged.
+- **Local storage driver no longer defaults its root to `/`.**
+  `storage::drivers::local::new()` previously rooted the filesystem store at
+  `/`, so any key — including one derived from user input — resolved against the
+  whole disk (e.g. downloading key `etc/passwd` read `/etc/passwd`). It now roots
+  at the current working directory. Apps that relied on absolute-path keys should
+  switch to `local::new_with_prefix("/your/root")` to opt back into an explicit
+  absolute root.
+- **Background queue reworked into a `QueueProvider` adapter interface.** The
+  `bgworker::Queue` enum (`Postgres`/`Sqlite`/`Redis`/`None`) is now a newtype
+  over `Arc<dyn QueueProvider>`, so backends are pluggable (implement
+  `QueueProvider` and wrap with `Queue::from_provider`). All existing methods
+  (`enqueue`, `register`, `run`, `ping`, `cancel_jobs`, `clear_by_status`,
+  `requeue`, …) keep the same signatures and behavior. Only two source-level
+  changes affect callers: construct a no-op queue with `Queue::empty()` instead
+  of `Queue::None`, and code that pattern-matched the enum variants (e.g.
+  `Queue::Postgres(pool, ..)` to reach the raw pool) no longer compiles — use the
+  provider methods instead.
+- **Fallback middleware defaults to `404`.** When the built-in fallback is
+  enabled without an explicit `code`, it now returns `404 Not Found` (matching
+  its docs and the bundled not-found page) instead of `200 OK`. Apps that relied
+  on the enabled fallback returning `200` must set `code: 200` explicitly. The
+  file-based fallback is unaffected (`ServeFile` reports its own status).
+- **`{env}.local.yaml` now deep-merges over `{env}.yaml`.** Previously the first
+  existing file won and the other was ignored, so a `.local.yaml` had to restate
+  the whole config. Both files are now layered with local precedence: mappings
+  merge recursively; scalars and sequences in local replace the base value
+  (sequences are not concatenated). Base keys now persist unless explicitly
+  overridden.
+- **More accurate HTTP status codes for errors.** `IntoResponse for Error`
+  previously collapsed ~28 of 35 variants to `500`. `Model(EntityNotFound)` now
+  returns `404`, `Model(EntityAlreadyExists)` returns `409`, model validation
+  and form-body rejections return `4xx` (matching JSON rejections) instead of
+  `500`. Genuinely-internal errors still return a generic `500`. Handlers that
+  asserted on the old `500`s will observe the corrected codes.
+- **`JWT::algorithm()` restricted to the HMAC family.** It now takes a new
+  `loco_rs::auth::jwt::JWTAlgorithm` enum (`HS256`/`HS384`/`HS512`) instead of
+  `jsonwebtoken::Algorithm`. Asymmetric algorithms — which could never work with
+  Loco's shared base64 secret and silently produced broken tokens — are no longer
+  representable.
+- **`remote_ip` middleware rebuilt on `axum-client-ip`; `trusted_proxies`
+  removed.** Previously this middleware walked `X-Forwarded-For` right-to-left,
+  skipping any address in a configurable `trusted_proxies` CIDR list (or a
+  built-in RFC-1918 + loopback list), so it could see through a chain of one or
+  more trusted proxies. It now trusts exactly **one** configured source
+  (`source: ClientIpSource`, default `RightmostXForwardedFor`) and does **no**
+  CIDR filtering — for the default it takes the last comma-separated value of the
+  last `X-Forwarded-For` header verbatim, private or not. Single reverse-proxy
+  deployments are unaffected. **Multi-hop topologies (CDN → LB → ingress) must
+  now configure their innermost hop to set the client IP (e.g. nginx
+  `set_real_ip_from`/`real_ip_recursive`), or point `source` at a provider header
+  (`CfConnectingIp`, `CloudFrontViewerAddress`, `XRealIp`, `ConnectInfo`, …).**
+  Note: an old config's `trusted_proxies:` key is silently ignored (unknown
+  field), so review `remote_ip` before upgrading — this is a silent
+  security-relevant behavior change, not a load error. The `RemoteIP` extractor
+  and its `Display` output are unchanged.
+- **`auth_jwt` feature renamed to `auth`.** Update `features = ["auth_jwt"]` → `["auth"]`
+  (it gates JWT auth and the `ApiToken` extractor, as before).
+- **Background-queue features collapsed.** `bg_pg`/`bg_sqlt` → `worker`
+  (Postgres+SQLite; free once `sqlx` is compiled), `bg_redis` → `worker_redis`
+  (adds `dep:redis`). `default` now has `worker` (not Redis). A Redis queue needs
+  `worker_redis`; the queue backend is selected at runtime by `queue.kind`.
+- **Mailer `Template::new(dir)` now returns `Result`** (call `Template::new(dir)?`).
+  Email templates render through a full Tera instance so they support inheritance
+  and shared templates. Standard usage via `Mailer::mail_template` is unchanged.
+  ([#1694](https://github.com/loco-rs/loco/pull/1694))
+- **`Vars::cli_arg` returns `Result<&str>`** (was `Result<&String>`). Callers that
+  relied on `&String` (e.g. `.clone()` into a `String`) should use `.to_owned()`.
+  ([#1732](https://github.com/loco-rs/loco/pull/1732))
 
-```rust
-async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
-                :
-    engines::TeraView::build()?.post_process(move |tera| {
-                :
-```
+### Added
 
-After (use `build_with_post_process` instead of `post_process`)
+- **First-class LLM / agent support.** Root `AGENTS.md` teaches agents to build
+  Loco apps; `llms.txt` / `llms-full.txt` are served from the site
+  (llmstxt.org). Every `loco new` app ships an app-level `AGENTS.md`.
+- **Priority queues** with `Worker::perform_later_with_priority(...)`; mailer
+  jobs default to priority `100`. ([#1693](https://github.com/loco-rs/loco/pull/1693))
+- **Mailer implicit TLS (SMTPS / port 465)** via `mailer.smtp.tls`. ([#1774](https://github.com/loco-rs/loco/pull/1774), fixes [#1773](https://github.com/loco-rs/loco/issues/1773))
+- **Run the scheduler without a worker** — `--scheduler` flag +
+  `StartMode::ServerAndScheduler`/`WorkerAndScheduler`. ([#1742](https://github.com/loco-rs/loco/pull/1742), fixes [#1737](https://github.com/loco-rs/loco/issues/1737))
+- Email headers support in the mailer ([#1700](https://github.com/loco-rs/loco/pull/1700)).
+- **Multi-recipient emails.** `Mailer::mail_multi` / `mail_template_multi` and the
+  `MultiEmail` / `MultiArgs` types send one email to multiple To/CC/BCC
+  recipients (processed by a dedicated `MultiMailerWorker`). ([#1764](https://github.com/loco-rs/loco/pull/1764))
+- **Email template inheritance & shared templates.** Mailer templates support
+  Tera `{% extends %}` / `{% block %}` and can share a common layout via
+  `Mailer::mail_template_with_shared` / `Template::new_with_shared`. `loco generate
+  mailer` now scaffolds a `src/mailers/shared/` base layout that the welcome
+  template extends. ([#1694](https://github.com/loco-rs/loco/pull/1694))
+- "Create user" task ([#1670](https://github.com/loco-rs/loco/pull/1670)).
+- `UuidUniqWithDefault` and `UuidWithDefault` types ([#1642](https://github.com/loco-rs/loco/pull/1642)).
+- Allow overriding a secure header ([#1659](https://github.com/loco-rs/loco/pull/1659)).
+- **`Mailer::deliver_now` / `mail_template_now` for synchronous sends.**
+  Complements `Mailer::mail`/`mail_template` (which enqueue via the background
+  worker, like Rails `deliver_later`) with an inline send that bypasses the
+  queue (Rails `deliver_now`).
+- **`MiddlewareStackExt` for surgical middleware-stack edits.** Inside
+  `Hooks::middlewares`, tweak the default stack instead of rebuilding it:
+  `stack.insert_before("cors", ..)`, `.insert_after(..)`, `.replace(..)`, and
+  `.delete("logger")` — matched by middleware name (Rails'
+  `config.middleware.insert_before`/`delete`). Available via the prelude.
+- **Optional JWT extraction.** `JWT` now implements `OptionalFromRequestParts`,
+  so a handler can take `Option<JWT>` to serve authenticated and anonymous
+  callers from one endpoint (`Some` when a valid token is present, `None`
+  otherwise).
+- **Ergonomic verb-explicit route methods.** `Routes` now has `get`/`post`/
+  `put`/`delete`/`patch`/`head`/`options`/`trace` builder methods —
+  `Routes::new().get("/ping", ping)` alongside the existing
+  `.add("/ping", get(ping))`. They record the HTTP verb directly (exact
+  `cargo loco routes` output without relying on the debug-format regex).
+  Purely additive; `add` is unchanged.
+- **Opt-in background-job reaper (visibility timeout).** Each queue backend's
+  config accepts a `reaper: { age_minutes, interval_seconds }` block. When set,
+  the worker periodically requeues jobs stranded in `Processing` (e.g. by a
+  crashed worker) back to `Queued`, instead of requiring a manual
+  `cargo loco jobs requeue`. Disabled by default — existing behavior is unchanged.
+- **TLS to managed Postgres and Redis.** Postgres TLS works via the connection
+  URL (`sslmode=require`, `sslrootcert=...`) with no feature flag, and a new
+  `redis_tls` feature enables `rediss://` for both the queue and cache Redis
+  backends (webpki roots, pure-Rust `ring` provider — no C toolchain). New
+  how-to: "Connect to Postgres and Redis over TLS". ([#1191](https://github.com/loco-rs/loco/issues/1191), [#1341](https://github.com/loco-rs/loco/issues/1341))
+- **Typed, streaming `db::dump::<A>()`** — counterpart to `db::seed::<A>()` that
+  streams rows through their entity `Model` straight to disk (memory bounded to
+  a single row) with full type fidelity. New `Hooks::dump` (default dumps every
+  table; override it to call `db::dump` per entity) backs `cargo loco db seed
+  --dump`. ([#1691](https://github.com/loco-rs/loco/issues/1691))
+- **`logger::init_layer` / `logger::init_env_filter` are now public** building
+  blocks, so an app overriding `Hooks::init_logger` can reuse Loco's formatting
+  and filter policy while adding its own layers (e.g. `tracing-flame`, OTLP).
+  ([#1753](https://github.com/loco-rs/loco/issues/1753))
 
-```rust
-async fn after_routes(&self, router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
-                :
-    engines::TeraView::build_with_post_process(move |tera| {
-                :
-}
-```
+### Changed
 
+- Wrap `TeraView` in `Arc` to reduce runtime memory usage ([#1703](https://github.com/loco-rs/loco/pull/1703)).
+- Refactor users model to reuse `find_by_api_key` in `Authenticable` ([#1706](https://github.com/loco-rs/loco/pull/1706)).
+- Split error detail generic parameters ([#1709](https://github.com/loco-rs/loco/pull/1709)).
+- Update `loco-new` for the new Rhai version ([#1704](https://github.com/loco-rs/loco/pull/1704)).
+- Replaced hand-rolled `Cargo.lock` parsing with the `cargo-lock` crate; retired
+  `duct_sh`.
+- **`Error` → HTTP-status mapping is now exhaustive.** The `IntoResponse for
+  Error` match dropped its trailing `_ => 500` wildcard: every variant (and every
+  nested `ModelError` variant) is now classified explicitly, so adding a new
+  error variant is a compile error until its status is chosen — it can no longer
+  silently default to `500`. The `Error` enum is also reorganized into
+  client-facing vs internal/infra regions. Behavior is unchanged (all infra
+  errors still map to `500`); no variant was renamed, so existing code is
+  unaffected.
+- **Rust edition 2024.** `loco-rs`, `loco-gen`, `xtask`, and the `loco` new-app
+  generator now compile on edition 2024 (MSRV floor unchanged at 1.94; edition
+  2024 needs ≥ 1.85). Editions are per-crate, so apps depending on Loco need not
+  change. Newly generated apps stay on edition 2021 for now.
+- Deduplicated the Postgres and SQLite background-queue providers: the shared
+  `Job`/`JobRegistry`/`RunOpts` now live in one module behind a `Driver` trait
+  (internal refactor, no behavior or API-path change).
+- In-memory cache now uses `moka::future::Cache` instead of wrapping the
+  synchronous cache behind `#[async_trait]` (removes a sync-behind-async smell;
+  no API change).
+- Cookie token extraction now uses `axum_extra`'s `Cookie::value()` instead of
+  hand-parsing the cookie string (byte-identical behavior).
+- Internal de-duplication pass (no public-API-path or behavior change unless
+  noted): the response helpers in `format` are now single-sourced through
+  `RenderBuilder`; the `JWT`/`JWTWithUser` extractors share one validate/decode
+  helper; the six validate extractors are generated from shared decoder fns +
+  two error-tier macros; the byte-identical `Job` struct is shared across the
+  SQL and Redis queue backends; the twin `cli::main` functions share one
+  `dispatch_common`; and duplicate env-var name constants were removed.
+- `format`'s two response paths were converged onto axum's canonical behavior:
+  `RenderBuilder::json` and `RenderBuilder::redirect_with_header_key` are now
+  infallible with respect to bad input (they return a `500` response, matching
+  `axum::Json` / `axum::response::Redirect`) instead of returning `Err`.
 
+### Fixed
+
+- **`db seed --dump` datetime round-trip on SQLite.** Loco's timestamptz columns
+  default to `CURRENT_TIMESTAMP`, which SQLite stores as space-separated text
+  (`"YYYY-MM-DD HH:MM:SS"`); dumps captured that verbatim and then failed
+  chrono's RFC3339 parse on re-seed (`Json("premature end of input")`). Dumps now
+  normalize such datetimes to RFC3339 (already-RFC3339 text is untouched).
+  ([#1736](https://github.com/loco-rs/loco/issues/1736), [#1691](https://github.com/loco-rs/loco/issues/1691))
+- `cargo fmt` error in `loco-new` ([#1669](https://github.com/loco-rs/loco/pull/1669)).
+- UUID pattern in form field generation ([#1665](https://github.com/loco-rs/loco/pull/1665)).
+- Clippy warnings for recent Rust ([#1705](https://github.com/loco-rs/loco/pull/1705)).
+- Add tests for the auth extractor ([#1671](https://github.com/loco-rs/loco/pull/1671)).
+- **Postgres/SQLite queue backends now behave consistently.** Two divergences
+  between the Postgres and SQLite job backends are fixed: (1) `enqueue` on
+  Postgres previously *swallowed* a tag-serialization error (storing `tags =
+  null`); it now propagates the error like SQLite. (2) `complete_job` without a
+  repeat interval on Postgres stamped `run_at = NOW()` on the completed row while
+  SQLite left it untouched; Postgres now leaves `run_at` as-is, matching SQLite
+  (the interval path still reschedules `run_at` on both). The shared `to_job` row
+  mapper is now single-sourced across both backends.
+- **Storage mirror fan-out no longer stops at the first failing secondary.**
+  `rename`, `copy`, and `upload_stream` checked the failure mode *inside* the
+  secondary loop and returned early on the first failure, silently leaving later
+  mirrors stale (`upload`/`delete` were already correct). All five mutating
+  methods now share one helper that attempts every secondary (concurrently) and
+  applies the failure mode once.
+- **Postgres `BOOLEAN` columns are no longer dropped from `dump_tables`.** The
+  decode probe chain had no `bool` arm, so PG booleans (which don't fall back to
+  the numeric arms like SQLite's integer-backed booleans) were silently omitted.
+- **`Hooks::on_shutdown` now runs in worker-only start modes.** `WorkerOnly` and
+  `WorkerAndScheduler` bypassed `H::serve` (the hook's only caller); the shutdown
+  hook is now invoked on their shutdown path too.
+- **Postgres admin/maintenance URI is derived with the `url` crate.** Building it
+  via `db_uri.replace(db_name, "/postgres")` corrupted the URI when the database
+  name also appeared in the host or credentials.
+- **Foreign-key names are normalized consistently.** `reference_id` received a
+  normalized table name in `create_table` but raw names in
+  `add_reference`/`remove_reference`, so irregular plurals produced mismatched FK
+  column/constraint names between creation and later add/remove.
+- `ViewEngine` extractor now rejects gracefully (HTTP `500`) when the opt-in Tera
+  layer is absent, instead of declaring `Infallible` and then panicking.
+- `cargo loco routes` lists every HTTP verb of a multi-method route (route
+  introspection previously reported only the first).
+- Removed a fossilized 3-second `sleep` on every Redis queue boot (a leaked
+  test-isolation artifact; Postgres/SQLite had no equivalent).
+- Password redaction in test snapshots (`cleanup_user_model`) now targets the
+  quoted value precisely; the previous pattern had a degenerate quantifier that
+  swallowed the field following `password`.
+- Postgres test-database cleanup now completes synchronously (a joined worker
+  thread) instead of a fire-and-forget task, so parallel test runs no longer
+  leak databases; `PostgresTest` also builds its connection strings with the
+  `url` crate rather than a corruption-prone substring replace.
+- `RenderBuilder::template` now threads the builder's chained `status`/`header`/
+  `etag`/`cookies` through to the response; it previously delegated to the free
+  `html()` and silently dropped them.
+- `llms.txt`: two `Core concepts` links pointed at doc pages that don't exist
+  (`the-app/configuration/`, `the-app/testing/`); repointed to the sections that
+  actually document them. A new `cargo xtask llms-check` CI step now verifies the
+  curated LLM docs against the docs tree so these links can't drift silently.
+
+### Removed
+
+- **`Error` enum narrowing.** Removed four low-value/dependency-leaking variants
+  that all mapped to HTTP 500 and were never matched: `Error::EnvVar`,
+  `Error::SemVer`, `Error::TaskJoinError`, and `Error::Hash` (hashing errors now
+  surface as `Error::Message`). `Error` remains `#[non_exhaustive]`, so exhaustive
+  matches already require a wildcard arm and are unaffected.
+- Deleted shipped-but-dead code: the never-compiled
+  `controller/middleware/_archive/content_etag.rs` module and a commented-out
+  block of backtrace-blocklist regexes.
 
 ## v0.16.4 
 - Feat: decouple JWT authentication from database dependency. [https://github.com/loco-rs/loco/pull/1546](https://github.com/loco-rs/loco/pull/1546)

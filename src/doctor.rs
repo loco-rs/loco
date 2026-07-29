@@ -23,7 +23,6 @@ use std::{
 
 use crate::{
     bgworker,
-    cargo_config::CargoConfig,
     config::{self, Config},
     depcheck, Error, Result,
 };
@@ -37,7 +36,7 @@ const QUEUE_CONN_FAILED: &str = "queue connection: failed";
 const QUEUE_NOT_CONFIGURED: &str = "queue not configured?";
 
 // versions health
-const MIN_SEAORMCLI_VER: &str = "1.1.0";
+const MIN_SEAORMCLI_VER: &str = "2.0.0-rc";
 static MIN_DEP_VERSIONS: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
 static RE_CRATE_VERSION: OnceLock<Regex> = OnceLock::new();
 
@@ -50,7 +49,7 @@ fn get_min_dep_versions() -> &'static HashMap<&'static str, &'static str> {
         let mut min_vers = HashMap::new();
 
         min_vers.insert("tokio", "1.33.0");
-        min_vers.insert("sea-orm", "1.1.0");
+        min_vers.insert("sea-orm", "2.0.0-rc");
         min_vers.insert("validator", "0.20.0");
         min_vers.insert("axum", "0.8.1");
 
@@ -221,10 +220,8 @@ pub async fn run_all<H: crate::app::Hooks>(
 /// # Errors
 /// Returns error if fails
 pub fn check_deps() -> Result<Check> {
-    let cargolock = CargoConfig::lock_from_current_dir()?;
-
     let crate_statuses =
-        depcheck::check_crate_versions(&cargolock, get_min_dep_versions().clone())?;
+        depcheck::check_crate_versions("Cargo.lock", get_min_dep_versions().clone())?;
     let mut report = String::new();
     let _ = write!(report, "Dependencies");
     let mut all_ok = true;
@@ -292,8 +289,8 @@ pub async fn check_db(config: &crate::config::Database) -> Check {
 
 /// Checks the Redis connection.
 pub async fn check_queue(config: &Config) -> Check {
-    if let Ok(Some(queue)) = bgworker::create_queue_provider(config).await {
-        match queue.ping().await {
+    match bgworker::create_queue_provider(config).await {
+        Ok(Some(queue)) => match queue.ping().await {
             Ok(()) => Check {
                 status: CheckStatus::Ok,
                 message: format!("{}: {}", queue.describe(), QUEUE_CONN_OK),
@@ -304,13 +301,12 @@ pub async fn check_queue(config: &Config) -> Check {
                 message: format!("{}: {}", queue.describe(), QUEUE_CONN_FAILED),
                 description: Some(err.to_string()),
             },
-        }
-    } else {
-        Check {
+        },
+        _ => Check {
             status: CheckStatus::NotConfigure,
             message: QUEUE_NOT_CONFIGURED.to_string(),
             description: None,
-        }
+        },
     }
 }
 

@@ -18,7 +18,9 @@ fn test_config_file_queue(
     #[values("config/development.yaml", "config/test.yaml")] config_file: &str,
     #[values(
         BackgroundOption::Async,
-        BackgroundOption::Queue,
+        BackgroundOption::QueueRedis,
+        BackgroundOption::QueuePostgres,
+        BackgroundOption::QueueSqlite,
         BackgroundOption::Blocking
     )]
     background: BackgroundOption,
@@ -26,34 +28,16 @@ fn test_config_file_queue(
     let generator = run_generator(background.clone());
     let content = assertion::yaml::load(generator.path(config_file));
 
-    if background == BackgroundOption::Queue {
-        assertion::yaml::assert_path_is_object(&content, &["queue"]);
-        assertion::yaml::assert_path_key_count(&content, &["queue"], 3);
-        assertion::yaml::assert_path_value_eq_string(&content, &["queue", "kind"], "Redis");
-        assertion::yaml::assert_path_value_eq_bool(
-            &content,
-            &["queue", "dangerously_flush"],
-            false,
-        );
-
-        let mut inner_uri = serde_yaml::Mapping::new();
-        inner_uri.insert(
-            serde_yaml::Value::String("get_env(name=\"REDIS_URL\"".to_string()),
-            serde_yaml::Value::Null,
-        );
-        inner_uri.insert(
-            serde_yaml::Value::String("default=\"redis://127.0.0.1\")".to_string()),
-            serde_yaml::Value::Null,
-        );
-        let mut uri = serde_yaml::Mapping::new();
-        uri.insert(
-            serde_yaml::Value::Mapping(inner_uri),
-            serde_yaml::Value::Null,
-        );
-
-        assertion::yaml::assert_path_value_eq_mapping(&content, &["queue", "uri"], &uri);
-    } else {
-        assertion::yaml::assert_path_is_empty(&content, &["queue"]);
+    match background {
+        BackgroundOption::QueueRedis
+        | BackgroundOption::QueuePostgres
+        | BackgroundOption::QueueSqlite => {
+            assertion::yaml::assert_path_is_object(&content, &["queue"]);
+            assertion::yaml::assert_path_key_count(&content, &["queue"], 3);
+        }
+        BackgroundOption::Async | BackgroundOption::Blocking => {
+            assertion::yaml::assert_path_is_empty(&content, &["queue"]);
+        }
     }
 }
 
@@ -62,7 +46,9 @@ fn test_config_file_workers(
     #[values("config/development.yaml")] config_file: &str,
     #[values(
         BackgroundOption::Async,
-        BackgroundOption::Queue,
+        BackgroundOption::QueueRedis,
+        BackgroundOption::QueuePostgres,
+        BackgroundOption::QueueSqlite,
         BackgroundOption::Blocking
     )]
     background: BackgroundOption,
@@ -78,7 +64,9 @@ fn test_config_file_workers(
                 "BackgroundAsync",
             );
         }
-        BackgroundOption::Queue => {
+        BackgroundOption::QueueRedis
+        | BackgroundOption::QueuePostgres
+        | BackgroundOption::QueueSqlite => {
             assertion::yaml::assert_path_value_eq_string(
                 &content,
                 &["workers", "mode"],
@@ -101,7 +89,9 @@ fn test_config_file_workers(
 fn test_config_file_workers_tests(
     #[values(
         BackgroundOption::Async,
-        BackgroundOption::Queue,
+        BackgroundOption::QueueRedis,
+        BackgroundOption::QueuePostgres,
+        BackgroundOption::QueueSqlite,
         BackgroundOption::Blocking
     )]
     background: BackgroundOption,
@@ -117,7 +107,9 @@ fn test_config_file_workers_tests(
                 "ForegroundBlocking",
             );
         }
-        BackgroundOption::Queue => {
+        BackgroundOption::QueueRedis
+        | BackgroundOption::QueuePostgres
+        | BackgroundOption::QueueSqlite => {
             assertion::yaml::assert_path_value_eq_string(
                 &content,
                 &["workers", "mode"],
@@ -140,7 +132,9 @@ fn test_config_file_workers_tests(
 fn test_app_rs(
     #[values(
         BackgroundOption::Async,
-        BackgroundOption::Queue,
+        BackgroundOption::QueueRedis,
+        BackgroundOption::QueuePostgres,
+        BackgroundOption::QueueSqlite,
         BackgroundOption::Blocking
     )]
     background: BackgroundOption,
@@ -156,7 +150,9 @@ fn test_app_rs(
 fn test_src_lib_rs(
     #[values(
         BackgroundOption::Async,
-        BackgroundOption::Queue,
+        BackgroundOption::QueueRedis,
+        BackgroundOption::QueuePostgres,
+        BackgroundOption::QueueSqlite,
         BackgroundOption::Blocking
     )]
     background: BackgroundOption,
@@ -173,7 +169,9 @@ fn test_src_lib_rs(
 fn test_tests_mod_rs(
     #[values(
         BackgroundOption::Async,
-        BackgroundOption::Queue,
+        BackgroundOption::QueueRedis,
+        BackgroundOption::QueuePostgres,
+        BackgroundOption::QueueSqlite,
         BackgroundOption::Blocking
     )]
     background: BackgroundOption,

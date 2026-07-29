@@ -134,7 +134,7 @@ async fn check_enum_exists(m: &SchemaManager<'_>, enum_name: &str) -> Result<boo
 
             let result = m
                 .get_connection()
-                .query_one(sea_orm::Statement::from_string(
+                .query_one_raw(sea_orm::Statement::from_string(
                     sea_orm::DatabaseBackend::Postgres,
                     query,
                 ))
@@ -149,6 +149,10 @@ async fn check_enum_exists(m: &SchemaManager<'_>, enum_name: &str) -> Result<boo
         }
         sea_orm::DatabaseBackend::MySql => {
             // MySQL doesn't support enums in the same way, so we'll always return false
+            Ok(false)
+        }
+        _ => {
+            // Unknown database, do nothing
             Ok(false)
         }
     }
@@ -323,7 +327,9 @@ impl ColType {
     #[allow(clippy::too_many_lines)]
     fn to_def(&self, name: impl IntoIden) -> ColumnDef {
         match self {
-            Self::PkAuto => pk_auto(name),
+            // 64-bit auto PK by default (Sea-ORM 2.0 maps SQLite integers to i64,
+            // and bigint PKs are the modern default a la Rails 5.1+).
+            Self::PkAuto => big_pk_auto(name),
             Self::PkUuid => pk_uuid(name),
             Self::CharLen(len) => char_len(name, *len),
             Self::CharLenNull(len) => char_len_null(name, *len),
@@ -576,36 +582,41 @@ async fn create_table_impl(
             ColType::Enum(enum_name, variants)
             | ColType::EnumNull(enum_name, variants)
             | ColType::EnumWithDefault(enum_name, variants, _)
-            | ColType::EnumNullWithDefault(enum_name, variants, _) => {
-                if !enum_types.contains(enum_name) {
-                    enum_types.insert(enum_name.clone());
+            | ColType::EnumNullWithDefault(enum_name, variants, _)
+                if !enum_types.contains(enum_name) =>
+            {
+                enum_types.insert(enum_name.clone());
 
-                    // Check if enum type already exists
-                    let enum_exists = check_enum_exists(m, enum_name).await?;
+                // Check if enum type already exists
+                let enum_exists = check_enum_exists(m, enum_name).await?;
 
-                    if !enum_exists {
-                        // Create enum type with provided variants
-                        match m.get_database_backend() {
-                            sea_orm::DatabaseBackend::Postgres => {
-                                let variant_aliases: Vec<Alias> =
-                                    variants.iter().map(Alias::new).collect();
-                                m.create_type(
-                                    sea_query::extension::postgres::Type::create()
-                                        .as_enum(Alias::new(enum_name))
-                                        .values(variant_aliases)
-                                        .to_owned(),
-                                )
-                                .await?;
-                            }
-                            #[allow(clippy::match_same_arms)]
-                            sea_orm::DatabaseBackend::Sqlite => {
-                                // SQLite doesn't support native enum types
-                                // The enum behavior will be handled by the column definition
-                                // which will create a TEXT column with CHECK constraints
-                            }
-                            sea_orm::DatabaseBackend::MySql => {
-                                // MySql not supporting
-                            }
+                if !enum_exists {
+                    // Create enum type with provided variants.
+                    // Several backends intentionally share an empty body
+                    // (enums are Postgres-only; others no-op).
+                    #[allow(clippy::match_same_arms)]
+                    match m.get_database_backend() {
+                        sea_orm::DatabaseBackend::Postgres => {
+                            let variant_aliases: Vec<Alias> =
+                                variants.iter().map(Alias::new).collect();
+                            m.create_type(
+                                sea_query::extension::postgres::Type::create()
+                                    .as_enum(Alias::new(enum_name))
+                                    .values(variant_aliases)
+                                    .to_owned(),
+                            )
+                            .await?;
+                        }
+                        sea_orm::DatabaseBackend::Sqlite => {
+                            // SQLite doesn't support native enum types
+                            // The enum behavior will be handled by the column definition
+                            // which will create a TEXT column with CHECK constraints
+                        }
+                        sea_orm::DatabaseBackend::MySql => {
+                            // MySql not supporting
+                        }
+                        _ => {
+                            // Unknown database, do nothing
                         }
                     }
                 }
@@ -663,16 +674,21 @@ async fn create_table_impl(
         };
         // Only add the column if it doesn't already exist in cols
         if !cols.iter().any(|(col_name, _)| *col_name == nz_ref_name) {
+            // FK columns must match the referenced 64-bit (`big_pk_auto`) PK.
             let col_type = if is_nullable {
-                ColType::IntegerNull
+                ColType::BigIntegerNull
             } else {
-                ColType::Integer
+                ColType::BigInteger
             };
             stmt.col(col_type.to_def(Alias::new(&nz_ref_name)));
         }
-        // Set FK actions based on nullability
+        // Set FK actions based on nullability.
+        // Name the constraint from the child table to the referenced (parent)
+        // table so it matches `add_reference`/`remove_reference`
+        // (`fk-{child}-{ref}-to-{parent}`); otherwise a FK created here could not
+        // be dropped by `remove_reference`.
         let mut fk = sea_query::ForeignKey::create();
-        fk.name(format!("fk-{nz_from_table}-{nz_ref_name}-to-{nz_table}"));
+        fk.name(format!("fk-{nz_table}-{nz_ref_name}-to-{nz_from_table}"));
         fk.from(Alias::new(&nz_table), Alias::new(&nz_ref_name));
         fk.to(Alias::new(nz_from_table), Alias::new("id"));
         if is_nullable {
@@ -761,18 +777,19 @@ pub async fn add_reference(
     let nz_totbl = normalize_table(totbl);
     // user_id
     let nz_ref_name = if refname.is_empty() {
-        reference_id(totbl)
+        reference_id(&nz_totbl)
     } else {
         refname.to_string()
     };
     let bk = m.get_database_backend();
-    let col = ColType::Integer.to_def(Alias::new(&nz_ref_name));
+    // FK column must match the referenced 64-bit (`big_pk_auto`) PK.
+    let col = ColType::BigInteger.to_def(Alias::new(&nz_ref_name));
     let fk = TableForeignKey::new()
         // fk-movies-user_id-to-users
         .name(format!("fk-{nz_fromtbl}-{nz_ref_name}-to-{nz_totbl}"))
         // from movies#user_id
         .from_tbl(Alias::new(&nz_fromtbl))
-        .from_col(Alias::new(&nz_ref_name)) // xxx fix
+        .from_col(Alias::new(&nz_ref_name))
         // to users#id
         .to_tbl(Alias::new(nz_totbl))
         .to_col(Alias::new("id"))
@@ -785,7 +802,7 @@ pub async fn add_reference(
             m.alter_table(
                 alter(Alias::new(&nz_fromtbl))
                     // add movies#user_id (the user_id column is new)
-                    .add_column(col.clone()) // XXX fix, totbl_id
+                    .add_column(col.clone())
                     // add fk on movies#user_id
                     .add_foreign_key(&fk)
                     .to_owned(),
@@ -797,7 +814,7 @@ pub async fn add_reference(
             m.alter_table(
                 alter(Alias::new(&nz_fromtbl))
                     // add movies#user_id (the user_id column is new)
-                    .add_column(col.clone()) // XXX fix, totbl_id
+                    .add_column(col.clone())
                     .to_owned(),
             )
             .await?;
@@ -814,6 +831,12 @@ pub async fn add_reference(
                 )
                 .await?;
             */
+        }
+        bk => {
+            return Err(DbErr::BackendNotSupported {
+                db: bk.as_str(),
+                ctx: "add_reference",
+            });
         }
     }
     Ok(())
@@ -839,7 +862,7 @@ pub async fn remove_reference(
     let nz_totbl = normalize_table(totbl);
     // user_id
     let nz_ref_name = if refname.is_empty() {
-        reference_id(totbl)
+        reference_id(&nz_totbl)
     } else {
         refname.to_string()
     };
@@ -861,6 +884,12 @@ pub async fn remove_reference(
             // Per Rails 5.2, removing FK on existing table does nothing because
             // sqlite will not allow it.
             // more: https://www.bigbinary.com/blog/rails-6-adds-add_foreign_key-and-remove_foreign_key-for-sqlite3
+        }
+        bk => {
+            return Err(DbErr::BackendNotSupported {
+                db: bk.as_str(),
+                ctx: "remove_reference",
+            });
         }
     }
     Ok(())
@@ -897,7 +926,7 @@ pub async fn add_enum_values(
         sea_orm::DatabaseBackend::Postgres => {
             for value in new_values {
                 m.get_connection()
-                    .execute(sea_orm::Statement::from_string(
+                    .execute_raw(sea_orm::Statement::from_string(
                         sea_orm::DatabaseBackend::Postgres,
                         format!("ALTER TYPE {enum_name} ADD VALUE '{value}'"),
                     ))
@@ -914,6 +943,12 @@ pub async fn add_enum_values(
             // MySQL handles enums differently
             tracing::info!(
                 "MySQL: Enum values are handled by column definition. No action needed."
+            );
+        }
+        db => {
+            tracing::info!(
+                "{}: Unsure how to handle Enum values, no action to be done.",
+                db.as_str()
             );
         }
     }
@@ -941,7 +976,7 @@ pub async fn drop_enum_type(m: &SchemaManager<'_>, enum_name: &str) -> Result<()
             // Try to drop the enum type with CASCADE to handle any remaining references
             let query = format!("DROP TYPE IF EXISTS {enum_name} CASCADE");
             m.get_connection()
-                .execute(sea_orm::Statement::from_string(
+                .execute_raw(sea_orm::Statement::from_string(
                     sea_orm::DatabaseBackend::Postgres,
                     query,
                 ))
@@ -953,4 +988,103 @@ pub async fn drop_enum_type(m: &SchemaManager<'_>, enum_name: &str) -> Result<()
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reference_id_is_pure_and_normalization_helpers_compose() {
+        // Sanity-check the pure helpers directly: reference_id derives the
+        // same column name regardless of how many times normalize_table is
+        // (correctly) applied beforehand, i.e. the fix is about *where*
+        // normalization happens (all three call sites), not changing what
+        // normalize_table/reference_id themselves compute.
+        assert_eq!(reference_id(&normalize_table("user")), "user_id");
+        assert_eq!(reference_id(&normalize_table("users")), "user_id");
+    }
+
+    #[tokio::test]
+    async fn create_add_remove_reference_agree_on_fk_naming_for_irregular_plural() {
+        use crate::tests_cfg::postgres::setup_postgres_container;
+
+        // "person" is an irregular plural (person/people). `create_table_impl`
+        // ALWAYS normalizes the referenced table name (via `normalize_table`)
+        // before deriving the FK column/constraint name via `reference_id`.
+        // Before the fix, `add_reference`/`remove_reference` derived the FK
+        // name from the RAW totbl instead, so for an irregular plural like
+        // "person" they'd compute a different name than `create_table_impl`
+        // actually used on disk (e.g. "person_id" vs "people_id"). This test
+        // cross-checks against `create_table`'s *actual* database artifact,
+        // not just against each other (add_reference and remove_reference
+        // shared the same bug, so they always agreed with each other even
+        // when broken -- the real defect only shows up against create_table).
+        let (pg_url, _container) = setup_postgres_container().await;
+
+        let mut config = crate::tests_cfg::config::get_database_config();
+        config.uri = pg_url;
+        config.min_connections = 1;
+        config.max_connections = 5;
+
+        let db = crate::db::connect(&config)
+            .await
+            .expect("Failed to connect to PostgreSQL test database");
+
+        let manager = sea_orm_migration::SchemaManager::new(&db);
+
+        // Ground truth: the FK column name create_table_impl actually derives
+        // for a `person` reference.
+        let expected_ref_col = reference_id(&normalize_table("person"));
+
+        create_table(&manager, "people", &[("id", ColType::PkAuto)], &[])
+            .await
+            .expect("failed to create people table");
+
+        // create_table's inline `refs` mechanism creates the FK column and a
+        // `fk-movies-{expected_ref_col}-to-people` constraint on `movies`.
+        create_table(
+            &manager,
+            "movies",
+            &[("id", ColType::PkAuto)],
+            &[("person", "")],
+        )
+        .await
+        .expect("failed to create movies table with an inline person reference");
+
+        // remove_reference must derive the exact same FK constraint name that
+        // create_table_impl actually created on `movies`, or dropping it here
+        // fails with a "constraint does not exist" DbErr -- this is the
+        // concrete failure mode of the original defect.
+        remove_reference(&manager, "movies", "person", "")
+            .await
+            .expect("remove_reference should find and drop the FK create_table created");
+
+        // add_reference on a separate bare table must derive the identical FK
+        // column name create_table used for the same reference.
+        create_table_without_timestamps(&manager, "reviews", &[("id", ColType::PkAuto)], &[])
+            .await
+            .expect("failed to create bare reviews table");
+
+        add_reference(&manager, "reviews", "person", "")
+            .await
+            .expect("add_reference should succeed");
+
+        let rows = db
+            .query_all_raw(sea_orm::Statement::from_string(
+                sea_orm::DatabaseBackend::Postgres,
+                format!(
+                    "SELECT column_name FROM information_schema.columns \
+                     WHERE table_name = 'reviews' AND column_name = '{expected_ref_col}'"
+                ),
+            ))
+            .await
+            .expect("querying reviews columns should succeed");
+        assert_eq!(
+            rows.len(),
+            1,
+            "add_reference should have created column `{expected_ref_col}` on `reviews`, \
+             matching create_table's naming for the same reference"
+        );
+    }
 }

@@ -27,28 +27,47 @@ use loco::{
 
 // when running locally set LOCO_DEV_MODE_PATH=<to local loco path>
 #[rstest::rstest]
+// Serialized: every combo builds into one shared CARGO_TARGET_DIR (see
+// test_combination), so the heavy end-to-end cases must not run concurrently.
+#[serial_test::serial]
 // lightweight service
-#[case(DBOption::None, AssetsOption::None)]
+#[case(DBOption::None, AssetsOption::None, BackgroundOption::Async)]
 // REST API
-#[case(DBOption::Sqlite, AssetsOption::None)]
+#[case(DBOption::Sqlite, AssetsOption::None, BackgroundOption::Async)]
 // SaaS, serverside
-#[case(DBOption::None, AssetsOption::Serverside)]
-// SaaS, clientside
-#[case(DBOption::None, AssetsOption::Clientside)]
-// test only DB
-#[case(DBOption::Sqlite, AssetsOption::None)]
-fn test_starter_combinations(#[case] db: DBOption, #[case] asset: AssetsOption) {
-    test_combination(db, asset, true);
+#[case(DBOption::None, AssetsOption::Serverside, BackgroundOption::Async)]
+// SaaS, clientside (no db)
+#[case(DBOption::None, AssetsOption::Clientside, BackgroundOption::Async)]
+// full-stack SPA: db + clientside — the flagship `generate scaffold` path
+// (typed backend DTO+controller + React Query hooks/pages + routes injection)
+#[case(DBOption::Sqlite, AssetsOption::Clientside, BackgroundOption::Async)]
+// full-stack SPA with a SQLite queue backend (-> worker feature)
+#[case(
+    DBOption::Sqlite,
+    AssetsOption::Clientside,
+    BackgroundOption::QueueSqlite
+)]
+fn test_starter_combinations(
+    #[case] db: DBOption,
+    #[case] asset: AssetsOption,
+    #[case] background: BackgroundOption,
+) {
+    test_combination(db, asset, background, true);
 }
 
-fn test_combination(db: DBOption, asset: AssetsOption, test_generator: bool) {
+fn test_combination(
+    db: DBOption,
+    asset: AssetsOption,
+    background: BackgroundOption,
+    test_generator: bool,
+) {
     let test_dir = tree_fs::TreeBuilder::default().drop(true);
 
     let executor = FileSystem::new(&PathBuf::from("base_template"), &test_dir.root);
 
     let wizard_selection = wizard::Selections {
         db: db.clone(),
-        background: BackgroundOption::Async,
+        background,
         asset: asset.clone(),
     };
     let settings =
@@ -61,6 +80,17 @@ fn test_combination(db: DBOption, asset: AssetsOption, test_generator: bool) {
     env_map.insert("RUSTFLAGS".into(), "-D warnings".into());
     env_map.insert("DB_CONNECT_TIMEOUT".into(), "2000".into());
     env_map.insert("DB_IDLE_TIMEOUT".into(), "2000".into());
+    // Build every generated app into ONE shared, persistent target dir instead
+    // of a fresh multi-GB `target/` inside each (ephemeral) tree_fs dir. This
+    // keeps the dependency build cache warm across combos (loco-rs is compiled
+    // once, not per-combo) and — crucially — means an aborted/killed run leaks
+    // only small source temp dirs, never gigabytes of build artifacts. The
+    // combos run sequentially, so the shared target dir sees no concurrent use.
+    let shared_target = std::env::temp_dir().join("loco-new-wizard-target");
+    env_map.insert(
+        "CARGO_TARGET_DIR".into(),
+        shared_target.to_string_lossy().into_owned(),
+    );
 
     let tester = Tester {
         dir: test_dir.root,
@@ -76,34 +106,8 @@ fn test_combination(db: DBOption, asset: AssetsOption, test_generator: bool) {
         .expect("run test after create new project");
 
     if test_generator {
-        // Generate API controller
-        tester.run_generate(&vec![
-            "controller",
-            "notes_api",
-            "--api",
-            "create_note",
-            "get_note",
-        ]);
-
-        if asset.enable() {
-            // Generate HTMX controller
-            tester.run_generate(&vec![
-                "controller",
-                "notes_htmx",
-                "--htmx",
-                "create_note",
-                "get_note",
-            ]);
-
-            // Generate HTML controller
-            tester.run_generate(&vec![
-                "controller",
-                "notes_html",
-                "--html",
-                "create_note",
-                "get_note",
-            ]);
-        }
+        // Generate controller
+        tester.run_generate(&vec!["controller", "notes_api", "create_note", "get_note"]);
 
         // Generate Task
         tester.run_generate(&vec!["task", "list_users"]);
@@ -135,33 +139,12 @@ fn test_combination(db: DBOption, asset: AssetsOption, test_generator: bool) {
             }
             tester.run_generate(&vec!["model", "movies", "title:string", "user:references"]);
 
-            if asset.enable() {
-                // Generate HTMX Scaffold
-                tester.run_generate(&vec![
-                    "scaffold",
-                    "movies_htmx",
-                    "title:string",
-                    "user:references",
-                    "--htmx",
-                ]);
-
-                // Generate HTML Scaffold
-                tester.run_generate(&vec![
-                    "scaffold",
-                    "movies_html",
-                    "title:string",
-                    "user:references",
-                    "--html",
-                ]);
-            }
-
-            // Generate API Scaffold
+            // Generate Scaffold
             tester.run_generate(&vec![
                 "scaffold",
                 "movies_api",
                 "title:string",
                 "user:references",
-                "--api",
             ]);
 
             // Generate CreatePosts migration
@@ -192,6 +175,63 @@ fn test_combination(db: DBOption, asset: AssetsOption, test_generator: bool) {
             tester.run_generate_migration(&vec!["CreateJoinTableUsersAndGroups", "count:int"]);
         }
     }
+}
+
+#[test]
+fn embedded_assets_with_clientside_is_rejected() {
+    let sel = wizard::Selections {
+        db: DBOption::None,
+        background: BackgroundOption::Async,
+        asset: AssetsOption::Clientside,
+    };
+    // embedded requested with clientside must be an error
+    assert!(settings::Settings::from_wizard_checked(
+        "x",
+        &sel,
+        OS::default(),
+        /*embedded=*/ true
+    )
+    .is_err());
+}
+
+#[test]
+fn embedded_assets_serverside_enables_feature() {
+    let sel = wizard::Selections {
+        db: DBOption::None,
+        background: BackgroundOption::Async,
+        asset: AssetsOption::Serverside,
+    };
+    let s = settings::Settings::from_wizard_checked("x", &sel, OS::default(), true)
+        .expect("serverside+embedded is valid");
+    assert!(s.features.names.contains(&"embedded_assets".to_string()));
+}
+
+// Regression: a fully flag-driven (non-interactive) `loco new ... --assets
+// serverside` must NOT block on the embedded-assets Confirm prompt. With all
+// core options supplied, `select_embedded_assets` honors the flag and never
+// prompts. (Calling it here in a non-tty test would hang if it prompted.)
+#[test]
+fn embedded_assets_non_interactive_serverside_does_not_prompt() {
+    let base = wizard::ArgsPlaceholder {
+        db: Some(DBOption::None),
+        bg: Some(BackgroundOption::Async),
+        assets: Some(AssetsOption::Serverside),
+        embedded_assets: false,
+    };
+    // no flag -> default false, no prompt
+    assert!(
+        !wizard::select_embedded_assets(&base, &AssetsOption::Serverside).unwrap(),
+        "non-interactive serverside without --embedded-assets should be false"
+    );
+    // explicit --embedded-assets -> true, still no prompt
+    let with_flag = wizard::ArgsPlaceholder {
+        embedded_assets: true,
+        ..base
+    };
+    assert!(
+        wizard::select_embedded_assets(&with_flag, &AssetsOption::Serverside).unwrap(),
+        "--embedded-assets should enable embedding without prompting"
+    );
 }
 
 struct Tester {

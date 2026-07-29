@@ -74,11 +74,12 @@ where
     s.parse().map_err(serde::de::Error::custom)
 }
 
+use crate::controller::views::pagination::PagerMeta;
+
 #[derive(Debug)]
 pub struct PageResponse<T> {
     pub page: Vec<T>,
-    pub total_pages: u64,
-    pub total_items: u64,
+    pub meta: PagerMeta,
 }
 
 use crate::Result as LocoResult;
@@ -152,24 +153,13 @@ where
     E: EntityTrait,
     <E as EntityTrait>::Model: Sync,
 {
-    let page = pagination_query.page.saturating_sub(1);
     let entity = if let Some(condition) = condition {
         entity.filter(condition)
     } else {
         entity
     };
 
-    let query = entity.paginate(db, pagination_query.page_size);
-    let total_pages_and_items = query.num_items_and_pages().await?;
-    let page: Vec<<E as EntityTrait>::Model> = query.fetch_page(page).await?;
-
-    let paginated_response = PageResponse {
-        page,
-        total_pages: total_pages_and_items.number_of_pages,
-        total_items: total_pages_and_items.number_of_items,
-    };
-
-    Ok(paginated_response)
+    fetch_page(db, entity, pagination_query).await
 }
 
 /// Fetching a page from a selector.
@@ -207,13 +197,21 @@ where
 {
     let page = pagination_query.page.saturating_sub(1);
 
-    let query = selector.paginate(db, pagination_query.page_size);
+    // Clamp to at least 1 to avoid a divide-by-zero panic inside sea-orm's
+    // paginator when a client sends `page_size=0` (see `PaginationQuery`).
+    let page_size = pagination_query.page_size.max(1);
+
+    let query = selector.paginate(db, page_size);
     let total_pages_and_items = query.num_items_and_pages().await?;
     let page = query.fetch_page(page).await?;
 
     Ok(PageResponse {
         page,
-        total_pages: total_pages_and_items.number_of_pages,
-        total_items: total_pages_and_items.number_of_items,
+        meta: PagerMeta {
+            page: pagination_query.page,
+            page_size,
+            total_pages: total_pages_and_items.number_of_pages,
+            total_items: total_pages_and_items.number_of_items,
+        },
     })
 }

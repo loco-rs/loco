@@ -42,7 +42,17 @@ impl From<DBOption> for Option<Db> {
 
 impl From<BackgroundOption> for Option<Background> {
     fn from(bg: BackgroundOption) -> Self {
-        Some(Background { kind: bg })
+        let (mode, queue_kind) = match bg {
+            BackgroundOption::Async => ("BackgroundAsync", ""),
+            BackgroundOption::QueueRedis => ("BackgroundQueue", "Redis"),
+            BackgroundOption::QueuePostgres => ("BackgroundQueue", "Postgres"),
+            BackgroundOption::QueueSqlite => ("BackgroundQueue", "Sqlite"),
+            BackgroundOption::Blocking => ("ForegroundBlocking", ""),
+        };
+        Some(Background {
+            mode: mode.to_string(),
+            queue_kind: queue_kind.to_string(),
+        })
     }
 }
 
@@ -59,15 +69,19 @@ impl Settings {
     /// Creates a new [`Settings`] instance based on prompt selections.
     #[must_use]
     pub fn from_wizard(package_name: &str, prompt_selection: &wizard::Selections, os: OS) -> Self {
-        let features = if prompt_selection.db.enable() {
+        let mut features = if prompt_selection.db.enable() {
             Features::default()
         } else {
-            let mut features = Features::disable_features();
-            if matches!(prompt_selection.background, wizard::BackgroundOption::Queue) {
-                features.names.push("bg_redis".to_string());
-            }
-            features
+            Features::disable_features()
         };
+
+        match prompt_selection.background {
+            BackgroundOption::QueueRedis => features.names.push("worker_redis".to_string()),
+            BackgroundOption::QueuePostgres | BackgroundOption::QueueSqlite => {
+                features.names.push("worker".to_string());
+            }
+            BackgroundOption::Async | BackgroundOption::Blocking => {}
+        }
 
         Self {
             package_name: package_name.to_string(),
@@ -86,6 +100,32 @@ impl Settings {
             loco_version_text: get_loco_version_text(),
             os,
         }
+    }
+
+    /// Creates a new [`Settings`] instance based on prompt selections, with a
+    /// guard against invalid combinations (e.g. embedding assets into the
+    /// binary for a clientside app, which has no `assets/` dir to embed).
+    ///
+    /// # Errors
+    /// when `embedded` is requested together with a clientside asset
+    /// configuration.
+    pub fn from_wizard_checked(
+        name: &str,
+        sel: &wizard::Selections,
+        os: OS,
+        embedded: bool,
+    ) -> crate::Result<Self> {
+        if embedded && sel.asset == AssetsOption::Clientside {
+            return Err(crate::Error::msg(
+                "embedded_assets cannot be combined with a clientside app (no assets/ dir to \
+                 embed)",
+            ));
+        }
+        let mut s = Self::from_wizard(name, sel, os);
+        if embedded {
+            s.features.names.push("embedded_assets".to_string());
+        }
+        Ok(s)
     }
 }
 impl Default for Settings {
@@ -127,7 +167,12 @@ pub struct Db {
 /// Background processing configuration.
 #[derive(Serialize, Deserialize, Clone, Debug, Default, CustomType)]
 pub struct Background {
-    pub kind: BackgroundOption,
+    /// The `workers.mode` value (`BackgroundAsync`, `BackgroundQueue`, or
+    /// `ForegroundBlocking`).
+    pub mode: String,
+    /// The `queue.kind` value (`Redis`, `Postgres`, `Sqlite`), or empty when
+    /// no queue backend is used.
+    pub queue_kind: String,
 }
 
 /// Asset configuration settings.

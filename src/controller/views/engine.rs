@@ -12,13 +12,17 @@ use notify::{
 
 pub static DEFAULT_ASSET_FOLDER: &str = "assets";
 
+/// A boxed post-processing function applied to a [`tera::Tera`] instance.
+#[cfg(debug_assertions)]
+pub type PostProcessFn = Box<dyn Fn(&mut tera::Tera) -> Result<()> + Send + Sync>;
+
 #[cfg(debug_assertions)]
 pub struct HotReloadingTeraEngine {
     pub engine: tera::Tera,
     pub view_path: PathBuf,
     pub file_watcher: Box<dyn notify::Watcher + Send + Sync>,
     pub dirty: bool,
-    pub post_process: Box<dyn Fn(&mut tera::Tera) -> Result<()> + Send + Sync>,
+    pub post_process: PostProcessFn,
 }
 
 #[derive(Clone)]
@@ -154,7 +158,10 @@ impl TeraView {
                     change => info!(?paths, ?change, "View file changed"),
                 }
 
-                tera2.lock().unwrap().dirty = true;
+                tera2
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .dirty = true;
             })
             .map_err(|_| Error::string("error creating file watcher"))?;
 
@@ -162,7 +169,9 @@ impl TeraView {
                 .watch(view_dir, RecursiveMode::Recursive)
                 .map_err(|_| Error::string("error watching for file changes in view directory"))?;
 
-            tera.lock().unwrap().file_watcher = Box::new(watcher);
+            tera.lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .file_watcher = Box::new(watcher);
             tera
         };
 
@@ -179,7 +188,10 @@ impl ViewRenderer for TeraView {
 
         #[cfg(debug_assertions)]
         {
-            let mut tera = self.0.lock().unwrap();
+            let mut tera = self
+                .0
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
 
             // Only create a new Tera instance if the view path files have changed
             if tera.dirty {

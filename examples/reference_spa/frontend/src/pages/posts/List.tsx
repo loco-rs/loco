@@ -1,0 +1,56 @@
+import { Link } from "react-router";
+import { useListPosts, useRemovePost } from "../../api/posts";
+
+export function List() {
+  const { data, isLoading, isError, error } = useListPosts();
+  const removePost = useRemovePost();
+
+  if (isLoading) {
+    return <p>Loading…</p>;
+  }
+
+  if (isError) {
+    return <p role="alert">{error.message}</p>;
+  }
+
+  return (
+    <div>
+      <h1>Posts</h1>
+      <p>
+        <Link to="/posts/new">New Post</Link>
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Price</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data?.items.map((post) => (
+            <tr key={post.id}>
+              <td>
+                <Link to={`/posts/${post.id}`}>{post.title}</Link>
+              </td>
+              <td>{post.status}</td>
+              <td>{post.price}</td>
+              <td>
+                <Link to={`/posts/${post.id}/edit`}>Edit</Link>{" "}
+                <button
+                  type="button"
+                  disabled={removePost.isPending}
+                  onClick={() => removePost.mutate(post.id)}
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {removePost.isError && <p role="alert">{removePost.error.message}</p>}
+    </div>
+  );
+}

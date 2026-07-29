@@ -1,26 +1,20 @@
 use super::utils::APP_ROUTS;
 use insta::assert_snapshot;
-use loco_gen::{collect_messages, generate, AppInfo, Component, ScaffoldKind};
+use loco_gen::{collect_messages, generate, AppInfo, Component};
 use rrgen::RRgen;
-use rstest::rstest;
 use std::fs;
 
-#[rstest]
-#[case(ScaffoldKind::Api)]
-#[case(ScaffoldKind::Html)]
-#[case(ScaffoldKind::Htmx)]
 #[test]
-fn can_generate(#[case] kind: ScaffoldKind) {
+fn can_generate() {
     let actions = vec!["GET".to_string(), "POST".to_string()];
     let component = Component::Controller {
         name: "movie".to_string(),
         actions: actions.clone(),
-        kind: kind.clone(),
     };
 
     let mut settings = insta::Settings::clone_current();
     settings.set_prepend_module_to_snapshot(false);
-    settings.set_snapshot_suffix(format!("{kind:?}_controller"));
+    settings.set_snapshot_suffix("Api_controller");
     let _guard = settings.bind_to_scope();
 
     let tree_fs = tree_fs::TreeBuilder::default()
@@ -59,30 +53,13 @@ fn can_generate(#[case] kind: ScaffoldKind) {
             .expect("app.rs injection failed")
     );
 
-    if matches!(kind, ScaffoldKind::Api) {
-        let test_controllers_path = tree_fs.root.join("tests").join("requests");
-        assert_snapshot!(
-            "generate[tests_controller_mod_rs]",
-            fs::read_to_string(test_controllers_path.join("movie.rs")).expect("test file missing")
-        );
-        assert_snapshot!(
-            "inject[tests_controller_mod_rs]",
-            fs::read_to_string(test_controllers_path.join("mod.rs")).expect("test mod.rs missing")
-        );
-    } else {
-        for action in actions {
-            assert_snapshot!(
-                format!("inject[views_[{action}]]"),
-                fs::read_to_string(
-                    tree_fs
-                        .root
-                        .join("assets")
-                        .join("views")
-                        .join("movie")
-                        .join(format!("{}.html", action.to_uppercase()))
-                )
-                .expect("view file missing")
-            );
-        }
-    }
+    let test_controllers_path = tree_fs.root.join("tests").join("requests");
+    assert_snapshot!(
+        "generate[tests_controller_mod_rs]",
+        fs::read_to_string(test_controllers_path.join("movie.rs")).expect("test file missing")
+    );
+    assert_snapshot!(
+        "inject[tests_controller_mod_rs]",
+        fs::read_to_string(test_controllers_path.join("mod.rs")).expect("test mod.rs missing")
+    );
 }

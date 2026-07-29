@@ -1,0 +1,78 @@
+---
+// The casts (screencasts) listing — under Base+Nav+Footer like the blog
+// index, ordered by episode ascending (episode 001 first). `episode` is a
+// zero-padded string ("001".."007"), so a plain string comparison already
+// sorts numerically for this width — parsed to a number anyway to be robust
+// if episode count ever crosses a digit boundary (e.g. "099" vs "100").
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Nav from '../../components/Nav.astro';
+import Footer from '../../components/Footer.astro';
+import CastCard from '../../components/CastCard.astro';
+
+const casts = (await getCollection('casts')).sort(
+  (a, b) => Number(a.data.episode) - Number(b.data.episode)
+);
+---
+
+<Base
+  title="Screencasts — Loco"
+  description="Short screencasts walking through Loco features, one episode at a time."
+>
+  <Nav />
+  <section class="casts-index">
+    <div class="wrap">
+      <div class="head">
+        <h1>Screencasts</h1>
+        <p>Short, focused walkthroughs of Loco features — watch the episode, read the notes.</p>
+      </div>
+      <div class="grid">
+        {casts.map((cast) => <CastCard cast={cast} />)}
+      </div>
+    </div>
+  </section>
+  <Footer />
+</Base>
+
+<style>
+  .wrap {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 0 32px;
+    width: 100%;
+  }
+  section.casts-index {
+    padding: 64px 0 40px;
+  }
+  .head {
+    max-width: 60ch;
+    margin-bottom: 48px;
+  }
+  .head h1 {
+    font-size: 44px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    color: var(--ink);
+  }
+  .head p {
+    margin-top: 14px;
+    font-size: 17px;
+    color: var(--ink-2);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  @media (max-width: 980px) {
+    .grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 640px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

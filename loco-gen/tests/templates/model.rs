@@ -15,7 +15,8 @@ macro_rules! configure_insta {
 
 #[test]
 fn can_generate() {
-    std::env::set_var("SKIP_MIGRATION", "");
+    // SAFETY: test-local env setup; no other thread reads the environment during this test.
+    unsafe { std::env::set_var("SKIP_MIGRATION", "") };
     configure_insta!();
     let tree_fs = tree_fs::TreeBuilder::default()
         .drop(true)
@@ -76,9 +77,51 @@ fn can_generate() {
     );
 }
 
+// Regression for #1755: a model generated with no fields must still get its
+// `id` primary-key column, otherwise sea-orm produces an entity with no primary
+// key that fails to compile ("Entity must have a primary key column").
+#[test]
+fn generate_without_fields_still_emits_primary_key() {
+    // SAFETY: test-local env setup; no other thread reads the environment during this test.
+    unsafe { std::env::set_var("SKIP_MIGRATION", "") };
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add("migration/src/lib.rs", MIGRATION_SRC_LIB)
+        .add_empty("tests/models/mod.rs")
+        .create()
+        .unwrap();
+
+    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+    let component = Component::Model {
+        name: "posts".to_string(),
+        with_tz: true,
+        fields: vec![],
+    };
+
+    generate(
+        &rrgen,
+        component,
+        &AppInfo {
+            app_name: "tester".to_string(),
+        },
+    )
+    .expect("Generation failed");
+
+    let migration_path = tree_fs.root.join("migration/src");
+    let migration_file = guess_file_by_time(&migration_path, "m{TIME}_posts.rs", 3)
+        .expect("Failed to find the generated migration file");
+    let migration = fs::read_to_string(&migration_file).expect("read migration");
+
+    assert!(
+        migration.contains("(\"id\", ColType::PkAuto)"),
+        "a field-less model must still emit its id primary key, got:\n{migration}"
+    );
+}
+
 #[test]
 fn fail_when_migration_lib_not_exists() {
-    std::env::set_var("SKIP_MIGRATION", "");
+    // SAFETY: test-local env setup; no other thread reads the environment during this test.
+    unsafe { std::env::set_var("SKIP_MIGRATION", "") };
     let tree_fs = tree_fs::TreeBuilder::default()
         .drop(true)
         .add_empty("tests/models/mod.rs")
@@ -109,7 +152,8 @@ fn fail_when_migration_lib_not_exists() {
 
 #[test]
 fn fail_when_test_models_mod_not_exists() {
-    std::env::set_var("SKIP_MIGRATION", "");
+    // SAFETY: test-local env setup; no other thread reads the environment during this test.
+    unsafe { std::env::set_var("SKIP_MIGRATION", "") };
     let tree_fs = tree_fs::TreeBuilder::default()
         .drop(true)
         .add("migration/src/lib.rs", MIGRATION_SRC_LIB)

@@ -1,15 +1,18 @@
 [workspace]
 members = ["xtask", "loco-gen"]
-exclude = ["starters"]
+exclude = ["starters", "examples"]
 
 [workspace.package]
-edition = "2021"
-rust-version = "1.70"
+edition = "2024"
+# MSRV floor raised for Sea-ORM 2.0 + sqlx 0.9: sea-orm 2.0.0 declares rustc
+# 1.94 as its own MSRV, so we match it.
+# Edition 2024 needs rustc >= 1.85, satisfied by the 1.94 floor above.
+rust-version = "1.94"
 license = "Apache-2.0"
 
 [package]
 name = "loco-rs"
-version = "0.16.4"
+version = "1.0.0"
 description = "The one-person framework for Rust"
 homepage = "https://loco.rs/"
 documentation = "https://docs.rs/loco-rs"
@@ -22,15 +25,17 @@ rust-version.workspace = true
 
 [features]
 default = [
-    "auth_jwt",
+    "auth",
     "cli",
     "with-db",
     "cache_inmem",
-    "bg_redis",
-    "bg_pg",
-    "bg_sqlt",
+    "worker",
 ]
-auth_jwt = ["dep:jsonwebtoken"]
+# jsonwebtoken 10 no longer bundles a crypto backend, so `auth` selects the
+# pure-Rust `rust_crypto` one. This keeps `auth` self-contained (enabling it
+# alone still builds, even with default-features = false) and needs no C
+# toolchain — matching Loco's zero-friction onboarding.
+auth = ["dep:jsonwebtoken", "jsonwebtoken/rust_crypto"]
 cli = ["dep:clap"]
 testing = ["dep:axum-test", "dep:scraper", "dep:tree-fs"]
 with-db = [
@@ -47,22 +52,26 @@ storage_gcp = ["opendal/services-gcs"]
 # Cache feature
 cache_inmem = ["dep:moka"]
 cache_redis = ["dep:bb8-redis", "dep:bb8"]
-bg_redis = ["dep:redis", "dep:ulid"]
-bg_pg = ["dep:sqlx", "dep:ulid"]
-bg_sqlt = ["dep:sqlx", "dep:ulid"]
-## Testing feature flags
-integration_test = []
+worker = ["dep:sqlx", "dep:ulid"]
+worker_redis = ["worker", "dep:redis"]
+# Redis over TLS (`rediss://`) for managed providers (ElastiCache, Upstash,
+# Azure Cache, ...). Arms both the worker and cache redis paths — the same
+# `redis` crate, unified by Cargo — with webpki-bundled roots (portable to
+# slim/distroless images). Enable alongside `worker_redis`/`cache_redis` and
+# use a `rediss://` URL in config; no code changes required. See `dep:rustls`
+# above for why the provider is pinned to ring.
+redis_tls = ["redis/tokio-rustls-comp", "redis/tls-rustls-webpki-roots", "dep:rustls"]
 # Embed assets into binary
 embedded_assets = []
 
 [dependencies]
-loco-gen = { version = "0.16.1", path = "./loco-gen" }
+loco-gen = { version = "1.0.0", path = "./loco-gen" }
 backtrace_printer = { version = "1.3.0" }
 
 # cli
 clap = { version = "4.4.7", features = ["derive"], optional = true }
 colored = { workspace = true }
-sea-orm = { version = "1.1.0", features = [
+sea-orm = { version = "2.0", features = [
     "sqlx-postgres",        # `DATABASE_DRIVER` feature
     "sqlx-sqlite",
     "runtime-tokio-rustls",
@@ -75,7 +84,9 @@ tokio-util = "0.7"
 
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_yaml = "0.9"
+# serde_yaml (dtolnay) is archived; serde_yaml_ng is the maintained, drop-in
+# continuation. Kept under the `serde_yaml` name so source paths are unchanged.
+serde_yaml = { package = "serde_yaml_ng", version = "0.10" }
 serde_variant = "0.1.2"
 toml = "0.8"
 
@@ -87,7 +98,7 @@ regex = { workspace = true }
 # mailer
 tera = { workspace = true }
 heck = { workspace = true }
-cruet = "0.13.0"
+cruet = "1.0"
 lettre = { version = "0.11.4", default-features = false, features = [
     "builder",
     "hostname",
@@ -105,20 +116,21 @@ tracing-subscriber = { version = "0.3.16", default-features = false, features = 
 tracing-appender = { version = "0.2.3", default-features = false }
 
 duct = { workspace = true }
-duct_sh = { version = "1.0.0" }
 
 tower-http = { workspace = true }
-byte-unit = "4.0.19"
+byte-unit = "5.1"
 
 argon2 = { version = "0.5", features = ["std"] }
 rand = { version = "0.9", features = ["std"] }
-jsonwebtoken = { version = "9.3.0", optional = true }
+jsonwebtoken = { version = "10.3.0", optional = true, default-features = false }
 validator = { version = "0.20.0", features = ["derive"] }
 futures-util = "0.3"
 tower = { workspace = true }
-bytes = "1.1"
-ipnetwork = "0.20.0"
+bytes = "1.11"
+axum-client-ip = { version = "1.3", features = ["forwarded-header"] }
 semver = "1"
+url = "2"
+cargo-lock = { version = "11", default-features = false }
 
 axum-test = { version = "17.0.1", optional = true }
 tree-fs = { version = "0.3", optional = true }
@@ -128,32 +140,48 @@ chrono = { workspace = true }
 uuid = { version = "1.10.0", features = ["v4", "fast-rng"] }
 
 # File Upload
-opendal = { version = "0.54", default-features = false, features = [
+opendal = { version = "0.57", default-features = false, features = [
     "services-memory",
     "services-fs",
+    "layers-retry",
 ] }
 
 # cache
-moka = { version = "0.12.7", features = ["sync"], optional = true }
-bb8-redis = { version = "0.23", optional = true }
+moka = { version = "0.12.7", features = ["future"], optional = true }
+bb8-redis = { version = "0.26", optional = true }
 bb8 = { version = "0.9", optional = true }
 
 # Scheduler
-tokio-cron-scheduler = { version = "0.11.0", features = ["signal"] }
+tokio-cron-scheduler = { version = "0.15", features = ["signal"] }
 english-to-cron = { version = "0.1.2" }
 
-# bg_sqlt: sqlite workers
-# bg_pg: postgres workers
-sqlx = { version = "0.8.2", default-features = false, features = [
+# worker: pg + sqlite backed queue workers.
+# `tls-rustls-ring-webpki` gives the standalone pg/sqlite worker pool a TLS
+# backend on its own (matching sea-orm's `runtime-tokio-rustls`), so a
+# worker-only build — a pg queue without `with-db` — can still reach a
+# TLS-only managed Postgres. In `with-db` builds this unifies with sea-orm's
+# ring-based rustls. Managed Postgres TLS is then opt-in purely via the
+# connection URL (`sslmode=require`, `sslrootcert=...`); see the how-to docs.
+sqlx = { version = "0.9", default-features = false, features = [
     "json",
     "postgres",
     "chrono",
     "sqlite",
+    "tls-rustls-ring-webpki",
 ], optional = true }
 ulid = { version = "1", optional = true }
 
-# bg_redis: redis workers
-redis = { version = "0.31", features = ["aio", "tokio-comp"], optional = true }
+# worker_redis: redis backed queue workers
+redis = { version = "1", features = ["aio", "tokio-comp"], optional = true }
+# `redis_tls` only: redis' TLS path calls `rustls::ClientConfig::builder()`,
+# which resolves rustls' *process-default* crypto provider at build time. redis
+# pulls rustls with no provider of its own, so we bring rustls with the
+# pure-Rust `ring` provider (no C toolchain — matching Loco's zero-friction
+# onboarding) to guarantee a provider is compiled in even for redis-only builds.
+# Unifies with sea-orm/sqlx, which also select ring.
+rustls = { version = "0.23", default-features = false, features = [
+    "ring",
+], optional = true }
 
 scraper = { version = "0.25.0", features = ["deterministic"], optional = true }
 
@@ -166,12 +194,12 @@ colored = { version = "3.0" }
 chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1.40"
 regex = "1"
-thiserror = "1"
+thiserror = "2"
 serde = "1"
 serde_json = "1"
 async-trait = { version = "0.1.74" }
 axum = { version = "0.8.1", features = ["macros", "multipart"] }
-tower = "0.4"
+tower = "0.5"
 tower-http = { version = "0.6.8", features = [
     "trace",
     "catch-panic",
@@ -182,12 +210,12 @@ tower-http = { version = "0.6.8", features = [
     "set-header",
     "compression-full",
 ] }
-heck = "0.4.0"
+heck = "0.5.0"
 duct = { version = "1.0.0" }
 
 [dependencies.sea-orm-migration]
 optional = true
-version = "1.0.0"
+version = "2.0"
 features = [
     # Enable at least one `ASYNC_RUNTIME` and `DATABASE_DRIVER` feature if you want to run migration via CLI.
     # View the list of supported features at https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime.
@@ -202,12 +230,12 @@ features = ["testing"]
 
 [dev-dependencies]
 loco-rs = { path = ".", features = ["testing"] }
-rstest = "0.21.0"
+rstest = "0.26.1"
 insta = { version = "1.34.0", features = ["redactions", "yaml", "filters"] }
 tree-fs = { version = "0.3" }
 reqwest = { version = "0.12.7", features = ["json"] }
 tower = { workspace = true, features = ["util"] }
-sqlx = { version = "0.8.2", default-features = false, features = [
+sqlx = { version = "0.9", default-features = false, features = [
     "macros",
     "json",
     "postgres",
@@ -215,4 +243,5 @@ sqlx = { version = "0.8.2", default-features = false, features = [
     "sqlite",
     "migrate",
 ] }
-testcontainers = { version = "0.23.3" }
+testcontainers = { version = "0.27" }
+serial_test = { version = "3.5.0" }

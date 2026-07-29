@@ -72,12 +72,17 @@ mod tests {
     use super::*;
     use crate::tests_cfg;
 
-    #[allow(dependency_on_unit_never_type_fallback)]
     #[tokio::test]
     async fn panic_enabled() {
         let middleware = CatchPanic { enable: true };
 
-        let app = Router::new().route("/", get(|| async { panic!("panic") }));
+        // A named handler with an explicit `()` return: under edition 2024 the
+        // never-type fallback no longer coerces `async { panic!() }` (type `!`)
+        // to `()`, so an inline closure would fail to implement `Handler`.
+        async fn panic_handler() {
+            panic!("panic")
+        }
+        let app = Router::new().route("/", get(panic_handler));
         let app = middleware
             .apply(app)
             .expect("apply middleware")

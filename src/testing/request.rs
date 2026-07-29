@@ -127,6 +127,7 @@ impl From<RequestConfig> for TestServerConfig {
         Self {
             default_content_type: request_config.default_content_type,
             save_cookies: request_config.save_cookies,
+            default_scheme: Some(request_config.default_scheme),
             ..Default::default()
         }
     }
@@ -358,7 +359,7 @@ where
     Fut: std::future::Future<Output = ()>,
 {
     let boot: BootResult = boot_test::<H>().await.unwrap();
-    request_internal::<F, Fut>(callback, &boot, config).await;
+    request_internal(callback, &boot, config).await;
 }
 
 /// Executes a test server request with a created database using a custom [`RequestConfig`].
@@ -385,5 +386,5 @@ where
     Fut: std::future::Future<Output = ()>,
 {
     let boot_wrapper: BootResultWrapper = boot_test_with_create_db::<H>().await.unwrap();
-    request_internal::<F, Fut>(callback, &boot_wrapper.inner, config).await;
+    request_internal(callback, &boot_wrapper.inner, config).await;
 }

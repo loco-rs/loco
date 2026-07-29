@@ -2,6 +2,7 @@ use std::process::exit;
 pub mod bump_version;
 pub mod ci;
 pub mod errors;
+pub mod llms;
 pub mod out;
 pub mod prompt;
 pub mod utils;
@@ -41,7 +42,7 @@ impl CmdExit {
     pub fn exit(&self) {
         if let Some(message) = &self.message {
             eprintln!("{message}");
-        };
+        }
 
         exit(self.code);
     }

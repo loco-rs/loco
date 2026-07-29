@@ -12,6 +12,31 @@ use serde_json::{Map, Value};
 /// Represents the default JWT algorithm used by the [`JWT`] struct.
 const JWT_ALGORITHM: Algorithm = Algorithm::HS512;
 
+/// The HMAC-based JWT signing algorithms supported by [`JWT`].
+///
+/// [`JWT`] always derives its signing/verification key from a shared
+/// base64-encoded secret (see [`EncodingKey::from_base64_secret`] and
+/// [`DecodingKey::from_base64_secret`]), so only the HMAC family of
+/// algorithms can ever work here. Asymmetric algorithms (RSA, EC, `EdDSA`, ...)
+/// require a public/private key pair, not a shared secret, so they are
+/// intentionally not exposed through [`JWT::algorithm`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JWTAlgorithm {
+    HS256,
+    HS384,
+    HS512,
+}
+
+impl From<JWTAlgorithm> for Algorithm {
+    fn from(algorithm: JWTAlgorithm) -> Self {
+        match algorithm {
+            JWTAlgorithm::HS256 => Self::HS256,
+            JWTAlgorithm::HS384 => Self::HS384,
+            JWTAlgorithm::HS512 => Self::HS512,
+        }
+    }
+}
+
 /// Represents the claims associated with a user JWT.
 #[cfg_attr(test, derive(Eq, PartialEq))]
 #[derive(Debug, Serialize, Deserialize)]
@@ -46,10 +71,15 @@ impl JWT {
         }
     }
 
-    /// Override the default  JWT algorithm to be used.
+    /// Override the default JWT algorithm to be used.
+    ///
+    /// Only HMAC algorithms ([`JWTAlgorithm::HS256`], [`JWTAlgorithm::HS384`],
+    /// [`JWTAlgorithm::HS512`]) are accepted, since [`JWT`] always signs and
+    /// verifies with a shared base64-encoded secret. Asymmetric algorithms
+    /// cannot work with a shared secret and are therefore not selectable.
     #[must_use]
-    pub fn algorithm(mut self, algorithm: Algorithm) -> Self {
-        self.algorithm = algorithm;
+    pub fn algorithm(mut self, algorithm: JWTAlgorithm) -> Self {
+        self.algorithm = algorithm.into();
         self
     }
 
@@ -150,6 +180,22 @@ mod tests {
         ]}, {
             assert_debug_snapshot!(test_name, jwt.validate(&token));
         });
+    }
+
+    #[rstest]
+    #[case(JWTAlgorithm::HS256)]
+    #[case(JWTAlgorithm::HS384)]
+    #[case(JWTAlgorithm::HS512)]
+    fn can_round_trip_with_hmac_algorithm(#[case] algorithm: JWTAlgorithm) {
+        let jwt = JWT::new("PqRwLF2rhHe8J22oBeHy").algorithm(algorithm);
+
+        let token = jwt
+            .generate_token(60, "pid".to_string(), Map::new())
+            .unwrap();
+
+        let claims = jwt.validate(&token).unwrap();
+        assert_eq!(claims.claims.pid, "pid");
+        assert_eq!(Algorithm::from(algorithm), jwt.algorithm);
     }
 
     #[rstest]

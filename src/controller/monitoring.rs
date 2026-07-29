@@ -53,14 +53,14 @@ pub async fn readiness(State(ctx): State<AppContext>) -> (StatusCode, Response) 
     }
 
     // Check queue connection
-    if let Some(queue) = &ctx.queue_provider {
-        if let Err(error) = queue.ping().await {
-            tracing::error!(err.msg = %error, err.detail = ?error, "readiness_queue_ping_error");
-            return (
-                StatusCode::SERVICE_UNAVAILABLE,
-                format::json(Health { ok: false }).into_response(),
-            );
-        }
+    if let Some(queue) = &ctx.queue_provider
+        && let Err(error) = queue.ping().await
+    {
+        tracing::error!(err.msg = %error, err.detail = ?error, "readiness_queue_ping_error");
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            format::json(Health { ok: false }).into_response(),
+        );
     }
 
     // Check cache connection
@@ -381,7 +381,7 @@ mod tests {
         let mut ctx = tests_cfg::app::get_app_context().await;
         // simulate background queue mode with a no-op provider
         ctx.config.workers.mode = config::WorkerMode::BackgroundQueue;
-        ctx.queue_provider = Some(std::sync::Arc::new(bgworker::Queue::None));
+        ctx.queue_provider = Some(std::sync::Arc::new(bgworker::Queue::empty()));
 
         // Create a router with the readiness route
         let router = axum::Router::new()
@@ -407,7 +407,7 @@ mod tests {
         assert_eq!(res_json["ok"], true);
     }
 
-    #[cfg(feature = "bg_redis")]
+    #[cfg(feature = "worker_redis")]
     #[tokio::test]
     async fn readiness_with_queue_present_failure() {
         let mut ctx = tests_cfg::app::get_app_context().await;
@@ -420,6 +420,7 @@ mod tests {
             dangerously_flush: false,
             queues: None,
             num_workers: 1,
+            reaper: None,
         }));
 
         // Create Redis queue provider directly with failing Redis connection
@@ -429,6 +430,7 @@ mod tests {
                 dangerously_flush: false,
                 queues: None,
                 num_workers: 1,
+                reaper: None,
             })
             .await
             .expect("Failed to create Redis queue provider"),

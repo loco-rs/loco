@@ -1,0 +1,9 @@
+---
+source: tests/models/users.rs
+expression: res
+---
+Err(
+    Custom(
+        "{\"email\":[{\"code\":\"email\",\"message\":\"invalid email\"}],\"name\":[{\"code\":\"length\",\"message\":\"Name must be at least 2 characters long.\"}]}",
+    ),
+)

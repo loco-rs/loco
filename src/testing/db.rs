@@ -2,11 +2,12 @@ use crate::{
     app::{AppContext, Hooks},
     db, hash, Error, Result,
 };
-use sqlx::{Pool, Postgres};
+use sqlx::{AssertSqlSafe, Pool, Postgres};
 use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
 use tree_fs::TreeBuilder;
+use url::Url;
 
 /// Seeds data into the database.
 ///
@@ -22,11 +23,10 @@ use tree_fs::TreeBuilder;
 /// ```rust,ignore
 /// use myapp::app::App;
 /// use loco_rs::testing::prelude::*;
-/// use migration::Migrator;
 ///
 /// #[tokio::test]
 /// async fn test_create_user() {
-///     let boot = boot_test::<App, Migrator>().await;
+///     let boot = boot_test::<App>().await;
 ///     seed::<App>(&boot.app_context).await.unwrap();
 ///
 ///     /// .....
@@ -73,21 +73,42 @@ impl PostgresTest {
     /// # Errors
     /// Returns an error if could not create DB schema.
     pub fn new(conn_str: &str) -> Result<Self> {
-        let db_name = db::extract_db_name(conn_str)?;
+        // Validate that a db name is present in the connection string, matching
+        // prior behavior. The name itself is not used for string replacement
+        // below (see the `Url`-based rewrite), only the connection string's
+        // parsed `path` is.
+        let _db_name = db::extract_db_name(conn_str)?;
 
         let current_timestamp = chrono::Utc::now().timestamp();
         let test_schema_name: String = hash::random_string(10).to_lowercase();
         let test_schema_name = format!("_loco_test_{test_schema_name}_{current_timestamp}");
 
+        // Rewrite only the URI path (the db name) via `url::Url`, rather than a
+        // naive whole-string `.replace(db_name, ..)`, which would corrupt the
+        // URI whenever the db name is also a substring of the host or
+        // credentials (e.g. db "loco" with user/host containing "loco").
+        let mut root_url = Url::parse(conn_str).map_err(|err| {
+            Error::string(&format!(
+                "could not parse Postgres connection string: {err}"
+            ))
+        })?;
+        root_url.set_path("/postgres");
+
+        let mut test_url = Url::parse(conn_str).map_err(|err| {
+            Error::string(&format!(
+                "could not parse Postgres connection string: {err}"
+            ))
+        })?;
+        test_url.set_path(&format!("/{test_schema_name}"));
+
         Ok(Self {
-            root_connection_string: conn_str.replace(db_name, "postgres"),
-            connection_string: conn_str.replace(db_name, &test_schema_name),
+            root_connection_string: root_url.to_string(),
+            connection_string: test_url.to_string(),
             schema_name: test_schema_name,
         })
     }
 }
 
-#[async_trait::async_trait]
 impl TestSupport for PostgresTest {
     fn get_connection_str(&self) -> &str {
         &self.connection_string
@@ -100,7 +121,7 @@ impl TestSupport for PostgresTest {
                 .expect("db connection should success");
             let query = format!("CREATE DATABASE {};", self.schema_name);
 
-            sqlx::query(&query)
+            sqlx::query(AssertSqlSafe(query))
                 .execute(&pool)
                 .await
                 .expect("create DB schema");
@@ -111,20 +132,28 @@ impl TestSupport for PostgresTest {
         let connection_string = self.root_connection_string.clone();
         let table_name = self.schema_name.clone();
 
-        tokio::task::spawn_blocking(move || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
+        // Run the drop on a dedicated OS thread with its own runtime (not
+        // `tokio::task::spawn_blocking`, which schedules onto the ambient
+        // runtime and cannot be awaited from a sync/Drop context) and `.join()`
+        // it so cleanup fully completes before `cleanup_db` returns. This is
+        // safe to call from `Drop::drop` since nothing here is `.await`ed on
+        // the caller's runtime.
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().expect("create cleanup runtime");
 
             rt.block_on(async {
                 let pool = Pool::<Postgres>::connect(&connection_string)
                     .await
                     .expect("db connection should success");
                 let query = format!("drop database if exists {table_name};");
-                sqlx::query(&query)
+                sqlx::query(AssertSqlSafe(query))
                     .execute(&pool)
                     .await
                     .expect("Drop database");
             });
-        });
+        })
+        .join()
+        .expect("db cleanup thread panicked");
     }
 }
 
@@ -162,7 +191,6 @@ impl SqliteTest {
     }
 }
 
-#[async_trait::async_trait]
 impl TestSupport for SqliteTest {
     fn get_connection_str(&self) -> &str {
         &self.connection_string
@@ -204,7 +232,6 @@ mod tests {
 
     use super::*;
     use sqlx::Row;
-    use std::{thread, time};
 
     async fn schema_exists(pool: &sqlx::PgPool, schema_name: &str) -> bool {
         let row =
@@ -245,7 +272,34 @@ mod tests {
 
         pg.cleanup_db();
 
-        thread::sleep(time::Duration::from_secs(1));
+        // `cleanup_db` joins its cleanup thread before returning, so the drop
+        // is guaranteed complete here with no sleep needed.
         assert!(!schema_exists(&pool, &pg.schema_name).await);
+    }
+
+    #[test]
+    fn postgres_test_new_does_not_corrupt_host_or_user_when_db_name_is_substring() {
+        // The db name "loco" is also a substring of the user ("loco") and the
+        // host ("loco-db.host"). A naive `conn_str.replace(db_name, ..)` would
+        // corrupt those occurrences too. Assert only the path changes.
+        let conn_str = "postgres://loco:pass@loco-db.host:5432/loco";
+
+        let pg = PostgresTest::new(conn_str).expect("create Postgres test support");
+
+        let root =
+            Url::parse(&pg.root_connection_string).expect("root connection string is a valid URL");
+        assert_eq!(root.path(), "/postgres");
+        assert_eq!(root.username(), "loco");
+        assert_eq!(root.password(), Some("pass"));
+        assert_eq!(root.host_str(), Some("loco-db.host"));
+        assert_eq!(root.port(), Some(5432));
+
+        let test_conn =
+            Url::parse(&pg.connection_string).expect("test connection string is a valid URL");
+        assert_eq!(test_conn.path(), format!("/{}", pg.schema_name));
+        assert_eq!(test_conn.username(), "loco");
+        assert_eq!(test_conn.password(), Some("pass"));
+        assert_eq!(test_conn.host_str(), Some("loco-db.host"));
+        assert_eq!(test_conn.port(), Some(5432));
     }
 }

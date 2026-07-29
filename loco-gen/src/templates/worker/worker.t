@@ -2,7 +2,7 @@
 {% set struct_name = module_name | pascal_case -%}
 to: "src/workers/{{module_name}}.rs"
 skip_exists: true
-message: "A worker `{{struct_name}}` was added successfully. Run with `cargo run start --worker`."
+message: "A worker `{{struct_name}}` was added successfully. Run with `cargo loco start --worker`."
 injections:
 - into: "src/workers/mod.rs"
   append: true

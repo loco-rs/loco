@@ -16,7 +16,7 @@ use serial_test::serial;
 #[serial]
 async fn can_get_{{ name | plural | snake_case }}() {
     request::<App, _, _>(|request, _ctx| async move {
-        let res = request.get("/api/{{ name | plural | snake_case }}/").await;
+        let res = request.get("/api/{{ name | plural | snake_case }}").await;
         assert_eq!(res.status_code(), 200);
 
         // you can assert content like this:
@@ -30,7 +30,7 @@ async fn can_get_{{ name | plural | snake_case }}() {
 #[serial]
 async fn can_get_{{action}}() {
     request::<App, _, _>(|request, _ctx| async move {
-        let res = request.get("/{{ name | plural | snake_case }}/{{action}}").await;
+        let res = request.get("/api/{{ name | plural | snake_case }}/{{action}}").await;
         assert_eq!(res.status_code(), 200);
     })
     .await;

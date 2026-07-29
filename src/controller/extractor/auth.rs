@@ -67,34 +67,30 @@ where
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Error> {
         let ctx: AppContext = AppContext::from_ref(state);
 
-        let token = extract_token(get_jwt_from_config(&ctx)?, parts)?;
+        let claims = validate_jwt(&ctx, parts)?;
 
-        let jwt_secret = ctx.config.get_jwt_config()?;
+        let user = T::find_by_claims_key(&ctx.db, &claims.pid)
+            .await
+            .map_err(|e| map_auth_model_error(e, "jwt"))?;
 
-        match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
-            Ok(claims) => {
-                let user = T::find_by_claims_key(&ctx.db, &claims.claims.pid)
-                    .await
-                    .map_err(|e| match e {
-                        ModelError::EntityNotFound => Error::Unauthorized("not found".to_string()),
-                        ModelError::DbErr(db_err) => {
-                            tracing::error!("Database error during authentication: {}", db_err);
-                            Error::InternalServerError
-                        }
-                        _ => {
-                            tracing::error!("Authentication error: {}", e);
-                            Error::Unauthorized("could not authorize".to_string())
-                        }
-                    })?;
-                Ok(Self {
-                    claims: claims.claims,
-                    user,
-                })
-            }
-            Err(err) => {
-                tracing::error!("JWT validation error: {}", err);
-                Err(Error::Unauthorized("token is not valid".to_string()))
-            }
+        Ok(Self { claims, user })
+    }
+}
+
+/// Maps a model-lookup error from an auth extractor into an HTTP [`Error`]:
+/// not-found → 401, DB failure → 500, anything else → 401. `context` labels the
+/// auth path in the error log.
+#[cfg(feature = "with-db")]
+fn map_auth_model_error(err: ModelError, context: &str) -> Error {
+    match err {
+        ModelError::EntityNotFound => Error::Unauthorized("not found".to_string()),
+        ModelError::DbErr(db_err) => {
+            tracing::error!(context, error = %db_err, "database error during authentication");
+            Error::InternalServerError
+        }
+        _ => {
+            tracing::error!(context, error = %err, "authentication error");
+            Error::Unauthorized("could not authorize".to_string())
         }
     }
 }
@@ -119,6 +115,25 @@ where
     }
 }
 
+/// Optional JWT extraction: yields `Some(JWT)` when a valid token is present
+/// and `None` otherwise (missing, malformed, or invalid). Lets a handler take
+/// `Option<JWT>` for endpoints that serve both authenticated and anonymous
+/// callers. Never rejects.
+impl<S> axum::extract::OptionalFromRequestParts<S> for JWT
+where
+    AppContext: FromRef<S>,
+    S: Send + Sync,
+{
+    type Rejection = std::convert::Infallible;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &S,
+    ) -> Result<Option<Self>, Self::Rejection> {
+        Ok(extract_jwt_from_request_parts(parts, state).ok())
+    }
+}
+
 /// extract a [JWT] token from request parts, using a non-mutable reference to the [Parts]
 ///
 /// # Errors
@@ -128,21 +143,35 @@ where
     AppContext: FromRef<S>,
     S: Send + Sync,
 {
-    let ctx: AppContext = AppContext::from_ref(state); // change to ctx
+    let ctx: AppContext = AppContext::from_ref(state);
 
-    let token = extract_token(get_jwt_from_config(&ctx)?, parts)?;
+    let claims = validate_jwt(&ctx, parts)?;
+
+    Ok(JWT { claims })
+}
+
+/// Extract, and validate a JWT token from request `parts` against the given `ctx`, returning the
+/// decoded claims.
+///
+/// This is the shared token-validate-and-decode step used by both [`JWT`] and `JWTWithUser`
+/// extraction: locate the token in one of the configured locations (bearer header / cookie /
+/// query, tried in the configured order), then verify its signature and decode its claims.
+///
+/// # Errors
+/// Return an error when JWT token not configured, the token cannot be found in any of the
+/// configured locations, or when the token is not valid
+fn validate_jwt(ctx: &AppContext, parts: &Parts) -> Result<auth::jwt::UserClaims, Error> {
+    let token = extract_token(get_jwt_from_config(ctx)?, parts)?;
 
     let jwt_secret = ctx.config.get_jwt_config()?;
 
-    match auth::jwt::JWT::new(&jwt_secret.secret).validate(&token) {
-        Ok(claims) => Ok(JWT {
-            claims: claims.claims,
-        }),
-        Err(err) => {
+    auth::jwt::JWT::new(&jwt_secret.secret)
+        .validate(&token)
+        .map(|claims| claims.claims)
+        .map_err(|err| {
             tracing::error!("JWT validation error: {}", err);
-            Err(Error::Unauthorized("token is not valid".to_string()))
-        }
-    }
+            Error::Unauthorized("token is not valid".to_string())
+        })
 }
 
 /// extract JWT token from context configuration
@@ -227,9 +256,7 @@ pub fn extract_token_from_cookie(name: &str, parts: &Parts) -> LocoResult<String
     Ok(jar
         .get(name)
         .ok_or(Error::Unauthorized("token is not found".to_string()))?
-        .to_string()
-        .strip_prefix(&format!("{name}="))
-        .ok_or_else(|| Error::Unauthorized("error strip value".to_string()))?
+        .value()
         .to_string())
 }
 /// Extract a token value from query
@@ -280,17 +307,7 @@ where
         // Retrieve user information based on the API key from the database.
         let user = T::find_by_api_key(&state.db, &api_key)
             .await
-            .map_err(|e| match e {
-                ModelError::EntityNotFound => Error::Unauthorized("not found".to_string()),
-                ModelError::DbErr(db_err) => {
-                    tracing::error!("Database error during API key authentication: {}", db_err);
-                    Error::InternalServerError
-                }
-                _ => {
-                    tracing::error!("API key authentication error: {}", e);
-                    Error::Unauthorized("could not authorize".to_string())
-                }
-            })?;
+            .map_err(|e| map_auth_model_error(e, "api_key"))?;
 
         Ok(Self { user })
     }
@@ -420,6 +437,38 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("token is not found"));
+    }
+
+    #[test]
+    fn test_extract_token_from_cookie_quoted_value() {
+        // `Cookie::value()` does not strip surrounding quotes (same as the
+        // previous hand-parsing behavior), so a quoted cookie value comes
+        // back with its quotes intact.
+        let request = axum::http::Request::builder()
+            .header("Cookie", r#"auth_token="quoted_value_123""#)
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token_from_cookie("auth_token", &parts);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "\"quoted_value_123\"");
+    }
+
+    #[test]
+    fn test_extract_token_from_cookie_multiple_cookies() {
+        let request = axum::http::Request::builder()
+            .header(
+                "Cookie",
+                "session=abc; auth_token=cookie_value_123; other=xyz",
+            )
+            .body(())
+            .unwrap();
+        let (parts, ()) = request.into_parts();
+
+        let result = extract_token_from_cookie("auth_token", &parts);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "cookie_value_123");
     }
 
     #[test]
@@ -829,6 +878,56 @@ mod tests {
         let result = extract_token(&jwt_config, &parts);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "query_token_value");
+    }
+
+    #[tokio::test]
+    async fn optional_jwt_returns_some_for_valid_token() {
+        let mut ctx = crate::tests_cfg::app::get_app_context().await;
+        let secret = "PqRwLF2rhHe8J22oBeHy".to_string();
+        ctx.config.auth = Some(crate::config::Auth {
+            jwt: Some(JWTConfig {
+                location: None,
+                secret: secret.clone(),
+                expiration: 3600,
+            }),
+        });
+
+        let token = auth::jwt::JWT::new(&secret)
+            .generate_token(3600, "test_pid_123".to_string(), serde_json::Map::new())
+            .expect("generate token");
+
+        let request = axum::http::Request::builder()
+            .header(AUTH_HEADER, format!("{TOKEN_PREFIX}{token}"))
+            .body(())
+            .unwrap();
+        let (mut parts, ()) = request.into_parts();
+
+        let result =
+            <JWT as axum::extract::OptionalFromRequestParts<AppContext>>::from_request_parts(
+                &mut parts, &ctx,
+            )
+            .await
+            .expect("optional extraction never rejects");
+
+        let jwt = result.expect("expected Some(JWT) for a valid token");
+        assert_eq!(jwt.claims.pid, "test_pid_123");
+    }
+
+    #[tokio::test]
+    async fn optional_jwt_returns_none_without_auth_header() {
+        let ctx = crate::tests_cfg::app::get_app_context().await;
+
+        let request = axum::http::Request::builder().body(()).unwrap();
+        let (mut parts, ()) = request.into_parts();
+
+        let result =
+            <JWT as axum::extract::OptionalFromRequestParts<AppContext>>::from_request_parts(
+                &mut parts, &ctx,
+            )
+            .await
+            .expect("optional extraction never rejects");
+
+        assert!(result.is_none());
     }
 
     #[test]

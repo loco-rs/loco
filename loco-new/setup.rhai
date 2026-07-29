@@ -5,7 +5,7 @@
 // to the Rust environment, GitHub actions, and formatting settings.
 
 gen.copy_template(".github/workflows/ci.yaml.t");     // Actions ci template
-gen.copy_files([".gitignore", ".rustfmt.toml", "README.md"]);
+gen.copy_files([".gitignore", ".rustfmt.toml", "README.md", "AGENTS.md"]);
 
 gen.copy_template_dir(".cargo");
 
@@ -55,6 +55,10 @@ if db {
    // Database migrations configuration and setup
     gen.copy_template("migration/Cargo.toml.t");                  // Database migrations Cargo configuration
     gen.copy_template("migration/src/lib.rs.t");                  // Database migrations library
+
+    // Typed JSON API contract (Page<T>, ApiError) — DTOs derive the ts-rs
+    // bindings; present for every db app, consumed by the SPA frontend.
+    gen.copy_dir("src/dtos");
 
     // Entity modules for database models
     gen.copy_template("src/models/_entities/mod.rs.t");            // Root module for database entities

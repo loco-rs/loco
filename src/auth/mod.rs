@@ -1,2 +1,2 @@
-#[cfg(feature = "auth_jwt")]
+#[cfg(feature = "auth")]
 pub mod jwt;

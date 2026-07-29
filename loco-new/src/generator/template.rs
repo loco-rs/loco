@@ -6,7 +6,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use rand::{distributions::Alphanumeric, rngs::StdRng, Rng, SeedableRng};
+use rand::{distr::Alphanumeric, rngs::StdRng, Rng, SeedableRng};
 use tera::{Context, Tera};
 
 use crate::settings::Settings;
@@ -30,7 +30,7 @@ impl Default for Template {
         #[cfg(test)]
         let rng = StdRng::seed_from_u64(42);
         #[cfg(not(test))]
-        let rng = StdRng::from_entropy();
+        let rng = StdRng::from_os_rng();
         Self {
             rng: Arc::new(Mutex::new(rng)),
         }
@@ -52,8 +52,8 @@ impl Template {
     pub fn is_template(&self, path: &Path) -> bool {
         path.extension()
             .and_then(|ext| ext.to_str())
-            .filter(|&ext| ext == TEMPLATE_EXTENSION)
-            .is_some()
+            .as_ref()
+            .is_some_and(|&ext| ext == TEMPLATE_EXTENSION)
     }
 
     // Method to register filters in the Tera instance.
@@ -64,17 +64,17 @@ impl Template {
         tera_instance.register_filter(
             "random_string",
             move |value: &tera::Value, _args: &HashMap<String, tera::Value>| {
-                if let tera::Value::Number(length) = value {
-                    if let Some(length) = length.as_u64() {
-                        let rand_str: String = rng_clone.lock().map_or_else(
-                            |_| {
-                                let mut r = StdRng::from_entropy();
-                                generate_random_string(&mut r, length)
-                            },
-                            |mut rng| generate_random_string(&mut *rng, length),
-                        );
-                        return Ok(tera::Value::String(rand_str));
-                    }
+                if let tera::Value::Number(length) = value
+                    && let Some(length) = length.as_u64()
+                {
+                    let rand_str: String = rng_clone.lock().map_or_else(
+                        |_| {
+                            let mut r = StdRng::from_os_rng();
+                            generate_random_string(&mut r, length)
+                        },
+                        |mut rng| generate_random_string(&mut *rng, length),
+                    );
+                    return Ok(tera::Value::String(rand_str));
                 }
                 // Ok(tera::Value::String(String::new()))
                 Err(tera::Error::msg("arg must be a number"))

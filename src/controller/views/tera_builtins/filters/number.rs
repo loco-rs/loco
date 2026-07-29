@@ -76,12 +76,15 @@ pub fn number_with_delimiter(value: &Value, _: &HashMap<String, Value>) -> Resul
 /// If the `value` is not a numeric value, the function will return the original
 /// value as a string without any error.
 pub fn number_to_human_size(value: &Value, _: &HashMap<String, Value>) -> Result<Value> {
-    Byte::from_str(value.to_string()).map_or_else(
+    Byte::parse_str(value.to_string(), true).map_or_else(
         |_| Ok(value.clone()),
-        |byte_unit| {
-            Ok(Value::String(
-                byte_unit.get_appropriate_unit(false).to_string(),
-            ))
+        |byte| {
+            // byte-unit 5 renders full precision by default; `{:.2}` preserves
+            // the 2-decimal formatting that byte-unit 4 produced.
+            Ok(Value::String(format!(
+                "{:.2}",
+                byte.get_appropriate_unit(byte_unit::UnitType::Decimal)
+            )))
         },
     )
 }

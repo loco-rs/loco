@@ -1,7 +1,6 @@
 ---
 source: loco-gen/tests/templates/migration.rs
 expression: "fs::read_to_string(&migration_file).expect(\"Failed to read the migration file\")"
-snapshot_kind: text
 ---
 use loco_rs::schema::*;
 use sea_orm_migration::prelude::*;
@@ -13,7 +12,7 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
         add_column(m, "users", "name", ColType::StringNull).await?;
-        add_column(m, "users", "age", ColType::IntegerNull).await?;
+        add_column(m, "users", "age", ColType::BigIntegerNull).await?;
         Ok(())
     }
 

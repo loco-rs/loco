@@ -24,7 +24,7 @@ use std::fmt::Write;
 use std::process::exit;
 use std::{collections::BTreeMap, path::PathBuf};
 
-#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+#[cfg(feature = "worker")]
 use crate::bgworker::JobStatus;
 #[cfg(debug_assertions)]
 use crate::controller;
@@ -76,6 +76,9 @@ enum Commands {
         /// Start the server, worker, and scheduler in the same process
         #[arg(short, long, action, conflicts_with_all = &["worker", "server_and_worker"])]
         all: bool,
+        /// Run the scheduler
+        #[arg(long, action, conflicts_with = "all")]
+        scheduler: bool,
         /// server bind address
         #[arg(short, long, action)]
         binding: Option<String>,
@@ -109,7 +112,7 @@ enum Commands {
         #[clap(value_parser = parse_key_val::<String,String>)]
         params: Vec<(String, String)>,
     },
-    #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+    #[cfg(feature = "worker")]
     /// Managing jobs queue.
     Jobs {
         #[command(subcommand)]
@@ -161,6 +164,9 @@ enum Commands {
         /// start same-process server and worker
         #[arg(short, long, action)]
         server_and_worker: bool,
+        /// Run the scheduler
+        #[arg(long, action)]
+        scheduler: bool,
     },
 }
 
@@ -256,9 +262,9 @@ After running the migration, follow these steps to complete the process:
     #[cfg(feature = "with-db")]
     /// Generates a CRUD scaffold, model and controller
     #[command(after_help = format!("{}
- $ cargo loco g model posts title:string! user:references --api
+ $ cargo loco g model posts title:string! user:references
 
- $ cargo loco g scaffold posts title:string! user:references --api --without-tz", "Examples:".bold().underline()))]
+ $ cargo loco g scaffold posts title:string! user:references --without-tz", "Examples:".bold().underline()))]
     Scaffold {
         /// Name of the thing to generate
         name: String,
@@ -270,31 +276,15 @@ After running the migration, follow these steps to complete the process:
         /// Model fields, eg. title:string hits:int
         #[clap(value_parser = parse_key_val::<String,String>)]
         fields: Vec<(String, String)>,
-
-        /// The kind of scaffold to generate
-        #[clap(short, long, value_enum, group = "scaffold_kind_group")]
-        kind: Option<loco_gen::ScaffoldKind>,
-
-        /// Use HTMX scaffold
-        #[clap(long, group = "scaffold_kind_group")]
-        htmx: bool,
-
-        /// Use HTML scaffold
-        #[clap(long, group = "scaffold_kind_group")]
-        html: bool,
-
-        /// Use API scaffold
-        #[clap(long, group = "scaffold_kind_group")]
-        api: bool,
     },
     /// Generate a new controller with the given controller name, and test file.
     #[command(after_help = format!(
-    "{}  
+    "{}
   - Generate an empty controller:
-      $ cargo loco generate controller posts --api
+      $ cargo loco generate controller posts
 
   - Generate a controller with actions:
-      $ cargo loco generate controller posts --api list remove update
+      $ cargo loco generate controller posts list remove update
 ",
     "Examples:".bold().underline()
 ))]
@@ -304,22 +294,6 @@ After running the migration, follow these steps to complete the process:
 
         /// Actions
         actions: Vec<String>,
-
-        /// The kind of controller actions to generate
-        #[clap(short, long, value_enum, group = "scaffold_kind_group")]
-        kind: Option<loco_gen::ScaffoldKind>,
-
-        /// Use HTMX controller actions
-        #[clap(long, group = "scaffold_kind_group")]
-        htmx: bool,
-
-        /// Use HTML controller actions
-        #[clap(long, group = "scaffold_kind_group")]
-        html: bool,
-
-        /// Use API controller actions
-        #[clap(long, group = "scaffold_kind_group")]
-        api: bool,
     },
     /// Generate a Task based on the given name
     Task {
@@ -358,7 +332,7 @@ After running the migration, follow these steps to complete the process:
       * cargo loco generate override migration/add_columns.t
 
   - Override All Files in a Folder:
-      * cargo loco generate override scaffold/htmx
+      * cargo loco generate override scaffold/api
       * cargo loco generate override task
 
   - Override All templates:
@@ -404,59 +378,17 @@ impl ComponentArg {
                 name,
                 without_tz,
                 fields,
-                kind,
-                htmx,
-                html,
-                api,
-            } => {
-                let kind = if let Some(kind) = kind {
-                    kind
-                } else if htmx {
-                    loco_gen::ScaffoldKind::Htmx
-                } else if html {
-                    loco_gen::ScaffoldKind::Html
-                } else if api {
-                    loco_gen::ScaffoldKind::Api
-                } else {
-                    return Err(crate::Error::string(
-                        "Error: generating this component requires one of `--kind`, `--htmx`, `--html`, or `--api` to be specified. Run with `--help` for more information.",
-                    ));
-                };
-
-                Ok(loco_gen::Component::Scaffold {
-                    name,
-                    with_tz: !without_tz,
-                    fields,
-                    kind,
-                })
-            }
-            Self::Controller {
+            } => Ok(loco_gen::Component::Scaffold {
                 name,
-                actions,
-                kind,
-                htmx,
-                html,
-                api,
-            } => {
-                let kind = if let Some(kind) = kind {
-                    kind
-                } else if htmx {
-                    loco_gen::ScaffoldKind::Htmx
-                } else if html {
-                    loco_gen::ScaffoldKind::Html
-                } else if api {
-                    loco_gen::ScaffoldKind::Api
-                } else {
-                    return Err(crate::Error::string(
-                        "Error: One of `kind`, `htmx`, `html`, or `api` must be specified.",
-                    ));
-                };
-
-                Ok(loco_gen::Component::Controller {
-                    name,
-                    actions,
-                    kind,
-                })
+                with_tz: !without_tz,
+                fields,
+                // Adaptive: emit the React-SPA frontend only when this is a
+                // clientside app (its once-per-app `frontend/src/routes.tsx`
+                // exists). Headless/serverside apps get the typed backend only.
+                frontend: std::path::Path::new("frontend/src/routes.tsx").exists(),
+            }),
+            Self::Controller { name, actions } => {
+                Ok(loco_gen::Component::Controller { name, actions })
             }
             Self::Task { name } => Ok(loco_gen::Component::Task { name }),
             Self::Scheduler {} => Ok(loco_gen::Component::Scheduler {}),
@@ -589,7 +521,7 @@ impl DeploymentKind {
     }
 }
 
-#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
+#[cfg(feature = "worker")]
 #[derive(Subcommand)]
 enum JobsCommands {
     /// Cancels jobs with the specified names, setting their status to
@@ -701,8 +633,6 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
 /// }
 /// ```
 #[cfg(feature = "with-db")]
-#[allow(clippy::too_many_lines)]
-#[allow(clippy::cognitive_complexity)]
 pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
     let cli: Cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
@@ -722,20 +652,12 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             worker,
             server_and_worker,
             all,
+            scheduler,
             binding,
             port,
             no_banner,
         } => {
-            let start_mode = worker.map_or(
-                if server_and_worker {
-                    StartMode::ServerAndWorker
-                } else if all {
-                    StartMode::All
-                } else {
-                    StartMode::ServerOnly
-                },
-                |tags| StartMode::WorkerOnly { tags },
-            );
+            let start_mode = start_mode_from_flags(all, server_and_worker, worker, scheduler);
 
             let boot_result =
                 create_app::<H, M>(start_mode, &environment, app_context.config).await?;
@@ -754,16 +676,25 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                 run_db::<H, M>(&app_context, command.into()).await?;
             }
         }
-        #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
-        Commands::Jobs { command } => {
-            handle_job_command::<H>(command, &environment, app_context.config).await?;
-        }
-        Commands::Routes {} => {
-            let app_context = create_context::<H>(&environment, app_context.config).await?;
-            show_list_endpoints::<H>(&app_context);
-        }
+        command => dispatch_common::<H>(command, &environment, app_context).await?,
+    }
+    Ok(())
+}
+
+/// Handles every CLI command whose behavior does not depend on the `with-db`
+/// feature (i.e. does not need the `M: MigratorTrait` generic), given an
+/// already-initialized [`AppContext`]. Shared by both the `with-db` and
+/// non-`with-db` flavors of [`main`].
+#[allow(clippy::too_many_lines)]
+#[allow(clippy::cognitive_complexity)]
+async fn dispatch_common<H: Hooks>(
+    command: Commands,
+    environment: &Environment,
+    app_context: AppContext,
+) -> crate::Result<()> {
+    match command {
+        Commands::Routes {} => show_list_endpoints::<H>(&app_context),
         Commands::Middleware { show_config } => {
-            let app_context = create_context::<H>(&environment, app_context.config).await?;
             let middlewares = list_middlewares::<H>(&app_context);
             for middleware in middlewares.iter().filter(|m| m.enabled) {
                 println!(
@@ -778,13 +709,16 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             }
             println!("\n");
             for middleware in middlewares.iter().filter(|m| !m.enabled) {
-                println!("{:<22} (disabled)", middleware.id.bold().dimmed(),);
+                println!("{:<22} (disabled)", middleware.id.bold().dimmed());
             }
         }
         Commands::Task { name, params } => {
             let vars = task::Vars::from_cli_args(params);
-            let app_context = create_context::<H>(&environment, app_context.config).await?;
             run_task::<H>(&app_context, name.as_ref(), &vars).await?;
+        }
+        #[cfg(feature = "worker")]
+        Commands::Jobs { command } => {
+            handle_job_command(command, &app_context).await?;
         }
         Commands::Scheduler {
             name,
@@ -792,7 +726,6 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             tag,
             list,
         } => {
-            let app_context = create_context::<H>(&environment, app_context.config).await?;
             run_scheduler::<H>(&app_context, config_path.as_ref(), name, tag, list).await?;
         }
         #[cfg(debug_assertions)]
@@ -804,8 +737,8 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             production,
         } => {
             if config_arg {
-                println!("{}", &app_context.config);
-                println!("Environment: {}", &environment);
+                println!("{}", app_context.config);
+                println!("Environment: {environment}");
             } else {
                 let mut should_exit = false;
                 for (_, check) in doctor::run_all::<H>(&app_context, production).await? {
@@ -820,12 +753,12 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             }
         }
         Commands::Version {} => {
-            println!("{}", H::app_version(),);
+            println!("{}", H::app_version());
         }
-
         Commands::Watch {
             worker,
             server_and_worker,
+            scheduler,
         } => {
             // cargo-watch  -s 'cargo loco start'
             let mut cmd_str = String::from("cargo loco start");
@@ -840,6 +773,9 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
             } else if server_and_worker {
                 cmd_str.push_str(" --server-and-worker");
             }
+            if scheduler {
+                cmd_str.push_str(" --scheduler");
+            }
 
             cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
                 Error::Message(format!(
@@ -847,6 +783,23 @@ pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
                          cargo-watch`?. error details: `{err}`",
                 ))
             })?;
+        }
+        // `Start` and (with `with-db`) `Db` are handled by the caller before
+        // delegating here. Map them to an explicit error instead of a
+        // wildcard arm so the match stays exhaustive against future
+        // `Commands` variants.
+        Commands::Start { .. } => {
+            return Err(Error::string(
+                "internal error: `Start` command must be handled by the caller, not \
+                 `dispatch_common`",
+            ));
+        }
+        #[cfg(feature = "with-db")]
+        Commands::Db { .. } => {
+            return Err(Error::string(
+                "internal error: `Db` command must be handled by the caller, not \
+                 `dispatch_common`",
+            ));
         }
     }
     Ok(())
@@ -872,118 +825,22 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
             worker,
             server_and_worker,
             all,
+            scheduler,
             binding,
             port,
             no_banner,
         } => {
-            let start_mode = worker.map_or(
-                if server_and_worker {
-                    StartMode::ServerAndWorker
-                } else if all {
-                    StartMode::All
-                } else {
-                    StartMode::ServerOnly
-                },
-                |tags| StartMode::WorkerOnly { tags },
-            );
+            let start_mode = start_mode_from_flags(all, server_and_worker, worker, scheduler);
 
             let boot_result = create_app::<H>(start_mode, &environment, app_context.config).await?;
             let serve_params = ServeParams {
                 port: port.map_or(boot_result.app_context.config.server.port, |p| p),
-                binding: binding.map_or(
-                    boot_result.app_context.config.server.binding.to_string(),
-                    |b| b,
-                ),
+                binding: binding
+                    .unwrap_or_else(|| boot_result.app_context.config.server.binding.clone()),
             };
             start::<H>(boot_result, serve_params, no_banner).await?;
         }
-        Commands::Routes {} => show_list_endpoints::<H>(&app_context),
-        Commands::Middleware { show_config } => {
-            let middlewares = list_middlewares::<H>(&app_context);
-            for middleware in middlewares.iter().filter(|m| m.enabled) {
-                println!(
-                    "{:<22} {}",
-                    middleware.id.bold(),
-                    if show_config {
-                        middleware.detail.as_str()
-                    } else {
-                        ""
-                    }
-                );
-            }
-            println!("\n");
-            for middleware in middlewares.iter().filter(|m| !m.enabled) {
-                println!("{:<22} (disabled)", middleware.id.bold().dimmed(),);
-            }
-        }
-        Commands::Task { name, params } => {
-            let vars = task::Vars::from_cli_args(params);
-            run_task::<H>(&app_context, name.as_ref(), &vars).await?;
-        }
-        #[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
-        Commands::Jobs { command } => {
-            handle_job_command::<H>(command, &environment, app_context.config).await?
-        }
-        Commands::Scheduler {
-            name,
-            config_path,
-            tag,
-            list,
-        } => {
-            run_scheduler::<H>(&app_context, config_path.as_ref(), name, tag, list).await?;
-        }
-        #[cfg(debug_assertions)]
-        Commands::Generate { component } => {
-            handle_generate_command::<H>(component, &app_context.config)?;
-        }
-        Commands::Doctor {
-            config: config_arg,
-            production,
-        } => {
-            if config_arg {
-                println!("{}", &app_context.config);
-                println!("Environment: {}", &environment);
-            } else {
-                let mut should_exit = false;
-                for (_, check) in doctor::run_all::<H>(&app_context, production).await? {
-                    if !should_exit && !check.valid() {
-                        should_exit = true;
-                    }
-                    println!("{check}");
-                }
-                if should_exit {
-                    exit(1);
-                }
-            }
-        }
-        Commands::Version {} => {
-            println!("{}", H::app_version(),);
-        }
-        Commands::Watch {
-            worker,
-            server_and_worker,
-        } => {
-            // cargo-watch  -s 'cargo loco start'
-            let mut cmd_str = String::from("cargo loco start");
-
-            if let Some(worker_tags) = worker {
-                if worker_tags.is_empty() {
-                    cmd_str.push_str(" --worker");
-                } else {
-                    write!(cmd_str, " --worker={}", worker_tags.join(","))
-                        .expect("Failed to write to string");
-                }
-            } else if server_and_worker {
-                cmd_str.push_str(" --server-and-worker");
-            }
-
-            cmd("cargo-watch", &["-s", &cmd_str]).run().map_err(|err| {
-                Error::Message(format!(
-                    "failed to start with `cargo-watch`. Did you `cargo install \
-                         cargo-watch`?. error details: `{err}`",
-                ))
-            })?;
-        }
+        command => dispatch_common::<H>(command, &environment, app_context).await?,
     }
     Ok(())
 }
@@ -1210,14 +1067,34 @@ fn create_root_span(environment: &Environment) -> tracing::Span {
     tracing::span!(tracing::Level::DEBUG, "app", environment = %environment)
 }
 
-#[cfg(any(feature = "bg_redis", feature = "bg_pg", feature = "bg_sqlt"))]
-async fn handle_job_command<H: Hooks>(
-    command: JobsCommands,
-    environment: &Environment,
-    config: Config,
-) -> crate::Result<()> {
-    let app_context = create_context::<H>(environment, config).await?;
-    let queue = app_context.queue_provider.unwrap_or_else(|| {
+/// Resolves the [`StartMode`] from the `Commands::Start` CLI flags. Shared by
+/// the `with-db` and non-`with-db` flavors of `main`.
+fn start_mode_from_flags(
+    all: bool,
+    server_and_worker: bool,
+    worker: Option<Vec<String>>,
+    scheduler: bool,
+) -> StartMode {
+    if all || (server_and_worker && scheduler) {
+        StartMode::All
+    } else if server_and_worker {
+        StartMode::ServerAndWorker
+    } else if let Some(tags) = worker {
+        if scheduler {
+            StartMode::WorkerAndScheduler { tags }
+        } else {
+            StartMode::WorkerOnly { tags }
+        }
+    } else if scheduler {
+        StartMode::ServerAndScheduler
+    } else {
+        StartMode::ServerOnly
+    }
+}
+
+#[cfg(feature = "worker")]
+async fn handle_job_command(command: JobsCommands, app_context: &AppContext) -> crate::Result<()> {
+    let queue = app_context.queue_provider.clone().unwrap_or_else(|| {
         println!("queue not configured");
         exit(1);
     });
@@ -1389,7 +1266,7 @@ pub fn format_templates_as_tree(paths: Vec<PathBuf>) -> String {
     let _ = writeln!(
         output,
         " * cargo loco generate override {}",
-        "scaffold/htmx".yellow()
+        "scaffold/api".yellow()
     );
 
     let _ = writeln!(

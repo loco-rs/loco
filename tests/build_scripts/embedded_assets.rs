@@ -5,6 +5,7 @@ use std::path::Path; // For creating regex filters
 // Import only the essential functions from build/embedded_assets.rs
 // Use a module declaration with the `#[path]` attribute to specify the file path
 #[path = "../../build/embedded_assets.rs"]
+#[allow(clippy::module_inception)]
 mod embedded_assets;
 
 // Export only the functions we're actually testing

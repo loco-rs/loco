@@ -12,7 +12,7 @@ pub fn get_cleanup_user_model() -> &'static Vec<(&'static str, &'static str)> {
                 r"([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})",
                 "PID",
             ),
-            (r"password: (.*{60}),", "password: \"PASSWORD\","),
+            (r#"password: "[^"]*""#, "password: \"PASSWORD\""),
             (r"([A-Za-z0-9-_]*\.[A-Za-z0-9-_]*\.[A-Za-z0-9-_]*)", "TOKEN"),
         ]
     })
@@ -70,11 +70,10 @@ pub fn get_cleanup_mail() -> &'static Vec<(&'static str, &'static str)> {
 /// ```rust,ignore
 /// use myapp::app::App;
 /// use loco_rs::testing::prelude::*;
-/// use migration::Migrator;
 ///
 /// #[tokio::test]
 /// async fn test_create_user() {
-///     let boot = boot_test::<App, Migrator>().await;
+///     let boot = boot_test::<App>().await;
 ///
 ///     // Create a user and save into the database.
 ///
@@ -100,4 +99,79 @@ pub fn cleanup_email() -> Vec<(&'static str, &'static str)> {
     let mut combined_filters = get_cleanup_mail().clone();
     combined_filters.extend(get_cleanup_date().iter().copied());
     combined_filters
+}
+
+#[cfg(test)]
+mod tests {
+    use regex::Regex;
+
+    use super::*;
+
+    /// A realistic pretty-printed record, mimicking `assert_debug_snapshot!`
+    /// output for a user model: a password hash (which itself contains a
+    /// comma) followed by another field on the same line.
+    const SAMPLE_RECORD: &str = r#"password: "$argon2id$v=19$m=19456,t=2,p=1$ETQBx4rTgNAZhSaeYZKOZg$eYTdH26CRT6nUJtacLDEboP0li6xUwUF/q5nSlQ8uuc", api_key: "lo-95ec80d7-cb60-4b70-9b4b-9ef74cb88758","#;
+
+    fn password_filter() -> (&'static str, &'static str) {
+        get_cleanup_user_model()
+            .iter()
+            .copied()
+            .find(|(pattern, _)| pattern.starts_with("password"))
+            .expect("a password redaction rule must be present")
+    }
+
+    #[test]
+    fn old_password_regex_was_inert() {
+        // Regression guard for #14: `password: (.*{60}),` is a degenerate
+        // quantifier (`(.*){60}` collapses to `.*`), so it has no length
+        // constraint at all. It greedily matches through to the *last* comma
+        // on the line, silently swallowing whatever field comes right after
+        // the password (here, `api_key`) instead of stopping at the hash.
+        let old_pattern = Regex::new(r"password: (.*{60}),").unwrap();
+        let redacted = old_pattern.replace(SAMPLE_RECORD, "password: \"PASSWORD\",");
+
+        // the neighboring field got eaten by the over-broad match
+        assert!(!redacted.contains("api_key"));
+    }
+
+    #[test]
+    fn password_field_is_redacted_precisely() {
+        let (pattern, replacement) = password_filter();
+        let re = Regex::new(pattern).unwrap();
+        let redacted = re.replace(SAMPLE_RECORD, replacement);
+
+        // Exact match: only the quoted value is replaced, the trailing comma
+        // and the neighboring field are left byte-for-byte intact. Asserting
+        // the whole string guards against re-introducing punctuation artifacts
+        // (e.g. a doubled `,,` if the replacement re-adds the comma the regex
+        // no longer consumes).
+        assert_eq!(
+            redacted,
+            r#"password: "PASSWORD", api_key: "lo-95ec80d7-cb60-4b70-9b4b-9ef74cb88758","#
+        );
+        assert!(
+            !redacted.contains(",,"),
+            "redaction must not double the comma"
+        );
+    }
+
+    #[test]
+    fn cleanup_user_model_redacts_full_record() {
+        let filters = cleanup_user_model();
+        let mut redacted = SAMPLE_RECORD.to_string();
+        for (pattern, replacement) in filters {
+            let re = Regex::new(pattern).unwrap();
+            redacted = re.replace_all(&redacted, replacement).to_string();
+        }
+
+        // The uuid-looking part of the api_key also gets redacted by the PID
+        // filter (expected/pre-existing behavior); what matters here is that
+        // the `api_key` field is not swallowed by the password filter and no
+        // punctuation artifact is introduced.
+        assert_eq!(redacted, r#"password: "PASSWORD", api_key: "lo-PID","#);
+        assert!(
+            !redacted.contains(",,"),
+            "redaction must not double the comma"
+        );
+    }
 }

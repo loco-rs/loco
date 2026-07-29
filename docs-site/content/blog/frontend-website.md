@@ -51,7 +51,7 @@ $ cargo loco doctor
 ✅ Redis connection: success
 ```
 
-Verify that SeaORM CLI is installed, and the database and Redis connections are successful. If any resources fail, refer to the [quick tour guide](@/docs/getting-started/guide.md) for troubleshooting.
+Verify that SeaORM CLI is installed, and the database and Redis connections are successful. If any resources fail, refer to the [quick tour guide](@/docs/tutorials/your-first-app.md) for troubleshooting.
 
 Once `cargo loco doctor` shows all checks passed, start the server:
 

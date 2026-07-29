@@ -56,7 +56,7 @@ pub fn template<S>(template: &str, data: S) -> Result<String>
 where
     S: Serialize,
 {
-    let mut tera = tera::Tera::default();
+    let mut tera = crate::tera::instance();
     Ok(tera.render_str(template, &tera::Context::from_serialize(data)?)?)
 }
 
@@ -71,7 +71,7 @@ where
     S: Send + Sync,
     E: Clone + Send + Sync + 'static,
 {
-    type Rejection = std::convert::Infallible;
+    type Rejection = crate::Error;
 
     async fn from_request_parts(
         parts: &mut Parts,
@@ -79,17 +79,7 @@ where
     ) -> std::result::Result<Self, Self::Rejection> {
         let Extension(tl): Extension<Self> = Extension::from_request_parts(parts, state)
             .await
-            .expect("TeraLayer missing. Is the TeraLayer installed?");
-        /*
-        let locale = parts
-            .headers
-            .get("Accept-Language")
-            .unwrap()
-            .to_str()
-            .unwrap();
-        // BUG: this does not mutate or set anything because of clone
-        tl.default_context.clone().insert("locale", &locale);
-        */
+            .map_err(|_| crate::Error::string("TeraLayer missing. Is the TeraLayer installed?"))?;
 
         Ok(tl)
     }

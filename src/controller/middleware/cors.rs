@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tower_http::cors::{self, Any};
 
-use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Result};
+use crate::{app::AppContext, controller::middleware::MiddlewareLayer, Error, Result};
 
 /// CORS middleware configuration
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -150,6 +150,26 @@ impl Cors {
 
         if let Some(max_age) = self.max_age {
             cors = cors.max_age(Duration::from_secs(max_age));
+        }
+
+        // `Access-Control-Allow-Credentials: true` is illegal in combination with a
+        // wildcard (`*`) origin/headers/methods/expose-headers. tower-http asserts
+        // (panics) on this combination when building the layer / on `poll_ready`, so
+        // surface it here as a clean configuration error instead of a runtime panic.
+        if self.allow_credentials {
+            let is_wildcard = |values: &[String]| values.iter().any(|v| v == "*");
+            if is_wildcard(&self.allow_origins)
+                || is_wildcard(&self.allow_headers)
+                || is_wildcard(&self.allow_methods)
+                || is_wildcard(&self.expose_headers)
+            {
+                return Err(Error::Message(
+                    "CORS `allow_credentials: true` cannot be combined with a wildcard `*` in \
+                     `allow_origins`, `allow_headers`, `allow_methods`, or `expose_headers`. \
+                     Specify explicit values instead."
+                        .to_string(),
+                ));
+            }
         }
 
         cors = cors.allow_credentials(self.allow_credentials);

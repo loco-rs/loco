@@ -79,13 +79,184 @@ impl Routes {
     /// ````
     #[must_use]
     pub fn add(mut self, uri: &str, method: axum::routing::MethodRouter<AppContext>) -> Self {
-        describe::method_action(&method);
         self.handlers.push(Handler {
             uri: uri.to_owned(),
             actions: describe::method_action(&method),
             method,
         });
         self
+    }
+
+    /// Push a [`Handler`] whose `actions` are recorded directly from `verb`,
+    /// bypassing the [`describe::method_action`] regex entirely. This is the
+    /// shared implementation behind the verb-explicit builder methods
+    /// (`get`, `post`, `put`, `delete`, `patch`, `head`, `options`, `trace`).
+    fn add_verb(
+        mut self,
+        uri: &str,
+        verb: axum::http::Method,
+        method: axum::routing::MethodRouter<AppContext>,
+    ) -> Self {
+        self.handlers.push(Handler {
+            uri: uri.to_owned(),
+            actions: vec![verb],
+            method,
+        });
+        self
+    }
+
+    /// Adding a GET route.
+    ///
+    /// This is a verb-explicit alternative to [`Routes::add`]: the HTTP verb
+    /// is recorded directly (no regex is used to derive it).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use loco_rs::prelude::*;
+    /// use serde::Serialize;
+    ///
+    /// #[derive(Serialize)]
+    /// struct Health {
+    ///    pub ok: bool,
+    /// }
+    ///
+    /// async fn ping() -> Result<Response> {
+    ///     format::json(Health { ok: true })
+    /// }
+    /// Routes::new().get("/_ping", ping);
+    /// ```
+    #[must_use]
+    pub fn get<H, T>(self, uri: &str, handler: H) -> Self
+    where
+        H: axum::handler::Handler<T, AppContext>,
+        T: 'static,
+    {
+        self.add_verb(uri, axum::http::Method::GET, axum::routing::get(handler))
+    }
+
+    /// Adding a POST route.
+    ///
+    /// This is a verb-explicit alternative to [`Routes::add`]: the HTTP verb
+    /// is recorded directly (no regex is used to derive it).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use loco_rs::prelude::*;
+    /// use serde::Serialize;
+    ///
+    /// #[derive(Serialize)]
+    /// struct Health {
+    ///    pub ok: bool,
+    /// }
+    ///
+    /// async fn ping() -> Result<Response> {
+    ///     format::json(Health { ok: true })
+    /// }
+    /// Routes::new().post("/_ping", ping);
+    /// ```
+    #[must_use]
+    pub fn post<H, T>(self, uri: &str, handler: H) -> Self
+    where
+        H: axum::handler::Handler<T, AppContext>,
+        T: 'static,
+    {
+        self.add_verb(uri, axum::http::Method::POST, axum::routing::post(handler))
+    }
+
+    /// Adding a PUT route.
+    ///
+    /// This is a verb-explicit alternative to [`Routes::add`]: the HTTP verb
+    /// is recorded directly (no regex is used to derive it).
+    #[must_use]
+    pub fn put<H, T>(self, uri: &str, handler: H) -> Self
+    where
+        H: axum::handler::Handler<T, AppContext>,
+        T: 'static,
+    {
+        self.add_verb(uri, axum::http::Method::PUT, axum::routing::put(handler))
+    }
+
+    /// Adding a DELETE route.
+    ///
+    /// This is a verb-explicit alternative to [`Routes::add`]: the HTTP verb
+    /// is recorded directly (no regex is used to derive it).
+    #[must_use]
+    pub fn delete<H, T>(self, uri: &str, handler: H) -> Self
+    where
+        H: axum::handler::Handler<T, AppContext>,
+        T: 'static,
+    {
+        self.add_verb(
+            uri,
+            axum::http::Method::DELETE,
+            axum::routing::delete(handler),
+        )
+    }
+
+    /// Adding a PATCH route.
+    ///
+    /// This is a verb-explicit alternative to [`Routes::add`]: the HTTP verb
+    /// is recorded directly (no regex is used to derive it).
+    #[must_use]
+    pub fn patch<H, T>(self, uri: &str, handler: H) -> Self
+    where
+        H: axum::handler::Handler<T, AppContext>,
+        T: 'static,
+    {
+        self.add_verb(
+            uri,
+            axum::http::Method::PATCH,
+            axum::routing::patch(handler),
+        )
+    }
+
+    /// Adding a HEAD route.
+    ///
+    /// This is a verb-explicit alternative to [`Routes::add`]: the HTTP verb
+    /// is recorded directly (no regex is used to derive it).
+    #[must_use]
+    pub fn head<H, T>(self, uri: &str, handler: H) -> Self
+    where
+        H: axum::handler::Handler<T, AppContext>,
+        T: 'static,
+    {
+        self.add_verb(uri, axum::http::Method::HEAD, axum::routing::head(handler))
+    }
+
+    /// Adding an OPTIONS route.
+    ///
+    /// This is a verb-explicit alternative to [`Routes::add`]: the HTTP verb
+    /// is recorded directly (no regex is used to derive it).
+    #[must_use]
+    pub fn options<H, T>(self, uri: &str, handler: H) -> Self
+    where
+        H: axum::handler::Handler<T, AppContext>,
+        T: 'static,
+    {
+        self.add_verb(
+            uri,
+            axum::http::Method::OPTIONS,
+            axum::routing::options(handler),
+        )
+    }
+
+    /// Adding a TRACE route.
+    ///
+    /// This is a verb-explicit alternative to [`Routes::add`]: the HTTP verb
+    /// is recorded directly (no regex is used to derive it).
+    #[must_use]
+    pub fn trace<H, T>(self, uri: &str, handler: H) -> Self
+    where
+        H: axum::handler::Handler<T, AppContext>,
+        T: 'static,
+    {
+        self.add_verb(
+            uri,
+            axum::http::Method::TRACE,
+            axum::routing::trace(handler),
+        )
     }
 
     /// Merge another Routes instance into this one.
@@ -581,5 +752,78 @@ mod tests {
 
         let order_handler = &app_routes.handlers[3];
         assert_eq!(order_handler.uri, "/api/orders");
+    }
+
+    #[test]
+    fn test_verb_explicit_get_records_action_directly() {
+        // Using the new verb-explicit `get` method: this should NOT go
+        // through the `describe::method_action` regex at all.
+        let routes = Routes::new().get("/x", users);
+
+        assert_eq!(routes.handlers.len(), 1);
+        let handler = &routes.handlers[0];
+        assert_eq!(handler.uri, "/x");
+        assert_eq!(handler.actions, vec![axum::http::Method::GET]);
+    }
+
+    #[test]
+    fn test_verb_explicit_distinct_paths() {
+        // Distinct paths, distinct verbs: two Handler entries, exact verbs.
+        let routes = Routes::new().get("/a", users).post("/b", users);
+
+        assert_eq!(routes.handlers.len(), 2);
+
+        let a_handler = &routes.handlers[0];
+        assert_eq!(a_handler.uri, "/a");
+        assert_eq!(a_handler.actions, vec![axum::http::Method::GET]);
+
+        let b_handler = &routes.handlers[1];
+        assert_eq!(b_handler.uri, "/b");
+        assert_eq!(b_handler.actions, vec![axum::http::Method::POST]);
+    }
+
+    #[cfg(feature = "testing")]
+    #[tokio::test]
+    async fn test_verb_explicit_same_path_multi_verb_merges_in_router() {
+        use crate::controller::app_routes::AppRoutes;
+        use crate::tests_cfg;
+        use tower::ServiceExt;
+
+        // Same path, different verbs across two separate builder calls: this
+        // produces TWO `Handler` entries sharing the same uri, each with a
+        // single verb recorded directly (no regex involved).
+        let routes = Routes::new().get("/same", users).post("/same", users);
+
+        assert_eq!(routes.handlers.len(), 2);
+        assert_eq!(routes.handlers[0].uri, "/same");
+        assert_eq!(routes.handlers[0].actions, vec![axum::http::Method::GET]);
+        assert_eq!(routes.handlers[1].uri, "/same");
+        assert_eq!(routes.handlers[1].actions, vec![axum::http::Method::POST]);
+
+        // Axum's `Router::route` merges method routers when called more than
+        // once for the same path, as long as the verbs don't overlap (this is
+        // the same mechanism that already backs `.add(uri, get(h)).add(uri,
+        // post(h2))`). Verify this holds end-to-end through the real
+        // `AppRoutes::to_router`, confirming both verbs are actually
+        // routable (not just that construction doesn't panic).
+        let app_router = AppRoutes::empty().add_route(routes);
+        let ctx = tests_cfg::app::get_app_context().await;
+        let router = app_router
+            .to_router::<tests_cfg::db::AppHook>(ctx, axum::Router::new())
+            .unwrap();
+
+        for method in [axum::http::Method::GET, axum::http::Method::POST] {
+            let req = axum::http::Request::builder()
+                .uri("/same")
+                .method(method.clone())
+                .body(axum::body::Body::empty())
+                .unwrap();
+            let response = router.clone().oneshot(req).await.unwrap();
+            assert!(
+                response.status().is_success(),
+                "expected {method} /same to succeed, got {}",
+                response.status()
+            );
+        }
     }
 }
