@@ -16,17 +16,15 @@
 
  </div>
 
-
 English · [中文](./README-zh_CN.md) · [Français](./README.fr.md) · [Portuguese (Brazil)](./README-pt_BR.md) ・ [日本語](./README.ja.md) · [한국어](./README.ko.md) · [Русский](./README.ru.md) · [Español](./README.es.md) · [Vietnamese](./README.vi.md) · [العربية](./README.ar.md)
 
-
 ## What's Loco?
+
 `Loco` is strongly inspired by Rails. If you know Rails and Rust, you'll feel at home. If you only know Rails and new to Rust, you'll find Loco refreshing. We do not assume you know Rails.
 
 For a deeper dive into how Loco works, including detailed guides, examples, and API references, check out our [documentation website](https://loco.rs).
 
-
-## Features of Loco:
+## Features of Loco
 
 * `Convention Over Configuration:` Similar to Ruby on Rails, Loco emphasizes simplicity and productivity by reducing the need for boilerplate code. It uses sensible defaults, allowing developers to focus on writing business logic rather than spending time on configuration.
 
@@ -38,7 +36,7 @@ For a deeper dive into how Loco works, including detailed guides, examples, and 
 
 * `Views:` Loco can integrate with templating engines to generate dynamic HTML content from templates.
 
-* `Background Jobs:` Perform compute or I/O intensive jobs in the background with a Redis backed queue, or with threads. Implementing a worker is as simple as implementing a perform function for the Worker trait.
+* `Background Jobs:` Perform compute or I/O intensive jobs in the background with a Redis backed queue, or with threads. Implementing a worker is as simple as implementing a `perform` function for the `Worker` trait.
 
 * `Scheduler:` Simplifies the traditional, often cumbersome crontab system, making it easier and more elegant to schedule tasks or shell scripts.
 
@@ -50,8 +48,6 @@ For a deeper dive into how Loco works, including detailed guides, examples, and 
 
 So see more Loco features, check out our [documentation website](https://loco.rs/docs/getting-started/tour/).
 
-
-
 ## Getting Started
 <!-- <snip id="quick-installation-command" inject_from="yaml" template="sh"> -->
 ```sh
@@ -61,7 +57,6 @@ cargo install sea-orm-cli # Only when DB is needed
 <!-- </snip> -->
 
 Now you can create your new app (choose "`SaaS` app").
-
 
 <!-- <snip id="loco-cli-new-from-template" inject_from="yaml" template="sh"> -->
 ```sh
@@ -82,7 +77,7 @@ Next step, build your frontend:
 ```
 <!-- </snip> -->
 
- Now `cd` into your `myapp` and start your app:
+Now `cd` into your `myapp` and start your app:
 <!-- <snip id="starting-the-server-command-with-output" inject_from="yaml" template="sh"> -->
 ```sh
 $ cargo loco start
@@ -108,11 +103,13 @@ listening on port 5150
 <!-- </snip> -->
 
 ## Powered by Loco
-+ [SpectralOps](https://spectralops.io) - various services powered by Loco
+
+* [SpectralOps](https://spectralops.io) - various services powered by Loco
   framework
-+ [Nativish](https://nativi.sh) - app backend powered by Loco framework
+* [Nativish](https://nativi.sh) - app backend powered by Loco framework
 
 ## Contributors ✨
+
 Thanks goes to these wonderful people:
 
 <a href="https://github.com/loco-rs/loco/graphs/contributors">
