@@ -2,6 +2,31 @@
 
 
 
+## 1.0.1 - 2026-07-31
+
+A documentation and CLI-ergonomics patch. No behavior changes to the framework
+runtime.
+
+### Fixed
+
+- **`generate scaffold`/`controller` no longer error on the old `--api` flag.**
+  The 1.0 adaptive-generator rebuild removed the `--api`/`--html`/`--htmx`
+  (and `-k/--kind`) flags — scaffold now auto-detects headless vs. clientside
+  from `frontend/`, and controllers are always JSON API controllers — but the
+  docs (including the *Your first app* tutorial) still showed `--api`, so
+  copy-pasting them failed with `error: unexpected argument '--api' found`. The
+  generators now accept the old flags for compatibility: `--api` is a no-op
+  (it's the headless default) and `--html`/`--htmx` return a clear message
+  pointing at the React SPA frontend that replaced server-rendered views.
+  ([#1790](https://github.com/loco-rs/loco/issues/1790))
+- **Docs resync.** Removed every reference to the removed scaffold/controller
+  kind flags and the deleted `ScaffoldKind` enum / `mappings.json` across the
+  tutorials, how-to guides, and CLI/generators reference; corrected the
+  field-type reference to describe `loco-gen/src/column.rs` (including that
+  `array:int` is now a 64-bit `BigInt` array, consistent with the scalar
+  `int` → `i64` change).
+
+
 ## 1.0.0 - 2026-07-25
 
 1.0.0 is the first stable Loco release — a single, intentionally-breaking
