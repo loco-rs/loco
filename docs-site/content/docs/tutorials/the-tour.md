@@ -33,7 +33,7 @@ Picking a database (<code>--db sqlite</code>) also gives this app a ready-made a
 Generate a `posts` scaffold — model, migration, entity, CRUD controller, and tests in one step:
 
 ```sh
-$ cargo loco generate scaffold posts title:string! content:text --api
+$ cargo loco generate scaffold posts title:string! content:text
 ```
 
 Now generate a `comments` **model only** (no controller yet — you'll hand-write that one) that belongs to a post, using the `references` field type:
@@ -79,7 +79,7 @@ impl MigrationTrait for Migration {
 `posts` already has a full CRUD controller from its scaffold. `comments` only has a model so far — `scaffold` generates model *and* controller together, while `model` only builds the data layer. Reach for `controller` when you already have a model and just need a thin API on top:
 
 ```sh
-$ cargo loco generate controller comments --api
+$ cargo loco generate controller comments
 ```
 
 With no action names given, this stubs a single `index` action returning an empty body — it has no idea about your model's columns. Replace `src/controllers/comments.rs` entirely with a small, purpose-built API: comments can only be **added** through a shallow route, and **listed** through a nested route under their post — never fetched singly, updated, or deleted:

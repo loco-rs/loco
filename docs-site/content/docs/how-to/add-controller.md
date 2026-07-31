@@ -22,13 +22,13 @@ This guide assumes a working Loco app (`cargo loco start` runs). For the full `R
 ## 1. Generate a controller
 
 ```sh
-cargo loco generate controller <NAME> [ACTION ...] (--api|--html|--htmx)
+cargo loco generate controller <NAME> [ACTION ...]
 ```
 
-One of `--api`, `--html`, or `--htmx` is **required** — there is no default kind; omitting all three is a hard error. Additional positional arguments become extra actions (handler functions + routes) alongside the default `index`.
+A generated controller is always a JSON API controller — there's no kind flag to pick. Additional positional arguments become extra actions (handler functions + routes) alongside the default `index`.
 
 ```sh
-cargo loco generate controller notes list get --api
+cargo loco generate controller notes list get
 ```
 
 This:
@@ -51,7 +51,7 @@ pub fn routes() -> Routes {
 }
 ```
 
-Edit the handler bodies and route methods (`get`/`post`/`put`/`delete`, etc.) to fit your endpoint. `--html`/`--htmx` generate the same shape plus `src/views/<name>.rs` view stubs and templates under `assets/views/` — see [Render server-side views](@/docs/how-to/render-views.md) for what to do with those.
+Edit the handler bodies and route methods (`get`/`post`/`put`/`delete`, etc.) to fit your endpoint. Controllers return JSON by default; if you'd rather render server-side HTML, see [Render server-side views](@/docs/how-to/render-views.md).
 
 ## 2. Confirm the routes are registered
 

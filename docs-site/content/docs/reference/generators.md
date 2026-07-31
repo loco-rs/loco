@@ -16,7 +16,7 @@ top = false
 
 `cargo loco generate <kind>` (alias `cargo loco g <kind>`) scaffolds application code from templates baked into the `loco-gen` crate. The `generate` subcommand itself is compiled only under `#[cfg(debug_assertions)]` (`src/cli.rs:140`) — it is available in ordinary (dev/debug) builds but is compiled out of `--release` binaries. The kinds that touch the database (`model`, `migration`, `scaffold`) are additionally gated behind the `with-db` Cargo feature (on by default) — see [feature flags](@/docs/reference/feature-flags.md).
 
-This page is the exhaustive dictionary of generator kinds and the field-type mini-language (`name:type`) they all share. It transcribes `loco-gen/src/lib.rs` (the `Component` and `ScaffoldKind` enums), `loco-gen/src/mappings.json` (the field-type table), `loco-gen/src/infer.rs` (naming/inflection conventions), and `src/cli.rs` (the CLI surface), re-verified against `HEAD`.
+This page is the exhaustive dictionary of generator kinds and the field-type mini-language (`name:type`) they all share. It transcribes `loco-gen/src/lib.rs` (the `Component` enum), `loco-gen/src/column.rs` (the field-type/column model), `loco-gen/src/infer.rs` (naming/inflection conventions), and `src/cli.rs` (the CLI surface), re-verified against `HEAD`.
 
 ## Generator kinds
 
@@ -26,8 +26,8 @@ This page is the exhaustive dictionary of generator kinds and the field-type min
 |---|---|---|---|
 | **model** | `cargo loco generate model <name> [field:type ...] [--without-tz]` | `with-db` | Creates a Sea-ORM entity + model file + migration + tests. `lib.rs:239`, `cli.rs:197` |
 | **migration** | `cargo loco generate migration <name> [field:type ...] [--without-tz]` | `with-db` | Standalone migration file; no model/entity. Name-based operation inference (create/add/remove/join) — see [Migration-name inference](#migration-name-inference). `lib.rs:250`, `cli.rs:250` |
-| **scaffold** | `cargo loco generate scaffold <name> [field:type ...] (--api\|--html\|--htmx) [--without-tz]` | `with-db` | Full CRUD: entity, migration, controller, routes, views (for `--html`/`--htmx`), tests. `lib.rs:261`, `cli.rs:268` |
-| **controller** | `cargo loco generate controller <name> [action ...] (--api\|--html\|--htmx)` | none | Controller + routes + tests only — no model/migration. `lib.rs:274`, `cli.rs:307` |
+| **scaffold** | `cargo loco generate scaffold <name> [field:type ...] [--without-tz]` | `with-db` | Adaptive full CRUD: entity, migration, JSON API controller, routes, tests — plus typed React hooks/pages when the app has a `frontend/`. No kind flag. `lib.rs:261`, `cli.rs:268` |
+| **controller** | `cargo loco generate controller <name> [action ...]` | none | JSON API controller + routes + tests only — no model/migration, no kind flag. `lib.rs:274`, `cli.rs:307` |
 | **task** | `cargo loco generate task <name>` | none | One-off/CLI task stub, registered in `src/tasks/mod.rs`. `lib.rs:284` |
 | **scheduler** | `cargo loco generate scheduler` | none | Writes `config/scheduler.yaml`. `lib.rs:288` |
 | **worker** | `cargo loco generate worker <name>` | none | Background worker stub in `src/workers/`, registered in `src/workers/mod.rs`. `lib.rs:289` |
@@ -53,25 +53,20 @@ cargo loco generate model movies long_title:string director:references award:ref
 # migration adding columns to an existing table
 cargo loco generate migration AddNameAndAgeToUsers name:string age:int
 
-# scaffold (model + controller + views + tests), API-only
-cargo loco generate scaffold posts title:string! user:references --api
+# scaffold (model + controller + routes + tests; adds React hooks/pages when a frontend/ exists)
+cargo loco generate scaffold posts title:string! user:references
 ```
 
 After generating a `migration`, apply it and regenerate entities: `cargo loco db migrate && cargo loco db entities`.
 
-### Scaffold / controller kind (`--api` / `--html` / `--htmx`)
+### Scaffold / controller kind (adaptive — no kind flag)
 
-`ScaffoldKind` (`loco-gen/src/lib.rs:218`):
+There is **no kind flag**. Both generators are adaptive:
 
-```rust
-pub enum ScaffoldKind {
-    Api,
-    Html,
-    Htmx,
-}
-```
+- `controller` always generates a **JSON API** controller.
+- `scaffold` generates a JSON API controller and, when the app has a `frontend/`, **also** emits typed React hooks and pages for the resource.
 
-`scaffold` and `controller` both require **exactly one** of `--kind <api|html|htmx>`, `--api`, `--html`, or `--htmx` (they're a clap argument group). **There is no default** — omitting all of them is a hard error: `Error: generating this component requires one of --kind, --htmx, --html, or --api to be specified` (scaffold: `src/cli.rs:428`; controller: `src/cli.rs:457`).
+The pre-1.0 `--api`/`--html`/`--htmx`/`-k`/`--kind` flags and the `ScaffoldKind` enum were **removed** in 1.0. For back-compat the CLI still *accepts* `--api` (a no-op) and `--html`/`--htmx` (which now error with a pointer to the React SPA frontend), so pre-1.0 commands don't hit a clap `unexpected argument` error.
 
 ### Deployment
 

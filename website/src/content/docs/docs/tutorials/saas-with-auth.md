@@ -126,7 +126,7 @@ If the `Authorization` header is missing, malformed, or carries an expired/inval
 The pattern above works for any handler, not just the built-in ones. Generate a `notes` scaffold:
 
 ```sh
-$ cargo loco generate scaffold notes title:string content:text --api
+$ cargo loco generate scaffold notes title:string content:text
 ```
 
 Open `src/controllers/notes.rs` and change the `add` handler's signature to also require `auth::JWT`:

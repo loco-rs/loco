@@ -21,10 +21,10 @@ cargo loco generate model posts
 cargo loco generate model posts title:string! content:text
 
 # a full CRUD resource: entity + migration + controller + routes + tests
-cargo loco generate scaffold posts title:string! user:references --api
+cargo loco generate scaffold posts title:string! user:references
 
 # controller only, no model/migration
-cargo loco generate controller posts index show --api
+cargo loco generate controller posts index show
 
 # non-DB generators
 cargo loco generate task cleanup_old_sessions
@@ -43,7 +43,7 @@ Every generator writes files relative to your project root and prints what it cr
 |---|---|---|
 | `model` | yes | Sea-ORM entity + model file + migration + a starter test in `tests/models/` |
 | `migration` | yes | Standalone migration file (add/remove columns, join tables, or an empty stub — inferred from the name) |
-| `scaffold` | yes | Full CRUD: entity, migration, controller, routes, views (`--html`/`--htmx`), tests |
+| `scaffold` | yes | Full CRUD: entity, migration, controller, routes, tests — plus typed React hooks/pages when the app has a `frontend/` |
 | `controller` | no | Controller + routes + tests, no model |
 | `task` | no | One-off/CLI task stub, registered automatically |
 | `scheduler` | no | `config/scheduler.yaml` starter |
@@ -53,7 +53,7 @@ Every generator writes files relative to your project root and prints what it cr
 | `deployment` | no | `docker` or `nginx` deployment files |
 | `override` | no | Copies a built-in template locally so you can edit it — see [Override built-in templates](/docs/how-to/override-templates) |
 
-`scaffold` and `controller` both require **exactly one** of `--api`, `--html`, or `--htmx` — there's no default; omitting all of them is a hard CLI error.
+`scaffold` and `controller` are **adaptive** — no kind flag. They generate a JSON API by default, and a scaffold additionally emits typed React hooks/pages when the app has a `frontend/`. (The old `--api`/`--html`/`--htmx` flags were removed in 1.0: `--api` is still accepted as a no-op so existing commands keep working; server-rendered HTML/HTMX views were replaced by the React SPA frontend.)
 
 This is a summary for orientation only — the exhaustive, verified dictionary of every kind, every flag, and migration-name inference rules is the [Generators & field types reference](/docs/reference/generators); the raw CLI flag shapes are also in the [CLI reference](/docs/reference/cli#2-4-generate-subcommands).
 

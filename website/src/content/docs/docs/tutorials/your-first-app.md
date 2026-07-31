@@ -76,10 +76,10 @@ Stop the server with `Ctrl+C` before continuing — you'll restart it after gene
 This is where Loco earns its keep. A **scaffold** generates a database migration, a Sea-ORM model/entity, a full CRUD controller, and request tests — in one command:
 
 ```sh
-cargo loco generate scaffold posts title:string content:text --api
+cargo loco generate scaffold posts title:string content:text
 ```
 
-`--api` tells the generator to produce a JSON API controller (there's no default scaffold kind — you must pick `--api`, `--html`, or `--htmx`). The output ends with a few confirmation lines:
+The scaffold is **adaptive** — no kind flag to pick. In a headless app (like this one) it produces a JSON API controller; if your app has a React frontend (`frontend/`), it also emits typed hooks and pages for the resource. The output ends with a few confirmation lines:
 
 ```sh
 * Migration for `posts` added! You can now apply it with `$ cargo loco db migrate && cargo loco db entities`.

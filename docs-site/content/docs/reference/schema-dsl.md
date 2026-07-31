@@ -249,7 +249,7 @@ The generator CLI flag that maps to the `_without_timestamps` functions is **`--
 ```sh
 loco g migration CreatePosts title:string --without-tz
 loco g migration CreateJoinTableUsersAndGroups count:int --without-tz
-loco g scaffold posts title:string! user:references --api --without-tz
+loco g scaffold posts title:string! user:references --without-tz
 ```
 (`src/cli.rs:193`, `:237`, `:241`, `:267`)
 

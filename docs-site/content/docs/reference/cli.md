@@ -173,8 +173,8 @@ Source: `src/cli.rs:64-171` (`enum Commands`).
 |---|---|---|---|
 | `model` | `with-db` | `name`, `--without-tz`, `field:type ...` | Fields support `references` (e.g. `director:references`) |
 | `migration` | `with-db` | `name`, `--without-tz`, `field:type ...` | Add/remove columns, join tables, empty migrations, references |
-| `scaffold` | `with-db` | `name`, `--without-tz`, `field:type ...`, `-k/--kind <KIND>`, `--htmx`, `--html`, `--api` | Exactly one of `--kind`/`--htmx`/`--html`/`--api` is required (group `scaffold_kind_group`); errors otherwise (`cli.rs:426-429`) |
-| `controller` | — | `name`, `actions...`, `-k/--kind <KIND>`, `--htmx`, `--html`, `--api` | Same kind-selection rule as `scaffold` (`cli.rs:455-458`) |
+| `scaffold` | `with-db` | `name`, `--without-tz`, `field:type ...` | Adaptive, no kind flag; JSON API controller + typed React hooks/pages when the app has a `frontend/`. `--api`/`--html`/`--htmx` accepted for compat |
+| `controller` | — | `name`, `actions...` | JSON API controller, no kind flag; `--api`/`--html`/`--htmx` accepted for compat |
 | `task` | — | `name` | |
 | `scheduler` | — | none | Scaffolds a scheduler config template |
 | `worker` | — | `name` | |
@@ -183,7 +183,7 @@ Source: `src/cli.rs:64-171` (`enum Commands`).
 | `deployment` | — | `kind` = `docker` \| `nginx` (`DeploymentKind`, `cli.rs:554-558`) | `docker` inspects static-assets config + `frontend/package.json`; `nginx` uses configured host/port |
 | `override` | — | `[template_path]`, `--info` | Copies a built-in generator template locally for customization; no path lists all available templates |
 
-`-k/--kind <KIND>` accepts `ScaffoldKind`: `api` \| `html` \| `htmx` (`loco-gen/src/lib.rs:218-222`).
+The `-k/--kind` flags and the `ScaffoldKind` enum were **removed** in 1.0. For back-compat, `scaffold` and `controller` still accept `--api` (a no-op) and `--html`/`--htmx` (which error with a pointer to the React SPA frontend), so pre-1.0 commands don't break.
 
 ---
 

@@ -273,6 +273,16 @@ After running the migration, follow these steps to complete the process:
         #[arg(long, action)]
         without_tz: bool,
 
+        /// Deprecated in 1.0: generators are adaptive now. Accepted so existing
+        /// commands keep working — `--api` is a no-op, `--html`/`--htmx` explain
+        /// the React SPA move. Hidden to keep the new CLI surface clean.
+        #[arg(long, action, hide = true)]
+        api: bool,
+        #[arg(long, action, hide = true)]
+        html: bool,
+        #[arg(long, action, hide = true)]
+        htmx: bool,
+
         /// Model fields, eg. title:string hits:int
         #[clap(value_parser = parse_key_val::<String,String>)]
         fields: Vec<(String, String)>,
@@ -291,6 +301,16 @@ After running the migration, follow these steps to complete the process:
     Controller {
         /// Name of the thing to generate
         name: String,
+
+        /// Deprecated in 1.0: generators are adaptive now. Accepted so existing
+        /// commands keep working — `--api` is a no-op, `--html`/`--htmx` explain
+        /// the React SPA move. Hidden to keep the new CLI surface clean.
+        #[arg(long, action, hide = true)]
+        api: bool,
+        #[arg(long, action, hide = true)]
+        html: bool,
+        #[arg(long, action, hide = true)]
+        htmx: bool,
 
         /// Actions
         actions: Vec<String>,
@@ -349,6 +369,34 @@ After running the migration, follow these steps to complete the process:
     },
 }
 
+/// Handle the scaffold/controller "kind" flags that 1.0's adaptive generators
+/// removed (`--api` / `--html` / `--htmx`).
+///
+/// Scaffold now auto-detects headless vs. clientside from the app's `frontend/`,
+/// and controllers are always API controllers — so no kind flag is needed. We
+/// still *accept* the old flags (rather than letting clap reject them with a
+/// cryptic `unexpected argument` error) so existing tutorials, blog posts, and
+/// muscle memory keep working: `--api` is a no-op, `--html`/`--htmx` point at
+/// the React SPA that replaced server-rendered views.
+#[cfg(debug_assertions)]
+fn warn_legacy_scaffold_kind(api: bool, html: bool, htmx: bool) -> crate::Result<()> {
+    if html || htmx {
+        return Err(crate::Error::string(
+            "`--html`/`--htmx` view scaffolds were replaced by the React SPA frontend in 1.0. \
+             Generators are adaptive now: scaffold emits the React frontend automatically when \
+             the app has a `frontend/`, and only the typed backend otherwise — no kind flag \
+             needed. See https://loco.rs/docs/how-to/use-generators/",
+        ));
+    }
+    if api {
+        eprintln!(
+            "note: `--api` is no longer needed — generators are adaptive in 1.0 (headless by \
+             default, React frontend when the app has one)."
+        );
+    }
+    Ok(())
+}
+
 #[cfg(debug_assertions)]
 impl ComponentArg {
     fn into_gen_component(self, config: &Config) -> crate::Result<loco_gen::Component> {
@@ -377,17 +425,30 @@ impl ComponentArg {
             Self::Scaffold {
                 name,
                 without_tz,
+                api,
+                html,
+                htmx,
                 fields,
-            } => Ok(loco_gen::Component::Scaffold {
+            } => {
+                warn_legacy_scaffold_kind(api, html, htmx)?;
+                Ok(loco_gen::Component::Scaffold {
+                    name,
+                    with_tz: !without_tz,
+                    fields,
+                    // Adaptive: emit the React-SPA frontend only when this is a
+                    // clientside app (its once-per-app `frontend/src/routes.tsx`
+                    // exists). Headless/serverside apps get the typed backend only.
+                    frontend: std::path::Path::new("frontend/src/routes.tsx").exists(),
+                })
+            }
+            Self::Controller {
                 name,
-                with_tz: !without_tz,
-                fields,
-                // Adaptive: emit the React-SPA frontend only when this is a
-                // clientside app (its once-per-app `frontend/src/routes.tsx`
-                // exists). Headless/serverside apps get the typed backend only.
-                frontend: std::path::Path::new("frontend/src/routes.tsx").exists(),
-            }),
-            Self::Controller { name, actions } => {
+                api,
+                html,
+                htmx,
+                actions,
+            } => {
+                warn_legacy_scaffold_kind(api, html, htmx)?;
                 Ok(loco_gen::Component::Controller { name, actions })
             }
             Self::Task { name } => Ok(loco_gen::Component::Task { name }),
@@ -1279,4 +1340,66 @@ pub fn format_templates_as_tree(paths: Vec<PathBuf>) -> String {
     let _ = writeln!(output, " * cargo loco generate override {}", ".".yellow());
 
     output
+}
+
+#[cfg(all(test, debug_assertions))]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn legacy_api_flag_is_a_noop() {
+        // `--api` is the headless default now — accepted, generation proceeds.
+        assert!(warn_legacy_scaffold_kind(true, false, false).is_ok());
+        assert!(warn_legacy_scaffold_kind(false, false, false).is_ok());
+    }
+
+    #[test]
+    fn legacy_html_htmx_flags_error_with_guidance() {
+        let html = warn_legacy_scaffold_kind(false, true, false)
+            .unwrap_err()
+            .to_string();
+        assert!(html.contains("React SPA"), "got: {html}");
+        let htmx = warn_legacy_scaffold_kind(false, false, true)
+            .unwrap_err()
+            .to_string();
+        assert!(htmx.contains("React SPA"), "got: {htmx}");
+    }
+
+    // Regression for #1790: the 1.0 adaptive rebuild removed the scaffold/
+    // controller kind flags, so `--api` (straight from the tutorials) failed
+    // clap with `error: unexpected argument '--api' found`. They must still
+    // PARSE so existing commands keep working.
+    #[test]
+    fn generate_controller_still_accepts_legacy_kind_flags() {
+        for flag in ["--api", "--html", "--htmx"] {
+            let parsed =
+                Cli::try_parse_from(["loco", "generate", "controller", "notes", "list", flag]);
+            assert!(
+                parsed.is_ok(),
+                "controller {flag} should parse, got: {:?}",
+                parsed.err()
+            );
+        }
+    }
+
+    #[cfg(feature = "with-db")]
+    #[test]
+    fn generate_scaffold_still_accepts_legacy_kind_flags() {
+        for flag in ["--api", "--html", "--htmx"] {
+            let parsed = Cli::try_parse_from([
+                "loco",
+                "generate",
+                "scaffold",
+                "posts",
+                "title:string",
+                flag,
+            ]);
+            assert!(
+                parsed.is_ok(),
+                "scaffold {flag} should parse, got: {:?}",
+                parsed.err()
+            );
+        }
+    }
 }

@@ -68,7 +68,7 @@ rm .loco-templates/scaffold/api/controller.t
 ```sh
 cargo loco generate override scaffold/api/controller.t
 # edit .loco-templates/scaffold/api/controller.t
-cargo loco generate controller widgets index --api
+cargo loco generate controller widgets index
 ```
 
 Confirm the generated `src/controllers/widgets.rs` reflects your edited template (e.g. the header/comment you added), not the stock output.

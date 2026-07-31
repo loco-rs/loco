@@ -163,8 +163,8 @@ Source: `src/cli.rs:64-171` (`enum Commands`).
 |---|---|---|---|
 | `model` | `with-db` | `name`, `--without-tz`, `field:type ...` | Fields support `references` (e.g. `director:references`) |
 | `migration` | `with-db` | `name`, `--without-tz`, `field:type ...` | Add/remove columns, join tables, empty migrations, references |
-| `scaffold` | `with-db` | `name`, `--without-tz`, `field:type ...`, `-k/--kind <KIND>`, `--htmx`, `--html`, `--api` | Exactly one of `--kind`/`--htmx`/`--html`/`--api` is required (group `scaffold_kind_group`); errors otherwise (`cli.rs:426-429`) |
-| `controller` | — | `name`, `actions...`, `-k/--kind <KIND>`, `--htmx`, `--html`, `--api` | Same kind-selection rule as `scaffold` (`cli.rs:455-458`) |
+| `scaffold` | `with-db` | `name`, `--without-tz`, `field:type ...` | Adaptive — no kind flag: JSON API by default, plus typed React hooks/pages when the app has a `frontend/`. `--api`/`--html`/`--htmx` are accepted for compat (see below) |
+| `controller` | — | `name`, `actions...` | JSON API controller — no kind flag. `--api`/`--html`/`--htmx` accepted for compat (see below) |
 | `task` | — | `name` | |
 | `scheduler` | — | none | Scaffolds a scheduler config template |
 | `worker` | — | `name` | |
@@ -173,7 +173,7 @@ Source: `src/cli.rs:64-171` (`enum Commands`).
 | `deployment` | — | `kind` = `docker` \| `nginx` (`DeploymentKind`, `cli.rs:554-558`) | `docker` inspects static-assets config + `frontend/package.json`; `nginx` uses configured host/port |
 | `override` | — | `[template_path]`, `--info` | Copies a built-in generator template locally for customization; no path lists all available templates |
 
-`-k/--kind <KIND>` accepts `ScaffoldKind`: `api` \| `html` \| `htmx` (`loco-gen/src/lib.rs:218-222`).
+**Compat with the removed kind flags.** The 1.0 adaptive rebuild removed the `--api`/`--html`/`--htmx`/`-k/--kind` flags (and the `ScaffoldKind` enum). `scaffold`/`controller` still *accept* `--api` (a no-op — it's the headless default) and `--html`/`--htmx` (which error with a pointer to the React SPA frontend that replaced server-rendered views), so pre-1.0 commands don't fail with a clap `unexpected argument` error.
 
 ---
 
