@@ -97,7 +97,7 @@ cargo loco generate override .
 
 ## Field-type mini-language
 
-Every `field:type` argument to `model`/`migration`/`scaffold` is resolved through the type table baked into `loco-gen/src/mappings.json`. Transcribed in full below (re-verified against `HEAD`).
+Every `field:type` argument to `model`/`migration`/`scaffold` is resolved in `loco-gen/src/column.rs` — the `parse_column` function and the `ScalarType` enum. Transcribed in full below (re-verified against `HEAD`).
 
 **Suffix convention:** no suffix = nullable `Option<T>`; **`!`** = required (non-null); **`^`** = unique (implies non-null). Not every base type has all three variants — `bool`, `tstz`, and `json` have no `^` (unique) form.
 
@@ -134,18 +134,18 @@ Every `field:type` argument to `model`/`migration`/`scaffold` is resolved throug
 
 ### Arrays
 
-`array`/`array!`/`array^` take one parameter — the element type — written as a second colon segment: `tags:array:string`, `scores:array!:int`. Valid element types (per `mappings.json`'s `array` entry) are `string`, `int`, `big_int`, `float`, `double`, `bool`, generating `Option<Vec<T>>` where `T` is:
+`array`/`array!`/`array^` take one parameter — the element type — written as a second colon segment: `tags:array:string`, `scores:array!:int`. Valid element types (per `array_inner_from_name` in `loco-gen/src/column.rs`) are `string`, `int`, `big_int`, `float`, `double`, `bool`, generating `Option<Vec<T>>` where `T` is:
 
 | element | Rust `T` |
 |---|---|
 | `string` | `String` |
-| `int` | **`i32`** |
+| `int` | `i64` |
 | `big_int` | `i64` |
 | `float` | `f32` |
 | `double` | `f64` |
 | `bool` | `bool` |
 
-⚠ **Inconsistency worth knowing:** the scalar `int` type is `i64` in 1.0, but `array:int`'s element type is still `i32` (`loco-gen/src/mappings.json`, the `array` entry's `rust.int` key) — the i64 migration did not touch array element types. Confirmed by `loco-gen/src/model.rs:171-182` (`test_get_columns_with_array_types`), which asserts `array:string` → `array_null(ArrayColType::String)`.
+**Note:** array element types are consistent with the scalars in 1.0 — `array:int` generates a 64-bit `BigInt` array (element type `i64`), matching the scalar `int` → `i64` change, per `array_col_type_name` in `loco-gen/src/column.rs` (`ScalarType::Int | ScalarType::BigInt => "BigInt"`). A `column.rs` unit test pins this, asserting `array:big_int!` → `array(ArrayColType::BigInt)`.
 
 ### References (belongs-to foreign keys)
 
