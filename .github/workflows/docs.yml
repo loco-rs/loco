@@ -28,7 +28,7 @@ jobs:
       - name: Compile the docs example app (verified-docs spine)
         run: cargo build --manifest-path examples/demo/Cargo.toml
       - name: Install zola
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@v2.85.3
         with:
           tool: zola@0.21.0
       - name: Build the docs site (fails on broken internal links)
