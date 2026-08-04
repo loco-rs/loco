@@ -27,7 +27,8 @@ pub struct Credential {
 /// When could not initialize the client instance
 pub fn new(bucket_name: &str, region: &str) -> StorageResult<Box<dyn StoreDriver>> {
     let s3 = S3::default().bucket(bucket_name).region(region);
-    Ok(Box::new(OpendalAdapter::new(Operator::new(s3)?.finish())))
+    // opendal 0.58: Operator::new returns a finished Operator (no .finish()).
+    Ok(Box::new(OpendalAdapter::new(Operator::new(s3)?)))
 }
 
 /// Create new AWS s3 storage with bucket, region and credentials and URL.
@@ -67,7 +68,7 @@ pub fn with_credentials_and_endpoint(
     if let Some(token) = credentials.token {
         s3 = s3.session_token(&token);
     }
-    Ok(Box::new(OpendalAdapter::new(Operator::new(s3)?.finish())))
+    Ok(Box::new(OpendalAdapter::new(Operator::new(s3)?)))
 }
 
 /// Create new AWS s3 storage with bucket, region and credentials.
@@ -99,7 +100,7 @@ pub fn with_credentials(
     if let Some(token) = credentials.token {
         s3 = s3.session_token(&token);
     }
-    Ok(Box::new(OpendalAdapter::new(Operator::new(s3)?.finish())))
+    Ok(Box::new(OpendalAdapter::new(Operator::new(s3)?)))
 }
 
 /// Build store with failure
@@ -116,5 +117,5 @@ pub fn with_failure() -> Box<dyn StoreDriver> {
         .skip_signature() // opendal 0.57 renamed `allow_anonymous`
         .disable_ec2_metadata();
 
-    Box::new(OpendalAdapter::new(Operator::new(s3).unwrap().finish()))
+    Box::new(OpendalAdapter::new(Operator::new(s3).unwrap()))
 }

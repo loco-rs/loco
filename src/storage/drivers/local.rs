@@ -22,10 +22,9 @@ use crate::storage::{drivers::opendal_adapter::OpendalAdapter, StorageResult};
 #[must_use]
 pub fn new() -> Box<dyn StoreDriver> {
     let fs = Fs::default().root(".");
+    // opendal 0.58: Operator::new returns a finished Operator (no .finish()).
     Box::new(OpendalAdapter::new(
-        Operator::new(fs)
-            .expect("fs service should build with success")
-            .finish(),
+        Operator::new(fs).expect("fs service should build with success"),
     ))
 }
 
@@ -42,5 +41,5 @@ pub fn new() -> Box<dyn StoreDriver> {
 /// Returns an error if the path does not exist
 pub fn new_with_prefix(prefix: impl AsRef<std::path::Path>) -> StorageResult<Box<dyn StoreDriver>> {
     let fs = Fs::default().root(&prefix.as_ref().display().to_string());
-    Ok(Box::new(OpendalAdapter::new(Operator::new(fs)?.finish())))
+    Ok(Box::new(OpendalAdapter::new(Operator::new(fs)?)))
 }

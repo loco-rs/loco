@@ -80,7 +80,8 @@ impl StoreDriver for OpendalAdapter {
     /// Returns a `StorageResult` indicating the success of the rename/move
     /// operation.
     async fn rename(&self, from: &Path, to: &Path) -> StorageResult<()> {
-        if self.opendal_impl.info().full_capability().rename {
+        // opendal 0.58: full_capability()/native_capability() removed; use capability().
+        if self.opendal_impl.info().capability().rename {
             let from = from.display().to_string();
             let to = to.display().to_string();
             Ok(self.opendal_impl.rename(&from, &to).await?)
@@ -103,9 +104,9 @@ impl StoreDriver for OpendalAdapter {
     async fn copy(&self, from: &Path, to: &Path) -> StorageResult<()> {
         let from = from.display().to_string();
         let to = to.display().to_string();
-        if self.opendal_impl.info().full_capability().copy {
-            // opendal 0.57's `copy` returns the destination `Metadata`; we
-            // don't surface it.
+        // opendal 0.58: full_capability() removed; use capability().
+        if self.opendal_impl.info().capability().copy {
+            // `copy` returns the destination `Metadata`; we don't surface it.
             self.opendal_impl.copy(&from, &to).await?;
         } else {
             let mut reader = self
