@@ -41,11 +41,11 @@ You don't have to run things through `cargo` but in development it's highly reco
 <details>
 <summary>Is this production ready?</summary>
 
-Loco is still in its beginning, but its roots are not. It's almost a rewrite of `Hyperstackjs.io`, and Hyperstack is based on an internal Rails-like framework which is production ready.
+Loco reached 1.0 in July 2026, marking its first stable release, but its roots are older. It's almost a rewrite of `Hyperstackjs.io`, and Hyperstack is based on an internal Rails-like framework which is production ready.
 
 Most of Loco is glue code around Axum, SeaORM, and other stable frameworks, so you can consider that.
 
-At this stage, at version 0.1.x, we would recommend to _adopt and report issues_ if they arise.
+As with any framework, evaluate Loco against your application's requirements and report issues if they arise.
 
 </details>
 

@@ -46,8 +46,9 @@ const shouldRenderSearch =
       href="https://github.com/loco-rs/loco"
       target="_blank"
       rel="noopener noreferrer"
+      data-github-stars
       aria-label="Loco on GitHub"
-    >★ 6.9k</a>
+    ><span data-star-label>★ GitHub</span></a>
     <ThemeToggle />
     <a class="cta sl-hidden md:sl-flex" href="/docs/tutorials/your-first-app/">Get started</a>
   </div>
@@ -173,3 +174,9 @@ const shouldRenderSearch =
     transform: translateY(-1px);
   }
 </style>
+
+<script>
+  import { initGitHubStars } from '../../lib/github-stars';
+
+  void initGitHubStars(document);
+</script>

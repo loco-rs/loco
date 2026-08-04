@@ -37,5 +37,12 @@ import '../styles/global.css';
     document.documentElement.classList.add('js');
   </script>
 </head>
-<body><slot /></body>
+<body>
+  <slot />
+  <script>
+    import { initGitHubStars } from '../lib/github-stars';
+
+    void initGitHubStars(document);
+  </script>
+</body>
 </html>
