@@ -51,7 +51,7 @@ jobs:
       - name: Checkout the code
         uses: actions/checkout@v7
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6.0.9
         with:
           # The site lives in website/; read its packageManager pin, since
           # there is no root package.json.
