@@ -67,7 +67,6 @@ if db {
     if (settings.auth) {
         // Authentication-related models and migrations
         gen.copy_file("migration/src/m20220101_000001_users.rs");  // Users migration file
-        gen.copy_file("migration/src/m20220101_000002_groups.rs"); // Groups migration file
         gen.copy_file("src/models/_entities/users.rs");             // Users entity definition
         gen.copy_file("src/models/users.rs");                      // Users model logic
         gen.copy_file("src/tasks/user_create.rs");

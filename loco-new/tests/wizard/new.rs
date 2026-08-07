@@ -80,12 +80,9 @@ fn test_combination(
         .run_clippy()
         .expect("run clippy after create new project");
 
-    //tester
-    //.run_test()
-    //.expect("run test after create new project");
-
-    let out = tester.run_test();
-    println!("test result: {:#?}", out);
+    tester
+        .run_test()
+        .expect("run test after create new project");
 
     if test_generator {
         // Generate API controller
@@ -205,8 +202,8 @@ fn test_combination(
             // Generate AddUserRefToPosts migration
             tester.run_generate_migration(&vec!["AddUserRefToPosts", "users:references"]);
 
-            // Generate CreateJoinTableUsersAndGroups migration
-            tester.run_generate_migration(&vec!["CreateJoinTableUsersAndGroups", "count:int"]);
+            // Generate CreateJoinTableUsersAndMovies migration
+            tester.run_generate_migration(&vec!["CreateJoinTableUsersAndMovies", "count:int"]);
         }
     }
 }
