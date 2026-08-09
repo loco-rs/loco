@@ -13,16 +13,25 @@
 //!   operation is then fanned out **concurrently** to every secondary; every
 //!   secondary is always attempted. Errors are collected per store and the
 //!   [`FailurePolicy`] decides whether the overall operation fails.
-//! * `download`/`download_stream`: served from the primary. If the primary
-//!   fails and `read_from_secondaries` is set (mirror behavior), each secondary
-//!   is tried in turn until one succeeds; otherwise (backup behavior) the
-//!   primary error is returned.
+//! * `download`/`download_stream`/`stat`: served from the primary. If the
+//!   primary fails and `read_from_secondaries` is set (mirror behavior), each
+//!   secondary is tried in turn until one succeeds; otherwise (backup
+//!   behavior) the primary error is returned.
+//! * `exists`: like the reads above, but a primary `Ok(false)` (missing key)
+//!   also triggers secondary fallback under mirror mode, since a miss is not
+//!   an error.
+//! * `list`: like `exists` — primary `Err` **or** primary `Ok([])` triggers
+//!   secondary fallback under mirror mode. Empty secondary listings are
+//!   skipped (same as `exists` skipping `false`) so a later secondary with
+//!   data remains discoverable.
 use std::{collections::BTreeMap, path::Path};
 
 use bytes::Bytes;
 
 use crate::storage::{
-    drivers::StoreDriver, strategies::StorageStrategy, Storage, StorageError, StorageResult,
+    drivers::{ListEntry, StoreDriver},
+    strategies::StorageStrategy,
+    Storage, StorageError, StorageResult,
 };
 
 /// How many secondary-store failures a [`ReplicatedStrategy`] tolerates before
@@ -60,9 +69,10 @@ pub struct ReplicatedStrategy {
     pub secondaries: Option<Vec<String>>,
     /// Policy deciding when secondary failures fail the overall operation.
     pub failure_policy: FailurePolicy,
-    /// When `true`, reads (`download`/`download_stream`) fall back to
-    /// secondaries if the primary fails (mirror behavior). When `false`, reads
-    /// are served from the primary only (backup behavior).
+    /// When `true`, reads (`download`/`download_stream`/`exists`/`list`/`stat`)
+    /// fall back to secondaries if the primary fails or, for `exists`/`list`,
+    /// reports a miss (mirror behavior). When `false`, reads are served from
+    /// the primary only (backup behavior).
     pub read_from_secondaries: bool,
 }
 
@@ -272,15 +282,105 @@ impl StorageStrategy for ReplicatedStrategy {
         }
         Ok(())
     }
+
+    // Mirror fallback: `exists`/`list` treat a miss (`false` / `[]`) like an
+    // error trigger. Store-resolution errors on the primary also fall back.
+    async fn exists(&self, storage: &Storage, path: &Path) -> StorageResult<bool> {
+        let primary_result = match storage.as_store_err(&self.primary) {
+            Ok(store) => store.exists(path).await,
+            Err(err) => Err(err),
+        };
+
+        if matches!(&primary_result, Ok(true)) {
+            return Ok(true);
+        }
+
+        if self.read_from_secondaries
+            && matches!(&primary_result, Ok(false) | Err(_))
+            && let Some(secondaries) = self.secondaries.as_ref()
+        {
+            for secondary_store in secondaries {
+                if let Some(store) = storage.as_store(secondary_store)
+                    && matches!(store.exists(path).await, Ok(true))
+                {
+                    return Ok(true);
+                }
+            }
+        }
+
+        primary_result
+    }
+
+    async fn list(
+        &self,
+        storage: &Storage,
+        path: &Path,
+        recursive: bool,
+    ) -> StorageResult<Vec<ListEntry>> {
+        let primary_result = match storage.as_store_err(&self.primary) {
+            Ok(store) => store.list(path, recursive).await,
+            Err(err) => Err(err),
+        };
+
+        let should_fallback =
+            self.read_from_secondaries && primary_result.as_ref().map_or(true, Vec::is_empty);
+
+        if should_fallback && let Some(secondaries) = self.secondaries.as_ref() {
+            // Skip empty listings (same as `exists` skipping `false`) so a
+            // barren secondary does not hide data on a later one. No hit →
+            // return `primary_result` (preserves primary `Err`).
+            for secondary_store in secondaries {
+                if let Some(store) = storage.as_store(secondary_store)
+                    && let Ok(entries) = store.list(path, recursive).await
+                    && !entries.is_empty()
+                {
+                    return Ok(entries);
+                }
+            }
+        }
+
+        primary_result
+    }
+
+    async fn stat(&self, storage: &Storage, path: &Path) -> StorageResult<ListEntry> {
+        let primary_result = match storage.as_store_err(&self.primary) {
+            Ok(store) => store.stat(path).await,
+            Err(err) => Err(err),
+        };
+
+        match primary_result {
+            Ok(entry) => Ok(entry),
+            Err(error) => {
+                if self.read_from_secondaries
+                    && let Some(secondaries) = self.secondaries.as_ref()
+                {
+                    for secondary_store in secondaries {
+                        if let Some(store) = storage.as_store(secondary_store)
+                            && let Ok(entry) = store.stat(path).await
+                        {
+                            return Ok(entry);
+                        }
+                    }
+                }
+                Err(error)
+            }
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
 
-    use std::{collections::BTreeMap, path::PathBuf};
+    use std::{
+        collections::BTreeMap,
+        path::{Path, PathBuf},
+    };
 
     use super::*;
-    use crate::storage::{drivers, Storage};
+    use crate::storage::{
+        drivers::{self, ListEntry, StoreDriver},
+        Storage,
+    };
 
     // ---------------------------------------------------------------
     // Ported from `mirror.rs`
@@ -1889,5 +1989,232 @@ mod tests {
         assert!(store_1.exists(new_path.as_path()).await.unwrap());
         assert!(!store_2.exists(new_path.as_path()).await.unwrap());
         assert!(!store_3.exists(new_path.as_path()).await.unwrap());
+    }
+
+    // ---------------------------------------------------------------
+    // list / stat / exists (replicated read fallback)
+    // ---------------------------------------------------------------
+
+    fn two_stores() -> BTreeMap<String, Box<dyn StoreDriver>> {
+        BTreeMap::from([
+            ("store_1".to_string(), drivers::mem::new()),
+            ("store_2".to_string(), drivers::mem::new()),
+        ])
+    }
+
+    fn storage_for(
+        strategy: ReplicatedStrategy,
+        stores: BTreeMap<String, Box<dyn StoreDriver>>,
+    ) -> Storage {
+        Storage::new(stores, Box::new(strategy) as Box<dyn StorageStrategy>)
+    }
+
+    async fn put(storage: &Storage, store: &str, path: &Path) {
+        let content = Bytes::from("file content");
+        storage
+            .as_store(store)
+            .unwrap()
+            .upload(path, &content)
+            .await
+            .unwrap();
+    }
+
+    fn paths_of(entries: &[ListEntry]) -> Vec<String> {
+        entries.iter().map(|e| e.path.clone()).collect()
+    }
+
+    #[tokio::test]
+    async fn list_mirror_falls_back_on_empty_or_missing_primary() {
+        let path = PathBuf::from("a").join("1.txt");
+
+        let storage = storage_for(
+            ReplicatedStrategy::mirror(
+                "store_1",
+                Some(vec!["store_2".to_string()]),
+                FailurePolicy::FailIfAny,
+            ),
+            two_stores(),
+        );
+        put(&storage, "store_2", path.as_path()).await;
+        assert!(paths_of(&storage.list(Path::new("a"), true).await.unwrap())
+            .contains(&"a/1.txt".into()));
+
+        let storage = storage_for(
+            ReplicatedStrategy::mirror(
+                "missing_primary",
+                Some(vec!["store_2".to_string()]),
+                FailurePolicy::FailIfAny,
+            ),
+            BTreeMap::from([("store_2".to_string(), drivers::mem::new())]),
+        );
+        put(&storage, "store_2", path.as_path()).await;
+        assert!(paths_of(&storage.list(Path::new("a"), true).await.unwrap())
+            .contains(&"a/1.txt".into()));
+
+        // No secondary hit → keep primary `Err` (do not collapse to `Ok([])`).
+        let storage = storage_for(
+            ReplicatedStrategy::mirror(
+                "missing_primary",
+                Some(vec!["store_2".to_string()]),
+                FailurePolicy::FailIfAny,
+            ),
+            BTreeMap::from([("store_2".to_string(), drivers::mem::new())]),
+        );
+        assert!(storage.list(Path::new("a"), true).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn list_backup_stays_on_primary() {
+        let path = PathBuf::from("a").join("1.txt");
+
+        let storage = storage_for(
+            ReplicatedStrategy::backup(
+                "store_1",
+                Some(vec!["store_2".to_string()]),
+                FailurePolicy::FailIfAny,
+            ),
+            two_stores(),
+        );
+        put(&storage, "store_2", path.as_path()).await;
+        assert!(storage.list(Path::new("a"), true).await.unwrap().is_empty());
+
+        let storage = storage_for(
+            ReplicatedStrategy::backup(
+                "missing_primary",
+                Some(vec!["store_2".to_string()]),
+                FailurePolicy::FailIfAny,
+            ),
+            BTreeMap::from([("store_2".to_string(), drivers::mem::new())]),
+        );
+        put(&storage, "store_2", path.as_path()).await;
+        assert!(storage.list(Path::new("a"), true).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn list_mirror_skips_empty_secondary_and_prefers_primary_data() {
+        let primary_only = PathBuf::from("a").join("primary.txt");
+        let secondary_only = PathBuf::from("a").join("secondary.txt");
+
+        // Non-empty primary must win even when a secondary has other keys.
+        let storage = storage_for(
+            ReplicatedStrategy::mirror(
+                "store_1",
+                Some(vec!["store_2".to_string()]),
+                FailurePolicy::FailIfAny,
+            ),
+            two_stores(),
+        );
+        put(&storage, "store_1", primary_only.as_path()).await;
+        put(&storage, "store_2", secondary_only.as_path()).await;
+        let paths = paths_of(&storage.list(Path::new("a"), true).await.unwrap());
+        assert!(paths.contains(&"a/primary.txt".into()));
+        assert!(!paths.contains(&"a/secondary.txt".into()));
+
+        // Empty secondary must not hide a later secondary that has data.
+        let storage = storage_for(
+            ReplicatedStrategy::mirror(
+                "store_1",
+                Some(vec!["store_2".to_string(), "store_3".to_string()]),
+                FailurePolicy::FailIfAny,
+            ),
+            BTreeMap::from([
+                ("store_1".to_string(), drivers::mem::new()),
+                ("store_2".to_string(), drivers::mem::new()),
+                ("store_3".to_string(), drivers::mem::new()),
+            ]),
+        );
+        put(&storage, "store_3", secondary_only.as_path()).await;
+        let paths = paths_of(&storage.list(Path::new("a"), true).await.unwrap());
+        assert!(paths.contains(&"a/secondary.txt".into()));
+    }
+
+    #[tokio::test]
+    async fn stat_mirror_falls_back_backup_does_not() {
+        let path = PathBuf::from("users").join("data").join("1.txt");
+
+        let storage = storage_for(
+            ReplicatedStrategy::mirror(
+                "store_1",
+                Some(vec!["store_2".to_string()]),
+                FailurePolicy::FailIfAny,
+            ),
+            two_stores(),
+        );
+        put(&storage, "store_2", path.as_path()).await;
+        assert_eq!(
+            storage.stat(path.as_path()).await.unwrap().content_length,
+            Some(12)
+        );
+
+        let storage = storage_for(
+            ReplicatedStrategy::backup(
+                "store_1",
+                Some(vec!["store_2".to_string()]),
+                FailurePolicy::FailIfAny,
+            ),
+            two_stores(),
+        );
+        put(&storage, "store_2", path.as_path()).await;
+        assert!(storage.stat(path.as_path()).await.is_err());
+
+        let storage = storage_for(
+            ReplicatedStrategy::mirror(
+                "missing_primary",
+                Some(vec!["store_2".to_string()]),
+                FailurePolicy::FailIfAny,
+            ),
+            BTreeMap::from([("store_2".to_string(), drivers::mem::new())]),
+        );
+        put(&storage, "store_2", path.as_path()).await;
+        assert!(storage.stat(path.as_path()).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn exists_mirror_falls_back_backup_does_not() {
+        let path = PathBuf::from("users").join("data").join("1.txt");
+
+        let storage = storage_for(
+            ReplicatedStrategy::mirror(
+                "store_1",
+                Some(vec!["store_2".to_string()]),
+                FailurePolicy::FailIfAny,
+            ),
+            two_stores(),
+        );
+        put(&storage, "store_2", path.as_path()).await;
+        assert!(storage.exists(path.as_path()).await.unwrap());
+
+        let storage = storage_for(
+            ReplicatedStrategy::backup(
+                "store_1",
+                Some(vec!["store_2".to_string()]),
+                FailurePolicy::FailIfAny,
+            ),
+            two_stores(),
+        );
+        put(&storage, "store_2", path.as_path()).await;
+        assert!(!storage.exists(path.as_path()).await.unwrap());
+
+        let storage = storage_for(
+            ReplicatedStrategy::mirror(
+                "missing_primary",
+                Some(vec!["store_2".to_string()]),
+                FailurePolicy::FailIfAny,
+            ),
+            BTreeMap::from([("store_2".to_string(), drivers::mem::new())]),
+        );
+        put(&storage, "store_2", path.as_path()).await;
+        assert!(storage.exists(path.as_path()).await.unwrap());
+
+        let storage = storage_for(
+            ReplicatedStrategy::backup(
+                "missing_primary",
+                Some(vec!["store_2".to_string()]),
+                FailurePolicy::FailIfAny,
+            ),
+            BTreeMap::from([("store_2".to_string(), drivers::mem::new())]),
+        );
+        put(&storage, "store_2", path.as_path()).await;
+        assert!(storage.exists(path.as_path()).await.is_err());
     }
 }

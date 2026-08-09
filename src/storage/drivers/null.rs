@@ -9,7 +9,7 @@ use std::path::Path;
 use async_trait::async_trait;
 use bytes::Bytes;
 
-use super::{GetResponse, StorageResult, StoreDriver, UploadResponse};
+use super::{GetResponse, ListEntry, StorageResult, StoreDriver, UploadResponse};
 use crate::storage::StorageError;
 
 pub struct NullStorage {}
@@ -88,6 +88,28 @@ impl StoreDriver for NullStorage {
     /// Returns a `StorageResult` with a boolean indicating the existence of the
     /// content.
     async fn exists(&self, _path: &Path) -> StorageResult<bool> {
+        Err(StorageError::Any(
+            "Operation not supported by null storage".into(),
+        ))
+    }
+
+    /// Lists entries whose paths start with the given prefix.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `StorageResult` with the listing operation's result.
+    async fn list(&self, _path: &Path, _recursive: bool) -> StorageResult<Vec<ListEntry>> {
+        Err(StorageError::Any(
+            "Operation not supported by null storage".into(),
+        ))
+    }
+
+    /// Retrieves metadata for a single path without downloading its content.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `StorageResult` with the entry's metadata.
+    async fn stat(&self, _path: &Path) -> StorageResult<ListEntry> {
         Err(StorageError::Any(
             "Operation not supported by null storage".into(),
         ))

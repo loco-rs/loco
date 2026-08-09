@@ -35,6 +35,45 @@ impl UploadResponse {
     }
 }
 
+/// A single entry returned by [`StoreDriver::list`] or [`StoreDriver::stat`].
+#[derive(Debug, Clone)]
+pub struct ListEntry {
+    /// The full path of the entry.
+    pub path: String,
+    /// Whether the entry is a directory (common prefix) rather than a file.
+    pub is_dir: bool,
+    /// The size in bytes of the entry, if known.
+    pub content_length: Option<u64>,
+    /// The last-modified time of the entry, if known.
+    pub last_modified: Option<chrono::DateTime<chrono::Utc>>,
+    /// The entity tag of the entry, if known.
+    pub etag: Option<String>,
+}
+
+impl ListEntry {
+    /// Builds a `ListEntry` from listing/stat metadata.
+    ///
+    /// Custom [`StoreDriver`] implementations use this to return listing/stat
+    /// results without relying on struct-literal construction, so the fields
+    /// can later evolve behind the constructor.
+    #[must_use]
+    pub fn new(
+        path: String,
+        is_dir: bool,
+        content_length: Option<u64>,
+        last_modified: Option<chrono::DateTime<chrono::Utc>>,
+        etag: Option<String>,
+    ) -> Self {
+        Self {
+            path,
+            is_dir,
+            content_length,
+            last_modified,
+            etag,
+        }
+    }
+}
+
 /// The response of a [`StoreDriver::get`] call.
 ///
 /// Internally this is either an `OpenDAL` reader (used by the built-in,
@@ -151,6 +190,24 @@ pub trait StoreDriver: Sync + Send {
     /// Returns a `StorageResult` with a boolean indicating the existence of the
     /// content.
     async fn exists(&self, path: &Path) -> StorageResult<bool>;
+
+    /// Lists entries whose paths start with the given prefix.
+    ///
+    /// When `recursive` is `false`, only one level below `path` is listed,
+    /// with child prefixes returned as directory entries. When `recursive` is
+    /// `true`, all entries under `path` are listed.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `StorageResult` with the listing operation's result.
+    async fn list(&self, path: &Path, recursive: bool) -> StorageResult<Vec<ListEntry>>;
+
+    /// Retrieves metadata for a single path without downloading its content.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `StorageResult` with the entry's metadata.
+    async fn stat(&self, path: &Path) -> StorageResult<ListEntry>;
 
     /// Retrieves content from the specified path and returns it as a stream.
     /// This method is more memory-efficient than `get()` for large files as it

@@ -1,6 +1,15 @@
 # Changelog
 
+## Unreleased
 
+### Breaking Changes
+
+- **Storage `StoreDriver` / `StorageStrategy` gain required `list` and `stat`
+  methods** (and `StorageStrategy` also requires `exists`). Custom driver and
+  strategy implementations must implement them. Built-in drivers/strategies
+  already do. The `Storage` facade exposes matching `exists` / `list` / `stat`
+  (and `*_with_policy`) APIs alongside the existing upload/download/delete
+  surface.
 
 ## 1.0.0 - 2026-07-25
 

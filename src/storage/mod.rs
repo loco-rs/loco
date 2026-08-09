@@ -2,7 +2,8 @@
 //!
 //! This module defines a generic storage abstraction represented by the
 //! [`Storage`] struct. It provides methods for performing common storage
-//! operations such as upload, download, delete, rename, and copy.
+//! operations such as upload, download, delete, rename, copy, exists, list,
+//! and stat.
 //!
 //! ## Storage Strategy
 //!
@@ -21,7 +22,10 @@ use std::{
 
 use bytes::Bytes;
 
-use self::{drivers::StoreDriver, stream::BytesStream};
+use self::{
+    drivers::{ListEntry, StoreDriver},
+    stream::BytesStream,
+};
 
 #[derive(thiserror::Error, Debug)]
 #[allow(clippy::module_name_repetitions)]
@@ -327,6 +331,140 @@ impl Storage {
         strategy: &dyn strategies::StorageStrategy,
     ) -> StorageResult<()> {
         strategy.copy(self, from, to).await
+    }
+
+    /// Checks whether content exists at the specified path.
+    ///
+    /// This method uses the selected strategy for the exists check.
+    ///
+    /// # Examples
+    ///```
+    /// use loco_rs::storage;
+    /// use std::path::Path;
+    /// use bytes::Bytes;
+    /// pub async fn check_exists() {
+    ///     let storage = storage::Storage::single(storage::drivers::mem::new());
+    ///     let path = Path::new("example.txt");
+    ///     storage.upload(path, &Bytes::from("Loco!")).await.unwrap();
+    ///
+    ///     assert!(storage.exists(path).await.unwrap());
+    /// }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error if the exists check fails or if there is
+    /// an issue with the strategy configuration.
+    pub async fn exists(&self, path: &Path) -> StorageResult<bool> {
+        self.exists_with_policy(path, &*self.strategy).await
+    }
+
+    /// Checks whether content exists at the specified path using a specific
+    /// strategy.
+    ///
+    /// This method allows specifying a custom strategy for the exists check.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error if the exists check fails or if there is
+    /// an issue with the strategy configuration.
+    pub async fn exists_with_policy(
+        &self,
+        path: &Path,
+        strategy: &dyn strategies::StorageStrategy,
+    ) -> StorageResult<bool> {
+        strategy.exists(self, path).await
+    }
+
+    /// Lists entries whose paths start with the given prefix.
+    ///
+    /// This method uses the selected strategy for the listing operation.
+    ///
+    /// # Examples
+    ///```
+    /// use loco_rs::storage;
+    /// use std::path::Path;
+    /// use bytes::Bytes;
+    /// pub async fn list_entries() {
+    ///     let storage = storage::Storage::single(storage::drivers::mem::new());
+    ///     let path = Path::new("dir/example.txt");
+    ///     storage.upload(path, &Bytes::from("Loco!")).await.unwrap();
+    ///
+    ///     let entries = storage.list(Path::new("dir"), true).await.unwrap();
+    ///     assert_eq!(entries.len(), 1);
+    /// }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error if the listing operation fails or if
+    /// there is an issue with the strategy configuration.
+    pub async fn list(&self, path: &Path, recursive: bool) -> StorageResult<Vec<ListEntry>> {
+        self.list_with_policy(path, recursive, &*self.strategy)
+            .await
+    }
+
+    /// Lists entries whose paths start with the given prefix using a specific
+    /// strategy.
+    ///
+    /// This method allows specifying a custom strategy for the listing
+    /// operation.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error if the listing operation fails or if
+    /// there is an issue with the strategy configuration.
+    pub async fn list_with_policy(
+        &self,
+        path: &Path,
+        recursive: bool,
+        strategy: &dyn strategies::StorageStrategy,
+    ) -> StorageResult<Vec<ListEntry>> {
+        strategy.list(self, path, recursive).await
+    }
+
+    /// Retrieves metadata for a single path without downloading its content.
+    ///
+    /// This method uses the selected strategy for the stat operation.
+    ///
+    /// # Examples
+    ///```
+    /// use loco_rs::storage;
+    /// use std::path::Path;
+    /// use bytes::Bytes;
+    /// pub async fn stat_entry() {
+    ///     let storage = storage::Storage::single(storage::drivers::mem::new());
+    ///     let path = Path::new("example.txt");
+    ///     storage.upload(path, &Bytes::from("Loco!")).await.unwrap();
+    ///
+    ///     let entry = storage.stat(path).await.unwrap();
+    ///     assert_eq!(entry.content_length, Some(5));
+    /// }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error if the stat operation fails or if there
+    /// is an issue with the strategy configuration.
+    pub async fn stat(&self, path: &Path) -> StorageResult<ListEntry> {
+        self.stat_with_policy(path, &*self.strategy).await
+    }
+
+    /// Retrieves metadata for a single path using a specific strategy.
+    ///
+    /// This method allows specifying a custom strategy for the stat
+    /// operation.
+    ///
+    /// # Errors
+    ///
+    /// This method returns an error if the stat operation fails or if there
+    /// is an issue with the strategy configuration.
+    pub async fn stat_with_policy(
+        &self,
+        path: &Path,
+        strategy: &dyn strategies::StorageStrategy,
+    ) -> StorageResult<ListEntry> {
+        strategy.stat(self, path).await
     }
 
     /// Returns a reference to the store with the specified name if exists.

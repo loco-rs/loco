@@ -5,7 +5,7 @@ use std::path::Path;
 
 use bytes::Bytes;
 
-use crate::storage::{stream::BytesStream, Storage, StorageResult};
+use crate::storage::{drivers::ListEntry, stream::BytesStream, Storage, StorageResult};
 
 #[async_trait::async_trait]
 pub trait StorageStrategy: Sync + Send {
@@ -14,6 +14,14 @@ pub trait StorageStrategy: Sync + Send {
     async fn delete(&self, storage: &Storage, path: &Path) -> StorageResult<()>;
     async fn rename(&self, storage: &Storage, from: &Path, to: &Path) -> StorageResult<()>;
     async fn copy(&self, storage: &Storage, from: &Path, to: &Path) -> StorageResult<()>;
+    async fn exists(&self, storage: &Storage, path: &Path) -> StorageResult<bool>;
+    async fn list(
+        &self,
+        storage: &Storage,
+        path: &Path,
+        recursive: bool,
+    ) -> StorageResult<Vec<ListEntry>>;
+    async fn stat(&self, storage: &Storage, path: &Path) -> StorageResult<ListEntry>;
 
     /// Download content as a stream for memory-efficient large file handling.
     ///
