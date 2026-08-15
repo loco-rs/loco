@@ -35,13 +35,13 @@ Source: `loco-new/src/bin/main.rs:30-62`.
 | `--db <DB>` | `wizard::DBOption` | none — prompts | DB provider: `sqlite` \| `postgres` \| `none` (`main.rs:42-44`) |
 | `--bg <BG>` | `wizard::BackgroundOption` | none — prompts | Background-worker mode: `async` \| `queue-redis` \| `queue-postgres` \| `queue-sqlite` \| `blocking` (`main.rs:46-48`) |
 | `--assets <ASSETS>` | `wizard::AssetsOption` | none — prompts | Asset serving: `serverside` \| `clientside` \| `none` (`main.rs:50-52`) |
-| `--embedded-assets` | `bool` | `false` — prompts (interactive, serverside only) | Embed static assets into the binary (`embedded_assets` feature). Serverside only; combined with `--assets clientside` it is a hard error. Supplying it (or running fully flag-driven) skips the interactive prompt |
+| `--embedded-assets` | `bool` | `false` — prompts (interactive, serverside only) | Embed static assets into the binary (`embedded_assets` feature). Serverside only: with `--assets clientside` or `--assets none` the flag is **silently ignored**, because `select_embedded_assets` returns `false` for any non-serverside choice before the guard that would reject the combination is ever reached (`wizard.rs:401-403`, `main.rs:121`, `settings.rs:118-123`). Supplying it (or running fully flag-driven) skips the interactive prompt |
 | `-a, --allow-in-git-repo` | `bool` | `false` | Skip the "you're inside a git repo, continue?" abort prompt (`main.rs:54-56`) |
 | `--os <OS>` | `wizard::OS` | `linux` on Unix, `windows` otherwise | Generate a Unix- or Windows-optimized starter: `windows` \| `linux` \| `macos` (`main.rs:58-60`, `DEFAULT_OS` `main.rs:64-67`) |
 
 There is **no `-t/--template`** and **no `-v/--verbose`** flag. The `Template` enum exists internally and derives `ValueEnum`, but it is not wired to any CLI argument — template choice is interactive-only (§1.4).
 
-If `--db`, `--bg`, **and** `--assets` are all supplied, the wizard skips every prompt except app name (`wizard.rs:287-297`); app name still prompts unless `--name` is also given.
+If `--db`, `--bg`, **and** `--assets` are all supplied, the wizard skips every prompt (`wizard.rs:291-297`) — including the embedded-assets confirmation. App name still prompts unless `--name` is also given, so adding `--name` on top makes the run fully non-interactive.
 
 ### 1.3 Interactive prompts (when flags are omitted)
 
@@ -98,8 +98,9 @@ Source: `loco-new/src/settings.rs:58-89`.
 - DB enabled → `Features::default()` (loco-rs default features apply to the generated app).
 - DB **disabled** (Lightweight template, or `--db none`) → `default-features = false`, feature names = `["cli"]`; if background is `queue-redis`, `"worker_redis"` is appended; if background is `queue-postgres` or `queue-sqlite`, `"worker"` is appended.
 - `auth` and `mailer` scaffolding are enabled iff DB is enabled.
+- The DB choice is **expensive to reverse**: `--db none` removes the `migration` crate, the `models` module, `AppContext::db`, and the two `with-db`-only `Hooks` methods, and no generator puts them back. Adding a database later is a manual procedure — see [Add a database to an existing app](/docs/how-to/add-a-database).
 - Serverside assets → generated `Initializers { view_engine: true }`.
-- `loco_version_text`: normally `version = "0.17"`; when env var `LOCO_DEV_MODE_PATH` is set, becomes `version = "*", path = "<that path>"` — this is how the local framework checkout is dogfooded.
+- `loco_version_text`: normally `version = "<LOCO_VERSION>"` (`loco-new/src/lib.rs:27`, currently `1.1`); when env var `LOCO_DEV_MODE_PATH` is set, becomes `version = "*", path = "<that path>"` — this is how the local framework checkout is dogfooded.
 - Generated app's own edition is pinned in `loco-new/base_template/Cargo.toml.t` independent of the `loco-rs` framework edition.
 
 ---
@@ -120,7 +121,7 @@ Source: `src/cli.rs:64-171` (`enum Commands`).
 | `jobs` | — | `#[cfg(feature = "worker")]` | see §2.3 | Manage the background jobs queue (`cli.rs:115-120`) |
 | `scheduler` | — | — | `-n/--name <NAME>`, `-t/--tag <TAG>`, `-c/--config <PATH>`, `-l/--list` | Run or inspect the scheduler (`cli.rs:121-137`) |
 | `generate` | `g` | `#[cfg(debug_assertions)]` | see §2.4 | Code generation (`cli.rs:138-146`) |
-| `doctor` | — | — | `-c/--config`, `-p/--production` | Validate/diagnose the app; `--config` instead dumps the resolved config + environment and skips checks (`cli.rs:147-154`, `814-832`) |
+| `doctor` | — | — | `-c/--config`, `-p/--production` | Validate/diagnose the app; `--config` instead dumps the resolved config + environment and skips checks. `--production` is **deprecated** and is not a check filter — it switches the resolved *environment* to `production` (printing a warning pointing at `--environment production`), so the checks run against the production config. Which checks apply then follows from the environment (`cli.rs:152-157,756-767,874`) |
 | `version` | — | — | none | Print the app version (`cli.rs:155-156`) |
 | `watch` | `w` | — | `-w/--worker[=tags]`, `-s/--server-and-worker`, `--scheduler` | Wraps `cargo-watch -s 'cargo loco start ...'` (`cli.rs:158-170`, `838-867`); requires `cargo-watch` installed |
 
@@ -154,6 +155,17 @@ Source: `src/cli.rs:64-171` (`enum Commands`).
 | `dump` | `--status <csv>`, `-f/--folder <DIR>` (default `.`) | Save job details to files |
 | `import` | `-f/--file <PATH>` | Import jobs from a file |
 | `requeue` | `--from-age <MINS>` (default `0`) | Move `processing` jobs older than the given age back to `queued` |
+| `retry` | `--id <ID>` (optional) | Move `failed` jobs back to `queued`. With `--id`, just that one; without, all of them |
+
+`retry` and `requeue` are not the same tool. `requeue` rescues jobs a crashed
+worker left stranded in `processing` and cannot touch a `failed` job; `retry`
+is the reverse. There is no automatic retry or backoff in any queue driver, so
+without `retry` a failed job is terminal.
+
+On the Redis provider, retried jobs go back to the `default` queue: a job does
+not record which queue it was submitted to, and the only trace of it — the id's
+membership in that queue — is removed when the job fails. The command says so
+when it moves anything.
 
 ### 2.4 `generate` subcommands
 
@@ -163,28 +175,28 @@ Source: `src/cli.rs:64-171` (`enum Commands`).
 |---|---|---|---|
 | `model` | `with-db` | `name`, `--without-tz`, `field:type ...` | Fields support `references` (e.g. `director:references`) |
 | `migration` | `with-db` | `name`, `--without-tz`, `field:type ...` | Add/remove columns, join tables, empty migrations, references |
-| `scaffold` | `with-db` | `name`, `--without-tz`, `field:type ...`, `-k/--kind <KIND>`, `--htmx`, `--html`, `--api` | Exactly one of `--kind`/`--htmx`/`--html`/`--api` is required (group `scaffold_kind_group`); errors otherwise (`cli.rs:426-429`) |
-| `controller` | — | `name`, `actions...`, `-k/--kind <KIND>`, `--htmx`, `--html`, `--api` | Same kind-selection rule as `scaffold` (`cli.rs:455-458`) |
+| `scaffold` | `with-db` | `name`, `--without-tz`, `--no-auth`, `field:type ...` | Adaptive — no kind flag: JSON API by default, plus typed React hooks/pages when the app has a `frontend/`. Handlers require a JWT unless `--no-auth`. `--api`/`--html`/`--htmx` are accepted for compat (see below) |
+| `controller` | — | `name`, `--auth`, `actions...` | JSON API controller — no kind flag. Public unless `--auth`. `--api`/`--html`/`--htmx` accepted for compat (see below) |
 | `task` | — | `name` | |
 | `scheduler` | — | none | Scaffolds a scheduler config template |
 | `worker` | — | `name` | |
 | `mailer` | — | `name` | |
 | `data` | — | `name` | Data loader |
-| `deployment` | — | `kind` = `docker` \| `nginx` (`DeploymentKind`, `cli.rs:554-558`) | `docker` inspects static-assets config + `frontend/package.json`; `nginx` uses configured host/port |
+| `deployment` | — | `kind` = `docker` \| `nginx` \| `lambda` (`DeploymentKind`) | `docker` inspects static-assets config + `frontend/package.json`; `nginx` uses configured host/port; `lambda` writes an AWS Lambda entrypoint (`src/bin/lambda.rs`) + adds `lambda_http` |
 | `override` | — | `[template_path]`, `--info` | Copies a built-in generator template locally for customization; no path lists all available templates |
 
-`-k/--kind <KIND>` accepts `ScaffoldKind`: `api` \| `html` \| `htmx` (`loco-gen/src/lib.rs:218-222`).
+**Compat with the removed kind flags.** The 1.0 adaptive rebuild removed the `--api`/`--html`/`--htmx`/`-k/--kind` flags (and the `ScaffoldKind` enum). `scaffold`/`controller` still *accept* `--api` (a no-op — it's the headless default) and `--html`/`--htmx` (which error with a pointer to the React SPA frontend that replaced server-rendered views), so pre-1.0 commands don't fail with a clap `unexpected argument` error.
 
 ---
 
 ## 3. `cargo loco --help` (verified output)
 
-The top-level help, matching `enum Commands` exactly:
+The top-level help, matching `enum Commands` exactly. The binary is named `<module_name>-cli` (`examples/demo` builds `demo-cli`), and clap takes that name from `argv[0]`; the summary line above the usage is `loco-rs`'s own package description, baked in where `#[command(about)]` is derived (`src/cli.rs:44`), not your app's:
 
 ```sh
 The one-person framework for Rust
 
-Usage: demo_app-cli [OPTIONS] <COMMAND>
+Usage: demo-cli [OPTIONS] <COMMAND>
 
 Commands:
   start       Start an app

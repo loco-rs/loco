@@ -97,7 +97,7 @@ use loco_rs::testing::prelude::*;
 #[tokio::test]
 #[serial]
 async fn can_find_seeded_user() {
-    let boot = boot_test::<App, Migrator>().await?;
+    let boot = boot_test::<App>().await?;
     seed::<App>(&boot.app_context).await?;
 
     let user = Model::find_by_email(&boot.app_context.db, "user1@example.com").await;

@@ -14,14 +14,14 @@
 
 mod connect;
 mod entities;
+mod introspect;
 mod migrate;
-mod schema;
 mod seed;
 
 pub use connect::*;
 pub use entities::*;
+pub use introspect::*;
 pub use migrate::*;
-pub use schema::*;
 pub use seed::*;
 
 pub(crate) const IGNORED_TABLES: &[&str] = &[

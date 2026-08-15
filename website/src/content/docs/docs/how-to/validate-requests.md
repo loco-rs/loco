@@ -102,6 +102,9 @@ Implement `ValidatorTrait` directly for full control — useful if a rule doesn'
 
 ```rust
 use loco_rs::prelude::*;
+// the prelude re-exports only `validation::{self, Validatable, ValidatorTrait}`,
+// so name the two error types explicitly
+use loco_rs::validation::{ModelValidationErrors, ValidationError};
 use std::collections::{BTreeMap, HashMap};
 
 #[derive(Debug, serde::Deserialize)]

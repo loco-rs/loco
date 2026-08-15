@@ -90,7 +90,7 @@ For an inline template string with no file on disk, use `format::template(tmpl, 
 
 ## 5. Enabling the view engine on an API-only app
 
-If your app was generated `--api`-only, add the initializer:
+If your app doesn't already wire a view engine (headless/API apps don't), add the initializer:
 
 ```rust
 // src/initializers/view_engine.rs

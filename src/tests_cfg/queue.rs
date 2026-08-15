@@ -69,16 +69,4 @@ pub async fn sqlite_seed_data(pool: &sqlx::Pool<sqlx::Sqlite>) {
         .execute(pool)
         .await.expect("create row");
     }
-
-    sqlx::query(
-        r"
-                INSERT INTO sqlt_loco_queue_lock (id, is_locked, locked_at)
-    VALUES (1, FALSE, NULL)
-    ON CONFLICT (id) DO NOTHING;
-
-            ",
-    )
-    .execute(pool)
-    .await
-    .expect("execute insert query");
 }

@@ -1,10 +1,7 @@
 use std::env;
 
 use cargo_metadata::{semver::Version, MetadataCommand, Package};
-use clap::{
-    ArgAction::{SetFalse, SetTrue},
-    Parser, Subcommand,
-};
+use clap::{ArgAction::SetTrue, Parser, Subcommand};
 use xtask::versions;
 
 #[derive(Parser)]
@@ -23,13 +20,7 @@ enum Commands {
         #[arg(short, long, action = SetTrue)]
         quick: bool,
     },
-    /// Bump loco version in all dependencies places
-    DeprecatedBumpVersion {
-        #[arg(name = "VERSION")]
-        new_version: Version,
-        #[arg(short, long, action = SetFalse)]
-        exclude_starters: bool,
-    },
+    /// Bump every version a release touches. See `xtask::versions`.
     Bump {
         #[arg(name = "VERSION")]
         new_version: Version,
@@ -38,6 +29,9 @@ enum Commands {
     /// against the real docs tree: broken links, orphan pages, version
     /// markers. Verifies only — never regenerates the curated files.
     LlmsCheck,
+    /// Parse every ```rust block in the docs tree and fail on the ones that
+    /// are not valid Rust. Syntax only — see `xtask::docs_syntax`.
+    DocsSyntax,
 }
 
 fn main() -> eyre::Result<()> {
@@ -55,29 +49,6 @@ fn main() -> eyre::Result<()> {
             println!("{}", xtask::out::print_ci_results(&res));
             xtask::CmdExit::ok()
         }
-        Commands::DeprecatedBumpVersion {
-            new_version,
-            exclude_starters,
-        } => {
-            let meta = MetadataCommand::new()
-                .manifest_path("./Cargo.toml")
-                .current_dir(&project_dir)
-                .exec()
-                .unwrap();
-            let root: &Package = meta.root_package().unwrap();
-            if xtask::prompt::confirmation(&format!(
-                "upgrading loco version from {} to {}",
-                root.version, new_version,
-            ))? {
-                xtask::bump_version::BumpVersion {
-                    base_dir: project_dir,
-                    version: new_version,
-                    bump_starters: exclude_starters,
-                }
-                .run()?;
-            }
-            xtask::CmdExit::ok()
-        }
         Commands::Bump { new_version } => {
             let meta = MetadataCommand::new()
                 .manifest_path("./Cargo.toml")
@@ -89,7 +60,7 @@ fn main() -> eyre::Result<()> {
                 "upgrading loco version from {} to {}",
                 root.version, new_version,
             ))? {
-                versions::bump_version(&new_version.to_string())?;
+                versions::bump_version(&new_version)?;
             }
             xtask::CmdExit::ok()
         }
@@ -97,8 +68,23 @@ fn main() -> eyre::Result<()> {
             xtask::llms::run(&project_dir)?;
             xtask::CmdExit::ok_with_message("llms-check passed")
         }
+        Commands::DocsSyntax => {
+            xtask::docs_syntax::run(&project_dir)?;
+            xtask::CmdExit::ok_with_message("docs-syntax passed")
+        }
     };
 
     res.exit();
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Cli;
+    use clap::CommandFactory;
+
+    #[test]
+    fn command_tree_is_well_formed() {
+        Cli::command().debug_assert();
+    }
 }

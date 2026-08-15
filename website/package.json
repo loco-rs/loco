@@ -17,18 +17,25 @@
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.19",
-    "@astrojs/sitemap": "^3.0.0",
-    "@astrojs/starlight": "^0.30.0",
-    "@astrojs/tailwind": "^5.1.0",
-    "astro": "^5.0.0",
-    "tailwindcss": "^3.4.0"
+    "@astrojs/sitemap": "^3.7.3",
+    "@astrojs/starlight": "^0.41.7",
+    "astro": "^7.2.1"
   },
   "devDependencies": {
-    "@astrojs/check": "^0.9.0",
-    "@types/jsdom": "^28.0.3",
-    "jsdom": "^25.0.0",
+    "@astrojs/check": "^0.9.10",
+    "@types/jsdom": "^30.0.0",
+    "jsdom": "^30.0.1",
     "smol-toml": "^1.7.0",
     "typescript": "^5.5.0",
-    "vitest": "^2.0.0"
+    "vitest": "^4.1.10"
+  },
+  "pnpm": {
+    "overrides": {
+      "nanoid": "^3.3.18",
+      "js-yaml": "^4.3.1",
+      "postcss": "^8.5.26",
+      "fast-uri": "^3.1.5",
+      "sharp": "^0.35.3"
+    }
   }
 }

@@ -243,9 +243,9 @@ pub async fn boot_test_with_create_db<H: Hooks>() -> Result<BootResultWrapper> {
 ///     let port = get_available_port().await;
 ///     let boot = boot_test_unique_port::<App>(Some(port)).await;
 ///
-///     /// .....
-///     assert!(false)
+///     // .....
 /// }
+/// ```
 pub async fn boot_test_unique_port<H: Hooks>(port: Option<i32>) -> Result<BootResult> {
     let mut config = H::load_config(&Environment::Test).await?;
     config.server = Server {

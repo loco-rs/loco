@@ -29,7 +29,6 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use tracing::info;
 
 mod auth;
@@ -39,6 +38,7 @@ mod logger;
 mod mailer;
 mod queue;
 mod server;
+mod template;
 
 pub use auth::*;
 pub use cache::*;
@@ -116,16 +116,11 @@ impl Config {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// use loco_rs::{
-    ///     config::Config,
-    ///     environment::Environment,
-    /// };
+    /// ```rust,ignore
+    /// use loco_rs::{config::Config, environment::Environment};
     ///
-    /// #[tokio::main]
-    /// async fn load(environment: &Environment) -> Config {
-    ///     Config::new(environment).expect("configuration loading")
-    /// }
+    /// let config = Config::new(&Environment::Development)?;
+    /// ```
     pub fn new(env: &Environment) -> Result<Self> {
         let config = Self::from_folder(env, get_default_folder().as_path())?;
         Ok(config)
@@ -140,17 +135,12 @@ impl Config {
     ///
     /// # Example
     ///
-    /// ```rust
-    /// use loco_rs::{
-    ///     config::Config,
-    ///     environment::Environment,
-    /// };
-    /// use std::path::PathBuf;
+    /// ```rust,ignore
+    /// use loco_rs::{config::Config, environment::Environment};
+    /// use std::path::Path;
     ///
-    /// #[tokio::main]
-    /// async fn load(environment: &Environment) -> Config{
-    ///     Config::from_folder(environment, &PathBuf::from("config")).expect("configuration loading")
-    /// }
+    /// let config = Config::from_folder(&Environment::Development, Path::new("config"))?;
+    /// ```
     pub fn from_folder(env: &Environment, path: &Path) -> Result<Self> {
         // `{env}.yaml` is the base configuration, `{env}.local.yaml` is an
         // optional, git-ignorable override layered on top of it. When both
@@ -199,15 +189,18 @@ impl Config {
         serde_yaml::from_value(merged).map_err(|err| Error::YAMLFile(err, selected_path_display))
     }
 
-    /// Reads a single YAML config file, renders it through Tera, and parses
+    /// Reads a single YAML config file, renders its template tags, and parses
     /// it into a [`serde_yaml::Value`].
+    ///
+    /// Templating uses the YAML-safe `<%= ... %>` delimiters (see
+    /// [`template`]); Tera's native `{{ ... }}` still works but is deprecated.
     ///
     /// # Errors
     /// Returns an error naming `path` when the file cannot be read, rendered,
     /// or parsed as YAML.
     fn load_yaml_value(path: &Path) -> Result<serde_yaml::Value> {
         let content = fs::read_to_string(path)?;
-        let rendered = crate::tera::render_string(&content, &json!({}))?;
+        let rendered = template::render(&content)?;
 
         serde_yaml::from_str(&rendered)
             .map_err(|err| Error::YAMLFile(err, path.to_string_lossy().to_string()))
@@ -345,6 +338,60 @@ settings:
         assert_eq!(settings["seq"], serde_json::json!([9]));
     }
 
+    /// The unit tests beside `JWTLocationConfig` parse the enum on its own.
+    /// This drives the whole loader — file read, `<%= %>` template pass, merge,
+    /// typed deserialization — because the hand-written `Deserialize` uses
+    /// `deserialize_any`, and a self-describing format is a precondition for
+    /// that. If the loader ever routes config through a non-self-describing
+    /// path, this is what notices.
+    #[test]
+    fn a_jwt_cookie_location_survives_the_whole_config_loader() {
+        let yaml = format!(
+            "{BASE_YAML}auth:\n  jwt:\n    secret: shh\n    expiration: 604800\n    \
+             location:\n      from: Cookie\n      name: auth_token\n"
+        );
+
+        let tree = TreeBuilder::default()
+            .drop(true)
+            .add_file("test.yaml", &yaml)
+            .create()
+            .expect("create temp config folder");
+
+        let config =
+            Config::from_folder(&Environment::Test, &tree.root).expect("load config with auth");
+
+        let jwt = config.auth.expect("auth present").jwt.expect("jwt present");
+
+        assert!(matches!(
+            jwt.location.expect("location present"),
+            JWTLocationConfig::Single(JWTLocation::Cookie { name }) if name == "auth_token"
+        ));
+    }
+
+    /// And the error a real config produces names the field at fault.
+    #[test]
+    fn a_bad_jwt_location_in_a_real_config_names_the_problem() {
+        let yaml = format!(
+            "{BASE_YAML}auth:\n  jwt:\n    secret: shh\n    expiration: 604800\n    \
+             location:\n      from: cookie\n      name: auth_token\n"
+        );
+
+        let tree = TreeBuilder::default()
+            .drop(true)
+            .add_file("test.yaml", &yaml)
+            .create()
+            .expect("create temp config folder");
+
+        let err = Config::from_folder(&Environment::Test, &tree.root)
+            .expect_err("`cookie` is not a variant");
+        let message = err.to_string();
+
+        assert!(
+            message.contains("unknown variant") && message.contains("Cookie"),
+            "the loader should surface the inner error, got: {message}"
+        );
+    }
+
     #[test]
     fn only_base_present_uses_base() {
         let tree = TreeBuilder::default()
@@ -441,5 +488,78 @@ nested:
         .unwrap();
 
         assert_eq!(merged, expected);
+    }
+
+    /// End-to-end guard for <https://github.com/loco-rs/loco/issues/1727>: a
+    /// config written with the YAML-safe `<% %>` delimiters must (a) be valid
+    /// YAML before rendering, so formatters cannot corrupt it, and (b) still
+    /// resolve environment variables into correctly *typed* fields.
+    #[test]
+    fn yaml_safe_templates_are_valid_yaml_and_resolve_typed_env_values() {
+        // Deliberately unique names so parallel tests cannot collide.
+        const PORT_VAR: &str = "LOCO_CFG_TEST_PORT_1727";
+        const LOGGING_VAR: &str = "LOCO_CFG_TEST_DB_LOGGING_1727";
+
+        let yaml = format!(
+            r#"
+logger:
+  enable: false
+  level: <%= get_env(name="LOCO_CFG_TEST_LEVEL_1727", default="info") %>
+  format: compact
+server:
+  port: <%= get_env(name="{PORT_VAR}", default="5150") %>
+  host: localhost
+mailer:
+  stub: true
+database:
+  uri: "sqlite::memory:"
+  enable_logging: <%= get_env(name="{LOGGING_VAR}", default="false") %>
+  connect_timeout: <%= get_env(name="LOCO_CFG_TEST_CT_1727", default="500") %>
+  idle_timeout: 500
+  min_connections: 1
+  max_connections: 1
+  auto_migrate: false
+  dangerously_truncate: false
+  dangerously_recreate: false
+"#
+        );
+
+        // (a) The file parses as ordinary YAML *before* any rendering, with the
+        // templates sitting in plain string scalars.
+        let raw: serde_yaml::Value =
+            serde_yaml::from_str(&yaml).expect("templated config must be valid YAML at rest");
+        assert!(raw["server"]["port"].is_string());
+
+        // (b) Rendering resolves env vars and YAML re-types the bare results.
+        // SAFETY: these variable names are unique to this test, so no other
+        // thread reads or writes them concurrently.
+        unsafe {
+            std::env::set_var(PORT_VAR, "8080");
+            std::env::set_var(LOGGING_VAR, "true");
+        }
+
+        let tree = TreeBuilder::default()
+            .drop(true)
+            .add("test.yaml", &yaml)
+            .create()
+            .unwrap();
+        let config = Config::from_folder(&Environment::Test, &tree.root).unwrap();
+
+        // SAFETY: see above — names are unique to this test.
+        unsafe {
+            std::env::remove_var(PORT_VAR);
+            std::env::remove_var(LOGGING_VAR);
+        }
+
+        assert_eq!(
+            config.server.port, 8080,
+            "env var must override the default"
+        );
+        assert!(
+            config.database.enable_logging,
+            "a bool field must resolve from the environment as a real bool"
+        );
+        // Untouched vars fall back to their typed defaults.
+        assert_eq!(config.database.connect_timeout, 500);
     }
 }

@@ -27,15 +27,15 @@ const { file } = Astro.props;
   .codewin {
     display: flex;
     flex-direction: column;
-    background: #1b1512;
+    background: var(--code-bg);
   }
   .codewin .codebar {
     display: flex;
     align-items: center;
     gap: 6px;
-    background: #241d19;
+    background: var(--code-bar);
     padding: 9px 12px;
-    border-bottom: 1px solid #2a2320;
+    border-bottom: 1px solid var(--code-border);
   }
   .codewin .codebar i {
     width: 10px;
@@ -47,35 +47,35 @@ const { file } = Astro.props;
     margin-left: 8px;
     font-family: var(--mono);
     font-size: 11px;
-    color: #a89a8c;
+    color: var(--code-muted);
   }
   .codewin :global(pre.bigcode) {
     padding: 20px 24px;
     font-family: var(--mono);
     font-size: 12px;
     line-height: 1.72;
-    color: #e9ddcf;
+    color: var(--code-fg);
     white-space: pre;
     overflow: auto;
     flex: 1;
     margin: 0;
   }
   .codewin :global(.bigcode .k) {
-    color: #ff8f6b;
+    color: var(--code-keyword);
   }
   .codewin :global(.bigcode .s) {
-    color: #c3e88d;
+    color: var(--code-string);
   }
   .codewin :global(.bigcode .c) {
-    color: #7d7266;
+    color: var(--code-comment);
   }
   .codewin :global(.bigcode .t) {
-    color: #82aaff;
+    color: var(--code-type);
   }
   .codewin :global(.bigcode .fn) {
-    color: #ffd479;
+    color: var(--code-function);
   }
   .codewin :global(.bigcode .n) {
-    color: #f5b784;
+    color: var(--code-number);
   }
 </style>

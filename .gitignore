@@ -72,6 +72,9 @@ example
 .superpowers/
 docs/superpowers/
 
-# internal release-management working docs — never ship
-/RELEASE-1.0.0*.md
+# internal release-management working docs — never ship.
+# Version-generic: the 1.0.0-specific pattern this replaced stopped matching
+# the moment the next release was prepared, which would have shipped the
+# playbook in the crate.
+/RELEASE-*.md
 /REMAINING-WORK.md

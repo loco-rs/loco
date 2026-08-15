@@ -28,7 +28,7 @@ Two entry points build a `ConditionBuilder`:
 
 `ConditionBuilder` implements `From<ConditionBuilder> for Condition` (`dsl/mod.rs:167`), and every builder method below returns `Self` (consuming `self`) so calls chain; `.build()` finalizes to a `sea_orm::Condition`:
 
-```rust
+```rust no-syntax-check="signature listing — no body, by design"
 pub fn build(&self) -> Condition  // dsl/mod.rs:701
 ```
 
@@ -149,6 +149,7 @@ pub struct PaginationQuery {
 ### `PageResponse<T>` and `PagerMeta`
 
 ```rust
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PageResponse<T> {
     pub page: Vec<T>,
     pub meta: PagerMeta,

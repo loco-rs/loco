@@ -93,7 +93,7 @@ impl CacheDriver for Inmem {
     ///
     /// # Errors
     ///
-    /// Returns a [`super::CacheError`] if there is an error during the
+    /// Returns a [`crate::cache::CacheError`] if there is an error during the
     /// operation.
     async fn insert_with_expiry(
         &self,

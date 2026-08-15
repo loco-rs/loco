@@ -5,7 +5,7 @@ use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
 use opendal::{layers::RetryLayer, Operator};
 
-use super::{GetResponse, StoreDriver, UploadResponse};
+use super::{GetResponse, ListEntry, StoreDriver, UploadResponse};
 use crate::storage::{stream::BytesStream, StorageError, StorageResult};
 
 pub struct OpendalAdapter {
@@ -80,7 +80,8 @@ impl StoreDriver for OpendalAdapter {
     /// Returns a `StorageResult` indicating the success of the rename/move
     /// operation.
     async fn rename(&self, from: &Path, to: &Path) -> StorageResult<()> {
-        if self.opendal_impl.info().full_capability().rename {
+        // opendal 0.58: full_capability()/native_capability() removed; use capability().
+        if self.opendal_impl.info().capability().rename {
             let from = from.display().to_string();
             let to = to.display().to_string();
             Ok(self.opendal_impl.rename(&from, &to).await?)
@@ -103,9 +104,9 @@ impl StoreDriver for OpendalAdapter {
     async fn copy(&self, from: &Path, to: &Path) -> StorageResult<()> {
         let from = from.display().to_string();
         let to = to.display().to_string();
-        if self.opendal_impl.info().full_capability().copy {
-            // opendal 0.57's `copy` returns the destination `Metadata`; we
-            // don't surface it.
+        // opendal 0.58: full_capability() removed; use capability().
+        if self.opendal_impl.info().capability().copy {
+            // `copy` returns the destination `Metadata`; we don't surface it.
             self.opendal_impl.copy(&from, &to).await?;
         } else {
             let mut reader = self
@@ -142,6 +143,61 @@ impl StoreDriver for OpendalAdapter {
     async fn exists(&self, path: &Path) -> StorageResult<bool> {
         let path = path.display().to_string();
         Ok(self.opendal_impl.exists(&path).await.unwrap_or(false))
+    }
+
+    /// Lists entries whose paths start with the given prefix.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `StorageResult` with the listing operation's result.
+    async fn list(&self, path: &Path, recursive: bool) -> StorageResult<Vec<ListEntry>> {
+        // OpenDAL treats a prefix without a trailing slash as an exact-key
+        // lookup (returning the directory itself as a single entry) rather
+        // than a directory listing, so normalize the prefix before listing.
+        let mut prefix = path.display().to_string();
+        if !prefix.is_empty() && !prefix.ends_with('/') {
+            prefix.push('/');
+        }
+
+        let entries = self
+            .opendal_impl
+            .list_with(&prefix)
+            .recursive(recursive)
+            .await?;
+
+        Ok(entries
+            .into_iter()
+            .map(|entry| {
+                let (path, meta) = entry.into_parts();
+                ListEntry::new(
+                    path,
+                    meta.is_dir(),
+                    Some(meta.content_length()),
+                    meta.last_modified().map(|ts| {
+                        chrono::DateTime::<chrono::Utc>::from(std::time::SystemTime::from(ts))
+                    }),
+                    meta.etag().map(std::string::ToString::to_string),
+                )
+            })
+            .collect())
+    }
+
+    /// Retrieves metadata for a single path without downloading its content.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `StorageResult` with the entry's metadata.
+    async fn stat(&self, path: &Path) -> StorageResult<ListEntry> {
+        let path_str = path.display().to_string();
+        let meta = self.opendal_impl.stat(&path_str).await?;
+        Ok(ListEntry::new(
+            path_str,
+            meta.is_dir(),
+            Some(meta.content_length()),
+            meta.last_modified()
+                .map(|ts| chrono::DateTime::<chrono::Utc>::from(std::time::SystemTime::from(ts))),
+            meta.etag().map(std::string::ToString::to_string),
+        ))
     }
 
     /// Native streaming implementation for `OpenDAL`.

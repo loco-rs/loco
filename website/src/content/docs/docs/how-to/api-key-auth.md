@@ -20,9 +20,11 @@ Unlike JWT auth, `ApiToken<T>` needs **no `auth.jwt` configuration at all** — 
 ## 1. Implement `find_by_api_key`
 
 ```rust
+use async_trait::async_trait;
 use loco_rs::model::{Authenticable, ModelError, ModelResult};
 use sea_orm::{DatabaseConnection, EntityTrait, ColumnTrait, QueryFilter};
 
+#[async_trait]
 impl Authenticable for super::_entities::users::Model {
     async fn find_by_api_key(db: &DatabaseConnection, api_key: &str) -> ModelResult<Self> {
         let user = super::_entities::users::Entity::find()

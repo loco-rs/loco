@@ -92,6 +92,36 @@ Returning `res` from a controller (e.g. via `format::json(res)`) serializes to:
 }
 ```
 
+## 5. The scaffold's typed envelope
+
+A generated `list` handler answers with `Page<T>` (`src/dtos/common.rs`), not `PageResponse` directly, because the typed React frontend needs a `ts-rs`-exported type and a flat body is easier to consume:
+
+```json
+{
+  "items": [ { "id": 1, "title": "..." } ],
+  "page": 2,
+  "page_size": 25,
+  "total_pages": 4,
+  "total_items": 87
+}
+```
+
+The metadata field names are `PagerMeta`'s, so there is one pagination vocabulary in the app whichever envelope a handler returns. Build it from a paginated query rather than by hand — that is what keeps the two in step:
+
+```rust
+let res = query::paginate(
+    &ctx.db,
+    posts::Entity::find().order_by_asc(posts::Column::Id),
+    None,
+    &pagination,
+)
+.await?;
+
+Ok(Json(Page::from_query(res)))
+```
+
+`Page::from_query` maps each model through `T: From<M>` — the `impl From<Model> for PostDto` the scaffold already generates.
+
 ## Result
 
 A request like `GET /posts?page=2&page_size=10&title=loco` returns exactly one page of matching rows plus enough metadata for a client to render "page 2 of 4" or build next/prev links — without loading the whole table or hand-writing `OFFSET`/`LIMIT` math. Remember `page` is 1-based on the way in; both functions handle the conversion to Sea-ORM's 0-based paging internally.

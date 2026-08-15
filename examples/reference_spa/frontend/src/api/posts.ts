@@ -13,7 +13,7 @@ import { ApiClientError, del, get, post, put } from "./client";
 
 export interface ListPostsParams {
   page?: number;
-  per_page?: number;
+  page_size?: number;
   status?: string;
 }
 
@@ -32,8 +32,8 @@ function buildQueryString(params?: ListPostsParams): string {
   if (params.page !== undefined) {
     search.set("page", String(params.page));
   }
-  if (params.per_page !== undefined) {
-    search.set("per_page", String(params.per_page));
+  if (params.page_size !== undefined) {
+    search.set("page_size", String(params.page_size));
   }
   if (params.status !== undefined) {
     search.set("status", params.status);

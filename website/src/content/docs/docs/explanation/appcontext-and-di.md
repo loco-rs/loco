@@ -13,6 +13,7 @@ Every handler, background worker, task, and scheduled job in a Loco app receives
 
 ```rust
 #[derive(Clone, FromRef)]
+#[non_exhaustive]
 pub struct AppContext {
     pub environment: Environment,
     #[cfg(feature = "with-db")]
@@ -31,6 +32,7 @@ The full field-by-field reference — types, feature gates, purpose — lives in
 - **One struct, not seven services.** Rather than injecting the DB pool, the cache, the mailer, storage, and the queue as five separate pieces of Axum state, Loco bundles them into one `AppContext` and derives `FromRef` on it. That derive is what lets a handler ask for exactly the piece it needs — `State<DatabaseConnection>` or `State<Arc<cache::Cache>>` — while a background worker or the boot sequence can still ask for the whole thing. You get the ergonomics of narrow, single-purpose extraction without the boilerplate of hand-writing `FromRef` impls for every field.
 - **`db` is the only field that's compiled away, not just empty.** Every other field degrades gracefully when unconfigured (`None` for `mailer`/`queue_provider`, a `Null` driver for `cache`/`storage`) — an app with no mailer configured still has a `mailer: Option<EmailSender>` field, just set to `None`. `db` is different: with the `with-db` feature off, the field doesn't exist on the struct at all, which is a compile-time way of saying "this deployment shape genuinely has no database," rather than a runtime `Option` a caller could forget to check.
 - **It's the same value everywhere.** Because `create_context` builds `AppContext` exactly once at boot and every subsystem downstream — routing, middleware, handlers, `connect_workers`, tasks, the scheduler — receives that same value, there's no risk of a handler and a background job disagreeing about which DB pool or cache instance is "the real one." This is also why `Hooks::after_context(ctx: AppContext) -> Result<AppContext>` (which runs immediately after assembly, before routes are built) is the one hook that can rewrite the context itself — it's your last and only chance to add something to it before it's handed out everywhere.
+- **It's `#[non_exhaustive]`, so it's built through a builder.** Marking the struct `#[non_exhaustive]` means app code can neither write an `AppContext { .. }` literal nor use functional-update syntax — which is what makes adding a field in a later Loco release a non-breaking change. In its place, `AppContext::builder(..)` takes the required components as arguments and defaults the optional ones to no-op providers, and `ctx.into_builder()` turns an existing context back into a builder with every component carried over. The second one is what `after_context` should use: rebuilding from scratch would silently discard the mailer, queue provider, cache and shared store that boot had already put in place, whereas a round-trip replaces one component and keeps the rest.
 
 ## The gap `AppContext`'s fixed fields can't fill
 

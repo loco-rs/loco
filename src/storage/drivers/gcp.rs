@@ -19,5 +19,6 @@ pub fn new(bucket_name: &str, credential_path: &str) -> StorageResult<Box<dyn St
         .bucket(bucket_name)
         .credential_path(credential_path);
 
-    Ok(Box::new(OpendalAdapter::new(Operator::new(gcs)?.finish())))
+    // opendal 0.58: Operator::new returns a finished Operator (no .finish()).
+    Ok(Box::new(OpendalAdapter::new(Operator::new(gcs)?)))
 }

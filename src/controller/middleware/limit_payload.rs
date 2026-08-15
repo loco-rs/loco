@@ -1,7 +1,7 @@
 //! Limit Payload Middleware
 //!
 //! This middleware restricts the maximum allowed size for HTTP request
-//! payloads. It is configurable based on the [`LimitPayloadMiddleware`]
+//! payloads. It is configurable based on the [`LimitPayload`]
 //! settings in the application's middleware configuration. The middleware sets
 //! a limit on the request body size using Axum's `DefaultBodyLimit` layer.
 //!

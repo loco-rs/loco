@@ -1,5 +1,5 @@
 ---
-// Ported verbatim from the reference `.hero` block (markup + styles), see
+// Ported from the reference `.hero` block (markup + styles), see
 // docs/superpowers/specs/2026-07-17-homepage-direction-a-reference.html.
 //
 // The `.art` wrapper (position + the floating `.code` terminal card) lives
@@ -20,12 +20,21 @@ import PostcardFrame from './PostcardFrame.astro';
       <h1 data-reveal>The <span class="u">one-person</span><br />framework for Rust.</h1>
       <p class="lede" data-reveal>Everything you need to take a side-project or startup from an idea to production — models, controllers, jobs, mailers, auth — generated and wired together.</p>
       <div class="cta-row" data-reveal>
-        <a class="btn btn-primary" href="#">Start building →</a>
+        <a class="btn btn-primary" href="/docs/tutorials/your-first-app/">Start building →</a>
         <div class="install" data-copy="cargo install loco" role="button" tabindex="0" aria-label="Copy install command: cargo install loco"><span><span class="dollar">$</span> cargo install loco</span><span class="cp">⧉ copy</span></div>
       </div>
       <div class="trust" data-reveal>
         <div><b>1.0</b> Sea-ORM 2.0 · edition 2024</div>
-        <div><b>6.9k ★</b> on GitHub</div>
+        <div>
+          <a
+            href="https://github.com/loco-rs/loco"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-github-stars
+            data-star-placement="after"
+            aria-label="Loco on GitHub"
+          ><b data-star-label>Stars</b> on GitHub</a>
+        </div>
         <div><b>0 → prod</b> in one command</div>
       </div>
     </div>
@@ -197,14 +206,14 @@ import PostcardFrame from './PostcardFrame.astro';
     transform: rotate(1.8deg);
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 24px 50px -20px rgba(28, 23, 18, 0.5);
-    border: 1px solid #2a2320;
+    box-shadow: 0 24px 50px -20px var(--code-shadow);
+    border: 1px solid var(--code-border);
   }
   .codebar {
     display: flex;
     align-items: center;
     gap: 6px;
-    background: #241d19;
+    background: var(--code-bar);
     padding: 9px 12px;
   }
   .codebar i {
@@ -217,15 +226,15 @@ import PostcardFrame from './PostcardFrame.astro';
     margin-left: 8px;
     font-family: var(--mono);
     font-size: 11px;
-    color: #a89a8c;
+    color: var(--code-muted);
   }
   pre.codebody {
-    background: #1b1512;
+    background: var(--code-bg);
     padding: 12px 14px;
     font-family: var(--mono);
     font-size: 11.5px;
     line-height: 1.75;
-    color: #e9ddcf;
+    color: var(--code-fg);
     white-space: pre;
     height: 104px;
     overflow: hidden;
@@ -235,13 +244,13 @@ import PostcardFrame from './PostcardFrame.astro';
      static template, so Astro never stamps them with its scope hash.
      :global() is required or these rules would silently never match. */
   .codebody :global(.c) {
-    color: #7d7266;
+    color: var(--code-comment);
   }
   .codebody :global(.g) {
-    color: #89d185;
+    color: var(--code-success);
   }
   .codebody :global(.t) {
-    color: #82aaff;
+    color: var(--code-type);
   }
   .codebody :global(.cur) {
     display: inline-block;

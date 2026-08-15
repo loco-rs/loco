@@ -6,9 +6,18 @@ on:
       - master
     paths:
       - "loco-gen/**"
+      # the anchor invariants read the app trees that ship in this repo
+      - "examples/*/migration/src/lib.rs"
+      - "examples/*/frontend/src/routes.tsx"
+      - "loco-new/base_template/migration/src/lib.rs.t"
+      - "loco-new/base_template/frontend/src/routes.tsx"
   pull_request:
     paths:
       - "loco-gen/**"
+      - "examples/*/migration/src/lib.rs"
+      - "examples/*/frontend/src/routes.tsx"
+      - "loco-new/base_template/migration/src/lib.rs.t"
+      - "loco-new/base_template/frontend/src/routes.tsx"
 
 env:
   RUST_TOOLCHAIN: stable

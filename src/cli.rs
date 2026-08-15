@@ -17,12 +17,17 @@
 #[cfg(feature = "with-db")]
 use {crate::boot::run_db, crate::db, sea_orm_migration::MigratorTrait};
 
+mod tree;
+
+pub use tree::format_templates_as_tree;
+use tree::show_list_endpoints;
+
 use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueHint};
 use colored::Colorize;
 use duct::cmd;
 use std::fmt::Write;
+use std::path::PathBuf;
 use std::process::exit;
-use std::{collections::BTreeMap, path::PathBuf};
 
 #[cfg(feature = "worker")]
 use crate::bgworker::JobStatus;
@@ -31,8 +36,8 @@ use crate::controller;
 use crate::{
     app::{AppContext, Hooks},
     boot::{
-        create_app, create_context, list_endpoints, list_middlewares, run_scheduler, run_task,
-        start, RunDbCommand, ServeParams, StartMode,
+        create_app, create_context, list_middlewares, run_scheduler, run_task, start, RunDbCommand,
+        ServeParams, StartMode,
     },
     config::Config,
     doctor,
@@ -149,6 +154,10 @@ enum Commands {
         /// print out the current configurations.
         #[arg(short, long, action)]
         config: bool,
+        /// Deprecated alias for `--environment production`.
+        ///
+        /// Checks the production environment, skipping the ones that only make
+        /// sense on a development machine.
         #[arg(short, long, action)]
         production: bool,
     },
@@ -264,7 +273,9 @@ After running the migration, follow these steps to complete the process:
     #[command(after_help = format!("{}
  $ cargo loco g model posts title:string! user:references
 
- $ cargo loco g scaffold posts title:string! user:references --without-tz", "Examples:".bold().underline()))]
+ $ cargo loco g scaffold posts title:string! user:references --without-tz
+
+ $ cargo loco g scaffold posts title:string! --no-auth", "Examples:".bold().underline()))]
     Scaffold {
         /// Name of the thing to generate
         name: String,
@@ -272,6 +283,21 @@ After running the migration, follow these steps to complete the process:
         /// Generate scaffold without timestamps (`created_at`, `updated_at` columns)
         #[arg(long, action)]
         without_tz: bool,
+
+        /// Generate public routes. Scaffolded handlers take an `auth::JWT`
+        /// extractor by default, so they answer 401 without a bearer token.
+        #[arg(long, action)]
+        no_auth: bool,
+
+        /// Deprecated in 1.0: generators are adaptive now. Accepted so existing
+        /// commands keep working — `--api` is a no-op, `--html`/`--htmx` explain
+        /// the React SPA move. Hidden to keep the new CLI surface clean.
+        #[arg(long, action, hide = true)]
+        api: bool,
+        #[arg(long, action, hide = true)]
+        html: bool,
+        #[arg(long, action, hide = true)]
+        htmx: bool,
 
         /// Model fields, eg. title:string hits:int
         #[clap(value_parser = parse_key_val::<String,String>)]
@@ -285,12 +311,31 @@ After running the migration, follow these steps to complete the process:
 
   - Generate a controller with actions:
       $ cargo loco generate controller posts list remove update
+
+  - Generate a controller whose routes require a JWT:
+      $ cargo loco generate controller posts --auth
 ",
     "Examples:".bold().underline()
 ))]
     Controller {
         /// Name of the thing to generate
         name: String,
+
+        /// Add an `auth::JWT` extractor to every generated handler. A generated
+        /// controller is public by default — the mirror of scaffold's
+        /// `--no-auth`.
+        #[arg(long, action)]
+        auth: bool,
+
+        /// Deprecated in 1.0: generators are adaptive now. Accepted so existing
+        /// commands keep working — `--api` is a no-op, `--html`/`--htmx` explain
+        /// the React SPA move. Hidden to keep the new CLI surface clean.
+        #[arg(long, action, hide = true)]
+        api: bool,
+        #[arg(long, action, hide = true)]
+        html: bool,
+        #[arg(long, action, hide = true)]
+        htmx: bool,
 
         /// Actions
         actions: Vec<String>,
@@ -349,6 +394,36 @@ After running the migration, follow these steps to complete the process:
     },
 }
 
+/// Handle the scaffold/controller "kind" flags that 1.0's adaptive generators
+/// removed (`--api` / `--html` / `--htmx`).
+///
+/// Scaffold now auto-detects headless vs. clientside from the app's `frontend/`,
+/// and controllers are always API controllers — so no kind flag is needed. We
+/// still *accept* the old flags (rather than letting clap reject them with a
+/// cryptic `unexpected argument` error) so existing tutorials, blog posts, and
+/// muscle memory keep working: `--api` is a no-op, `--html`/`--htmx` point at
+/// the React SPA that replaced server-rendered views.
+#[cfg(debug_assertions)]
+// `html` and `htmx` are the flag names users typed; they cannot be renamed apart.
+#[allow(clippy::similar_names)]
+fn warn_legacy_scaffold_kind(api: bool, html: bool, htmx: bool) -> crate::Result<()> {
+    if html || htmx {
+        return Err(crate::Error::string(
+            "`--html`/`--htmx` view scaffolds were replaced by the React SPA frontend in 1.0. \
+             Generators are adaptive now: scaffold emits the React frontend automatically when \
+             the app has a `frontend/`, and only the typed backend otherwise — no kind flag \
+             needed. See https://loco.rs/docs/how-to/use-generators/",
+        ));
+    }
+    if api {
+        eprintln!(
+            "note: `--api` is no longer needed — generators are adaptive in 1.0 (headless by \
+             default, React frontend when the app has one)."
+        );
+    }
+    Ok(())
+}
+
 #[cfg(debug_assertions)]
 impl ComponentArg {
     fn into_gen_component(self, config: &Config) -> crate::Result<loco_gen::Component> {
@@ -377,18 +452,38 @@ impl ComponentArg {
             Self::Scaffold {
                 name,
                 without_tz,
+                no_auth,
+                api,
+                html,
+                htmx,
                 fields,
-            } => Ok(loco_gen::Component::Scaffold {
+            } => {
+                warn_legacy_scaffold_kind(api, html, htmx)?;
+                Ok(loco_gen::Component::Scaffold {
+                    name,
+                    with_tz: !without_tz,
+                    fields,
+                    // Adaptive: emit the React-SPA frontend only when this is a
+                    // clientside app (its once-per-app `frontend/src/routes.tsx`
+                    // exists). Headless/serverside apps get the typed backend only.
+                    frontend: std::path::Path::new("frontend/src/routes.tsx").exists(),
+                    auth: !no_auth,
+                })
+            }
+            Self::Controller {
                 name,
-                with_tz: !without_tz,
-                fields,
-                // Adaptive: emit the React-SPA frontend only when this is a
-                // clientside app (its once-per-app `frontend/src/routes.tsx`
-                // exists). Headless/serverside apps get the typed backend only.
-                frontend: std::path::Path::new("frontend/src/routes.tsx").exists(),
-            }),
-            Self::Controller { name, actions } => {
-                Ok(loco_gen::Component::Controller { name, actions })
+                auth,
+                api,
+                html,
+                htmx,
+                actions,
+            } => {
+                warn_legacy_scaffold_kind(api, html, htmx)?;
+                Ok(loco_gen::Component::Controller {
+                    name,
+                    actions,
+                    auth,
+                })
             }
             Self::Task { name } => Ok(loco_gen::Component::Task { name }),
             Self::Scheduler {} => Ok(loco_gen::Component::Scheduler {}),
@@ -481,6 +576,7 @@ impl From<DbCommands> for RunDbCommand {
 pub enum DeploymentKind {
     Docker,
     Nginx,
+    Lambda,
 }
 
 impl DeploymentKind {
@@ -488,27 +584,11 @@ impl DeploymentKind {
     fn to_generator_component(&self, config: &Config) -> loco_gen::Component {
         let kind = match self {
             Self::Docker => {
-                let mut copy_paths = vec![];
-
-                if let Some(static_assets) = &config.server.middlewares.static_assets {
-                    let asset_folder =
-                        PathBuf::from(controller::views::engines::DEFAULT_ASSET_FOLDER);
-                    if asset_folder.exists() {
-                        copy_paths.push(asset_folder.clone());
-                    }
-                    if !static_assets.folder.path.starts_with(&asset_folder) {
-                        copy_paths.push(PathBuf::from(&static_assets.folder.path));
-                    }
-                    if !static_assets.fallback.starts_with(asset_folder) {
-                        copy_paths.push(PathBuf::from(&static_assets.fallback));
-                    }
-                }
-
                 let is_client_side_rendering =
                     PathBuf::from("frontend").join("package.json").exists();
 
                 loco_gen::DeploymentKind::Docker {
-                    copy_paths,
+                    copy_paths: Self::runtime_asset_paths(config),
                     is_client_side_rendering,
                 }
             }
@@ -516,8 +596,36 @@ impl DeploymentKind {
                 host: config.server.host.clone(),
                 port: config.server.port,
             },
+            Self::Lambda => loco_gen::DeploymentKind::Lambda {
+                db: cfg!(feature = "with-db"),
+                include_paths: Self::runtime_asset_paths(config),
+            },
         };
         loco_gen::Component::Deployment { kind }
+    }
+
+    /// Directories the app reads from disk at runtime (static assets / static
+    /// file serving), so a deployment can carry them alongside the binary.
+    /// Shared by the Docker generator (copies them into the image) and the
+    /// Lambda generator (bundles them into the zip via cargo-lambda `include`).
+    /// `config/` is not listed here — every deployment needs it, so the
+    /// templates add it unconditionally.
+    #[cfg(debug_assertions)]
+    fn runtime_asset_paths(config: &Config) -> Vec<PathBuf> {
+        let mut paths = vec![];
+        if let Some(static_assets) = &config.server.middlewares.static_assets {
+            let asset_folder = PathBuf::from(controller::views::engines::DEFAULT_ASSET_FOLDER);
+            if asset_folder.exists() {
+                paths.push(asset_folder.clone());
+            }
+            if !static_assets.folder.path.starts_with(&asset_folder) {
+                paths.push(PathBuf::from(&static_assets.folder.path));
+            }
+            if !static_assets.fallback.starts_with(asset_folder) {
+                paths.push(PathBuf::from(&static_assets.fallback));
+            }
+        }
+        paths
     }
 }
 
@@ -563,6 +671,15 @@ enum JobsCommands {
         #[arg(short, long)]
         file: PathBuf,
     },
+    /// Moves failed jobs back to `queued` so they run again.
+    ///
+    /// Distinct from `requeue`, which only rescues jobs stranded in
+    /// `processing` by a crashed worker and cannot touch a failed one.
+    Retry {
+        /// Retry only this job. Omit to retry every failed job.
+        #[arg(long)]
+        id: Option<String>,
+    },
     /// Change `processing` status to `queue`.
     Requeue {
         /// Change `processing` jobs older than the specified
@@ -584,7 +701,7 @@ where
 {
     let pos = s
         .find(':')
-        .ok_or_else(|| format!("invalid KEY=value: no `:` found in `{s}`"))?;
+        .ok_or_else(|| format!("expected `key:value`, found no `:` in `{s}`"))?;
     Ok((s[..pos].parse()?, s[pos + 1..].parse()?))
 }
 
@@ -636,6 +753,25 @@ pub async fn playground<H: Hooks>() -> crate::Result<AppContext> {
 pub async fn main<H: Hooks, M: MigratorTrait>() -> crate::Result<()> {
     let cli: Cli = Cli::parse();
     let environment: Environment = cli.environment.unwrap_or_else(resolve_from_env).into();
+
+    // `doctor --production` used to be a filter over which checks ran, while the
+    // config it checked stayed whatever the ambient environment resolved to —
+    // `development` unless LOCO_ENV said otherwise. On a server that had not set
+    // LOCO_ENV, it reported a clean bill of health for the development database
+    // and never opened the production config at all. Resolve it here, before
+    // anything is loaded, so the flag selects the environment it names.
+    let environment = match cli.command {
+        Commands::Doctor {
+            production: true, ..
+        } if environment != Environment::Production => {
+            eprintln!(
+                "`doctor --production` is deprecated; use `--environment production` (or set \
+                 LOCO_ENV). Checking the production environment."
+            );
+            Environment::Production
+        }
+        _ => environment,
+    };
 
     let config = H::load_config(&environment).await?;
     let app_context = create_context::<H>(&environment, config).await?;
@@ -734,12 +870,16 @@ async fn dispatch_common<H: Hooks>(
         }
         Commands::Doctor {
             config: config_arg,
-            production,
+            production: _,
         } => {
             if config_arg {
                 println!("{}", app_context.config);
                 println!("Environment: {environment}");
             } else {
+                // Which checks apply follows from the environment, not from a
+                // separate flag that could disagree with it.
+                let production = environment == &Environment::Production;
+
                 let mut should_exit = false;
                 for (_, check) in doctor::run_all::<H>(&app_context, production).await? {
                     if !should_exit && !check.valid() {
@@ -845,224 +985,6 @@ pub async fn main<H: Hooks>() -> crate::Result<()> {
     Ok(())
 }
 
-// Define route node structure with enhanced methods
-#[derive(Default)]
-struct RouteNode {
-    children: BTreeMap<String, Self>,
-    endpoints: Vec<(String, String)>,
-}
-
-impl RouteNode {
-    fn is_leaf(&self) -> bool {
-        self.endpoints.len() == 1 && self.children.is_empty()
-    }
-
-    fn is_collapsible(&self) -> bool {
-        self.endpoints.is_empty()
-            && self.children.len() == 1
-            && self.children.values().next().is_some_and(Self::is_leaf)
-    }
-
-    fn method(&self) -> &str {
-        self.endpoints
-            .first()
-            .map_or("", |(method, _)| method.as_str())
-    }
-
-    fn print(&self, prefix: &str, segment: &str, is_last: bool, is_root: bool, current_path: &str) {
-        match (is_root, self.is_leaf(), self.is_collapsible()) {
-            // Root level special cases
-            (true, true, _) => {
-                Self::print_with_format(
-                    &format!("/{segment}"),
-                    &color_method(self.method()),
-                    &Self::build_path(&[current_path, segment]),
-                );
-            }
-            (true, _, true) => {
-                let Some((child_segment, child_node)) = self.children.iter().next() else {
-                    return;
-                };
-                Self::print_with_format(
-                    &format!("/{segment}/{child_segment}"),
-                    &color_method(child_node.method()),
-                    &Self::build_path(&[current_path, segment, child_segment]),
-                );
-            }
-
-            // Non root level special cases
-            (false, true, _) => {
-                let prefix_str = Self::format_prefix(prefix, is_last, true);
-
-                Self::print_with_format(
-                    &format!("{prefix_str}{segment}"),
-                    &color_method(self.method()),
-                    &Self::build_path(&[current_path, segment]),
-                );
-            }
-            (false, _, true) => {
-                let prefix_str = Self::format_prefix(prefix, is_last, true);
-                let Some((child_segment, child_node)) = self.children.iter().next() else {
-                    return;
-                };
-                Self::print_with_format(
-                    &format!("{prefix_str}{segment}/{child_segment}"),
-                    &color_method(child_node.method()),
-                    &Self::build_path(&[current_path, segment, child_segment]),
-                );
-            }
-
-            // Standard branch node handling
-            _ => {
-                if is_root {
-                    println!("/{segment}");
-                } else if !segment.is_empty() {
-                    println!("{}{}", Self::format_prefix(prefix, is_last, true), segment);
-                }
-
-                // Print endpoints and children
-                let next_prefix = Self::format_next_prefix(prefix, is_last);
-                self.print_endpoints(
-                    &next_prefix,
-                    self.children.is_empty(),
-                    &Self::build_path(&[current_path, segment]),
-                );
-                self.print_children(&next_prefix, &Self::build_path(&[current_path, segment]));
-            }
-        }
-    }
-
-    fn print_endpoints(&self, prefix: &str, is_last_group: bool, current_path: &str) {
-        for (i, (method, _)) in self.endpoints.iter().enumerate() {
-            let is_last_entry = i == self.endpoints.len() - 1 && is_last_group;
-            let marker = if is_last_entry { "└─" } else { "├─" };
-            Self::print_with_format(
-                &format!("{prefix}{marker}"),
-                &color_method(method),
-                current_path,
-            );
-        }
-    }
-
-    fn print_children(&self, prefix: &str, current_path: &str) {
-        let children = self.children.iter().collect::<Vec<_>>();
-        for (i, (child_segment, child_node)) in children.iter().enumerate() {
-            let is_last_child = i == children.len() - 1;
-
-            if child_node.is_leaf() {
-                let marker = if is_last_child { "└─" } else { "├─" };
-                Self::print_with_format(
-                    &format!("{prefix}{marker} /{child_segment}"),
-                    &color_method(child_node.method()),
-                    &Self::build_path(&[current_path, child_segment]),
-                );
-            } else {
-                child_node.print(prefix, child_segment, is_last_child, false, current_path);
-            }
-        }
-    }
-
-    fn format_prefix(prefix: &str, is_last: bool, with_slash: bool) -> String {
-        let marker = if is_last { "└─" } else { "├─" };
-        if with_slash {
-            format!("{prefix}{marker} /")
-        } else {
-            format!("{prefix}{marker} ")
-        }
-    }
-
-    fn format_next_prefix(prefix: &str, is_last: bool) -> String {
-        if is_last {
-            format!("{prefix}   ")
-        } else {
-            format!("{prefix}│  ")
-        }
-    }
-
-    fn build_path(segments: &[&str]) -> String {
-        segments.iter().fold(String::new(), |mut acc, &segment| {
-            if !segment.is_empty() {
-                acc.push('/');
-                acc.push_str(segment);
-            }
-            acc.replace("//", "/")
-        })
-    }
-
-    fn print_with_format(tree: &str, method: &str, full_path: &str) {
-        println!("{:<50} {}", format!("{tree} {method}"), full_path);
-    }
-}
-
-fn show_list_endpoints<H: Hooks>(ctx: &AppContext) {
-    // Get and sort routes
-    let mut routes = list_endpoints::<H>(ctx);
-    routes.sort_by(|a, b| {
-        let method_priority = |actions: &[_]| match actions
-            .first()
-            .map(ToString::to_string)
-            .unwrap_or_default()
-            .as_str()
-        {
-            "GET" => 0,
-            "POST" => 1,
-            "PUT" => 2,
-            "PATCH" => 3,
-            "DELETE" => 4,
-            _ => 5,
-        };
-        a.uri
-            .cmp(&b.uri)
-            .then(method_priority(&a.actions).cmp(&method_priority(&b.actions)))
-    });
-
-    // Build route tree
-    let mut route_tree = RouteNode::default();
-    for router in routes {
-        let path = router.uri.trim_start_matches('/');
-        let segments: Vec<&str> = path.split('/').collect();
-        if segments.is_empty() {
-            continue;
-        }
-
-        // Insert the route into the tree
-        let mut current_node = &mut route_tree;
-        for segment in &segments {
-            current_node = current_node
-                .children
-                .entry((*segment).to_string())
-                .or_default();
-        }
-
-        // Store the endpoint at this node
-        current_node.endpoints.push((
-            router
-                .actions
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-                .join(","),
-            router.uri.clone(),
-        ));
-    }
-
-    // Print the route tree
-    for (i, (segment, node)) in route_tree.children.iter().enumerate() {
-        node.print("", segment, i == route_tree.children.len() - 1, true, "");
-    }
-}
-
-fn color_method(method: &str) -> String {
-    match method {
-        "GET" => method.green().to_string(),
-        "POST" => method.blue().to_string(),
-        "PUT" => method.yellow().to_string(),
-        "PATCH" => method.magenta().to_string(),
-        "DELETE" => method.red().to_string(),
-        _ => method.to_string(),
-    }
-}
-
 fn create_root_span(environment: &Environment) -> tracing::Span {
     tracing::span!(tracing::Level::DEBUG, "app", environment = %environment)
 }
@@ -1139,6 +1061,19 @@ async fn handle_job_command(command: JobsCommands, app_context: &AppContext) -> 
             Ok(())
         }
         JobsCommands::Import { file } => queue.import(file.as_path()).await,
+        JobsCommands::Retry { id } => {
+            let retried = queue.retry_failed(id.as_deref()).await?;
+            // The count is the whole point: `--id` on an already-retried or
+            // non-existent job is not an error, it just matches nothing.
+            println!("{retried} job(s) moved back to the queue");
+            if retried > 0 {
+                println!(
+                    "note: on the Redis provider these are queued to `default` — the queue a job \
+                     was submitted to is not recorded once it fails"
+                );
+            }
+            Ok(())
+        }
         JobsCommands::Requeue { from_age } => queue.requeue(from_age).await,
     }
 }
@@ -1193,90 +1128,151 @@ fn handle_generate_command<H: Hooks>(
             component.into_gen_component(config)?,
             &loco_gen::AppInfo {
                 app_name: H::app_name().to_string(),
+                // `new_generator()` builds an `RRgen` without a working
+                // directory, so it writes relative to the cwd — the app root,
+                // since that is where `cargo loco` runs.
+                working_dir: ".".into(),
             },
         )?;
         let messages = loco_gen::collect_messages(&get_result);
         println!("{messages}");
+        format_generated_code();
     }
     Ok(())
 }
 
-#[must_use]
-pub fn format_templates_as_tree(paths: Vec<PathBuf>) -> String {
-    let mut categories: BTreeMap<String, BTreeMap<String, Vec<PathBuf>>> = BTreeMap::new();
+/// Best-effort `cargo fmt` over the app after a generator run.
+///
+/// Generated Rust comes out of Tera templates, and a template cannot know where
+/// rustfmt would choose to break a line. `--no-auth` is the case that forced
+/// this: dropping the `_auth: auth::JWT` argument shortens three of the five
+/// scaffolded handler signatures enough that rustfmt wants them on one line —
+/// and whether the fourth one fits depends on how long the resource name is, so
+/// no fixed template can be canonical for every resource.
+///
+/// That matters because a generated app runs `cargo fmt --check` in its own CI
+/// (`loco-new/base_template/.github/workflows/ci.yaml.t`): shipping
+/// non-canonical output would fail a user's build on code they did not write.
+/// `loco new` already formats what it generates, for the same reason.
+///
+/// Failure is ignored — rustfmt may not be installed, and a formatting miss is
+/// no reason to fail a generation whose files are already on disk.
+#[cfg(debug_assertions)]
+fn format_generated_code() {
+    let _ = std::process::Command::new("cargo")
+        .arg("fmt")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
+}
 
-    for path in paths {
-        if let Some(parent) = path.parent() {
-            let parent_str = parent.to_string_lossy().to_string();
-            let mut components = parent_str.split('/');
-            if let Some(top_level) = components.next() {
-                let top_key = top_level.to_string();
-                let sub_key = components.next().unwrap_or("").to_string();
+#[cfg(all(test, debug_assertions))]
+mod tests {
+    use super::*;
+    use clap::{CommandFactory, Parser};
+    use rstest::rstest;
 
-                categories
-                    .entry(top_key)
-                    .or_default()
-                    .entry(sub_key)
-                    .or_default()
-                    .push(path);
-            }
+    /// Clap only validates the command tree when it is built, and nothing else
+    /// in the suite builds the whole thing. Without this, a duplicated long
+    /// flag or a conflicting short reaches users as a runtime panic on first
+    /// run.
+    #[test]
+    fn command_tree_is_well_formed() {
+        Cli::command().debug_assert();
+        Playground::command().debug_assert();
+    }
+
+    #[rstest]
+    #[case::default(false, false, None, false, StartMode::ServerOnly)]
+    #[case::all(true, false, None, false, StartMode::All)]
+    #[case::server_and_worker(false, true, None, false, StartMode::ServerAndWorker)]
+    #[case::server_worker_scheduler(false, true, None, true, StartMode::All)]
+    #[case::scheduler(false, false, None, true, StartMode::ServerAndScheduler)]
+    #[case::worker(false, false, Some(vec![]), false, StartMode::WorkerOnly { tags: vec![] })]
+    #[case::worker_and_scheduler(
+        false, false, Some(vec!["mail".to_string()]), true,
+        StartMode::WorkerAndScheduler { tags: vec!["mail".to_string()] }
+    )]
+    // `--all` outranks every other combination.
+    #[case::all_wins(true, true, Some(vec![]), true, StartMode::All)]
+    fn start_flags_pick_a_mode(
+        #[case] all: bool,
+        #[case] server_and_worker: bool,
+        #[case] worker: Option<Vec<String>>,
+        #[case] scheduler: bool,
+        #[case] expected: StartMode,
+    ) {
+        assert_eq!(
+            start_mode_from_flags(all, server_and_worker, worker, scheduler),
+            expected
+        );
+    }
+
+    #[test]
+    fn key_value_pairs_split_on_the_first_colon() {
+        assert_eq!(
+            parse_key_val::<String, String>("url:http://example.com").unwrap(),
+            ("url".to_string(), "http://example.com".to_string())
+        );
+        assert!(parse_key_val::<String, String>("no-separator")
+            .unwrap_err()
+            .to_string()
+            .contains("key:value"));
+    }
+
+    #[test]
+    fn legacy_api_flag_is_a_noop() {
+        // `--api` is the headless default now — accepted, generation proceeds.
+        assert!(warn_legacy_scaffold_kind(true, false, false).is_ok());
+        assert!(warn_legacy_scaffold_kind(false, false, false).is_ok());
+    }
+
+    #[test]
+    fn legacy_html_htmx_flags_error_with_guidance() {
+        let html = warn_legacy_scaffold_kind(false, true, false)
+            .unwrap_err()
+            .to_string();
+        assert!(html.contains("React SPA"), "got: {html}");
+        let htmx = warn_legacy_scaffold_kind(false, false, true)
+            .unwrap_err()
+            .to_string();
+        assert!(htmx.contains("React SPA"), "got: {htmx}");
+    }
+
+    // Regression for #1790: the 1.0 adaptive rebuild removed the scaffold/
+    // controller kind flags, so `--api` (straight from the tutorials) failed
+    // clap with `error: unexpected argument '--api' found`. They must still
+    // PARSE so existing commands keep working.
+    #[test]
+    fn generate_controller_still_accepts_legacy_kind_flags() {
+        for flag in ["--api", "--html", "--htmx"] {
+            let parsed =
+                Cli::try_parse_from(["loco", "generate", "controller", "notes", "list", flag]);
+            assert!(
+                parsed.is_ok(),
+                "controller {flag} should parse, got: {:?}",
+                parsed.err()
+            );
         }
     }
 
-    let mut output = "Available templates and directories to copy:".to_string();
-    let _ = writeln!(output);
-    let _ = writeln!(output);
-
-    for (top_level, sub_categories) in &categories {
-        let _ = writeln!(output, "{}", top_level.clone().yellow());
-
-        for (sub_category, paths) in sub_categories {
-            if !sub_category.is_empty() {
-                let _ = writeln!(output, "{}", format!(" └── {sub_category}").yellow());
-            }
-
-            for path in paths {
-                let _ = writeln!(
-                    output,
-                    "   └── {}",
-                    path.file_name().unwrap_or_default().to_string_lossy()
-                );
-            }
+    #[cfg(feature = "with-db")]
+    #[test]
+    fn generate_scaffold_still_accepts_legacy_kind_flags() {
+        for flag in ["--api", "--html", "--htmx"] {
+            let parsed = Cli::try_parse_from([
+                "loco",
+                "generate",
+                "scaffold",
+                "posts",
+                "title:string",
+                flag,
+            ]);
+            assert!(
+                parsed.is_ok(),
+                "scaffold {flag} should parse, got: {:?}",
+                parsed.err()
+            );
         }
     }
-
-    let _ = writeln!(output);
-    let _ = writeln!(output);
-    let _ = writeln!(output, "{}", "Usage Examples:".bold().green());
-    let _ = writeln!(output);
-    let _ = writeln!(output, "{}", "Override a Specific File:".bold());
-
-    let _ = writeln!(
-        output,
-        " * cargo loco generate override {}",
-        "scaffold/api/controller.t".yellow()
-    );
-    let _ = writeln!(
-        output,
-        " * cargo loco generate override {}",
-        "migration/add_columns.t".yellow()
-    );
-    let _ = writeln!(output);
-    let _ = writeln!(output, "{}", "Override All Files in a Folder:".bold());
-    let _ = writeln!(
-        output,
-        " * cargo loco generate override {}",
-        "scaffold/api".yellow()
-    );
-
-    let _ = writeln!(
-        output,
-        " * cargo loco generate override {}",
-        "task".yellow()
-    );
-    let _ = writeln!(output);
-    let _ = writeln!(output, "{}", "Override All templates:".bold());
-    let _ = writeln!(output, " * cargo loco generate override {}", ".".yellow());
-
-    output
 }

@@ -36,6 +36,7 @@ fn can_generate() {
         component,
         &AppInfo {
             app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
         },
     )
     .expect("Failed to generate components");

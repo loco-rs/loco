@@ -24,7 +24,7 @@ This page is a dictionary of every key Loco's configuration loader understands. 
   2. `{path}/{env}.yaml`
 
   If neither exists, loading fails with `Error::Message("no configuration file found in folder: ...")`.
-- Before parsing, the entire YAML file is rendered as a **Tera template** (`src/config/mod.rs:170`, `src/tera.rs:5-8`, `Tera::one_off(.., autoescape=false)`). `get_env(name=.., default=..)` used throughout the shipped config files is Tera's own built-in function — it is **not** a Loco-registered function.
+- Before parsing, the entire YAML file is rendered as a template (`Config::load_yaml_value`, `src/config/mod.rs:211-217`; `src/config/template.rs`). Config files use the YAML-safe `<%= expr %>` / `<% stmt %>` / `<%# comment %>` delimiters — `<` is not a YAML indicator character, so a templated value like `port: <%= get_env(name="PORT", default="5150") %>` is still valid, unmangled YAML before it's ever rendered. Under the hood these are translated into Tera's native `{{ }}`/`{% %}`/`{# #}` delimiters and rendered via `Tera::one_off(.., autoescape=false)` (`src/tera.rs`). `get_env(name=.., default=..)`, used throughout the shipped config files, is Tera's own built-in function — it is **not** a Loco-registered function. Tera's native `{{ }}`/`{% %}` delimiters still render for backward compatibility, but they are deprecated (they are YAML flow-mapping syntax, not a plain scalar, so a YAML formatter can rewrite and break them — see [The configuration model](@/docs/explanation/configuration-model.md#the-yaml-is-templated-first-a-config-file-second)) and log a warning when used.
 - Parse failures raise `Error::YAMLFile(err, path)` (`src/config/mod.rs:172-173`).
 - `Config` implements `Display` by dumping itself back to YAML (`src/config/mod.rs:191-196`).
 - `Config::get_jwt_config(&self) -> Result<&JWT>` (`src/config/mod.rs:180-188`) returns an error if `auth` or `auth.jwt` is absent.
@@ -233,7 +233,7 @@ mailer:
     tls: implicit       # overrides `secure`; see below
     auth:
       user: postmaster@mg.example.com
-      password: "{{ get_env(name='SMTP_PASSWORD') }}"
+      password: "<%= get_env(name='SMTP_PASSWORD') %>"
     hello_name: <string> # optional — EHLO client id
 ```
 
@@ -371,4 +371,4 @@ If the corresponding feature (`cache_inmem` / `cache_redis`) is not compiled in,
 | `RUST_BACKTRACE` | Effectively forced to `1` when `logger.pretty_backtrace: true` | logger init |
 | any name passed to `get_env(name=.., default=..)` in a config YAML file | Injected into the rendered YAML by Tera's built-in `get_env` function at load time | `src/tera.rs:5-8` (Tera, not Loco code) |
 
-Secrets (JWT `secret`, SMTP `password`, database `uri` credentials) are plain `String` fields with no dedicated vault type; the convention is to inject them via `{{ get_env(name="...") }}` at config-load time rather than hardcoding them in the YAML file.
+Secrets (JWT `secret`, SMTP `password`, database `uri` credentials) are plain `String` fields with no dedicated vault type; the convention is to inject them via `<%= get_env(name="...") %>` at config-load time rather than hardcoding them in the YAML file.

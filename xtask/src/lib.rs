@@ -1,6 +1,6 @@
 use std::process::exit;
-pub mod bump_version;
 pub mod ci;
+pub mod docs_syntax;
 pub mod errors;
 pub mod llms;
 pub mod out;

@@ -2,7 +2,7 @@
 //!
 //! This middleware applies a timeout to requests processed by the application.
 //! The timeout duration is configurable and defined via the
-//! [`TimeoutRequestMiddleware`] configuration. The middleware ensures that
+//! [`TimeOut`] configuration. The middleware ensures that
 //! requests do not run beyond the specified timeout period, improving the
 //! overall performance and responsiveness of the application.
 //!

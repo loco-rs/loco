@@ -12,6 +12,11 @@
      undertone. --red/--red-ink are the deliberate off-hue accent (~31°). */
   --ink:#1B1812; --ink-2:#585247; --ink-3:#888071; --line:#E7DDCB;
   --red:#FC3820; --red-ink:#D82A12;
+  --code-bg:#FFFDF8; --code-bar:#F4ECDD; --code-border:#D9CDBB;
+  --code-fg:#2E2921; --code-muted:#756D61; --code-comment:#6D665C;
+  --code-success:#39752C; --code-keyword:#B52F1C; --code-string:#4B721D;
+  --code-type:#315F8E; --code-function:#8A5B00; --code-number:#995124;
+  --code-shadow:rgba(28, 23, 18, 0.24);
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,system-ui,sans-serif;
   --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace;
 }
@@ -31,11 +36,21 @@
   --paper:#16130D; --paper-2:#1D1912; --card:#201B13; --read:#16130D;
   --ink:#F1E9DC; --ink-2:#C1B7A5; --ink-3:#8B8170; --line:#312A1E;
   --red:#FF5A3D; --red-ink:#FF7355;
+  --code-bg:#1B1512; --code-bar:#241D19; --code-border:#2A2320;
+  --code-fg:#E9DDCF; --code-muted:#A89A8C; --code-comment:#7D7266;
+  --code-success:#89D185; --code-keyword:#FF8F6B; --code-string:#C3E88D;
+  --code-type:#82AAFF; --code-function:#FFD479; --code-number:#F5B784;
+  --code-shadow:rgba(28, 23, 18, 0.5);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --paper:#16130D; --paper-2:#1D1912; --card:#201B13; --read:#16130D;
     --ink:#F1E9DC; --ink-2:#C1B7A5; --ink-3:#8B8170; --line:#312A1E;
     --red:#FF5A3D; --red-ink:#FF7355;
+    --code-bg:#1B1512; --code-bar:#241D19; --code-border:#2A2320;
+    --code-fg:#E9DDCF; --code-muted:#A89A8C; --code-comment:#7D7266;
+    --code-success:#89D185; --code-keyword:#FF8F6B; --code-string:#C3E88D;
+    --code-type:#82AAFF; --code-function:#FFD479; --code-number:#F5B784;
+    --code-shadow:rgba(28, 23, 18, 0.5);
   }
 }

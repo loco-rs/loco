@@ -14,6 +14,19 @@ pub enum QueueConfig {
     Sqlite(SqliteQueueConfig),
 }
 
+impl QueueConfig {
+    /// Whether this queue is configured to discard all jobs on startup,
+    /// whichever backend it uses.
+    #[must_use]
+    pub const fn dangerously_flush(&self) -> bool {
+        match self {
+            Self::Redis(config) => config.dangerously_flush,
+            Self::Postgres(config) => config.dangerously_flush,
+            Self::Sqlite(config) => config.dangerously_flush,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RedisQueueConfig {
     pub uri: String,

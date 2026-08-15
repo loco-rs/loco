@@ -127,3 +127,11 @@ To review/update snapshots interactively after intentional output changes, insta
 cargo install cargo-insta
 cargo insta review
 ```
+
+Without `cargo-insta` installed, the same job is one environment variable — it rewrites every stale snapshot in place, so review the resulting `git diff` before committing:
+
+```sh
+INSTA_UPDATE=always cargo test
+```
+
+Snapshots that capture a whole model (`assert_debug_snapshot!(user)`) fail on *any* schema change, including a purely additive one. That is working as intended — the snapshot is doing its job — but it means adding a column to a table your tests snapshot will fail several tests at once. Re-accept them in the same commit as the migration, or narrow the assertion to the fields the test is actually about.

@@ -3,10 +3,11 @@ import { App } from './App'
 import { Login } from './auth/Login'
 import { RequireAuth } from './auth/RequireAuth'
 import { Home } from './pages/Home'
-import { Edit } from './pages/posts/Edit'
-import { List } from './pages/posts/List'
-import { New } from './pages/posts/New'
-import { Show } from './pages/posts/Show'
+// scaffold:imports
+import { Edit as PostsEdit } from './pages/posts/Edit'
+import { List as PostsList } from './pages/posts/List'
+import { New as PostsNew } from './pages/posts/New'
+import { Show as PostsShow } from './pages/posts/Show'
 
 export const router = createBrowserRouter([
   {
@@ -18,10 +19,11 @@ export const router = createBrowserRouter([
       {
         element: <RequireAuth />,
         children: [
-          { path: 'posts', element: <List /> },
-          { path: 'posts/new', element: <New /> },
-          { path: 'posts/:id', element: <Show /> },
-          { path: 'posts/:id/edit', element: <Edit /> },
+          // scaffold:routes
+          { path: 'posts', element: <PostsList /> },
+          { path: 'posts/new', element: <PostsNew /> },
+          { path: 'posts/:id', element: <PostsShow /> },
+          { path: 'posts/:id/edit', element: <PostsEdit /> },
         ],
       },
     ],

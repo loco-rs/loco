@@ -269,7 +269,7 @@ impl AppRoutes {
     }
 
     /// Add the routes to an existing Axum Router, and set a list of middlewares
-    /// that configure in the [`config::Config`]
+    /// that configure in the [`crate::config::Config`]
     ///
     /// # Errors
     /// Return an [`Result`] when could not convert the router setup to

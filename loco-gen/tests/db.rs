@@ -4,12 +4,22 @@ use rstest::rstest;
 use serial_test::serial;
 use std::{collections::HashMap, env::current_dir, fs::read_to_string};
 
+mod postgres;
+
 #[rstest]
 #[serial]
 fn test_migrations_flow(#[values("postgres", "sqlite")] db_kind: &str) {
-    if db_kind == "postgres" && std::env::var("DATABASE_URL").is_err() {
-        return;
-    }
+    // Postgres is the half most likely to diverge — arrays, `alter table`,
+    // unique indexes — and for a long time it was the half that never ran:
+    // the case returned early when `DATABASE_URL` was unset and still reported
+    // `ok`, so a local "2 passed" meant SQLite twice.
+    //
+    // An explicit `DATABASE_URL` still wins, so CI or a local Postgres stays
+    // the fast path. Otherwise a container is started, and if that fails the
+    // test fails — there is no configuration in which this silently covers
+    // nothing.
+    let postgres = (db_kind == "postgres").then(postgres::url_or_container);
+
     let tree_fs = tree_fs::TreeBuilder::default()
         .drop(true)
         .create()
@@ -28,6 +38,12 @@ fn test_migrations_flow(#[values("postgres", "sqlite")] db_kind: &str) {
 
     if db_kind == "sqlite" {
         env_map.remove("DATABASE_URL");
+    }
+    if let Some(postgres) = &postgres {
+        // Explicit rather than `set_var`: the generated app reads the
+        // environment this map becomes, and mutating the process environment
+        // from a test is both unsafe in edition 2024 and invisible here.
+        env_map.insert("DATABASE_URL".into(), postgres.url.clone());
     }
 
     cmd!(
@@ -117,6 +133,9 @@ fn test_migrations_flow(#[values("postgres", "sqlite")] db_kind: &str) {
         "loco g migration CreateAwards name:string actor:references",
         "loco g migration RemoveContentFromMovies content:string",
         "loco g migration AddRatingToMovies rating:int",
+        // No fields: the new name is carried by the migration name itself, and
+        // the column keeps the type it already had.
+        "loco g migration RenameRatingToScoreOnMovies",
         "loco db migrate",
         "loco db entities",
         "loco db schema",

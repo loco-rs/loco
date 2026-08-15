@@ -61,9 +61,9 @@ impl Task for UserCreate {
         let password = vars.cli_arg("password").map_err(|_| Error::string("password is mandatory"))?;
 
         let register_params = RegisterParams {
-            email: email.clone(),
-            password: password.clone(),
-            name: name.clone(),
+            email: email.to_string(),
+            password: password.to_string(),
+            name: name.to_string(),
         };
         let user = users::Model::create_with_password(&app_context.db, &register_params).await?;
 
@@ -77,7 +77,7 @@ impl Task for UserCreate {
 
 (Adapted from `examples/demo/src/tasks/user_create.rs`.)
 
-`vars.cli_arg("key")` reads a `key:value` pair passed on the command line; it returns a `Result`, so missing required arguments become a clear task error rather than a panic.
+`vars.cli_arg("key")` reads a `key:value` pair passed on the command line; it returns a `Result<&str>`, so missing required arguments become a clear task error rather than a panic (and you own no allocation — call `.to_string()` when you need one).
 
 ## 3. Confirm registration
 

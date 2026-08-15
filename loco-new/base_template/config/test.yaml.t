@@ -63,17 +63,17 @@ queue:
   kind: {{settings.background.queue_kind}}
   {% if settings.background.queue_kind == "Redis" %}
   # Redis connection URI
-  uri: {% raw %}{{{% endraw %} get_env(name="REDIS_URL", default="redis://127.0.0.1") {% raw %}}}{% endraw %}
+  uri: <%= get_env(name="REDIS_URL", default="redis://127.0.0.1") %>
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_flush: false
   {% elif settings.background.queue_kind == "Postgres" %}
   # Postgres connection URI
-  uri: {% raw %}{{{% endraw %} get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_test") {% raw %}}}{% endraw %}
+  uri: <%= get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_test") %>
   # Dangerously flush all data in the queue table on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_flush: false
   {% elif settings.background.queue_kind == "Sqlite" %}
   # SQLite connection URI
-  uri: {% raw %}{{{% endraw %} get_env(name="QUEUE_URL", default="sqlite://loco_test.sqlite?mode=rwc") {% raw %}}}{% endraw %}
+  uri: <%= get_env(name="QUEUE_URL", default="sqlite://loco_test.sqlite?mode=rwc") %>
   # Dangerously flush all data in the queue table on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_flush: false
   {% endif %}
@@ -90,7 +90,7 @@ mailer:
     # Enable/Disable smtp mailer.
     enable: true
     # SMTP server host. e.x localhost, smtp.gmail.com
-    host: {{ get_env(name="MAILER_HOST", default="localhost") }}
+    host: <%= get_env(name="MAILER_HOST", default="localhost") %>
     # SMTP server port
     port: 1025
     # Use secure connection (SSL/TLS).
@@ -112,17 +112,17 @@ mailer:
 # Database Configuration
 database:
   # Database connection URI
-  uri: {% raw %}{{{% endraw %} get_env(name="DATABASE_URL", default="{{settings.db.endpoint | replace(from='NAME', to=settings.package_name) | replace(from='ENV', to='test')}}") {% raw %}}}{% endraw %}
+  uri: <%= get_env(name="DATABASE_URL", default="{{settings.db.endpoint | replace(from='NAME', to=settings.package_name) | replace(from='ENV', to='test')}}") %>
   # When enabled, the sql query will be logged.
   enable_logging: false
   # Set the timeout duration when acquiring a connection.
-  connect_timeout: {% raw %}{{{% endraw %} get_env(name="DB_CONNECT_TIMEOUT", default="500") {% raw %}}}{% endraw %}
+  connect_timeout: <%= get_env(name="DB_CONNECT_TIMEOUT", default="500") %>
   # Set the idle duration before closing a connection.
-  idle_timeout: {% raw %}{{{% endraw %} get_env(name="DB_IDLE_TIMEOUT", default="500") {% raw %}}}{% endraw %}
+  idle_timeout: <%= get_env(name="DB_IDLE_TIMEOUT", default="500") %>
   # Minimum number of connections for a pool.
-  min_connections: {% raw %}{{{% endraw %} get_env(name="DB_MIN_CONNECTIONS", default="1") {% raw %}}}{% endraw %}
+  min_connections: <%= get_env(name="DB_MIN_CONNECTIONS", default="1") %>
   # Maximum number of connections for a pool.
-  max_connections: {% raw %}{{{% endraw %} get_env(name="DB_MAX_CONNECTIONS", default="1") {% raw %}}}{% endraw %}
+  max_connections: <%= get_env(name="DB_MAX_CONNECTIONS", default="1") %>
   # Run migration up when application loaded
   auto_migrate: true
   # Truncate database when application loaded. This is a dangerous operation, make sure that you using this flag only on dev environments or test mode

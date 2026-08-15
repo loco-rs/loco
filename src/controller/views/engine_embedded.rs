@@ -1,4 +1,3 @@
-use super::tera_builtins;
 use crate::{controller::views::ViewRenderer, Result};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -27,19 +26,41 @@ impl TeraView {
         Self::from_embedded_templates()
     }
 
+    /// Create a Tera view engine with a post-processing function, used to
+    /// register custom filters and functions (e.g. an i18n `t()`).
+    ///
+    /// Mirrors the non-embedded engine's constructor of the same name so app
+    /// code — including the generated view-engine initializer — works
+    /// identically with and without the `embedded_assets` feature.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if building fails or if the
+    /// post-processing function fails
+    pub fn build_with_post_process(
+        post_process: impl FnMut(&mut tera::Tera) -> Result<()> + Send + Sync + 'static,
+    ) -> Result<Self> {
+        Self::assemble(post_process)
+    }
+
     /// Attach the Tera view engine with a post-processing function for subsequent instantiation.
     ///
     /// The post-processing function is also run during the call to this method.
+    ///
+    /// Note that whenever the embedded templates themselves call the registered
+    /// filter or function, [`Self::build_with_post_process`] is the only usable
+    /// entry point — `build()` would already have failed while loading them.
     ///
     /// # Errors
     ///
     /// This function will return an error if the post-processing function fails
     pub fn post_process(
-        mut self,
-        mut post_process: impl FnMut(&mut tera::Tera) -> Result<()> + Send + Sync + 'static,
+        self,
+        post_process: impl FnMut(&mut tera::Tera) -> Result<()> + Send + Sync + 'static,
     ) -> Result<Self> {
-        post_process(&mut self.tera)?;
-        Ok(self)
+        // Rebuild rather than mutate: registrations have to precede template
+        // loading (see `assemble`), and `self`'s templates are already loaded.
+        Self::assemble(post_process)
     }
 
     /// Load and initialize templates from embedded assets
@@ -50,17 +71,26 @@ impl TeraView {
     /// - Adding templates to Tera fails
     /// - There are syntax errors in any template
     pub fn from_embedded_templates() -> Result<Self> {
-        let mut tera = tera::Tera::default();
+        Self::assemble(|_| Ok(()))
+    }
 
-        // Initialize templates in a separate function to reduce complexity
+    /// Builds the engine in the one order Tera 2 permits: register everything
+    /// the templates may reference, *then* load the templates.
+    ///
+    /// Tera 2 resolves filter and function references when a template is added,
+    /// so a template calling `t()`, a custom filter, or `get_env` (a Tera 1
+    /// built-in Loco now supplies itself) fails to load unless the name is
+    /// already registered.
+    fn assemble(
+        mut post_process: impl FnMut(&mut tera::Tera) -> Result<()> + Send + Sync + 'static,
+    ) -> Result<Self> {
+        let mut tera = crate::tera::instance();
+        post_process(&mut tera)?;
         Self::load_templates_into_tera(&mut tera)?;
-
-        tera_builtins::filters::register_filters(&mut tera);
-        let ctx = tera::Context::default();
 
         Ok(Self {
             tera,
-            default_context: ctx,
+            default_context: tera::Context::default(),
         })
     }
 
@@ -91,20 +121,17 @@ impl TeraView {
         tera: &mut tera::Tera,
         templates: BTreeMap<String, &'static str>,
     ) -> Result<()> {
-        // Add all templates to Tera
-        for (name, content) in templates {
+        // Register the whole set in ONE call. Tera 2 resolves inheritance as
+        // templates are added and rejects a child whose parent it has not seen,
+        // so adding them one at a time would fail whenever a child sorts before
+        // its `{% extends %}` parent.
+        for name in templates.keys() {
             tracing::debug!("Adding template '{}' to Tera", name);
-            if let Err(e) = tera.add_raw_template(&name, content) {
-                tracing::error!("Failed to add template '{}': {}", name, e);
-                return Err(e.into());
-            }
         }
-
-        // Ensure templates are properly configured for inheritance
-        if let Err(e) = tera.build_inheritance_chains() {
-            tracing::error!("Failed to build template inheritance chains: {}", e);
-            return Err(e.into());
-        }
+        tera.add_raw_templates(templates).map_err(|e| {
+            tracing::error!("Failed to add templates: {}", e);
+            crate::Error::from(e)
+        })?;
 
         Ok(())
     }
@@ -112,7 +139,7 @@ impl TeraView {
 
 impl ViewRenderer for TeraView {
     fn render<S: Serialize>(&self, key: &str, data: S) -> Result<String> {
-        let context = tera::Context::from_serialize(data)?;
+        let context = tera::Context::from_serialize(&data)?;
 
         // Try to render the requested template
         match self.tera.render(key, &context) {

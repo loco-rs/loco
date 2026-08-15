@@ -1,5 +1,8 @@
+mod anchors;
 mod controller;
 mod deployment;
+#[cfg(feature = "with-db")]
+mod idempotency;
 mod mailer;
 #[cfg(feature = "with-db")]
 mod migration;

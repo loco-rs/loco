@@ -17,11 +17,16 @@ use serial_test::serial;
 async fn can_get_{{ name | plural | snake_case }}() {
     request::<App, _, _>(|request, _ctx| async move {
         let res = request.get("/api/{{ name | plural | snake_case }}").await;
-        assert_eq!(res.status_code(), 200);
+{% if auth %}        // this route takes an `auth::JWT` extractor, so an anonymous request is
+        // rejected. To exercise the handler itself, register and log in a user
+        // first and send `Authorization: Bearer <token>` -- see
+        // https://loco.rs/docs/how-to/jwt-auth
+        assert_eq!(res.status_code(), 401);
+{% else %}        assert_eq!(res.status_code(), 200);
 
         // you can assert content like this:
         // assert_eq!(res.text(), "content");
-    })
+{% endif %}    })
     .await;
 }
 
@@ -31,7 +36,7 @@ async fn can_get_{{ name | plural | snake_case }}() {
 async fn can_get_{{action}}() {
     request::<App, _, _>(|request, _ctx| async move {
         let res = request.get("/api/{{ name | plural | snake_case }}/{{action}}").await;
-        assert_eq!(res.status_code(), 200);
+        assert_eq!(res.status_code(), {% if auth %}401{% else %}200{% endif %});
     })
     .await;
 }

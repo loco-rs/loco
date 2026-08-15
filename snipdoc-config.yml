@@ -1,0 +1,9 @@
+walk:
+  # The translated READMEs carry the same `<snip>` regions as README.md, so
+  # snipdoc kept overwriting each translation with the English source and then
+  # failing `snipdoc check` when a translator restored it. Their snippets are
+  # translated on purpose; only the canonical README.md is injected from
+  # snipdoc.yml.
+  excludes:
+    - "README-[a-z]{2}_[A-Z]{2}\\.md$"
+    - "README\\.[a-z]{2}\\.md$"

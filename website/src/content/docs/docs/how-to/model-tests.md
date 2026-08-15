@@ -50,7 +50,7 @@ async fn can_find_by_pid() {
 }
 ```
 
-> ⚠️ `dangerously_truncate` clears data on every `boot_test` call — never point it at a database you care about (never production). Control exactly which tables get truncated via the `truncate` hook on your `Hooks` impl (`async fn truncate(ctx: &AppContext) -> Result<()> { truncate_table(&ctx.db, users::Entity).await }`).
+> ⚠️ `dangerously_truncate` clears data on every `boot_test` call — never point it at a database you care about (never production). Control exactly which tables get truncated via the `truncate` hook on your `Hooks` impl (`async fn truncate(ctx: &AppContext) -> Result<()> { truncate_table(&ctx.db, users::Entity).await?; Ok(()) }` — `truncate_table` returns `Result<(), DbErr>`, so it needs the `?`).
 
 ### B. Fresh, unique database per test (no `#[serial]` needed for DB isolation)
 

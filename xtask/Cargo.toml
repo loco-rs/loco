@@ -22,5 +22,8 @@ regex = { version = "1.10.2" }
 thiserror = "2"
 tabled = "0.21"
 colored = { version = "3.0" }
+# Parses the ```rust blocks in the docs tree (see `docs_syntax`). `full` is
+# required — snippets are whole items and statements, not just expressions.
+syn = { version = "2", features = ["full", "parsing"] }
 
 [dev-dependencies]

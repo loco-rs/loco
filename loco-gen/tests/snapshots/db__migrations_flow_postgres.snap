@@ -1,6 +1,5 @@
 ---
 source: loco-gen/tests/db.rs
-assertion_line: 133
 expression: "read_to_string(tree_fs.root.join(\"myapp\").join(\"schema_dump.json\")).unwrap()"
 ---
 [
@@ -410,7 +409,7 @@ expression: "read_to_string(tree_fs.root.join(\"myapp\").join(\"schema_dump.json
     "type": "bigint"
   },
   {
-    "column": "rating",
+    "column": "score",
     "table": "movies",
     "type": "bigint"
   },

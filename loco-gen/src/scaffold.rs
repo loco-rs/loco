@@ -19,12 +19,19 @@ use crate::{
 /// *.tsx` + the `routes.tsx` injection) is emitted only when `frontend` is
 /// `true` -- i.e. the app has a clientside `frontend/` -- so non-SPA apps get
 /// no orphan frontend files.
+///
+/// `auth` controls whether the generated handlers take an `auth::JWT`
+/// extractor. It defaults to `true` at the CLI (secure by default) — `--no-auth`
+/// turns it off for a public resource. Note that the frontend templates are
+/// unaffected either way: the SPA sends the bearer token when it has one, and a
+/// public API simply ignores it.
 pub fn generate(
     rrgen: &RRgen,
     name: &str,
     with_tz: bool,
     fields: &[(String, String)],
     frontend: bool,
+    auth: bool,
     appinfo: &AppInfo,
 ) -> Result<GenerateResults> {
     // - scaffold is never a link table
@@ -33,7 +40,7 @@ pub fn generate(
     let mut gen_result = model::generate(rrgen, name, with_tz, fields, appinfo)?;
 
     let api_columns = column::columns_from_fields(fields)?;
-    let api_vars = build_api_context(name, &api_columns, with_tz, appinfo);
+    let api_vars = build_api_context(name, &api_columns, with_tz, auth, appinfo);
 
     // Backend (DTO + controller) -- always emitted.
     let res = render_template(rrgen, Path::new("scaffold/api"), &api_vars)?;
@@ -149,8 +156,17 @@ fn frontend_initial_value(col: &Column, input_kind: &str) -> String {
 /// `initial_value` keys are frontend-only additions consumed by the
 /// `frontend_*.t` templates (`loco-gen/src/templates/scaffold/api/`).
 fn build_field(col: &Column, pascal_singular: &str) -> (Value, Option<Value>) {
+    // A reference contributes a foreign-key column, not a column named after
+    // the field: `user:references` is `user_id`. When the spec names the
+    // column explicitly (`user:references:admin_id`), that name is what the
+    // migration writes and therefore what the entity has -- so it has to be
+    // what the DTO and `m.<field>`/`params.<field>` expressions use too.
+    // Deriving `{target}_id` unconditionally made the scaffold reference a
+    // column the entity does not have, and the generated app did not compile.
     let field_name = match &col.kind {
-        ColumnKind::Reference { target, .. } => format!("{target}_id"),
+        ColumnKind::Reference { target, fk_field } => {
+            fk_field.clone().unwrap_or_else(|| format!("{target}_id"))
+        }
         _ => col.name.clone(),
     };
     let label = humanize_label(&field_name);
@@ -234,7 +250,13 @@ fn build_field(col: &Column, pascal_singular: &str) -> (Value, Option<Value>) {
 /// templates: resource name forms (`cruet` for plural/singular, `heck` for
 /// case -- see `infer.rs`'s inflection note), per-column field data, enum
 /// definitions, and the `sea_orm::prelude` import line.
-fn build_api_context(name: &str, columns: &[Column], with_tz: bool, appinfo: &AppInfo) -> Value {
+fn build_api_context(
+    name: &str,
+    columns: &[Column],
+    with_tz: bool,
+    auth: bool,
+    appinfo: &AppInfo,
+) -> Value {
     let singular_raw = name.to_singular();
     let plural_raw = name.to_plural();
     let pascal_singular = singular_raw.to_upper_camel_case();
@@ -297,10 +319,21 @@ fn build_api_context(name: &str, columns: &[Column], with_tz: bool, appinfo: &Ap
     // line sidesteps that entirely. `frontend/src/routes.tsx` must carry the
     // `// scaffold:imports` / `// scaffold:routes` anchor comments (a 2c
     // dependency on the once-per-app base `routes.tsx`).
+    //
+    // Every resource's pages are named `List`/`New`/`Show`/`Edit`, so the
+    // imports MUST be aliased per resource (`List as PostsList`). Importing
+    // them bare meant the second `generate scaffold` in an app injected a
+    // duplicate binding for all four names into one module -- a TypeScript
+    // `Duplicate identifier` error, with the route elements silently bound to
+    // whichever import won. Scaffolding one resource worked; scaffolding two
+    // broke the SPA build.
     let frontend_imports_injection = ["Edit", "List", "New", "Show"]
         .iter()
         .map(|component| {
-            format!("import {{ {component} }} from './pages/{snake_plural}/{component}'")
+            format!(
+                "import {{ {component} as {pascal_plural}{component} }} from \
+                 './pages/{snake_plural}/{component}'"
+            )
         })
         .collect::<Vec<_>>()
         .join("\\n");
@@ -312,7 +345,10 @@ fn build_api_context(name: &str, columns: &[Column], with_tz: bool, appinfo: &Ap
     ]
     .iter()
     .map(|(suffix, component)| {
-        format!("          {{ path: '{snake_plural}{suffix}', element: <{component} /> }},")
+        format!(
+            "          {{ path: '{snake_plural}{suffix}', element: <{pascal_plural}{component} \
+             /> }},"
+        )
     })
     .collect::<Vec<_>>()
     .join("\\n");
@@ -325,6 +361,7 @@ fn build_api_context(name: &str, columns: &[Column], with_tz: bool, appinfo: &Ap
         "snake_singular": snake_singular,
         "pkg_name": appinfo.app_name,
         "with_tz": with_tz,
+        "auth": auth,
         "prelude_use": prelude_use,
         "fields": fields,
         "enums": enums,

@@ -73,15 +73,15 @@ See [Configure logging](@/docs/how-to/configure-logging.md) for the full picture
 
 ```yaml
 server:
-  port: {{ get_env(name="NODE_PORT", default=5150) }}
-  host: {{ get_env(name="APP_HOST", default="http://localhost") }}
+  port: <%= get_env(name="NODE_PORT", default=5150) %>
+  host: <%= get_env(name="APP_HOST", default="http://localhost") %>
 ```
 
 **Database** — real connection limits, no destructive flags:
 
 ```yaml
 database:
-  uri: "{{ get_env(name='DATABASE_URL', default='postgres://loco:loco@localhost:5432/loco_app') }}"
+  uri: "<%= get_env(name='DATABASE_URL', default='postgres://loco:loco@localhost:5432/loco_app') %>"
   enable_logging: false
   connect_timeout: 500
   idle_timeout: 500
@@ -97,7 +97,7 @@ database:
 ```yaml
 auth:
   jwt:
-    secret: "{{ get_env(name='JWT_SECRET') }}"
+    secret: "<%= get_env(name='JWT_SECRET') %>"
     expiration: 604800
 ```
 

@@ -1,0 +1,84 @@
+# cargo-deny — supply-chain policy for the dependency tree.
+#
+# Run locally with `cargo deny check`; CI runs it on every PR. Adding a
+# dependency that is vulnerable, unmaintained, oddly licensed, or not from
+# crates.io fails the build rather than being noticed later.
+#
+# Every `ignore` and `exceptions` entry below carries a reason. An unexplained
+# exemption is how a policy file stops meaning anything.
+
+[graph]
+# The optional storage, cache, queue and TLS features pull in most of the
+# interesting surface; checking the default set would miss them.
+all-features = true
+
+[advisories]
+version = 2
+# `spin 0.9.8` is yanked and arrives via flume -> sqlx-sqlite. There is nothing
+# to do about it here, and a yanked crate is not itself a vulnerability, so it
+# reports without failing.
+yanked = "warn"
+ignore = [
+  { id = "RUSTSEC-2023-0071", reason = """
+The Marvin attack: a timing sidechannel in `rsa`'s private-key operations.
+There is no fixed release — the advisory has been open since 2023 and the
+crate has no patched version.
+
+It reaches the tree twice, and neither path performs RSA *decryption*:
+`jsonwebtoken` (the `auth` feature) uses RSA only to verify RS256 signatures,
+which is a public-key operation, and `reqsign` (via opendal) uses it for
+request signing. The attack needs an oracle that decrypts attacker-chosen
+ciphertext and leaks timing.
+
+Revisit when `rsa` ships a fix, or if Loco ever grows RSA decryption.
+""" },
+  { id = "RUSTSEC-2026-0173", reason = """
+`proc-macro-error2` is unmaintained, with no safe upgrade. It is a build-time
+proc-macro dependency of `sea-orm-macros` (via `sea-bae`) and
+`validator_derive` — it runs during compilation and contributes no code to the
+built binary, so "unmaintained" here is an upstream-hygiene problem rather
+than a runtime risk. Clears when both crates migrate off it.
+""" },
+]
+
+[licenses]
+version = 2
+# Permissive licenses only, plus MPL-2.0, whose copyleft is per-file and does
+# not reach code that merely links against it. Loco itself is Apache-2.0.
+allow = [
+  "0BSD",
+  "Apache-2.0",
+  "BSD-1-Clause",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "BSL-1.0",
+  "CC0-1.0",
+  "CDLA-Permissive-2.0",
+  "ISC",
+  "MIT",
+  "MPL-2.0",
+  "Unicode-3.0",
+  "Unlicense",
+  "Zlib",
+]
+
+# `r-efi` is LGPL-2.1-or-later, which is deliberately not in the list above.
+# It is a UEFI-target dependency of `getrandom`/`wasi` and is compiled only for
+# `*-unknown-uefi` targets — never for anything Loco is built or shipped on.
+[[licenses.exceptions]]
+allow = ["LGPL-2.1-or-later"]
+crate = "r-efi"
+
+[bans]
+# A tree this size legitimately carries several majors of the small crates
+# (rand, thiserror, hashbrown, windows-sys). Failing on that would be noise
+# with no security content, and the dependency-modernization work tracks it
+# separately.
+multiple-versions = "allow"
+# A `*` version requirement, on the other hand, means an unreviewed upgrade can
+# arrive without anyone choosing it.
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

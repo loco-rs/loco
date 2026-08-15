@@ -54,7 +54,7 @@ pub struct ModelValidationMessage {
     pub message: Option<String>,
 }
 
-/// <DbErr conversion hack>
+/// `DbErr` conversion hack
 ///
 /// Convert `ModelValidationErrors` (pretty) into a `DbErr` (ugly) for database
 /// handling.

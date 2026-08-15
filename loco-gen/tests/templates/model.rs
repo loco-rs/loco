@@ -37,6 +37,7 @@ fn can_generate() {
         component,
         &AppInfo {
             app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
         },
     )
     .expect("Generation failed");
@@ -103,6 +104,7 @@ fn generate_without_fields_still_emits_primary_key() {
         component,
         &AppInfo {
             app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
         },
     )
     .expect("Generation failed");
@@ -140,13 +142,14 @@ fn fail_when_migration_lib_not_exists() {
         component,
         &AppInfo {
             app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
         },
     )
     .expect_err("Expected error when model lib doesn't exist");
 
     assert_eq!(
         err.to_string(),
-        "cannot inject into migration/src/lib.rs: file does not exist"
+        "cannot inject into `migration/src/lib.rs`: file does not exist"
     );
 }
 
@@ -172,12 +175,134 @@ fn fail_when_test_models_mod_not_exists() {
         component,
         &AppInfo {
             app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
         },
     )
     .expect_err("Expected error when migration src doesn't exist");
 
     assert_eq!(
         err.to_string(),
-        "cannot inject into tests/models/mod.rs: file does not exist"
+        "cannot inject into `tests/models/mod.rs`: file does not exist"
+    );
+}
+
+/// A migrator without the injection anchor must fail loudly.
+///
+/// This is the failure a user hit for real. Through rrgen 0.5, a `before:`
+/// injection that could not find its anchor line rewrote the file unchanged and
+/// still printed `injected: migration/src/lib.rs`. The migration file was
+/// created and compiled, was never registered, therefore never ran, so the
+/// table was never created and `db entities` correctly wrote nothing. Every
+/// step reported success; the first insert 500s at runtime.
+///
+/// rrgen 0.6 turns that into an error at the point of failure and writes
+/// nothing at all, so a re-run after restoring the anchor does the whole job.
+/// This test guards the version floor as much as the behaviour: on an older
+/// rrgen it goes green in the worst way, by generating a broken app.
+#[test]
+fn generating_a_model_fails_when_the_migrator_has_no_anchor() {
+    // SAFETY: test-local env setup; no other thread reads the environment during this test.
+    unsafe { std::env::set_var("SKIP_MIGRATION", "") };
+
+    // The same migrator, with the `inject-above` comment removed — exactly what
+    // a hand-written or hand-edited `migration/src/lib.rs` looks like.
+    let migrator_without_anchor = MIGRATION_SRC_LIB.replace(
+        "            // inject-above (do not remove this comment)\n",
+        "",
+    );
+    assert!(
+        !migrator_without_anchor.contains("inject-above"),
+        "fixture must have no anchor"
+    );
+
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add("migration/src/lib.rs", &migrator_without_anchor)
+        .add_empty("tests/models/mod.rs")
+        .create()
+        .unwrap();
+
+    let err = generate(
+        &RRgen::with_working_dir(&tree_fs.root),
+        Component::Model {
+            name: "movies".to_string(),
+            with_tz: true,
+            fields: vec![("title".to_string(), "string".to_string())],
+        },
+        &AppInfo {
+            app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
+        },
+    )
+    .expect_err("a migration that cannot be registered must not report success");
+
+    let message = err.to_string();
+    assert!(
+        message.contains("migration/src/lib.rs"),
+        "the error must name the file it could not edit, got: {message}"
+    );
+    assert!(
+        message.contains("inject-above"),
+        "the error must name the anchor to restore, got: {message}"
+    );
+    assert!(
+        message.contains("_movies::Migration"),
+        "the error must show the registration that was dropped, got: {message}"
+    );
+
+    // Nothing may be left behind. A migration file written by the failed run
+    // would make the retry hit `skip_glob` and return before ever reaching the
+    // injection — the one state that could never repair itself.
+    let migrations = std::fs::read_dir(tree_fs.root.join("migration/src"))
+        .unwrap()
+        .filter_map(Result::ok)
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .filter(|name| name != "lib.rs")
+        .collect::<Vec<_>>();
+    assert!(
+        migrations.is_empty(),
+        "the failed generation left migrations behind: {migrations:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(tree_fs.root.join("migration/src/lib.rs")).unwrap(),
+        migrator_without_anchor,
+        "the failed generation rewrote the migrator"
+    );
+}
+
+/// The check looks at the whole migration directory, so a registration that
+/// went missing during an earlier run is caught on the next generation rather
+/// than staying broken forever.
+#[test]
+fn generating_a_model_fails_when_an_earlier_migration_is_unregistered() {
+    // SAFETY: test-local env setup; no other thread reads the environment during this test.
+    unsafe { std::env::set_var("SKIP_MIGRATION", "") };
+
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add("migration/src/lib.rs", MIGRATION_SRC_LIB)
+        // Present on disk, absent from the migrator.
+        .add("migration/src/m20240101_000000_orphans.rs", "// orphan")
+        .add_empty("tests/models/mod.rs")
+        .create()
+        .unwrap();
+
+    let err = generate(
+        &RRgen::with_working_dir(&tree_fs.root),
+        Component::Model {
+            name: "movies".to_string(),
+            with_tz: true,
+            fields: vec![("title".to_string(), "string".to_string())],
+        },
+        &AppInfo {
+            app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
+        },
+    )
+    .expect_err("an unregistered migration must be reported");
+
+    assert!(
+        err.to_string().contains("m20240101_000000_orphans"),
+        "got: {err}"
     );
 }

@@ -2,7 +2,7 @@
 {% set module_name = file_name | pascal_case -%}
 to: src/controllers/{{ file_name }}.rs
 skip_exists: true
-message: "Controller `{{module_name}}` was added successfully."
+message: "Controller `{{module_name}}` was added successfully.{% if auth %} Its routes require a JWT.{% endif %}"
 injections:
 - into: src/controllers/mod.rs
   append: true
@@ -17,13 +17,13 @@ injections:
 use loco_rs::prelude::*;
 
 #[debug_handler]
-pub async fn index(State(_ctx): State<AppContext>) -> Result<Response> {
+pub async fn index({% if auth %}_auth: auth::JWT, {% endif %}State(_ctx): State<AppContext>) -> Result<Response> {
     format::empty()
 }
 
 {% for action in actions -%}
 #[debug_handler]
-pub async fn {{action}}(State(_ctx): State<AppContext>) -> Result<Response> {
+pub async fn {{action}}({% if auth %}_auth: auth::JWT, {% endif %}State(_ctx): State<AppContext>) -> Result<Response> {
     format::empty()
 }
 

@@ -11,22 +11,26 @@ sidebar:
 
 - `pub type Result<T, E = Error> = std::result::Result<T, E>` (`src/lib.rs:52`).
 - `pub use self::errors::Error` (`src/lib.rs:5`) — re-exported at the crate root and in `loco_rs::prelude`.
-- `Error` is declared `#[non_exhaustive]` (`src/errors.rs:31`). Any `match Error { .. }` outside the crate **must** include a wildcard `_ =>` arm — the compiler enforces this, and the crate itself relies on it (see the status map below).
+- `Error` is declared `#[non_exhaustive]` (`src/errors.rs:31`). Any `match Error { .. }` outside the crate **must** include a wildcard `_ =>` arm — the compiler enforces this. Inside `loco_rs` itself `#[non_exhaustive]` does not apply, and the status map below deliberately does not use a wildcard.
 
 ## Variant → HTTP status map
 
-`impl IntoResponse for Error` (`src/controller/mod.rs:180-253`) matches on the error and produces `(StatusCode, ErrorDetail)`, then serializes `ErrorDetail` as the JSON response body. Only seven variants are matched explicitly; **every other variant** falls through to the trailing `_ =>` arm.
+`impl IntoResponse for Error` (`src/controller/mod.rs:198`) matches on the error and produces `(StatusCode, ErrorDetail)`, then serializes `ErrorDetail` as the JSON response body. The match is **exhaustive on purpose — there is no `_ =>` arm** (`src/controller/mod.rs:274-284`): every internal/infrastructure variant is listed by name in the arm that maps to 500, so adding a new `Error` variant anywhere in the crate is a compile error here until someone decides what status it should carry, rather than silently becoming a 500.
 
 | Variant | Produced when | HTTP status | Response `ErrorDetail` |
 |---|---|---|---|
 | `NotFound` | Returned by the `not_found()` helper, or directly. | 404 | `{"error":"not_found","description":"Resource was not found"}` |
 | `Unauthorized(String)` | Returned by the `unauthorized(msg)` helper, or directly. Also logs `tracing::warn!(err)` with the original message (the message itself is **not** sent to the client). | 401 | `{"error":"unauthorized","description":"You do not have permission to access this resource"}` |
 | `CustomError(StatusCode, ErrorDetail)` | Constructed directly when the caller wants an arbitrary status and body. | passthrough — whatever `StatusCode` was supplied | passthrough — whatever `ErrorDetail` was supplied |
-| `WithBacktrace { inner, backtrace }` | Wraps another error variant; produced by calling `.bt()` on an `Error` (backtrace is only captured when `RUST_BACKTRACE` is set — see Constructors below). Also prints the inner error (red, underlined) and the filtered backtrace to stdout via `backtrace::print_backtrace`. | 400 | `{"error":"Bad Request"}` (only the `error` reason is set, no `description`) |
+| `WithBacktrace { inner, backtrace }` | Wraps another error variant; produced by calling `.bt()` on an `Error` (backtrace is only captured when `RUST_BACKTRACE` is set — see Constructors below). Also prints the inner error (red, underlined) and the filtered backtrace to stdout via `backtrace::print_backtrace`. | passthrough — the wrapped error's own status | passthrough — the wrapped error's own body. `mod.rs:238-245` re-enters `into_response` on `*inner`, so capturing a backtrace never changes the HTTP result (an internal error stays 500 rather than being flattened to 400) |
 | `BadRequest(String)` | Returned by the `bad_request(msg)` helper, or directly. | 400 | `{"error":"Bad Request","description":"<msg>"}` |
 | `JsonRejection(JsonRejection)` | Axum's `Json` extractor rejects a malformed/missing request body (surfaced via the `Json<T>` wrapper's `#[from_request(rejection(Error))]`). Logs `tracing::debug!(err = err.body_text(), ...)`. | `err.status()` — axum's own rejection status (commonly 400/415/422) | `{"error":"Bad Request"}` |
+| `AxumFormRejection(FormRejection)` | Axum's `Form` extractor rejects a malformed request body. Logs `tracing::debug!(err = err.body_text(), ...)` (`mod.rs:254-257`). | `err.status()` — axum's own rejection status | `{"error":"Bad Request"}` |
 | `Validation(ModelValidationErrors)` | A `validator`-crate validation failure converted `#[from] ModelValidationErrors`. | 400 | `{"errors": <serde_json::Value of the field errors>}` — note `error`/`description` are `None` here; only `errors` is populated |
-| **everything else** (all other variants, current and future — this is what the `#[non_exhaustive]` catch-all covers) | Any of the ~28 remaining variants (`DB`, `Model`, `IO`, `Redis`, `Sqlx`, `Tera`, `YAML`, `Message`, `Any`, `InternalServerError`, etc. — see the full list below) | **500** | `{"error":"internal_server_error","description":"Internal Server Error"}` |
+| `Model(ModelError::EntityNotFound)` | A model lookup found no row (`with-db`, `mod.rs:261-265`). | 404 | `{"error":"not_found","description":"Resource was not found"}` |
+| `Model(ModelError::EntityAlreadyExists)` | A model insert collided with an existing row (`with-db`, `mod.rs:266-270`). | 409 | `{"error":"conflict","description":"Resource already exists"}` |
+| `Model(ModelError::Validation(..))` | A model-level validation failure (`with-db`, `mod.rs:271-272`); same body as the top-level `Validation`. | 400 | `{"errors": <serde_json::Value of the field errors>}` |
+| **every remaining variant**, each listed by name in the match | The internal/infrastructure variants (`DB`, `IO`, `Redis`, `Sqlx`, `Tera`, `YAML`, `Message`, `Any`, `InternalServerError`, the remaining `Model` variants — `DbErr`, `Any`, `Message`, `Jwt` — etc.; see the full list below) | **500** | `{"error":"internal_server_error","description":"Internal Server Error"}` |
 
 Every response, regardless of variant, is first logged at `tracing::error!` with `error.msg` / `error.details` fields before the match runs (`src/controller/mod.rs:184-202`).
 

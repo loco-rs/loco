@@ -13,6 +13,7 @@ Defined at `src/app.rs:253-273`:
 
 ```rust
 #[derive(Clone, FromRef)]
+#[non_exhaustive]
 pub struct AppContext {
     pub environment: Environment,
     #[cfg(feature = "with-db")]
@@ -44,6 +45,22 @@ pub struct AppContext {
 | `shared_store` | `Arc<SharedStore>` | none | A `TypeId`-keyed, concurrent DI container (backed by `DashMap`) for stashing arbitrary app-defined services — see below. |
 
 `db` is the only field that is compiled out (not just `None`-able) when its feature (`with-db`) is disabled — every other field is unconditionally present, with `Option`/empty-default standing in for "not configured."
+
+### Constructing one: `builder` / `into_builder`
+
+`AppContext` is `#[non_exhaustive]` (`src/app.rs:255`), so app code cannot write a struct literal for it and cannot use functional-update syntax (`AppContext { storage, ..ctx }`). Adding a field in a later release is therefore not a breaking change. Two constructors take its place (`src/app.rs:284-413`):
+
+- `AppContext::builder(environment, db, config)` — or `builder(environment, config)` without `with-db` — returns an `AppContextBuilder`. The required components are arguments; `queue_provider`, `mailer`, `storage`, `cache` and `shared_store` are setter methods, and `build()` fills any of them left unset with a no-op default (null storage driver, null cache, empty shared store).
+- `ctx.into_builder()` turns an existing context back into a builder carrying **every** component over. This is what [`Hooks::after_context`](/docs/reference/hooks) should use: starting fresh from `AppContext::builder` compiles, but silently drops whatever boot already put on the context (the mailer, the queue provider, the cache, the shared store), whereas round-tripping replaces one component and keeps the rest.
+
+```rust
+async fn after_context(ctx: AppContext) -> Result<AppContext> {
+    Ok(ctx
+        .into_builder()
+        .storage(Storage::single(storage::drivers::local::new()).into())
+        .build())
+}
+```
 
 ### `SharedStore` — the generic DI slot
 
@@ -90,6 +107,7 @@ To read a stashed value from inside a handler, use the extractor of the same nam
 - `controller::format` — the response-builder module (`format::json`, `format::render()`, ...)
 - `controller::middleware::format::{Format, RespondTo}` — content-negotiation extractor/enum
 - `controller::middleware::remote_ip::RemoteIP` — computed-client-IP extractor
+- `controller::middleware::MiddlewareStackExt` — the `insert_before` / `insert_after` / `replace` / `delete` helpers for editing the default middleware stack inside `Hooks::middlewares` (see the [middleware catalog](/docs/reference/middleware))
 - `controller::extractor::shared_store::SharedStore` — the DI extractor (see above)
 - `controller::extractor::validate::{JsonValidate, JsonValidateWithMessage}` — validating-body extractors
 - `controller::views::{engines::TeraView, ViewEngine, ViewRenderer}`

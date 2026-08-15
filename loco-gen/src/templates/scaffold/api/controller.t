@@ -1,6 +1,6 @@
 to: src/controllers/{{ snake_plural }}.rs
 skip_exists: true
-message: "Controller `{{ pascal_singular }}` was added successfully."
+message: "Controller `{{ pascal_singular }}` was added successfully.{% if auth %} Its routes require a JWT — re-run with `--no-auth` to generate public routes.{% endif %}"
 injections:
 - into: src/controllers/mod.rs
   append: true
@@ -12,8 +12,7 @@ injections:
 #![allow(clippy::unused_async)]
 use axum::http::StatusCode;
 use loco_rs::prelude::*;
-use sea_orm::{PaginatorTrait, QueryOrder};
-use serde::Deserialize;
+use sea_orm::QueryOrder;
 
 use crate::{
     dtos::{
@@ -22,22 +21,6 @@ use crate::{
     },
     models::_entities::{{ snake_plural }}::{ActiveModel, Column, Entity},
 };
-
-const fn default_page() -> u64 {
-    1
-}
-
-const fn default_per_page() -> u64 {
-    25
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ListParams {
-    #[serde(default = "default_page")]
-    pub page: u64,
-    #[serde(default = "default_per_page")]
-    pub per_page: u64,
-}
 
 /// Build a 404 response shaped as the [`ApiError`] envelope.
 fn not_found(message: &str) -> Response {
@@ -51,31 +34,25 @@ fn not_found(message: &str) -> Response {
 
 #[debug_handler]
 async fn list(
-    _auth: auth::JWT,
-    State(ctx): State<AppContext>,
-    Query(params): Query<ListParams>,
+{% if auth %}    _auth: auth::JWT,
+{% endif %}    State(ctx): State<AppContext>,
+    Query(pagination): Query<query::PaginationQuery>,
 ) -> Result<Json<Page<{{ pascal_singular }}Dto>>> {
-    let page = params.page.max(1);
-    let per_page = params.per_page.max(1);
+    let res = query::paginate(
+        &ctx.db,
+        Entity::find().order_by_asc(Column::Id),
+        None,
+        &pagination,
+    )
+    .await?;
 
-    let query = Entity::find().order_by_asc(Column::Id);
-
-    let paginator = query.paginate(&ctx.db, per_page);
-    let total = paginator.num_items_and_pages().await?.number_of_items;
-    let items = paginator.fetch_page(page - 1).await?;
-
-    Ok(Json(Page {
-        items: items.into_iter().map({{ pascal_singular }}Dto::from).collect(),
-        total: i64::try_from(total).unwrap_or(i64::MAX),
-        page: i64::try_from(page).unwrap_or(i64::MAX),
-        per_page: i64::try_from(per_page).unwrap_or(i64::MAX),
-    }))
+    Ok(Json(Page::from_query(res)))
 }
 
 #[debug_handler]
 async fn get_one(
-    _auth: auth::JWT,
-    State(ctx): State<AppContext>,
+{% if auth %}    _auth: auth::JWT,
+{% endif %}    State(ctx): State<AppContext>,
     Path(id): Path<i64>,
 ) -> Result<Response> {
     let Some(model) = Entity::find_by_id(id).one(&ctx.db).await? else {
@@ -86,8 +63,8 @@ async fn get_one(
 
 #[debug_handler]
 async fn create(
-    _auth: auth::JWT,
-    State(ctx): State<AppContext>,
+{% if auth %}    _auth: auth::JWT,
+{% endif %}    State(ctx): State<AppContext>,
     Json(params): Json<Create{{ pascal_singular }}>,
 ) -> Result<Response> {
     let item = ActiveModel {
@@ -103,8 +80,8 @@ async fn create(
 
 #[debug_handler]
 async fn update(
-    _auth: auth::JWT,
-    State(ctx): State<AppContext>,
+{% if auth %}    _auth: auth::JWT,
+{% endif %}    State(ctx): State<AppContext>,
     Path(id): Path<i64>,
     Json(params): Json<Update{{ pascal_singular }}>,
 ) -> Result<Response> {
@@ -123,8 +100,8 @@ async fn update(
 
 #[debug_handler]
 async fn remove(
-    _auth: auth::JWT,
-    State(ctx): State<AppContext>,
+{% if auth %}    _auth: auth::JWT,
+{% endif %}    State(ctx): State<AppContext>,
     Path(id): Path<i64>,
 ) -> Result<Response> {
     let Some(model) = Entity::find_by_id(id).one(&ctx.db).await? else {

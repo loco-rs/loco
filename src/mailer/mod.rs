@@ -288,7 +288,7 @@ pub struct MailerWorker {
     pub ctx: AppContext,
 }
 
-/// Implementation of the [`Worker`] trait for the [`MailerWorker`].
+/// Implementation of the [`BackgroundWorker`] trait for the [`MailerWorker`].
 #[async_trait]
 impl BackgroundWorker<Email> for MailerWorker {
     fn queue() -> Option<String> {
@@ -330,7 +330,7 @@ pub struct MultiMailerWorker {
     pub ctx: AppContext,
 }
 
-/// Implementation of the [`Worker`] trait for the [`MultiMailerWorker`].
+/// Implementation of the [`BackgroundWorker`] trait for the [`MultiMailerWorker`].
 #[async_trait]
 impl BackgroundWorker<MultiEmail> for MultiMailerWorker {
     fn queue() -> Option<String> {

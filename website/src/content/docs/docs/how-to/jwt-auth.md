@@ -31,7 +31,7 @@ Add an `auth.jwt` block to `config/development.yaml` (and every other environmen
 ```yaml
 auth:
   jwt:
-    secret: "{{ get_env(name='JWT_SECRET') }}" # required, must be valid base64
+    secret: "<%= get_env(name='JWT_SECRET') %>" # required, must be valid base64
     expiration: 604800 # required, seconds (7 days)
 ```
 
@@ -104,15 +104,17 @@ Internally, `JWTWithUser` validates the token exactly like `auth::JWT`, then cal
 Both `JWTWithUser<T>` and `ApiToken<T>` (see the [API-key guide](/docs/how-to/api-key-auth)) require your user model to implement `loco_rs::model::Authenticable`:
 
 ```rust
+#[async_trait]
 pub trait Authenticable: Clone {
     async fn find_by_api_key(db: &DatabaseConnection, api_key: &str) -> ModelResult<Self>;
     async fn find_by_claims_key(db: &DatabaseConnection, claims_key: &str) -> ModelResult<Self>;
 }
 ```
 
-A typical Sea-ORM implementation looks up the row by the relevant column and maps a miss to `ModelError::EntityNotFound`:
+A typical Sea-ORM implementation looks up the row by the relevant column and maps a miss to `ModelError::EntityNotFound`. The trait is `#[async_trait]`, so your `impl` needs the same attribute (`async_trait` is re-exported from `loco_rs::prelude`):
 
 ```rust
+#[async_trait]
 impl Authenticable for super::_entities::users::Model {
     async fn find_by_api_key(db: &DatabaseConnection, api_key: &str) -> ModelResult<Self> {
         let user = super::_entities::users::Entity::find()
@@ -132,7 +134,7 @@ impl Authenticable for super::_entities::users::Model {
 }
 ```
 
-**Note on scope:** the framework defines the `Authenticable` trait and the extractors above, but it does not generate a users model or `/api/auth/*` controllers for you — `loco-gen` has no auth/user template. That register/login/verify/reset-password flow, including the `Authenticable` implementation shown above, ships in the **SaaS starter** template (`loco new` → "SaaS app (with DB and user auth)"), which lives outside this repository. Use the pattern above as a starting point if you're wiring auth into a custom model.
+**Note on scope:** the framework defines the `Authenticable` trait and the extractors above; the user model that implements it comes from `loco new`, not from `loco-gen`. Any app generated with a database — i.e. anything but `--db none`, which is what the `lightweight-service` template picks — already ships `src/models/users.rs` with an `Authenticable` implementation and `src/controllers/auth.rs` mounting the full `/api/auth/*` suite (`register`, `verify/{token}`, `login`, `forgot`, `reset`, `current`, `magic-link`, `resend-verification-mail`). See the [SaaS with auth tutorial](/docs/tutorials/saas-with-auth) for a walkthrough of that flow. With `--db none` there is no user model at all, and the pattern above is your starting point for wiring auth into a model of your own.
 
 ## Verify it works
 

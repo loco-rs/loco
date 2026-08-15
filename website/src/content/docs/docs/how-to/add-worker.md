@@ -167,7 +167,7 @@ use loco_rs::testing::prelude::*;
 #[tokio::test]
 #[serial]
 async fn test_run_download_worker() {
-    let boot = boot_test::<App, Migrator>().await.unwrap();
+    let boot = boot_test::<App>().await.unwrap();
 
     assert!(
         DownloadWorker::perform_later(

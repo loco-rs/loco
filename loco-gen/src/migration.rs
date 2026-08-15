@@ -46,6 +46,10 @@ pub fn generate(
             let vars = json!({"name": name, "table": table, "ts": ts, "pkg_name": pkg_name, "columns": columns, "references": references});
             render_template(rrgen, Path::new("migration/add_references.t"), &vars)
         }
+        infer::MigrationType::RenameColumn { table, from, to } => {
+            let vars = json!({"name": name, "table": table, "ts": ts, "pkg_name": pkg_name, "from": from, "to": to});
+            render_template(rrgen, Path::new("migration/rename_column.t"), &vars)
+        }
         infer::MigrationType::CreateJoinTable { table_a, table_b } => {
             let table = format!("{table_a}_{table_b}");
             let (columns, extra_references) = get_columns_and_references(fields)?;

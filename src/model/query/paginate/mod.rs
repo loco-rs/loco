@@ -76,7 +76,15 @@ where
 
 use crate::controller::views::pagination::PagerMeta;
 
-#[derive(Debug)]
+/// A page of rows plus its metadata, as returned by [`paginate`] and
+/// [`fetch_page`].
+///
+/// It is `Serialize`/`Deserialize` because returning it straight from a
+/// handler (`format::json(res)`) is the documented shortest path — that had
+/// never compiled outside the crate. Handlers that answer with a typed DTO
+/// instead map it onto their own envelope; the generated scaffold's `Page<T>`
+/// is exactly this shape flattened.
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PageResponse<T> {
     pub page: Vec<T>,
     pub meta: PagerMeta,
@@ -214,4 +222,97 @@ where
             total_items: total_pages_and_items.number_of_items,
         },
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::extract::Query;
+    use serde::Deserialize;
+
+    use super::*;
+
+    fn parse<T: serde::de::DeserializeOwned>(query: &str) -> T {
+        let uri: axum::http::Uri = format!("http://localhost/?{query}")
+            .parse()
+            .expect("a valid URI");
+        Query::try_from_uri(&uri)
+            .unwrap_or_else(|err| panic!("`?{query}` should deserialize: {err}"))
+            .0
+    }
+
+    /// The how-to shows `format::json(res)` straight from a handler and prints
+    /// the body it produces. That only holds if `PageResponse` serializes at
+    /// all -- it did not until it derived it -- and if the body keeps these
+    /// exact keys, so pin them.
+    #[test]
+    fn serializes_to_page_and_meta() {
+        let res = PageResponse {
+            page: vec![1, 2, 3],
+            meta: PagerMeta {
+                page: 2,
+                page_size: 3,
+                total_pages: 4,
+                total_items: 10,
+            },
+        };
+
+        let json = serde_json::to_value(&res).expect("PageResponse serializes");
+        assert_eq!(
+            json,
+            serde_json::json!({
+                "page": [1, 2, 3],
+                "meta": {
+                    "page": 2,
+                    "page_size": 3,
+                    "total_pages": 4,
+                    "total_items": 10
+                }
+            })
+        );
+
+        let back: PageResponse<i32> =
+            serde_json::from_value(json).expect("PageResponse reads its own output");
+        assert_eq!(back.page, vec![1, 2, 3]);
+        assert_eq!(back.meta.total_items, 10);
+    }
+
+    #[test]
+    fn reads_page_and_page_size_from_a_query_string() {
+        let q: PaginationQuery = parse("page=2&page_size=10");
+        assert_eq!(q.page, 2);
+        assert_eq!(q.page_size, 10);
+    }
+
+    #[test]
+    fn falls_back_to_defaults_when_absent() {
+        let q: PaginationQuery = parse("");
+        assert_eq!(q.page, default_page());
+        assert_eq!(q.page_size, default_page_size());
+    }
+
+    /// The documented way to add filters to a paginated endpoint -- and what a
+    /// scaffolded `list` handler grows into -- is to `#[serde(flatten)]` this
+    /// struct into the resource's own params. That combination is worth pinning:
+    /// `flatten` makes serde buffer the query into a map first, and every field
+    /// here is read through a `deserialize_with` that expects a string, so the
+    /// two features have to agree for `?status=draft&page=2` to parse at all.
+    #[test]
+    fn survives_being_flattened_into_a_filter_struct() {
+        #[derive(Debug, Deserialize)]
+        struct ListParams {
+            status: Option<String>,
+            #[serde(flatten)]
+            pagination: PaginationQuery,
+        }
+
+        let params: ListParams = parse("status=draft&page=3&page_size=5");
+        assert_eq!(params.status.as_deref(), Some("draft"));
+        assert_eq!(params.pagination.page, 3);
+        assert_eq!(params.pagination.page_size, 5);
+
+        // ...and the per-field defaults still apply through the flatten.
+        let defaults: ListParams = parse("status=draft");
+        assert_eq!(defaults.pagination.page, default_page());
+        assert_eq!(defaults.pagination.page_size, default_page_size());
+    }
 }

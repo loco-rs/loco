@@ -20,20 +20,28 @@ This is the same combination of flags Loco's own `examples/demo` app in the loco
 
 Confirm the auth routes are already there, with nothing else generated yet:
 
+`routes` prints a tree of path segments, with each endpoint's method and its full path on the right:
+
 ```sh
 $ cargo loco routes
-...
-[POST] /api/auth/register
-[GET] /api/auth/verify/{token}
-[POST] /api/auth/login
-[POST] /api/auth/forgot
-[POST] /api/auth/reset
-[GET] /api/auth/current
-[POST] /api/auth/magic-link
-[GET] /api/auth/magic-link/{token}
-[POST] /api/auth/resend-verification-mail
-...
+/_health GET                              /_health
+/_ping GET                                /_ping
+/_readiness GET                           /_readiness
+/api
+   └─ /auth
+      ├─ /current GET                     /api/auth/current
+      ├─ /forgot POST                     /api/auth/forgot
+      ├─ /login POST                      /api/auth/login
+      ├─ /magic-link
+      │  ├─ POST                          /api/auth/magic-link
+      │  └─ /{token} GET                  /api/auth/magic-link/{token}
+      ├─ /register POST                   /api/auth/register
+      ├─ /resend-verification-mail POST   /api/auth/resend-verification-mail
+      ├─ /reset POST                      /api/auth/reset
+      └─ /verify/{token} GET              /api/auth/verify/{token}
 ```
+
+The three `_`-prefixed routes are Loco's built-in monitoring endpoints, added by `AppRoutes::with_default_routes()`; everything under `/api/auth` came with the database.
 
 ## 2. Skip the SMTP dependency
 
@@ -126,7 +134,7 @@ If the `Authorization` header is missing, malformed, or carries an expired/inval
 The pattern above works for any handler, not just the built-in ones. Generate a `notes` scaffold:
 
 ```sh
-$ cargo loco generate scaffold notes title:string content:text --api
+$ cargo loco generate scaffold notes title:string content:text
 ```
 
 Open `src/controllers/notes.rs` and change the `add` handler's signature to also require `auth::JWT`:

@@ -36,6 +36,58 @@ fn test_config_file_with_auth(
     assertion::yaml::assert_path_key_count(&content, &["auth", "jwt"], 2);
 }
 
+/// The JWT `location` setting (cookie / query parameter) was undiscoverable:
+/// its working YAML is `location: {from: Cookie, name: ..}`, and every wrong
+/// shape collapses to `data did not match any variant of untagged enum
+/// JWTLocationConfig`. The generated config is where a developer looks first,
+/// so the example lives there — and a stray Tera whitespace trim would
+/// silently swallow it, which is what this asserts against.
+#[test]
+fn the_generated_config_shows_how_to_move_the_jwt_out_of_the_header() {
+    let generator = run_generator(true, DBOption::None);
+    let raw = std::fs::read_to_string(generator.path("config/development.yaml"))
+        .expect("development.yaml should exist");
+
+    assert!(
+        raw.contains("# location:") && raw.contains("#   from: Cookie"),
+        "the commented `location` example should survive rendering:\n{raw}"
+    );
+}
+
+/// A snapshot of a whole `users::Model` encodes every column, so adding one
+/// field to `users` — the first thing most apps do — invalidates every such
+/// test at once. Five of them did, and the one real change drowned in the
+/// mechanical re-blessing. The template's tests snapshot narrow projections
+/// now; this keeps them that way.
+#[test]
+fn no_generated_test_snapshots_a_whole_model() {
+    let generator = run_generator(true, DBOption::Sqlite);
+
+    let mut offenders = Vec::new();
+    for dir in ["tests/models/snapshots", "tests/requests/snapshots"] {
+        let path = generator.path(dir);
+        let entries = std::fs::read_dir(&path)
+            .unwrap_or_else(|e| panic!("{} should exist: {e}", path.display()));
+
+        for entry in entries {
+            let entry = entry.expect("a readable directory entry");
+            let contents = std::fs::read_to_string(entry.path()).expect("a readable snapshot");
+            if contents
+                .lines()
+                .any(|line| line.trim_start().starts_with("Model {"))
+            {
+                offenders.push(entry.path());
+            }
+        }
+    }
+
+    assert!(
+        offenders.is_empty(),
+        "these snapshots pin a whole model, so any added column breaks them; \
+         snapshot the fields under test instead: {offenders:#?}"
+    );
+}
+
 #[test]
 fn test_config_file_development_rand_secret() {
     let generator = run_generator(true, DBOption::None);

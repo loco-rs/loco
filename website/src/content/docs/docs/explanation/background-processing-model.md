@@ -26,7 +26,7 @@ You implement `perform`, register the worker in `connect_workers`, and enqueue w
 
 Postgres and SQLite queueing used to be two independent, parallel implementations that had to be kept in sync by hand. As of the 1.0 line they're de-duplicated behind one internal `Driver` trait:
 
-```rust
+```rust no-syntax-check="trait sketch with `...` standing in for the real types"
 pub(crate) trait Driver {
     type Pool;
     fn idle_count(&self) -> ...;

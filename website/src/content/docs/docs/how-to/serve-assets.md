@@ -80,6 +80,8 @@ server:
 
 Any request that doesn't match a real file under `assets/static/` falls back to `index.html`, letting your client-side router take over.
 
+If the SPA is Loco's own clientside mode — a Vite/React frontend in `frontend/`, with TypeScript types generated from your Rust DTOs — this config is already generated for you (pointing at `frontend/dist`). See [Build a typed React SPA](/docs/how-to/build-a-spa).
+
 ## 5. Serve precompressed assets
 
 If your build pipeline already produces `.gz` files next to the originals (e.g. `app.js` and `app.js.gz`), turn on `precompressed` and Loco serves the `.gz` variant directly instead of compressing per-request:
