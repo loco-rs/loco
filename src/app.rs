@@ -434,6 +434,7 @@ pub trait Hooks: Send {
     ///
     /// # Returns
     /// A Result indicating success () or an error if the server fails to start.
+    #[must_use]
     async fn serve(app: AxumRouter, ctx: &AppContext, serve_params: &ServeParams) -> Result<()> {
         let listener = tokio::net::TcpListener::bind(&format!(
             "{}:{}",
@@ -471,6 +472,7 @@ pub trait Hooks: Send {
     ///
     /// This function is responsible for retrieving the configuration for the application
     /// based on the current environment.
+    #[must_use]
     async fn load_config(env: &Environment) -> Result<Config> {
         env.load()
     }
@@ -481,6 +483,7 @@ pub trait Hooks: Send {
     ///
     /// # Errors
     /// Return an [`Result`] when the router could not be created
+    #[must_use]
     async fn before_routes(_ctx: &AppContext) -> Result<AxumRouter<AppContext>> {
         Ok(AxumRouter::new())
     }
@@ -491,6 +494,7 @@ pub trait Hooks: Send {
     ///
     /// # Errors
     /// Axum router error
+    #[must_use]
     async fn after_routes(router: AxumRouter, _ctx: &AppContext) -> Result<AxumRouter> {
         Ok(router)
     }
@@ -498,6 +502,7 @@ pub trait Hooks: Send {
     /// Provide a list of initializers
     /// An initializer can be used to seamlessly add functionality to your app
     /// or to initialize some aspects of it.
+    #[must_use]
     async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {
         Ok(vec![])
     }
@@ -511,6 +516,7 @@ pub trait Hooks: Send {
     /// Calling the function before run the app
     /// You can now code some custom loading of resources or other things before
     /// the app runs
+    #[must_use]
     async fn before_run(_app_context: &AppContext) -> Result<()> {
         Ok(())
     }
@@ -519,6 +525,7 @@ pub trait Hooks: Send {
     fn routes(_ctx: &AppContext) -> AppRoutes;
 
     // Provides the options to change Loco [`AppContext`] after initialization.
+    #[must_use]
     async fn after_context(ctx: AppContext) -> Result<AppContext> {
         Ok(ctx)
     }
@@ -557,6 +564,7 @@ pub trait Hooks: Send {
     /// }
     /// ```
     #[cfg(feature = "with-db")]
+    #[must_use]
     async fn dump(ctx: &AppContext, base: &Path) -> Result<()> {
         crate::db::dump_tables(&ctx.db, base, None).await
     }
@@ -564,6 +572,7 @@ pub trait Hooks: Send {
     /// Called when the application is shutting down.
     /// This function allows users to perform any necessary cleanup or final
     /// actions before the application stops completely.
+    #[must_use]
     async fn on_shutdown(_ctx: &AppContext) {}
 }
 

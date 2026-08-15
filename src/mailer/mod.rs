@@ -133,6 +133,7 @@ pub trait Mailer {
     }
 
     /// Sends an email using the provided [`AppContext`] and email details.
+    #[must_use]
     async fn mail(ctx: &AppContext, email: &Email) -> Result<()> {
         let opts = Self::opts();
         let mut email = email.clone();
@@ -149,6 +150,7 @@ pub trait Mailer {
     ///
     /// # Errors
     /// Returns an error if enqueuing the email fails.
+    #[must_use]
     async fn mail_multi(ctx: &AppContext, email: &MultiEmail) -> Result<()> {
         let opts = Self::opts();
         let mut email = email.clone();
@@ -162,6 +164,7 @@ pub trait Mailer {
 
     /// Renders and sends an email using the provided [`AppContext`], template
     /// directory, and arguments.
+    #[must_use]
     async fn mail_template(ctx: &AppContext, dir: &Dir<'_>, args: Args) -> Result<()> {
         Self::mail_template_with_shared(ctx, dir, &[], args).await
     }
@@ -176,6 +179,7 @@ pub trait Mailer {
     ///
     /// # Errors
     /// Returns an error if a template is missing/invalid or the send fails.
+    #[must_use]
     async fn mail_template_with_shared(
         ctx: &AppContext,
         dir: &Dir<'_>,
@@ -205,6 +209,7 @@ pub trait Mailer {
     ///
     /// # Errors
     /// Returns an error if a template is missing/invalid or enqueuing fails.
+    #[must_use]
     async fn mail_template_multi(ctx: &AppContext, dir: &Dir<'_>, args: MultiArgs) -> Result<()> {
         let content = Template::new(dir)?.render(&args.locals)?;
         Self::mail_multi(
@@ -230,6 +235,7 @@ pub trait Mailer {
     ///
     /// # Errors
     /// Returns an error if no mailer is configured or the send fails.
+    #[must_use]
     async fn deliver_now(ctx: &AppContext, email: &Email) -> Result<()> {
         let opts = Self::opts();
         let mut email = email.clone();
@@ -244,6 +250,7 @@ pub trait Mailer {
     ///
     /// # Errors
     /// Returns an error if rendering fails, no mailer is configured, or the send fails.
+    #[must_use]
     async fn mail_template_now(ctx: &AppContext, dir: &Dir<'_>, args: Args) -> Result<()> {
         let content = Template::new(dir)?.render(&args.locals)?;
         Self::deliver_now(
