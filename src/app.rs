@@ -326,6 +326,40 @@ impl AppContext {
             shared_store: None,
         }
     }
+
+    /// Turn an existing context back into a builder, carrying **every**
+    /// component over.
+    ///
+    /// This is the escape hatch for [`Hooks::after_context`]. Because
+    /// `AppContext` is `#[non_exhaustive]`, functional-update syntax —
+    /// `AppContext { storage, ..ctx }`, the idiom that hook was documented
+    /// with — does not compile outside this crate. Starting over from
+    /// [`AppContext::builder`] does compile, but silently discards whatever
+    /// the boot sequence already placed on the context: the mailer, the queue
+    /// provider, the cache, the shared store. Round-tripping through the
+    /// builder replaces one component and keeps the rest.
+    ///
+    /// ```rust,ignore
+    /// async fn after_context(ctx: AppContext) -> Result<AppContext> {
+    ///     Ok(ctx
+    ///         .into_builder()
+    ///         .storage(Storage::single(storage::drivers::local::new()).into())
+    ///         .build())
+    /// }
+    /// ```
+    pub fn into_builder(self) -> AppContextBuilder {
+        AppContextBuilder {
+            environment: self.environment,
+            #[cfg(feature = "with-db")]
+            db: self.db,
+            config: self.config,
+            queue_provider: self.queue_provider,
+            mailer: self.mailer,
+            storage: Some(self.storage),
+            cache: Some(self.cache),
+            shared_store: Some(self.shared_store),
+        }
+    }
 }
 
 impl AppContextBuilder {
@@ -524,7 +558,7 @@ pub trait Hooks: Send {
     }
 
     /// Connects custom workers to the application using the provided
-    /// [`Processor`] and [`AppContext`].
+    /// [`Queue`] and [`AppContext`].
     async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()>;
 
     /// Registers custom tasks with the provided [`Tasks`] object.
@@ -833,5 +867,52 @@ mod tests {
             panic!("Removed non-cloneable option should be Some");
         }
         assert!(!ctx.shared_store.contains::<TestService>());
+    }
+
+    /// `after_context` is documented as the way to swap a component — storage,
+    /// most often — on the booted context. Since `AppContext` was sealed
+    /// `#[non_exhaustive]`, `AppContext { storage, ..ctx }` no longer compiles
+    /// in a user's app, and rebuilding from `AppContext::builder` silently
+    /// drops everything boot already attached. This asserts the round trip
+    /// keeps every component, so replacing one is not a way to lose the rest.
+    #[tokio::test]
+    async fn into_builder_carries_every_component_over() {
+        let mut ctx = get_app_context().await;
+        ctx.mailer = Some(crate::mailer::EmailSender::stub());
+        ctx.shared_store.insert(TestService {
+            name: "attached-at-boot".to_string(),
+            value: 7,
+        });
+
+        let before = ctx.clone();
+        let after = ctx
+            .into_builder()
+            .storage(Storage::single(storage::drivers::null::new()).into())
+            .build();
+
+        // The one component we asked to replace:
+        assert!(
+            !Arc::ptr_eq(&before.storage, &after.storage),
+            "storage should be the one we set"
+        );
+
+        // Everything else survives, by identity — not merely by being non-None.
+        assert!(
+            Arc::ptr_eq(&before.cache, &after.cache),
+            "cache was dropped"
+        );
+        assert!(
+            Arc::ptr_eq(&before.shared_store, &after.shared_store),
+            "shared store was dropped"
+        );
+        assert!(after.mailer.is_some(), "mailer was dropped");
+        assert_eq!(after.environment, before.environment);
+        assert!(
+            after
+                .shared_store
+                .get_ref::<TestService>()
+                .is_some_and(|service| service.value == 7),
+            "shared store contents were dropped"
+        );
     }
 }

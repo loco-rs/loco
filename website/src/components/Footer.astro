@@ -1,12 +1,17 @@
 ---
-// Ported verbatim from the reference `<footer>` block (markup + styles), see
+// Ported from the reference `<footer>` block (markup + styles), see
 // docs/superpowers/specs/2026-07-17-homepage-direction-a-reference.html.
 ---
 
 <footer>
   <div class="wrap">
     <span>© Loco — the one-person framework for Rust</span>
-    <span>Docs · GitHub · Discord · Blog</span>
+    <nav aria-label="Footer">
+      <a href="/docs/">Docs</a><span aria-hidden="true">·</span>
+      <a href="https://github.com/loco-rs/loco" target="_blank" rel="noopener noreferrer">GitHub</a><span aria-hidden="true">·</span>
+      <a href="https://discord.gg/fTvyBzwKS8" target="_blank" rel="noopener noreferrer">Discord</a><span aria-hidden="true">·</span>
+      <a href="/blog/">Blog</a>
+    </nav>
   </div>
 </footer>
 
@@ -27,5 +32,18 @@
     width: 100%;
     display: flex;
     justify-content: space-between;
+  }
+  nav {
+    display: flex;
+    gap: 0.5rem;
+  }
+  nav a:hover {
+    color: var(--ink);
+  }
+  @media (max-width: 640px) {
+    .wrap {
+      flex-direction: column;
+      gap: 1rem;
+    }
   }
 </style>

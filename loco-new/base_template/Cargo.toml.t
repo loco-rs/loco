@@ -54,7 +54,7 @@ include_dir = { version = "0.7" }
 {%- if settings.asset %}
 {%- if settings.asset.kind == "server" %}
 # view engine i18n
-fluent-templates = { version = "0.13", features = ["tera"] }
+fluent-templates = { version = "0.15", features = ["tera"] }
 unic-langid = { version = "0.9" }
 # /view engine
 {%- endif %}

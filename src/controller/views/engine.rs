@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use super::tera_builtins;
 use crate::{controller::views::ViewRenderer, Error, Result};
 use serde::Serialize;
 
@@ -59,20 +58,43 @@ impl TeraView {
         )
     }
 
-    /// Create a new Tera instance from a directory path
+    /// Create a new Tera instance from a directory path.
+    ///
+    /// `post_process` runs BEFORE templates are loaded: Tera 2 resolves filter
+    /// and function references when a template is added, so anything the
+    /// templates call — an i18n `t()`, a custom filter — must already be
+    /// registered or the load fails with `Unknown filter`. (Tera 1 resolved
+    /// these lazily at render time, so the order did not matter there.)
     ///
     /// # Errors
     ///
     /// This function will return an error if building fails
-    fn create_tera_instance<P: AsRef<Path>>(path: P) -> Result<tera::Tera> {
+    fn create_tera_instance<P: AsRef<Path>>(
+        path: P,
+        post_process: &(impl Fn(&mut tera::Tera) -> Result<()> + ?Sized),
+    ) -> Result<tera::Tera> {
         let path = path
             .as_ref()
             .to_str()
             .ok_or_else(|| Error::string("invalid glob"))?;
 
-        let mut tera = tera::Tera::new(path)?;
+        let mut tera = crate::tera::instance();
+        post_process(&mut tera)?;
 
-        tera_builtins::filters::register_filters(&mut tera);
+        // Read every match first, then register the whole set in ONE call.
+        // Tera 2 also resolves inheritance as templates are added and rejects a
+        // child whose parent it has not seen yet, so adding them one at a time
+        // would break any `{% extends %}` where the child sorts before its
+        // parent.
+        //
+        // `load_from_glob` pairs each match with the name Tera 1's glob
+        // constructor gave it (path relative to the glob base, e.g.
+        // `home/hello.html`), so existing `render(...)` calls are unaffected.
+        let mut templates = Vec::new();
+        for (file, name) in tera::load_from_glob(path)? {
+            templates.push((name, std::fs::read_to_string(&file)?));
+        }
+        tera.add_raw_templates(templates)?;
 
         Ok(tera)
     }
@@ -97,11 +119,9 @@ impl TeraView {
         let view_dir = path.as_ref();
         let view_path: PathBuf = view_dir.join("**").join("*.html");
 
-        // Create instance
-        let mut tera = Self::create_tera_instance(&view_path)?;
-
-        // Do post processing
-        post_process(&mut tera)?;
+        // Create instance. `post_process` runs inside, before templates load —
+        // see `create_tera_instance`.
+        let tera = Self::create_tera_instance(&view_path, &post_process)?;
 
         // Enable hot-reloading in debug build
         #[cfg(debug_assertions)]
@@ -184,7 +204,7 @@ impl TeraView {
 
 impl ViewRenderer for TeraView {
     fn render<S: Serialize>(&self, key: &str, data: S) -> Result<String> {
-        let context = tera::Context::from_serialize(data)?;
+        let context = tera::Context::from_serialize(&data)?;
 
         #[cfg(debug_assertions)]
         {
@@ -199,9 +219,8 @@ impl ViewRenderer for TeraView {
 
                 tera.dirty = false;
 
-                let mut new_engine = Self::create_tera_instance(&tera.view_path)?;
-
-                tera.post_process.as_ref()(&mut new_engine)?;
+                let new_engine =
+                    Self::create_tera_instance(&tera.view_path, tera.post_process.as_ref())?;
 
                 tera.engine = new_engine;
             }
@@ -216,9 +235,7 @@ impl ViewRenderer for TeraView {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
-    use serde_json::{json, Value};
+    use serde_json::json;
     use tree_fs;
 
     use super::*;
@@ -243,6 +260,152 @@ mod tests {
                 .unwrap(),
             "generate test2.html file: bar-txt"
         );
+    }
+
+    /// A custom filter registered through `post_process` must be usable BY the
+    /// templates. Tera 2 resolves filter references when a template is added,
+    /// so if registration ran after loading (as it did before this was fixed),
+    /// every app with a custom filter — or the standard i18n `t()` function —
+    /// failed at startup with `Unknown filter`.
+    #[test]
+    fn post_process_registrations_are_visible_to_templates() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .add_file("template/uses_filter.html", "{{ 'x' | shout }}")
+            .add_file("template/uses_fn.html", "{{ greet(who='world') }}")
+            .create()
+            .unwrap();
+
+        let v = TeraView::from_custom_dir(&tree_fs.root, |tera| {
+            tera.register_filter(
+                "shout",
+                |value: &tera::Value, _: tera::Kwargs, _: &tera::State| {
+                    tera::TeraResult::Ok(tera::Value::from(value.to_string().to_uppercase()))
+                },
+            );
+            tera.register_function("greet", |kwargs: tera::Kwargs, _: &tera::State| {
+                let who: String = kwargs.must_get("who")?;
+                tera::TeraResult::Ok(tera::Value::from(format!("hello {who}")))
+            });
+            Ok(())
+        })
+        .unwrap();
+
+        assert_eq!(
+            v.render("template/uses_filter.html", json!({})).unwrap(),
+            "X"
+        );
+        assert_eq!(
+            v.render("template/uses_fn.html", json!({})).unwrap(),
+            "hello world"
+        );
+    }
+
+    /// `get_env` was a Tera 1 built-in available in every template, including
+    /// views. Tera 2 dropped it, so Loco registers its own — this guards the
+    /// parity for the view engine specifically.
+    #[test]
+    fn get_env_is_available_in_views() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .add_file(
+                "template/env.html",
+                r#"{{ get_env(name="LOCO_VIEW_NOPE", default="fallback") }}"#,
+            )
+            .create()
+            .unwrap();
+
+        let v = TeraView::from_custom_dir(&tree_fs.root, |_| Ok(())).unwrap();
+        assert_eq!(
+            v.render("template/env.html", json!({})).unwrap(),
+            "fallback"
+        );
+    }
+
+    /// Inheritance across files must work regardless of the order the glob
+    /// yields them: Tera 2 rejects a child added before its parent, so the
+    /// whole set has to be registered in one call.
+    #[test]
+    fn inheritance_works_when_child_sorts_before_parent() {
+        // "a_child" sorts before "z_base", so a naive per-file loop would add
+        // the child first and fail.
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .add_file(
+                "template/z_base.html",
+                "<body>{% block content %}base{% endblock %}</body>",
+            )
+            .add_file(
+                "template/a_child.html",
+                "{% extends 'template/z_base.html' %}{% block content %}child{% endblock %}",
+            )
+            .create()
+            .unwrap();
+
+        let v = TeraView::from_custom_dir(&tree_fs.root, |_| Ok(())).unwrap();
+        assert_eq!(
+            v.render("template/a_child.html", json!({})).unwrap(),
+            "<body>child</body>"
+        );
+    }
+
+    /// The built-in number filters must be reachable from a real template, not
+    /// just callable as functions — they are registered through the same path
+    /// that Tera 2 validates at add time.
+    #[test]
+    fn builtin_filters_are_available_in_views() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .add_file("template/n.html", "{{ n | number_with_delimiter }}")
+            .create()
+            .unwrap();
+
+        let v = TeraView::from_custom_dir(&tree_fs.root, |_| Ok(())).unwrap();
+        assert_eq!(
+            v.render("template/n.html", json!({"n": 1_234_567}))
+                .unwrap(),
+            "1,234,567"
+        );
+    }
+
+    /// HTML autoescaping must stay on for `.html`/`.htm`/`.xml` views. Tera
+    /// applies it by template-name suffix, and the Tera 2 migration changed how
+    /// views are registered (glob constructor -> `add_raw_template`), so this
+    /// guards against silently rendering user data unescaped.
+    #[test]
+    fn html_views_autoescape_interpolated_values() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .add_file("template/xss.html", "<p>{{ evil }}</p>")
+            .create()
+            .unwrap();
+
+        let v = TeraView::from_custom_dir(&tree_fs.root, |_| Ok(())).unwrap();
+        let out = v
+            .render(
+                "template/xss.html",
+                json!({"evil": "<script>alert('x')</script>"}),
+            )
+            .unwrap();
+
+        assert!(
+            !out.contains("<script>"),
+            "view output was not HTML-escaped: {out}"
+        );
+        assert!(out.contains("&lt;script&gt;"), "unexpected escaping: {out}");
+    }
+
+    /// The counterpart: non-markup templates must NOT be escaped, or plain-text
+    /// output (e.g. `.txt` mail bodies) would grow entities.
+    #[test]
+    fn non_html_views_are_not_escaped() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .add_file("template/plain.txt", "{{ raw }}")
+            .create()
+            .unwrap();
+
+        // `.txt` is outside the glob the view engine loads, so register it the
+        // same way the engine does and assert on suffix behaviour directly.
+        let mut tera = crate::tera::instance();
+        tera.add_raw_template("plain.txt", "{{ raw }}").unwrap();
+        let ctx = tera::Context::from_serialize(&json!({"raw": "a < b & c"})).unwrap();
+        assert_eq!(tera.render("plain.txt", &ctx).unwrap(), "a < b & c");
+        drop(tree_fs);
     }
 
     #[cfg(debug_assertions)]
@@ -278,9 +441,12 @@ mod tests {
 
         let tree_dir = tree_fs.root.clone();
         let v = TeraView::from_custom_dir(&tree_fs.root, |tera| {
-            tera.register_filter("hello", |value: &Value, _: &HashMap<String, Value>| {
-                Ok(format!("Hello World v{value}").into())
-            });
+            tera.register_filter(
+                "hello",
+                |value: &tera::Value, _: tera::Kwargs, _: &tera::State| {
+                    tera::TeraResult::Ok(tera::Value::from(format!("Hello World v{value}")))
+                },
+            );
             Ok(())
         })
         .unwrap();

@@ -36,7 +36,7 @@ impl Routes {
     ///
     /// ```rust
     /// use loco_rs::prelude::*;
-    /// use serde::Serialize;;
+    /// use serde::Serialize;
     ///
     /// #[derive(Serialize)]
     /// struct Health {

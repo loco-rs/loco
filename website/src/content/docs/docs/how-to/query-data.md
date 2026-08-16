@@ -66,7 +66,7 @@ Available operators (see the [reference](/docs/reference/query-pagination#operat
 
 `date_range` returns a `DateRangeBuilder` instead of `Self`, because a range can have zero, one, or two bounds:
 
-```rust
+```rust no-syntax-check="`/* ... */` stands in for the values the reader supplies"
 use chrono::NaiveDateTime;
 
 let from: NaiveDateTime = /* ... */;

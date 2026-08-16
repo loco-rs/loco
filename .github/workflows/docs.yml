@@ -25,6 +25,11 @@ jobs:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
       - name: Verify curated LLM docs (llms.txt / llms-full.txt) against docs tree
         run: cargo run -p xtask -- llms-check
+      # Syntax, not types — a snippet truncated mid-expression or missing a
+      # brace renders perfectly and is wrong. Blocks that are deliberately not
+      # Rust opt out in the fence meta with a reason.
+      - name: Check that every Rust doc example parses
+        run: cargo run -p xtask -- docs-syntax
       - name: Compile the docs example app (verified-docs spine)
         run: cargo build --manifest-path examples/demo/Cargo.toml
       - name: Install zola
@@ -35,8 +40,16 @@ jobs:
         run: zola build
         working-directory: docs-site
       - run: cargo install snipdoc --features exec
+        # Verifies that every `<snip id=...>` block across the READMEs and the
+        # docs tree still matches its source in `snipdoc.yml`. `snipdoc check`
+        # exits 1 on drift, so this is a real gate — it was `continue-on-error`
+        # for a while, during which it was reporting drift in `README.es.md`
+        # that nothing acted on.
+        #
+        # `SNIPDOC_SKIP_EXEC_COMMANDS` still skips the handful of snippets whose
+        # source is a shelled-out command (`cargo loco --help`); those need a
+        # built binary, which this job does not produce.
       - run: snipdoc check
-        continue-on-error: true
         env:
           SNIPDOC_SKIP_EXEC_COMMANDS: true
 
@@ -51,13 +64,13 @@ jobs:
       - name: Checkout the code
         uses: actions/checkout@v7
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
         with:
           # The site lives in website/; read its packageManager pin, since
           # there is no root package.json.
           package_json_file: website/package.json
       - name: Install Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -67,6 +80,15 @@ jobs:
         working-directory: website
       - name: Unit tests (migration / link-rewrite scripts)
         run: pnpm test
+        working-directory: website
+      # `astro check` type-checks the .astro files and every `astro:content`
+      # call against the generated collection types. It was never wired up, and
+      # by the time it was it had 36 errors: `tsconfig.json` listed `.astro` in
+      # `include`, but TypeScript skips dot-directories when expanding a
+      # directory into a glob, so the generated content types were never loaded
+      # and every `getCollection` silently resolved to `any`.
+      - name: Type-check the site
+        run: pnpm check
         working-directory: website
       - name: Build the Astro site (fails on broken links)
         run: pnpm build

@@ -59,6 +59,11 @@ use std::fs;
             ("count".to_string(), "int".to_string()),
         ],
     }, "create_join_table_users_and_groups.rs")]
+#[case("rename_column", Component::Migration {
+        name: "RenameTitleToNameOnMovies".to_string(),
+        with_tz: true,
+        fields: vec![],
+    }, "rename_title_to_name_on_movies.rs")]
 #[case("empty", Component::Migration {
         name: "FixUsersTable".to_string(),
         with_tz: true,
@@ -90,6 +95,7 @@ fn can_generate(
         component,
         &AppInfo {
             app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
         },
     )
     .expect("Generation failed");
@@ -180,12 +186,114 @@ fn fail_when_migration_lib_not_exists(#[case] component: Component) {
         component,
         &AppInfo {
             app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
         },
     )
     .expect_err("Expected error when migration lib doesn't exist");
 
     assert_eq!(
         err.to_string(),
-        "cannot inject into migration/src/lib.rs: file does not exist"
+        "cannot inject into `migration/src/lib.rs`: file does not exist"
+    );
+}
+
+/// `generate migration RenameNameOnApplicants` used to fall through to the
+/// empty template, whose `up()` is `todo!()` — behind the message "Migration
+/// added! You can now apply it". Following that instruction panicked. The
+/// fallback is still `todo!()` (a migration that silently does nothing would
+/// be worse: `db migrate` would record it as applied), but the message must no
+/// longer claim the migration is runnable, and it must say which names *are*
+/// understood.
+#[test]
+fn an_uninferrable_migration_does_not_claim_to_be_runnable() {
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add("migration/src/lib.rs", MIGRATION_SRC_LIB)
+        .create()
+        .unwrap();
+
+    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+
+    let gen_result = generate(
+        &rrgen,
+        Component::Migration {
+            name: "FixUsersTable".to_string(),
+            with_tz: true,
+            fields: vec![],
+        },
+        &AppInfo {
+            app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
+        },
+    )
+    .expect("Generation failed");
+
+    let messages = collect_messages(&gen_result);
+
+    assert!(
+        !messages.contains("You can now apply it"),
+        "an unimplemented migration must not be advertised as runnable: {messages}"
+    );
+    assert!(
+        messages.contains("unimplemented") && messages.contains("panic"),
+        "the message should say what happens if you run it anyway: {messages}"
+    );
+    assert!(
+        messages.contains("RenameTitleToNameOnMovies"),
+        "the message should list the names Loco can infer: {messages}"
+    );
+}
+
+/// The inferrable forms must not regress into the `todo!()` fallback.
+#[rstest]
+#[case("CreateMovies", vec![("title".to_string(), "string".to_string())])]
+#[case("AddNameToUsers", vec![("name".to_string(), "string".to_string())])]
+#[case("RemoveNameFromUsers", vec![("name".to_string(), "string".to_string())])]
+#[case("AddUserRefToPosts", vec![("user".to_string(), "references".to_string())])]
+#[case("RenameTitleToNameOnMovies", vec![])]
+#[case("CreateJoinTableUsersAndGroups", vec![])]
+#[test]
+fn an_inferrable_migration_is_never_a_todo(
+    #[case] name: &str,
+    #[case] fields: Vec<(String, String)>,
+) {
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add("migration/src/lib.rs", MIGRATION_SRC_LIB)
+        .create()
+        .unwrap();
+
+    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+
+    generate(
+        &rrgen,
+        Component::Migration {
+            name: name.to_string(),
+            with_tz: true,
+            fields,
+        },
+        &AppInfo {
+            app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
+        },
+    )
+    .expect("Generation failed");
+
+    let migration_src = tree_fs.root.join("migration").join("src");
+    let generated = fs::read_dir(&migration_src)
+        .expect("migration/src should be readable")
+        .filter_map(|entry| {
+            let path = entry.expect("a readable entry").path();
+            (path.file_name()? != "lib.rs").then(|| fs::read_to_string(&path).unwrap_or_default())
+        })
+        .collect::<String>();
+
+    assert!(
+        !generated.is_empty(),
+        "`{name}` should have generated a migration"
+    );
+    assert!(
+        !generated.contains("todo!"),
+        "`{name}` is an inferrable name but fell through to the empty template:\n{generated}"
     );
 }

@@ -1,5 +1,10 @@
 #![allow(clippy::missing_const_for_fn)]
 #![allow(clippy::module_name_repetitions)]
+// Fires across the `Hooks` and `Mailer` trait methods, which return `Result` —
+// already `#[must_use]` — and are exported API a `#[must_use]` cannot be added
+// to without churn. Suppressed on Linux CI but not on macOS, so it also made
+// the lint gate platform-dependent.
+#![allow(clippy::must_use_candidate)]
 #![doc = include_str!("../README.md")]
 
 pub use self::errors::Error;

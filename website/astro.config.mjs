@@ -1,5 +1,4 @@
 import { defineConfig } from 'astro/config';
-import tailwind from '@astrojs/tailwind';
 import starlight from '@astrojs/starlight';
 import sitemap from '@astrojs/sitemap';
 
@@ -72,7 +71,6 @@ export default defineConfig({
   // of a cold full-page (MPA) navigation.
   prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
   integrations: [
-    tailwind({ applyBaseStyles: false }),
     starlight({
       title: 'Loco',
       customCss: ['./src/styles/starlight.css'],
@@ -89,7 +87,10 @@ export default defineConfig({
       // the EXISTING flat slugs (`docs/how-to/<name>`) — no files move, so
       // every published URL stays identical (URL parity preserved).
       sidebar: [
-        { label: 'Tutorials', autogenerate: { directory: 'docs/tutorials' } },
+        {
+          label: 'Tutorials',
+          items: [{ autogenerate: { directory: 'docs/tutorials' } }],
+        },
         {
           label: 'How-to guides',
           items: [
@@ -97,6 +98,7 @@ export default defineConfig({
             {
               label: 'Data & models',
               items: [
+                { slug: 'docs/how-to/add-a-database' },
                 { slug: 'docs/how-to/add-model' },
                 { slug: 'docs/how-to/query-data' },
                 { slug: 'docs/how-to/paginate' },
@@ -115,6 +117,7 @@ export default defineConfig({
                 { slug: 'docs/how-to/handle-errors' },
                 { slug: 'docs/how-to/add-middleware' },
                 { slug: 'docs/how-to/serve-assets' },
+                { slug: 'docs/how-to/build-a-spa' },
                 { slug: 'docs/how-to/websockets' },
               ],
             },
@@ -165,10 +168,22 @@ export default defineConfig({
             },
           ],
         },
-        { label: 'Reference', autogenerate: { directory: 'docs/reference' } },
-        { label: 'Explanation', autogenerate: { directory: 'docs/explanation' } },
-        { label: 'Extras', autogenerate: { directory: 'docs/extras' } },
-        { label: 'Resources', autogenerate: { directory: 'docs/resources' } },
+        {
+          label: 'Reference',
+          items: [{ autogenerate: { directory: 'docs/reference' } }],
+        },
+        {
+          label: 'Explanation',
+          items: [{ autogenerate: { directory: 'docs/explanation' } }],
+        },
+        {
+          label: 'Extras',
+          items: [{ autogenerate: { directory: 'docs/extras' } }],
+        },
+        {
+          label: 'Resources',
+          items: [{ autogenerate: { directory: 'docs/resources' } }],
+        },
       ],
       expressiveCode: {
         themes: [locoCodeTheme],

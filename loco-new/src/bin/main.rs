@@ -246,3 +246,17 @@ impl CmdExit {
         exit(self.code);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Cli;
+    use clap::CommandFactory;
+
+    /// Clap only validates the command tree when it is built. Without this, a
+    /// duplicated long flag or a conflicting short reaches users as a runtime
+    /// panic the first time they run `loco`.
+    #[test]
+    fn command_tree_is_well_formed() {
+        Cli::command().debug_assert();
+    }
+}

@@ -92,6 +92,8 @@ Reach for `Error::string("...")` when you have a plain `&str`/message and no sou
 
 If an endpoint needs to render errors differently for HTML vs. JSON clients, match on both the fallible call's `Result` and the negotiated format in one place — see [Respond with different formats](/docs/how-to/respond-formats#4-combine-format-negotiation-with-error-handling).
 
+Note the boundary: that negotiation is something *your handler* does. An `Error` that propagates out of a handler is rendered by the framework's own `IntoResponse`, which always emits JSON (`{"error": ..., "description": ...}`) regardless of the request's `Accept` header. If an HTML client must see an HTML error page, catch the `Result` in the handler as above rather than letting the error propagate.
+
 ## Verify
 
 ```sh

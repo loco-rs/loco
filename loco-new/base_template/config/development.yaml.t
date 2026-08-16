@@ -7,7 +7,7 @@ logger:
   # Enable pretty backtrace (sets RUST_BACKTRACE=1)
   pretty_backtrace: true
   # Log level, options: trace, debug, info, warn or error.
-  level: {{ get_env(name="LOG_LEVEL", default="debug") }}
+  level: <%= get_env(name="LOG_LEVEL", default="debug") %>
   # Define the logging format. options: compact, pretty or json
   format: compact
   # By default the logger has filtering only logs that came from your code or logs that came from `loco` framework. to see all third party libraries
@@ -17,9 +17,11 @@ logger:
 # Web server configuration
 server:
   # Port on which the server will listen. the server binding is 0.0.0.0:{PORT}
-  port: {{ get_env(name="PORT", default="5150") }}
+  # Every Loco app defaults to 5150, so a second one on this machine will
+  # collide. Override without editing this file: `PORT=5151 cargo loco start`.
+  port: <%= get_env(name="PORT", default="5150") %>
   # Binding for the server (which interface to bind to)
-  binding: {{ get_env(name="BINDING", default="localhost") }}
+  binding: <%= get_env(name="BINDING", default="localhost") %>
   # The UI hostname or IP address that mailers will point to.
   host: http://localhost
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
@@ -65,17 +67,17 @@ queue:
   kind: {{settings.background.queue_kind}}
   {% if settings.background.queue_kind == "Redis" %}
   # Redis connection URI
-  uri: {% raw %}{{{% endraw %} get_env(name="REDIS_URL", default="redis://127.0.0.1") {% raw %}}}{% endraw %}
+  uri: <%= get_env(name="REDIS_URL", default="redis://127.0.0.1") %>
   # Dangerously flush all data in Redis on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_flush: false
   {% elif settings.background.queue_kind == "Postgres" %}
   # Postgres connection URI
-  uri: {% raw %}{{{% endraw %} get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_development") {% raw %}}}{% endraw %}
+  uri: <%= get_env(name="DATABASE_URL", default="postgres://loco:loco@localhost:5432/loco_development") %>
   # Dangerously flush all data in the queue table on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_flush: false
   {% elif settings.background.queue_kind == "Sqlite" %}
   # SQLite connection URI
-  uri: {% raw %}{{{% endraw %} get_env(name="QUEUE_URL", default="sqlite://loco_development.sqlite?mode=rwc") {% raw %}}}{% endraw %}
+  uri: <%= get_env(name="QUEUE_URL", default="sqlite://loco_development.sqlite?mode=rwc") %>
   # Dangerously flush all data in the queue table on startup. dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_flush: false
   {% endif %}
@@ -86,12 +88,18 @@ queue:
 
 # Mailer Configuration.
 mailer:
+  # Sending mail in development needs something listening on the port below.
+  # Run a local catcher — mailpit, MailHog or maildev all default to SMTP on
+  # 1025 with a web inbox on 8025 — e.g. `docker run -p 1025:1025 -p 8025:8025
+  # axllent/mailpit`, then read the mail at http://localhost:8025.
+  # Prefer not to run one? Set `stub: true` here (as `config/test.yaml` does)
+  # to record deliveries in memory instead of sending them.
   # SMTP mailer configuration.
   smtp:
     # Enable/Disable smtp mailer.
     enable: true
     # SMTP server host. e.x localhost, smtp.gmail.com
-    host: {{ get_env(name="MAILER_HOST", default="localhost") }}
+    host: <%= get_env(name="MAILER_HOST", default="localhost") %>
     # SMTP server port
     port: 1025
     # Use secure connection (SSL/TLS).
@@ -115,17 +123,17 @@ mailer:
 # Database Configuration
 database:
   # Database connection URI
-  uri: {% raw %}{{{% endraw %} get_env(name="DATABASE_URL", default="{{settings.db.endpoint | replace(from='NAME', to=settings.package_name) | replace(from='ENV', to='development')}}") {% raw %}}}{% endraw %}
+  uri: <%= get_env(name="DATABASE_URL", default="{{settings.db.endpoint | replace(from='NAME', to=settings.package_name) | replace(from='ENV', to='development')}}") %>
   # When enabled, the sql query will be logged.
-  enable_logging: {{ get_env(name="DB_LOGGING", default="false") }}
+  enable_logging: <%= get_env(name="DB_LOGGING", default="false") %>
   # Set the timeout duration when acquiring a connection.
-  connect_timeout: {% raw %}{{{% endraw %} get_env(name="DB_CONNECT_TIMEOUT", default="500") {% raw %}}}{% endraw %}
+  connect_timeout: <%= get_env(name="DB_CONNECT_TIMEOUT", default="500") %>
   # Set the idle duration before closing a connection.
-  idle_timeout: {% raw %}{{{% endraw %} get_env(name="DB_IDLE_TIMEOUT", default="500") {% raw %}}}{% endraw %}
+  idle_timeout: <%= get_env(name="DB_IDLE_TIMEOUT", default="500") %>
   # Minimum number of connections for a pool.
-  min_connections: {% raw %}{{{% endraw %} get_env(name="DB_MIN_CONNECTIONS", default="1") {% raw %}}}{% endraw %}
+  min_connections: <%= get_env(name="DB_MIN_CONNECTIONS", default="1") %>
   # Maximum number of connections for a pool.
-  max_connections: {% raw %}{{{% endraw %} get_env(name="DB_MAX_CONNECTIONS", default="1") {% raw %}}}{% endraw %}
+  max_connections: <%= get_env(name="DB_MAX_CONNECTIONS", default="1") %>
   # Run migration up when application loaded
   auto_migrate: true
   # Truncate database when application loaded. This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
@@ -144,4 +152,14 @@ auth:
     secret: {{20 | random_string }}
     # Token expiration time in seconds
     expiration: 604800 # 7 days
+    # Where to read the token from. Omitted => `Authorization: Bearer <token>`.
+    # A cookie or query parameter is a single map with a `from:` tag:
+    #
+    # location:
+    #   from: Cookie
+    #   name: auth_token
+    #
+    # `from:` is one of Bearer, Cookie, Query. Cookie and Query also take a
+    # `name:`. A YAML list of these tries each in order and uses the first
+    # that yields a token. See https://loco.rs/docs/how-to/jwt-locations
 {%- endif %}

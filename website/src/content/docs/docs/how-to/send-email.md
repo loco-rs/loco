@@ -15,7 +15,7 @@ A mailer delivers over SMTP in the background, using the same [background worker
 cargo loco generate mailer auth
 ```
 
-This creates `src/mailers/auth.rs`, adds `pub mod auth;` to `src/mailers/mod.rs`, and scaffolds a `welcome/` template directory:
+This creates `src/mailers/auth.rs`, adds `pub mod auth;` to `src/mailers/mod.rs`, and scaffolds a `welcome/` template directory plus a `shared/` one holding the partials every mailer can extend:
 
 ```
 src/
@@ -25,6 +25,10 @@ src/
         subject.t
         html.t
         text.t
+    shared/          <-- layout partials shared by all mailers, written once
+      base.t
+      subject.t
+      text.t
     auth.rs          <-- mailer definition
 ```
 
@@ -35,6 +39,7 @@ The generated mailer looks like this:
 use loco_rs::prelude::*;
 use serde_json::json;
 
+static shared: Dir<'_> = include_dir!("src/mailers/shared");
 static welcome: Dir<'_> = include_dir!("src/mailers/auth/welcome");
 
 #[allow(clippy::module_name_repetitions)]
@@ -42,9 +47,10 @@ pub struct AuthMailer {}
 impl Mailer for AuthMailer {}
 impl AuthMailer {
     pub async fn send_welcome(ctx: &AppContext, to: &str, msg: &str) -> Result<()> {
-        Self::mail_template(
+        Self::mail_template_with_shared(
             ctx,
             &welcome,
+            &[&shared],
             mailer::Args {
                 to: to.to_string(),
                 locals: json!({
@@ -101,7 +107,7 @@ mailer:
     tls: implicit # overrides `secure` — see below
     auth:
       user: postmaster@mg.example.com
-      password: "{{ get_env(name='SMTP_PASSWORD') }}"
+      password: "<%= get_env(name='SMTP_PASSWORD') %>"
     hello_name: mail.example.com # optional EHLO client id
 ```
 
@@ -189,7 +195,7 @@ use loco_rs::testing::prelude::*;
 async fn can_register() {
     configure_insta!();
 
-    request::<App, Migrator, _, _>(|request, ctx| async move {
+    request::<App, _, _>(|request, ctx| async move {
         // .. call the endpoint that sends an email ..
 
         with_settings!({ filters => cleanup_email() }, {

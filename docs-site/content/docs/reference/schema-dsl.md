@@ -249,7 +249,7 @@ The generator CLI flag that maps to the `_without_timestamps` functions is **`--
 ```sh
 loco g migration CreatePosts title:string --without-tz
 loco g migration CreateJoinTableUsersAndGroups count:int --without-tz
-loco g scaffold posts title:string! user:references --api --without-tz
+loco g scaffold posts title:string! user:references --without-tz
 ```
 (`src/cli.rs:193`, `:237`, `:241`, `:267`)
 
@@ -257,4 +257,4 @@ loco g scaffold posts title:string! user:references --api --without-tz
 
 ## Related: generator field-type mapping
 
-The `loco g model|migration|scaffold` field-type shorthand (e.g. `title:string!`, `count:int^`, `user:references`) maps onto this same `ColType` surface via `loco-gen/src/mappings.json` (`col_type` column). Notably, the generator's `int`/`unsigned` shorthand also produces 64-bit columns (`int` → `ColType::BigIntegerNull` / `Option<i64>`, `int!` → `ColType::BigInteger` / `i64`, `unsigned` family → `BigUnsigned*` / `i64`) — consistent with the `PkAuto` 64-bit default on this page. The full field-type table (all ~50 shorthand entries) belongs on the generators reference page, not yet published as of this writing.
+The `loco g model|migration|scaffold` field-type shorthand (e.g. `title:string!`, `count:int^`, `user:references`) maps onto this same `ColType` surface via `loco-gen/src/column.rs` (the `parse_column` function and `ScalarType` enum). Notably, the generator's `int`/`unsigned` shorthand also produces 64-bit columns (`int` → `ColType::BigIntegerNull` / `Option<i64>`, `int!` → `ColType::BigInteger` / `i64`, `unsigned` family → `BigUnsigned*` / `i64`) — consistent with the `PkAuto` 64-bit default on this page. The full field-type table (all ~50 shorthand entries) belongs on the generators reference page, not yet published as of this writing.

@@ -5,7 +5,7 @@ sidebar:
   order: 61
 ---
 
-Goal: change what `cargo loco generate <kind>` produces — e.g. add a header to every generated controller, or tweak the HTMX scaffold views — without forking Loco.
+Goal: change what `cargo loco generate <kind>` produces — e.g. add a header to every generated controller, or tweak the React pages a scaffold emits — without forking Loco.
 
 Every generator kind covered in [Using generators](/docs/how-to/use-generators) is driven by `.t` template files baked into the `loco-gen` crate. `cargo loco generate override` copies one of those templates (or a whole folder of them) into your app's own `.loco-templates/` directory; from then on, generation runs read your copy instead of the built-in one.
 
@@ -24,7 +24,7 @@ This prints a tree of all available templates plus example invocations — it ig
 Before copying, check what's under a given path (without actually copying anything) by adding `--info`:
 
 ```sh
-cargo loco generate override scaffold/htmx --info
+cargo loco generate override scaffold/frontend --info
 ```
 
 ## 3. Copy one file, a folder, or everything
@@ -33,8 +33,8 @@ cargo loco generate override scaffold/htmx --info
 # override a single template file
 cargo loco generate override scaffold/api/controller.t
 
-# override every template under a folder (e.g. the whole htmx scaffold)
-cargo loco generate override scaffold/htmx
+# override every template under a folder (e.g. all the scaffold's frontend pages)
+cargo loco generate override scaffold/frontend
 
 # override every template in the project
 cargo loco generate override .
@@ -59,7 +59,7 @@ rm .loco-templates/scaffold/api/controller.t
 ```sh
 cargo loco generate override scaffold/api/controller.t
 # edit .loco-templates/scaffold/api/controller.t
-cargo loco generate controller widgets index --api
+cargo loco generate controller widgets show
 ```
 
 Confirm the generated `src/controllers/widgets.rs` reflects your edited template (e.g. the header/comment you added), not the stock output.

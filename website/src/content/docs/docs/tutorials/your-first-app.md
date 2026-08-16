@@ -20,7 +20,7 @@ cargo install sea-orm-cli
 
 ## 2. Generate a new app
 
-Run `loco new` with the database, background-worker, and asset flags spelled out explicitly. Doing this up front skips every interactive prompt except one (the app name) — a fully deterministic, scriptable way to create an app:
+Run `loco new` with the app name and the database, background-worker, and asset flags spelled out explicitly. With all four supplied there is nothing left to ask, so the wizard skips every prompt — a fully deterministic, scriptable way to create an app:
 
 ```sh
 loco new --name hello_loco --db sqlite --bg async --assets none
@@ -73,26 +73,31 @@ Stop the server with `Ctrl+C` before continuing — you'll restart it after gene
 
 ## 4. Generate a CRUD resource
 
-This is where Loco earns its keep. A **scaffold** generates a database migration, a Sea-ORM model/entity, a full CRUD controller, and request tests — in one command:
+This is where Loco earns its keep. A **scaffold** generates a database migration, a Sea-ORM model/entity, typed request/response DTOs, and a full CRUD controller — in one command:
 
 ```sh
-cargo loco generate scaffold posts title:string content:text --api
+cargo loco generate scaffold posts title:string content:text --no-auth
 ```
 
-`--api` tells the generator to produce a JSON API controller (there's no default scaffold kind — you must pick `--api`, `--html`, or `--htmx`). The output ends with a few confirmation lines:
+The scaffold is **adaptive** — no kind flag to pick. In a headless app (like this one) it produces a JSON API controller; if your app has a React frontend (`frontend/`), it also emits typed hooks and pages for the resource. The output ends with a few confirmation lines:
 
 ```sh
 * Migration for `posts` added! You can now apply it with `$ cargo loco db migrate && cargo loco db entities`.
-* A test for model `posts` was added. Run with `cargo test`.
-* Controller `Posts` was added successfully.
-* Tests for controller `Posts` was added successfully. Run `cargo test`.
+* A test for model `Posts` was added. Run with `cargo test`.
+* Controller `Post` was added successfully.
+* DTO `PostDto` was added successfully.
 ```
+
+<div class="infobox">
+<strong>Why <code>--no-auth</code>?</strong> Scaffolded routes are authenticated by default: every handler takes an <code>auth::JWT</code> extractor, so an anonymous <code>curl</code> gets <code>401 Unauthorized</code>. That's the right default for a real resource, but it would turn this lesson into an auth tutorial. <code>--no-auth</code> generates the same controller with public routes. To see the authenticated flavor — register, log in, send the bearer token — follow <a href="/docs/tutorials/saas-with-auth">Build a small authenticated app</a>.
+</div>
 
 Unlike a plain `migration` generator, `scaffold` (like `model`) already **applied** the migration and regenerated the Sea-ORM entities for you — there's nothing left to run manually. You should now have:
 
 ```
 src/
   controllers/posts.rs      <- CRUD handlers + routes
+  dtos/posts.rs             <- request/response types
   models/_entities/posts.rs <- generated Sea-ORM entity
   models/posts.rs           <- your extension point
 migration/
@@ -115,15 +120,17 @@ $ curl -X POST -H "Content-Type: application/json" -d '{
   "content": "It works."
 }' localhost:5150/api/posts
 
-{"id":1,"created_at":"...","updated_at":"...","title":"My first Loco post","content":"It works."}
+{"id":1,"title":"My first Loco post","content":"It works.","created_at":"...","updated_at":"..."}
 ```
 
 And list it back:
 
 ```sh
 $ curl localhost:5150/api/posts
-[{"id":1,"created_at":"...","updated_at":"...","title":"My first Loco post","content":"It works."}]
+{"items":[{"id":1,"title":"My first Loco post","content":"It works.","created_at":"...","updated_at":"..."}],"page":1,"page_size":25,"total_pages":1,"total_items":1}
 ```
+
+The list endpoint is paginated, so it answers with a page envelope rather than a bare array. `page` and `page_size` are query parameters — `curl 'localhost:5150/api/posts?page=2&page_size=10'` — and the metadata field names are the same ones the framework's own [pagination helpers](/docs/how-to/paginate) use.
 
 That's a full round trip: a generated migration created the `posts` table, a generated Sea-ORM entity modeled it, and a generated controller exposed it over HTTP — with zero hand-written Rust.
 

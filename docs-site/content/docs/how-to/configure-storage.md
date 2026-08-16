@@ -206,7 +206,38 @@ If you need the whole payload as one `Bytes` buffer anyway, `BytesStream::collec
 
 **Strategy caveat:** streaming isn't uniformly "true streaming" once a strategy other than `SingleStrategy` is involved. `ReplicatedStrategy` unifies the former mirror/backup behavior: reads (both the buffered `download` and `download_stream`) fall back to secondaries when `read_from_secondaries` is set — i.e. constructed via `ReplicatedStrategy::mirror` — and are served from the primary only when constructed via `ReplicatedStrategy::backup`. Either way, `upload_stream` buffers the whole payload once via `collect()` and then fans out concurrently to secondaries. If you need guaranteed zero-buffering streaming to a single store, stick to `SingleStrategy` (the default).
 
-## 6. Verify
+## 6. Check existence, list, and stat
+
+`Storage` also exposes `exists`, `list`, and `stat`, each going through the selected strategy the same way `upload`/`download` do (with `exists_with_policy`/`list_with_policy`/`stat_with_policy` siblings for overriding the strategy per call).
+
+```rust
+use std::path::Path;
+
+// Does a key exist?
+let found = ctx.storage.exists(Path::new("uploads/report.pdf")).await?;
+
+// List everything under a prefix, recursively.
+let all_entries = ctx.storage.list(Path::new("uploads"), true).await?;
+
+// List one level deep — child prefixes come back as directory entries.
+let top_level = ctx.storage.list(Path::new("uploads"), false).await?;
+
+// Metadata for a single key, without downloading its content.
+let meta = ctx.storage.stat(Path::new("uploads/report.pdf")).await?;
+println!("{} bytes, is_dir={}", meta.content_length.unwrap_or(0), meta.is_dir);
+```
+
+Each entry returned by `list`/`stat` is a `storage::drivers::ListEntry` (prefer `ListEntry::new(...)` over struct literals).
+
+On `ReplicatedStrategy` (mirror / `read_from_secondaries`):
+
+- `stat` falls back to secondaries on primary error (same as `download`)
+- `exists` falls back when the primary reports `false` **or** errors (a miss is not itself an error)
+- `list` falls back when the primary errors **or** returns an empty listing; empty secondaries are skipped so a later secondary with data still wins
+
+Backup mode (`read_from_secondaries: false`) keeps all three primary-only.
+
+## 7. Verify
 
 ```rust
 use loco_rs::testing::prelude::*;

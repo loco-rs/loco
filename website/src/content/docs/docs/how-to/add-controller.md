@@ -12,18 +12,20 @@ This guide assumes a working Loco app (`cargo loco start` runs). For the full `R
 ## 1. Generate a controller
 
 ```sh
-cargo loco generate controller <NAME> [ACTION ...] (--api|--html|--htmx)
+cargo loco generate controller <NAME> [ACTION ...]
 ```
 
-One of `--api`, `--html`, or `--htmx` is **required** — there is no default kind; omitting all three is a hard error. Additional positional arguments become extra actions (handler functions + routes) alongside the default `index`.
+Controllers are generated as JSON API controllers — no kind flag to pick. Additional positional arguments become extra actions (handler functions + routes) alongside the default `index`.
 
 ```sh
-cargo loco generate controller notes list get --api
+cargo loco generate controller notes list show
 ```
+
+Avoid naming an action after an HTTP method (`get`, `post`, `delete`, ...): the generated file does `use loco_rs::prelude::*`, which brings in `axum::routing::get` and friends, and a handler with the same name shadows the routing function the generated `routes()` needs.
 
 This:
 
-- creates `src/controllers/notes.rs` with an `index` handler plus one handler per extra action (`list`, `get`), each returning `format::empty()` as a starting point
+- creates `src/controllers/notes.rs` with an `index` handler plus one handler per extra action (`list`, `show`), each returning `format::empty()` as a starting point
 - adds `pub mod notes;` to `src/controllers/mod.rs`
 - injects `.add_route(controllers::notes::routes())` into your `routes()` implementation in `src/app.rs` — no manual wiring needed
 - generates a matching test file under `tests/requests/`
@@ -37,11 +39,11 @@ pub fn routes() -> Routes {
         .prefix("api/notes/")
         .add("/", get(index))
         .add("list", get(list))
-        .add("get", get(get))
+        .add("show", get(show))
 }
 ```
 
-Edit the handler bodies and route methods (`get`/`post`/`put`/`delete`, etc.) to fit your endpoint. `--html`/`--htmx` generate the same shape plus `src/views/<name>.rs` view stubs and templates under `assets/views/` — see [Render server-side views](/docs/how-to/render-views) for what to do with those.
+Edit the handler bodies and route methods (`get`/`post`/`put`/`delete`, etc.) to fit your endpoint. Controllers return JSON by default; if you'd rather render server-side HTML, see [Render server-side views](/docs/how-to/render-views).
 
 ## 2. Confirm the routes are registered
 
@@ -55,7 +57,7 @@ cargo loco routes
 [GET] /_readiness
 [GET] /api/notes/
 [GET] /api/notes/list
-[GET] /api/notes/get
+[GET] /api/notes/show
 ```
 
 If your new routes don't appear, check that `src/app.rs`'s `routes()` implementation calls `.add_route(controllers::notes::routes())` (the generator does this for you, but double-check after a manual edit or merge conflict).

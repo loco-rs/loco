@@ -1,6 +1,6 @@
 +++
 title = "The configuration model"
-description = "How Loco resolves an environment, which config file wins, why YAML is rendered through Tera first, and how secrets flow in without a dedicated vault type."
+description = "How Loco resolves an environment, which config file wins, why YAML is rendered through a template pass first, and how secrets flow in without a dedicated vault type."
 date = 2026-07-03T00:00:00+00:00
 updated = 2026-07-03T00:00:00+00:00
 draft = false
@@ -42,18 +42,34 @@ If neither exists, boot fails outright with "no configuration file found." The `
 
 Both tiers are read from a `config/` folder by default; `LOCO_CONFIG_FOLDER` overrides that location, which matters for deployments that mount configuration from somewhere other than the app's own source tree.
 
-## The YAML is a Tera template first, a config file second
+## The YAML is templated first, a config file second
 
-Before `serde_yaml` ever sees the file, its entire contents are rendered as a [Tera](https://keats.github.io/tera/) template (`Tera::one_off(.., autoescape = false)`). This is a small design choice with a real consequence: it's what makes patterns like this legal inside a Loco config file at all —
+Before `serde_yaml` ever sees the file, its entire contents are rendered as a template. This is a small design choice with a real consequence: it's what makes patterns like this legal inside a Loco config file at all —
 
 ```yaml
 server:
-  port: {{ get_env(name="NODE_PORT", default=5150) }}
+  port: <%= get_env(name="NODE_PORT", default="5150") %>
 ```
 
-`get_env(name=.., default=..)` here is **Tera's own built-in function**, not something Loco registers. Loco doesn't have a custom templating layer bolted onto YAML — it reuses a general-purpose template engine's existing capability (reading env vars, with a default) so that config files can be static-looking YAML *and* environment-aware at the same time, without inventing a second interpolation syntax. Anything else Tera can do in a one-off render (conditionals, other built-in functions) is available in a config file too, though `get_env` covers the overwhelming majority of real use.
+Three tag forms are recognized, each rendered before YAML parsing ever runs:
 
-The practical implication: a config value that looks hardcoded may not be — always check for `{{ }}` before assuming a YAML value is literal — and a value that needs to differ between "what's checked into git" and "what's true on this machine/host" belongs behind `get_env`, not behind a second config file.
+- `<%= expr %>` — interpolate a value (the common case, and the only one most configs need)
+- `<% stmt %>` — a statement or block (conditionals, loops)
+- `<%# text %>` — a comment, stripped from the rendered output entirely
+
+Rendering is purely textual: `<%= get_env(name="PORT", default="5150") %>` renders to the bare characters `5150`, and only then does `serde_yaml` parse the result and type it as an integer. A boolean or numeric field stays a boolean or numeric field — there's no need to quote a templated value just because it's templated.
+
+Under the hood, these tags still run through [Tera](https://keats.github.io/tera/) (`get_env(name=.., default=..)` is one of Tera's own built-in functions, not something Loco invented) — Loco simply translates the `<% %>` delimiters into Tera's native ones immediately before handing the file to `Tera::one_off(.., autoescape = false)`. Anything else Tera can do in a one-off render (conditionals, other built-in functions) is available in a config file too, though `get_env` covers the overwhelming majority of real use.
+
+### Why `<% %>` and not `{{ }}`
+
+Tera's own delimiters are `{{ }}`/`{% %}`, and earlier Loco versions used them directly. The problem: `{` is a YAML flow-mapping indicator, so `port: {{ get_env(...) }}` is not valid YAML *at rest* — it only ever worked because Loco's template pass rewrote the file before anything else got a chance to parse it as YAML. Any tool that reads the file as YAML first — prettier, yaml-language-server, an editor's format-on-save — sees `{{ ... }}` as two nested flow mappings and "normalizes" it into `{ { ... } }`, which breaks app startup. That's [loco-rs/loco#1727](https://github.com/loco-rs/loco/issues/1727).
+
+`<` is not a YAML indicator character, so `<%= ... %>` is an ordinary plain string scalar: the file parses as valid YAML *before* it's ever templated, and a formatter has nothing in it to restructure. This is the same trick Rails' ERB-in-`database.yml` has relied on for two decades.
+
+The legacy `{{ }}`/`{% %}` form still renders — this is not a breaking change, and existing config files keep working untouched — but using it now logs a deprecation warning, and it should be migrated to `<% %>` wherever a file might pass through a formatter (in practice, that's most places).
+
+The practical implication: a config value that looks hardcoded may not be — always check for `<% %>` (or the legacy `{{ }}`) before assuming a YAML value is literal — and a value that needs to differ between "what's checked into git" and "what's true on this machine/host" belongs behind `get_env`, not behind a second config file.
 
 ## Secrets: a convention, not a vault type
 

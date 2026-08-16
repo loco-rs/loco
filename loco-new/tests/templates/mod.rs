@@ -12,6 +12,7 @@ use rand::{rngs::StdRng, SeedableRng};
 mod asset;
 mod auth;
 mod background;
+mod config;
 mod db;
 mod features;
 mod initializers;

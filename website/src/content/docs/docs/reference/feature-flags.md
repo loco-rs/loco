@@ -21,12 +21,13 @@ A plain `loco-rs = "..."` dependency (no `default-features = false`) pulls in JW
 |---|---|---|---|
 | `auth` | **ON** | `dep:jsonwebtoken`, `jsonwebtoken/rust_crypto` | JWT authentication. Selects `jsonwebtoken`'s pure-Rust `rust_crypto` backend (jsonwebtoken 10 no longer bundles a crypto backend by default), so the flag stays self-contained and needs no C toolchain, even when enabled alone with `default-features = false`. |
 | `cli` | **ON** | `dep:clap` | Enables the `cargo loco` runtime CLI (`src/cli.rs`). |
-| `with-db` | **ON** | `dep:sea-orm`, `dep:sea-orm-migration`, `dep:sqlx`, `loco-gen/with-db` | Sea-ORM 2.0.0-rc database support. Gates the `db` CLI subcommand and the DB-dependent generators (`model`, `migration`, `scaffold`). |
+| `with-db` | **ON** | `dep:sea-orm`, `dep:sea-orm-migration`, `dep:sqlx`, `loco-gen/with-db` | Sea-ORM 2.0 database support. Gates the `db` CLI subcommand and the DB-dependent generators (`model`, `migration`, `scaffold`). |
 | `testing` | off | `dep:axum-test`, `dep:scraper`, `dep:tree-fs` | Test harness utilities. Also the feature set built for docs.rs (`[package.metadata.docs.rs] features = ["testing"]`, `Cargo.toml:211-212`) and used by the crate's own `dev-dependencies`. |
 | `cache_inmem` | **ON** | `dep:moka` | In-memory cache backend. |
 | `cache_redis` | off | `dep:bb8-redis`, `dep:bb8` | Redis-backed cache pool. |
 | `worker` | **ON** | `dep:sqlx`, `dep:ulid` | Background job queue/workers, Postgres and SQLite backends. Which one runs is chosen at runtime by `queue.kind` in config (`Postgres` or `Sqlite`), not by a separate feature per database. |
 | `worker_redis` | off | `worker`, `dep:redis` | Adds the Redis-backed queue backend on top of `worker` (implies it). Enable this if your app's `queue.kind` is `Redis`. |
+| `redis_tls` | off | `redis/tokio-rustls-comp`, `redis/tls-rustls-webpki-roots`, `dep:rustls` | Redis over TLS (`rediss://` URLs) for managed providers such as ElastiCache, Upstash, or Azure Cache. Arms both the worker and the cache Redis paths at once — they share the same `redis` crate — with webpki-bundled roots, so it stays portable to slim/distroless images. Enable it alongside `worker_redis`/`cache_redis` and point the config at a `rediss://` URL; no code changes are needed. |
 | `all_storage` | off | `storage_aws_s3` + `storage_azure` + `storage_gcp` | Umbrella flag — turns on every cloud storage backend at once. |
 | `storage_aws_s3` | off | `opendal/services-s3` | AWS S3 storage backend. |
 | `storage_azure` | off | `opendal/services-azblob` | Azure Blob storage backend. |

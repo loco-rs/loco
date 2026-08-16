@@ -48,9 +48,7 @@ impl Driver for SqliteDriver {
     }
 }
 
-/// `SQLite` [`QueueProvider`]: holds the pool, job registry, run options and
-/// cancellation token that used to live in the `Queue::Sqlite(..)` enum
-/// tuple.
+/// The `SQLite` [`QueueProvider`].
 pub struct SqliteQueue {
     pub pool: SqlitePool,
     pub registry: Arc<tokio::sync::Mutex<JobRegistry>>,
@@ -157,6 +155,10 @@ impl QueueProvider for SqliteQueue {
         clear_jobs_older_than(&self.pool, age_days, status).await
     }
 
+    async fn retry_failed(&self, id: Option<&str>) -> Result<u64> {
+        retry_failed(&self.pool, id).await
+    }
+
     async fn requeue(&self, age_minutes: &i64) -> Result<()> {
         requeue(&self.pool, age_minutes).await
     }
@@ -207,15 +209,9 @@ pub async fn initialize_database(pool: &SqlitePool) -> Result<()> {
                 priority INTEGER NOT NULL DEFAULT 0
             );
 
-            CREATE TABLE IF NOT EXISTS sqlt_loco_queue_lock (
-                id INTEGER PRIMARY KEY CHECK (id = 1),
-                is_locked BOOLEAN NOT NULL DEFAULT FALSE,
-                locked_at TIMESTAMP NULL
-            );
-
-            INSERT OR IGNORE INTO sqlt_loco_queue_lock (id, is_locked) VALUES (1, FALSE);
-
             CREATE INDEX IF NOT EXISTS idx_sqlt_queue_status_run_at ON sqlt_loco_queue(status, run_at);
+
+            DROP TABLE IF EXISTS sqlt_loco_queue_lock;
             ", JobStatus::Queued),
     ))
     .execute(pool)
@@ -282,25 +278,13 @@ pub async fn enqueue(
 }
 
 async fn dequeue(client: &SqlitePool, worker_tags: &[String]) -> Result<Option<Job>> {
-    let mut tx = client.begin().await?;
+    // `BEGIN IMMEDIATE` takes SQLite's write lock up front, so the SELECT below
+    // and the UPDATE that claims the row cannot interleave with another worker's
+    // — two workers can never be handed the same job. A plain `BEGIN` defers the
+    // lock until the first write, leaving the SELECT unprotected. Concurrent
+    // workers serialize here, waiting out the connection's `busy_timeout`.
+    let mut tx = client.begin_with("BEGIN IMMEDIATE").await?;
 
-    let acquired_write_lock = sqlx::query(
-        "UPDATE sqlt_loco_queue_lock SET
-            is_locked = TRUE,
-            locked_at = CURRENT_TIMESTAMP
-        WHERE id = 1 AND is_locked = FALSE",
-    )
-    .execute(&mut *tx)
-    .await?;
-
-    // Couldn't aquire the write lock
-    if acquired_write_lock.rows_affected() == 0 {
-        trace!("Unable to acquire queue lock, skipping job fetch");
-        tx.rollback().await?;
-        return Ok(None);
-    }
-
-    // Build the query with tag filtering
     let mut query = String::from(
         "SELECT id, name, task_data, status, run_at, interval, tags, priority
         FROM sqlt_loco_queue
@@ -309,34 +293,24 @@ async fn dequeue(client: &SqlitePool, worker_tags: &[String]) -> Result<Option<J
             run_at <= CURRENT_TIMESTAMP",
     );
 
-    // Apply tag filtering logic:
-    // 1. If worker has no tags, only process jobs with no tags
-    // 2. If worker has tags, only process jobs with at least one matching tag
+    // An untagged worker takes only untagged jobs; a tagged one takes any job
+    // carrying at least one of its tags.
     if worker_tags.is_empty() {
         query.push_str(" AND (tags IS NULL)");
     } else {
-        query.push_str(" AND (tags IS NOT NULL)");
-
-        // Add placeholders for the LIKE conditions
-        let mut conditions = Vec::new();
-        for _ in worker_tags {
-            conditions.push("json_extract(tags, '$') LIKE ?".to_string());
-        }
-
-        if !conditions.is_empty() {
-            query.push_str(" AND (");
-            query.push_str(&conditions.join(" OR "));
-            query.push(')');
-        }
+        let any_tag_matches =
+            vec!["json_extract(tags, '$') LIKE ?"; worker_tags.len()].join(" OR ");
+        query.push_str(" AND (tags IS NOT NULL) AND (");
+        query.push_str(&any_tag_matches);
+        query.push(')');
     }
 
     query.push_str(" ORDER BY priority DESC, run_at, id LIMIT 1");
 
     let mut db_query = sqlx::query(AssertSqlSafe(query)).bind(JobStatus::Queued.to_string());
 
-    // Add tag parameters to the query with proper JSON wildcard format
     for tag in worker_tags {
-        // Format tag for JSON string search: each tag needs to be in format "%\"tagname\"%"
+        // The tags column is a JSON array; match the quoted element as a substring.
         db_query = db_query.bind(format!("%\"{tag}\"%"));
     }
 
@@ -356,32 +330,11 @@ async fn dequeue(client: &SqlitePool, worker_tags: &[String]) -> Result<Option<J
         .execute(&mut *tx)
         .await?;
 
-        // Release the write lock
-        sqlx::query(
-            "UPDATE sqlt_loco_queue_lock 
-              SET is_locked = FALSE,
-                  locked_at = NULL
-              WHERE id = 1",
-        )
-        .execute(&mut *tx)
-        .await?;
-
         tx.commit().await?;
-
         Ok(Some(job))
     } else {
         trace!("No jobs available for processing");
-        // Release the write lock, no job found
-        sqlx::query(
-            "UPDATE sqlt_loco_queue_lock 
-              SET is_locked = FALSE,
-                  locked_at = NULL
-              WHERE id = 1",
-        )
-        .execute(&mut *tx)
-        .await?;
-
-        tx.commit().await?;
+        tx.rollback().await?;
         Ok(None)
     }
 }
@@ -462,16 +415,9 @@ pub async fn cancel_jobs_by_name(pool: &SqlitePool, name: &str) -> Result<()> {
 ///
 /// This function will return an error if it fails
 pub async fn clear(pool: &SqlitePool) -> Result<()> {
-    // Clear all rows in the relevant tables
-    sqlx::query(
-        "
-        DELETE FROM sqlt_loco_queue;
-        DELETE FROM sqlt_loco_queue_lock;
-        ",
-    )
-    .execute(pool)
-    .await?;
-
+    sqlx::query("DELETE FROM sqlt_loco_queue")
+        .execute(pool)
+        .await?;
     Ok(())
 }
 
@@ -523,6 +469,44 @@ pub async fn requeue(pool: &SqlitePool, age_minutes: &i64) -> Result<()> {
         .await?;
 
     Ok(())
+}
+
+/// Moves failed jobs back to [`JobStatus::Queued`], returning how many moved.
+///
+/// `run_at` is reset to now: a retry is an operator saying "run this again",
+/// and a job that failed on a future-dated retry schedule would otherwise sit
+/// queued until that time arrives. `requeue` is deliberately separate — it
+/// rescues jobs stranded in [`JobStatus::Processing`] by a crashed worker and
+/// cannot touch a failed one.
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub async fn retry_failed(pool: &SqlitePool, id: Option<&str>) -> Result<u64> {
+    let result = if let Some(id) = id {
+        debug!(job_id = %id, "Retrying failed job");
+        sqlx::query(
+            "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP, run_at = \
+             CURRENT_TIMESTAMP WHERE status = $2 AND id = $3",
+        )
+        .bind(JobStatus::Queued.to_string())
+        .bind(JobStatus::Failed.to_string())
+        .bind(id)
+        .execute(pool)
+        .await?
+    } else {
+        debug!("Retrying every failed job");
+        sqlx::query(
+            "UPDATE sqlt_loco_queue SET status = $1, updated_at = CURRENT_TIMESTAMP, run_at = \
+             CURRENT_TIMESTAMP WHERE status = $2",
+        )
+        .bind(JobStatus::Queued.to_string())
+        .bind(JobStatus::Failed.to_string())
+        .execute(pool)
+        .await?
+    };
+
+    Ok(result.rows_affected())
 }
 
 /// Deletes jobs from the `sqlt_loco_queue` table that are older than a specified number of days.
@@ -674,13 +658,6 @@ mod tests {
         pk: bool,
     }
 
-    #[derive(Debug, Serialize, FromRow)]
-    struct JobQueueLock {
-        id: i32,
-        is_locked: bool,
-        locked_at: Option<DateTime<Utc>>,
-    }
-
     fn reduction() -> &'static [(&'static str, &'static str)] {
         &[
             ("[A-Z0-9]{26}", "<REDACTED>"),
@@ -689,7 +666,17 @@ mod tests {
     }
 
     async fn init(db_path: &Path) -> Pool<Sqlite> {
-        let qcfg = SqliteQueueConfig {
+        let pool = connect(&config(db_path)).await.unwrap();
+        sqlx::query("DROP TABLE IF EXISTS sqlt_loco_queue")
+            .execute(&pool)
+            .await
+            .expect("drop table if exists");
+
+        pool
+    }
+
+    fn config(db_path: &Path) -> SqliteQueueConfig {
+        SqliteQueueConfig {
             uri: format!(
                 "sqlite://{}?mode=rwc",
                 db_path.join("sample.sqlite").display()
@@ -703,20 +690,7 @@ mod tests {
             poll_interval_sec: 1,
             num_workers: 1,
             reaper: None,
-        };
-
-        let pool = connect(&qcfg).await.unwrap();
-        sqlx::raw_sql(
-            r"
-        DROP TABLE IF EXISTS sqlt_loco_queue;
-        DROP TABLE IF EXISTS sqlt_loco_queue_lock;
-        ",
-        )
-        .execute(&pool)
-        .await
-        .expect("drop table if exists");
-
-        pool
+        }
     }
 
     async fn get_all_jobs(pool: &SqlitePool) -> Vec<Job> {
@@ -751,15 +725,14 @@ mod tests {
 
         assert!(initialize_database(&pool).await.is_ok());
 
-        for table in ["sqlt_loco_queue", "sqlt_loco_queue_lock"] {
-            let table_info: Vec<TableInfo> =
-                query_as::<_, TableInfo>(AssertSqlSafe(format!("PRAGMA table_info({table})")))
-                    .fetch_all(&pool)
-                    .await
-                    .unwrap();
+        let table = "sqlt_loco_queue";
+        let table_info: Vec<TableInfo> =
+            query_as::<_, TableInfo>(AssertSqlSafe(format!("PRAGMA table_info({table})")))
+                .fetch_all(&pool)
+                .await
+                .unwrap();
 
-            assert_debug_snapshot!(table, table_info);
-        }
+        assert_debug_snapshot!(table, table_info);
     }
 
     #[tokio::test]
@@ -804,15 +777,6 @@ mod tests {
         }, {
             assert_debug_snapshot!(jobs);
         });
-
-        // validate lock status
-        let job_lock: JobQueueLock =
-            query_as::<_, JobQueueLock>("select * from sqlt_loco_queue_lock")
-                .fetch_one(&pool)
-                .await
-                .unwrap();
-
-        assert!(!job_lock.is_locked);
     }
 
     #[tokio::test]
@@ -1014,24 +978,94 @@ mod tests {
             .fetch_one(&pool)
             .await
             .unwrap();
-        let lock_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlt_loco_queue_lock")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
         assert_ne!(job_count, 0);
-        assert_ne!(lock_count, 0);
 
         assert!(clear(&pool).await.is_ok());
         let job_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlt_loco_queue")
             .fetch_one(&pool)
             .await
             .unwrap();
-        let lock_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlt_loco_queue_lock")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
         assert_eq!(job_count, 0);
-        assert_eq!(lock_count, 0);
+    }
+
+    /// Two workers polling at once must never be handed the same job. This is
+    /// the whole reason `dequeue` opens with `BEGIN IMMEDIATE`; under a plain
+    /// `BEGIN` both transactions read the same row before either claims it.
+    #[tokio::test]
+    async fn concurrent_dequeue_never_hands_out_the_same_job() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let qcfg = SqliteQueueConfig {
+            max_connections: 8,
+            ..config(&tree_fs.root)
+        };
+        let pool = connect(&qcfg).await.expect("connect");
+        initialize_database(&pool).await.expect("init database");
+
+        const JOBS: usize = 20;
+        for i in 0..JOBS {
+            enqueue(
+                &pool,
+                &format!("Job{i}"),
+                serde_json::json!({}),
+                Utc::now(),
+                None,
+                None,
+                None,
+            )
+            .await
+            .expect("enqueue");
+        }
+
+        // More pollers than jobs, so every job is contended and the tail of the
+        // run also proves an empty queue stays empty.
+        let claimed = futures_util::future::join_all(
+            (0..JOBS * 2).map(|_| async { dequeue(&pool, &[]).await.expect("dequeue") }),
+        )
+        .await;
+
+        let mut ids: Vec<String> = claimed.into_iter().flatten().map(|j| j.id).collect();
+        let handed_out = ids.len();
+        ids.sort_unstable();
+        ids.dedup();
+        assert_eq!(handed_out, JOBS, "every job should be claimed exactly once");
+        assert_eq!(ids.len(), handed_out, "a job was handed to two workers");
+    }
+
+    /// `clear` must leave the queue usable. `dangerously_flush` runs it on
+    /// every boot, so a `clear` that breaks `dequeue` silently stops the
+    /// worker from ever picking up a job.
+    #[tokio::test]
+    async fn dequeue_still_works_after_clear() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let pool = init(&tree_fs.root).await;
+        initialize_database(&pool).await.expect("init database");
+
+        clear(&pool).await.expect("clear");
+
+        enqueue(
+            &pool,
+            "PostCleanupJob",
+            serde_json::json!({}),
+            Utc::now(),
+            None,
+            None,
+            None,
+        )
+        .await
+        .expect("enqueue");
+
+        let job = dequeue(&pool, &[]).await.expect("dequeue");
+        assert_eq!(
+            job.map(|j| j.name),
+            Some("PostCleanupJob".to_string()),
+            "the queue stopped handing out jobs after clear()"
+        );
     }
 
     #[tokio::test]
@@ -1204,6 +1238,88 @@ mod tests {
             .expect("get jobs")
             .len(),
             2
+        );
+    }
+
+    #[tokio::test]
+    async fn can_retry_failed_jobs() {
+        let tree_fs = tree_fs::TreeBuilder::default()
+            .drop(true)
+            .create()
+            .expect("create temp folder");
+        let pool = init(&tree_fs.root).await;
+        assert!(initialize_database(&pool).await.is_ok());
+
+        sqlx::query(
+            r"INSERT INTO sqlt_loco_queue (id, name, task_data, status, run_at, created_at, updated_at) VALUES
+             ('failed1', 'Failed Job 1', '{}', 'failed', DATETIME('now', '+1 day'), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+             ('failed2', 'Failed Job 2', '{}', 'failed', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+             ('stuck', 'Stuck Job', '{}', 'processing', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+             ('done', 'Done Job', '{}', 'completed', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        // `requeue` is the pre-existing verb and is documented as the recourse
+        // for a failed job. It is not: it only touches `processing`.
+        requeue(&pool, &0).await.expect("requeue");
+        assert_eq!(
+            get_jobs(&pool, Some(&vec![JobStatus::Failed]), None)
+                .await
+                .expect("get jobs")
+                .len(),
+            2,
+            "requeue must leave failed jobs alone"
+        );
+
+        assert_eq!(
+            retry_failed(&pool, Some("failed1")).await.expect("retry"),
+            1
+        );
+        let failed = get_jobs(&pool, Some(&vec![JobStatus::Failed]), None)
+            .await
+            .expect("get jobs");
+        assert_eq!(failed.len(), 1);
+        assert_eq!(failed[0].id, "failed2");
+
+        // `failed1` was scheduled a day out; a retry that left `run_at` alone
+        // would queue a job the worker cannot pick up until tomorrow.
+        let queued = get_jobs(&pool, Some(&vec![JobStatus::Queued]), None)
+            .await
+            .expect("get jobs");
+        let retried = queued
+            .iter()
+            .find(|job| job.id == "failed1")
+            .expect("the retried job is queued");
+        // Tolerance, not sloppiness: `NOW()` is the database's clock, and a
+        // containerised Postgres runs ~100ms ahead of the host. The property
+        // under test is that `run_at` is no longer a day out, so compare
+        // against the schedule it was rescued from rather than against `now`.
+        assert!(
+            retried.run_at < Utc::now() + chrono::Duration::hours(1),
+            "run_at must be reset so the job is immediately runnable, got {}",
+            retried.run_at
+        );
+
+        assert_eq!(retry_failed(&pool, None).await.expect("retry"), 1);
+        assert!(get_jobs(&pool, Some(&vec![JobStatus::Failed]), None)
+            .await
+            .expect("get jobs")
+            .is_empty());
+
+        assert_eq!(
+            get_jobs(&pool, Some(&vec![JobStatus::Completed]), None)
+                .await
+                .expect("get jobs")
+                .len(),
+            1
+        );
+        assert_eq!(
+            retry_failed(&pool, Some("nonexistent"))
+                .await
+                .expect("retry"),
+            0
         );
     }
 

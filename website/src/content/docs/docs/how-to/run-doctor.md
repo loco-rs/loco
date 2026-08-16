@@ -1,6 +1,6 @@
 ---
 title: Diagnose your app with cargo loco doctor
-description: Run `cargo loco doctor` to validate DB/queue connectivity, dependency versions, and initializer health, with the --config and --production flags.
+description: Run `cargo loco doctor` to validate DB/queue connectivity, dependency versions, and initializer health, and see how the environment changes which checks run.
 sidebar:
   order: 62
 ---
@@ -39,7 +39,7 @@ If **any** check comes back `NotOk`, the process exits with a non-zero status â€
 | Queue | `workers.mode` is `BackgroundQueue` | Creates the queue provider and pings it; reports `NotConfigure` if no queue is set up. |
 | Initializer checks | any registered `Initializer` implements `check()` | Runs each one, prefixing its message with `Initializer {name}: `. |
 
-...and, **only when not run with `--production`**, three more:
+...and, **only when the resolved environment is not `production`**, three more:
 
 | Check | What it does |
 |---|---|
@@ -47,15 +47,19 @@ If **any** check comes back `NotOk`, the process exits with a non-zero status â€
 | SeaOrmCLI | Runs `sea-orm-cli --version` and checks it against the minimum. |
 | PublishedLocoVersion | Compares your `loco-rs` version against what's published on crates.io. |
 
-Current blessed minimum versions: `tokio 1.33.0`, `sea-orm 2.0.0-rc`, `validator 0.20.0`, `axum 0.8.1`. (`sea-orm`/`sea-orm-cli` are still pinned to the `2.0.0-rc` line as of this writing â€” expect that floor to move to `2.0.0` once Sea-ORM ships stable.)
+Blessed minimum versions: `tokio 1.33.0`, `sea-orm 2.0.0-rc`, `validator 0.20.0`, `axum 0.8.1` (the `sea-orm` floor names the `2.0.0-rc` line so pre-release and stable `2.0` both clear it).
 
-## 3. Skip dev-only checks in production with `--production`
+In `production` those three are replaced by a single ProductionSafety check, which flags configuration that is fine on a laptop and harmful on a server (a loopback `server.binding`, `logger.pretty_backtrace`, and similar).
 
-Deployed environments typically don't have `sea-orm-cli` installed, may not have network access to crates.io, and don't need a "you're behind on X" nag on every boot. `--production` (short `-p`) skips the three dev-only checks above and only runs Database/Queue/Initializer checks:
+## 3. Check a production environment
+
+Deployed environments typically don't have `sea-orm-cli` installed, may not have network access to crates.io, and don't need a "you're behind on X" nag on every boot. Which set of checks runs follows from the environment `doctor` resolved â€” there is no separate filter:
 
 ```sh
-cargo loco doctor --production
+cargo loco doctor --environment production
 ```
+
+`--production` (short `-p`) is a deprecated alias for exactly that. It prints a deprecation warning and then **switches the environment to production**, so it also changes which config file is loaded and which database is opened â€” it is not a way to run dev-environment checks with production filtering, and it never was safe to read it that way.
 
 ## 4. Inspect resolved configuration with `--config`
 
@@ -94,7 +98,7 @@ async fn check(&self, app_context: &AppContext) -> loco_rs::Result<Option<Check>
 ```sh
 cargo loco doctor
 echo $?           # 0 if every check passed, non-zero if any check is NotOk
-cargo loco doctor --production
+cargo loco doctor --environment production
 cargo loco doctor --config
 ```
 

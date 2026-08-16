@@ -18,7 +18,7 @@ static APP_TEMPLATE: Dir<'_> = include_dir!("base_template");
 /// application.
 ///
 /// # Errors
-/// when could not extract the the base template
+/// when could not extract the base template
 pub fn extract_default_template() -> std::io::Result<tree_fs::Tree> {
     let generator_tmp_folder = tree_fs::TreeBuilder::default().create()?;
 

@@ -41,7 +41,7 @@ Add an `auth.jwt` block to `config/development.yaml` (and every other environmen
 ```yaml
 auth:
   jwt:
-    secret: "{{ get_env(name='JWT_SECRET') }}" # required, must be valid base64
+    secret: "<%= get_env(name='JWT_SECRET') %>" # required, must be valid base64
     expiration: 604800 # required, seconds (7 days)
 ```
 

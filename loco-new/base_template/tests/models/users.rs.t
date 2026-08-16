@@ -48,13 +48,20 @@ async fn can_create_with_password() {
         name: "framework".to_string(),
     };
 
-    let res = Model::create_with_password(&boot.app_context.db, &params).await;
+    let user = Model::create_with_password(&boot.app_context.db, &params)
+        .await
+        .expect("a user should be created");
 
-    insta::with_settings!({
-        filters => cleanup_user_model()
-    }, {
-        assert_debug_snapshot!(res);
-    });
+    // Snapshot only the fields this test is about, never the whole `Model`.
+    // A whole-model snapshot encodes every column, so adding one field to
+    // `users` — the first thing most apps do — fails every such test at once
+    // and buries the one real change in a pile of mechanical re-blessing.
+    // Anything the snapshot does not cover, assert directly:
+    assert_ne!(
+        user.password, params.password,
+        "the password must be stored hashed, never in the clear"
+    );
+    assert_debug_snapshot!((user.email, user.name));
 }
 #[tokio::test]
 #[serial]
@@ -88,8 +95,9 @@ async fn can_find_by_email() {
     let existing_user = Model::find_by_email(&boot.app_context.db, "user1@example.com").await;
     let non_existing_user_results = Model::find_by_email(&boot.app_context.db, "un@existing-email.com").await;
 
-    assert_debug_snapshot!(existing_user);
-    assert_debug_snapshot!(non_existing_user_results);
+    // Narrowed on purpose — see `can_create_with_password` above.
+    assert_debug_snapshot!(existing_user.map(|user| (user.email, user.name)));
+    assert_debug_snapshot!(non_existing_user_results.map(|user| (user.email, user.name)));
 }
 
 #[tokio::test]
@@ -103,8 +111,9 @@ async fn can_find_by_pid() {
     let existing_user = Model::find_by_pid(&boot.app_context.db, "11111111-1111-1111-1111-111111111111").await;
     let non_existing_user_results = Model::find_by_pid(&boot.app_context.db, "23232323-2323-2323-2323-232323232323").await;
 
-    assert_debug_snapshot!(existing_user);
-    assert_debug_snapshot!(non_existing_user_results);
+    // Narrowed on purpose — see `can_create_with_password` above.
+    assert_debug_snapshot!(existing_user.map(|user| (user.pid, user.email)));
+    assert_debug_snapshot!(non_existing_user_results.map(|user| (user.pid, user.email)));
 }
 
 #[tokio::test]

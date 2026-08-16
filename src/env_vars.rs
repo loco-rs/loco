@@ -1,7 +1,5 @@
-//! This module contains utility functions and constants for working with
-//! environment variables in the application. It centralizes the logic for
-//! fetching environment variables, ensuring that keys are easily accessible
-//! from a single location in the codebase.
+//! The environment variable names Loco reads, in one place so a key is never
+//! spelled out twice. Read them with [`std::env::var`].
 
 #[cfg(feature = "with-db")]
 /// The key for `PostgreSQL` database options environment variable.
@@ -18,14 +16,3 @@ pub const CONFIG_FOLDER: &str = "LOCO_CONFIG_FOLDER";
 pub const SCHEDULER_CONFIG: &str = "SCHEDULER_CONFIG";
 /// The key for the data folder path
 pub const LOCO_DATA_FOLDER_ENV: &str = "LOCO_DATA";
-
-/// Fetches the value of the given environment variable.
-pub fn get(key: &str) -> Result<String, std::env::VarError> {
-    std::env::var(key)
-}
-
-#[allow(dead_code)]
-/// Retrieves the value of the given environment variable, or returns a default value if the variable is not set.
-pub fn get_or_default(key: &str, default: &str) -> String {
-    get(key).unwrap_or_else(|_| default.to_string())
-}

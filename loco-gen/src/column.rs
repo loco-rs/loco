@@ -140,6 +140,39 @@ impl Flag {
 /// parameters for `decimal_len`/`var_binary`/`binary_len`, an empty `enum`
 /// value list, an unsupported `array` inner type, or a unique/nullable
 /// combination that has no matching `ColType` (`bool^`, `tstz^`).
+/// Peels the trailing `!` (non-null) and `^` (unique) flags off a spec, in any
+/// order and any combination, returning the remainder and which flags were
+/// seen.
+///
+/// Stripping only one flag meant `string!^` parsed as the type name `string!`
+/// — no such type — and reported it as an unknown base name. `^` already
+/// implies non-null, so the combination is redundant; but both flags are
+/// documented independently, writing both is the obvious thing to try, and the
+/// resulting error named a type the user never wrote.
+fn peel_flags(spec: &str) -> (&str, bool, bool) {
+    let (mut rest, mut not_null, mut unique) = (spec, false, false);
+    loop {
+        if let Some(s) = rest.strip_suffix('^') {
+            rest = s;
+            unique = true;
+        } else if let Some(s) = rest.strip_suffix('!') {
+            rest = s;
+            not_null = true;
+        } else {
+            return (rest, not_null, unique);
+        }
+    }
+}
+
+/// Parses one `name:spec` pair from a generator invocation into a [`Column`].
+///
+/// # Errors
+///
+/// Returns [`Error::Message`] when `spec` is not a column the generator can
+/// build: an unknown type name, or a parametrized type whose arguments are
+/// missing, malformed, or out of range (`decimal_len` without its precision
+/// and scale, `enum` without variants, a length that is not a number).
+//
 // A flat DSL parser: one function walks the whole `name:spec` grammar
 // (references, flags, enum/decimal/binary/array/scalar). Splitting it would
 // scatter the grammar across helpers without making any single branch clearer.
@@ -172,23 +205,17 @@ pub fn parse_column(name: &str, spec: &str) -> Result<Column> {
     // A `!` (non-null) or `^` (unique) flag may sit at the very end of the spec
     // (`string!`, `enum:a,b!`, `decimal_len:8:24!`) OR be attached to the base
     // type name of a parametrized type (`decimal_len!:8:24`, `var_binary^:16`).
-    // Strip it from whichever position it occupies so both forms parse.
-    let (stripped, mut nullable, mut unique) =
-        match (spec.strip_suffix('^'), spec.strip_suffix('!')) {
-            (Some(s), _) => (s, false, true),
-            (_, Some(s)) => (s, false, false),
-            _ => (spec, true, false),
-        };
+    // Strip them from whichever position they occupy so both forms parse.
+    let (stripped, explicit_not_null, mut unique) = peel_flags(spec);
+    let mut nullable = !(explicit_not_null || unique);
 
     let mut parts: Vec<&str> = stripped.split(':').collect();
     if nullable && parts.len() > 1 {
-        if let Some(b) = parts[0].strip_suffix('^') {
-            parts[0] = b;
+        let (base_name, base_not_null, base_unique) = peel_flags(parts[0]);
+        if base_not_null || base_unique {
+            parts[0] = base_name;
             nullable = false;
-            unique = true;
-        } else if let Some(b) = parts[0].strip_suffix('!') {
-            parts[0] = b;
-            nullable = false;
+            unique = base_unique;
         }
     }
     let base = parts.join(":");
@@ -648,6 +675,61 @@ mod tests {
         assert!(!c.nullable);
         assert!(c.unique);
         assert_eq!(c.kind, ColumnKind::Scalar(ScalarType::String));
+    }
+
+    /// `!` and `^` are documented independently, so writing both is the
+    /// obvious thing to try. Stripping only one left `string!` as the type
+    /// name and reported an unknown base name the user never wrote.
+    ///
+    /// `^` already implies non-null, so both orders mean exactly what `^`
+    /// means alone — the point is that neither is an error.
+    #[test]
+    fn both_flags_parse_in_either_order() {
+        for spec in ["string!^", "string^!"] {
+            let c = col("code", spec);
+            assert!(!c.nullable, "`{spec}` should be required");
+            assert!(c.unique, "`{spec}` should be unique");
+            assert_eq!(c.kind, ColumnKind::Scalar(ScalarType::String));
+        }
+    }
+
+    /// The same, for a parametrized type — where a flag may instead ride on
+    /// the base name, ahead of the parameters.
+    #[test]
+    fn both_flags_parse_on_a_parametrized_type() {
+        for spec in [
+            "decimal_len:8:24!^",
+            "decimal_len:8:24^!",
+            "decimal_len!^:8:24",
+            "decimal_len^!:8:24",
+        ] {
+            let c = col("price", spec);
+            assert!(!c.nullable, "`{spec}` should be required");
+            assert!(c.unique, "`{spec}` should be unique");
+            assert_eq!(
+                c.kind,
+                ColumnKind::Scalar(ScalarType::DecimalLen {
+                    precision: 8,
+                    scale: 24
+                }),
+                "`{spec}` should keep its parameters"
+            );
+        }
+    }
+
+    /// Each flag alone must keep meaning what it meant, in both positions.
+    #[test]
+    fn a_single_flag_still_parses_in_either_position() {
+        for (spec, unique) in [
+            ("decimal_len:8:24!", false),
+            ("decimal_len!:8:24", false),
+            ("decimal_len:8:24^", true),
+            ("decimal_len^:8:24", true),
+        ] {
+            let c = col("price", spec);
+            assert!(!c.nullable, "`{spec}` should be required");
+            assert_eq!(c.unique, unique, "`{spec}` uniqueness");
+        }
     }
 
     // ---- parser: references ----------------------------------------------

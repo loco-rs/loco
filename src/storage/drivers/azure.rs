@@ -26,7 +26,6 @@ pub fn new(
         .account_key(access_key)
         .endpoint(endpoint);
 
-    Ok(Box::new(OpendalAdapter::new(
-        Operator::new(azure)?.finish(),
-    )))
+    // opendal 0.58: Operator::new returns a finished Operator (no .finish()).
+    Ok(Box::new(OpendalAdapter::new(Operator::new(azure)?)))
 }

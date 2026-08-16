@@ -39,6 +39,7 @@ Have a default implementation; override to change behavior.
 | `middlewares` | `fn middlewares(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer>>` (`:401-403`) | Returns `middleware::default_middleware_stack(ctx)`. |
 | `before_run` | `async fn before_run(_app_context: &AppContext) -> Result<()>` (`:408`) | Returns `Ok(())` — no-op. |
 | `after_context` | `async fn after_context(ctx: AppContext) -> Result<AppContext>` (`:416`) | Returns `Ok(ctx)` unchanged. |
+| `dump` | `#[cfg(feature = "with-db")] async fn dump(ctx: &AppContext, base: &Path) -> Result<()>` (`:593-596`) | Dumps every table to YAML fixtures under `base` via schema introspection (`db::dump_tables`). The counterpart to `seed`, backing `cargo loco db seed --dump`. Override it to dump specific entities with the typed, streaming `db::dump::<users::ActiveModel>(..)` instead, for full type fidelity and bounded memory. Only on the trait when `with-db` is enabled. |
 | `on_shutdown` | `async fn on_shutdown(_ctx: &AppContext)` (`:442`) | No-op. |
 
 ## Override points
@@ -47,7 +48,7 @@ The methods below are the least-documented parts of `Hooks`. Each entry states e
 
 ### `init_logger` — own your tracing stack
 
-```rust
+```rust no-syntax-check="signature listing, no body by design"
 fn init_logger(_ctx: &AppContext) -> Result<bool>
 ```
 
@@ -55,7 +56,7 @@ Runs once during boot, before the rest of the app context is wired up. Returning
 
 ### `load_config` — replace the config loader
 
-```rust
+```rust no-syntax-check="signature listing — no body, by design"
 async fn load_config(env: &Environment) -> Result<Config>
 ```
 
@@ -63,15 +64,28 @@ Runs during boot to produce the `Config` passed into `boot`. The default is `env
 
 ### `after_context` — post-process `AppContext`
 
-```rust
+```rust no-syntax-check="signature listing — no body, by design"
 async fn after_context(ctx: AppContext) -> Result<AppContext>
 ```
 
 Runs after `AppContext` has been fully constructed (db, cache, storage, mailer, queue provider all present) but before routes are built. Takes `ctx` by value and must return a (possibly modified) `AppContext` — the only hook that lets you replace fields on the context itself.
 
-### `before_run` — pre-run resource loading
+`AppContext` is `#[non_exhaustive]`, so you can't write `AppContext { storage, ..ctx }` in your app. Use `ctx.into_builder()`, which carries every component over and lets you override the ones you want:
 
 ```rust
+async fn after_context(ctx: AppContext) -> Result<AppContext> {
+    Ok(ctx
+        .into_builder()
+        .storage(Storage::single(drivers::local::new()).into())
+        .build())
+}
+```
+
+Adding to `shared_store` needs no rebuild at all — it's interior-mutable, so `ctx.shared_store.insert(my_service);` then `Ok(ctx)` is enough.
+
+### `before_run` — pre-run resource loading
+
+```rust no-syntax-check="signature listing — no body, by design"
 async fn before_run(_app_context: &AppContext) -> Result<()>
 ```
 
@@ -79,7 +93,7 @@ Runs before the app starts serving/running (applies to the server and to other r
 
 ### `serve` — the HTTP serve loop
 
-```rust
+```rust no-syntax-check="signature listing — no body, by design"
 async fn serve(app: AxumRouter, ctx: &AppContext, serve_params: &ServeParams) -> Result<()>
 ```
 
@@ -87,7 +101,7 @@ Runs when the app is started in server mode. The default binds a `TcpListener` a
 
 ### `app_version` — composite version string
 
-```rust
+```rust no-syntax-check="signature listing — no body, by design"
 fn app_version() -> String
 ```
 
@@ -97,8 +111,8 @@ Called wherever Loco reports its version (e.g. `cargo loco version`, `/_ping`/`/
 
 `boot`'s second parameter is `environment: &Environment` — a reference to the `Environment` enum, **not** `&str`:
 
-```rust
+```rust no-syntax-check="signature listing — no body, by design"
 async fn boot(mode: StartMode, environment: &Environment, config: Config) -> Result<BootResult>
 ```
 
-Some existing docs and snippets show `environment: &str`; that signature is stale (the rustdoc example inside `src/app.rs:308` and `:315` itself still shows `&str` and should not be copied). `src/controller/mod.rs:47` is a correct reference example using `&Environment`.
+Some older docs and snippets in circulation show `environment: &str`; that signature is stale. The rustdoc examples on `boot` itself (`src/app.rs:448,455`) use `&Environment`, as does `src/controller/mod.rs:47`.

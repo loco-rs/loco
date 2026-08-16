@@ -1,5 +1,423 @@
 # Changelog
 
+## 1.1.0 - 2026-08-15
+
+Moves the template engine to Tera 2, makes configuration files valid YAML,
+opens up the storage API, and adds an AWS Lambda deployment target.
+
+**Upgrading:** for most apps this is a one-line change — bump
+`fluent-templates` from `0.13` to `0.15` in `Cargo.toml`. That crate supplies
+the `t()` i18n function in generated apps and pinned Tera 1; 0.15 moved to
+Tera 2. Verified by generating an app and compiling it with no other edit.
+
+Beyond that, only apps that register **their own** Tera filters or functions
+need work (see the breaking note below), and only templates using
+`{% macro %}`/`{% import %}`, `v.0` array access, or relying on undefined
+variables rendering empty need editing — Tera 2 replaced macros with
+components, requires `v[0]`, and errors on undefined variables.
+
+That last one applies to **mailer** templates as well as views: they render
+through the same Tera 2 instance, so a mail template referencing an optional
+field that is sometimes absent now fails at send time where Tera 1 rendered
+an empty string. Add `| default(value="")` to those references.
+
+### Breaking
+
+- **Scaffolded `list` endpoints changed their JSON contract**, and now use the
+  framework's own pagination instead of a second, parallel one. The scaffold
+  had its own `ListParams`, its own paginator arithmetic, and an envelope with
+  no `total_pages` — while `query::PaginationQuery` + `query::paginate` already
+  existed and carried it. The generated handler is now four lines over
+  `query::paginate`, and `Page<T>` (`src/dtos/common.rs`) is built by
+  `Page::from_query`.
+
+  On the wire: `per_page` → `page_size`, `total` → `total_items`, and
+  `total_pages` is added — the metadata field names are `PagerMeta`'s, so an
+  app has one pagination vocabulary whichever envelope a handler returns. The
+  query parameter is likewise `page_size`. Existing apps keep the code they
+  already generated; regenerating, or updating by hand, is a rename plus one
+  new field. The typed frontend's `bindings/Page.ts` regenerates from `ts-rs`.
+
+- **`QueueProvider` gains a required `retry_failed` method.** Custom queue
+  provider implementations must implement it; all three built-in drivers do.
+  (`Queue::retry_failed` is the inherent forwarding method on the handle and
+  requires nothing of anyone.)
+
+- **Storage `StoreDriver` / `StorageStrategy` gain required `list` and `stat`
+  methods** (and `StorageStrategy` also requires `exists`). Custom driver and
+  strategy implementations must implement them. Built-in drivers/strategies
+  already do. The `Storage` facade exposes matching `exists` / `list` / `stat`
+  (and `*_with_policy`) APIs alongside the existing upload/download/delete
+  surface. Under `ReplicatedStrategy` in mirror mode, `exists` and `list` treat
+  a miss (`false` / `[]`) the way the other reads treat an error and fall back
+  to secondaries; backup mode stays primary-only.
+  ([#1805](https://github.com/loco-rs/loco/pull/1805))
+
+- **The template engine is now Tera 2.** `tera::Tera` appears in Loco's public
+  API (`PostProcessFn`, `HotReloadingTeraEngine::engine`, `TeraView::tera`,
+  `Error::Tera`, `register_filters`), so custom filters and functions must move
+  to Tera 2 signatures: filters now take `(Arg, Kwargs, &State)` over Tera's own
+  `Value` rather than `(&Value, &HashMap)` over `serde_json::Value`.
+
+  Loco absorbs the rest. Tera 2 dropped `get_env` — which every Loco config
+  depends on — so Loco registers its own with Tera 1 semantics. View loading
+  moved to `tera::load_from_glob`, which yields the same template names Tera 1
+  produced, so existing `render("home/hello.html")` calls are unaffected.
+
+- **Newly generated apps require their production secrets to be set.** The
+  generated `config/production.yaml` takes no defaults for secrets or
+  addresses, so a missing one stops the app at startup with the variable's
+  name rather than falling back to a development value. Always required:
+  `DATABASE_URL`, `JWT_SECRET`, `HOST`. Required too, when the app was
+  generated with the corresponding component: `REDIS_URL` / `QUEUE_URL` for a
+  Redis or database-backed queue, and `MAILER_HOST` / `MAILER_USER` /
+  `MAILER_PASSWORD` for a mailer. Existing apps are unaffected — their config
+  files are their own. See *Fixed* below.
+
+- `doctor::Resource` is now `#[non_exhaustive]` and has gained a
+  `ProductionSafety` variant. The variant is **first**, and `Resource` is the
+  key type of the `BTreeMap` the doctor report is built from, so its derived
+  `Ord` sets the report's display order — production safety now leads, and
+  every other variant shifts by one. Code comparing or sorting `Resource`
+  values sees the new order.
+
+- **The three built-in number filters take Tera 2 signatures.**
+  `views::tera_builtins::filters::number::{number_with_delimiter,
+  number_to_human_size, number_to_percentage}` are `(value, Kwargs, &State)`
+  rather than `(value, &HashMap)`. They are `pub`, so calling them directly —
+  rather than through a template — needs updating. Templates are unaffected.
+
+- **`auth.jwt.location` is parsed strictly.** Its `Deserialize` is hand-written
+  rather than `#[serde(untagged)]`, so it accepts exactly the documented shapes
+  — a map, or a list of maps — and reports a real error for anything else
+  instead of a generic "did not match any variant". Config that happened to
+  parse through untagged fallback will now be rejected with a message naming
+  the problem. The serialized form is unchanged.
+
+- `bgworker::pg::get_jobs` returned `Result<Vec<Job>, sqlx::Error>` where the
+  SQLite driver's returned `loco_rs::Result`. It now returns `loco_rs::Result`
+  too. Callers using `?` in a Loco context are unaffected; code matching on
+  `sqlx::Error` needs updating.
+
+- `loco_gen::AppInfo` gains a `working_dir` field, so post-generation checks
+  read the tree that was generated into rather than the process's current
+  directory. Callers using `new_generator()` should pass `".".into()`.
+
+- `loco_gen::Component::Scaffold` and `::Controller` gain a required `auth:
+  bool` field, backing the new `--no-auth` / `--auth` flags. Code constructing
+  these variants directly — rather than going through the CLI — must supply it.
+
+- `loco_gen::DeploymentKind` and the CLI's `DeploymentKind` both gain a
+  `Lambda` variant. Neither is `#[non_exhaustive]`, so an exhaustive `match`
+  over either stops compiling until the arm is added.
+
+- **`post_process` now runs before templates are loaded**, in both the
+  on-disk and embedded view engines. A `build_with_post_process` closure can
+  no longer inspect loaded templates — it registers into an empty engine — and
+  anything a template calls must be registered by that closure, or template
+  loading fails. This is what lets a custom filter be visible to the templates
+  that use it; previously registration happened too late.
+
+### Added
+
+- **`--no-auth` on `generate scaffold`, `--auth` on `generate controller`.**
+  Scaffolded routes take an `auth::JWT` extractor on all five handlers, which
+  is the right default but had no opt-out and nothing said so — the first
+  `curl` against a fresh scaffold answered 401 with no explanation, and the
+  tutorial's own examples were among the casualties. The scaffold now prints
+  which flavor it generated, and `--no-auth` emits public routes. A generated
+  controller has no model to protect and stays public by default; `--auth` is
+  its opt-in mirror, and it adjusts the generated request test to assert the
+  route rejects anonymous callers rather than expecting 200.
+
+  `cargo loco generate` now runs a best-effort `cargo fmt` afterwards, the way
+  `loco new` already did. A Tera template cannot know where rustfmt would break
+  a line — with the auth argument gone, three handler signatures fit on one —
+  and a generated app runs `cargo fmt --check` in its own CI, so non-canonical
+  output would have failed a user's build on code they did not write.
+- **`cargo loco jobs retry`** moves failed jobs back to `queued` — with
+  `--id <ID>` for one, or bare for all of them. No queue driver has automatic
+  retry or backoff, so a failed job used to be terminal: `requeue`, the verb
+  that sounds like the recourse, only rescues jobs a crashed worker stranded in
+  `processing` and cannot touch a failed one. `run_at` is reset so a job that
+  failed on a future-dated schedule runs now rather than when that time
+  arrives. On the Redis provider a retried job is queued to `default`: the
+  queue a job was submitted to is not recorded once it fails. The command says
+  so when it retries anything, but operators running multiple named queues
+  should know before they need it.
+- The `loco` CLI now declares `rust-version = "1.94"`, matching the framework.
+  `cargo install loco` on an older toolchain refuses up front with the required
+  version instead of failing partway through a build.
+- `QueueConfig::dangerously_flush()` is now public, for tests and tooling that
+  need to empty a queue outright.
+- **AWS Lambda deployment generator** — `cargo loco generate deployment lambda`
+  writes a `src/bin/lambda.rs` entrypoint, adds `lambda_http`, and writes a
+  `[package.metadata.lambda]` block so `cargo lambda build` and
+  `cargo lambda deploy` need no flags. Loco's router is a `tower::Service` and
+  so is the Lambda runtime, so the app runs unchanged; deployment is delegated
+  to `cargo-lambda` rather than embedding an AWS SDK. HTTP only — workers and
+  the scheduler do not fit Lambda's model.
+  ([#1699](https://github.com/loco-rs/loco/issues/1699))
+
+- **`AppContext::into_builder`** — the escape hatch `Hooks::after_context` was
+  missing. `AppContext` is `#[non_exhaustive]`, so `AppContext { storage, ..ctx }`
+  (the idiom the storage how-to showed) does not compile outside `loco-rs`, and
+  rebuilding from `AppContext::builder` silently drops the mailer, queue
+  provider, cache and shared store that boot had already attached.
+  `ctx.into_builder().storage(..).build()` replaces one component and keeps the
+  rest.
+- **`loco_rs::schema::rename_column`**, alongside `add_column`/`remove_column`.
+- **`PageResponse` is now `Serialize`/`Deserialize`.** The pagination how-to
+  showed `format::json(res)` returning one straight from a handler, and printed
+  the JSON body it produces; that could not compile, because the struct derived
+  only `Debug`. The documented body is now pinned by a test.
+
+### Security
+
+- **`opendal` 0.57 → 0.58.1**, which moves `quick-xml` from `^0.39.3` to
+  `^0.41.0` in the S3, Azure and GCS service crates. `quick-xml` below 0.41.0
+  carries RUSTSEC-2026-0194 (quadratic time checking a start tag for duplicate
+  attribute names) and RUSTSEC-2026-0195 (unbounded namespace-declaration
+  allocation); both are denial of service, and both are `patched = [">= 0.41.0"]`.
+
+  This reaches only apps that enable a cloud storage feature — `storage_aws_s3`,
+  `storage_azure`, `storage_gcp`, all off by default — and the XML being parsed
+  is the storage backend's own responses, so exploiting it means controlling
+  what that endpoint returns. Narrow, but real if you point Loco at an
+  S3-compatible endpoint you do not run.
+
+  **This fix ships in 1.1.0, not in 1.0.x.** The 1.0.0 section below described
+  the bump as if it had shipped there; it had not — 1.0.0 and 1.0.1 both went
+  out pinning `opendal = "0.57"`. That text has been corrected. If you enabled a
+  cloud storage feature on 1.0.0 or 1.0.1, upgrading to 1.1.0 is the fix.
+
+### Fixed
+
+- **On the SQLite queue driver, clearing the queue stopped it handing out jobs
+  — permanently and silently.** `dequeue` claimed an advisory lock by updating
+  a row in a second table, `sqlt_loco_queue_lock`, while `clear` deleted every
+  row in that table. With the row gone the lock could never be acquired, so
+  `dequeue` returned "no jobs" forever, with the jobs sitting right there. Any
+  app configured with `queue.dangerously_flush: true` hit this on every boot —
+  `converge` runs `setup` and then `clear` — so its workers never ran a single
+  job. The existing test asserted the row count was zero afterwards, locking
+  the bug in.
+
+  The lock table is gone entirely. It was a hand-rolled stand-in for `BEGIN
+  IMMEDIATE`, which is how SQLite itself takes the write lock before the
+  `SELECT` that picks a job — a plain `BEGIN` defers it until the first write
+  and leaves the read unprotected, which is the race the table existed to
+  close. `initialize_database` drops `sqlt_loco_queue_lock` if it is still
+  there, so upgrading needs no action. The mutual-exclusion guarantee is now
+  covered by a test that runs concurrent dequeues and fails without the fix.
+
+- **`examples/reference_spa` did not build for anyone but its author.** Its
+  manifest pinned `loco-rs` to an absolute path on the maintainer's machine
+  (`path = "/Users/…/loco"`) — the shape `LOCO_DEV_MODE_PATH` generates — so
+  every other checkout failed with `failed to load manifest for dependency
+  loco-rs`. It is `path = "../.."` now, and CI runs both examples' test suites,
+  which is what caught it.
+
+- **snipdoc overwrote the translated READMEs.** Each translation carries the
+  same `<snip>` regions as `README.md`, so every injection run replaced the
+  translated tagline, install comment and `loco new` transcript with the English
+  source — and CI's `snipdoc check` then failed whenever a translator put their
+  version back. The Spanish and Vietnamese READMEs had already lost theirs.
+  `snipdoc-config.yml` now excludes the translated filenames from the walk, so
+  only the canonical `README.md` is injected, and the two translations are
+  restored to what their translators wrote.
+
+- **On the Redis queue driver, a job vanished from every operator tool the
+  moment it stopped being runnable.** `get_jobs` enumerated jobs by walking the
+  queue and processing keys, but `complete_job` and `fail_job` both remove the
+  id from the processing set and add it to no queue — so `jobs dump --status
+  failed`, `jobs purge`, `clear_by_status` and `clear_jobs_older_than` all
+  silently reported nothing for completed and failed jobs. It now enumerates the
+  `job:*` keys, which are the record of a job's existence, and consults the
+  processing sets only to tell a job a worker is holding from one still queued.
+  The existing test could not catch this: it asserted inside
+  `for job in &failed_jobs`, which passes on an empty list — and the list was
+  always empty.
+- **Test snapshots no longer break west of UTC.** `get_cleanup_date`'s
+  timestamp rule ended in `\+\d{2}:\d{2}`, matching only a *positive* UTC
+  offset. It is the only rule that consumes the offset, so on a machine west of
+  UTC the timestamp fell through to the offset-less rules, which stop at the
+  seconds — redacting to `DATE-03:00` instead of `DATE` and failing every
+  snapshot carrying a timestamp. A freshly generated app therefore had a red
+  test suite out of the box for everyone west of UTC, and had since 0.14.
+  CI never caught it because GitHub runners are UTC.
+  ([#1802](https://github.com/loco-rs/loco/pull/1802))
+- **Every npm advisory in `website/` and the reference SPA is cleared**, and the
+  `loco new` frontend template no longer pins `vite`/`@vitejs/plugin-react` to
+  a floating `"latest"`. Its `react-router` floor moves to `^8.3.0`, below which
+  a generated app resolves a version with an RSC-mode CSRF bypass.
+- **Config templating is now YAML-safe** (`<%= ... %>` instead of `{{ ... }}`).
+  `{` is a YAML flow-mapping indicator, so `port: {{ get_env(...) }}` was never
+  valid YAML at rest — it only parsed because Loco's template pass rewrote the
+  file first. Any tool reading the file *as YAML* (prettier, yaml-language-server,
+  format-on-save) restructured it into `{ { ... } }` and broke startup.
+  `<` is not a YAML indicator, so the new form is an ordinary string scalar:
+  config files are valid YAML before rendering and survive formatting untouched.
+  Three tag forms are supported — `<%= expr %>`, `<% stmt %>`, `<%# text %>`.
+  **Not a breaking change:** legacy `{{ }}` still renders, with a deprecation
+  warning. ([#1727](https://github.com/loco-rs/loco/issues/1727))
+- **Environment variables in generated configs are no longer baked in at scaffold
+  time.** Because the generator and the runtime shared the same `{{ }}` delimiters,
+  several lookups in a newly generated app were evaluated by `loco new` and frozen
+  into the file — so `PORT`, `BINDING`, `LOG_LEVEL`, `DB_LOGGING` and `MAILER_HOST`
+  silently had no effect at runtime. Only the handful of lookups that were manually
+  `{% raw %}`-escaped survived. The two layers now use distinct delimiters, so every
+  lookup reaches runtime as intended (and the `{% raw %}` escaping is gone from the
+  templates).
+
+- **Generated apps pinned a `loco-rs` that could not read their own config.**
+  `LOCO_VERSION` — the version requirement written into every generated
+  `Cargo.toml` — still said `1.0`, so a fresh app resolved the newest published
+  1.0.x, which renders the new `<%= ... %>` config delimiters literally and then
+  fails to parse them: the app compiled and died at boot. The floor now tracks
+  the release, enforced by a test.
+
+  The reason it went stale is its own bug: `cargo xtask bump` maintains that
+  constant, but its search pattern was pinned to the literal `"0.13"` and a
+  pattern that matched nothing was a printed note rather than an error. Every
+  release since 0.14 reported success while leaving the floor untouched. A
+  no-match is now a failure, and each of the four version sites the tool
+  rewrites is covered by a test that it still matches.
+
+- **`config/production.yaml` was generated as a 0-byte file** — copied verbatim
+  instead of rendered, since the CLI generator rewrite — and the generated
+  `.gitignore` excluded it, so even a correct one would never have reached a
+  server. Production is now a real template: backtraces off, `json` logs,
+  `0.0.0.0` binding rather than loopback (unreachable from outside a container),
+  and a connection pool that isn't the development default of one. The ignore
+  rule is gone; secrets live in the environment, so the file is infrastructure
+  and belongs in the repository. `local.yaml` stays ignored.
+
+- **`doctor --production` checked the wrong environment and ran fewer checks.**
+  The flag never selected an environment — it filtered checks while the config
+  under test stayed whatever was ambient, and the default environment is
+  `development`. On a server without `LOCO_ENV` set it reported a clean bill of
+  health for the development database and never opened the production config.
+  It is now a deprecated alias for `--environment production`, and production
+  additionally checks settings that are harmless in development and not live: a
+  loopback binding, `dangerously_truncate`/`dangerously_recreate`, a queue that
+  flushes on startup, backtraces left on.
+
+- **A generated migration that could not be registered reported success.**
+  Through rrgen 0.5, a `before:` injection whose anchor line was absent was not
+  an error — it rewrote the file unchanged and still printed `injected: …`. A
+  `migration/src/lib.rs` without the `inject-above` comment therefore accepted
+  the `mod` declaration and silently dropped the `Box::new(..)` registration:
+  the migration compiled, never ran, so the table was never created, `db
+  entities` correctly wrote nothing, and the first insert 500'd at runtime.
+
+  Fixed at the source in **rrgen 0.6**, which Loco now requires: an injection
+  that cannot find its anchor fails, naming the file, the pattern and the
+  content it could not place, and the failed generation writes nothing at all —
+  so restoring the anchor and re-running does the whole job. This covers every
+  injecting generator, not just migrations: controllers, scaffolds, tasks and
+  the frontend route table all inject the same way.
+
+  Loco additionally fails generation if any migration in `migration/src/` is
+  unregistered. That catches what an injection cannot see: a registration that
+  went missing on an earlier run or by hand.
+
+- **Generated apps are now booted, not just compiled, by the test suite.** The
+  wizard matrix starts each generated app and requires `/_ping` and `/_health`
+  to answer 200, in `development` and again in `production` — the environment
+  nothing exercised. The three fixes above all shipped in states that a full
+  green suite could not see, because nothing in the repository ever ran the
+  artifact a user receives.
+
+- **`loco-gen` no longer depends on Tera.** The dependency was unused; `rrgen`
+  carries its own Tera 1, which coexists with Tera 2 without API contact.
+- **`loco new --assets serverside --embedded-assets` produced an app that did
+  not compile.** The embedded view engine was missing the
+  `build_with_post_process` constructor that the generated view-engine
+  initializer calls, so the two engines were not interchangeable. Both now
+  expose the same constructors, and the wizard test matrix builds this
+  combination end to end instead of only asserting on wizard settings.
+- **Generated server-side apps now test their own view rendering.** A new
+  `tests/views/` case renders the shipped Tera template through the real view
+  engine, including the i18n `t()` function, so view-engine regressions surface
+  in an app's own test suite rather than at boot.
+- **Scaffolding a second resource broke the SPA build.** Every resource's pages
+  are named `List`/`New`/`Show`/`Edit`, and the route injection imported them
+  bare — so the second `generate scaffold` in an app injected a duplicate
+  binding for all four names into `frontend/src/routes.tsx`. Imports are now
+  aliased per resource (`List as PostsList`). Existing `routes.tsx` entries are
+  your code and are untouched; new scaffolds emit the aliased form.
+- **A custom foreign-key column name never reached the scaffold.**
+  `user:references:admin_id` names the FK column explicitly and the migration
+  honours it, but the DTO and controller derived `user_id` regardless and
+  referenced a column the entity does not have.
+- **`code:string!^` failed to parse.** Only one of the two flag suffixes was
+  stripped, leaving `string!` as the type name and reporting an unknown base
+  type the user never wrote. Both flags now parse in any order and in either
+  position (`decimal_len!^:8:24` and `decimal_len:8:24^!` are the same column).
+  `^` already implies non-null, so the combination is redundant — but it should
+  not have been an error.
+- **`Pager` could not deserialize its own output.** A serialize-only rename
+  emitted `{"results": .., "pagination": ..}` while the deserializer looked for
+  `info`, so the derived `Deserialize` — public API — failed with
+  `missing field \`info\``. No wire format changed.
+- **The legacy config-delimiter deprecation warning was unreachable.** It was a
+  `tracing::warn!` emitted during `load_config`, which runs before
+  `logger::init`, so no subscriber existed to receive it. It now goes to stderr,
+  where config-time diagnostics belong.
+- **The generated config shows how to move the JWT out of the header.**
+  `auth.jwt.location` (cookie or query parameter) had no example in a generated
+  app.
+- **`auth.jwt.location` reports what is actually wrong with it.** The setting
+  was an `#[serde(untagged)]` enum, so a misspelled `from: cookie`, a `Cookie`
+  with no `name`, and a bare scalar all produced the identical `data did not
+  match any variant of untagged enum JWTLocationConfig`. The inner error now
+  propagates — `unknown variant \`cookie\`, expected one of \`Bearer\`,
+  \`Query\`, \`Cookie\``. The accepted YAML and the serialized form are
+  unchanged.
+- **`generate migration Rename<Old>To<New>On<Table>` now generates a real
+  migration** instead of a `todo!()` stub announced as ready to run. Adds
+  `loco_rs::schema::rename_column`. When a name genuinely can't be inferred the
+  stub remains — silently succeeding would record it as applied — but the
+  generator now says it is unimplemented, that `db migrate` will panic, and
+  which names it does understand.
+- **The starter's tests no longer snapshot whole models.** Adding one column to
+  `users` broke five generated tests at once, because they pinned an entire
+  `users::Model` `Debug` dump. They snapshot the fields under test now, and
+  assert the rest directly.
+- **The generated `development.yaml` names a mail catcher and the `PORT`
+  override.** The dev mailer targets `localhost:1025` with no `stub`, so mail
+  failed unless something was listening and nothing said what; and every app
+  defaults to port 5150, so a second one collides.
+- **A missing database is documented as the one-way door it is.** `--db none`
+  turns off `with-db`, and no generator reverses it; there is now a how-to with
+  the exact procedure, and the clientside React/`ts-rs` mode — previously
+  undocumented in full — has a guide of its own.
+
+
+## 1.0.1 - 2026-07-31
+
+A documentation and CLI-ergonomics patch. No behavior changes to the framework
+runtime.
+
+### Fixed
+
+- **`generate scaffold`/`controller` no longer error on the old `--api` flag.**
+  The 1.0 adaptive-generator rebuild removed the `--api`/`--html`/`--htmx`
+  (and `-k/--kind`) flags — scaffold now auto-detects headless vs. clientside
+  from `frontend/`, and controllers are always JSON API controllers — but the
+  docs (including the *Your first app* tutorial) still showed `--api`, so
+  copy-pasting them failed with `error: unexpected argument '--api' found`. The
+  generators now accept the old flags for compatibility: `--api` is a no-op
+  (it's the headless default) and `--html`/`--htmx` return a clear message
+  pointing at the React SPA frontend that replaced server-rendered views.
+  ([#1790](https://github.com/loco-rs/loco/issues/1790))
+- **Docs resync.** Removed every reference to the removed scaffold/controller
+  kind flags and the deleted `ScaffoldKind` enum / `mappings.json` across the
+  tutorials, how-to guides, and CLI/generators reference; corrected the
+  field-type reference to describe `loco-gen/src/column.rs` (including that
+  `array:int` is now a 64-bit `BigInt` array, consistent with the scalar
+  `int` → `i64` change).
 
 
 ## 1.0.0 - 2026-07-25
@@ -37,6 +455,12 @@ middleware subsystems. Follow the step-by-step
   `byte-unit` 4→5, `ipnetwork` 0.20→0.21, `strum`→0.27, `redis` 0.31→1,
   `bb8-redis`→0.26, `opendal` 0.54→0.57; `serde_yaml`→`serde_yaml_ng`.
   Transitive for most apps.
+
+  *(Correction, made while preparing 1.1.0: this entry previously read
+  `opendal` 0.54→0.58.1 and credited this release with escaping
+  RUSTSEC-2026-0194/0195. That was wrong — the note was edited into this
+  section after the fact, while 1.0.0 and 1.0.1 both shipped `opendal = "0.57"`.
+  The advisories are addressed in 1.1.0; see its Security section.)*
 - Removed the dead `loco-cli` crate (superseded by `loco-new`, the published
   `loco` binary).
 - **`ExtraDbInitializer` removed; use `MultiDbInitializer`.** The
@@ -125,6 +549,10 @@ middleware subsystems. Follow the step-by-step
   (Postgres+SQLite; free once `sqlx` is compiled), `bg_redis` → `worker_redis`
   (adds `dep:redis`). `default` now has `worker` (not Redis). A Redis queue needs
   `worker_redis`; the queue backend is selected at runtime by `queue.kind`.
+- **The `integration_test` feature is removed.** It had no `#[cfg]` reference
+  anywhere in the tree, so enabling it never did anything — but it was a
+  declared feature of released 0.16.x, so `features = ["integration_test"]` in
+  a dependent's `Cargo.toml` now fails to resolve. Delete the entry.
 - **Mailer `Template::new(dir)` now returns `Result`** (call `Template::new(dir)?`).
   Email templates render through a full Tera instance so they support inheritance
   and shared templates. Standard usage via `Mailer::mail_template` is unchanged.

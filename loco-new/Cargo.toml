@@ -2,14 +2,24 @@
 
 [package]
 name = "loco"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2024"
+# Its own workspace, so it cannot inherit the root's `rust-version`. Kept in
+# step with it by hand — the `msrv` CI job checks both against the root value.
+rust-version = "1.94"
 description = "Loco new app generator"
 license = "Apache-2.0"
-homepage = "https://docs.rs/loco"
+homepage = "https://loco.rs/"
 documentation = "https://docs.rs/loco"
+# Without this, the crates.io page for the binary most users install has no
+# link back to the source.
+repository = "https://github.com/loco-rs/loco"
+keywords = ["loco", "scaffold", "generator", "cli", "rails"]
+categories = ["command-line-utilities", "development-tools", "web-programming"]
 readme = "README.md"
-include = ["src/**", "base_template/**", "Cargo.toml", "setup.rhai"]
+# `include` is exhaustive: anything not matched here is absent from the
+# published crate, and the CLI reads `base_template/` at generation time.
+include = ["src/**", "base_template/**", "Cargo.toml", "setup.rhai", "LICENSE"]
 
 [features]
 test-wizard = []
@@ -45,6 +55,7 @@ tree-fs = { version = "0.3" }
 
 [dev-dependencies]
 uuid = { version = "1.11.0", features = ["v4", "fast-rng"] }
+semver = { version = "1" }
 serde_yaml = { package = "serde_yaml_ng", version = "0.10" }
 insta = { version = "1.41.1", features = ["redactions", "yaml", "filters"] }
 rstest = { version = "0.26.1" }

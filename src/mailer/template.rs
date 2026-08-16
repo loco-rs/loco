@@ -150,11 +150,8 @@ impl Template {
         // templates with the same name from shared directories.
         Self::load_templates_from_dir(&mut tera, dir)?;
 
-        // Build inheritance chains to enable inheritance, blocks, and extends.
-        tera.build_inheritance_chains().map_err(|e| {
-            Error::Message(format!("failed to build template inheritance chains: {e}"))
-        })?;
-
+        // Tera 2 resolves inheritance, blocks and `extends` as templates are
+        // added, so there is no separate chain-building step.
         Ok(Self { tera })
     }
 
@@ -251,6 +248,50 @@ mod tests {
         let template = Template::new(&INHERITANCE_TEMPLATE_DIR)?;
         assert_debug_snapshot!(template.render(&args)?);
         Ok(())
+    }
+
+    /// `get_env` was a Tera 1 built-in and is used by real mailer templates to
+    /// pull hostnames/URLs at send time. Tera 2 dropped it, so Loco registers
+    /// its own — this pins the parity for the mailer render path.
+    #[test]
+    fn get_env_is_available_in_mailer_templates() {
+        let mut tera = crate::tera::instance();
+        tera.add_raw_template(
+            "t",
+            r#"{{ get_env(name="LOCO_MAILER_NOPE", default="https://example.test") }}"#,
+        )
+        .unwrap();
+        let ctx = tera::Context::from_serialize(&serde_json::json!({})).unwrap();
+        assert_eq!(tera.render("t", &ctx).unwrap(), "https://example.test");
+    }
+
+    /// Tera 2 errors on undefined variables where Tera 1 rendered them empty.
+    /// This is a real behaviour change for templates with optional fields, so
+    /// pin it explicitly rather than let it surprise someone at send time.
+    #[test]
+    fn undefined_variables_now_error_instead_of_rendering_empty() {
+        let mut tera = crate::tera::instance();
+        tera.add_raw_template("t", "Hello {{ missing }}").unwrap();
+        let ctx = tera::Context::from_serialize(&serde_json::json!({})).unwrap();
+
+        let err = tera
+            .render("t", &ctx)
+            .expect_err("Tera 2 must reject undefined variables");
+        assert!(
+            err.to_string().contains("missing"),
+            "error should name the missing variable, got: {err}"
+        );
+    }
+
+    /// The documented escape hatch for the change above: `| default(...)` keeps
+    /// optional fields working.
+    #[test]
+    fn undefined_variables_can_be_defaulted() {
+        let mut tera = crate::tera::instance();
+        tera.add_raw_template("t", "Hello {{ missing | default(value='there') }}")
+            .unwrap();
+        let ctx = tera::Context::from_serialize(&serde_json::json!({})).unwrap();
+        assert_eq!(tera.render("t", &ctx).unwrap(), "Hello there");
     }
 
     #[test]

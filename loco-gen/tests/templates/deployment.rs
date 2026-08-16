@@ -29,6 +29,7 @@ fn can_generate_docker(
         component,
         &AppInfo {
             app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
         },
     )
     .expect("Generation failed");
@@ -87,6 +88,7 @@ fn can_generate_nginx() {
         component,
         &AppInfo {
             app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
         },
     )
     .expect("Generation failed");
@@ -100,5 +102,68 @@ fn can_generate_nginx() {
         "generate[nginx]",
         fs::read_to_string(tree_fs.root.join("nginx").join("default.conf"))
             .expect("nginx config missing")
+    );
+}
+
+#[rstest::rstest]
+fn can_generate_lambda(#[values(true, false)] db: bool) {
+    let mut settings = insta::Settings::clone_current();
+    settings.set_prepend_module_to_snapshot(false);
+    settings.set_snapshot_suffix("deployment");
+    let _guard = settings.bind_to_scope();
+
+    let component = Component::Deployment {
+        kind: DeploymentKind::Lambda {
+            db,
+            include_paths: vec![],
+        },
+    };
+
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add(
+            "Cargo.toml",
+            "[dependencies]\nloco-rs = { version = \"1\" }\n",
+        )
+        .create()
+        .unwrap();
+    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+
+    let gen_result = generate(
+        &rrgen,
+        component,
+        &AppInfo {
+            app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
+        },
+    )
+    .expect("Generation failed");
+
+    assert_eq!(
+        collect_messages(&gen_result),
+        "* Lambda entrypoint + cargo-lambda config generated. Deploy in two commands: `cargo lambda build --release --arm64 --output-format zip` then `cargo lambda deploy --enable-function-url` (prints a live HTTPS URL).\n"
+    );
+
+    let cargo = fs::read_to_string(tree_fs.root.join("Cargo.toml")).expect("Cargo.toml missing");
+    assert!(
+        cargo.contains(r#"lambda_http = { version = "1.3" }"#),
+        "expected lambda_http dependency injected, got:\n{cargo}"
+    );
+    // Declarative cargo-lambda config so build/deploy need no extra flags.
+    assert!(
+        cargo.contains("[package.metadata.lambda.build]")
+            && cargo.contains(r#"include = ["config"]"#),
+        "expected lambda build metadata with config include, got:\n{cargo}"
+    );
+    assert!(
+        cargo.contains("[package.metadata.lambda.deploy]")
+            && cargo.contains(r#"env = { LOCO_ENV = "production" }"#),
+        "expected lambda deploy metadata, got:\n{cargo}"
+    );
+
+    assert_snapshot!(
+        format!("generate[lambda_[{db}]]"),
+        fs::read_to_string(tree_fs.root.join("src").join("bin").join("lambda.rs"))
+            .expect("lambda entrypoint missing")
     );
 }

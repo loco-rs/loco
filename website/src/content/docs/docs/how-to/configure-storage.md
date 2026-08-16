@@ -27,12 +27,14 @@ Storage isn't configured in YAML — it's wired in code, in the `after_context` 
 use loco_rs::storage::{self, drivers};
 
 async fn after_context(ctx: AppContext) -> Result<AppContext> {
-    Ok(AppContext {
-        storage: storage::Storage::single(drivers::local::new()).into(),
-        ..ctx
-    })
+    Ok(ctx
+        .into_builder()
+        .storage(storage::Storage::single(drivers::local::new()).into())
+        .build())
 }
 ```
+
+`AppContext` is `#[non_exhaustive]`, so `AppContext { storage, ..ctx }` won't compile in your app — that's what keeps a new field in a future Loco release from breaking your build. `into_builder()` is the replacement: it carries every component the boot sequence already attached (mailer, queue, cache, shared store) across, and you override just the one you care about. Building from `AppContext::builder(..)` instead would compile and silently drop the rest.
 
 If you don't override `after_context` at all, Loco defaults to the **`Null` driver** — every storage operation returns `StorageError::Any("Operation not supported by null storage")`. That's a deliberate fail-fast default, not a bug: it means "you haven't wired storage yet."
 
@@ -56,10 +58,10 @@ use loco_rs::storage::{self, drivers};
 
 async fn after_context(ctx: AppContext) -> Result<AppContext> {
     let store = drivers::aws::new("my-app-uploads", "us-east-1")?;
-    Ok(AppContext {
-        storage: storage::Storage::single(store).into(),
-        ..ctx
-    })
+    Ok(ctx
+        .into_builder()
+        .storage(storage::Storage::single(store).into())
+        .build())
 }
 ```
 
@@ -196,9 +198,41 @@ If you need the whole payload as one `Bytes` buffer anyway, `BytesStream::collec
 
 **Strategy caveat:** streaming isn't uniformly "true streaming" once a strategy other than `SingleStrategy` is involved. `ReplicatedStrategy` unifies the former mirror/backup behavior: reads (both the buffered `download` and `download_stream`) fall back to secondaries when `read_from_secondaries` is set — i.e. constructed via `ReplicatedStrategy::mirror` — and are served from the primary only when constructed via `ReplicatedStrategy::backup`. Either way, `upload_stream` buffers the whole payload once via `collect()` and then fans out concurrently to secondaries. If you need guaranteed zero-buffering streaming to a single store, stick to `SingleStrategy` (the default).
 
-## 6. Verify
+## 6. Check existence, list, and stat
+
+`Storage` also exposes `exists`, `list`, and `stat`, each going through the selected strategy the same way `upload`/`download` do (with `exists_with_policy`/`list_with_policy`/`stat_with_policy` siblings for overriding the strategy per call).
 
 ```rust
+use std::path::Path;
+
+// Does a key exist?
+let found = ctx.storage.exists(Path::new("uploads/report.pdf")).await?;
+
+// List everything under a prefix, recursively.
+let all_entries = ctx.storage.list(Path::new("uploads"), true).await?;
+
+// List one level deep — child prefixes come back as directory entries.
+let top_level = ctx.storage.list(Path::new("uploads"), false).await?;
+
+// Metadata for a single key, without downloading its content.
+let meta = ctx.storage.stat(Path::new("uploads/report.pdf")).await?;
+println!("{} bytes, is_dir={}", meta.content_length.unwrap_or(0), meta.is_dir);
+```
+
+Each entry returned by `list`/`stat` is a `storage::drivers::ListEntry` (prefer `ListEntry::new(...)` over struct literals).
+
+On `ReplicatedStrategy` (mirror / `read_from_secondaries`):
+
+- `stat` falls back to secondaries on primary error (same as `download`)
+- `exists` falls back when the primary reports `false` **or** errors (a miss is not itself an error)
+- `list` falls back when the primary errors **or** returns an empty listing; empty secondaries are skipped so a later secondary with data still wins
+
+Backup mode (`read_from_secondaries: false`) keeps all three primary-only.
+
+## 7. Verify
+
+```rust
+use axum_test::multipart::{MultipartForm, Part}; // not re-exported by the testing prelude
 use loco_rs::testing::prelude::*;
 
 #[tokio::test]

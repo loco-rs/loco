@@ -1,5 +1,9 @@
 /// Redis based background job queue provider
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+    time::Duration,
+};
 
 pub use super::{Job, JobData, JobId};
 use super::{JobHandler, JobStatus, Queue, QueueProvider};
@@ -464,11 +468,20 @@ pub async fn ping(client: &RedisPool) -> Result<()> {
     Ok(())
 }
 
-/// Retrieves a list of jobs from the Redis queues.
+/// Retrieves a list of jobs, optionally filtered by `status` and age.
 ///
-/// This function queries Redis for jobs, optionally filtering by their
-/// `status` and age. It will search through all processing sets and queue keys
-/// to find jobs matching the criteria.
+/// Enumerates the `job:*` keys, which are the record of a job's existence, and
+/// consults the processing sets only to distinguish a job a worker is holding
+/// from one still waiting in a queue.
+///
+/// It deliberately does **not** enumerate the queues instead. A queue ZSET and
+/// a processing set are scheduling structures: `complete_job` and `fail_job`
+/// both remove the id from the processing set and add it to no queue, so a
+/// job walked-to through those structures becomes invisible the instant it
+/// stops being runnable — which is exactly when an operator goes looking for
+/// it. Every job-listing tool is built on this function (`jobs dump`,
+/// `jobs purge`, `clear_by_status`, `clear_jobs_older_than`), so all of them
+/// silently reported nothing for completed and failed jobs.
 ///
 /// # Errors
 ///
@@ -479,55 +492,42 @@ pub async fn get_jobs(
     age_days: Option<i64>,
 ) -> Result<Vec<Job>> {
     let mut conn = get_connection(client).await?;
-    let mut jobs = Vec::new();
 
-    // Get all queue keys
-    let queue_pattern = format!("{QUEUE_KEY_PREFIX}*");
-    let queue_keys: Vec<String> = redis::cmd("KEYS")
-        .arg(&queue_pattern)
-        .query_async(&mut conn)
-        .await?;
-
-    // Get all processing keys
     let processing_pattern = format!("{PROCESSING_KEY_PREFIX}*");
     let processing_keys: Vec<String> = redis::cmd("KEYS")
         .arg(&processing_pattern)
         .query_async(&mut conn)
         .await?;
 
-    // Collect jobs from queues
-    for queue_key in queue_keys {
-        let job_ids: Vec<String> = conn.zrange(&queue_key, 0, -1).await?;
-        for job_id in job_ids {
-            let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
-            let job_json: Option<String> = conn.get(&job_key).await?;
-            if let Some(json) = job_json
-                && let Ok(job) = Job::from_json(&json)
-                && should_include_job(&job, status, age_days)
-            {
-                jobs.push(job);
-            }
-        }
-    }
-
-    // Collect jobs from processing sets
+    let mut in_progress: HashSet<String> = HashSet::new();
     for processing_key in processing_keys {
         let job_ids: Vec<String> = conn.smembers(&processing_key).await?;
-        for job_id in job_ids {
-            // Get the job from the job_key using the ID
-            let job_key = format!("{JOB_KEY_PREFIX}{job_id}");
-            let job_json: Option<String> = conn.get(&job_key).await?;
-            if let Some(json) = job_json
-                && let Ok(mut job) = Job::from_json(&json)
-            {
-                // Jobs in processing sets have status "queued" but should be "processing"
-                if job.status == JobStatus::Queued {
-                    job.status = JobStatus::Processing;
-                }
-                if should_include_job(&job, status, age_days) {
-                    jobs.push(job);
-                }
-            }
+        in_progress.extend(job_ids);
+    }
+
+    let job_pattern = format!("{JOB_KEY_PREFIX}*");
+    let job_keys: Vec<String> = redis::cmd("KEYS")
+        .arg(&job_pattern)
+        .query_async(&mut conn)
+        .await?;
+
+    let mut jobs = Vec::new();
+    for job_key in job_keys {
+        let job_json: Option<String> = conn.get(&job_key).await?;
+        let Some(json) = job_json else { continue };
+        let Ok(mut job) = Job::from_json(&json) else {
+            continue;
+        };
+
+        // A job a worker is holding is stored as `queued` — the status is only
+        // rewritten when it finishes — so the processing set is what makes it
+        // `processing`.
+        if job.status == JobStatus::Queued && in_progress.contains(&job.id) {
+            job.status = JobStatus::Processing;
+        }
+
+        if should_include_job(&job, status, age_days) {
+            jobs.push(job);
         }
     }
 
@@ -734,6 +734,50 @@ pub async fn clear_jobs_older_than(
     }
 
     Ok(())
+}
+
+/// Moves failed jobs back onto their queue, returning how many moved.
+///
+/// A failed job holds its args and its `error` under its `job:` key but sits
+/// in no queue and no processing set, so retrying it means writing the status
+/// back and re-adding the id to a queue ZSET.
+///
+/// It goes to `default`. The queue a job was submitted to is not recoverable:
+/// `Job` carries no queue field, and the only record of the association — the
+/// id's membership in that queue's ZSET — is what `fail_job` removed. Retrying
+/// onto `default` is therefore a real behaviour change for a multi-queue setup,
+/// and the CLI says so.
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub async fn retry_failed(client: &RedisPool, id: Option<&str>) -> Result<u64> {
+    let mut conn = get_connection(client).await?;
+    let failed = get_jobs(client, Some(&vec![JobStatus::Failed]), None).await?;
+
+    let mut retried = 0;
+    for mut job in failed {
+        if let Some(id) = id
+            && job.id != id
+        {
+            continue;
+        }
+
+        job.status = JobStatus::Queued;
+        job.run_at = Utc::now();
+        job.updated_at = Some(Utc::now());
+
+        let job_key = format!("{JOB_KEY_PREFIX}{}", job.id);
+        let queue_key = format!("{QUEUE_KEY_PREFIX}default");
+        let _: () = conn.set(&job_key, job.to_json()?).await?;
+        let _: () = conn
+            .zadd(&queue_key, &job.id, calculate_score(job.priority))
+            .await?;
+        retried += 1;
+    }
+
+    debug!(retried = retried, "Retried failed jobs");
+    Ok(retried)
 }
 
 /// Requeues failed or stalled jobs that are older than a specified number of minutes.
@@ -1004,6 +1048,10 @@ impl QueueProvider for RedisQueue {
         status: Option<&Vec<JobStatus>>,
     ) -> Result<()> {
         clear_jobs_older_than(&self.client, age_days, status).await
+    }
+
+    async fn retry_failed(&self, id: Option<&str>) -> Result<u64> {
+        retry_failed(&self.client, id).await
     }
 
     async fn requeue(&self, age_minutes: &i64) -> Result<()> {
@@ -1358,6 +1406,95 @@ mod tests {
         assert!(failed_job.data.get("error").is_some());
     }
 
+    /// A failed job must stay visible to `get_jobs`.
+    ///
+    /// `fail_job` removes the id from the processing set and adds it to no
+    /// queue, so a driver that enumerates jobs by walking queue/processing keys
+    /// loses the job the moment it fails — taking `jobs dump --status failed`,
+    /// `jobs purge` and `clear_by_status` with it.
+    ///
+    /// `test_can_get_jobs_redis` cannot catch this: it asserts inside
+    /// `for job in &failed_jobs`, which passes vacuously on an empty list.
+    #[tokio::test]
+    async fn a_failed_job_is_still_listed() {
+        let (client, _container) = setup_redis().await;
+
+        enqueue(
+            &client,
+            "TestJob".to_string(),
+            None,
+            serde_json::json!({"hello": "world"}),
+            None,
+            None,
+        )
+        .await
+        .expect("enqueue");
+
+        let mut conn = get_test_connection(&client).await;
+        let (job, queue) = dequeue_with_conn(&mut conn, &["default".to_string()], &[])
+            .await
+            .expect("dequeue")
+            .expect("a job to dequeue");
+        fail_job_with_conn(&mut conn, &job.id, &queue, &Error::string("test failure"))
+            .await
+            .expect("fail the job");
+
+        let failed = get_jobs(&client, Some(&vec![JobStatus::Failed]), None)
+            .await
+            .expect("get failed jobs");
+
+        assert_eq!(failed.len(), 1, "the failed job must still be listed");
+        assert_eq!(failed[0].id, job.id);
+    }
+
+    #[tokio::test]
+    async fn can_retry_a_failed_job() {
+        let (client, _container) = setup_redis().await;
+
+        enqueue(
+            &client,
+            "TestJob".to_string(),
+            None,
+            serde_json::json!({"hello": "world"}),
+            None,
+            None,
+        )
+        .await
+        .expect("enqueue");
+
+        let mut conn = get_test_connection(&client).await;
+        let (job, queue) = dequeue_with_conn(&mut conn, &["default".to_string()], &[])
+            .await
+            .expect("dequeue")
+            .expect("a job to dequeue");
+        fail_job_with_conn(&mut conn, &job.id, &queue, &Error::string("test failure"))
+            .await
+            .expect("fail the job");
+
+        assert_eq!(retry_failed(&client, None).await.expect("retry"), 1);
+        assert!(get_jobs(&client, Some(&vec![JobStatus::Failed]), None)
+            .await
+            .expect("get failed")
+            .is_empty());
+
+        // Queued is not enough: the id must be back in a queue ZSET, or no
+        // worker will ever see it again.
+        let (again, _) = dequeue_with_conn(&mut conn, &["default".to_string()], &[])
+            .await
+            .expect("dequeue")
+            .expect("the retried job is dequeueable");
+        assert_eq!(again.id, job.id);
+        // The failure trail is kept — a retry should not erase why it failed.
+        assert!(again.data.get("error").is_some());
+
+        assert_eq!(
+            retry_failed(&client, Some("nonexistent"))
+                .await
+                .expect("retry"),
+            0
+        );
+    }
+
     #[tokio::test]
     async fn test_can_get_jobs_redis() {
         // Setup Redis directly with testcontainer
@@ -1366,24 +1503,35 @@ mod tests {
         // Seed data
         redis_seed_data(&client).await.expect("seed data");
 
-        // Get all jobs
+        // The seed writes 5 completed jobs and enqueues 2 queued ones. Every
+        // count below is asserted, not just the per-item status: the previous
+        // version only checked `for job in &list { assert_eq!(job.status, ..) }`,
+        // which passes on an empty list — and the completed and failed lists
+        // *were* empty, because `get_jobs` walked the queues rather than the
+        // job keys and so could not see a job that had stopped being runnable.
         let all_jobs = get_jobs(&client, None, None).await.expect("get all jobs");
-        assert!(!all_jobs.is_empty());
+        assert_eq!(all_jobs.len(), 7, "5 completed + 2 queued");
 
-        // Get jobs by status
         let queued_jobs = get_jobs(&client, Some(&vec![JobStatus::Queued]), None)
             .await
             .expect("get queued jobs");
+        assert_eq!(queued_jobs.len(), 2);
         for job in &queued_jobs {
             assert_eq!(job.status, JobStatus::Queued);
+        }
+
+        let completed_jobs = get_jobs(&client, Some(&vec![JobStatus::Completed]), None)
+            .await
+            .expect("get completed jobs");
+        assert_eq!(completed_jobs.len(), 5);
+        for job in &completed_jobs {
+            assert_eq!(job.status, JobStatus::Completed);
         }
 
         let failed_jobs = get_jobs(&client, Some(&vec![JobStatus::Failed]), None)
             .await
             .expect("get failed jobs");
-        for job in &failed_jobs {
-            assert_eq!(job.status, JobStatus::Failed);
-        }
+        assert!(failed_jobs.is_empty(), "the seed fails nothing");
 
         // Verify combined status filter
         let combined_jobs = get_jobs(
@@ -1393,6 +1541,7 @@ mod tests {
         )
         .await
         .expect("get combined jobs");
+        assert_eq!(combined_jobs.len(), 5);
         for job in &combined_jobs {
             assert!(job.status == JobStatus::Completed || job.status == JobStatus::Failed);
         }

@@ -10,7 +10,7 @@ default-run = "reference_spa-cli"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace.dependencies]
-loco-rs = { version="*", path="/Users/jondot/projects/loco" }
+loco-rs = { version = "*", path = "../.." }
 
 [dependencies]
 loco-rs = { workspace = true  }

@@ -1,0 +1,39 @@
+---
+source: loco-gen/tests/templates/deployment.rs
+expression: "fs::read_to_string(tree_fs.root.join(\"src\").join(\"bin\").join(\"lambda.rs\")).expect(\"lambda entrypoint missing\")"
+---
+// AWS Lambda entrypoint for this Loco app.
+//
+// Loco builds a standard Axum `Router`; both Axum and the Lambda runtime are
+// `tower::Service`s, so the same router runs on Lambda with no rewrite. This
+// boots the app in `ServerOnly` mode and hands the router to the Lambda HTTP
+// runtime. Background workers and the scheduler are intentionally not started
+// here — they don't fit Lambda's request/response model; run those on a
+// separate always-on target (ECS/EC2) or drive them from SQS/EventBridge.
+//
+// Deploy (see https://www.cargo-lambda.info) — config lives in Cargo.toml
+// [package.metadata.lambda], so these need no extra flags:
+//   cargo lambda build --release --arm64 --output-format zip
+//   cargo lambda deploy --enable-function-url
+// `deploy` creates the function, an execution role, and a public Function URL,
+// then prints the HTTPS endpoint. Set secrets with `--env-var KEY=VALUE`.
+//
+// Keep migrations out of the request path: run `cargo loco db migrate` from CI
+// or a one-off task, and set the runtime environment (via `LOCO_ENV`) to a
+// config whose `database` does not auto-migrate on boot.
+use lambda_http::{run, Error};
+use loco_rs::app::Hooks;
+use loco_rs::boot::{create_app, StartMode};
+use loco_rs::environment::{resolve_from_env, Environment};
+use tester::app::App;
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let environment: Environment = resolve_from_env().into();
+    let config = App::load_config(&environment).await?;
+    let boot = create_app::<App>(StartMode::ServerOnly, &environment, config).await?;
+    let router = boot
+        .router
+        .expect("ServerOnly boot always builds a router");
+    run(router).await
+}

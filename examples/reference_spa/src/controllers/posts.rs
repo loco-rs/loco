@@ -1,7 +1,7 @@
 #![allow(clippy::unused_async)]
 use axum::http::StatusCode;
 use loco_rs::prelude::*;
-use sea_orm::{PaginatorTrait, QueryOrder};
+use sea_orm::QueryOrder;
 use serde::Deserialize;
 
 use crate::{
@@ -12,21 +12,14 @@ use crate::{
     models::_entities::posts::{ActiveModel, Column, Entity},
 };
 
-const fn default_page() -> u64 {
-    1
-}
-
-const fn default_per_page() -> u64 {
-    25
-}
-
+/// A resource with its own filters composes them with the framework's
+/// pagination rather than restating `page`/`page_size`: `#[serde(flatten)]`
+/// puts both on the same query string.
 #[derive(Debug, Deserialize)]
 pub struct ListParams {
-    #[serde(default = "default_page")]
-    pub page: u64,
-    #[serde(default = "default_per_page")]
-    pub per_page: u64,
     pub status: Option<String>,
+    #[serde(flatten)]
+    pub pagination: query::PaginationQuery,
 }
 
 /// Build a 404 response shaped as the [`ApiError`] envelope.
@@ -45,25 +38,20 @@ async fn list(
     State(ctx): State<AppContext>,
     Query(params): Query<ListParams>,
 ) -> Result<Json<Page<PostDto>>> {
-    let page = params.page.max(1);
-    let per_page = params.per_page.max(1);
-
-    let mut query = Entity::find();
+    let mut select = Entity::find();
     if let Some(status) = &params.status {
-        query = query.filter(Column::Status.eq(status.clone()));
+        select = select.filter(Column::Status.eq(status.clone()));
     }
-    query = query.order_by_asc(Column::Id);
 
-    let paginator = query.paginate(&ctx.db, per_page);
-    let total = paginator.num_items_and_pages().await?.number_of_items;
-    let items = paginator.fetch_page(page - 1).await?;
+    let res = query::paginate(
+        &ctx.db,
+        select.order_by_asc(Column::Id),
+        None,
+        &params.pagination,
+    )
+    .await?;
 
-    Ok(Json(Page {
-        items: items.into_iter().map(PostDto::from).collect(),
-        total: i64::try_from(total).unwrap_or(i64::MAX),
-        page: i64::try_from(page).unwrap_or(i64::MAX),
-        per_page: i64::try_from(per_page).unwrap_or(i64::MAX),
-    }))
+    Ok(Json(Page::from_query(res)))
 }
 
 #[debug_handler]

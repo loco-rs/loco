@@ -30,6 +30,15 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Run cargo clippy
         run: cargo clippy --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms
+      # A `[Type]` that no longer resolves is a dead link on docs.rs, and
+      # nothing was checking: twelve had accumulated from renames.
+      - name: Run cargo doc
+        run: cargo doc --no-deps --all-features --workspace
+        env:
+          RUSTDOCFLAGS: >-
+            -D rustdoc::broken_intra_doc_links
+            -D rustdoc::invalid_html_tags
+            -D rustdoc::bare_urls
 
   check:
     needs: [style]
@@ -87,3 +96,145 @@ jobs:
 
       - name: Run cargo test
         run: cargo test --all-features --workspace --exclude loco-gen --exclude loco
+
+  # `--all-features` turns `embedded_assets` ON, which `#[cfg]`s out
+  # `controller/views/engine.rs` in favour of `engine_embedded.rs`. That file's
+  # test module — the on-disk Tera engine, hot reloading, autoescaping,
+  # template inheritance — was therefore compiled by no job at all: `cargo hack
+  # check --each-feature` above passes no `--tests`, and the job above enables
+  # the feature that hides it. This runs everything except that one feature.
+  test-without-embedded-assets:
+    needs: [check, style]
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run cargo test (on-disk view engine)
+        run: >-
+          cargo test --lib --no-default-features
+          --features auth,cli,with-db,testing,all_storage,cache_inmem,cache_redis,worker,worker_redis
+
+  # Vulnerabilities, unmaintained crates, licenses and registry sources — see
+  # `deny.toml`, which carries a written reason for every exemption.
+  #
+  # Note this job can go red without anyone changing the code: a new advisory
+  # against an existing dependency lands in the RustSec database and the next
+  # PR fails. That is the intended behaviour — the alternative is finding out
+  # from a user.
+  supply-chain:
+    needs: [style]
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+      - run: cargo deny check
+
+  # `examples` is `exclude`d from the workspace, so `cargo test --workspace`
+  # never reaches `examples/*/tests` — model, request, task and worker suites
+  # that exercise the framework the way an app actually uses it, through a
+  # booted `AppContext` and a real router. Nothing ran them: `docs.yml` only
+  # `cargo build`s demo, to check the docs still compile.
+  #
+  # Both examples default to SQLite in `config/test.yaml`, so this needs no
+  # services. `reference_spa` is a clientside app whose `static` middleware is
+  # `must_exist: true` over `frontend/dist`, so it must be built before the app
+  # will boot — exactly what the CI a generated clientside app ships does.
+  test-examples:
+    needs: [check, style]
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        example: [demo, reference_spa]
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: examples/${{ matrix.example }}
+
+      # pnpm, not npm: the manifest declares `packageManager: pnpm` and carries
+      # `pnpm.overrides`, which npm ignores — it then fails to resolve vite at
+      # all.
+      - name: Setup node
+        if: matrix.example == 'reference_spa'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Setup pnpm
+        if: matrix.example == 'reference_spa'
+        uses: pnpm/action-setup@v5
+        with:
+          # Read the frontend's own packageManager pin; there is no root
+          # package.json for the action to fall back on.
+          package_json_file: examples/reference_spa/frontend/package.json
+      - name: Build frontend
+        if: matrix.example == 'reference_spa'
+        run: pnpm install --frozen-lockfile && pnpm run build
+        working-directory: ./examples/reference_spa/frontend
+
+      - name: Run cargo test
+        run: cargo test --manifest-path examples/${{ matrix.example }}/Cargo.toml
+
+  # `rust-version` in Cargo.toml is a promise to anyone running an older
+  # toolchain, and until this job existed nothing checked it: every other job
+  # here builds on `stable`. The toolchain is read out of Cargo.toml rather
+  # than pinned here, so raising the floor in one place moves the gate with it.
+  #
+  # `loco-new` is its own workspace, so it needs its own invocation — the root
+  # `--workspace` does not reach it.
+  msrv:
+    needs: [check, style]
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v7
+      - name: Read the declared MSRV
+        id: msrv
+        run: |
+          msrv=$(grep -m1 '^rust-version' Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
+          echo "Declared MSRV: $msrv"
+          echo "version=$msrv" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ steps.msrv.outputs.version }}
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check the workspace on the MSRV
+        run: cargo check --all-features --workspace
+      - name: Check the `loco` CLI on the MSRV
+        run: cargo check --all-features --manifest-path loco-new/Cargo.toml

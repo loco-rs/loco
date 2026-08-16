@@ -24,7 +24,7 @@ cache:
 # config/production.yaml — shared across processes
 cache:
   kind: Redis
-  uri: "{{ get_env(name='REDIS_CACHE_URL', default='redis://127.0.0.1:6379') }}"
+  uri: "<%= get_env(name='REDIS_CACHE_URL', default='redis://127.0.0.1:6379') %>"
   max_size: 10 # required — max pool connections
 ```
 

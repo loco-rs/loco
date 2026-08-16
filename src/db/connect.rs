@@ -218,7 +218,8 @@ async fn create_postgres_database(
         return Err(sea_orm::DbErr::Custom("database already exists".to_owned()));
     }
 
-    let with_options = env_vars::get_or_default(env_vars::POSTGRES_DB_OPTIONS, "ENCODING='UTF8'");
+    let with_options = std::env::var(env_vars::POSTGRES_DB_OPTIONS)
+        .unwrap_or_else(|_| "ENCODING='UTF8'".to_string());
 
     let query = format!("CREATE DATABASE {db_name} WITH {with_options}");
     tracing::info!(query, "creating postgres database");

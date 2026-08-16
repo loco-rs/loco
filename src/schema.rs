@@ -758,6 +758,30 @@ pub async fn remove_column(m: &SchemaManager<'_>, table: &str, name: &str) -> Re
 }
 
 ///
+/// Rename a column, keeping its type and data.
+///
+/// ```ignore
+/// rename_column(m, "movies", "title", "name").await;
+/// ```
+/// # Errors
+/// fails when it fails
+pub async fn rename_column(
+    m: &SchemaManager<'_>,
+    table: &str,
+    from: &str,
+    to: &str,
+) -> Result<(), DbErr> {
+    let nz_table = normalize_table(table);
+    m.alter_table(
+        alter(Alias::new(nz_table))
+            .rename_column(Alias::new(from), Alias::new(to))
+            .to_owned(),
+    )
+    .await?;
+    Ok(())
+}
+
+///
 /// Adds a reference. Reads "movies belongs-to users":
 /// ```ignore
 /// add_reference(m, "movies", "users").await;

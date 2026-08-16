@@ -33,7 +33,7 @@ use crate::{
 };
 
 /// Represents the application startup mode.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum StartMode {
     /// Run the application as a server only. when running web server only,
     /// workers job will not handle.

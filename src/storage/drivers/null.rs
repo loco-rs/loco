@@ -9,7 +9,7 @@ use std::path::Path;
 use async_trait::async_trait;
 use bytes::Bytes;
 
-use super::{GetResponse, StorageResult, StoreDriver, UploadResponse};
+use super::{GetResponse, ListEntry, StorageResult, StoreDriver, UploadResponse};
 use crate::storage::StorageError;
 
 pub struct NullStorage {}
@@ -91,5 +91,51 @@ impl StoreDriver for NullStorage {
         Err(StorageError::Any(
             "Operation not supported by null storage".into(),
         ))
+    }
+
+    /// Lists entries whose paths start with the given prefix.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `StorageResult` with the listing operation's result.
+    async fn list(&self, _path: &Path, _recursive: bool) -> StorageResult<Vec<ListEntry>> {
+        Err(StorageError::Any(
+            "Operation not supported by null storage".into(),
+        ))
+    }
+
+    /// Retrieves metadata for a single path without downloading its content.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `StorageResult` with the entry's metadata.
+    async fn stat(&self, _path: &Path) -> StorageResult<ListEntry> {
+        Err(StorageError::Any(
+            "Operation not supported by null storage".into(),
+        ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use super::new;
+
+    /// The null driver's contract is that *every* operation refuses rather than
+    /// pretending to succeed. `list` returning `Ok(vec![])` or `exists`
+    /// returning `Ok(false)` would each read as "the store is empty" to a
+    /// caller, and under a mirror strategy an empty listing is specifically
+    /// treated as a miss to fall back from — so a silent `Ok` here would be
+    /// indistinguishable from a real one.
+    #[tokio::test]
+    async fn every_read_refuses_rather_than_reporting_emptiness() {
+        let store = new();
+        let path = Path::new("anything.txt");
+
+        assert!(store.exists(path).await.is_err());
+        assert!(store.list(path, true).await.is_err());
+        assert!(store.list(path, false).await.is_err());
+        assert!(store.stat(path).await.is_err());
     }
 }

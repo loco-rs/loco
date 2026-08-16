@@ -36,7 +36,7 @@ All three backends share the same `perform_later` API and priority semantics; sw
 ```yaml
 queue:
   kind: Redis
-  uri: "{{ get_env(name='REDIS_URL', default='redis://127.0.0.1') }}"
+  uri: "<%= get_env(name='REDIS_URL', default='redis://127.0.0.1') %>"
   dangerously_flush: false # clears the queue on boot — dev/test only
   queues: [high, low] # optional: named/priority queues, first = most important
   num_workers: 2 # concurrent job handlers
@@ -55,7 +55,7 @@ loco-rs = { version = "...", features = ["worker_redis"] }
 ```yaml
 queue:
   kind: Postgres
-  uri: "{{ get_env(name='PGQ_URL', default='postgres://localhost:5432/mydb') }}"
+  uri: "<%= get_env(name='PGQ_URL', default='postgres://localhost:5432/mydb') %>"
   dangerously_flush: false
   enable_logging: false
   max_connections: 20
@@ -73,7 +73,7 @@ Requires the `worker` Cargo feature (on by default — no extra `features = [...
 ```yaml
 queue:
   kind: Sqlite
-  uri: "{{ get_env(name='SQLTQ_URL', default='sqlite://loco_development.sqlite?mode=rwc') }}"
+  uri: "<%= get_env(name='SQLTQ_URL', default='sqlite://loco_development.sqlite?mode=rwc') %>"
   dangerously_flush: false
   poll_interval_sec: 1
   num_workers: 2
@@ -125,7 +125,7 @@ Running `cargo loco jobs requeue` by hand recovers jobs stranded in `processing`
 ```yaml
 queue:
   kind: Postgres
-  uri: "{{ get_env(name='PGQ_URL', default='postgres://localhost:5432/mydb') }}"
+  uri: "<%= get_env(name='PGQ_URL', default='postgres://localhost:5432/mydb') %>"
   # ...
   reaper:
     age_minutes: 10 # requeue jobs stuck in "processing" for longer than this

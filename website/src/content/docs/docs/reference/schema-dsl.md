@@ -13,7 +13,7 @@ The module is gated behind the `with-db` feature (`src/lib.rs:20-21`).
 
 `ColType::PkAuto` builds an auto-increment **64-bit** (`BIGINT`) primary key, not a 32-bit one:
 
-```rust
+```rust no-syntax-check="a match arm quoted verbatim from src/schema.rs"
 // src/schema.rs:330-332
 Self::PkAuto => big_pk_auto(name),
 ```
@@ -172,6 +172,7 @@ All are `async fn(m: &SchemaManager<'_>, ...) -> Result<(), DbErr>`, called from
 | `create_join_table_without_timestamps` | `create_join_table_without_timestamps(m, table, cols, refs)` — join table, no timestamps | `schema.rs:559-566` |
 | `add_column` | `add_column(m, table: &str, name: &str, atype: ColType)` | `schema.rs:721-735` |
 | `remove_column` | `remove_column(m, table: &str, name: &str)` | `schema.rs:745-754` |
+| `rename_column` | `rename_column(m, table: &str, from: &str, to: &str)` — renames a column, keeping its type and data. This is what the `Rename<Old>To<New>On<Table>` migration name generates (`migration/rename_column.t`) | `schema.rs:768-781` |
 | `add_reference` | `add_reference(m, fromtbl: &str, totbl: &str, refname: &str)` | `schema.rs:764-839` |
 | `remove_reference` | `remove_reference(m, fromtbl: &str, totbl: &str, refname: &str)` | `schema.rs:849-892` |
 | `drop_table` | `drop_table(m, table: &str)` | `schema.rs:902-906` |
@@ -240,7 +241,7 @@ The generator CLI flag that maps to the `_without_timestamps` functions is **`--
 ```sh
 loco g migration CreatePosts title:string --without-tz
 loco g migration CreateJoinTableUsersAndGroups count:int --without-tz
-loco g scaffold posts title:string! user:references --api --without-tz
+loco g scaffold posts title:string! user:references --without-tz
 ```
 (`src/cli.rs:193`, `:237`, `:241`, `:267`)
 
@@ -248,4 +249,4 @@ loco g scaffold posts title:string! user:references --api --without-tz
 
 ## Related: generator field-type mapping
 
-The `loco g model|migration|scaffold` field-type shorthand (e.g. `title:string!`, `count:int^`, `user:references`) maps onto this same `ColType` surface via `loco-gen/src/mappings.json` (`col_type` column). Notably, the generator's `int`/`unsigned` shorthand also produces 64-bit columns (`int` → `ColType::BigIntegerNull` / `Option<i64>`, `int!` → `ColType::BigInteger` / `i64`, `unsigned` family → `BigUnsigned*` / `i64`) — consistent with the `PkAuto` 64-bit default on this page. The full field-type table (all ~50 shorthand entries) belongs on the generators reference page, not yet published as of this writing.
+The `loco g model|migration|scaffold` field-type shorthand (e.g. `title:string!`, `count:int^`, `user:references`) maps onto this same `ColType` surface via `loco-gen/src/column.rs` (the `parse_column` function and `ScalarType` enum). Notably, the generator's `int`/`unsigned` shorthand also produces 64-bit columns (`int` → `ColType::BigIntegerNull` / `Option<i64>`, `int!` → `ColType::BigInteger` / `i64`, `unsigned` family → `BigUnsigned*` / `i64`) — consistent with the `PkAuto` 64-bit default on this page. The full field-type table (all ~50 shorthand entries) belongs on the generators reference page, not yet published as of this writing.

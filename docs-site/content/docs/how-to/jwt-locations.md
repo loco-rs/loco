@@ -27,7 +27,7 @@ If you omit `location` entirely, Loco reads the token from the `Authorization: B
 ```yaml
 auth:
   jwt:
-    secret: "{{ get_env(name='JWT_SECRET') }}"
+    secret: "<%= get_env(name='JWT_SECRET') %>"
     expiration: 604800
     # location omitted => Bearer header
 ```
@@ -43,7 +43,7 @@ auth:
   jwt:
     location:
       from: Bearer
-    secret: "{{ get_env(name='JWT_SECRET') }}"
+    secret: "<%= get_env(name='JWT_SECRET') %>"
     expiration: 604800
 ```
 
@@ -55,7 +55,7 @@ auth:
     location:
       from: Query
       name: token
-    secret: "{{ get_env(name='JWT_SECRET') }}"
+    secret: "<%= get_env(name='JWT_SECRET') %>"
     expiration: 604800
 ```
 
@@ -71,7 +71,7 @@ auth:
     location:
       from: Cookie
       name: auth_token
-    secret: "{{ get_env(name='JWT_SECRET') }}"
+    secret: "<%= get_env(name='JWT_SECRET') %>"
     expiration: 604800
 ```
 
@@ -92,7 +92,7 @@ auth:
       - from: Query
         name: token
       - from: Bearer
-    secret: "{{ get_env(name='JWT_SECRET') }}"
+    secret: "<%= get_env(name='JWT_SECRET') %>"
     expiration: 604800
 ```
 

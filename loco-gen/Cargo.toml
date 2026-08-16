@@ -1,7 +1,13 @@
 [package]
 name = "loco-gen"
-version = "1.0.0"
+version = "1.1.0"
 description = "Loco generators"
+homepage = "https://loco.rs/"
+documentation = "https://docs.rs/loco-gen"
+# Without this, the crates.io page for loco-gen has no link back to the source.
+repository = "https://github.com/loco-rs/loco"
+keywords = ["loco", "codegen", "scaffold", "generator", "rails"]
+categories = ["development-tools", "web-programming"]
 license.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -15,7 +21,7 @@ path = "src/lib.rs"
 [dependencies]
 
 cruet = "1.0"
-rrgen = "0.5.6"
+rrgen = "0.6"
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
@@ -24,7 +30,6 @@ tracing = { workspace = true }
 chrono = { workspace = true }
 colored = { workspace = true }
 heck = { workspace = true }
-tera = { workspace = true }
 duct = { workspace = true }
 clap = { version = "4.4.7", features = ["derive"] }
 include_dir = { version = "0.7.4" }
@@ -36,3 +41,7 @@ serial_test = "3.1.1"
 uuid = { version = "1.11.0", features = ["v4", "fast-rng"] }
 insta = { version = "1.41.1", features = ["redactions", "yaml", "filters"] }
 rstest = "0.26.1"
+# `test_migrations_flow` needs a real Postgres when `DATABASE_URL` is unset;
+# see `tests/postgres/mod.rs`.
+testcontainers = { version = "0.27" }
+tokio = { version = "1", features = ["rt", "time", "macros"] }

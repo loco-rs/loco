@@ -7,26 +7,11 @@ use std::{
 };
 
 use chrono::{DateTime, NaiveDateTime, Utc};
-use sea_orm::{
-    ConnectionTrait, DatabaseBackend, DatabaseConnection, DbBackend, DbErr, EntityTrait, Statement,
-};
+use sea_orm::{ConnectionTrait, DatabaseBackend, DatabaseConnection, DbBackend, DbErr, Statement};
 use serde_json::json;
 
 use super::IGNORED_TABLES;
 use crate::{app::AppContext, Result as AppResult};
-
-/// Truncate a table in the database, effectively deleting all rows.
-///
-/// # Errors
-///
-/// Returns a [`AppResult`] if an error occurs during truncate the given table
-pub async fn truncate_table<T>(db: &DatabaseConnection, _: T) -> Result<(), sea_orm::DbErr>
-where
-    T: EntityTrait,
-{
-    T::delete_many().exec(db).await?;
-    Ok(())
-}
 
 /// Retrieves a list of table names from the database.
 ///
@@ -420,6 +405,8 @@ pub async fn dump_schema(ctx: &AppContext, fname: &str) -> crate::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use sea_orm::EntityTrait;
+
     use super::*;
 
     // Minimal SeaORM entity for the dump_types test table to exercise the

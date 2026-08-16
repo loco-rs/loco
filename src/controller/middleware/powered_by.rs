@@ -29,7 +29,7 @@ pub struct Middleware {
     ident: Option<HeaderValue>,
 }
 
-/// Creates a new instance of [`Middleware`] by cloning the [`Config`]
+/// Creates a new instance of [`Middleware`] by cloning the [`crate::config::Config`]
 /// configuration.
 #[must_use]
 pub fn new(ident: Option<&str>) -> Middleware {

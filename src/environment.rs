@@ -16,7 +16,7 @@ use super::config::Config;
 use crate::{env_vars, Result};
 use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
-use std::{path::Path, str::FromStr};
+use std::{env, path::Path, str::FromStr};
 
 pub const DEFAULT_ENVIRONMENT: &str = "development";
 
@@ -28,9 +28,9 @@ impl From<String> for Environment {
 
 #[must_use]
 pub fn resolve_from_env() -> String {
-    env_vars::get(env_vars::LOCO_ENV)
-        .or_else(|_| env_vars::get(env_vars::RAILS_ENV))
-        .or_else(|_| env_vars::get(env_vars::NODE_ENV))
+    env::var(env_vars::LOCO_ENV)
+        .or_else(|_| env::var(env_vars::RAILS_ENV))
+        .or_else(|_| env::var(env_vars::NODE_ENV))
         .unwrap_or_else(|_| DEFAULT_ENVIRONMENT.to_string())
 }
 
@@ -54,7 +54,7 @@ impl Environment {
     /// Returns error if an error occurs during loading
     /// configuration file an parse into [`Config`] struct.
     pub fn load(&self) -> Result<Config> {
-        env_vars::get(env_vars::CONFIG_FOLDER).map_or_else(
+        env::var(env_vars::CONFIG_FOLDER).map_or_else(
             |_| Config::new(self),
             |config_folder| self.load_from_folder(Path::new(&config_folder)),
         )

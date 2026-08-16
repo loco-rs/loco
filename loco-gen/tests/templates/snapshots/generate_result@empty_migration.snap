@@ -3,4 +3,4 @@ source: loco-gen/tests/templates/migration.rs
 expression: collect_messages(&gen_result)
 snapshot_kind: text
 ---
-* Migration for `FixUsersTable` added! You can now apply it with `$ cargo loco db migrate && cargo loco db entities`.
+* Empty migration `fix_users_table` created — no schema change could be inferred from the name `FixUsersTable`, so its `up()` is unimplemented and `$ cargo loco db migrate` will panic until you write it. Names Loco does understand: CreateMovies, AddNameToUsers, RemoveNameFromUsers, AddUserRefToPosts, RenameTitleToNameOnMovies, CreateJoinTableUsersAndGroups.

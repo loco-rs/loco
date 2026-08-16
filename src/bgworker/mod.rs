@@ -232,6 +232,18 @@ pub trait QueueProvider: Send + Sync {
     /// This function will return an error if it fails.
     async fn requeue(&self, age_minutes: &i64) -> Result<()>;
 
+    /// Moves failed jobs back to [`JobStatus::Queued`], returning how many
+    /// moved. With `id`, only that job; without, every failed job.
+    ///
+    /// Distinct from [`Queue::requeue`], which rescues jobs stranded in
+    /// [`JobStatus::Processing`] by a crashed worker and cannot touch a failed
+    /// one. Without this, a failed job is terminal: there is no automatic retry
+    /// in any driver, so an operator's only recourse was to dump and re-import.
+    ///
+    /// # Errors
+    /// This function will return an error if it fails.
+    async fn retry_failed(&self, id: Option<&str>) -> Result<u64>;
+
     /// A short, human-readable description of this provider.
     fn describe(&self) -> String;
 
@@ -357,6 +369,13 @@ impl QueueProvider for NoopQueue {
     }
 
     async fn requeue(&self, _age_minutes: &i64) -> Result<()> {
+        tracing::error!(
+            "No queue provider is configured: compile with at least one queue provider feature"
+        );
+        Err(Error::string("provider not configured"))
+    }
+
+    async fn retry_failed(&self, _id: Option<&str>) -> Result<u64> {
         tracing::error!(
             "No queue provider is configured: compile with at least one queue provider feature"
         );
@@ -549,6 +568,17 @@ impl Queue {
     pub async fn requeue(&self, age_minutes: &i64) -> Result<()> {
         tracing::info!(age_minutes = age_minutes, "Requeuing stale jobs");
         self.0.requeue(age_minutes).await
+    }
+
+    /// Moves failed jobs back to [`JobStatus::Queued`], returning how many
+    /// moved. With `id`, only that job; without, every failed job.
+    ///
+    /// # Errors
+    /// - If no queue provider is configured, it will return an error indicating the lack of configuration.
+    /// - Any error in the underlying provider's retry logic will propagate from the respective function.
+    pub async fn retry_failed(&self, id: Option<&str>) -> Result<u64> {
+        tracing::info!(job_id = ?id, "Retrying failed jobs");
+        self.0.retry_failed(id).await
     }
 
     /// Dumps the list of jobs to a YAML file at the specified path.

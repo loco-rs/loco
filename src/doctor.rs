@@ -23,7 +23,7 @@ use std::{
 
 use crate::{
     bgworker,
-    config::{self, Config},
+    config::{self, Config, QueueConfig},
     depcheck, Error, Result,
 };
 
@@ -98,7 +98,10 @@ pub fn check_cratesio_version(crate_name: &str, current_version: &str) -> Result
 
 /// Represents different resources that can be checked.
 #[derive(PartialOrd, PartialEq, Eq, Ord, Debug)]
+#[non_exhaustive]
 pub enum Resource {
+    /// Settings that are safe in development and dangerous in production.
+    ProductionSafety,
     SeaOrmCLI,
     Database,
     Queue,
@@ -202,7 +205,12 @@ pub async fn run_all<H: crate::app::Hooks>(
         }
     }
 
-    if !production {
+    if production {
+        checks.insert(
+            Resource::ProductionSafety,
+            check_production_safety(&app_context.config),
+        );
+    } else {
         checks.insert(Resource::Deps, check_deps()?);
         checks.insert(Resource::SeaOrmCLI, check_seaorm_cli()?);
         checks.insert(
@@ -212,6 +220,70 @@ pub async fn run_all<H: crate::app::Hooks>(
     }
 
     Ok(checks)
+}
+
+/// Flags configuration that is fine in development and harmful in production.
+///
+/// The checks skipped in production — the dependency audit, the `sea-orm-cli`
+/// probe, the crates.io version lookup — are all about the machine you develop
+/// on, and they have nothing to say about a server. Dropping them without
+/// putting anything in their place left `doctor` doing *less* work in the one
+/// environment where being wrong is expensive. These are the settings that make
+/// a production app unreachable, wipe its data, or leak its internals.
+#[must_use]
+pub fn check_production_safety(config: &Config) -> Check {
+    let mut problems = Vec::new();
+
+    // Loopback inside a container or VM is unreachable from anywhere else, and
+    // the symptom — connection refused through the proxy — points at the proxy.
+    let binding = config.server.binding.as_str();
+    if binding == "localhost" || binding == "127.0.0.1" || binding == "::1" {
+        problems.push(format!(
+            "server.binding is `{binding}`, which only accepts connections from the machine \
+             itself. Use `0.0.0.0` to serve traffic from outside it."
+        ));
+    }
+
+    if config.logger.pretty_backtrace {
+        problems.push(
+            "logger.pretty_backtrace sets RUST_BACKTRACE=1, which costs performance and puts \
+             source paths into your logs."
+                .to_string(),
+        );
+    }
+
+    #[cfg(feature = "with-db")]
+    {
+        if config.database.dangerously_truncate {
+            problems
+                .push("database.dangerously_truncate empties every table on startup.".to_string());
+        }
+        if config.database.dangerously_recreate {
+            problems.push("database.dangerously_recreate drops the schema on startup.".to_string());
+        }
+    }
+
+    if config
+        .queue
+        .as_ref()
+        .is_some_and(QueueConfig::dangerously_flush)
+    {
+        problems.push("the queue is configured to flush all jobs on startup.".to_string());
+    }
+
+    if problems.is_empty() {
+        Check {
+            status: CheckStatus::Ok,
+            message: "production settings: safe".to_string(),
+            description: None,
+        }
+    } else {
+        Check {
+            status: CheckStatus::NotOk,
+            message: "production settings: unsafe".to_string(),
+            description: Some(problems.join("\n   ")),
+        }
+    }
 }
 
 /// Checks "blessed" / major dependencies in a Loco app Cargo.toml, and
@@ -384,5 +456,99 @@ pub fn check_published_loco_version() -> Result<Check> {
             message: format!("Checking Loco version failed: {e}"),
             description: None,
         }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{check_production_safety, CheckStatus};
+    use crate::config::Config;
+
+    /// A production config with nothing wrong with it.
+    fn config(overrides: &str) -> Config {
+        let base = format!(
+            "
+logger:
+  enable: true
+  pretty_backtrace: false
+  level: info
+  format: json
+server:
+  port: 5150
+  binding: 0.0.0.0
+  host: https://example.com
+  middlewares: {{}}
+database:
+  uri: sqlite://app.sqlite?mode=rwc
+  enable_logging: false
+  connect_timeout: 500
+  idle_timeout: 500
+  min_connections: 1
+  max_connections: 10
+  auto_migrate: true
+  dangerously_truncate: false
+  dangerously_recreate: false
+{overrides}"
+        );
+        serde_yaml::from_str(&base).expect("test config parses")
+    }
+
+    #[test]
+    fn a_sound_production_config_passes() {
+        assert_eq!(check_production_safety(&config("")).status, CheckStatus::Ok);
+    }
+
+    /// The failure the deploy guide's "all green" used to hide: an app bound to
+    /// loopback answers on the host and refuses every connection from outside it.
+    #[test]
+    fn a_loopback_binding_is_reported() {
+        for binding in ["localhost", "127.0.0.1", "::1"] {
+            let mut cfg = config("");
+            cfg.server.binding = binding.to_string();
+            let check = check_production_safety(&cfg);
+            assert_eq!(
+                check.status,
+                CheckStatus::NotOk,
+                "`{binding}` should be reported as unreachable from outside the host"
+            );
+            assert!(check.description.unwrap().contains("0.0.0.0"));
+        }
+    }
+
+    #[test]
+    fn destructive_database_flags_are_reported() {
+        let mut cfg = config("");
+        cfg.database.dangerously_truncate = true;
+        let check = check_production_safety(&cfg);
+        assert_eq!(check.status, CheckStatus::NotOk);
+        assert!(check.description.unwrap().contains("empties every table"));
+
+        let mut cfg = config("");
+        cfg.database.dangerously_recreate = true;
+        assert_eq!(check_production_safety(&cfg).status, CheckStatus::NotOk);
+    }
+
+    #[test]
+    fn pretty_backtrace_is_reported() {
+        let mut cfg = config("");
+        cfg.logger.pretty_backtrace = true;
+        let check = check_production_safety(&cfg);
+        assert_eq!(check.status, CheckStatus::NotOk);
+        assert!(check.description.unwrap().contains("RUST_BACKTRACE"));
+    }
+
+    /// Every problem is reported at once, so a deploy is not a sequence of
+    /// one-at-a-time discoveries.
+    #[test]
+    fn all_problems_are_reported_together() {
+        let mut cfg = config("");
+        cfg.server.binding = "localhost".to_string();
+        cfg.logger.pretty_backtrace = true;
+        cfg.database.dangerously_truncate = true;
+
+        let description = check_production_safety(&cfg)
+            .description
+            .expect("problems are described");
+        assert_eq!(description.lines().count(), 3, "got:\n{description}");
     }
 }

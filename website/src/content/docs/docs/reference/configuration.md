@@ -10,12 +10,10 @@ This page is a dictionary of every key Loco's configuration loader understands. 
 ## Loading & precedence
 
 - Default config folder: `config/` (`Config::new`, `src/config/mod.rs:128-131`). Override with the `LOCO_CONFIG_FOLDER` env var (read by `Environment::load`, `src/environment.rs:59-64`).
-- `Config::from_folder(env, path)` (`src/config/mod.rs:153-174`) resolves the file to load with this precedence — **first file that exists wins**:
-  1. `{path}/{env}.local.yaml`
-  2. `{path}/{env}.yaml`
+- `Config::from_folder(env, path)` (`src/config/mod.rs:154-200`) loads **both** `{path}/{env}.yaml` and `{path}/{env}.local.yaml` when they exist and **deep-merges** them, with the `.local.yaml` side winning key by key (`merge_yaml`, `src/config/mod.rs:243-257`). The merge recurses through mappings, so a local file only has to restate the keys it overrides; anything that is not a mapping — a scalar or a sequence — is replaced wholesale rather than combined. When only one of the two files exists, that file is used on its own. The loaded path is reported as `"{base} (merged with {local})"` when both were read.
 
   If neither exists, loading fails with `Error::Message("no configuration file found in folder: ...")`.
-- Before parsing, the entire YAML file is rendered as a **Tera template** (`src/config/mod.rs:170`, `src/tera.rs:5-8`, `Tera::one_off(.., autoescape=false)`). `get_env(name=.., default=..)` used throughout the shipped config files is Tera's own built-in function — it is **not** a Loco-registered function.
+- Before parsing, the entire YAML file is rendered as a template (`Config::load_yaml_value`, `src/config/mod.rs:211-217`; `src/config/template.rs`). Config files use the YAML-safe `<%= expr %>` / `<% stmt %>` / `<%# comment %>` delimiters — `<` is not a YAML indicator character, so a templated value like `port: <%= get_env(name="PORT", default="5150") %>` is still valid, unmangled YAML before it's ever rendered. Under the hood these are translated into Tera's native `{{ }}`/`{% %}`/`{# #}` delimiters (`to_tera_syntax`, `src/config/template.rs:95-145`) and then rendered by `tera::render_string` (`src/tera.rs:55-60`), which builds a bare Tera instance and registers Loco's own functions on it. It cannot use `Tera::one_off`, because that renders with only Tera's built-ins — and `get_env(name=.., default=..)`, used throughout the shipped config files, is **not** one of them: Tera 1 shipped it, Tera 2 dropped it, and Loco now registers its own (`src/tera.rs:16-32`). Tera's native `{{ }}`/`{% %}` delimiters still render for backward compatibility, but they are deprecated (they are YAML flow-mapping syntax, not a plain scalar, so a YAML formatter can rewrite and break them — see [The configuration model](/docs/explanation/configuration-model#the-yaml-is-templated-first-a-config-file-second)) and log a warning when used.
 - Parse failures raise `Error::YAMLFile(err, path)` (`src/config/mod.rs:172-173`).
 - `Config` implements `Display` by dumping itself back to YAML (`src/config/mod.rs:191-196`).
 - `Config::get_jwt_config(&self) -> Result<&JWT>` (`src/config/mod.rs:180-188`) returns an error if `auth` or `auth.jwt` is absent.
@@ -67,9 +65,11 @@ auth:
 | `auth.jwt.secret` | `String` | required | `auth.rs:26`. **Must be valid base64** — the JWT signer/verifier call `EncodingKey`/`DecodingKey::from_base64_secret` (`src/auth/jwt.rs:83,108`); a non-base64 string fails at token generation/validation time, not at config load time |
 | `auth.jwt.expiration` | `u64` (seconds) | required | `auth.rs:28` |
 
-`JWTLocationConfig` (`#[serde(untagged)]`, `auth.rs:47-54`) accepts either form:
+`JWTLocationConfig` (`auth.rs:61-106`) accepts either form:
 - `Single(JWTLocation)` — a single location map
 - `Multiple(Vec<JWTLocation>)` — a YAML list of location maps, tried in order until one yields a token
+
+`#[serde(untagged)]` applies to `Serialize` only. `Deserialize` is hand-written and dispatches on the input's shape — a map is a single location, a sequence is a fallback list — so a malformed entry reports the actual reason (a wrong-case `from: cookie`, a `Cookie` missing its `name`) instead of an untagged enum's opaque "did not match any variant".
 
 `JWTLocation` (`#[serde(tag = "from")]`, `auth.rs:35-44`):
 
@@ -224,7 +224,7 @@ mailer:
     tls: implicit       # overrides `secure`; see below
     auth:
       user: postmaster@mg.example.com
-      password: "{{ get_env(name='SMTP_PASSWORD') }}"
+      password: "<%= get_env(name='SMTP_PASSWORD') %>"
     hello_name: <string> # optional — EHLO client id
 ```
 
@@ -327,12 +327,13 @@ cache:
 
 # --- or (default) ---
 cache:
-  kind: Null               # no-op cache; used when `cache` key is omitted
+  kind: "Null"             # no-op cache; used when `cache` key is omitted
+                           # must be quoted — bare Null is YAML's null, not the string
 ```
 
 | Key | Type | Required? | Notes |
 |---|---|---|---|
-| `cache.kind` | tag: `InMem` \| `Redis` \| `Null` | required if `cache` present | `cache.rs:6-16` |
+| `cache.kind` | tag: `InMem` \| `Redis` \| `"Null"` | required if `cache` present | `cache.rs:6-16`. `Null` must be written quoted: unquoted, YAML resolves it to null and the tagged enum fails to deserialize |
 | **InMem** (`InMemCacheConfig`, `cache.rs:18-22`) — feature-gated on `cache_inmem` | | | |
 | `cache.max_capacity` | `u64` | optional, default `33554432` (`32 * 1024 * 1024`, `cache_in_mem_max_capacity()`) | `cache.rs:20-21,24-26` |
 | **Redis** (`RedisCacheConfig`, `cache.rs:28-33`) — feature-gated on `cache_redis` | | | |
@@ -360,6 +361,6 @@ If the corresponding feature (`cache_inmem` / `cache_redis`) is not compiled in,
 | `LOCO_POSTGRES_DB_OPTIONS` | Extra Postgres connection options (only meaningful with `with-db`) | `src/env_vars.rs:8` |
 | `SCHEDULER_CONFIG` | Path to the scheduler config file | `src/env_vars.rs:18` |
 | `RUST_BACKTRACE` | Effectively forced to `1` when `logger.pretty_backtrace: true` | logger init |
-| any name passed to `get_env(name=.., default=..)` in a config YAML file | Injected into the rendered YAML by Tera's built-in `get_env` function at load time | `src/tera.rs:5-8` (Tera, not Loco code) |
+| any name passed to `get_env(name=.., default=..)` in a config YAML file | Injected into the rendered YAML at load time by Loco's own `get_env` Tera function | `src/tera.rs:16-32` |
 
-Secrets (JWT `secret`, SMTP `password`, database `uri` credentials) are plain `String` fields with no dedicated vault type; the convention is to inject them via `{{ get_env(name="...") }}` at config-load time rather than hardcoding them in the YAML file.
+Secrets (JWT `secret`, SMTP `password`, database `uri` credentials) are plain `String` fields with no dedicated vault type; the convention is to inject them via `<%= get_env(name="...") %>` at config-load time rather than hardcoding them in the YAML file.

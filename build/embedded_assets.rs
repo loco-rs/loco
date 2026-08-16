@@ -37,6 +37,25 @@ pub fn build_static_assets(out_dir: &Path) {
     // Find all directories recursively, without filtering by name
     let all_dirs = discover_all_directories(&app_root.join("assets"));
 
+    if all_dirs.is_empty() {
+        // Embedding nothing here surfaces much later as a bare `TemplateNotFound`
+        // at render time, so say plainly what happened and why. The usual cause
+        // is a relocated target directory: `find_app_directory` walks up from
+        // OUT_DIR looking for a directory named `target`, which a custom
+        // CARGO_TARGET_DIR defeats, leaving it pointed somewhere without an
+        // `assets/` folder.
+        println!(
+            "cargo:warning=embedded_assets: no `assets/` directory under `{app_dir_str}` — \
+             nothing will be embedded, and views will fail at runtime with TemplateNotFound."
+        );
+        if env::var_os("CARGO_TARGET_DIR").is_some() {
+            println!(
+                "cargo:warning=embedded_assets: CARGO_TARGET_DIR is set, which prevents the \
+                 application directory from being detected. Unset it to use embedded assets."
+            );
+        }
+    }
+
     println!("cargo:warning=Discovered directories for assets:");
     for dir in &all_dirs {
         println!("cargo:warning=  - {}", dir.display());

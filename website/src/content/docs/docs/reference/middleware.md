@@ -212,7 +212,7 @@ Table order = coding/config order (`default_middleware_stack`, `mod.rs:80-169`).
 | Name | Type | Default |
 |---|---|---|
 | `enable` | `bool` | `true` outside Production, `false` in Production (framework default when key absent) |
-| `code` | `StatusCode` (as `u16`) | `200` (`OK`) — `fallback.rs:39-41`; set to `404` explicitly if that's what you want |
+| `code` | `StatusCode` (as `u16`) | `404` (`NOT_FOUND`) — `default_status_code`, `fallback.rs:39-41`. Set it only for the unusual case where an unmatched route should answer with something else |
 | `file` | `Option<String>` | `None` — path to a file served as the fallback body |
 | `not_found` | `Option<String>` | `None` — a plain-text message served as the fallback body |
 
@@ -230,6 +230,39 @@ If neither `file` nor `not_found` is set, the bundled `fallback.html` is served.
 | absent / `None` | `X-Powered-By: loco.rs` (default) |
 | `""` (empty string) | middleware disabled — no header |
 | any other string | `X-Powered-By: <string>` |
+
+## Editing the stack: `MiddlewareStackExt`
+
+`Hooks::middlewares` hands you the `Vec<Box<dyn MiddlewareLayer>>` that
+`default_middleware_stack` produced. To tweak it rather than rebuild it from
+scratch, the `MiddlewareStackExt` trait
+(`src/controller/middleware/mod.rs:187-198`) adds four Rails-style edits,
+implemented for that `Vec` and re-exported from `loco_rs::prelude`
+(`src/prelude.rs:39`), so it is already in scope in generated apps:
+
+| Method | Effect |
+|---|---|
+| `insert_before(name, middleware)` | Insert immediately before the first middleware whose `name()` matches |
+| `insert_after(name, middleware)` | Insert immediately after it |
+| `replace(name, middleware)` | Swap it out in place |
+| `delete(name)` | Remove it |
+
+Each returns `&mut Self`, so calls chain. Middlewares are matched by
+`MiddlewareLayer::name()`, and positions are positions in the `Vec` — which,
+per the LIFO note above, means "before" in `Vec` order is *later* in request
+order.
+
+If nothing matches `name`, the operation logs a warning rather than failing:
+`insert_before` / `insert_after` still append the new middleware (so it isn't
+silently dropped), while `replace` / `delete` leave the stack untouched.
+
+```rust
+fn middlewares(ctx: &AppContext) -> Vec<Box<dyn MiddlewareLayer>> {
+    let mut stack = loco_rs::controller::middleware::default_middleware_stack(ctx);
+    stack.delete("powered_by").insert_after("etag", Box::new(MyMiddleware));
+    stack
+}
+```
 
 ## Introspecting the stack
 

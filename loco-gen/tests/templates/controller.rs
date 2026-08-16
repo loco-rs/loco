@@ -10,6 +10,7 @@ fn can_generate() {
     let component = Component::Controller {
         name: "movie".to_string(),
         actions: actions.clone(),
+        auth: false,
     };
 
     let mut settings = insta::Settings::clone_current();
@@ -32,6 +33,7 @@ fn can_generate() {
         component,
         &AppInfo {
             app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
         },
     )
     .expect("Generation failed");
@@ -61,5 +63,59 @@ fn can_generate() {
     assert_snapshot!(
         "inject[tests_controller_mod_rs]",
         fs::read_to_string(test_controllers_path.join("mod.rs")).expect("test mod.rs missing")
+    );
+}
+
+/// A generated controller is public by default -- it has no model behind it
+/// yet, so there is nothing to protect. `--auth` is the opt-in, the mirror of
+/// the scaffold's `--no-auth`, and it has to reach both the handlers and the
+/// generated request test: a test that still asserts 200 against a route that
+/// now answers 401 fails the moment it is generated.
+#[test]
+fn the_auth_flag_protects_every_generated_handler_and_its_test() {
+    let tree_fs = tree_fs::TreeBuilder::default()
+        .drop(true)
+        .add_empty("src/controllers/mod.rs")
+        .add_empty("tests/requests/mod.rs")
+        .add("src/app.rs", APP_ROUTS)
+        .create()
+        .unwrap();
+
+    let rrgen = RRgen::with_working_dir(&tree_fs.root);
+
+    generate(
+        &rrgen,
+        Component::Controller {
+            name: "movie".to_string(),
+            actions: vec!["list".to_string()],
+            auth: true,
+        },
+        &AppInfo {
+            app_name: "tester".to_string(),
+            working_dir: tree_fs.root.clone(),
+        },
+    )
+    .expect("Generation failed");
+
+    let controller = fs::read_to_string(tree_fs.root.join("src/controllers/movie.rs"))
+        .expect("controller file missing");
+    // `index` plus the one requested action.
+    assert_eq!(
+        controller.matches("_auth: auth::JWT,").count(),
+        2,
+        "`--auth` should protect every handler, including `index`:\n{controller}"
+    );
+
+    let test = fs::read_to_string(tree_fs.root.join("tests/requests/movie.rs"))
+        .expect("test file missing");
+    assert!(
+        !test.contains("200"),
+        "the generated test must not assert 200 against a route that now requires a \
+         JWT:\n{test}"
+    );
+    assert_eq!(
+        test.matches("401").count(),
+        2,
+        "both generated tests should assert the route is protected:\n{test}"
     );
 }

@@ -16,6 +16,19 @@ use crate::{
     Result as AppResult,
 };
 
+/// Truncate a table in the database, effectively deleting all rows.
+///
+/// # Errors
+///
+/// Returns a [`AppResult`] if an error occurs during truncate the given table
+pub async fn truncate_table<T>(db: &DatabaseConnection, _: T) -> Result<(), DbErr>
+where
+    T: EntityTrait,
+{
+    T::delete_many().exec(db).await?;
+    Ok(())
+}
+
 /// Seed the database with data from a specified file.
 /// Seeds open the file path and insert all file content into the DB.
 ///

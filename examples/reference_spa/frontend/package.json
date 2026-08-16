@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "packageManager": "pnpm@10.12.4",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -12,13 +13,19 @@
     "@tanstack/react-query": "^5",
     "react": "^19",
     "react-dom": "^19",
-    "react-router": "^8"
+    "react-router": "^8.3.0"
   },
   "devDependencies": {
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitejs/plugin-react": "latest",
+    "@vitejs/plugin-react": "^6.0.5",
     "typescript": "^5",
-    "vite": "latest"
+    "vite": "^8.2.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "nanoid": "^3.3.18",
+      "postcss": "^8.5.26"
+    }
   }
 }

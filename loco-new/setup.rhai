@@ -46,7 +46,7 @@ gen.copy_template("tests/tasks/mod.rs.t");          // Tasks tests module
 // =====================
 gen.copy_template("config/development.yaml.t");     // Development config template
 gen.copy_template("config/test.yaml.t");            // Test config template
-gen.copy_file("config/production.yaml");            // Production config
+gen.copy_template("config/production.yaml.t");      // Production config template
 
 // =====================
 // Database-Related Files
@@ -131,6 +131,7 @@ gen.copy_file("src/workers/downloader.rs");
 // =====================
 if settings.asset?.is_server_side ?? false {
     gen.copy_dir("assets");                        // Static assets directory
+    gen.copy_dir("tests/views");                   // Server-side view rendering tests
 }
 
 // =====================

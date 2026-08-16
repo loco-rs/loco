@@ -111,7 +111,7 @@ mailer:
     tls: implicit # overrides `secure` — see below
     auth:
       user: postmaster@mg.example.com
-      password: "{{ get_env(name='SMTP_PASSWORD') }}"
+      password: "<%= get_env(name='SMTP_PASSWORD') %>"
     hello_name: mail.example.com # optional EHLO client id
 ```
 

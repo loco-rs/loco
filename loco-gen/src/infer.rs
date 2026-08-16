@@ -16,12 +16,57 @@ use cruet::{case::snake::to_snake_case, Inflector};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum MigrationType {
-    CreateTable { table: String },
-    AddColumns { table: String },
-    RemoveColumns { table: String },
-    AddReference { table: String },
-    CreateJoinTable { table_a: String, table_b: String },
+    CreateTable {
+        table: String,
+    },
+    AddColumns {
+        table: String,
+    },
+    RemoveColumns {
+        table: String,
+    },
+    AddReference {
+        table: String,
+    },
+    RenameColumn {
+        table: String,
+        from: String,
+        to: String,
+    },
+    CreateJoinTable {
+        table_a: String,
+        table_b: String,
+    },
     Empty,
+}
+
+/// `rename_<from>_to_<to>_on_<table>`.
+///
+/// Column and table names may themselves contain underscores
+/// (`RenameFirstNameToGivenNameOnUserProfiles`), so the parts cannot be matched
+/// positionally. Anchor on the *last* `on` — the table is always last — and the
+/// first `to` before it.
+fn infer_rename(parts: &[&str]) -> MigrationType {
+    let Some(on_index) = parts.iter().rposition(|&part| part == "on") else {
+        return MigrationType::Empty;
+    };
+    let Some(to_index) = parts[..on_index].iter().position(|&part| part == "to") else {
+        return MigrationType::Empty;
+    };
+
+    let from = &parts[..to_index];
+    let to = &parts[to_index + 1..on_index];
+    let table = &parts[on_index + 1..];
+
+    if from.is_empty() || to.is_empty() || table.is_empty() {
+        return MigrationType::Empty;
+    }
+
+    MigrationType::RenameColumn {
+        table: table.join("_").to_plural(),
+        from: from.join("_"),
+        to: to.join("_"),
+    }
 }
 
 pub fn guess_migration_type(migration_name: &str) -> MigrationType {
@@ -41,6 +86,7 @@ pub fn guess_migration_type(migration_name: &str) -> MigrationType {
         ["remove", _column_names @ .., "from", table_name] => MigrationType::RemoveColumns {
             table: table_name.to_plural(),
         },
+        ["rename", rest @ ..] => infer_rename(rest),
         ["create", "join", "table", parts @ ..] => parts
             .iter()
             .position(|&part| part == "and")
@@ -152,6 +198,57 @@ mod tests {
                 table_b: "group_member".to_string()
             }
         );
+    }
+
+    #[test]
+    fn test_infer_rename_column() {
+        assert_eq!(
+            guess_migration_type("RenameTitleToNameOnMovies"),
+            MigrationType::RenameColumn {
+                table: "movies".to_string(),
+                from: "title".to_string(),
+                to: "name".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn test_infer_rename_column_with_multi_word_names() {
+        // The parts cannot be matched positionally: every one of the three
+        // names here is more than one word long.
+        assert_eq!(
+            guess_migration_type("RenameFirstNameToGivenNameOnUserProfiles"),
+            MigrationType::RenameColumn {
+                table: "user_profiles".to_string(),
+                from: "first_name".to_string(),
+                to: "given_name".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn test_infer_rename_column_singularizes_nothing_but_pluralizes_the_table() {
+        assert_eq!(
+            guess_migration_type("RenameNameToTitleOnMovie"),
+            MigrationType::RenameColumn {
+                table: "movies".to_string(),
+                from: "name".to_string(),
+                to: "title".to_string(),
+            }
+        );
+    }
+
+    #[rstest::rstest]
+    // no `on <table>`
+    #[case("RenameTitleToName")]
+    // no `to <new name>`
+    #[case("RenameTitleOnMovies")]
+    // nothing between the keywords
+    #[case("RenameToNameOnMovies")]
+    #[case("RenameTitleToOnMovies")]
+    #[case("RenameTitleToNameOn")]
+    fn test_incomplete_rename_falls_back_to_empty(#[case] name: &str) {
+        assert_eq!(guess_migration_type(name), MigrationType::Empty);
     }
 
     #[test]

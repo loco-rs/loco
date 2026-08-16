@@ -23,6 +23,72 @@ These are the major ones:
 - [SeaORM](https://www.sea-ql.org/SeaORM), [CHANGELOG](https://github.com/SeaQL/sea-orm/blob/master/CHANGELOG.md)
 - [Axum](https://github.com/tokio-rs/axum), [CHANGELOG](https://github.com/tokio-rs/axum/blob/main/axum/CHANGELOG.md)
 
+## Upgrade from 1.0.x to 1.1
+
+1.1 moves the template engine to **Tera 2** and changes configuration files to
+use YAML-safe `<%= ... %>` delimiters.
+
+### The one required change: `fluent-templates`
+
+Generated apps use `fluent-templates` for the i18n `t()` function, and it
+pinned Tera 1. Bump it in your `Cargo.toml`:
+
+```toml
+fluent-templates = { version = "0.15", features = ["tera"] }
+```
+
+For most apps this is the **only** change needed. Your view-engine initializer —
+including `tera.register_function("t", FluentLoader::new(arc.clone()))` — keeps
+working as-is.
+
+### If you register your own filters or functions
+
+Tera 2 changed the signatures. Filters now receive `(Arg, Kwargs, &State)` over
+Tera's own `Value` type, instead of `(&Value, &HashMap<String, Value>)` over
+`serde_json::Value`:
+
+```rust no-syntax-check="before/after signature comparison; the bodies are elided `{ ... }`"
+// Tera 1
+fn my_filter(value: &serde_json::Value, args: &HashMap<String, serde_json::Value>)
+    -> tera::Result<serde_json::Value> { ... }
+
+// Tera 2
+fn my_filter(value: &tera::Value, kwargs: tera::Kwargs, _: &tera::State)
+    -> tera::TeraResult<tera::Value> { ... }
+```
+
+Read named arguments with `kwargs.get::<T>("name")?` (optional) or
+`kwargs.must_get::<T>("name")?` (required).
+
+Note that `&State` cannot be constructed outside the engine, so filters can no
+longer be unit-tested by calling them directly. Keep the formatting logic in a
+plain function and make the filter a thin wrapper over it — that function stays
+testable.
+
+### If your view templates use macros or dotted array access
+
+Tera 2 removed `{% macro %}` / `{% import %}` in favour of components, requires
+`v[0]` instead of `v.0` for array access, and **errors on undefined variables**
+rather than rendering them as empty. Templates relying on any of these need
+editing. Generated Loco apps do not use these constructs.
+
+### Configuration files: `<%= ... %>`
+
+Config templating moved off Tera's `{{ ... }}` to `<%= ... %>`:
+
+```yaml
+port: <%= get_env(name="PORT", default="5150") %>
+```
+
+`{` is a YAML flow-mapping indicator, so the old form was never valid YAML at
+rest — editors and formatters (prettier, yaml-language-server, format-on-save)
+would restructure it into `{ { ... } }` and break startup. `<` is not an
+indicator, so the new form is an ordinary string scalar and survives formatting
+untouched.
+
+This is **not** a required change: the old `{{ ... }}` form still renders, with
+a deprecation warning. Converting is a find-and-replace when you get to it.
+
 ## Upgrade from 0.16.x to 1.0
 
 1.0 is a large, intentionally-breaking release — the first stable Loco. Its
@@ -71,7 +137,9 @@ If you depend on `sqlx` directly, bump it to `0.9`.
 cargo install sea-orm-cli --version '^2.0'
 ```
 
-`cargo loco doctor` will now flag a Sea-ORM or Sea-ORM CLI older than 2.0.
+`cargo loco doctor` will now flag a Sea-ORM or Sea-ORM CLI older than `2.0.0-rc`
+(`src/doctor.rs:39,52`) — any 2.0 release candidate satisfies the check, so bump
+to a 2.0 stable yourself rather than waiting for doctor to tell you.
 
 **3. Regenerate entities (recommended).** Run `cargo loco db entities` so your
 `src/models/_entities/` are produced by the 2.0 codegen.
@@ -304,7 +372,7 @@ produced broken tokens — are no longer representable. If you passed a
 In `after_routes`, replace `TeraView::build()?.post_process(...)` with the
 combined constructor:
 
-```rust
+```rust no-syntax-check="before/after expression fragments, not a whole item"
 // before
 engines::TeraView::build()?.post_process(move |tera| {
     tera.register_function("t", FluentLoader::new(arc.clone()));
@@ -683,7 +751,7 @@ Testing code involving the seed function must also be updated accordingly.
 
 from:
 
-```rust
+```rust no-syntax-check="`...` elides the rest of the closure body"
 async fn load_page() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx.db).await.unwrap();
@@ -695,7 +763,7 @@ async fn load_page() {
 
 to
 
-```rust
+```rust no-syntax-check="`...` elides the rest of the closure body"
 async fn load_page() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();

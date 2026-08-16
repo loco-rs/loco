@@ -63,6 +63,15 @@ pub enum DeploymentKind {
         host: String,
         port: i32,
     },
+    Lambda {
+        /// Whether the app uses a database. Controls the `Migrator` import and
+        /// the `create_app` generic in the generated Lambda entrypoint.
+        db: bool,
+        /// Runtime asset directories to bundle into the Lambda zip, alongside
+        /// the always-included `config/`. Detected from the app's config so
+        /// nothing is hardcoded (e.g. `assets/` when static serving is on).
+        include_paths: Vec<PathBuf>,
+    },
 }
 
 #[derive(Debug)]
@@ -104,6 +113,11 @@ pub enum Component {
         /// injection). Set when the app has a clientside `frontend/`; when
         /// `false` only the typed backend (DTO + controller) is emitted.
         frontend: bool,
+
+        /// Whether the generated handlers take an `auth::JWT` extractor.
+        /// Scaffolds are authenticated by default (secure by default); the CLI
+        /// sets this to `false` for `--no-auth`, which emits public routes.
+        auth: bool,
     },
     Controller {
         /// Name of the thing to generate
@@ -111,6 +125,11 @@ pub enum Component {
 
         /// Action names
         actions: Vec<String>,
+
+        /// Whether the generated handlers take an `auth::JWT` extractor.
+        /// Unlike the scaffold, a bare controller is public by default — it has
+        /// no model or DTO to protect — and the CLI sets this via `--auth`.
+        auth: bool,
     },
     Task {
         /// Name of the thing to generate
@@ -136,6 +155,14 @@ pub enum Component {
 
 pub struct AppInfo {
     pub app_name: String,
+
+    /// Root of the app being generated into.
+    ///
+    /// The same directory `RRgen` writes to, so post-generation checks look at
+    /// the files that were just written rather than at the process's current
+    /// directory. `RRgen::default()` resolves relative to the cwd, so a caller
+    /// that uses it should pass `"."`.
+    pub working_dir: PathBuf,
 }
 
 #[must_use]
@@ -169,16 +196,19 @@ pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Resul
             with_tz,
             fields,
             frontend,
-        } => scaffold::generate(rrgen, &name, with_tz, &fields, frontend, appinfo)?,
+            auth,
+        } => scaffold::generate(rrgen, &name, with_tz, &fields, frontend, auth, appinfo)?,
         #[cfg(feature = "with-db")]
         Component::Migration {
             name,
             with_tz,
             fields,
         } => migration::generate(rrgen, &name, with_tz, &fields, appinfo)?,
-        Component::Controller { name, actions } => {
-            controller::generate(rrgen, &name, &actions, appinfo)?
-        }
+        Component::Controller {
+            name,
+            actions,
+            auth,
+        } => controller::generate(rrgen, &name, &actions, auth, appinfo)?,
         Component::Task { name } => {
             let vars = json!({"name": name, "pkg_name": appinfo.app_name});
             render_template(rrgen, Path::new("task"), &vars)?
@@ -216,6 +246,20 @@ pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Resul
                 });
                 render_template(rrgen, Path::new("deployment/nginx"), &vars)?
             }
+            DeploymentKind::Lambda { db, include_paths } => {
+                // `config/` is required by every Loco app at runtime; detected
+                // asset dirs (if any) follow. This becomes the cargo-lambda
+                // `include` array so the zip carries everything read from disk.
+                let include = std::iter::once("config".to_string())
+                    .chain(include_paths.iter().map(|p| p.display().to_string()))
+                    .collect::<Vec<_>>();
+                let vars = json!({
+                    "pkg_name": appinfo.app_name,
+                    "db": db,
+                    "include": include,
+                });
+                render_template(rrgen, Path::new("deployment/lambda"), &vars)?
+            }
         },
         Component::Data { name } => {
             let vars = json!({ "name": name });
@@ -223,7 +267,82 @@ pub fn generate(rrgen: &RRgen, component: Component, appinfo: &AppInfo) -> Resul
         }
     };
 
+    #[cfg(feature = "with-db")]
+    verify_migrations_registered(&appinfo.working_dir)?;
+
     Ok(get_result)
+}
+
+/// Path of the migrator that decides which migrations actually run.
+#[cfg(feature = "with-db")]
+const MIGRATOR: &str = "migration/src/lib.rs";
+
+/// Anchor the generator injects the registration line above.
+#[cfg(feature = "with-db")]
+const MIGRATOR_ANCHOR: &str = "inject-above";
+
+/// Fails if a migration exists on disk but is not registered in the migrator.
+///
+/// A migration is registered by two injections into [`MIGRATOR`]: a `mod`
+/// declaration and a `Box::new(..)` entry in `migrations()`. rrgen 0.6 fails
+/// when either injection cannot find its anchor, which covers the migration
+/// being generated right now.
+///
+/// This covers what that cannot: a registration that went missing on an earlier
+/// run or by hand. The migrator is ordinary source, and an entry deleted from it
+/// leaves no trace — the migration still compiles, so nothing complains; it
+/// never runs, so the table is never created; `db entities` then correctly finds
+/// no table and writes an empty entity; and the failure finally surfaces as a
+/// 500 on the first insert. Checking the whole directory on every generation is
+/// the cheapest place to notice.
+#[cfg(feature = "with-db")]
+fn verify_migrations_registered(working_dir: &Path) -> Result<()> {
+    let migrator_path = working_dir.join(MIGRATOR);
+    // No migrator: an app generated without a database. Nothing to check.
+    let Ok(migrator) = fs::read_to_string(&migrator_path) else {
+        return Ok(());
+    };
+
+    let Ok(entries) = fs::read_dir(migrator_path.parent().unwrap_or(working_dir)) else {
+        return Ok(());
+    };
+
+    let mut unregistered = entries
+        .filter_map(std::result::Result::ok)
+        .filter_map(|entry| {
+            let path = entry.path();
+            let stem = path.file_stem()?.to_str()?;
+            // Migration modules are `m<date>_<time>_<name>`; `lib.rs` and any
+            // helper module are not.
+            let is_migration = path.extension().is_some_and(|ext| ext == "rs")
+                && stem.starts_with('m')
+                && stem[1..].starts_with(|c: char| c.is_ascii_digit());
+            is_migration.then(|| stem.to_string())
+        })
+        .filter(|module| {
+            !migrator.contains(&format!("mod {module};"))
+                || !migrator.contains(&format!("Box::new({module}::Migration)"))
+        })
+        .collect::<Vec<_>>();
+
+    if unregistered.is_empty() {
+        return Ok(());
+    }
+
+    unregistered.sort();
+    let list = unregistered
+        .iter()
+        .map(|module| format!("  {module}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    Err(Error::Message(format!(
+        "these migrations exist but are not registered in {MIGRATOR}, so they will never \
+         run:\n{list}\n\nEach one needs both lines:\n  mod <migration>;\n  \
+         Box::new(<migration>::Migration),\n\nThe generator injects the second above the \
+         `{MIGRATOR_ANCHOR}` comment in `migrations()`. If that comment is gone, add it back \
+         — without it the injection silently does nothing and the table is never created."
+    )))
 }
 
 fn render_template(rrgen: &RRgen, template: &Path, vars: &Value) -> Result<GenerateResults> {

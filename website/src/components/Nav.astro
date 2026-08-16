@@ -1,19 +1,26 @@
 ---
-// Ported verbatim from the reference `<nav>` block (markup + styles), see
+// Ported from the reference `<nav>` block (markup + styles), see
 // docs/superpowers/specs/2026-07-17-homepage-direction-a-reference.html.
 import ThemeToggle from './ThemeToggle.astro';
 ---
 
 <nav>
   <div class="wrap">
-    <div class="brand"><img src="/loco-mark.svg" alt="Loco" /> loco</div>
+    <a class="brand" href="/" aria-label="Loco home"><img src="/loco-mark.svg" alt="" /> loco</a>
     <div class="navlinks">
       <a href="/docs/">Docs</a><a href="/blog/">Blog</a><a href="/casts/">Screencasts</a>
     </div>
     <div class="navright">
-      <span class="stars">★ 6.9k</span>
+      <a
+        class="stars"
+        href="https://github.com/loco-rs/loco"
+        target="_blank"
+        rel="noopener noreferrer"
+        data-github-stars
+        aria-label="Loco on GitHub"
+      ><span data-star-label>★ GitHub</span></a>
       <ThemeToggle />
-      <a class="btn btn-primary" href="#">Get started</a>
+      <a class="btn btn-primary" href="/docs/tutorials/your-first-app/">Get started</a>
     </div>
   </div>
 </nav>

@@ -686,7 +686,7 @@ dependencies = [
 
 [[package]]
 name = "loco"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "clap",
  "colored",
@@ -701,6 +701,7 @@ dependencies = [
  "regex",
  "rhai",
  "rstest",
+ "semver",
  "serde",
  "serde_yaml_ng",
  "serial_test",

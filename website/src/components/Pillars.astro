@@ -1,5 +1,5 @@
 ---
-// Ported verbatim from the reference `.pillars`/`.pc`/`.applied`/`#stampInk`
+// Ported from the reference `.pillars`/`.pc`/`.applied`/`#stampInk`
 // blocks (markup + styles), see
 // docs/superpowers/specs/2026-07-17-homepage-direction-a-reference.html.
 //
@@ -14,10 +14,10 @@
 // existing `/loco-mark.svg` static asset instead — same visual result,
 // no giant inline blob.
 const PILLARS = [
-  {icon:'🔋', title:'Batteries included', copy:'Service, data, emails, background jobs, tasks, and a CLI to drive it all — in the box from day one.'},
+  {icon:'battery', title:'Batteries included', copy:'Service, data, emails, background jobs, tasks, and a CLI to drive it all — in the box from day one.'},
   {icon:'◆', title:'Rails is great', copy:'Loco follows Rails. There, we said it — its concepts, carefully adapted to idiomatic Rust.'},
   {icon:'✓', title:'Deliver with confidence', copy:'Unapologetically optimized for the solo developer. Complexity and heavy lifting tucked away.'},
-  {icon:'⚡', title:'Scale when needed', copy:'Split, reconfigure, or use only the parts of Loco you need. Grow without a rewrite.'},
+  {icon:'bolt', title:'Scale when needed', copy:'Split, reconfigure, or use only the parts of Loco you need. Grow without a rewrite.'},
   {icon:'▲', title:'Build incrementally', copy:'Just a service. Or with a database. Or a background worker. Or a task. Use what you need.'},
   {icon:'▦', title:'Test-driven everything', copy:'Models, controllers, jobs — test the whole app with very little effort. Ship fast, stay safe.'},
 ];
@@ -43,7 +43,19 @@ const PILLARS = [
     <div class="grid">
       {PILLARS.map((p) => (
         <div class="pc" data-reveal>
-          <div class="ic">{p.icon}</div>
+          <div class="ic" aria-hidden="true">
+            {p.icon === 'battery' ? (
+              <svg viewBox="0 0 24 24">
+                <rect x="3" y="7" width="16" height="10" rx="2"></rect>
+                <path d="M21 10v4"></path>
+                <path d="M7 10v4M11 10v4M15 10v4"></path>
+              </svg>
+            ) : p.icon === 'bolt' ? (
+              <svg viewBox="0 0 24 24">
+                <path d="M13.2 2 5 13h6l-.8 9L19 10h-6.2l.4-8Z"></path>
+              </svg>
+            ) : p.icon}
+          </div>
           <span class="applied"><img src="/loco-mark.svg" alt="" /></span>
           <h3>{p.title}</h3>
           <div class="ln"></div>
@@ -142,6 +154,15 @@ const PILLARS = [
     inset: 4px;
     border: 1px solid rgba(252, 56, 32, 0.28);
     border-radius: 2px;
+  }
+  .pc .ic svg {
+    width: 25px;
+    height: 25px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
   /* gray rubber-stamp silhouette of the logo, clipped at the card's corner
      via the card's own overflow:hidden. Static — no entrance animation. */

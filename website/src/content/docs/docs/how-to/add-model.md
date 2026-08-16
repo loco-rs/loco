@@ -75,6 +75,8 @@ Removing columns follows the mirror-image naming convention, `Remove<Columns>Fro
 $ cargo loco generate migration RemoveViewsFromPosts views:int
 ```
 
+Expect a few test failures right after `db entities`: a generated app's tests snapshot whole models (`assert_debug_snapshot!(user)`), so an added column changes their output. Re-accept the snapshots in the same commit as the migration — see [Fixtures & snapshots](/docs/how-to/fixtures-snapshots#verify-it).
+
 ## 4. Generate without timestamps (optional)
 
 By default every table generated through the DSL gets `created_at`/`updated_at` columns. To opt out, pass `--without-tz` to `model`, `migration`, or `scaffold`:
@@ -96,14 +98,14 @@ $ cargo loco db status
 $ ls src/models/_entities/
 ```
 
-Then write against the model directly — e.g. in a `cargo loco playground` script or a test:
+Then write against the model directly — e.g. in a `cargo playground` script or a test:
 
 ```rust
-use migration::Migrator;
 use loco_rs::testing::prelude::*;
+use myapp::app::App;
 use myapp::models::_entities::posts;
 
-let boot = boot_test::<App, Migrator>().await?;
+let boot = boot_test::<App>().await?;
 let post = posts::ActiveModel {
     title: sea_orm::ActiveValue::set("hello".to_string()),
     user_id: sea_orm::ActiveValue::set(1),

@@ -48,9 +48,7 @@ impl Driver for PgDriver {
     }
 }
 
-/// Postgres [`QueueProvider`]: holds the pool, job registry, run options and
-/// cancellation token that used to live in the `Queue::Postgres(..)` enum
-/// tuple.
+/// The Postgres [`QueueProvider`].
 pub struct PgQueue {
     pub pool: PgPool,
     pub registry: Arc<tokio::sync::Mutex<JobRegistry>>,
@@ -135,10 +133,7 @@ impl QueueProvider for PgQueue {
         status: Option<&Vec<JobStatus>>,
         age_days: Option<i64>,
     ) -> Result<Vec<Job>> {
-        let jobs = get_jobs(&self.pool, status, age_days)
-            .await
-            .map_err(Box::from)?;
-        Ok(jobs)
+        get_jobs(&self.pool, status, age_days).await
     }
 
     async fn cancel_jobs_by_name(&self, name: &str) -> Result<()> {
@@ -155,6 +150,10 @@ impl QueueProvider for PgQueue {
         status: Option<&Vec<JobStatus>>,
     ) -> Result<()> {
         clear_jobs_older_than(&self.pool, age_days, status).await
+    }
+
+    async fn retry_failed(&self, id: Option<&str>) -> Result<u64> {
+        retry_failed(&self.pool, id).await
     }
 
     async fn requeue(&self, age_minutes: &i64) -> Result<()> {
@@ -291,33 +290,23 @@ pub async fn enqueue(
 async fn dequeue(client: &PgPool, worker_tags: &[String]) -> Result<Option<Job>> {
     let mut tx = client.begin().await?;
 
-    // Base query
     let mut query = String::from(
         "SELECT id, name, task_data, status, run_at, interval, tags, priority FROM pg_loco_queue WHERE status = $1 AND run_at <= NOW() ",
     );
 
-    // Apply tag filtering logic
+    // An untagged worker takes only untagged jobs; a tagged one takes any job
+    // carrying at least one of its tags. `?` is jsonb's "array contains this
+    // string" operator, one bind per tag starting at $2.
     if worker_tags.is_empty() {
-        // If worker has no tags, only process jobs with no tags
         query.push_str("AND (tags IS NULL) ");
     } else {
-        // If worker has tags, we need a more complex condition
-        query.push_str("AND (tags IS NOT NULL) ");
-
-        // In PostgreSQL, we need to build a condition for each tag individually
-        let mut conditions = Vec::new();
-
-        for (i, _) in worker_tags.iter().enumerate() {
-            // Check if the tag exists as a JSON string in the tags array
-            // Using ? operator checks if string exists as array element
-            conditions.push(format!("(tags)::jsonb ? ${}", i + 2));
-        }
-
-        if !conditions.is_empty() {
-            query.push_str(" AND (");
-            query.push_str(&conditions.join(" OR "));
-            query.push(')');
-        }
+        let any_tag_matches = (0..worker_tags.len())
+            .map(|i| format!("(tags)::jsonb ? ${}", i + 2))
+            .collect::<Vec<_>>()
+            .join(" OR ");
+        query.push_str("AND (tags IS NOT NULL) AND (");
+        query.push_str(&any_tag_matches);
+        query.push(')');
     }
 
     query.push_str(" ORDER BY priority DESC, run_at, id LIMIT 1 FOR UPDATE SKIP LOCKED");
@@ -518,6 +507,44 @@ pub async fn requeue(pool: &PgPool, age_minutes: &i64) -> Result<()> {
     Ok(())
 }
 
+/// Moves failed jobs back to [`JobStatus::Queued`], returning how many moved.
+///
+/// `run_at` is reset to now: a retry is an operator saying "run this again",
+/// and a job that failed on a future-dated retry schedule would otherwise sit
+/// queued until that time arrives. `requeue` is deliberately separate — it
+/// rescues jobs stranded in [`JobStatus::Processing`] by a crashed worker and
+/// cannot touch a failed one.
+///
+/// # Errors
+///
+/// This function will return an error if it fails
+pub async fn retry_failed(pool: &PgPool, id: Option<&str>) -> Result<u64> {
+    let result = if let Some(id) = id {
+        debug!(job_id = %id, "Retrying failed job");
+        sqlx::query(
+            "UPDATE pg_loco_queue SET status = $1, updated_at = NOW(), run_at = NOW() WHERE \
+             status = $2 AND id::text = $3",
+        )
+        .bind(JobStatus::Queued.to_string())
+        .bind(JobStatus::Failed.to_string())
+        .bind(id)
+        .execute(pool)
+        .await?
+    } else {
+        debug!("Retrying every failed job");
+        sqlx::query(
+            "UPDATE pg_loco_queue SET status = $1, updated_at = NOW(), run_at = NOW() WHERE \
+             status = $2",
+        )
+        .bind(JobStatus::Queued.to_string())
+        .bind(JobStatus::Failed.to_string())
+        .execute(pool)
+        .await?
+    };
+
+    Ok(result.rows_affected())
+}
+
 /// Ping system
 ///
 /// # Errors
@@ -541,7 +568,7 @@ pub async fn get_jobs(
     pool: &PgPool,
     status: Option<&Vec<JobStatus>>,
     age_days: Option<i64>,
-) -> Result<Vec<Job>, sqlx::Error> {
+) -> Result<Vec<Job>> {
     let mut query = String::from("SELECT * FROM pg_loco_queue where true");
 
     if let Some(status) = status {
@@ -1042,6 +1069,84 @@ mod tests {
             .expect("get jobs")
             .len(),
             2
+        );
+    }
+
+    #[tokio::test]
+    async fn can_retry_failed_jobs() {
+        let (pool, _container) = setup_pg_test().await;
+
+        sqlx::query(
+            r"INSERT INTO pg_loco_queue (id, name, task_data, status, run_at, created_at, updated_at) VALUES
+             ('failed1', 'Failed Job 1', '{}', 'failed', NOW() + INTERVAL '1 day', NOW(), NOW()),
+             ('failed2', 'Failed Job 2', '{}', 'failed', NOW(), NOW(), NOW()),
+             ('stuck', 'Stuck Job', '{}', 'processing', NOW(), NOW(), NOW()),
+             ('done', 'Done Job', '{}', 'completed', NOW(), NOW(), NOW())"
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        // `requeue` is the pre-existing verb and is documented as the recourse
+        // for a failed job. It is not: it only touches `processing`.
+        requeue(&pool, &0).await.expect("requeue");
+        assert_eq!(
+            get_jobs(&pool, Some(&vec![JobStatus::Failed]), None)
+                .await
+                .expect("get jobs")
+                .len(),
+            2,
+            "requeue must leave failed jobs alone"
+        );
+
+        assert_eq!(
+            retry_failed(&pool, Some("failed1")).await.expect("retry"),
+            1
+        );
+        let failed = get_jobs(&pool, Some(&vec![JobStatus::Failed]), None)
+            .await
+            .expect("get jobs");
+        assert_eq!(failed.len(), 1);
+        assert_eq!(failed[0].id, "failed2");
+
+        // `failed1` was scheduled a day out; a retry that left `run_at` alone
+        // would queue a job the worker cannot pick up until tomorrow.
+        let queued = get_jobs(&pool, Some(&vec![JobStatus::Queued]), None)
+            .await
+            .expect("get jobs");
+        let retried = queued
+            .iter()
+            .find(|job| job.id == "failed1")
+            .expect("the retried job is queued");
+        // Tolerance, not sloppiness: `NOW()` is the database's clock, and a
+        // containerised Postgres runs ~100ms ahead of the host. The property
+        // under test is that `run_at` is no longer a day out, so compare
+        // against the schedule it was rescued from rather than against `now`.
+        assert!(
+            retried.run_at < Utc::now() + chrono::Duration::hours(1),
+            "run_at must be reset so the job is immediately runnable, got {}",
+            retried.run_at
+        );
+
+        assert_eq!(retry_failed(&pool, None).await.expect("retry"), 1);
+        assert!(get_jobs(&pool, Some(&vec![JobStatus::Failed]), None)
+            .await
+            .expect("get jobs")
+            .is_empty());
+
+        // Nothing else moved.
+        assert_eq!(
+            get_jobs(&pool, Some(&vec![JobStatus::Completed]), None)
+                .await
+                .expect("get jobs")
+                .len(),
+            1
+        );
+        assert_eq!(
+            retry_failed(&pool, Some("nonexistent"))
+                .await
+                .expect("retry"),
+            0
         );
     }
 

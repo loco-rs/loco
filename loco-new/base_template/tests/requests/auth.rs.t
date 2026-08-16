@@ -32,13 +32,22 @@ async fn can_register() {
 
         let response = request.post("/api/auth/register").json(&payload).await;
         assert_eq!(response.status_code(), 200, "Register request should succeed");
-        let saved_user = users::Model::find_by_email(&ctx.db, email).await;
+        let saved_user = users::Model::find_by_email(&ctx.db, email)
+            .await
+            .expect("registration should have persisted a user");
 
-        with_settings!({
-            filters => cleanup_user_model()
-        }, {
-            assert_debug_snapshot!(saved_user);
-        });
+        // Snapshot only the fields this test is about, never the whole
+        // `Model` — see the note in `tests/models/users.rs`. Anything the
+        // snapshot does not cover, assert directly:
+        assert!(
+            saved_user.email_verification_token.is_some(),
+            "registration should issue an email verification token"
+        );
+        assert!(
+            saved_user.email_verified_at.is_none(),
+            "a freshly registered user is not verified yet"
+        );
+        assert_debug_snapshot!((saved_user.email, saved_user.name));
 
         let deliveries = ctx.mailer.unwrap().deliveries();
         assert_eq!(deliveries.count, 1, "Exactly one email should be sent");
@@ -408,11 +417,12 @@ async fn can_resend_verification_email() {
             .await
             .expect("User should exist");
 
-        with_settings!({
-            filters => cleanup_user_model()
-        }, {
-            assert_debug_snapshot!("resend_verification_user", user);
-        });
+        // Narrowed on purpose — see the note in `tests/models/users.rs`.
+        assert!(
+            user.email_verification_token.is_some(),
+            "resending should leave a verification token on the user"
+        );
+        assert_debug_snapshot!("resend_verification_user", (user.email, user.name));
     }).await; 
 }
 
