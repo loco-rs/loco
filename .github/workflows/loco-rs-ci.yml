@@ -192,7 +192,7 @@ jobs:
           node-version: 22
       - name: Setup pnpm
         if: matrix.example == 'reference_spa'
-        uses: pnpm/action-setup@v5
+        uses: pnpm/action-setup@v6
         with:
           # Read the frontend's own packageManager pin; there is no root
           # package.json for the action to fall back on.
