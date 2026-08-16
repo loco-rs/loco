@@ -287,8 +287,13 @@ fn test_combination(
             // Generate AddUserRefToPosts migration
             tester.run_generate_migration(&vec!["AddUserRefToPosts", "users:references"]);
 
-            // Generate CreateJoinTableUsersAndGroups migration
-            tester.run_generate_migration(&vec!["CreateJoinTableUsersAndGroups", "count:int"]);
+            // Generate a join-table migration. It must join two tables that
+            // actually exist: `groups` was never generated, so the join table
+            // carried a foreign key to a missing table. SQLite only checks
+            // that on write, and nothing here ever deleted a row — until the
+            // `user:delete` task did, and every case failed with
+            // `no such table: main.groups`.
+            tester.run_generate_migration(&vec!["CreateJoinTableUsersAndMovies", "count:int"]);
 
             // Everything above proves generated code compiles and its tests
             // pass. It does not prove the app *serves* any of it: the boot
