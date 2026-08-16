@@ -187,7 +187,7 @@ jobs:
       # all.
       - name: Setup node
         if: matrix.example == 'reference_spa'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Setup pnpm
