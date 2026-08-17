@@ -1,12 +1,13 @@
-import { readdirSync, existsSync } from 'node:fs';
+import { readdirSync, existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// The old Zola blog/casts/authors content (read-only) and the new Astro
-// build output.
-const OLD_CONTENT_ROOT = path.resolve(__dirname, '../../docs-site/content');
+// The blog/casts/authors URLs the old Zola site published, frozen in
+// `legacy-urls.json` alongside the doc URLs — see the note in
+// `url-parity.mjs` for why these are data and not a tree walk.
+const LEGACY_URLS = path.resolve(__dirname, 'legacy-urls.json');
 const NEW_DIST_ROOT = path.resolve(__dirname, '../dist');
 
 function walk(dir, predicate) {
@@ -24,44 +25,18 @@ function walk(dir, predicate) {
 }
 
 /**
- * Old Zola URL scheme for a `blog`/`casts`/`authors` section: every
- * `<slug>.md` maps to `/<section>/<slug>/`; `_index.md` (the section
- * listing page) is skipped — it maps to the static `/<section>/` URL added
- * separately in `oldUrls()`, not to a per-entry URL here.
- *
- * Author slugs are read straight off the files that exist under
- * `content/authors/` — a post can reference an author slug with no author
- * file at all (e.g. `deploy-aws.md`'s `antonio-souza`), and since that
- * slug never gets its own file there, it's naturally never enumerated or
- * expected to have a `/authors/<slug>/` page.
- *
- * @returns {string[]} e.g. ['/blog/hello-world/', '/casts/001-.../', '/authors/team-loco/']
- */
-export function oldSectionUrls(section, root = path.join(OLD_CONTENT_ROOT, section)) {
-  const files = walk(root, (name) => name.endsWith('.md') && name !== '_index.md');
-  return files.map((file) => {
-    const slug = path.basename(file, '.md');
-    return `/${section}/${slug}/`;
-  });
-}
-
-/**
  * All old URLs expected to survive the migration: per-entry blog/casts/
  * authors URLs, the two section index pages, and the two feed URLs that
  * lived at `/blog/rss.xml` and `/blog/atom.xml`.
  *
+ * Note on authors: a post can name an author slug that never had its own
+ * file (`deploy-aws.md`'s `antonio-souza`), so that slug never had a
+ * `/authors/<slug>/` page and is correctly absent from this list.
+ *
  * @returns {string[]}
  */
 export function oldUrls() {
-  return [
-    ...oldSectionUrls('blog'),
-    ...oldSectionUrls('casts'),
-    ...oldSectionUrls('authors'),
-    '/blog/',
-    '/casts/',
-    '/blog/rss.xml',
-    '/blog/atom.xml',
-  ];
+  return JSON.parse(readFileSync(LEGACY_URLS, 'utf8')).entries;
 }
 
 /**

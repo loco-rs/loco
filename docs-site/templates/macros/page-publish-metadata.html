@@ -1,6 +1,0 @@
-{% macro page_publish_metadata(page) %}
-<div class="mb-8 text-sm text-gray-500">
-    {{ page.date | date(format=config.extra.timeformat | default(value="%A, %B %e, %Y"),
-        timezone=config.extra.timezone | default(value="America/New_York")) }}
-</div>
-{% endmacro %}

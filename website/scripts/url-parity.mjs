@@ -1,11 +1,17 @@
-import { readdirSync, existsSync } from 'node:fs';
+import { readdirSync, existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// The old Zola docs tree (read-only) and the new Starlight build output.
-const OLD_DOCS_ROOT = path.resolve(__dirname, '../../docs-site/content/docs');
+// The URLs the old Zola site published, frozen in `legacy-urls.json`.
+//
+// This used to walk `docs-site/content/docs` directly. That tree is gone —
+// and it was never really a source of truth anyway: the set of URLs loco.rs
+// once served is history, fixed at the moment of the migration, and cannot
+// change again. Deriving it from a live tree meant deleting a page silently
+// deleted the obligation to keep its URL working.
+const LEGACY_URLS = path.resolve(__dirname, 'legacy-urls.json');
 const NEW_DIST_DOCS_ROOT = path.resolve(__dirname, '../dist/docs');
 
 function walk(dir, predicate) {
@@ -30,7 +36,10 @@ function walk(dir, predicate) {
  *
  * @returns {string[]} old doc URLs, e.g. ['/docs/', '/docs/how-to/', '/docs/how-to/add-model/']
  */
-export function oldDocUrls(root = OLD_DOCS_ROOT) {
+export function oldDocUrls(root) {
+  if (root === undefined) {
+    return JSON.parse(readFileSync(LEGACY_URLS, 'utf8')).docs;
+  }
   const files = walk(root, (name) => name.endsWith('.md'));
   return files.map((file) => {
     const rel = path.relative(root, file); // e.g. 'how-to/add-model.md', '_index.md', 'how-to/_index.md'

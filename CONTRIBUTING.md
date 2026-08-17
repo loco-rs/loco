@@ -83,7 +83,7 @@ LOCO_CI_MODE=true TRYCMD=overwrite cargo test
 
 The documentation consists of two main components:
 
-+ The [loco.rs website](https://loco.rs) with its source code available [here](./docs-site/).
++ The [loco.rs website](https://loco.rs) with its source code available [here](./website/).
 + RustDocs.
 
 To reduce duplication in documentation and examples, we use [snipdoc](https://github.com/kaplanelad/snipdoc). As part of our CI process, we ensure that the documentation remains consistent.
@@ -93,11 +93,12 @@ Updating the Documentation
 + Create the snippet in the [yaml file](./snipdoc.yml) or inline the code.
 + Run `snipdoc run`.
 
-To run the documentation site locally, we use [zola](https://www.getzola.org/) so you'll need to [install](https://www.getzola.org/documentation/getting-started/installation/) it. The documentation site works with zola version `0.19.2` and since zola still has breaking changes, we make no guarantees about other versions.
+The site is [Astro](https://astro.build/) with [Starlight](https://starlight.astro.build/) for the docs, and uses pnpm (the version is pinned in `website/package.json`).
 
 Running the local preview
-+ `cd docs-site`
-+ `npm run serve` or `zola serve`
++ `cd website`
++ `pnpm install`
++ `pnpm dev`
 
 ## Open A Pull Request
 
