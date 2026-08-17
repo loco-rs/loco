@@ -1,0 +1,62 @@
+---
+// The privacy policy, carried over from the zola site so retiring `docs-site/`
+// does not silently drop the page. Content is unchanged from what loco.rs
+// served; only the markup moved.
+import Base from '../layouts/Base.astro';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+
+const title = 'Privacy Policy';
+const description = 'We do not use cookies and we do not collect any personal data.';
+---
+
+<Base title={title} description={description}>
+  <Nav />
+  <main class="prose-page">
+    <h1>{title}</h1>
+
+    <p><strong>TLDR</strong>: We do not use cookies and we do not collect any personal data.</p>
+
+    <h2>Website visitors</h2>
+    <ul>
+      <li>No personal information is collected.</li>
+      <li>No information is stored in the browser.</li>
+      <li>No information is shared with, sent to or sold to third-parties.</li>
+      <li>No information is shared with advertising companies.</li>
+      <li>No information is mined and harvested for personal and behavioral trends.</li>
+      <li>No information is monetized.</li>
+    </ul>
+
+    <h2>Contact us</h2>
+    <p>
+      <a href="https://github.com/loco-rs/loco/discussions">Contact us</a> if you have any
+      questions.
+    </p>
+
+    <p><em>Effective Date: 1st May 2021</em></p>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .prose-page {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+    line-height: 1.7;
+  }
+  .prose-page h1 {
+    font-size: 2.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .prose-page h2 {
+    font-size: 1.25rem;
+    margin: 2.5rem 0 0.75rem;
+  }
+  .prose-page ul {
+    padding-left: 1.25rem;
+  }
+  .prose-page li {
+    margin: 0.35rem 0;
+  }
+</style>

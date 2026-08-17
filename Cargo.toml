@@ -23,13 +23,12 @@ license.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 
-# Without this the published .crate carries both documentation sites — roughly
-# half the download is `website/` and `docs-site/`, which no consumer of the
-# library needs. `examples/`, `xtask/`, `loco-new/` and `loco-gen/` are already
-# left out automatically as nested packages.
+# Without this the published .crate carries the documentation site — a large
+# share of the download that no consumer of the library needs. `examples/`,
+# `xtask/`, `loco-new/` and `loco-gen/` are already left out automatically as
+# nested packages.
 exclude = [
     "website/",
-    "docs-site/",
     "media/",
     ".vscode/",
     ".github/",

@@ -23,8 +23,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
-      - name: Verify curated LLM docs (llms.txt / llms-full.txt) against docs tree
-        run: cargo run -p xtask -- llms-check
       # Syntax, not types — a snippet truncated mid-expression or missing a
       # brace renders perfectly and is wrong. Blocks that are deliberately not
       # Rust opt out in the fence meta with a reason.
@@ -32,13 +30,6 @@ jobs:
         run: cargo run -p xtask -- docs-syntax
       - name: Compile the docs example app (verified-docs spine)
         run: cargo build --manifest-path examples/demo/Cargo.toml
-      - name: Install zola
-        uses: taiki-e/install-action@v2
-        with:
-          tool: zola@0.21.0
-      - name: Build the docs site (fails on broken internal links)
-        run: zola build
-        working-directory: docs-site
       - run: cargo install snipdoc --features exec
         # Verifies that every `<snip id=...>` block across the READMEs and the
         # docs tree still matches its source in `snipdoc.yml`. `snipdoc check`
@@ -54,8 +45,10 @@ jobs:
           SNIPDOC_SKIP_EXEC_COMMANDS: true
 
   # Builds the deployed site (Astro/Starlight in website/). The `check` job
-  # above still verifies the docs *source* (docs-site/, snipdoc, llms-check);
-  # this job verifies the artifact that actually ships to loco.rs.
+  # above verifies the docs source (snipdoc, doc-example syntax); this job
+  # verifies the artifact that actually ships to loco.rs — including the
+  # `prebuild` step that generates llms.txt / llms-full.txt from the same
+  # docs tree.
   website:
     runs-on: ubuntu-latest
     permissions:

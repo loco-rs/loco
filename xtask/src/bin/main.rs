@@ -25,10 +25,6 @@ enum Commands {
         #[arg(name = "VERSION")]
         new_version: Version,
     },
-    /// Verify the hand-curated LLM docs files (llms.txt / llms-full.txt)
-    /// against the real docs tree: broken links, orphan pages, version
-    /// markers. Verifies only — never regenerates the curated files.
-    LlmsCheck,
     /// Parse every ```rust block in the docs tree and fail on the ones that
     /// are not valid Rust. Syntax only — see `xtask::docs_syntax`.
     DocsSyntax,
@@ -63,10 +59,6 @@ fn main() -> eyre::Result<()> {
                 versions::bump_version(&new_version)?;
             }
             xtask::CmdExit::ok()
-        }
-        Commands::LlmsCheck => {
-            xtask::llms::run(&project_dir)?;
-            xtask::CmdExit::ok_with_message("llms-check passed")
         }
         Commands::DocsSyntax => {
             xtask::docs_syntax::run(&project_dir)?;

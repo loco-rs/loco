@@ -1,8 +1,0 @@
-{% macro javascript() %}
-<script type="text/javascript" src="{{ get_url(path="js/main.js") | safe }}" defer></script>
-{% if config.build_search_index %}
-  <script type="text/javascript" src="{{ get_url(path="plugins/elasticlunr.min.js") | safe }}" defer></script>
-  <script type="text/javascript" src="{{ get_url(path="search_index." ~ lang ~ ".js") | safe }}" defer></script>
-  <script type="text/javascript" src="{{ get_url(path="js/search.js") | safe }}" defer></script>
-{% endif %}
-{% endmacro %}
