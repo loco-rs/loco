@@ -71,6 +71,11 @@ fn bump_version_in_file(
     Ok(())
 }
 
+/// Bump every version a release touches.
+///
+/// # Errors
+/// when a `loco-new` fmt/clippy pre-check fails, a tracked file is missing or
+/// unreadable, or a version pattern no longer matches the file it bumps
 pub fn bump_version(version: &Version) -> Result<()> {
     // testing loco-new will test 4 combinations of starters
     // sets LOCO_DEV_MODE_PATH=/<path-to>/projects/loco/ and shared cargo build path

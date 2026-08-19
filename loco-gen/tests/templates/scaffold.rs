@@ -10,6 +10,10 @@ use std::fs;
 /// (`title:string! content:text! status:enum:draft,published,archived!
 /// price:decimal! published_at:tstz`), so this snapshot doubles as the
 /// golden-output check for the DTO + controller generator.
+// A flat inventory of every artifact one scaffold emits. Splitting it into
+// helpers would hide which artifact a failure came from, which is the only
+// thing this test is here to tell you.
+#[allow(clippy::too_many_lines)]
 #[test]
 fn can_generate() {
     // SAFETY: test-local env setup; no other thread reads the environment during this test.

@@ -25,15 +25,15 @@ enum Commands {
         #[arg(name = "VERSION")]
         new_version: Version,
     },
-    /// Parse every ```rust block in the docs tree and fail on the ones that
-    /// are not valid Rust. Syntax only — see `xtask::docs_syntax`.
+    /// Parse every fenced `rust` block in the docs tree and fail on the ones
+    /// that are not valid Rust. Syntax only — see `xtask::docs_syntax`.
     DocsSyntax,
 }
 
 fn main() -> eyre::Result<()> {
     let cli = Cli::parse();
     let project_dir = env::current_dir()?;
-    println!("running in: {project_dir:?}");
+    println!("running in: {}", project_dir.display());
 
     let res = match cli.command {
         Commands::Test { quick } => {

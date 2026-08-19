@@ -1,5 +1,5 @@
-//! Parse every ```rust block in the docs tree and fail on the ones that are
-//! not Rust.
+//! Parse every fenced `rust` block in the docs tree and fail on the ones that
+//! are not Rust.
 //!
 //! **This checks syntax, not types.** It will not tell you a snippet calls a
 //! method that no longer exists — for that a block would have to compile
@@ -34,7 +34,7 @@ use eyre::{bail, eyre, Result};
 use regex::Regex;
 
 const DOCS_DIR: &str = "website/src/content/docs";
-/// Crate sources whose doc comments carry ```rust blocks. `cargo test --doc`
+/// Crate sources whose doc comments carry fenced `rust` blocks. `cargo test --doc`
 /// compiles the runnable ones; the `ignore` ones — every example that names a
 /// type from the user's app rather than from `loco-rs` — are never even
 /// parsed, so this is the only thing standing between them and a truncated
@@ -50,6 +50,9 @@ struct Block {
     skipped: bool,
 }
 
+/// # Errors
+/// when the docs tree is missing, a file cannot be read, or any block that
+/// did not opt out fails to parse as Rust
 pub fn run(project_dir: &Path) -> Result<()> {
     let root = project_dir.join(DOCS_DIR);
     if !root.is_dir() {

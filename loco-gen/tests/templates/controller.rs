@@ -6,10 +6,9 @@ use std::fs;
 
 #[test]
 fn can_generate() {
-    let actions = vec!["GET".to_string(), "POST".to_string()];
     let component = Component::Controller {
         name: "movie".to_string(),
-        actions: actions.clone(),
+        actions: vec!["GET".to_string(), "POST".to_string()],
         auth: false,
     };
 
