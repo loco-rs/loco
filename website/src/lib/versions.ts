@@ -1,31 +1,49 @@
-export interface DocVersion {
-  /** Badge/menu label, e.g. `"v1.0"`. */
-  label: string;
-  /** Root docs path (or absolute URL) this version is served from. */
-  href: string;
-  /** Marks the version currently being served by this build. Exactly one entry should set this. */
-  current?: boolean;
+// Inlined by Vite at build time, resolved relative to THIS file. Reading the
+// manifest at runtime instead looked fine in vitest and then failed the build:
+// Astro bundles this module into a server chunk, so `import.meta.url` pointed
+// at the bundle and the path collapsed to `website/Cargo.toml`. `?raw` is
+// resolved while the module graph is still source-shaped, and leaves no file
+// IO in the output at all.
+import cargoToml from '../../../Cargo.toml?raw';
+
+const CARGO_TOML = 'the workspace Cargo.toml';
+
+/**
+ * Reads `version` from the `[package]` section of a `Cargo.toml`.
+ *
+ * Scoped to that section deliberately: `version = "..."` also appears inside
+ * every dependency's inline table, and `[workspace.package]` above it carries
+ * its own keys. Anchoring on the section heading is what makes a bare
+ * line-start match safe.
+ *
+ * @param manifest contents of a Cargo.toml
+ * @returns e.g. `'1.1.0'`
+ */
+export function packageVersion(manifest: string): string {
+  const section = manifest.split(/^\[package\]$/m)[1];
+  if (section === undefined) {
+    throw new Error(`${CARGO_TOML} has no [package] section`);
+  }
+  // Stop at the next section heading so a later `[dependencies]` entry cannot
+  // be mistaken for the package's own version.
+  const body = section.split(/^\[/m)[0];
+  const match = body.match(/^version = "([^"]+)"/m);
+  if (!match) {
+    throw new Error(`${CARGO_TOML} [package] section declares no version`);
+  }
+  return match[1];
 }
 
-// Every published docs version, newest first. Loco docs are single-version
-// today — this array has one entry — but `VersionBadge.astro` always
-// renders it as a dropdown (see that component), so it is already wired for
-// more without any template changes.
-//
-// To publish a new version later:
-//   1. Preserve the outgoing version's content somewhere it can still be
-//      served from its own `href` below — e.g. a versioned subpath such as
-//      `/v1.0/docs/...` (a copy of today's `src/content/docs/docs/` tree),
-//      or adopt the `starlight-versions` plugin to manage those snapshots
-//      for you. Either way, don't touch this file until that content exists
-//      and resolves at the URL you're about to add.
-//   2. Add the new version as `current: true` and demote the previous
-//      `current` entry to a plain historical entry pointing at its
-//      preserved path, e.g.:
-//        export const docVersions: DocVersion[] = [
-//          { label: 'v2.0', href: '/docs/', current: true },
-//          { label: 'v1.0', href: '/v1.0/docs/' },
-//        ];
-//   3. That's the whole change — `VersionBadge.astro` maps over this
-//      array unmodified.
-export const docVersions: DocVersion[] = [{ label: 'v1.0', href: '/docs/', current: true }];
+/**
+ * The released Loco version, read from the workspace `Cargo.toml` at build
+ * time.
+ *
+ * It used to be a hand-maintained list, and it drifted: the header still read
+ * `v1.0` after 1.1.0 had shipped. A version string on the docs site that
+ * nobody can trust is worse than no version string, and the only copy that
+ * cannot go stale is the one derived from the manifest being released.
+ */
+export const locoVersion: string = packageVersion(cargoToml);
+
+/** The GitHub release notes for {@link locoVersion}. */
+export const locoReleaseUrl = `https://github.com/loco-rs/loco/releases/tag/v${locoVersion}`;
