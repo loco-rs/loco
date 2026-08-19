@@ -3,6 +3,35 @@ use loco_gen::{collect_messages, generate, AppInfo, Component, DeploymentKind};
 use rrgen::RRgen;
 use std::{fs, path::PathBuf};
 
+/// The generated Dockerfile pins its own Rust base image, and nothing tied
+/// that pin to the MSRV the app's dependencies actually require. It drifted:
+/// the 1.0 release raised the MSRV to 1.94 for Sea-ORM 2.0 and left the
+/// template on 1.92.0, so every generated Dockerfile failed at
+/// `cargo build --release` with "rustc 1.92.0 is not supported". The nightly
+/// `loco-gen-deploy` workflow reported it every night and the snapshot test
+/// could not: it filters the version line out before comparing.
+fn assert_dockerfile_rust_meets_msrv(dockerfile: &str) {
+    let pinned = dockerfile
+        .lines()
+        .find_map(|line| {
+            line.strip_prefix("FROM rust:")
+                .and_then(|rest| rest.split('-').next())
+        })
+        .expect("Dockerfile has no `FROM rust:<version>` line");
+
+    let parts = |v: &str| -> Vec<u64> { v.split('.').map(|p| p.parse().unwrap_or(0)).collect() };
+    // `rust-version` may be a two-component "1.94"; compare on what it gives.
+    let msrv = env!("CARGO_PKG_RUST_VERSION");
+    let (pinned_parts, msrv_parts) = (parts(pinned), parts(msrv));
+
+    assert!(
+        pinned_parts >= msrv_parts[..msrv_parts.len().min(pinned_parts.len())].to_vec(),
+        "generated Dockerfile pins rust {pinned}, but loco-gen declares rust-version {msrv} — \
+         the image cannot build the app it generates. Bump \
+         `loco-gen/src/templates/deployment/docker/docker.t`."
+    );
+}
+
 #[rstest::rstest]
 fn can_generate_docker(
     #[values(vec![], vec![std::path::PathBuf::from("404.html"), PathBuf::from("asset")])]
@@ -54,6 +83,10 @@ fn can_generate_docker(
             fs::read_to_string(tree_fs.root.join("Dockerfile")).expect("Dockerfile missing")
         );
     });
+
+    assert_dockerfile_rust_meets_msrv(
+        &fs::read_to_string(tree_fs.root.join("Dockerfile")).expect("Dockerfile missing"),
+    );
 
     assert_eq!(
         fs::read_to_string(tree_fs.root.join(".dockerignore")).expect(".dockerignore missing"),
