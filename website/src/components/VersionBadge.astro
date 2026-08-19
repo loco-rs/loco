@@ -1,57 +1,29 @@
 ---
-// Docs version switcher (v1.0 ▾) shown beside the wordmark in the docs
-// header. Extracted from the former SiteTitleWithVersion override: the docs
-// Header (src/components/starlight/Header.astro) now renders the marketing
-// brand directly and drops it in next to the wordmark, so this no longer
-// wraps Starlight's SiteTitle. See src/lib/versions.ts for the version list.
-import { docVersions } from '../lib/versions';
-
-const current = docVersions.find((v) => v.current) ?? docVersions[0];
+// The released Loco version, shown beside the wordmark in the docs header.
+//
+// This was a dropdown. It had exactly one entry, pointing at the page you
+// were already on — a menu that opened to reveal nothing — and the label was
+// hand-maintained, so it still read `v1.0` after 1.1.0 shipped. Now it is a
+// plain badge, and the version comes from the workspace Cargo.toml so it
+// cannot drift again. It links to that release's notes, which is the thing
+// someone checking the version actually wants next.
+import { locoVersion, locoReleaseUrl } from '../lib/versions';
 ---
 
-<details class="ver-switcher" data-version-switcher>
-  <summary class="ver" aria-label={`Docs version: ${current.label}`}>
-    {current.label}
-    <span class="chevron" aria-hidden="true">▾</span>
-  </summary>
-  <ul class="ver-menu" role="list">
-    {
-      docVersions.map((v) => (
-        <li>
-          <a href={v.href} aria-current={v.current ? 'true' : undefined}>
-            {v.label}
-          </a>
-        </li>
-      ))
-    }
-  </ul>
-</details>
-
-<script>
-  // Native <details> stays open on outside click/Escape by default; close it
-  // to match the conventional dropdown behavior.
-  document.querySelectorAll<HTMLDetailsElement>('[data-version-switcher]').forEach((el) => {
-    document.addEventListener('click', (e) => {
-      if (el.open && !el.contains(e.target as Node)) el.open = false;
-    });
-    el.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && el.open) {
-        el.open = false;
-        el.querySelector('summary')?.focus();
-      }
-    });
-  });
-</script>
+<a
+  class="ver"
+  href={locoReleaseUrl}
+  aria-label={`Loco v${locoVersion} — release notes`}
+  title={`Loco v${locoVersion} — release notes`}
+>
+  v{locoVersion}
+</a>
 
 <style>
-  .ver-switcher {
-    position: relative;
-    flex-shrink: 0;
-  }
   .ver {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
+    flex-shrink: 0;
     font-family: var(--sl-font-mono, var(--mono));
     font-size: 0.72rem;
     color: var(--ink-2);
@@ -59,60 +31,11 @@ const current = docVersions.find((v) => v.current) ?? docVersions[0];
     background: var(--card);
     padding: 0.19rem 0.55rem;
     border-radius: 0.45rem;
-    cursor: pointer;
-    user-select: none;
-    list-style: none;
+    text-decoration: none;
     white-space: nowrap;
-  }
-  .ver::-webkit-details-marker {
-    display: none;
   }
   .ver:hover {
     border-color: var(--ink-3);
     color: var(--ink);
-  }
-  .ver-switcher[open] .ver {
-    border-color: var(--red);
-    color: var(--ink);
-  }
-  .chevron {
-    font-size: 0.65rem;
-    transition: transform 0.15s ease;
-  }
-  .ver-switcher[open] .chevron {
-    transform: rotate(180deg);
-  }
-  .ver-menu {
-    position: absolute;
-    top: calc(100% + 0.4rem);
-    left: 0;
-    min-width: 6rem;
-    margin: 0;
-    padding: 0.35rem;
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 0.55rem;
-    box-shadow: 0 12px 24px -12px rgba(0, 0, 0, 0.35);
-    z-index: 30;
-  }
-  .ver-menu li {
-    list-style: none;
-  }
-  .ver-menu a {
-    display: block;
-    padding: 0.3rem 0.55rem;
-    border-radius: 0.35rem;
-    font-family: var(--sl-font-mono, var(--mono));
-    font-size: 0.8rem;
-    color: var(--ink-2);
-    text-decoration: none;
-  }
-  .ver-menu a:hover {
-    background: var(--paper-2);
-    color: var(--ink);
-  }
-  .ver-menu a[aria-current='true'] {
-    color: var(--red-ink);
-    font-weight: 650;
   }
 </style>
