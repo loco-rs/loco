@@ -71,23 +71,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
         working-directory: website
-      - name: Unit tests (migration / link-rewrite scripts)
-        run: pnpm test
-        working-directory: website
-      # `astro check` type-checks the .astro files and every `astro:content`
-      # call against the generated collection types. It was never wired up, and
-      # by the time it was it had 36 errors: `tsconfig.json` listed `.astro` in
-      # `include`, but TypeScript skips dot-directories when expanding a
-      # directory into a glob, so the generated content types were never loaded
-      # and every `getCollection` silently resolved to `any`.
-      - name: Type-check the site
-        run: pnpm check
-        working-directory: website
-      - name: Build the Astro site (fails on broken links)
-        run: pnpm build
-        working-directory: website
-      - name: URL parity (old loco.rs URLs still resolve)
-        run: |
-          pnpm url-parity
-          pnpm url-parity-blog
+      # One command, defined in website/package.json, so `pnpm verify` locally
+      # is exactly what CI runs — there is no second list to keep in sync.
+      # It chains, in order:
+      #   test        vitest over the migration / link-rewrite scripts
+      #   check       `astro check` — type-checks .astro and every
+      #               `astro:content` call against the generated collection
+      #               types. It was never wired up, and by the time it was it
+      #               had 36 errors: `tsconfig.json` listed `.astro` in
+      #               `include`, but TypeScript skips dot-directories when
+      #               expanding a directory into a glob, so the generated
+      #               content types were never loaded and every `getCollection`
+      #               silently resolved to `any`.
+      #   build       the Astro build (fails on broken links); its `prebuild`
+      #               regenerates llms.txt / llms-full.txt
+      #   url-parity  every URL the retired Zola site published still resolves
+      - name: Verify the site
+        run: pnpm verify
         working-directory: website

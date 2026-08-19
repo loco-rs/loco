@@ -100,6 +100,10 @@ Running the local preview
 + `pnpm install`
 + `pnpm dev`
 
+Before opening a PR that touches the site or the docs, run `pnpm verify` in
+`website/`. It is the single command CI runs — unit tests, type-check, build,
+and URL parity against every address the old site published.
+
 ## Open A Pull Request
 
 The most recommended and straightforward method to contribute changes to the project involves forking it on GitHub and subsequently initiating a pull request to propose the integration of your modifications into our repository.
