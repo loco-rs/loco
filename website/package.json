@@ -12,6 +12,7 @@
     "test": "vitest run",
     "migrate:docs": "node scripts/migrate-docs.mjs",
     "generate:llms": "node scripts/generate-llms-txt.mjs",
+    "verify": "pnpm test && pnpm check && pnpm build && pnpm url-parity && pnpm url-parity-blog",
     "url-parity": "node scripts/url-parity.mjs",
     "url-parity-blog": "node scripts/url-parity-blog.mjs"
   },
