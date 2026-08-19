@@ -11,13 +11,16 @@
 // `initHome` (wired in Task 8); its fixed `height:104px; overflow:hidden`
 // below is what keeps scroll-streamed content from growing the card.
 import PostcardFrame from './PostcardFrame.astro';
+// Read from the workspace Cargo.toml — the eyebrow and the trust row both
+// hard-coded "1.0" and were still saying it after 1.1.0 shipped.
+import { locoVersion } from '../lib/versions';
 ---
 
 <div class="wrap">
   <div class="hero">
     <div>
       <div class="eyebrow-row">
-        <span class="eyebrow" data-reveal>● Batteries-included Rust · v1.0</span>
+        <span class="eyebrow" data-reveal>● Batteries-included Rust · v{locoVersion}</span>
         <span class="scribble-reveal" data-reveal><a
           class="scribble"
           href="/llms.txt"
@@ -37,7 +40,7 @@ import PostcardFrame from './PostcardFrame.astro';
         <div class="install" data-copy="cargo install loco" role="button" tabindex="0" aria-label="Copy install command: cargo install loco"><span><span class="dollar">$</span> cargo install loco</span><span class="cp">⧉ copy</span></div>
       </div>
       <div class="trust" data-reveal>
-        <div><b>1.0</b> Sea-ORM 2.0 · edition 2024</div>
+        <div><b>{locoVersion}</b> Sea-ORM 2.0 · edition 2024</div>
         <div>
           <a
             href="https://github.com/loco-rs/loco"
