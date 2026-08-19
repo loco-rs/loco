@@ -5,7 +5,10 @@ use std::{
 
 use duct::cmd;
 
-use crate::{errors::Result, utils};
+use crate::{
+    errors::{Error, Result},
+    utils,
+};
 
 const FMT_TEST: [&str; 3] = ["test", "--all-features", "--all"];
 const FMT_ARGS: [&str; 2] = ["fmt", "--all"];
@@ -38,10 +41,16 @@ impl RunResults {
 /// Run CI on all Loco resources (lib, cli, starters, examples, etc.).
 ///
 /// # Errors
-/// when could not run ci on the given resource
+/// when `base_dir` is not a Rust project, or CI could not be run on one of
+/// the resources under it
 pub fn all_resources(base_dir: &Path) -> Result<Vec<RunResults>> {
     let mut result = vec![];
-    result.push(run(base_dir).expect("loco lib mast be tested"));
+    result.push(run(base_dir).ok_or_else(|| {
+        Error::Message(format!(
+            "{} is not a Rust project — no Cargo.toml to run the loco lib CI against",
+            base_dir.display()
+        ))
+    })?);
     result.extend(run_all_in_folder(&base_dir.join("examples"))?);
     result.extend(run_all_in_folder(&base_dir.join("loco-new"))?);
 
@@ -85,6 +94,9 @@ pub fn run(dir: &Path) -> Option<RunResults> {
 }
 
 /// Run cargo test on the given directory.
+///
+/// # Errors
+/// when cargo could not be spawned, or the test run exited non-zero
 pub fn cargo_test(dir: &Path, serial: bool) -> Result<Output> {
     let mut params = FMT_TEST.to_vec();
     if serial {
@@ -101,6 +113,9 @@ pub fn cargo_test(dir: &Path, serial: bool) -> Result<Output> {
 }
 
 /// Run cargo fmt on the given directory.
+///
+/// # Errors
+/// when cargo could not be spawned, or the format run exited non-zero
 pub fn cargo_fmt(dir: &Path) -> Result<Output> {
     println!(
         "Running `cargo {}` in folder {}",
@@ -111,6 +126,9 @@ pub fn cargo_fmt(dir: &Path) -> Result<Output> {
 }
 
 /// Run cargo clippy on the given directory.
+///
+/// # Errors
+/// when cargo could not be spawned, or clippy reported a finding
 pub fn cargo_clippy(dir: &Path) -> Result<Output> {
     println!(
         "Running `cargo {}` in folder {}",

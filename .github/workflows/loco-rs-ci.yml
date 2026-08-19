@@ -28,8 +28,11 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Run cargo fmt
         run: cargo fmt --all -- --check
+      # `--workspace` is not decoration: this repo has a root package, so a
+      # bare `cargo clippy` lints `loco-rs` and nothing else. `xtask` and
+      # `loco-gen` are workspace members and had never been linted once.
       - name: Run cargo clippy
-        run: cargo clippy --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms
+        run: cargo clippy --workspace --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms
       # A `[Type]` that no longer resolves is a dead link on docs.rs, and
       # nothing was checking: twelve had accumulated from renames.
       - name: Run cargo doc
