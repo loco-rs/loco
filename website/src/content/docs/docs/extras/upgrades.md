@@ -28,6 +28,114 @@ These are the major ones:
 1.1 moves the template engine to **Tera 2** and changes configuration files to
 use YAML-safe `<%= ... %>` delimiters.
 
+Most apps need **one line changed** — see below. Nothing here requires
+rewriting your templates unless they use `{% macro %}`, `{% import %}`, or
+`v.0` array access, none of which Loco's own generated templates use.
+
+### The fast path: hand this to a coding agent
+
+Paste the following into Claude Code (or any coding agent) with your project
+open. It is the whole 1.0 → 1.1 change surface, written to be acted on. The
+sections after it are the same changes explained for humans.
+
+````text
+You are upgrading a Rust web application from Loco 1.0.x to Loco 1.1.
+
+Work through the checklist below in order. For each item: search the codebase
+for the pattern, apply the change only where it actually appears, and tell me
+what you changed or that the item did not apply. Do not change anything that
+is not listed here. When you are done, run `cargo check`, then `cargo loco
+doctor`, then the test suite.
+
+1. Cargo.toml — REQUIRED for every app.
+   Set `loco-rs` to "1.1".
+   If `fluent-templates` appears, set it to:
+       fluent-templates = { version = "0.15", features = ["tera"] }
+   Version 0.13 pins Tera 1 and will not compile against Loco 1.1. For most
+   apps this is the ONLY change needed.
+
+2. Custom Tera filters and functions (Rust code).
+   Look for `register_filter`, `register_function` and `register_tester`,
+   usually in src/initializers/view_engine.rs or an `after_routes` hook.
+   Tera 2 changed the signatures:
+       // Tera 1
+       fn f(value: &serde_json::Value, args: &HashMap<String, serde_json::Value>)
+           -> tera::Result<serde_json::Value>
+       // Tera 2
+       fn f(value: &tera::Value, kwargs: tera::Kwargs, _: &tera::State)
+           -> tera::TeraResult<tera::Value>
+   Read named arguments with kwargs.get::<T>("name")? for optional ones and
+   kwargs.must_get::<T>("name")? for required ones.
+   `&State` cannot be constructed outside the engine, so a filter can no
+   longer be unit-tested by calling it. Move the logic into a plain function
+   and make the filter a thin wrapper over it, so that function stays testable.
+   Do NOT touch `tera.register_function("t", FluentLoader::new(...))`. That
+   keeps working unchanged.
+
+3. View and mailer templates (assets/views/**, assets/mailers/**).
+   Three Tera 2 changes. Apply each only where it actually appears:
+   a. `{% macro %}` and `{% import %}` were removed in favour of components.
+      Templates using them need rewriting.
+   b. Array access is `v[0]`, not `v.0`.
+   c. An undefined variable is now an ERROR where Tera 1 rendered it empty.
+      This catches MAILER templates too, so a mail template referencing an
+      optional field that is sometimes absent now fails at send time rather
+      than rendering nothing. Add `| default(value="")` to those references.
+   Templates that Loco generated do not use (a) or (b).
+
+4. Scaffolded list endpoints — only if you generated a scaffold.
+   The JSON envelope changed to the framework's own pagination vocabulary:
+       per_page    -> page_size
+       total       -> total_items
+       total_pages -> NEW field, add it
+   The query parameter is `page_size` as well. Update any frontend or API
+   client reading those fields. If you have a Loco-generated TypeScript
+   frontend, regenerate bindings/ with ts-rs.
+
+5. Traits you implemented yourself — skip if you use only built-in drivers.
+   - `QueueProvider` now requires `retry_failed`.
+   - `StoreDriver` now requires `list` and `stat`.
+   - `StorageStrategy` now requires `list`, `stat` and `exists`.
+   Every built-in driver and strategy already implements these.
+
+6. Exhaustive `match` expressions that will stop compiling.
+   - `loco_rs::doctor::Resource` is now #[non_exhaustive] and gained a
+     `ProductionSafety` variant. It sorts FIRST, so the doctor report's
+     display order shifts by one; code sorting or comparing Resource sees it.
+   - `loco_gen::DeploymentKind` gained a `Lambda` variant.
+   - `loco_gen::Component::Scaffold` and ::Controller gained a required
+     `auth: bool` field.
+   - `loco_gen::AppInfo` gained a `working_dir` field — pass ".".into().
+   The loco_gen items matter only if you drive the generator from code.
+
+7. Function signatures you may be calling directly.
+   - `bgworker::pg::get_jobs` now returns loco_rs::Result instead of
+     Result<_, sqlx::Error>. Code using `?` in a Loco context is unaffected;
+     code matching on sqlx::Error needs updating.
+   - views::tera_builtins::filters::number::{number_with_delimiter,
+     number_to_human_size, number_to_percentage} take (value, Kwargs, &State).
+     Templates are unaffected — only direct Rust calls need updating.
+   - `build_with_post_process` now runs BEFORE templates are loaded. The
+     closure registers into an empty engine and can no longer inspect loaded
+     templates, and anything a template calls must be registered by it.
+
+8. `auth.jwt.location` in config is parsed strictly now.
+   It accepts a map, or a list of maps, and nothing else. The documented
+   shapes are unchanged, but config that used to slip through an untagged
+   fallback is now rejected with an error naming the problem.
+
+9. OPTIONAL, no deadline: config templating delimiters.
+   `{{ get_env(...) }}` still renders, with a deprecation warning. The
+   YAML-safe form is:
+       port: <%= get_env(name="PORT", default="5150") %>
+   `{` is a YAML flow-mapping indicator, so the old form was never valid YAML
+   at rest and format-on-save would rewrite it into `{ { ... } }` and break
+   startup. This is a find-and-replace across config/*.yaml.
+
+Do NOT make production config secrets mandatory. That change applies only to
+NEWLY generated apps; an existing app's config files are its own.
+````
+
 ### The one required change: `fluent-templates`
 
 Generated apps use `fluent-templates` for the i18n `t()` function, and it
