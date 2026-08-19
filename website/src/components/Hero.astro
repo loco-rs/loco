@@ -16,7 +16,20 @@ import PostcardFrame from './PostcardFrame.astro';
 <div class="wrap">
   <div class="hero">
     <div>
-      <span class="eyebrow" data-reveal>● Batteries-included Rust · v1.0</span>
+      <div class="eyebrow-row">
+        <span class="eyebrow" data-reveal>● Batteries-included Rust · v1.0</span>
+        <span class="scribble-reveal" data-reveal><a
+          class="scribble"
+          href="/llms.txt"
+          aria-label="…and AI agents — read Loco's llms.txt"
+        >
+          <span class="hand">and AI&nbsp;agents</span>
+          <svg class="arrow" viewBox="0 0 64 52" aria-hidden="true" focusable="false">
+            <path d="M55 3C57 18 49 32 30 43" />
+            <path d="M30 43 L45 42 M30 43 L36 30" />
+          </svg>
+        </a></span>
+      </div>
       <h1 data-reveal>The <span class="u">one-person</span><br />framework for Rust.</h1>
       <p class="lede" data-reveal>Everything you need to take a side-project or startup from an idea to production — models, controllers, jobs, mailers, auth — generated and wired together.</p>
       <div class="cta-row" data-reveal>
@@ -88,6 +101,96 @@ import PostcardFrame from './PostcardFrame.astro';
     letter-spacing: -0.035em;
     font-weight: 820;
     margin: 22px 0 0;
+    position: relative;
+  }
+
+  /* "and AI agents", scrawled beside the eyebrow with an arrow down-left into
+     "one-person" on the line below.
+     It sits in NORMAL FLOW rather than absolutely positioned off the word.
+     Hanging it off "one-person" was the obvious placement and it does not
+     survive: line 1 of a 60px headline nearly fills the text column, so the
+     note overflowed into the illustration and was clipped. The eyebrow row is
+     a short pill with empty space after it at every viewport width, and flow
+     layout means the note can never be cut off or overlap anything. */
+  .eyebrow-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    /* Room underneath for the arrow to reach toward the headline. */
+    margin-bottom: -6px;
+  }
+  /* Order is label -> arrow -> target, reading downward: the label sits
+     furthest from "one-person" and the arrowhead lands ON it. Putting the
+     arrow BESIDE the label (the first attempt) pointed it away from the word
+     entirely, off toward the illustration.
+     Rotation is deliberately slight. -7deg read as a sticker; the convention
+     for this kind of annotation is a few degrees at most. */
+  /* The note fades up with everything else, but `data-reveal` lives on a
+     WRAPPER rather than on the link. The global rule is
+     `html.js [data-reveal]{transform:translateY(14px)}` with
+     `.in{transform:none}` — higher specificity than `.scribble`, so putting
+     the attribute on the link itself would flatten its -4deg tilt the moment
+     the reveal fired.
+     The delay lands it after the headline it annotates, which is the order
+     someone would actually scrawl it in. */
+  .scribble-reveal {
+    display: inline-flex;
+    transition-delay: 0.5s;
+  }
+  .scribble {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    color: var(--marker);
+    text-decoration: none;
+    transform: rotate(-4deg);
+    transform-origin: left center;
+    font-weight: 500;
+    letter-spacing: 0;
+    line-height: 1;
+    white-space: nowrap;
+    /* Lets the arrow hang toward the headline without pushing the row taller. */
+    margin-bottom: -34px;
+    transition:
+      transform 0.18s ease,
+      opacity 0.18s ease;
+  }
+  .scribble .arrow {
+    width: 42px;
+    height: 34px;
+    /* The arrow leaves from under the middle of the label, not its edge. */
+    margin-left: 26px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .scribble .hand {
+    font-family: var(--hand);
+    /* Caveat has a small x-height for its em, so it needs more size than a
+       sans to read at the same visual weight. */
+    font-size: 27px;
+  }
+  .scribble:hover {
+    transform: rotate(-4deg) translateY(-2px);
+    opacity: 0.82;
+  }
+  .scribble:focus-visible {
+    outline: 2px solid var(--marker);
+    outline-offset: 4px;
+    border-radius: 4px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .scribble {
+      transition: none;
+    }
+    .scribble:hover {
+      transform: rotate(-4deg);
+    }
   }
   h1 .u {
     color: var(--red);
@@ -275,6 +378,19 @@ import PostcardFrame from './PostcardFrame.astro';
     }
     .art .code {
       display: none;
+    }
+    /* Flow layout already survives the narrow column — the row just wraps.
+       Only scale the note down so it does not compete with a 44px headline. */
+    .scribble .hand {
+      font-size: 23px;
+    }
+    .scribble .arrow {
+      width: 36px;
+      height: 28px;
+      margin-left: 20px;
+    }
+    .scribble {
+      margin-bottom: -28px;
     }
   }
 </style>
