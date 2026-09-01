@@ -11,6 +11,9 @@ where
 {
     type Rejection = Error;
 
+    // A `DiContainer` lookup, no I/O — see `extractor/auth.rs` for why the
+    // `async fn` shape stays anyway.
+    #[allow(clippy::unused_async_trait_impl)]
     async fn from_request_parts(
         _: &mut Parts,
         state: &AppContext,

@@ -1,0 +1,59 @@
+name: "[lint:future]"
+
+# The pinned toolchain in `loco-rs-ci.yml` keeps new clippy lints from landing
+# on contributors' pull requests. The cost of pinning is that we stop hearing
+# about them at all — until a bump, when they all arrive at once.
+#
+# This job is the other half: it runs the same lints the `style` job runs, on
+# floating stable and on beta, so we find out what the next toolchain thinks
+# on our own schedule. It is deliberately NOT part of the PR pipeline.
+#
+# It is allowed to fail, and a failure here is not an emergency: it means the
+# next toolchain has an opinion we have not addressed yet. Fix it, then raise
+# `RUST_TOOLCHAIN`. There is no `continue-on-error` here on purpose — this run
+# should go visibly red in the Actions tab, because a check nobody can see
+# failing is a check that verifies nothing.
+
+on:
+  schedule:
+    # Mondays, 06:00 UTC. Rust releases on a Thursday, so this reports on the
+    # new stable within four days of it landing.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  lint-future:
+    # Forks inherit the schedule but not the reason to run it.
+    if: github.repository == 'loco-rs/loco'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    strategy:
+      # Both toolchains report; stable failing should not hide what beta says.
+      fail-fast: false
+      matrix:
+        toolchain: [stable, beta]
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: clippy, rustfmt
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Report the toolchain under test
+        run: cargo clippy --version
+
+      # Kept character-for-character in step with the `style` job in
+      # `loco-rs-ci.yml`. If you change the lint set there, change it here, or
+      # this stops predicting anything.
+      - name: Run cargo clippy
+        run: cargo clippy --workspace --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery -W rust-2018-idioms
+
+      - name: Run cargo fmt
+        run: cargo fmt --all -- --check

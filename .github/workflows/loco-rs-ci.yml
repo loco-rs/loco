@@ -7,7 +7,19 @@ on:
   pull_request:
 
 env:
-  RUST_TOOLCHAIN: stable
+  # Pinned, not `stable`. The clippy invocation in `style` promotes
+  # `clippy::pedantic` and `clippy::nursery` to hard errors, and those lint sets
+  # are explicitly unstable — upstream adds to them every six weeks. On a
+  # floating toolchain that combination turns master red on a calendar, with
+  # nobody having committed anything: 1.98 extended `unused_async` to trait
+  # impls and six errors appeared across `cli.rs`, the extractors and the format
+  # middleware, landing as a red X on two contributors' unrelated PRs.
+  #
+  # So the toolchain moves when we move it. `lint-future.yml` runs the same
+  # lints on floating stable and beta on a schedule, so a bump is a thing we
+  # do deliberately with the breakage already known, not a thing that happens
+  # to us mid-review.
+  RUST_TOOLCHAIN: "1.98"
   TOOLCHAIN_PROFILE: minimal
 
 jobs:
@@ -43,8 +55,15 @@ jobs:
             -D rustdoc::invalid_html_tags
             -D rustdoc::bare_urls
 
+  # Nothing below depends on `style`. A lint or formatting complaint must never
+  # hide test results from a contributor: when `style` gated these jobs, a
+  # clippy error in a file the PR never touched reported `build`, `test`,
+  # `test-examples` and `msrv` as SKIPPED, so the author saw a red X and no
+  # signal at all about whether their own code worked. `check` is still a gate
+  # for the heavy jobs — it is the cheapest way to find out the code does not
+  # compile under some feature combination — but style is a peer now, not a
+  # gatekeeper.
   check:
-    needs: [style]
     runs-on: ubuntu-latest
 
     permissions:
@@ -64,7 +83,7 @@ jobs:
       - run: cargo hack check --each-feature
 
   build:
-    needs: [check, style]
+    needs: [check]
     runs-on: ubuntu-latest
 
     permissions:
@@ -82,7 +101,7 @@ jobs:
       - name: Run cargo build
         run: cargo build --release
   test:
-    needs: [check, style]
+    needs: [check]
     runs-on: ubuntu-latest
 
     permissions:
@@ -107,7 +126,7 @@ jobs:
   # check --each-feature` above passes no `--tests`, and the job above enables
   # the feature that hides it. This runs everything except that one feature.
   test-without-embedded-assets:
-    needs: [check, style]
+    needs: [check]
     runs-on: ubuntu-latest
 
     permissions:
@@ -135,7 +154,6 @@ jobs:
   # PR fails. That is the intended behaviour — the alternative is finding out
   # from a user.
   supply-chain:
-    needs: [style]
     runs-on: ubuntu-latest
 
     permissions:
@@ -163,7 +181,7 @@ jobs:
   # `must_exist: true` over `frontend/dist`, so it must be built before the app
   # will boot — exactly what the CI a generated clientside app ships does.
   test-examples:
-    needs: [check, style]
+    needs: [check]
     runs-on: ubuntu-latest
 
     permissions:
@@ -216,7 +234,7 @@ jobs:
   # `loco-new` is its own workspace, so it needs its own invocation — the root
   # `--workspace` does not reach it.
   msrv:
-    needs: [check, style]
+    needs: [check]
     runs-on: ubuntu-latest
 
     permissions:
