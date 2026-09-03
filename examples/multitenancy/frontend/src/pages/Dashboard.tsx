@@ -41,12 +41,10 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
         <div>
           <span className="eyebrow">Workspace overview</span>
           <h1>{dashboard.data.tenant_name}</h1>
-          <p>People, applications, and tenant-scoped records in one place.</p>
-        </div>
-        <div className="identity-card">
-          <span>Signed in as</span>
-          <strong>{currentMember.name}</strong>
-          <small>{currentMember.roles.join(" · ")}</small>
+          <p>
+            People, applications, and tenant-scoped records in one place. You
+            are signed in as {currentMember.roles.join(" · ")}.
+          </p>
         </div>
       </header>
 

@@ -116,22 +116,100 @@ nav {
   border: 0;
 }
 
-nav a,
-.nav-button {
+nav a {
   color: #4f584e;
   font-size: 0.9rem;
   font-weight: 650;
   text-decoration: none;
 }
 
-nav a:hover,
-.nav-button:hover {
+nav a:hover {
   color: #ef5641;
 }
 
-.nav-button {
-  padding: 0;
-  background: transparent;
+.user-menu {
+  position: relative;
+}
+
+.user-menu summary {
+  display: block;
+  list-style: none;
+  cursor: pointer;
+}
+
+.user-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.user-avatar {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #172033;
+  font-size: 0.82rem;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+
+.user-menu summary:focus-visible .user-avatar {
+  outline: 3px solid rgb(239 86 65 / 24%);
+  outline-offset: 3px;
+}
+
+.user-menu-popover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.75rem);
+  right: 0;
+  width: min(19rem, calc(100vw - 2rem));
+  border: 1px solid #d9ddd4;
+  border-radius: 0.9rem;
+  background: #fff;
+  box-shadow: 0 20px 55px rgb(23 32 51 / 16%);
+  overflow: hidden;
+}
+
+.user-menu-identity {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1.25rem 1.35rem;
+}
+
+.user-menu-identity strong {
+  color: #172033;
+  font-size: 1rem;
+}
+
+.user-menu-identity span {
+  color: #687067;
+  font-size: 0.82rem;
+}
+
+.user-menu-popover button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1rem 1.35rem;
+  border-top: 1px solid #e5e8e2;
+  border-radius: 0;
+  color: #4f584e;
+  background: #fafbfa;
+  text-align: left;
+}
+
+.user-menu-popover button:hover {
+  color: #172033;
+  background: #f1f3ef;
+}
+
+.sign-out-icon {
+  color: #8a9188;
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
 main {
@@ -738,26 +816,6 @@ code {
   line-height: 1.6;
 }
 
-.identity-card {
-  display: grid;
-  min-width: 13rem;
-  gap: 0.18rem;
-  padding: 1rem 1.15rem;
-  border: 1px solid #d9ddd4;
-  border-radius: 0.85rem;
-  background: rgb(255 255 255 / 66%);
-}
-
-.identity-card span,
-.identity-card small {
-  color: #858c82;
-  font-size: 0.7rem;
-}
-
-.identity-card strong {
-  font-size: 0.9rem;
-}
-
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1087,10 +1145,6 @@ code {
   .console-heading {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .identity-card {
-    width: 100%;
   }
 
   .table-panel {

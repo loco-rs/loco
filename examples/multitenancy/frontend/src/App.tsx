@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
-import { useWorkspaces } from "./api/auth";
+import { useCurrentUser, useWorkspaces } from "./api/auth";
 import {
   clearSession,
   getToken,
@@ -24,6 +24,7 @@ export function App() {
   const queryClient = useQueryClient();
   const authenticated = getToken() !== null;
   const workspaces = useWorkspaces(authenticated);
+  const currentUser = useCurrentUser(authenticated);
   const [savedWorkspace, setSavedWorkspace] = useState(loadWorkspace);
   const [workspaceCreatorOpen, setWorkspaceCreatorOpen] = useState(false);
   const promptWorkspaceCreation =
@@ -137,9 +138,28 @@ export function App() {
                   <option value={CREATE_WORKSPACE_VALUE}>＋ New workspace</option>
                 </select>
               </label>
-              <button className="nav-button" type="button" onClick={logout}>
-                Log out
-              </button>
+              <details className="user-menu">
+                <summary aria-label="Open account menu">
+                  <span className="user-avatar" aria-hidden="true">
+                    {currentUser.data?.name
+                      .split(/\s+/)
+                      .map((part) => part.charAt(0))
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase() || "U"}
+                  </span>
+                </summary>
+                <div className="user-menu-popover">
+                  <div className="user-menu-identity">
+                    <strong>{currentUser.data?.name ?? "Account"}</strong>
+                    <span>{currentUser.data?.email ?? "Loading…"}</span>
+                  </div>
+                  <button type="button" onClick={logout}>
+                    <span className="sign-out-icon" aria-hidden="true">↪</span>
+                    Sign out
+                  </button>
+                </div>
+              </details>
             </>
           ) : (
             <>

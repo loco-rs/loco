@@ -10,6 +10,12 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface CurrentUser {
+  pid: string;
+  name: string;
+  email: string;
+}
+
 const workspacesQueryKey = ["auth", "workspaces"] as const;
 
 export function login(params: LoginRequest): Promise<LoginResponse> {
@@ -26,6 +32,16 @@ export function useWorkspaces(
   return useQuery({
     queryKey: workspacesQueryKey,
     queryFn: () => get<Workspace[]>("/api/auth/workspaces"),
+    enabled,
+  });
+}
+
+export function useCurrentUser(
+  enabled = true,
+): UseQueryResult<CurrentUser, ApiClientError> {
+  return useQuery({
+    queryKey: ["auth", "current"],
+    queryFn: () => get<CurrentUser>("/api/auth/current"),
     enabled,
   });
 }
