@@ -1311,6 +1311,10 @@ code {
   padding: 0 clamp(1.4rem, 3vw, 2rem) clamp(1.4rem, 3vw, 2rem);
 }
 
+.member-access-forms {
+  display: grid;
+}
+
 .member-role-form {
   display: grid;
   gap: 1.25rem;
@@ -1321,10 +1325,12 @@ code {
   margin-bottom: 0.4rem;
 }
 
-.member-role-form p {
+.member-role-form > div:first-child > p,
+.member-permission-form > div:first-child > p {
   margin-bottom: 0;
   color: #687067;
   font-size: 0.85rem;
+  line-height: 1.55;
 }
 
 .member-role-field {
@@ -1335,6 +1341,76 @@ code {
 
 .member-role-actions {
   margin-top: 0;
+}
+
+.member-permission-form {
+  display: grid;
+  gap: 1.25rem;
+  padding: clamp(1.4rem, 3vw, 2rem);
+  border-top: 1px solid #e5e8e2;
+  background: #fafbfa;
+}
+
+.member-permission-form h2 {
+  margin-bottom: 0.4rem;
+}
+
+.permission-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.permission-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border: 1px solid #dfe3dc;
+  border-radius: 0.75rem;
+  background: #fff;
+  cursor: pointer;
+}
+
+.permission-option:has(input:checked) {
+  border-color: #8fb5a2;
+  background: #edf5f0;
+}
+
+.permission-option input {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  accent-color: #3f8069;
+}
+
+.permission-option span,
+.permission-option strong,
+.permission-option small {
+  display: block;
+}
+
+.permission-option strong {
+  color: #303932;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+}
+
+.permission-option small {
+  margin-top: 0.15rem;
+  color: #81887f;
+  font-size: 0.68rem;
+}
+
+.permission-submit {
+  width: fit-content;
+}
+
+.success {
+  margin: 0;
+  color: #28614f;
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 
 .member-management-message {
@@ -1528,6 +1604,10 @@ code {
   }
 
   .member-management-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .permission-options {
     grid-template-columns: 1fr;
   }
 

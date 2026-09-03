@@ -1,8 +1,14 @@
-import { useState, type FormEvent } from "react";
-import { Link, useNavigate, useOutletContext, useParams } from "react-router";
-import { useDashboard, useUpdateMemberRole } from "../api/dashboard";
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useOutletContext, useParams } from "react-router";
+import {
+  useDashboard,
+  useUpdateMemberRole,
+  useUpdateRolePermissions,
+} from "../api/dashboard";
 import type { WorkspaceOutletContext } from "../auth/workspace-context";
 import type { MemberAccess } from "../bindings/MemberAccess";
+import type { PermissionAccess } from "../bindings/PermissionAccess";
+import type { RoleAccess } from "../bindings/RoleAccess";
 import { NoWorkspace } from "./Dashboard";
 
 export function MemberManagement({ edit = false }: { edit?: boolean }) {
@@ -74,6 +80,8 @@ function MemberManagementPage({
       edit={edit}
       member={member}
       tenantId={tenantId}
+      roles={dashboard.data?.roles ?? []}
+      availablePermissions={dashboard.data?.available_permissions ?? []}
     />
   );
 }
@@ -83,11 +91,15 @@ function MemberProfile({
   edit,
   member,
   tenantId,
+  roles,
+  availablePermissions,
 }: {
   canEdit: boolean;
   edit: boolean;
   member: MemberAccess;
   tenantId: number;
+  roles: RoleAccess[];
+  availablePermissions: PermissionAccess[];
 }) {
   return (
     <section className="console-page member-management-page">
@@ -123,7 +135,12 @@ function MemberProfile({
 
         {edit ? (
           canEdit ? (
-            <MemberRoleForm member={member} tenantId={tenantId} />
+            <MemberRoleForm
+              availablePermissions={availablePermissions}
+              member={member}
+              roles={roles}
+              tenantId={tenantId}
+            />
           ) : (
             <div className="member-management-message">
               <strong>This role cannot be edited</strong>
@@ -158,61 +175,135 @@ function MemberProfile({
 }
 
 function MemberRoleForm({
+  availablePermissions,
   member,
+  roles,
   tenantId,
 }: {
+  availablePermissions: PermissionAccess[];
   member: MemberAccess;
+  roles: RoleAccess[];
   tenantId: number;
 }) {
-  const navigate = useNavigate();
   const [role, setRole] = useState(member.roles[0] ?? "Viewer");
+  const selectedRole = roles.find((candidate) => candidate.name === role);
+  const selectedRolePermissionIds =
+    selectedRole?.permissions.map((permission) => permission.id) ?? [];
+  const permissionSignature = selectedRolePermissionIds.join(":");
+  const [permissionIds, setPermissionIds] = useState<number[]>(
+    selectedRolePermissionIds,
+  );
   const updateRole = useUpdateMemberRole(tenantId, member.member_id);
+  const updatePermissions = useUpdateRolePermissions(
+    tenantId,
+    selectedRole?.id ?? 0,
+  );
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    setPermissionIds(selectedRolePermissionIds);
+  }, [permissionSignature, selectedRole?.id]);
+
+  function submitRole(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    updateRole.mutate(
-      { role },
-      {
-        onSuccess: () => {
-          void navigate(`/members/${member.member_id}`, { replace: true });
-        },
-      },
+    updateRole.mutate({ role });
+  }
+
+  function submitPermissions(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (selectedRole) {
+      updatePermissions.mutate({ permission_ids: permissionIds });
+    }
+  }
+
+  function togglePermission(permissionId: number) {
+    setPermissionIds((current) =>
+      current.includes(permissionId)
+        ? current.filter((id) => id !== permissionId)
+        : [...current, permissionId],
     );
   }
 
   return (
-    <form className="member-role-form" onSubmit={submit}>
-      <div>
-        <span className="eyebrow">Workspace role</span>
-        <h2>Change member access</h2>
-        <p>Select the role that controls this member’s effective permissions.</p>
-      </div>
-      <div className="member-role-field">
-        <label htmlFor="member-role">Role</label>
-        <select
-          id="member-role"
-          value={role}
-          onChange={(event) => setRole(event.target.value)}
+    <div className="member-access-forms">
+      <form className="member-role-form" onSubmit={submitRole}>
+        <div>
+          <span className="eyebrow">Workspace role</span>
+          <h2>Change member access</h2>
+          <p>Select the role that controls this member’s effective permissions.</p>
+        </div>
+        <div className="member-role-field">
+          <label htmlFor="member-role">Role</label>
+          <select
+            id="member-role"
+            value={role}
+            onChange={(event) => setRole(event.target.value)}
+          >
+            {roles.map((workspaceRole) => (
+              <option value={workspaceRole.name} key={workspaceRole.id}>
+                {workspaceRole.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        {updateRole.error && (
+          <p className="error" role="alert">{updateRole.error.message}</p>
+        )}
+        {updateRole.isSuccess && (
+          <p className="success" role="status">Member role updated.</p>
+        )}
+        <div className="button-row member-role-actions">
+          <Link
+            className="secondary member-page-link"
+            to={`/members/${member.member_id}`}
+          >
+            Cancel
+          </Link>
+          <button className="primary" type="submit" disabled={updateRole.isPending}>
+            {updateRole.isPending ? "Saving…" : "Save role"}
+          </button>
+        </div>
+      </form>
+
+      <form className="member-permission-form" onSubmit={submitPermissions}>
+        <div>
+          <span className="eyebrow">Role permissions</span>
+          <h2>Permissions for {selectedRole?.name ?? "role"}</h2>
+          <p>
+            These grants apply to every workspace member assigned the
+            {` ${selectedRole?.name ?? "selected"}`} role.
+          </p>
+        </div>
+        <div className="permission-options">
+          {availablePermissions.map((permission) => (
+            <label className="permission-option" key={permission.id}>
+              <input
+                type="checkbox"
+                checked={permissionIds.includes(permission.id)}
+                onChange={() => togglePermission(permission.id)}
+              />
+              <span>
+                <strong>{permission.key}</strong>
+                <small>{permission.application_name}</small>
+              </span>
+            </label>
+          ))}
+        </div>
+        {updatePermissions.error && (
+          <p className="error" role="alert">
+            {updatePermissions.error.message}
+          </p>
+        )}
+        {updatePermissions.isSuccess && (
+          <p className="success" role="status">Role permissions updated.</p>
+        )}
+        <button
+          className="primary permission-submit"
+          type="submit"
+          disabled={!selectedRole || updatePermissions.isPending}
         >
-          <option value="Owner">Owner</option>
-          <option value="Manager">Manager</option>
-          <option value="Viewer">Viewer</option>
-        </select>
-      </div>
-      {updateRole.error && (
-        <p className="error" role="alert">{updateRole.error.message}</p>
-      )}
-      <div className="button-row member-role-actions">
-        <Link
-          className="secondary member-page-link"
-          to={`/members/${member.member_id}`}
-        >
-          Cancel
-        </Link>
-        <button className="primary" type="submit" disabled={updateRole.isPending}>
-          {updateRole.isPending ? "Saving…" : "Save role"}
+          {updatePermissions.isPending ? "Saving…" : "Save permissions"}
         </button>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }

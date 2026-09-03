@@ -7,7 +7,9 @@ import {
 } from "@tanstack/react-query";
 import type { DashboardDto } from "../bindings/DashboardDto";
 import type { MemberRoleUpdate } from "../bindings/MemberRoleUpdate";
+import type { RolePermissionsUpdate } from "../bindings/RolePermissionsUpdate";
 import type { UpdateMemberRole } from "../bindings/UpdateMemberRole";
+import type { UpdateRolePermissions } from "../bindings/UpdateRolePermissions";
 import { ApiClientError, get, post } from "./client";
 
 export function dashboardPath(tenantId: number): string {
@@ -36,6 +38,29 @@ export function useUpdateMemberRole(
     mutationFn: (params) =>
       post<MemberRoleUpdate>(
         `${dashboardPath(tenantId)}/members/${memberId}/role`,
+        params,
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: dashboardKeys.detail(tenantId),
+      });
+    },
+  });
+}
+
+export function useUpdateRolePermissions(
+  tenantId: number,
+  roleId: number,
+): UseMutationResult<
+  RolePermissionsUpdate,
+  ApiClientError,
+  UpdateRolePermissions
+> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params) =>
+      post<RolePermissionsUpdate>(
+        `${dashboardPath(tenantId)}/roles/${roleId}/permissions`,
         params,
       ),
     onSuccess: () => {
