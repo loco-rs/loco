@@ -1112,6 +1112,21 @@ code {
   background: #ece7f5;
 }
 
+.application-icon.client-portal {
+  color: #28604f;
+  background: #e1f1e9;
+}
+
+.application-icon.feature-flags {
+  color: #315987;
+  background: #e3edf8;
+}
+
+.application-icon.priority-support {
+  color: #8a4c2e;
+  background: #f8e9de;
+}
+
 .role-badge,
 .active-badge,
 .permission-list span,

@@ -6,10 +6,10 @@ multi-tenancy with Loco and Sea-ORM. Its frontend follows the
 TypeScript bindings generated from Rust DTOs with `ts-rs`. It covers the
 complete domain from [issue #1640](https://github.com/loco-rs/loco/issues/1640):
 
-- tenants subscribe to many applications and applications serve many tenants;
+- tenants enable many applications and applications serve many tenants;
 - users join tenants through memberships;
 - memberships have many tenant-owned roles;
-- roles receive permissions tied to a tenant's active application subscription;
+- roles receive permissions tied to a tenant's active application context;
 - tenant-owned documents and invoices are isolated on reads and writes.
 
 The schema lives in [`migration/src`](migration/src). Generated Sea-ORM
@@ -18,9 +18,9 @@ hand-written modules in [`src/models`](src/models) implement `TenantEntity`.
 `permissions::Model::user_can` is the RBAC query, and
 [`src/controllers/documents.rs`](src/controllers/documents.rs) and
 [`src/controllers/invoices.rs`](src/controllers/invoices.rs) show APIs
-that check a login JWT, tenant membership, subscription, role, and permission
-before accessing tenant-scoped rows. The dashboard endpoint assembles the
-workspace's members, roles, effective permissions, application subscriptions,
+that check a login JWT, tenant membership, application availability, role, and
+permission before accessing tenant-scoped rows. The dashboard endpoint assembles the
+workspace's members, roles, effective permissions, application availability,
 and record counts. [`frontend`](frontend) consumes those APIs as a typed SPA
 with registration, login, workspace selection, and logout.
 
@@ -44,15 +44,19 @@ Open <http://localhost:5150> and log in with `john@example.com` / `password`.
 John Doe is the seeded Owner of both Designer and Developer. The Designer
 dashboard includes Jane Smith as Manager and Sam Lee as Support so their
 effective permissions can be compared. Both workspaces have the core Documents
-and Billing areas. Analytics demonstrates add-on subscription status: it is
-disabled for Designer and active for Developer. Designer has one document and
-two invoices; Developer has one document and one invoice. You can also register
-an account with your name, email, and password. After registration, the
+and Billing areas. Their optional add-on subscriptions differ: Designer has
+Client Portal and Priority Support, Developer has Feature Flags and Priority
+Support, and Analytics is active only for Developer. Client Portal, Feature
+Flags, and Priority Support demonstrate add-on subscription availability without
+creating permissions or role grants. Designer has one document and two
+invoices; Developer has one document and one invoice. You can also register an
+account with your name, email, and password. After registration, the
 workspace modal opens so you can name your first tenant; its slug is generated
 automatically. Workspace creation atomically adds the tenant, Owner,
 Administrator, Manager, and Support roles, assigns the creator as Owner, and
-provisions Documents and Billing subscriptions with role-appropriate
-permissions.
+provisions the core Documents and Billing features with role-appropriate
+permissions. These core features are always available and are not part of a
+subscription.
 
 The `--reset` flag makes repeated demo setup predictable by clearing existing
 rows before loading the fixed-ID fixtures. It deletes accounts and tenants you
@@ -61,8 +65,9 @@ want to keep its data, skip the seed command and run `cargo loco start`.
 
 For frontend development, run Loco on port 5150 and `pnpm dev` from
 `frontend`; Vite serves <http://localhost:5173> and proxies `/api` to Loco.
-The navbar workspace menu lists Designer and Developer once each; application
-availability is derived from their active `tenant_applications` rows.
+The navbar workspace menu lists Designer and Developer once each. Core feature
+access is permission-based, while add-on availability is derived from active
+`tenant_applications` rows.
 
 The API endpoints are:
 
@@ -90,7 +95,9 @@ tenant/application context in local storage; it never includes `tenant_id` in
 a create body. Its authenticated console has Overview, Documents, Billing,
 Members, and Add-ons pages. Documents and Billing navigation and metrics are
 permission-aware, while the Add-ons catalog reflects optional product
-availability from the workspace subscription. The Members table can display
+availability from the workspace subscription. The seeded catalog includes
+Analytics, Client Portal, Feature Flags, and Priority Support; subscription-only
+add-ons do not require permissions. The Members table can display
 each member's complete effective access on a dedicated page, while workspace
 Owners can use a separate management page to assign Owner, Administrator,
 Manager, or Support to other members and configure each role's permissions.
@@ -102,7 +109,7 @@ cargo test --test mod
 cd frontend && pnpm test
 ```
 
-They prove that one application can be subscribed by multiple tenants, that a
+They prove that one application can be enabled for multiple tenants, that a
 role's permission does not transfer to another application, that membership
 does not transfer to another tenant, and that document and invoice rows receive
 the trusted tenant context. They also verify Owner, Manager, and Support Billing

@@ -91,7 +91,7 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
           <div className="application-list">
             {addons.map((addon) => (
               <div key={addon.id}>
-                <span className={`application-icon ${addon.name.toLowerCase()}`}>
+                <span className={`application-icon ${addon.name.toLowerCase().replace(/ /g, "-")}`}>
                   {addon.name.charAt(0)}
                 </span>
                 <div><strong>{addon.name}</strong><small>{addon.status === "active" ? "Included in subscription" : "Available to purchase"}</small></div>

@@ -21,7 +21,7 @@ workspace name automatically. Login uses Loco's JWT endpoint, and
 `/api/auth/workspaces` lists and creates workspaces for the authenticated user.
 The authenticated navbar contains an organization-style workspace menu, with
 `New workspace` as its final action. It lists each tenant once and derives the
-available application contexts from active `tenant_applications` subscriptions.
+available application contexts from active `tenant_applications` rows.
 
 The workspace console provides Overview, Documents, Billing, Members, and
 Add-ons pages. Overview summarizes tenant-owned records and access. The
@@ -30,9 +30,14 @@ Each non-owner member links to a dedicated access page, and workspace Owners
 can open a separate role-management page from the table. That page assigns a
 member's role and configures the selected role's permissions for core areas
 and active add-ons; role permission changes affect every member with that role.
-Documents and Billing are core areas provisioned for every tenant. Their
+Documents and Billing are core areas provisioned for every tenant and are not
+part of a subscription. Their
 navigation and overview metrics appear only when the current member has the
 matching read permission, and their write forms remain hidden for read-only
-members. They do not appear in the Add-ons catalog. That page shows optional
-products such as Analytics and derives their availability from the workspace's
-purchased subscription.
+members. They do not appear in the Add-ons catalog. That page derives optional
+product availability from the workspace's purchased subscription. Designer
+includes Client Portal and Priority Support, while Developer includes Feature
+Flags and Priority Support. Analytics remains the permission-aware add-on
+example and is active only for Developer. Client Portal, Feature Flags, and
+Priority Support are subscription-only and do not add permissions or role
+grants.
