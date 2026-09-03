@@ -85,7 +85,7 @@ tenant ID.
 
 The frontend test command enforces 100% statement, branch, function, and line
 coverage for session storage, workspace navigation, slug generation, and the
-authenticated API-client boundary.
+authenticated route/API-client boundaries.
 
 ## Security model
 
