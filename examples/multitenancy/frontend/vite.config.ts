@@ -13,7 +13,12 @@ export default defineConfig({
     },
     coverage: {
       provider: "v8",
-      include: ["src/auth/session.ts", "src/auth/tenant.ts", "src/api/client.ts"],
+      include: [
+        "src/auth/session.ts",
+        "src/auth/tenant.ts",
+        "src/auth/workspace-context.ts",
+        "src/api/client.ts",
+      ],
       thresholds: {
         branches: 100,
         functions: 100,

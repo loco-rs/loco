@@ -20,10 +20,13 @@ export function registerAccount(params: RegisterAccount): Promise<LoginResponse>
   return post<LoginResponse>("/api/auth/register-account", params);
 }
 
-export function useWorkspaces(): UseQueryResult<Workspace[], ApiClientError> {
+export function useWorkspaces(
+  enabled = true,
+): UseQueryResult<Workspace[], ApiClientError> {
   return useQuery({
     queryKey: workspacesQueryKey,
     queryFn: () => get<Workspace[]>("/api/auth/workspaces"),
+    enabled,
   });
 }
 

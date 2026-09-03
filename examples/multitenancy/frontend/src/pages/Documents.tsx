@@ -1,36 +1,14 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { useLocation, useNavigate } from "react-router";
-import { useCreateWorkspace, useWorkspaces } from "../api/auth";
+import { useState, type FormEvent } from "react";
+import { useOutletContext } from "react-router";
 import { useCreateDocument, useDocuments } from "../api/documents";
-import {
-  loadWorkspace,
-  saveWorkspace,
-  type SelectedWorkspace,
-} from "../auth/session";
-import { tenantSlug } from "../auth/tenant";
-import type { Workspace } from "../bindings/Workspace";
+import type { SelectedWorkspace } from "../auth/session";
+import type { WorkspaceOutletContext } from "../auth/workspace-context";
 
 export function Documents() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const promptWorkspaceCreation =
-    typeof location.state === "object" &&
-    location.state !== null &&
-    "createWorkspace" in location.state &&
-    location.state.createWorkspace === true;
-  const workspaces = useWorkspaces();
-  const [savedWorkspace, setSavedWorkspace] = useState(loadWorkspace);
-  const [workspaceCreatorOpen, setWorkspaceCreatorOpen] = useState(
-    promptWorkspaceCreation,
-  );
+  const { selected, isLoading, error, openWorkspaceCreator } =
+    useOutletContext<WorkspaceOutletContext>();
 
-  useEffect(() => {
-    if (promptWorkspaceCreation) {
-      void navigate(location.pathname, { replace: true, state: null });
-    }
-  }, [location.pathname, navigate, promptWorkspaceCreation]);
-
-  if (workspaces.isLoading) {
+  if (isLoading) {
     return (
       <section className="panel page-state">
         <span className="status-dot" />
@@ -39,46 +17,12 @@ export function Documents() {
     );
   }
 
-  if (workspaces.error) {
+  if (error) {
     return (
       <p className="error page-state" role="alert">
-        {workspaces.error.message}
+        {error.message}
       </p>
     );
-  }
-
-  const options: SelectedWorkspace[] =
-    workspaces.data?.flatMap((workspace) =>
-      workspace.applications.map((application) => ({
-        tenantId: workspace.tenant_id,
-        tenantName: workspace.tenant_name,
-        applicationId: application.id,
-        applicationName: application.name,
-      })),
-    ) ?? [];
-
-  const selected =
-    options.find(
-      (option) =>
-        option.tenantId === savedWorkspace?.tenantId &&
-        option.applicationId === savedWorkspace.applicationId,
-    ) ?? options[0];
-
-  function activateWorkspace(workspace: Workspace) {
-    const application = workspace.applications[0];
-    if (!application) {
-      return;
-    }
-
-    const next = {
-      tenantId: workspace.tenant_id,
-      tenantName: workspace.tenant_name,
-      applicationId: application.id,
-      applicationName: application.name,
-    };
-    saveWorkspace(next);
-    setSavedWorkspace(next);
-    setWorkspaceCreatorOpen(false);
   }
 
   if (!selected) {
@@ -89,28 +33,12 @@ export function Documents() {
         <button
           className="primary"
           type="button"
-          onClick={() => setWorkspaceCreatorOpen(true)}
+          onClick={openWorkspaceCreator}
         >
           Create your first workspace
         </button>
-        {workspaceCreatorOpen && (
-          <WorkspaceCreator
-            onClose={() => setWorkspaceCreatorOpen(false)}
-            onCreated={activateWorkspace}
-          />
-        )}
       </section>
     );
-  }
-
-  function selectWorkspace(value: string) {
-    const next = options.find(
-      (option) => `${option.tenantId}:${option.applicationId}` === value,
-    );
-    if (next) {
-      saveWorkspace(next);
-      setSavedWorkspace(next);
-    }
   }
 
   return (
@@ -120,31 +48,6 @@ export function Documents() {
           <span className="eyebrow">Tenant workspace</span>
           <h1>Documents</h1>
           <p>Create and manage records inside an explicitly scoped workspace.</p>
-        </div>
-        <div className="workspace-actions">
-          <label className="workspace-picker">
-            <span>Working in</span>
-            <select
-              value={`${selected.tenantId}:${selected.applicationId}`}
-              onChange={(event) => selectWorkspace(event.target.value)}
-            >
-              {options.map((option) => (
-                <option
-                  key={`${option.tenantId}:${option.applicationId}`}
-                  value={`${option.tenantId}:${option.applicationId}`}
-                >
-                  {option.tenantName} · {option.applicationName}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            className="secondary new-workspace-button"
-            type="button"
-            onClick={() => setWorkspaceCreatorOpen(true)}
-          >
-            <span aria-hidden="true">+</span> New workspace
-          </button>
         </div>
       </header>
 
@@ -167,109 +70,7 @@ export function Documents() {
         key={`${selected.tenantId}:${selected.applicationId}`}
         workspace={selected}
       />
-
-      {workspaceCreatorOpen && (
-        <WorkspaceCreator
-          onClose={() => setWorkspaceCreatorOpen(false)}
-          onCreated={activateWorkspace}
-        />
-      )}
     </section>
-  );
-}
-
-function WorkspaceCreator({
-  onClose,
-  onCreated,
-}: {
-  onClose: () => void;
-  onCreated: (workspace: Workspace) => void;
-}) {
-  const createWorkspace = useCreateWorkspace();
-  const [name, setName] = useState("");
-  const [validationError, setValidationError] = useState<string | null>(null);
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const slug = tenantSlug(name);
-    if (!slug) {
-      setValidationError("Use at least one letter or number in the workspace name.");
-      return;
-    }
-
-    createWorkspace.mutate(
-      { tenant_name: name.trim(), tenant_slug: slug },
-      { onSuccess: onCreated },
-    );
-  }
-
-  return (
-    <div
-      className="workspace-modal-backdrop"
-      role="presentation"
-      onMouseDown={onClose}
-    >
-      <section
-        className="panel workspace-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="workspace-modal-title"
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            onClose();
-          }
-        }}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <button
-          className="modal-close"
-          type="button"
-          aria-label="Close workspace form"
-          onClick={onClose}
-        >
-          ×
-        </button>
-        <span className="eyebrow">New tenant</span>
-        <h2 id="workspace-modal-title">Create a workspace</h2>
-        <p className="form-description">
-          You will become the owner with permission to read and create documents.
-        </p>
-        <form onSubmit={handleSubmit}>
-          <label htmlFor="workspace-name">Workspace name</label>
-          <input
-            id="workspace-name"
-            autoFocus
-            minLength={2}
-            maxLength={100}
-            value={name}
-            onChange={(event) => {
-              setName(event.target.value);
-              setValidationError(null);
-            }}
-            placeholder="Research team"
-            required
-          />
-          <p className="hint">The workspace slug is generated automatically.</p>
-          {(validationError || createWorkspace.error) && (
-            <p className="error" role="alert">
-              {validationError ?? createWorkspace.error?.message}
-            </p>
-          )}
-          <div className="modal-actions">
-            <button className="secondary" type="button" onClick={onClose}>
-              Cancel
-            </button>
-            <button
-              className="primary"
-              type="submit"
-              disabled={createWorkspace.isPending}
-            >
-              {createWorkspace.isPending ? "Creating…" : "Create workspace"}
-            </button>
-          </div>
-        </form>
-      </section>
-    </div>
   );
 }
 

@@ -84,8 +84,8 @@ does not transfer to another tenant, and that created rows receive the trusted
 tenant ID.
 
 The frontend test command enforces 100% statement, branch, function, and line
-coverage for session/workspace storage and the authenticated API-client
-boundary.
+coverage for session storage, workspace navigation, slug generation, and the
+authenticated API-client boundary.
 
 ## Security model
 
