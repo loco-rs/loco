@@ -933,25 +933,6 @@ code {
   box-shadow: 0 18px 45px rgb(42 51 37 / 6%);
 }
 
-.sidebar-context {
-  display: grid;
-  gap: 0.2rem;
-  padding: 0.35rem 0.45rem 1.15rem;
-  border-bottom: 1px solid #e1e4de;
-}
-
-.sidebar-context .eyebrow {
-  margin-bottom: 0.35rem;
-}
-
-.sidebar-context strong {
-  font-size: 1.08rem;
-}
-
-.sidebar-context small {
-  color: #7b8278;
-}
-
 .sidebar-nav {
   display: grid;
   gap: 0.35rem;
@@ -1384,7 +1365,6 @@ code {
     overflow-x: auto;
   }
 
-  .sidebar-context,
   .sidebar-note {
     display: none;
   }

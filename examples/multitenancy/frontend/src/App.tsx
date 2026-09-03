@@ -227,11 +227,6 @@ export function App() {
         {authenticated ? (
           <div className="dashboard-layout">
             <aside className="sidebar">
-              <div className="sidebar-context">
-                <span className="eyebrow">Workspace</span>
-                <strong>{selectedWorkspace?.tenantName ?? "No workspace"}</strong>
-                <small>{selectedWorkspace?.applicationName ?? "Create one to begin"}</small>
-              </div>
               <nav className="sidebar-nav" aria-label="Workspace navigation">
                 <NavLink to="/dashboard">Overview</NavLink>
                 <NavLink
