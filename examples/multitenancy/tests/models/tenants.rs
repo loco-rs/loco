@@ -136,7 +136,7 @@ async fn seed_creates_two_workspaces_with_application_availability() {
     assert_eq!(
         permission_keys,
         [
-            "billing:create",
+            "billing:purchase",
             "billing:view",
             "clients:create",
             "clients:edit",

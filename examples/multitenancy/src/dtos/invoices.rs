@@ -9,6 +9,7 @@ pub struct InvoiceDto {
     #[ts(type = "number")]
     pub tenant_id: i64,
     pub number: String,
+    pub description: String,
     #[ts(type = "number")]
     pub amount_cents: i64,
     pub status: String,
@@ -24,22 +25,11 @@ impl From<crate::models::_entities::invoices::Model> for InvoiceDto {
             id: model.id,
             tenant_id: model.tenant_id,
             number: model.number,
+            description: model.description,
             amount_cents: model.amount_cents,
             status: model.status,
             created_at: model.created_at,
             updated_at: model.updated_at,
         }
     }
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize, validator::Validate, TS)]
-#[ts(export, export_to = "../frontend/src/bindings/")]
-pub struct CreateInvoice {
-    #[validate(length(min = 2, max = 40))]
-    pub number: String,
-    #[validate(range(min = 1))]
-    #[ts(type = "number")]
-    pub amount_cents: i64,
-    #[validate(length(min = 2, max = 24))]
-    pub status: String,
 }

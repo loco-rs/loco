@@ -59,6 +59,7 @@ impl Hooks for App {
             .add_route(controllers::projects::routes())
             .add_route(controllers::documents::routes())
             .add_route(controllers::invoices::routes())
+            .add_route(controllers::purchases::routes())
             .add_route(controllers::dashboard::routes())
             .add_route(controllers::auth::routes())
     }

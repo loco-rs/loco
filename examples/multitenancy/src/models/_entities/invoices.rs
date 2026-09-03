@@ -12,6 +12,7 @@ pub struct Model {
     pub id: i64,
     #[sea_orm(unique_key = "number")]
     pub number: String,
+    pub description: String,
     pub amount_cents: i64,
     pub status: String,
     #[sea_orm(unique_key = "number")]

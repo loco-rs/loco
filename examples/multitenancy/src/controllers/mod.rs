@@ -5,3 +5,4 @@ pub mod dashboard;
 pub mod documents;
 pub mod invoices;
 pub mod projects;
+pub mod purchases;

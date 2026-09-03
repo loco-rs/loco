@@ -15,71 +15,110 @@ async fn token_for(ctx: &loco_rs::app::AppContext, user_id: i64) -> String {
 
 #[tokio::test]
 #[serial]
-async fn owner_lists_and_creates_tenant_invoices() {
+async fn fake_addon_purchase_activates_subscription_and_generates_invoice() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
         let token = token_for(&ctx, 1).await;
-        let url = "/api/tenants/1/invoices";
 
-        let list = request.get(url).authorization_bearer(&token).await;
-        assert_eq!(list.status_code(), 200, "{}", list.text());
-        let invoices: serde_json::Value = list.json();
-        assert_eq!(invoices.as_array().unwrap().len(), 2);
-
-        let create = request
-            .post(url)
+        let purchase = request
+            .post("/api/tenants/1/addons/1/purchase")
             .authorization_bearer(&token)
-            .json(&serde_json::json!({
-                "number": "INV-1003",
-                "amount_cents": 7900,
-                "status": "draft"
-            }))
+            .json(&serde_json::json!({}))
             .await;
-        assert_eq!(create.status_code(), 200, "{}", create.text());
-        let invoice: serde_json::Value = create.json();
+        assert_eq!(purchase.status_code(), 200, "{}", purchase.text());
+        let invoice: serde_json::Value = purchase.json();
         assert_eq!(invoice["tenant_id"], 1);
-        assert_eq!(invoice["number"], "INV-1003");
+        assert_eq!(invoice["description"], "Analytics add-on purchase");
+        assert_eq!(invoice["amount_cents"], 4_900);
+        assert_eq!(invoice["status"], "paid");
+
+        let invoices = request
+            .get("/api/tenants/1/invoices")
+            .authorization_bearer(&token)
+            .await;
+        assert_eq!(invoices.status_code(), 200, "{}", invoices.text());
+        assert_eq!(
+            invoices
+                .json::<serde_json::Value>()
+                .as_array()
+                .unwrap()
+                .len(),
+            3
+        );
+
+        let dashboard = request
+            .get("/api/tenants/1/dashboard")
+            .authorization_bearer(&token)
+            .await;
+        let dashboard: serde_json::Value = dashboard.json();
+        let analytics = dashboard["addons"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|addon| addon["name"] == "Analytics")
+            .unwrap();
+        assert_eq!(analytics["status"], "active");
     })
     .await;
 }
 
 #[tokio::test]
 #[serial]
-async fn manager_can_read_billing_but_cannot_manage_it() {
+async fn invoices_cannot_be_created_directly_or_for_an_active_addon() {
+    request::<App, _, _>(|request, ctx| async move {
+        seed::<App>(&ctx).await.unwrap();
+        let token = token_for(&ctx, 1).await;
+
+        let direct = request
+            .post("/api/tenants/1/invoices")
+            .authorization_bearer(&token)
+            .json(&serde_json::json!({ "number": "MANUAL" }))
+            .await;
+        assert_eq!(direct.status_code(), 405);
+
+        let duplicate = request
+            .post("/api/tenants/1/addons/2/purchase")
+            .authorization_bearer(&token)
+            .json(&serde_json::json!({}))
+            .await;
+        assert_eq!(duplicate.status_code(), 400);
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn manager_can_read_invoices_but_cannot_purchase_addons() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
         let token = token_for(&ctx, 2).await;
-        let url = "/api/tenants/1/invoices";
 
-        let list = request.get(url).authorization_bearer(&token).await;
+        let list = request
+            .get("/api/tenants/1/invoices")
+            .authorization_bearer(&token)
+            .await;
         assert_eq!(list.status_code(), 200, "{}", list.text());
 
-        let create = request
-            .post(url)
+        let purchase = request
+            .post("/api/tenants/1/addons/3/purchase")
             .authorization_bearer(&token)
-            .json(&serde_json::json!({
-                "number": "INV-DENIED",
-                "amount_cents": 100,
-                "status": "draft"
-            }))
+            .json(&serde_json::json!({}))
             .await;
-        assert_eq!(create.status_code(), 401);
+        assert_eq!(purchase.status_code(), 401);
     })
     .await;
 }
 
 #[tokio::test]
 #[serial]
-async fn support_cannot_read_billing() {
+async fn support_cannot_read_invoices() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
         let token = token_for(&ctx, 3).await;
-
         let response = request
             .get("/api/tenants/1/invoices")
             .authorization_bearer(&token)
             .await;
-
         assert_eq!(response.status_code(), 401);
     })
     .await;

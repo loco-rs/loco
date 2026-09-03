@@ -15,7 +15,7 @@ pub const CORE_PERMISSION_KEYS: [&str; 11] = [
     "documents:create",
     "documents:edit",
     "billing:view",
-    "billing:create",
+    "billing:purchase",
 ];
 
 use super::_entities::{
@@ -115,7 +115,7 @@ async fn grant_permission(
 fn role_has_default_permission(role: &str, permission: &str) -> bool {
     match role {
         "Owner" | "Administrator" => true,
-        "Manager" => permission != "billing:create",
+        "Manager" => permission != "billing:purchase",
         "Support" => permission.ends_with(":view") && permission != "billing:view",
         _ => false,
     }
