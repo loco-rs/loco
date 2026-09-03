@@ -1522,6 +1522,31 @@ code {
   font-weight: 700;
 }
 
+.addon-purchase {
+  width: 100%;
+  margin-top: auto;
+}
+
+.addon-purchase-note {
+  margin-top: auto;
+  color: #858c82;
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.invoice-history-panel {
+  width: 100%;
+}
+
+.invoice-details {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.invoice-details small {
+  color: #858c82;
+}
+
 .invoice-list > div {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
