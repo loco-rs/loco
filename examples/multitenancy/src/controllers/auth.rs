@@ -245,10 +245,14 @@ async fn create_workspace(
         tenant_id: workspace.tenant.id,
         tenant_name: workspace.tenant.name,
         tenant_slug: workspace.tenant.slug,
-        applications: vec![ApplicationAccess {
-            id: workspace.application.id,
-            name: workspace.application.name,
-        }],
+        applications: workspace
+            .applications
+            .into_iter()
+            .map(|application| ApplicationAccess {
+                id: application.id,
+                name: application.name,
+            })
+            .collect(),
     })
 }
 

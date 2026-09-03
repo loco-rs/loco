@@ -11,7 +11,9 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i64,
     pub status: String,
+    #[sea_orm(unique_key = "application")]
     pub tenant_id: i64,
+    #[sea_orm(unique_key = "application")]
     pub application_id: i64,
 }
 
@@ -25,6 +27,8 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     Applications,
+    #[sea_orm(has_many = "super::invoices::Entity")]
+    Invoices,
     #[sea_orm(has_many = "super::permissions::Entity")]
     Permissions,
     #[sea_orm(
@@ -40,6 +44,12 @@ pub enum Relation {
 impl Related<super::applications::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Applications.def()
+    }
+}
+
+impl Related<super::invoices::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Invoices.def()
     }
 }
 

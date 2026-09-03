@@ -7,3 +7,19 @@
   name: John Doe
   created_at: "2023-11-12T12:34:56.789Z"
   updated_at: "2023-11-12T12:34:56.789Z"
+- id: 2
+  pid: 22222222-2222-2222-2222-222222222222
+  email: jane@example.com
+  password: "$argon2id$v=19$m=19456,t=2,p=1$mEg37f7DK7vf72cLdW/RCg$c7WOnw9X6+HGddx100iEs3W6jKAOr5K0kBbbfzO6CnY"
+  api_key: lo-285ef3e8-3a08-4eeb-82b6-6b35605c34e4
+  name: Jane Smith
+  created_at: "2023-11-12T12:34:56.789Z"
+  updated_at: "2023-11-12T12:34:56.789Z"
+- id: 3
+  pid: 33333333-3333-3333-3333-333333333333
+  email: sam@example.com
+  password: "$argon2id$v=19$m=19456,t=2,p=1$mEg37f7DK7vf72cLdW/RCg$c7WOnw9X6+HGddx100iEs3W6jKAOr5K0kBbbfzO6CnY"
+  api_key: lo-22b704b0-91fa-4138-a819-8439f337078b
+  name: Sam Lee
+  created_at: "2023-11-12T12:34:56.789Z"
+  updated_at: "2023-11-12T12:34:56.789Z"

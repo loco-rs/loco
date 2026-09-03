@@ -11,7 +11,28 @@ use super::_entities::{
 
 pub struct CreatedWorkspace {
     pub tenant: tenants::Model,
-    pub application: applications::Model,
+    pub applications: Vec<applications::Model>,
+}
+
+async fn find_or_create_application(
+    txn: &DatabaseTransaction,
+    name: &str,
+) -> ModelResult<applications::Model> {
+    if let Some(application) = applications::Entity::find()
+        .filter(applications::Column::Name.eq(name))
+        .one(txn)
+        .await?
+    {
+        return Ok(application);
+    }
+
+    applications::ActiveModel {
+        name: Set(name.to_owned()),
+        ..Default::default()
+    }
+    .insert(txn)
+    .await
+    .map_err(ModelError::from)
 }
 
 async fn create_role(
@@ -104,24 +125,19 @@ impl Model {
         .insert(txn)
         .await?;
 
-        let application = match applications::Entity::find()
-            .filter(applications::Column::Name.eq("Documents"))
-            .one(txn)
-            .await?
-        {
-            Some(application) => application,
-            None => {
-                applications::ActiveModel {
-                    name: Set("Documents".to_owned()),
-                    ..Default::default()
-                }
-                .insert(txn)
-                .await?
-            }
-        };
+        let documents_application = find_or_create_application(txn, "Documents").await?;
+        let billing_application = find_or_create_application(txn, "Billing").await?;
 
-        let subscription = tenant_applications::ActiveModel {
-            application_id: Set(application.id),
+        let documents_subscription = tenant_applications::ActiveModel {
+            application_id: Set(documents_application.id),
+            status: Set("active".to_owned()),
+            ..Default::default()
+        }
+        .set_tenant(tenant.id)?
+        .insert(txn)
+        .await?;
+        let billing_subscription = tenant_applications::ActiveModel {
+            application_id: Set(billing_application.id),
             status: Set("active".to_owned()),
             ..Default::default()
         }
@@ -151,14 +167,26 @@ impl Model {
         .await?;
 
         let read_permission =
-            create_permission(txn, tenant.id, subscription.id, "documents:read").await?;
-        let create_permission =
-            create_permission(txn, tenant.id, subscription.id, "documents:create").await?;
+            create_permission(txn, tenant.id, documents_subscription.id, "documents:read").await?;
+        let documents_create = create_permission(
+            txn,
+            tenant.id,
+            documents_subscription.id,
+            "documents:create",
+        )
+        .await?;
+        let billing_read =
+            create_permission(txn, tenant.id, billing_subscription.id, "billing:read").await?;
+        let billing_manage =
+            create_permission(txn, tenant.id, billing_subscription.id, "billing:manage").await?;
         for (role_id, permission_id) in [
             (owner.id, read_permission.id),
-            (owner.id, create_permission.id),
+            (owner.id, documents_create.id),
+            (owner.id, billing_read.id),
+            (owner.id, billing_manage.id),
             (manager.id, read_permission.id),
-            (manager.id, create_permission.id),
+            (manager.id, documents_create.id),
+            (manager.id, billing_read.id),
             (viewer.id, read_permission.id),
         ] {
             grant_permission(txn, tenant.id, role_id, permission_id).await?;
@@ -166,7 +194,7 @@ impl Model {
 
         Ok(CreatedWorkspace {
             tenant,
-            application,
+            applications: vec![documents_application, billing_application],
         })
     }
 

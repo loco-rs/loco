@@ -16,8 +16,8 @@ use std::path::Path;
 use crate::{
     controllers,
     models::_entities::{
-        applications, documents, permissions, role_permissions, roles, tenant_applications,
-        tenant_member_roles, tenant_members, tenants, users,
+        applications, documents, invoices, permissions, role_permissions, roles,
+        tenant_applications, tenant_member_roles, tenant_members, tenants, users,
     },
     tasks,
     workers::downloader::DownloadWorker,
@@ -55,6 +55,8 @@ impl Hooks for App {
     fn routes(_ctx: &AppContext) -> AppRoutes {
         AppRoutes::with_default_routes() // controller routes below
             .add_route(controllers::documents::routes())
+            .add_route(controllers::invoices::routes())
+            .add_route(controllers::dashboard::routes())
             .add_route(controllers::auth::routes())
     }
     async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {
@@ -73,6 +75,7 @@ impl Hooks for App {
         truncate_table(&ctx.db, tenant_member_roles::Entity).await?;
         truncate_table(&ctx.db, permissions::Entity).await?;
         truncate_table(&ctx.db, documents::Entity).await?;
+        truncate_table(&ctx.db, invoices::Entity).await?;
         truncate_table(&ctx.db, roles::Entity).await?;
         truncate_table(&ctx.db, tenant_members::Entity).await?;
         truncate_table(&ctx.db, tenant_applications::Entity).await?;
@@ -121,6 +124,11 @@ impl Hooks for App {
         db::seed::<documents::ActiveModel>(
             &ctx.db,
             &base.join("documents.yaml").display().to_string(),
+        )
+        .await?;
+        db::seed::<invoices::ActiveModel>(
+            &ctx.db,
+            &base.join("invoices.yaml").display().to_string(),
         )
         .await?;
         Ok(())

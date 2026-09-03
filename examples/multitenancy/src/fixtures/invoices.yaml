@@ -1,0 +1,17 @@
+---
+- id: 1
+  tenant_id: 1
+  tenant_application_id: 2
+  number: INV-1001
+  amount_cents: 125000
+  status: paid
+  created_at: "2026-01-02T00:00:00Z"
+  updated_at: "2026-01-02T00:00:00Z"
+- id: 2
+  tenant_id: 1
+  tenant_application_id: 2
+  number: INV-1002
+  amount_cents: 48000
+  status: pending
+  created_at: "2026-01-03T00:00:00Z"
+  updated_at: "2026-01-03T00:00:00Z"

@@ -1,6 +1,7 @@
 pub mod _entities;
 pub mod applications;
 pub mod documents;
+pub mod invoices;
 pub mod permissions;
 pub mod role_permissions;
 pub mod roles;

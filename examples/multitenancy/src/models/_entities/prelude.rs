@@ -2,6 +2,7 @@
 
 pub use super::applications::Entity as Applications;
 pub use super::documents::Entity as Documents;
+pub use super::invoices::Entity as Invoices;
 pub use super::permissions::Entity as Permissions;
 pub use super::role_permissions::Entity as RolePermissions;
 pub use super::roles::Entity as Roles;
