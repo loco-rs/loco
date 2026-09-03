@@ -49,7 +49,8 @@ Approval Workflows and Priority Support, Developer has Feature Flags and Priorit
 Support, and Analytics is active only for Developer. Approval Workflows, Feature
 Flags, and Priority Support demonstrate add-on subscription availability without
 creating permissions or role grants. Designer has two clients, two projects,
-one document, and two invoices; Developer has one of each core resource. You can also register an
+and one document; Developer has one of each seeded content resource. Invoices
+start empty and are generated only by add-on purchases. You can also register an
 account with your name, email, and password. After registration, the
 workspace modal opens so you can name your first tenant; its slug is generated
 automatically and scoped by the tenant ID. Workspace creation atomically adds

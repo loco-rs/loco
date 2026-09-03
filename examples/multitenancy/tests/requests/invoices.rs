@@ -43,7 +43,7 @@ async fn fake_addon_purchase_activates_subscription_and_generates_invoice() {
                 .as_array()
                 .unwrap()
                 .len(),
-            3
+            1
         );
 
         let dashboard = request

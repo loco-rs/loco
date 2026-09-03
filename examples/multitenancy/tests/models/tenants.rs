@@ -2,7 +2,7 @@ use loco_rs::testing::prelude::*;
 use multitenancy::{
     app::App,
     models::_entities::{
-        applications, clients, documents, invoices, permissions, projects, role_permissions, roles,
+        applications, clients, documents, permissions, projects, role_permissions, roles,
         tenant_applications, tenant_member_roles, tenant_members, tenants, users,
     },
 };
@@ -189,14 +189,4 @@ async fn seed_creates_two_workspaces_with_application_availability() {
             (2, "Developer architecture notes")
         ]
     );
-
-    let seeded_invoices = invoices::Entity::find()
-        .order_by_asc(invoices::Column::Id)
-        .all(db)
-        .await
-        .unwrap();
-    assert_eq!(seeded_invoices.len(), 3);
-    assert_eq!(seeded_invoices[0].number, "INV-1001");
-    assert_eq!(seeded_invoices[1].status, "pending");
-    assert_eq!(seeded_invoices[2].number, "INV-DEV-1001");
 }

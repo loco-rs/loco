@@ -130,11 +130,6 @@ impl Hooks for App {
             &base.join("documents.yaml").display().to_string(),
         )
         .await?;
-        db::seed::<invoices::ActiveModel>(
-            &ctx.db,
-            &base.join("invoices.yaml").display().to_string(),
-        )
-        .await?;
         Ok(())
     }
 }

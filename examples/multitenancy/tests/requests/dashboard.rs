@@ -32,7 +32,7 @@ async fn owner_sees_seeded_tenant_resources_roles_and_addons() {
         assert_eq!(body["stats"]["client_count"], 2);
         assert_eq!(body["stats"]["project_count"], 2);
         assert_eq!(body["stats"]["document_count"], 1);
-        assert_eq!(body["stats"]["invoice_count"], 2);
+        assert_eq!(body["stats"]["invoice_count"], 0);
         assert_eq!(
             body["current_member"]["roles"],
             serde_json::json!(["Owner"])
