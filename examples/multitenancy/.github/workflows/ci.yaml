@@ -89,6 +89,17 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - name: Build frontend
+        run: pnpm install --frozen-lockfile && pnpm test && pnpm build
+        working-directory: ./frontend
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
       - name: Run cargo test

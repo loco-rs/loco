@@ -39,6 +39,16 @@ server:
   host: <%= get_env(name="HOST") %>
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
   middlewares:
+    fallback:
+      enable: false
+    static:
+      enable: true
+      must_exist: true
+      precompressed: false
+      folder:
+        uri: "/"
+        path: "frontend/dist"
+      fallback: "frontend/dist/index.html"
 
 # Worker Configuration
 workers:

@@ -1,16 +1,13 @@
 #![allow(clippy::missing_errors_doc)]
 use loco_rs::prelude::*;
-use serde::Deserialize;
 
-use crate::models::{documents, permissions, users};
+use crate::{
+    dtos::documents::{CreateDocument, DocumentDto},
+    models::{documents, permissions, users},
+};
 
 const READ_DOCUMENTS: &str = "documents:read";
 const CREATE_DOCUMENTS: &str = "documents:create";
-
-#[derive(Debug, Deserialize)]
-pub struct CreateParams {
-    title: String,
-}
 
 async fn authorize(
     ctx: &AppContext,
@@ -42,12 +39,15 @@ pub async fn index(
     )
     .await?;
 
-    format::json(
-        documents::Entity::find()
-            .in_tenant(tenant_id)
-            .all(&ctx.db)
-            .await?,
-    )
+    let documents = documents::Entity::find()
+        .in_tenant(tenant_id)
+        .all(&ctx.db)
+        .await?
+        .into_iter()
+        .map(DocumentDto::from)
+        .collect::<Vec<_>>();
+
+    format::json(documents)
 }
 
 #[debug_handler]
@@ -55,7 +55,7 @@ pub async fn create(
     State(ctx): State<AppContext>,
     auth: auth::ApiToken<users::Model>,
     Path((tenant_id, application_id)): Path<(i64, i64)>,
-    Json(params): Json<CreateParams>,
+    Json(params): Json<CreateDocument>,
 ) -> Result<Response> {
     authorize(
         &ctx,
@@ -74,7 +74,7 @@ pub async fn create(
     .insert(&ctx.db)
     .await?;
 
-    format::json(document)
+    format::json(DocumentDto::from(document))
 }
 
 pub fn routes() -> Routes {
