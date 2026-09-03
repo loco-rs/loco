@@ -12,11 +12,20 @@ export function Documents() {
   const [savedWorkspace, setSavedWorkspace] = useState(loadWorkspace);
 
   if (workspaces.isLoading) {
-    return <p className="muted">Loading your tenant workspaces…</p>;
+    return (
+      <section className="panel page-state">
+        <span className="status-dot" />
+        <p>Loading your tenant workspaces…</p>
+      </section>
+    );
   }
 
   if (workspaces.error) {
-    return <p className="error" role="alert">{workspaces.error.message}</p>;
+    return (
+      <p className="error page-state" role="alert">
+        {workspaces.error.message}
+      </p>
+    );
   }
 
   const options: SelectedWorkspace[] =
@@ -56,15 +65,15 @@ export function Documents() {
   }
 
   return (
-    <section>
-      <div className="workspace-heading">
+    <section className="documents-page">
+      <header className="workspace-heading">
         <div>
-          <span className="eyebrow">Authenticated workspace</span>
+          <span className="eyebrow">Tenant workspace</span>
           <h1>Documents</h1>
-          <p>Switching workspaces changes the explicit tenant query scope.</p>
+          <p>Create and manage records inside an explicitly scoped workspace.</p>
         </div>
         <label className="workspace-picker">
-          <span>Tenant and application</span>
+          <span>Working in</span>
           <select
             value={`${selected.tenantId}:${selected.applicationId}`}
             onChange={(event) => selectWorkspace(event.target.value)}
@@ -79,6 +88,21 @@ export function Documents() {
             ))}
           </select>
         </label>
+      </header>
+
+      <div className="workspace-context" aria-label="Current tenant context">
+        <div>
+          <span>Tenant</span>
+          <strong>{selected.tenantName}</strong>
+        </div>
+        <div>
+          <span>Application</span>
+          <strong>{selected.applicationName}</strong>
+        </div>
+        <div className="scope-status">
+          <span className="status-dot" />
+          <strong>Tenant scope active</strong>
+        </div>
       </div>
 
       <DocumentsWorkspace
@@ -109,13 +133,13 @@ function DocumentsWorkspace({ workspace }: { workspace: SelectedWorkspace }) {
 
   return (
     <div className="workspace-grid">
-      <div className="panel">
+      <div className="panel documents-panel">
         <div className="panel-heading">
           <div>
-            <span className="eyebrow">Tenant {workspace.tenantId}</span>
-            <h2>{workspace.tenantName} records</h2>
+            <span className="eyebrow">Document library</span>
+            <h2>Your documents</h2>
           </div>
-          <span className="count">{documents.data?.length ?? 0}</span>
+          <span className="count">{documents.data?.length ?? 0} records</span>
         </div>
         {documents.isLoading && <p className="muted">Loading documents…</p>}
         {documents.error && <p className="error" role="alert">{documents.error.message}</p>}
@@ -128,16 +152,25 @@ function DocumentsWorkspace({ workspace }: { workspace: SelectedWorkspace }) {
               <span className="document-icon">D</span>
               <div>
                 <strong>{document.title}</strong>
-                <small>Record #{document.id} · tenant {document.tenant_id}</small>
+                <small>Document #{document.id} · Tenant #{document.tenant_id}</small>
               </div>
+              <span className="document-scope">Scoped</span>
             </li>
           ))}
         </ul>
       </div>
 
       <form className="panel create-form" onSubmit={handleSubmit}>
-        <span className="eyebrow">Permission: documents:create</span>
-        <h2>Add a document</h2>
+        <div className="create-form-heading">
+          <span className="create-icon">+</span>
+          <div>
+            <span className="eyebrow">New record</span>
+            <h2>Create document</h2>
+          </div>
+        </div>
+        <p className="form-description">
+          Add a document to the {workspace.tenantName} workspace.
+        </p>
         <label htmlFor="document-title">Title</label>
         <input
           id="document-title"
@@ -152,10 +185,14 @@ function DocumentsWorkspace({ workspace }: { workspace: SelectedWorkspace }) {
         {createDocument.error && (
           <p className="error" role="alert">{createDocument.error.message}</p>
         )}
-        <p className="hint">
-          The browser never sends <code>tenant_id</code> in the body. Loco
-          assigns it from the authenticated route context with <code>set_tenant</code>.
-        </p>
+        <div className="scope-note">
+          <span className="status-dot" />
+          <p>
+            <strong>Tenant-safe by default</strong>
+            The browser sends only the title. Loco assigns the authenticated
+            tenant with <code>set_tenant</code>.
+          </p>
+        </div>
       </form>
     </div>
   );
