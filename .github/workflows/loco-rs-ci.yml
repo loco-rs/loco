@@ -158,7 +158,7 @@ jobs:
   # booted `AppContext` and a real router. Nothing ran them: `docs.yml` only
   # `cargo build`s demo, to check the docs still compile.
   #
-  # Both examples default to SQLite in `config/test.yaml`, so this needs no
+  # All examples default to SQLite in `config/test.yaml`, so this needs no
   # services. `reference_spa` is a clientside app whose `static` middleware is
   # `must_exist: true` over `frontend/dist`, so it must be built before the app
   # will boot — exactly what the CI a generated clientside app ships does.
@@ -172,7 +172,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        example: [demo, reference_spa]
+        example: [demo, reference_spa, multitenancy]
 
     steps:
       - name: Checkout the code

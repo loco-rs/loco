@@ -1,0 +1,8 @@
+---
+source: tests/requests/auth.rs
+expression: "(saved_user.email, saved_user.name)"
+---
+(
+    "test@loco.com",
+    "loco",
+)

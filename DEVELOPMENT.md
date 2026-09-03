@@ -71,6 +71,7 @@ $ cargo loco db entities
 * [ ] Ensure you have the necessary local resources, such as `DB`/`Redis`, by executing the command `cargo loco doctor  --environment test`. In case you don't have them, refer to the relevant documentation section for guidance.
 * [ ] run `cargo test` on the root to test Loco itself
 * [ ] cd `examples/demo` and run `cargo test` to test our "driver app" which exercises the framework in various ways
+* [ ] cd `examples/multitenancy` and run `cargo test` to test tenant isolation and application-scoped RBAC
 * [ ] push your changes to Github to get the CI running and testing in various additional configurations that you don't have
 * [ ] CI should pass. Take note that all `starters-*` CI are using a **fixed version** of Loco and are not seeing your changes yet
 
