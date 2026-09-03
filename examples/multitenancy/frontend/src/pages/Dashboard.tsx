@@ -3,6 +3,7 @@ import { useDashboard } from "../api/dashboard";
 import { addonsFrom } from "../addons";
 import type { SelectedWorkspace } from "../auth/session";
 import type { WorkspaceOutletContext } from "../auth/workspace-context";
+import { hasPermission } from "../auth/permissions";
 
 export function Dashboard() {
   const context = useOutletContext<WorkspaceOutletContext>();
@@ -37,6 +38,14 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
 
   const { stats, current_member: currentMember } = dashboard.data;
   const addons = addonsFrom(dashboard.data.applications);
+  const canViewDocuments = hasPermission(
+    currentMember.permissions,
+    "documents:read",
+  );
+  const canViewBilling = hasPermission(
+    currentMember.permissions,
+    "billing:read",
+  );
   return (
     <section className="console-page">
       <header className="console-heading">
@@ -53,8 +62,8 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
       <div className="stat-grid">
         <Stat label="Members" value={stats.member_count} />
         <Stat label="Add-ons" value={addons.length} />
-        <Stat label="Documents" value={stats.document_count} />
-        <Stat label="Invoices" value={stats.invoice_count} />
+        {canViewDocuments && <Stat label="Documents" value={stats.document_count} />}
+        {canViewBilling && <Stat label="Invoices" value={stats.invoice_count} />}
       </div>
 
       <div className="overview-grid">
@@ -105,7 +114,7 @@ export function NoWorkspace({ onCreate }: { onCreate: () => void }) {
     <section className="panel empty-state no-workspace">
       <span className="eyebrow">Get started</span>
       <h1>Create a workspace</h1>
-      <p>Your account needs a tenant workspace before applications can be used.</p>
+      <p>Your account needs a tenant workspace before its core features can be used.</p>
       <button className="primary" type="button" onClick={onCreate}>New workspace</button>
     </section>
   );

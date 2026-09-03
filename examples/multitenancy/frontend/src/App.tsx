@@ -2,6 +2,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useCurrentUser, useWorkspaces } from "./api/auth";
+import { useDashboard } from "./api/dashboard";
+import { hasPermission } from "./auth/permissions";
 import {
   clearSession,
   getToken,
@@ -39,6 +41,12 @@ export function App() {
   const selectedTenant = workspaces.data?.find(
     (workspace) => workspace.tenant_id === selectedWorkspace?.tenantId,
   );
+  const dashboard = useDashboard(
+    authenticated ? selectedWorkspace?.tenantId : undefined,
+  );
+  const currentPermissions = dashboard.data?.current_member.permissions;
+  const canViewDocuments = hasPermission(currentPermissions, "documents:read");
+  const canViewBilling = hasPermission(currentPermissions, "billing:read");
 
   useEffect(() => {
     if (promptWorkspaceCreation) {
@@ -229,18 +237,22 @@ export function App() {
             <aside className="sidebar">
               <nav className="sidebar-nav" aria-label="Workspace navigation">
                 <NavLink to="/dashboard">Overview</NavLink>
-                <NavLink
-                  to="/documents"
-                  onClick={() => selectApplication("Documents")}
-                >
-                  Documents
-                </NavLink>
-                <NavLink
-                  to="/billing"
-                  onClick={() => selectApplication("Billing")}
-                >
-                  Billing
-                </NavLink>
+                {canViewDocuments && (
+                  <NavLink
+                    to="/documents"
+                    onClick={() => selectApplication("Documents")}
+                  >
+                    Documents
+                  </NavLink>
+                )}
+                {canViewBilling && (
+                  <NavLink
+                    to="/billing"
+                    onClick={() => selectApplication("Billing")}
+                  >
+                    Billing
+                  </NavLink>
+                )}
                 <NavLink to="/members">Members</NavLink>
                 <NavLink to="/addons">Add-ons</NavLink>
               </nav>

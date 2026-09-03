@@ -43,8 +43,8 @@ path dependency, so it always exercises the code in the current checkout.
 Open <http://localhost:5150> and log in with `john@example.com` / `password`.
 John Doe is the seeded Owner of both Designer and Developer. The Designer
 dashboard includes Jane Smith as Manager and Sam Lee as Support so their
-effective permissions can be compared. Both workspaces have active Documents
-and Billing subscriptions. Analytics demonstrates subscription status: it is
+effective permissions can be compared. Both workspaces have the core Documents
+and Billing areas. Analytics demonstrates add-on subscription status: it is
 disabled for Designer and active for Developer. Designer has one document and
 two invoices; Developer has one document and one invoice. You can also register
 an account with your name, email, and password. After registration, the
@@ -88,14 +88,14 @@ The document POST body is `{"title":"Launch plan"}`. The invoice POST body is
 `{"number":"INV-1003","amount_cents":7900,"status":"draft"}`. The SPA stores the JWT and selected
 tenant/application context in local storage; it never includes `tenant_id` in
 a create body. Its authenticated console has Overview, Documents, Billing,
-Members, and Add-ons pages. The Add-ons catalog excludes the core Documents
-and Billing applications and reflects optional product availability from the
-workspace subscription. The Members table can display each member's
-complete effective access on a dedicated page, while workspace Owners can use
-a separate management page to assign Owner, Administrator, Manager, or Support
-to other members and configure each role's permissions. Permission changes apply to
-every workspace member with that role. The request tests exercise both the
-seeded role matrix and a separate two-tenant scenario:
+Members, and Add-ons pages. Documents and Billing navigation and metrics are
+permission-aware, while the Add-ons catalog reflects optional product
+availability from the workspace subscription. The Members table can display
+each member's complete effective access on a dedicated page, while workspace
+Owners can use a separate management page to assign Owner, Administrator,
+Manager, or Support to other members and configure each role's permissions.
+Permission changes apply to every workspace member with that role. The request
+tests exercise both the seeded role matrix and a separate two-tenant scenario:
 
 ```sh
 cargo test --test mod
@@ -111,8 +111,9 @@ Role-management tests also verify Owner authorization, tenant isolation,
 deduplication, and request-size validation for permission grants.
 
 The frontend test command enforces 100% statement, branch, function, and line
-coverage for session storage, workspace navigation, slug generation, and the
-authenticated route/API-client boundaries.
+coverage for session storage, permission-aware navigation, workspace
+navigation, slug generation, and the authenticated route/API-client
+boundaries.
 
 ## Security model
 

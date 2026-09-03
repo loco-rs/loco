@@ -1542,7 +1542,9 @@ code {
   }
 
   .sidebar-nav {
-    grid-template-columns: repeat(5, minmax(max-content, 1fr));
+    grid-template-columns: none;
+    grid-auto-columns: minmax(max-content, 1fr);
+    grid-auto-flow: column;
     overflow-x: auto;
   }
 
