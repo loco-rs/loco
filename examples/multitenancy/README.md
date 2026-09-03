@@ -71,6 +71,7 @@ POST /api/auth/login
 GET  /api/auth/workspaces
 POST /api/auth/workspaces
 GET  /api/tenants/{tenant_id}/dashboard
+POST /api/tenants/{tenant_id}/dashboard/members/{member_id}/role
 GET  /api/tenants/{tenant_id}/applications/{application_id}/documents
 POST /api/tenants/{tenant_id}/applications/{application_id}/documents
 GET  /api/tenants/{tenant_id}/applications/{application_id}/invoices
@@ -85,8 +86,10 @@ The document POST body is `{"title":"Launch plan"}`. The invoice POST body is
 `{"number":"INV-1003","amount_cents":7900,"status":"draft"}`. The SPA stores the JWT and selected
 tenant/application context in local storage; it never includes `tenant_id` in
 a create body. Its authenticated console has Overview, Documents, Billing,
-Members, and Applications pages. The request tests exercise both the seeded
-role matrix and a separate two-tenant scenario:
+Members, and Applications pages. The Members table can display each member's
+complete effective access, while workspace Owners can assign Owner, Manager,
+or Viewer to other members. The request tests exercise both the seeded role
+matrix and a separate two-tenant scenario:
 
 ```sh
 cargo test --test mod
