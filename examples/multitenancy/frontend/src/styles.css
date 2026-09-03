@@ -380,7 +380,7 @@ nav a:hover {
   z-index: 30;
   top: calc(100% + 0.75rem);
   right: 0;
-  width: min(23rem, calc(100vw - 2rem));
+  width: min(20rem, calc(100vw - 2rem));
   border: 1px solid #d9ddd4;
   border-radius: 1rem;
   background: #fff;
