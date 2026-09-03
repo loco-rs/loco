@@ -35,6 +35,9 @@ export function App() {
 
   const workspaceOptions = flattenWorkspaces(workspaces.data);
   const selectedWorkspace = resolveWorkspace(workspaceOptions, savedWorkspace);
+  const selectedTenant = workspaces.data?.find(
+    (workspace) => workspace.tenant_id === selectedWorkspace?.tenantId,
+  );
 
   useEffect(() => {
     if (promptWorkspaceCreation) {
@@ -119,8 +122,12 @@ export function App() {
                   <div className="workspace-menu-heading">
                     <span className="workspace-menu-icon"><WorkspaceIcon /></span>
                     <div>
-                      <strong>{selectedWorkspace?.tenantName ?? "Your workspaces"}</strong>
-                      <span>{selectedWorkspace ? `Current application: ${selectedWorkspace.applicationName}` : "Select a workspace"}</span>
+                      <strong>{selectedTenant?.tenant_name ?? "Your workspaces"}</strong>
+                      <span>
+                        {selectedTenant
+                          ? `Tenant workspace · /${selectedTenant.tenant_slug}`
+                          : "Select a workspace"}
+                      </span>
                     </div>
                   </div>
                   <div className="workspace-menu-options">
@@ -139,7 +146,7 @@ export function App() {
                           </span>
                           <span>
                             <strong>{workspace.tenant_name}</strong>
-                            <small>{workspace.applications.length} active applications</small>
+                            <small>/{workspace.tenant_slug}</small>
                           </span>
                           {active && <span className="workspace-check" aria-label="Current">✓</span>}
                         </button>
