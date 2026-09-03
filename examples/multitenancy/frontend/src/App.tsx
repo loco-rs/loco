@@ -210,7 +210,7 @@ export function App() {
                     onClick={logout}
                   >
                     <SignOutIcon />
-                    <span>Sign out</span>
+                    <span>Log out</span>
                   </button>
                 </div>
               </details>
