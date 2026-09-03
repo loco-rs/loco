@@ -1170,7 +1170,7 @@ code {
 
 .member-row {
   display: grid;
-  grid-template-columns: minmax(13rem, 1.05fr) minmax(7rem, 0.55fr) minmax(18rem, 1.4fr);
+  grid-template-columns: minmax(13rem, 1.05fr) minmax(6rem, 0.45fr) minmax(15rem, 1.3fr) minmax(8rem, auto);
   gap: 1rem;
   align-items: center;
   padding: 1rem 1.25rem;
@@ -1191,6 +1191,74 @@ code {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.member-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.member-actions button {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid #d9ddd4;
+  color: #596259;
+  background: #fff;
+  font-size: 0.7rem;
+}
+
+.member-actions button:hover:not(:disabled) {
+  border-color: #bdc7b9;
+  color: #172033;
+  background: #f5f6f3;
+}
+
+.member-actions button.edit {
+  border-color: #f4c5bd;
+  color: #bc4535;
+  background: #fff7f5;
+}
+
+.member-actions button:disabled {
+  cursor: not-allowed;
+}
+
+.member-modal {
+  position: relative;
+  width: min(100%, 36rem);
+  padding: clamp(1.75rem, 5vw, 2.5rem);
+  box-shadow: 0 32px 90px rgb(23 32 51 / 24%);
+}
+
+.member-modal h2 {
+  margin-bottom: 0.35rem;
+  font-size: 1.75rem;
+}
+
+.member-modal-email {
+  margin-bottom: 1.75rem;
+  color: #7b8278;
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+.member-detail-section {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem 0;
+  border-top: 1px solid #e5e8e2;
+}
+
+.member-detail-section > strong {
+  color: #626a60;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.member-modal form {
+  display: grid;
+  gap: 0.8rem;
 }
 
 .permission-list {
