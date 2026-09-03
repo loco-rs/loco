@@ -23,6 +23,10 @@ function MemberList({ workspace }: { workspace: SelectedWorkspace }) {
 
   const currentMember = dashboard.data?.current_member;
   const canEdit = currentMember?.roles.includes("Owner") ?? false;
+  const managedMembers =
+    dashboard.data?.members.filter(
+      (member) => !member.roles.includes("Owner"),
+    ) ?? [];
 
   return (
     <section className="console-page">
@@ -34,7 +38,7 @@ function MemberList({ workspace }: { workspace: SelectedWorkspace }) {
           <div className="member-row member-header" role="row">
             <span>Member</span><span>Role</span><span>Permissions</span><span>Actions</span>
           </div>
-          {dashboard.data?.members.map((member) => (
+          {managedMembers.map((member) => (
             <div className="member-row" role="row" key={member.member_id}>
               <div className="member-identity"><span className="avatar">{member.name.charAt(0)}</span><div><strong>{member.name}</strong><small>{member.email}</small></div></div>
               <div>{member.roles.map((role) => <span className="role-badge" key={role}>{role}</span>)}</div>
@@ -55,6 +59,11 @@ function MemberList({ workspace }: { workspace: SelectedWorkspace }) {
               </div>
             </div>
           ))}
+          {managedMembers.length === 0 && (
+            <div className="member-table-empty">
+              No non-owner members belong to this workspace yet.
+            </div>
+          )}
         </div>
       </div>
       {viewing && <MemberDetails member={viewing} onClose={() => setViewing(null)} />}

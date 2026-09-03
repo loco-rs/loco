@@ -1187,6 +1187,14 @@ code {
   text-transform: uppercase;
 }
 
+.member-table-empty {
+  padding: 2.5rem 1.25rem;
+  border-top: 1px solid #e5e8e2;
+  color: #7b8278;
+  text-align: center;
+  font-size: 0.82rem;
+}
+
 .member-identity {
   display: flex;
   align-items: center;
