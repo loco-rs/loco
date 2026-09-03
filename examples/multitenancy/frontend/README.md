@@ -35,7 +35,8 @@ Clients, Projects, Documents, and Billing are core areas provisioned for every t
 part of a subscription. Their
 navigation and overview metrics appear only when the current member has the
 matching read permission, and their write forms remain hidden for read-only
-members. They do not appear in the Add-ons catalog. That page derives optional
+members. Document create and edit forms require both a title and description.
+Core resources do not appear in the Add-ons catalog. That page derives optional
 product availability from the workspace's purchased subscription. Designer
 includes Client Portal and Priority Support, while Developer includes Feature
 Flags and Priority Support. Analytics is active only for Developer. All four

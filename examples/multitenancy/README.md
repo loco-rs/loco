@@ -95,7 +95,8 @@ The workspace and document endpoints expect `Authorization: Bearer <jwt>`.
 Creating a workspace accepts `{"tenant_name":"Research team","tenant_slug":"research-team"}`;
 the SPA derives the slug from the name automatically and selects the new
 workspace after creation.
-The document POST body is `{"title":"Launch plan"}`. Invoices cannot be
+The document POST body includes both fields, for example
+`{"title":"Launch plan","description":"Milestones and owners"}`. Invoices cannot be
 created directly. A fake add-on purchase activates the subscription and
 generates a paid invoice with a server-assigned number and demo price. The SPA stores the JWT and selected
 tenant context in local storage; it never includes `tenant_id` in
