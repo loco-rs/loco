@@ -16,9 +16,10 @@ use std::path::Path;
 use crate::{
     controllers,
     models::_entities::{
-        applications, documents, invoices, permissions, role_permissions, roles,
+        applications, clients, documents, invoices, permissions, projects, role_permissions, roles,
         tenant_applications, tenant_member_roles, tenant_members, tenants, users,
     },
+    models::tenants as tenants_model,
     tasks,
     workers::downloader::DownloadWorker,
 };
@@ -54,6 +55,8 @@ impl Hooks for App {
 
     fn routes(_ctx: &AppContext) -> AppRoutes {
         AppRoutes::with_default_routes() // controller routes below
+            .add_route(controllers::clients::routes())
+            .add_route(controllers::projects::routes())
             .add_route(controllers::documents::routes())
             .add_route(controllers::invoices::routes())
             .add_route(controllers::dashboard::routes())
@@ -74,6 +77,8 @@ impl Hooks for App {
         truncate_table(&ctx.db, role_permissions::Entity).await?;
         truncate_table(&ctx.db, tenant_member_roles::Entity).await?;
         truncate_table(&ctx.db, permissions::Entity).await?;
+        truncate_table(&ctx.db, clients::Entity).await?;
+        truncate_table(&ctx.db, projects::Entity).await?;
         truncate_table(&ctx.db, documents::Entity).await?;
         truncate_table(&ctx.db, invoices::Entity).await?;
         truncate_table(&ctx.db, roles::Entity).await?;
@@ -111,14 +116,12 @@ impl Hooks for App {
             &base.join("tenant_member_roles.yaml").display().to_string(),
         )
         .await?;
-        db::seed::<permissions::ActiveModel>(
+        tenants_model::Model::seed_access_defaults(&ctx.db).await?;
+        db::seed::<clients::ActiveModel>(&ctx.db, &base.join("clients.yaml").display().to_string())
+            .await?;
+        db::seed::<projects::ActiveModel>(
             &ctx.db,
-            &base.join("permissions.yaml").display().to_string(),
-        )
-        .await?;
-        db::seed::<role_permissions::ActiveModel>(
-            &ctx.db,
-            &base.join("role_permissions.yaml").display().to_string(),
+            &base.join("projects.yaml").display().to_string(),
         )
         .await?;
         db::seed::<documents::ActiveModel>(

@@ -10,23 +10,16 @@ pub struct Model {
     pub updated_at: DateTimeWithTimeZone,
     #[sea_orm(primary_key)]
     pub id: i64,
+    #[sea_orm(unique_key = "number")]
     pub number: String,
     pub amount_cents: i64,
     pub status: String,
+    #[sea_orm(unique_key = "number")]
     pub tenant_id: i64,
-    pub tenant_application_id: i64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::tenant_applications::Entity",
-        from = "Column::TenantApplicationId",
-        to = "super::tenant_applications::Column::Id",
-        on_update = "Cascade",
-        on_delete = "Cascade"
-    )]
-    TenantApplications,
     #[sea_orm(
         belongs_to = "super::tenants::Entity",
         from = "Column::TenantId",
@@ -35,12 +28,6 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     Tenants,
-}
-
-impl Related<super::tenant_applications::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::TenantApplications.def()
-    }
 }
 
 impl Related<super::tenants::Entity> for Entity {

@@ -37,18 +37,9 @@ pub struct CreateWorkspace {
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, TS)]
 #[ts(export, export_to = "../frontend/src/bindings/")]
-pub struct ApplicationAccess {
-    #[ts(type = "number")]
-    pub id: i64,
-    pub name: String,
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize, TS)]
-#[ts(export, export_to = "../frontend/src/bindings/")]
 pub struct Workspace {
     #[ts(type = "number")]
     pub tenant_id: i64,
     pub tenant_name: String,
     pub tenant_slug: String,
-    pub applications: Vec<ApplicationAccess>,
 }

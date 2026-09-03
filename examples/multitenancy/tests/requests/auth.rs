@@ -161,8 +161,7 @@ async fn authenticated_user_can_create_another_workspace() {
         let workspace = created.json::<serde_json::Value>();
         assert_eq!(workspace["tenant_name"], "Research Team");
         assert_eq!(workspace["tenant_slug"], "research-team");
-        assert_eq!(workspace["applications"].as_array().unwrap().len(), 2);
-        assert_eq!(workspace["applications"][0]["name"], "Documents");
+        assert!(workspace.get("applications").is_none());
 
         let workspaces = request
             .get("/api/auth/workspaces")
@@ -179,7 +178,6 @@ async fn authenticated_user_can_create_another_workspace() {
         );
 
         let tenant_id = workspace["tenant_id"].as_i64().unwrap();
-        let application_id = workspace["applications"][0]["id"].as_i64().unwrap();
         let role_names: Vec<String> = roles::Entity::find()
             .filter(roles::Column::TenantId.eq(tenant_id))
             .order_by_asc(roles::Column::Id)
@@ -197,23 +195,17 @@ async fn authenticated_user_can_create_another_workspace() {
             .await;
         assert_eq!(dashboard.status_code(), 200, "{}", dashboard.text());
         let dashboard: serde_json::Value = dashboard.json();
-        assert_eq!(dashboard["applications"].as_array().unwrap().len(), 6);
-        for addon in dashboard["applications"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .filter(|application| {
-                !matches!(application["name"].as_str(), Some("Documents" | "Billing"))
-            })
-        {
+        assert_eq!(dashboard["addons"].as_array().unwrap().len(), 4);
+        for addon in dashboard["addons"].as_array().unwrap().iter() {
             assert_eq!(addon["status"], "inactive");
-            assert_eq!(addon["permissions"], serde_json::json!([]));
         }
+        assert_eq!(
+            dashboard["available_permissions"].as_array().unwrap().len(),
+            11
+        );
 
         let document = request
-            .post(&format!(
-                "/api/tenants/{tenant_id}/applications/{application_id}/documents"
-            ))
+            .post(&format!("/api/tenants/{tenant_id}/documents"))
             .authorization_bearer(&token)
             .json(&serde_json::json!({ "title": "Research roadmap" }))
             .await;

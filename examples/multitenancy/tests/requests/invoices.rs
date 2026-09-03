@@ -19,7 +19,7 @@ async fn owner_lists_and_creates_tenant_invoices() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
         let token = token_for(&ctx, 1).await;
-        let url = "/api/tenants/1/applications/2/invoices";
+        let url = "/api/tenants/1/invoices";
 
         let list = request.get(url).authorization_bearer(&token).await;
         assert_eq!(list.status_code(), 200, "{}", list.text());
@@ -38,7 +38,6 @@ async fn owner_lists_and_creates_tenant_invoices() {
         assert_eq!(create.status_code(), 200, "{}", create.text());
         let invoice: serde_json::Value = create.json();
         assert_eq!(invoice["tenant_id"], 1);
-        assert_eq!(invoice["tenant_application_id"], 2);
         assert_eq!(invoice["number"], "INV-1003");
     })
     .await;
@@ -50,7 +49,7 @@ async fn manager_can_read_billing_but_cannot_manage_it() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
         let token = token_for(&ctx, 2).await;
-        let url = "/api/tenants/1/applications/2/invoices";
+        let url = "/api/tenants/1/invoices";
 
         let list = request.get(url).authorization_bearer(&token).await;
         assert_eq!(list.status_code(), 200, "{}", list.text());
@@ -77,7 +76,7 @@ async fn support_cannot_read_billing() {
         let token = token_for(&ctx, 3).await;
 
         let response = request
-            .get("/api/tenants/1/applications/2/invoices")
+            .get("/api/tenants/1/invoices")
             .authorization_bearer(&token)
             .await;
 

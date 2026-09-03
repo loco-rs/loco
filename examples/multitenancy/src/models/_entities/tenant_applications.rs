@@ -27,10 +27,6 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     Applications,
-    #[sea_orm(has_many = "super::invoices::Entity")]
-    Invoices,
-    #[sea_orm(has_many = "super::permissions::Entity")]
-    Permissions,
     #[sea_orm(
         belongs_to = "super::tenants::Entity",
         from = "Column::TenantId",
@@ -44,18 +40,6 @@ pub enum Relation {
 impl Related<super::applications::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Applications.def()
-    }
-}
-
-impl Related<super::invoices::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Invoices.def()
-    }
-}
-
-impl Related<super::permissions::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Permissions.def()
     }
 }
 

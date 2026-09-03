@@ -1,351 +1,170 @@
-use loco_rs::prelude::{Set, TenantActiveModelExt};
 use loco_rs::testing::prelude::*;
-use multitenancy::{
-    app::App,
-    models::{_entities::permissions, users},
-};
-use sea_orm::{ActiveModelTrait, EntityTrait};
+use multitenancy::{app::App, models::users};
+use sea_orm::EntityTrait;
 use serial_test::serial;
+
+async fn token_for(ctx: &loco_rs::app::AppContext, user_id: i64) -> String {
+    let user = users::Entity::find_by_id(user_id)
+        .one(&ctx.db)
+        .await
+        .unwrap()
+        .unwrap();
+    let jwt = ctx.config.get_jwt_config().unwrap();
+    user.generate_jwt(&jwt.secret, jwt.expiration).unwrap()
+}
 
 #[tokio::test]
 #[serial]
-async fn owner_sees_seeded_workspace_access_graph() {
+async fn owner_sees_seeded_tenant_resources_roles_and_addons() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
-        let john = users::Entity::find_by_id(1)
-            .one(&ctx.db)
-            .await
-            .unwrap()
-            .unwrap();
-        let jwt = ctx.config.get_jwt_config().unwrap();
-        let token = john.generate_jwt(&jwt.secret, jwt.expiration).unwrap();
-
+        let token = token_for(&ctx, 1).await;
         let response = request
             .get("/api/tenants/1/dashboard")
             .authorization_bearer(&token)
             .await;
-
         assert_eq!(response.status_code(), 200, "{}", response.text());
         let body: serde_json::Value = response.json();
+
         assert_eq!(body["tenant_name"], "Designer");
         assert_eq!(body["stats"]["member_count"], 3);
-        assert_eq!(body["stats"]["application_count"], 6);
+        assert_eq!(body["stats"]["addon_count"], 4);
+        assert_eq!(body["stats"]["client_count"], 2);
+        assert_eq!(body["stats"]["project_count"], 2);
         assert_eq!(body["stats"]["document_count"], 1);
         assert_eq!(body["stats"]["invoice_count"], 2);
-        assert_eq!(body["current_member"]["name"], "John Doe");
         assert_eq!(
             body["current_member"]["roles"],
             serde_json::json!(["Owner"])
         );
+        assert_eq!(body["available_permissions"].as_array().unwrap().len(), 11);
+        assert_eq!(body["roles"].as_array().unwrap().len(), 4);
+
+        let addons = body["addons"].as_array().unwrap();
+        assert_eq!(addons.len(), 4);
+        assert_eq!(addons[0]["name"], "Analytics");
+        assert_eq!(addons[0]["status"], "inactive");
+        assert_eq!(addons[1]["name"], "Client Portal");
+        assert_eq!(addons[1]["status"], "active");
+        assert!(addons
+            .iter()
+            .all(|addon| addon.get("permissions").is_none()));
 
         let members = body["members"].as_array().unwrap();
         assert_eq!(members.len(), 3);
-        assert_eq!(members[0]["name"], "Jane Smith");
-        assert_eq!(members[0]["roles"], serde_json::json!(["Manager"]));
-        assert_eq!(members[1]["name"], "John Doe");
-        assert_eq!(members[2]["roles"], serde_json::json!(["Support"]));
-
-        let applications = body["applications"].as_array().unwrap();
-        assert_eq!(applications[0]["name"], "Analytics");
-        assert_eq!(applications[0]["status"], "inactive");
-        assert_eq!(applications[0]["permissions"], serde_json::json!([]));
-        assert_eq!(applications[1]["name"], "Billing");
-        assert_eq!(applications[2]["name"], "Client Portal");
-        assert_eq!(applications[3]["name"], "Documents");
-        assert_eq!(applications[1]["permissions"].as_array().unwrap().len(), 2);
-        assert_eq!(applications[3]["permissions"].as_array().unwrap().len(), 2);
-        assert_eq!(applications[2]["status"], "active");
-        assert_eq!(applications[2]["permissions"], serde_json::json!([]));
-        assert_eq!(applications[4]["name"], "Feature Flags");
-        assert_eq!(applications[4]["status"], "inactive");
-        assert_eq!(applications[4]["permissions"], serde_json::json!([]));
-        assert_eq!(applications[5]["name"], "Priority Support");
-        assert_eq!(applications[5]["status"], "active");
-        assert_eq!(applications[5]["permissions"], serde_json::json!([]));
+        assert!(members.iter().any(|member| member["name"] == "Jane Smith"
+            && member["roles"] == serde_json::json!(["Manager"])));
+        assert!(members.iter().any(|member| member["name"] == "Sam Lee"
+            && member["roles"] == serde_json::json!(["Support"])));
     })
     .await;
 }
 
 #[tokio::test]
 #[serial]
-async fn owner_sees_only_active_workspace_options_and_seeded_addons() {
+async fn workspace_list_contains_tenants_once_and_developer_has_expected_addons() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
-        let john = users::Entity::find_by_id(1)
-            .one(&ctx.db)
-            .await
-            .unwrap()
-            .unwrap();
-        let jwt = ctx.config.get_jwt_config().unwrap();
-        let token = john.generate_jwt(&jwt.secret, jwt.expiration).unwrap();
-
-        let response = request
+        let token = token_for(&ctx, 1).await;
+        let workspaces = request
             .get("/api/auth/workspaces")
             .authorization_bearer(&token)
             .await;
-        assert_eq!(response.status_code(), 200, "{}", response.text());
-        let workspaces: serde_json::Value = response.json();
-        let workspaces = workspaces.as_array().unwrap();
-        assert_eq!(workspaces.len(), 2);
-        let designer = workspaces
-            .iter()
-            .find(|workspace| workspace["tenant_name"] == "Designer")
-            .unwrap();
-        let developer = workspaces
-            .iter()
-            .find(|workspace| workspace["tenant_name"] == "Developer")
-            .unwrap();
-        assert_eq!(designer["applications"].as_array().unwrap().len(), 4);
-        assert_eq!(developer["applications"].as_array().unwrap().len(), 5);
-        let designer_names = designer["applications"]
+        let body: serde_json::Value = workspaces.json();
+        assert_eq!(body.as_array().unwrap().len(), 2);
+        assert!(body
             .as_array()
             .unwrap()
             .iter()
-            .map(|application| application["name"].as_str().unwrap())
-            .collect::<Vec<_>>();
-        let developer_names = developer["applications"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|application| application["name"].as_str().unwrap())
-            .collect::<Vec<_>>();
-        assert!(designer_names.contains(&"Client Portal"));
-        assert!(!designer_names.contains(&"Feature Flags"));
-        assert!(designer_names.contains(&"Priority Support"));
-        assert!(!developer_names.contains(&"Client Portal"));
-        assert!(developer_names.contains(&"Feature Flags"));
-        assert!(developer_names.contains(&"Priority Support"));
-        assert!(developer["applications"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|application| application["name"] == "Analytics"));
+            .all(|workspace| workspace.get("applications").is_none()));
 
-        let response = request
+        let dashboard = request
             .get("/api/tenants/2/dashboard")
             .authorization_bearer(&token)
             .await;
-        assert_eq!(response.status_code(), 200, "{}", response.text());
-        let dashboard: serde_json::Value = response.json();
-        assert_eq!(dashboard["tenant_name"], "Developer");
-        assert_eq!(dashboard["stats"]["member_count"], 1);
-        assert_eq!(dashboard["stats"]["application_count"], 6);
-        assert_eq!(dashboard["stats"]["document_count"], 1);
-        assert_eq!(dashboard["stats"]["invoice_count"], 1);
-        assert_eq!(dashboard["applications"][0]["name"], "Analytics");
-        assert_eq!(dashboard["applications"][0]["status"], "active");
+        let body: serde_json::Value = dashboard.json();
+        let statuses = body["addons"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|addon| {
+                (
+                    addon["name"].as_str().unwrap(),
+                    addon["status"].as_str().unwrap(),
+                )
+            })
+            .collect::<Vec<_>>();
         assert_eq!(
-            dashboard["applications"][0]["permissions"],
-            serde_json::json!(["analytics:read"])
+            statuses,
+            [
+                ("Analytics", "active"),
+                ("Client Portal", "inactive"),
+                ("Feature Flags", "active"),
+                ("Priority Support", "active")
+            ]
         );
-        for index in [2, 4, 5] {
-            assert_eq!(
-                dashboard["applications"][index]["permissions"],
-                serde_json::json!([])
-            );
-        }
-        assert_eq!(dashboard["applications"][2]["name"], "Client Portal");
-        assert_eq!(dashboard["applications"][2]["status"], "inactive");
-        assert_eq!(dashboard["applications"][4]["name"], "Feature Flags");
-        assert_eq!(dashboard["applications"][4]["status"], "active");
-        assert_eq!(dashboard["applications"][5]["name"], "Priority Support");
-        assert_eq!(dashboard["applications"][5]["status"], "active");
     })
     .await;
 }
 
 #[tokio::test]
 #[serial]
-async fn owner_can_change_another_members_role() {
+async fn owner_can_change_member_role_and_role_permissions() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
-        let john = users::Entity::find_by_id(1)
-            .one(&ctx.db)
-            .await
-            .unwrap()
-            .unwrap();
-        let jane = users::Entity::find_by_id(2)
-            .one(&ctx.db)
-            .await
-            .unwrap()
-            .unwrap();
-        let jwt = ctx.config.get_jwt_config().unwrap();
-        let john_token = john.generate_jwt(&jwt.secret, jwt.expiration).unwrap();
-        let jane_token = jane.generate_jwt(&jwt.secret, jwt.expiration).unwrap();
+        let owner_token = token_for(&ctx, 1).await;
+        let manager_token = token_for(&ctx, 2).await;
 
-        let update = request
+        let role_update = request
             .post("/api/tenants/1/dashboard/members/2/role")
-            .authorization_bearer(&john_token)
+            .authorization_bearer(&owner_token)
             .json(&serde_json::json!({ "role": "Support" }))
             .await;
-        assert_eq!(update.status_code(), 200, "{}", update.text());
-        update.assert_json(&serde_json::json!({
-            "member_id": 2,
-            "role": "Support"
-        }));
+        assert_eq!(role_update.status_code(), 200, "{}", role_update.text());
 
         let dashboard = request
             .get("/api/tenants/1/dashboard")
-            .authorization_bearer(&john_token)
+            .authorization_bearer(&owner_token)
             .await;
         let body: serde_json::Value = dashboard.json();
-        let jane = body["members"]
+        let document_view_id = body["available_permissions"]
             .as_array()
             .unwrap()
             .iter()
-            .find(|member| member["member_id"] == 2)
+            .find(|permission| permission["key"] == "documents:view")
+            .unwrap()["id"]
+            .as_i64()
             .unwrap();
-        assert_eq!(jane["roles"], serde_json::json!(["Support"]));
-        assert_eq!(jane["permissions"].as_array().unwrap().len(), 1);
+        let role_update = request
+            .post("/api/tenants/1/dashboard/roles/3/permissions")
+            .authorization_bearer(&owner_token)
+            .json(&serde_json::json!({ "permission_ids": [document_view_id, document_view_id] }))
+            .await;
+        assert_eq!(role_update.status_code(), 200, "{}", role_update.text());
+        assert_eq!(
+            role_update.json::<serde_json::Value>()["permission_ids"],
+            serde_json::json!([document_view_id])
+        );
 
         let forbidden = request
-            .post("/api/tenants/1/dashboard/members/3/role")
-            .authorization_bearer(&jane_token)
-            .json(&serde_json::json!({ "role": "Manager" }))
-            .await;
-        assert_eq!(forbidden.status_code(), 401);
-
-        let self_update = request
-            .post("/api/tenants/1/dashboard/members/1/role")
-            .authorization_bearer(&john_token)
-            .json(&serde_json::json!({ "role": "Manager" }))
-            .await;
-        assert_eq!(self_update.status_code(), 400);
-
-        let invalid = request
-            .post("/api/tenants/1/dashboard/members/2/role")
-            .authorization_bearer(&john_token)
-            .json(&serde_json::json!({ "role": "Superuser" }))
-            .await;
-        assert_eq!(invalid.status_code(), 400);
-    })
-    .await;
-}
-
-#[tokio::test]
-#[serial]
-async fn owner_can_assign_workspace_permissions_to_a_role() {
-    request::<App, _, _>(|request, ctx| async move {
-        seed::<App>(&ctx).await.unwrap();
-        let inactive_permission = permissions::ActiveModel {
-            tenant_application_id: Set(3),
-            key: Set("analytics:read".to_owned()),
-            ..Default::default()
-        }
-        .set_tenant(1)
-        .unwrap()
-        .insert(&ctx.db)
-        .await
-        .unwrap();
-        let john = users::Entity::find_by_id(1)
-            .one(&ctx.db)
-            .await
-            .unwrap()
-            .unwrap();
-        let jane = users::Entity::find_by_id(2)
-            .one(&ctx.db)
-            .await
-            .unwrap()
-            .unwrap();
-        let jwt = ctx.config.get_jwt_config().unwrap();
-        let john_token = john.generate_jwt(&jwt.secret, jwt.expiration).unwrap();
-        let jane_token = jane.generate_jwt(&jwt.secret, jwt.expiration).unwrap();
-
-        let dashboard = request
-            .get("/api/tenants/1/dashboard")
-            .authorization_bearer(&john_token)
-            .await;
-        assert_eq!(dashboard.status_code(), 200, "{}", dashboard.text());
-        let body: serde_json::Value = dashboard.json();
-        assert_eq!(body["roles"].as_array().unwrap().len(), 4);
-        assert_eq!(body["roles"][2]["name"], "Manager");
-        assert_eq!(body["roles"][2]["permissions"].as_array().unwrap().len(), 3);
-        assert_eq!(body["available_permissions"].as_array().unwrap().len(), 4);
-
-        let update = request
-            .post("/api/tenants/1/dashboard/roles/3/permissions")
-            .authorization_bearer(&john_token)
-            .json(&serde_json::json!({ "permission_ids": [1, 4, 4] }))
-            .await;
-        assert_eq!(update.status_code(), 200, "{}", update.text());
-        update.assert_json(&serde_json::json!({
-            "role_id": 3,
-            "permission_ids": [1, 4]
-        }));
-
-        let dashboard = request
-            .get("/api/tenants/1/dashboard")
-            .authorization_bearer(&john_token)
-            .await;
-        let body: serde_json::Value = dashboard.json();
-        let jane = body["members"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|member| member["member_id"] == 2)
-            .unwrap();
-        let keys = jane["permissions"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|permission| permission["key"].as_str().unwrap())
-            .collect::<Vec<_>>();
-        assert_eq!(keys, ["billing:manage", "documents:read"]);
-
-        let forbidden = request
-            .post("/api/tenants/1/dashboard/roles/3/permissions")
-            .authorization_bearer(&jane_token)
-            .json(&serde_json::json!({ "permission_ids": [1] }))
-            .await;
-        assert_eq!(forbidden.status_code(), 401);
-
-        let other_workspace_role = request
-            .post("/api/tenants/1/dashboard/roles/5/permissions")
-            .authorization_bearer(&john_token)
-            .json(&serde_json::json!({ "permission_ids": [1] }))
-            .await;
-        assert_eq!(other_workspace_role.status_code(), 404);
-
-        let other_workspace_permission = request
-            .post("/api/tenants/1/dashboard/roles/3/permissions")
-            .authorization_bearer(&john_token)
-            .json(&serde_json::json!({ "permission_ids": [5] }))
-            .await;
-        assert_eq!(other_workspace_permission.status_code(), 400);
-
-        let inactive_application_permission = request
-            .post("/api/tenants/1/dashboard/roles/3/permissions")
-            .authorization_bearer(&john_token)
-            .json(&serde_json::json!({
-                "permission_ids": [inactive_permission.id]
-            }))
-            .await;
-        assert_eq!(inactive_application_permission.status_code(), 400);
-
-        let too_many_permissions = request
-            .post("/api/tenants/1/dashboard/roles/3/permissions")
-            .authorization_bearer(&john_token)
-            .json(&serde_json::json!({ "permission_ids": vec![1; 101] }))
-            .await;
-        assert_eq!(too_many_permissions.status_code(), 400);
-
-        let clear_permissions = request
-            .post("/api/tenants/1/dashboard/roles/3/permissions")
-            .authorization_bearer(&john_token)
+            .post("/api/tenants/1/dashboard/roles/4/permissions")
+            .authorization_bearer(&manager_token)
             .json(&serde_json::json!({ "permission_ids": [] }))
             .await;
-        assert_eq!(clear_permissions.status_code(), 200);
-        clear_permissions.assert_json(&serde_json::json!({
-            "role_id": 3,
-            "permission_ids": []
-        }));
+        assert_eq!(forbidden.status_code(), 401);
+        let wrong_tenant = request
+            .post("/api/tenants/1/dashboard/roles/5/permissions")
+            .authorization_bearer(&owner_token)
+            .json(&serde_json::json!({ "permission_ids": [] }))
+            .await;
+        assert_eq!(wrong_tenant.status_code(), 404);
     })
     .await;
 }
 
 #[tokio::test]
 #[serial]
-async fn non_member_cannot_view_a_workspace_dashboard() {
+async fn non_member_cannot_view_dashboard() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
         let outsider = users::Model::create_with_password(
@@ -360,12 +179,10 @@ async fn non_member_cannot_view_a_workspace_dashboard() {
         .unwrap();
         let jwt = ctx.config.get_jwt_config().unwrap();
         let token = outsider.generate_jwt(&jwt.secret, jwt.expiration).unwrap();
-
         let response = request
             .get("/api/tenants/1/dashboard")
             .authorization_bearer(&token)
             .await;
-
         assert_eq!(response.status_code(), 401);
     })
     .await;

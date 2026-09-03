@@ -9,19 +9,28 @@ impl MigrationTrait for Migration {
     async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
         create_table(
             m,
-            "invoices",
+            "projects",
             &[
                 ("id", ColType::PkAuto),
-                ("number", ColType::String),
-                ("amount_cents", ColType::BigInteger),
-                ("status", ColType::String),
+                ("name", ColType::String),
+                ("description", ColType::Text),
             ],
             &[("tenant", "")],
+        )
+        .await?;
+        m.create_index(
+            Index::create()
+                .name("uidx-projects-tenant-name")
+                .table(Alias::new("projects"))
+                .col(Alias::new("tenant_id"))
+                .col(Alias::new("name"))
+                .unique()
+                .to_owned(),
         )
         .await
     }
 
     async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
-        drop_table(m, "invoices").await
+        drop_table(m, "projects").await
     }
 }

@@ -11,7 +11,7 @@ impl MigrationTrait for Migration {
             m,
             "permissions",
             &[("id", ColType::PkAuto), ("key", ColType::String)],
-            &[("tenant", ""), ("tenant_application", "")],
+            &[("tenant", "")],
         )
         .await
     }

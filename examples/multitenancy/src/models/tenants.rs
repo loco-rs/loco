@@ -4,6 +4,20 @@ use sea_orm::entity::prelude::*;
 use sea_orm::DatabaseTransaction;
 pub type Tenants = Entity;
 
+pub const CORE_PERMISSION_KEYS: [&str; 11] = [
+    "clients:view",
+    "clients:create",
+    "clients:edit",
+    "projects:view",
+    "projects:create",
+    "projects:edit",
+    "documents:view",
+    "documents:create",
+    "documents:edit",
+    "billing:view",
+    "billing:create",
+];
+
 use super::_entities::{
     applications, permissions, role_permissions, roles, tenant_applications, tenant_member_roles,
     tenant_members, tenants,
@@ -11,7 +25,6 @@ use super::_entities::{
 
 pub struct CreatedWorkspace {
     pub tenant: tenants::Model,
-    pub applications: Vec<applications::Model>,
 }
 
 async fn find_or_create_application(
@@ -70,11 +83,9 @@ async fn create_tenant_application(
 async fn create_permission(
     txn: &DatabaseTransaction,
     tenant_id: i64,
-    tenant_application_id: i64,
     key: &str,
 ) -> ModelResult<permissions::Model> {
     permissions::ActiveModel {
-        tenant_application_id: Set(tenant_application_id),
         key: Set(key.to_owned()),
         ..Default::default()
     }
@@ -98,6 +109,31 @@ async fn grant_permission(
     .set_tenant(tenant_id)?
     .insert(txn)
     .await?;
+    Ok(())
+}
+
+fn role_has_default_permission(role: &str, permission: &str) -> bool {
+    match role {
+        "Owner" | "Administrator" => true,
+        "Manager" => permission != "billing:create",
+        "Support" => permission.ends_with(":view") && permission != "billing:view",
+        _ => false,
+    }
+}
+
+async fn provision_permissions(
+    txn: &DatabaseTransaction,
+    tenant_id: i64,
+    tenant_roles: &[roles::Model],
+) -> ModelResult<()> {
+    for key in CORE_PERMISSION_KEYS {
+        let permission = create_permission(txn, tenant_id, key).await?;
+        for role in tenant_roles {
+            if role_has_default_permission(&role.name, key) {
+                grant_permission(txn, tenant_id, role.id, permission.id).await?;
+            }
+        }
+    }
     Ok(())
 }
 
@@ -142,12 +178,6 @@ impl Model {
         .insert(txn)
         .await?;
 
-        let documents_application = find_or_create_application(txn, "Documents").await?;
-        let billing_application = find_or_create_application(txn, "Billing").await?;
-        let documents_tenant_application =
-            create_tenant_application(txn, tenant.id, documents_application.id, "active").await?;
-        let billing_tenant_application =
-            create_tenant_application(txn, tenant.id, billing_application.id, "active").await?;
         for name in [
             "Analytics",
             "Client Portal",
@@ -180,55 +210,9 @@ impl Model {
         .insert(txn)
         .await?;
 
-        let read_permission = create_permission(
-            txn,
-            tenant.id,
-            documents_tenant_application.id,
-            "documents:read",
-        )
-        .await?;
-        let documents_create = create_permission(
-            txn,
-            tenant.id,
-            documents_tenant_application.id,
-            "documents:create",
-        )
-        .await?;
-        let billing_read = create_permission(
-            txn,
-            tenant.id,
-            billing_tenant_application.id,
-            "billing:read",
-        )
-        .await?;
-        let billing_manage = create_permission(
-            txn,
-            tenant.id,
-            billing_tenant_application.id,
-            "billing:manage",
-        )
-        .await?;
-        for (role_id, permission_id) in [
-            (owner.id, read_permission.id),
-            (owner.id, documents_create.id),
-            (owner.id, billing_read.id),
-            (owner.id, billing_manage.id),
-            (administrator.id, read_permission.id),
-            (administrator.id, documents_create.id),
-            (administrator.id, billing_read.id),
-            (administrator.id, billing_manage.id),
-            (manager.id, read_permission.id),
-            (manager.id, documents_create.id),
-            (manager.id, billing_read.id),
-            (support.id, read_permission.id),
-        ] {
-            grant_permission(txn, tenant.id, role_id, permission_id).await?;
-        }
+        provision_permissions(txn, tenant.id, &[owner, administrator, manager, support]).await?;
 
-        Ok(CreatedWorkspace {
-            tenant,
-            applications: vec![documents_application, billing_application],
-        })
+        Ok(CreatedWorkspace { tenant })
     }
 
     /// Creates a tenant workspace and assigns the user as its owner.
@@ -248,6 +232,22 @@ impl Model {
             Self::create_workspace_in_transaction(&txn, user_id, tenant_name, tenant_slug).await?;
         txn.commit().await?;
         Ok(workspace)
+    }
+
+    /// Creates the default tenant-level permissions and role grants for fixtures.
+    ///
+    /// # Errors
+    ///
+    /// Returns a model error when roles cannot be loaded or grants cannot be inserted.
+    pub async fn seed_access_defaults(db: &DatabaseConnection) -> ModelResult<()> {
+        let txn = db.begin().await?;
+        let seeded_tenants = tenants::Entity::find().all(&txn).await?;
+        for tenant in seeded_tenants {
+            let tenant_roles = roles::Entity::find().in_tenant(tenant.id).all(&txn).await?;
+            provision_permissions(&txn, tenant.id, &tenant_roles).await?;
+        }
+        txn.commit().await?;
+        Ok(())
     }
 }
 

@@ -49,10 +49,9 @@ impl MigrationTrait for Migration {
         .await?;
         m.create_index(
             Index::create()
-                .name("uidx-permissions-tenant-subscription-key")
+                .name("uidx-permissions-tenant-key")
                 .table(Alias::new("permissions"))
                 .col(Alias::new("tenant_id"))
-                .col(Alias::new("tenant_application_id"))
                 .col(Alias::new("key"))
                 .unique()
                 .to_owned(),
@@ -86,7 +85,7 @@ impl MigrationTrait for Migration {
                 "uidx-role-permissions-tenant-role-permission",
                 "role_permissions",
             ),
-            ("uidx-permissions-tenant-subscription-key", "permissions"),
+            ("uidx-permissions-tenant-key", "permissions"),
             (
                 "uidx-tenant-member-roles-tenant-member-role",
                 "tenant_member_roles",

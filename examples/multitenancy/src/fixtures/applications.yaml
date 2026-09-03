@@ -1,25 +1,17 @@
 ---
 - id: 1
-  name: Documents
-  created_at: "2026-01-01T00:00:00Z"
-  updated_at: "2026-01-01T00:00:00Z"
-- id: 2
-  name: Billing
-  created_at: "2026-01-01T00:00:00Z"
-  updated_at: "2026-01-01T00:00:00Z"
-- id: 3
   name: Analytics
   created_at: "2026-01-01T00:00:00Z"
   updated_at: "2026-01-01T00:00:00Z"
-- id: 4
+- id: 2
   name: Client Portal
   created_at: "2026-01-01T00:00:00Z"
   updated_at: "2026-01-01T00:00:00Z"
-- id: 5
+- id: 3
   name: Feature Flags
   created_at: "2026-01-01T00:00:00Z"
   updated_at: "2026-01-01T00:00:00Z"
-- id: 6
+- id: 4
   name: Priority Support
   created_at: "2026-01-01T00:00:00Z"
   updated_at: "2026-01-01T00:00:00Z"

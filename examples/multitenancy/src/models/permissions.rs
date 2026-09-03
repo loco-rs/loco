@@ -3,9 +3,7 @@ use loco_rs::prelude::*;
 use sea_orm::{entity::prelude::*, JoinType, QuerySelect};
 pub type Permissions = Entity;
 
-use super::_entities::{
-    permissions, role_permissions, roles, tenant_applications, tenant_member_roles, tenant_members,
-};
+use super::_entities::{permissions, role_permissions, roles, tenant_member_roles, tenant_members};
 
 impl TenantEntity for Entity {
     type TenantId = i64;
@@ -33,8 +31,7 @@ impl ActiveModelBehavior for ActiveModel {
 
 // implement your read-oriented logic here
 impl Model {
-    /// Returns whether a tenant member has `permission_key` for an active
-    /// tenant application.
+    /// Returns whether a tenant member has a tenant-level permission.
     ///
     /// # Errors
     ///
@@ -43,19 +40,11 @@ impl Model {
         db: &DatabaseConnection,
         tenant_id: i64,
         user_id: i64,
-        application_id: i64,
         permission_key: &str,
     ) -> ModelResult<bool> {
         Ok(permissions::Entity::find()
             .in_tenant(tenant_id)
             .filter(permissions::Column::Key.eq(permission_key))
-            .join(
-                JoinType::InnerJoin,
-                permissions::Relation::TenantApplications.def(),
-            )
-            .filter(tenant_applications::Column::TenantId.eq(tenant_id))
-            .filter(tenant_applications::Column::ApplicationId.eq(application_id))
-            .filter(tenant_applications::Column::Status.eq("active"))
             .join(
                 JoinType::InnerJoin,
                 permissions::Relation::RolePermissions.def(),

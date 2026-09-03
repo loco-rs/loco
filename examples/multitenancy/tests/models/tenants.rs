@@ -2,11 +2,11 @@ use loco_rs::testing::prelude::*;
 use multitenancy::{
     app::App,
     models::_entities::{
-        applications, documents, invoices, permissions, role_permissions, roles,
+        applications, clients, documents, invoices, permissions, projects, role_permissions, roles,
         tenant_applications, tenant_member_roles, tenant_members, tenants, users,
     },
 };
-use sea_orm::{EntityTrait, QueryOrder};
+use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder};
 use serial_test::serial;
 
 #[tokio::test]
@@ -45,8 +45,6 @@ async fn seed_creates_two_workspaces_with_application_availability() {
     assert_eq!(
         application_names,
         [
-            "Documents",
-            "Billing",
             "Analytics",
             "Client Portal",
             "Feature Flags",
@@ -69,18 +67,14 @@ async fn seed_creates_two_workspaces_with_application_availability() {
             ))
             .collect::<Vec<_>>(),
         [
-            (1, 1, "active"),
+            (1, 1, "inactive"),
             (1, 2, "active"),
             (1, 3, "inactive"),
-            (2, 1, "active"),
-            (2, 2, "active"),
-            (2, 3, "active"),
             (1, 4, "active"),
-            (1, 5, "inactive"),
-            (1, 6, "active"),
-            (2, 4, "inactive"),
-            (2, 5, "active"),
-            (2, 6, "active")
+            (2, 1, "active"),
+            (2, 2, "inactive"),
+            (2, 3, "active"),
+            (2, 4, "active")
         ]
     );
 
@@ -131,7 +125,8 @@ async fn seed_creates_two_workspaces_with_application_availability() {
     assert_eq!(assigned_roles, [(1, 1), (2, 3), (3, 4), (4, 5)]);
 
     let permission_keys: Vec<String> = permissions::Entity::find()
-        .order_by_asc(permissions::Column::Id)
+        .filter(permissions::Column::TenantId.eq(1))
+        .order_by_asc(permissions::Column::Key)
         .all(db)
         .await
         .unwrap()
@@ -141,59 +136,43 @@ async fn seed_creates_two_workspaces_with_application_availability() {
     assert_eq!(
         permission_keys,
         [
-            "documents:read",
+            "billing:create",
+            "billing:view",
+            "clients:create",
+            "clients:edit",
+            "clients:view",
             "documents:create",
-            "billing:read",
-            "billing:manage",
-            "documents:read",
-            "documents:create",
-            "billing:read",
-            "billing:manage",
-            "analytics:read"
+            "documents:edit",
+            "documents:view",
+            "projects:create",
+            "projects:edit",
+            "projects:view"
         ]
     );
 
-    let grants: Vec<(i64, i64)> = role_permissions::Entity::find()
-        .order_by_asc(role_permissions::Column::Id)
-        .all(db)
-        .await
-        .unwrap()
-        .into_iter()
-        .map(|grant| (grant.role_id, grant.permission_id))
-        .collect();
-    assert_eq!(
-        grants,
-        [
-            (1, 1),
-            (1, 2),
-            (1, 3),
-            (1, 4),
-            (2, 1),
-            (2, 2),
-            (2, 3),
-            (2, 4),
-            (3, 1),
-            (3, 2),
-            (3, 3),
-            (4, 1),
-            (5, 5),
-            (5, 6),
-            (5, 7),
-            (5, 8),
-            (5, 9),
-            (6, 5),
-            (6, 6),
-            (6, 7),
-            (6, 8),
-            (6, 9),
-            (7, 5),
-            (7, 6),
-            (7, 7),
-            (7, 9),
-            (8, 5),
-            (8, 9)
-        ]
-    );
+    assert_eq!(permissions::Entity::find().count(db).await.unwrap(), 22);
+    for (role_id, expected_grants) in [
+        (1, 11),
+        (2, 11),
+        (3, 10),
+        (4, 3),
+        (5, 11),
+        (6, 11),
+        (7, 10),
+        (8, 3),
+    ] {
+        assert_eq!(
+            role_permissions::Entity::find()
+                .filter(role_permissions::Column::RoleId.eq(role_id))
+                .count(db)
+                .await
+                .unwrap(),
+            expected_grants
+        );
+    }
+
+    assert_eq!(clients::Entity::find().count(db).await.unwrap(), 3);
+    assert_eq!(projects::Entity::find().count(db).await.unwrap(), 3);
 
     let seeded_documents = documents::Entity::find()
         .order_by_asc(documents::Column::Id)

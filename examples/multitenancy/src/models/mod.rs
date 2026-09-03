@@ -1,8 +1,10 @@
 pub mod _entities;
 pub mod applications;
+pub mod clients;
 pub mod documents;
 pub mod invoices;
 pub mod permissions;
+pub mod projects;
 pub mod role_permissions;
 pub mod roles;
 pub mod tenant_applications;

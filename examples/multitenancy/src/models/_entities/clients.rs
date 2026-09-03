@@ -4,22 +4,19 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "permissions")]
+#[sea_orm(table_name = "clients")]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
     #[sea_orm(primary_key)]
     pub id: i64,
-    #[sea_orm(unique_key = "key")]
-    pub key: String,
-    #[sea_orm(unique_key = "key")]
+    pub name: String,
+    pub email: String,
     pub tenant_id: i64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::role_permissions::Entity")]
-    RolePermissions,
     #[sea_orm(
         belongs_to = "super::tenants::Entity",
         from = "Column::TenantId",
@@ -28,12 +25,6 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     Tenants,
-}
-
-impl Related<super::role_permissions::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::RolePermissions.def()
-    }
 }
 
 impl Related<super::tenants::Entity> for Entity {

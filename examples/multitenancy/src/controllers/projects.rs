@@ -3,13 +3,13 @@ use loco_rs::prelude::*;
 
 use crate::{
     controllers::authorization::require_permission,
-    dtos::documents::{CreateDocument, DocumentDto, UpdateDocument},
-    models::{documents, users},
+    dtos::projects::{CreateProject, ProjectDto, UpdateProject},
+    models::{projects, users},
 };
 
-const VIEW_DOCUMENTS: &str = "documents:view";
-const CREATE_DOCUMENTS: &str = "documents:create";
-const EDIT_DOCUMENTS: &str = "documents:edit";
+const VIEW_PROJECTS: &str = "projects:view";
+const CREATE_PROJECTS: &str = "projects:create";
+const EDIT_PROJECTS: &str = "projects:edit";
 
 #[debug_handler]
 pub async fn index(
@@ -17,14 +17,14 @@ pub async fn index(
     auth: auth::JWTWithUser<users::Model>,
     Path(tenant_id): Path<i64>,
 ) -> Result<Response> {
-    require_permission(&ctx, auth.user.id, tenant_id, VIEW_DOCUMENTS).await?;
+    require_permission(&ctx, auth.user.id, tenant_id, VIEW_PROJECTS).await?;
     format::json(
-        documents::Entity::find()
+        projects::Entity::find()
             .in_tenant(tenant_id)
             .all(&ctx.db)
             .await?
             .into_iter()
-            .map(DocumentDto::from)
+            .map(ProjectDto::from)
             .collect::<Vec<_>>(),
     )
 }
@@ -35,13 +35,13 @@ pub async fn show(
     auth: auth::JWTWithUser<users::Model>,
     Path((tenant_id, id)): Path<(i64, i64)>,
 ) -> Result<Response> {
-    require_permission(&ctx, auth.user.id, tenant_id, VIEW_DOCUMENTS).await?;
-    let document = documents::Entity::find_by_id(id)
+    require_permission(&ctx, auth.user.id, tenant_id, VIEW_PROJECTS).await?;
+    let project = projects::Entity::find_by_id(id)
         .in_tenant(tenant_id)
         .one(&ctx.db)
         .await?
         .ok_or(ModelError::EntityNotFound)?;
-    format::json(DocumentDto::from(document))
+    format::json(ProjectDto::from(project))
 }
 
 #[debug_handler]
@@ -49,17 +49,18 @@ pub async fn create(
     State(ctx): State<AppContext>,
     auth: auth::JWTWithUser<users::Model>,
     Path(tenant_id): Path<i64>,
-    JsonValidate(params): JsonValidate<CreateDocument>,
+    JsonValidate(params): JsonValidate<CreateProject>,
 ) -> Result<Response> {
-    require_permission(&ctx, auth.user.id, tenant_id, CREATE_DOCUMENTS).await?;
-    let document = documents::ActiveModel {
-        title: Set(params.title),
+    require_permission(&ctx, auth.user.id, tenant_id, CREATE_PROJECTS).await?;
+    let project = projects::ActiveModel {
+        name: Set(params.name),
+        description: Set(params.description),
         ..Default::default()
     }
     .set_tenant(tenant_id)?
     .insert(&ctx.db)
     .await?;
-    format::json(DocumentDto::from(document))
+    format::json(ProjectDto::from(project))
 }
 
 #[debug_handler]
@@ -67,22 +68,23 @@ pub async fn update(
     State(ctx): State<AppContext>,
     auth: auth::JWTWithUser<users::Model>,
     Path((tenant_id, id)): Path<(i64, i64)>,
-    JsonValidate(params): JsonValidate<UpdateDocument>,
+    JsonValidate(params): JsonValidate<UpdateProject>,
 ) -> Result<Response> {
-    require_permission(&ctx, auth.user.id, tenant_id, EDIT_DOCUMENTS).await?;
-    let document = documents::Entity::find_by_id(id)
+    require_permission(&ctx, auth.user.id, tenant_id, EDIT_PROJECTS).await?;
+    let project = projects::Entity::find_by_id(id)
         .in_tenant(tenant_id)
         .one(&ctx.db)
         .await?
         .ok_or(ModelError::EntityNotFound)?;
-    let mut document = document.into_active_model();
-    document.title = Set(params.title);
-    format::json(DocumentDto::from(document.update(&ctx.db).await?))
+    let mut project = project.into_active_model();
+    project.name = Set(params.name);
+    project.description = Set(params.description);
+    format::json(ProjectDto::from(project.update(&ctx.db).await?))
 }
 
 pub fn routes() -> Routes {
     Routes::new()
-        .prefix("api/tenants/{tenant_id}/documents/")
+        .prefix("api/tenants/{tenant_id}/projects/")
         .add("/", get(index))
         .add("/", post(create))
         .add("{id}", get(show))

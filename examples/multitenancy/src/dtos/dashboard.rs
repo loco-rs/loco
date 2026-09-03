@@ -13,9 +13,6 @@ fn validate_role(role: &str) -> Result<(), validator::ValidationError> {
 pub struct PermissionAccess {
     #[ts(type = "number")]
     pub id: i64,
-    #[ts(type = "number")]
-    pub application_id: i64,
-    pub application_name: String,
     pub key: String,
 }
 
@@ -43,12 +40,11 @@ pub struct MemberAccess {
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, TS)]
 #[ts(export, export_to = "../frontend/src/bindings/")]
-pub struct DashboardApplication {
+pub struct DashboardAddon {
     #[ts(type = "number")]
     pub id: i64,
     pub name: String,
     pub status: String,
-    pub permissions: Vec<String>,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, TS)]
@@ -57,7 +53,11 @@ pub struct DashboardStats {
     #[ts(type = "number")]
     pub member_count: u64,
     #[ts(type = "number")]
-    pub application_count: u64,
+    pub addon_count: u64,
+    #[ts(type = "number")]
+    pub client_count: u64,
+    #[ts(type = "number")]
+    pub project_count: u64,
     #[ts(type = "number")]
     pub document_count: u64,
     #[ts(type = "number")]
@@ -75,7 +75,7 @@ pub struct DashboardDto {
     pub members: Vec<MemberAccess>,
     pub roles: Vec<RoleAccess>,
     pub available_permissions: Vec<PermissionAccess>,
-    pub applications: Vec<DashboardApplication>,
+    pub addons: Vec<DashboardAddon>,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, validator::Validate, TS)]

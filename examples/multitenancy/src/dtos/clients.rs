@@ -3,29 +3,26 @@ use ts_rs::TS;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, TS)]
 #[ts(export, export_to = "../frontend/src/bindings/")]
-pub struct InvoiceDto {
+pub struct ClientDto {
     #[ts(type = "number")]
     pub id: i64,
     #[ts(type = "number")]
     pub tenant_id: i64,
-    pub number: String,
-    #[ts(type = "number")]
-    pub amount_cents: i64,
-    pub status: String,
+    pub name: String,
+    pub email: String,
     #[ts(type = "string")]
     pub created_at: DateTimeWithTimeZone,
     #[ts(type = "string")]
     pub updated_at: DateTimeWithTimeZone,
 }
 
-impl From<crate::models::_entities::invoices::Model> for InvoiceDto {
-    fn from(model: crate::models::_entities::invoices::Model) -> Self {
+impl From<crate::models::_entities::clients::Model> for ClientDto {
+    fn from(model: crate::models::_entities::clients::Model) -> Self {
         Self {
             id: model.id,
             tenant_id: model.tenant_id,
-            number: model.number,
-            amount_cents: model.amount_cents,
-            status: model.status,
+            name: model.name,
+            email: model.email,
             created_at: model.created_at,
             updated_at: model.updated_at,
         }
@@ -34,12 +31,18 @@ impl From<crate::models::_entities::invoices::Model> for InvoiceDto {
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, validator::Validate, TS)]
 #[ts(export, export_to = "../frontend/src/bindings/")]
-pub struct CreateInvoice {
-    #[validate(length(min = 2, max = 40))]
-    pub number: String,
-    #[validate(range(min = 1))]
-    #[ts(type = "number")]
-    pub amount_cents: i64,
-    #[validate(length(min = 2, max = 24))]
-    pub status: String,
+pub struct CreateClient {
+    #[validate(length(min = 2, max = 100))]
+    pub name: String,
+    #[validate(email)]
+    pub email: String,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize, validator::Validate, TS)]
+#[ts(export, export_to = "../frontend/src/bindings/")]
+pub struct UpdateClient {
+    #[validate(length(min = 2, max = 100))]
+    pub name: String,
+    #[validate(email)]
+    pub email: String,
 }

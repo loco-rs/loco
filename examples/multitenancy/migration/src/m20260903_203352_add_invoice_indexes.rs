@@ -8,10 +8,9 @@ impl MigrationTrait for Migration {
     async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
         m.create_index(
             Index::create()
-                .name("uidx-invoices-tenant-subscription-number")
+                .name("uidx-invoices-tenant-number")
                 .table(Alias::new("invoices"))
                 .col(Alias::new("tenant_id"))
-                .col(Alias::new("tenant_application_id"))
                 .col(Alias::new("number"))
                 .unique()
                 .to_owned(),
@@ -19,20 +18,16 @@ impl MigrationTrait for Migration {
         .await?;
         m.create_index(
             Index::create()
-                .name("idx-invoices-tenant-subscription")
+                .name("idx-invoices-tenant")
                 .table(Alias::new("invoices"))
                 .col(Alias::new("tenant_id"))
-                .col(Alias::new("tenant_application_id"))
                 .to_owned(),
         )
         .await
     }
 
     async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
-        for name in [
-            "idx-invoices-tenant-subscription",
-            "uidx-invoices-tenant-subscription-number",
-        ] {
+        for name in ["idx-invoices-tenant", "uidx-invoices-tenant-number"] {
             m.drop_index(
                 Index::drop()
                     .name(name)

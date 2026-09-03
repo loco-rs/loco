@@ -1,8 +1,8 @@
 use crate::{
-    dtos::auth::{ApplicationAccess, CreateWorkspace, RegisterAccount, Workspace},
+    dtos::auth::{CreateWorkspace, RegisterAccount, Workspace},
     mailers::auth::AuthMailer,
     models::{
-        _entities::{applications, tenant_applications, tenant_members, tenants, users},
+        _entities::{tenant_members, tenants, users},
         tenants as tenant_model,
         users::{LoginParams, RegisterParams},
     },
@@ -203,27 +203,10 @@ async fn workspaces(
             .one(&ctx.db)
             .await?
             .ok_or(ModelError::EntityNotFound)?;
-        let tenant_application_rows = tenant_applications::Entity::find()
-            .in_tenant(tenant.id)
-            .filter(tenant_applications::Column::Status.eq("active"))
-            .order_by_asc(tenant_applications::Column::Id)
-            .find_also_related(applications::Entity)
-            .all(&ctx.db)
-            .await?;
-        let applications = tenant_application_rows
-            .into_iter()
-            .filter_map(|(_, application)| application)
-            .map(|application| ApplicationAccess {
-                id: application.id,
-                name: application.name,
-            })
-            .collect();
-
         workspaces.push(Workspace {
             tenant_id: tenant.id,
             tenant_name: tenant.name,
             tenant_slug: tenant.slug,
-            applications,
         });
     }
 
@@ -248,14 +231,6 @@ async fn create_workspace(
         tenant_id: workspace.tenant.id,
         tenant_name: workspace.tenant.name,
         tenant_slug: workspace.tenant.slug,
-        applications: workspace
-            .applications
-            .into_iter()
-            .map(|application| ApplicationAccess {
-                id: application.id,
-                name: application.name,
-            })
-            .collect(),
     })
 }
 

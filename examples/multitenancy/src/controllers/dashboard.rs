@@ -2,16 +2,16 @@
 use std::collections::{BTreeMap, HashMap};
 
 use loco_rs::prelude::*;
-use sea_orm::{JoinType, PaginatorTrait, QuerySelect, RelationTrait};
+use sea_orm::PaginatorTrait;
 
 use crate::{
     dtos::dashboard::{
-        DashboardApplication, DashboardDto, DashboardStats, MemberAccess, MemberRoleUpdate,
+        DashboardAddon, DashboardDto, DashboardStats, MemberAccess, MemberRoleUpdate,
         PermissionAccess, RoleAccess, RolePermissionsUpdate, UpdateMemberRole,
         UpdateRolePermissions,
     },
     models::_entities::{
-        applications, documents, invoices, permissions, role_permissions, roles,
+        applications, clients, documents, invoices, permissions, projects, role_permissions, roles,
         tenant_applications, tenant_member_roles, tenant_members, tenants, users,
     },
 };
@@ -32,20 +32,10 @@ fn member_access(
             let Some(permission) = access.permissions.get(permission_id) else {
                 continue;
             };
-            let Some((application_id, application_name, status)) =
-                access.applications.get(&permission.tenant_application_id)
-            else {
-                continue;
-            };
-            if status != "active" {
-                continue;
-            }
             effective_permissions.insert(
-                (application_name.clone(), permission.key.clone()),
+                permission.key.clone(),
                 PermissionAccess {
                     id: permission.id,
-                    application_id: *application_id,
-                    application_name: application_name.clone(),
                     key: permission.key.clone(),
                 },
             );
@@ -63,32 +53,20 @@ fn member_access(
     }
 }
 
-fn permission_access(
-    permission: &permissions::Model,
-    access: &AccessMaps,
-) -> Option<PermissionAccess> {
-    let (application_id, application_name, status) =
-        access.applications.get(&permission.tenant_application_id)?;
-    if status != "active" {
-        return None;
-    }
-    Some(PermissionAccess {
+fn permission_access(permission: &permissions::Model) -> PermissionAccess {
+    PermissionAccess {
         id: permission.id,
-        application_id: *application_id,
-        application_name: application_name.clone(),
         key: permission.key.clone(),
-    })
+    }
 }
 
 fn build_available_permissions(access: &AccessMaps) -> Vec<PermissionAccess> {
     let mut result = access
         .permissions
         .values()
-        .filter_map(|permission| permission_access(permission, access))
+        .map(permission_access)
         .collect::<Vec<_>>();
-    result.sort_by(|left, right| {
-        (&left.application_name, &left.key).cmp(&(&right.application_name, &right.key))
-    });
+    result.sort_by(|left, right| left.key.cmp(&right.key));
     result
 }
 
@@ -103,11 +81,9 @@ fn build_roles(access: &AccessMaps) -> Vec<RoleAccess> {
                 .into_iter()
                 .flatten()
                 .filter_map(|permission_id| access.permissions.get(permission_id))
-                .filter_map(|permission| permission_access(permission, access))
+                .map(permission_access)
                 .collect::<Vec<_>>();
-            role_permissions.sort_by(|left, right| {
-                (&left.application_name, &left.key).cmp(&(&right.application_name, &right.key))
-            });
+            role_permissions.sort_by(|left, right| left.key.cmp(&right.key));
             RoleAccess {
                 id: role.id,
                 name: role.name.clone(),
@@ -174,7 +150,6 @@ struct AccessMaps {
     roles: HashMap<i64, roles::Model>,
     role_permissions: HashMap<i64, Vec<i64>>,
     permissions: HashMap<i64, permissions::Model>,
-    applications: HashMap<i64, (i64, String, String)>,
 }
 
 impl AccessMaps {
@@ -183,7 +158,6 @@ impl AccessMaps {
         roles: Vec<roles::Model>,
         grants: Vec<role_permissions::Model>,
         permissions: Vec<permissions::Model>,
-        tenant_applications: &[TenantApplication],
     ) -> Self {
         let mut member_roles: HashMap<i64, Vec<i64>> = HashMap::new();
         for assignment in assignments {
@@ -207,21 +181,6 @@ impl AccessMaps {
                 .into_iter()
                 .map(|permission| (permission.id, permission))
                 .collect(),
-            applications: tenant_applications
-                .iter()
-                .filter_map(|(tenant_application, application)| {
-                    application.as_ref().map(|application| {
-                        (
-                            tenant_application.id,
-                            (
-                                application.id,
-                                application.name.clone(),
-                                tenant_application.status.clone(),
-                            ),
-                        )
-                    })
-                })
-                .collect(),
         }
     }
 }
@@ -238,27 +197,14 @@ fn build_members(
     members
 }
 
-fn build_applications(
-    tenant_applications: Vec<TenantApplication>,
-    current_member: &MemberAccess,
-) -> Vec<DashboardApplication> {
+fn build_addons(tenant_applications: Vec<TenantApplication>) -> Vec<DashboardAddon> {
     let mut result = tenant_applications
         .into_iter()
         .filter_map(|(tenant_application, application)| {
-            application.map(|application| {
-                let mut permissions = current_member
-                    .permissions
-                    .iter()
-                    .filter(|permission| permission.application_id == application.id)
-                    .map(|permission| permission.key.clone())
-                    .collect::<Vec<_>>();
-                permissions.sort();
-                DashboardApplication {
-                    id: application.id,
-                    name: application.name,
-                    status: tenant_application.status,
-                    permissions,
-                }
+            application.map(|application| DashboardAddon {
+                id: application.id,
+                name: application.name,
+                status: tenant_application.status,
             })
         })
         .collect::<Vec<_>>();
@@ -274,15 +220,9 @@ async fn ensure_owner(ctx: &AppContext, tenant_id: i64, user_id: i64) -> Result<
         roles,
         grants,
         permissions,
-        tenant_applications,
+        tenant_applications: _,
     } = rows;
-    let access = AccessMaps::from_rows(
-        assignments,
-        roles,
-        grants,
-        permissions,
-        &tenant_applications,
-    );
+    let access = AccessMaps::from_rows(assignments, roles, grants, permissions);
     let is_owner = build_members(member_users, &access)
         .iter()
         .find(|member| member.user_id == user_id)
@@ -321,13 +261,7 @@ pub async fn show(
         permissions,
         tenant_applications,
     } = rows;
-    let access = AccessMaps::from_rows(
-        assignments,
-        roles,
-        grants,
-        permissions,
-        &tenant_applications,
-    );
+    let access = AccessMaps::from_rows(assignments, roles, grants, permissions);
     let members = build_members(member_users, &access);
     let current_member = members
         .iter()
@@ -335,7 +269,7 @@ pub async fn show(
         .cloned()
         .ok_or(ModelError::EntityNotFound)?;
 
-    let dashboard_applications = build_applications(tenant_applications, &current_member);
+    let dashboard_addons = build_addons(tenant_applications);
     let dashboard_roles = build_roles(&access);
     let available_permissions = build_available_permissions(&access);
 
@@ -347,9 +281,19 @@ pub async fn show(
         .in_tenant(tenant_id)
         .count(&ctx.db)
         .await?;
+    let client_count = clients::Entity::find()
+        .in_tenant(tenant_id)
+        .count(&ctx.db)
+        .await?;
+    let project_count = projects::Entity::find()
+        .in_tenant(tenant_id)
+        .count(&ctx.db)
+        .await?;
     let stats = DashboardStats {
         member_count: members.len() as u64,
-        application_count: dashboard_applications.len() as u64,
+        addon_count: dashboard_addons.len() as u64,
+        client_count,
+        project_count,
         document_count,
         invoice_count,
     };
@@ -362,7 +306,7 @@ pub async fn show(
         members,
         roles: dashboard_roles,
         available_permissions,
-        applications: dashboard_applications,
+        addons: dashboard_addons,
     })
 }
 
@@ -393,12 +337,6 @@ pub async fn update_role_permissions(
         permissions::Entity::find()
             .in_tenant(tenant_id)
             .filter(permissions::Column::Id.is_in(permission_ids.clone()))
-            .join(
-                JoinType::InnerJoin,
-                permissions::Relation::TenantApplications.def(),
-            )
-            .filter(tenant_applications::Column::TenantId.eq(tenant_id))
-            .filter(tenant_applications::Column::Status.eq("active"))
             .all(&ctx.db)
             .await?
     };
