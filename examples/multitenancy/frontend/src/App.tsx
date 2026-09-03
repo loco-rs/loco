@@ -43,18 +43,12 @@ export function App() {
     }
   }, [location.pathname, navigate, promptWorkspaceCreation]);
 
-  function selectWorkspace(value: string) {
-    const next = workspaceOptions.find(
-      (option) => `${option.tenantId}:${option.applicationId}` === value,
-    );
+  function chooseWorkspace(workspace: Workspace) {
+    const next = workspaceSelection(workspace);
     if (next) {
       saveWorkspace(next);
       setSavedWorkspace(next);
     }
-  }
-
-  function chooseWorkspace(value: string) {
-    selectWorkspace(value);
     workspaceMenuRef.current?.removeAttribute("open");
   }
 
@@ -131,24 +125,21 @@ export function App() {
                   </div>
                   <div className="workspace-menu-options">
                     <span className="workspace-menu-label">Switch workspace</span>
-                    {workspaceOptions.map((option) => {
-                      const value = `${option.tenantId}:${option.applicationId}`;
-                      const active =
-                        option.tenantId === selectedWorkspace?.tenantId &&
-                        option.applicationId === selectedWorkspace.applicationId;
+                    {workspaces.data?.map((workspace) => {
+                      const active = workspace.tenant_id === selectedWorkspace?.tenantId;
                       return (
                         <button
                           className={active ? "active" : undefined}
                           type="button"
-                          key={value}
-                          onClick={() => chooseWorkspace(value)}
+                          key={workspace.tenant_id}
+                          onClick={() => chooseWorkspace(workspace)}
                         >
-                          <span className={`workspace-app-icon ${option.applicationName.toLowerCase()}`}>
-                            {option.applicationName.charAt(0)}
+                          <span className="workspace-app-icon workspace">
+                            {workspace.tenant_name.charAt(0)}
                           </span>
                           <span>
-                            <strong>{option.tenantName}</strong>
-                            <small>{option.applicationName}</small>
+                            <strong>{workspace.tenant_name}</strong>
+                            <small>{workspace.applications.length} active applications</small>
                           </span>
                           {active && <span className="workspace-check" aria-label="Current">✓</span>}
                         </button>

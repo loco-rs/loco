@@ -74,7 +74,7 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
 
         <section className="panel overview-panel">
           <div className="panel-heading">
-            <div><span className="eyebrow">Active services</span><h2>Applications</h2></div>
+            <div><span className="eyebrow">Subscriptions</span><h2>Applications</h2></div>
             <Link to="/applications">Manage</Link>
           </div>
           <div className="application-list">
@@ -84,7 +84,7 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
                   {application.name.charAt(0)}
                 </span>
                 <div><strong>{application.name}</strong><small>{application.permissions.length} permissions granted</small></div>
-                <span className="active-badge">{application.status}</span>
+                <span className={`active-badge ${application.status}`}>{application.status}</span>
               </div>
             ))}
           </div>

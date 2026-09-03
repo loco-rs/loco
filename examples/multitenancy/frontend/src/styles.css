@@ -280,6 +280,11 @@ nav {
   background: #dff0e8;
 }
 
+.workspace-app-icon.workspace {
+  color: #60468a;
+  background: #ece7f5;
+}
+
 .workspace-check {
   color: #3d8d6e;
 }
@@ -1123,6 +1128,11 @@ code {
   background: #e3eaf5;
 }
 
+.application-icon.analytics {
+  color: #60468a;
+  background: #ece7f5;
+}
+
 .role-badge,
 .active-badge,
 .permission-list span,
@@ -1144,6 +1154,11 @@ code {
   color: #23604f;
   background: #e3f2eb;
   text-transform: capitalize;
+}
+
+.active-badge.inactive {
+  color: #70776f;
+  background: #eceeea;
 }
 
 .table-panel {
@@ -1219,6 +1234,13 @@ code {
   color: #ef5641;
   font-size: 0.8rem;
   font-weight: 750;
+}
+
+.application-availability {
+  margin-top: 0.5rem;
+  color: #858c82;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
 .invoice-list > div {

@@ -19,17 +19,28 @@ function ApplicationList({ workspace, selectApplication }: { workspace: Selected
 
   return (
     <section className="console-page">
-      <header className="console-heading"><div><span className="eyebrow">Workspace services</span><h1>Applications</h1><p>Active products and your effective permissions in each one.</p></div></header>
+      <header className="console-heading"><div><span className="eyebrow">Workspace services</span><h1>Applications</h1><p>Application subscriptions and your effective permissions in each one.</p></div></header>
       <div className="application-grid">
         {dashboard.data?.applications.map((application) => {
-          const path = application.name === "Billing" ? "/billing" : "/documents";
+          const path = application.name === "Billing" ? "/billing" : application.name === "Documents" ? "/documents" : null;
+          const description = application.name === "Billing"
+            ? "Track tenant invoices and payment status."
+            : application.name === "Analytics"
+              ? "Explore workspace activity and usage trends."
+              : "Create and organize tenant-owned records.";
           return (
             <article className="panel application-card" key={application.id}>
-              <div className="application-card-heading"><span className={`application-icon ${application.name.toLowerCase()}`}>{application.name.charAt(0)}</span><span className="active-badge">{application.status}</span></div>
+              <div className="application-card-heading"><span className={`application-icon ${application.name.toLowerCase()}`}>{application.name.charAt(0)}</span><span className={`active-badge ${application.status}`}>{application.status}</span></div>
               <h2>{application.name}</h2>
-              <p>{application.name === "Billing" ? "Track tenant invoices and payment status." : "Create and organize tenant-owned records."}</p>
+              <p>{description}</p>
               <div className="permission-list">{application.permissions.map((permission) => <span key={permission}>{permission}</span>)}</div>
-              <Link className="application-link" to={path} onClick={() => selectApplication(application.name)}>Open application →</Link>
+              {application.status === "active" && path ? (
+                <Link className="application-link" to={path} onClick={() => selectApplication(application.name)}>Open application →</Link>
+              ) : (
+                <span className="application-availability">
+                  {application.status === "active" ? "Active subscription · Demo UI coming next" : "Disabled for this workspace"}
+                </span>
+              )}
             </article>
           );
         })}
