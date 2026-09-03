@@ -403,7 +403,6 @@ nav a:hover {
 
 .user-menu-actions {
   display: grid;
-  gap: 0.35rem;
   padding: 0.85rem;
 }
 

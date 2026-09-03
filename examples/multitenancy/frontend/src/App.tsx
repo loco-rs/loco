@@ -205,7 +205,6 @@ export function App() {
                     </div>
                   </div>
                   <div className="user-menu-actions">
-                    <span className="workspace-menu-label">Account</span>
                     <button type="button" onClick={logout}>
                       <SignOutIcon />
                       <span>Sign out</span>
