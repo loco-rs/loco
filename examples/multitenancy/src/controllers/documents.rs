@@ -27,7 +27,7 @@ async fn authorize(
 #[debug_handler]
 pub async fn index(
     State(ctx): State<AppContext>,
-    auth: auth::ApiToken<users::Model>,
+    auth: auth::JWTWithUser<users::Model>,
     Path((tenant_id, application_id)): Path<(i64, i64)>,
 ) -> Result<Response> {
     authorize(
@@ -53,7 +53,7 @@ pub async fn index(
 #[debug_handler]
 pub async fn create(
     State(ctx): State<AppContext>,
-    auth: auth::ApiToken<users::Model>,
+    auth: auth::JWTWithUser<users::Model>,
     Path((tenant_id, application_id)): Path<(i64, i64)>,
     Json(params): Json<CreateDocument>,
 ) -> Result<Response> {

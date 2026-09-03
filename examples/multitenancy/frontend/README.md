@@ -14,6 +14,7 @@ port 5150. For a production-style single-origin build, run `pnpm build` and
 then start Loco from the example root. Loco serves `frontend/dist` with SPA
 fallback.
 
-The access screen accepts a user API key plus a tenant and application ID.
-These values are explicit because the example demonstrates tenant-scoped API
-tokens rather than the JWT login flow used by `reference_spa`.
+The SPA includes registration, login, tenant/application selection, and
+logout. Registration creates the initial tenant and owner permissions; login
+uses Loco's JWT endpoint; and `/api/auth/workspaces` returns only the active
+tenant subscriptions available to the authenticated user.

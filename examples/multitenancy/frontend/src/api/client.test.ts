@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { saveAccess } from "../auth/access";
+import { setToken } from "../auth/session";
 import { ApiClientError, get, post } from "./client";
 
 describe("API client", () => {
@@ -8,15 +8,22 @@ describe("API client", () => {
     vi.restoreAllMocks();
   });
 
-  it("requires an access context", async () => {
-    await expect(get("/api/documents")).rejects.toMatchObject({
-      status: 0,
-      message: "Configure an API key, tenant, and application first",
+  it("allows unauthenticated requests", async () => {
+    vi.spyOn(window, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ token: "jwt" }), { status: 200 }),
+    );
+
+    await expect(post("/api/auth/login", {})).resolves.toEqual({ token: "jwt" });
+    expect(window.fetch).toHaveBeenCalledWith("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: "{}",
     });
   });
 
   it("sends authenticated GET requests", async () => {
-    saveAccess({ apiKey: "lo-test", tenantId: 1, applicationId: 1 });
+    setToken("jwt-test");
     const response = [{ id: 1, title: "Roadmap" }];
     const fetchMock = vi
       .spyOn(window, "fetch")
@@ -25,14 +32,14 @@ describe("API client", () => {
     await expect(get("/api/documents")).resolves.toEqual(response);
     expect(fetchMock).toHaveBeenCalledWith("/api/documents", {
       method: "GET",
-      headers: { Authorization: "Bearer lo-test" },
+      headers: { Authorization: "Bearer jwt-test" },
       credentials: "same-origin",
       body: undefined,
     });
   });
 
   it("serializes POST bodies", async () => {
-    saveAccess({ apiKey: "lo-test", tenantId: 1, applicationId: 1 });
+    setToken("jwt-test");
     vi.spyOn(window, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ id: 2, title: "Launch" }), {
         status: 200,
@@ -43,7 +50,7 @@ describe("API client", () => {
     expect(window.fetch).toHaveBeenCalledWith("/api/documents", {
       method: "POST",
       headers: {
-        Authorization: "Bearer lo-test",
+        Authorization: "Bearer jwt-test",
         "Content-Type": "application/json",
       },
       credentials: "same-origin",
@@ -52,7 +59,7 @@ describe("API client", () => {
   });
 
   it("surfaces structured Loco errors", async () => {
-    saveAccess({ apiKey: "lo-test", tenantId: 1, applicationId: 1 });
+    setToken("jwt-test");
     vi.spyOn(window, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({ error: "unauthorized", description: "No permission" }),
@@ -66,7 +73,7 @@ describe("API client", () => {
   });
 
   it("falls back when an error body is not JSON", async () => {
-    saveAccess({ apiKey: "lo-test", tenantId: 1, applicationId: 1 });
+    setToken("jwt-test");
     vi.spyOn(window, "fetch").mockResolvedValue(
       new Response("service unavailable", { status: 503 }),
     );
@@ -79,7 +86,7 @@ describe("API client", () => {
   });
 
   it("ignores primitive JSON error bodies", async () => {
-    saveAccess({ apiKey: "lo-test", tenantId: 1, applicationId: 1 });
+    setToken("jwt-test");
     vi.spyOn(window, "fetch").mockResolvedValue(
       new Response(JSON.stringify("error"), { status: 400 }),
     );

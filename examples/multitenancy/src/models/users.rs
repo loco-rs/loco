@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use chrono::{offset::Local, Duration};
 use loco_rs::{auth::jwt, hash, prelude::*};
+use sea_orm::DatabaseTransaction;
 use serde::{Deserialize, Serialize};
 use serde_json::Map;
 use uuid::Uuid;
@@ -71,6 +72,37 @@ impl Authenticable for Model {
 }
 
 impl Model {
+    async fn create_with_password_on<C>(db: &C, params: &RegisterParams) -> ModelResult<Self>
+    where
+        C: ConnectionTrait,
+    {
+        if users::Entity::find()
+            .filter(
+                model::query::condition()
+                    .eq(users::Column::Email, &params.email)
+                    .build(),
+            )
+            .one(db)
+            .await?
+            .is_some()
+        {
+            return Err(ModelError::EntityAlreadyExists);
+        }
+
+        let password_hash =
+            hash::hash_password(&params.password).map_err(|error| ModelError::Any(error.into()))?;
+
+        users::ActiveModel {
+            email: ActiveValue::set(params.email.clone()),
+            password: ActiveValue::set(password_hash),
+            name: ActiveValue::set(params.name.clone()),
+            ..Default::default()
+        }
+        .insert(db)
+        .await
+        .map_err(ModelError::from)
+    }
+
     /// finds a user by the provided email
     ///
     /// # Errors
@@ -235,34 +267,23 @@ impl Model {
         params: &RegisterParams,
     ) -> ModelResult<Self> {
         let txn = db.begin().await?;
-
-        if users::Entity::find()
-            .filter(
-                model::query::condition()
-                    .eq(users::Column::Email, &params.email)
-                    .build(),
-            )
-            .one(&txn)
-            .await?
-            .is_some()
-        {
-            return Err(ModelError::EntityAlreadyExists {});
-        }
-
-        let password_hash =
-            hash::hash_password(&params.password).map_err(|e| ModelError::Any(e.into()))?;
-        let user = users::ActiveModel {
-            email: ActiveValue::set(params.email.clone()),
-            password: ActiveValue::set(password_hash),
-            name: ActiveValue::set(params.name.clone()),
-            ..Default::default()
-        }
-        .insert(&txn)
-        .await?;
-
+        let user = Self::create_with_password_on(&txn, params).await?;
         txn.commit().await?;
 
         Ok(user)
+    }
+
+    /// Creates a user inside an existing transaction.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the email already exists, password hashing fails,
+    /// or the database insert fails.
+    pub async fn create_with_password_in_transaction(
+        txn: &DatabaseTransaction,
+        params: &RegisterParams,
+    ) -> ModelResult<Self> {
+        Self::create_with_password_on(txn, params).await
     }
 
     /// Creates a JWT

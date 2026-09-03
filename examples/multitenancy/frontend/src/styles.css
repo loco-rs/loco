@@ -25,7 +25,8 @@ a {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -85,7 +86,7 @@ nav {
 }
 
 nav a,
-.context-link {
+.nav-button {
   color: #4f584e;
   font-size: 0.9rem;
   font-weight: 650;
@@ -93,8 +94,13 @@ nav a,
 }
 
 nav a:hover,
-.context-link:hover {
+.nav-button:hover {
   color: #ef5641;
+}
+
+.nav-button {
+  padding: 0;
+  background: transparent;
 }
 
 main {
@@ -143,7 +149,7 @@ h2 {
   text-transform: uppercase;
 }
 
-.access-grid,
+.auth-layout,
 .workspace-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(310px, 0.75fr);
@@ -203,7 +209,7 @@ h2 {
   box-shadow: 0 24px 60px rgb(42 51 37 / 8%);
 }
 
-.access-form,
+.auth-form,
 .create-form {
   display: grid;
   gap: 0.85rem;
@@ -215,7 +221,8 @@ label {
   font-weight: 750;
 }
 
-input {
+input,
+select {
   width: 100%;
   padding: 0.82rem 0.95rem;
   border: 1px solid #cdd2c8;
@@ -225,7 +232,8 @@ input {
   background: #fff;
 }
 
-input:focus {
+input:focus,
+select:focus {
   border-color: #ef5641;
   box-shadow: 0 0 0 3px rgb(239 86 65 / 13%);
 }
@@ -249,7 +257,7 @@ input:focus {
 }
 
 button,
-.context-link {
+select {
   border-radius: 0.65rem;
 }
 
@@ -319,10 +327,17 @@ code {
   margin-bottom: 0;
 }
 
-.context-link {
-  padding: 0.7rem 0.9rem;
+.workspace-picker {
+  display: grid;
+  min-width: min(100%, 19rem);
+  gap: 0.5rem;
+}
+
+.workspace-picker select {
+  padding: 0.7rem 2.5rem 0.7rem 0.9rem;
   border: 1px solid #d2d7ce;
-  white-space: nowrap;
+  color: #283026;
+  background: #fff;
 }
 
 .panel-heading {
@@ -399,7 +414,7 @@ code {
     flex-direction: column;
   }
 
-  .access-grid,
+  .auth-layout,
   .workspace-grid {
     grid-template-columns: 1fr;
   }

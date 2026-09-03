@@ -1,9 +1,10 @@
 import { Navigate, createBrowserRouter } from "react-router";
 import { App } from "./App";
-import { RequireAccess } from "./auth/RequireAccess";
-import { hasAccess } from "./auth/access";
-import { Access } from "./pages/Access";
+import { RequireAuth } from "./auth/RequireAuth";
+import { getToken } from "./auth/session";
 import { Documents } from "./pages/Documents";
+import { Login } from "./pages/Login";
+import { Register } from "./pages/Register";
 
 export const router = createBrowserRouter([
   {
@@ -12,11 +13,12 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Navigate to={hasAccess() ? "/documents" : "/access"} replace />,
+        element: <Navigate to={getToken() ? "/documents" : "/login"} replace />,
       },
-      { path: "access", element: <Access /> },
+      { path: "login", element: <Login /> },
+      { path: "register", element: <Register /> },
       {
-        element: <RequireAccess />,
+        element: <RequireAuth />,
         children: [{ path: "documents", element: <Documents /> }],
       },
     ],

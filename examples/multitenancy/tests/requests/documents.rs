@@ -13,7 +13,7 @@ use sea_orm::{
 use serial_test::serial;
 
 struct DemoData {
-    api_key: String,
+    token: String,
     tenant_a_id: i64,
     tenant_b_id: i64,
     documents_app_id: i64,
@@ -22,6 +22,7 @@ struct DemoData {
     editor_role_id: i64,
 }
 
+#[allow(clippy::too_many_lines)]
 async fn setup(ctx: &AppContext) -> DemoData {
     let user = users::Model::create_with_password(
         &ctx.db,
@@ -169,8 +170,11 @@ async fn setup(ctx: &AppContext) -> DemoData {
     .await
     .unwrap();
 
+    let jwt = ctx.config.get_jwt_config().unwrap();
+    let token = user.generate_jwt(&jwt.secret, jwt.expiration).unwrap();
+
     DemoData {
-        api_key: user.api_key,
+        token,
         tenant_a_id: tenant_a.id,
         tenant_b_id: tenant_b.id,
         documents_app_id: documents_app.id,
@@ -191,7 +195,7 @@ async fn member_only_sees_documents_from_the_requested_tenant() {
         let demo = setup(&ctx).await;
         let response = request
             .get(&documents_url(demo.tenant_a_id, demo.documents_app_id))
-            .authorization_bearer(&demo.api_key)
+            .authorization_bearer(&demo.token)
             .await;
 
         assert_eq!(response.status_code(), 200, "{}", response.text());
@@ -211,7 +215,7 @@ async fn membership_and_roles_do_not_cross_tenant_boundaries() {
         let demo = setup(&ctx).await;
         let response = request
             .get(&documents_url(demo.tenant_b_id, demo.documents_app_id))
-            .authorization_bearer(&demo.api_key)
+            .authorization_bearer(&demo.token)
             .await;
 
         assert_eq!(response.status_code(), 401);
@@ -230,7 +234,7 @@ async fn permissions_are_limited_to_the_subscribed_application() {
         let demo = setup(&ctx).await;
         let active_without_permission = request
             .get(&documents_url(demo.tenant_a_id, demo.billing_app_id))
-            .authorization_bearer(&demo.api_key)
+            .authorization_bearer(&demo.token)
             .await;
 
         assert_eq!(active_without_permission.status_code(), 401);
@@ -265,7 +269,7 @@ async fn permissions_are_limited_to_the_subscribed_application() {
 
         let inactive_with_permission = request
             .get(&documents_url(demo.tenant_a_id, demo.billing_app_id))
-            .authorization_bearer(&demo.api_key)
+            .authorization_bearer(&demo.token)
             .await;
 
         assert_eq!(inactive_with_permission.status_code(), 401);
@@ -280,7 +284,7 @@ async fn member_with_create_permission_creates_in_the_trusted_tenant() {
         let demo = setup(&ctx).await;
         let response = request
             .post(&documents_url(demo.tenant_a_id, demo.documents_app_id))
-            .authorization_bearer(&demo.api_key)
+            .authorization_bearer(&demo.token)
             .json(&serde_json::json!({ "title": "Launch plan" }))
             .await;
 

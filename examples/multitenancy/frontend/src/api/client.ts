@@ -1,4 +1,4 @@
-import { loadAccess } from "../auth/access";
+import { getToken } from "../auth/session";
 
 export type HttpMethod = "GET" | "POST";
 
@@ -36,17 +36,11 @@ export async function request<T>(
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const access = loadAccess();
-  if (!access) {
-    throw new ApiClientError(0, {
-      error: "missing_access_context",
-      description: "Configure an API key, tenant, and application first",
-    });
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
   }
-
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${access.apiKey}`,
-  };
   if (body !== undefined) {
     headers["Content-Type"] = "application/json";
   }

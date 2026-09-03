@@ -17,9 +17,9 @@ entities are under [`src/models/_entities`](src/models/_entities), while the
 hand-written modules in [`src/models`](src/models) implement `TenantEntity`.
 `permissions::Model::user_can` is the RBAC query, and
 [`src/controllers/documents.rs`](src/controllers/documents.rs) shows an API
-that checks an API token, tenant membership, subscription, role, and permission
+that checks a login JWT, tenant membership, subscription, role, and permission
 before accessing tenant-scoped rows. [`frontend`](frontend) consumes that API
-as a typed SPA.
+as a typed SPA with registration, login, workspace selection, and logout.
 
 ## Run it
 
@@ -37,10 +37,10 @@ cargo loco start
 
 The example inherits the framework from the repository root through a local
 path dependency, so it always exercises the code in the current checkout.
-Open <http://localhost:5150>, enter the sample API key
-`lo-95ec80d7-cb60-4b70-9b4b-9ef74cb88758`, and use tenant `1` with application
-`1`. The seeded editor can list and create Acme documents. Trying tenant `2`
-or application `2` demonstrates the membership and active-subscription checks.
+Open <http://localhost:5150> and log in with `user1@example.com` / `12341234`.
+The seeded editor can list and create Acme documents. You can also register a
+new account: registration atomically creates its tenant, owner membership,
+Documents subscription, and read/create permissions.
 
 For frontend development, run Loco on port 5150 and `pnpm dev` from
 `frontend`; Vite serves <http://localhost:5173> and proxies `/api` to Loco.
@@ -48,14 +48,18 @@ For frontend development, run Loco on port 5150 and `pnpm dev` from
 The API endpoints are:
 
 ```text
+POST /api/auth/register-tenant
+POST /api/auth/login
+GET  /api/auth/workspaces
 GET  /api/tenants/{tenant_id}/applications/{application_id}/documents
 POST /api/tenants/{tenant_id}/applications/{application_id}/documents
 ```
 
-Both expect `Authorization: Bearer <user-api-key>`. The POST body is
-`{"title":"Launch plan"}`. The SPA stores the API key and tenant/application
-context in local storage; it never includes `tenant_id` in a create body. The
-request tests create a complete two-tenant,
+The workspace and document endpoints expect `Authorization: Bearer <jwt>`.
+The document POST body is
+`{"title":"Launch plan"}`. The SPA stores the JWT and selected
+tenant/application context in local storage; it never includes `tenant_id` in
+a create body. The request tests create a complete two-tenant,
 two-application scenario and are the quickest executable walkthrough:
 
 ```sh
@@ -69,7 +73,8 @@ does not transfer to another tenant, and that created rows receive the trusted
 tenant ID.
 
 The frontend test command enforces 100% statement, branch, function, and line
-coverage for the access-storage and authenticated API-client boundary.
+coverage for session/workspace storage and the authenticated API-client
+boundary.
 
 ## Security model
 

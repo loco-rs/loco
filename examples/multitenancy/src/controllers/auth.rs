@@ -1,7 +1,9 @@
 use crate::{
+    dtos::auth::{ApplicationAccess, RegisterTenant, RegisterTenantResponse, Workspace},
     mailers::auth::AuthMailer,
     models::{
-        _entities::users,
+        _entities::{applications, tenant_applications, tenant_members, tenants, users},
+        tenants as tenant_model,
         users::{LoginParams, RegisterParams},
     },
     views::auth::{CurrentResponse, LoginResponse},
@@ -69,6 +71,41 @@ async fn register(
     AuthMailer::send_welcome(&ctx, &user).await?;
 
     format::json(())
+}
+
+/// Registers a user together with their first tenant workspace.
+#[debug_handler]
+async fn register_tenant(
+    State(ctx): State<AppContext>,
+    JsonValidate(params): JsonValidate<RegisterTenant>,
+) -> Result<Response> {
+    let user_params = RegisterParams {
+        name: params.name,
+        email: params.email,
+        password: params.password,
+    };
+    let registration = tenant_model::Model::register_workspace(
+        &ctx.db,
+        &user_params,
+        &params.tenant_name,
+        &params.tenant_slug,
+    )
+    .await?;
+
+    let jwt = ctx.config.get_jwt_config()?;
+    let token = registration
+        .user
+        .generate_jwt(&jwt.secret, jwt.expiration)?;
+
+    format::json(RegisterTenantResponse {
+        token,
+        pid: registration.user.pid.to_string(),
+        name: registration.user.name,
+        tenant_id: registration.tenant.id,
+        tenant_name: registration.tenant.name,
+        application_id: registration.application.id,
+        application_name: registration.application.name,
+    })
 }
 
 /// Verify register user. if the user not verified his email, he can't login to
@@ -162,6 +199,48 @@ async fn login(State(ctx): State<AppContext>, Json(params): Json<LoginParams>) -
 async fn current(auth: auth::JWT, State(ctx): State<AppContext>) -> Result<Response> {
     let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
     format::json(CurrentResponse::new(&user))
+}
+
+#[debug_handler]
+async fn workspaces(
+    auth: auth::JWTWithUser<users::Model>,
+    State(ctx): State<AppContext>,
+) -> Result<Response> {
+    let memberships = tenant_members::Entity::find()
+        .filter(tenant_members::Column::UserId.eq(auth.user.id))
+        .all(&ctx.db)
+        .await?;
+    let mut workspaces = Vec::with_capacity(memberships.len());
+
+    for membership in memberships {
+        let tenant = tenants::Entity::find_by_id(membership.tenant_id)
+            .one(&ctx.db)
+            .await?
+            .ok_or(ModelError::EntityNotFound)?;
+        let subscriptions = tenant_applications::Entity::find()
+            .in_tenant(tenant.id)
+            .filter(tenant_applications::Column::Status.eq("active"))
+            .find_also_related(applications::Entity)
+            .all(&ctx.db)
+            .await?;
+        let applications = subscriptions
+            .into_iter()
+            .filter_map(|(_, application)| application)
+            .map(|application| ApplicationAccess {
+                id: application.id,
+                name: application.name,
+            })
+            .collect();
+
+        workspaces.push(Workspace {
+            tenant_id: tenant.id,
+            tenant_name: tenant.name,
+            tenant_slug: tenant.slug,
+            applications,
+        });
+    }
+
+    format::json(workspaces)
 }
 
 /// Magic link authentication provides a secure and passwordless way to log in to the application.
@@ -262,11 +341,13 @@ pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/auth")
         .add("/register", post(register))
+        .add("/register-tenant", post(register_tenant))
         .add("/verify/{token}", get(verify))
         .add("/login", post(login))
         .add("/forgot", post(forgot))
         .add("/reset", post(reset))
         .add("/current", get(current))
+        .add("/workspaces", get(workspaces))
         .add("/magic-link", post(magic_link))
         .add("/magic-link/{token}", get(magic_link_verify))
         .add("/resend-verification-mail", post(resend_verification_email))
