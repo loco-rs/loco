@@ -2,6 +2,7 @@ pub use super::_entities::tenants::{ActiveModel, Entity, Model};
 use loco_rs::prelude::*;
 use sea_orm::entity::prelude::*;
 use sea_orm::DatabaseTransaction;
+use uuid::Uuid;
 pub type Tenants = Entity;
 
 pub const CORE_PERMISSION_KEYS: [&str; 11] = [
@@ -25,6 +26,24 @@ use super::_entities::{
 
 pub struct CreatedWorkspace {
     pub tenant: tenants::Model,
+}
+
+fn workspace_slug(name: &str, tenant_id: i64) -> String {
+    let mut base = String::new();
+    for character in name.trim().chars() {
+        if character.is_ascii_alphanumeric() {
+            base.push(character.to_ascii_lowercase());
+        } else if !base.is_empty() && !base.ends_with('-') {
+            base.push('-');
+        }
+    }
+    while base.ends_with('-') {
+        base.pop();
+    }
+    if base.is_empty() {
+        base.push_str("workspace");
+    }
+    format!("{base}-{tenant_id}")
 }
 
 async fn find_or_create_application(
@@ -159,24 +178,18 @@ impl Model {
         txn: &DatabaseTransaction,
         user_id: i64,
         tenant_name: &str,
-        tenant_slug: &str,
     ) -> ModelResult<CreatedWorkspace> {
-        if tenants::Entity::find()
-            .filter(tenants::Column::Slug.eq(tenant_slug))
-            .one(txn)
-            .await?
-            .is_some()
-        {
-            return Err(ModelError::EntityAlreadyExists);
-        }
-
         let tenant = tenants::ActiveModel {
             name: Set(tenant_name.to_owned()),
-            slug: Set(tenant_slug.to_owned()),
+            slug: Set(format!("pending-{}", Uuid::new_v4().simple())),
             ..Default::default()
         }
         .insert(txn)
         .await?;
+        let tenant_id = tenant.id;
+        let mut tenant = tenant.into_active_model();
+        tenant.slug = Set(workspace_slug(tenant_name, tenant_id));
+        let tenant = tenant.update(txn).await?;
 
         for name in [
             "Analytics",
@@ -219,17 +232,15 @@ impl Model {
     ///
     /// # Errors
     ///
-    /// Returns a model error when the slug exists or setup fails. The
-    /// transaction is rolled back when any workspace record cannot be created.
+    /// Returns a model error when setup fails. The transaction is rolled back
+    /// when any workspace record cannot be created.
     pub async fn create_workspace(
         db: &DatabaseConnection,
         user_id: i64,
         tenant_name: &str,
-        tenant_slug: &str,
     ) -> ModelResult<CreatedWorkspace> {
         let txn = db.begin().await?;
-        let workspace =
-            Self::create_workspace_in_transaction(&txn, user_id, tenant_name, tenant_slug).await?;
+        let workspace = Self::create_workspace_in_transaction(&txn, user_id, tenant_name).await?;
         txn.commit().await?;
         Ok(workspace)
     }

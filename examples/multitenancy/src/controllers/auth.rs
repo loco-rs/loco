@@ -219,13 +219,8 @@ async fn create_workspace(
     State(ctx): State<AppContext>,
     JsonValidate(params): JsonValidate<CreateWorkspace>,
 ) -> Result<Response> {
-    let workspace = tenant_model::Model::create_workspace(
-        &ctx.db,
-        auth.user.id,
-        &params.tenant_name,
-        &params.tenant_slug,
-    )
-    .await?;
+    let workspace =
+        tenant_model::Model::create_workspace(&ctx.db, auth.user.id, &params.tenant_name).await?;
 
     format::json(Workspace {
         tenant_id: workspace.tenant.id,

@@ -31,7 +31,7 @@ async fn seed_creates_two_workspaces_with_application_availability() {
             .iter()
             .map(|tenant| (tenant.name.as_str(), tenant.slug.as_str()))
             .collect::<Vec<_>>(),
-        [("Designer", "designer"), ("Developer", "developer")]
+        [("Designer", "designer-1"), ("Developer", "developer-2")]
     );
 
     let application_names = applications::Entity::find()

@@ -143,8 +143,7 @@ async fn authenticated_user_can_create_another_workspace() {
             .post("/api/auth/workspaces")
             .authorization_bearer(&token)
             .json(&serde_json::json!({
-                "tenant_name": "Acme Labs",
-                "tenant_slug": "acme-labs"
+                "tenant_name": "Acme Labs"
             }))
             .await;
         assert_eq!(first.status_code(), 200, "{}", first.text());
@@ -153,14 +152,17 @@ async fn authenticated_user_can_create_another_workspace() {
             .post("/api/auth/workspaces")
             .authorization_bearer(&token)
             .json(&serde_json::json!({
-                "tenant_name": "Research Team",
-                "tenant_slug": "research-team"
+                "tenant_name": "Research Team"
             }))
             .await;
         assert_eq!(created.status_code(), 200, "{}", created.text());
         let workspace = created.json::<serde_json::Value>();
         assert_eq!(workspace["tenant_name"], "Research Team");
-        assert_eq!(workspace["tenant_slug"], "research-team");
+        let tenant_id = workspace["tenant_id"].as_i64().unwrap();
+        assert_eq!(
+            workspace["tenant_slug"],
+            format!("research-team-{tenant_id}")
+        );
         assert!(workspace.get("applications").is_none());
 
         let workspaces = request
@@ -177,7 +179,6 @@ async fn authenticated_user_can_create_another_workspace() {
             2
         );
 
-        let tenant_id = workspace["tenant_id"].as_i64().unwrap();
         let role_names: Vec<String> = roles::Entity::find()
             .filter(roles::Column::TenantId.eq(tenant_id))
             .order_by_asc(roles::Column::Id)
@@ -224,8 +225,7 @@ async fn workspace_creation_requires_authentication() {
         let response = request
             .post("/api/auth/workspaces")
             .json(&serde_json::json!({
-                "tenant_name": "Private Team",
-                "tenant_slug": "private-team"
+                "tenant_name": "Private Team"
             }))
             .await;
 
@@ -236,7 +236,7 @@ async fn workspace_creation_requires_authentication() {
 
 #[tokio::test]
 #[serial]
-async fn workspace_creation_rejects_a_duplicate_slug() {
+async fn workspace_creation_allows_duplicate_names_with_id_scoped_slugs() {
     request::<App, _, _>(|request, ctx| async move {
         let registration = request
             .post("/api/auth/register-account")
@@ -251,33 +251,32 @@ async fn workspace_creation_rejects_a_duplicate_slug() {
             .unwrap()
             .to_owned();
 
-        let workspace = serde_json::json!({
-            "tenant_name": "Shared Name",
-            "tenant_slug": "shared-name"
-        });
+        let workspace = serde_json::json!({ "tenant_name": "Shared Name" });
         let first = request
             .post("/api/auth/workspaces")
             .authorization_bearer(&token)
             .json(&workspace)
             .await;
         assert_eq!(first.status_code(), 200, "{}", first.text());
+        let first_workspace = first.json::<serde_json::Value>();
 
         let duplicate = request
             .post("/api/auth/workspaces")
             .authorization_bearer(&token)
-            .json(&serde_json::json!({
-                "tenant_name": "Other Name",
-                "tenant_slug": "shared-name"
-            }))
+            .json(&workspace)
             .await;
-        assert_eq!(duplicate.status_code(), 409, "{}", duplicate.text());
+        assert_eq!(duplicate.status_code(), 200, "{}", duplicate.text());
+        let second_workspace = duplicate.json::<serde_json::Value>();
+        assert_ne!(first_workspace["tenant_id"], second_workspace["tenant_id"]);
+        assert_ne!(
+            first_workspace["tenant_slug"],
+            second_workspace["tenant_slug"]
+        );
+        assert_eq!(first_workspace["tenant_slug"], "shared-name-1");
+        assert_eq!(second_workspace["tenant_slug"], "shared-name-2");
         assert_eq!(
-            tenant_entity::Entity::find()
-                .filter(tenant_entity::Column::Slug.eq("shared-name"))
-                .count(&ctx.db)
-                .await
-                .unwrap(),
-            1
+            tenant_entity::Entity::find().count(&ctx.db).await.unwrap(),
+            2
         );
     })
     .await;
@@ -285,7 +284,7 @@ async fn workspace_creation_rejects_a_duplicate_slug() {
 
 #[tokio::test]
 #[serial]
-async fn workspace_creation_rejects_an_invalid_slug() {
+async fn workspace_creation_derives_a_safe_slug_from_the_name() {
     request::<App, _, _>(|request, ctx| async move {
         let registration = request
             .post("/api/auth/register-account")
@@ -304,15 +303,18 @@ async fn workspace_creation_rejects_an_invalid_slug() {
             .post("/api/auth/workspaces")
             .authorization_bearer(&token)
             .json(&serde_json::json!({
-                "tenant_name": "Invalid Slug Tenant",
-                "tenant_slug": "Invalid Slug"
+                "tenant_name": "Loco & Friends"
             }))
             .await;
 
-        assert_eq!(response.status_code(), 400, "{}", response.text());
+        assert_eq!(response.status_code(), 200, "{}", response.text());
+        assert_eq!(
+            response.json::<serde_json::Value>()["tenant_slug"],
+            "loco-friends-1"
+        );
         assert_eq!(
             tenant_entity::Entity::find().count(&ctx.db).await.unwrap(),
-            0
+            1
         );
     })
     .await;

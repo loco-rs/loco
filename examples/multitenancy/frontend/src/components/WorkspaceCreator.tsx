@@ -23,7 +23,7 @@ export function WorkspaceCreator({
     }
 
     createWorkspace.mutate(
-      { tenant_name: name.trim(), tenant_slug: slug },
+      { tenant_name: name.trim() },
       { onSuccess: onCreated },
     );
   }
@@ -75,7 +75,9 @@ export function WorkspaceCreator({
             placeholder="Research team"
             required
           />
-          <p className="hint">The workspace slug is generated automatically.</p>
+          <p className="hint">
+            The workspace slug is generated with its unique workspace ID.
+          </p>
           {(validationError || createWorkspace.error) && (
             <p className="error" role="alert">
               {validationError ?? createWorkspace.error?.message}
