@@ -107,7 +107,8 @@ a create body. Its authenticated console groups Clients, Projects, and Documents
 under Core; Staff under Settings; and Invoices and Add-ons under Billing.
 Core-resource navigation and metrics are
 permission-aware, while the Add-ons catalog reflects optional product
-availability from the workspace subscription. The seeded catalog includes
+availability from the workspace subscription. Active purchased add-ons also
+appear dynamically under Paid in the sidebar. The seeded catalog includes
 Analytics, Approval Workflows, Feature Flags, and Priority Support; subscription-only
 add-ons do not require feature permissions; purchasing one requires the
 tenant-level `billing:purchase` permission. The Staff table can display

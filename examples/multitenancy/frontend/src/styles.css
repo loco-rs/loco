@@ -980,6 +980,14 @@ code {
   background: #e9eeea;
 }
 
+.paid-addon-group a {
+  color: #346a55;
+}
+
+.paid-addon-group a .sidebar-icon {
+  stroke: #58a583;
+}
+
 .sidebar-icon {
   width: 1.25rem;
   height: 1.25rem;

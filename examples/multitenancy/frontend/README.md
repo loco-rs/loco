@@ -41,7 +41,8 @@ Core resources do not appear in the Add-ons catalog. That page derives optional
 product availability from the workspace's purchased subscription. Designer
 includes Approval Workflows and Priority Support, while Developer includes Feature
 Flags and Priority Support. Analytics is active only for Developer. All four
-add-ons are subscription-only and do not add permissions or role grants.
+add-ons are subscription-only and do not add permissions or role grants. Active
+add-ons are listed under Paid in the sidebar and update after checkout.
 Owners and Administrators can complete a fake purchase for an unavailable
 add-on. The server activates the subscription and generates a paid demo
 invoice; invoices cannot be entered manually from the SPA or API.

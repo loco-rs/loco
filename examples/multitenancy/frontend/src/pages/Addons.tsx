@@ -68,7 +68,11 @@ function AddonList({ workspace }: { workspace: SelectedWorkspace }) {
           const active = addon.status === "active";
           const iconClass = addon.name.toLowerCase().replace(/ /g, "-");
           return (
-            <article className="panel application-card" key={addon.id}>
+            <article
+              className="panel application-card"
+              id={`addon-${addon.id}`}
+              key={addon.id}
+            >
               <div className="application-card-heading">
                 <span className={`application-icon ${iconClass}`}>
                   {addon.name.charAt(0)}

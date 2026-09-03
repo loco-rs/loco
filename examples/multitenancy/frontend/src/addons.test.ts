@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addonsFrom } from "./addons";
+import { addonsFrom, paidAddonsFrom } from "./addons";
 import type { DashboardAddon } from "./bindings/DashboardAddon";
 
 const addons: DashboardAddon[] = [
@@ -14,5 +14,10 @@ describe("add-ons", () => {
 
   it("supports dashboards without add-on data", () => {
     expect(addonsFrom(undefined)).toEqual([]);
+  });
+
+  it("returns only active paid add-ons", () => {
+    expect(paidAddonsFrom(addons)).toEqual([addons[0]]);
+    expect(paidAddonsFrom(undefined)).toEqual([]);
   });
 });
