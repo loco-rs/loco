@@ -52,8 +52,8 @@ creating permissions or role grants. Designer has two clients, two projects,
 one document, and two invoices; Developer has one of each core resource. You can also register an
 account with your name, email, and password. After registration, the
 workspace modal opens so you can name your first tenant; its slug is generated
-automatically with the tenant ID (for example, `research-team-3`). Workspace
-creation atomically adds the tenant, Owner,
+automatically and scoped by the tenant ID. Workspace creation atomically adds
+the tenant, Owner,
 Administrator, Manager, and Support roles, assigns the creator as Owner, and
 provisions the core Clients, Projects, Documents, and Billing permissions with role-appropriate
 permissions. These core features are always available and are not part of a
@@ -94,8 +94,9 @@ POST     /api/tenants/{tenant_id}/addons/{application_id}/purchase
 
 The workspace and document endpoints expect `Authorization: Bearer <jwt>`.
 Creating a workspace accepts `{"tenant_name":"Research team"}`. The server
-derives an ID-scoped slug such as `research-team-3`, allowing workspaces to
-share a name safely, and the SPA selects the new workspace after creation.
+derives a slug such as `research-team`. Workspace identity uses the tenant ID
+and slug together, allowing workspaces to share a slug safely, and the SPA
+selects the new workspace after creation.
 The document POST body includes both fields, for example
 `{"title":"Launch plan","description":"Milestones and owners"}`. Invoices cannot be
 created directly. A fake add-on purchase activates the subscription and

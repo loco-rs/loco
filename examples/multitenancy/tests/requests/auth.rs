@@ -158,11 +158,7 @@ async fn authenticated_user_can_create_another_workspace() {
         assert_eq!(created.status_code(), 200, "{}", created.text());
         let workspace = created.json::<serde_json::Value>();
         assert_eq!(workspace["tenant_name"], "Research Team");
-        let tenant_id = workspace["tenant_id"].as_i64().unwrap();
-        assert_eq!(
-            workspace["tenant_slug"],
-            format!("research-team-{tenant_id}")
-        );
+        assert_eq!(workspace["tenant_slug"], "research-team");
         assert!(workspace.get("applications").is_none());
 
         let workspaces = request
@@ -179,6 +175,7 @@ async fn authenticated_user_can_create_another_workspace() {
             2
         );
 
+        let tenant_id = workspace["tenant_id"].as_i64().unwrap();
         let role_names: Vec<String> = roles::Entity::find()
             .filter(roles::Column::TenantId.eq(tenant_id))
             .order_by_asc(roles::Column::Id)
@@ -268,12 +265,8 @@ async fn workspace_creation_allows_duplicate_names_with_id_scoped_slugs() {
         assert_eq!(duplicate.status_code(), 200, "{}", duplicate.text());
         let second_workspace = duplicate.json::<serde_json::Value>();
         assert_ne!(first_workspace["tenant_id"], second_workspace["tenant_id"]);
-        assert_ne!(
-            first_workspace["tenant_slug"],
-            second_workspace["tenant_slug"]
-        );
-        assert_eq!(first_workspace["tenant_slug"], "shared-name-1");
-        assert_eq!(second_workspace["tenant_slug"], "shared-name-2");
+        assert_eq!(first_workspace["tenant_slug"], "shared-name");
+        assert_eq!(second_workspace["tenant_slug"], "shared-name");
         assert_eq!(
             tenant_entity::Entity::find().count(&ctx.db).await.unwrap(),
             2
@@ -310,7 +303,7 @@ async fn workspace_creation_derives_a_safe_slug_from_the_name() {
         assert_eq!(response.status_code(), 200, "{}", response.text());
         assert_eq!(
             response.json::<serde_json::Value>()["tenant_slug"],
-            "loco-friends-1"
+            "loco-friends"
         );
         assert_eq!(
             tenant_entity::Entity::find().count(&ctx.db).await.unwrap(),

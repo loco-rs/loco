@@ -76,7 +76,7 @@ export function WorkspaceCreator({
             required
           />
           <p className="hint">
-            The workspace slug is generated with its unique workspace ID.
+            The workspace slug is generated automatically and scoped by tenant ID.
           </p>
           {(validationError || createWorkspace.error) && (
             <p className="error" role="alert">

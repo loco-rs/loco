@@ -1,11 +1,11 @@
 ---
 - id: 1
   name: Designer
-  slug: designer-1
+  slug: designer
   created_at: "2026-01-01T00:00:00Z"
   updated_at: "2026-01-01T00:00:00Z"
 - id: 2
   name: Developer
-  slug: developer-2
+  slug: developer
   created_at: "2026-01-01T00:00:00Z"
   updated_at: "2026-01-01T00:00:00Z"

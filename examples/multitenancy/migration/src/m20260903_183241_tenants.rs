@@ -13,7 +13,7 @@ impl MigrationTrait for Migration {
             &[
                 ("id", ColType::PkAuto),
                 ("name", ColType::String),
-                ("slug", ColType::StringUniq),
+                ("slug", ColType::String),
             ],
             &[],
         )

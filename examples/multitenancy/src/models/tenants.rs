@@ -2,7 +2,6 @@ pub use super::_entities::tenants::{ActiveModel, Entity, Model};
 use loco_rs::prelude::*;
 use sea_orm::entity::prelude::*;
 use sea_orm::DatabaseTransaction;
-use uuid::Uuid;
 pub type Tenants = Entity;
 
 pub const CORE_PERMISSION_KEYS: [&str; 11] = [
@@ -28,7 +27,7 @@ pub struct CreatedWorkspace {
     pub tenant: tenants::Model,
 }
 
-fn workspace_slug(name: &str, tenant_id: i64) -> String {
+fn workspace_slug(name: &str) -> String {
     let mut base = String::new();
     for character in name.trim().chars() {
         if character.is_ascii_alphanumeric() {
@@ -43,7 +42,7 @@ fn workspace_slug(name: &str, tenant_id: i64) -> String {
     if base.is_empty() {
         base.push_str("workspace");
     }
-    format!("{base}-{tenant_id}")
+    base
 }
 
 async fn find_or_create_application(
@@ -181,15 +180,11 @@ impl Model {
     ) -> ModelResult<CreatedWorkspace> {
         let tenant = tenants::ActiveModel {
             name: Set(tenant_name.to_owned()),
-            slug: Set(format!("pending-{}", Uuid::new_v4().simple())),
+            slug: Set(workspace_slug(tenant_name)),
             ..Default::default()
         }
         .insert(txn)
         .await?;
-        let tenant_id = tenant.id;
-        let mut tenant = tenant.into_active_model();
-        tenant.slug = Set(workspace_slug(tenant_name, tenant_id));
-        let tenant = tenant.update(txn).await?;
 
         for name in [
             "Analytics",
