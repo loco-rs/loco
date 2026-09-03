@@ -2,10 +2,12 @@
 - id: 1
   tenant_id: 1
   title: Designer onboarding
+  description: Welcome materials and delivery notes for the Designer workspace.
   created_at: "2026-01-01T00:00:00Z"
   updated_at: "2026-01-01T00:00:00Z"
 - id: 2
   tenant_id: 2
   title: Developer architecture notes
+  description: Technical decisions and architecture notes for the Developer workspace.
   created_at: "2026-01-01T00:00:00Z"
   updated_at: "2026-01-01T00:00:00Z"

@@ -54,6 +54,7 @@ pub async fn create(
     require_permission(&ctx, auth.user.id, tenant_id, CREATE_DOCUMENTS).await?;
     let document = documents::ActiveModel {
         title: Set(params.title),
+        description: Set(params.description),
         ..Default::default()
     }
     .set_tenant(tenant_id)?
@@ -77,6 +78,7 @@ pub async fn update(
         .ok_or(ModelError::EntityNotFound)?;
     let mut document = document.into_active_model();
     document.title = Set(params.title);
+    document.description = Set(params.description);
     format::json(DocumentDto::from(document.update(&ctx.db).await?))
 }
 

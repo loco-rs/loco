@@ -10,7 +10,11 @@ impl MigrationTrait for Migration {
         create_table(
             m,
             "documents",
-            &[("id", ColType::PkAuto), ("title", ColType::String)],
+            &[
+                ("id", ColType::PkAuto),
+                ("title", ColType::String),
+                ("description", ColType::Text),
+            ],
             &[("tenant", "")],
         )
         .await

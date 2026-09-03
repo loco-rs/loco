@@ -11,6 +11,7 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i64,
     pub title: String,
+    pub description: String,
     pub tenant_id: i64,
 }
 

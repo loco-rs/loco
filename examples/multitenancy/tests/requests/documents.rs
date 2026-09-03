@@ -26,11 +26,18 @@ async fn owner_can_list_create_view_and_edit_documents() {
         let records: serde_json::Value = list.json();
         assert_eq!(records.as_array().unwrap().len(), 1);
         assert_eq!(records[0]["title"], "Designer onboarding");
+        assert_eq!(
+            records[0]["description"],
+            "Welcome materials and delivery notes for the Designer workspace."
+        );
 
         let create = request
             .post(base)
             .authorization_bearer(&token)
-            .json(&serde_json::json!({ "title": "Launch plan" }))
+            .json(&serde_json::json!({
+                "title": "Launch plan",
+                "description": "Milestones and responsibilities for launch."
+            }))
             .await;
         assert_eq!(create.status_code(), 200, "{}", create.text());
         let id = create.json::<serde_json::Value>()["id"].as_i64().unwrap();
@@ -38,7 +45,10 @@ async fn owner_can_list_create_view_and_edit_documents() {
         let update = request
             .put(&format!("{base}/{id}"))
             .authorization_bearer(&token)
-            .json(&serde_json::json!({ "title": "Updated launch plan" }))
+            .json(&serde_json::json!({
+                "title": "Updated launch plan",
+                "description": "The revised milestones and launch responsibilities."
+            }))
             .await;
         assert_eq!(update.status_code(), 200, "{}", update.text());
         assert_eq!(
@@ -52,6 +62,10 @@ async fn owner_can_list_create_view_and_edit_documents() {
             .await;
         assert_eq!(show.status_code(), 200, "{}", show.text());
         assert_eq!(show.json::<serde_json::Value>()["tenant_id"], 1);
+        assert_eq!(
+            show.json::<serde_json::Value>()["description"],
+            "The revised milestones and launch responsibilities."
+        );
     })
     .await;
 }
@@ -72,14 +86,20 @@ async fn support_can_view_but_cannot_create_or_edit_documents() {
         let create = request
             .post("/api/tenants/1/documents")
             .authorization_bearer(&token)
-            .json(&serde_json::json!({ "title": "Denied" }))
+            .json(&serde_json::json!({
+                "title": "Denied",
+                "description": "This write should not be permitted."
+            }))
             .await;
         assert_eq!(create.status_code(), 401);
 
         let update = request
             .put("/api/tenants/1/documents/1")
             .authorization_bearer(&token)
-            .json(&serde_json::json!({ "title": "Denied" }))
+            .json(&serde_json::json!({
+                "title": "Denied",
+                "description": "This edit should not be permitted."
+            }))
             .await;
         assert_eq!(update.status_code(), 401);
     })

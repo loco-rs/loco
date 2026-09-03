@@ -207,7 +207,10 @@ async fn authenticated_user_can_create_another_workspace() {
         let document = request
             .post(&format!("/api/tenants/{tenant_id}/documents"))
             .authorization_bearer(&token)
-            .json(&serde_json::json!({ "title": "Research roadmap" }))
+            .json(&serde_json::json!({
+                "title": "Research roadmap",
+                "description": "Plans for the new research workspace."
+            }))
             .await;
         assert_eq!(document.status_code(), 200, "{}", document.text());
     })
