@@ -1,6 +1,10 @@
+use loco_rs::prelude::{Set, TenantActiveModelExt};
 use loco_rs::testing::prelude::*;
-use multitenancy::{app::App, models::users};
-use sea_orm::EntityTrait;
+use multitenancy::{
+    app::App,
+    models::{_entities::permissions, users},
+};
+use sea_orm::{ActiveModelTrait, EntityTrait};
 use serial_test::serial;
 
 #[tokio::test]
@@ -175,6 +179,127 @@ async fn owner_can_change_another_members_role() {
             .json(&serde_json::json!({ "role": "Superuser" }))
             .await;
         assert_eq!(invalid.status_code(), 400);
+    })
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn owner_can_assign_workspace_permissions_to_a_role() {
+    request::<App, _, _>(|request, ctx| async move {
+        seed::<App>(&ctx).await.unwrap();
+        let inactive_permission = permissions::ActiveModel {
+            tenant_application_id: Set(3),
+            key: Set("analytics:read".to_owned()),
+            ..Default::default()
+        }
+        .set_tenant(1)
+        .unwrap()
+        .insert(&ctx.db)
+        .await
+        .unwrap();
+        let john = users::Entity::find_by_id(1)
+            .one(&ctx.db)
+            .await
+            .unwrap()
+            .unwrap();
+        let jane = users::Entity::find_by_id(2)
+            .one(&ctx.db)
+            .await
+            .unwrap()
+            .unwrap();
+        let jwt = ctx.config.get_jwt_config().unwrap();
+        let john_token = john.generate_jwt(&jwt.secret, jwt.expiration).unwrap();
+        let jane_token = jane.generate_jwt(&jwt.secret, jwt.expiration).unwrap();
+
+        let dashboard = request
+            .get("/api/tenants/1/dashboard")
+            .authorization_bearer(&john_token)
+            .await;
+        assert_eq!(dashboard.status_code(), 200, "{}", dashboard.text());
+        let body: serde_json::Value = dashboard.json();
+        assert_eq!(body["roles"].as_array().unwrap().len(), 3);
+        assert_eq!(body["roles"][1]["name"], "Manager");
+        assert_eq!(body["roles"][1]["permissions"].as_array().unwrap().len(), 3);
+        assert_eq!(body["available_permissions"].as_array().unwrap().len(), 4);
+
+        let update = request
+            .post("/api/tenants/1/dashboard/roles/2/permissions")
+            .authorization_bearer(&john_token)
+            .json(&serde_json::json!({ "permission_ids": [1, 4, 4] }))
+            .await;
+        assert_eq!(update.status_code(), 200, "{}", update.text());
+        update.assert_json(&serde_json::json!({
+            "role_id": 2,
+            "permission_ids": [1, 4]
+        }));
+
+        let dashboard = request
+            .get("/api/tenants/1/dashboard")
+            .authorization_bearer(&john_token)
+            .await;
+        let body: serde_json::Value = dashboard.json();
+        let jane = body["members"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|member| member["member_id"] == 2)
+            .unwrap();
+        let keys = jane["permissions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|permission| permission["key"].as_str().unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(keys, ["billing:manage", "documents:read"]);
+
+        let forbidden = request
+            .post("/api/tenants/1/dashboard/roles/2/permissions")
+            .authorization_bearer(&jane_token)
+            .json(&serde_json::json!({ "permission_ids": [1] }))
+            .await;
+        assert_eq!(forbidden.status_code(), 401);
+
+        let other_workspace_role = request
+            .post("/api/tenants/1/dashboard/roles/5/permissions")
+            .authorization_bearer(&john_token)
+            .json(&serde_json::json!({ "permission_ids": [1] }))
+            .await;
+        assert_eq!(other_workspace_role.status_code(), 404);
+
+        let other_workspace_permission = request
+            .post("/api/tenants/1/dashboard/roles/2/permissions")
+            .authorization_bearer(&john_token)
+            .json(&serde_json::json!({ "permission_ids": [5] }))
+            .await;
+        assert_eq!(other_workspace_permission.status_code(), 400);
+
+        let inactive_application_permission = request
+            .post("/api/tenants/1/dashboard/roles/2/permissions")
+            .authorization_bearer(&john_token)
+            .json(&serde_json::json!({
+                "permission_ids": [inactive_permission.id]
+            }))
+            .await;
+        assert_eq!(inactive_application_permission.status_code(), 400);
+
+        let too_many_permissions = request
+            .post("/api/tenants/1/dashboard/roles/2/permissions")
+            .authorization_bearer(&john_token)
+            .json(&serde_json::json!({ "permission_ids": vec![1; 101] }))
+            .await;
+        assert_eq!(too_many_permissions.status_code(), 400);
+
+        let clear_permissions = request
+            .post("/api/tenants/1/dashboard/roles/2/permissions")
+            .authorization_bearer(&john_token)
+            .json(&serde_json::json!({ "permission_ids": [] }))
+            .await;
+        assert_eq!(clear_permissions.status_code(), 200);
+        clear_permissions.assert_json(&serde_json::json!({
+            "role_id": 2,
+            "permission_ids": []
+        }));
     })
     .await;
 }

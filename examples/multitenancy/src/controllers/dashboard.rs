@@ -2,12 +2,13 @@
 use std::collections::{BTreeMap, HashMap};
 
 use loco_rs::prelude::*;
-use sea_orm::PaginatorTrait;
+use sea_orm::{JoinType, PaginatorTrait, QuerySelect, RelationTrait};
 
 use crate::{
     dtos::dashboard::{
         DashboardApplication, DashboardDto, DashboardStats, MemberAccess, MemberRoleUpdate,
-        PermissionAccess, UpdateMemberRole,
+        PermissionAccess, RoleAccess, RolePermissionsUpdate, UpdateMemberRole,
+        UpdateRolePermissions,
     },
     models::_entities::{
         applications, documents, invoices, permissions, role_permissions, roles,
@@ -31,14 +32,18 @@ fn member_access(
             let Some(permission) = access.permissions.get(permission_id) else {
                 continue;
             };
-            let Some((application_id, application_name)) =
+            let Some((application_id, application_name, status)) =
                 access.applications.get(&permission.tenant_application_id)
             else {
                 continue;
             };
+            if status != "active" {
+                continue;
+            }
             effective_permissions.insert(
                 (application_name.clone(), permission.key.clone()),
                 PermissionAccess {
+                    id: permission.id,
                     application_id: *application_id,
                     application_name: application_name.clone(),
                     key: permission.key.clone(),
@@ -56,6 +61,67 @@ fn member_access(
         roles: role_names,
         permissions: effective_permissions.into_values().collect(),
     }
+}
+
+fn permission_access(
+    permission: &permissions::Model,
+    access: &AccessMaps,
+) -> Option<PermissionAccess> {
+    let (application_id, application_name, status) =
+        access.applications.get(&permission.tenant_application_id)?;
+    if status != "active" {
+        return None;
+    }
+    Some(PermissionAccess {
+        id: permission.id,
+        application_id: *application_id,
+        application_name: application_name.clone(),
+        key: permission.key.clone(),
+    })
+}
+
+fn build_available_permissions(access: &AccessMaps) -> Vec<PermissionAccess> {
+    let mut result = access
+        .permissions
+        .values()
+        .filter_map(|permission| permission_access(permission, access))
+        .collect::<Vec<_>>();
+    result.sort_by(|left, right| {
+        (&left.application_name, &left.key).cmp(&(&right.application_name, &right.key))
+    });
+    result
+}
+
+fn build_roles(access: &AccessMaps) -> Vec<RoleAccess> {
+    let mut result = access
+        .roles
+        .values()
+        .map(|role| {
+            let mut role_permissions = access
+                .role_permissions
+                .get(&role.id)
+                .into_iter()
+                .flatten()
+                .filter_map(|permission_id| access.permissions.get(permission_id))
+                .filter_map(|permission| permission_access(permission, access))
+                .collect::<Vec<_>>();
+            role_permissions.sort_by(|left, right| {
+                (&left.application_name, &left.key).cmp(&(&right.application_name, &right.key))
+            });
+            RoleAccess {
+                id: role.id,
+                name: role.name.clone(),
+                permissions: role_permissions,
+            }
+        })
+        .collect::<Vec<_>>();
+    result.sort_by_key(|role| match role.name.as_str() {
+        "Owner" => 0,
+        "Manager" => 1,
+        "Viewer" => 2,
+        _ => 3,
+    });
+    result
 }
 
 type Subscription = (tenant_applications::Model, Option<applications::Model>);
@@ -107,7 +173,7 @@ struct AccessMaps {
     roles: HashMap<i64, roles::Model>,
     role_permissions: HashMap<i64, Vec<i64>>,
     permissions: HashMap<i64, permissions::Model>,
-    applications: HashMap<i64, (i64, String)>,
+    applications: HashMap<i64, (i64, String, String)>,
 }
 
 impl AccessMaps {
@@ -144,7 +210,14 @@ impl AccessMaps {
                 .iter()
                 .filter_map(|(subscription, application)| {
                     application.as_ref().map(|application| {
-                        (subscription.id, (application.id, application.name.clone()))
+                        (
+                            subscription.id,
+                            (
+                                application.id,
+                                application.name.clone(),
+                                subscription.status.clone(),
+                            ),
+                        )
                     })
                 })
                 .collect(),
@@ -210,7 +283,7 @@ async fn ensure_owner(ctx: &AppContext, tenant_id: i64, user_id: i64) -> Result<
     if is_owner {
         Ok(())
     } else {
-        unauthorized("only workspace owners can edit member roles")
+        unauthorized("only workspace owners can manage roles and permissions")
     }
 }
 
@@ -250,6 +323,8 @@ pub async fn show(
         .ok_or(ModelError::EntityNotFound)?;
 
     let dashboard_applications = build_applications(subscriptions, &current_member);
+    let dashboard_roles = build_roles(&access);
+    let available_permissions = build_available_permissions(&access);
 
     let document_count = documents::Entity::find()
         .in_tenant(tenant_id)
@@ -272,7 +347,73 @@ pub async fn show(
         stats,
         current_member,
         members,
+        roles: dashboard_roles,
+        available_permissions,
         applications: dashboard_applications,
+    })
+}
+
+#[debug_handler]
+pub async fn update_role_permissions(
+    State(ctx): State<AppContext>,
+    auth: auth::JWTWithUser<users::Model>,
+    Path((tenant_id, role_id)): Path<(i64, i64)>,
+    JsonValidate(params): JsonValidate<UpdateRolePermissions>,
+) -> Result<Response> {
+    ensure_owner(&ctx, tenant_id, auth.user.id).await?;
+
+    roles::Entity::find_by_id(role_id)
+        .in_tenant(tenant_id)
+        .one(&ctx.db)
+        .await?
+        .ok_or(ModelError::EntityNotFound)?;
+
+    let permission_ids = params
+        .permission_ids
+        .into_iter()
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>();
+    let tenant_permissions = if permission_ids.is_empty() {
+        Vec::new()
+    } else {
+        permissions::Entity::find()
+            .in_tenant(tenant_id)
+            .filter(permissions::Column::Id.is_in(permission_ids.clone()))
+            .join(
+                JoinType::InnerJoin,
+                permissions::Relation::TenantApplications.def(),
+            )
+            .filter(tenant_applications::Column::TenantId.eq(tenant_id))
+            .filter(tenant_applications::Column::Status.eq("active"))
+            .all(&ctx.db)
+            .await?
+    };
+    if tenant_permissions.len() != permission_ids.len() {
+        return bad_request("permissions must belong to the selected workspace");
+    }
+
+    let txn = ctx.db.begin().await?;
+    role_permissions::Entity::delete_many()
+        .filter(role_permissions::Column::TenantId.eq(tenant_id))
+        .filter(role_permissions::Column::RoleId.eq(role_id))
+        .exec(&txn)
+        .await?;
+    for permission_id in &permission_ids {
+        role_permissions::ActiveModel {
+            role_id: Set(role_id),
+            permission_id: Set(*permission_id),
+            ..Default::default()
+        }
+        .set_tenant(tenant_id)?
+        .insert(&txn)
+        .await?;
+    }
+    txn.commit().await?;
+
+    format::json(RolePermissionsUpdate {
+        role_id,
+        permission_ids,
     })
 }
 
@@ -327,4 +468,8 @@ pub fn routes() -> Routes {
         .prefix("api/tenants/{tenant_id}/dashboard/")
         .add("/", get(show))
         .add("/members/{member_id}/role", post(update_member_role))
+        .add(
+            "/roles/{role_id}/permissions",
+            post(update_role_permissions),
+        )
 }

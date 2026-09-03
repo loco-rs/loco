@@ -12,9 +12,20 @@ fn validate_role(role: &str) -> Result<(), validator::ValidationError> {
 #[ts(export, export_to = "../frontend/src/bindings/")]
 pub struct PermissionAccess {
     #[ts(type = "number")]
+    pub id: i64,
+    #[ts(type = "number")]
     pub application_id: i64,
     pub application_name: String,
     pub key: String,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, TS)]
+#[ts(export, export_to = "../frontend/src/bindings/")]
+pub struct RoleAccess {
+    #[ts(type = "number")]
+    pub id: i64,
+    pub name: String,
+    pub permissions: Vec<PermissionAccess>,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, TS)]
@@ -62,6 +73,8 @@ pub struct DashboardDto {
     pub stats: DashboardStats,
     pub current_member: MemberAccess,
     pub members: Vec<MemberAccess>,
+    pub roles: Vec<RoleAccess>,
+    pub available_permissions: Vec<PermissionAccess>,
     pub applications: Vec<DashboardApplication>,
 }
 
@@ -78,4 +91,21 @@ pub struct MemberRoleUpdate {
     #[ts(type = "number")]
     pub member_id: i64,
     pub role: String,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, validator::Validate, TS)]
+#[ts(export, export_to = "../frontend/src/bindings/")]
+pub struct UpdateRolePermissions {
+    #[validate(length(max = 100))]
+    #[ts(type = "Array<number>")]
+    pub permission_ids: Vec<i64>,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, TS)]
+#[ts(export, export_to = "../frontend/src/bindings/")]
+pub struct RolePermissionsUpdate {
+    #[ts(type = "number")]
+    pub role_id: i64,
+    #[ts(type = "Array<number>")]
+    pub permission_ids: Vec<i64>,
 }

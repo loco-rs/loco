@@ -2,5 +2,7 @@
 import type { DashboardApplication } from "./DashboardApplication";
 import type { DashboardStats } from "./DashboardStats";
 import type { MemberAccess } from "./MemberAccess";
+import type { PermissionAccess } from "./PermissionAccess";
+import type { RoleAccess } from "./RoleAccess";
 
-export type DashboardDto = { tenant_id: number, tenant_name: string, stats: DashboardStats, current_member: MemberAccess, members: Array<MemberAccess>, applications: Array<DashboardApplication>, };
+export type DashboardDto = { tenant_id: number, tenant_name: string, stats: DashboardStats, current_member: MemberAccess, members: Array<MemberAccess>, roles: Array<RoleAccess>, available_permissions: Array<PermissionAccess>, applications: Array<DashboardApplication>, };

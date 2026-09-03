@@ -72,6 +72,7 @@ GET  /api/auth/workspaces
 POST /api/auth/workspaces
 GET  /api/tenants/{tenant_id}/dashboard
 POST /api/tenants/{tenant_id}/dashboard/members/{member_id}/role
+POST /api/tenants/{tenant_id}/dashboard/roles/{role_id}/permissions
 GET  /api/tenants/{tenant_id}/applications/{application_id}/documents
 POST /api/tenants/{tenant_id}/applications/{application_id}/documents
 GET  /api/tenants/{tenant_id}/applications/{application_id}/invoices
@@ -89,8 +90,9 @@ a create body. Its authenticated console has Overview, Documents, Billing,
 Members, and Applications pages. The Members table can display each member's
 complete effective access on a dedicated page, while workspace Owners can use
 a separate management page to assign Owner, Manager, or Viewer to other
-members. The request tests exercise both the seeded role
-matrix and a separate two-tenant scenario:
+members and configure each role's permissions. Permission changes apply to
+every workspace member with that role. The request tests exercise both the
+seeded role matrix and a separate two-tenant scenario:
 
 ```sh
 cargo test --test mod
@@ -102,6 +104,8 @@ role's permission does not transfer to another application, that membership
 does not transfer to another tenant, and that document and invoice rows receive
 the trusted tenant context. They also verify Owner, Manager, and Viewer Billing
 boundaries and prevent non-members from reading the dashboard.
+Role-management tests also verify Owner authorization, tenant isolation,
+deduplication, and request-size validation for permission grants.
 
 The frontend test command enforces 100% statement, branch, function, and line
 coverage for session storage, workspace navigation, slug generation, and the
