@@ -21,3 +21,9 @@ workspace name automatically. Login uses Loco's JWT endpoint, and
 `/api/auth/workspaces` lists and creates workspaces for the authenticated user.
 The authenticated navbar contains the current workspace selector, with
 `New workspace` as its final option.
+
+The workspace console provides Overview, Documents, Billing, Members, and
+Applications pages. Overview summarizes tenant-owned records and access. The
+Members page displays each role and its effective application permissions.
+Documents and Billing use the selected tenant's matching subscription and hide
+write forms when the current member has read-only access.
