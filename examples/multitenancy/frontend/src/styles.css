@@ -395,8 +395,8 @@ nav a:hover {
   flex: 0 0 auto;
   place-items: center;
   border-radius: 0.75rem;
-  color: #60468a;
-  background: #ece7f5;
+  color: #fff;
+  background: #172033;
   font-size: 0.78rem;
   font-weight: 800;
 }
