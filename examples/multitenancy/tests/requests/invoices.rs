@@ -71,7 +71,7 @@ async fn manager_can_read_billing_but_cannot_manage_it() {
 
 #[tokio::test]
 #[serial]
-async fn viewer_cannot_read_billing() {
+async fn support_cannot_read_billing() {
     request::<App, _, _>(|request, ctx| async move {
         seed::<App>(&ctx).await.unwrap();
         let token = token_for(&ctx, 3).await;

@@ -188,7 +188,7 @@ async fn authenticated_user_can_create_another_workspace() {
             .into_iter()
             .map(|role| role.name)
             .collect();
-        assert_eq!(role_names, ["Owner", "Manager", "Viewer"]);
+        assert_eq!(role_names, ["Owner", "Administrator", "Manager", "Support"]);
 
         let document = request
             .post(&format!(

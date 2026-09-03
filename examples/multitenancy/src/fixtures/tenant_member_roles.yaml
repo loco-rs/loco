@@ -8,18 +8,18 @@
 - id: 2
   tenant_id: 1
   tenant_member_id: 2
-  role_id: 2
+  role_id: 3
   created_at: "2026-01-01T00:00:00Z"
   updated_at: "2026-01-01T00:00:00Z"
 - id: 3
   tenant_id: 1
   tenant_member_id: 3
-  role_id: 3
+  role_id: 4
   created_at: "2026-01-01T00:00:00Z"
   updated_at: "2026-01-01T00:00:00Z"
 - id: 4
   tenant_id: 2
   tenant_member_id: 4
-  role_id: 4
+  role_id: 5
   created_at: "2026-01-01T00:00:00Z"
   updated_at: "2026-01-01T00:00:00Z"

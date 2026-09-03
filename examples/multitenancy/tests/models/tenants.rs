@@ -85,7 +85,16 @@ async fn seed_creates_two_workspaces_with_application_subscriptions() {
         .collect();
     assert_eq!(
         role_names,
-        ["Owner", "Manager", "Viewer", "Owner", "Manager", "Viewer"]
+        [
+            "Owner",
+            "Administrator",
+            "Manager",
+            "Support",
+            "Owner",
+            "Administrator",
+            "Manager",
+            "Support"
+        ]
     );
 
     let members = tenant_members::Entity::find()
@@ -103,7 +112,7 @@ async fn seed_creates_two_workspaces_with_application_subscriptions() {
         .into_iter()
         .map(|assignment| (assignment.tenant_member_id, assignment.role_id))
         .collect::<Vec<_>>();
-    assert_eq!(assigned_roles, [(1, 1), (2, 2), (3, 3), (4, 4)]);
+    assert_eq!(assigned_roles, [(1, 1), (2, 3), (3, 4), (4, 5)]);
 
     let permission_keys: Vec<String> = permissions::Entity::find()
         .order_by_asc(permissions::Column::Id)
@@ -146,18 +155,27 @@ async fn seed_creates_two_workspaces_with_application_subscriptions() {
             (2, 1),
             (2, 2),
             (2, 3),
+            (2, 4),
             (3, 1),
-            (4, 5),
-            (4, 6),
-            (4, 7),
-            (4, 8),
-            (4, 9),
+            (3, 2),
+            (3, 3),
+            (4, 1),
             (5, 5),
             (5, 6),
             (5, 7),
+            (5, 8),
             (5, 9),
             (6, 5),
-            (6, 9)
+            (6, 6),
+            (6, 7),
+            (6, 8),
+            (6, 9),
+            (7, 5),
+            (7, 6),
+            (7, 7),
+            (7, 9),
+            (8, 5),
+            (8, 9)
         ]
     );
 

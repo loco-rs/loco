@@ -154,8 +154,9 @@ impl Model {
         .await?;
 
         let owner = create_role(txn, tenant.id, "Owner").await?;
+        let administrator = create_role(txn, tenant.id, "Administrator").await?;
         let manager = create_role(txn, tenant.id, "Manager").await?;
-        let viewer = create_role(txn, tenant.id, "Viewer").await?;
+        let support = create_role(txn, tenant.id, "Support").await?;
 
         tenant_member_roles::ActiveModel {
             tenant_member_id: Set(member.id),
@@ -184,10 +185,14 @@ impl Model {
             (owner.id, documents_create.id),
             (owner.id, billing_read.id),
             (owner.id, billing_manage.id),
+            (administrator.id, read_permission.id),
+            (administrator.id, documents_create.id),
+            (administrator.id, billing_read.id),
+            (administrator.id, billing_manage.id),
             (manager.id, read_permission.id),
             (manager.id, documents_create.id),
             (manager.id, billing_read.id),
-            (viewer.id, read_permission.id),
+            (support.id, read_permission.id),
         ] {
             grant_permission(txn, tenant.id, role_id, permission_id).await?;
         }

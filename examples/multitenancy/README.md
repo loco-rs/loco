@@ -42,16 +42,17 @@ The example inherits the framework from the repository root through a local
 path dependency, so it always exercises the code in the current checkout.
 Open <http://localhost:5150> and log in with `john@example.com` / `password`.
 John Doe is the seeded Owner of both Designer and Developer. The Designer
-dashboard includes Jane Smith as Manager and Sam Lee as Viewer so their
+dashboard includes Jane Smith as Manager and Sam Lee as Support so their
 effective permissions can be compared. Both workspaces have active Documents
 and Billing subscriptions. Analytics demonstrates subscription status: it is
 disabled for Designer and active for Developer. Designer has one document and
 two invoices; Developer has one document and one invoice. You can also register
 an account with your name, email, and password. After registration, the
 workspace modal opens so you can name your first tenant; its slug is generated
-automatically. Workspace creation atomically adds the tenant, Owner, Manager,
-and Viewer roles, assigns the creator as Owner, and provisions Documents and
-Billing subscriptions with role-appropriate permissions.
+automatically. Workspace creation atomically adds the tenant, Owner,
+Administrator, Manager, and Support roles, assigns the creator as Owner, and
+provisions Documents and Billing subscriptions with role-appropriate
+permissions.
 
 The `--reset` flag makes repeated demo setup predictable by clearing existing
 rows before loading the fixed-ID fixtures. It deletes accounts and tenants you
@@ -89,8 +90,8 @@ tenant/application context in local storage; it never includes `tenant_id` in
 a create body. Its authenticated console has Overview, Documents, Billing,
 Members, and Applications pages. The Members table can display each member's
 complete effective access on a dedicated page, while workspace Owners can use
-a separate management page to assign Owner, Manager, or Viewer to other
-members and configure each role's permissions. Permission changes apply to
+a separate management page to assign Owner, Administrator, Manager, or Support
+to other members and configure each role's permissions. Permission changes apply to
 every workspace member with that role. The request tests exercise both the
 seeded role matrix and a separate two-tenant scenario:
 
@@ -102,7 +103,7 @@ cd frontend && pnpm test
 They prove that one application can be subscribed by multiple tenants, that a
 role's permission does not transfer to another application, that membership
 does not transfer to another tenant, and that document and invoice rows receive
-the trusted tenant context. They also verify Owner, Manager, and Viewer Billing
+the trusted tenant context. They also verify Owner, Manager, and Support Billing
 boundaries and prevent non-members from reading the dashboard.
 Role-management tests also verify Owner authorization, tenant isolation,
 deduplication, and request-size validation for permission grants.

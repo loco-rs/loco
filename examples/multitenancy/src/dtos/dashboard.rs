@@ -1,7 +1,7 @@
 use ts_rs::TS;
 
 fn validate_role(role: &str) -> Result<(), validator::ValidationError> {
-    if matches!(role, "Owner" | "Manager" | "Viewer") {
+    if matches!(role, "Owner" | "Administrator" | "Manager" | "Support") {
         Ok(())
     } else {
         Err(validator::ValidationError::new("role"))

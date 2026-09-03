@@ -117,9 +117,10 @@ fn build_roles(access: &AccessMaps) -> Vec<RoleAccess> {
         .collect::<Vec<_>>();
     result.sort_by_key(|role| match role.name.as_str() {
         "Owner" => 0,
-        "Manager" => 1,
-        "Viewer" => 2,
-        _ => 3,
+        "Administrator" => 1,
+        "Manager" => 2,
+        "Support" => 3,
+        _ => 4,
     });
     result
 }
