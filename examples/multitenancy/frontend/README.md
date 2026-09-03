@@ -23,9 +23,10 @@ The authenticated navbar contains an organization-style workspace menu, with
 `New workspace` as its final action. It lists each tenant once;
 `tenant_applications` is reserved for optional add-on subscriptions.
 
-The workspace console provides Overview, Clients, Projects, Documents, Billing, Members, and
-Add-ons pages. Overview summarizes tenant-owned records and access. The
-Members page displays each role and its effective tenant permissions.
+The workspace console groups Clients, Projects, and Documents under Core;
+Staff under Settings; and Invoices and Add-ons under Billing. Overview
+summarizes tenant-owned records and access. The Staff page displays each role
+and its effective tenant permissions.
 Each non-owner member links to a dedicated access page, and workspace Owners
 can open a separate role-management page from the table. That page assigns a
 member's role and configures the selected role's permissions for core resources;

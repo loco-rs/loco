@@ -97,12 +97,13 @@ workspace after creation.
 The document POST body is `{"title":"Launch plan"}`. The invoice POST body is
 `{"number":"INV-1003","amount_cents":7900,"status":"draft"}`. The SPA stores the JWT and selected
 tenant context in local storage; it never includes `tenant_id` in
-a create body. Its authenticated console has Overview, Clients, Projects, Documents,
-Billing, Members, and Add-ons pages. Core-resource navigation and metrics are
+a create body. Its authenticated console groups Clients, Projects, and Documents
+under Core; Staff under Settings; and Invoices and Add-ons under Billing.
+Core-resource navigation and metrics are
 permission-aware, while the Add-ons catalog reflects optional product
 availability from the workspace subscription. The seeded catalog includes
 Analytics, Client Portal, Feature Flags, and Priority Support; subscription-only
-add-ons do not require permissions. The Members table can display
+add-ons do not require permissions. The Staff table can display
 each member's complete effective access on a dedicated page, while workspace
 Owners can use a separate management page to assign Owner, Administrator,
 Manager, or Support to other members and configure each role's permissions.
