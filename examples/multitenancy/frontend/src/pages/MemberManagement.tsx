@@ -185,7 +185,7 @@ function MemberRoleForm({
   roles: RoleAccess[];
   tenantId: number;
 }) {
-  const [role, setRole] = useState(member.roles[0] ?? "Viewer");
+  const [role, setRole] = useState(member.roles[0] ?? "Support");
   const selectedRole = roles.find((candidate) => candidate.name === role);
   const selectedRolePermissionIds =
     selectedRole?.permissions.map((permission) => permission.id) ?? [];

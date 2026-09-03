@@ -155,7 +155,7 @@ function DocumentsWorkspace({ workspace }: { workspace: SelectedWorkspace }) {
       </form> : (
         <aside className="panel access-note">
           <span className="eyebrow">Read-only access</span>
-          <h2>Viewer permission</h2>
+          <h2>Read-only permission</h2>
           <p>Your current role can read Documents but cannot create them.</p>
         </aside>
       )}

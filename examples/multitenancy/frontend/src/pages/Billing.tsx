@@ -61,7 +61,7 @@ function BillingWorkspace({ workspace }: { workspace: SelectedWorkspace }) {
         </form> : (
           <aside className="panel access-note">
             <span className="eyebrow">Read-only access</span>
-            <h2>Billing viewer</h2>
+            <h2>Billing access</h2>
             <p>Your current role can review invoices but cannot create them.</p>
           </aside>
         )}
