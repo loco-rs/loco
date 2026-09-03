@@ -25,6 +25,7 @@ export function App() {
   const workspaces = useWorkspaces(authenticated);
   const currentUser = useCurrentUser(authenticated);
   const workspaceMenuRef = useRef<HTMLDetailsElement>(null);
+  const userMenuRef = useRef<HTMLDetailsElement>(null);
   const [savedWorkspace, setSavedWorkspace] = useState(loadWorkspace);
   const [workspaceCreatorOpen, setWorkspaceCreatorOpen] = useState(false);
   const promptWorkspaceCreation =
@@ -45,6 +46,23 @@ export function App() {
       void navigate(location.pathname, { replace: true, state: null });
     }
   }, [location.pathname, navigate, promptWorkspaceCreation]);
+
+  useEffect(() => {
+    function closeMenus(event: PointerEvent) {
+      if (!(event.target instanceof Node)) {
+        return;
+      }
+
+      for (const menu of [workspaceMenuRef.current, userMenuRef.current]) {
+        if (menu?.open && !menu.contains(event.target)) {
+          menu.removeAttribute("open");
+        }
+      }
+    }
+
+    document.addEventListener("pointerdown", closeMenus);
+    return () => document.removeEventListener("pointerdown", closeMenus);
+  }, []);
 
   function chooseWorkspace(workspace: Workspace) {
     const next = workspaceSelection(workspace);
@@ -163,7 +181,7 @@ export function App() {
                   </button>
                 </div>
               </details>
-              <details className="user-menu">
+              <details className="user-menu" ref={userMenuRef}>
                 <summary aria-label="Open account menu">
                   <span className="user-avatar" aria-hidden="true">
                     {currentUser.data?.name
