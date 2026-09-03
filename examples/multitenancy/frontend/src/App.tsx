@@ -204,12 +204,14 @@ export function App() {
                       <span>{currentUser.data?.email ?? "Loading…"}</span>
                     </div>
                   </div>
-                  <div className="user-menu-actions">
-                    <button type="button" onClick={logout}>
-                      <SignOutIcon />
-                      <span>Sign out</span>
-                    </button>
-                  </div>
+                  <button
+                    className="workspace-menu-create user-menu-sign-out"
+                    type="button"
+                    onClick={logout}
+                  >
+                    <SignOutIcon />
+                    <span>Sign out</span>
+                  </button>
                 </div>
               </details>
             </>

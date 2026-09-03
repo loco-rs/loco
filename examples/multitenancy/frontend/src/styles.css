@@ -401,28 +401,6 @@ nav a:hover {
   font-weight: 800;
 }
 
-.user-menu-actions {
-  display: grid;
-  padding: 0.85rem;
-}
-
-.user-menu-actions button {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 0.8rem;
-  padding: 0.75rem;
-  border-radius: 0.65rem;
-  color: #4f584e;
-  background: transparent;
-  text-align: left;
-}
-
-.user-menu-actions button:hover {
-  color: #172033;
-  background: #f1f3ef;
-}
-
 .sign-out-icon {
   width: 1.4rem;
   height: 1.4rem;
