@@ -116,6 +116,13 @@ export function App() {
     openWorkspaceCreator: () => setWorkspaceCreatorOpen(true),
     selectApplication,
   };
+  const userInitials =
+    currentUser.data?.name
+      .split(/\s+/)
+      .map((part) => part.charAt(0))
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "U";
 
   return (
     <div className="shell">
@@ -184,23 +191,26 @@ export function App() {
               <details className="user-menu" ref={userMenuRef}>
                 <summary aria-label="Open account menu">
                   <span className="user-avatar" aria-hidden="true">
-                    {currentUser.data?.name
-                      .split(/\s+/)
-                      .map((part) => part.charAt(0))
-                      .join("")
-                      .slice(0, 2)
-                      .toUpperCase() || "U"}
+                    {userInitials}
                   </span>
                 </summary>
                 <div className="user-menu-popover">
-                  <div className="user-menu-identity">
-                    <strong>{currentUser.data?.name ?? "Account"}</strong>
-                    <span>{currentUser.data?.email ?? "Loading…"}</span>
+                  <div className="workspace-menu-heading user-menu-heading">
+                    <span className="user-menu-avatar" aria-hidden="true">
+                      {userInitials}
+                    </span>
+                    <div>
+                      <strong>{currentUser.data?.name ?? "Account"}</strong>
+                      <span>{currentUser.data?.email ?? "Loading…"}</span>
+                    </div>
                   </div>
-                  <button type="button" onClick={logout}>
-                    <span className="sign-out-icon" aria-hidden="true">↪</span>
-                    Sign out
-                  </button>
+                  <div className="user-menu-actions">
+                    <span className="workspace-menu-label">Account</span>
+                    <button type="button" onClick={logout}>
+                      <SignOutIcon />
+                      <span>Sign out</span>
+                    </button>
+                  </div>
                 </div>
               </details>
             </>
@@ -268,6 +278,14 @@ function WorkspaceIcon() {
   return (
     <svg className="workspace-building-icon" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M3 21h18M5 21V7l7-3v17M12 10h7v11M8 9h1M8 13h1M8 17h1M15 13h1M15 17h1" />
+    </svg>
+  );
+}
+
+function SignOutIcon() {
+  return (
+    <svg className="sign-out-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6A2.25 2.25 0 0 0 5.25 5.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M18 15l3-3m0 0-3-3m3 3H9" />
     </svg>
   );
 }

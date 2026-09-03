@@ -380,52 +380,60 @@ nav a:hover {
   z-index: 30;
   top: calc(100% + 0.75rem);
   right: 0;
-  width: min(19rem, calc(100vw - 2rem));
+  width: min(23rem, calc(100vw - 2rem));
   border: 1px solid #d9ddd4;
-  border-radius: 0.9rem;
+  border-radius: 1rem;
   background: #fff;
-  box-shadow: 0 20px 55px rgb(23 32 51 / 16%);
+  box-shadow: 0 24px 65px rgb(23 32 51 / 17%);
   overflow: hidden;
 }
 
-.user-menu-identity {
+.user-menu-avatar {
   display: grid;
-  gap: 0.45rem;
-  padding: 1.25rem 1.35rem;
+  width: 2.8rem;
+  height: 2.8rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 0.75rem;
+  color: #60468a;
+  background: #ece7f5;
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
-.user-menu-identity strong {
-  color: #172033;
-  font-size: 1rem;
+.user-menu-actions {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.85rem;
 }
 
-.user-menu-identity span {
-  color: #687067;
-  font-size: 0.82rem;
-}
-
-.user-menu-popover button {
+.user-menu-actions button {
   display: flex;
   width: 100%;
   align-items: center;
   gap: 0.8rem;
-  padding: 1rem 1.35rem;
-  border-top: 1px solid #e5e8e2;
-  border-radius: 0;
+  padding: 0.75rem;
+  border-radius: 0.65rem;
   color: #4f584e;
-  background: #fafbfa;
+  background: transparent;
   text-align: left;
 }
 
-.user-menu-popover button:hover {
+.user-menu-actions button:hover {
   color: #172033;
   background: #f1f3ef;
 }
 
 .sign-out-icon {
+  width: 1.4rem;
+  height: 1.4rem;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
   color: #8a9188;
-  font-size: 1.25rem;
-  line-height: 1;
 }
 
 main {
