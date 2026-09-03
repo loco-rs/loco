@@ -182,8 +182,8 @@ h2 {
 
 .auth-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(310px, 0.75fr);
-  gap: clamp(2rem, 6vw, 6rem);
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 1fr);
+  gap: clamp(3rem, 5vw, 5rem);
   align-items: center;
 }
 
@@ -241,6 +241,7 @@ h2 {
 
 .auth-form {
   display: grid;
+  width: 100%;
   gap: 1.5rem;
   padding: clamp(2rem, 4vw, 3rem);
 }
@@ -677,6 +678,17 @@ code {
   text-align: center;
 }
 
+@media (max-width: 900px) {
+  .auth-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-form {
+    width: min(100%, 38rem);
+    justify-self: center;
+  }
+}
+
 @media (max-width: 760px) {
   .topbar,
   .workspace-heading {
@@ -684,14 +696,8 @@ code {
     flex-direction: column;
   }
 
-  .auth-layout,
   .workspace-grid {
     grid-template-columns: 1fr;
-  }
-
-  .auth-form {
-    width: min(100%, 34rem);
-    justify-self: center;
   }
 
   .workspace-context {
