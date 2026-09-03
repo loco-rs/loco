@@ -184,7 +184,7 @@ h2 {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(310px, 0.75fr);
   gap: clamp(2rem, 6vw, 6rem);
-  align-items: start;
+  align-items: center;
 }
 
 .intro-card > p,
@@ -239,7 +239,46 @@ h2 {
   box-shadow: 0 24px 60px rgb(42 51 37 / 8%);
 }
 
-.auth-form,
+.auth-form {
+  display: grid;
+  gap: 1.5rem;
+  padding: clamp(2rem, 4vw, 3rem);
+}
+
+.auth-form h2 {
+  margin: 0;
+  font-size: clamp(1.65rem, 3vw, 2rem);
+  letter-spacing: -0.025em;
+}
+
+.auth-fields {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.auth-field {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.auth-field label {
+  font-size: 0.82rem;
+}
+
+.auth-field input {
+  min-height: 3.25rem;
+}
+
+.auth-submit {
+  min-height: 3.25rem;
+  font-size: 0.95rem;
+}
+
+.auth-form > .hint {
+  margin: 0;
+  text-align: center;
+}
+
 .create-form {
   display: grid;
   gap: 0.85rem;
@@ -648,6 +687,11 @@ code {
   .auth-layout,
   .workspace-grid {
     grid-template-columns: 1fr;
+  }
+
+  .auth-form {
+    width: min(100%, 34rem);
+    justify-self: center;
   }
 
   .workspace-context {

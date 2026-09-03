@@ -48,35 +48,43 @@ export function Register() {
       </div>
       <form className="panel auth-form" onSubmit={handleSubmit}>
         <h2>Create account</h2>
-        <label htmlFor="name">Your name</label>
-        <input
-          id="name"
-          autoComplete="name"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          required
-        />
-        <label htmlFor="email">Email</label>
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          required
-        />
-        <label htmlFor="password">Password</label>
-        <input
-          id="password"
-          type="password"
-          minLength={8}
-          autoComplete="new-password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          required
-        />
+        <div className="auth-fields">
+          <div className="auth-field">
+            <label htmlFor="name">Your name</label>
+            <input
+              id="name"
+              autoComplete="name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              required
+            />
+          </div>
+          <div className="auth-field">
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+            />
+          </div>
+          <div className="auth-field">
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              minLength={8}
+              autoComplete="new-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+            />
+          </div>
+        </div>
         {error && <p className="error" role="alert">{error}</p>}
-        <button className="primary" type="submit" disabled={pending}>
+        <button className="primary auth-submit" type="submit" disabled={pending}>
           {pending ? "Creating account…" : "Register and continue"}
         </button>
         <p className="hint">
