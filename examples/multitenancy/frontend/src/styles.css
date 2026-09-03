@@ -551,34 +551,6 @@ code {
   line-height: 1.55;
 }
 
-.scope-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  margin-top: 0.35rem;
-  padding: 0.9rem;
-  border-radius: 0.75rem;
-  background: #f0f5f0;
-}
-
-.scope-note .status-dot {
-  margin-top: 0.35rem;
-}
-
-.scope-note p {
-  margin: 0;
-  color: #667064;
-  font-size: 0.74rem;
-  line-height: 1.55;
-}
-
-.scope-note strong {
-  display: block;
-  margin-bottom: 0.15rem;
-  color: #304038;
-  font-size: 0.78rem;
-}
-
 .page-state {
   display: flex;
   align-items: center;

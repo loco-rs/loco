@@ -152,14 +152,6 @@ function DocumentsWorkspace({ workspace }: { workspace: SelectedWorkspace }) {
         {createDocument.error && (
           <p className="error" role="alert">{createDocument.error.message}</p>
         )}
-        <div className="scope-note">
-          <span className="status-dot" />
-          <p>
-            <strong>Tenant-safe by default</strong>
-            The browser sends only the title. Loco assigns the authenticated
-            tenant with <code>set_tenant</code>.
-          </p>
-        </div>
       </form> : (
         <aside className="panel access-note">
           <span className="eyebrow">Read-only access</span>
