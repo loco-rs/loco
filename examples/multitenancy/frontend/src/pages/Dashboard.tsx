@@ -44,10 +44,6 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
     currentMember.permissions,
     "documents:view",
   );
-  const canViewBilling = hasPermission(
-    currentMember.permissions,
-    "billing:view",
-  );
   return (
     <section className="console-page">
       <header className="console-heading">
@@ -66,8 +62,6 @@ function DashboardDetails({ workspace }: { workspace: SelectedWorkspace }) {
         {canViewClients && <Stat label="Clients" value={stats.client_count} />}
         {canViewProjects && <Stat label="Projects" value={stats.project_count} />}
         {canViewDocuments && <Stat label="Documents" value={stats.document_count} />}
-        {canViewBilling && <Stat label="Invoices" value={stats.invoice_count} />}
-        <Stat label="Add-ons" value={stats.addon_count} />
       </div>
 
       <div className="overview-grid">
