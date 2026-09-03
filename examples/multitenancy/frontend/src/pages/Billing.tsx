@@ -42,7 +42,7 @@ function BillingWorkspace({ workspace }: { workspace: SelectedWorkspace }) {
 
   return (
     <section className="console-page">
-      <header className="console-heading"><div><span className="eyebrow">Tenant application</span><h1>Billing</h1><p>Invoices are scoped to {workspace.tenantName} and its Billing subscription.</p></div></header>
+      <header className="console-heading"><div><span className="eyebrow">Core feature</span><h1>Billing</h1><p>Invoices are scoped to {workspace.tenantName} and shown according to your Billing permissions.</p></div></header>
       <div className={`workspace-grid${canManage ? "" : " single-column"}`}>
         <section className="panel documents-panel">
           <div className="panel-heading"><div><span className="eyebrow">Accounts receivable</span><h2>Invoices</h2></div><span className="count">{invoices.data?.length ?? 0} invoices</span></div>

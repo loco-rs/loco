@@ -125,7 +125,7 @@ fn build_roles(access: &AccessMaps) -> Vec<RoleAccess> {
     result
 }
 
-type Subscription = (tenant_applications::Model, Option<applications::Model>);
+type TenantApplication = (tenant_applications::Model, Option<applications::Model>);
 
 struct AccessRows {
     member_users: Vec<(tenant_members::Model, Option<users::Model>)>,
@@ -133,7 +133,7 @@ struct AccessRows {
     roles: Vec<roles::Model>,
     grants: Vec<role_permissions::Model>,
     permissions: Vec<permissions::Model>,
-    subscriptions: Vec<Subscription>,
+    tenant_applications: Vec<TenantApplication>,
 }
 
 impl AccessRows {
@@ -160,7 +160,7 @@ impl AccessRows {
                 .in_tenant(tenant_id)
                 .all(&ctx.db)
                 .await?,
-            subscriptions: tenant_applications::Entity::find()
+            tenant_applications: tenant_applications::Entity::find()
                 .in_tenant(tenant_id)
                 .find_also_related(applications::Entity)
                 .all(&ctx.db)
@@ -183,7 +183,7 @@ impl AccessMaps {
         roles: Vec<roles::Model>,
         grants: Vec<role_permissions::Model>,
         permissions: Vec<permissions::Model>,
-        subscriptions: &[Subscription],
+        tenant_applications: &[TenantApplication],
     ) -> Self {
         let mut member_roles: HashMap<i64, Vec<i64>> = HashMap::new();
         for assignment in assignments {
@@ -207,16 +207,16 @@ impl AccessMaps {
                 .into_iter()
                 .map(|permission| (permission.id, permission))
                 .collect(),
-            applications: subscriptions
+            applications: tenant_applications
                 .iter()
-                .filter_map(|(subscription, application)| {
+                .filter_map(|(tenant_application, application)| {
                     application.as_ref().map(|application| {
                         (
-                            subscription.id,
+                            tenant_application.id,
                             (
                                 application.id,
                                 application.name.clone(),
-                                subscription.status.clone(),
+                                tenant_application.status.clone(),
                             ),
                         )
                     })
@@ -239,12 +239,12 @@ fn build_members(
 }
 
 fn build_applications(
-    subscriptions: Vec<Subscription>,
+    tenant_applications: Vec<TenantApplication>,
     current_member: &MemberAccess,
 ) -> Vec<DashboardApplication> {
-    let mut result = subscriptions
+    let mut result = tenant_applications
         .into_iter()
-        .filter_map(|(subscription, application)| {
+        .filter_map(|(tenant_application, application)| {
             application.map(|application| {
                 let mut permissions = current_member
                     .permissions
@@ -256,7 +256,7 @@ fn build_applications(
                 DashboardApplication {
                     id: application.id,
                     name: application.name,
-                    status: subscription.status,
+                    status: tenant_application.status,
                     permissions,
                 }
             })
@@ -274,9 +274,15 @@ async fn ensure_owner(ctx: &AppContext, tenant_id: i64, user_id: i64) -> Result<
         roles,
         grants,
         permissions,
-        subscriptions,
+        tenant_applications,
     } = rows;
-    let access = AccessMaps::from_rows(assignments, roles, grants, permissions, &subscriptions);
+    let access = AccessMaps::from_rows(
+        assignments,
+        roles,
+        grants,
+        permissions,
+        &tenant_applications,
+    );
     let is_owner = build_members(member_users, &access)
         .iter()
         .find(|member| member.user_id == user_id)
@@ -313,9 +319,15 @@ pub async fn show(
         roles,
         grants,
         permissions,
-        subscriptions,
+        tenant_applications,
     } = rows;
-    let access = AccessMaps::from_rows(assignments, roles, grants, permissions, &subscriptions);
+    let access = AccessMaps::from_rows(
+        assignments,
+        roles,
+        grants,
+        permissions,
+        &tenant_applications,
+    );
     let members = build_members(member_users, &access);
     let current_member = members
         .iter()
@@ -323,7 +335,7 @@ pub async fn show(
         .cloned()
         .ok_or(ModelError::EntityNotFound)?;
 
-    let dashboard_applications = build_applications(subscriptions, &current_member);
+    let dashboard_applications = build_applications(tenant_applications, &current_member);
     let dashboard_roles = build_roles(&access);
     let available_permissions = build_available_permissions(&access);
 

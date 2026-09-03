@@ -34,8 +34,8 @@ export function Login() {
         <span className="eyebrow">Welcome back</span>
         <h1>One account, many tenants.</h1>
         <p>
-          Sign in once, then select any tenant and subscribed application where
-          your membership has permission.
+          Sign in once, then select any tenant workspace where you are a
+          member. Core features appear according to your permissions.
         </p>
       </div>
       <form className="panel auth-form" onSubmit={handleSubmit}>

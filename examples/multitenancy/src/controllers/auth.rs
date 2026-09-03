@@ -203,14 +203,14 @@ async fn workspaces(
             .one(&ctx.db)
             .await?
             .ok_or(ModelError::EntityNotFound)?;
-        let subscriptions = tenant_applications::Entity::find()
+        let tenant_application_rows = tenant_applications::Entity::find()
             .in_tenant(tenant.id)
             .filter(tenant_applications::Column::Status.eq("active"))
             .order_by_asc(tenant_applications::Column::Id)
             .find_also_related(applications::Entity)
             .all(&ctx.db)
             .await?;
-        let applications = subscriptions
+        let applications = tenant_application_rows
             .into_iter()
             .filter_map(|(_, application)| application)
             .map(|application| ApplicationAccess {

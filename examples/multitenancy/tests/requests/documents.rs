@@ -18,7 +18,7 @@ struct DemoData {
     tenant_b_id: i64,
     documents_app_id: i64,
     billing_app_id: i64,
-    billing_subscription_id: i64,
+    billing_tenant_application_id: i64,
     editor_role_id: i64,
 }
 
@@ -87,7 +87,7 @@ async fn setup(ctx: &AppContext) -> DemoData {
     .insert(&ctx.db)
     .await
     .unwrap();
-    let billing_subscription = tenant_applications::ActiveModel {
+    let billing_tenant_application = tenant_applications::ActiveModel {
         application_id: Set(billing_app.id),
         status: Set("active".to_owned()),
         ..Default::default()
@@ -179,7 +179,7 @@ async fn setup(ctx: &AppContext) -> DemoData {
         tenant_b_id: tenant_b.id,
         documents_app_id: documents_app.id,
         billing_app_id: billing_app.id,
-        billing_subscription_id: billing_subscription.id,
+        billing_tenant_application_id: billing_tenant_application.id,
         editor_role_id: editor.id,
     }
 }
@@ -229,7 +229,7 @@ async fn membership_and_roles_do_not_cross_tenant_boundaries() {
 
 #[tokio::test]
 #[serial]
-async fn permissions_are_limited_to_the_subscribed_application() {
+async fn permissions_are_limited_to_the_tenant_application() {
     request::<App, _, _>(|request, ctx| async move {
         let demo = setup(&ctx).await;
         let active_without_permission = request
@@ -240,7 +240,7 @@ async fn permissions_are_limited_to_the_subscribed_application() {
         assert_eq!(active_without_permission.status_code(), 401);
 
         let permission = permissions::ActiveModel {
-            tenant_application_id: Set(demo.billing_subscription_id),
+            tenant_application_id: Set(demo.billing_tenant_application_id),
             key: Set("documents:read".to_owned()),
             ..Default::default()
         }
@@ -261,7 +261,7 @@ async fn permissions_are_limited_to_the_subscribed_application() {
         .unwrap();
         tenant_applications::Entity::update_many()
             .col_expr(tenant_applications::Column::Status, Expr::value("inactive"))
-            .filter(tenant_applications::Column::Id.eq(demo.billing_subscription_id))
+            .filter(tenant_applications::Column::Id.eq(demo.billing_tenant_application_id))
             .in_tenant(demo.tenant_a_id)
             .exec(&ctx.db)
             .await

@@ -25,14 +25,18 @@ async fn authorize(
     }
 }
 
-async fn subscription_id(ctx: &AppContext, tenant_id: i64, application_id: i64) -> Result<i64> {
+async fn tenant_application_id(
+    ctx: &AppContext,
+    tenant_id: i64,
+    application_id: i64,
+) -> Result<i64> {
     tenant_applications::Entity::find()
         .in_tenant(tenant_id)
         .filter(tenant_applications::Column::ApplicationId.eq(application_id))
         .filter(tenant_applications::Column::Status.eq("active"))
         .one(&ctx.db)
         .await?
-        .map(|subscription| subscription.id)
+        .map(|tenant_application| tenant_application.id)
         .ok_or_else(|| Error::Model(ModelError::EntityNotFound))
 }
 
@@ -43,11 +47,11 @@ pub async fn index(
     Path((tenant_id, application_id)): Path<(i64, i64)>,
 ) -> Result<Response> {
     authorize(&ctx, auth.user.id, tenant_id, application_id, READ_BILLING).await?;
-    let subscription_id = subscription_id(&ctx, tenant_id, application_id).await?;
+    let tenant_application_id = tenant_application_id(&ctx, tenant_id, application_id).await?;
 
     let invoices = invoices::Entity::find()
         .in_tenant(tenant_id)
-        .filter(invoices::Column::TenantApplicationId.eq(subscription_id))
+        .filter(invoices::Column::TenantApplicationId.eq(tenant_application_id))
         .order_by_desc(invoices::Column::Id)
         .all(&ctx.db)
         .await?
@@ -73,10 +77,10 @@ pub async fn create(
         MANAGE_BILLING,
     )
     .await?;
-    let subscription_id = subscription_id(&ctx, tenant_id, application_id).await?;
+    let tenant_application_id = tenant_application_id(&ctx, tenant_id, application_id).await?;
 
     let invoice = invoices::ActiveModel {
-        tenant_application_id: Set(subscription_id),
+        tenant_application_id: Set(tenant_application_id),
         number: Set(params.number),
         amount_cents: Set(params.amount_cents),
         status: Set(params.status),

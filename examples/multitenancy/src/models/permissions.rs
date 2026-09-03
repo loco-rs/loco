@@ -34,7 +34,7 @@ impl ActiveModelBehavior for ActiveModel {
 // implement your read-oriented logic here
 impl Model {
     /// Returns whether a tenant member has `permission_key` for an active
-    /// subscription to `application_id`.
+    /// tenant application.
     ///
     /// # Errors
     ///
