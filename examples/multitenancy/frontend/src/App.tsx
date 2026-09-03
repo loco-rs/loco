@@ -217,7 +217,7 @@ export function App() {
             </>
           ) : (
             <>
-              <Link to="/login">Log in</Link>
+              <Link to="/login">Login</Link>
               <Link to="/register">Register</Link>
             </>
           )}

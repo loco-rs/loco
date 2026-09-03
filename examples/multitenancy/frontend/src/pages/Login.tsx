@@ -22,7 +22,7 @@ export function Login() {
       clearWorkspace();
       navigate("/dashboard");
     } catch (reason) {
-      setError(reason instanceof ApiClientError ? reason.message : "Unable to log in");
+      setError(reason instanceof ApiClientError ? reason.message : "Unable to sign in");
     } finally {
       setPending(false);
     }
@@ -39,7 +39,7 @@ export function Login() {
         </p>
       </div>
       <form className="panel auth-form" onSubmit={handleSubmit}>
-        <h2>Log in</h2>
+        <h2>Login</h2>
         <div className="auth-fields">
           <div className="auth-field">
             <label htmlFor="email">Email</label>
@@ -66,7 +66,7 @@ export function Login() {
         </div>
         {error && <p className="error" role="alert">{error}</p>}
         <button className="primary auth-submit" type="submit" disabled={pending}>
-          {pending ? "Logging in…" : "Log in"}
+          {pending ? "Signing in…" : "Login"}
         </button>
         <p className="hint">
           New here? <Link to="/register">Create an account</Link>.

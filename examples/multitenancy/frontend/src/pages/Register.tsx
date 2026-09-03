@@ -88,7 +88,7 @@ export function Register() {
           {pending ? "Creating account…" : "Register and continue"}
         </button>
         <p className="hint">
-          Already registered? <Link to="/login">Log in</Link>.
+          Already registered? <Link to="/login">Login</Link>.
         </p>
       </form>
     </section>
