@@ -37,6 +37,16 @@ textarea {
   grid-template-rows: auto 1fr auto;
 }
 
+.public-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+}
+
+.public-shell main {
+  width: min(1120px, calc(100% - 2rem));
+}
+
 .topbar {
   position: relative;
   z-index: 10;

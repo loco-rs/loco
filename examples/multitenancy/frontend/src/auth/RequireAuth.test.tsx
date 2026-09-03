@@ -8,7 +8,7 @@ import {
 } from "react-router";
 import { afterEach, describe, expect, it } from "vitest";
 import { setToken } from "./session";
-import { RequireAuth } from "./RequireAuth";
+import { PublicOnly, RequireAuth } from "./RequireAuth";
 import type { WorkspaceOutletContext } from "./workspace-context";
 
 const workspaceContext: WorkspaceOutletContext = {
@@ -45,6 +45,19 @@ function createRouter() {
   );
 }
 
+function createPublicRouter() {
+  return createMemoryRouter(
+    [
+      {
+        element: <PublicOnly />,
+        children: [{ path: "/login", element: <span>Public login</span> }],
+      },
+      { path: "/dashboard", element: <span>Dashboard page</span> },
+    ],
+    { initialEntries: ["/login"] },
+  );
+}
+
 afterEach(() => window.localStorage.clear());
 
 describe("authenticated route context", () => {
@@ -64,6 +77,28 @@ describe("authenticated route context", () => {
 
     await act(async () => root.render(<RouterProvider router={createRouter()} />));
     expect(container.textContent).toBe("Login page");
+    await act(async () => root.unmount());
+  });
+});
+
+describe("public-only routes", () => {
+  it("renders login without the authenticated shell", async () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+
+    await act(async () => root.render(<RouterProvider router={createPublicRouter()} />));
+    expect(container.textContent).toBe("Public login");
+    expect(container.querySelector(".public-shell")).not.toBeNull();
+    await act(async () => root.unmount());
+  });
+
+  it("redirects authenticated users to the dashboard", async () => {
+    setToken("jwt");
+    const container = document.createElement("div");
+    const root = createRoot(container);
+
+    await act(async () => root.render(<RouterProvider router={createPublicRouter()} />));
+    expect(container.textContent).toBe("Dashboard page");
     await act(async () => root.unmount());
   });
 });

@@ -1,6 +1,6 @@
 import { Navigate, createBrowserRouter } from "react-router";
 import { App } from "./App";
-import { RequireAuth } from "./auth/RequireAuth";
+import { PublicOnly, RequireAuth } from "./auth/RequireAuth";
 import { getToken } from "./auth/session";
 import { Documents } from "./pages/Documents";
 import { DocumentManagement } from "./pages/DocumentManagement";
@@ -19,14 +19,18 @@ import { Register } from "./pages/Register";
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <App />,
+    element: <HomeRedirect />,
+  },
+  {
+    element: <PublicOnly />,
     children: [
-      {
-        index: true,
-        element: <Navigate to={getToken() ? "/dashboard" : "/login"} replace />,
-      },
       { path: "login", element: <Login /> },
       { path: "register", element: <Register /> },
+    ],
+  },
+  {
+    element: <App />,
+    children: [
       {
         element: <RequireAuth />,
         children: [
@@ -54,3 +58,7 @@ export const router = createBrowserRouter([
     ],
   },
 ]);
+
+function HomeRedirect() {
+  return <Navigate to={getToken() ? "/dashboard" : "/login"} replace />;
+}

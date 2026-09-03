@@ -11,3 +11,17 @@ export function RequireAuth() {
 
   return <Outlet context={workspaceContext} />;
 }
+
+export function PublicOnly() {
+  if (getToken() !== null) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return (
+    <div className="public-shell">
+      <main>
+        <Outlet />
+      </main>
+    </div>
+  );
+}

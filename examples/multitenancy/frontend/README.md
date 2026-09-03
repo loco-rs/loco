@@ -18,7 +18,8 @@ The SPA includes registration, login, tenant selection, workspace
 creation, and logout. Registration asks only for the user's name, email, and
 password, then opens the workspace modal. The server generates tenant slugs
 from the workspace name and scopes them by tenant ID, so duplicate names are
-safe and users never type slugs directly. Login uses Loco's JWT endpoint, and
+safe and users never type slugs directly. Login and registration are public-only
+routes; an authenticated user is redirected to the dashboard. Login uses Loco's JWT endpoint, and
 `/api/auth/workspaces` lists and creates workspaces for the authenticated user.
 The authenticated navbar contains an organization-style workspace menu, with
 `New workspace` as its final action. It lists each tenant once;
