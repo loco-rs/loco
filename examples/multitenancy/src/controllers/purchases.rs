@@ -13,7 +13,7 @@ const PURCHASE_ADDONS: &str = "billing:purchase";
 fn addon_price(name: &str) -> i64 {
     match name {
         "Analytics" => 4_900,
-        "Client Portal" => 2_900,
+        "Approval Workflows" => 2_900,
         "Feature Flags" => 3_900,
         "Priority Support" => 9_900,
         _ => 1_900,

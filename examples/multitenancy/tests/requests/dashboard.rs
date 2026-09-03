@@ -44,7 +44,7 @@ async fn owner_sees_seeded_tenant_resources_roles_and_addons() {
         assert_eq!(addons.len(), 4);
         assert_eq!(addons[0]["name"], "Analytics");
         assert_eq!(addons[0]["status"], "inactive");
-        assert_eq!(addons[1]["name"], "Client Portal");
+        assert_eq!(addons[1]["name"], "Approval Workflows");
         assert_eq!(addons[1]["status"], "active");
         assert!(addons
             .iter()
@@ -98,7 +98,7 @@ async fn workspace_list_contains_tenants_once_and_developer_has_expected_addons(
             statuses,
             [
                 ("Analytics", "active"),
-                ("Client Portal", "inactive"),
+                ("Approval Workflows", "inactive"),
                 ("Feature Flags", "active"),
                 ("Priority Support", "active")
             ]

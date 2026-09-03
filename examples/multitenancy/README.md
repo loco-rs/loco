@@ -45,8 +45,8 @@ John Doe is the seeded Owner of both Designer and Developer. The Designer
 dashboard includes Jane Smith as Manager and Sam Lee as Support so their
 effective permissions can be compared. Both workspaces have the core Clients,
 Projects, Documents, and Billing areas. Their optional add-on subscriptions differ: Designer has
-Client Portal and Priority Support, Developer has Feature Flags and Priority
-Support, and Analytics is active only for Developer. Client Portal, Feature
+Approval Workflows and Priority Support, Developer has Feature Flags and Priority
+Support, and Analytics is active only for Developer. Approval Workflows, Feature
 Flags, and Priority Support demonstrate add-on subscription availability without
 creating permissions or role grants. Designer has two clients, two projects,
 one document, and two invoices; Developer has one of each core resource. You can also register an
@@ -105,7 +105,7 @@ under Core; Staff under Settings; and Invoices and Add-ons under Billing.
 Core-resource navigation and metrics are
 permission-aware, while the Add-ons catalog reflects optional product
 availability from the workspace subscription. The seeded catalog includes
-Analytics, Client Portal, Feature Flags, and Priority Support; subscription-only
+Analytics, Approval Workflows, Feature Flags, and Priority Support; subscription-only
 add-ons do not require feature permissions; purchasing one requires the
 tenant-level `billing:purchase` permission. The Staff table can display
 each member's complete effective access on a dedicated page, while workspace

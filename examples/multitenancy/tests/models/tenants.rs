@@ -46,7 +46,7 @@ async fn seed_creates_two_workspaces_with_application_availability() {
         application_names,
         [
             "Analytics",
-            "Client Portal",
+            "Approval Workflows",
             "Feature Flags",
             "Priority Support"
         ]

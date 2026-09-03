@@ -9,14 +9,14 @@ import { NoWorkspace } from "./Dashboard";
 
 const ADDON_DESCRIPTIONS: Record<string, string> = {
   Analytics: "Explore workspace activity and usage trends.",
-  "Client Portal": "Share work and collect feedback from clients.",
+  "Approval Workflows": "Route work through review and sign-off stages.",
   "Feature Flags": "Control staged feature releases across environments.",
   "Priority Support": "Get expedited help from the support team.",
 };
 
 const ADDON_PRICES: Record<string, string> = {
   Analytics: "$49",
-  "Client Portal": "$29",
+  "Approval Workflows": "$29",
   "Feature Flags": "$39",
   "Priority Support": "$99",
 };

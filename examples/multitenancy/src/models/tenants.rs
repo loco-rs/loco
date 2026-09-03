@@ -180,7 +180,7 @@ impl Model {
 
         for name in [
             "Analytics",
-            "Client Portal",
+            "Approval Workflows",
             "Feature Flags",
             "Priority Support",
         ] {

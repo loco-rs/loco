@@ -38,7 +38,7 @@ matching read permission, and their write forms remain hidden for read-only
 members. Document create and edit forms require both a title and description.
 Core resources do not appear in the Add-ons catalog. That page derives optional
 product availability from the workspace's purchased subscription. Designer
-includes Client Portal and Priority Support, while Developer includes Feature
+includes Approval Workflows and Priority Support, while Developer includes Feature
 Flags and Priority Support. Analytics is active only for Developer. All four
 add-ons are subscription-only and do not add permissions or role grants.
 Owners and Administrators can complete a fake purchase for an unavailable

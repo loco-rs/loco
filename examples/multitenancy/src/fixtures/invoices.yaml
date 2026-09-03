@@ -2,7 +2,7 @@
 - id: 1
   tenant_id: 1
   number: INV-1001
-  description: Client Portal add-on purchase
+  description: Approval Workflows add-on purchase
   amount_cents: 125000
   status: paid
   created_at: "2026-01-02T00:00:00Z"
