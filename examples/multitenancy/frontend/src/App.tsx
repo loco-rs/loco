@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useCurrentUser, useWorkspaces } from "./api/auth";
 import {
@@ -9,7 +9,6 @@ import {
   saveWorkspace,
 } from "./auth/session";
 import {
-  CREATE_WORKSPACE_VALUE,
   flattenWorkspaces,
   resolveWorkspace,
   workspaceSelection,
@@ -25,6 +24,7 @@ export function App() {
   const authenticated = getToken() !== null;
   const workspaces = useWorkspaces(authenticated);
   const currentUser = useCurrentUser(authenticated);
+  const workspaceMenuRef = useRef<HTMLDetailsElement>(null);
   const [savedWorkspace, setSavedWorkspace] = useState(loadWorkspace);
   const [workspaceCreatorOpen, setWorkspaceCreatorOpen] = useState(false);
   const promptWorkspaceCreation =
@@ -44,11 +44,6 @@ export function App() {
   }, [location.pathname, navigate, promptWorkspaceCreation]);
 
   function selectWorkspace(value: string) {
-    if (value === CREATE_WORKSPACE_VALUE) {
-      setWorkspaceCreatorOpen(true);
-      return;
-    }
-
     const next = workspaceOptions.find(
       (option) => `${option.tenantId}:${option.applicationId}` === value,
     );
@@ -56,6 +51,16 @@ export function App() {
       saveWorkspace(next);
       setSavedWorkspace(next);
     }
+  }
+
+  function chooseWorkspace(value: string) {
+    selectWorkspace(value);
+    workspaceMenuRef.current?.removeAttribute("open");
+  }
+
+  function createWorkspaceFromMenu() {
+    workspaceMenuRef.current?.removeAttribute("open");
+    setWorkspaceCreatorOpen(true);
   }
 
   function activateWorkspace(workspace: Workspace) {
@@ -110,34 +115,52 @@ export function App() {
         <nav className={authenticated ? "authenticated-nav" : undefined}>
           {authenticated ? (
             <>
-              <label className="nav-workspace-picker">
-                <span className="sr-only">Current workspace</span>
-                <select
-                  aria-label="Current workspace"
-                  value={
-                    selectedWorkspace
-                      ? `${selectedWorkspace.tenantId}:${selectedWorkspace.applicationId}`
-                      : ""
-                  }
-                  disabled={workspaces.isLoading}
-                  onChange={(event) => selectWorkspace(event.target.value)}
-                >
-                  {!selectedWorkspace && (
-                    <option value="" disabled>
-                      {workspaces.isLoading ? "Loading workspaces…" : "Choose workspace"}
-                    </option>
-                  )}
-                  {workspaceOptions.map((option) => (
-                    <option
-                      key={`${option.tenantId}:${option.applicationId}`}
-                      value={`${option.tenantId}:${option.applicationId}`}
-                    >
-                      {option.tenantName} · {option.applicationName}
-                    </option>
-                  ))}
-                  <option value={CREATE_WORKSPACE_VALUE}>＋ New workspace</option>
-                </select>
-              </label>
+              <details className="workspace-menu" ref={workspaceMenuRef}>
+                <summary aria-label="Open workspace menu">
+                  <WorkspaceIcon />
+                  <span>{selectedWorkspace?.tenantName ?? "Choose workspace"}</span>
+                  <span className="menu-chevron" aria-hidden="true">⌄</span>
+                </summary>
+                <div className="workspace-menu-popover">
+                  <div className="workspace-menu-heading">
+                    <span className="workspace-menu-icon"><WorkspaceIcon /></span>
+                    <div>
+                      <strong>{selectedWorkspace?.tenantName ?? "Your workspaces"}</strong>
+                      <span>{selectedWorkspace ? `Current application: ${selectedWorkspace.applicationName}` : "Select a workspace"}</span>
+                    </div>
+                  </div>
+                  <div className="workspace-menu-options">
+                    <span className="workspace-menu-label">Switch workspace</span>
+                    {workspaceOptions.map((option) => {
+                      const value = `${option.tenantId}:${option.applicationId}`;
+                      const active =
+                        option.tenantId === selectedWorkspace?.tenantId &&
+                        option.applicationId === selectedWorkspace.applicationId;
+                      return (
+                        <button
+                          className={active ? "active" : undefined}
+                          type="button"
+                          key={value}
+                          onClick={() => chooseWorkspace(value)}
+                        >
+                          <span className={`workspace-app-icon ${option.applicationName.toLowerCase()}`}>
+                            {option.applicationName.charAt(0)}
+                          </span>
+                          <span>
+                            <strong>{option.tenantName}</strong>
+                            <small>{option.applicationName}</small>
+                          </span>
+                          {active && <span className="workspace-check" aria-label="Current">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button className="workspace-menu-create" type="button" onClick={createWorkspaceFromMenu}>
+                    <span aria-hidden="true">＋</span>
+                    New workspace
+                  </button>
+                </div>
+              </details>
               <details className="user-menu">
                 <summary aria-label="Open account menu">
                   <span className="user-avatar" aria-hidden="true">
@@ -218,5 +241,13 @@ export function App() {
         />
       )}
     </div>
+  );
+}
+
+function WorkspaceIcon() {
+  return (
+    <svg className="workspace-building-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 21h18M5 21V7l7-3v17M12 10h7v11M8 9h1M8 13h1M8 17h1M15 13h1M15 17h1" />
+    </svg>
   );
 }
