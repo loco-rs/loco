@@ -143,9 +143,22 @@ nav {
 }
 
 .menu-chevron {
+  display: grid;
+  width: 1.2rem;
+  height: 1.2rem;
+  place-items: center;
   color: #596259;
-  font-size: 1.05rem;
   transition: transform 150ms ease;
+}
+
+.menu-chevron svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
 }
 
 .workspace-menu[open] .menu-chevron {
