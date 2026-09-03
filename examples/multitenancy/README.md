@@ -27,7 +27,7 @@ For a single-origin production-style run, from this directory:
 
 ```sh
 cargo loco db migrate
-cargo loco db seed
+cargo loco db seed --reset
 cd frontend
 pnpm install
 pnpm build
@@ -41,6 +41,11 @@ Open <http://localhost:5150> and log in with `user1@example.com` / `12341234`.
 The seeded editor can list and create Acme documents. You can also register a
 new account: registration atomically creates its tenant, owner membership,
 Documents subscription, and read/create permissions.
+
+The `--reset` flag makes repeated demo setup predictable by clearing existing
+rows before loading the fixed-ID fixtures. It deletes accounts and tenants you
+previously created in this example. If the database is already seeded and you
+want to keep its data, skip the seed command and run `cargo loco start`.
 
 For frontend development, run Loco on port 5150 and `pnpm dev` from
 `frontend`; Vite serves <http://localhost:5173> and proxies `/api` to Loco.
