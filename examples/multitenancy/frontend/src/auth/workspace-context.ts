@@ -46,7 +46,9 @@ export function workspaceSelection(
 
 export interface WorkspaceOutletContext {
   selected: SelectedWorkspace | undefined;
+  options: SelectedWorkspace[];
   isLoading: boolean;
   error: ApiClientError | null;
   openWorkspaceCreator: () => void;
+  selectApplication: (applicationName: string) => void;
 }

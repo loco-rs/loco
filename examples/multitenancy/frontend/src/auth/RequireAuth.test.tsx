@@ -18,9 +18,11 @@ const workspaceContext: WorkspaceOutletContext = {
     applicationId: 2,
     applicationName: "Documents",
   },
+  options: [],
   isLoading: false,
   error: null,
   openWorkspaceCreator: () => undefined,
+  selectApplication: () => undefined,
 };
 
 function WorkspaceProbe() {

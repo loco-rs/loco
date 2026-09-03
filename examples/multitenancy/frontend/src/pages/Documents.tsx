@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { useOutletContext } from "react-router";
+import { useDashboard } from "../api/dashboard";
 import { useCreateDocument, useDocuments } from "../api/documents";
 import type { SelectedWorkspace } from "../auth/session";
 import type { WorkspaceOutletContext } from "../auth/workspace-context";
 
 export function Documents() {
-  const { selected, isLoading, error, openWorkspaceCreator } =
+  const { selected, options, isLoading, error, openWorkspaceCreator } =
     useOutletContext<WorkspaceOutletContext>();
 
   if (isLoading) {
@@ -41,6 +42,13 @@ export function Documents() {
     );
   }
 
+  const documentsWorkspace =
+    options.find(
+      (option) =>
+        option.tenantId === selected.tenantId &&
+        option.applicationName === "Documents",
+    ) ?? selected;
+
   return (
     <section className="documents-page">
       <header className="workspace-heading">
@@ -58,7 +66,7 @@ export function Documents() {
         </div>
         <div>
           <span>Application</span>
-          <strong>{selected.applicationName}</strong>
+          <strong>{documentsWorkspace.applicationName}</strong>
         </div>
         <div className="scope-status">
           <span className="status-dot" />
@@ -67,8 +75,8 @@ export function Documents() {
       </div>
 
       <DocumentsWorkspace
-        key={`${selected.tenantId}:${selected.applicationId}`}
-        workspace={selected}
+        key={`${documentsWorkspace.tenantId}:${documentsWorkspace.applicationId}`}
+        workspace={documentsWorkspace}
       />
     </section>
   );
@@ -77,7 +85,13 @@ export function Documents() {
 function DocumentsWorkspace({ workspace }: { workspace: SelectedWorkspace }) {
   const documents = useDocuments(workspace);
   const createDocument = useCreateDocument(workspace);
+  const dashboard = useDashboard(workspace.tenantId);
   const [title, setTitle] = useState("");
+  const canCreate = dashboard.data?.current_member.permissions.some(
+    (permission) =>
+      permission.application_id === workspace.applicationId &&
+      permission.key === "documents:create",
+  );
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -92,8 +106,15 @@ function DocumentsWorkspace({ workspace }: { workspace: SelectedWorkspace }) {
     );
   }
 
+  if (dashboard.isLoading) {
+    return <div className="panel page-state">Loading document access…</div>;
+  }
+  if (dashboard.error) {
+    return <p className="error" role="alert">{dashboard.error.message}</p>;
+  }
+
   return (
-    <div className="workspace-grid">
+    <div className={`workspace-grid${canCreate ? "" : " single-column"}`}>
       <div className="panel documents-panel">
         <div className="panel-heading">
           <div>
@@ -121,7 +142,7 @@ function DocumentsWorkspace({ workspace }: { workspace: SelectedWorkspace }) {
         </ul>
       </div>
 
-      <form className="panel create-form" onSubmit={handleSubmit}>
+      {canCreate ? <form className="panel create-form" onSubmit={handleSubmit}>
         <div className="create-form-heading">
           <span className="create-icon">+</span>
           <div>
@@ -154,7 +175,13 @@ function DocumentsWorkspace({ workspace }: { workspace: SelectedWorkspace }) {
             tenant with <code>set_tenant</code>.
           </p>
         </div>
-      </form>
+      </form> : (
+        <aside className="panel access-note">
+          <span className="eyebrow">Read-only access</span>
+          <h2>Viewer permission</h2>
+          <p>Your current role can read Documents but cannot create them.</p>
+        </aside>
+      )}
     </div>
   );
 }

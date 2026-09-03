@@ -1,0 +1,43 @@
+import { useOutletContext } from "react-router";
+import { useDashboard } from "../api/dashboard";
+import type { SelectedWorkspace } from "../auth/session";
+import type { WorkspaceOutletContext } from "../auth/workspace-context";
+import { NoWorkspace } from "./Dashboard";
+
+export function Members() {
+  const context = useOutletContext<WorkspaceOutletContext>();
+  if (context.isLoading) return <div className="panel page-state">Loading your workspace…</div>;
+  if (context.error) return <p className="error" role="alert">{context.error.message}</p>;
+  if (!context.selected) {
+    return <NoWorkspace onCreate={context.openWorkspaceCreator} />;
+  }
+  return <MemberList workspace={context.selected} />;
+}
+
+function MemberList({ workspace }: { workspace: SelectedWorkspace }) {
+  const dashboard = useDashboard(workspace.tenantId);
+  if (dashboard.isLoading) return <div className="panel page-state">Loading members…</div>;
+  if (dashboard.error) return <p className="error" role="alert">{dashboard.error.message}</p>;
+
+  return (
+    <section className="console-page">
+      <header className="console-heading">
+        <div><span className="eyebrow">Access directory</span><h1>Members</h1><p>Roles and effective application permissions for this workspace.</p></div>
+      </header>
+      <div className="panel table-panel">
+        <div className="member-table" role="table">
+          <div className="member-row member-header" role="row">
+            <span>Member</span><span>Role</span><span>Permissions</span>
+          </div>
+          {dashboard.data?.members.map((member) => (
+            <div className="member-row" role="row" key={member.member_id}>
+              <div className="member-identity"><span className="avatar">{member.name.charAt(0)}</span><div><strong>{member.name}</strong><small>{member.email}</small></div></div>
+              <div>{member.roles.map((role) => <span className="role-badge" key={role}>{role}</span>)}</div>
+              <div className="permission-list">{member.permissions.map((permission) => <span key={`${permission.application_id}:${permission.key}`}>{permission.key}</span>)}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}

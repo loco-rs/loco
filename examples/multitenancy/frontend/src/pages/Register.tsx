@@ -24,7 +24,7 @@ export function Register() {
         password,
       });
       setToken(session.token);
-      navigate("/documents", { state: { createWorkspace: true } });
+      navigate("/dashboard", { state: { createWorkspace: true } });
     } catch (reason) {
       setError(
         reason instanceof ApiClientError

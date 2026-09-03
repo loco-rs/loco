@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Link, Outlet, useLocation, useNavigate } from "react-router";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useWorkspaces } from "./api/auth";
 import {
   clearSession,
@@ -67,6 +67,18 @@ export function App() {
     setWorkspaceCreatorOpen(false);
   }
 
+  function selectApplication(applicationName: string) {
+    const next = workspaceOptions.find(
+      (option) =>
+        option.tenantId === selectedWorkspace?.tenantId &&
+        option.applicationName === applicationName,
+    );
+    if (next) {
+      saveWorkspace(next);
+      setSavedWorkspace(next);
+    }
+  }
+
   function logout() {
     clearSession();
     queryClient.clear();
@@ -77,9 +89,11 @@ export function App() {
 
   const workspaceContext: WorkspaceOutletContext = {
     selected: selectedWorkspace,
+    options: workspaceOptions,
     isLoading: workspaces.isLoading,
     error: workspaces.error,
     openWorkspaceCreator: () => setWorkspaceCreatorOpen(true),
+    selectApplication,
   };
 
   return (
@@ -123,7 +137,6 @@ export function App() {
                   <option value={CREATE_WORKSPACE_VALUE}>＋ New workspace</option>
                 </select>
               </label>
-              <Link to="/documents">Documents</Link>
               <button className="nav-button" type="button" onClick={logout}>
                 Log out
               </button>
@@ -136,8 +149,44 @@ export function App() {
           )}
         </nav>
       </header>
-      <main>
-        <Outlet context={workspaceContext} />
+      <main className={authenticated ? "authenticated-main" : undefined}>
+        {authenticated ? (
+          <div className="dashboard-layout">
+            <aside className="sidebar">
+              <div className="sidebar-context">
+                <span className="eyebrow">Workspace</span>
+                <strong>{selectedWorkspace?.tenantName ?? "No workspace"}</strong>
+                <small>{selectedWorkspace?.applicationName ?? "Create one to begin"}</small>
+              </div>
+              <nav className="sidebar-nav" aria-label="Workspace navigation">
+                <NavLink to="/dashboard">Overview</NavLink>
+                <NavLink
+                  to="/documents"
+                  onClick={() => selectApplication("Documents")}
+                >
+                  Documents
+                </NavLink>
+                <NavLink
+                  to="/billing"
+                  onClick={() => selectApplication("Billing")}
+                >
+                  Billing
+                </NavLink>
+                <NavLink to="/members">Members</NavLink>
+                <NavLink to="/applications">Applications</NavLink>
+              </nav>
+              <div className="sidebar-note">
+                <span className="status-dot" />
+                Tenant scope enforced
+              </div>
+            </aside>
+            <div className="dashboard-content">
+              <Outlet context={workspaceContext} />
+            </div>
+          </div>
+        ) : (
+          <Outlet context={workspaceContext} />
+        )}
       </main>
       <footer>
         Tenant-aware sessions · application RBAC · powered by Loco

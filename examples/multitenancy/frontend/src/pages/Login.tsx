@@ -20,7 +20,7 @@ export function Login() {
       const session = await login({ email, password });
       setToken(session.token);
       clearWorkspace();
-      navigate("/documents");
+      navigate("/dashboard");
     } catch (reason) {
       setError(reason instanceof ApiClientError ? reason.message : "Unable to log in");
     } finally {
