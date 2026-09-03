@@ -38,10 +38,11 @@ cargo loco start
 The example inherits the framework from the repository root through a local
 path dependency, so it always exercises the code in the current checkout.
 Open <http://localhost:5150> and log in with `user1@example.com` / `12341234`.
-The seeded editor can list and create Acme documents. You can also register a
-new account with your name, email, password, and tenant name; the tenant slug
-is generated automatically. Registration atomically creates its tenant, owner
-membership, Documents subscription, and read/create permissions.
+The seeded editor can list and create Acme documents. You can also register an
+account with your name, email, and password. After registration, the workspace
+modal opens so you can name your first tenant; its slug is generated
+automatically. Workspace creation atomically adds the tenant, owner membership,
+Documents subscription, and read/create permissions.
 
 The `--reset` flag makes repeated demo setup predictable by clearing existing
 rows before loading the fixed-ID fixtures. It deletes accounts and tenants you
@@ -54,7 +55,7 @@ For frontend development, run Loco on port 5150 and `pnpm dev` from
 The API endpoints are:
 
 ```text
-POST /api/auth/register-tenant
+POST /api/auth/register-account
 POST /api/auth/login
 GET  /api/auth/workspaces
 POST /api/auth/workspaces

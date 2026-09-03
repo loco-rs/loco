@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use chrono::{offset::Local, Duration};
 use loco_rs::{auth::jwt, hash, prelude::*};
-use sea_orm::DatabaseTransaction;
 use serde::{Deserialize, Serialize};
 use serde_json::Map;
 use uuid::Uuid;
@@ -271,19 +270,6 @@ impl Model {
         txn.commit().await?;
 
         Ok(user)
-    }
-
-    /// Creates a user inside an existing transaction.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error when the email already exists, password hashing fails,
-    /// or the database insert fails.
-    pub async fn create_with_password_in_transaction(
-        txn: &DatabaseTransaction,
-        params: &RegisterParams,
-    ) -> ModelResult<Self> {
-        Self::create_with_password_on(txn, params).await
     }
 
     /// Creates a JWT

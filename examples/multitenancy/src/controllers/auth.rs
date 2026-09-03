@@ -1,7 +1,5 @@
 use crate::{
-    dtos::auth::{
-        ApplicationAccess, CreateWorkspace, RegisterTenant, RegisterTenantResponse, Workspace,
-    },
+    dtos::auth::{ApplicationAccess, CreateWorkspace, RegisterAccount, Workspace},
     mailers::auth::AuthMailer,
     models::{
         _entities::{applications, tenant_applications, tenant_members, tenants, users},
@@ -75,39 +73,23 @@ async fn register(
     format::json(())
 }
 
-/// Registers a user together with their first tenant workspace.
+/// Registers an account and starts an authenticated session.
 #[debug_handler]
-async fn register_tenant(
+async fn register_account(
     State(ctx): State<AppContext>,
-    JsonValidate(params): JsonValidate<RegisterTenant>,
+    JsonValidate(params): JsonValidate<RegisterAccount>,
 ) -> Result<Response> {
     let user_params = RegisterParams {
         name: params.name,
         email: params.email,
         password: params.password,
     };
-    let registration = tenant_model::Model::register_workspace(
-        &ctx.db,
-        &user_params,
-        &params.tenant_name,
-        &params.tenant_slug,
-    )
-    .await?;
+    let user = users::Model::create_with_password(&ctx.db, &user_params).await?;
 
     let jwt = ctx.config.get_jwt_config()?;
-    let token = registration
-        .user
-        .generate_jwt(&jwt.secret, jwt.expiration)?;
+    let token = user.generate_jwt(&jwt.secret, jwt.expiration)?;
 
-    format::json(RegisterTenantResponse {
-        token,
-        pid: registration.user.pid.to_string(),
-        name: registration.user.name,
-        tenant_id: registration.tenant.id,
-        tenant_name: registration.tenant.name,
-        application_id: registration.application.id,
-        application_name: registration.application.name,
-    })
+    format::json(LoginResponse::new(&user, &token))
 }
 
 /// Verify register user. if the user not verified his email, he can't login to
@@ -368,7 +350,7 @@ pub fn routes() -> Routes {
     Routes::new()
         .prefix("/api/auth")
         .add("/register", post(register))
-        .add("/register-tenant", post(register_tenant))
+        .add("/register-account", post(register_account))
         .add("/verify/{token}", get(verify))
         .add("/login", post(login))
         .add("/forgot", post(forgot))

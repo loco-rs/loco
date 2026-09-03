@@ -17,17 +17,13 @@ fn validate_tenant_slug(slug: &str) -> Result<(), validator::ValidationError> {
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, validator::Validate, TS)]
 #[ts(export, export_to = "../frontend/src/bindings/")]
-pub struct RegisterTenant {
+pub struct RegisterAccount {
     #[validate(length(min = 2, max = 100))]
     pub name: String,
     #[validate(email)]
     pub email: String,
     #[validate(length(min = 8, max = 128))]
     pub password: String,
-    #[validate(length(min = 2, max = 100))]
-    pub tenant_name: String,
-    #[validate(length(min = 2, max = 100), custom(function = "validate_tenant_slug"))]
-    pub tenant_slug: String,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, validator::Validate, TS)]
@@ -37,20 +33,6 @@ pub struct CreateWorkspace {
     pub tenant_name: String,
     #[validate(length(min = 2, max = 100), custom(function = "validate_tenant_slug"))]
     pub tenant_slug: String,
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize, TS)]
-#[ts(export, export_to = "../frontend/src/bindings/")]
-pub struct RegisterTenantResponse {
-    pub token: String,
-    pub pid: String,
-    pub name: String,
-    #[ts(type = "number")]
-    pub tenant_id: i64,
-    pub tenant_name: String,
-    #[ts(type = "number")]
-    pub application_id: i64,
-    pub application_name: String,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, TS)]

@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { useLocation, useNavigate } from "react-router";
 import { useCreateWorkspace, useWorkspaces } from "../api/auth";
 import { useCreateDocument, useDocuments } from "../api/documents";
 import {
@@ -10,9 +11,24 @@ import { tenantSlug } from "../auth/tenant";
 import type { Workspace } from "../bindings/Workspace";
 
 export function Documents() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const promptWorkspaceCreation =
+    typeof location.state === "object" &&
+    location.state !== null &&
+    "createWorkspace" in location.state &&
+    location.state.createWorkspace === true;
   const workspaces = useWorkspaces();
   const [savedWorkspace, setSavedWorkspace] = useState(loadWorkspace);
-  const [workspaceCreatorOpen, setWorkspaceCreatorOpen] = useState(false);
+  const [workspaceCreatorOpen, setWorkspaceCreatorOpen] = useState(
+    promptWorkspaceCreation,
+  );
+
+  useEffect(() => {
+    if (promptWorkspaceCreation) {
+      void navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.pathname, navigate, promptWorkspaceCreation]);
 
   if (workspaces.isLoading) {
     return (

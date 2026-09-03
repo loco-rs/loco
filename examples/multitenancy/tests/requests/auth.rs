@@ -73,52 +73,32 @@ async fn can_register() {
 
 #[tokio::test]
 #[serial]
-async fn can_register_a_tenant_and_use_the_authenticated_workspace() {
-    request::<App, _, _>(|request, _ctx| async move {
+async fn can_register_an_account_without_a_workspace() {
+    request::<App, _, _>(|request, ctx| async move {
         let password = "correct-horse-battery-staple";
         let registration = request
-            .post("/api/auth/register-tenant")
+            .post("/api/auth/register-account")
             .json(&serde_json::json!({
                 "name": "Ada Owner",
                 "email": "ada@acme.test",
-                "password": password,
-                "tenant_name": "Acme Labs",
-                "tenant_slug": "acme-labs"
+                "password": password
             }))
             .await;
 
         assert_eq!(registration.status_code(), 200, "{}", registration.text());
         let session: serde_json::Value = registration.json();
         let token = session["token"].as_str().unwrap();
-        let tenant_id = session["tenant_id"].as_i64().unwrap();
-        let application_id = session["application_id"].as_i64().unwrap();
-        assert_eq!(session["tenant_name"], "Acme Labs");
-        assert_eq!(session["application_name"], "Documents");
+        assert_eq!(session["name"], "Ada Owner");
+        assert!(users::Model::find_by_email(&ctx.db, "ada@acme.test")
+            .await
+            .is_ok());
 
         let workspaces = request
             .get("/api/auth/workspaces")
             .authorization_bearer(token)
             .await;
         assert_eq!(workspaces.status_code(), 200, "{}", workspaces.text());
-        workspaces.assert_json(&serde_json::json!([{
-            "tenant_id": tenant_id,
-            "tenant_name": "Acme Labs",
-            "tenant_slug": "acme-labs",
-            "applications": [{
-                "id": application_id,
-                "name": "Documents"
-            }]
-        }]));
-
-        let created = request
-            .post(&format!(
-                "/api/tenants/{tenant_id}/applications/{application_id}/documents"
-            ))
-            .authorization_bearer(token)
-            .json(&serde_json::json!({ "title": "Tenant onboarding" }))
-            .await;
-        assert_eq!(created.status_code(), 200, "{}", created.text());
-        assert_eq!(created.json::<serde_json::Value>()["tenant_id"], tenant_id);
+        workspaces.assert_json(&serde_json::json!([]));
 
         let login = request
             .post("/api/auth/login")
@@ -146,13 +126,11 @@ async fn can_register_a_tenant_and_use_the_authenticated_workspace() {
 async fn authenticated_user_can_create_another_workspace() {
     request::<App, _, _>(|request, _ctx| async move {
         let registration = request
-            .post("/api/auth/register-tenant")
+            .post("/api/auth/register-account")
             .json(&serde_json::json!({
                 "name": "Ada Owner",
                 "email": "ada-two@acme.test",
-                "password": "correct-horse-battery-staple",
-                "tenant_name": "Acme Labs",
-                "tenant_slug": "acme-labs"
+                "password": "correct-horse-battery-staple"
             }))
             .await;
         assert_eq!(registration.status_code(), 200, "{}", registration.text());
@@ -160,6 +138,16 @@ async fn authenticated_user_can_create_another_workspace() {
             .as_str()
             .unwrap()
             .to_owned();
+
+        let first = request
+            .post("/api/auth/workspaces")
+            .authorization_bearer(&token)
+            .json(&serde_json::json!({
+                "tenant_name": "Acme Labs",
+                "tenant_slug": "acme-labs"
+            }))
+            .await;
+        assert_eq!(first.status_code(), 200, "{}", first.text());
 
         let created = request
             .post("/api/auth/workspaces")
@@ -222,38 +210,41 @@ async fn workspace_creation_requires_authentication() {
 
 #[tokio::test]
 #[serial]
-async fn tenant_registration_rolls_back_when_the_slug_exists() {
+async fn workspace_creation_rejects_a_duplicate_slug() {
     request::<App, _, _>(|request, ctx| async move {
-        let payload = serde_json::json!({
-            "name": "First Owner",
-            "email": "first@example.test",
-            "password": "correct-horse-battery-staple",
+        let registration = request
+            .post("/api/auth/register-account")
+            .json(&serde_json::json!({
+                "name": "First Owner",
+                "email": "first@example.test",
+                "password": "correct-horse-battery-staple"
+            }))
+            .await;
+        let token = registration.json::<serde_json::Value>()["token"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+
+        let workspace = serde_json::json!({
             "tenant_name": "Shared Name",
             "tenant_slug": "shared-name"
         });
-        assert_eq!(
-            request
-                .post("/api/auth/register-tenant")
-                .json(&payload)
-                .await
-                .status_code(),
-            200
-        );
+        let first = request
+            .post("/api/auth/workspaces")
+            .authorization_bearer(&token)
+            .json(&workspace)
+            .await;
+        assert_eq!(first.status_code(), 200, "{}", first.text());
 
         let duplicate = request
-            .post("/api/auth/register-tenant")
+            .post("/api/auth/workspaces")
+            .authorization_bearer(&token)
             .json(&serde_json::json!({
-                "name": "Second Owner",
-                "email": "second@example.test",
-                "password": "correct-horse-battery-staple",
                 "tenant_name": "Other Name",
                 "tenant_slug": "shared-name"
             }))
             .await;
         assert_eq!(duplicate.status_code(), 409, "{}", duplicate.text());
-        assert!(users::Model::find_by_email(&ctx.db, "second@example.test")
-            .await
-            .is_err());
         assert_eq!(
             tenant_entity::Entity::find()
                 .filter(tenant_entity::Column::Slug.eq("shared-name"))
@@ -268,24 +259,34 @@ async fn tenant_registration_rolls_back_when_the_slug_exists() {
 
 #[tokio::test]
 #[serial]
-async fn tenant_registration_rejects_an_invalid_slug() {
+async fn workspace_creation_rejects_an_invalid_slug() {
     request::<App, _, _>(|request, ctx| async move {
-        let response = request
-            .post("/api/auth/register-tenant")
+        let registration = request
+            .post("/api/auth/register-account")
             .json(&serde_json::json!({
                 "name": "Invalid Slug",
                 "email": "invalid-slug@example.test",
-                "password": "correct-horse-battery-staple",
+                "password": "correct-horse-battery-staple"
+            }))
+            .await;
+        let token = registration.json::<serde_json::Value>()["token"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+
+        let response = request
+            .post("/api/auth/workspaces")
+            .authorization_bearer(&token)
+            .json(&serde_json::json!({
                 "tenant_name": "Invalid Slug Tenant",
                 "tenant_slug": "Invalid Slug"
             }))
             .await;
 
         assert_eq!(response.status_code(), 400, "{}", response.text());
-        assert!(
-            users::Model::find_by_email(&ctx.db, "invalid-slug@example.test")
-                .await
-                .is_err()
+        assert_eq!(
+            tenant_entity::Entity::find().count(&ctx.db).await.unwrap(),
+            0
         );
     })
     .await;

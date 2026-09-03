@@ -4,19 +4,10 @@ use sea_orm::entity::prelude::*;
 use sea_orm::DatabaseTransaction;
 pub type Tenants = Entity;
 
-use super::{
-    _entities::{
-        applications, permissions, role_permissions, roles, tenant_applications,
-        tenant_member_roles, tenant_members, tenants,
-    },
-    users,
+use super::_entities::{
+    applications, permissions, role_permissions, roles, tenant_applications, tenant_member_roles,
+    tenant_members, tenants,
 };
-
-pub struct RegisteredWorkspace {
-    pub user: users::Model,
-    pub tenant: tenants::Model,
-    pub application: applications::Model,
-}
 
 pub struct CreatedWorkspace {
     pub tenant: tenants::Model,
@@ -157,33 +148,6 @@ impl Model {
             Self::create_workspace_in_transaction(&txn, user_id, tenant_name, tenant_slug).await?;
         txn.commit().await?;
         Ok(workspace)
-    }
-
-    /// Atomically creates a user and an owner workspace with the Documents
-    /// application and its default permissions.
-    ///
-    /// # Errors
-    ///
-    /// Returns a model error when any lookup, insert, or transaction operation
-    /// fails. The transaction is rolled back when setup is incomplete.
-    pub async fn register_workspace(
-        db: &DatabaseConnection,
-        user: &users::RegisterParams,
-        tenant_name: &str,
-        tenant_slug: &str,
-    ) -> ModelResult<RegisteredWorkspace> {
-        let txn = db.begin().await?;
-        let user = users::Model::create_with_password_in_transaction(&txn, user).await?;
-        let workspace =
-            Self::create_workspace_in_transaction(&txn, user.id, tenant_name, tenant_slug).await?;
-
-        txn.commit().await?;
-
-        Ok(RegisteredWorkspace {
-            user,
-            tenant: workspace.tenant,
-            application: workspace.application,
-        })
     }
 }
 

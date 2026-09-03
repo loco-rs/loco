@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import type { CreateWorkspace } from "../bindings/CreateWorkspace";
 import type { LoginResponse } from "../bindings/LoginResponse";
-import type { RegisterTenant } from "../bindings/RegisterTenant";
-import type { RegisterTenantResponse } from "../bindings/RegisterTenantResponse";
+import type { RegisterAccount } from "../bindings/RegisterAccount";
 import type { Workspace } from "../bindings/Workspace";
 import { ApiClientError, get, post } from "./client";
 
@@ -17,10 +16,8 @@ export function login(params: LoginRequest): Promise<LoginResponse> {
   return post<LoginResponse>("/api/auth/login", params);
 }
 
-export function registerTenant(
-  params: RegisterTenant,
-): Promise<RegisterTenantResponse> {
-  return post<RegisterTenantResponse>("/api/auth/register-tenant", params);
+export function registerAccount(params: RegisterAccount): Promise<LoginResponse> {
+  return post<LoginResponse>("/api/auth/register-account", params);
 }
 
 export function useWorkspaces(): UseQueryResult<Workspace[], ApiClientError> {
