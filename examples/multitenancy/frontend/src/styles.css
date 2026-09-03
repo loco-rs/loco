@@ -1252,8 +1252,8 @@ code {
   flex: 1;
 }
 
-.member-profile-heading strong,
-.member-profile-heading span {
+.member-profile-heading > div strong,
+.member-profile-heading > div span {
   display: block;
 }
 
