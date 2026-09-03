@@ -16,6 +16,7 @@ export default defineConfig({
       include: [
         "src/addons.ts",
         "src/auth/RequireAuth.tsx",
+        "src/auth/permissions.ts",
         "src/auth/session.ts",
         "src/auth/tenant.ts",
         "src/auth/workspace-context.ts",

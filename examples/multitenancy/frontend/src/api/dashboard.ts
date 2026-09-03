@@ -17,15 +17,16 @@ export function dashboardPath(tenantId: number): string {
 }
 
 export const dashboardKeys = {
-  detail: (tenantId: number) => ["dashboard", tenantId] as const,
+  detail: (tenantId: number | undefined) => ["dashboard", tenantId] as const,
 };
 
 export function useDashboard(
-  tenantId: number,
+  tenantId: number | undefined,
 ): UseQueryResult<DashboardDto, ApiClientError> {
   return useQuery({
     queryKey: dashboardKeys.detail(tenantId),
-    queryFn: () => get<DashboardDto>(dashboardPath(tenantId)),
+    queryFn: () => get<DashboardDto>(dashboardPath(tenantId ?? 0)),
+    enabled: tenantId !== undefined,
   });
 }
 
