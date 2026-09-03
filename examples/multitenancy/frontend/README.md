@@ -40,3 +40,6 @@ product availability from the workspace's purchased subscription. Designer
 includes Client Portal and Priority Support, while Developer includes Feature
 Flags and Priority Support. Analytics is active only for Developer. All four
 add-ons are subscription-only and do not add permissions or role grants.
+Owners and Administrators can complete a fake purchase for an unavailable
+add-on. The server activates the subscription and generates a paid demo
+invoice; invoices cannot be entered manually from the SPA or API.

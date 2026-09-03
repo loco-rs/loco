@@ -87,15 +87,17 @@ GET|POST /api/tenants/{tenant_id}/projects
 GET|PUT  /api/tenants/{tenant_id}/projects/{id}
 GET|POST /api/tenants/{tenant_id}/documents
 GET|PUT  /api/tenants/{tenant_id}/documents/{id}
-GET|POST /api/tenants/{tenant_id}/invoices
+GET      /api/tenants/{tenant_id}/invoices
+POST     /api/tenants/{tenant_id}/addons/{application_id}/purchase
 ```
 
 The workspace and document endpoints expect `Authorization: Bearer <jwt>`.
 Creating a workspace accepts `{"tenant_name":"Research team","tenant_slug":"research-team"}`;
 the SPA derives the slug from the name automatically and selects the new
 workspace after creation.
-The document POST body is `{"title":"Launch plan"}`. The invoice POST body is
-`{"number":"INV-1003","amount_cents":7900,"status":"draft"}`. The SPA stores the JWT and selected
+The document POST body is `{"title":"Launch plan"}`. Invoices cannot be
+created directly. A fake add-on purchase activates the subscription and
+generates a paid invoice with a server-assigned number and demo price. The SPA stores the JWT and selected
 tenant context in local storage; it never includes `tenant_id` in
 a create body. Its authenticated console groups Clients, Projects, and Documents
 under Core; Staff under Settings; and Invoices and Add-ons under Billing.
@@ -103,7 +105,8 @@ Core-resource navigation and metrics are
 permission-aware, while the Add-ons catalog reflects optional product
 availability from the workspace subscription. The seeded catalog includes
 Analytics, Client Portal, Feature Flags, and Priority Support; subscription-only
-add-ons do not require permissions. The Staff table can display
+add-ons do not require feature permissions; purchasing one requires the
+tenant-level `billing:purchase` permission. The Staff table can display
 each member's complete effective access on a dedicated page, while workspace
 Owners can use a separate management page to assign Owner, Administrator,
 Manager, or Support to other members and configure each role's permissions.
@@ -117,7 +120,7 @@ cd frontend && pnpm test
 
 They prove that one add-on can be enabled for multiple tenants, that core resource
 operations honor permissions, that membership does not transfer to another tenant,
-and that client, project, document, and invoice rows receive
+and that client, project, document, and generated invoice rows receive
 the trusted tenant context. They also verify Owner, Manager, and Support Billing
 boundaries and prevent non-members from reading the dashboard.
 Role-management tests also verify Owner authorization, tenant isolation,
