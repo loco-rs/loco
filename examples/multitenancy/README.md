@@ -29,8 +29,8 @@ with registration, login, workspace selection, and logout.
 For a single-origin production-style run, from this directory:
 
 ```sh
-cargo loco db migrate
-cargo loco db seed --reset
+cargo loco db reset
+cargo loco db seed
 cd frontend
 pnpm install
 pnpm build
@@ -58,10 +58,12 @@ provisions the core Clients, Projects, Documents, and Billing permissions with r
 permissions. These core features are always available and are not part of a
 subscription.
 
-The `--reset` flag makes repeated demo setup predictable by clearing existing
-rows before loading the fixed-ID fixtures. It deletes accounts and tenants you
-previously created in this example. If the database is already seeded and you
-want to keep its data, skip the seed command and run `cargo loco start`.
+`db reset` recreates the demo schema before loading the fixed-ID fixtures. It
+deletes accounts and tenants you previously created in this example. This is
+required when moving from an earlier version of the example whose permission
+or invoice tables still referenced an application. For an already-current
+schema, `cargo loco db seed --reset` is sufficient. If you want to preserve
+existing demo data, skip both reset and seed and run `cargo loco start`.
 
 For frontend development, run Loco on port 5150 and `pnpm dev` from
 `frontend`; Vite serves <http://localhost:5173> and proxies `/api` to Loco.
