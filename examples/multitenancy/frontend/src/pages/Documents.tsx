@@ -59,21 +59,6 @@ export function Documents() {
         </div>
       </header>
 
-      <div className="workspace-context" aria-label="Current tenant context">
-        <div>
-          <span>Tenant</span>
-          <strong>{selected.tenantName}</strong>
-        </div>
-        <div>
-          <span>Application</span>
-          <strong>{documentsWorkspace.applicationName}</strong>
-        </div>
-        <div className="scope-status">
-          <span className="status-dot" />
-          <strong>Tenant scope active</strong>
-        </div>
-      </div>
-
       <DocumentsWorkspace
         key={`${documentsWorkspace.tenantId}:${documentsWorkspace.applicationId}`}
         workspace={documentsWorkspace}
