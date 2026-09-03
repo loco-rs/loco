@@ -19,8 +19,9 @@ creation, and logout. Registration asks only for the user's name, email, and
 password, then opens the workspace modal. Tenant slugs are generated from the
 workspace name automatically. Login uses Loco's JWT endpoint, and
 `/api/auth/workspaces` lists and creates workspaces for the authenticated user.
-The authenticated navbar contains the current workspace selector, with
-`New workspace` as its final option.
+The authenticated navbar contains an organization-style workspace menu, with
+`New workspace` as its final action. It lists each tenant once and derives the
+available application contexts from active `tenant_applications` subscriptions.
 
 The workspace console provides Overview, Documents, Billing, Members, and
 Applications pages. Overview summarizes tenant-owned records and access. The

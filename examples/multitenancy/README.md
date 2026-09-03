@@ -41,10 +41,12 @@ cargo loco start
 The example inherits the framework from the repository root through a local
 path dependency, so it always exercises the code in the current checkout.
 Open <http://localhost:5150> and log in with `john@example.com` / `password`.
-John Doe is the seeded Owner of the Designer workspace. The dashboard includes
-Jane Smith as Manager and Sam Lee as Viewer so their effective permissions can
-be compared. Designer has active Documents and Billing applications, one
-document, and two invoices. You can also register
+John Doe is the seeded Owner of both Designer and Developer. The Designer
+dashboard includes Jane Smith as Manager and Sam Lee as Viewer so their
+effective permissions can be compared. Both workspaces have active Documents
+and Billing subscriptions. Analytics demonstrates subscription status: it is
+disabled for Designer and active for Developer. Designer has one document and
+two invoices; Developer has one document and one invoice. You can also register
 an account with your name, email, and password. After registration, the
 workspace modal opens so you can name your first tenant; its slug is generated
 automatically. Workspace creation atomically adds the tenant, Owner, Manager,
@@ -58,6 +60,8 @@ want to keep its data, skip the seed command and run `cargo loco start`.
 
 For frontend development, run Loco on port 5150 and `pnpm dev` from
 `frontend`; Vite serves <http://localhost:5173> and proxies `/api` to Loco.
+The navbar workspace menu lists Designer and Developer once each; application
+availability is derived from their active `tenant_applications` rows.
 
 The API endpoints are:
 
