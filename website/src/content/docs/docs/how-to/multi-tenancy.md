@@ -9,7 +9,7 @@ sidebar:
 
 Loco's tenant helpers follow the row-level approach popularized by `acts_as_tenant`: each owned table has a tenant foreign key and every read or mutation includes that key. Unlike Rails' request-global `current_tenant`, Loco passes the tenant ID explicitly. This is safe across async requests, workers, tasks, and tests, and makes the security boundary visible during review.
 
-For a complete runnable implementation, see [`examples/multitenancy`](https://github.com/loco-rs/loco/tree/master/examples/multitenancy). Its request tests build two tenants and two applications and exercise the isolation and RBAC boundaries below.
+For a complete runnable implementation, see [`examples/multitenancy`](https://github.com/loco-rs/loco/tree/master/examples/multitenancy). Its request tests build two tenants, tenant-scoped core resources, and optional add-on subscriptions while exercising the isolation and RBAC boundaries below.
 
 ## 1. Model the tenancy relationships
 
@@ -22,13 +22,13 @@ $ cargo loco generate model tenant_applications tenant:references application:re
 $ cargo loco generate model tenant_members tenant:references user:references
 $ cargo loco generate model roles tenant:references name:string!
 $ cargo loco generate model tenant_member_roles tenant:references tenant_member:references role:references
-$ cargo loco generate model permissions tenant:references tenant_application:references key:string!
+$ cargo loco generate model permissions tenant:references key:string!
 $ cargo loco generate model role_permissions tenant:references role:references permission:references
 ```
 
-This schema gives tenants and applications a many-to-many relationship through `tenant_applications`. `tenant_members` manages membership, `tenant_member_roles` lets members hold multiple roles, and each permission targets a subscribed application rather than a global application. Add the status, invitation, ownership, and audit fields your product requires.
+This schema gives tenants and optional add-ons a many-to-many relationship through `tenant_applications`. `tenant_members` manages membership, `tenant_member_roles` lets members hold multiple roles, and each permission governs a tenant-owned core resource. Add the status, invitation, ownership, and audit fields your product requires.
 
-Use migrations to add composite unique constraints and indexes for your access patterns. Typical constraints include `(tenant_id, application_id)` on subscriptions, `(tenant_id, user_id)` on members, `(tenant_id, name)` on roles, `(tenant_id, tenant_application_id, key)` on permissions, and `(tenant_id, role_id, permission_id)` on role permissions. Tenant-scoped uniqueness belongs in the database; an application-only uniqueness check is vulnerable to races.
+Use migrations to add composite unique constraints and indexes for your access patterns. Typical constraints include `(tenant_id, application_id)` on subscriptions, `(tenant_id, user_id)` on members, `(tenant_id, name)` on roles, `(tenant_id, key)` on permissions, and `(tenant_id, role_id, permission_id)` on role permissions. Tenant-scoped uniqueness belongs in the database; an application-only uniqueness check is vulnerable to races. Keep core-resource permissions separate from optional subscription availability.
 
 ## 2. Mark tenant-owned entities
 
@@ -133,10 +133,10 @@ Check `rows_affected` when your endpoint must distinguish success from a missing
 Tenant isolation and authorization are separate checks. First scope tenant-owned tables with `in_tenant`; then verify that:
 
 1. the user has an active `tenant_members` row,
-2. the tenant has an active `tenant_applications` subscription for the requested application, and
-3. one of the member's roles has the required permission for that subscription.
+2. one of the member's roles has the required tenant-level permission for a core resource, and
+3. when accessing an optional add-on, the tenant has an active `tenant_applications` subscription.
 
-Keep the subscription ID in `role_permissions`, not only the global application ID. That ensures a role grants access only to an application currently subscribed by the same tenant. Put the lookup in a model method or Axum middleware so controllers share one policy.
+Keep core-resource RBAC and optional subscription availability as separate policies. A role grant references a tenant permission such as `projects:edit`; an add-on lookup checks the tenant/application join independently. Put these lookups in model methods or Axum middleware so controllers share one policy.
 
 ## Intentional unscoped access
 
